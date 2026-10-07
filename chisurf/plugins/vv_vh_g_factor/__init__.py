@@ -8,7 +8,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from chisurf.core.plugin import load_manifest
-from chisurf.core.plugin.registry import apply_manifest_statefulness
 
 # Load manifest as source of truth
 _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
@@ -19,26 +18,19 @@ else:
     name = "Spectroscopy:Fluorescence decay:VV/VH G-Factor Calculator"
     cli_entrypoint = ""
 
-# Re-export the main widget class
-
-__all__ = ["VvVhGFactorCalculator"]
+__all__ = ["GFactorApp", "create_app", "create_host"]
 
 
 def __getattr__(name):
-    if name == 'VvVhGFactorCalculator':
-        from .gui.tool import VvVhGFactorCalculator
-        return VvVhGFactorCalculator
+    """Resolve native factories without importing a toolkit during discovery."""
+    if name in __all__:
+        from .gui import app
+
+        return getattr(app, name)
     raise AttributeError(name)
 
 
 if __name__ == "plugin":
-    from .gui.tool import VvVhGFactorCalculator
-    window = VvVhGFactorCalculator()
-    if _manifest is not None:
-        apply_manifest_statefulness(window, _manifest)
-    window.show()
-    try:
-        window.raise_()
-        window.activateWindow()
-    except Exception:
-        pass
+    from .__main__ import main
+
+    main()

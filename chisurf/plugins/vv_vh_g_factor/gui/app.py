@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+from collections.abc import Callable
 from pathlib import Path
 
 import numpy as np
@@ -12,10 +13,13 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
+from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import LabelColumn, button_row, labelled, layout_spec
+from chisurf.plugins.microscopy.imaging_emtk.path_list import PathListView
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 
 from .client import VvVhGFactorClient
@@ -26,13 +30,25 @@ DISPLAY = ("show_fast", "show_slow", "show_raw", "show_corrected", "log_y")
 
 
 class GFactorApp(ImApp):
-    def __init__(self, client=None):
+    def __init__(self, client=None, on_close=None, dataset_client=None):
+        self.on_close = on_close
+        self._closed = False
+        self.window_title = tr("VV/VH G-Factor Calculator")
         self.model = GFactorModel()
         self.client = client or VvVhGFactorClient()
-        self.item_rects = {}
+        self.item_rects: dict[str, tuple[float, float, float, float] | None] = {}
         panels = json.loads((HERE / "gfactor_emtk.view.json").read_text())["panels"]
         self.panels = {n: layout_spec(copy.deepcopy(p)) for n, p in panels.items()}
         self.forms = {n: FormState() for n in panels}
+        self.dataset_picker = DatasetPicker(client=dataset_client, on_paths=self.add_batch)
+        self.path_list = PathListView(self, actions={
+            "add": lambda: self.choose(tr("Batch VV/VH decays"), self.add_batch, multiple=True),
+            "folder": lambda: self.choose(tr("Batch VV/VH folder"), self.add_batch_folder, mode="folder"),
+            "database": self.dataset_picker.open,
+            "remove": lambda path: self.model.remove_batch({"path": path}),
+            "clear": self.clear_batch,
+        })
+        self.forms["batch"].custom["path_list"] = lambda section, model, state, width: self.path_list.draw(section, model, state)
         self.labels = {n: LabelColumn() for n in panels}
         self.help = EmTkHelpWindow(
             title="VV/VH G-factor: Help", resource=HERE / "help.md", owner=self
@@ -47,9 +63,9 @@ class GFactorApp(ImApp):
         for form in self.forms.values():
             form.on_used = self.guide.notify_used
         self.job = BackgroundJob()
-        self.dialog = None
-        self.dialog_window = None
-        self.dialog_callback = None
+        self.dialog: FileDialog | None = None
+        self.dialog_window: DialogWindow | None = None
+        self.dialog_callback: Callable[[list[str]], object] | None = None
         self.last_dir = ""
         self.show_fast = self.show_slow = self.show_raw = self.show_corrected = True
         self.log_y = True
@@ -82,7 +98,7 @@ class GFactorApp(ImApp):
     def remember(self, name):
         self.item_rects[name] = im.get_item_rect()
 
-    def choose(self, title, callback, mode="open", multiple=False, filename=""):
+    def choose(self, title, callback: Callable[[list[str]], object], mode="open", multiple=False, filename=""):
         if self.job.running:
             return
         self.dialog = FileDialog(
@@ -153,6 +169,11 @@ class GFactorApp(ImApp):
             self.last_dir = str(Path(path).parent)
             if str(path) not in self.model.batch_files:
                 self.model.batch_files.append(str(path))
+
+    def add_batch_folder(self, folders):
+        """Queue the same supported VV/VH files as the legacy recursive folder picker."""
+        self.add_batch(str(path) for folder in folders for path in sorted(Path(folder).rglob("*"))
+                       if path.is_file() and path.suffix.lower() in {".dat", ".txt", ".csv"})
 
     def clear_batch(self):
         self.model.batch_files = []
@@ -233,26 +254,30 @@ class GFactorApp(ImApp):
         busy = self.job.running or self.dialog is not None
         pressed = button_row(
             [
-                {"label": "Add files...", "key": "add", "enabled": not busy,
-                 "tip": "Queue VV/VH decays to evaluate r(inf) with the frozen current G, mixing, background and shift."},
-                {"label": "Run batch", "key": "run", "enabled": not busy and bool(m.batch_files) and m.g_factor is not None,
-                 "tip": "Compute the corrected steady anisotropy of every queued file with the current calibration."},
-                {"label": "Save table...", "key": "save", "enabled": not busy and bool(m.batch_results),
-                 "tip": "Write per-file r(inf), region, backgrounds, G and errors as a tab-separated file."},
-                {"label": "Clear batch", "key": "clear", "enabled": not busy and bool(m.batch_files),
-                 "tip": "Remove every queued input and computed row."},
+                {
+                    "label": "Run batch",
+                    "key": "run",
+                    "enabled": not busy and bool(m.batch_files) and m.g_factor is not None,
+                    "tip": "Compute the corrected steady anisotropy of every queued file with the current calibration.",
+                },
+                {
+                    "label": "Save table...",
+                    "key": "save",
+                    "enabled": not busy and bool(m.batch_results),
+                    "tip": "Write per-file r(inf), region, backgrounds, G and errors as a tab-separated file.",
+                },
             ],
             remember=lambda name: self.item_rects.__setitem__(name, im.get_item_rect()),
         )
-        if pressed == "add":
-            self.choose("Batch VV/VH decays", self.add_batch, multiple=True)
-        elif pressed == "run":
+        if pressed == "run":
             self.run(lambda model: model.compute_batch(self.job.cancelled.is_set))
         elif pressed == "save":
-            self.choose("Batch anisotropy table", lambda paths: self.run(lambda model: model.export_batch(paths[0])),
-                        mode="save", filename="batch_anisotropy.tsv")
-        elif pressed == "clear":
-            self.clear_batch()
+            self.choose(
+                "Batch anisotropy table",
+                lambda paths: self.run(lambda model: model.export_batch(paths[0])),
+                mode="save",
+                filename="batch_anisotropy.tsv",
+            )
         if not m.batch_files:
             im.text_wrapped("No files queued. Add VV/VH decays to evaluate their steady anisotropy with this calibration.")
         self.form("batch", m)
@@ -354,20 +379,27 @@ class GFactorApp(ImApp):
         vp = im.get_main_viewport()
         frame = (0.0, 0.0, *vp.size)
         self.item_rects.clear()
+        self.model.busy = self.job.running
         for form in self.forms.values():
             form.rects.clear()
-        im.begin_disabled(self.dialog is not None)
+        im.begin_disabled(self.dialog is not None or self.dataset_picker.is_open)
         self.docks.draw(frame)
         im.end_disabled()
-        if self.dialog is not None:
-            pressed = self.dialog_window.begin(frame)
-            result = self.dialog.draw()
+        dialog = self.dialog
+        if dialog is not None:
+            window, callback = self.dialog_window, self.dialog_callback
+            assert window is not None and callback is not None
+            pressed = window.begin(frame)
+            result = dialog.draw()
             if result:
-                callback, self.dialog = self.dialog_callback, None
+                assert isinstance(result, list)
+                self.dialog = None
                 callback(result)
             elif result is False or pressed == "close":
                 self.dialog = None
-            self.dialog_window.end()
+            window.end()
+        if self.dataset_picker.is_open:
+            self.dataset_picker.render(frame)
         self.help.draw(frame)
         self.guide.draw(*vp.size)
         signature = self.fingerprint()
@@ -401,11 +433,33 @@ class GFactorApp(ImApp):
         self.run(operation)
 
     def close(self):
+        """Cancel outstanding work and publish a valid visible result only once."""
+        if self._closed:
+            return
+        self._closed = True
+        publish = (not self.job.running and not self.model.message.startswith("Error:")
+                   and self.model.g_factor is not None and np.isfinite(self.model.g_factor)
+                   and self.model.g_factor > 0)
+        snapshot = self.model.snapshot() if publish else None
         self.job.close()
+        self.dataset_picker.close()
+        if self.on_close is not None:
+            self.on_close(snapshot)
 
 
-def create_app(client=None):
-    return GFactorApp(client=client)
+def create_app(client=None, on_close=None, dataset_client=None):
+    """Create the toolkit-free calculator and optional result-publication callback."""
+    return GFactorApp(client=client, on_close=on_close, dataset_client=dataset_client)
+
+
+def create_host(parent=None, client=None, on_close=None, dataset_client=None):
+    """Host the existing native calculator in a legacy Qt caller."""
+    from emtk.qt_host import ControlHost
+
+    control = create_app(client=client, on_close=on_close, dataset_client=dataset_client)
+    host = ControlHost(control, parent=parent)
+    host.setWindowTitle(control.window_title)
+    return host
 
 
 make_app = create_app

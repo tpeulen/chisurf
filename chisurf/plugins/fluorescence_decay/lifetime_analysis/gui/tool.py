@@ -46,11 +46,9 @@ def _microtime_histogram(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
 
 def _vv_vh_g_factor(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     """Create the VV/VH G-factor panel."""
-    from chisurf.plugins.vv_vh_g_factor.gui.tool import VvVhGFactorCalculator
+    from chisurf.plugins.vv_vh_g_factor.gui.app import create_host
 
-    widget = VvVhGFactorCalculator()
-    widget.setParent(parent)
-    return widget
+    return create_host(parent=parent)
 
 
 def _vv_vh_anisotropy(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:

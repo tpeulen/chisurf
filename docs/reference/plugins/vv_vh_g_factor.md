@@ -21,7 +21,7 @@ Calculate detector G-factors using tail-matching on VV/VH format files.
 | Menu path | Spectroscopy → Fluorescence decay → **VV/VH G-Factor Calculator** |
 | Categories | Spectroscopy, Fluorescence decay |
 | Version | 1.0.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `vv_vh_g_factor` |
 
 ## Parameters
@@ -65,6 +65,12 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Target rS | `rs_override` | float |  | -0.2 … 0.4 (step 0.01) | Steady-state anisotropy the slow reference should have. |
 | Manual l1 = l2 | `manual_l` | bool |  |  | Override the single linked polarization-mixing parameter. |
 | l1 = l2 | `l_override` | float |  | 0.0 … 0.5 (step 0.01) | Linked mixing parameter applied to l1 and l2. |
+
+### General
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| VV/VH files | `batch_files` | path_list |  |  | Queue files from disk, a folder or the database; remove or clear inputs without deleting their files. |
 
 ## JSON-RPC methods
 

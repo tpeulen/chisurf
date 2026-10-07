@@ -7,6 +7,8 @@ taken when this module was imported; the session log files chisurf itself starts
 
 from __future__ import annotations
 
+import csv
+import hashlib
 import json
 import os
 import pwd
@@ -25,6 +27,8 @@ from chisurf.plugins.vv_vh_g_factor.gui.client import VvVhGFactorClient
 from chisurf.plugins.vv_vh_g_factor.gui.model import GFactorModel
 
 PLUGIN = Path(__file__).parent.parent
+ORACLE_PATH = PLUGIN.parents[2] / "okf/validation/release-readiness-w1/gfactor-before/numerical-control-freeze.json"
+
 REAL_CHISURF = Path(pwd.getpwuid(os.getuid()).pw_dir) / ".chisurf"
 
 
@@ -120,6 +124,7 @@ def loaded(ui, files, slow=True, background=False):
     pick_file(ui, "load_fast", "fast.dat", folder)
     if slow:
         ui.app.model.fp_dt_ns = 0.05
+        ui.settle()  # The dt change schedules recalculation; its busy state disables the picker.
         pick_file(ui, "load_slow", "slow.dat", folder)
     if background:
         ui.click_name("background")
@@ -140,70 +145,82 @@ def type_value(ui, name, text):
 # ───────────────────────────── numbers equal the Qt tool ───────────────────────────── #
 
 
-@pytest.fixture
-def qt_tool(files):
-    QtWidgets = pytest.importorskip("qtpy.QtWidgets")
-    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    from chisurf.plugins.vv_vh_g_factor.gui.tool import VvVhGFactorCalculator
-
-    tool = VvVhGFactorCalculator()
-    tool._qapp = qapp
-    return tool
+@pytest.fixture(scope="module")
+def legacy_oracle():
+    """Committed controls/numerics captured before the old calculator was retired."""
+    return json.loads(ORACLE_PATH.read_text())
 
 
-def qt_state(tool, files, background):
-    tool.fp_dt_spinbox.setValue(0.05)
-    tool.load_vv_vh_file(files["fast"])
-    tool.load_fp_vv_vh_file(files["slow"])
-    if background:
-        tool.bg_correction_checkbox.setChecked(True)
-    tool._calc_timer.stop()
-    tool.calculate_g_factor()
-    return tool
+def test_seeded_physical_files_equal_the_immutable_capture(files, legacy_oracle):
+    """Regenerated physical data must match the source the frozen answers belong to."""
+    for name, path in files.items():
+        assert hashlib.sha256(Path(path).read_bytes()).hexdigest() == legacy_oracle["files"][name]["sha256"]
 
 
-@pytest.mark.parametrize("background", [False, True])
-def test_g_factor_mixing_and_defaults_equal_the_qt_tool(qt_tool, files, background):
-    qt = qt_state(qt_tool, files, background)
+@pytest.mark.parametrize("state", ["defaults", "existing_reference", "no-background", "background"])
+def test_g_factor_mixing_defaults_and_reference_equal_frozen_qt(state, files, legacy_oracle):
+    record = legacy_oracle["records"][state]
+    frozen = record.get("legacy", record.get("state"))
+    native = GFactorModel()
+    if state == "existing_reference":
+        path = PLUGIN / "test_vv_vh_data.dat"
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == record["source_sha256"]
+        native.load(path)
+    elif state != "defaults":
+        native.fp_dt_ns = 0.05
+        native.load(files["fast"])
+        native.load(files["slow"], slow=True)
+        native.background = state == "background"
+        native.compute()
+    assert native.region == list(map(float, frozen["region_bounds"]))
+    assert native.background_region == list(map(float, frozen["bg_region_bounds"]))
+    assert native.shift == frozen["decay_shift"] and native.flip == frozen["flip"]
+    assert native.background == frozen["use_background_correction"]
+    if state == "defaults":
+        assert native.g_factor is None and native.result == {} and native.fp_result == {}
+        controls = {c["name"]: c for c in record["controls"]}
+        assert native.fp_dt_ns == controls["fp_dt_spinbox"]["value"]
+        assert native.fp_rho_ns == controls["fp_rho_spinbox"]["value"]
+        return
+    assert native.result["g_factor_uncorrected"] == pytest.approx(frozen["g_factor_uncorrected"])
+    assert native.g_factor == pytest.approx(frozen["g_factor"])
+    if state == "existing_reference":
+        assert native.result["g_factor_stddev_uncorrected"] > 0
+        return
+    before_native = record["native"]["result"]
+    # The old UI never wired SD to its scalar; captured owner output preserves the real uncertainty.
+    assert frozen["g_factor_stddev"] is None
+    assert native.result["g_factor_stddev_uncorrected"] == pytest.approx(before_native["g_factor_stddev_uncorrected"])
+    if state == "background":
+        assert native.result["g_factor_corrected"] == pytest.approx(frozen["g_factor_corrected"])
+        assert native.result["g_factor_stddev_corrected"] == pytest.approx(before_native["g_factor_stddev_corrected"])
+        for key, display in (("bg_parallel_avg", "bg_parallel_text"), ("bg_perpendicular_avg", "bg_perpendicular_text")):
+            assert native.result[key] == pytest.approx(float(frozen[display]), abs=1e-3)
+    assert native.fp_result["tau_estimate_ns"] == pytest.approx(frozen["fp_tau_estimate_ns"])
+    assert native.fp_result["r_expected"] == pytest.approx(frozen["fp_rs_expected"])
+    assert native.fp_result["l1"] is frozen["l1_estimate"] is None
+    assert native.fp_result["l2"] is frozen["l2_estimate"] is None
+    assert "not applied" in native.fp_result["warning"]
+    assert "will not be auto-applied" in frozen["fp_warning"]
+
+
+@pytest.mark.parametrize("shift,flip", [(0.4, False), (0.0, True), (-1.5, True)])
+def test_shift_and_flip_recompute_like_frozen_qt(files, legacy_oracle, shift, flip):
+    frozen = legacy_oracle["records"][f"shift={shift};flip={flip}"]
     native = GFactorModel()
     native.fp_dt_ns = 0.05
     native.load(files["fast"])
     native.load(files["slow"], slow=True)
-    native.background = background
+    native.shift, native.flip = shift, flip
     native.compute()
-    assert [float(v) for v in native.region] == [float(v) for v in qt.region_bounds]
-    assert [float(v) for v in native.background_region] == [float(v) for v in qt.bg_region_bounds]
-    assert native.result["g_factor_uncorrected"] == pytest.approx(qt.g_factor_uncorrected)
-    assert native.g_factor == pytest.approx(qt.g_factor)
-    if background:
-        assert native.result["g_factor_corrected"] == pytest.approx(qt.g_factor_corrected)
-        assert native.result["bg_parallel_avg"] == pytest.approx(float(qt.bg_parallel_value.text()), abs=1e-3)
-    assert native.fp_result["tau_estimate_ns"] == pytest.approx(qt.fp_tau_estimate_ns)
-    assert native.fp_result["r_expected"] == pytest.approx(qt.fp_rs_expected)
-    assert native.fp_result["warning"][:20] in qt.fp_warning_label.text() or True
-    assert float(qt.g_factor_value.text()) == pytest.approx(native.result["g_factor_uncorrected"], abs=1e-4)
+    assert native.g_factor == pytest.approx(frozen["g_factor"])
+    assert native.fp_result["tau_estimate_ns"] == pytest.approx(frozen["fp_tau_estimate_ns"])
+    assert native.fp_result["r_expected"] == pytest.approx(frozen["fp_rs_expected"])
+    assert native.fp_result["l1"] is None and native.fp_result["l2"] is None
 
 
-def test_shift_and_flip_recompute_like_the_qt_tool(qt_tool, files):
-    qt = qt_state(qt_tool, files, False)
-    native = GFactorModel()
-    native.load(files["fast"])
-    for shift, flip in ((0.4, False), (0.0, True), (-1.5, True)):
-        qt.shift_spinbox.setValue(shift)
-        qt.flip_checkbox.setChecked(flip)
-        qt._calc_timer.stop()
-        qt.calculate_g_factor()
-        native.shift, native.flip = shift, flip
-        native.compute()
-        assert native.g_factor == pytest.approx(qt.g_factor), (shift, flip)
-
-
-def test_batch_results_equal_the_qt_batch_window(qt_tool, files):
-    from chisurf.plugins.vv_vh_g_factor.gui.tool import VvVhDecayBatchWindow
-
-    qt = qt_state(qt_tool, files, True)
-    snapshot = qt._build_batch_snapshot()
-    window = VvVhDecayBatchWindow(snapshot)
+def test_batch_results_equal_frozen_qt_batch_window(files, legacy_oracle):
+    frozen = legacy_oracle["records"]["batch"]
     native = GFactorModel()
     native.fp_dt_ns = 0.05
     native.load(files["fast"])
@@ -212,10 +229,23 @@ def test_batch_results_equal_the_qt_batch_window(qt_tool, files):
     native.compute()
     native.batch_files = [files["batch1"], files["batch2"]]
     native.compute_batch()
-    for row, path in zip(native.batch_results, native.batch_files):
-        qt_row = window._compute_file_result(path)
-        assert row["r_inf"] == pytest.approx(qt_row[1], rel=1e-6)
-        assert row["g_factor"] == pytest.approx(qt_row[6])
+    assert len(native.batch_results) == len(frozen["results"]) == 2
+    for row, expected in zip(native.batch_results, frozen["results"]):
+        assert Path(row["file"]).name == expected[0]
+        assert row["r_inf"] == pytest.approx(expected[1], rel=1e-6)
+        assert [row["region_start"], row["region_stop"]] == expected[2:4]
+        assert row["g_factor"] == pytest.approx(expected[6])
+        assert [row["bg_vv"], row["bg_vh"]] == pytest.approx(expected[4:6])
+    for row, expected in zip(native.batch_rows(), frozen["results"]):
+        assert row["file"] == expected[0]
+        assert list(map(float, row["region"].split("-"))) == expected[2:4]
+        assert float(row["r_inf"]) == pytest.approx(expected[1], rel=1e-4)
+        assert float(row["g_factor"]) == pytest.approx(expected[6], abs=5e-5)
+        assert [float(row["bg_vv"]), float(row["bg_vh"])] == pytest.approx(expected[4:6], rel=1e-5)
+    snapshot = native.batch_snapshot()
+    assert list(snapshot["background_levels"]) == pytest.approx(frozen["results"][0][4:6])
+    assert snapshot["l1"] == frozen["snapshot"]["l1"] == 0
+    assert snapshot["l2"] == frozen["snapshot"]["l2"] == 0
 
 
 # ───────────────────────────────────── loading ───────────────────────────────────── #
@@ -471,6 +501,79 @@ def open_batch(ui):
     ui.click_text("Batch anisotropy")
 
 
+def test_batch_folder_database_and_selected_remove_are_real_actions(files, tmp_path):
+    """Drive the three formerly missing actions without using a user's MMFDB service."""
+    class Catalogue:
+        def __init__(self):
+            self.calls = []
+
+        def call(self, method, params):
+            self.calls.append((method, params))
+            if method == "mmfdb.datasets.browse":
+                return {"datasets": [{"artifact_id": "batch-1", "original_filename": "batch1.dat",
+                                       "artifact_kind": "raw_data", "data_format": "vv_vh"}], "total": 1}
+            assert method == "mmfdb.datasets.open" and params == {"artifact_id": "batch-1"}
+            return {"local_path": files["batch1"]}
+
+    catalogue = Catalogue()
+    app = GFactorApp(client=FakeArchive(), dataset_client=catalogue)
+    ui = UI(app)
+    try:
+        ui.draw()
+        open_batch(ui)
+        # All seven actions captured in the legacy batch window have real native hit rectangles.
+        for name in ("batch_files.add", "batch_files.folder", "batch_files.database",
+                     "batch_files.remove", "batch_files.clear", "run", "save"):
+            assert ui.rect(name)[2] > 0, name
+        folder = tmp_path / "batch-folder"
+        nested = folder / "nested"
+        nested.mkdir(parents=True)
+        first = folder / "batch1.dat"
+        second = nested / "batch2.dat"
+        first.write_bytes(Path(files["batch1"]).read_bytes())
+        second.write_bytes(Path(files["batch2"]).read_bytes())
+        (folder / "ignore.bin").write_bytes(b"not a VV/VH file")
+        app.last_dir = str(folder)
+        ui.click_name("batch_files.folder")
+        assert app.dialog is not None and app.dialog.mode == "folder"
+        ui.click_text("Choose")
+        assert app.dialog is None
+        assert app.model.batch_files == [str(first), str(second)]
+        ui.click_name("batch_files.1")
+        ui.click_name("batch_files.remove")
+        assert app.model.batch_files == [str(first)] and second.is_file()
+        app.last_dir = str(folder)
+        ui.click_name("batch_files.folder")
+        ui.click_text("Choose")
+        assert app.model.batch_files == [str(first), str(second)]
+        ui.click_name("batch_files.1")
+        ui.click_name("batch_files.clear")
+        assert app.model.batch_files == [] and first.is_file()
+        app.last_dir = str(folder)
+        ui.click_name("batch_files.folder")
+        ui.click_text("Choose")
+        assert app.model.batch_files == [str(first), str(second)]
+        ui.click_name("batch_files.remove")
+        assert app.model.batch_files == [str(second)]  # Clear reset the former second-row selection.
+        ui.click_name("batch_files.clear")
+        ui.click_name("batch_files.database")
+        deadline = time.monotonic() + 5
+        while app.dataset_picker._pending is not None and time.monotonic() < deadline:
+            time.sleep(0.005)
+            ui.draw()
+        assert app.dataset_picker.is_open and not app.dataset_picker.error
+        ui.click_text("batch1.dat [raw_data] (vv_vh)")
+        ui.click_text("Open selected")
+        while app.dataset_picker.is_open and time.monotonic() < deadline:
+            time.sleep(0.005)
+            ui.draw()
+        assert not app.dataset_picker.is_open and not app.dataset_picker.error
+        assert app.model.batch_files == [files["batch1"]]
+        assert [method for method, _ in catalogue.calls] == ["mmfdb.datasets.browse", "mmfdb.datasets.open"]
+    finally:
+        app.close()
+
+
 def test_batch_queue_run_save_remove_and_clear_with_real_clicks(ui, files, tmp_path):
     m = loaded(ui, files, background=True)
     open_batch(ui)
@@ -478,7 +581,7 @@ def test_batch_queue_run_save_remove_and_clear_with_real_clicks(ui, files, tmp_p
     ui.click_name("run")
     assert m.batch_results == []                       # greyed: nothing queued
     ui.app.last_dir = str(Path(files["fast"]).parent)
-    ui.click_name("add")
+    ui.click_name("batch_files.add")
     ui.click_text("batch1.dat")
     ui.click_text("batch2.dat")
     ui.click_text("Open")
@@ -499,6 +602,7 @@ def test_batch_queue_run_save_remove_and_clear_with_real_clicks(ui, files, tmp_p
     assert [r["r_inf"] for r in m.batch_results] == pytest.approx([r["r_inf"] for r in reference.batch_results])
     shown = {t[5] for t in ui.draw().texts}
     assert f"{m.batch_results[0]['r_inf']:.5g}" in shown
+    assert {"bg VV", "bg VH"} <= shown  # The two backgrounds remain distinguishable in the narrow pane.
     ui.app.last_dir = str(tmp_path)
     ui.click_name("save")
     ui.click_text("batch_anisotropy.tsv", last=False, fx=0.3)
@@ -507,11 +611,19 @@ def test_batch_queue_run_save_remove_and_clear_with_real_clicks(ui, files, tmp_p
     ui.click_text("Save")
     ui.settle()
     lines = (tmp_path / "table.tsv").read_text().splitlines()
-    assert lines[0].split("\t")[:2] == ["file", "r_inf"] and len(lines) == 3
-    ui.click(ui.text_rect(ui.draw(), "batch1.dat"))
+    assert lines[0].split("\t") == [
+        "file", "r_inf", "region_start", "region_stop", "bg_vv", "bg_vh", "g_factor", "error"
+    ] and len(lines) == 3
+    rows = list(csv.DictReader(lines, delimiter="\t"))
+    for row, result in zip(rows, m.batch_results):
+        assert row["file"] == result["file"]
+        for quantity in ("r_inf", "region_start", "region_stop", "bg_vv", "bg_vh", "g_factor"):
+            assert float(row[quantity]) == pytest.approx(result[quantity])
+    # The filename is elided in this narrow seven-column table; select its real numeric cell.
+    ui.click_text(f"{m.batch_results[0]['r_inf']:.5g}")
     ui.delete()
     assert ui.app.model.batch_files == [files["batch2"]] and len(ui.app.model.batch_results) == 1
-    ui.click_name("clear")
+    ui.click_name("batch_files.clear")
     assert ui.app.model.batch_files == [] and ui.app.model.batch_results == []
 
 
@@ -555,8 +667,8 @@ def test_the_tour_waits_for_the_real_controls(ui, files):
 
 
 def test_settings_round_trip_reloads_the_files_and_the_choices(ui, files):
-    m = loaded(ui, files)
-    m = type_value(ui, "tail_start", "310")
+    loaded(ui, files)
+    type_value(ui, "tail_start", "310")
     ui.click_text("Raw")
     ui.app.last_dir = "/elsewhere"
     saved = json.loads(json.dumps(ui.app.export_settings()))
@@ -615,7 +727,10 @@ def test_every_spec_field_exists_on_the_model_and_is_described():
                 for key in ("source", "delete_call"):
                     if key in s["options"]:
                         assert callable(getattr(model, s["options"][key])), s["options"][key]
-                assert all(c.get("tooltip") for c in s["options"]["columns"])
+                if s["key"] == "data_table":
+                    assert all(c.get("tooltip") for c in s["options"]["columns"])
+                elif s["key"] == "path_list":
+                    assert s.get("description")
             walk(s.get("sections", []))
 
     for panel in spec.values():

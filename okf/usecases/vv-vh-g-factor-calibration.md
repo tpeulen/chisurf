@@ -8,6 +8,37 @@ timestamp: '2026-07-29T00:00:00Z'
 
 # Use case: VV/VH G-factor and l1/l2 detection calibration
 
+# Where to pick this up
+
+1. Native caller retirement and detector persistence are complete. Re-derive
+   acceptance with the targeted files/receipts in
+   [W1 G-factor evidence](../validation/release-readiness-w1/gfactor-retirement/acceptance.json).
+   The native guide is [here](../../docs/guides/91_vv_vh_g_factor.md).
+2. Scientific review remains open for the historical RF-173 estimator/spread
+   and RF-919 background-default measurements below. The implemented G is
+   the mean of valid per-bin ratios and G SD is their population spread.
+   The 5–15% default is not a measured pre-pulse calibration; choose bounds
+   from real data. Root fixes for these scientific questions require owning
+   numerical regressions, and are not implied by UI retirement.
+3. The July Qt observations below are historical. Native main/batch controls
+   now include real help/guide, export/archive, Folder/Database/Remove and
+   separate backgrounds. Reproduce remaining claims against the native model
+   and real files before closing their known-issue entries. No fixture ratio
+   is instrument calibration ground truth.
+
+## Current native workflow — 2026-10-07
+
+Open the existing native app through Decay Analysis, its standalone module or
+the detector setup host. Load **Fast reference**, set the yellow tail bounds,
+and choose the blue background bounds in a measured pre-pulse region. Load
+**Slow protein** with its physical ns/bin timing; invalid automatic mixing
+retains stored detector values, while explicit manual zero applies. Use
+**Batch anisotropy** to Add files/Folder/Database, Remove/Clear, Run and Save.
+The native guide records all controls and exact headless commands. Closing a
+completed detector calculation archives actual SD, active actor/source UUIDs
+and timing once; busy/error/cancelled states preserve the calibration.
+
+
 **Goal:** measure the two numbers that every polarisation-resolved measurement in
 ChiSurf silently assumes — the detection **G-factor** (the relative sensitivity of
 the VH channel to the VV channel) and the **channel-mixing factors l1/l2** — from
@@ -39,7 +70,7 @@ marked deprecated.
   (1024 channels, ~32 ps/channel)
 - synthetic smoke file — `chisurf/plugins/vv_vh_g_factor/test_vv_vh_data.dat`
 
-## Steps
+## Historical Qt workflow (2026-07-29)
 
 1. Open the calculator (standalone, or *Decay Analysis* → **5. VV/VH G-Factor**).
 2. **Load VV/VH File** → the fast-rotating reference. The stacked file is split
@@ -81,7 +112,7 @@ csc vv-vh-g-factor calculate <file.dat> --region-min 1200 --region-max 1800 \
     --use-bg --bg-min 5 --bg-max 230
 ```
 
-## Expected
+## Historical expectations
 
 - Step 3 returns `G` near 1 for a well-matched detection path, with the `VH × G`
   overlay lying on `VV` through the whole matching region.
@@ -187,7 +218,7 @@ background default is actively harmful.
   `1/1.2866 = 0.7773`. Which half of the file you call "parallel" moves the
   calibration by 1.3 %. Ratio-of-sums over the same region is `1.2684`.
 
-## UX / UI suggestions
+## Historical UX / UI suggestions
 
 - **Place the default background region from the data, not from the record
   length.** The rise channel is one `np.argmax`/threshold away; anchoring the red

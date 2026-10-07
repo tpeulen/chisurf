@@ -21,6 +21,19 @@ from ..core.calculations import (
 )
 
 
+def _bound(index: int, attr: str) -> property:
+    """Expose one region coordinate without copying the model's mutable list."""
+    def get(model: GFactorModel) -> float:
+        """Read the coordinate as the scalar form value."""
+        return float(getattr(model, attr)[index])
+
+    def put(model: GFactorModel, value: float) -> None:
+        """Update the existing region list through the scalar form value."""
+        getattr(model, attr)[index] = float(value)
+
+    return property(get, put)
+
+
 class GFactorModel:
     def __init__(self):
         self.fast_file = ""
@@ -53,20 +66,10 @@ class GFactorModel:
         return deepcopy(self)
 
     # -- scalar views of the region lists, for the form ----------------------------------------- #
-    def _bound(index, attr):  # noqa: N805 (property factory)
-        def get(self):
-            return float(getattr(self, attr)[index])
-
-        def put(self, value):
-            getattr(self, attr)[index] = float(value)
-
-        return property(get, put)
-
     tail_start = _bound(0, "region")
     tail_stop = _bound(1, "region")
     background_start = _bound(0, "background_region")
     background_stop = _bound(1, "background_region")
-    del _bound
 
     busy = False
 
@@ -127,11 +130,20 @@ class GFactorModel:
         for path in self.batch_files:
             r = done.get(path, {})
             r_inf = r.get("r_inf")
-            rows.append({"file": Path(path).name, "path": path,
-                         "r_inf": f"{r_inf:.5g}" if r_inf is not None else ("" if not r else "failed"),
-                         "region": f"{r['region_start']}-{r['region_stop']}" if "region_start" in r else "",
-                         "g_factor": f"{r['g_factor']:.5g}" if r.get("g_factor") is not None else "",
-                         "error": r.get("error", "")})
+            rows.append(
+                {
+                    "file": Path(path).name,
+                    "path": path,
+                    "r_inf": f"{r_inf:.5g}" if r_inf is not None else ("" if not r else "failed"),
+                    "region": f"{r['region_start']}-{r['region_stop']}"
+                    if "region_start" in r
+                    else "",
+                    "g_factor": f"{r['g_factor']:.5g}" if r.get("g_factor") is not None else "",
+                    "bg_vv": f"{r['bg_vv']:.6g}" if r.get("bg_vv") is not None else "",
+                    "bg_vh": f"{r['bg_vh']:.6g}" if r.get("bg_vh") is not None else "",
+                    "error": r.get("error", ""),
+                }
+            )
         return rows
 
     def load(self, path, slow=False):
@@ -389,6 +401,24 @@ class GFactorModel:
             "fp_tau_ns": self.fp_result.get("tau_used_ns"),
             "fp_r_s_expected": self.fp_result.get("r_expected"),
         }
+
+    def detector_parameters(self, prior_l1=0.0, prior_l2=0.0, micro_time_resolution=None):
+        """Return the measured calibration plus detector-context mixing fallbacks."""
+        parameters = self.archive_parameters()
+        for key, prior in (("l1", prior_l1), ("l2", prior_l2)):
+            value = self.fp_result.get(key)
+            if self.manual_l:
+                value = self.l_override
+            parameters[key] = float(value) if value is not None and np.isfinite(value) else float(prior)
+        parameters.update(
+            g_factor_uncorrected=self.result.get("g_factor_uncorrected"),
+            g_factor_corrected=self.result.get("g_factor_corrected"),
+            bg_vv=self.result.get("bg_parallel_avg", 0.0) if self.background else 0.0,
+            bg_vh=self.result.get("bg_perpendicular_avg", 0.0) if self.background else 0.0,
+            bg_region_bounds=list(self.background_region),
+            micro_time_resolution=micro_time_resolution,
+        )
+        return parameters
 
     def export_settings(self):
         names = (

@@ -73,6 +73,18 @@ I_{\parallel,\mathrm{m}} = (1-l_1)\,I_\parallel + l_1\,I_\perp, \qquad
 I_{\perp,\mathrm{m}}     = l_2\,I_\parallel + (1-l_2)\,I_\perp .
 $$
 
+The [native G-factor workflow](../guides/91_vv_vh_g_factor.md) reports both
+the tail-matched ratio and its standard deviation, with separate channel
+backgrounds when correction is enabled. A slow reference can estimate a
+single linked mixing value, but an absent or invalid estimate does not justify
+erasing a detector's stored mixing. The calibration helper preserves those
+values until a valid estimate or an explicit manual override is supplied;
+manual zero is an intentional override. Closing a completed calibration
+publishes its valid result once, with uncertainty and timing/provenance,
+while busy or failed calculations leave the stored calibration unchanged.
+Synthetic demonstrations and noisy bundled test decays exercise the
+calculation; their fitted ratios are not measured calibration ground truth.
+
 ## The fundamental anisotropy $r_0$
 
 At $t=0$, before any rotation, the anisotropy takes its **fundamental** value

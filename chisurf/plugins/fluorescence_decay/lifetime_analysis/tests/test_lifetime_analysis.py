@@ -75,7 +75,7 @@ def test_lifetime_panel_factories_import_expected_widgets(monkeypatch) -> None:
             "MicrotimeHistogram",
             Widget,
         ),
-        "chisurf.plugins.vv_vh_g_factor.gui.tool": ("VvVhGFactorCalculator", Widget),
+        "chisurf.plugins.vv_vh_g_factor.gui.app": ("create_host", Widget),
     }
     for module_name, (class_name, widget_class) in modules.items():
         module = types.ModuleType(module_name)

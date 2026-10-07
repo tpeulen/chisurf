@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- **2026-10-07 · W1 G-factor row11 landed:** existing native host retires duplicate Qt calculator/UI; complete main/batch control parity and reliable detector calibration metadata/close-once persistence. Adjacent headless archival-failure mutation fixed; shared list preserved in actual PixelMLE fitting. Parent88 targeted +963 guards/vocabulary pass (16 skips),11 scoped mypy targets clean, final seven renders inspected; calculations unchanged. Next Microtime12. [Evidence](validation/release-readiness-w1/gfactor-retirement/acceptance.json).
+
 - **2026-10-07 · W1 MMFDB CLI root restored:** authoritative manifest now exposes existing `csc fluorophore`; duplicate declaration/old source planning mention removed. Three real dispatch regressions and39 targeted CLI/PRD cases pass, plus parent installed-command help. Guide/catalogue updated; four inherited GUI typing findings measured unchanged. Test-env editable installation restored the intended executable without dependency changes. [Receipt](validation/release-readiness-w1/mmfdb-cli/receipt.md).
 
 - **2026-10-07 · Local Zed tasks restored:** corrected W1 cleanup scope after owner feedback. `.zed/tasks.json` is back on disk with all four original task definitions, exact bytes/mode verified; it remains ignored and untracked. PRD now explicitly preserves local editor tasks during final hygiene. [Record](validation/release-readiness-w1.md#local-editor-tasks-retained--2026-10-07).

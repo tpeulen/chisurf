@@ -1,4 +1,4 @@
-"""A list of files with Add, Database, Remove and Clear: the CLSM files and the IRF file of the pixel-wise MLE tool.
+"""Shared photon/reference file lists with Add, Database, Remove, Clear and an optional Folder action.
 
 Drawn as a ``custom`` section whose ``options`` name the model attribute (``target``), the dialog that adds files (``add``) and the button that
 opens the database picker (``database``). The model owns the list (``sel_files`` / ``sel_irf_files``), the app only draws it.
@@ -10,16 +10,18 @@ from pathlib import Path
 from typing import Any
 
 from emtk import im
+from emtk.i18n import tr
 
 
 class PathListView:
     """One file list: a selectable column of names and its buttons."""
 
-    def __init__(self, owner: Any) -> None:
+    def __init__(self, owner: Any, *, actions: dict[str, Any] | None = None) -> None:
         self.owner = owner
+        self.actions = actions or {}
         self.selected: dict[str, int] = {}
 
-    def draw(self, section: dict, model: Any) -> None:
+    def draw(self, section: dict, model: Any, state: Any = None) -> None:
         options = section.get("options") or {}
         target = str(options.get("target", section.get("target", "")))
         title = str(section.get("title", target))
@@ -35,18 +37,45 @@ class PathListView:
                 self.selected[target] = index = i
             im.set_item_tooltip(path)
             self.owner.item_rects[f"{target}.{i}"] = im.get_item_rect()
-        self.owner.item_rects[title] = self.owner.form.rects[target] = start
+        form = state if state is not None else self.owner.form
+        self.owner.item_rects[title] = form.rects[target] = start
         busy = bool(model.busy)
         room = im.get_content_region_avail()[0]
         used = 0.0
-        for key, label, tip, needs_files, act in (
-            ("add", "Add files" if not options.get("single") else "Choose file", str(options.get("add_tip", "Choose photon files to add.")), False,
-             lambda: model.request_dialog(str(options.get("add", "add_files")))),
-            ("database", "Database", "Pick a registered photon dataset from the database.", False,
-             lambda: model.request_dialog(str(options.get("database", "database")))),
-            ("remove", "Remove", "Remove the selected file from the list (the file itself is not deleted).", True, lambda: self._remove(model, target, index)),
-            ("clear", "Clear", "Empty the list without deleting any file.", True, lambda: self._clear(model, target)),
-        ):
+        buttons = [
+            (
+                "add",
+                "Add files" if not options.get("single") else "Choose file",
+                str(options.get("add_tip", "Choose photon files to add.")),
+                False,
+                lambda: model.request_dialog(str(options.get("add", "add_files"))),
+            ),
+            (
+                "database",
+                "Database",
+                "Pick a registered photon dataset from the database.",
+                False,
+                lambda: model.request_dialog(str(options.get("database", "database"))),
+            ),
+            (
+                "remove",
+                "Remove",
+                "Remove the selected file from the list (the file itself is not deleted).",
+                True,
+                lambda: self._remove(model, target, index),
+            ),
+            (
+                "clear",
+                "Clear",
+                "Empty the list without deleting any file.",
+                True,
+                lambda: self._clear(model, target),
+            ),
+        ]
+        if "folder" in self.actions:
+            buttons.insert(1, ("folder", tr("Folder"), tr("Add supported files from a folder recursively."), False, self.actions["folder"]))
+        for key, label, tip, needs_files, act in buttons:
+            label, tip = tr(label), tr(tip)
             width = im.calc_text_size(label)[0] + 16.0
             if used and used + 6.0 + width <= room:
                 im.same_line()
@@ -55,7 +84,16 @@ class PathListView:
                 used = width
             im.begin_disabled(busy or (needs_files and not paths))
             if im.button(f"{label}##{target}.{key}"):
-                act()
+                callback = self.actions.get(key)
+                if callback is None:
+                    act()
+                elif key == "remove":
+                    callback(paths[index])
+                    self.selected[target] = max(0, index - 1)
+                else:
+                    callback()
+                    if key == "clear":
+                        self.selected[target] = 0
             im.set_item_tooltip(tip)
             self.owner.item_rects[f"{target}.{key}"] = im.get_item_rect()
             im.end_disabled()

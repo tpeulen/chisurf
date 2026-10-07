@@ -1,5 +1,5 @@
 {
- "_comment": "The emtk forms of the G-factor calculator, drawn by emtk.view_form.draw_form over GFactorModel. The Qt tool keeps ../wizard.ui.",
+ "_comment": "The emtk forms of the G-factor calculator, drawn by emtk.view_form.draw_form over GFactorModel. This is the shared native calculator used by standalone and hosted callers.",
  "panels": {
   "tail": {
    "sections": [
@@ -285,6 +285,14 @@
    "sections": [
     {
      "type": "custom",
+     "key": "path_list",
+     "target": "batch_files",
+     "title": "VV/VH files",
+     "description": "Queue files from disk, a folder or the database; remove or clear inputs without deleting their files.",
+     "options": {"target": "batch_files", "add_tip": "Choose VV/VH decay files to add.", "empty": "No VV/VH decays queued."}
+    },
+    {
+     "type": "custom",
      "key": "data_table",
      "options": {
       "source": "batch_rows",
@@ -313,6 +321,8 @@
         "title": "G",
         "tooltip": "G-factor applied."
        },
+       {"key": "bg_vv", "title": "bg VV", "tooltip": "Parallel background applied to this row."},
+       {"key": "bg_vh", "title": "bg VH", "tooltip": "Perpendicular background applied to this row."},
        {
         "key": "error",
         "title": "Error",

@@ -1,9 +1,10 @@
-import importlib
 import logging
+import os
 import tempfile
 
 import numpy as np
 import tttrlib
+from emtk.i18n import tr
 
 from chisurf.gui import dialogs
 
@@ -19,12 +20,80 @@ from chisurf.gui.widgets.staged_loading import load_with_progress
 from .tttr_detector_setups import load_detector_setups, save_detector_setups
 
 
-def _load_vv_vh_gfactor_calculator_class():
-    mod = importlib.import_module("chisurf.plugins.vv_vh_g_factor")
-    cls = getattr(mod, "VvVhGFactorCalculator", None)
-    if cls is None:
-        raise ImportError("VvVhGFactorCalculator not found in chisurf.plugins.vv_vh_g_factor")
-    return cls
+def _create_gfactor_host(parent=None, on_close=None):
+    """Host the existing native calculator for a legacy detector setup caller."""
+    from chisurf.plugins.vv_vh_g_factor.gui.app import create_host
+
+    return create_host(parent=parent, on_close=on_close)
+
+
+def _publish_gfactor_result(page, model, detector_info, client=None):
+    """Persist one valid native result using the detector's context and model metadata."""
+    if model is None or model.g_factor is None or not np.isfinite(model.g_factor) or model.g_factor <= 0:
+        return False
+    if getattr(page, "read_only", False) or not page.detectors_form.isEnabled():
+        return False
+    row = detector_info["row"]
+    name = detector_info["name"]
+    item = page.detectors_form.item(row, 0)
+    if item is None or item.text().strip() != name:
+        raise ValueError(tr("The calibrated detector is no longer the selected row."))
+    prior = []
+    for column in (4, 5):
+        editor = page.detectors_form.cellWidget(row, column)
+        try:
+            value = float(editor.text()) if editor else 0.0
+        except ValueError:
+            value = 0.0
+        prior.append(value)
+    parameters = model.detector_parameters(
+        prior_l1=prior[0], prior_l2=prior[1],
+        micro_time_resolution=getattr(page, "effective_micro_time_resolution", None),
+    )
+    from chisurf.core.fio.setup_store import resolve_active_user_id
+    from chisurf.plugins.vv_vh_g_factor.gui.client import VvVhGFactorClient
+
+    client = client or VvVhGFactorClient()
+    archived = client.archive_g_factor(
+        file_path=model.fast_file, parameters=parameters, active_user=resolve_active_user_id()
+    )
+    if not isinstance(archived, dict) or not archived.get("ok", True) or not archived.get("calibration_id"):
+        error = archived.get("error") if isinstance(archived, dict) else None
+        raise ValueError(error or tr("Calibration archival returned no identifier."))
+    page._set_g_factor_programmatically(
+        row, f"{model.g_factor:.3f}", archived.get("reference_decay_id"),
+        archived["calibration_id"], l1=f"{parameters['l1']:.5f}", l2=f"{parameters['l2']:.5f}",
+    )
+    limits = sorted(int(float(value)) for value in model.region)
+    range_text = f"{limits[0]}-{limits[1]}"
+    editor = page.detectors_form.cellWidget(row, 6)
+    if editor is None:
+        editor = QLineEdit(range_text)
+        page.detectors_form.setCellWidget(row, 6, editor)
+    else:
+        editor.setText(range_text)
+    if page.current_setup_name:
+        data = page.get_settings()
+        setups = load_detector_setups(page.current_setups_file)
+        existing = setups.setdefault("setups", {}).get(page.current_setup_name, {})
+        for key, value in data.items():
+            if key == "detectors":
+                for detector, info in value.items():
+                    detectors = existing.setdefault("detectors", {})
+                    if isinstance(detectors.get(detector), dict):
+                        detectors[detector].update(info)
+                    else:
+                        detectors[detector] = info
+            else:
+                existing[key] = value
+        setups["setups"][page.current_setup_name] = existing
+        setups["last_used"] = page.current_setup_name
+        save_detector_setups(setups, page.current_setups_file)
+    message = tr("G-Factor calculated: {g:.4f}\nUpdated G-Factor for detector: {name}\nG-Factor Channels: {range_text}\n").format(g=model.g_factor, name=name, range_text=range_text)
+    message += (tr("Setup '{name}' saved automatically.").format(name=page.current_setup_name)
+                if page.current_setup_name else tr("No setup was selected, so changes were not saved automatically."))
+    dialogs.information(page, tr("Success"), message)
+    return True
 
 
 def _apply_setup_lut_to_tttr(page, tttr) -> bool:
@@ -170,6 +239,8 @@ def read_from_tttr_file(page):
 
 
 def on_calc_g_factor(page, row=None):
+    if getattr(page, "read_only", False) or not page.detectors_form.isEnabled():
+        return
     if row is None:
         selected_rows = page.detectors_form.selectedIndexes()
         if not selected_rows:
@@ -234,6 +305,7 @@ def on_calc_g_factor(page, row=None):
             perpendicular_hist_trimmed = perpendicular_hist
 
         fd, vv_vh_file = tempfile.mkstemp(suffix=".dat")
+        os.close(fd)
         vv_vh_data = np.concatenate([parallel_hist_trimmed, perpendicular_hist_trimmed])
         write_vv_vh(filename=vv_vh_file, data=vv_vh_data)
 
@@ -270,446 +342,42 @@ def on_calc_g_factor(page, row=None):
 
         if run_headless:
             from chisurf.plugins.vv_vh_g_factor.gui.client import VvVhGFactorClient
+            from chisurf.plugins.vv_vh_g_factor.gui.model import GFactorModel
 
             client = VvVhGFactorClient()
-            try:
-                res = client.calculate(
-                    parallel_data=parallel_hist_trimmed.tolist(),
-                    perpendicular_data=perpendicular_hist_trimmed.tolist(),
-                    region_bounds=[s, e],
-                    decay_shift=0.0,
-                    use_bg=False,
-                )
-                g_factor_val = res.get("g_factor")
-                if g_factor_val is not None:
-                    g_factor_decay_uuid = None
-                    g_factor_calibration_id = None
-                    try:
-                        from chisurf.core.fio.setup_store import resolve_active_user_id
-
-                        l1_widget = page.detectors_form.cellWidget(row, 4)
-                        l2_widget = page.detectors_form.cellWidget(row, 5)
-                        try:
-                            l1_val = float(l1_widget.text()) if l1_widget else 0.0
-                        except ValueError:
-                            l1_val = 0.0
-                        try:
-                            l2_val = float(l2_widget.text()) if l2_widget else 0.0
-                        except ValueError:
-                            l2_val = 0.0
-
-                        # Build parameters dict
-                        calib_params = {
-                            "g_factor": g_factor_val,
-                            "g_factor_stddev": res.get("g_factor_stddev_uncorrected"),
-                            "g_factor_uncorrected": res.get("g_factor_uncorrected"),
-                            "g_factor_corrected": res.get("g_factor_corrected"),
-                            "r_inf": res.get("r_inf"),
-                            "region_min": float(s),
-                            "region_max": float(e),
-                            "decay_shift": 0.0,
-                            "flip": False,
-                            "use_bg": False,
-                            "bg_vv": 0.0,
-                            "bg_vh": 0.0,
-                            "l1": l1_val,
-                            "l2": l2_val,
-                            "micro_time_resolution": float(page.effective_micro_time_resolution)
-                            if hasattr(page, "effective_micro_time_resolution")
-                            else None,
-                        }
-                        logger.info(
-                            "Archiving G-factor reference decay and calibration to MMFDB: %s",
-                            vv_vh_file,
-                        )
-                        archive_res = client.archive_g_factor(
-                            file_path=vv_vh_file,
-                            parameters=calib_params,
-                            active_user=resolve_active_user_id(),
-                        )
-                        if isinstance(archive_res, dict):
-                            g_factor_calibration_id = archive_res.get("calibration_id")
-                            g_factor_decay_uuid = archive_res.get("reference_decay_id")
-                    except Exception as e:
-                        logger.warning("Failed to archive G-factor to MMFDB: %s", e)
-
-                    g_factor_text = f"{g_factor_val:.3f}"
-                    page._set_g_factor_programmatically(
-                        row,
-                        g_factor_text,
-                        g_factor_decay_uuid,
-                        g_factor_calibration_id,
-                        l1=f"{l1_val:.5f}",
-                        l2=f"{l2_val:.5f}",
-                    )
-
-                    # Update setup
-                    if page.current_setup_name:
-                        data = page.get_settings()
-                        setups = load_detector_setups(page.current_setups_file)
-                        setups.setdefault("setups", {})
-
-                        if page.current_setup_name in setups["setups"]:
-                            existing_data = setups["setups"][page.current_setup_name]
-                            for key in data:
-                                if key == "detectors":
-                                    existing_data.setdefault("detectors", {})
-                                    for det_name, det_info in data["detectors"].items():
-                                        if det_name in existing_data["detectors"] and isinstance(
-                                            existing_data["detectors"][det_name], dict
-                                        ):
-                                            existing_data["detectors"][det_name].update(det_info)
-                                        else:
-                                            existing_data["detectors"][det_name] = det_info
-                                else:
-                                    existing_data[key] = data[key]
-                            setups["setups"][page.current_setup_name] = existing_data
-                        else:
-                            setups["setups"][page.current_setup_name] = data
-
-                        setups["last_used"] = page.current_setup_name
-                        save_detector_setups(setups, page.current_setups_file)
-
-                        dialogs.information(
-                            page,
-                            "Success",
-                            f"Headless G-Factor calculation completed successfully!\n"
-                            f"Calculated G-Factor: {g_factor_val:.4f}\n"
-                            f"Updated detector: {selected_detector}\n"
-                            f"Setup '{page.current_setup_name}' saved automatically.",
-                        )
-                    else:
-                        dialogs.information(
-                            page,
-                            "Success",
-                            f"Headless G-Factor calculation completed successfully!\n"
-                            f"Calculated G-Factor: {g_factor_val:.4f}\n"
-                            f"Updated detector: {selected_detector}\n"
-                            f"Note: No setup was selected, so changes were not saved automatically.",
-                        )
-                else:
-                    dialogs.error(page, "Error", "Headless calculation returned None.")
-            except Exception as ex:
-                dialogs.error(page, "Error", f"Headless calculation failed: {ex}")
+            model = GFactorModel()
+            model.load(vv_vh_file)
+            model.region = [float(s), float(e)]
+            model.fp_dt_ns = float(page.effective_micro_time_resolution) * 1e-3
+            model.compute(client)
+            _publish_gfactor_result(page, model, {"row": row, "name": selected_detector}, client)
             return
 
-        VvVhGFactorCalculator = _load_vv_vh_gfactor_calculator_class()
-        g_factor_calculator = VvVhGFactorCalculator()
-        g_factor_calculator.setWindowModality(Qt.ApplicationModal)
+        detector_info = {"row": row, "name": selected_detector}
 
-        try:
-            setattr(g_factor_calculator, "parallel_channels", parallel_channels)
-            setattr(g_factor_calculator, "perpendicular_channels", perpendicular_channels)
-            setattr(g_factor_calculator, "micro_time_binning", micro_time_binning)
-            setattr(g_factor_calculator, "detector_name", selected_detector)
-            setattr(
-                g_factor_calculator,
-                "effective_micro_time_resolution_ps",
-                float(page.effective_micro_time_resolution),
-            )
-            if (
-                hasattr(g_factor_calculator, "fp_dt_spinbox")
-                and g_factor_calculator.fp_dt_spinbox is not None
-            ):
-                try:
-                    g_factor_calculator.fp_dt_spinbox.setValue(
-                        float(page.effective_micro_time_resolution) * 1e-3
-                    )
-                except Exception:
-                    pass
-        except Exception:
-            pass
-
-        page.g_factor_calculator = g_factor_calculator
-        page.vv_vh_file = vv_vh_file
-
-        original_close_event = g_factor_calculator.closeEvent
-
-        def custom_close_event(event):
-            if original_close_event:
-                original_close_event(event)
-
-            if (
-                hasattr(g_factor_calculator, "g_factor")
-                and g_factor_calculator.g_factor is not None
-            ):
-                selected_detector_info = page.selected_detector
-                logger.info(
-                    "Interactive G-factor calculation finished. Selected detector info: %s",
-                    selected_detector_info,
-                )
-                if selected_detector_info:
-                    row = selected_detector_info["row"]
-                    g_factor_value = f"{g_factor_calculator.g_factor:.3f}"
-                    logger.info(
-                        "Updating detectors table row %d with g-factor value %s",
-                        row,
-                        g_factor_value,
-                    )
-
-                    # Upload the temporary VV_VH file to the Object Store & register G-factor calibration!
-                    g_factor_decay_uuid = None
-                    g_factor_calibration_id = None
-                    try:
-                        from chisurf.core.fio.setup_store import resolve_active_user_id
-                        from chisurf.plugins.vv_vh_g_factor.gui.client import VvVhGFactorClient
-
-                        client = VvVhGFactorClient()
-
-                        # Determine actual file path (the user might have loaded another one in the widget)
-                        file_path = page.vv_vh_file
-                        if (
-                            hasattr(g_factor_calculator, "file_label")
-                            and g_factor_calculator.file_label is not None
-                        ):
-                            fl_txt = g_factor_calculator.file_label.text().strip()
-                            if (
-                                fl_txt
-                                and not fl_txt.startswith("Error")
-                                and not fl_txt.startswith("No file")
-                            ):
-                                file_path = fl_txt
-
-                        l1_widget = page.detectors_form.cellWidget(row, 4)
-                        l2_widget = page.detectors_form.cellWidget(row, 5)
-                        try:
-                            l1_existing = float(l1_widget.text()) if l1_widget else 0.0
-                        except ValueError:
-                            l1_existing = 0.0
-                        try:
-                            l2_existing = float(l2_widget.text()) if l2_widget else 0.0
-                        except ValueError:
-                            l2_existing = 0.0
-
-                        l1_val = getattr(g_factor_calculator, "l1_estimate", None)
-                        l2_val = getattr(g_factor_calculator, "l2_estimate", None)
-                        l1_param = (
-                            float(l1_val)
-                            if l1_val is not None and np.isfinite(float(l1_val))
-                            else l1_existing
-                        )
-                        l2_param = (
-                            float(l2_val)
-                            if l2_val is not None and np.isfinite(float(l2_val))
-                            else l2_existing
-                        )
-
-                        # Prep calibration parameters
-                        calib_params = {
-                            "g_factor": float(g_factor_calculator.g_factor)
-                            if g_factor_calculator.g_factor is not None
-                            else None,
-                            "g_factor_stddev": float(g_factor_calculator.g_factor_stddev)
-                            if getattr(g_factor_calculator, "g_factor_stddev", None) is not None
-                            else None,
-                            "g_factor_uncorrected": float(g_factor_calculator.g_factor_uncorrected)
-                            if getattr(g_factor_calculator, "g_factor_uncorrected", None)
-                            is not None
-                            else None,
-                            "g_factor_corrected": float(g_factor_calculator.g_factor_corrected)
-                            if getattr(g_factor_calculator, "g_factor_corrected", None) is not None
-                            else None,
-                            "region_min": float(min(g_factor_calculator.region_bounds))
-                            if getattr(g_factor_calculator, "region_bounds", None) is not None
-                            else None,
-                            "region_max": float(max(g_factor_calculator.region_bounds))
-                            if getattr(g_factor_calculator, "region_bounds", None) is not None
-                            else None,
-                            "decay_shift": float(g_factor_calculator.decay_shift)
-                            if getattr(g_factor_calculator, "decay_shift", None) is not None
-                            else 0.0,
-                            "flip": bool(g_factor_calculator.flip_checkbox.isChecked())
-                            if getattr(g_factor_calculator, "flip_checkbox", None) is not None
-                            else False,
-                            "use_bg": bool(g_factor_calculator.bg_correction_checkbox.isChecked())
-                            if getattr(g_factor_calculator, "bg_correction_checkbox", None)
-                            is not None
-                            else False,
-                            "bg_vv": float(g_factor_calculator.bg_parallel_value.text())
-                            if getattr(g_factor_calculator, "bg_correction_checkbox", None)
-                            is not None
-                            and g_factor_calculator.bg_correction_checkbox.isChecked()
-                            and hasattr(g_factor_calculator, "bg_parallel_value")
-                            else 0.0,
-                            "bg_vh": float(g_factor_calculator.bg_perpendicular_value.text())
-                            if getattr(g_factor_calculator, "bg_correction_checkbox", None)
-                            is not None
-                            and g_factor_calculator.bg_correction_checkbox.isChecked()
-                            and hasattr(g_factor_calculator, "bg_perpendicular_value")
-                            else 0.0,
-                            "l1": l1_param,
-                            "l2": l2_param,
-                            "micro_time_resolution": float(page.effective_micro_time_resolution)
-                            if hasattr(page, "effective_micro_time_resolution")
-                            else None,
-                        }
-                        if (
-                            hasattr(g_factor_calculator, "bg_region_bounds")
-                            and g_factor_calculator.bg_region_bounds is not None
-                        ):
-                            calib_params["bg_region_bounds"] = list(
-                                g_factor_calculator.bg_region_bounds
-                            )
-
-                        logger.info(
-                            "Archiving G-factor reference decay and calibration to MMFDB: %s",
-                            file_path,
-                        )
-                        archive_res = client.archive_g_factor(
-                            file_path=file_path,
-                            parameters=calib_params,
-                            active_user=resolve_active_user_id(),
-                        )
-                        if isinstance(archive_res, dict):
-                            g_factor_calibration_id = archive_res.get("calibration_id")
-                            g_factor_decay_uuid = archive_res.get("reference_decay_id")
-                    except Exception as e:
-                        logger.warning("Failed to archive G-factor to MMFDB: %s", e)
-
-                    l1_text = f"{l1_param:.5f}"
-                    l2_text = f"{l2_param:.5f}"
-
-                    existing_cell_widget = page.detectors_form.cellWidget(row, 3)
-                    if existing_cell_widget:
-                        page._set_g_factor_programmatically(
-                            row,
-                            g_factor_value,
-                            g_factor_decay_uuid,
-                            g_factor_calibration_id,
-                            l1=l1_text,
-                            l2=l2_text,
-                        )
-                    else:
-                        new_cell_widget = QLineEdit(g_factor_value)
-                        page.detectors_form.setCellWidget(row, 3, new_cell_widget)
-                        page._wire_g_factor_cell(row, new_cell_widget)
-
-                        le_l1 = QLineEdit(l1_text)
-                        page.detectors_form.setCellWidget(row, 4, le_l1)
-
-                        le_l2 = QLineEdit(l2_text)
-                        page.detectors_form.setCellWidget(row, 5, le_l2)
-
-                        item = page.detectors_form.item(row, 0)
-                        if item:
-                            if g_factor_decay_uuid:
-                                item.setData(Qt.UserRole + 1, g_factor_decay_uuid)
-                            if g_factor_calibration_id:
-                                item.setData(Qt.UserRole + 2, g_factor_calibration_id)
-
-                    gf_range_text_new = None
-                    try:
-                        rng = None
-                        if (
-                            hasattr(g_factor_calculator, "region")
-                            and g_factor_calculator.region is not None
-                        ):
-                            try:
-                                rng = g_factor_calculator.region.getRegion()
-                            except Exception:
-                                rng = None
-                        if rng is None and hasattr(g_factor_calculator, "region_bounds"):
-                            rng = getattr(g_factor_calculator, "region_bounds", None)
-                        if isinstance(rng, (list, tuple)) and len(rng) == 2:
-                            s_new = int(float(rng[0]))
-                            e_new = int(float(rng[1]))
-                            if e_new < s_new:
-                                s_new, e_new = e_new, s_new
-                            gf_range_text_new = f"{s_new}-{e_new}"
-                            try:
-                                gf_widget_new = page.detectors_form.cellWidget(row, 6)
-                                if gf_widget_new is None:
-                                    gf_widget_new = QLineEdit(gf_range_text_new)
-                                    page.detectors_form.setCellWidget(row, 6, gf_widget_new)
-                                else:
-                                    gf_widget_new.setText(gf_range_text_new)
-                            except Exception:
-                                pass
-                    except Exception:
-                        pass
-
-                    if page.current_setup_name:
-                        data = page.get_settings()
-                        setups = load_detector_setups(page.current_setups_file)
-                        setups.setdefault("setups", {})
-
-                        if page.current_setup_name in setups["setups"]:
-                            existing_data = setups["setups"][page.current_setup_name]
-                            for key in data:
-                                if key == "detectors":
-                                    existing_data.setdefault("detectors", {})
-                                    for det_name, det_info in data["detectors"].items():
-                                        if det_name in existing_data["detectors"] and isinstance(
-                                            existing_data["detectors"][det_name], dict
-                                        ):
-                                            existing_data["detectors"][det_name].update(det_info)
-                                        else:
-                                            existing_data["detectors"][det_name] = det_info
-                                else:
-                                    existing_data[key] = data[key]
-                            setups["setups"][page.current_setup_name] = existing_data
-                        else:
-                            setups["setups"][page.current_setup_name] = data
-
-                        setups["last_used"] = page.current_setup_name
-                        save_detector_setups(setups, page.current_setups_file)
-
-                        msg = (
-                            f"G-Factor calculated: {g_factor_calculator.g_factor:.4f}\n"
-                            f"Updated G-Factor for detector: {selected_detector_info['name']}\n"
-                        )
-                        if gf_range_text_new:
-                            msg += f"G-Factor Channels: {gf_range_text_new}\n"
-                        msg += f"Setup '{page.current_setup_name}' saved automatically."
-                        dialogs.information(page, "Success", msg)
-                    else:
-                        msg = (
-                            f"G-Factor calculated: {g_factor_calculator.g_factor:.4f}\n"
-                            f"Updated G-Factor for detector: {selected_detector_info['name']}\n"
-                        )
-                        if gf_range_text_new:
-                            msg += f"G-Factor Channels: {gf_range_text_new}\n"
-                        msg += (
-                            "Note: No setup was selected, so changes were not saved automatically."
-                        )
-                        dialogs.information(page, "Success", msg)
-
-        g_factor_calculator.closeEvent = custom_close_event
-        g_factor_calculator.show()
-
-        try:
-            g_factor_calculator.load_vv_vh_file(vv_vh_file)
-
+        def finished(model):
             try:
-                gf_widget_new = page.detectors_form.cellWidget(row, 6)
-                if gf_widget_new:
-                    txt = gf_widget_new.text().strip()
-                    if txt:
-                        parts = txt.replace(" ", "").split("-")
-                        if len(parts) == 2:
-                            s_new = int(float(parts[0]))
-                            e_new = int(float(parts[1]))
-                            if e_new < s_new:
-                                s_new, e_new = e_new, s_new
-                            if hasattr(g_factor_calculator, "region"):
-                                try:
-                                    g_factor_calculator.region.setRegion([s_new, e_new])
-                                except Exception:
-                                    pass
-                            if hasattr(g_factor_calculator, "region_bounds"):
-                                try:
-                                    g_factor_calculator.region_bounds = [s_new, e_new]
-                                except Exception:
-                                    pass
-                            try:
-                                g_factor_calculator.calculate_g_factor()
-                            except Exception:
-                                pass
-            except Exception:
-                pass
+                _publish_gfactor_result(page, model, detector_info)
+            except Exception as exc:
+                logger.warning("Failed to publish native G-factor calibration: %s", exc)
+                dialogs.error(page, tr("Error"), tr("Failed to save G-Factor calibration: {error}").format(error=exc))
 
-        except Exception as e:
-            dialogs.error(page, "Error", f"Failed to load VV/VH file: {str(e)}")
+        host = _create_gfactor_host(parent=page, on_close=finished)
+        host.setWindowFlags(host.windowFlags() | Qt.Window)
+        host.setWindowModality(Qt.ApplicationModal)
+        calculator = host.control
+        calculator.model.fp_dt_ns = float(page.effective_micro_time_resolution) * 1e-3
+        page.g_factor_calculator = host
+        page.vv_vh_file = vv_vh_file
+        # File reading/calculation uses the same native model/client as its own UI.
+        calculator.model.load(vv_vh_file)
+        if has_valid_range:
+            calculator.model.region = [float(s), float(e)]
+        calculator.model.compute(calculator.client)
+        calculator.settings_signature = calculator.fingerprint()
+        calculator.plot_signature = None
+        host.resize(1600, 1000)
+        host.show()
 
     except Exception as e:
         dialogs.error(page, "Error", f"Failed to calculate G-Factor: {str(e)}")
