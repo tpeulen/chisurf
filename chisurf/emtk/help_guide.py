@@ -15,6 +15,7 @@ from typing import Any, Callable
 
 from emtk import im
 from emtk.dialog_window import DialogWindow
+from emtk.i18n import tr
 from emtk.im_core import Col
 from emtk.keys import KEY_ESCAPE
 
@@ -56,8 +57,9 @@ def resolve_resource_file(resource: str | Path, owner: Any = None) -> Path | Non
             import sys
 
             mod = sys.modules.get(mod_name)
-            if mod and getattr(mod, "__file__", None):
-                bases.append(Path(mod.__file__).parent)
+            module_file = getattr(mod, "__file__", None)
+            if module_file:
+                bases.append(Path(module_file).parent)
     bases.append(Path.cwd())
 
     for base in bases:
@@ -184,11 +186,26 @@ class EmTkHelpWindow:
         pressed = self.dlg.begin(frame)
 
         # Header controls
+        row_width = ctx.layout.avail()[0]
+        spacing = im.get_style().item_spacing[0]
         im.align_text_to_frame_padding()
+        im.push_text_wrap_pos(0.0)
         im.text_colored(self.title, ACCENT_BLUE)
+        im.pop_text_wrap_pos()
+        used_width = im.get_item_rect()[2]
+
+        def place_button(label: str) -> None:
+            """Keep header actions on the row when they fit, otherwise start a new one."""
+            nonlocal used_width
+            width = im.calc_text_size(tr(label))[0] + 2 * im.get_style().frame_padding[0]
+            if used_width and used_width + spacing + width <= row_width:
+                im.same_line()
+                used_width += spacing + width
+            else:
+                used_width = width
 
         if callable(self.on_start_guide):
-            im.same_line()
+            place_button("Start Guided Tour")
             im.push_style_color(Col.BUTTON, ACCENT_GREEN)
             if im.button("Start Guided Tour##help"):
                 self.hide()
@@ -196,7 +213,7 @@ class EmTkHelpWindow:
             im.set_item_tooltip("Walk through the tool controls and workflow step by step.")
             im.pop_style_color()
 
-        im.same_line()
+        place_button("Close")
         if im.button("Close##help_top"):
             pressed = "close"
         im.set_item_tooltip("Close this help window.")
@@ -206,7 +223,9 @@ class EmTkHelpWindow:
         # Category pills / filters if more than 1 section
         if len(self.sections) > 1:
             cats = ["All"] + [h for h, _ in self.sections]
+            used_width = 0.0
             for c in cats:
+                place_button(f" {c} ")
                 is_sel = c == self.active_category
                 if is_sel:
                     im.push_style_color(Col.BUTTON, (40, 90, 180, 255))
@@ -217,14 +236,14 @@ class EmTkHelpWindow:
                 )
                 if is_sel:
                     im.pop_style_color()
-                im.same_line()
-            im.new_line()
             im.separator()
 
         # Content scrolling area
         avail_w, avail_h = ctx.layout.avail()
+        footer_height = im.get_frame_height() + 3 * im.get_style().item_spacing[1] + 1.0
         im.begin_child(
-            (*im.get_cursor_screen_pos(), max(100.0, avail_w), max(80.0, avail_h - 38.0)), clip=True
+            (*im.get_cursor_screen_pos(), max(1.0, avail_w), max(1.0, avail_h - footer_height)),
+            child_id=(self.dlg.key, self.active_category, "body"), clip=True,
         )
 
         for heading, lines in self.sections:

@@ -268,3 +268,19 @@ weight removes only the outline and keeps automatic fill/visible legends.
 Stable column-visibility calls preserve horizontal scroll/selection/revision;
 actual visibility transitions still reset and notify once. Test real offscreen
 action access after scrolling, rather than assuming a horizontal bar proves it.
+
+
+## Native Help verification
+
+Help windows retain the complete document and live links. Header actions and
+category filters wrap to the available width; the document scrolls inside its
+body while Close remains visible. Dragging the dialog preserves the current
+reading position. Check the last category and the last live link at narrow
+window sizes and at2×device scale, not only the first screen.
+
+Compare the actual Qt render with software captures when text appears outside
+a child clip: texture/font diagnostic clipping can differ from application
+layout. The installed toolkit applies nested scissoring to both textures and
+real-font glyphs. Regression examples are
+`test/gui/test_native_help_scrolling.py` and
+`test/gui/test_help_window_markdown.py`.
