@@ -166,17 +166,6 @@ class FittingParameter(chisurf.core.parameter.Parameter):
             parameter_name=self.name, scan_range=scan_range, p_value=p_value, **kwargs
         )
 
-    def update(self) -> None:
-        """Update the UI controller for this parameter."""
-        controller = getattr(self, "controller", None)
-        if controller is not None and hasattr(controller, "finalize"):
-            try:
-                controller.finalize()
-            except Exception as e:
-                import chisurf.logging
-
-                chisurf.logging.error(f"Failed to finalize parameter controller: {e}")
-
     def __getstate__(self):
         """Return a picklable representation of the fitting parameter."""
         state = super().__getstate__()

@@ -1,3 +1,4 @@
+import json
 import pathlib
 import unittest
 
@@ -145,45 +146,49 @@ class Tests(unittest.TestCase):
         p1 = chisurf.core.parameter.Parameter(22)
         self.assertEqual(p1.__repr__(), "22")
 
-    @unittest.expectedFailure
     def test_dict(self):
-        d1 = {
-            "value": 2.0,
-            "bounds_on": True,
-            "lb": 1.0,
-            "ub": 2.5,
-            "unique_identifier": "b671b0b3-3009-42df-824a-6d690c2b3e54",
-        }
-        p1 = chisurf.core.parameter.Parameter(**d1)
-        d3 = {
-            "name": "Parameter",
-            "verbose": False,
-            "unique_identifier": "b671b0b3-3009-42df-824a-6d690c2b3e54",
-            "bounds_on": True,
-            "controller": None,
-            "_link": None,
-            "_port": 2.0,
-            "lb": 1.0,
-            "ub": 2.5,
-        }
-        self.assertEqual(p1.to_dict(), d3)
+        """Runtime dictionaries retain objects; portable state preserves public scalar fields."""
+        parameter = chisurf.core.parameter.Parameter(
+            name="scale", value=2.0, bounds_on=True, lb=1.0, ub=2.5,
+            description="Rate multiplier",
+            unique_identifier="b671b0b3-3009-42df-824a-6d690c2b3e54",
+        )
+        parameter.fixed = True
+        expected = {"value": 2.0, "bounds_on": True, "bounds": [1.0, 2.5],
+                    "fixed": True, "description": "Rate multiplier"}
+        state = json.loads(json.dumps(parameter.get_state()))
+        self.assertEqual(state, expected)
+        restored = chisurf.core.parameter.Parameter()
+        restored.set_state(state)
+        self.assertEqual(restored.get_state(), expected)
+        runtime = chisurf.core.parameter.Parameter()
+        runtime.from_dict(parameter.to_dict())
+        self.assertEqual(runtime.name, "scale")
+        self.assertEqual(runtime.unique_identifier, parameter.unique_identifier)
+        self.assertEqual(runtime.get_state(), expected)
 
     def test_save_load(self):
-
+        """An actual JSON file restores a readable scalar with bounds, flags and metadata."""
         import tempfile
 
-        # file = tempfile.NamedTemporaryFile(
-        #    suffix='.json'
-        # )
-        # filename = file.name
-
-        _, filename = tempfile.mkstemp(suffix=".json")
-
-        p1 = chisurf.core.parameter.Parameter(value=2.0, bounds_on=True, lb=1.0, ub=2.5)
-        p1.save(filename, file_type="json")
-
-        p2 = chisurf.core.parameter.Parameter()
-        p2.load(filename=filename, file_type="json")
+        with tempfile.TemporaryDirectory() as directory:
+            filename = str(pathlib.Path(directory) / "parameter.json")
+            parameter = chisurf.core.parameter.Parameter(
+                name="scale", value=2.0, bounds_on=True, lb=1.0, ub=2.5,
+                description="Rate multiplier", meta_data={"source": "measurement"},
+            )
+            parameter.fixed = True
+            parameter.save(filename, file_type="json")
+            restored = chisurf.core.parameter.Parameter()
+            restored.load(filename=filename, file_type="json")
+            restored.update()
+            self.assertEqual(restored.get_state(), parameter.get_state())
+            self.assertEqual(restored.value, 2.0)
+            self.assertEqual(restored.bounds, (1.0, 2.5))
+            self.assertTrue(restored.fixed)
+            self.assertEqual(restored.name, parameter.name)
+            self.assertEqual(restored.unique_identifier, parameter.unique_identifier)
+            self.assertEqual(restored.meta_data, parameter.meta_data)
 
     def test_parameter_group_append(self):
         p1 = chisurf.core.parameter.Parameter(value=22, name="p1")

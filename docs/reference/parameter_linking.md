@@ -103,3 +103,29 @@ client.call("parameter.link", {
   across datasets.
 * [Global View](plugins/globalview.md) — the link graph as a network, where links
   can also be made and removed.
+
+
+## Scalar files and explicit refresh
+
+For one finite, unlinked scalar, `Parameter.save(..., file_type="json")` or
+`"yaml"` writes portable value, bounds, fixed state, description, prior, name
+and JSON-compatible public metadata. Loading restores a usable native scalar
+and refreshes an attached editor. Infinite bounds use null in the file; stored
+bounds remain available while enforcement is disabled.
+
+```python
+from chisurf.core.parameter import Parameter
+
+scalar = Parameter(name="scale", value=2.0)
+scalar.save("scale.json", file_type="json")
+restored = Parameter(value=8.0)
+restored.load("scale.json", file_type="json")
+assert restored.value == 2.0
+```
+
+Linked parameters and Python callables require the owning session/project
+archive; a standalone scalar file rejects them explicitly. Old files containing
+only a native-port repr cannot reconstruct their lost value and raise a clear
+error. Live in-process dictionary sharing remains available for graph objects.
+After changing a model value directly, `parameter.update()` refreshes an attached
+controller; ordinary value reads/writes keep their existing evaluation behavior.

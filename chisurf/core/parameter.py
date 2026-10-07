@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import abc
+import copy
 import inspect
 import json
 import math
+from pathlib import Path
 
 import numpy as np
 
@@ -628,15 +629,16 @@ class Parameter(chisurf.core.base.Base):
         """Return a new parameter whose value is ``round(self)``."""
         return self.__class__(value=self.value.__round__())
 
-    @abc.abstractmethod
-    def update(self):
-        """Hook for subclasses to react to external changes.
+    def update(self) -> None:
+        """Notify an attached controller without changing pull-based scalar evaluation."""
+        controller = getattr(self, "controller", None)
+        if controller is not None and hasattr(controller, "finalize"):
+            try:
+                controller.finalize()
+            except Exception as e:
+                import chisurf.logging
 
-        The base :class:`Parameter` does not define an update strategy; this
-        method primarily exists so GUI-aware subclasses can synchronize their
-        controllers.
-        """
-        pass
+                chisurf.logging.error(f"Failed to finalize parameter controller: {e}")
 
     def __init__(
         self,
@@ -818,6 +820,178 @@ class Parameter(chisurf.core.base.Base):
         except Exception:
             # Parameters without a concrete update hook simply ignore this.
             pass
+
+
+    def _file_payload(self) -> dict:
+        """Build a standalone scalar file, never a repr of its live native port."""
+        if self.is_linked or self._callable:
+            raise ValueError("Linked or callable parameters require a session or project archive")
+        state = self.get_state()
+        if not math.isfinite(state["value"]):
+            raise ValueError("Standalone parameter value must be finite")
+        state["bounds"] = [value if math.isfinite(value) else None for value in (self.lb, self.ub)]
+        payload = {
+            "format": "chisurf.parameter",
+            "version": 1,
+            "name": self.name,
+            "verbose": bool(self.verbose),
+            "meta_data": copy.deepcopy(self.meta_data),
+            "state": state,
+        }
+        # JSON-native metadata is deliberate: unsupported objects must not be
+        # stringified into plausible but irrecoverable file contents.
+        try:
+            json.dumps(payload, allow_nan=False)
+            if json.loads(json.dumps(self.meta_data, allow_nan=False)) != self.meta_data:
+                raise ValueError("Metadata must use JSON-native keys and containers")
+        except (TypeError, ValueError) as error:
+            raise ValueError("Parameter file metadata/state must contain JSON values") from error
+        return payload
+
+    def _restore_file_payload(self, payload: dict) -> None:
+        """Validate a portable scalar record completely before restoring its native port."""
+        if self.is_linked or self._callable:
+            raise ValueError("Linked or callable parameters require a session or project archive")
+        fields = {"value", "bounds", "bounds_on", "fixed", "description", "prior"}
+        if isinstance(payload, dict) and "value" in payload and set(payload) <= fields:
+            # A genuine historical get_state file contains enough public data;
+            # native-port repr files do not, and are not guessed back into data.
+            payload = {
+                "format": "chisurf.parameter",
+                "version": 1,
+                "name": self.name,
+                "verbose": bool(self.verbose),
+                "meta_data": copy.deepcopy(self.meta_data),
+                "state": payload,
+            }
+        if (
+            not isinstance(payload, dict)
+            or payload.get("format") != "chisurf.parameter"
+            or type(payload.get("version")) is not int
+            or payload.get("version") != 1
+            or set(payload) != {"format", "version", "name", "verbose", "meta_data", "state"}
+        ):
+            raise ValueError(
+                "Unsupported parameter file; native-port repr files cannot recover scalar state"
+            )
+        state, metadata = copy.deepcopy(payload["state"]), copy.deepcopy(payload["meta_data"])
+        if (
+            not isinstance(payload["name"], str)
+            or type(payload["verbose"]) is not bool
+            or not isinstance(metadata, dict)
+            or not isinstance(metadata.get("unique_identifier"), str)
+            or not metadata["unique_identifier"]
+            or not isinstance(state, dict)
+            or set(state) - fields
+            or not {"value", "bounds", "bounds_on", "fixed"} <= set(state)
+        ):
+            raise ValueError("Invalid parameter file identity or scalar fields")
+        value, bounds = state["value"], state["bounds"]
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(value)
+            or type(state["bounds_on"]) is not bool
+            or type(state["fixed"]) is not bool
+            or not isinstance(state.get("description", ""), str)
+            or not isinstance(bounds, list)
+            or len(bounds) != 2
+        ):
+            raise ValueError("Invalid parameter file value, flags or bounds")
+        if any(
+            endpoint is not None
+            and (
+                isinstance(endpoint, bool)
+                or not isinstance(endpoint, (int, float))
+                or math.isnan(endpoint)
+            )
+            for endpoint in bounds
+        ):
+            raise ValueError("Invalid parameter file bounds")
+        lower = float("-inf") if bounds[0] is None else bounds[0]
+        upper = float("inf") if bounds[1] is None else bounds[1]
+        if lower > upper or (state["bounds_on"] and not lower <= value <= upper):
+            raise ValueError("Parameter file value is outside its ordered bounds")
+        if "prior" in state:
+            from chisurf.core.fitting.priors import prior_from_state
+
+            if prior_from_state(state["prior"]) is None:
+                raise ValueError("Unsupported parameter file prior")
+        try:
+            json.dumps(metadata, allow_nan=False)
+            if json.loads(json.dumps(metadata, allow_nan=False)) != metadata:
+                raise ValueError("Metadata must use JSON-native keys and containers")
+        except (TypeError, ValueError) as error:
+            raise ValueError("Parameter file metadata must contain JSON values") from error
+        state["bounds"] = [lower, upper]
+        self.unique_identifier = metadata["unique_identifier"]
+        self.meta_data = metadata
+        self.name = payload["name"]
+        self.verbose = payload["verbose"]
+        self.prior = None
+        self.set_state(state)
+
+    def to_json(
+        self,
+        indent: int = 4,
+        sort_keys: bool = True,
+        d: typing.Optional[dict] = None,
+        remove_protected: bool = False,
+        skip_qt_widgets: bool = False,
+    ) -> str:
+        """Encode public scalar state and identity without serializing live graph objects."""
+        if d is not None:
+            raise ValueError("Parameter files use public scalar state, not arbitrary dictionaries")
+        return json.dumps(self._file_payload(), indent=indent, sort_keys=sort_keys, allow_nan=False)
+
+    def from_json(
+        self,
+        json_string: typing.Optional[str] = None,
+        filename: typing.Optional[str] = None,
+        verbose: bool = False,
+    ) -> None:
+        """Restore a standalone scalar from JSON through the existing file-opening helper."""
+        from chisurf.core.fio import open_maybe_zipped
+
+        if json_string is not None:
+            payload = json.loads(json_string)
+        elif filename is not None:
+            with open_maybe_zipped(Path(filename), "r") as stream:
+                payload = json.load(stream)
+        else:
+            raise ValueError("No parameter JSON source provided")
+        self._restore_file_payload(payload)
+
+    def to_yaml(
+        self,
+        remove_protected: bool = True,
+        convert_values_to_elementary: bool = True,
+        skip_qt_widgets: bool = False,
+    ) -> str:
+        """Encode the same standalone scalar payload as safe YAML."""
+        import yaml
+
+        return yaml.safe_dump(self._file_payload())
+
+    def from_yaml(
+        self,
+        yaml_string: typing.Optional[str] = None,
+        filename: typing.Optional[str] = None,
+        verbose: bool = False,
+    ) -> None:
+        """Restore the portable scalar payload from safe YAML."""
+        import yaml
+
+        from chisurf.core.fio import open_maybe_zipped
+
+        if yaml_string is not None:
+            payload = yaml.safe_load(yaml_string)
+        elif filename is not None:
+            with open_maybe_zipped(Path(filename), "r") as stream:
+                payload = yaml.safe_load(stream)
+        else:
+            raise ValueError("No parameter YAML source provided")
+        self._restore_file_payload(payload)
 
 
 #: Sentinel distinguishing "not looked up yet" from "looked up, not a property".

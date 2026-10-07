@@ -6539,16 +6539,17 @@ oracle tests. [Readiness evidence](../validation/release-readiness-w7.md).
 
 ## Standalone parameter JSON/YAML file corruption (2026-10-07)
 
-status: open — owning repair active
+status: resolved 2026-10-07
 
-Base parameter file serialization turns a native GraphPort into a repr string;
-loading installs that string and value/get_state then raises AttributeError
-for missing is_linked. The old save/load test never read the restored value;
-its green result hid corruption. Root repair uses existing portable state in
-Parameter-only file hooks, preserving live in-process to_dict/from_dict links
-and graph/value paths. Grid owns exact source/regressions; do not mark the
-88-pass/old-xfail update unit complete before real file roundtrips pass.
-[Current acceptance front](../validation/release-readiness-w1.md).
+Parameter-only JSON/YAML hooks now persist existing portable scalar state and
+validated identity/metadata, rather than native-port repr strings. Actual
+save/load/read/update and cold-process checks pass; YAML metadata rejects
+unsupported keys before mutation. The old load-only test and private raw-dict
+expected failure are replaced with strict usable-state/identity assertions.
+105 targeted cases pass, zero expected failures. Live dictionary/graph aliases
+and value/hot-loop behavior are unchanged; unsupported linked/callable standalone
+files and irrecoverable old repr-only records fail explicitly.
+[Inspected editor and file proof](../validation/release-readiness-w1/parameter-state/receipt.md).
 
 ## Mixed targeted Qt/pyqtgraph process teardown (2026-10-07)
 

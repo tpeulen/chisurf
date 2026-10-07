@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W1: complete Parameter refresh and standalone scalarJSON/YAML root codec;105 parent targeted cases pass/zeroexpectedfailures, coldprocess/identity/nativeport/bounds/prior/metadata guarded and four qualified editor PNGs inspected. Preserve live dictionaries/links and graph/value/hotloops; replace stale raw-dict/load-only assertions, reject irrecoverable repr files and unsupported standalone graphs explicitly. Resolve owning file-corruption issue; no foreign hunks promoted. [Receipt](validation/release-readiness-w1/parameter-state/receipt.md).
+
 - PRD-154 W1: publish/install canonical emtkd998f93f1/version0.1.6 dense-marker/zero-outline/legend and stablecolumnvisibility roots;65 parent owner tests pass oninstalledSDK, all21lockrefs/version updated and lockcheck0. Actual183657 source/183648positive-marker hashes preserved; three PNGs inspected, timing scopes documented. FullFCS finalhost and diagnostic helper acceptance remain active; foreign SDK/lock/source preserved. [Receipt](validation/release-readiness-w1/dense-markers/receipt.json).
 
 - PRD-154 W1: record the actual SDK column-visibility cursor reset found by scroll/action proof; owning no-op membership fix precedes removal of the false detector-cell metric expected failure. Marker exact parity61 tests pass with final normal-exit Qt4.25s/software7.08s and unchanged183657-source hashes. FCS paired docs/examples/four figures are frozen for exact integration; parameter portable-codec root remains active.

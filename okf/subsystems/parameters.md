@@ -230,3 +230,15 @@ See [fitting](/subsystems/fitting.md), [models](/subsystems/models.md), the
 that mediates parameter edits. Parameters reach GUIs/plugins through the
 [API facade](/architecture/api-facade.md), not the
 [runtime globals](/architecture/runtime-globals.md).
+
+
+## Scalar refresh and file persistence roots — 2026-10-07
+
+Concrete Parameter.update shares the prior fitting controller-finalize behavior,
+so explicit refresh/state restore updates bare/fitting/linked/callable editors
+without changing graph/value paths. Standalone scalarJSON/YAML use existing
+portable state and strict metadata/identity/bounds/prior validation; corrupt
+repr ports never become live state. Runtime dictionaries keep live link/port
+identity.105 parent targeted cases pass withzeroexpectedfailures; four qualified
+before/after images inspected.
+[Acceptance record](../validation/release-readiness-w1/parameter-state/receipt.md).
