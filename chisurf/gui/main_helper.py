@@ -583,21 +583,34 @@ class SetupMixin:
         if not isinstance(widget, QtWidgets.QWidget):
             widget = getattr(widget, "controller", None)
         if not isinstance(widget, QtWidgets.QWidget):
-            # A reader registered with no controller (``controller_class: null``)
-            # has nothing to show. That is a legitimate configuration — a couple of
-            # readers ship that way — but it used to reach ``None.show()`` and take
-            # the *whole* splash startup down with it, so the console and every
-            # later stage never ran and the failure looked nothing like its cause.
-            # Say which reader, and carry on.
-            cs.logging.warning(
-                "the reader %r has no controller widget; its settings cannot be "
-                "shown. Register a controller_class for it in "
-                "experiment_configs.yaml.",
-                getattr(self.current_setup, "name", self.current_setup),
-            )
-            self._current_setup_idx = self.comboBox_setupSelect.currentIndex()
-            return
-        self.layout_experiment_reader.addWidget(widget)
+            reader = self.current_setup
+            if not callable(getattr(reader, "view_spec", None)):
+                cs.logging.warning("the reader %r declares no settings view", getattr(reader, "name", reader))
+                self._current_setup_idx = self.comboBox_setupSelect.currentIndex()
+                return
+            from emtk.qt_host import ControlHost
+
+            from chisurf.emtk.reader_settings import ReaderSettingsApp
+            from chisurf.gui.qt_lifetime import is_deleted
+
+            hosts = getattr(self, "_native_reader_settings_hosts", None)
+            if hosts is None:
+                empty_hosts: dict[int, typing.Any] = {}
+                self._native_reader_settings_hosts = empty_hosts
+                hosts = empty_hosts
+            widget = hosts.get(id(reader))
+            if widget is None or is_deleted(widget) or getattr(widget.control, "closed", False):
+                # Validate the whole declaration before installing its host.
+                surface = ReaderSettingsApp(reader)
+                if widget is not None and not is_deleted(widget):
+                    self.layout_experiment_reader.removeWidget(widget)
+                    widget.deleteLater()
+                widget = ControlHost(surface, parent=self.layout_experiment_reader.parentWidget())
+                hosts[id(reader)] = widget
+            widget.control.request_frame()
+            widget.update()
+        if self.layout_experiment_reader.indexOf(widget) < 0:
+            self.layout_experiment_reader.addWidget(widget)
         widget.show()
         if hasattr(widget, "updateUI") and callable(widget.updateUI):
             widget.updateUI()

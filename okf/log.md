@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W1: add declaration-backed native reader settings and ControlHost fallback/reuse at the existing shell seam;20 input/owner/lifecycle cases pass, Ruff/newmodule mypy clean, MainHelper baseline errors unchanged. Parent inspected four PNGs, explicitly marking CSV subset as host-only proof. Preserve file/folder/MMFDB callbacks and prevent late closed-view delivery; full reader and session-curve ports remain open. [Host receipts](validation/release-readiness-w1/reader-host/receipt.json).
+
 - PRD-154 W1 row1: remove startup-only Qt/UI/settings-clearing dialog; preserve original exceptions/tracebacks, settings-root crash paths and handler/file cleanup while keeping successful hard exit until W9. Parent inspected before PNG and after diagnostic;10 targeted cases plus Ruff/format/mypy pass. Record corrected legacy-test isolation incident without deleting unknown user log files. [Evidence](validation/release-readiness-w1/startup/receipt.md).
 
 - PRD-154 W1: fold six historical root notes and the TCSPC plan into current owning concepts; verify35 links, preserve obsolete/rejected facts as provenance and archive all originals plus .hermes privately. Commit only tracked append deltas and an owned continuation instead of the foreign untracked inventory. Remove tracked root handovers/plan registration; next ordered UI-loader/native reader-host pass. [Fold receipt](validation/release-readiness-w1/note-folds.json).

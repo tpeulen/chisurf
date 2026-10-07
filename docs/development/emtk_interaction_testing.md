@@ -97,3 +97,24 @@ Re-derive the harness regressions with
 file. A complete plugin matrix remains a programme gate after the owning
 workstreams supply tours, demos, reachable layouts and source prerequisites.
 The C27 matrix and intermediate hash runs are diagnostic, not acceptance.
+
+
+## Reader settings at the existing shell seam
+
+`ReaderSettingsApp` renders a reader's declared native JSON or typed ModelView
+through the existing section registry. The actual reader remains its model,
+so values and callbacks update the scientific owner. The settings dock uses
+ControlHost for a reader without a legacy controller and reuses its live host.
+The declaration is validated before installation; unsupported legacy customs,
+plots or session curve actions are reported rather than omitted.
+
+Native file/folder and MMFDB data-source inputs retain typed values, Browse,
+Database, callbacks, read-only state, cancellation and drops. Session curves
+are distinct from database file paths; the old curve_input index/name/action
+contract requires its own group-member/API selector integration. Closing a
+view prevents delayed database delivery from changing the reader.
+
+Verify the prerequisite with the two targeted reader_settings host test files
+(20 passes). The captured CSV supported subset is a host proof, not the complete
+CSV migration; its format/error/custom controls remain in the legacy controller
+until the full reader declaration is ported.
