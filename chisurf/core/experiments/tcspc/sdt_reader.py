@@ -16,12 +16,13 @@ from .reader import TCSPCReader
 class SDTReader(TCSPCReader):
     """Read the same measured SDT curves without retaining a QWidget controller."""
 
-    def __init__(self, *args, curve_nbr=0, **kwargs):
+    def __init__(self, *args, curve_nbr=0, filename="", **kwargs):
         """Initialize portable SDT curve-selection configuration."""
         self._sdt = None
         self._filename = ""
         self._curve_nbr = int(curve_nbr)
         super().__init__(*args, **kwargs)
+        self.filename = filename
 
     @property
     def filename(self) -> str:

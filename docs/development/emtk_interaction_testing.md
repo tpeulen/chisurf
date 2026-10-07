@@ -150,3 +150,7 @@ An explicit read(filename=...) overrides the selected source. The inspected
 148L scene has1300 atoms and164 residues. The uncalled, nonfunctional folder
 wrapper is a separate retirement; the scientific reader imports one file.
 Legacy loader/configuration removal follows the CSV/SDT/simulator ports.
+
+SDT source configuration is explicit in its constructor and stays lazy; it
+works with the committed base reader independently of the pending CSV port.
+A missing source can be restored and is opened only for preview/import.
