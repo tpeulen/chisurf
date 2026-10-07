@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- **2026-10-07 · Reviewed detector scenes and active MLE controls:** central23 pass; visible legacy/native Trace/wizard, actual Save→Finish, narrow scrolling and corrected+2 shift inspected/archived. Narrow mismatch was stale Qt grab; Trace80px was hidden-mode producer. Final H2mm close/source freeze still open. MLE13 physical cases/nine intermediate scenes preserveFit23 hashes; editable AutoForm table and complete model/state/export/tour gates active. Burst plot port waits owning chiplot units/SI/raw-data seam fix. [Resume](validation/release-readiness-w1/current-job/handoff.md).
+
 - **2026-10-07 · Visual acceptance and model baseline:** central20 pass; caller24pass/1H2mm cleanup remains. Parent rejected genuine80px onboarding/Trace collapse and requires repaired enclosing/scrolled captures. All three measured MLE before scenes, authored Fit23 inputs and six-row/export baseline accepted and durably archived; additional state/selected-index/export-unit/snapshot roots have exact owners/tests. Private docs remain gated on actual accepted controls. [Resume](validation/release-readiness-w1/current-job/handoff.md).
 
 - **2026-10-07 · Native detector public switch:** central13 guards pass, including supplied-preview and refused-close fixes; working public classes now use the native page. Actual onboarding export→Finish→cleanup passes. Canonical callers are unblocked while deleted-detector named merge/reentrant delivery guards and real after scenes remain pending. MLE registry-driven model-choice implementation has exact five-path authority and before/parity gates. [Resume](validation/release-readiness-w1/current-job/handoff.md).
