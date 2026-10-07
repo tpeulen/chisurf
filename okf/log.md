@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W1: freeze and parent-inspect four G-factor row11 before states,24 main controls/seven batch buttons/seven columns and exact physical synthetic numeric outputs.4 parity cases pass,2 genuine native-host caller gates remain RED. Record SD archive None and stored-mixing hazards; legacy detector19-attribute caller must migrate with close semantics. Production remains ordered after row10. [Receipt](validation/release-readiness-w1/gfactor-before/receipt.json).
+
 - PRD-154 W1: repair retained protein-quenching constructor/property roots;74 parent targeted cases pass, real148L selection/coordinates/rates and existing Parameter identity preserved, qualified17-control PNG pair inspected. Publish MMFDB8a38bd1e0 central mean/peak FCS terms, extension1.10/cache with20 owner tests and no export-only table promotion. Keep Sticking typing investigation and real183657-point emtk rendering prerequisite explicit while row10 source/delivery parity proceeds. [Receipt](validation/release-readiness-w1/quenching-properties/receipt.json).
 
 - PRD-154 W1: freeze FCS row10 before source retirement; parent inspected15 legacy PNGs and preserved34 numerical/control artifacts plusproducer. Real measured merger/toolbox/burst outputs retained,15 prep cases pass,99 sources unchanged. Record truthful broken central progress-method baseline and live native-host caller plan; source release follows this evidence commit. [Plan](validation/release-readiness-w1/fcs-before/plan.md).
