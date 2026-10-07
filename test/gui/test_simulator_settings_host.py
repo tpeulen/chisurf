@@ -1,5 +1,6 @@
 """The existing shell composes simulator settings with one owned session context."""
 
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -216,3 +217,103 @@ def test_auxiliary_only_picker_is_an_explicit_error():
         assert app.file_dialog is None
     finally:
         app.close()
+
+
+def _shipped_simulator():
+    """Construct the actual configured reader without changing API constructor defaults."""
+    import importlib
+
+    from chisurf.core.experiments import _load_yaml_config
+
+    config = _load_yaml_config(Path(__file__).resolve().parents[2] /
+                              "chisurf/core/settings/experiment_configs.yaml")
+    row = next(row for row in config["tcspc"]["readers"]
+               if row["reader_class"].endswith("TCSPCSimulatorSetup"))
+    assert row["controller_class"] is None
+    module, name = row["reader_class"].rsplit(".", 1)
+    return getattr(importlib.import_module(module), name)(**row["reader_params"], record_provenance=False)
+
+
+def test_shipped_simulator_defaults_and_missing_measurement_source_use_native_host(qtbot, monkeypatch):
+    """The shipped setup has familiar presets, no Qt controller and a generator header."""
+    import chisurf as cs
+    from chisurf.emtk.tcspc_simulator import SimulatorSettingsApp
+    from chisurf.gui.main import Main
+
+    reader = _shipped_simulator()
+    assert reader.controller is None and not isinstance(reader, QtWidgets.QWidget)
+    np.testing.assert_array_equal(reader.lifetime_spectrum, [.4, 1.1, .6, 4.1])
+    np.testing.assert_array_equal(reader.rotation_spectrum, [.2, 1])
+    assert reader.sample_name == "Dummy-sample" and reader.name == "Simulator"
+    main = _main(qtbot, reader)
+    main.plugin_context = PluginContext(api=ChiSurfAPI(state=SessionState()), main_window=main)
+    SetupMixin._refresh_setup_ui(main)
+    host = main.layout_experiment_reader.itemAt(0).widget()
+    assert isinstance(host.control, SimulatorSettingsApp)
+    assert not host.control.primary_sources
+    imports = []
+    monkeypatch.setattr(cs.core.actions, "dispatch", lambda name, payload: imports.append(payload))
+    Main.onAddDataset(main)
+    assert imports == [{"filename": None, "experiment_reader": reader}]
+    host.close()
+
+
+def test_api_defaults_remain_empty_and_legacy_simulator_exports_are_absent():
+    """Only shipped GUI configuration supplies presets; no obsolete controller remains."""
+    import importlib.util
+
+    reader = TCSPCSimulatorSetup(record_provenance=False)
+    assert reader.lifetime_spectrum.size == reader.rotation_spectrum.size == 0
+    assert reader.sample_name == "TCSPC-Dummy" and reader.seed is None and reader.add_noise
+    assert (reader.n_tac, reader.dt, reader.p0, reader.rep_rate) == (4096, .0141, 10000., 10.)
+    assert importlib.util.find_spec("chisurf.gui.widgets.experiments.tcspc.tcspc_simulator_setup_widget") is None
+    from chisurf.gui.widgets.experiments import tcspc
+    from chisurf.gui.widgets.experiments.tcspc import controller
+
+    assert "TCSPCSimulatorSetupWidget" not in tcspc.__all__
+    assert "TCSPCSimulatorSetupWidget" not in controller.__all__
+
+
+def test_simulator_project_reader_identity_stays_core_without_alias():
+    """Project snapshots retain the existing core reader class through the GUI switch."""
+    from chisurf.core.experiments.core.experiment import Experiment
+    from chisurf.core.project.session import _reader_state, _restore_reader
+
+    reader = _shipped_simulator()
+    snapshot = _reader_state(reader)
+    assert snapshot["module"] == "chisurf.core.experiments.tcspc.simulator"
+    assert snapshot["class"] == "TCSPCSimulatorSetup"
+    restored = _restore_reader(snapshot, Experiment(name="TCSPC"), {})
+    assert type(restored) is TCSPCSimulatorSetup and restored.controller is None
+    np.testing.assert_array_equal(restored.lifetime_spectrum, reader.lifetime_spectrum)
+
+
+def test_production_experiment_factory_builds_shipped_simulator_without_controller(qtbot, monkeypatch):
+    """The same registration method as Main consumes the shipped row without Qt fallback."""
+    import copy
+    from types import MethodType
+
+    import chisurf as cs
+    from chisurf.core.experiments import _load_yaml_config
+
+    config = _load_yaml_config(Path(__file__).resolve().parents[2] /
+                              "chisurf/core/settings/experiment_configs.yaml")
+    row = next(item for item in config["tcspc"]["readers"]
+               if item["reader_class"].endswith("TCSPCSimulatorSetup"))
+    monkeypatch.setattr(cs.core.experiments, "types", {})
+    monkeypatch.setattr(cs, "experiment", {})
+    main = _main(qtbot, _setup())
+    main._resolve_class = MethodType(SetupMixin._resolve_class, main)
+    main._make_controller = lambda *args: pytest.fail("constructed a legacy controller")
+    SetupMixin._setup_experiment(main, "tcspc", {"name": "TCSPC", "readers": [copy.deepcopy(row)], "models": []})
+    experiment = cs.experiment["TCSPC"]
+    assert len(experiment.readers) == 1
+    reader = experiment.readers[0]
+    assert type(reader) is TCSPCSimulatorSetup and reader.controller is None
+    np.testing.assert_array_equal(reader.lifetime_spectrum, [.4, 1.1, .6, 4.1])
+    main.current_setup, main.current_experiment = reader, experiment
+    main.plugin_context = PluginContext(api=ChiSurfAPI(state=SessionState()), main_window=main)
+    SetupMixin._refresh_setup_ui(main)
+    host = main.layout_experiment_reader.itemAt(0).widget()
+    assert host.control.reader is reader and host.control.model.context is main.plugin_context
+    host.close()

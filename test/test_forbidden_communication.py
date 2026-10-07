@@ -47,7 +47,6 @@ EXPECTED_VIOLATIONS: dict[str, int] = {
     "chisurf/gui/main_helper.py": 23,
     "chisurf/gui/widgets/experiments/ics.py": 1,
     "chisurf/gui/widgets/experiments/modelling/modelling.py": 2,
-    "chisurf/gui/widgets/experiments/tcspc/tcspc_simulator_setup_widget.py": 4,
     "chisurf/gui/widgets/experiments/widgets.py": 5,
     "chisurf/gui/widgets/fio/fio.py": 1,
     "chisurf/gui/widgets/fitting/fit_controller.py": 12,
@@ -324,8 +323,9 @@ def test_violations_are_reported(capsys):
             print(f"    {line.strip()}")
         print(f"\n{'=' * 72}")
         for rel, count in sorted(by_file.items()):
-            exp = EXPECTED_VIOLATIONS.get(rel, "N/A")
-            status = "OK" if count <= exp else "EXCEEDS"
+            exp = EXPECTED_VIOLATIONS.get(rel)
+            status = "UNKNOWN" if exp is None else ("OK" if count <= exp else "EXCEEDS")
+            exp = "N/A" if exp is None else exp
             print(f"  {count:3d} / {str(exp):>3s}  {status:8s}  {rel}")
         print(f"\n  {'=' * 30}")
         print(f"  {len(violations):3d}  {'TOTAL':>3s}")

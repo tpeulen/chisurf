@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W1: complete the configured native Simulator port and legacy widget/UI/export retirement;58 parent installed-SDK configured/science/header/real local/server Add cases pass, six host mode/tab PNGs inspected, GUI presets explicit and core defaults preserved. Fix communication reporter TypeError without expanding allowances; broad existing communication migration remains a recorded programme gate. [Receipt](validation/release-readiness-w1/simulator-retirement/receipt.md).
+
 - PRD-154 W1: correct text-layout diagnostics to aligned ink bounds while retaining clipping/collision guards, remove four obsolete W5 wheel xfails; parent18 helper/hub +5 wheel cases pass and child63 parity gate exits0. Record separate mixed-capture Qt/SIP shutdown failure with native stack and require normal-exit owned adapter proof. Foreign test/helper and production source preserved.
 
 - PRD-154 W1: exclude development test namespaces/data from wheel/sdist at actual packaging boundaries;9 parent backend/resource checks pass, required shader/reader/settings assets retained even with stale SOURCES, five fixture-only allowlist entries shrink. Chimol retains owning packaged demo assets and user overrides; source settings/logging hooks unchanged. MMFDB seed is routed to its owning resource/DB fix. [Receipt](validation/release-readiness-w1/package-boundary/receipt.json).

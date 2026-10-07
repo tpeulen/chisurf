@@ -1,3 +1,16 @@
+## Direct-communication guard migration debt (2026-10-07)
+
+status: open
+
+Simulator retirement removes its four violations without changing other
+allowances. The broad guard reported270 violations in68 files, including
+unknown plugin/test paths and a stale MainHelper allowance (24 actual vs23).
+Its informational reporter also compared an int with N/A; that actual crash
+is fixed and its node passes. Remaining source/threshold guard failures require
+owning API/GUI migration and scanner scope review; never expand the shrinking
+allowance merely to mask them. This row cannot close the broad migration while
+preserving unrelated concurrent source edits. [Baseline proof](../validation/release-readiness-w1/simulator-retirement/guard-baseline.json).
+
 ## Mixed legacy trajectory hub and native capture shutdown (2026-10-07)
 
 status: open

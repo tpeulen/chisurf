@@ -53,7 +53,10 @@ tcspc:
     - reader_class: chisurf.core.experiments.tcspc.TCSPCSimulatorSetup
       reader_params:
         name: Simulator
-      controller_class: chisurf.gui.widgets.experiments.tcspc.controller.TCSPCSimulatorSetupWidget
+        sample_name: Dummy-sample
+        lifetime_spectrum: [0.4, 1.1, 0.6, 4.1]
+        rotation_spectrum: [0.2, 1.0]
+      controller_class: null
   models:
     # Owned by BFF and described in data (IMP.bff data/model_search/); ChiSurf
     # shows a view on it.

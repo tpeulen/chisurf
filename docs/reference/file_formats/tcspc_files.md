@@ -185,129 +185,52 @@ unconnected embedded Add button is retired; use the functional **+ Data** route.
 
 ## Simulator {#tcspc-simulator}
 
-### Purpose
+Select the **Simulator** reader for a native three-tab form. The configured
+application starts with sample name Dummy-sample, lifetime spectrum
+`0.4, 1.1, 0.6, 4.1` and rotation spectrum `0.2, 1`. These are explicit GUI
+presets; constructing a view does not overwrite a caller's scientific values.
 
-The **TCSPC Simulator** reader generates synthetic TCSPC decays based on a
-user-defined lifetime spectrum. It is implemented by
-`chisurf.core.experiments.tcspc.TCSPCSimulatorSetup` and configured via the
-`TCSPCSimulatorSetupWidget`.
+### Decay
 
-Use this when you want to test models, fitting routines, or instrument
-response handling without loading real data.
+Set name, interleaved amplitude/lifetime spectrum, TAC bin count, peak count,
+bin width and repetition rate. A spectrum file can contain one interleaved
+column or amplitude/lifetime columns. Browse or type its path; changing tabs
+commits a pending valid path. Invalid input retains the prior scientific values.
 
-### Simulator parameters
+Choose a measured session curve as the IRF, or unload it to use Gaussian mean
+and sigma in nanoseconds. Group-member selection uses the chosen parent and
+member identities, preserving its actual arrays. Enable Poisson noise as
+needed; a blank seed means unseeded sampling, an integer seed gives repeatable
+results.
 
-The simulator is configured via the **TCSPC simulator** panel
-(`TCSPCSimulatorSetupWidget`, see `tcspc_simulator.ui`). It exposes the
-following core parameters:
+![Configured native simulator decay settings](figures/tcspc_simulator_native.png)
 
-- **Name** (`sample_name`)
-  - Logical name for the simulated dataset.
+### Anisotropy
 
-- **Lifetime spectrum** (`lifetime_spectrum`)
-  - Comma-separated list of numeric values passed to
-    `chisurf.core.fluorescence.general.calculate_fluorescence_decay`.
-  - Interpreted as component lifetimes / amplitudes according to that
-    function.
+Choose VM or VV/VH, set interleaved rotation amplitude/correlation time,
+G-factor and leakage l1/l2. The anisotropy preview uses a linear r(t) axis.
 
-- **n TAC** (`n_tac`)
-  - Number of time channels in the simulated decay (default `4096`).
+### Preview and Add
 
-- **Peak count** (`p0`)
-  - Peak photon count scale (stored on the setup; the exact interpretation is
-    delegated to the decay generation routine).
+**Simulate** displays the actual reader output on a log-counts axis. VM has
+one decay; VV/VH retains both channels. The scaled IRF overlay is display-only.
+**Add** submits that cached group once, preserving the displayed noise
+realization, arrays/errors/masks, calibration, IRF and identities across local
+or server API import. It does not run the simulation again. External **+ Data**
+uses the ordinary generator read route; the auxiliary spectrum file is never
+treated as its primary measurement input.
 
-- **dt [ns]** (`dt`)
-  - Time-per-channel in nanoseconds (default `0.0141`).
+```python
+from chisurf.core.experiments.tcspc.simulator import TCSPCSimulatorSetup
 
-- **Instrument response function** (`instrument_response_function`)
-  - Optional IRF widget/curve selected in the **Instrument response
-    function** group box.
-  - The GUI offers two options:
-    - A **Select IRF** button that picks a dataset from the imported
-      TCSPC curves.
-    - A Gaussian fallback defined by *Gaussian IRF mean [ns]* and
-      *sigma [ns]* when no dataset is selected.
-
-Internally, `TCSPCSimulatorSetup.read` and the simulation preview
-(`TCSPCSimulatorSetupWidget._simulate_decay`) perform the following steps:
-
-1. Builds a time axis `x = arange(n_tac) * dt`.
-2. Calls `calculate_fluorescence_decay(lifetime_spectrum=self.lifetime_spectrum,
-   time_axis=x)` to obtain a model decay `y`.
-3. Computes Poisson noise via `chisurf.core.fluorescence.tcspc.counting_noise(y)`.
-4. Wraps the result in a `DataCurve` and returns a `DataCurveGroup`
-   containing the single simulated dataset.
-
-In the GUI, the simulator panel also offers a **Simulation preview**
-section with:
-
-- A **Simulate** button that runs the same decay computation (including
-  optional IRF convolution and Poisson noise) and overlays the IRF on a
-  log‑scaled preview plot.
-- An **Add** button that takes the latest simulated trace and appends it
-  to `chisurf.imported_datasets` as an `ExperimentDataCurveGroup`, so it
-  behaves like any other TCSPC dataset in selectors and fits.
-- A small `...` tool button next to the *lifetime spectrum* text field
-  that can load a spectrum from a CSV/text file.
-
-#### Lifetime spectrum examples
-
-The lifetime spectrum is stored as an interleaved list of amplitudes and
-lifetimes. For example, the default
-
-```text
-0.4, 1.1, 0.6, 4.1
+reader = TCSPCSimulatorSetup(lifetime_spectrum=[0.4, 1.1, 0.6, 4.1],
+                             rotation_spectrum=[0.2, 1],
+                             polarization="vv/vh", seed=154,
+                             record_provenance=False)
+curves = reader.read()
 ```
 
-corresponds to two components
-
-- component 1: amplitude `0.4`, lifetime `1.1 ns`
-- component 2: amplitude `0.6`, lifetime `4.1 ns`
-
-You can either type this string directly into the *lifetime spectrum*
-field or use the `...` loader button. The loader accepts:
-
-- A **1‑column file** containing the interleaved values, e.g.
-
-  ```text
-  0.4
-  1.1
-  0.6
-  4.1
-  ```
-
-- A **2‑column file** with amplitudes and lifetimes in separate
-  columns, e.g.
-
-  ```text
-  # amp   tau [ns]
-  0.4     1.1
-  0.6     4.1
-  ```
-
-In the 2‑column case the widget automatically converts the table into
-the interleaved representation and updates the text field. Any change to
-the text field immediately updates `cs.current_setup.lifetime_spectrum`.
-
-### Typical workflow
-
-1. **Select experiment and reader**
-   - In the *Read data* dock, choose **Experiment → TCSPC**.
-   - In **File type**, choose **Simulator**.
-
-2. **Configure decay parameters**
-   - Set **Name**, **lifetime spectrum**, **n TAC**, **Peak count**, and
-     **dt [ns]**.
-   - Optionally select or configure an **Instrument response
-     function**.
-
-3. **Preview the simulated decay**
-   - Click **Simulate** to compute and display the decay (yellow) and IRF
-     (red) on the preview plot.
-
-4. **Generate and store data**
-   - Either click **Data** (reader‑style) or click **Add** in the
-     Simulation preview. In both cases a synthetic TCSPC decay is created
-     and added as a dataset, ready for fitting like any other TCSPC
-     curve.
+API defaults remain empty spectra, TCSPC-Dummy, noisy unseeded sampling,
+4096 bins, 0.0141 ns/channel, peak10000 and Gaussian5/0.2 ns. Supply the
+spectrum you intend to simulate. Projects retain the existing core reader
+class through the frontend retirement.
