@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- **2026-10-07 · W1 Burst Selection before preserved:** parent inspected eleven real native/legacy PNGs and froze numeric/control receipts before future row13 deletion. Actual measured native search yields198 bursts; loaded old fallback blank plots/clipping recorded as existing defects, without a search-parity claim. Source held until row12. [Evidence](validation/release-readiness-w1/burst-selection-before/receipt.md).
+
 - **2026-10-07 · W1 handoff reconciled:** FCS source and paired docs are committed in `d1333481e`; refreshed both resume points to active G-factor row11 and current 966-pass / 16-skip shared acceptance. Completed FCS claims released in tttrlib `939a0709f`. Microtime12/Burst13/Channel14 remain ordered; programme acceptance stays open. [Resume](prds/prd-154.md).
 
 - PRD-154 W1: parent finalFCS review passes56 host/merger/namespace,84 burst and54 canonicalvisibility/layout cases; fullmeasured filter and allnative tabs inspected. Record discovered lagcaption/fixture seconds-vs-canonicalms contract and realMaxEntGUI preset mismatch, now assigned exactroot correction beforeFCSacceptance. SDK/pin and105-caseParameter codec units are committed/released; retain originalbefore facts and sourceownership. Programme continues with ordered row10→11.
