@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W1 resume: recovery/archive units and thirteen inspected before scenes are committed;188 robustness/menu and60 reader/parity cases pass. Next root-note disposition, then ordered native reader/loader migration; retain precise SDT calibration/all-curve import, CSV forwarding and simulator binding/seed traps. No GUI loader changed yet. Programme continues into the remaining approved workstreams. [Resume](prds/prd-154.md).
+
 - PRD-154 W1: preserve and personally inspect13 headless before scenes/inventories across actual CSV/SDT, simulator alltabs/VM-VV-VH,148L structure/selector, m000 channel and hgbp dipole controls.60 targeted reader/parity tests pass. Record simulator constructor spectrum overwrite/preview seed omission and nonfunctional folder UI; loaders remain untouched until nativehost migration. [Baselines](validation/release-readiness-w1/before/).
 
 - PRD-154 W1: preserve/archive both approved sibling worktrees with23,555-file checksum/mode manifest and retained commit refs; non-forced metadata prune leaves one worktree. Preserve lint A/B targets/env in testing workflow. Reconcile current reader/channel ownership before GUI edits: reuse SDTReader/core channel model and a shared native settings host; record CSV/structure/preview parity corrections. [Archive receipt](validation/release-readiness-w1/worktree-archive.json).
