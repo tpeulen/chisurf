@@ -262,3 +262,12 @@ rate checks.
 - {cite}`schroder2005` — simulating anisotropy and orientations from MD trajectories.
 - {cite}`hoefling2011` — FRET efficiency distributions from atomistic trajectories with explicit κ²(t).
 - {cite}`kalinin2012` — AV modelling, distance measures and averaging regimes (FPS).
+
+
+## Protein quenching parameter state
+
+The residue-based quenching model reads its all-atoms flag and excluded atom
+names through the same public properties as its editor. Explicit atom lists
+retain their specified membership and unit rate; residue rate dictionaries
+use CB atoms or all non-excluded atoms according to the flag. The scale
+multiplies the resulting rates.

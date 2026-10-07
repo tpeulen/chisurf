@@ -381,3 +381,14 @@ Measured on the example data. File references are to the current tree.
   factor: {ref}`concept-kappa2-orientation`.
 - Tool: **Traj Tools** (`chisurf/plugins/traj/traj_tools/`), reached through
   the Structure Tools hub.
+
+
+## Retained protein-quenching settings
+
+The existing quenching editor binds its kQ control to the scientific model
+parameter, so editing it and setting `kQ_scale` affect the same value.
+`quench_scale` is the canonical constructor option (default 0.01); the
+historical `k_quench_protein` option applies when no canonical value is given.
+The atom-exclusion editor accepts a whitespace-separated list, while the
+all-atoms flag chooses CB-only or non-excluded atoms for residue rate settings.
+Explicit per-residue atom lists keep their original meaning.

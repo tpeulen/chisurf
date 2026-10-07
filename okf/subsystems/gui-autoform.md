@@ -950,3 +950,17 @@ statements. Fresh runtime probes retain exact scientific/widget identity and
 four neighboring wizard classes;46 parent cases pass. Catalogue regeneration
 changes nothing. AV1/AV3/realSPC control baselines were inspected before removal.
 [Receipt](../validation/release-readiness-w1/dead-loader-retirement/receipt.json).
+
+
+## Retained quenching property repair — 2026-10-07
+
+The old widget could not construct: a lazy aggregate lookup failed, then the
+scientific Parameter field was assigned a Qt editor. The direct public factory
+now binds a separate editor to that existing Parameter. Canonical scale/default
+identity is retained; explicit historical alias applies only when needed. The
+core duplicate missing-return boolean getter is removed, and public exclusions
+and flag setters initialize/synchronize the original controls.74 parent cases
+pass; qualified constructor-repaired before/final after PNGs inspected with
+identical17 controls. Two unchanged Sticking/abstract-update type diagnostics
+have a separate owning investigation; they are not hidden by suppression.
+[Receipt](../validation/release-readiness-w1/quenching-properties/receipt.json).

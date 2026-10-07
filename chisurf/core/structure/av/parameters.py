@@ -321,23 +321,6 @@ class ProteinQuenching(ParameterGroup):
         self._excluded_atoms = v
 
     @property
-    def all_atoms_quench(self):
-        """Whether all atoms of quenching residues contribute to quenching.
-
-        Note: this property duplicates an earlier definition; the body
-        is missing ``return`` and should be considered a bug.
-        """
-        self._all_atoms_quench
-
-    @all_atoms_quench.setter
-    def all_atoms_quench(self, v):
-        """Set whether all atoms of quenching residues contribute.
-
-        Note: this setter duplicates an earlier definition.
-        """
-        self._all_atoms_quench = bool(v)
-
-    @property
     def quencher(self):
         """Dictionary of quenching parameters per residue type."""
         return self._quencher
@@ -367,7 +350,7 @@ class ProteinQuenching(ParameterGroup):
                 q_new[residue_key] = {
                     "rate": v[residue_key]["rate"],
                     "atoms": list(
-                        set(atoms[atoms_idx]["atom_name"]).difference(self._excluded_atoms)
+                        set(atoms[atoms_idx]["atom_name"]).difference(self.excluded_atoms)
                     ),
                 }
         v = q_new

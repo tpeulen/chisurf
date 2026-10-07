@@ -5,7 +5,9 @@ import chisurf.core.fluorescence
 import chisurf.core.structure
 import chisurf.gui.widgets
 from chisurf.core.structure.av.parameters import Dye, ProteinQuenching, Sticking
+from chisurf.core.support.i18n import tr
 from chisurf.gui.widgets.fitting import FittingParameterWidget
+from chisurf.gui.widgets.fitting.parameter_widgets import make_fitting_parameter_widget
 
 
 class ProteinQuenchingWidget(ProteinQuenching, QtWidgets.QGroupBox):
@@ -29,11 +31,20 @@ class ProteinQuenchingWidget(ProteinQuenching, QtWidgets.QGroupBox):
 
     @all_atoms_quench.setter
     def all_atoms_quench(self, v):
-        self.groupBox.setChecked(not v)
+        self._all_atoms_quench = bool(v)
+        self.groupBox.setChecked(not self._all_atoms_quench)
 
     @property
     def excluded_atoms(self):
+        """Return atom names from the existing exclusion editor."""
         return str(self.lineEdit_6.text()).split()
+
+    @excluded_atoms.setter
+    def excluded_atoms(self, value):
+        """Set excluded atom names in the model and its existing editor."""
+        atoms = value.split() if isinstance(value, str) else list(value)
+        self._excluded_atoms = atoms
+        self.lineEdit_6.setText(" ".join(atoms))
 
     def __init__(self, **kwargs):
 
@@ -41,28 +52,40 @@ class ProteinQuenchingWidget(ProteinQuenching, QtWidgets.QGroupBox):
         self.setTitle("Quenching")
         self.lineEdit_6 = QtWidgets.QLineEdit()
         self.lineEdit_6.setText("CA C HA N")
+        self.lineEdit_6.setToolTip(
+            tr("Atom names excluded when choosing quenching atoms from residue rate settings.")
+        )
         layout = QtWidgets.QGridLayout()
         self.setLayout(layout)
         self.lineEdit_3 = QtWidgets.QLineEdit()
         lab = QtWidgets.QLabel("Quenching AA")
         ProteinQuenching.__init__(self, **kwargs)
+        self.excluded_atoms = kwargs.get("excluded_atoms", self.excluded_atoms)
         self.quencher = kwargs.get(
             "quenching_amino_acids", {"TRP": ["CB"], "TYR": ["CB"], "HIS": ["CB"], "PRO": ["CB"]}
         )
-        kq = kwargs.get("k_quench_protein", 5.0)
-        print(f"kq: {kq}")
-        # Create a FittingParameter from the k_quench_scale parameter
-        k_quench_param = chisurf.core.fitting.parameter.FittingParameter(value=kq, name="kQ")
-        # Create the GUI widget using make_fitting_parameter_widget
-        self._k_quench_scale = chisurf.gui.widgets.fitting.widgets.make_fitting_parameter_widget(
-            k_quench_param, label_text="kQ"
+        # The canonical scale wins over the historical GUI alias. When
+        # neither was supplied, retain the scientific model's default.
+        if "quench_scale" not in kwargs and "k_quench_protein" in kwargs:
+            self.kQ_scale = kwargs["k_quench_protein"]
+        if not self._k_quench_scale.description:
+            self._k_quench_scale.description = tr(
+                "Multiplier applied to the quenching rates assigned to each residue type."
+            )
+        self._k_quench_editor = make_fitting_parameter_widget(
+            self._k_quench_scale, label_text="kQ"
         )
 
         self.groupBox = QtWidgets.QGroupBox()
         self.groupBox.setCheckable(True)
         self.groupBox.setDisabled(True)
+        self.all_atoms_quench = self._all_atoms_quench
         self.groupBox.setTitle("Exclude atoms")
-        layout.addWidget(self._k_quench_scale, 0, 0, 1, 2)
+        self.groupBox.setToolTip(
+            tr("Checked: use CB atoms. Unchecked: use all atoms except the exclusions "
+               "in the selected residue types.")
+        )
+        layout.addWidget(self._k_quench_editor, 0, 0, 1, 2)
         layout.addWidget(self.lineEdit_3, 1, 1)
         layout.addWidget(lab, 1, 0)
         layout.addWidget(self.groupBox, 2, 0, 1, 2)

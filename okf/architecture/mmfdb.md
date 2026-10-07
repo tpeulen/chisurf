@@ -395,3 +395,14 @@ stored as managed source/output bytes with hashes and lineage. The backend
 uses its authenticated resolved database; repeated IDs/references are stable
 and conflicting overrides reject before writes. Parent45 targeted checks
 and owner7 installed-wheel checks pass, no dependencies or photon claims.
+
+
+## Burst-FCS central quantities — 2026-10-07
+
+MMFDB8a38bd1e0 adds optional mean/peak diffusion-time terms to the existing
+flr_analysis_feature category, in milliseconds; extension version1.10 and the
+packaged cache agree.20 owning vocabulary/generated-schema/provenance checks
+pass, Ruff/mypy clean. The older td_mean workflow term is export-only and must
+not be promoted into duplicate live tables. Declared output selection references
+_flr_analysis_feature.diffusion_time_mean and diffusion_time_peak; numerical
+column names, algorithms and TD4/PTO layout retain their owning contracts.

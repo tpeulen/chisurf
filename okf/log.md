@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W1: repair retained protein-quenching constructor/property roots;74 parent targeted cases pass, real148L selection/coordinates/rates and existing Parameter identity preserved, qualified17-control PNG pair inspected. Publish MMFDB8a38bd1e0 central mean/peak FCS terms, extension1.10/cache with20 owner tests and no export-only table promotion. Keep Sticking typing investigation and real183657-point emtk rendering prerequisite explicit while row10 source/delivery parity proceeds. [Receipt](validation/release-readiness-w1/quenching-properties/receipt.json).
+
 - PRD-154 W1: freeze FCS row10 before source retirement; parent inspected15 legacy PNGs and preserved34 numerical/control artifacts plusproducer. Real measured merger/toolbox/burst outputs retained,15 prep cases pass,99 sources unchanged. Record truthful broken central progress-method baseline and live native-host caller plan; source release follows this evidence commit. [Plan](validation/release-readiness-w1/fcs-before/plan.md).
 
 - PRD-154 W1: retire uncalled AVProperties and TTTR-format wizard (five dedicated files/two exports), retaining exact live namespaces/modes.46 parent targeted cases pass; three realistic baselines inspected and catalogue regeneration has no diff. Record immediate owning AV property follow-up from the pre-existing mypy diagnostic/core missing-return getter; row10 FCS is next. Refresh stale W1 evidence resume and preserve foreign changes. [Receipt](validation/release-readiness-w1/dead-loader-retirement/receipt.json).
