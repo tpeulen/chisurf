@@ -246,3 +246,13 @@ imports the selected PDB once through the existing shell action. Source-free
 restoration derives reader display facts from embedded atoms only for matching
 sources. Folder helper/thread exports and their UI files are retired while
 PDBSelector remains unchanged for the next FRET host migration.
+
+
+## Unreachable loader retirement
+
+The manually instantiated AVProperties and TTTR file-format wizard are retired
+with their dedicated designer files and exports. They had no application callers
+or registry records. Fresh-interpreter guards verify the exact owning Dye,
+ProteinQuenching and Sticking bindings and retained wizard neighbors. No
+application control was replaced; the measured AV1/AV3/SPC baselines remain
+in the source-hygiene record. Do not use the no-op basic test as import proof.

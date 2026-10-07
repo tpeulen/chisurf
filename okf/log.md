@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W1: retire uncalled AVProperties and TTTR-format wizard (five dedicated files/two exports), retaining exact live namespaces/modes.46 parent targeted cases pass; three realistic baselines inspected and catalogue regeneration has no diff. Record immediate owning AV property follow-up from the pre-existing mypy diagnostic/core missing-return getter; row10 FCS is next. Refresh stale W1 evidence resume and preserve foreign changes. [Receipt](validation/release-readiness-w1/dead-loader-retirement/receipt.json).
+
 - PRD-154 W1: retire legacy PDBSelector/FRET UI and host the existing native app in the live trajectory hub;69 parent targeted tests plus665 contracts pass, actual116x6 output byte-identical and four before/after/close PNGs inspected. Preserve eight tabs and scientific bodies; owned close cancels queued work. Final mixed capture exits0, resolving its measured historical shutdown issue. Paired docs and catalogue updated; rows8/9 are next. [Receipt](validation/release-readiness-w1/fret-retirement/receipt.md).
 
 - PRD-154 W1: synchronize the two translated legacy MMFDB demo captions with the owning packaged synthetic table contract;2 parent actual-handler regressions pass, six before/after state PNGs inspected and genuine120/63 result preserved. Declining starts no task; other controls, native UI, storage and foreign hunks remain untouched. [Receipt](validation/release-readiness-w1/mmfdb-captions/receipt.json).

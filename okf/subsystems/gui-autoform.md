@@ -940,3 +940,13 @@ hook. The toolkit Driver excludes None rectangles for unsubmitted canvases.
 Seventeen focused runtime/Driver cases pass; actual Global View, PTO Inspector
 and Spot Finder click-all workers pass and their PNGs were inspected. FRET
 Docking's optional-hook crash is fixed; its missing guided tour remains W6 work.
+
+
+## Uncalled loader retirement — 2026-10-07
+
+AVProperties and WizardTTTRFileFormat have no external AST/config callers or
+registry references and are removed with five dedicated files and two export
+statements. Fresh runtime probes retain exact scientific/widget identity and
+four neighboring wizard classes;46 parent cases pass. Catalogue regeneration
+changes nothing. AV1/AV3/realSPC control baselines were inspected before removal.
+[Receipt](../validation/release-readiness-w1/dead-loader-retirement/receipt.json).
