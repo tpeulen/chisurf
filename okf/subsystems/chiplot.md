@@ -455,6 +455,26 @@ unexercised.
 
 # Where to pick this up — the emtk backend
 
+**Current verified contract (2026-10-07):** the native backend already exists
+in `chisurf/gui/chiplot/backends/emtk_backend.py`; the older package-design
+text below is historical and awaits W0 reconciliation. Axis units now travel
+through `set_labels(left_units=..., bottom_units=..., right_units=...,
+top_units=...)`: `None` preserves metadata and an empty string clears it.
+`set_si_prefix` changes displayed ticks/label prefixes without scaling source
+data. The pyqtgraph adapter enforces SI-off even after label updates; emtk
+renders actual unit/SI labels on its existing left/bottom axes. Right/top
+metadata is retained but those axes are not yet rendered by emtk.
+
+`Curve.get_data()` returns original samples on both backends, including log
+and downsampling modes; empty curves return empty arrays. Parent111 targeted
+cases and959 available Part A guards pass (16 expected skips). All eight
+measured before/after scenes were inspected; the legacy PG unit image is
+byte-identical and all200 BH count-rate samples retain their hashes. Source
+typing45before/45after is an explicit inherited W0 gate, not fixed here.
+[Acceptance](../validation/release-readiness-w1/chiplot-axis-units/receipt.json).
+Next immediate caller: Burst Selection's28 plotting references; use this API
+and preserve its old SI settings before removing its direct-import allowance.
+
 The native backend to build is **chimol's emtk** ([PRD-104](/prds/prd-104.md);
 ChiSurf direction 2026-08-14): a `chisurf/gui/chiplot/backends/emtk/` package
 implementing the `backends/base.py` contract on top of emtk's

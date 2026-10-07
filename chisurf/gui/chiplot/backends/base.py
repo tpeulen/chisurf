@@ -234,8 +234,12 @@ class Canvas(abc.ABC):
         bottom: str | None = None,
         right: str | None = None,
         top: str | None = None,
+        left_units: str | None = None,
+        bottom_units: str | None = None,
+        right_units: str | None = None,
+        top_units: str | None = None,
     ) -> None:
-        """Set axis labels (unset axes are left unchanged)."""
+        """Set text and units independently; None preserves and empty clears."""
 
     @abc.abstractmethod
     def set_title(self, title: str | None) -> None:

@@ -673,9 +673,34 @@ class PlotAPI:
             self.export_image(path)
 
     # -- axes / view ----------------------------------------------------
-    def set_labels(self, *, left=None, bottom=None, right=None, top=None) -> Plot:
-        """Set axis labels; unset axes are left unchanged. Returns ``self``."""
-        self._canvas.set_labels(left=left, bottom=bottom, right=right, top=top)
+    def set_labels(
+        self,
+        *,
+        left=None,
+        bottom=None,
+        right=None,
+        top=None,
+        left_units: str | None = None,
+        bottom_units: str | None = None,
+        right_units: str | None = None,
+        top_units: str | None = None,
+    ) -> Plot:
+        """Set axis text and units independently. Returns ``self``.
+
+        ``None`` preserves existing text or units; ``""`` clears that field.
+        Units describe the supplied data without converting it. SI tick display
+        scaling is controlled separately by :meth:`set_si_prefix`.
+        """
+        self._canvas.set_labels(
+            left=left,
+            bottom=bottom,
+            right=right,
+            top=top,
+            left_units=left_units,
+            bottom_units=bottom_units,
+            right_units=right_units,
+            top_units=top_units,
+        )
         return self
 
     def set_title(self, title) -> Plot:
@@ -924,7 +949,11 @@ class PlotAPI:
             raise AttributeError(name)
         from chisurf.gui.chiplot._passthrough import record_and_warn
 
-        widget = self._canvas.existing_widget() if hasattr(self._canvas, "existing_widget") else self._canvas.widget()
+        widget = (
+            self._canvas.existing_widget()
+            if hasattr(self._canvas, "existing_widget")
+            else self._canvas.widget()
+        )
         for target in (self._canvas.native, widget):
             if hasattr(target, name):
                 record_and_warn("Plot", name)
@@ -1001,7 +1030,6 @@ class Plot(PlotAPI, QtWidgets.QWidget):
             for label, cb in self._extra_menu_actions:
                 menu.addAction(label, cb)
         menu.exec_(event.globalPos())
-
 
 
 class _Hook:

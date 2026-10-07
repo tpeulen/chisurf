@@ -532,6 +532,8 @@ class EmtkCanvas(base.Canvas):
         self._entries: list[_Entry] = []
         self._title = title or ""
         self._labels: dict[str, str] = {}
+        self._units: dict[str, str] = {}
+        self._si_prefix = {"x": False, "y": False}
         self._log = {"x": False, "y": False}
         self._range: dict[str, tuple[float, float] | None] = {"x": None, "y": None}
         self._grid = True
@@ -610,7 +612,7 @@ class EmtkCanvas(base.Canvas):
         gutter_bottom = 4.0
         if bottom_axis:
             gutter_bottom += row + 2.0
-            if self._labels.get("bottom"):
+            if self._labels.get("bottom") or self._units.get("bottom"):
                 gutter_bottom += row
         gutter_top = row + 2.0 if self._title else 6.0
         gutter_right = 10.0
@@ -658,6 +660,32 @@ class EmtkCanvas(base.Canvas):
         self._draw_axes(painter, plot, x, y, w, h, row)
         self._draw_texts(painter, plot)
 
+    def _axis_display(
+        self,
+        side: str,
+        ticks: list[float],
+        span: tuple[float, float],
+    ) -> tuple[list[str], str]:
+        """Format ticks and units together without changing their coordinates."""
+        axis = "y" if side == "left" else "x"
+        title, units = self._labels.get(side, ""), self._units.get(side, "")
+        exponent = 0
+        if self._si_prefix[axis] and (title or units):
+            magnitude = max(span) if self._log[axis] else max(abs(v) for v in span)
+            order = magnitude if self._log[axis] else math.log10(magnitude) if magnitude > 0 else 0
+            exponent = max(-24, min(24, 3 * math.floor(order / 3)))
+            # Match AxisItem: unitless thousand/milli prefixes are distracting.
+            if not units and exponent in (-3, 3):
+                exponent = 0
+        prefix = "yzafpnµm kMGTPEZY"[exponent // 3 + 8].strip()
+        display_ticks = (
+            [v - exponent for v in ticks]
+            if self._log[axis]
+            else [v / 10.0**exponent for v in ticks]
+        )
+        suffix = f" ({prefix}{units})" if units else f" (×{10.0**exponent:g})" if exponent else ""
+        return _tick_labels(display_ticks, self._log[axis]), (title + suffix).strip()
+
     def _draw_axes(self, painter, plot, x, y, w, h, row) -> None:
         """Tick numbers, axis titles and the panel title, around the plot area."""
         from emtk.painter import ALIGN_HCENTER, ALIGN_RIGHT, ALIGN_VCENTER
@@ -665,7 +693,8 @@ class EmtkCanvas(base.Canvas):
         bx, by, bw, bh = plot.x, plot.y, plot.w, plot.h
         if self._axis_visible["left"]:
             ticks = plot._y_axis.ticks(plot.y_tick_target)
-            for value, text in zip(ticks, _tick_labels(ticks, self._log["y"])):
+            tick_text, label = self._axis_display("left", ticks, plot._y_axis.range)
+            for value, text in zip(ticks, tick_text):
                 py = plot._y_axis.to_pixels(value)
                 if by - 1.0 <= py <= by + bh + 1.0:
                     painter.text(
@@ -677,7 +706,6 @@ class EmtkCanvas(base.Canvas):
                         text,
                         _TICK_TEXT,
                     )
-            label = self._labels.get("left")
             if label:
                 if hasattr(painter, "text_rotated"):
                     cx = x + 2.0 + row * 0.5
@@ -696,11 +724,12 @@ class EmtkCanvas(base.Canvas):
                     painter.text(x + 2.0, by, bx - x - 4.0, row, ALIGN_VCENTER, label, _LABEL_TEXT)
         if self._axis_visible["bottom"]:
             ticks = plot._x_axis.ticks(plot.x_tick_target)
-            for value, text in zip(ticks, _tick_labels(ticks, self._log["x"])):
+            tick_text, label = self._axis_display("bottom", ticks, plot._x_axis.range)
+            for value, text in zip(ticks, tick_text):
                 px = plot._x_axis.to_pixels(value)
                 if bx - 1.0 <= px <= bx + bw + 1.0:
                     painter.text(
-                        px - 40.0,
+                        min(max(px - 40.0, x), x + w - 80.0),
                         by + bh + 2.0,
                         80.0,
                         row,
@@ -708,7 +737,6 @@ class EmtkCanvas(base.Canvas):
                         text,
                         _TICK_TEXT,
                     )
-            label = self._labels.get("bottom")
             if label:
                 painter.text(
                     bx,
@@ -1455,11 +1483,29 @@ class EmtkCanvas(base.Canvas):
         self.refresh()
 
     # -- axes and view -------------------------------------------------
-    def set_labels(self, *, left=None, bottom=None, right=None, top=None) -> None:
-        """Set axis labels; axes not named are left alone."""
-        for side, text in (("left", left), ("bottom", bottom), ("right", right), ("top", top)):
+    def set_labels(
+        self,
+        *,
+        left=None,
+        bottom=None,
+        right=None,
+        top=None,
+        left_units=None,
+        bottom_units=None,
+        right_units=None,
+        top_units=None,
+    ) -> None:
+        """Store axis text/unit metadata; only left and bottom are rendered today."""
+        for side, text, units in (
+            ("left", left, left_units),
+            ("bottom", bottom, bottom_units),
+            ("right", right, right_units),
+            ("top", top, top_units),
+        ):
             if text is not None:
                 self._labels[side] = str(text)
+            if units is not None:
+                self._units[side] = str(units)
         self.refresh()
 
     def set_title(self, title: str) -> None:
@@ -1638,9 +1684,11 @@ class EmtkCanvas(base.Canvas):
         """Not offered yet; the panel always fills its widget."""
 
     def set_si_prefix(self, *, x=None, y=None) -> None:
-        """Not offered: emtk never prefixes tick values, which is the default
-        chiplot asks both backends for.
-        """
+        """Toggle SI scaling of tick text and unit prefixes, keeping data unchanged."""
+        for axis, enabled in (("x", x), ("y", y)):
+            if enabled is not None:
+                self._si_prefix[axis] = bool(enabled)
+        self.refresh()
 
     def invert_y(self, invert: bool = True) -> None:
         """Run the y-axis downwards, as image rows do."""

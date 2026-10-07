@@ -330,8 +330,11 @@ class _Curve(_Item):
         self._native.setData(np.asarray(x), np.asarray(y))
 
     def get_data(self):
-        """Return the curve's current ``(x, y)`` samples."""
-        return self._native.getData()
+        """Return source samples, independent of log mapping or downsampling."""
+        x, y = self._native.getOriginalDataset()
+        if x is None or y is None:
+            return np.empty(0), np.empty(0)
+        return x, y
 
     def set_pen(self, pen) -> None:
         """Restyle the curve's line (accepts a Pen or any pen-like spec)."""
@@ -1075,11 +1078,33 @@ class _PgCanvas(base.Canvas):
         """Remove every handle from this panel."""
         self._pi.clear()
 
-    def set_labels(self, *, left=None, bottom=None, right=None, top=None) -> None:
-        """Set axis labels (unset axes unchanged)."""
-        for side, txt in (("left", left), ("bottom", bottom), ("right", right), ("top", top)):
-            if txt is not None:
-                self._pi.setLabel(side, str(txt))
+    def set_labels(
+        self,
+        *,
+        left=None,
+        bottom=None,
+        right=None,
+        top=None,
+        left_units=None,
+        bottom_units=None,
+        right_units=None,
+        top_units=None,
+    ) -> None:
+        """Set actual AxisItem text/unit metadata without clearing omitted fields."""
+        for side, text, units in (
+            ("left", left, left_units),
+            ("bottom", bottom, bottom_units),
+            ("right", right, right_units),
+            ("top", top, top_units),
+        ):
+            if text is not None or units is not None:
+                axis = self._pi.getAxis(side)
+                self._pi.setLabel(
+                    side,
+                    axis.labelText if text is None else str(text),
+                    units=axis.labelUnits if units is None else str(units),
+                )
+                self._set_axis_si_prefix(axis, axis.autoSIPrefix)
 
     def set_title(self, title) -> None:
         """Set the panel title."""
@@ -1195,10 +1220,18 @@ class _PgCanvas(base.Canvas):
         for side, enabled in (("bottom", x), ("left", y)):
             if enabled is None:
                 continue
-            try:
-                self._pi.getAxis(side).enableAutoSIPrefix(bool(enabled))
-            except Exception:
-                pass
+            self._set_axis_si_prefix(self._pi.getAxis(side), bool(enabled))
+
+    @staticmethod
+    def _set_axis_si_prefix(axis, enabled: bool) -> None:
+        """Enforce disabled display scaling after AxisItem's unconditional update."""
+        axis.enableAutoSIPrefix(enabled)
+        if not enabled:
+            axis.autoSIPrefixScale = 1.0
+            axis.labelUnitPrefix = ""
+            axis._updateLabel()
+            axis.picture = None
+            axis.update()
 
     def set_axis_visible(self, side, visible) -> None:
         """Show or hide one axis."""

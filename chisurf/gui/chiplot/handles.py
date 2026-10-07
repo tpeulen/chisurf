@@ -110,7 +110,9 @@ class Curve(Handle, Protocol):
         ...
 
     def get_data(self) -> tuple[np.ndarray, np.ndarray]:
-        """Return the curve's current ``(x, y)`` samples.
+        """Return current source ``(x, y)`` samples, or empty arrays if cleared.
+
+        Log display, SI tick prefixes and downsampling do not change these arrays.
 
         Returns
         -------
