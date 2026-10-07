@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W1: publish/install canonical emtkd998f93f1/version0.1.6 dense-marker/zero-outline/legend and stablecolumnvisibility roots;65 parent owner tests pass oninstalledSDK, all21lockrefs/version updated and lockcheck0. Actual183657 source/183648positive-marker hashes preserved; three PNGs inspected, timing scopes documented. FullFCS finalhost and diagnostic helper acceptance remain active; foreign SDK/lock/source preserved. [Receipt](validation/release-readiness-w1/dense-markers/receipt.json).
+
 - PRD-154 W1: record the actual SDK column-visibility cursor reset found by scroll/action proof; owning no-op membership fix precedes removal of the false detector-cell metric expected failure. Marker exact parity61 tests pass with final normal-exit Qt4.25s/software7.08s and unchanged183657-source hashes. FCS paired docs/examples/four figures are frozen for exact integration; parameter portable-codec root remains active.
 
 - PRD-154 W1: refresh durable acceptance front after rows1–9 and quenching/central-vocabulary commits. Freeze44 FCS source paths with worker-only TD4/PTO output and preserved137-source snapshot; canonical marker-performance/legend and ordered-paint diagnostics remain final render gates. Record actual parameter file corruption hidden by stale expected-failure/load-only tests, owning portable-codec repair, and mixed Qt teardown investigation. Preserve all foreign work; programme remains active.

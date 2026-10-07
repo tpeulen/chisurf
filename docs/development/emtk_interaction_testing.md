@@ -256,3 +256,15 @@ or registry records. Fresh-interpreter guards verify the exact owning Dye,
 ProteinQuenching and Sticking bindings and retained wizard neighbors. No
 application control was replaced; the measured AV1/AV3/SPC baselines remain
 in the source-hygiene record. Do not use the no-op basic test as import proof.
+
+
+## Dense marker and table access regressions
+
+Marker primitives preserve alpha, transforms, clipping and DPI while Qt replays
+bounded cached triangle glyphs and software checks exact opaque coverage.
+The full measured183657-photon fixture retains original arrays and selection;
+its existing positive delta-time mask plots183648 points. Explicit zero marker
+weight removes only the outline and keeps automatic fill/visible legends.
+Stable column-visibility calls preserve horizontal scroll/selection/revision;
+actual visibility transitions still reset and notify once. Test real offscreen
+action access after scrolling, rather than assuming a horizontal bar proves it.

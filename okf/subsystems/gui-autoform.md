@@ -964,3 +964,14 @@ pass; qualified constructor-repaired before/final after PNGs inspected with
 identical17 controls. Two unchanged Sticking/abstract-update type diagnostics
 have a separate owning investigation; they are not hidden by suppression.
 [Receipt](../validation/release-readiness-w1/quenching-properties/receipt.json).
+
+
+## Dense plotting and stable column access — 2026-10-07
+
+emtkd998f93f1/version0.1.6 provides exact cached Qt marker replay and equivalent
+opaque software paths while retaining all source/hover inputs.65 parent owner
+cases pass against the canonical installed Git revision, with byte parity for
+alpha, clip, transforms and DPI;21 lock refs/version updated and lockcheckgreen.
+Repeated unchanged table column visibility no longer resets horizontal scroll
+each frame; real transitions retain reset/invalidation and last-column safety.
+[Inspected measured evidence](../validation/release-readiness-w1/dense-markers/receipt.json).
