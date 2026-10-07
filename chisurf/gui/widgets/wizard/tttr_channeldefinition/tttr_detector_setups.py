@@ -315,7 +315,7 @@ def load_detector_setups(file_path=None, db_path=None, skip_migration=False, use
 
             try:
                 if answer.key == "wizard":
-                    from .tttr_channel_definition import DetectorWizard
+                    from . import DetectorWizard
 
                     wiz = DetectorWizard()
                     wiz.exec_()

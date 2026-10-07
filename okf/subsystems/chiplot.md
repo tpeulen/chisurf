@@ -544,3 +544,14 @@ Open, in the order that unblocks the most:
 * [Tables (chitable)](/subsystems/gui-tables.md) and
   [Regions of interest](/subsystems/roi.md) — the same "one in-tree
   implementation behind one API" shape for tables and ROI geometry.
+
+## Histogram ranges and caption cleanup — 2026-10-08
+
+Actual Burst plot migration exposed two owning renderer gaps: pinned PG text
+survived clear, and native bar-only ranges ignored bar rectangles. Both now
+have real regression guards; raw data remains unchanged, native extents include
+bin edges and zero baseline, and log transforms belong to the renderer.
+Caller set_ylim receives data coordinates, preventing a second log transform.
+Parent116plot-family cases pass; all six old/PG/native panel scenes inspected.
+The two renderer type baselines18/18 remain unchanged (W0); no native escape,
+passthrough allowance or dependency was added.

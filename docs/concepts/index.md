@@ -112,6 +112,7 @@ deconvolution
 :maxdepth: 1
 
 photon_container
+detector_setup
 measurement_database
 microtime_shift
 live_streaming_analysis

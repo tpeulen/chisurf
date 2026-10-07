@@ -1076,6 +1076,13 @@ class _PgCanvas(base.Canvas):
 
     def clear(self) -> None:
         """Remove every handle from this panel."""
+        # Screen-pinned text belongs to PlotItem rather than its data-item list.
+        for item in list(self._pi.childItems()):
+            if isinstance(item, pg.TextItem):
+                scene = item.scene()
+                item.setParentItem(None)
+                if scene is not None:
+                    scene.removeItem(item)
         self._pi.clear()
 
     def set_labels(

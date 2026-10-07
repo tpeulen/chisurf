@@ -1,234 +1,272 @@
-"""The real detector result publisher preserves setup/context through native close."""
+"""Actual native reference actions archive and auto-save only the active owned setup."""
+
 from __future__ import annotations
 
 import copy
 import json
+import sqlite3
+import time
+from collections.abc import Iterator
+from typing import Any
+from uuid import UUID
 
 import pytest
-from qtpy.QtCore import Qt
+from mmfdb.provenance.result_registry import read_result
+from mmfdb.repository import MFDatabase
+from mmfdb.schema import schema
 
-from chisurf.gui import dialogs
-from chisurf.gui.widgets.wizard.tttr_channeldefinition import DetectorWizard
-from chisurf.gui.widgets.wizard.tttr_channeldefinition import tttr_channel_definition_tttr_io as io
-from chisurf.plugins.vv_vh_g_factor.gui.app import create_host
-from chisurf.plugins.vv_vh_g_factor.gui.model import GFactorModel
+from chisurf.plugins.vv_vh_g_factor.gui.client import VvVhGFactorClient
+from test.gui.test_cell_text_editing import cell_rect, double_click
+from test.native_emtk.test_channel_definition_json import editor as editor
+from test.native_emtk.test_channel_definition_reference import open_real_reference, reveal_reference
 
 
 @pytest.fixture
-def setup_page(qtbot, tmp_path, monkeypatch):
-    """Use the existing detector page and isolate the setup persistence boundary."""
-    (tmp_path / "setups.json").write_text(json.dumps({"setups": {}, "last_used": ""}))
-    wizard = DetectorWizard(json_file=str(tmp_path / "setups.json"))
-    qtbot.addWidget(wizard)
-    page = wizard.page(0)
-    page._load_data({"windows": {"prompt": [0, 2048]},
-                     "detectors": {"detector": {"chs": [0, 1], "micro_time_ranges": [[0, 4095]],
-                                                "g_factor": 1.0, "l1": 0.17, "l2": 0.23}},
-                     "tttr_reading": {"file_type": "SPC-130", "macro_time_resolution": 50.0,
-                                      "micro_time_resolution": 50.0, "micro_time_binning": 1}})
-    page.current_setup_name = "test_setup"
-    page.current_setups_file = str(tmp_path / "setups.json")
-    assert page.effective_micro_time_resolution == 50.0
-    stored = {"setups": {"test_setup": {"retained": "metadata", "detectors": {"other": {"chs": [7]}}}}}
-    saves = []
-    monkeypatch.setattr(io, "load_detector_setups", lambda path: copy.deepcopy(stored))
-    monkeypatch.setattr(io, "save_detector_setups", lambda data, path: saves.append((copy.deepcopy(data), path)))
-    monkeypatch.setattr(dialogs, "information", lambda *args, **kwargs: None)
-    yield page, stored, saves
-
-
-def measured(tmp_path):
-    """An authoritative native result snapshot; calculation arithmetic is unchanged."""
-    model = GFactorModel()
-    model.fast_file = str(tmp_path / "changed-reference.dat")
-    model.result = {"g_factor": 1.25, "g_factor_uncorrected": 1.2, "g_factor_corrected": 1.25,
-                    "g_factor_stddev_uncorrected": 0.1, "g_factor_stddev_corrected": 0.12,
-                    "bg_parallel_avg": 3.0, "bg_perpendicular_avg": 4.0}
-    model.background = True
-    model.region = [400.0, 300.0]
-    model.background_region = [10.0, 20.0]
-    return model
-
-
-@pytest.mark.parametrize("manual_zero", [False, True])
-def test_actual_native_close_persists_g_tail_uuids_actor_sd_and_mixing(
-    setup_page, tmp_path, monkeypatch, qtbot, manual_zero
-):
-    page, _, saves = setup_page
-    seen = []
-    monkeypatch.setattr("chisurf.core.fio.setup_store.resolve_active_user_id", lambda: "scratch_actor")
-
-    class Archive:
-        def archive_g_factor(self, **kwargs):
-            seen.append(kwargs)
-            return {"ok": True, "reference_decay_id": "owned-source-uuid", "calibration_id": "owned-calibration-uuid"}
-
-    snapshot = measured(tmp_path)
-    snapshot.fp_result = {"l1": None, "l2": None}
-    if manual_zero:
-        snapshot.manual_l = True
-        snapshot.l_override = 0.0
-    host = create_host(on_close=lambda result: io._publish_gfactor_result(
-        page, result, {"row": 0, "name": "detector"}, client=Archive()))
-    qtbot.addWidget(host)
-    host.control.model = snapshot
-    host.close()
-    host.close()
-    assert len(seen) == len(saves) == 1
-    assert seen[0]["file_path"] == snapshot.fast_file and seen[0]["active_user"] == "scratch_actor"
-    parameters = seen[0]["parameters"]
-    assert parameters["g_factor_stddev"] == 0.12 and parameters["micro_time_resolution"] == 50.0
-    assert [parameters["l1"], parameters["l2"]] == ([0.0, 0.0] if manual_zero else [0.17, 0.23])
-    assert page.detectors_form.cellWidget(0, 3).text() == "1.250"
-    assert page.detectors_form.cellWidget(0, 6).text() == "300-400"
-    item = page.detectors_form.item(0, 0)
-    assert item.data(Qt.UserRole + 1) == "owned-source-uuid"
-    assert item.data(Qt.UserRole + 2) == "owned-calibration-uuid"
-    assert saves[0][0]["setups"]["test_setup"]["retained"] == "metadata"
-    assert "other" in saves[0][0]["setups"]["test_setup"]["detectors"]
-    assert saves[0][0]["last_used"] == "test_setup"
-
-
-def test_archive_failure_and_readonly_leave_detector_and_setup_unchanged(setup_page, tmp_path):
-    page, _, saves = setup_page
-    original = page.detectors_form.cellWidget(0, 3).text()
-
-    class Failed:
-        def archive_g_factor(self, **kwargs):
-            return {"ok": False, "error": "controlled failure"}
-
-    with pytest.raises(ValueError, match="controlled failure"):
-        io._publish_gfactor_result(page, measured(tmp_path), {"row": 0, "name": "detector"}, Failed())
-    assert not saves and page.detectors_form.cellWidget(0, 3).text() == original
-    page.read_only = True
-    assert not io._publish_gfactor_result(page, measured(tmp_path), {"row": 0, "name": "detector"}, Failed())
-    assert not saves and page.detectors_form.cellWidget(0, 3).text() == original
-
-
-@pytest.mark.parametrize("headless", [False, True])
-@pytest.mark.parametrize("archive_ok", [False, True])
-def test_real_detector_action_uses_native_model_and_effective_ps_to_ns(
-    setup_page, monkeypatch, qtbot, headless, archive_ok, tmp_path
-):
-    """Exercise the actual launch/close seam with a deterministic polarized histogram."""
-    import numpy as np
-    from qtpy.QtWidgets import QFileDialog, QMessageBox
-
-    from chisurf.plugins.vv_vh_g_factor.gui.client import VvVhGFactorClient
-
-    page, _, saves = setup_page
-    page.micro_binning_combo.setCurrentText("2")
-    page.detectors_form.cellWidget(0, 6).setText("20-40")
-    seen = []
-    original = page.detectors_form.cellWidget(0, 3).text()
-    real_mkstemp = io.tempfile.mkstemp
-    monkeypatch.setattr(io.tempfile, "mkstemp", lambda **kw: real_mkstemp(dir=tmp_path, **kw))
-    monkeypatch.setattr("chisurf.core.fio.setup_store.resolve_active_user_id", lambda: "scratch_actor")
-    monkeypatch.setattr(QFileDialog, "getOpenFileName", lambda *a, **kw: ("owned.spc", ""))
-    monkeypatch.setattr(dialogs, "question", lambda *a, **kw: QMessageBox.Yes if headless else QMessageBox.No)
-
-    class Histograms:
-        def __len__(self):
-            return 200
-
-        def get_microtime_histogram(self, binning, channels):
-            assert binning == 2
-            decay = np.exp(-np.arange(100) / 20) * 1000
-            return decay if channels == [0] else decay / 1.25, np.arange(100)
-
-    monkeypatch.setattr(io, "load_with_progress", lambda *a, **kw: Histograms())
-    def archive(self, **kwargs):
-        seen.append(kwargs)
-        return {"ok": archive_ok, "error": "controlled archive failure", "reference_decay_id": "source", "calibration_id": "calibration"}
-    monkeypatch.setattr(VvVhGFactorClient, "archive_g_factor", archive)
-    errors = []
-    monkeypatch.setattr(dialogs, "error", lambda *a, **kw: errors.append(a))
-    try:
-        io.on_calc_g_factor(page, row=0)
-        if not headless:
-            host = page.g_factor_calculator
-            qtbot.addWidget(host)
-            assert host.control.model.fp_dt_ns == 0.1
-            assert host.control.model.region == [20.0, 40.0]
-            host.close()
-            host.close()
-        assert len(seen) == 1
-        assert len(saves) == int(archive_ok)
-        assert bool(errors) is not archive_ok
-        if not archive_ok:
-            assert page.detectors_form.cellWidget(0, 3).text() == original
-        assert seen[0]["parameters"]["micro_time_resolution"] == 100.0
-        assert seen[0]["parameters"]["g_factor"] == pytest.approx(1.25)
-        assert seen[0]["parameters"]["l1"] == 0.17
-        assert seen[0]["parameters"]["l2"] == 0.23
-    finally:
-        if hasattr(page, "vv_vh_file"):
-            from pathlib import Path
-            Path(page.vv_vh_file).unlink(missing_ok=True)
-
-
-def test_native_publisher_records_real_archive_ids_and_measured_sd(setup_page, tmp_path, monkeypatch):
-    """Use the actual archive service against a scratch store, including provenance IDs."""
-    import sqlite3
-    from uuid import UUID
-
-    import numpy as np
-    from mmfdb.provenance.result_registry import read_result
-    from mmfdb.repository import MFDatabase
-    from mmfdb.schema import schema
-
-    from chisurf.core.fio import write_vv_vh
-    from chisurf.plugins.vv_vh_g_factor.gui.client import VvVhGFactorClient
-
-    page, _, saves = setup_page
-    database = tmp_path / "archive.sqlite"
-    objects = tmp_path / "objects"
-    objects.mkdir()
+def calibration(editor: Any, tmp_path: Any, monkeypatch: Any) -> Iterator[dict[str, Any]]:
+    """Use real measured input, actual client/service/registry and scratch named/SQL stores."""
+    app, ui, notices, path = editor
+    database, objects = tmp_path / "archive.sqlite", tmp_path / "objects"
+    objects.mkdir(exist_ok=True)
     with sqlite3.connect(database) as connection:
         schema.migrate_schema(connection)
     monkeypatch.setattr("mmfdb.store.database_resolver.resolve_database_path", lambda: database)
     monkeypatch.setattr("mmfdb.store.database_resolver.object_store_root", lambda: objects)
-    monkeypatch.setattr("chisurf.core.fio.setup_store.resolve_active_user_id", lambda: "scratch_actor")
-    snapshot = measured(tmp_path)
-    decay = np.exp(-np.arange(512) / 60) * 1000
-    write_vv_vh(snapshot.fast_file, np.concatenate([decay, decay / 1.25]))
-    assert io._publish_gfactor_result(page, snapshot, {"row": 0, "name": "detector"}, VvVhGFactorClient())
-    item = page.detectors_form.item(0, 0)
-    source_id, calibration_id = item.data(Qt.UserRole + 1), item.data(Qt.UserRole + 2)
+    donor = app.model.data["detectors"]["donor"]
+    donor.update(chs=[8, 0, 3], g_factor_channels=[850, 1850])
+    app.model.data["detectors"]["other"] = {
+        "chs": [7],
+        "micro_time_ranges": [[0, 32]],
+        "g_factor": 2.5,
+        "future_metadata": {"neighbour": "preserved"},
+    }
+    saved = copy.deepcopy(app.model.get_settings())
+    saved["stored_metadata"] = {"hidden": "preserved"}
+    app.model.setups["Validation"] = saved
+    path.write_text(json.dumps({"setups": app.model.setups, "last_used": "Validation"}))
+    calls: list[dict] = []
+    original = VvVhGFactorClient.archive_g_factor
+
+    def tracked(self: Any, **kwargs: Any) -> Any:
+        calls.append(copy.deepcopy(kwargs))
+        return original(self, **kwargs)
+
+    monkeypatch.setattr(VvVhGFactorClient, "archive_g_factor", tracked)
+    ui.draw(2)
+    yield {
+        "app": app,
+        "ui": ui,
+        "notices": notices,
+        "path": path,
+        "database": database,
+        "calls": calls,
+        "original_bytes": path.read_bytes(),
+        "original_data": copy.deepcopy(app.model.data),
+    }
+
+
+def settle_child(child: Any, ui: Any) -> None:
+    """Await the real bounded native calculator job before inspecting its result."""
+    deadline = time.monotonic() + 10
+    while child.job.running and time.monotonic() < deadline:
+        ui.draw(1)
+        time.sleep(0.01)
+    assert not child.job.running
+    ui.draw(2)
+
+
+def assert_publication(
+    context: dict[str, Any],
+    reference: Any,
+    timing: float,
+    source: Any,
+    *,
+    mixing: tuple[float, float] = (0.05, 0.02),
+) -> None:
+    """Assert actual scientific payload, named metadata, archive SQL and lineage together."""
+    app, path = context["app"], context["path"]
+    assert len(context["calls"]) == len(context["notices"]) == 1
+    call = context["calls"][0]
+    parameters = call["parameters"]
+    assert call["active_user"] == "validation-owner"
+    assert parameters["micro_time_resolution"] == timing
+    assert reference.fp_dt_ns == pytest.approx(timing * 1e-3)
+    assert parameters["source_measurement"] == str(source)
+    assert parameters["g_factor"] == reference.g_factor
+    assert (parameters["l1"], parameters["l2"]) == mixing
+    expected_sd = reference.detector_parameters(micro_time_resolution=timing)["g_factor_stddev"]
+    assert parameters["g_factor_stddev"] == expected_sd
+    detector = app.model.data["detectors"]["donor"]
+    assert detector["g_factor"] == reference.g_factor
+    assert detector["g_factor_channels"] == [850, 1850]
+    assert (detector["l1"], detector["l2"]) == mixing
+    assert detector["future_detector_metadata"] == {"untouched": [1, 2]}
+    source_id, calibration_id = detector["g_factor_decay_uuid"], detector["g_factor_calibration_id"]
     assert UUID(source_id) != UUID(calibration_id)
-    assert len(saves) == 1
-    with MFDatabase(str(database)) as db:
-        source = db.get_artifact(source_id)
-        metadata = json.loads(source["metadata_json"])
-        assert metadata["micro_time_resolution"] == 50.0
-        assert metadata["active_user"] == "scratch_actor"
+    stored = json.loads(path.read_text())
+    assert stored["last_used"] == "Validation"
+    named = stored["setups"]["Validation"]
+    assert named["stored_metadata"] == {"hidden": "preserved"}
+    assert named["detectors"] == app.model.get_settings()["detectors"]
+    assert named["detectors"]["other"] == context["original_data"]["detectors"]["other"]
+    with MFDatabase(str(context["database"])) as db:
+        raw, artifact = db.get_artifact(source_id), db.get_artifact(calibration_id)
+        assert raw["created_by_user_id"] == artifact["created_by_user_id"] == "validation-owner"
+        metadata = json.loads(raw["metadata_json"])
+        assert metadata["active_user"] == "validation-owner"
+        assert metadata["micro_time_resolution"] == timing
+        assert metadata["calibration_parameters"] == parameters
         payload = read_result(db, calibration_id)
-        assert payload.data["g_factor_stddev"][0] == 0.12
-        assert payload.data["l1"][0] == 0.17 and payload.data["l2"][0] == 0.23
-        edge = db.conn.execute("SELECT relationship_type FROM mmfdb_edge WHERE source_node_id = ? AND target_node_id = ?", (calibration_id, source_id)).fetchone()
-        assert edge[0] == "derived_from"
+        assert payload is not None
+        assert payload.data["g_factor_stddev"][0] == expected_sd
+        assert (payload.data["l1"][0], payload.data["l2"][0]) == mixing
+        edge = db.conn.execute(
+            "SELECT relationship_type FROM mmfdb_edge WHERE source_node_id=? AND target_node_id=?",
+            (calibration_id, source_id),
+        ).fetchone()
+        assert edge is not None and edge[0] == "derived_from"
+        assert db.conn.execute("SELECT COUNT(*) FROM mmfdb_artifact").fetchone()[0] == 3
+        assert {
+            row[0] for row in db.conn.execute("SELECT operator_user_id FROM mmfdb_operation")
+        } == {"validation-owner"}
+
+
+@pytest.mark.parametrize("manual_zero", [False, True])
+def test_actual_native_apply_persists_once_with_sd_ids_actor_and_mixing(
+    calibration: dict[str, Any],
+    tmp_path: Any,
+    manual_zero: bool,
+) -> None:
+    """The actual calculator Apply/close publishes once and saves the owned named setup."""
+    app, ui = calibration["app"], calibration["ui"]
+    preview, reading = app.model.preview, copy.deepcopy(app.model.get_settings()["tttr_reading"])
+    source = open_real_reference(app, ui, tmp_path)
+    ui.click("calibration_interactive")
+    child = app.page.reference_app
+    assert child is not None
+    settle_child(child, ui)
+    if manual_zero:
+        ui.click(reveal_reference(ui, app.page, "manual_l"))
+        settle_child(child, ui)
+        assert child.model.manual_l and child.model.l_override == 0.0
+    reference, timing = child.model, app.page._reference_context["timing"]
+    ui.click("calibration_apply")
+    ui.draw(4)
+    child.close()
+    child.close()
+    assert app.page.reference_app is None
+    assert_publication(
+        calibration, reference, timing, source, mixing=(0.0, 0.0) if manual_zero else (0.05, 0.02)
+    )
+    assert app.model.preview is preview
+    assert app.model.get_settings()["tttr_reading"] == reading
+
+
+@pytest.mark.parametrize("headless", [False, True])
+@pytest.mark.parametrize("archive_ok", [False, True])
+def test_real_reference_action_effective_timing_success_and_archive_failure(
+    calibration: dict[str, Any],
+    tmp_path: Any,
+    monkeypatch: Any,
+    headless: bool,
+    archive_ok: bool,
+) -> None:
+    """Both real actions use the same measured result; a failed transport leaves all stores intact."""
+    app, ui = calibration["app"], calibration["ui"]
+    if not archive_ok:
+
+        def failed(self: Any, **kwargs: Any) -> Any:
+            calibration["calls"].append(copy.deepcopy(kwargs))
+            raise OSError("controlled archive failure")
+
+        monkeypatch.setattr(VvVhGFactorClient, "archive_g_factor", failed)
+    source = open_real_reference(app, ui, tmp_path)
+    reference, timing = app.page._reference_model, app.page._reference_context["timing"]
+    if headless:
+        ui.click("calibration_headless")
+    else:
+        ui.click("calibration_interactive")
+        child = app.page.reference_app
+        settle_child(child, ui)
+        child.close()
+        ui.draw(3)
+        child.close()
+    if archive_ok:
+        assert_publication(calibration, reference, timing, source)
+    else:
+        assert len(calibration["calls"]) == 1
+        assert "controlled archive failure" in app.page.status
+        assert not calibration["notices"]
+        assert app.model.data == calibration["original_data"]
+        assert calibration["path"].read_bytes() == calibration["original_bytes"]
+
+
+def test_queued_publication_obeys_readonly_after_preparation(
+    calibration: dict[str, Any],
+    tmp_path: Any,
+) -> None:
+    """A real pending native result cannot bypass read-only when its callback arrives late."""
+    app, ui = calibration["app"], calibration["ui"]
+    open_real_reference(app, ui, tmp_path)
+    app.page.read_only = True
+    app.page._publish_reference(app.page._reference_model)
+    assert not calibration["calls"] and not calibration["notices"]
+    assert app.model.data == calibration["original_data"]
+    assert calibration["path"].read_bytes() == calibration["original_bytes"]
+    app.page.calibration_cancel()
+
+
+def test_nonowner_reference_updates_working_definition_without_autosaving_named_store(
+    calibration: dict[str, Any],
+    tmp_path: Any,
+) -> None:
+    """An archived working result never rewrites another actor's named setup."""
+    app, ui = calibration["app"], calibration["ui"]
+    app.model.setups["Validation"]["_owner"] = "another-owner"
+    stored = json.loads(calibration["path"].read_text())
+    stored["setups"]["Validation"]["_owner"] = "another-owner"
+    calibration["path"].write_text(json.dumps(stored))
+    original_bytes = calibration["path"].read_bytes()
+    source = open_real_reference(app, ui, tmp_path)
+    reference = app.page._reference_model
+    ui.click("calibration_headless")
+    assert len(calibration["calls"]) == len(calibration["notices"]) == 1
+    assert calibration["calls"][0]["parameters"]["source_measurement"] == str(source)
+    assert app.model.data["detectors"]["donor"]["g_factor"] == reference.g_factor
+    assert app.model.data["detectors"]["donor"]["g_factor_calibration_id"]
+    assert calibration["path"].read_bytes() == original_bytes
 
 
 @pytest.mark.parametrize("state", ["readonly", "disabled", "cancelled"])
-def test_detector_launch_readonly_disabled_or_cancelled_does_not_mutate(setup_page, monkeypatch, state):
-    """Unavailable/cancelled calibration never loads data or publishes a result."""
-    from qtpy.QtWidgets import QFileDialog
-
-    page, _, saves = setup_page
-    original = page.detectors_form.cellWidget(0, 3).text()
-    if state == "readonly":
-        page.read_only = True
-    elif state == "disabled":
-        page.detectors_form.setEnabled(False)
-    seen = []
-    def choose_cancelled(*args, **kwargs) -> tuple[str, str]:
-        """Record the actual chooser boundary and return a cancelled input."""
-        seen.append(True)
-        return "", ""
-
-    monkeypatch.setattr(QFileDialog, "getOpenFileName", choose_cancelled)
-    monkeypatch.setattr(io, "load_with_progress", lambda *a, **kw: pytest.fail("cancelled input was read"))
-    io.on_calc_g_factor(page, row=0)
-    assert bool(seen) is (state == "cancelled")
-    assert not saves and page.detectors_form.cellWidget(0, 3).text() == original
-    assert not hasattr(page, "g_factor_calculator")
+def test_unavailable_or_cancelled_native_controls_do_not_publish(
+    calibration: dict[str, Any],
+    tmp_path: Any,
+    state: str,
+) -> None:
+    """Read-only, parent editing during a child calibration, and chooser Cancel preserve state."""
+    app, ui = calibration["app"], calibration["ui"]
+    if state == "disabled":
+        open_real_reference(app, ui, tmp_path)
+        ui.click("calibration_interactive")
+        assert app.page.reference_app is not None and not app.page.enabled("edit_json")
+        # The actual parent table is still drawn but disabled while its child owns input.
+        double_click(ui, cell_rect(app.page, ui, 0, "g"))
+        assert app.page._detector_table.control.editing is None
+        ui.type("9.999")
+        ui.click("calibration_cancel")
+    else:
+        if state == "readonly":
+            app.page.read_only = True
+        ui.draw(2)
+        rectangle = next(
+            box
+            for _, row, key, box in app.page._detector_buttons.cells()
+            if row == 0 and key == "calc"
+        )
+        ui.click(rectangle)
+        if state == "cancelled":
+            assert app.page.dialog is not None
+            ui.click("Cancel")
+        assert app.page.dialog is None and app.page._reference_future is None
+    assert not calibration["calls"] and not calibration["notices"]
+    assert app.model.data == calibration["original_data"]
+    assert calibration["path"].read_bytes() == calibration["original_bytes"]

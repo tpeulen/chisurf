@@ -1,0 +1,9 @@
+{
+  "sections": [
+    {"type": "button_row", "weight": 0, "buttons": [
+      {"label": "Save definition...", "action": "save_definition", "hidden_when": {"attr": "show_save_definition", "equals": false}, "description": "Write the complete working definition as JSON; a successful save enables Finish in a wizard."},
+      {"label": "Import setups library...", "action": "import_setups", "hidden_when": {"attr": "show_setups_file", "equals": false}, "description": "Choose an existing named detector-setups JSON library without treating it as a single working definition."},
+      {"label": "Export setups library...", "action": "export_setups", "hidden_when": {"attr": "show_setups_file", "equals": false}, "description": "Write the named setups and last-used selection as a setups-library JSON file."}
+    ]}
+  ]
+}

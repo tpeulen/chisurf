@@ -44,7 +44,8 @@ from chisurf.gui.widgets.tool_buttons import action_button, flag_attention
 #: inherit an old estimator's results across an upgrade without saying so.
 #: 2: a split-by-state run first fits each state's pooled decay and starts that
 #: state's per-burst fits from it, so its per-burst lifetimes differ from v1's.
-ALGORITHM_VERSION = 2
+#: 3: missing-header timing converts the declared picoseconds to the fit API's nanoseconds.
+ALGORITHM_VERSION = 3
 
 
 def _coerce_float(value) -> float:
@@ -958,10 +959,11 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
 
     @property
     def dt_effective(self):
+        """Return binned channel width in ns, using header timing or the declared ps setup."""
         header = self._header_time_ns()
         if header is not None:
             return header[0]
-        return self.channel_definer.effective_micro_time_resolution
+        return float(self.channel_definer.effective_micro_time_resolution) * 1e-3
 
     @property
     def n_bursts(self) -> int:
@@ -1011,7 +1013,12 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
 
     @property
     def micro_time_binning(self):
-        return self.channel_definer.tttr_reading["micro_time_binning"]
+        return self.channel_definer.micro_time_binning
+
+    @micro_time_binning.setter
+    def micro_time_binning(self, value):
+        """Set the actual detector model binning through its native host."""
+        self.channel_definer.micro_time_binning = int(value)
 
     @property
     def tttr_file_type(self):
@@ -1093,12 +1100,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             # Get the current detector data
             detector = self.current_detector
             if detector in self.channel_definer.detectors:
-                # Update the g_factor value in the data structure
-                self.channel_definer.detectors[detector]["g_factor"] = float(v)
-                # Update the UI
-                row = self._find_detector_row(detector)
-                if row >= 0:
-                    self.channel_definer.detectors_form.cellWidget(row, 3).setText(str(v))
+                self.channel_definer.update_detector(detector, {"g_factor": float(v)})
                 self._set_polarization_display("doubleSpinBox_g_factor", v)
         except (KeyError, AttributeError):
             pass
@@ -1124,12 +1126,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             # Get the current detector data
             detector = self.current_detector
             if detector in self.channel_definer.detectors:
-                # Update the l1 value in the data structure
-                self.channel_definer.detectors[detector]["l1"] = float(v)
-                # Update the UI
-                row = self._find_detector_row(detector)
-                if row >= 0:
-                    self.channel_definer.detectors_form.cellWidget(row, 4).setText(str(v))
+                self.channel_definer.update_detector(detector, {"l1": float(v)})
                 self._set_polarization_display("doubleSpinBox_l1", v)
         except (KeyError, AttributeError):
             pass
@@ -1155,12 +1152,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             # Get the current detector data
             detector = self.current_detector
             if detector in self.channel_definer.detectors:
-                # Update the l2 value in the data structure
-                self.channel_definer.detectors[detector]["l2"] = float(v)
-                # Update the UI
-                row = self._find_detector_row(detector)
-                if row >= 0:
-                    self.channel_definer.detectors_form.cellWidget(row, 5).setText(str(v))
+                self.channel_definer.update_detector(detector, {"l2": float(v)})
                 self._set_polarization_display("doubleSpinBox_l2", v)
         except (KeyError, AttributeError):
             pass
@@ -1457,7 +1449,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
 
         # Update micro_time_binning in DetectorWizardPage instead of spinBox
         micro_time_binning = state["micro_time_binning"]
-        self.channel_definer.micro_binning_combo.setCurrentText(str(micro_time_binning))
+        self.micro_time_binning = micro_time_binning
 
         # — IRF threshold & shifts —
         self.irf_threshold_vv = state["irf_threshold_vv"]
@@ -1546,7 +1538,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         # Check if we have saved MLE settings for this detector in the current setup
         try:
             # Get the current setup name
-            setup_name = self.channel_definer.setup_combo.currentText()
+            setup_name = self.channel_definer.current_setup_name
             if setup_name:
                 # Get the detector_setups.json file path
                 setups_file = self.channel_definer.current_setups_file
@@ -2672,10 +2664,10 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         self.comboBox_window.currentTextChanged.connect(self.update_internal_fit_parameters)
 
         # --- Micro‐time range → update decay + fit ---
-        self.channel_definer.micro_binning_combo.currentTextChanged.connect(
+        self.channel_definer.micro_time_binningChanged.connect(
             self._update_max_bins_from_tttr
         )
-        self.channel_definer.micro_binning_combo.currentTextChanged.connect(
+        self.channel_definer.micro_time_binningChanged.connect(
             self.on_micro_time_range_changed
         )
         self.spinBox_micro_time_start.valueChanged.connect(
@@ -3131,21 +3123,6 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
     def update_parameters(self):
         self._fit = None
         self.update_fit()
-
-    def _find_detector_row(self, detector_name):
-        """
-        Helper method to find the row index of a detector in the detectors_form table.
-
-        Args:
-            detector_name (str): The name of the detector to find.
-
-        Returns:
-            int: The row index of the detector, or -1 if not found.
-        """
-        for row in range(self.channel_definer.detectors_form.rowCount()):
-            if self.channel_definer.detectors_form.item(row, 0).text() == detector_name:
-                return row
-        return -1
 
     def clear_fit(self):
         self._fit = None
@@ -3628,8 +3605,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         fwhm = self._irf_fwhm_channels()
         need_irf = (fwhm / irf_oversample) if (fwhm and irf_oversample > 0) else 0.0
         need = max(need_stat, need_irf)
-        combo = self.channel_definer.micro_binning_combo
-        choices = sorted(int(combo.itemText(i)) for i in range(combo.count()))
+        choices = sorted(self.channel_definer.binning_options)
         for c in choices:
             if c >= need:
                 return c
@@ -3674,9 +3650,8 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         # Measured IRF: coarsen the binning (rebuilds the file-sourced IRF/bg and
         # the decay through on_micro_time_range_changed), then window + refit.
         pick = self._auto_select_binning()
-        combo = self.channel_definer.micro_binning_combo
-        if pick is not None and str(pick) != combo.currentText():
-            combo.setCurrentText(str(pick))
+        if pick is not None and pick != self.micro_time_binning:
+            self.micro_time_binning = pick
         else:
             self.update_decay_of_detector()
         start = self.spinBox_micro_time_start.blockSignals(True)
@@ -3721,13 +3696,12 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         # a binning whose bins carry counts. Setting the combo cascades a rebuild;
         # block it (we rebuild IRF/bg/decay ourselves just below at this binning).
         pick = self._auto_select_binning()
-        combo = self.channel_definer.micro_binning_combo
-        if pick is not None and str(pick) != combo.currentText():
-            blocked = combo.blockSignals(True)
+        if pick is not None and pick != self.micro_time_binning:
+            blocked = self.channel_definer.blockSignals(True)
             try:
-                combo.setCurrentText(str(pick))
+                self.micro_time_binning = pick
             finally:
-                combo.blockSignals(blocked)
+                self.channel_definer.blockSignals(blocked)
             self._update_max_bins_from_tttr()
         in_burst = np.zeros(len(tttr), dtype=bool)
         in_burst[idx] = True
@@ -4750,7 +4724,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         current_detector = self.current_detector
 
         # Get the current setup name
-        setup_name = self.channel_definer.setup_combo.currentText()
+        setup_name = self.channel_definer.current_setup_name
         if not setup_name:
             self._set_status("No setup selected. Please select a setup first.")
             return
@@ -4986,7 +4960,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         mtb = payload.get("micro_time_binning", None)
         if mtb is not None:
             # Update micro_time_binning in DetectorWizardPage
-            self.channel_definer.micro_binning_combo.setCurrentText(str(int(mtb)))
+            self.micro_time_binning = int(mtb)
 
         # 2) TTTR file‐type is now handled by DetectorWizardPage
         # The tttr_file_type will be set when we load the detector settings below

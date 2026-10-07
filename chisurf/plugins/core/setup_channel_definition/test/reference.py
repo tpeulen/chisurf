@@ -10,6 +10,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 tmp = Path(sys.argv[1])
 os.environ["CHISURF_SETTINGS_DIR"] = str(tmp / "settings")
@@ -63,53 +64,10 @@ def add_calibration(db_path, name):
 
 
 def run_qt():
-    os.environ["MMFDB_DATABASE_PATH"] = QT_DB
-    seed_user(QT_DB)
-    from qtpy import QtWidgets
-
-    run_qt.app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    from chisurf.gui import dialogs
-    from chisurf.gui.widgets.wizard.tttr_channeldefinition import tttr_channel_definition as mod
-    from chisurf.plugins.core.setup_channel_definition.gui.tool import SetupChannelDefinitionWidget
-
-    for kind in ("information", "warning", "error"):
-        setattr(dialogs, kind, lambda *a, **k: None)
-    dialogs.question = lambda *a, **k: mod.QMessageBox.Yes
-    widget = SetupChannelDefinitionWidget()
-    page = widget.page
-    page._load_data(DATA)
-    log = {}
-    asked = {"name": "Lab A"}
-    mod.QInputDialog.getText = staticmethod(lambda *a, **k: (asked["name"], True))
-
-    def snap(step):
-        from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import load_detector_setups
-
-        setups = load_detector_setups()["setups"]
-        log[step] = {"names": sorted(setups), "rows": rows(QT_DB), "setups": {n: norm(s) for n, s in setups.items()}}
-
-    page._on_save_setup()
-    snap("saved")
-    log["public_enabled_after_save"] = page.public_checkbox.isEnabled()
-    page.public_checkbox.setChecked(True)
-    page._on_save_setup()
-    snap("saved_public")
-    add_calibration(QT_DB, "Lab A")
-    page._populate_calibration_combo("Lab A")
-    log["calibration_items"] = [page.calibration_combo.itemText(i) for i in range(page.calibration_combo.count())]
-    page.calibration_combo.addItem(STAMP)  # the Qt combo lists nothing (see test), so add it by hand
-    page.calibration_combo.setCurrentText(STAMP)
-    cells = {}
-    for r in range(page.detectors_form.rowCount()):
-        name = page.detectors_form.item(r, 0).text()
-        cells[name] = [float(page.detectors_form.cellWidget(r, c).text()) for c in (3, 4, 5)]
-    log["calibration_cells"] = cells
-    asked["name"] = "Lab B"
-    page._on_rename_setup()
-    snap("renamed")
-    page._on_delete_setup()
-    snap("deleted")
-    return log
+    """Return the immutable original Qt/MMFDB observations with their independent provenance."""
+    fixture = json.loads((Path(__file__).parent / "fixtures/detector_page_legacy.json").read_text())
+    assert fixture["provenance"]["normal_exit"] is True
+    return fixture["mmfdb_qt"]
 
 
 def run_emtk():
@@ -124,7 +82,7 @@ def run_emtk():
     page = ChannelDefinitionWidget(model=ChannelDefinition(DATA, db=db))
     bar = SetupToolbar(page)
     bar.reload()
-    log = {}
+    log: dict[str, Any] = {}
 
     def snap(step):
         definition = bar.definition

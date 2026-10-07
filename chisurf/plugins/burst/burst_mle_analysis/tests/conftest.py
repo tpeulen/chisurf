@@ -121,7 +121,7 @@ def build_wizard(sample: Path):
     w = MLELifetimeAnalysisWizard()
     QtWidgets.QApplication.processEvents()
     w.channel_definer.load_data_into_tables(CHANNEL_SETTINGS)
-    w.channel_definer.file_type_combo.setCurrentText("SPC-130")
+    w.channel_definer.filetype = "SPC-130"
     w._init_channels_from_wizard()
     w.burst_files_list.add_file(str(sample / BURST_TABLE))
     w.load_burst_data()

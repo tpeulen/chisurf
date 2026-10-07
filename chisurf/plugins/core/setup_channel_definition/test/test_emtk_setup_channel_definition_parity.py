@@ -80,47 +80,21 @@ def data_app(setups_file):
 
 @pytest.fixture
 def qapp():
-    qtpy = pytest.importorskip("qtpy")
+    pytest.importorskip("qtpy")
     from qtpy import QtWidgets
 
     return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
-class QtRef:
-    """The legacy Qt tool on a temporary setups file, with its modal dialogs answered."""
-
-    def __init__(self, page, widget, file, answers):
-        self.page, self.widget, self.file, self.answers = page, widget, file, answers
-
-    def stored(self):
-        data = json.loads(self.file.read_text()) if self.file.exists() else {}
-        return {n: norm(s) for n, s in (data.get("setups") or {}).items()}
-
-    def raw(self):
-        return json.loads(self.file.read_text()) if self.file.exists() else {}
+def legacy_reference():
+    """Load the immutable measured original form, with explicit source provenance."""
+    return json.loads((HERE / "fixtures/detector_page_legacy.json").read_text())
 
 
 @pytest.fixture
-def qt(qapp, tmp_path, monkeypatch):
-    from chisurf.gui import dialogs
-    from chisurf.gui.widgets.wizard.tttr_channeldefinition import tttr_channel_definition as mod
-    from chisurf.plugins.core.setup_channel_definition.gui.tool import SetupChannelDefinitionWidget
-
-    file = tmp_path / "qt_setups.json"
-    file.write_text('{"setups": {}}')
-    monkeypatch.setattr(mod, "DETECTOR_SETUPS_FILE", file)
-    answers = {"name": "", "yes": True}
-    for kind in ("information", "warning", "error"):
-        monkeypatch.setattr(dialogs, kind, lambda *a, **k: None)
-    monkeypatch.setattr(
-        dialogs, "question", lambda *a, **k: mod.QMessageBox.Yes if answers["yes"] else mod.QMessageBox.No
-    )
-    monkeypatch.setattr(mod.QInputDialog, "getText", staticmethod(lambda *a, **k: (answers["name"], bool(answers["name"]))))
-    widget = SetupChannelDefinitionWidget()
-    widget.page._load_data(DATA)
-    ref = QtRef(widget.page, widget, file, answers)
-    yield ref
-    widget.close()
+def legacy():
+    """Provide frozen original Qt outputs without importing the deleted renderer."""
+    return legacy_reference()
 
 
 def stored_emtk(path):
@@ -131,74 +105,49 @@ def stored_emtk(path):
 # ---------------------------------------------------------------------------
 # 1. setup CRUD equals the Qt tool (setups file and MMFDB)
 # ---------------------------------------------------------------------------
-def test_save_rename_delete_in_a_setups_file_equal_the_qt_tool(qt, data_app, setups_file):
+def test_save_rename_delete_equal_frozen_original_file_store(legacy, data_app, setups_file):
+    """Each named-store CRUD state equals the actual pre-retirement Qt output."""
     bar = data_app.toolbar
-    # Save: the same name, the same stored setup.
-    qt.answers["name"] = "Lab A"
-    qt.page._on_save_setup()
     bar.request_save()
     assert bar.dialog == "save" and bar.name_text == ""
     bar.name_text = "Lab A"
     bar.confirm()
-    assert stored_emtk(setups_file) == qt.stored() != {}
-    assert bar.selected == "Lab A" and qt.page.setup_combo.currentText() == "Lab A"
-    # Rename.
-    qt.answers["name"] = "Lab B"
-    qt.page._on_rename_setup()
+    assert stored_emtk(setups_file) == legacy["crud_file"]["saved"]["stored"] != {}
+    assert bar.selected == legacy["crud_file"]["saved"]["selected"] == "Lab A"
     bar.request_rename()
     assert bar.name_text == "Lab A"
     bar.name_text = "Lab B"
     bar.confirm()
-    assert stored_emtk(setups_file) == qt.stored()
-    assert list(qt.stored()) == ["Lab B"] and bar.selected == "Lab B"
-    # Delete (confirmed).
-    qt.page._on_delete_setup()
+    assert stored_emtk(setups_file) == legacy["crud_file"]["renamed"]["stored"]
+    assert bar.selected == "Lab B"
     bar.request_delete()
     assert bar.dialog == "delete"
     bar.confirm()
-    assert stored_emtk(setups_file) == qt.stored() == {}
-    assert bar.selected == "" and qt.page.setup_combo.currentText() == ""
+    assert stored_emtk(setups_file) == legacy["crud_file"]["deleted"]["stored"] == {}
+    assert bar.selected == ""
 
 
-def test_save_stores_every_edit_the_tables_hold(qt, data_app, setups_file):
-    """Detector and window edits are in the stored setup exactly as the Qt tables are."""
+def test_save_stores_every_edit_equal_frozen_original(legacy, data_app, setups_file):
+    """Scientific detector/window edits must equal the original independently captured storage."""
     model = data_app.model
     model.data["detectors"]["red"]["g_factor"] = 2.5
     model.data["detectors"]["green"]["micro_time_ranges"] = [[0, 100], [200, 300]]
     model.data["windows"]["delayed"] = [2000, 4000]
-    row = {qt.page.detectors_form.item(r, 0).text(): r for r in range(qt.page.detectors_form.rowCount())}
-    qt.page._allow_g_update = True  # the Qt cell refuses programmatic G edits otherwise
-    qt.page.detectors_form.cellWidget(row["red"], 3).setText("2.5")
-    qt.page._allow_g_update = False
-    qt.page.detectors_form.cellWidget(row["green"], 2).setText("0:100, 200:300")
-    wrow = {qt.page.windows_form.item(r, 0).text(): r for r in range(qt.page.windows_form.rowCount())}
-    qt.page.windows_form.cellWidget(wrow["delayed"], 1).setText("2000")
-    qt.page.windows_form.cellWidget(wrow["delayed"], 2).setText("4000")
-    qt.answers["name"] = "Edited"
-    qt.page._on_save_setup()
     data_app.toolbar.save("Edited")
-    a, b = stored_emtk(setups_file)["Edited"], qt.stored()["Edited"]
-    for key in a:
-        assert a[key] == b[key], (key, a[key], b[key])
-    assert stored_emtk(setups_file) == qt.stored()
-    assert qt.stored()["Edited"]["detectors"]["red"]["g_factor"] == 2.5
+    assert stored_emtk(setups_file)["Edited"] == legacy["edited"]
+    assert stored_emtk(setups_file)["Edited"]["detectors"]["red"]["g_factor"] == 2.5
 
 
-def test_public_flag_is_stored_with_save_and_survives_a_rename(qt, data_app, setups_file):
+def test_public_flag_is_saved_like_frozen_original_and_survives_rename(legacy, data_app, setups_file):
+    """Native persistence retains the original public flag and its corrected rename behavior."""
     bar = data_app.toolbar
-    assert not bar.can_public()  # nothing saved yet: disabled, as the Qt checkbox
-    assert not qt.page.public_checkbox.isEnabled()
+    assert not bar.can_public()
     bar.save("Mine")
-    assert bar.can_public()
-    qt.answers["name"] = "Mine"
-    qt.page._on_save_setup()
-    assert qt.page.public_checkbox.isEnabled()
-    qt.page.public_checkbox.setChecked(True)
-    qt.page._on_save_setup()
+    assert bar.can_public() is legacy["public_saved"]["public_enabled"] is True
     bar.select_public(True)
     bar.save("Mine")
     assert json.loads(setups_file.read_text())["setups"]["Mine"]["_is_public"] is True
-    assert qt.raw()["setups"]["Mine"]["_is_public"] is True
+    assert legacy["public_saved"]["raw"]["setups"]["Mine"]["_is_public"] is True
     assert data_app.page.public is True
     bar.request_rename()
     bar.name_text = "Ours"
@@ -217,35 +166,25 @@ def test_public_is_available_only_to_the_owner(data_app):
     assert bar.can_public()
 
 
-def test_rename_onto_an_existing_name_asks_and_equals_the_qt_overwrite(qt, data_app, setups_file):
+def test_rename_overwrite_matches_frozen_original_confirmation_states(legacy, data_app, setups_file):
+    """Decline and acceptance retain the original separate confirmation semantics."""
     bar = data_app.toolbar
     for name in ("One", "Two"):
-        qt.answers["name"] = name
-        qt.page._on_save_setup()
         bar.save(name)
-    qt.page.setup_combo.setCurrentText("One")
     bar.select("One")
-    # declined: nothing changes, in both
-    qt.answers.update(name="Two", yes=False)
-    before = qt.stored()
-    qt.page._on_rename_setup()
     bar.request_rename()
     bar.name_text = "Two"
     bar.confirm()
     assert bar.dialog == "overwrite"
     bar.cancel()
-    assert qt.stored() == before and stored_emtk(setups_file) == before
+    assert stored_emtk(setups_file) == legacy["overwrite_declined"]["stored"]
     assert bar.selected == "One"
-    # accepted: One replaces Two
-    qt.answers["yes"] = True
-    qt.page._on_rename_setup()
     bar.request_rename()
     bar.name_text = "Two"
     bar.confirm()
     assert bar.dialog == "overwrite"
     bar.confirm()
-    assert list(qt.stored()) == ["Two"] == list(stored_emtk(setups_file))
-    assert stored_emtk(setups_file) == qt.stored()
+    assert stored_emtk(setups_file) == legacy["overwrite_accepted"]["stored"]
     assert bar.selected == "Two"
 
 
@@ -362,41 +301,37 @@ def test_calibration_latest_is_a_no_op_and_a_snapshot_applies_to_named_detectors
 # ---------------------------------------------------------------------------
 # 2. detectors and windows through the shared editor
 # ---------------------------------------------------------------------------
-def test_qt_and_emtk_hold_the_same_detectors_and_windows_for_the_same_setup(qt, data_app):
-    assert norm(qt.page.get_settings()) == norm(data_app.get_settings())
+def test_native_holds_frozen_original_detectors_windows_and_timing(legacy, data_app):
+    """The same source setup has the immutable original scientific values."""
+    assert norm(data_app.get_settings()) == legacy["initial"]
 
 
 # ---------------------------------------------------------------------------
 # 3. reading a TTTR measurement
 # ---------------------------------------------------------------------------
-def test_reading_the_bh_sample_gives_the_timing_and_decays_the_qt_tool_shows(qt, data_app, measurement, monkeypatch):
-    from chisurf.gui.widgets.wizard.tttr_channeldefinition import tttr_channel_definition_tttr_io as tio
-
-    monkeypatch.setattr(tio.QFileDialog, "getOpenFileName", staticmethod(lambda *a, **k: (str(measurement), "")))
-    qt.page._read_from_tttr_file()
+def test_reading_the_physical_bh_sample_matches_frozen_original(legacy, data_app, measurement):
+    """The real measurement's header and every routing histogram equal the original Qt output."""
+    import hashlib
+    expected = legacy["reading"]
+    assert hashlib.sha256(measurement.read_bytes()).hexdigest() == expected["source_sha256"]
     driver.populate(data_app, measurement)
     reading = data_app.model.data["tttr_reading"]
-    assert reading["macro_time_resolution"] == pytest.approx(float(qt.page.macro_time_le.text()), rel=1e-12)
-    assert reading["micro_time_resolution"] == pytest.approx(float(qt.page.micro_time_le.text()), rel=1e-12)
-    assert reading["macro_time_resolution"] == pytest.approx(13.5)
-    assert reading["micro_time_resolution"] == pytest.approx(3.2958984375)
-    assert sorted(data_app.model.preview) == sorted(qt.page._microtime_per_channel_counts) == [0, 1, 8, 9]
-    for channel, counts in qt.page._microtime_per_channel_counts.items():
-        np.testing.assert_array_equal(data_app.model.preview[channel], counts)
+    assert reading["macro_time_resolution"] == pytest.approx(expected["macro"], rel=1e-12)
+    assert reading["micro_time_resolution"] == pytest.approx(expected["micro"], rel=1e-12)
+    assert sorted(data_app.model.preview) == sorted(map(int, expected["counts"])) == [0, 1, 8, 9]
+    for channel, counts in expected["counts"].items():
+        np.testing.assert_array_equal(data_app.model.preview[int(channel)], counts)
     assert sum(float(c.sum()) for c in data_app.model.preview.values()) > 1000
-    # the effective tick and the excitation period, as in the Qt "Eff. microtime" field
     settings = data_app.get_settings()["tttr_reading"]
-    assert settings["effective_micro_time_resolution"] == pytest.approx(float(qt.page.effective_micro_time_le.text()), rel=1e-5)
+    assert settings["effective_micro_time_resolution"] == pytest.approx(expected["effective"], rel=1e-5)
     assert settings["excitation_period"] == pytest.approx(13.5)
     assert data_app.page.status == "Header timing and per-routing-channel decay histograms loaded."
 
 
-def test_binning_scales_the_effective_tick_like_the_qt_combo(qt, data_app):
+def test_binning_scales_effective_tick_like_frozen_original(legacy, data_app):
+    """The original four-fold binning value is retained without any Qt combo adapter."""
     data_app.model.data["tttr_reading"]["micro_time_binning"] = 4
-    qt.page.micro_binning_combo.setCurrentText("4")
-    assert data_app.get_settings()["tttr_reading"]["effective_micro_time_resolution"] == pytest.approx(
-        float(qt.page.effective_micro_time_le.text()), rel=1e-6
-    )
+    assert data_app.get_settings()["tttr_reading"]["effective_micro_time_resolution"] == pytest.approx(legacy["binning4_effective"], rel=1e-6)
 
 
 def test_reading_something_that_is_not_a_measurement_reports_and_keeps_the_timing(data_app, tmp_path):
@@ -412,7 +347,9 @@ def test_reading_something_that_is_not_a_measurement_reports_and_keeps_the_timin
 
 
 @pytest.mark.parametrize("file_type", ["SPC-130", "Auto", "PTU", "PTO"])
-def test_a_file_that_is_not_photon_data_is_refused_whatever_the_file_type(qt, data_app, tmp_path, file_type):
+def test_a_file_that_is_not_photon_data_is_refused_whatever_the_file_type(
+    data_app, tmp_path, file_type
+):
     """Qt detects the container from the file and refuses what it cannot read; so does the editor, keeping the timing."""
     bad = tmp_path / "not_a_measurement.ptu"
     bad.write_text("this is not photon data")
@@ -447,25 +384,16 @@ def _lut_file(tmp_path):
     return path
 
 
-def test_assigning_a_lut_stores_it_and_switches_the_gate_on_like_qt(qt, data_app, measurement, tmp_path, monkeypatch):
+def test_assigned_lut_and_gate_equal_frozen_original(legacy, data_app, measurement, tmp_path):
+    """The actual LUT file, routing rows and enable rule preserve the original values."""
     from chisurf.core.fio.lut_context import get_active_setup_lut
-    from chisurf.gui.widgets.wizard.tttr_channeldefinition import tttr_channel_definition as mod
-
+    expected = legacy["assigned_lut"]
     lut = _lut_file(tmp_path)
-    monkeypatch.setattr(mod.QFileDialog, "getOpenFileName", staticmethod(lambda *a, **k: (str(lut), "")))
-    qt.page._lut_table.setCurrentCell(0, 0)
-    channel = int(qt.page._lut_table.item(0, 0).text())
-    qt.page._on_assign_lut_file()
-    assert qt.page._apply_lut is True
-
+    channel = expected["channel"]
     data_app.model.assign_lut(channel, str(lut))
-    assert data_app.model.data["apply_lut"] is True  # the toolbar model applies the Qt rule
-    np.testing.assert_array_equal(data_app.model.data["channel_luts"][str(channel)], qt.page._channel_luts[channel])
-    assert norm(data_app.get_settings())["apply_lut"] is norm(qt.page.get_settings())["apply_lut"] is True
-    # the LUT rows the Qt table lists are the routing channels of the detectors
-    assert [int(qt.page._lut_table.item(r, 0).text()) for r in range(qt.page._lut_table.rowCount())] == sorted(
-        {c for d in DATA["detectors"].values() for c in d["chs"]}
-    )
+    assert data_app.model.data["apply_lut"] is expected["apply"] is True
+    np.testing.assert_array_equal(data_app.model.data["channel_luts"][str(channel)], expected["values"])
+    assert expected["rows"] == sorted({c for d in data_app.model.data["detectors"].values() for c in d["chs"]})
     luts, _shifts, apply = get_active_setup_lut()
     assert apply and channel in {int(k) for k in luts}
 

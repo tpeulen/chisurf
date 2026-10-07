@@ -40,6 +40,8 @@ class SetupChannelDefinitionApp(ImApp):
         db: Any = None,
         autoload: bool = True,
         open_last_used: bool | None = None,
+        visibility: dict | None = None,
+        on_definition_saved: Any = None,
     ) -> None:
         fresh = settings is None and model is None
         if model is None:
@@ -47,9 +49,8 @@ class SetupChannelDefinitionApp(ImApp):
                 default_settings() if settings is None else settings, file_path=file_path, db=db
             )
         self._on_changed = on_changed
-        self.page = ChannelDefinitionWidget(
-            model=model, on_changed=self._model_changed, host_app=self
-        )
+        self.page = ChannelDefinitionWidget(model=model, on_changed=self._model_changed, host_app=self,
+                                             visibility=visibility, on_definition_saved=on_definition_saved)
         self.model = self.page.model
         #: Rectangles of the named controls (tests, guided tours, embedding hosts): the page's and this app's.
         self.item_rects: dict[str, tuple] = self.page.item_rects
@@ -97,6 +98,8 @@ class SetupChannelDefinitionApp(ImApp):
 
     def _draw_strip(self) -> None:
         """The host's Guide and Help buttons, at the right above the page (as the Qt settings window has them)."""
+        if not self.page.is_visible("help"):
+            return
         width = self._width("Guide") + self._width("Help") + im.get_style().item_spacing[0]
         im.dummy(max(im.get_content_region_avail()[0] - width - im.get_style().item_spacing[0], 0.0), 1.0)
         im.same_line()

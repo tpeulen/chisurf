@@ -1,0 +1,287 @@
+{
+  "source": "Frozen original Qt tool on measured m000/m001; original raw samples, not log/downsampled display values.",
+  "metadata": {
+    "n_files": 2,
+    "n_bursts": 198,
+    "n_selected": 45868,
+    "n_photons": 353909
+  },
+  "panes": {
+    "histogram": {
+      "items": [
+        {
+          "kind": "bars",
+          "x": {
+            "shape": [
+              61
+            ],
+            "sha256": "9a26ac895a1ad04c797f8b36b71fddea7a351b0d53cc7d3597e18812187476d7"
+          },
+          "height": {
+            "shape": [
+              61
+            ],
+            "sha256": "e42ee54b5483f8043dccc320323e5059a8f88241dc5aecd987c4793b6767f609"
+          },
+          "width": 0.01639344262295082
+        }
+      ],
+      "labels": {
+        "left": {
+          "text": "Frequency",
+          "units": "",
+          "si": true
+        },
+        "bottom": {
+          "text": "Proximity Ratio",
+          "units": "",
+          "si": true
+        }
+      },
+      "log": [
+        false,
+        false
+      ]
+    },
+    "filter": {
+      "items": [
+        {
+          "kind": "curve",
+          "x": {
+            "shape": [
+              23975
+            ],
+            "sha256": "84a206dcdf0d25978a3d65bd4cbed93d1ab0ad9f6a7143104339014952b79193"
+          },
+          "y": {
+            "shape": [
+              23975
+            ],
+            "sha256": "802c6a5661b80c9462bd36f21c8c00c016e4d9fada3afcce2ede635f0b06a83c"
+          }
+        },
+        {
+          "kind": "curve",
+          "x": {
+            "shape": [
+              1660
+            ],
+            "sha256": "1228abe6954a58181253a4f53c916dbd88e34a04c99faf146f9558e0d6cee18a"
+          },
+          "y": {
+            "shape": [
+              1660
+            ],
+            "sha256": "899bca16b4ffdf552f0fee23c673542bdae12f3333e1e3f3115ebb348434b2d8"
+          }
+        }
+      ],
+      "labels": {
+        "left": {
+          "text": "Selected",
+          "units": "",
+          "si": true
+        },
+        "bottom": {
+          "text": "Photon Index",
+          "units": "",
+          "si": true
+        }
+      },
+      "log": [
+        false,
+        false
+      ]
+    },
+    "mcs": {
+      "items": [
+        {
+          "kind": "curve",
+          "x": {
+            "shape": [
+              40005
+            ],
+            "sha256": "c8ba3909ffa46d94d235b6d4ea35d9b38309a12139bb1d2919c91240f9800de3"
+          },
+          "y": {
+            "shape": [
+              40005
+            ],
+            "sha256": "d59bb18eede69a0747b2ab9f2f25dcf7bd289c109965e79bb35cde9b7ae76434"
+          }
+        },
+        {
+          "kind": "curve",
+          "x": {
+            "shape": [
+              38152
+            ],
+            "sha256": "9fa5c6dbf0505e162a2e84ef1e33c088da44bcff40188fab27c1b506080b465c"
+          },
+          "y": {
+            "shape": [
+              38152
+            ],
+            "sha256": "1415152d7af3aed14d4bf886f165f8bd1b66b08ef8ef91d0d32135c1456f2b32"
+          }
+        }
+      ],
+      "labels": {
+        "left": {
+          "text": "Count rate",
+          "units": "Hz",
+          "si": true
+        },
+        "bottom": {
+          "text": "Time (s)",
+          "units": "",
+          "si": true
+        }
+      },
+      "log": [
+        false,
+        false
+      ]
+    },
+    "decay": {
+      "items": [
+        {
+          "kind": "curve",
+          "x": {
+            "shape": [
+              458
+            ],
+            "sha256": "5bf4ba5e3afdb3c9b804b7184300fdf12277a7ef51977be8335f56ceeba964c0"
+          },
+          "y": {
+            "shape": [
+              458
+            ],
+            "sha256": "499bc1e4a198c48611e5cdbc877d7d56bcc2a7b1697eff316e8d593accd2f21d"
+          }
+        },
+        {
+          "kind": "curve",
+          "x": {
+            "shape": [
+              457
+            ],
+            "sha256": "8265b8ab259fcc6e3e2d1588949f4a66b3b9e244067cf8660473429097021f1d"
+          },
+          "y": {
+            "shape": [
+              457
+            ],
+            "sha256": "8eec19bab1229fb6bdad6d34da1d37a95909b0c5748099cc054ec4630e02df23"
+          }
+        }
+      ],
+      "labels": {
+        "left": {
+          "text": "Counts",
+          "units": "",
+          "si": true
+        },
+        "bottom": {
+          "text": "Microtime (ns)",
+          "units": "",
+          "si": true
+        }
+      },
+      "log": [
+        false,
+        true
+      ]
+    },
+    "burst": {
+      "items": [
+        {
+          "kind": "bars",
+          "x": {
+            "shape": [
+              51
+            ],
+            "sha256": "ea2d3789c16e6aeba86c6a14d6a9dea14a58ba4ebcffeb75315d46ffcef7ed82"
+          },
+          "height": {
+            "shape": [
+              51
+            ],
+            "sha256": "dd408098cf8d541ab1990f9af084f4a9216ae531033d1b2ba3f32276b2b2f91b"
+          },
+          "width": 0.09853279411764682
+        },
+        {
+          "kind": "text",
+          "text": "Total bursts: 8"
+        }
+      ],
+      "labels": {
+        "left": {
+          "text": "Frequency",
+          "units": "",
+          "si": true
+        },
+        "bottom": {
+          "text": "Burst duration",
+          "units": "ms",
+          "si": true
+        }
+      },
+      "log": [
+        false,
+        false
+      ]
+    },
+    "dt": {
+      "items": [
+        {
+          "kind": "curve",
+          "x": {
+            "shape": [
+              23975
+            ],
+            "sha256": "84a206dcdf0d25978a3d65bd4cbed93d1ab0ad9f6a7143104339014952b79193"
+          },
+          "y": {
+            "shape": [
+              23975
+            ],
+            "sha256": "cae1d661dd43251dce3980da1ca400f70da83efedd5cffe94f3aadd03d3dd4e5"
+          }
+        },
+        {
+          "kind": "curve",
+          "x": {
+            "shape": [
+              1660
+            ],
+            "sha256": "1228abe6954a58181253a4f53c916dbd88e34a04c99faf146f9558e0d6cee18a"
+          },
+          "y": {
+            "shape": [
+              1660
+            ],
+            "sha256": "44c43670a61d9b6c6c69efaa826f4f0ad94fec2f7b52a9dc0ea0c22af81523db"
+          }
+        }
+      ],
+      "labels": {
+        "left": {
+          "text": "dT (ms)",
+          "units": "",
+          "si": true
+        },
+        "bottom": {
+          "text": "Photon Index",
+          "units": "",
+          "si": true
+        }
+      },
+      "log": [
+        false,
+        true
+      ]
+    }
+  }
+}

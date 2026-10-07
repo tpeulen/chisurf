@@ -11,6 +11,8 @@ import pathlib
 import numpy as np
 import pytest
 
+from test.gui.test_detector_native_callers import isolated_detector_settings, native_driver
+
 _SPC = (
     pathlib.Path(__file__).resolve().parents[2]
     / "test"
@@ -54,7 +56,7 @@ def lut_setup(tmp_path):
 
 
 def _page(json_file):
-    from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_channel_definition import (
+    from chisurf.gui.widgets.wizard.tttr_channeldefinition import (
         DetectorWizardPage,
     )
 
@@ -62,28 +64,34 @@ def _page(json_file):
 
 
 def test_foldable_boxes_and_lut_box_present(qapp, lut_setup):
+    """The native section controls actually collapse and reopen the reading fields."""
     page = _page(lut_setup)
-    assert page._box_reading is not None
-    assert page._box_windows is not None
-    assert page._box_detectors is not None
-    assert page._box_lut is not None
-    assert page._box_reading.title() == "TTTR Reading routine"
-    assert page._box_lut.title().startswith("LUT handling")
+    try:
+        ui = native_driver(page)
+        ui.draw(2)
+        assert {"section_reading", "section_windows", "section_detectors", "section_lut"} <= set(ui.ids())
+        assert "file_type" in ui.ids()
+        ui.click("section_reading")
+        assert "file_type" not in ui.ids()
+        ui.click("section_reading")
+        assert "file_type" in ui.ids() and "apply_lut" in ui.ids()
+    finally:
+        page.close()
 
 
 def test_lut_box_reflects_setup(qapp, lut_setup):
+    """The real native LUT rows display the loaded sources and routing-channel union."""
     page = _page(lut_setup)
-    assert page._apply_lut_checkbox.isChecked() is True
-    # channels union of both detectors: 0, 1, 8, 9
-    chans = [int(page._lut_table.item(r, 0).text()) for r in range(page._lut_table.rowCount())]
-    assert chans == [0, 1, 8, 9]
-    # channel 0 shows its assigned source, others none
-    labels = {
-        int(page._lut_table.item(r, 0).text()): page._lut_table.item(r, 1).text()
-        for r in range(page._lut_table.rowCount())
-    }
-    assert labels[0] == "uniform.spc"
-    assert labels[1] == "— none —"
+    try:
+        ui = native_driver(page)
+        ui.draw(2)
+        assert page.model.data["apply_lut"] is True
+        rows = page.editor.lut_rows()
+        assert [int(row["channel"]) for row in rows] == [0, 1, 8, 9]
+        labels = {int(row["channel"]): row["lut"] for row in rows}
+        assert labels[0] == "uniform.spc" and labels[1] == "— none —"
+    finally:
+        page.close()
 
 
 def test_get_settings_round_trips_lut_keys(qapp, lut_setup):
@@ -95,97 +103,114 @@ def test_get_settings_round_trips_lut_keys(qapp, lut_setup):
     assert s["channel_shifts"]["8"] == 3
 
 
-@pytest.mark.skipif(not _SPC.is_file(), reason="sample SPC not available")
-def test_microtime_preview_applies_lut(qapp, tmp_path):
-    """The decay preview reflects the configured LUT (regression: it read raw)."""
-    from chisurf.plugins.tttr.tttr_lut_tools.api import compute
+def _wait_preview(page, ui):
+    """Wait only for this actual editor's preview worker and render its completed result."""
+    import time
+    deadline = time.monotonic() + 15
+    while page.editor._future is not None and time.monotonic() < deadline:
+        ui.draw(1)
+        time.sleep(0.01)
+    assert page.editor._future is None
+    ui.draw(2)
 
-    data = {
-        "windows": {"p": [0, 2048]},
-        "detectors": {"g": {"chs": [0]}},
-        "tttr_reading": {"file_type": "SPC-130"},
-    }
+
+def test_microtime_preview_applies_lut(qapp, tmp_path):
+    """The physical preview follows the actual LUT gate and returns exactly to raw counts."""
+    from chisurf.plugins.tttr.tttr_lut_tools.api import compute
+    data = {"windows": {"p": [0, 2048]}, "detectors": {"g": {"chs": [0]}},
+            "tttr_reading": {"file_type": "SPC-130"}}
     setup = tmp_path / "s.json"
     setup.write_text(json.dumps(data))
     page = _page(str(setup))
-    page._microtime_decay_file_path = str(_SPC)
-
-    page._apply_lut = False
-    page._refresh_preview_lut()
-    raw = np.asarray(page._microtime_counts).copy()
-
-    tbl = compute.compute_lut_from_files(
-        [str(_SPC)], channel=0, linear_start=1500, linear_stop=3000
-    )
-    page._channel_luts[0] = np.asarray(tbl["NTAC_fract"])
-    page._apply_lut = True
-    page._refresh_preview_lut()
-    corrected = np.asarray(page._microtime_counts)
-
-    n = min(raw.size, corrected.size)
-    assert not np.array_equal(raw[:n], corrected[:n])  # LUT changed the decay
-    # toggling the gate off returns the raw decay
-    page._apply_lut = False
-    page._refresh_preview_lut()
-    assert np.array_equal(raw, np.asarray(page._microtime_counts))
+    try:
+        page.model.read_tttr(str(_SPC))
+        raw = page.model.preview[0].copy()
+        table = compute.compute_lut_from_files([str(_SPC)], channel=0, linear_start=1500, linear_stop=3000)
+        correction = tmp_path / "computed.npy"
+        np.save(correction, table["NTAC_fract"])
+        page.model.assign_lut(0, correction)
+        page.editor.refresh_preview()
+        ui = native_driver(page)
+        _wait_preview(page, ui)
+        assert not np.array_equal(raw, page.model.preview[0])
+        ui.click("apply_lut")
+        _wait_preview(page, ui)
+        assert np.array_equal(raw, page.model.preview[0])
+    finally:
+        page.close()
 
 
 def test_assigning_a_lut_auto_enables_apply(qapp, tmp_path):
-    """General rule: adding a LUT turns the master gate ON (else it's never applied)."""
+    """A real assigned LUT enables its master gate rather than storing an unused correction."""
     data = {"detectors": {"g": {"chs": [0]}}, "tttr_reading": {"file_type": "SPC-130"}}
     setup = tmp_path / "s.json"
     setup.write_text(json.dumps(data))
     page = _page(str(setup))
-    assert page._apply_lut is False
+    try:
+        assert page.get_settings()["apply_lut"] is False
+        correction = tmp_path / "correction.npy"
+        np.save(correction, np.linspace(0, 4096, 4096))
+        page.model.assign_lut(0, correction)
+        native_driver(page).draw(2)
+        assert page.get_settings()["apply_lut"] is True
+        assert page.model.data["channel_luts"]["0"] == np.load(correction).tolist()
+    finally:
+        page.close()
 
-    class _Panel:
-        class settings_panel:
-            channel_luts = {0: np.linspace(0, 4096, 4096)}
-            channel_shifts = {}
 
-    page._pull_luts_from_panel(_Panel())
-    assert page._apply_lut is True
-    assert page._apply_lut_checkbox.isChecked() is True
-    assert page.get_settings()["apply_lut"] is True
-
-
-@pytest.mark.skipif(not _SPC.is_file(), reason="sample SPC not available")
-def test_shift_dialog_loads_lut_corrected_and_round_trips(qapp):
-    """The visual shift adjuster opens LUT-corrected and returns per-channel shifts."""
-    from chisurf.gui.widgets.wizard.tttr_channeldefinition.shift_dialog import (
-        MicrotimeShiftDialog,
-    )
-
-    ntac = np.linspace(0, 4096, 4096)
-    dlg = MicrotimeShiftDialog(
-        str(_SPC),
-        routine="SPC-130",
-        channel_luts={0: ntac, 1: ntac},
-        channel_shifts={0: 5},
-        apply_lut=True,
-    )
-    assert len(dlg._hists) > 1  # per-channel histograms
-    assert dlg._spins[0].value() == 5  # seeded from current shifts
-    dlg._spins[1].setValue(10)
-    assert dlg.shifts() == {0: 5, 1: 10}
+def test_shift_dialog_loads_lut_corrected_and_round_trips(qapp, tmp_path):
+    """The real native shift modal edits corrected physical histograms and persists its draft."""
+    from emtk.events import CONTROL_MODIFIER
+    from emtk.keys import KEY_RETURN
+    setup = tmp_path / "s.json"
+    setup.write_text(json.dumps({"detectors": {"g": {"chs": [0, 1]}},
+                                "tttr_reading": {"file_type": "SPC-130"},
+                                "channel_luts": {"0": np.linspace(0, 4096, 4096).tolist(),
+                                                 "1": np.linspace(0, 4096, 4096).tolist()},
+                                "channel_shifts": {"0": 5}, "apply_lut": True}))
+    page = _page(str(setup))
+    try:
+        page.model.read_tttr(str(_SPC))
+        ui = native_driver(page)
+        ui.draw(2)
+        ui.click("Adjust shifts...")
+        assert page.editor.shift_window.open and len(page.model.preview) > 1
+        assert page.editor._shift_draft[0] == 5
+        ui.click("shift_1")
+        ui.key(0x41, "a", CONTROL_MODIFIER)
+        ui.type("10")
+        ui.press(KEY_RETURN)
+        ui.click("OK")
+        assert not page.editor.shift_window.open
+        assert page.get_settings()["channel_shifts"] == {"0": 5, "1": 10}
+    finally:
+        page.close()
 
 
 def test_polarization_resolved_flag_defaults_on_and_round_trips(qapp, tmp_path):
+    """An actual native checkbox persists the portable polarization flag."""
     data = {"detectors": {"g": {"chs": [0]}}, "tttr_reading": {"file_type": "SPC-130"}}
     setup = tmp_path / "s.json"
     setup.write_text(json.dumps(data))
     page = _page(str(setup))
-    # default ON (no key in the setup)
-    assert page._polarization_resolved is True
-    assert page._pol_resolved_checkbox.isChecked() is True
-    assert page.get_settings()["polarization_resolved"] is True
-    # toggle off -> persisted
-    page._pol_resolved_checkbox.setChecked(False)
-    assert page.get_settings()["polarization_resolved"] is False
+    try:
+        ui = native_driver(page)
+        ui.draw(2)
+        assert page.get_settings()["polarization_resolved"] is True
+        ui.click("polarization")
+        assert page.get_settings()["polarization_resolved"] is False
+    finally:
+        page.close()
 
 
 def test_toggle_apply_lut_updates_state(qapp, lut_setup):
+    """The real checkbox changes the owning model and exported portable settings."""
     page = _page(lut_setup)
-    page._apply_lut_checkbox.setChecked(False)
-    assert page._apply_lut is False
-    assert page.get_settings()["apply_lut"] is False
+    try:
+        ui = native_driver(page)
+        ui.draw(2)
+        ui.click("apply_lut")
+        assert page.model.data["apply_lut"] is False
+        assert page.get_settings()["apply_lut"] is False
+    finally:
+        page.close()

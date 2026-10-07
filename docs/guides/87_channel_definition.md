@@ -9,13 +9,23 @@ micro-time tick) and whether a **TAC linearization table (LUT)** has to be appli
 name, so a tool only has to be told which setup to use. Micro-time ranges are in **raw micro-time channels** of the file
 (not divided by the binning): a range `0:256` on data that spans `0:4095` selects almost no photons.
 
+The [detector-setup concept](../concepts/detector_setup.md) explains the routing,
+raw-channel gates, timing units and calibration assumptions. Existing ChiSurf
+windows and wizard pages host the same native editor; their surrounding Qt
+navigation does not provide a second detector-definition implementation.
+
 ## 1. The page
 
 ```{figure} figures/channel_definition_page.png
 :name: fig-channel-definition-page
 :width: 100%
 
-The editor with a BH SPC-132 measurement read: Setup row, TTTR Reading routine, Detectors (PIE Windows is folded), LUT handling and Optical Setup....
+The native page after reading the measured BH SPC-132 fixture, with an explicit
+validation definition: green routes 0/1 and red routes 8/9, two detectors and
+raw-channel PIE windows. The provider/header-derived 13.5 ns macro-time and
+3.2958984375 ps micro-time values are not independently verified instrument
+calibration. An identity LUT and channel-1 shift of +2 demonstrate preservation
+of configured corrections, not a measured TAC calibration.
 ```
 
 One page, four folding sections (click a header to fold it; which are open is remembered):
@@ -62,6 +72,35 @@ keeps the old value and says so in the status line.
 
 A drop works too: drop a measurement on the window to read it, a `.json` file to switch to that setups library.
 
+### Save a setup, export a definition or export a library
+
+The Setup row's **Save** persists the working definition under a setup name.
+**Save definition...**, where the hosting workflow exposes it, exports one
+complete working definition as JSON, including its additional metadata.
+**Import setups library...** and **Export setups library...** instead read or
+write the named library and its last-used selection. A definition input file
+and the named-library destination are separate.
+
+In a wizard that starts with **Finish** disabled, only a successful complete
+definition export enables Finish. Cancelling the file chooser, a write error,
+or named Setup **Save** leaves that completion state unchanged. The definition
+export may also update the selected saved setup when the current actor owns it;
+if that follow-on save fails, the export file may already exist, but Finish is
+not enabled. Existing embedded callers retain their own initial completion
+policy.
+
+```{figure} figures/channel_definition_wizard_after_export.png
+:name: fig-channel-definition-wizard-export
+:width: 100%
+
+The real enclosing wizard after **Save definition...** exports the complete
+working JSON: the status confirms success and **Finish** is enabled. Its native
+page area is 1396×898, with the same two-detector BH validation definition,
+provider-derived timing and +2 channel shift. No named setup was saved here;
+the Setup row still says Unsaved. Definition export and named Setup Save are
+distinct operations.
+```
+
 ## 4. From Python
 
 ```python
@@ -72,6 +111,49 @@ setup.refresh_setups()
 setup.select_setup("ALEX Suite (auto)")
 settings = setup.get_settings()          # detectors, windows, tttr_reading, LUTs, optical setup
 ```
+
+`ChannelDefinition.export_definition(path, update_named=False)` writes a
+complete portable definition; updating a named setup is an explicit separate
+option. `save_setup(name, public=False)` uses the existing named store and
+ownership rules. These operations retain unknown metadata rather than
+reconstructing a reduced detector-only object.
+
+### Developer API for an embedded native page
+
+The public `DetectorWizardPage` is a thin wizard-page host around the actual
+native app and portable model. Consumers use `get_settings()`, `set_settings()`,
+`channels()`, `detectors`, `windows`, `tttr_reading`, `update_detector(name,
+values)`, `available_setups()` and `select_setup(name)`. Read a measurement with
+`read_tttr(path)` and observe its asynchronous state through `read_running` and
+`poll_read()`. A real definition edit emits `detectorsChanged`; micro-time
+binning has its separate `micro_time_binningChanged` signal. Identical detector
+updates are no-ops. Consumers should not reach into Qt table/combo-box fields.
+
+The eight constructor visibility flags control existing native actions:
+
+| Flag | Exposed controls |
+| --- | --- |
+| `show_edit_json` | Complete working-definition JSON editor |
+| `show_save` | **Save definition...** export action |
+| `show_setups_file` | Named-library import/export actions |
+| `show_setup_selection` | Setup selection and named Save/Rename/Delete/Public/Calibration toolbar |
+| `show_help` | Page help |
+| `show_tttr_reading` | Reading routine, timing and preview controls |
+| `show_tables` | PIE-window and detector sections and related table-toolbar controls |
+| `show_add_inputs` | Add-window and add-detector inputs/actions |
+
+These flags change visibility, not stored definitions or analysis defaults.
+`model`, `settings`, `json_file` and `setups_file` choose the injected working
+model/definition or library source; `allow_finish=False` requests the
+successful-export completion policy described above.
+
+The semantic `effective_micro_time_resolution` getter is in **picoseconds**,
+including micro-time binning; `excitation_period` is in **nanoseconds**. A
+consumer requiring ns converts that ps value once by multiplying by 0.001;
+a provider/header path that already returns ns must not be converted again.
+Acquisition provenance remains separate from an unsaved timing initializer.
+See the [microtime workflow](89_microtime_histogram.md) for qualified provider
+timing and [Burst MLE](21_lifetime_from_bursts.md) for its analysis workflow.
 
 
 ## 5. Edit the complete working definition

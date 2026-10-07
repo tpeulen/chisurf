@@ -714,92 +714,58 @@ def qapp():
 
 
 @pytest.fixture
-def qt_page(qapp, tmp_path, monkeypatch):
-    from chisurf.gui import dialogs
-    from chisurf.gui.widgets.wizard.tttr_channeldefinition import tttr_channel_definition as mod
-    from chisurf.plugins.core.setup_channel_definition.gui.tool import SetupChannelDefinitionWidget
-
-    file = tmp_path / "qt_setups.json"
-    file.write_text('{"setups": {}}')
-    monkeypatch.setattr(mod, "DETECTOR_SETUPS_FILE", file)
-    for kind in ("information", "warning", "error"):
-        monkeypatch.setattr(dialogs, kind, lambda *a, **k: None)
-    widget = SetupChannelDefinitionWidget()
-    widget.page._load_data(DATA)
-    yield widget.page
-    widget.close()
+def legacy_reference():
+    """Read immutable original Qt outputs, not a native implementation as its own oracle."""
+    return json.loads((HERE / "fixtures/detector_page_legacy.json").read_text())
 
 
-def _qt_cell(page, name, column):
-    rows = {page.detectors_form.item(r, 0).text(): r for r in range(page.detectors_form.rowCount())}
-    return page.detectors_form.cellWidget(rows[name], column)
+def _legacy_detector(expected):
+    """Normalize frozen Qt tuples and nullable ranges into the portable scientific shape."""
+    return {"chs": expected["chs"], "micro_time_ranges": expected["micro_time_ranges"],
+            "g_factor": expected["g_factor"], "l1": expected["l1"], "l2": expected["l2"]}
 
 
-def test_every_cell_text_gives_the_same_detector_as_the_qt_table(make, qt_page):
-    """The same texts typed into the Qt cells and into the emtk table end in the same stored detector."""
+def test_every_cell_text_gives_the_same_detector_as_the_frozen_qt_table(make, legacy_reference):
+    """Each real original Qt parsing state remains an independent numerical oracle."""
     app, ui = make()
-    page = qt_page
-    page._allow_g_update = True
-    typed = [
-        ("green", 1, "9;1;2", "chs"), ("green", 2, "20:10", "ranges"), ("red", 2, "5:5", "ranges"), ("red", 2, "0:10;20:30", "ranges"),
-        ("green", 3, "2.5", "g"), ("red", 4, "0.125", "l1"), ("red", 5, "-0.25", "l2"), ("green", 6, "100-200", "gch"),
-        ("green", 1, "", "chs"), ("green", 1, "a,b", "chs"), ("red", 2, "7, 9:3, x, 12-14", "ranges"),
-    ]
-    for name, column, text, key in typed:
-        cell = _qt_cell(page, name, column)
-        cell.setText(text)
-        cell.editingFinished.emit()
+    for case in legacy_reference["cell_edits"]:
+        name, text, key = case["name"], case["text"], case["key"]
         record = next(r for r in app.page.detector_rows() if r["id"] == name)
         app.page.edit_detector(record, key, text)
-        qt_settings = page.get_settings()["detectors"][name]
+        expected = case["expected"]
         mine = app.model.data["detectors"][name]
-        assert mine["chs"] == qt_settings["chs"], (name, key, text)
-        assert mine["micro_time_ranges"] == [list(r) for r in qt_settings["micro_time_ranges"]], (name, key, text)
-        assert mine["g_factor"] == pytest.approx(qt_settings["g_factor"])
-        assert mine["l1"] == pytest.approx(qt_settings["l1"]) and mine["l2"] == pytest.approx(qt_settings["l2"])
-        assert mine.get("g_factor_channels") == qt_settings.get("g_factor_channels")
+        assert mine["chs"] == expected["chs"], (name, key, text)
+        assert mine["micro_time_ranges"] == expected["micro_time_ranges"], (name, key, text)
+        for quantity in ("g_factor", "l1", "l2"):
+            assert mine[quantity] == pytest.approx(expected[quantity]), (name, key, text, quantity)
+        assert mine.get("g_factor_channels") == expected.get("g_factor_channels")
 
 
-def test_window_start_and_end_texts_give_the_same_windows_as_the_qt_table(make, qt_page):
+def test_window_start_and_end_texts_give_the_same_windows_as_frozen_qt(make, legacy_reference):
+    """The original Qt three-edit window result remains independent of native parsing."""
     app, ui = make()
-    page = qt_page
-    rows = {page.windows_form.item(r, 0).text(): r for r in range(page.windows_form.rowCount())}
-    for name, column, text, key in (("prompt", 1, "10", "start"), ("prompt", 2, "300", "end"), ("delayed", 1, "2100", "start")):
-        page.windows_form.cellWidget(rows[name], column).setText(text)
+    for name, text, key in (("prompt", "10", "start"), ("prompt", "300", "end"), ("delayed", "2100", "start")):
         record = next(r for r in app.page.window_rows() if r["id"] == name)
         app.page.edit_window(record, key, text)
-    assert {k: list(v) for k, v in page.get_settings()["windows"].items()} == app.model.data["windows"]
+    assert app.model.data["windows"] == legacy_reference["window_edits"]
 
 
-def test_qt_and_emtk_offer_the_same_file_types_and_binnings(make, qt_page):
+def test_native_offers_the_frozen_original_file_types_and_binnings(make, legacy_reference):
+    """Supported choices cannot silently shrink when the legacy renderer disappears."""
     from chisurf.emtk.channel_definition import BINNINGS, FILE_TYPES
+    assert list(FILE_TYPES) == legacy_reference["file_types"]
+    assert list(BINNINGS) == legacy_reference["binnings"]
 
-    assert [qt_page.file_type_combo.itemText(i) for i in range(qt_page.file_type_combo.count())] == list(FILE_TYPES)
-    assert [qt_page.micro_binning_combo.itemText(i) for i in range(qt_page.micro_binning_combo.count())] == list(BINNINGS)
 
-
-def test_every_label_button_header_and_check_box_of_the_qt_page_is_on_the_emtk_page(make, qt_page):
+def test_every_label_button_header_and_check_box_of_the_qt_page_is_on_the_emtk_page(make, legacy_reference):
     """Data-driven inventory: each text the Qt page shows is drawn by the emtk page (section open, a measurement read)."""
-    from qtpy import QtWidgets
-
     app, ui = make()
     app.page.open_sections["windows"] = True
     ui.frame(3)
     drawn = " | ".join(ui.strings).replace("...", "…")
     drawn_cells = set(ui.strings)
-    qt_texts = set()
-    for cls in (QtWidgets.QPushButton, QtWidgets.QToolButton, QtWidgets.QCheckBox, QtWidgets.QLabel):
-        for widget in qt_page.findChildren(cls):
-            text = widget.text().strip()
-            if text and widget.isVisibleTo(qt_page) or text and cls is not QtWidgets.QLabel:
-                qt_texts.add(text)
-    for table in (qt_page.detectors_form, qt_page.windows_form, qt_page._lut_table):
-        for i in range(table.columnCount()):
-            item = table.horizontalHeaderItem(i)
-            if item and item.text().strip():
-                qt_texts.add(item.text().strip())
+    qt_texts = set(legacy_reference["control_texts"])
     # glyph prefixes (pictograms) and the colon of a label are not part of the name; the three that are deliberate
-    deliberate = {"Edit JSON": "hidden in Qt itself", "Save": "the Setup row's Save", "…": "empty", "": "empty"}
     missing = []
     for text in sorted(qt_texts):
         import re
@@ -814,20 +780,10 @@ def test_every_label_button_header_and_check_box_of_the_qt_page_is_on_the_emtk_p
 
 
 # ================================================================ 9. last used setup, remembered state, bad file
-def test_the_last_used_setup_is_written_on_choice_and_opened_at_start_like_qt(make, qt_page, tmp_path, monkeypatch):
-    from chisurf.gui.widgets.wizard.tttr_channeldefinition import tttr_channel_definition as mod
+def test_the_last_used_setup_is_written_and_opened_like_frozen_qt(make, legacy_reference, tmp_path):
+    """Actual combo input preserves original last-used storage and native reopening behavior."""
     from chisurf.plugins.core.setup_channel_definition.gui.app import make_app
-
-    # Qt: save two setups, choose one: the file names it as last used
-    qt_file = Path(mod.DETECTOR_SETUPS_FILE)
-    qt_page.current_setups_file = str(qt_file)
-    mod.QInputDialog.getText = staticmethod(lambda *a, **k: ("A", True))
-    qt_page._on_save_setup()
-    mod.QInputDialog.getText = staticmethod(lambda *a, **k: ("B", True))
-    qt_page._on_save_setup()
-    qt_page.setup_combo.setCurrentText("A")
-    assert json.loads(qt_file.read_text())["last_used"] == "A"
-    # emtk: the same by pointer clicks on the combo
+    assert legacy_reference["last_used"]["raw"]["last_used"] == "A"
     app, ui = make()
     app.toolbar.save("A")
     app.toolbar.save("B")
@@ -837,11 +793,10 @@ def test_the_last_used_setup_is_written_on_choice_and_opened_at_start_like_qt(ma
     ui.click("A", nth=-1)
     stored = json.loads(Path(app.model.file_path).read_text())
     assert stored["last_used"] == "A" and set(stored["setups"]) == {"A", "B"}
-    # a tool started without a definition opens it (the Qt page does), and one given a definition does not
     fresh = make_app(file_path=str(app.model.file_path))
     try:
         assert fresh.model.current_name == ""
-        Pointer(fresh, (1200.0, 800.0))  # the first frame lists the setups and opens the last used one
+        Pointer(fresh, (1200.0, 800.0))
         assert fresh.model.current_name == "A" and fresh.toolbar.selected == "A"
     finally:
         fresh.close()

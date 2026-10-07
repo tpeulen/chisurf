@@ -17,7 +17,6 @@ import pytest
 _SETUPS_FILE_CONSTANTS = (
     ("chisurf.core.data_io.detector_setups", "DETECTOR_SETUPS_FILE"),
     ("chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups", "DETECTOR_SETUPS_FILE"),
-    ("chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_channel_definition", "DETECTOR_SETUPS_FILE"),
 )
 #: (module, attribute) pairs holding a SetupTypeConfig whose ``canonical_file`` is that path.
 _SETUP_CONFIGS = (

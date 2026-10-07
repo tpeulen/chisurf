@@ -1,20 +1,19 @@
-"""Construction smoke test for the detector channel-definition page.
-
-The headless repository/load tests do not build the widget, so a missing
-Qt import (e.g. ``QComboBox`` for the calibration-date combobox) would slip
-through. This test constructs the page to catch import/NameError regressions.
-"""
-
+"""The public wizard page hosts real native calibration controls."""
 from __future__ import annotations
+
+from test.gui.test_detector_native_callers import isolated_detector_settings, native_driver
 
 
 def test_detector_wizard_page_constructs(qapp):
-    from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_channel_definition import (
-        DetectorWizardPage,
-    )
-
+    """Latest remains an actual rendered calibration choice without a fake Qt combo."""
+    from chisurf.gui.widgets.wizard.tttr_channeldefinition import DetectorWizardPage
     page = DetectorWizardPage(allow_finish=False)
-    # The calibration-date combobox added for time-versioned calibration must
-    # exist and start with a "Latest" entry.
-    assert page.calibration_combo is not None
-    assert page.calibration_combo.itemText(0) == "Latest"
+    try:
+        ui = native_driver(page)
+        ui.draw(2)
+        assert page.editor.calibration == "Latest"
+        assert "calibration" in ui.ids()
+        ui.click("calibration")
+        assert "Latest" in ui.draw(1).strings
+    finally:
+        page.close()

@@ -237,13 +237,18 @@ class ChannelDefinitionWidget:
         Disable working-definition edits, including JSON application.
     """
 
-    def __init__(self, settings=None, model=None, on_changed=None, read_only=False, host_app=None):
+    def __init__(self, settings=None, model=None, on_changed=None, read_only=False, host_app=None,
+                 visibility=None, on_definition_saved=None):
         from emtk.dialog_window import DialogWindow
         self.model = model or ChannelDefinition(settings)
         self.model.on_changed = on_changed
         self.status = ""
         self.read_only = bool(read_only)
         self.host_app = host_app
+        self.visibility = dict(visibility or {})
+        self.on_definition_saved = on_definition_saved
+        self._io_view = json.loads(Path(__file__).with_name("channel_definition_io.view.json").read_text())
+        self._io_state = FormState()
         self.reference_app = None
         self.reference_info = ""
         self._reference_future = None
@@ -274,6 +279,12 @@ class ChannelDefinitionWidget:
         self.json_text = ""
         self.json_error = ""
         self._json_view = json.loads(Path(__file__).with_name("channel_definition_json.view.json").read_text())["panels"]
+        for section in self._json_view["toolbar"]["sections"]:
+            for button in section.get("buttons", []):
+                if button["action"] == "edit_json":
+                    button["visible"] = self.is_visible("edit_json")
+                elif button["action"] == "preview_g":
+                    button["visible"] = self.is_visible("tables")
         self._json_toolbar_state = FormState()
         self._json_state = FormState()
         self._json_toolbar_state.on_used = self._used
@@ -404,6 +415,33 @@ class ChannelDefinitionWidget:
         if name == "calibration_apply":
             return not self.read_only and self.reference_app is not None
         return True
+
+    def is_visible(self, name):
+        """Existing native controls follow the embedding page's declared visibility."""
+        default = name not in {"save_definition", "setups_file"}
+        return bool(self.visibility.get(name, default))
+
+    @property
+    def show_save_definition(self):
+        """Whether the declared full-definition export action is shown."""
+        return self.is_visible("save_definition")
+
+    @property
+    def show_setups_file(self):
+        """Whether the declared named-library import/export actions are shown."""
+        return self.is_visible("setups_file")
+
+    def save_definition(self):
+        """Choose where to export the complete current working definition."""
+        self.browse("save_definition")
+
+    def import_setups(self):
+        """Choose a named-setup library through the existing native picker."""
+        self.browse("import_setups")
+
+    def export_setups(self):
+        """Choose where to export the current named-setup library."""
+        self.browse("export_setups")
 
     def edit_json(self):
         """Open a fresh draft of the complete current portable definition."""
@@ -545,6 +583,10 @@ class ChannelDefinitionWidget:
     def _setup_row(self):
         from emtk import im
         from emtk.im_core import Col
+
+        if not self.is_visible("setup_selection"):
+            return
+
         bar = self.toolbar
         total = im.get_content_region_avail()[0]
         spacing = 8.0
@@ -600,7 +642,9 @@ class ChannelDefinitionWidget:
             bar.select_calibration(items[picked])
             self._used('calibration')
         im.end_disabled()
-        place(self._width('?') + 8.0)
+        if not self.is_visible("help"):
+            return
+        place(self._width("?") + 8.0)
         for col, rgba in zip((Col.BUTTON, Col.BUTTON_HOVERED, Col.BUTTON_ACTIVE), RED_BUTTON):
             im.push_style_color(col, rgba)
         if im.button('?##page_help'):
@@ -1165,29 +1209,39 @@ class ChannelDefinitionWidget:
     # ------------------------------------------------------------------ detectors / windows sections
     def _windows_section(self):
         from emtk import im
-        im.align_text_to_frame_padding()
-        im.text('PIE Windows')
-        im.same_line(self._width('PIE Windows'))
-        width = max(im.get_content_region_avail()[0], 40.0)
-        if im.button('Add##add_window', (width, 0.0)):
-            self.add_window()
-            self._used('add_window')
-        self._item('add_window', 'Add a PIE window (0:2048) with a free name; rename and edit it in the table.')
-        self._draw_table(self._window_table, 'windows', len(self.model.data['windows']))
+
+        if self.is_visible("add_inputs"):
+            im.align_text_to_frame_padding()
+            im.text("PIE Windows")
+            im.same_line(self._width("PIE Windows"))
+            width = max(im.get_content_region_avail()[0], 40.0)
+            if im.button("Add##add_window", (width, 0.0)):
+                self.add_window()
+                self._used("add_window")
+            self._item(
+                "add_window",
+                "Add a PIE window (0:2048) with a free name; rename and edit it in the table.",
+            )
+        self._draw_table(self._window_table, "windows", len(self.model.data["windows"]))
 
     #: Columns the Detectors table drops, in this order, when the page is narrower than the width given (they stay in the model).
     NARROW_COLUMNS = (('gch', 700.0), ('l1', 600.0), ('l2', 600.0))
 
     def _detectors_section(self):
         from emtk import im
-        im.align_text_to_frame_padding()
-        im.text('Detectors')
-        im.same_line(self._width('PIE Windows'))
-        width = max(im.get_content_region_avail()[0], 40.0)
-        if im.button('Add##add_detector', (width, 0.0)):
-            self.add_detector()
-            self._used('add_detector')
-        self._item('add_detector', 'Add a detector (channels 0, 1; range 0:2048) with a free name; rename and edit it in the table.')
+
+        if self.is_visible("add_inputs"):
+            im.align_text_to_frame_padding()
+            im.text("Detectors")
+            im.same_line(self._width("PIE Windows"))
+            width = max(im.get_content_region_avail()[0], 40.0)
+            if im.button("Add##add_detector", (width, 0.0)):
+                self.add_detector()
+                self._used("add_detector")
+            self._item(
+                "add_detector",
+                "Add a detector (channels 0, 1; range 0:2048) with a free name; rename and edit it in the table.",
+            )
         width = im.get_content_region_avail()[0]
         self._compact = width < 520.0
         for key, limit in self.NARROW_COLUMNS:
@@ -1252,6 +1306,10 @@ class ChannelDefinitionWidget:
         im.begin_disabled(self._future is not None or self._reference_future is not None or self.reference_app is not None or self.reference_prompt.open or self.read_only or self.json_window.open)
         self._setup_row()
         for key, title, _opened in SECTIONS:
+            if key == "reading" and not self.is_visible("tttr_reading"):
+                continue
+            if key in ("windows", "detectors") and not self.is_visible("tables"):
+                continue
             tip = {
                 'reading': 'File type, timing and binning used to read TTTR files.',
                 'windows': 'PIE excitation windows (start and end TAC channel).',
@@ -1278,6 +1336,9 @@ class ChannelDefinitionWidget:
                 }[key]()
         draw_form(self._json_view["toolbar"], self, self._json_toolbar_state)
         self.item_rects.update(self._json_toolbar_state.rects)
+        if self.show_save_definition or self.show_setups_file:
+            draw_form(self._io_view, self, self._io_state)
+            self.item_rects.update(self._io_state.rects)
         im.same_line()
         width = self._width("Optical Setup...")
         im.dummy(
@@ -1555,12 +1616,20 @@ class ChannelDefinitionWidget:
                         self._assign_lut(result[0])
                     elif self.action == 'export_lut':
                         self.model.export_lut(self.selected_channel, result[0])
+                    elif self.action == "save_definition":
+                        self.model.export_definition(result[0], update_named=bool(
+                            self.model.current_name in self.model.setups and self.toolbar.is_owner()))
+                        self.status = tr("Complete detector definition saved.")
+                        if callable(self.on_definition_saved):
+                            self.on_definition_saved(result[0])
+                    elif self.action == "import_setups":
+                        self.files_dropped([result[0]])
                     else:
                         from chisurf.core.data_io.detector_setups import save_detector_setups
                         save_detector_setups({'setups': self.model.setups, 'last_used': self.model.current_name}, result[0])
                     self.dialog = None
                 except Exception as exc:
-                    self.status = f'Error: {exc}'
+                    self.status = tr("Error: {error}").format(error=tr(str(exc)))
                     self.dialog = None
             elif result is False:
                 self.dialog = None
@@ -1635,10 +1704,31 @@ class ChannelDefinitionWidget:
     def browse(self, action):
         from emtk.file_dialog import FileDialog
         self.action = action
-        mode = 'save' if action in ('export_setups', 'export_lut') else 'open'
-        patterns = ['*.json', '*.ptu', '*.pto', '*.spc', '*.set', '*.ht3', '*.pt3', '*.h5', '*.txt', '*.csv', '*.lut', '*.npy', '*.npz']
-        self.dialog = FileDialog('Detector setup / calibration file', mode=mode, filters=[('All supported files', patterns)],
-                                 filename=('tac_lut.json' if action == 'export_lut' else 'detector_setups.json') if mode == 'save' else None)
+        mode = "save" if action in ("save_definition", "export_setups", "export_lut") else "open"
+        patterns = [
+            "*.json",
+            "*.ptu",
+            "*.pto",
+            "*.spc",
+            "*.set",
+            "*.ht3",
+            "*.pt3",
+            "*.h5",
+            "*.txt",
+            "*.csv",
+            "*.lut",
+            "*.npy",
+            "*.npz",
+        ]
+        self.dialog = FileDialog(
+            "Detector setup / calibration file",
+            mode=mode,
+            filters=[("All supported files", patterns)],
+            filename=("tac_lut.json" if action == "export_lut" else
+                      "detector_definition.json" if action == "save_definition" else "detector_setups.json")
+            if mode == "save"
+            else None,
+        )
 
     def close(self):
         self._closing = True

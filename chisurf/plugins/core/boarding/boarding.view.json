@@ -106,7 +106,7 @@
               "type": "custom",
               "key": "embed",
               "options": {
-                "widget": "chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_channel_definition:DetectorWizardPage",
+                "widget": "chisurf.gui.widgets.wizard.tttr_channeldefinition:DetectorWizardPage",
                 "kwargs": {"show_save": true, "show_edit_json": true}
               }
             }

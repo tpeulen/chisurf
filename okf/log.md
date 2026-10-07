@@ -1,5 +1,9 @@
 # Update Log
 
+## 2026-10-08
+
+- **2026-10-08 · Native detector retirement source landed:** four obsolete forms removed, actual native host/flags/complete-export/Finish/callback/parent ownership preserved; independentlegacy105/currentcaller27/nativecalibration18 receipts and parent80 final checks accepted. Burst28rendering references ported with exact rawdata/log/SI/units; caption clear/nativebar ranges fixed atowner, parent116plotchecks+959availableguards/16skips pass. All real pairs/six-panel PG/native captures read; paired detector concept/guide/twofigures and ownership-safe catalogue included. CurrentMLEfeatureDelta2 remains separate29green, Designerhelpercleanup next, wholeW1/PRD open. [Acceptance](validation/release-readiness-w1/channel-definition-retirement/acceptance.json), [resume](validation/release-readiness-w1/current-job/handoff.md).
+
 ## 2026-10-07
 
 - **2026-10-07 · Parent takeover after terminal subagent limits:** re-owned unfinished Burst plotting/model source scopes, preserved19path partial-source snapshot and frozen32path detector candidate. Recaptured inadequate tiny plot baselines at900×500; raw-data/control comparison needs matching10s viewport. New model run28passes/one test-LUT unit error; real fractional-channel fixture focused1passes. Compact PRD/current-job resume now distinguishes committed prerequisites, frozen work and unfinished gates; no whole programme completion claim. [Resume](validation/release-readiness-w1/current-job/handoff.md).

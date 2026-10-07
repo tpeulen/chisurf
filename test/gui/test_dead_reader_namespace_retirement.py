@@ -65,7 +65,7 @@ import json
 from qtpy import QtWidgets
 import chisurf.gui.widgets.wizard as package
 owners = {
-    'DetectorWizardPage': 'tttr_channeldefinition.tttr_channel_definition',
+    'DetectorWizardPage': 'tttr_channeldefinition.native_page',
     'WizardTTTRPhotonFilter': 'tttr_photonfilter.tttr_photon_filter',
 }
 for name, relative in owners.items():

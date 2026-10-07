@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import pyqtgraph as pg
 from mmfdb.security.base import MMFDBClientBase
 from qtpy import QtCore, QtGui, QtWidgets
 
@@ -28,6 +27,8 @@ from chisurf.core.fio.decimate import per_curve_budget, thin_for_plot
 from chisurf.core.fio.mmcif.pdbx_metadata import get_pdbx_metadata_keys
 from chisurf.core.fio.staging import TTTR_EXTENSIONS, TTTR_FILE_FILTER
 from chisurf.core.runtime import analysis_cache
+from chisurf.core.support.i18n import tr
+from chisurf.gui import chiplot as cp
 from chisurf.gui.progress import ChiSurfProgress
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
 from chisurf.gui.widgets.messages import Msg
@@ -36,7 +37,7 @@ from chisurf.gui.widgets.sample_picker import show_sample_picker_dialog
 from chisurf.gui.widgets.tool_buttons import action_button, flag_attention
 from chisurf.gui.widgets.tools import ChisurfDockTool
 from chisurf.gui.widgets.tools import PathDropListWidget as DropListWidget
-from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_channel_definition import (
+from chisurf.gui.widgets.wizard.tttr_channeldefinition import (
     DetectorWizardPage,
 )
 from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
@@ -1116,37 +1117,43 @@ class BurstSelectionTool(ChisurfDockTool):
         self.summary = QtWidgets.QTextEdit(self)
         self.summary.setReadOnly(True)
 
-        self.histogram_plot = pg.PlotWidget(self)
-        self.histogram_plot.setLabel("bottom", "Value")
-        self.histogram_plot.setLabel("left", "Frequency")
-        self.histogram_plot.setTitle("Histogram")
+        self.histogram_plot = cp.Plot(self)
+        self.histogram_plot.set_labels(bottom=tr("Value"))
+        self.histogram_plot.set_labels(left=tr("Frequency"))
+        self.histogram_plot.set_title(tr("Histogram"))
 
-        self.filter_plot = pg.PlotWidget(self)
-        self.filter_plot.setLabel("bottom", "Photon Index")
-        self.filter_plot.setLabel("left", "Selected")
-        self.filter_plot.setTitle("Filter/selection")
+        self.filter_plot = cp.Plot(self)
+        self.filter_plot.set_labels(bottom=tr("Photon Index"))
+        self.filter_plot.set_labels(left=tr("Selected"))
+        self.filter_plot.set_title(tr("Filter/selection"))
 
-        self.mcs_plot = pg.PlotWidget(self)
-        self.mcs_plot.setLabel("bottom", "Time (s)")
-        self.mcs_plot.setLabel("left", "Count rate", units="Hz")
-        self.mcs_plot.setTitle("Count rate")
+        self.mcs_plot = cp.Plot(self)
+        self.mcs_plot.set_labels(bottom=tr("Time (s)"))
+        self.mcs_plot.set_labels(left=tr("Count rate"), left_units="Hz")
+        self.mcs_plot.set_title(tr("Count rate"))
 
-        self.decay_plot = pg.PlotWidget(self)
-        self.decay_plot.setLabel("bottom", "Microtime (ns)")
-        self.decay_plot.setLabel("left", "Counts")
-        self.decay_plot.setTitle("Microtime histogram")
-        self.decay_plot.getPlotItem().setLogMode(False, True)
+        self.decay_plot = cp.Plot(self)
+        self.decay_plot.set_labels(bottom=tr("Microtime (ns)"))
+        self.decay_plot.set_labels(left=tr("Counts"))
+        self.decay_plot.set_title(tr("Microtime histogram"))
+        self.decay_plot.set_log(x=False, y=True)
 
-        self.burst_plot = pg.PlotWidget(self)
-        self.burst_plot.setLabel("bottom", "Burst size")
-        self.burst_plot.setLabel("left", "Counts")
-        self.burst_plot.setTitle("Burst histogram")
+        self.burst_plot = cp.Plot(self)
+        self.burst_plot.set_labels(bottom=tr("Burst size"))
+        self.burst_plot.set_labels(left=tr("Counts"))
+        self.burst_plot.set_title(tr("Burst histogram"))
 
-        self.dt_plot = pg.PlotWidget(self)
-        self.dt_plot.setLabel("bottom", "Photon Index")
-        self.dt_plot.setLabel("left", "dT (ms)")
-        self.dt_plot.setTitle("Delta macro-time")
-        self.dt_plot.getPlotItem().setLogMode(False, True)
+        self.dt_plot = cp.Plot(self)
+        self.dt_plot.set_labels(bottom=tr("Photon Index"))
+        self.dt_plot.set_labels(left=tr("dT (ms)"))
+        self.dt_plot.set_title(tr("Delta macro-time"))
+        self.dt_plot.set_log(x=False, y=True)
+
+        for plot in (
+            self.histogram_plot, self.filter_plot, self.mcs_plot,
+            self.decay_plot, self.burst_plot, self.dt_plot,
+        ):
+            plot.set_si_prefix(x=True, y=True)
 
         # The three plots that hold a raw per-photon series get the *viewport's*
         # own decimation on top of the budget applied when the arrays are built.
@@ -1156,9 +1163,8 @@ class BurstSelectionTool(ChisurfDockTool):
         # all of it costs. `peak` mode keeps each bin's extremes, the same
         # reason `thin_for_plot` is min/max-per-bin rather than a stride.
         for _plot in (self.dt_plot, self.filter_plot, self.mcs_plot):
-            item = _plot.getPlotItem()
-            item.setDownsampling(auto=True, mode="peak")
-            item.setClipToView(True)
+            _plot.set_downsampling(auto=True, mode="peak")
+            _plot.set_clip_to_view(True)
 
         self.table = QtWidgets.QTableWidget(self)
         self.table.setColumnCount(len(UI_COLUMNS))
@@ -1783,7 +1789,7 @@ class BurstSelectionTool(ChisurfDockTool):
             return False
 
     def acquire_mmfdb_connection(self) -> MMFDBClientBase | None:
-        """Return the cached/opened MMFDB connection (PRD-23 base hook)."""
+        """Return the cached/opened MMFDB connection through the shared API hook."""
         return self._db()
 
     def _db(self) -> MMFDBClientBase | None:
@@ -1797,7 +1803,7 @@ class BurstSelectionTool(ChisurfDockTool):
         """
         if self._mmfdb_db is not None:
             return self._mmfdb_db
-        # Connection acquisition is api-layer logic (PRD-23): prefer the global
+        # Connection acquisition belongs to the shared API: prefer the global
         # connection, else open the resolved default DB.
         self._mmfdb_db = _acquire_mmfdb_connection()
         return self._mmfdb_db
@@ -2449,12 +2455,10 @@ class BurstSelectionTool(ChisurfDockTool):
         centers = (edges[:-1] + edges[1:]) / 2.0
         width = edges[1] - edges[0]
         self.histogram_plot.clear()
-        self.histogram_plot.setLabel("bottom", feature)
-        self.histogram_plot.setLabel("left", "Frequency")
-        self.histogram_plot.getPlotItem().setLogMode(bool(self.hist_log_y_check.isChecked()), False)
-        self.histogram_plot.addItem(
-            pg.BarGraphItem(x=centers, height=counts, width=width, brush="b", pen="k", alpha=0.7)
-        )
+        self.histogram_plot.set_labels(bottom=feature)
+        self.histogram_plot.set_labels(left=tr("Frequency"))
+        self.histogram_plot.set_log(x=bool(self.hist_log_y_check.isChecked()), y=False)
+        self.histogram_plot.bars(centers, counts, width=width, brush="b", pen="k")
         if self._fit_gmm_on_update:
             self._plot_gmm(data, min_value, max_value, counts)
         else:
@@ -2560,7 +2564,7 @@ class BurstSelectionTool(ChisurfDockTool):
                         plot_x, plot_y = thin_for_plot(
                             global_indices, d_t, max_points=plot_point_budget
                         )
-                        self.dt_plot.plot(
+                        self.dt_plot.line(
                             plot_x, plot_y, pen=self._diagnostic_pen(len(d_t_visible)), width=1
                         )
                     if show_selected_photons:
@@ -2569,7 +2573,7 @@ class BurstSelectionTool(ChisurfDockTool):
                             d_t[selected_slice],
                             max_points=plot_point_budget,
                         )
-                        self.dt_plot.plot(
+                        self.dt_plot.line(
                             plot_x,
                             plot_y,
                             pen=self._diagnostic_pen(len(d_t_visible), selected=True),
@@ -2580,17 +2584,17 @@ class BurstSelectionTool(ChisurfDockTool):
                         thinned_indices = thin_for_plot(
                             global_indices, max_points=plot_point_budget
                         )
-                        self.filter_plot.plot(
+                        self.filter_plot.line(
                             thinned_indices,
                             np.zeros_like(thinned_indices, dtype=float),
                             pen=self._diagnostic_pen(len(d_t_visible)),
-                            stepMode=False,
+                            step=False,
                         )
                     if show_selected_photons:
                         selected_indices = thin_for_plot(
                             global_indices[selected_slice], max_points=plot_point_budget
                         )
-                        self.filter_plot.plot(
+                        self.filter_plot.line(
                             selected_indices,
                             np.ones_like(selected_indices, dtype=float),
                             pen=self._diagnostic_pen(len(d_t_visible), selected=True),
@@ -2603,7 +2607,7 @@ class BurstSelectionTool(ChisurfDockTool):
                 _LOG.debug("dT plot updated")
 
             if show_filter:
-                self.filter_plot.setYRange(-0.1, 1.1)
+                self.filter_plot.set_ylim(-0.1, 1.1)
                 _LOG.debug("filter plot updated")
 
             if show_filter_settings and first_visible_range is not None:
@@ -2727,15 +2731,15 @@ class BurstSelectionTool(ChisurfDockTool):
                     time_all, trace_all = thin_for_plot(
                         time_all, trace_all, max_points=plot_point_budget
                     )
-                    self.mcs_plot.plot(
+                    self.mcs_plot.line(
                         time_all,
                         trace_all,
-                        pen=pg.mkPen(self._diagnostic_pen(file_index), width=1),
+                        pen=cp.to_pen(self._diagnostic_pen(file_index), width=1),
                     )
                     plotted = True
                 except Exception:
-                    self.mcs_plot.plot(
-                        [], [], pen=pg.mkPen(self._diagnostic_pen(file_index), width=1)
+                    self.mcs_plot.line(
+                        [], [], pen=cp.to_pen(self._diagnostic_pen(file_index), width=1)
                     )
             if show_selected:
                 selected_indices = np.where(selected[local_start:local_stop])[0] + local_start
@@ -2750,39 +2754,39 @@ class BurstSelectionTool(ChisurfDockTool):
                         time_selected, trace_selected = thin_for_plot(
                             time_selected, trace_selected, max_points=plot_point_budget
                         )
-                        self.mcs_plot.plot(
+                        self.mcs_plot.line(
                             time_selected,
                             trace_selected,
-                            pen=pg.mkPen(
+                            pen=cp.to_pen(
                                 self._diagnostic_pen(file_index, selected=True),
                                 width=_SELECTED_PEN_WIDTH,
                             ),
                         )
                         plotted = True
                     else:
-                        self.mcs_plot.plot(
+                        self.mcs_plot.line(
                             [],
                             [],
-                            pen=pg.mkPen(
+                            pen=cp.to_pen(
                                 self._diagnostic_pen(file_index, selected=True),
                                 width=_SELECTED_PEN_WIDTH,
                             ),
                         )
                 except Exception:
-                    self.mcs_plot.plot(
+                    self.mcs_plot.line(
                         [],
                         [],
-                        pen=pg.mkPen(
+                        pen=cp.to_pen(
                             self._diagnostic_pen(file_index, selected=True),
                             width=_SELECTED_PEN_WIDTH,
                         ),
                     )
             offset += len(selected)
         if not plotted:
-            self.mcs_plot.plot([], [], pen=pg.mkPen((255, 255, 255, 120), width=1))
-        self.mcs_plot.setLabel("bottom", "Time (s)")
-        self.mcs_plot.setLabel("left", "Count rate", units="Hz")
-        self.mcs_plot.setTitle(f"Count rate ({bin_width_ms:g} ms bins)")
+            self.mcs_plot.line([], [], pen=cp.to_pen((255, 255, 255, 120), width=1))
+        self.mcs_plot.set_labels(bottom=tr("Time (s)"))
+        self.mcs_plot.set_labels(left=tr("Count rate"), left_units="Hz")
+        self.mcs_plot.set_title((tr("Count rate ({width:g} ms bins)") or "Count rate ({width:g} ms bins)").format(width=bin_width_ms))
 
     def _update_decay_plot(self) -> None:
         """Update the microtime decay plot file-by-file."""
@@ -2820,8 +2824,8 @@ class BurstSelectionTool(ChisurfDockTool):
                     self._plot_decay(y_all, x_all, self._diagnostic_pen(file_index))
                     plotted = True
                 except Exception:
-                    self.decay_plot.plot(
-                        [], [], pen=pg.mkPen(self._diagnostic_pen(file_index), width=1)
+                    self.decay_plot.line(
+                        [], [], pen=cp.to_pen(self._diagnostic_pen(file_index), width=1)
                     )
             if show_selected:
                 try:
@@ -2834,19 +2838,19 @@ class BurstSelectionTool(ChisurfDockTool):
                         )
                         plotted = True
                     else:
-                        self.decay_plot.plot(
+                        self.decay_plot.line(
                             [],
                             [],
-                            pen=pg.mkPen(self._diagnostic_pen(file_index, selected=True), width=1),
+                            pen=cp.to_pen(self._diagnostic_pen(file_index, selected=True), width=1),
                         )
                 except Exception:
-                    self.decay_plot.plot(
+                    self.decay_plot.line(
                         [],
                         [],
-                        pen=pg.mkPen(self._diagnostic_pen(file_index, selected=True), width=1),
+                        pen=cp.to_pen(self._diagnostic_pen(file_index, selected=True), width=1),
                     )
         if not plotted:
-            self.decay_plot.plot([], [], pen=pg.mkPen((255, 255, 255, 120), width=1))
+            self.decay_plot.line([], [], pen=cp.to_pen((255, 255, 255, 120), width=1))
 
     def _plot_decay(self, y: np.ndarray, x: np.ndarray, pen: Any) -> None:
         """Plot decay histogram data after trimming trailing zeros."""
@@ -2855,15 +2859,13 @@ class BurstSelectionTool(ChisurfDockTool):
             last = int(positive[-1]) + 1
             x = x[:last] * 1e9
             y = y[:last]
-            self.decay_plot.plot(x, y, pen=pg.mkPen(pen, width=1))
+            self.decay_plot.line(x, y, pen=cp.to_pen(pen, width=1))
 
     def _update_burst_length_plot(self) -> None:
         """Update the burst duration histogram file-by-file."""
         self.burst_plot.clear()
         if not self._show_selected_photons():
-            self.burst_plot.addItem(
-                pg.TextItem("Selected photons hidden", anchor=(0.5, 0.5), color="w")
-            )
+            self.burst_plot.text(tr("Selected photons hidden"), (0, 0), anchor=(0.5, 0.5), color="w")
             return
         diagnostics = self._safe_getattr("_last_diagnostics", None)
         if (
@@ -2880,9 +2882,7 @@ class BurstSelectionTool(ChisurfDockTool):
                 }
             ]
         if not diagnostics:
-            self.burst_plot.addItem(
-                pg.TextItem("No burst data available", anchor=(0.5, 0.5), color="w")
-            )
+            self.burst_plot.text(tr("No burst data available"), (0, 0), anchor=(0.5, 0.5), color="w")
             return
         total = 0
         plotted = False
@@ -2895,26 +2895,21 @@ class BurstSelectionTool(ChisurfDockTool):
             if durations.size == 0:
                 continue
             counts, edges = np.histogram(durations, bins=bins)
-            self.burst_plot.addItem(
-                pg.BarGraphItem(
-                    x0=edges[:-1],
-                    x1=edges[1:],
-                    y0=0,
-                    y1=counts,
-                    brush=pg.mkBrush(*self._diagnostic_pen(file_index, selected=True)),
-                    pen="w",
-                )
+            self.burst_plot.bars(
+                (edges[:-1] + edges[1:]) / 2,
+                counts,
+                width=float(edges[1] - edges[0]),
+                brush=cp.to_brush(self._diagnostic_pen(file_index, selected=True)),
+                pen="w",
             )
             total += int(np.sum(counts))
             plotted = True
         if not plotted:
-            self.burst_plot.addItem(
-                pg.TextItem("No burst data available", anchor=(0.5, 0.5), color="w")
-            )
+            self.burst_plot.text(tr("No burst data available"), (0, 0), anchor=(0.5, 0.5), color="w")
             return
-        self.burst_plot.setLabel("bottom", "Burst duration", units="ms")
-        self.burst_plot.setLabel("left", "Frequency")
-        self.burst_plot.addItem(pg.TextItem(f"Total bursts: {total}", anchor=(0, 0), color="w"))
+        self.burst_plot.set_labels(bottom=tr("Burst duration"), bottom_units="ms")
+        self.burst_plot.set_labels(left=tr("Frequency"))
+        self.burst_plot.text((tr("Total bursts: {total}") or "Total bursts: {total}").format(total=total), (8, 8), anchor=(0, 0), color="w", anchored=True, fill=(24, 24, 24, 230))
 
     def _burst_durations_ms_for_diag(self, diag: dict[str, Any]) -> np.ndarray:
         """Return burst durations in milliseconds for one diagnostic entry."""
@@ -3049,8 +3044,8 @@ class BurstSelectionTool(ChisurfDockTool):
                 scale = float(np.max(counts)) / float(np.max(y_fit))
             else:
                 scale = 1.0
-            self.histogram_plot.plot(
-                x_fit.ravel(), y_fit * scale, pen=pg.mkPen("r", width=2), name="GMM Fit"
+            self.histogram_plot.line(
+                x_fit.ravel(), y_fit * scale, pen=cp.to_pen("r", width=2), name="GMM Fit"
             )
             for index in range(n_components):
                 mean = float(model.means_[index, 0])
@@ -3062,17 +3057,17 @@ class BurstSelectionTool(ChisurfDockTool):
                     / np.sqrt(2 * np.pi * variance)
                     * scale
                 )
-                self.histogram_plot.plot(
+                self.histogram_plot.line(
                     x_fit.ravel(),
                     component,
-                    pen=pg.mkPen(
-                        pg.intColor(index, hues=n_components),
+                    pen=cp.to_pen(
+                        cp.int_color(index, count=n_components),
                         width=1,
-                        style=QtCore.Qt.PenStyle.DashLine,
+                        style="dash",
                     ),
                     name=f"Gaussian {index + 1}",
                 )
-            self.histogram_plot.addLegend()
+            self.histogram_plot.legend()
             self.gmm_summary.setPlainText(self._gmm_table(model, n_components))
         except Exception as exc:
             self.gmm_summary.setPlainText(f"GMM fitting failed: {exc}")
@@ -3647,17 +3642,15 @@ class BurstSelectionTool(ChisurfDockTool):
             except Exception:
                 _LOG.debug("could not sync the display form to the photon range")
 
-    def _set_log_dt_range(self, plot: pg.PlotWidget, d_t: np.ndarray) -> None:
+    def _set_log_dt_range(self, plot: cp.Plot, d_t: np.ndarray) -> None:
         """Set a safe visible range for a log-scale dT plot."""
         positive = d_t[np.isfinite(d_t) & (d_t > 0)]
         if positive.size == 0:
             return
         lower = max(float(np.nanmin(positive)), 1e-12)
         upper = max(float(np.nanmax(positive)), lower * 10.0)
-        try:
-            plot.setYRange(np.log10(lower), np.log10(upper), padding=0.02)
-        except Exception:
-            plot.setYRange(lower, upper, padding=0.02)
+        # Chiplot limits are always data coordinates; each backend owns the log transform.
+        plot.set_ylim(lower, upper, padding=0.02)
 
     def _output_formats_for_inputs(self) -> list[str]:
         """Return where this run's results go, decided by what was loaded.
@@ -3862,7 +3855,7 @@ class BurstSelectionTool(ChisurfDockTool):
             self._help_button.show_help()
 
     def _open_in_ndxplorer(self) -> None:
-        """Open a registered burst selection from MMFDB in ndX (PRD-28)."""
+        """Open a registered burst selection from MMFDB in ndX."""
         try:
             from chisurf.plugins.ndxplorer.mmfdb_launcher import open_burst_selection_from_mmfdb
 
@@ -3878,7 +3871,7 @@ class BurstSelectionTool(ChisurfDockTool):
             self._status_bar.showMessage(f"Could not open ndX: {exc}")
 
     def _send_current_to_ndxplorer(self) -> None:
-        """Send the current burst-selection result to ndX (PRD-28 Direction B).
+        """Send the current burst-selection result to ndX.
 
         Resolves the output path from the last analysis result and hands it
         to ndX via :func:`send_path_to_ndxplorer`. No MMFDB picker, no file

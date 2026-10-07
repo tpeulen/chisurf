@@ -158,6 +158,60 @@ class ChannelDefinition:
             raise
         self.changed()
 
+    def export_definition(self, path, update_named=False):
+        """Atomically export complete working JSON and optionally update its owned named setup.
+
+        The requested named update uses the existing portable model/store operation,
+        with its hidden metadata merged into a staged definition. A later store failure
+        leaves the working model untouched; the complete exported file may already exist.
+        """
+        import os
+        import tempfile
+
+        target = Path(path).expanduser()
+        library = Path(self.file_path or CONFIG.canonical_file).expanduser()
+        if target.resolve() == library.resolve():
+            raise ValueError("Choose a different file for the working definition and named setup library.")
+        data = self.get_settings()
+        named = None
+        if update_named:
+            if self.current_name not in self.setups:
+                raise ValueError("Select a saved setup before requesting its update.")
+            previous = self.setups[self.current_name]
+            owner = previous.get("_owner")
+            if owner is not None and owner != store.resolve_active_user_id():
+                raise PermissionError("Only the setup owner can update the named definition.")
+            merged = copy.deepcopy(previous)
+            merged.update(data)
+            merged["detectors"] = {}
+            for name, detector in data["detectors"].items():
+                existing = copy.deepcopy((previous.get("detectors") or {}).get(name, {}))
+                existing.update(copy.deepcopy(detector))
+                merged["detectors"][name] = existing
+            named = ChannelDefinition(merged, file_path=self.file_path, db=self.db)
+            named.setups = copy.deepcopy(self.setups)
+            named.current_name = self.current_name
+        # Serialize before touching the durable destination, as the existing history writer does.
+        content = json.dumps(data, indent=2, allow_nan=False) + "\n"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=target.parent,
+                                             prefix=f".{target.name}.", delete=False) as stream:
+                temporary = Path(stream.name)
+                stream.write(content)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(temporary, target)
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
+        if named is not None:
+            named.save_setup(self.current_name, public=bool(named.data.get("_is_public", False)))
+            self.setups = named.setups
+            self.changed()
+        return target
+
     def rename_setup(self, name):
         name = str(name).strip()
         if not self.current_name or self.current_name not in self.setups:

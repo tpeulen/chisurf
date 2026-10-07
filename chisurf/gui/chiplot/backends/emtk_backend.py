@@ -772,6 +772,13 @@ class EmtkCanvas(base.Canvas):
                 values = values[np.isfinite(values)]
                 if values.size:
                     low, high = min(low, float(values.min())), max(high, float(values.max()))
+            elif entry.kind == "bars":
+                values = self._bar_values(state, axis)
+                if self._log["x" if axis == 0 else "y"]:
+                    values = np.log10(values[values > 0.0])
+                values = values[np.isfinite(values)]
+                if values.size:
+                    low, high = min(low, float(values.min())), max(high, float(values.max()))
             elif entry.kind == "image":
                 x0, y0, width, height = state["rect"]
                 start, extent = (x0, width) if axis == 0 else (y0, height)
@@ -1111,14 +1118,20 @@ class EmtkCanvas(base.Canvas):
         xs, heights = entry.state["x"], entry.state["height"]
         if not len(xs):
             return
-        width = entry.state.get("width")
-        if width is None:
-            width = float(np.min(np.diff(xs))) * 0.8 if len(xs) > 1 else 1.0
-        floor = plot._y_axis.to_pixels(0.0)
+        width = self._bar_width(entry.state)
+        floor = plot.y + plot.h if self._log["y"] else plot._y_axis.to_pixels(0.0)
         for centre, height in zip(xs, heights):
-            left = plot._x_axis.to_pixels(centre - width / 2.0)
-            right = plot._x_axis.to_pixels(centre + width / 2.0)
-            top = plot._y_axis.to_pixels(height)
+            lo, hi = centre - width / 2.0, centre + width / 2.0
+            if self._log["x"]:
+                if hi <= 0.0:
+                    continue
+                left = plot.x if lo <= 0.0 else plot._x_axis.to_pixels(math.log10(lo))
+                right = plot._x_axis.to_pixels(math.log10(hi))
+            else:
+                left, right = plot._x_axis.to_pixels(lo), plot._x_axis.to_pixels(hi)
+            if self._log["y"] and height <= 0.0:
+                continue
+            top = plot._y_axis.to_pixels(math.log10(height) if self._log["y"] else height)
             painter.fill_rect(
                 min(left, right),
                 min(top, floor),
@@ -1599,6 +1612,22 @@ class EmtkCanvas(base.Canvas):
             member._x_group = merged
             member.refresh()
 
+    @staticmethod
+    def _bar_width(state) -> float:
+        """Return the declared bin width or the existing spacing-derived default."""
+        if state.get("width") is not None:
+            return float(state["width"])
+        xs = state["x"]
+        return float(np.min(np.diff(xs))) * 0.8 if len(xs) > 1 else 1.0
+
+    @staticmethod
+    def _bar_values(state, axis: int) -> np.ndarray:
+        """Return rectangle edge coordinates for fitting, including the zero baseline."""
+        if axis == 0:
+            half = EmtkCanvas._bar_width(state) / 2.0
+            return np.concatenate((state["x"] - half, state["x"] + half))
+        return np.concatenate((np.zeros_like(state["height"]), state["height"]))
+
     def _data_range(self, axis: int) -> tuple[float, float]:
         """The extent of the drawn data along *axis*, or ``(0, 1)`` when empty.
 
@@ -1621,6 +1650,10 @@ class EmtkCanvas(base.Canvas):
                 samples = entry.state["x" if axis == 0 else "y"]
                 if samples is not None and len(samples):
                     spans.append((float(np.min(samples)), float(np.max(samples))))
+            elif entry.kind == "bars":
+                values = self._bar_values(entry.state, axis)
+                if values.size:
+                    spans.append((float(values.min()), float(values.max())))
             elif entry.kind == "image":
                 x0, y0, width, height = entry.state["rect"]
                 start, extent = (x0, width) if axis == 0 else (y0, height)
