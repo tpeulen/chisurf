@@ -127,3 +127,15 @@ Photon reading, CSV inputs and native reader settings retain their existing
 interfaces. A real BH SPC132 baseline and control inventory are retained in
 the release-readiness evidence; this approved dead-widget deletion introduces
 no replacement window.
+
+
+## Measured SDT reader declaration
+
+SDTReader now declares its SDT-only source, decoded file information, measured
+channel width/repetition rate and preview curve. Preview selection never
+filters imported curves: the shell import route reads all blocks, using each
+block's own time axis and excitation descriptor. The fixture's600 ns period
+yields1000/600 MHz in float64; its channel width is0.019537081674680934 ns.
+The native view preparation retains source/information/rate/curve controls.
+The old embedded Add was unconnected; the functional shell import remains.
+The legacy controller stays configured until the preceding CSV port lands.

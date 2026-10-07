@@ -69,3 +69,22 @@ def test_this_file_is_a_point_measurement_not_an_image():
     assert all(len(s) == 2 and s[0] == 1 for s in shapes), (
         f"expected single-curve blocks, got {shapes}"
     )
+
+
+def test_measurement_info_follows_each_data_block_header():
+    """A data block resolves its own descriptor rather than its positional index."""
+    sdt = SdtFile(str(_SDT))
+    for index, header in enumerate(sdt.block_headers):
+        expected = sdt.measure_info[header.meas_desc_block_no]
+        assert sdt.block_measure_info(index) is expected
+
+
+def test_measurement_info_supports_reordered_or_shared_descriptors():
+    """Measurement descriptors may be reused or ordered unlike the data blocks."""
+    sdt = SdtFile.__new__(SdtFile)
+    sdt.measure_info = [object(), object()]
+    sdt.block_headers = np.array([(1,), (0,), (1,)], dtype=[("meas_desc_block_no", "i2")])
+
+    assert sdt.block_measure_info(0) is sdt.measure_info[1]
+    assert sdt.block_measure_info(1) is sdt.measure_info[0]
+    assert sdt.block_measure_info(2) is sdt.measure_info[1]

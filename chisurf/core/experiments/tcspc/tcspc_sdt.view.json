@@ -1,0 +1,53 @@
+{
+  "title": "SDT measurement",
+  "sections": [
+    {
+      "type": "custom",
+      "key": "data_source",
+      "options": {
+        "attr": "filename",
+        "label": "File",
+        "call": "load_file",
+        "filter": "SDT files (*.sdt)",
+        "extensions": [".sdt"],
+        "mmfdb": false,
+        "description": "Choose a Becker & Hickl SDT measurement for preview. Import loads all measured curves."
+      },
+      "description": "SDT measurement source."
+    },
+    {
+      "type": "value",
+      "attr": "rep_rate",
+      "label": "Repetition rate [MHz]",
+      "kind": "float",
+      "decimals": 8,
+      "read_only": true,
+      "description": "Measured excitation repetition rate from the selected curve's SDT descriptor."
+    },
+    {
+      "type": "value",
+      "attr": "dt",
+      "label": "Channel width [ns]",
+      "kind": "float",
+      "decimals": 10,
+      "read_only": true,
+      "description": "Measured time-channel spacing from the selected curve's SDT time axis."
+    },
+    {
+      "type": "value",
+      "attr": "file_info",
+      "label": "File information",
+      "kind": "text",
+      "lines": 9,
+      "read_only": true,
+      "description": "Identification, title, acquisition date and other metadata stored in the SDT file."
+    },
+    {
+      "type": "choice",
+      "attr": "curve_nbr",
+      "label": "Preview curve",
+      "options_source": "curve_options",
+      "description": "Select a measured curve for preview and calibration. This never filters the curves imported through the shell."
+    }
+  ]
+}

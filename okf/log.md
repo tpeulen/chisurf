@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W1: recover/extend SDTReader and fix owning block-to-descriptor mapping, per-block axes and measured calibration.17 child tests,21 parent combined reader/parser cases,10 exact-rate oracle rechecks pass; scoped quality checks pass. Parent inspected native curve0/2 against legacy; preserve all-curves import and lazy source restore. Source/spec preparation lands; ordered legacy switch stays pending CSV. [Receipt](validation/release-readiness-w1/sdt-prerequisite/receipt.md).
+
 - PRD-154 W1: publish ndxplorer3356d747 test-namespace retirement;201 tracked paths/modes preserved,42 caches privately archived,12 before/after plus11 additional targeted checks pass. The two parity fixture paths follow the move; foreign package edits remain untouched. Native SDT/Structure preparations are inspected; ordered loader switches remain pending CSV/simulator.
 
 - PRD-154 W1: preserve launcher precedence when inserting bundled roots and skip an already-resolved ndxplorer editable root;20 bootstrap/environment/native-shifter checks, Ruff and mypy pass. Remove only five obsolete import-order comments, preserving foreign test hunks. ndxplorer test namespace relocation is separately verified before pointer publication.

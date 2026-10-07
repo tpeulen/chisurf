@@ -227,7 +227,7 @@ class SdtFile:
 
     def block_measure_info(self, block):
         """Return measure_info record for data block."""
-        return self.measure_info[self.data_headers[block].meas_desc_block_no]
+        return self.measure_info[self.block_headers[block]["meas_desc_block_no"]]
 
     def __str__(self):
         """Return a string containing all information about the SDT file."""
