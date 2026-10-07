@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W1: preserve/archive both approved sibling worktrees with23,555-file checksum/mode manifest and retained commit refs; non-forced metadata prune leaves one worktree. Preserve lint A/B targets/env in testing workflow. Reconcile current reader/channel ownership before GUI edits: reuse SDTReader/core channel model and a shared native settings host; record CSV/structure/preview parity corrections. [Archive receipt](validation/release-readiness-w1/worktree-archive.json).
+
 - PRD-154 W1: orphan recovery landed8dbb679bf/33285017c without discarding tracked or untracked edits. Five newer copies are AST-identical to recovered blobs; scoped Ruff canonicalization matches HEAD.188 plugin robustness/menu checks remain green. Recover the ten explicitly approved discovery/CLI/menu/robustness files and register the CLI contract; next preserve/archive sibling worktrees and lint recipe. [Evidence](validation/release-readiness-w1.md).
 
 - PRD-154 W1: re-owned source-recovery scope and wrote cleanup plan;188 robustness/menu regressions pass. Fresh worktree comparison confirms47/51 identical and four newer main files. Git refuses the incoming-identical tracked export hunk; preserve it with a focused export-only commit before retrying orphan5eed46f9f. Five moved untracked copies restored byte-for-byte with archived manifest, no destructive Git. [Receipt](validation/release-readiness-w1/worktree-before.json).

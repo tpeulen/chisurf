@@ -301,3 +301,144 @@ Re-derive the harness regressions with
 file. A complete plugin matrix remains a programme gate after the owning
 workstreams supply tours, demos, reachable layouts and source prerequisites.
 The C27 matrix and intermediate hash runs are diagnostic, not acceptance.
+
+
+## Lint A/B targets
+
+The approved lint worktree's target inventory is retained below. Select the
+files relevant to a change; this list is not a command to run a full suite.
+Use separate read-only revisions/archives for an A/B comparison and preserve
+their working contents. Do not copy the old script's checkout loop into the
+shared working tree.
+
+Pixi remains the standard runner. For the documented arm64 alternative,
+the old environment line required offscreen Qt, Agg, no bytecode and local
+module source paths; use a task-specific root and cache:
+
+```sh
+READINESS_REPO_ROOT=/Users/tpeulen/dev/chisurf
+QT_QPA_PLATFORM=offscreen MPLBACKEND=Agg PYTHONDONTWRITEBYTECODE=1 \
+  PYTHONPATH=.:modules/mmfdb/src:$READINESS_REPO_ROOT/modules/chinet:$READINESS_REPO_ROOT/modules/imp-tricks/src:modules/chimol \
+  NUMBA_CACHE_DIR=/private/tmp/readiness-numba-cache \
+  /Users/tpeulen/mambaforge/envs/arm64/bin/python -m pytest <targeted-files> -q
+```
+
+The imp-tricks namespace startup repair is a prerequisite for this alternate
+source path. Use scratch settings/MMFDB storage for every GUI judgment.
+
+```text
+chisurf/plugins/burst/accurate_fret/test
+chisurf/plugins/burst/alex_suite/tests
+chisurf/plugins/burst/burst_2cde/tests
+chisurf/plugins/burst/burst_background/test
+chisurf/plugins/burst/burst_browser/test
+chisurf/plugins/burst/burst_bva/tests
+chisurf/plugins/burst/burst_ebfret/tests
+chisurf/plugins/burst/burst_fcs_correlator/test
+chisurf/plugins/burst/burst_fusion/tests
+chisurf/plugins/burst/burst_gs/test
+chisurf/plugins/burst/burst_h2mm/tests
+chisurf/plugins/burst/burst_irf_bg/test
+chisurf/plugins/burst/burst_mle_analysis/tests
+chisurf/plugins/burst/mfd_prepare/tests
+chisurf/plugins/calculator/fcs_saturation_calc/tests
+chisurf/plugins/calculator/fret_calculator/tests
+chisurf/plugins/calculator/hub/test
+chisurf/plugins/calculator/kappa2_dist/test
+chisurf/plugins/calculator/kappa2_dist/tests
+chisurf/plugins/calculator/phasor_calculator/tests
+chisurf/plugins/calculator/psf_calculator/tests
+chisurf/plugins/calculator/rics_precision/test
+chisurf/plugins/calculator/rics_precision/tests
+chisurf/plugins/core/batch_analysis/test
+chisurf/plugins/core/boarding/test
+chisurf/plugins/core/code_editor/test
+chisurf/plugins/core/f_test/test
+chisurf/plugins/core/globalview/tests
+chisurf/plugins/core/help/test
+chisurf/plugins/core/hmm/test
+chisurf/plugins/core/lightpath_simulator/tests
+chisurf/plugins/core/model_manager/test
+chisurf/plugins/core/plot_settings/test
+chisurf/plugins/core/plugin_check/test
+chisurf/plugins/core/plugin_manager/test
+chisurf/plugins/core/project_browser/test
+chisurf/plugins/core/pto_inspector/test
+chisurf/plugins/core/setup_channel_definition/test
+chisurf/plugins/core/setup/test
+chisurf/plugins/core/style_manager/test
+chisurf/plugins/core/switch_user/test
+chisurf/plugins/core/tttr_to_pto/test
+chisurf/plugins/core/updater/test
+chisurf/plugins/core/user_editor/test
+chisurf/plugins/core/wizards/test
+chisurf/plugins/fcs/fcs_calculator/test
+chisurf/plugins/fcs/fcs_filter_calculator/test
+chisurf/plugins/fcs/fcs_lfcs_sim/test
+chisurf/plugins/fcs/fcs_merger/test
+chisurf/plugins/fcs/flc_2d/test
+chisurf/plugins/fluorescence_decay/irf_estimator/test
+chisurf/plugins/fluorescence_decay/lifetime_analysis/test
+chisurf/plugins/fluorescence_decay/lifetime_analysis/tests
+chisurf/plugins/fluorescence_decay/lltf/test
+chisurf/plugins/fluorescence_decay/maxent_decay/test
+chisurf/plugins/fluorescence_decay/synthetic_decay/test
+chisurf/plugins/fluorescence_decay/tr_anisotropy/test
+chisurf/plugins/microscopy/clsm_generator/test
+chisurf/plugins/microscopy/clsm/test
+chisurf/plugins/microscopy/imaging_tools/test
+chisurf/plugins/microscopy/img_calibration/test
+chisurf/plugins/microscopy/img_coloc/test
+chisurf/plugins/microscopy/img_drift/test
+chisurf/plugins/microscopy/img_flow/test
+chisurf/plugins/microscopy/img_frc/test
+chisurf/plugins/microscopy/img_pixel_intensity/test
+chisurf/plugins/microscopy/img_pixel_micro_time/test
+chisurf/plugins/microscopy/img_pixel_mle/test
+chisurf/plugins/microscopy/img_pixel_nb/test
+chisurf/plugins/microscopy/img_pixel_phasor/test
+chisurf/plugins/microscopy/img_tracking/test
+chisurf/plugins/microscopy/psf_determination/test
+chisurf/plugins/microscopy/psf_determination/tests
+chisurf/plugins/microscopy/region_mle/test
+chisurf/plugins/microscopy/spot_finder/test
+chisurf/plugins/microscopy/spot_finder/tests
+chisurf/plugins/misc/games/test
+chisurf/plugins/modelling/hydropro/test
+chisurf/plugins/modelling/structure_tools/test
+chisurf/plugins/traj/fret_trajectory/test
+chisurf/plugins/traj/potential_energy/test
+chisurf/plugins/traj/traj_align/test
+chisurf/plugins/traj/traj_convert/test
+chisurf/plugins/traj/traj_join/test
+chisurf/plugins/traj/traj_remove_clashes/test
+chisurf/plugins/traj/traj_rotate_translate/test
+chisurf/plugins/traj/traj_save_topology/test
+chisurf/plugins/traj/traj_tools/test
+chisurf/plugins/tttr/audifier/test
+chisurf/plugins/tttr/filetools/test
+chisurf/plugins/tttr/microtime_histogram/tests
+chisurf/plugins/tttr/photon_table/tests
+chisurf/plugins/tttr/ptu_alex_creator/test
+chisurf/plugins/tttr/trace_browser/test
+chisurf/plugins/tttr/tttr_count_rate_analysis/test
+chisurf/plugins/tttr/tttr_count_rate_analysis/tests
+chisurf/plugins/tttr/tttr_image_browser/test
+chisurf/plugins/tttr/tttr_lut_tools/tests
+chisurf/plugins/tttr/tttr_microtime_shifter/tests
+chisurf/plugins/tttr/tttr_time_windows/tests
+chisurf/plugins/tttr/tttr_toolbox/test
+test/core/test_dye_definition_shipped.py
+test/core/test_emtk_preview_gate.py
+test/fio/test_ndxplorer_rpc_bridge.py
+test/fio/test_setup_store_fresh_database.py
+test/fitting/test_bff_sampler_result_boundary.py
+test/gui/emtk_layout_checks.py
+test/gui/emtk_port_parity.py
+test/gui/test_emtk_port_parity.py
+test/gui/test_metadata_editor_first_use.py
+test/native_emtk/test_channel_definition.py
+test/plugins/burst/test_background_diagnostics.py
+test/plugins/burst/test_irf_background_window.py
+test/test_build_tttrlib_sibling_envs.py
+```
