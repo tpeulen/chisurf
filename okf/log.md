@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W1: fix IMP namespace bootstrap in owning imp-tricks commit eb198e21b;3 exact-tree regressions and pixi/arm64 cold imports pass, preserving foreign lazy-loader work. Verify current wgpu-py lock with pixi lock --check and resolve its stale issue. Bundled path regression is green9; reader/UI retirement and ndxplorer namespace work continue.
+
 - PRD-154 W1: retire the uncalled SpcFileWidget and dedicated UI; preserve CsvWidget byte-for-byte and executable mode. Parent inspected real BH SPC132 baseline;19 parent and20 child targeted cases pass, scoped Ruff/compile clean. Continue full CSV/SDT/simulator parity. [Receipts](validation/release-readiness-w1/spc-retirement/parent-verification.json).
 
 - PRD-154 W1: add declaration-backed native reader settings and ControlHost fallback/reuse at the existing shell seam;20 input/owner/lifecycle cases pass, Ruff/newmodule mypy clean, MainHelper baseline errors unchanged. Parent inspected four PNGs, explicitly marking CSV subset as host-only proof. Preserve file/folder/MMFDB callbacks and prevent late closed-view delivery; full reader and session-curve ports remain open. [Host receipts](validation/release-readiness-w1/reader-host/receipt.json).

@@ -1,3 +1,12 @@
+## IMP source bootstrap mutates namespace paths (2026-10-07)
+
+status: resolved 2026-10-07
+
+imp-tricks root commit eb198e21b orders src before importing IMP and mutates
+only list paths. Three exact-tree cold regressions pass; pixi namespace and
+arm64 regular-package cold imports preserve source precedence and exit zero.
+Foreign lazy-loader work is retained separately. [Owning explanation](imp-ecosystem.md).
+
 ## ALEX Suite hub: a long status line disables Back / Next, and what is left of the port (2026-10-06)
 
 Found while building the native ALEX Suite (T-20261006-ALEXHUB, `alex_suite/gui/native.py`):
@@ -4259,6 +4268,11 @@ templates here would be work thrown away at that port. **Check whether
 closes by deletion.
 
 ## `pixi.toml` requires `wgpu`, and the lock file has never contained it
+
+status: resolved 2026-10-07
+
+Fresh verification: the manifest declares wgpu-py and pixi lock --check exits
+zero. The measured stale manifest/lock condition below is historical.
 
 **2026-08-10.** Re-recorded after being removed from this file without a fix —
 the entry went, the condition did not.

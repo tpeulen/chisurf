@@ -430,3 +430,17 @@ Two deliberate, permanent local modifications, neither a mistake to clean up:
 `cmake-build-arm64/` is the live build. `build/` and `cmake-build-Debug/` are
 **dead** — they target conda environments that no longer exist and import
 nothing.
+
+
+## Namespace-safe local bootstrap (2026-10-07)
+
+The additive imp-tricks bootstrap puts its source root first before IMP is
+resolved. Regular-package list paths are extended; namespace paths retain
+their own recalculation mechanism and are never mutated with list methods.
+Root commit eb198e21b has three cold synthetic regressions, including retained
+compiled/twin exports. Both pixi namespace and arm64 regular-package imports
+exit zero with the local IMP portion first. Concurrent lazy-loader changes
+remain unstaged; the exact committed eager-loader variant passes separately.
+Current pixi IMP.bff uses get_av/ProbeSimulation; old av/restraints/quenching
+subpackage probes do not establish a missing canonical provider. Quest stale
+science consumers remain the already-recorded Quest migration front.

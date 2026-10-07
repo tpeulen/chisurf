@@ -320,3 +320,16 @@ the package's `__path__` and `__file__` before believing it was deleted.
   protobuf 6.31.1. Unused by ChiSurf.
 - After a failed build, re-run plain `ninja -C $B` — the first failure stops
   scheduling and leaves later targets unbuilt.
+
+
+## Cold bootstrap verification (2026-10-07)
+
+For imp-tricks source use, the bootstrap now orders src before importing IMP
+and mutates only regular package list paths. Do not convert a namespace path
+to a list; that prevents it from tracking subsequent sys.path changes.
+Verify with PYTHONPATH pointing at imp-tricks/src and import IMP through both
+pixi test Python and the arm64 interpreter. The local src/IMP portion must be
+first; both processes must exit zero without sitecustomize diagnostics.
+Owning tests: imp-tricks/tests/test_sitecustomize.py (three passes), root
+commit eb198e21b. Historical wrapper/build measurements above remain history,
+not a claim that modern Model-free IMP.bff exports old Python subpackages.
