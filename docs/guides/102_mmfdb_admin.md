@@ -122,3 +122,20 @@ The plugin's tests drive it against a seeded temporary database
   stored, the provenance graph, and the access rules.
 - {doc}`Inspecting a container </guides/63_pto_inspector>` covers provenance
   inside a single `.pto` file.
+
+
+## Legacy administrative metadata example
+
+The legacy Qt administrator retains a sample-population action after ten
+left clicks on its header label. Its confirmation and running state now name
+the packaged synthetic smFRET burst tables. Declining starts no population.
+The authenticated backend uses120 source rows from three packaged CSVs and
+stores the real63-row selection with hashes and lineage. These are metadata
+examples; the action does not acquire photons or require checkout test files.
+
+![Legacy administrator showing the synthetic table result](figures/102_mmfdb_demo_result.png)
+
+The native administrator currently has no matching population control.
+For a headless administrative example, use the owning MMFDB `seed_example`
+API with an explicitly selected demo database; its sources and produced table
+are managed objects in that database's object store.

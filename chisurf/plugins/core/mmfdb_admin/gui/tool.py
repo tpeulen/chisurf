@@ -2945,7 +2945,7 @@ class MMFDBWidget(NavigationPanelTool):
         answer = dialogs.question(
             self,
             "Populate mock MMFDB data",
-            "Populate the MMFDB with bundled smFRET mock data from test fixtures?",
+            self.tr("Populate the MMFDB with the packaged synthetic smFRET burst tables?"),
             QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
             QtWidgets.QMessageBox.No,
         )
@@ -2966,8 +2966,10 @@ class MMFDBWidget(NavigationPanelTool):
         )
         if hasattr(self, "preview_edit"):
             self.preview_edit.setPlainText(
-                "Populating bundled smFRET demo data from test fixtures...\n"
-                "This may take a moment for a fresh database."
+                self.tr(
+                    "Populating the packaged synthetic smFRET burst tables...\n"
+                    "This may take a moment for a fresh database."
+                )
             )
 
         def _succeeded(summary: Any) -> None:

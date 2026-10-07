@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W1: synchronize the two translated legacy MMFDB demo captions with the owning packaged synthetic table contract;2 parent actual-handler regressions pass, six before/after state PNGs inspected and genuine120/63 result preserved. Declining starts no task; other controls, native UI, storage and foreign hunks remain untouched. [Receipt](validation/release-readiness-w1/mmfdb-captions/receipt.json).
+
 - PRD-154 W1: complete configured native Structure reader retirement;10 parent targeted/root/import checks pass, final148L host PNG inspected, lazy filename and actual cached-source counts preserved. Retire modelling/controller and uncalled folder/thread/UI/export chain while preserving PDBSelector for row7 and all foreign hunks/modes. Global communication debt stays explicit. [Receipt](validation/release-readiness-w1/structure-retirement/receipt.md).
 
 - PRD-154 W1: reconcile the resume after completed simulator/configured Add acceptance; next active source unit is Structure row6, followed by the coordinated PDB/FRET native-host retirement. Cached mask/import, packaging, provider and metadata demo commits are landed; remaining RMF/communication/mixed-harness gates stay explicit.
