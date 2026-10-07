@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W1: relocate four approved migration helper sources/README to build_tools/dev_utils/emtk_migration, correct root resolution and three tracked consumer paths, and make --help read-only. Three CLI help checks, Ruff/compilation and actual LUT native factory test pass. Preserve historical paths/evidence and keep the foreign untracked test docstring delta unstaged. [Record](validation/release-readiness-w1.md).
+
 - PRD-154 W1: archive thirteen approved root config/generated artifacts reversibly, remove tracked .env after confirming no dotenv consumers, and add only missing .crush/GEMINI/.hermes ignore rules. Preserve active .omx evidence until programme verification; hold notes/.hermes until their owner folds complete. [Disposition receipt](validation/release-readiness-w1/root-artifacts.json).
 
 - PRD-154 W1 resume: recovery/archive units and thirteen inspected before scenes are committed;188 robustness/menu and60 reader/parity cases pass. Next root-note disposition, then ordered native reader/loader migration; retain precise SDT calibration/all-curve import, CSV forwarding and simulator binding/seed traps. No GUI loader changed yet. Programme continues into the remaining approved workstreams. [Resume](prds/prd-154.md).

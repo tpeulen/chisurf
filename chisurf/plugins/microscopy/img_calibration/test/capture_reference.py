@@ -3,7 +3,7 @@
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[5]
-harness = root / "tools/emtk_migration/capture_qt_references.py"
+harness = root / "build_tools/dev_utils/emtk_migration/capture_qt_references.py"
 source = harness.read_text()
 needle = "            widget = factory()\n"
 injection = """            widget = factory()

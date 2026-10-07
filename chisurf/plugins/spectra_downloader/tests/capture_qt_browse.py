@@ -16,7 +16,7 @@ OUT = Path(__file__).parent / "renders" / "qt" / "spectra-browse-populated.json"
 
 
 def child():
-    helper = ROOT / "tools/emtk_migration/capture_qt_references.py"
+    helper = ROOT / "build_tools/dev_utils/emtk_migration/capture_qt_references.py"
     source = helper.read_text()
     hook = """
     if class_name == "SpectraTool":

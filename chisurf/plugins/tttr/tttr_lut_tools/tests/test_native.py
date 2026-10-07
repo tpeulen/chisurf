@@ -125,7 +125,7 @@ def test_actual_factory_is_qt_free(tmp_path):
     result = subprocess.run(
         [
             sys.executable,
-            "tools/emtk_migration/check_native.py",
+            "build_tools/dev_utils/emtk_migration/check_native.py",
             "--factory",
             "chisurf.plugins.tttr.tttr_lut_tools.gui.app:create_app",
         ],
