@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W1: publish emtk309d97012 semantic tabs, ordinary pending-edit commit and scoped header targets; canonical installed revision passes81 tests and baseline/three after PNGs are inspected. Update all21 lock references while preserving foreign lock hunks. Rewrite the durable resume around completed CSV/SDT and open simulator cached-group/context/primary-input gates. [Receipt](validation/release-readiness-w1/form-tabs/receipt.json).
+
 - PRD-154 W1: retire the configured SDT legacy classes/UI and use the headless native reader; trusted historical descriptor decode remains source-free.15 parent targeted config/alias/host/import checks pass; actual source loads once and all3x1024 curves import with preview2 retained. Final native host PNG inspected; source/doc/knowledge updates preserve frozen CSV and foreign lazy exports. [Receipt](validation/release-readiness-w1/sdt-retirement/receipt.md).
 
 - PRD-154 W1: complete native CSV settings and both configured CSV reader ports; fix owning FWF/error/delimiter/X forwarding, state retention, original-owner source import, linked calibration and native inspector close behavior.713 parent targeted cases plus308 guard passes/17 skips; four PNGs inspected,26 controls retained, three numeric cases bit-identical. Fix actual fitting export and post-rebin dataset-loss roots; preserve foreign hunks/modes and retire the CSV class/controller/UI. [Evidence](validation/release-readiness-w1/csv-retirement/control-parity.json).

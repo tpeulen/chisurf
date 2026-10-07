@@ -177,3 +177,13 @@ reach their owning parser. Source/error/link selections survive reader-state
 roundtrips. The native G-factor child applies completed finite calibration on
 close and cannot update a closed reader view. See the TCSPC file-format
 reference for the user workflow and actual loaded-reader screenshot.
+
+
+## Declared tabs and pending edits
+
+Native tabs now expose scoped header targets such as simulator.decay and
+simulator.preview, submit only the selected page and preserve values across
+reopen/translation. Switching pages commits pending ordinary values using
+the existing parsing/bounds/callback rules before the next page reads them.
+Custom controls with their own nested FormState own those pending edits;
+the simulator explicitly flushes its auxiliary spectrum input lifecycle.
