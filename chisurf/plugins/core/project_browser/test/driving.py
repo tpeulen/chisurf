@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import time
 
+from emtk.painter import ALIGN_HCENTER, ALIGN_RIGHT
+
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver, MetricPainter, hermetic_env  # noqa: F401
 
 BIG = (1200, 800)
@@ -39,6 +41,7 @@ class ClipPainter(MetricPainter):
         super().__init__()
         self._stack = []
         self.shown = []
+        self.ink_rects = []
 
     def push_clip(self, x, y, w, h):
         super().push_clip(x, y, w, h)
@@ -58,7 +61,14 @@ class ClipPainter(MetricPainter):
             for kx, ky, kw, kh in self._stack[1:]:
                 x0, y0, x1, y1 = max(x0, kx), max(y0, ky), min(x1, kx + kw), min(y1, ky + kh)
             clip = (x0, y0, x1, y1)
-        self.shown.append(((x, y, w, h), str(string), clip, self.text_width(str(string))))
+        need = self.text_width(str(string))
+        text_x = (
+            x + w - need
+            if align & ALIGN_RIGHT
+            else (x + (w - need) / 2 if align & ALIGN_HCENTER else x)
+        )
+        self.shown.append(((x, y, w, h), str(string), clip, need))
+        self.ink_rects.append((text_x, y, need, h))
 
 
 def clipped_texts(painter, ignore=()):
@@ -97,12 +107,13 @@ def overlaps(a, b, tol=1.0):
 def layout_problems(painter, size, ignore=()):
     """Visible texts that run outside the window or overlap another visible text.
 
-    A text counts through the part of it that its clip rectangle lets through: a row scrolled out of a window is not on
-    screen. The rectangles in *ignore* (a plot, a graph canvas) are skipped.
+    Horizontal bounds follow the painted text's metrics and alignment, not its
+    allocation box. A text counts through the part its clip rectangle lets through:
+    a scrolled-away row is not visible. The rectangles in *ignore* are skipped.
     """
     problems = []
     visible = []
-    for (x, y, w, h), s, clip, _need in painter.shown:
+    for (_, s, clip, _need), (x, y, w, h) in zip(painter.shown, painter.ink_rects, strict=True):
         if not s.strip() or any(overlaps((x, y, w, h), g, 0) for g in ignore):
             continue
         if clip is not None:

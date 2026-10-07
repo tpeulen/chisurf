@@ -1,3 +1,18 @@
+## Mixed legacy trajectory hub and native capture shutdown (2026-10-07)
+
+status: open
+
+The mixed pytest capture prints its assertions passing, then exits138 during
+Python finalization. The native trace enters QtCore.abi3.so cleanup_qobject
+through sip_api_visit_wrappers/cleanup_on_exit with an invalid QObject vtable.
+The exact dangling legacy wrapper is unidentified. Legacy FRET alone, native
+alone and three explicit-destruction isolation cases exit0; the normal63-case
+parity gate exits0. Do not accept printed passes from the failed mixed process
+or add retention/os._exit workarounds. This unit cannot fix an unidentified
+native owner; row7 adapter capture must isolate its owned host and prove clean
+close, while the remaining legacy hub is retired in its owning GUI programme.
+[Native trace](../validation/release-readiness-w1/row7-prerequisites/mixed-native-backtrace.txt).
+
 ## IMP source bootstrap mutates namespace paths (2026-10-07)
 
 status: resolved 2026-10-07

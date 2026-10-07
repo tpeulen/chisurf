@@ -155,8 +155,6 @@ def test_each_number_field_is_typed_clicked_away_clamped_and_stepped_by_its_arro
                        as_type=as_type, size=SIZE)
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the wheel does not reach a field inside a DockManager window "
-                                       "(repro in the report); the Qt spin box steps on the wheel")
 @pytest.mark.parametrize("key", ["stride", "forster_radius", "tau0", "t_step"])
 def test_the_wheel_steps_a_number_field(key):
     before, after = wheel_steps_a_number_field(make_app, key, size=SIZE)

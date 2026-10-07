@@ -471,3 +471,12 @@ uses actual setuptools namespace selection, FileList and build_py selection
 data. Runtime shaders, reader declarations and settings remain required.
 Chimol demos use their owning packaged resources and explicit user overrides;
 a checkout test directory must not replace those inputs.
+
+
+## Text ink in layout diagnostics
+
+Text collision and painted-overflow checks use aligned glyph ink bounds, not
+the allocated remaining-line rectangle. Keep independent clipping assertions
+active; a wide unused rectangle is harmless, a real glyph collision/overflow
+is a failure. Mixed Qt/native captures must exit normally before they provide
+acceptance: assertions printed before a shutdown crash are only diagnostics.
