@@ -41234,3 +41234,5 @@ side of the line.
 - 2026-10-06 · emtk: **tool hub: fast-forward only for step hubs; plugin icons; disabled reason per hub** (asked by
   the ribbon session for TTTR Tools). `ToolHubApp(steps=True)` shows `>>` (FCS correlator); a plugin panel without an
   icon takes its manifest icon (`plugin_icons.entry_icon`); `disabled_reason(role)` words the rail tooltip.
+
+- 2026-10-07 — W1 FCS row10: native caller hosts replace dead central FCS/TTTR wizard chains; corrected physical header-ms parity and real MaxEnt grid, publication/PTO/td4 lineage/sentinels/cancel rollback verified. Historical wrong-second baseline retained; next GF row11 and remaining ordered W1 gates. See validation/release-readiness-w1/fcs-retirement/acceptance.json.

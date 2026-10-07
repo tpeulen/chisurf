@@ -68,5 +68,5 @@ class BurstFcsTool(ChisurfDockTool):
         return self.controller._curves
 
     def closeEvent(self, event):
-        self.app.close()
+        self.host.close()
         super().closeEvent(event)

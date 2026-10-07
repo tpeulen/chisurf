@@ -184,19 +184,19 @@ class BurstFcsController:
 
     def resolve_files(self):
         results = []
+        self._resolved_roots = []
         for entry in self.checked_files():
             path = Path(entry)
             candidates = []
             if path.is_dir():
-                candidates.extend(path.glob("bi4_bur/*.bur"))
-                candidates.extend(path.glob("bur/*.bur"))
-                candidates.extend(path.glob("BID/*.bst"))
-                candidates.extend(path.glob("*.bur"))
-                candidates.extend(path.glob("*.bst"))
+                bur = list(path.glob("bi4_bur/*.bur")) + list(path.glob("bur/*.bur"))
+                bur += list(path.glob("*.bur"))
+                candidates.extend(bur or list(path.glob("BID/*.bst")) + list(path.glob("*.bst")))
             else:
                 candidates.append(path)
             for candidate in candidates:
                 if candidate.suffix.lower() == ".bst":
+                    root = path if path.is_dir() else candidate.parent
                     raw, ranges = core.parse_bst_file(candidate)
                 elif candidate.suffix.lower() == ".bur":
                     root = (
@@ -209,25 +209,38 @@ class BurstFcsController:
                     continue
                 if raw is not None and ranges:
                     results.append((raw, ranges))
+                    self._resolved_roots.append(root)
         return results
 
     def check_cancel(self):
         if self._cancel.is_set():
             raise CancelledError()
 
-    def _compute(self, files, pairs, settings):
-        curves = []
-        for done, (raw, ranges) in enumerate(files):
+    def _compute(self, files, pairs, settings, roots, parameters):
+        curves, rows, counts = [], [], {}
+        for done, ((raw, ranges), root) in enumerate(zip(files, roots)):
             self.check_cancel()
             self.progress = done / max(len(files), 1)
-            curves.extend(
-                core.correlate_burst_file(
-                    raw, ranges, pairs, settings, cancel_check=self.check_cancel
-                )
+            produced = core.correlate_burst_file(
+                raw, ranges, pairs, settings, cancel_check=self.check_cancel
             )
+            curves.extend(produced)
+            counts[(str(root), Path(raw).stem)] = len(ranges)
+            from ..core.export import RESULT_COLUMNS
+
+            for curve in produced:
+                rows.append({
+                    "First File": str(raw), "Burst Folder": str(root),
+                    "Burst Index": curve["burst_index"], "pair_name": curve["pair_name"],
+                    **{feature["source"]: curve.get(feature["curve"], float("nan"))
+                       for feature in RESULT_COLUMNS},
+                })
         self.check_cancel()
+        from ..core.export import write_fcs_results
+
+        paths = write_fcs_results(rows, counts, parameters=parameters, cancel_check=self.check_cancel)
         self.progress = 1.0
-        return curves
+        return curves, paths
 
     def _on_run(self):
         if self.running:
@@ -263,15 +276,26 @@ class BurstFcsController:
         self._cancel.clear()
         self.running = True
         self.status = "Computing burst FCS …"
-        self._future = self._executor.submit(self._compute, files, copy.deepcopy(pairs), settings)
+        self._run_parameters = settings.to_dict()
+        self._run_parameters["pairs"] = [
+            {"name": p.pair_name, "chs_a": p.chs_a, "chs_b": p.chs_b,
+             "micro_a": p.micro_a, "micro_b": p.micro_b,
+             "n_bins": settings.n_bins, "n_casc": settings.n_casc,
+             "make_fine": settings.make_fine}
+            for p in pairs
+        ]
+        self._future = self._executor.submit(
+            self._compute, files, copy.deepcopy(pairs), settings, list(self._resolved_roots),
+            copy.deepcopy(self._run_parameters)
+        )
 
     def poll(self):
         if self._future is None or not self._future.done():
             return
         future, self._future = self._future, None
         try:
-            curves = future.result()
-            self.check_cancel()
+            curves, paths = future.result()
+            self.output_paths = paths
             self._curves = curves
             self._model._selected = curves[0] if curves else None
             self.status = f"Computed {len(curves)} burst correlation curves."
@@ -284,6 +308,9 @@ class BurstFcsController:
 
     def stop(self):
         if self.running:
+            if self._future is not None and self._future.done():
+                self.poll()
+                return
             self._cancel.set()
             self.status = "Stopping burst FCS …"
 

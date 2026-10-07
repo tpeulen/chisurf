@@ -4,8 +4,7 @@ Computes fluorescence correlation functions on a per-burst basis from Burst-ID
 ``.bst`` / BUR files. The compute core is Qt-free (:mod:`.core`), exposed via
 backend RPC services (:mod:`.backend`) and reached from the GUI through
 :class:`.gui.BurstFcsClient`. The GUI (:class:`.gui.BurstFcsTool`) renders its
-settings and dockable plots declaratively via AutoForm. The legacy
-:class:`.wizard.BurstWiseFCSWizard` is kept for reference.
+settings and dockable plots declaratively via AutoForm.
 """
 
 from __future__ import annotations
@@ -24,7 +23,7 @@ else:
 # Hidden from the menu: surfaced inside the FCS Toolbox meta tool.
 menu_hidden = True
 
-__all__ = ["BurstFcsTool", "BurstWiseFCSWizard", "menu_hidden", "name"]
+__all__ = ["BurstFcsTool", "menu_hidden", "name"]
 
 
 def __getattr__(name):
@@ -32,8 +31,4 @@ def __getattr__(name):
         from .gui.tool import BurstFcsTool
 
         return BurstFcsTool
-    if name == "BurstWiseFCSWizard":
-        from .wizard import BurstWiseFCSWizard
-
-        return BurstWiseFCSWizard
     raise AttributeError(name)

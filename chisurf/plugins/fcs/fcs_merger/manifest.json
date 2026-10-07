@@ -29,7 +29,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.fcs.fcs_merger.wizard:ChisurfWizard",
     "cli": "chisurf.plugins.fcs.fcs_merger.cli.main:main",
     "services": "chisurf.plugins.fcs.fcs_merger.backend.services:register_services",
     "emtk": "chisurf.plugins.fcs.fcs_merger.gui.app:create_app"

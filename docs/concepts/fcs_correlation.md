@@ -416,6 +416,30 @@ error of the mean over repeats, a model $\sigma$, or absent; a reader that finds
 none has to fall back to a model, so the numbers in a fit report depend on which
 it was.
 
+## From measured correlations to burst results
+
+The [FCS hub](../guides/75_fcs_toolbox.md) uses the same native workflow in the
+remaining Qt hosts and standalone emtk launcher: detector/channel definitions,
+files, optional photon filtering, correlation and repeat merging. Five optional
+tools share that hub, including [Burst-wise FCS](../guides/16_fret_fcs.md).
+Measured BH132 examples in those guides demonstrate chunked correlations,
+five-of-six repeat merging, full-stream photon filtering and a three-range
+Simple burst run. The observed MaxEnt controls and grid do not establish
+numerical parity of a measured MaxEnt distribution.
+
+A Simple burst fit estimates one diffusion time; its marker is not a
+distribution. MaxEnt instead estimates a regularized diffusion-time
+distribution. Both depend on the fitted lag window: the GUI excludes lags below
+0.002 ms by default, while the core settings default to unbounded `None`.
+Set the bound explicitly when comparing GUI and headless results.
+MaxEnt uses 0.001 / 20 ms GUI grid presets; entering zero explicitly requests
+a data-dependent automatic bound, as the core API's `None` defaults do.
+The Kristine writer, reader and FCS fitter all use millisecond lag axes;
+the BH132 raw header tick of 13.5 ns corresponds to 0.0000135 ms.
+Burst results retain their identity in the indexed PTO; the positional TD4
+companion retains every input burst row with NaN sentinels for missing estimates, so
+skipping a burst cannot shift later diffusion times onto the wrong bursts.
+
 ## References
 
 - {cite}`magde1972` — the original FCS experiment, a chemical relaxation read

@@ -57,7 +57,7 @@ print(json.dumps(bindings))
 
 
 def test_live_wizard_exports_still_resolve_to_their_owning_classes(tmp_path):
-    """Dropping one star import retains the four neighboring real wizard exports."""
+    """Retirement retains the two neighboring live channel/filter wizard exports."""
     report = _runtime_probe(
         """
 import importlib
@@ -65,9 +65,7 @@ import json
 from qtpy import QtWidgets
 import chisurf.gui.widgets.wizard as package
 owners = {
-    'WizardFcsMerger': 'fcs_merger.fcs_merger',
     'DetectorWizardPage': 'tttr_channeldefinition.tttr_channel_definition',
-    'WizardTTTRCorrelator': 'tttr_correlator.tttr_correlator',
     'WizardTTTRPhotonFilter': 'tttr_photonfilter.tttr_photon_filter',
 }
 for name, relative in owners.items():
@@ -80,9 +78,7 @@ print(json.dumps(owners))
         tmp_path,
     )
     assert set(report) == {
-        "WizardFcsMerger",
         "DetectorWizardPage",
-        "WizardTTTRCorrelator",
         "WizardTTTRPhotonFilter",
     }
 
@@ -91,7 +87,8 @@ print(json.dumps(owners))
     ("module", "retired"),
     [
         ("chisurf.gui.widgets.fluorescence.av", ["AVProperties"]),
-        ("chisurf.gui.widgets.wizard", ["WizardTTTRFileFormat", "FileFormatSettings"]),
+        ("chisurf.plugins.burst.burst_fcs_correlator", ["BurstWiseFCSWizard"]),
+        ("chisurf.gui.widgets.wizard", ["WizardTTTRFileFormat", "FileFormatSettings", "WizardFcsMerger", "WizardTTTRCorrelator"]),
     ],
 )
 def test_dead_loader_classes_are_absent_from_fresh_public_namespaces(tmp_path, module, retired):
@@ -110,7 +107,12 @@ print(json.dumps({{name: hasattr(package, name) for name in {retired!r}}}))
     "module",
     [
         "chisurf.gui.widgets.fluorescence.av.accessible_volume",
+        "chisurf.plugins.burst.burst_fcs_correlator.wizard",
+        "chisurf.plugins.fcs.fcs_correlator.wizard",
+        "chisurf.plugins.fcs.fcs_merger.wizard",
         "chisurf.gui.widgets.wizard.tttr_fileformat.tttr_file_format",
+        "chisurf.gui.widgets.wizard.fcs_merger.fcs_merger",
+        "chisurf.gui.widgets.wizard.tttr_correlator.tttr_correlator",
     ],
 )
 def test_retired_loader_implementation_is_not_importable(tmp_path, module):
@@ -134,10 +136,21 @@ print(json.dumps({{'available': spec is not None}}))
     "relative",
     [
         "chisurf/gui/widgets/fluorescence/av/accessible_volume.py",
+        "chisurf/plugins/burst/burst_fcs_correlator/wizard.py",
+        "chisurf/plugins/fcs/fcs_correlator/wizard.py",
+        "chisurf/plugins/fcs/fcs_merger/wizard.py",
         "chisurf/gui/widgets/fluorescence/av/av_property.ui",
         "chisurf/gui/widgets/wizard/tttr_fileformat/__init__.py",
         "chisurf/gui/widgets/wizard/tttr_fileformat/tttr_file_format.py",
         "chisurf/gui/widgets/wizard/tttr_fileformat/tttr_file_format.ui",
+        'chisurf/gui/widgets/wizard/fcs_merger/__init__.py',
+        'chisurf/gui/widgets/wizard/fcs_merger/fcs_merger.py',
+        'chisurf/gui/widgets/wizard/fcs_merger/fcs_merger.ui',
+        'chisurf/gui/widgets/wizard/fcs_merger/fcs_merger_ui.py',
+        'chisurf/gui/widgets/wizard/tttr_correlator/__init__.py',
+        'chisurf/gui/widgets/wizard/tttr_correlator/tttr_correlator.py',
+        'chisurf/gui/widgets/wizard/tttr_correlator/tttr_correlator.ui',
+        'chisurf/gui/widgets/wizard/tttr_correlator/tttr_correlator_ui.py',
     ],
 )
 def test_retired_source_and_designer_files_are_not_shipped(relative):

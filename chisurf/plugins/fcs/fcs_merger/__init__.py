@@ -4,8 +4,8 @@ Merge / average multiple fluorescence correlation spectroscopy (FCS) curves to
 improve signal-to-noise. The compute core is Qt-free (the shared
 ``chisurf.core.fluorescence.fcs.merge`` primitives, re-exported via :mod:`.core`
 and :mod:`.api`), exposed through backend RPC services (:mod:`.backend`) and
-reached from the GUI through :class:`.gui.FcsMergerClient`. The GUI is the
-``ChisurfWizard`` wrapper around the shared ``WizardFcsMerger`` page.
+reached from the GUI through :class:`.gui.FcsMergerClient`. The native GUI is :class:`.gui.app.MergerApp`, with a declarative screening
+table, individual curves and the weighted merge.
 """
 
 from __future__ import annotations

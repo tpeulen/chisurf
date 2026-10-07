@@ -17,6 +17,7 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
@@ -296,7 +297,7 @@ class MergerApp(ImApp):
     def draw_curves(self, box):
         m = self.model
         if implot.begin_plot("FCS##individual", (-1, -1)):
-            implot.setup_axes("Lag time (s)", "G(τ)")
+            implot.setup_axes(tr("Lag time (ms)"), "G(τ)")
             implot.setup_axis_scale(implot.AXIS_X1, implot.SCALE_LOG10)
             for i, curve in enumerate(m.correlations):
                 used = m.use[i]
@@ -310,7 +311,7 @@ class MergerApp(ImApp):
     def draw_mean(self, box):
         mean = self.model.mean_correlation
         if implot.begin_plot("FCS Merged##merged", (-1, -1)):
-            implot.setup_axes("Lag time (s)", "G(τ)")
+            implot.setup_axes(tr("Lag time (ms)"), "G(τ)")
             implot.setup_axis_scale(implot.AXIS_X1, implot.SCALE_LOG10)
             if mean is not None:
                 implot.plot_line(f"Merge of {self.model.n_used()}", np.asarray(mean["x"], float),

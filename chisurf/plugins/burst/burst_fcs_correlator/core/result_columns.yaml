@@ -1,0 +1,12 @@
+# Dynamic correlation-pair suffixes expand these two owned quantities.
+columns:
+  - column: td_mean
+    source: td_mean_ms
+    curve: td_mean
+    unit: milliseconds
+    term: _flr_analysis_feature.diffusion_time_mean
+  - column: td_peak
+    source: td_peak_ms
+    curve: td_peak
+    unit: milliseconds
+    term: _flr_analysis_feature.diffusion_time_peak

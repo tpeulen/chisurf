@@ -10,9 +10,8 @@ and merging fluorescence correlation spectroscopy (FCS) data. Features include:
 - Multi-tau correlation with configurable parameters (bins, cascades, fine grid)
 - FCS curve merging and export
 
-The tool replaces the legacy QWizard with a modern navigation panel layout
-(left step list, right view/display), built using the AutoForm declarative
-UI framework for the correlator settings panel.
+The existing Qt entry point hosts a native emtk workflow rail and declarative
+AutoForm controls for channel definitions, files, filtering, correlation and merging.
 
 The correlator workflow is no longer a standalone menu entry: it is hosted as
 the first section of the unified **FCS** tool (``fcs_toolbox``), which merges the

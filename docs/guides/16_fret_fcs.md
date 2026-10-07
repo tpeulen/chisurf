@@ -64,10 +64,14 @@ from the burst or full photon streams.
 ### Burst-wise FCS
 
 **Spectroscopy ▸ Fluorescence Correlation Spectroscopy ▸ Burst-wise FCS** (also
-the *Burst FCS* tool of **Spectroscopy ▸ Burst Analysis**) correlates each burst
+the *Burst FCS* tool of **Spectroscopy ▸ Burst Analysis**, and *Burst-wise FCS*
+in the [FCS hub](75_fcs_toolbox.md)) correlates each burst
 separately, using only the photons of that burst ± **Padding**. The window has
 **Run FCS**, **Stop**, **Example**, **Guide** and **Help** on top, three tabs on
-the left and the plots on the right:
+the left and the plots on the right. All three entry points host the same native
+app. For a GPU desktop, the standalone launch is
+`pixi run -e test python -m chisurf.emtk --plugin burst_fcs_correlator --size 1200x800`;
+headless calculations use the core API below, without launching a window:
 
 - **Inputs** — the **Burst folders or BUR/BST files** table (**Files...**,
   **Folder...**, **Database...**, **All**, **None**, **Remove**, **Clear**; files
@@ -79,9 +83,11 @@ the left and the plots on the right:
   **Cascades** (20), **Fine grid** (micro-time-resolved lags), **Padding ±
   (ms)** (100); **Fitting**: **Mode** *None* / *Simple* (one diffusion component)
   / *MaxEnt* (a diffusion-time distribution, regularised by **MaxEnt reg
-  (log10)** over **tau_D min/max**, 0 = automatic) and the fit window **t_min /
-  t_max** (0 = the full lag range; the two vertical lines on the correlation plot
-  drag it); **Load settings...** / **Save settings...**;
+  (log10)** over **tau_D min/max**, GUI presets **0.001 / 20 ms**, with 0
+  explicitly requesting a data-dependent automatic bound) and the fit window **t_min /
+  t_max** in ms (the GUI defaults to **t_min = 0.002 ms**, **t_max = 0**, with
+  zero meaning no bound; the two vertical lines on the correlation plot drag
+  it); **Load settings...** / **Save settings...**;
 - **Detector setup** — the shared detector editor; **Use setup for pairs** turns
   the setup (its stored FCS pairs, else one auto-correlation per detector) into
   channel pairs.
@@ -89,20 +95,69 @@ the left and the plots on the right:
 **Run FCS** correlates every ticked file × pair × burst, with a progress bar.
 The right side shows the correlation of the selected curve with its fit, the
 **Curves** list (`burst · pair · tau_D`, filterable by text) and the **Distribution
-P(tau_D)** in MaxEnt mode. **Export curves...** saves the curves as JSON.
+P(tau_D)** in MaxEnt mode. In Simple mode that panel shows a single estimate
+marker at the fitted diffusion time; it is not a probability distribution.
+**Export curves...** saves the curves as JSON.
 **Example** writes a small seeded demonstration data set (eight bursts on two
 detectors) and adds it, so the **Guide** can be walked without data.
 
-```{figure} figures/16_burst_fcs.png
+The Run worker also publishes `<stem>.pto`, `td4/<stem>.td4` and
+`td4/td4_settings.json` beside the measurement/analysis inputs. The TD4
+companion keeps one row per input burst, including NaN sentinel values where a
+burst or channel pair produced no estimate, with zero-interleaved numeric
+columns. The PTO stores produced rows keyed by **Burst Index**, with per-pair
+diffusion-time columns in milliseconds, settings and lineage derived from the
+bursts. Extending an existing PTO preserves its earlier scientific lineage.
+Outputs are prepared before publication; cancellation or failure preserves
+previous outputs. **Stop**, or closing the native app or its Qt host, requests
+worker cancellation; closing also shuts down its owned executor.
+
+```{figure} figures/fcs_native_bh132_burst_simple.png
 :name: fig-16-burst-fcs
 :width: 100%
 
-The demonstration data set (**Example**): eight seeded bursts on two detectors,
-channel pairs ACF_0, ACF_1 and cross_01, 24 curves, *Simple* fit. Shown is the
-ACF_0 curve of burst 0; a single burst's curve is shot-noise limited at short
-lags, which is why the kinetic terms are fitted globally over many bursts. The
-photons are generated, not measured.
+Measured BH132 fixture, with three explicitly indexed BST ranges and one
+`green_ACF` pair (channels 0, 1 on both sides), zero padding, three bins and
+twelve cascades, with full 0–4095 micro-time gates. The Simple run produced
+three curves and TD4/PTO outputs;
+the selected curve's diffusion-time estimate is the yellow marker. This
+single-pair capture does not demonstrate a FRET exchange fit.
 ```
+
+```{figure} figures/fcs_native_bh132_burst_settings.png
+:name: fig-16-burst-fcs-settings
+:width: 100%
+
+The same measured run's Settings tab: the 0.002 ms lower fit bound and
+0.001 / 20 ms MaxEnt grid presets are visible. The Simple result above does
+not establish numerical parity of a MaxEnt distribution.
+```
+
+For a headless calculation, supply the same photon-index ranges explicitly.
+The core `BurstFcsSettings` defaults to `tmin_fit=None` and `tmax_fit=None`
+(unbounded), so set 0.002 ms explicitly to reproduce the GUI fit window.
+
+The core MaxEnt grid bounds also default to `None`, retaining their
+data-dependent automatic choice. In the GUI, enter **0** for either grid bound
+to request Auto rather than its 0.001 / 20 ms preset:
+
+```python
+from pathlib import Path
+from chisurf.plugins.burst.burst_fcs_correlator.core import (
+    BurstFcsSettings, PairConfig, correlate_burst_file,
+)
+
+settings = BurstFcsSettings(n_bins=3, n_casc=12, padding_ms=0,
+                            fit_mode="simple", tmin_fit=0.002)
+curves = correlate_burst_file(
+    Path("test/data/tttr/BH/132/BH_SPC132.spc"),
+    [(0, 5000), (6000, 11000), (12000, 17000)],
+    [PairConfig("green_ACF", [0, 1], [0, 1])], settings,
+)
+```
+
+This core call returns curves; it does not publish TD4/PTO files. The native
+Run worker performs that publication separately.
 
 ## Result
 

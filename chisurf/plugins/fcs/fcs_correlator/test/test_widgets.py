@@ -16,30 +16,24 @@ _SPC = (
 
 
 def test_fcs_correlator_tool(qapp, qtbot):
-    from chisurf.gui.widgets.navigation import NavigationPanelTool
     from chisurf.plugins.fcs.fcs_correlator.tool import FcsCorrelatorTool
 
     widget = FcsCorrelatorTool()
     qtbot.addWidget(widget)
-    assert isinstance(widget, NavigationPanelTool)
+    assert widget.host.control is widget.app
+    widget.close()
 
 
 def test_workflow_leads_with_channel_definitions(qapp, qtbot):
     """No detector-setup step: channel definitions are step 1, opens on files."""
-    from chisurf.plugins.fcs.fcs_correlator.tool import (
-        CORRELATOR_PANELS,
-        FcsCorrelatorTool,
-    )
+    from chisurf.plugins.fcs.fcs_correlator.gui.app import STEP_ROLES
+    from chisurf.plugins.fcs.fcs_correlator.tool import FcsCorrelatorTool
 
-    roles = [p.get("role") for p in CORRELATOR_PANELS]
-    assert "detector" not in roles
-    assert roles[0] == "channel_def"
-    assert roles == ["channel_def", "files", "filter", "correlator", "merger"]
-
+    assert STEP_ROLES == ("channel_def", "files", "filter", "correlator", "merger")
     tool = FcsCorrelatorTool()
     qtbot.addWidget(tool)
-    # opens on the file-drop step
-    assert tool.nav_list.currentRow() == tool._nav_row_for_role("files")
+    assert tool.app.selected == "files"
+    tool.close()
 
 
 def test_lifetime_filter_load_species_select_unload(qapp, qtbot, tmp_path):
@@ -121,10 +115,10 @@ def test_files_carry_over_to_correlator(qapp, qtbot):
     tool = FcsCorrelatorTool()
     qtbot.addWidget(tool)
 
-    tool.nav_list.setCurrentRow(1)  # Files & Steps
-    tool._workflow_panels["files"].file_list.add_paths([str(_SPC)])
-
-    tool.nav_list.setCurrentRow(3)  # Correlator
-    model = tool._correlator_model
+    tool.app.files_step.add_paths([str(_SPC)])
+    assert tool.show_panel_by_role("correlator")
+    model = tool.app.correlator_model
     assert model._tttr is not None
     assert len(model._tttr) > 0
+
+    tool.close()

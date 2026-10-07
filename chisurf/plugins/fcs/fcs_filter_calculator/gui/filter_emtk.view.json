@@ -19,7 +19,13 @@
       "action": "unmix",
       "label": "Unmix",
       "description": "Fit non-negative component intensities to the mixed decay and compute the filters."
-     },
+     }
+    ]
+   },
+   {
+    "type": "button_row",
+    "description": "Compute the selected filters or cancel pending work.",
+    "buttons": [
      {
       "action": "compute",
       "label": "Compute filters",

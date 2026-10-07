@@ -1,8 +1,7 @@
 """The native FCS curve merger at parity with the Qt WizardFcsMerger page.
 
 Real repeats: BH_SPC132.spc cut into six 10 s chunks and cross-correlated with tttrlib
-(``okf/plugins/emtk-ports/fcs_merger/scripts/make_chunks.py``). The Qt page runs in a
-subprocess (this process stays Qt-free): it loads the folder, leaves chunk 3 out and
+(``okf/plugins/emtk-ports/fcs_merger/scripts/make_chunks.py``). The committed populated Qt oracle loads the folder, leaves chunk 3 out and
 saves. The native app does the same through its controls -- a pointer press on the Use
 check box, a double click on a row -- and must show the same rows, target and merge,
 and write the same file.
@@ -11,8 +10,6 @@ and write the same file.
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -30,53 +27,32 @@ from make_chunks import build  # noqa: E402
 
 SPEC = json.loads((HERE.parent / "gui" / "fcs_merger_emtk.view.json").read_text(encoding="utf-8"))
 
-_QT = r"""
-import json, pathlib, sys
-from qtpy import QtCore, QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-from chisurf.plugins.fcs.fcs_merger.wizard import ChisurfWizard
-folder = pathlib.Path(sys.argv[1])
-w = ChisurfWizard(); p = w.page(w.pageIds()[0])
-p.lineEdit.setText(str(folder))
-p.open_correlation_folder(folder)
-p.tableWidget.item(2, 0).setCheckState(QtCore.Qt.Unchecked)
-t = p.tableWidget
-rows = [[t.item(r, c).text().strip() for c in range(1, 5)] for r in range(t.rowCount())]
-tips = [t.item(r, 1).toolTip() for r in range(t.rowCount())]
-m = p.mean_correlation
-p.save_mean_correlation()
-print("FACTS" + json.dumps({"rows": rows, "tips": tips, "target": p.lineEdit_2.text(),
-      "mean": {k: (list(map(float, m[k])) if k in ("x", "y", "ey") else float(m[k])) for k in ("x", "y", "ey", "duration", "count_rate")},
-      "saved": pathlib.Path(p.target_filepath).read_text()}))
-"""
 
 
 @pytest.fixture(scope="module")
 def chunks(tmp_path_factory):
     pytest.importorskip("tttrlib")
-    return build(tmp_path_factory.mktemp("qt") / "BH_SPC132")
+    return build(tmp_path_factory.mktemp("qt") / "BH_SPC132", legacy_seconds=True)
 
 
 @pytest.fixture(scope="module")
 def qt(chunks):
-    pytest.importorskip("qtpy")
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT, str(chunks)], capture_output=True, text=True, timeout=300,
-                          env=env, cwd=str(REPO))
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and ("No module named" in proc.stderr or "could not connect to display" in proc.stderr):
-        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
-    # Any other failure is the Qt page's own: skipping it hid a broken Qt host.
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS"):])
+    """Read the committed populated legacy oracle without constructing retired Qt code."""
+    path = REPO / "okf/validation/release-readiness-w1/fcs-before/merger-facts.json"
+    facts = json.loads(path.read_text())
+    inventory = json.loads(path.with_name("merger-loaded-six-repeats.json").read_text())
+    table = next(row for row in inventory if row["class"] == "QTableWidget")
+    rows = [[value.strip() for value in row[1:5]] for row in table["data"]]
+    return {"rows": rows, "tips": [str(chunks / (row[0] + ".cor")) for row in rows],
+            "target": str(chunks.parent / "BH_SPC132.cor"), "mean": facts["mean"],
+            "saved": facts["saved"]}
 
 
 @pytest.fixture
 def folder(tmp_path):
     """A fresh copy per test (saving writes beside the folder)."""
     pytest.importorskip("tttrlib")
-    return build(tmp_path / "BH_SPC132")
+    return build(tmp_path / "BH_SPC132", legacy_seconds=True)
 
 
 def _draw(app, size=(1200, 800), n=2):

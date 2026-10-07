@@ -528,8 +528,6 @@ def test_migrated_modules_import(qapp):
         "chisurf.plugins.tttr.tttr_lut_tools.gui.settings_panel",
         # Batch 14
         "chisurf.gui.autoform.sections.decay_conv_section",
-        "chisurf.gui.widgets.wizard.fcs_merger.fcs_merger_ui",
-        "chisurf.gui.widgets.wizard.fcs_merger.fcs_merger",
         # Batch 15
         "chisurf.plugins.modelling.fret.gui.dock_tool",
         "chisurf.plugins.modelling.fret.gui.pair_selection_wizard",
@@ -542,10 +540,6 @@ def test_migrated_modules_import(qapp):
         "chisurf.plugins.burst.burst_background.gui.sections",
         # Batch 21
         "chisurf.plugins.burst.burst_browser.gui.sections",
-        # NB: burst_fcs_correlator.wizard (Batch 22) is intentionally NOT listed —
-        # it imports IMP, which segfaults when loaded alongside the other heavy
-        # extensions in this shared test process. It is verified to import
-        # standalone + screenshot-checked instead.
         # Batch 23
         "chisurf.plugins.burst.burst_selection.gui.legacy.burst_selector",
         # NB: irf_estimator.gui.tool (Batch 24) is intentionally NOT listed — like

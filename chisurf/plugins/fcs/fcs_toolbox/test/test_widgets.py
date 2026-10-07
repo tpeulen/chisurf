@@ -1,46 +1,22 @@
-"""Tests for the unified FCS window (shared NavigationPanelTool shell)."""
+"""Tests for the unified FCS window (native workflow host)."""
 
 
 def test_fcs_tool_merges_correlator_and_tools(qapp, qtbot):
-    from chisurf.gui.widgets.navigation import NavigationPanelTool
-    from chisurf.plugins.fcs.fcs_correlator.tool import CORRELATOR_PANELS
-    from chisurf.plugins.fcs.fcs_toolbox.tool import (
-        FCS_PANELS,
-        TOOL_PANELS,
-        FcsTool,
-        FcsToolboxTool,
-    )
+    from chisurf.plugins.fcs.fcs_toolbox.tool import FcsTool, FcsToolboxTool
 
-    w = FcsTool()
-    qtbot.addWidget(w)
-
-    # same base / look as Burst Analysis, Decay Analysis, Imaging Tools
-    assert isinstance(w, NavigationPanelTool)
-    assert w.windowTitle() == "FCS"
-    assert FcsToolboxTool is FcsTool  # back-compat alias
-
-    # correlator workflow + a "Tools" separator + the optional tools,
-    # each behind its own group header.
-    separators = [p for p in FCS_PANELS if p.get("separator")]
-    assert [s["name"] for s in separators] == ["Correlator", "Tools"]
-    assert len(FCS_PANELS) == len(CORRELATOR_PANELS) + len(TOOL_PANELS) + len(separators)
-    assert w.nav_list.count() == len(FCS_PANELS)
-
-    names = [w.nav_list.item(i).text() for i in range(w.nav_list.count())]
-    assert any("Correlator" in n for n in names)
-    assert any("Diffusion Calc" in n for n in names)
-    assert any("2D-FLCS" in n for n in names)
-
-    # panels load lazily; opens on the correlator "Files & Steps" step.
-    files_row = w._nav_row_for_role("files")
-    assert w.nav_list.currentRow() == files_row
-
-    # an optional tool loads on demand
-    calc_row = w._nav_row_for_role("diffusion_calc")
-    assert calc_row >= 0
-    assert w.panels[calc_row].get("instance") is None
-    w.nav_list.setCurrentRow(calc_row)
-    assert w.panels[calc_row].get("instance") is not None
+    tool = FcsTool()
+    qtbot.addWidget(tool)
+    assert tool.windowTitle() == "FCS"
+    assert FcsToolboxTool is FcsTool
+    assert tool.app.selected == "files"
+    assert [p["role"] for p in tool.app.tools] == [
+        "channel_def", "files", "filter", "correlator", "merger",
+        "flc_2d", "lfcs_sim", "burst_fcs", "diffusion_calc", "filter_calc",
+    ]
+    assert "diffusion_calc" not in tool.app.children
+    assert tool.show_panel_by_role("diffusion_calc")
+    assert tool.app.children["diffusion_calc"] is not None
+    tool.close()
 
 
 def test_included_plugins_are_menu_hidden():
@@ -63,9 +39,9 @@ def test_show_panel_by_role_navigates_to_filter_calc(qapp, qtbot):
 
     w = FcsTool()
     qtbot.addWidget(w)
-    calc_row = w._nav_row_for_role("filter_calc")
-    assert calc_row >= 0
-    assert w.nav_list.currentRow() != calc_row  # starts elsewhere
+    assert w.app.selected == "files"
     assert w.show_panel_by_role("filter_calc") is True
-    assert w.nav_list.currentRow() == calc_row  # navigated
+    assert w.app.selected == "filter_calc"
+    assert "filter_calc" in w.app.children
     assert w.show_panel_by_role("does_not_exist") is False
+    w.close()

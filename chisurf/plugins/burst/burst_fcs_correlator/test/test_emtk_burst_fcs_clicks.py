@@ -15,6 +15,7 @@ from concurrent.futures import CancelledError
 from pathlib import Path
 
 import pytest
+import numpy as np
 from emtk import keys
 
 from chisurf.plugins.burst.burst_fcs_correlator import demo
@@ -438,8 +439,10 @@ def test_the_settings_reach_the_correlation(drv):
 def test_the_mode_radio_picks_each_fit_and_the_maxent_fields_follow_it(drv):
     drv.tab("Settings")
     assert model(drv).fit_mode == "simple"
-    drv.click("maxent_td_max", fx=0.3)  # greyed in Simple mode: the field takes no keyboard and no value
-    assert not drv.app.io.want_capture_keyboard and model(drv).maxent_td_max == 0.0
+    drv.click(
+        "maxent_td_max", fx=0.3
+    )  # greyed in Simple mode: the field takes no keyboard and no value
+    assert not drv.app.io.want_capture_keyboard and model(drv).maxent_td_max == 20.0
     drv.click("fit_mode.2")
     assert model(drv).fit_mode == "maxent"
     drv.type_into("maxent_td_max", "5")
@@ -562,17 +565,18 @@ def test_a_drag_pans_and_the_wheel_zooms_the_correlation_plot(drv):
 
 def test_the_fit_window_lines_are_dragged_and_set_t_min_and_t_max(drv):
     example_run(drv)
-    painter = drv.draw(3)
-    px, py, pw, ph = drv.app.item_rects["correlation_plot"]
-    assert model(drv).tmin_fit == 0.0
-    # find the line by hovering: the plot reports it as the item under the pointer
-    moved = False
-    for dx in range(30, 120, 6):
-        drv.drag((px + dx, py + ph * 0.45), (px + dx + 120, py + ph * 0.45))
-        if model(drv).tmin_fit > 0:
-            moved = True
-            break
-    assert moved and model(drv).tmax_fit > model(drv).tmin_fit
+    original = model(drv).tmin_fit
+    assert original == pytest.approx(0.002)
+    before = np.asarray(ctrl(drv)._curves[0]["tau"])
+    x, y, w, h = drv.rect("fit_min_line")
+    drv.drag((x + w / 2, y + h / 2), (x + w / 2 + 45, y + h / 2))
+    assert model(drv).tmin_fit != original
+    assert model(drv).tmax_fit > model(drv).tmin_fit
+    drv.click("run")
+    drv.settle()
+    after = np.asarray(ctrl(drv)._curves[0]["tau"])
+    assert after[0] >= model(drv).tmin_fit
+    assert not np.array_equal(before, after)
 
 
 def test_a_wheel_zoom_on_the_distribution_plot(drv):
@@ -637,6 +641,8 @@ def test_the_flow_works_in_the_small_window_too(drv):
     drv.type_into("n_bins", "4")
     assert model(drv).n_bins == 4
     drv.tab("Inputs")
-    drv.click_cell("curve_rows", 2, "pair")
+    drv.click_cell("curve_rows", 0, "pair")
+    drv.key(keys.KEY_DOWN)
+    drv.key(keys.KEY_DOWN)
     assert model(drv)._selected is ctrl(drv)._curves[2]
     drv.tab("Detector setup")

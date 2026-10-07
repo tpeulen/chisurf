@@ -1,5 +1,6 @@
 """Toolkit-free burst FCS settings and plot sources."""
 
+import math
 from pathlib import Path
 from typing import Any
 
@@ -18,9 +19,9 @@ class _BurstFcsModel:
         self.padding_ms = 100.0
         self.fit_mode = "simple"
         self.maxent_log10_reg = 0.0
-        self.maxent_td_min = 0.0
-        self.maxent_td_max = 0.0
-        self.tmin_fit = 0.0
+        self.maxent_td_min = 0.001
+        self.maxent_td_max = 20.0
+        self.tmin_fit = 0.002
         self.tmax_fit = 0.0
         self._selected: dict[str, Any] | None = None
 
@@ -72,6 +73,11 @@ class _BurstFcsModel:
             return []
         td = c.get("td_grid") or []
         p = c.get("p") or []
+        if c.get("fit_mode") == "simple" and not td:
+            estimate = float(c.get("td_mean", float("nan")))
+            if math.isfinite(estimate) and estimate > 0:
+                return [{"x": [estimate], "y": [1.0], "name": "Simple fit",
+                         "color": "y", "marker": True}]
         if len(td) and len(td) == len(p):
             return [{"x": td, "y": p, "name": "P(τ_D)", "color": "y", "width": 2}]
         return []

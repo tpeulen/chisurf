@@ -45,22 +45,19 @@ def _rows(burst_folder: str, first_file: str) -> list:
 
 
 def test_a_skipped_burst_is_a_sentinel_row_not_a_missing_one(
-    tmp_path: Path, qapp, qtbot, monkeypatch
+    tmp_path: Path
 ):
-    from chisurf.plugins.burst.burst_fcs_correlator.wizard import BurstWiseFCSWizard
-
-    w = BurstWiseFCSWizard()
-    qtbot.addWidget(w)
-    # The container path is pinned separately in test_container.py; stub it out
-    # here so this test is only about the td4 companion's row grid.
-    monkeypatch.setattr(w, "_write_container", lambda *a, **k: None)
+    from chisurf.plugins.burst.burst_fcs_correlator.core.export import write_fcs_results
+    import shutil
+    source = Path(__file__).resolve().parents[5] / "test/data/tttr/BH/132/BH_SPC132.spc"
+    shutil.copyfile(source, tmp_path / "m000.spc")
 
     burst_folder = str(tmp_path)
     first_file = str(tmp_path / "m000.spc")
     rows = _rows(burst_folder, first_file)
     burst_counts = {(burst_folder, "m000"): 8}
 
-    w._save_td4_results(rows, burst_counts)
+    write_fcs_results(rows, burst_counts, parameters={"n_bins": 3})
 
     td4_file = tmp_path / "td4" / "m000.td4"
     assert td4_file.exists()
@@ -84,7 +81,7 @@ def test_a_skipped_burst_is_a_sentinel_row_not_a_missing_one(
 
 
 def test_without_a_burst_count_it_falls_back_to_the_bursts_computed(
-    tmp_path: Path, qapp, qtbot, monkeypatch
+    tmp_path: Path
 ):
     """Defensive fallback when ``burst_counts`` lacks the (folder, stem) key.
 
@@ -93,17 +90,16 @@ def test_without_a_burst_count_it_falls_back_to_the_bursts_computed(
     ``.bur`` grid, which is why ``_run_burstwise_fcs`` always supplies the real
     count in the ordinary path.
     """
-    from chisurf.plugins.burst.burst_fcs_correlator.wizard import BurstWiseFCSWizard
-
-    w = BurstWiseFCSWizard()
-    qtbot.addWidget(w)
-    monkeypatch.setattr(w, "_write_container", lambda *a, **k: None)
+    from chisurf.plugins.burst.burst_fcs_correlator.core.export import write_fcs_results
+    import shutil
+    source = Path(__file__).resolve().parents[5] / "test/data/tttr/BH/132/BH_SPC132.spc"
+    shutil.copyfile(source, tmp_path / "m000.spc")
 
     burst_folder = str(tmp_path)
     first_file = str(tmp_path / "m000.spc")
     rows = _rows(burst_folder, first_file)
 
-    w._save_td4_results(rows, {})
+    write_fcs_results(rows, {}, parameters={"n_bins": 3})
 
     td4_file = tmp_path / "td4" / "m000.td4"
     columns, body = read_companion(td4_file)

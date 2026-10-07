@@ -157,12 +157,9 @@ def test_the_port_is_qt_free():
     assert verdict["ok"], verdict["output"]
 
 
-def _shared_editor_xfail(tab, size):
-    """The Detector setup tab is the shared editor (chisurf/emtk/channel_definition.py): its narrow-column clipping is reported there."""
-    return pytest.param(size, tab, marks=pytest.mark.xfail(strict=True, reason="shared detector editor: header cells overlap / clip in a 420 px column")) if tab == "Detector setup" else (size, tab)
-
-
-@pytest.mark.parametrize("size, tab", [_shared_editor_xfail(t, s) for s in (BIG, SMALL) for t in TABS])
+@pytest.mark.parametrize(
+    "size, tab", [(s, t) for s in (BIG, SMALL) for t in TABS]
+)
 def test_every_tab_draws_and_the_layout_is_clean(drv, size, tab):
     drv.size = size
     drv.settle()

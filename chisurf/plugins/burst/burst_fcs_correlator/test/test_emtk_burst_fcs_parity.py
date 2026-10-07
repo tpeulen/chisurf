@@ -180,8 +180,20 @@ def test_the_settings_model_converts_like_the_qt_tool():
     m.n_bins, m.n_casc, m.make_fine, m.padding_ms, m.fit_mode = 5, 25, True, 12.5, "maxent"
     m.maxent_log10_reg, m.maxent_td_min, m.tmin_fit = -2.0, 0.01, 0.5
     s = m.to_settings()
-    assert (s.n_bins, s.n_casc, s.make_fine, s.padding_ms, s.fit_mode) == (5, 25, True, 12.5, "maxent")
-    assert s.maxent_reg == pytest.approx(0.01) and s.maxent_td_min == 0.01 and s.maxent_td_max is None and s.tmin_fit == 0.5 and s.tmax_fit is None
+    assert (s.n_bins, s.n_casc, s.make_fine, s.padding_ms, s.fit_mode) == (
+        5,
+        25,
+        True,
+        12.5,
+        "maxent",
+    )
+    assert (
+        s.maxent_reg == pytest.approx(0.01)
+        and s.maxent_td_min == 0.01
+        and s.maxent_td_max == 20.0
+        and s.tmin_fit == 0.5
+        and s.tmax_fit is None
+    )
 
 
 def test_the_tables_show_the_controllers_state(drv, data):
@@ -264,12 +276,7 @@ def test_the_real_user_settings_are_never_touched(drv, data, tmp_path):
 # -- the layout -------------------------------------------------------------------------------------------------------- #
 
 
-def _shared(tab, size):
-    return pytest.param(size, tab, marks=pytest.mark.xfail(strict=True, reason="shared detector editor: header cells overlap / clip in a narrow column")) \
-        if tab == "Detector setup" and size == SMALL else (size, tab)
-
-
-@pytest.mark.parametrize("size, tab", [_shared(t, s) for s in (BIG, SMALL) for t in TABS])
+@pytest.mark.parametrize("size, tab", [(s, t) for s in (BIG, SMALL) for t in TABS])
 def test_every_tab_draws_and_the_layout_is_clean(drv, data, size, tab):
     drv.size = size
     run(drv, data)

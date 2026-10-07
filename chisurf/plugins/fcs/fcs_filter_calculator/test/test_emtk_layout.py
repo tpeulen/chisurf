@@ -88,3 +88,61 @@ def test_native_filters_are_bit_identical_to_the_qt_widgets_for_the_same_inputs(
     assert np.array_equal(native._result.filters, widget._result.filters)
     assert np.array_equal(native._result.reconstruction, widget._result.reconstruction)
     widget.deleteLater()
+
+
+
+@pytest.mark.parametrize("width", [800, 1200])
+def test_native_compute_caption_and_residual_axis_fit_real_dock(width):
+    """The declared compute action fits its own row and short residual dock stays bounded."""
+    from emtk.testing import Driver
+
+    app = settled((width, 600))
+    driver = Driver(app, size=(width, 600))
+    try:
+        painter = driver.draw(2)
+        x, y, w, h = driver.rect("compute")
+        assert w >= painter.text_width("Compute filters") + 8
+        assert 0 <= x < x + w <= width
+        plot = implot.gp.last_plot
+        assert plot.title is None
+        assert plot.frame_rect[3] <= 600
+        driver.click("compute")
+        app.job.future.result(timeout=30)
+        app.job.poll()
+        assert "computed successfully" in app.status_text()
+    finally:
+        app.close()
+
+
+
+def test_narrow_sources_scroll_reaches_actual_component_action(tmp_path):
+    """A new toolbar row retains lower component controls through real window scrolling."""
+    import shutil
+    from pathlib import Path
+
+    from emtk.testing import Driver
+
+    from chisurf.plugins.fcs.fcs_correlator.workflow import FcsWorkflowContext
+
+    root = Path(__file__).resolve().parents[5]
+    source = tmp_path / "BH_SPC132.spc"
+    shutil.copy2(root / "test/data/tttr/BH/132/BH_SPC132.spc", source)
+    app = create_app(workflow_context=FcsWorkflowContext(expanded_files=[str(source)]))
+    try:
+        app.job.future.result(timeout=30)
+        app.job.poll()
+        app.from_correlator()
+        app.job.future.result(timeout=30)
+        app.job.poll()
+        driver = Driver(app, size=(800, 600))
+        driver.draw(3)
+        driver.wheel(-2, at=(15, 400))
+        x, y, w, h = driver.rect("add_lifetime")
+        assert 0 <= y < y + h <= 600
+        before = len(app.model.components)
+        driver.click("add_lifetime")
+        assert app.editor["model"] == "lifetime" and app.editor["lifetime"] == 2.0
+        assert len(app.model.components) == before
+        assert list(map(Path, app.model._total_paths)) == [source]
+    finally:
+        app.close()

@@ -12,6 +12,7 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
@@ -52,9 +53,13 @@ class BurstFcsApp(TourTarget, ImApp):
         self.item_rects: dict = {}
         self.forms: dict = {}
         self._limits: dict = {}
-        self._ratio_set = False
-        self.file_window = DialogWindow("Burst FCS file chooser", size=(560.0, 420.0), key="burst_fcs_files")
-        self.pairs_window = DialogWindow("Channel pairs (JSON)", size=(480.0, 360.0), key="burst_fcs_pairs")
+        self._layout_width = None
+        self.file_window = DialogWindow(
+            "Burst FCS file chooser", size=(560.0, 420.0), key="burst_fcs_files"
+        )
+        self.pairs_window = DialogWindow(
+            "Channel pairs (JSON)", size=(480.0, 360.0), key="burst_fcs_pairs"
+        )
         self.setup = ChannelDefinitionWidget()
         self._setup_name = self.setup.model.current_name
         self.help_window = EmTkHelpWindow(title="Burst-wise FCS - Help", resource=HERE / "help.md", owner=self,
@@ -212,6 +217,11 @@ class BurstFcsApp(TourTarget, ImApp):
                 hi = m.tmax_fit if m.tmax_fit > 0 else float(np.nanmax(x))
                 left = implot.drag_line_x(201, float(lo), (90, 160, 240, 255))
                 right = implot.drag_line_x(202, float(hi), (90, 160, 240, 255))
+                plot_y = implot.get_plot_pos()[1]
+                plot_h = implot.get_plot_size()[1]
+                for key, value in (("fit_min_line", lo), ("fit_max_line", hi)):
+                    self.item_rects[key] = (implot.plot_to_pixels(value, 0.0)[0] - 5.0,
+                                            plot_y, 10.0, plot_h)
                 if not self.controller.running and (left.modified or right.modified):
                     a, b = sorted((max(float(left.value), 0.0), max(float(right.value), 0.0)))
                     m.tmin_fit, m.tmax_fit = a, b
@@ -225,7 +235,8 @@ class BurstFcsApp(TourTarget, ImApp):
     def draw_distribution(self, box):
         series = self.controller._model.dist_plot_series()
         self.item_rects["distribution_plot"] = self._plot_box()
-        if implot.begin_plot("##distribution", (-1, -1), 0 if series else implot.FLAGS_NO_LEGEND):
+        if implot.begin_plot("##distribution", im.get_content_region_avail(),
+                             0 if series else implot.FLAGS_NO_LEGEND):
             implot.setup_axes("Diffusion time tau_D (ms)", "P")
             implot.setup_axis_scale(implot.AXIS_X1, implot.SCALE_LOG10)
             if series:
@@ -234,12 +245,18 @@ class BurstFcsApp(TourTarget, ImApp):
                     sx, sy = np.asarray(s["x"], dtype=float), np.asarray(s["y"], dtype=float)
                     self._frame("dist", sx, sy)
                     implot.set_next_line_style(YELLOW, 2.0)
-                    implot.plot_line(s["name"], sx[sx > 0], sy[sx > 0])
+                    if s.get("marker"):
+                        implot.set_next_marker_style(implot.MARKER_CIRCLE, 4.0, YELLOW, 0.0, YELLOW)
+                        implot.plot_scatter(tr(s["name"]), sx[sx > 0], sy[sx > 0])
+                    else:
+                        implot.plot_line(s["name"], sx[sx > 0], sy[sx > 0])
             else:
                 implot.setup_axes_limits(1e-6, 30.0, 0.0, 1.0, implot.COND_ALWAYS)
                 implot.plot_text("MaxEnt mode only", 1e-3, 0.5)
             implot.end_plot()
-            im.set_item_tooltip("The diffusion-time distribution P(tau_D) of the selected curve (MaxEnt mode).")
+            im.set_item_tooltip(
+                tr("Simple fitted diffusion time: one estimate point. MaxEnt mode shows the diffusion-time distribution P(tau_D).")
+            )
 
     @staticmethod
     def _plot_box():
@@ -253,9 +270,12 @@ class BurstFcsApp(TourTarget, ImApp):
         c.poll()
         vp = im.get_main_viewport()
         frame = (0.0, 0.0, float(vp.size[0]), float(vp.size[1]))
-        if not self._ratio_set:
-            self._ratio_set = True
+        if self._layout_width != frame[2]:
+            self._layout_width = frame[2]
             self.docks.layout.ratio = max(0.38, min(0.55, MIN_CONTROLS / max(frame[2], 1.0)))
+            bottom = self.docks.layout.second.second
+            narrow = frame[2] * (1.0 - self.docks.layout.ratio) < 480.0
+            bottom.axis, bottom.ratio = ("v", 0.45) if narrow else ("h", 0.6)
         name = self.setup.model.current_name
         if name != self._setup_name:
             self._setup_name = name
@@ -265,16 +285,7 @@ class BurstFcsApp(TourTarget, ImApp):
         if self.help_window.open:
             self.help_window.draw(frame)
         if self.tour.active:
-            if self.tour.awaiting:
-                self.tour.draw(*vp.size)  # the highlighted control must stay clickable
-            else:
-                # A window of its own over the docks: drawn into the root window the card's buttons sat under the dock windows
-                # (a button is hovered only when no other window is under the pointer), so Prev and most Next presses never arrived.
-                flags = (im.WindowFlags.NO_DECORATION | im.WindowFlags.NO_BACKGROUND | im.WindowFlags.NO_SAVED_SETTINGS
-                         | im.WindowFlags.NO_MOVE | im.WindowFlags.NO_NAV)
-                im.begin("##burst_fcs_tour", (0.0, 0.0, float(vp.size[0]), float(vp.size[1])), flags)
-                self.tour.draw(*vp.size)
-                im.end()
+            self.tour.draw(*vp.size)
         if self.dialog:
             closed = self.file_window.begin(frame) == "close"
             result = self.dialog.draw()

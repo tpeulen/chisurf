@@ -35,8 +35,24 @@ For what the curve means and how its error bars are estimated, see
   volume and concentration calculator, {ref}`concept-fcs-correlation`). A ⚠
   marks a tool flagged experimental.
 
-The standalone correlator, channel-definition editor and merger that older
-versions listed separately are the same code, now reachable only from here.
+The controls are native emtk/AutoForm surfaces. The existing ChiSurf Qt windows
+host the same `FcsHubApp` used by the standalone launcher; there is no second
+Qt implementation of the workflow. Closing the hub closes its opened child
+tools; a running Burst-wise FCS child receives cancellation and releases its
+worker executor when closed.
+
+For a desktop with a working GPU/display, launch the complete hub directly:
+
+```bash
+pixi run -e test python -m chisurf.emtk --plugin fcs_toolbox --size 1200x800
+```
+
+The same launcher accepts `fcs_correlator` for the five workflow steps,
+`fcs_merger` for the merger alone, and `burst_fcs_correlator` for burst-wise FCS.
+These are manifest IDs, not separate `csg_fcs_*` commands. Native desktop
+launch needs a display; `QT_QPA_PLATFORM=offscreen` is for Qt-host captures,
+not a substitute for the native desktop renderer. The Python calculations
+below run without a window.
 
 ## 1. Channel Definitions
 
@@ -64,14 +80,9 @@ green × red cross-correlation, each with its own multi-tau settings.
   `fcs_channel_setups.json` in the settings folder when none is configured). The
   Burst-wise FCS tool reads the same pairs.
 
-:::{admonition} Known issue
-:class: warning
-Since the channel-definition editor moved to a declarative form, the correlator
-step no longer receives its selection: the **FCS Preset** list and the **A**/**B**
-selectors in step 4 stay empty, and per-pair *Bins/Cascades/Fine* are not applied.
-Until that is fixed, type the routing channels into **Ch A**/**Ch B** directly
-(step 4).
-:::
+The selected detector setup is handed to the Correlator's **A**/**B** selectors.
+Check the actual **Ch A**/**Ch B** routing channels and micro-time gates before
+running, especially when changing detector or PIE selections.
 
 ## 2. Files & Steps
 
@@ -99,12 +110,15 @@ A disabled step is greyed out in the rail.
 Selects which photons reach the correlator. Every change recomputes the
 selection and the "*kept / total*" line at once.
 
-```{figure} figures/fcs_toolbox_filter.png
+```{figure} figures/fcs_native_bh132_filter.png
 :name: fig-fcs-toolbox-filter
 :width: 100%
 
-A burst filter on the SPC-132 test stream: photons in stretches with at least 30
-photons and inter-photon times ≤ 0.5 ms are kept (39 886 of 183 657, 21.7 %).
+The complete measured BH132 stream (183 657 photons) in the native filter:
+burst mode, minimum ten photons, photon window five, maximum inter-photon time
+1.5 ms. The selection keeps 96 774 photons (52.7%). The upper plot shows
+selected and removed photon intervals; the lower plot shows the count-rate
+traces. No photon-index truncation was used for this render.
 ```
 
 * **Channels / µt range** — routing channels and micro-time windows to keep;
@@ -125,22 +139,21 @@ photons and inter-photon times ≤ 0.5 ms are kept (39 886 of 183 657, 21.7 %).
   µt and dMT selections. **invert** keeps the rejected photons — note that it
   inverts the whole selection, channel and dMT cuts included.
 * **Plot settings** — the count-rate trace bin (*MCS bin*) and the photon range
-  of the inter-photon-time plot. That plot is not drawn by the default (emtk)
-  plot backend yet; start ChiSurf with `CHISURF_PLOT_BACKEND=pyqtgraph` to see
-  it.
+  of the inter-photon-time plot.
 
 With the filter on, step 4 correlates only the kept photons of every file.
 
 ## 4. Correlator
 
-```{figure} figures/fcs_toolbox_correlator.png
+```{figure} figures/fcs_native_bh132_correlator.png
 :name: fig-fcs-toolbox-correlator
 :width: 100%
 
-Green (0, 8) × red (1, 9) cross-correlation of the SPC-132 stream in ten
-chunks. The test stream is a dilute single-molecule sample at 3 kHz, so the
-short-lag points are dominated by counting noise — exactly what the merger's
-error bars will say.
+The native FCS hub displays two measured BH132 chunk curves, with channels
+0, 1 × 8, 9, nine bins and twenty cascades, Laurence normalization. The current
+workflow selection contains 96 774 of the fixture's 183 657 photons; the plot
+retains the earlier computed curves until **Correlate** is pressed again.
+The lag axis is in ms; these are measured photons, not the **Example** simulation.
 ```
 
 * **Ch A / Ch B** — routing channels of the two streams, comma- or
@@ -179,13 +192,13 @@ I\rangle^2$ convention), lags are in ms.
 The chunks arrive here directly; **Browse… / Open** instead loads a folder of
 `.cor` (or legacy `.json.gz`) chunk files.
 
-```{figure} figures/fcs_toolbox_merger.png
+```{figure} figures/fcs_native_bh132_merger.png
 :name: fig-fcs-toolbox-merger
 :width: 100%
 
-Ten chunks with their count rates and durations; chunk 3 is unticked (its curve
-is drawn grey and dashed in *FCS*). The merged curve averages the nine that
-remain. The plot docks are resizable — drag the splitter down to enlarge them.
+Six repeats produced from the measured BH132 fixture, with the third excluded;
+the native merger averages the remaining five. Both standalone merger plots
+and the hub's Correlator view label lag time in ms.
 ```
 
 * The table lists each curve with the count rate of both streams and its
@@ -202,6 +215,13 @@ remain. The plot docks are resizable — drag the splitter down to enlarge them.
   correlated stream, `cr5.cor` beside the data file.
 * **Add to ChiSurf** saves (if needed) and loads that file as an FCS dataset,
   ready for {doc}`09_diffusion_fcs`.
+
+ChiSurf's Kristine `.cor` writer, reader and FCS fitter use lag time in
+milliseconds. For this BH132 fixture, the header's raw macro-time tick is
+13.5 ns, or 0.0000135 ms; the measured-repeat producer converts its
+TTTR-aware correlator's seconds axis to ms before writing. An earlier
+seconds-based diagnostic fixture was corrected at its producer. That fixture
+is not evidence that existing user `.cor` files need a factor-of-1000 conversion.
 
 The standalone **FCS-Merger** window (`chisurf/plugins/fcs/fcs_merger/`) has the
 same table for a folder of chunks you already have: drop the folder (or one of
@@ -277,6 +297,10 @@ The `yaml` reader is not implemented, so a `yaml` file cannot be read back
 
 The workflow in Python — correlate ten chunks of a stream, merge, write the
 `.cor` the GUI would:
+
+This example uses ten chunks, four bins and twenty-six cascades; it illustrates
+the same normalization and averaging API with different settings from the
+two-chunk screenshot above.
 
 ```python
 import numpy as np

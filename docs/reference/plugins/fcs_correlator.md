@@ -1,7 +1,7 @@
 ---
 type: Plugin Reference
 title: Correlator
-description: 'FCS Correlator This plugin provides a two-pane navigation-based correlator tool for computing and merging fluorescence correlation spectroscopy (FCS) data. Features include: - Detector and PIE window definition - TTTR file selection with drag-and-drop - Optional photon/burst filtering - Multi-tau correlation with configurable parameters (bins, cascades, fine grid) - FCS curve merging and export The tool replaces the legacy QWizard with a modern navigation panel layout (left step list, right view/display), built using the AutoForm declarative UI framework for the correlator settings panel. The correlator workflow is no longer a standalone menu entry: it is hosted as the first section of the unified FCS tool (fcs_toolbox), which merges the correlator workflow with the optional FCS tools (2D-FLCS, Lifetime-FCS Sim, Burst-wise FCS, calculators). This module remains the reusable building block (FcsCorrelatorTool + the correlator/filter/merger AutoForm panels) and is therefore hidden from the plugin menu.'
+description: 'FCS Correlator This plugin provides a two-pane navigation-based correlator tool for computing and merging fluorescence correlation spectroscopy (FCS) data. Features include: - Detector and PIE window definition - TTTR file selection with drag-and-drop - Optional photon/burst filtering - Multi-tau correlation with configurable parameters (bins, cascades, fine grid) - FCS curve merging and export The existing Qt entry point hosts a native emtk workflow rail and declarative AutoForm controls. The correlator workflow is no longer a standalone menu entry: it is hosted as the first section of the unified FCS tool (fcs_toolbox), which merges the correlator workflow with the optional FCS tools (2D-FLCS, Lifetime-FCS Sim, Burst-wise FCS, calculators). This module remains the reusable building block (FcsCorrelatorTool + the correlator/filter/merger AutoForm panels) and is therefore hidden from the plugin menu.'
 resource: chisurf/plugins/fcs/fcs_correlator/
 tags: [reference, plugins, fcs-correlator, spectroscopy, fluorescence-correlation-spectroscopy]
 anchor: plugin-fcs_correlator
@@ -11,7 +11,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-fcs_correlator)=
 # Correlator
 
-FCS Correlator  This plugin provides a two-pane navigation-based correlator tool for computing and merging fluorescence correlation spectroscopy (FCS) data. Features include:  - Detector and PIE window definition - TTTR file selection with drag-and-drop - Optional photon/burst filtering - Multi-tau correlation with configurable parameters (bins, cascades, fine grid) - FCS curve merging and export  The tool replaces the legacy QWizard with a modern navigation panel layout (left step list, right view/display), built using the AutoForm declarative UI framework for the correlator settings panel.  The correlator workflow is no longer a standalone menu entry: it is hosted as the first section of the unified **FCS** tool (``fcs_toolbox``), which merges the correlator workflow with the optional FCS tools (2D-FLCS, Lifetime-FCS Sim, Burst-wise FCS, calculators). This module remains the reusable building block (``FcsCorrelatorTool`` + the correlator/filter/merger AutoForm panels) and is therefore hidden from the plugin menu.
+FCS Correlator  This plugin provides a two-pane navigation-based correlator tool for computing and merging fluorescence correlation spectroscopy (FCS) data. Features include:  - Detector and PIE window definition - TTTR file selection with drag-and-drop - Optional photon/burst filtering - Multi-tau correlation with configurable parameters (bins, cascades, fine grid) - FCS curve merging and export  The existing Qt entry point hosts a native emtk workflow rail and declarative AutoForm controls.  The correlator workflow is no longer a standalone menu entry: it is hosted as the first section of the unified **FCS** tool (``fcs_toolbox``), which merges the correlator workflow with the optional FCS tools (2D-FLCS, Lifetime-FCS Sim, Burst-wise FCS, calculators). This module remains the reusable building block (``FcsCorrelatorTool`` + the correlator/filter/merger AutoForm panels) and is therefore hidden from the plugin menu.
 
 ## Identity
 
@@ -21,7 +21,7 @@ FCS Correlator  This plugin provides a two-pane navigation-based correlator tool
 | Menu path | Spectroscopy → Fluorescence Correlation Spectroscopy → **Correlator** |
 | Categories | Spectroscopy, Fluorescence Correlation Spectroscopy |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui, script |
+| Surfaces | emtk, gui |
 
 ## Parameters
 

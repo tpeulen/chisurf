@@ -488,7 +488,7 @@ class FilterApp(TourTarget, ImApp):
         return palette[int(hashlib.sha1(label.encode()).hexdigest()[:8], 16) % len(palette)]
 
     def draw_filters(self, box):
-        if implot.begin_plot("##lifetime_filters", (-1, -1)):
+        if implot.begin_plot("##lifetime_filters", im.get_content_region_avail()):
             implot.setup_axes("TAC bin", "Filter value")
             for entry in self.model.results():
                 result = entry["result"]
@@ -519,7 +519,7 @@ class FilterApp(TourTarget, ImApp):
             implot.end_plot()
 
     def draw_reconstruction(self, box):
-        if implot.begin_plot("##reconstruction", (-1, -1)):
+        if implot.begin_plot("##reconstruction", im.get_content_region_avail()):
             implot.setup_axes("TAC bin", "Counts")
             implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
             peaks = [
@@ -568,7 +568,7 @@ class FilterApp(TourTarget, ImApp):
         )
 
     def draw_residuals(self, box):
-        if implot.begin_plot("##residuals", (-1, -1)):
+        if implot.begin_plot("##residuals", im.get_content_region_avail()):
             implot.setup_axes("TAC bin", "Weighted residuals σ")
             for entry in self.model.results():
                 for role in ("", "par", "perp"):
@@ -592,9 +592,10 @@ class FilterApp(TourTarget, ImApp):
             self.submit(lambda model: model.compute())
         vp = im.get_main_viewport()
         frame = (0.0, 0.0, *vp.size)
-        if not getattr(self, "_ratio_set", False):
-            self._ratio_set = True  # a narrow window gives the controls room for their tabs; the bar still drags
-            self.docks.layout.ratio = max(0.34, min(0.52, MIN_CONTROLS / max(float(vp.size[0]), 1.0)))
+        width = float(vp.size[0])
+        if getattr(self, "_layout_width", None) != width:
+            self._layout_width = width
+            self.docks.layout.ratio = max(0.34, min(0.55, MIN_CONTROLS / max(width, 1.0)))
         self.docks.draw(frame)
         if self.help.open:
             self.help.draw(frame)

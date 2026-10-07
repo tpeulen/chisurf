@@ -9,21 +9,24 @@ import numpy as np
 
 
 def test_cor_chunks_keep_their_count_rate(qapp, qtbot, tmp_path):
-    from chisurf.plugins.fcs.fcs_merger.wizard import ChisurfWizard
+    from chisurf.plugins.fcs.fcs_merger.gui.app import create_app
 
     folder = tmp_path / "chunks"
     folder.mkdir()
     for i in range(2):
         rows = [[1e-6, 2.0 + i, 10.0], [1e-5, 1.5, 20.0], [1e-4, 1.2, 0.0], [1e-3, 1.0, 0.0]]
         np.savetxt(folder / f"chnk-{i:04}.cor", rows, delimiter="\t")
-    wizard = ChisurfWizard()
-    qtbot.addWidget(wizard)
-    page = wizard.page(wizard.pageIds()[0])
-    page.lineEdit.setText(str(folder))
-    page.open_correlation_folder(folder)
-    table = page.tableWidget
-    assert [table.item(0, c).text().strip() for c in (2, 3, 4)] == ["20.00", "20.00", "10.00"]
+    app = create_app()
+    app.load_folder(folder)
+    app.job.future.result(timeout=5)
+    app.job.poll()
+    page = app.model
+    rows = page.curve_rows()
+    assert [rows[0][key] for key in ("cr_a", "cr_b", "duration")] == [20., 20., 10.]
     assert page.mean_correlation["count_rate"] == 20.0
-    page.save_mean_correlation()
-    saved = np.loadtxt(page.target_filepath)
+    from chisurf.core.fluorescence.fcs.merge import save_mean_correlation
+    save_mean_correlation(page.mean_correlation, page.output)
+    saved = np.loadtxt(page.output)
     assert saved[0, 2] == 20.0 and saved[1, 2] == 20.0
+
+    app.close()

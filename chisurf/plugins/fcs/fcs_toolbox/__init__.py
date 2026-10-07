@@ -3,8 +3,8 @@
 Merges the FCS *Correlator* workflow (detector → files → filter → correlate →
 merge) with the optional FCS tools (2D-FLCS, Lifetime-FCS Sim, Burst-wise FCS,
 diffusion/volume calculator, fFCS filter calculator, correlation-channel
-presets) into a single left-navigation tool. Built on the reusable
-``NavigationPanelTool`` shell. The ribbon execs this file with
+presets) into a single left-navigation tool. The existing Qt window hosts one native
+emtk workflow surface. The ribbon execs this file with
 ``__name__ == "plugin"``.
 """
 
