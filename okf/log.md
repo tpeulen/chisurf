@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- **2026-10-07 · Burst MLE owner requirement:** preserve selectable registered tttrlib models, including Fit23, through the actual fitting path. Bounded diagnosis is active and recorded in the [midway handoff](validation/release-readiness-w1/current-job/handoff.md); no selector completion or extra source changes claimed.
+
 - **2026-10-07 · Channel14 midway evidence refreshed:** MLE10 native consumer cases and real BH after read pass; parent inspected both after scenes. Frozen owned patch preserves kernels and corrects only fallback ps→ns plus version3 reuse. Caller14pass/8close failures now identify the central lifecycle root; one Burst direct import is authorized for canonical routing. All before captures accepted; export/Finish IO precedes package switch, caller acceptance precedes old UI deletion. Durable archive and [handoff](validation/release-readiness-w1/current-job/handoff.md) permit another agent to resume mid-job.
 
 - **2026-10-07 · Channel14 live checkpoint:**13actualcaller before andMLErealBH scene data frozen/inspected;11missing-hostRED established. Confirmed noheader MLE50ps incorrectlyreturned50ns; fallback×.001 andversion3cache invalidation are guarded withoutengine/default changes. Nativehost/visibility/definitionIO implementation andaftercallee acceptance remainactive; legacyexports/UIdeleteheld. Durablehandoff records exactscope/measurements/deduplicatedbefore-image proof for mid-context continuation. [Resume](validation/release-readiness-w1/current-job/handoff.md).
