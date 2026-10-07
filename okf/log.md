@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- **2026-10-07 · Burst13 midway ownership saved:** source9paths/4deletes frozen/composed; parent26 owning cases pass, numeric hashes/settings/72controls and10after scenes accepted. Publication still waits exact stale packaged switch/history instructions; parent paired docs/nativefigure ready. Durable source-before/after/patch/render/proof archive and current-job handoff let another agent continue without chat/private snapshots. Channel14 remains held. [Resume](validation/release-readiness-w1/current-job/handoff.md).
+
 - **2026-10-07 · Current-job handoff advanced to Burst13:** Microtime f902c09dd and its board scopes are complete; source13 production is released with fresh9path snapshots and exact fallback/assets/flag/callback scope. Modern Qt tool/wizard and native scientific routines remain. The durable handoff/state now identify source13 next steps and preserve the completed Microtime ownership bundle with17accepted renders/composition proofs; no dependency on chat context. [Resume](validation/release-readiness-w1/current-job/handoff.md).
 
 - **2026-10-07 · W1 Microtime row12 landed:** native CLI/lifetime hosting retires wizard/UI and obsolete Qt reference; saved-BID editor sync, correct polarization routing and plugin-owned Demo/Guide preserve the scientific model/package. Parent112 targeted checks pass, Ruff14/mypy6 clean;17current PNGs inspected and3measured polarized exports byteexact. Unpolarized now135967/4096, correcting legacyextra-VH; provider clock/25ps validation explicitly qualified. Paired docs/3figures/catalogue samechange; one stale help allowance removed with285policycases/16skips green. Next Burst13→Channel14→Designer helpers. [Receipt](validation/release-readiness-w1/microtime-retirement/acceptance.json).
