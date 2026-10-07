@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- **2026-10-07 · W1 handoff reconciled:** FCS source and paired docs are committed in `d1333481e`; refreshed both resume points to active G-factor row11 and current 966-pass / 16-skip shared acceptance. Completed FCS claims released in tttrlib `939a0709f`. Microtime12/Burst13/Channel14 remain ordered; programme acceptance stays open. [Resume](prds/prd-154.md).
+
 - PRD-154 W1: parent finalFCS review passes56 host/merger/namespace,84 burst and54 canonicalvisibility/layout cases; fullmeasured filter and allnative tabs inspected. Record discovered lagcaption/fixture seconds-vs-canonicalms contract and realMaxEntGUI preset mismatch, now assigned exactroot correction beforeFCSacceptance. SDK/pin and105-caseParameter codec units are committed/released; retain originalbefore facts and sourceownership. Programme continues with ordered row10→11.
 
 - PRD-154 W1: complete Parameter refresh and standalone scalarJSON/YAML root codec;105 parent targeted cases pass/zeroexpectedfailures, coldprocess/identity/nativeport/bounds/prior/metadata guarded and four qualified editor PNGs inspected. Preserve live dictionaries/links and graph/value/hotloops; replace stale raw-dict/load-only assertions, reject irrecoverable repr files and unsupported standalone graphs explicitly. Resolve owning file-corruption issue; no foreign hunks promoted. [Receipt](validation/release-readiness-w1/parameter-state/receipt.md).
