@@ -118,3 +118,12 @@ Verify the prerequisite with the two targeted reader_settings host test files
 (20 passes). The captured CSV supported subset is a host proof, not the complete
 CSV migration; its format/error/custom controls remain in the legacy controller
 until the full reader declaration is ported.
+
+
+## Retired unused photon sample widget
+
+The uncalled SpcFileWidget and its dedicated Designer file are removed.
+Photon reading, CSV inputs and native reader settings retain their existing
+interfaces. A real BH SPC132 baseline and control inventory are retained in
+the release-readiness evidence; this approved dead-widget deletion introduces
+no replacement window.
