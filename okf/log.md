@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- **2026-10-07 · W1 Microtime parity audit found owning shared roots:** native raw JSON edit and full independent reference calibration missing; preview ratio alone lacks archival/provenance semantics. Real table Ctrl/Super+A corrupts editing because modifiers were dropped (15 new shortcut cases/126 family checks now pass in source). Long All-help overlaps its footer; owning renderer repair active. Synthetic Demo is now generated with known counts/timing. Final shared install/renders/publication remain pending. [Resume](prds/prd-154.md).
+
 - **2026-10-07 · W1 Microtime before retained:** inspected six legacy tab frames and two native comparisons; three .dat export pairs are byte-identical. Frozen full setup/count arrays preserve provenance qualifications. Found live Edit JSON parity gap in shared native detector setup; existing form restoration is active before retirement acceptance. [Before evidence](validation/release-readiness-w1/microtime-before/parent-review.json).
 
 - **2026-10-07 · W1 Microtime12 active after G-factor commit `37b95ad84`:** source owner reports5 native caller/CLI gates,51 original pointer/layout cases and4 timing guards green. Paired doc example verifies physical header timing and unchanged channel counts; final retirement/render/commit acceptance remains pending. G-factor claims released in tttrlib `90316beb5`; `.zed/tasks.json` remains available on disk and ignored. [Resume](prds/prd-154.md).
