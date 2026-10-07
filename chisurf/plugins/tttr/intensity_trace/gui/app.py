@@ -170,7 +170,7 @@ class IntensityTraceApp(ImApp):
         self.docks.add_window("traces", "Traces", self._draw_traces, dock="traces", closable=False)
         self.docks.add_window("results", "Results", self._draw_results, dock="results", closable=False)
         # The Qt tool's Setup dialog: the shared detector-setup editor, a tab beside the results.
-        self.editor = ChannelDefinitionWidget(on_changed=self.setup_edited)
+        self.editor = ChannelDefinitionWidget(on_changed=self.setup_edited, host_app=self)
         self.editor.on_used = self._used
         self.docks.add_window("setup", "Detector Setup", self._draw_setup, dock="results", closable=False)
         self.docks.focus("results")

@@ -77,7 +77,7 @@ class AudifierApp(TourTarget, ImApp):
         self.loader = loader
         self.source_data = None
         self.range_start = self.range_end = 0.0
-        self.editor = ChannelDefinitionWidget(on_changed=self.update_channels)
+        self.editor = ChannelDefinitionWidget(on_changed=self.update_channels, host_app=self)
         self.job = BackgroundJob()
         self.message = "Load a TTTR stream to render audio and its waterfall."
         self.dialog = None

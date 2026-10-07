@@ -60,7 +60,7 @@ class BurstFcsApp(TourTarget, ImApp):
         self.pairs_window = DialogWindow(
             "Channel pairs (JSON)", size=(480.0, 360.0), key="burst_fcs_pairs"
         )
-        self.setup = ChannelDefinitionWidget()
+        self.setup = ChannelDefinitionWidget(host_app=self)
         self._setup_name = self.setup.model.current_name
         self.help_window = EmTkHelpWindow(title="Burst-wise FCS - Help", resource=HERE / "help.md", owner=self,
                                           on_start_guide=lambda: self.tour.start(), size=(700.0, 520.0))

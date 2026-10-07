@@ -20,11 +20,12 @@ def editor(tmp_path, monkeypatch):
         raise AssertionError("Native JSON editor attempted an external connection")
     monkeypatch.setattr(socket.socket, "connect", forbidden)
     monkeypatch.setattr(socket, "create_connection", forbidden)
+    from emtk.testing import Driver
+
     from chisurf.core.fio import setup_store
     from chisurf.core.fio.lut_context import clear_active_setup_lut
     from chisurf.core.setup_channel_definition import ChannelDefinition
     from chisurf.plugins.core.setup_channel_definition.gui.app import SetupChannelDefinitionApp
-    from chisurf.plugins.emtk_test_input import Driver
 
     monkeypatch.setattr(setup_store, "resolve_active_user_id", lambda: "validation-owner")
     settings = {"setup_name": "Validation", "_owner": "validation-owner", "_is_public": False,
@@ -60,7 +61,7 @@ def replace_json(app, ui, text):
     """Deliver select-all and a real multi-character text-input event to the native editor."""
     from chisurf.plugins.emtk_test_input import CTRL
 
-    ui.click_name("json_text")
+    ui.click("json_text")
     app.key(0x41, "a", CTRL)
     ui.draw(1)
     app.key(0, text)
@@ -71,7 +72,7 @@ def test_live_complete_definition_json_control_is_reachable(editor):
     app, ui, _, _ = editor
     ui.draw(2)
     assert "edit_json" in app.item_rects
-    ui.click_name("edit_json")
+    ui.click("edit_json")
     assert app.page.json_window.open
     assert json.loads(app.page.json_text) == app.model.get_settings()
     assert {"json_text", "apply_json", "cancel_json"} <= app.item_rects.keys()
@@ -85,9 +86,9 @@ def test_real_json_apply_preserves_metadata_ids_stores_and_refreshes_cells(edito
     edited = copy.deepcopy(before)
     edited["detectors"]["donor"].update(l1=0.071, l2=0.042, g_factor_channels=[8, 18])
     edited["future_metadata"]["user_edit"] = "kept"
-    ui.click_name("edit_json")
+    ui.click("edit_json")
     replace_json(app, ui, json.dumps(edited, indent=2))
-    ui.click_name("apply_json")
+    ui.click("apply_json")
     assert not app.page.json_window.open
     assert app.model is model and app.model.data is not data
     assert model.setups is setups and model.last_used == "Validation"
@@ -114,9 +115,9 @@ def test_invalid_json_keeps_draft_error_and_entire_previous_definition(editor, t
     previous = {"data": copy.deepcopy(app.model.data), "last_used": app.model.last_used,
                 "preview_path": app.model.preview_path, "preview": app.model.preview}
     file_bytes = path.read_bytes()
-    ui.click_name("edit_json")
+    ui.click("edit_json")
     replace_json(app, ui, text)
-    ui.click_name("apply_json")
+    ui.click("apply_json")
     assert app.page.json_window.open and app.page.json_error
     assert app.page.json_text == text
     assert app.model.data == previous["data"] and app.model.last_used == previous["last_used"]
@@ -128,18 +129,18 @@ def test_invalid_json_keeps_draft_error_and_entire_previous_definition(editor, t
 def test_cancel_reopen_and_readonly_never_apply_a_draft(editor):
     app, ui, notices, path = editor
     previous, file_bytes = app.model.get_settings(), path.read_bytes()
-    ui.click_name("edit_json")
+    ui.click("edit_json")
     replace_json(app, ui, '{"future_metadata": {"cancelled": true}}')
-    ui.click_name("cancel_json")
+    ui.click("cancel_json")
     assert not app.page.json_window.open and app.model.get_settings() == previous
-    ui.click_name("edit_json")
+    ui.click("edit_json")
     assert json.loads(app.page.json_text) == previous
     app.page.read_only = True
     replace_json(app, ui, '{}')
-    ui.click_name("apply_json")
+    ui.click("apply_json")
     assert app.model.get_settings() == previous and not notices
-    ui.click_name("cancel_json")
-    ui.click_name("edit_json")
+    ui.click("cancel_json")
+    ui.click("edit_json")
     assert not app.page.json_window.open
     assert path.read_bytes() == file_bytes
 
@@ -149,7 +150,7 @@ def test_declared_json_editor_description_is_a_real_hover_tooltip(editor):
     import time
 
     app, ui, _, _ = editor
-    ui.click_name("edit_json")
+    ui.click("edit_json")
     x, y, width, height = ui.rect("json_text")
     app.pointer_move(x + width / 2, y + height / 2)
     ui.draw(2)

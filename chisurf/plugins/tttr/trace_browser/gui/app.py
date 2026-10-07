@@ -442,7 +442,7 @@ class TraceBrowserApp(ImApp):
         if self.editor is not None:
             self.editor.close()
         model = ChannelDefinition(settings, file_path=self.setups_file)
-        self.editor = ChannelDefinitionWidget(model=model)
+        self.editor = ChannelDefinitionWidget(model=model, host_app=self)
 
     def _load_saved_setups(self, select_last: bool) -> bool:
         """Offer the saved setups and, if asked, select the last used one.

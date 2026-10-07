@@ -85,6 +85,16 @@ while busy or failed calculations leave the stored calibration unchanged.
 Synthetic demonstrations and noisy bundled test decays exercise the
 calculation; their fitted ratios are not measured calibration ground truth.
 
+The detector editor's independent TTTR reference has its own reading context.
+Its effective binned time step initializes the slow-reference calculation;
+raw detector tail endpoints are divided by the binning for the calculator
+and multiplied back on application. Reading that reference keeps the active
+measurement and its timing/preview in place. A timing-only SET header has no
+reference photons and is rejected. A changed input or selected definition
+requires a fresh reference handoff to establish the correct provenance.
+The separate loaded-preview G estimate is unarchived and does not establish
+a new reference calibration. See the [detector workflow](../guides/87_channel_definition.md#6-independent-reference-calibration).
+
 ## The fundamental anisotropy $r_0$
 
 At $t=0$, before any rotation, the anisotropy takes its **fundamental** value

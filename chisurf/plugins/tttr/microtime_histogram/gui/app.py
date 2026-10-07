@@ -139,7 +139,7 @@ class HistogramApp(TourTarget, ImApp):
         self.dialog = None
         self.dialog_callback = None
         self.dialog_window = DialogWindow("Choose a file", size=(640.0, 420.0), key="microtime-histogram-file")
-        self.editor = ChannelDefinitionWidget(on_changed=self.definition_changed)
+        self.editor = ChannelDefinitionWidget(on_changed=self.definition_changed, host_app=self)
         self.dataset_picker = DatasetPicker(on_paths=self.add_files)
         self.selected = {"photon": None, "burst": None}
         self.log_y = True

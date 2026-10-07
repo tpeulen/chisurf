@@ -176,7 +176,8 @@ class TTTRImageBrowserApp(ImApp):
         if self.editor is not None:
             self.editor.close()
         self.editor = ChannelDefinitionWidget(
-            model=ChannelDefinition(settings, file_path=self.setups_file)
+            model=ChannelDefinition(settings, file_path=self.setups_file),
+            host_app=self,
         )
         self._list_saved_setups()
 

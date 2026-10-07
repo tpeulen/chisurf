@@ -30,6 +30,7 @@ class BackgroundController:
                 },
             },
             on_changed=self._channels_changed,
+            host_app=None,
         )
         model.channels_provider = lambda: self.channel_definition.model.get_settings()["detectors"]
         model.tttr_provider = self.channel_definition.model.open_tttr

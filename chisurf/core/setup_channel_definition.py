@@ -313,6 +313,51 @@ class ChannelDefinition:
         self.changed()
         return result
 
+    def archive_reference_g(self, name, reference, *, client=None, micro_time_resolution=None,
+                            binning=1, source_measurement="", save_named=False):
+        """Archive a completed native reference result before updating one detector.
+
+        The reference uses binned histogram coordinates; the working detector keeps raw
+        TAC-channel bounds. Unavailable automatic mixing retains the detector's prior values.
+        """
+        from chisurf.plugins.vv_vh_g_factor.gui.client import VvVhGFactorClient
+
+        detector = self.data["detectors"][name]
+        value = reference.g_factor
+        if value is None or not np.isfinite(value) or value <= 0:
+            raise ValueError("A positive finite reference G-factor is required.")
+        parameters = reference.detector_parameters(
+            prior_l1=float(detector.get("l1") or 0.0),
+            prior_l2=float(detector.get("l2") or 0.0),
+            micro_time_resolution=micro_time_resolution,
+        )
+        parameters["source_measurement"] = str(source_measurement or reference.fast_file)
+        bounds = sorted(int(float(bound) * max(1, int(binning))) for bound in reference.region)
+        client = client or VvVhGFactorClient()
+        archived = client.archive_g_factor(
+            file_path=reference.fast_file, parameters=parameters,
+            active_user=store.resolve_active_user_id(),
+        )
+        if (not isinstance(archived, dict) or not archived.get("ok", True)
+                or not archived.get("reference_decay_id") or not archived.get("calibration_id")):
+            error = archived.get("error") if isinstance(archived, dict) else None
+            raise OSError(error or "Reference calibration archival returned no identifiers.")
+        previous = copy.deepcopy(detector)
+        updated = copy.deepcopy(detector)
+        updated.update(g_factor=float(value), l1=parameters["l1"], l2=parameters["l2"],
+                       g_factor_channels=bounds,
+                       g_factor_decay_uuid=archived["reference_decay_id"],
+                       g_factor_calibration_id=archived["calibration_id"])
+        self.data["detectors"][name] = updated
+        try:
+            if save_named:
+                self.save_setup(self.current_name, public=bool(self.data.get("_is_public", False)))
+            else:
+                self.changed()
+        except Exception:
+            self.data["detectors"][name] = previous
+            raise
+        return archived
 
     def archive_g(self, name):
         import tempfile

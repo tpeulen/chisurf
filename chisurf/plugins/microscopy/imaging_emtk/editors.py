@@ -21,10 +21,16 @@ class DetectorEditorMixin:
             from chisurf.emtk.channel_definition import ChannelDefinitionWidget
         except Exception:  # the editor is optional: the tool computes the channel-0 window without it
             return
-        self.editor = ChannelDefinitionWidget(model=ChannelDefinition(self._editor_settings()), on_changed=self._editor_changed)
+        self.editor = ChannelDefinitionWidget(model=ChannelDefinition(self._editor_settings()), on_changed=self._editor_changed, host_app=self)
         self.editor.on_used = self.tour.notify_used
         self.docks.add_window("Detectors", "Detectors", lambda box: self._draw_editor(), dock="views", closable=False)
         self.windows["Detectors"] = {"title": "Detectors", "dock": "views"}
+
+    def close(self) -> None:
+        """Release this mixin's detector editor before the imaging shell closes."""
+        if self.editor is not None:
+            self.editor.close()
+        getattr(super(), "close")()
 
     def _editor_settings(self) -> dict:
         """What the editor shows: the detector windows this tool computes (the channel-0 window when none were set)."""

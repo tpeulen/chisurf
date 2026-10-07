@@ -422,6 +422,7 @@ class BurstBackgroundApp(ImApp):
         self.bg_gui.remember = self.remember
         self.bg_gui.controller = self.controller
         if self.controller is not None:
+            self.controller.channel_definition.host_app = self
             self.controller.on_show_channels = lambda: self.bg_gui.docks.focus("channels")
         super().__init__(gui=self._render)
 

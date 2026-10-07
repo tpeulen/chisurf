@@ -66,6 +66,7 @@ class MleNativeApp(TourTarget, ImApp):
         self.editor = ChannelDefinitionWidget(
             {"detectors": self.model.session.detectors, "windows": {}, "tttr_reading": {"file_type": self.model.session.file_type}},
             on_changed=self.model.set_setup,
+            host_app=self,
         )
         self.help_window = EmTkHelpWindow(
             title="Burst Lifetime MLE - Help & Reference", resource=HERE / "help.md", owner=self.model,

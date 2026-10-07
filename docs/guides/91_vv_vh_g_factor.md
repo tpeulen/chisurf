@@ -111,13 +111,40 @@ Clear, Run batch and Save table; its table includes the file, anisotropy,
 region, G, both backgrounds and an error column.
 ```
 
-When opened from the detector calibration helper, closing the app publishes a
-valid completed visible result once: G and its calculated SD, tail/background
-settings, shift, mixing and source/provenance information. The helper records
-the active calibration actor and uses the detector's effective time resolution, converting ps
-to ns for the slow-reference settings. Closing while work is pending or after
-an error leaves the detector calibration unchanged; a read-only detector setup
-is also unchanged. Closing again does not apply or archive it again.
+The shared native detector editor's **Calc G** action reads an independent TTTR
+reference and hosts this full calculator inside its existing canvas; it does
+not replace the detector page's loaded measurement or preview. A valid saved
+raw tail offers **Run headlessly** or **Open calculator**. The separate
+**Preview G** action estimates G from the already loaded detector preview,
+updates that working value without archival and clears its old calibration
+identifiers. See [independent reference calibration](87_channel_definition.md#6-independent-reference-calibration).
+
+In that detector workflow, use **Apply calibration and close** to publish a
+valid completed result after any pending field commit/recomputation, or
+**Discard calibration** to retain the previous calibration. Escape cancels a
+nested Help window or file chooser while leaving the calculator open. Closing a completed, valid calculator also publishes once.
+Closing while work is pending or after an error, cancelling the reference, or
+using a read-only definition leaves the working detector calibration
+unchanged. Repeated closure does not apply or archive it again. A changed
+selected setup or reloaded fast input requires a fresh **Calc G** TTTR handoff;
+the old detector context is not applied to a replacement reference.
+
+Reference aggregation uses the detector's alternating VV/VH routing-channel
+order, configured LUTs and shifts, and micro-time binning. The calculator's
+tail/background/shift controls use binned histogram bins, while the detector's
+saved tail uses raw TAC channels. The saved tail is divided by binning on
+entry and multiplied back when applied. **dt** starts from the independent
+reference's effective micro-time resolution in ps, multiplied by 0.001 for
+ns/bin; the existing working definition's timing is not overwritten.
+
+The configured MMFDB calibration actor is passed to archival. G and its
+calculated SD, both backgrounds, shift, flip, mixing and source/provenance
+information are stored with the archived reference and calibration. The
+working detector receives G, l1/l2, the raw tail and linked reference-decay and
+calibration UUIDs. Archival succeeds before an owned, previously saved setup
+is persisted. A named-save failure restores the working detector, but may
+leave the already archived records; a setup that is not eligible for that
+save remains a working definition until **Save** is used separately.
 
 ## Headless and Python
 

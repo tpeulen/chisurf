@@ -62,7 +62,7 @@ class H2mmNativeApp(TourTarget, ImApp):
         self._dialog_window = None
         self.nano_colours: set[str] | None = None
         self.nano_states: set[int] | None = None
-        self.editor = ChannelDefinitionWidget(self.model.setup, on_changed=self.model.set_setup)
+        self.editor = ChannelDefinitionWidget(self.model.setup, on_changed=self.model.set_setup, host_app=self)
         self.help_window = EmTkHelpWindow(
             title="Photon-by-Photon HMM (H2MM) - Help & Reference",
             resource=HERE / "help.md",

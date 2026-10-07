@@ -429,16 +429,22 @@ def test_a_detector_name_that_exists_is_refused(make):
     assert list(app.model.data["detectors"]) == ["green", "red"] and app.page.status.startswith("Error:")
 
 
-def test_calc_g_and_delete_buttons_act_on_their_own_row(make, folder):
+def test_selected_preview_g_and_delete_buttons_preserve_their_detector_scope(make, folder):
     app, ui = make()
-    press_button(ui, "detectors", "green", "calc")  # nothing read yet
-    assert app.page.status.startswith("Error:")
+    before = app.model.get_settings()
+    ui.click("Preview G")  # disabled until a preview is read
+    assert app.model.get_settings() == before and app.page.dialog is None
     read_sample(ui)
     app.model.data["detectors"]["green"]["g_factor_channels"] = [1000, 3000]
     app.page._refresh_rows()
     ui.frame(2)
-    press_button(ui, "detectors", "green", "calc")
-    assert app.page.status == "Settings updated." and det(ui)["g_factor"] != 1.0 and det(ui, "red")["g_factor"] == 1.25
+    ui.click(cell_point(ui, "detectors", "green", "name"))
+    ui.click("Preview G")
+    assert (
+        app.page.status == "Settings updated."
+        and det(ui)["g_factor"] != 1.0
+        and det(ui, "red")["g_factor"] == 1.25
+    )
     press_button(ui, "detectors", "red", "delete")
     assert list(app.model.data["detectors"]) == ["green"]
     press_button(ui, "detectors", "green", "delete")

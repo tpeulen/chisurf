@@ -459,6 +459,7 @@ class AccurateFretApp(ImApp):
         self.controller = AccurateFretController(
             self.model, ndx_source=ndx_source, setup_model=setup_model, db_path=db_path
         )
+        self.controller.channel_definition.host_app = self
         self.accurate_gui = AccurateFretGui(
             self.model,
             on_calibrate or self.controller.run,

@@ -108,7 +108,8 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         self._signature = None
         self.message = ""
         self.editor = ChannelDefinitionWidget(
-            self._editor_settings(), on_changed=self._setup_changed
+            self._editor_settings(), on_changed=self._setup_changed,
+            host_app=self,
         )
         if self.model.setup_name:
             try:

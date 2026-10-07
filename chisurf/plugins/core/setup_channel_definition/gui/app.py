@@ -48,7 +48,7 @@ class SetupChannelDefinitionApp(ImApp):
             )
         self._on_changed = on_changed
         self.page = ChannelDefinitionWidget(
-            model=model, on_changed=self._model_changed
+            model=model, on_changed=self._model_changed, host_app=self
         )
         self.model = self.page.model
         #: Rectangles of the named controls (tests, guided tours, embedding hosts): the page's and this app's.

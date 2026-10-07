@@ -1,3 +1,9 @@
+## Native detector caller and mixin static declarations incomplete (2026-10-07)
+
+status: open
+
+The shared reference source and real-control tests introduce no new diagnostics after optional-child invariants and explicit numerical oracle arrays were corrected. Exact shadow comparison retains74 inherited native caller/mixin typing messages; no messages were removed or suppressed. Resolve their existing model/host/painter contracts in the owning modules during W0 review, with their real factory/control regressions. A broad declaration rewrite cannot be treated as mechanical cleanup of a host_app wiring change; do not add per-caller casts or blanket ignores. [Owning command/baseline receipt](../validation/release-readiness-w1/detector-reference/type-comparison.json).
+
 ## MMFDB result-registration static declarations incomplete (2026-10-07)
 
 status: open

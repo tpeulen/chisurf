@@ -10,6 +10,11 @@
               "label": "Edit JSON...",
               "action": "edit_json",
               "description": "Edit the complete current detector and PIE-window definition, including metadata not shown in the tables. Named setup saving remains a separate action."
+            },
+            {
+              "label": "Preview G",
+              "action": "preview_g",
+              "description": "Estimate G from the already loaded preview for the selected detector (or the first detector if none is selected). This quick estimate does not archive a reference and clears stale calibration identifiers."
             }
           ]
         }

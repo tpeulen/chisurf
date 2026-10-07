@@ -60,7 +60,7 @@ class FilterApp(TourTarget, ImApp):
         self.item_rects = {}
         self.forms = {}
         self.panel = FilterPanel(self)
-        self.setup = ChannelDefinitionWidget(settings=self.model._detector_settings, on_changed=self._setup_changed)
+        self.setup = ChannelDefinitionWidget(settings=self.model._detector_settings, on_changed=self._setup_changed, host_app=self)
         self._setup_pending = None
         base = Path(__file__).parents[1] / "gui_parts"
         self.help = EmTkHelpWindow(title="Filtered FCS help", resource=base / "help.md", owner=self, on_start_guide=lambda: self.tour.start())

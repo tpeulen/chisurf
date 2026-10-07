@@ -1,0 +1,22 @@
+{
+  "panels": {
+    "reference_prompt": {
+      "sections": [
+        {"type": "info", "source": "reference_info", "description": "Prepared independent reference and stored raw TAC-channel tail."},
+        {"type": "button_row", "buttons": [
+          {"label": "Run headlessly", "action": "calibration_headless", "description": "Use the stored tail to calculate and archive this independent reference without opening the interactive calculator."},
+          {"label": "Open calculator", "action": "calibration_interactive", "description": "Open the existing native G-factor calculator to inspect and edit the reference, background, tail and mixing."},
+          {"label": "Cancel", "action": "calibration_cancel", "description": "Discard the prepared reference and retain all previous detector calibration values."}
+        ]}
+      ]
+    },
+    "calibration_footer": {
+      "sections": [
+        {"type": "button_row", "buttons": [
+          {"label": "Apply calibration and close", "action": "calibration_apply", "description": "Finish pending computation, archive the completed reference and apply its G, actual SD, mixing and provenance to the selected detector."},
+          {"label": "Discard calibration", "action": "calibration_cancel", "description": "Close the calculator without archiving or changing the detector."}
+        ]}
+      ]
+    }
+  }
+}

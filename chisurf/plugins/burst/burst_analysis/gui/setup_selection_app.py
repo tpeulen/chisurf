@@ -65,7 +65,7 @@ class BurstSetupSelectionApp(ImApp):
     ) -> None:
         self._on_changed = on_changed
         self.on_proceed = on_proceed
-        self.page = ChannelDefinitionWidget(settings, model=model, on_changed=self._changed)
+        self.page = ChannelDefinitionWidget(settings, model=model, on_changed=self._changed, host_app=self)
         self.model = self.page.model
         self.item_rects: dict[str, tuple] = self.page.item_rects
         self.help_window = EmTkHelpWindow(

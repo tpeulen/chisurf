@@ -32,7 +32,8 @@ class CountRateController:
         if self.selected_setup:
             initial["setup_name"] = self.selected_setup
         self.channel_editor = ChannelDefinitionWidget(
-            settings=initial, on_changed=self.on_definition_changed
+            settings=initial, on_changed=self.on_definition_changed,
+            host_app=None,
         )
         self.channel_editor.model.setups = deepcopy(self._setups)
         self._model.channels_provider = self.channels
@@ -50,6 +51,7 @@ class CountRateController:
             on_add_files=self.add_files_dialog,
             on_clear=self.clear,
         )
+        self.channel_editor.host_app = self.app
 
     def available_setups(self):
         return self._setups
