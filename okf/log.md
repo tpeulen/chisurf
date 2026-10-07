@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- **2026-10-07 · W1 Microtime12 active after G-factor commit `37b95ad84`:** source owner reports5 native caller/CLI gates,51 original pointer/layout cases and4 timing guards green. Paired doc example verifies physical header timing and unchanged channel counts; final retirement/render/commit acceptance remains pending. G-factor claims released in tttrlib `90316beb5`; `.zed/tasks.json` remains available on disk and ignored. [Resume](prds/prd-154.md).
+
 - **2026-10-07 · W1 G-factor row11 landed:** existing native host retires duplicate Qt calculator/UI; complete main/batch control parity and reliable detector calibration metadata/close-once persistence. Adjacent headless archival-failure mutation fixed; shared list preserved in actual PixelMLE fitting. Parent88 targeted +963 guards/vocabulary pass (16 skips),11 scoped mypy targets clean, final seven renders inspected; calculations unchanged. Next Microtime12. [Evidence](validation/release-readiness-w1/gfactor-retirement/acceptance.json).
 
 - **2026-10-07 · W1 MMFDB CLI root restored:** authoritative manifest now exposes existing `csc fluorophore`; duplicate declaration/old source planning mention removed. Three real dispatch regressions and39 targeted CLI/PRD cases pass, plus parent installed-command help. Guide/catalogue updated; four inherited GUI typing findings measured unchanged. Test-env editable installation restored the intended executable without dependency changes. [Receipt](validation/release-readiness-w1/mmfdb-cli/receipt.md).
