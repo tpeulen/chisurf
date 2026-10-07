@@ -659,19 +659,36 @@ class Main(
         _gw.clear_layout(self.plotOptionsLayout)
 
     def onAddDataset(self):
-        filename = self.current_setup.controller.get_filename()
-        if isinstance(filename, list):
-            l = [rf"{pathlib.Path(f).as_posix()}" for f in filename]
-            s = "|".join(l)
-        elif isinstance(filename, pathlib.Path):
-            s = rf"{filename.as_posix()}"
-        else:
-            s = rf"{filename}"
-        s = s.replace("\\", "/")
-        cs.core.actions.dispatch(
-            name="dataset.add",
-            payload={"filename": s, "experiment_reader": None},
-        )
+        """Import the chosen reader input, preserving its scientific owner."""
+        reader = self.current_setup
+        controller = getattr(reader, "controller", None)
+
+        def import_file(filename, selected_reader=None):
+            """Deliver one selected path to the existing dataset action."""
+            if isinstance(filename, list):
+                source = "|".join(pathlib.Path(path).as_posix() for path in filename)
+            elif isinstance(filename, pathlib.Path):
+                source = filename.as_posix()
+            else:
+                source = str(filename).replace("\\", "/") if filename is not None else None
+            cs.core.actions.dispatch(
+                name="dataset.add",
+                payload={"filename": source, "experiment_reader": selected_reader},
+            )
+
+        if controller is not None and callable(getattr(controller, "get_filename", None)):
+            import_file(controller.get_filename())
+            return
+        filename = getattr(reader, "filename", None)
+        if filename:
+            import_file(filename, reader)
+            return
+        host = (getattr(self, "_native_reader_settings_hosts", None) or {}).get(id(reader))
+        if host is not None and host.control.sources:
+            host.control.choose_input(lambda path: import_file(path, reader))
+            return
+        # Generator readers declare no input file and create data through read().
+        import_file(None, reader)
 
     def onSaveFits(self, event: QtCore.QEvent = None):
         path, _ = _gw.get_directory()

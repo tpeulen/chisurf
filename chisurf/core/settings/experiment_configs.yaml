@@ -39,9 +39,7 @@ tcspc:
     - reader_class: chisurf.core.experiments.tcspc.TCSPCReader
       reader_params:
         name: TXT/CSV
-      controller_class: chisurf.gui.widgets.experiments.tcspc.controller.TCSPCReaderControlWidget
-      controller_params:
-        name: CSV/PQ/IBH
+      controller_class: null
       settings_key: tcspc_csv
     - reader_class: chisurf.core.experiments.tcspc.TCSPCTTTRReader
       reader_params:
@@ -87,9 +85,7 @@ stopped_flow:
     - reader_class: chisurf.core.experiments.tcspc.TCSPCReader
       reader_params:
         name: TXT/CSV
-      controller_class: chisurf.gui.widgets.experiments.tcspc.controller.TCSPCReaderControlWidget
-      controller_params:
-        name: CSV/PQ/IBH
+      controller_class: null
       settings_key: tcspc_csv
     - reader_class: chisurf.core.experiments.tcspc.TCSPCTTTRReader
       reader_params:

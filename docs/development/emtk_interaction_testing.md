@@ -166,3 +166,14 @@ UID fails without index/name fallback and never changes the active group member.
 IRF/model dataset actions forward these identities while retaining fit_index
 and action_fixed slots; a copied IRF retains the selected name.
 The native Simulator picker integration follows this API prerequisite.
+
+
+## Complete native CSV settings
+
+CSV input/timing/anisotropy controls are now declared over the scientific
+reader. Native source selection delivers the original reader to the shell
+import action exactly once; supplied columns/errors/delimiters and FWF layouts
+reach their owning parser. Source/error/link selections survive reader-state
+roundtrips. The native G-factor child applies completed finite calibration on
+close and cannot update a closed reader view. See the TCSPC file-format
+reference for the user workflow and actual loaded-reader screenshot.

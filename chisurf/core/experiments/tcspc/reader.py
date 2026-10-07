@@ -160,6 +160,15 @@ class TCSPCReader(ExperimentReader):
         fit_count_threshold: typing.Optional[float] = None,
         reading_routine: str = "auto",
         vh_shift: int = 0,
+        filename: str = "",
+        colspecs: str = "(16,33), (34,51)",
+        delimiter: str = "",
+        col_ex: int = 0,
+        col_ey: int = 0,
+        error_x_on: bool = False,
+        error_y_on: bool = False,
+        x_on: bool = True,
+        link_l1_l2: bool = False,
         *args,
         **kwargs,
     ):
@@ -258,11 +267,16 @@ class TCSPCReader(ExperimentReader):
         self.skiprows = skiprows
         self.use_header = use_header
         self.matrix_columns = matrix_columns
-        # Column selection is owned by the generic CSV parameters (the CsvWidget
-        # writes ``col_x``/``col_y`` onto the reader). They default to the first
-        # two columns and drive which columns the CSV-TCSPC read uses.
+        # The declaration edits these reader-owned column selections directly.
         self.col_x = 0
         self.col_y = 1
+        self.filename = str(filename)
+        self.colspecs = colspecs
+        self.delimiter = delimiter
+        self.col_ex, self.col_ey = int(col_ex), int(col_ey)
+        self.error_x_on, self.error_y_on = bool(error_x_on), bool(error_y_on)
+        self.x_on = bool(x_on)
+        self.link_l1_l2 = bool(link_l1_l2)
         self.fit_area = fit_area
         self.fit_count_threshold = fit_count_threshold
         self.fit_start_fraction = fit_start_fraction
@@ -270,6 +284,32 @@ class TCSPCReader(ExperimentReader):
         self.vh_shift = int(vh_shift) if vh_shift is not None else 0
 
     # -- declarative editor adapters ---------------------------------------
+    def enabled(self, name: str) -> bool:
+        """Disable only settings that do not participate in the selected read."""
+        if name == "l2":
+            return not self.link_l1_l2
+        if name in {"col_x", "error_x_on"}:
+            return self.x_on
+        if name == "col_ex":
+            return self.x_on and self.error_x_on
+        if name == "col_ey":
+            return self.error_y_on
+        if name == "colspecs":
+            return self.reading_routine == "fwf"
+        if name == "delimiter":
+            return self.reading_routine in {"auto", "csv"}
+        return True
+
+    def link_l1_l2_changed(self, linked: bool) -> None:
+        """Apply the declared leakage link when the user enables it."""
+        if linked:
+            self.l2 = float(self.l1)
+
+    def l1_changed(self, value: float) -> None:
+        """Keep the linked perpendicular leakage equal to the edited value."""
+        if self.link_l1_l2:
+            self.l2 = float(value)
+
     @property
     def is_vv_vh(self) -> bool:
         """Whether the file is a stacked VV/VH decay file.
@@ -430,7 +470,10 @@ class TCSPCReader(ExperimentReader):
         import chisurf.core.fio.fluorescence.thdfile
 
         if filename is None:
+            filename = self.filename
+        if not filename:
             raise ValueError("filename must be provided")
+        self.filename = str(filename)
 
         # Guess the reading routine if not explicitly overridden in kwargs
         reading_routine = kwargs.get("reading_routine", self.reading_routine)
@@ -441,7 +484,7 @@ class TCSPCReader(ExperimentReader):
         ):
             reading_routine = self._guess_reading_routine(filename)
 
-        if reading_routine == "csv":
+        if reading_routine in {"csv", "fwf"}:
             # Columns come from the generic CSV parameters (col_x/col_y) when
             # available, falling back to the historical ``matrix_columns``.
             mc = self.matrix_columns
@@ -463,6 +506,14 @@ class TCSPCReader(ExperimentReader):
                 l2=self.l2,
                 experiment=getattr(self, "experiment", None),
                 data_reader=self,
+                file_type=reading_routine,
+                colspecs=self.colspecs,
+                delimiter=self.delimiter or None,
+                col_ex=self.col_ex,
+                col_ey=self.col_ey,
+                error_x_on=self.error_x_on and self.x_on,
+                error_y_on=self.error_y_on,
+                x_on=self.x_on,
             )
         elif reading_routine == "thd":
             data_group = chisurf.core.fio.fluorescence.thdfile.read_tcspc_thd(
@@ -481,8 +532,8 @@ class TCSPCReader(ExperimentReader):
                 data_reader=self,
             )
         else:
-            if reading_routine == "yaml":
-                file_type = "yaml"
+            if reading_routine in {"yaml", "json"}:
+                file_type = reading_routine
                 data_set = chisurf.core.data.DataCurve()
                 data_set.load(file_type=file_type, filename=filename)
                 data_set.experiment = self.experiment

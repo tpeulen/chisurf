@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import os
 import re
 
@@ -536,6 +537,59 @@ class Csv:
             file_type = self.file_type
         if use_header is None:
             use_header = self.use_header
+
+        if os.path.isfile(filename) and file_type != "csv":
+            # Fixed-width fields have no CSV delimiter or complete-width row
+            # for the delimiter sniffer to discover. Honor their explicit layout.
+            self.directory = os.path.dirname(filename)
+            self._filename = filename
+            specs = ast.literal_eval(self.colspecs) if isinstance(self.colspecs, str) else self.colspecs
+            if isinstance(specs, int):
+                specs = (specs,)
+            specs = tuple(specs or ())
+            if not specs:
+                raise ValueError("fixed-width input requires column widths or start/stop ranges")
+            widths, positions, bounds = [], [], []
+            if all(isinstance(value, int) and not isinstance(value, bool) for value in specs):
+                if any(value <= 0 for value in specs):
+                    raise ValueError("fixed-width column widths must be positive")
+                widths = list(specs)
+                positions = list(range(len(widths)))
+                start = 0
+                for width in widths:
+                    bounds.append((start, start + width))
+                    start += width
+            else:
+                stop = 0
+                for item in specs:
+                    if not isinstance(item, (tuple, list)) or len(item) != 2:
+                        raise ValueError("fixed-width ranges require start/stop pairs")
+                    start, end = item
+                    if not all(isinstance(v, int) and not isinstance(v, bool) for v in item):
+                        raise ValueError("fixed-width ranges require integer offsets")
+                    if start < stop or end <= start:
+                        raise ValueError("fixed-width ranges must be ordered and nonoverlapping")
+                    if start > stop:
+                        widths.append(start - stop)
+                    positions.append(len(widths))
+                    widths.append(end - start)
+                    bounds.append((start, end))
+                    stop = end
+            columns = positions if usecols is None else [positions[int(index)] for index in usecols]
+            skipped = int(self.skiprows if skiprows is None else skiprows)
+            self._header = None
+            if use_header:
+                with _open_maybe_zipped(filename=filename, mode="r") as stream:
+                    for _ in range(skipped):
+                        stream.readline()
+                    line = _decode(stream.readline())
+                self._header = [line[start:stop].strip() for start, stop in bounds]
+                skipped += 1
+            self._data = np.atleast_2d(np.genfromtxt(
+                fname=filename, delimiter=tuple(widths), skip_header=skipped,
+                usecols=columns, autostrip=True, invalid_raise=True, **kwargs,
+            ))
+            return
 
         if os.path.isfile(filename):
             self.directory = os.path.dirname(filename)

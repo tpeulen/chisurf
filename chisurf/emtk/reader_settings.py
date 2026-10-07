@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import dataclasses
+import math
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -153,7 +154,8 @@ class ReaderSettingsApp(ImApp):
         Existing MMFDB client; resolved lazily by DatasetPicker when omitted.
     """
 
-    def __init__(self, reader: Any, *, dataset_client: Any = None) -> None:
+    def __init__(self, reader: Any, *, dataset_client: Any = None,
+                 g_factor_factory: Any = None) -> None:
         self.model = reader
         self.dataset_client = dataset_client
         self.form = FormState()
@@ -163,6 +165,9 @@ class ReaderSettingsApp(ImApp):
         self.file_source: _DataSource | None = None
         self.picker: DatasetPicker | None = None
         self.closed = False
+        self.calibration_host: Any = None
+        self.g_factor_factory = g_factor_factory
+        self._input_selected: Any = None
         self.spec = native_reader_spec(reader.view_spec())
         register = getattr(reader, "register_settings_sections", None)
         if callable(register):
@@ -172,8 +177,72 @@ class ReaderSettingsApp(ImApp):
         if not isinstance(sections, (list, tuple)) or not sections:
             raise ValueError("reader view_spec must declare nonempty sections")
         self._prepare(sections)
-        self.form.on_used = lambda name: self.request_frame()
+        self.form.on_used = self._used
         super().__init__(gui=self._render, continuous=False)
+
+    def _used(self, name: str) -> None:
+        """Route declared native-only actions without adding methods to the reader."""
+        if self.closed:
+            return
+        if name == "open_gfactor":
+            self._open_gfactor()
+        self.request_frame()
+
+    def _open_gfactor(self) -> None:
+        """Host the existing calibration app and apply completed values on close."""
+        from emtk.qt_host import ControlHost
+        from qtpy import QtCore
+
+        from chisurf.gui.qt_lifetime import is_deleted
+
+        if not is_deleted(self.calibration_host) and self.calibration_host.isVisible():
+            self.calibration_host.raise_()
+            self.calibration_host.activateWindow()
+            return
+        if self.g_factor_factory is None:
+            from chisurf.plugins.vv_vh_g_factor.gui.app import create_app
+
+            child = create_app()
+        else:
+            child = self.g_factor_factory()
+        child.model.fp_dt_ns = float(getattr(self.model, "effective_dt", 1.0))
+        child.model.shift = float(getattr(self.model, "vh_shift", 0))
+        prior_close = child.close
+
+        def closed() -> None:
+            """Cancel child work and prevent late delivery to a closed reader view."""
+            busy = bool(child.job.running)
+            prior_close()
+            if self.closed or busy:
+                return
+            factor = child.model.g_factor
+            if factor is not None and math.isfinite(float(factor)):
+                self.model.g_factor = float(factor)
+            shift = float(child.model.shift)
+            if math.isfinite(shift):
+                self.model.vh_shift = int(round(shift))
+            for attr in ("l1", "l2"):
+                value = child.model.fp_result.get(attr)
+                if value is not None and math.isfinite(float(value)):
+                    setattr(self.model, attr, float(value))
+            if getattr(self.model, "link_l1_l2", False):
+                self.model.l2 = self.model.l1
+            self.request_frame()
+
+        child.close = closed
+        self.calibration_host = ControlHost(child, background=(30, 32, 38))
+        self.calibration_host.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
+        self.calibration_host.show()
+
+    def choose_input(self, on_selected=None) -> None:
+        """Use the existing declared source picker for the shell's import action."""
+        source = self.sources.get("filename")
+        if source is None and len(self.sources) == 1:
+            source = next(iter(self.sources.values()))
+        if source is None:
+            raise ValueError("reader has no unambiguous declared input source")
+        self._input_selected = on_selected
+        source.browse()
 
     def _prepare(self, sections) -> None:
         """Validate the entire view before a host can show any partial settings."""
@@ -242,9 +311,13 @@ class ReaderSettingsApp(ImApp):
             window.end()
             if close or paths is False:
                 self.file_dialog = None
+                self._input_selected = None
             elif paths:
                 self.file_dialog = None
+                chosen, self._input_selected = self._input_selected, None
                 source.path = str(paths[0])
+                if chosen is not None and not self.closed:
+                    chosen(str(paths[0]))
         if self.picker is not None:
             self.picker.render(box)
 
@@ -274,6 +347,12 @@ class ReaderSettingsApp(ImApp):
             return
         self.closed = True
         self.set_frame_request_callback(None)
+        self._input_selected = None
+        if self.calibration_host is not None:
+            from chisurf.gui.qt_lifetime import is_deleted
+
+            if not is_deleted(self.calibration_host):
+                self.calibration_host.close()
         if self.picker is not None:
             self.picker.close()
         self.file_dialog = None

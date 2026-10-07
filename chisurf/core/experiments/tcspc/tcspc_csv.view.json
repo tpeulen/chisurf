@@ -2,6 +2,127 @@
   "sections": [
     {
       "type": "panel",
+      "title": "CSV input",
+      "collapsed": false,
+      "n_col": 2,
+      "sections": [
+        {
+          "type": "value",
+          "attr": "filename",
+          "label": "Filename",
+          "kind": "file",
+          "description": "Measurement file to import; browse on disk or choose a registered dataset."
+        },
+        {
+          "type": "choice",
+          "attr": "reading_routine",
+          "label": "Format",
+          "options": [
+            "auto",
+            "csv",
+            "yaml",
+            "fwf"
+          ],
+          "labels": [
+            "Auto",
+            "CSV",
+            "YAML",
+            "Fixed width"
+          ],
+          "description": "Detect vendor/text format automatically, or explicitly choose CSV, YAML or fixed-width text."
+        },
+        {
+          "type": "value",
+          "attr": "colspecs",
+          "label": "Fixed-width columns",
+          "kind": "str",
+          "description": "Fixed-width field widths (5, 7), or zero-based start/stop ranges ((3, 8), (10, 17))."
+        },
+        {
+          "type": "value",
+          "attr": "delimiter",
+          "label": "Delimiter",
+          "kind": "str",
+          "description": "CSV delimiter; leave empty to infer commas, tabs, semicolons or whitespace."
+        },
+        {
+          "type": "toggle",
+          "attr": "use_header",
+          "label": "Header",
+          "description": "Read column names from the header line; for fixed-width text it follows the skipped preamble."
+        },
+        {
+          "type": "value",
+          "attr": "skiprows",
+          "label": "Skip rows",
+          "kind": "int",
+          "minimum": 0,
+          "maximum": 100000,
+          "style": "spin",
+          "description": "Number of preamble rows skipped before the table header or numeric data."
+        },
+        {
+          "type": "toggle",
+          "attr": "x_on",
+          "label": "X values",
+          "description": "Use the selected X column. Disable to generate consecutive channel numbers."
+        },
+        {
+          "type": "value",
+          "attr": "col_x",
+          "label": "X column",
+          "kind": "int",
+          "minimum": 0,
+          "maximum": 99,
+          "style": "spin",
+          "description": "Zero-based column containing time-channel numbers."
+        },
+        {
+          "type": "value",
+          "attr": "col_y",
+          "label": "Y column",
+          "kind": "int",
+          "minimum": 0,
+          "maximum": 99,
+          "style": "spin",
+          "description": "Zero-based column containing fluorescence counts."
+        },
+        {
+          "type": "toggle",
+          "attr": "error_x_on",
+          "label": "X error",
+          "description": "Read standard deviations of channel numbers from the selected X-error column."
+        },
+        {
+          "type": "value",
+          "attr": "col_ex",
+          "label": "X error column",
+          "kind": "int",
+          "minimum": 0,
+          "maximum": 99,
+          "style": "spin",
+          "description": "Zero-based column of X standard deviations; converted to the calibrated time-axis units."
+        },
+        {
+          "type": "toggle",
+          "attr": "error_y_on",
+          "label": "Y error",
+          "description": "Use supplied count standard deviations. Otherwise use the established photon-counting noise."
+        },
+        {
+          "type": "value",
+          "attr": "col_ey",
+          "label": "Y error column",
+          "kind": "int",
+          "minimum": 0,
+          "maximum": 99,
+          "style": "spin",
+          "description": "Zero-based column of count standard deviations; independent errors combine in quadrature when rebinned."
+        }
+      ]
+    },
+    {
+      "type": "panel",
       "title": "Timing",
       "collapsed": false,
       "sections": [
@@ -26,14 +147,24 @@
           "type": "choice",
           "attr": "rebin_x_key",
           "label": "rebin x",
-          "options": ["1", "2", "4", "8"],
+          "options": [
+            "1",
+            "2",
+            "4",
+            "8"
+          ],
           "description": "Rebin factor along the x-axis: neighbouring channels are summed, e.g. a value of 2 turns '1,2,3,4' into '3,7'."
         },
         {
           "type": "choice",
           "attr": "rebin_y_key",
           "label": "rebin y",
-          "options": ["1", "2", "4", "8"],
+          "options": [
+            "1",
+            "2",
+            "4",
+            "8"
+          ],
           "description": "Rebin factor along the y-axis: neighbouring counts are summed, e.g. a value of 2 turns '1,2,3,4' into '3,7'."
         },
         {
@@ -65,8 +196,18 @@
           "attr": "polarization",
           "label": "pol.",
           "style": "radio",
-          "options": ["vm", "vv", "vh", "vv/vh"],
-          "labels": ["VM", "VV", "VH", "VV,VH"],
+          "options": [
+            "vm",
+            "vv",
+            "vh",
+            "vv/vh"
+          ],
+          "labels": [
+            "VM",
+            "VV",
+            "VH",
+            "VV,VH"
+          ],
           "description": "Polarization channel(s) to read: magic-angle, parallel, perpendicular, or stacked VV,VH."
         },
         {
@@ -80,7 +221,56 @@
           "step": 0.01,
           "description": "Detection-efficiency ratio (g-factor) between the parallel and perpendicular channels."
         },
-        {"type": "custom", "key": "tcspc_l1l2"}
+        {
+          "type": "value",
+          "attr": "l1",
+          "label": "l1",
+          "kind": "float",
+          "minimum": -10,
+          "maximum": 10,
+          "step": 0.001,
+          "decimals": 6,
+          "call": "l1_changed",
+          "description": "Polarization leakage correction for the parallel channel."
+        },
+        {
+          "type": "value",
+          "attr": "l2",
+          "label": "l2",
+          "kind": "float",
+          "minimum": -10,
+          "maximum": 10,
+          "step": 0.001,
+          "decimals": 6,
+          "description": "Polarization leakage correction for the perpendicular channel."
+        },
+        {
+          "type": "toggle",
+          "attr": "link_l1_l2",
+          "label": "Link l1/l2",
+          "call": "link_l1_l2_changed",
+          "description": "Keep the perpendicular leakage equal to the parallel leakage while editing l1."
+        },
+        {
+          "type": "value",
+          "attr": "vh_shift",
+          "label": "VH shift [ch]",
+          "kind": "int",
+          "minimum": -150,
+          "maximum": 150,
+          "style": "spin",
+          "description": "Channel shift of the perpendicular decay relative to the parallel decay."
+        },
+        {
+          "type": "button_row",
+          "buttons": [
+            {
+              "label": "g-factor",
+              "action": "open_gfactor",
+              "description": "Open the VV/VH calibration inspector; completed G, shift and mixing estimates are applied when its window closes."
+            }
+          ]
+        }
       ]
     }
   ]

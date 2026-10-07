@@ -361,3 +361,14 @@ def find_fit_idx_of_model(
     for idx, f in enumerate(fits):
         if f.model is model:
             return idx
+
+
+def __getattr__(name: str):
+    """Resolve the fit owner lazily without relying on incidental import order."""
+    if name == "fit":
+        import importlib
+
+        module = importlib.import_module(f"{__name__}.fit")
+        globals()[name] = module
+        return module
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

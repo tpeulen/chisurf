@@ -102,6 +102,14 @@ def read_tcspc_csv(
     l1: float = 0.0,
     l2: float = 0.0,
     experiment: chisurf.core.experiments.core.Experiment = None,
+    file_type: str = "csv",
+    colspecs=None,
+    delimiter: str | None = None,
+    col_ex: int = 0,
+    col_ey: int = 0,
+    error_x_on: bool = False,
+    error_y_on: bool = False,
+    x_on: bool = True,
     *args,
     **kwargs,
 ) -> chisurf.core.data.DataCurveGroup:
@@ -147,15 +155,36 @@ def read_tcspc_csv(
         mc = matrix_columns
         infer_delimiter = True
 
-    csvSetup = chisurf.core.fio.ascii.Csv(*args, **kwargs)
+    if is_vv_vh and (error_x_on or error_y_on):
+        raise ValueError("explicit error columns require an ordinary CSV decay")
+    if (error_x_on or error_y_on) and (mc is None or len(mc) != 2):
+        raise ValueError("explicit error columns require one selected X/Y pair")
+    selected = list(mc) if mc is not None else None
+    if selected is not None:
+        if error_x_on:
+            selected.append(int(col_ex))
+        if error_y_on:
+            selected.append(int(col_ey))
+    csvSetup = chisurf.core.fio.ascii.Csv(*args, file_type=file_type, colspecs=colspecs, **kwargs)
     csvSetup.load(
         filename,
         skiprows=skiprows,
         use_header=use_header,
-        usecols=mc,
+        usecols=selected,
+        delimiter=delimiter,
+        file_type=file_type,
         infer_delimiter=infer_delimiter,
     )
     data = csvSetup.data
+    supplied_ex = supplied_ey = None
+    error_index = 2
+    if error_x_on:
+        supplied_ex = np.asarray(data[error_index], dtype=float)
+        error_index += 1
+    if error_y_on:
+        supplied_ey = np.asarray(data[error_index], dtype=float)
+    if error_x_on or error_y_on:
+        data = data[:2]
 
     calibration_source = "reader"
 
@@ -314,7 +343,7 @@ def read_tcspc_csv(
         n_data_points = y.shape[1]
         x = np.arange(n_data_points, dtype=np.float64) * dt
     else:
-        x = data[0] * dt
+        x = (data[0] if x_on else np.arange(data.shape[1], dtype=float)) * dt
         y = data[1:]
 
         n_datasets, n_data_points = y.shape
@@ -322,6 +351,8 @@ def read_tcspc_csv(
         try:
             y = y.reshape([n_datasets, n_data_points, rebin_y]).sum(axis=2)
             ey = chisurf.core.fluorescence.tcspc.counting_noise(y)
+            if supplied_ey is not None:
+                ey = np.sqrt(np.square(supplied_ey).reshape(1, n_data_points, rebin_y).sum(axis=2))
             x = np.average(x.reshape([n_data_points, rebin_y]), axis=1) / rebin_y
         except ValueError:
             print("Cannot reshape array")
@@ -335,8 +366,6 @@ def read_tcspc_csv(
     # print xn
     # yn = tmp[0]
     # print tmp[1].shape
-    x = x[n_data_points % rebin_y :]
-    y = y[n_data_points % rebin_y :]
 
     # rebin along x-axis
     y_rebin = np.zeros_like(y)
@@ -349,6 +378,11 @@ def read_tcspc_csv(
     n_data_sets = y_rebin.shape[0]
     fn = csvSetup.filename
     ex = np.zeros(x.shape)  # Initialize ex variable
+    if supplied_ex is not None:
+        ex = np.sqrt(np.square(supplied_ex * dt).reshape(-1, rebin_y).sum(axis=1)) / rebin_y**2
+    if supplied_ey is not None and rebin_x != 1:
+        ey = np.asarray([np.sqrt(np.square(ey[i:i + rebin_x]).sum(axis=0))
+                         for i in range(0, ey.shape[0], rebin_x)])
 
     # Create descriptive names based on polarization type
     if is_vv_vh and polarization == "vv/vh":

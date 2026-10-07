@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W1: complete native CSV settings and both configured CSV reader ports; fix owning FWF/error/delimiter/X forwarding, state retention, original-owner source import, linked calibration and native inspector close behavior.713 parent targeted cases plus308 guard passes/17 skips; four PNGs inspected,26 controls retained, three numeric cases bit-identical. Fix actual fitting export and post-rebin dataset-loss roots; preserve foreign hunks/modes and retire the CSV class/controller/UI. [Evidence](validation/release-readiness-w1/csv-retirement/control-parity.json).
+
 - PRD-154 W1: retain session-group member identity in local/server DTOs, explicit child reads, generated RPC contracts and actual IRF/model actions.20 new regressions red→green; parent repeats119 targeted API/service/client/protocol/IRF cases. Stale UIDs cannot retarget indices; supplied local SessionState and active group selection are preserved. Native picker/context and grouped remote Add remain explicit simulator gates. [Receipt](validation/release-readiness-w1/session-curve-api/receipt.json).
 
 - PRD-154 W1: remove an accidental SDT prerequisite dependency on the pending CSV initializer. Configure the SDT source explicitly and lazily; committed-base probe proves missing-source construction and real three-curve import/exact calibration.10 targeted tests, Ruff and mypy pass; native layout and ordered loader retirement remain unchanged.

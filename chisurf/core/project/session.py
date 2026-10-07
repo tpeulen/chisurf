@@ -71,6 +71,15 @@ _ICS_MODEL_MODES = {
 # controllers and callbacks are runtime resources, never portable state.
 _READER_FIELDS = {
     ("chisurf.core.experiments.tcspc.reader", "TCSPCReader"): (
+        "filename",
+        "colspecs",
+        "delimiter",
+        "col_ex",
+        "col_ey",
+        "error_x_on",
+        "error_y_on",
+        "x_on",
+        "link_l1_l2",
         "dt",
         "rep_rate",
         "excitation_repetition_rate",
@@ -203,6 +212,7 @@ _READER_FIELDS.update(
             "micro_time_range",
         ),
         ("chisurf.core.experiments.modelling.reader", "StructureReader"): (
+            "filename",
             "compute_internal_coordinates",
         ),
     }

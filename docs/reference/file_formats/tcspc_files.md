@@ -9,212 +9,72 @@ tags: [reference, file-formats, tcspc, photons, lifetime, fitting, fret]
 
 ## TXT/CSV {#tcspc-txtcsv}
 
-### Purpose
+Select the **TCSPC** experiment and **TXT/CSV** reader. The native settings
+form has **CSV input**, **Timing** and **Anisotropy (VV/VH)** groups. Settings
+change the reader directly and are retained when a project is saved/reopened.
 
-The **TCSPC TXT/CSV** reader loads time‑correlated single photon counting (TCSPC) decays
-from plain text or CSV files and converts them into ChiSurf TCSPC datasets that can be
-used for lifetime fitting and FRET analysis.
+### Source and import
 
-You typically use this reader when you have:
+Type a filename, use **Browse**, or use **Database** to materialize a dataset
+from MMFDB. **+ Data** imports the selected source with this reader's settings.
+With an empty source, it opens the same native picker and imports once after
+selection. The existing reader help remains available through **?**.
 
-- Exported decays from vendor software as text / CSV tables.
-- TCSPC matrices (multiple decays in columns or rows) in a single file.
-- VV/VH fast‑rotating dye measurements for estimating the anisotropy G‑factor.
+![Native CSV reader with a measured IBH decay](figures/tcspc_csv_native.png)
 
-When you select the **TCSPC** experiment and the **TXT/CSV** file type, the
-"File parameters" group shows two stacked panels:
+### Format, columns and errors
 
-- A **CSV input** panel (generic ASCII/CSV reader).
-- A **TCSPC TXT/CSV** panel (TCSPC‑specific parameters such as `dt`, polarization, G‑factor).
+- **Auto** detects the existing text/vendor or serialized curve format.
+- **CSV** reads delimited numeric text; an empty delimiter retains inference.
+  An explicit delimiter is passed to the parser.
+- **YAML** reads serialized DataCurve data. Auto also recognizes JSON.
+- **FWF** reads fixed-width text using widths such as `5, 7`, or zero-based,
+  stop-exclusive ranges such as `(3, 8), (10, 17)`. Ranges can skip padding.
 
-Clicking the question‑mark button next to the experiment selection opens this help
-view with the filter pre‑filled for this reader.
+**Skip rows** removes the preamble. **Header** follows the skipped preamble
+for fixed-width files; delimited tables retain their established header
+handling. Column numbers are zero-based: choose **X column** and **Y column**.
+With **X values** off, the reader generates consecutive channel numbers.
+With it on, the configured X column is read before time calibration.
 
----
+Enable **X error** or **Y error** to read standard deviations from their
+configured columns. X errors follow the time calibration. Independent Y
+errors combine in quadrature during rebinning. With these flags off, the
+reader retains zero X errors and its established counting-noise estimates.
 
-### Supported file formats
+### Timing and polarization
 
-The TCSPC TXT/CSV reader ultimately calls `chisurf.core.fio.fluorescence.tcspc.read_tcspc_csv`,
-which accepts data in the following forms:
+**dt** specifies nanoseconds per channel; **scale dt**, X/Y rebin and
+repetition rate in MHz retain their existing meanings. Set these to match the
+measurement before importing. For the shipped IBH sample, use 10 skipped
+rows and 0.0141 ns per channel.
 
-- **Two‑column decay**
-  - First column: time axis in channel units (or arbitrary units that you convert via `dt`).
-  - Second column: counts in each time bin.
-  - Optionally additional columns are ignored or selected via the CSV panel.
+The anisotropy controls retain stacked mode, VM/VV/VH/VV-VH selection,
+G-factor, leakage fractions l1/l2 and integer VH channel shift. Enabling
+**Link l1/l2** copies l1 to l2 and keeps them equal on subsequent l1 edits.
+**g-factor** opens the native calibration inspector; closing a completed
+calculation applies finite G, rounded shift and available mixing estimates.
+Closing the owning settings view cancels its child and prevents late updates.
 
-- **Matrix of decays**
-  - One column contains the time axis.
-  - One or more additional columns contain decay curves (e.g. different channels, ROIs, or repeats).
-  - The `Matrix columns` setting in the TCSPC panel tells the reader which columns to interpret
-    as TCSPC channels.
+### Workflow
 
-- **VV/VH format (fast‑rotating dye)**
-  - Special case used for anisotropy calibration.
-  - Select **VV/VH mode** in the TCSPC panel (`is_vv_vh`), then load the VV/VH file.
-  - The reader uses `chisurf.core.fio.vv_vh.read_vv_vh` and can derive `g_factor` and VV/VH/VM
-    channels directly from the file.
+1. Select TXT/CSV and choose the measurement source.
+2. Check format, skipped/header rows and the X/Y/error columns.
+3. Set timing and the measurement's polarization/calibration.
+4. Press **+ Data** and inspect the imported decay before fitting.
 
-Delimiters (comma, semicolon, tab, space) are usually detected automatically when
-**Use header** is enabled in the CSV panel and `is_vv_vh` is *not* checked.
+For a headless read with the same settings:
 
----
+```python
+from chisurf.core.experiments.tcspc import TCSPCReader
 
-### CSV input panel (generic ASCII/CSV settings)
+reader = TCSPCReader(filename="test/data/tcspc/ibh_sample/Decay_577D.txt",
+                     skiprows=10, dt=0.0141, record_provenance=False)
+curves = reader.read()
+```
 
-The **CSV input** panel comes from `chisurf.gui.widgets.fio.CsvWidget`. Its
-settings control how the ASCII/CSV file is parsed before it is interpreted as
-TCSPC data:
-
-- **Use header**
-  - If checked, the first non‑skipped line is treated as a header line.
-  - Column indices can then be resolved from header names where supported.
-
-- **Skip rows** (`skiprows`)
-  - Number of initial lines to ignore before reading numeric data.
-  - Use this to skip instrument headers, comments, or metadata blocks.
-
-- **Columns / colspecs**
-  - Free‑form column specification string, stored as `cs.current_setup.colspecs`.
-  - Use this to pick the X/Y/error columns when your file contains many columns.
-
-- **CSV type / reading routine**
-  - **Auto**: let ChiSurf infer the format based on the file extension.
-  - **CSV**: force CSV/ASCII parsing.
-  - **FWF**: fixed‑width formatted files.
-  - **YAML**: interpret the file as a YAML data description.
-
-- **Error columns**
-  - You can optionally specify columns for `error_x` and `error_y` (standard
-    deviations for X and Y).
-  - These are mapped to `cs.current_setup.col_ex`, `col_ey`, `col_x`, `col_y`.
-
-All changes in this panel are propagated into `cs.current_setup` via the
-Python console so that the TCSPC reader sees a consistent configuration.
-
----
-
-### TCSPC TXT/CSV panel (TCSPC‑specific settings)
-
-The lower panel, provided by `CsvTCSPCWidget`, configures how the ASCII data
-is interpreted as a TCSPC experiment:
-
-- **Time resolution `dt`**
-  - Effective width of one time bin in **nanoseconds**.
-  - If **Rebin in Y** is active and "keep dt" is checked, the widget rescales
-    `dt` so that the physical time axis remains consistent after rebinning.
-
-- **Repetition rate `rep_rate`**
-  - Excitation repetition rate in **MHz**.
-  - Used by TCSPC models for parameters like total measurement time and
-    convolution.
-
-- **Rebin (X/Y)**
-  - `rebin_y`: number of consecutive time bins summed into one new bin.
-    Larger values reduce noise at the cost of temporal resolution.
-  - `rebin_x`: number of decays aggregated along the X‑axis (for matrices with
-    multiple rows or segments).
-
-- **Polarization mode (`polarization`)**
-  - `vm`: magic‑angle or total intensity.
-  - `vv`: parallel polarization channel only.
-  - `vh`: perpendicular polarization channel only.
-  - `vv/vh`: two‑channel mode providing both VV and VH decays.
-
-- **G‑factor (`g_factor`)**
-  - Anisotropy correction factor used when combining VV and VH channels into VM
-    or when computing anisotropy curves.
-  - Often obtained from a VV/VH fast‑rotating dye measurement.
-
-- **Matrix columns (`matrix_columns`)**
-  - Which columns of the numeric matrix correspond to the TCSPC channels.
-  - For non‑VV/VH files, the CSV loader reads `usecols=matrix_columns`.
-  - Typical examples:
-    - `0 1` → time in column 0, intensity in column 1.
-    - `0 1 2` → time + two intensity channels, which will be turned into
-      multiple decays.
-
-- **VV/VH mode (`is_vv_vh`) and header usage (`use_header`)**
-  - When **VV/VH mode** is enabled:
-    - The reader switches to `chisurf.core.fio.vv_vh.read_vv_vh` and ignores
-      standard `matrix_columns`.
-    - Available polarization channels (VV, VH, VM) are taken from the VV/VH
-      file, and `g_factor` can be read from metadata.
-  - When VV/VH is **off**, the reader expects a generic ASCII/CSV file and
-    uses `matrix_columns`, `use_header`, and the CSV panel configuration.
-
-- **VH shift (`vh_shift`)** (if present)
-  - Integer shift (in bins) applied to the VH channel before combining VV and
-    VH (VV/VH mode).
-  - Positive values shift VH to later times; negative values to earlier times.
-  - Useful to compensate for small timing offsets between detection channels.
-
-All changes you make in this panel are written back into `cs.current_setup`
-when parameters change, so subsequent data loads and fits use the same setup.
-
----
-
-### VV/VH files {#tcspc-vv_vh}
-
-VV/VH files are a special TCSPC format used primarily for **anisotropy calibration**.
-They typically contain a single column of intensity values which is interpreted as:
-
-- First half of the values → **VV** (parallel) channel
-- Second half of the values → **VH** (perpendicular) channel
-
-In the **TCSPC TXT/CSV** reader, VV/VH files are handled by enabling **VV/VH mode**
-in the TCSPC panel (`is_vv_vh`). When this mode is active:
-
-- The reader uses `chisurf.core.fio.vv_vh.read_vv_vh` under the hood.
-- Available polarization channels (VV, VH, VM) are taken directly from the VV/VH file.
-- `g_factor` and related anisotropy parameters can be read from the file metadata
-  when present.
-
-For detailed inspection and refinement of the **g‑factor** and **VH shift**, you can
-use the dedicated **VV/VH G‑Factor Calculator** plugin, which provides:
-
-- Interactive tail-matching of VV and VH decays.
-- Background correction and visualization of corrected vs. uncorrected decays.
-- Convenient copyable fields for the resulting `g_factor` and its uncertainty.
-
-The typical workflow is:
-
-1. Acquire or load a VV/VH calibration file.
-2. Use the **VV/VH G‑Factor Calculator** plugin to determine a robust `g_factor`
-   (and optionally a VH shift).
-3. Enter the resulting parameters into the **TCSPC TXT/CSV** panel and enable
-   **VV/VH mode** for the corresponding datasets.
-
----
-
-### Typical workflow
-
-1. **Select experiment and reader**
-   - In the *Read data* dock, choose **Experiment → TCSPC**.
-   - In **File type**, choose **TXT/CSV**.
-
-2. **Configure CSV parsing**
-   - Set **Skip rows** so that the first data row corresponds to the start of the time axis.
-   - Enable **Use header** if your file has a column header line.
-   - Adjust column indices (X, Y, errors) if needed.
-
-3. **Configure TCSPC parameters**
-   - Set `dt` to the correct time‑per‑channel in ns.
-   - Adjust **Rebin** if you want to reduce noise.
-   - Choose **Polarization** mode depending on available channels.
-   - Set or confirm the **G‑factor** if you do anisotropy analysis.
-
-4. **(Optional) VV/VH calibration**
-   - Enable **VV/VH mode** and load a VV/VH VV/VH file.
-   - Use the VV/VH G‑factor inspector button to refine `g_factor` and `vh_shift`.
-
-5. **Load data**
-   - Click the **Data** button (or drop files onto the *Drop files here* area).
-   - The resulting decays appear in the dataset list and can be used for
-     lifetime fitting.
-
-This document is shown automatically when you click the question‑mark button
-next to the experiment / file‑type selection while the **TCSPC TXT/CSV**
-reader is active.
+The lower-level `read_tcspc_csv` API also supports explicit matrix column
+sets. The form's working integer fields select the input columns directly.
 
 ---
 
