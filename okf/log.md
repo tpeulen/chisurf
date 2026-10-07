@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- **2026-10-07 · Native detector public switch:** central13 guards pass, including supplied-preview and refused-close fixes; working public classes now use the native page. Actual onboarding export→Finish→cleanup passes. Canonical callers are unblocked while deleted-detector named merge/reentrant delivery guards and real after scenes remain pending. MLE registry-driven model-choice implementation has exact five-path authority and before/parity gates. [Resume](validation/release-readiness-w1/current-job/handoff.md).
+
 - **2026-10-07 · Detector retirement review roots:** preserve supplied preview arrays without rereading, retain native editor on refused wizard close, and expose full-definition Save in the actual incomplete onboarding wizard. Exact fixes/tests assigned owning lanes. Burst canonical import also triggers separately snapshotted chiplot/PRD-reference cleanup. MLE visible panels and fixed Fit23 vectors explain the missing model choice; registry-driven design remains pending. [Current job](validation/release-readiness-w1/current-job/handoff.md).
 
 - **2026-10-07 · Burst MLE owner requirement:** preserve selectable registered tttrlib models, including Fit23, through the actual fitting path. Bounded diagnosis is active and recorded in the [midway handoff](validation/release-readiness-w1/current-job/handoff.md); no selector completion or extra source changes claimed.
