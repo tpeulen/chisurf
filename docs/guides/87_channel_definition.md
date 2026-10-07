@@ -71,3 +71,26 @@ setup.refresh_setups()
 setup.select_setup("ALEX Suite (auto)")
 settings = setup.get_settings()          # detectors, windows, tttr_reading, LUTs, optical setup
 ```
+
+
+## 5. Edit the complete working definition
+
+**Edit JSON...** opens the complete detector definition in the native editor.
+The draft includes windows, detectors, timing, LUTs, optical settings and
+additional metadata. **Apply** validates it before replacing the working
+definition and refreshing the page. An invalid draft shows its error and
+keeps the previous definition. **Cancel** discards the draft; read-only
+definitions cannot be edited.
+
+Apply does not save a named setup or write a calibration to MMFDB. Use
+**Save** separately when you want to persist the valid working definition.
+Metadata and calibration identifiers remain unless you explicitly change
+or remove them in the complete draft.
+
+```{figure} figures/channel_definition_json_editor.png
+:name: fig-channel-definition-json
+:width: 100%
+
+The native complete-definition editor after reading the BH SPC-132 fixture.
+Apply and Cancel act on the draft; saving the named setup remains separate.
+```

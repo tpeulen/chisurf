@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- **2026-10-07 · W1 native detector Edit JSON restored:** declared complete-definition editor validates before applying, preserves metadata/preview/store identity and keeps Save separate. Parent8 JSON checks pass; source/test typing/Ruff clean and five measured before/after images inspected. Full reference calibration and720px owner-page boundary remain active before Microtime retirement acceptance. [Evidence](validation/release-readiness-w1/detector-json/acceptance.json).
+
 - **2026-10-07 · W1 shared native Help root:** translated header/category packing restores last-section reachability in narrow windows; full text/live links scroll with stable reading position and a measured footer reserve. Parent11 installed checks pass; scoped typing/Ruff clean, actual Qt/Pixel/narrow/2×DPI images inspected. Guided-tour foreign code and scientific help text preserved. [Evidence](validation/release-readiness-w1/native-help/acceptance.json).
 
 - **2026-10-07 · W1 toolkit0.1.7 canonical:** installed/pinned SDK`2c30fc559` combines table Ctrl/Command modifiers, software texture/font clipping and declared code-editor tooltips. Parent261 installed checks pass/1expectedskip;21 references/version match, lock-check0 and before/after images inspected. Qt Help body already clipped correctly; narrow category layout is separately owned. Fifteen inherited form typing findings remain explicitly tracked. [Evidence](validation/release-readiness-w1/sdk-0.1.7/acceptance.json).

@@ -22,9 +22,12 @@ a host calls it once per frame next to :meth:`ChannelDefinitionWidget.draw`.
 import copy
 import json
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from threading import Event
 
 import numpy as np
+from emtk.i18n import tr
+from emtk.view_form import FormState, draw_form
 
 from chisurf.core.setup_channel_definition import ChannelDefinition
 from chisurf.emtk.channel_setup_bar import DELETE, LATEST, OVERWRITE, RENAME, SAVE, UNSAVED, SetupToolbar
@@ -229,13 +232,16 @@ class ChannelDefinitionWidget:
         The definition and its stores (default: built from *settings*).
     on_changed : callable, optional
         Called with the settings after every change.
+    read_only : bool, optional
+        Disable working-definition edits, including JSON application.
     """
 
-    def __init__(self, settings=None, model=None, on_changed=None):
+    def __init__(self, settings=None, model=None, on_changed=None, read_only=False):
         from emtk.dialog_window import DialogWindow
         self.model = model or ChannelDefinition(settings)
         self.model.on_changed = on_changed
-        self.status = ''
+        self.status = ""
+        self.read_only = bool(read_only)
         self.setup_name = self.model.current_name
         self.public = bool(self.model.data.get('_is_public'))
         self.calibrations = []
@@ -248,7 +254,15 @@ class ChannelDefinitionWidget:
         self.lut_start, self.lut_stop = 0, 32768
         self.selected_channel = None
         self.dialog = None
-        self.action = 'measurement'
+        self.json_window = DialogWindow(tr("Edit JSON definition"), size=(820.0, 560.0), key="channel_json")
+        self.json_text = ""
+        self.json_error = ""
+        self._json_view = json.loads(Path(__file__).with_name("channel_definition_json.view.json").read_text())["panels"]
+        self._json_toolbar_state = FormState()
+        self._json_state = FormState()
+        self._json_toolbar_state.on_used = self._used
+        self._json_state.on_used = self._used
+        self.action = "measurement"
         self._future = None
         self._cancel = Event()
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='channel-definition')
@@ -349,14 +363,73 @@ class ChannelDefinitionWidget:
 
     def load_definition(self, data):
         """Replace the working definition by *data*, keeping the setups, the stores and the change callback."""
-        callback, setups = self.model.on_changed, self.model.setups
+        callback, setups, last_used = self.model.on_changed, self.model.setups, self.model.last_used
         loaded = ChannelDefinition(data, file_path=self.model.file_path, db=self.model.db)
+        loaded.get_settings()
         self.model.__dict__.update(loaded.__dict__)
-        self.model.setups, self.model.on_changed = setups, callback
+        self.model.setups, self.model.on_changed, self.model.last_used = setups, callback, last_used
         self.setup_name = self.model.current_name
         self.public = bool(self.model.data.get('_is_public'))
         self.reset_views()
         self.model.changed()
+
+    def enabled(self, name):
+        """JSON editing is unavailable for a read-only page or during calibration reading."""
+        if name in {"edit_json", "json_text", "apply_json"}:
+            return not self.read_only and self._future is None
+        return True
+
+    def edit_json(self):
+        """Open a fresh draft of the complete current portable definition."""
+        if not self.enabled("edit_json"):
+            return
+        self.json_text = json.dumps(self.model.get_settings(), indent=2)
+        self.json_error = ""
+        self._json_state = FormState()
+        self._json_state.on_used = self._used
+        self.json_window.show()
+
+    def apply_json(self):
+        """Validate and apply a raw draft without writing a named setup."""
+        if not self.json_window.open or not self.enabled("apply_json"):
+            return
+        try:
+            data = json.loads(self.json_text)
+            if not isinstance(data, dict):
+                raise ValueError(tr("The definition must be a JSON object."))
+            candidate = ChannelDefinition(data)
+            for key in ("windows", "detectors", "tttr_reading", "channel_luts", "channel_shifts"):
+                if not isinstance(candidate.data[key], dict):
+                    raise ValueError(tr("'{field}' must be an object.").format(field=key))
+            candidate.get_settings()
+            for bounds in candidate.data["windows"].values():
+                if not isinstance(bounds, list) or len(bounds) != 2:
+                    raise ValueError(tr("Each PIE window must contain two channel bounds."))
+                float(bounds[0]), float(bounds[1])
+            for detector in candidate.data["detectors"].values():
+                if not isinstance(detector.get("chs", []), list):
+                    raise ValueError(tr("Detector routing channels must be a list."))
+                for bounds in detector.get("micro_time_ranges", []):
+                    if not isinstance(bounds, list) or len(bounds) != 2:
+                        raise ValueError(tr("Each detector gate must contain two channel bounds."))
+                    float(bounds[0]), float(bounds[1])
+        except (ValueError, TypeError, AttributeError, IndexError, OverflowError) as exc:
+            self.json_error = tr("Invalid definition: {error}").format(error=exc)
+            return
+        self.load_definition(data)
+        self.json_error = ""
+        self.json_window.hide()
+        self.status = tr("Working definition updated; save the named setup separately.")
+
+    def cancel_json(self):
+        """Close the raw draft without changing the working definition."""
+        self.json_window.hide()
+        self.json_error = ""
+
+    def _json_body(self):
+        """Render the existing AutoForm code editor and declared Apply/Cancel controls."""
+        draw_form(self._json_view["dialog"], self, self._json_state)
+        self.item_rects.update(self._json_state.rects)
 
     def export_state(self):
         """What is worth remembering of the page itself: which sections are open and whether the plot is."""
@@ -865,7 +938,7 @@ class ChannelDefinitionWidget:
     def draw(self):
         from emtk import im
         self.poll()
-        im.begin_disabled(self._future is not None)
+        im.begin_disabled(self._future is not None or self.read_only or self.json_window.open)
         self._setup_row()
         for key, title, _opened in SECTIONS:
             tip = {
@@ -886,10 +959,18 @@ class ChannelDefinitionWidget:
             else:
                 opened = self._section(key, title, tip)
             if opened:
-                {'reading': self._reading_section, 'windows': self._windows_section, 'detectors': self._detectors_section,
-                 'lut': self._lut_section}[key]()
-        width = self._width('Optical Setup...')
-        im.dummy(max(im.get_content_region_avail()[0] - width - im.get_style().item_spacing[0], 0.0), 1.0)
+                {
+                    "reading": self._reading_section,
+                    "windows": self._windows_section,
+                    "detectors": self._detectors_section,
+                    "lut": self._lut_section,
+                }[key]()
+        draw_form(self._json_view["toolbar"], self, self._json_toolbar_state)
+        self.item_rects.update(self._json_toolbar_state.rects)
+        width = self._width("Optical Setup...")
+        im.dummy(
+            max(im.get_content_region_avail()[0] - width - im.get_style().item_spacing[0], 0.0), 1.0
+        )
         im.same_line()
         if im.button('Optical Setup...'):
             self.optical_window.show()
@@ -1036,6 +1117,7 @@ class ChannelDefinitionWidget:
     def _help_body(self):
         from emtk import im
         im.text_wrapped(HELP_TEXT)
+        im.text_wrapped(tr("Edit JSON opens the complete working definition, including calibration identifiers and metadata not shown in the tables. Apply validates the draft and refreshes the page; Cancel keeps the previous definition. Derived channel and timing fields are regenerated. Save the named setup separately."))
 
     def _lut_tools_body(self):
         from emtk import im
@@ -1136,6 +1218,8 @@ class ChannelDefinitionWidget:
         """Draw the floating windows: prompts, file chooser, plot, LUT tools, shift adjuster, optical setup, help."""
         from emtk import im
         self.draw_prompt(frame)
+        if self._draw_window(self.json_window, frame, self._json_body):
+            self.cancel_json()
         self._draw_question(frame)
         self._draw_window(self.help_window, frame, self._help_body)
         self._draw_window(self.preview_window, frame, self._preview_body)

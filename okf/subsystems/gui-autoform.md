@@ -994,3 +994,10 @@ Table/painter owned typing is clean. Fifteen inherited view_form declaration/inf
 ## Native Help controls stay reachable in small windows — 2026-10-07
 
 Header actions and category filters now wrap using translated button widths; all sections remain reachable at600×400 and480×320. Full document text/live links are retained in a clipped scrollable child with stable identity, so moving the dialog preserves reading position. Footer space follows actual frame/font metrics, including2×DPI. Actual Qt body clipping was already correct; the separate SDK software texture clipping root is recorded in installed0.1.7. No guided-tour code or scientific/document text changed. Parent11 installed-SDK cases pass, scoped source/test typing andRuff clean, narrow/scroll/Outputs/DPI2 before-after images inspected. [Acceptance](../validation/release-readiness-w1/native-help/acceptance.json).
+
+
+## Complete detector-definition JSON editing — 2026-10-07
+
+The shared native detector editor restores the live Edit JSON action through a declared AutoForm code editor and Apply/Cancel modal. Existing portable definition validation and table projections run before committing; valid application preserves model/store/callback identity, preview data, last_used, unknown fields and calibration IDs unless explicitly edited. Invalid/read-only/busy/cancelled drafts leave the current definition unchanged. Apply is a working-definition change, not an implicit setup-file/MMFDB write.
+
+Parent8 installed-SDK JSON tests pass; owner20 new/native cases and scoped source/test typing/Ruff pass. All5 measured before/after/modal/error/apply PNGs were inspected. The broader owner-page selection reports80 passes and one width720 gch-visibility failure; that responsive boundary is being repaired/verified with the full reference-calibration phase, not waived. Core source and foreign widget semantics are excluded from this focused commit. [Acceptance](../validation/release-readiness-w1/detector-json/acceptance.json).
