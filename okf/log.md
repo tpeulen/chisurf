@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W1: exclude development test namespaces/data from wheel/sdist at actual packaging boundaries;9 parent backend/resource checks pass, required shader/reader/settings assets retained even with stale SOURCES, five fixture-only allowlist entries shrink. Chimol retains owning packaged demo assets and user overrides; source settings/logging hooks unchanged. MMFDB seed is routed to its owning resource/DB fix. [Receipt](validation/release-readiness-w1/package-boundary/receipt.json).
+
 - PRD-154 W1: retain cached VM/VV-VH groups and scientific identities/calibration/IRF through actual JSON-RPC/generated-client/service import; no reread and no partial append, isolated local state honored, live macro/history and local Structure preserved.165 parent targeted cases pass; boolean masks now capture/restore symmetrically while other arrays stay numeric. Three separate ProteinMC cases expose missing canonical cgmol build integration, recorded for immediate owning follow-up. [Receipt](validation/release-readiness-w1/cached-group-import/receipt.json).
 
 - PRD-154 W1: publish exact rows8–14 loader/caller inventory and three inspected AV/SPC baselines. Correct stale registry/no-op test assumptions, record16 channel constructor sites/15 files, and require coordinated native-host retirement of live toolbox/CLI/export callers. Row7 retains the outer trajectory hub; text-ink diagnostic and legacy teardown remain explicit gates. [Inventory](validation/release-readiness-w1/remaining-loader-inventory/inventory.json).

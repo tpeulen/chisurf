@@ -185,6 +185,8 @@ include-package-data = true
 # Source checkouts remain convenient through ``chisurf._bundled_packages``.
 where = ["."]
 include = ["chisurf*"]
+# Development tests and their fixture namespaces are not runtime packages.
+exclude = ["*.test", "*.test.*", "*.tests", "*.tests.*"]
 namespaces = true
 
 [tool.setuptools.package-data]
@@ -205,6 +207,10 @@ namespaces = true
     "*.md"
 ]
 "chisurf.settings.constants" = ["*.json"]
+
+[tool.setuptools.exclude-package-data]
+# include-package-data can otherwise reattach excluded descendants to a parent.
+"*" = ["test/*", "tests/*", "*/test/*", "*/tests/*"]
 
 [tool.setuptools.dynamic]
 version = {attr = "chisurf.core.info.__version__"}

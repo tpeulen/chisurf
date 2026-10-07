@@ -460,3 +460,14 @@ ndxplorer keeps test modules and their fixtures under tests/. The former
 top-level test package is retired, so source imports cannot shadow ChiSurf
 test.gui. The parity scenarios now resolve their MFD and sampling fixtures
 under tests/; the three real sampling tables remain unchanged.
+
+
+## Runtime package-data selection
+
+Release artifacts exclude test/test-descendant namespaces and fixtures in
+package discovery, wheel data and sdist manifests. The package-data guard
+uses actual setuptools namespace selection, FileList and build_py selection
+(including stale SOURCES), rather than treating every checkout file as runtime
+data. Runtime shaders, reader declarations and settings remain required.
+Chimol demos use their owning packaged resources and explicit user overrides;
+a checkout test directory must not replace those inputs.

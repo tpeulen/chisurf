@@ -15,7 +15,6 @@ reads them, and none of them touches a toolkit.
 from __future__ import annotations
 
 import logging
-import pathlib
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -64,20 +63,6 @@ def _place_chimol_settings_beside_chisurf_s() -> None:
 
         configure_logging()
 
-        # The demo scripts say ``load 148l.pdb`` and expect the host to know
-        # where sample structures live. Standalone chimol degrades to "no
-        # samples"; inside ChiSurf the checkout's test data is the sample
-        # store, and it is injected here for the same reason the settings
-        # directory is: the host is the only side that knows the answer.
-        from chimol.plugins.demos.catalog import set_data_dirs
-
-        _samples = (
-            pathlib.Path(__file__).resolve().parents[3] / "test" / "data" / "atomic_coordinates"
-        )
-        set_data_dirs(
-            _samples / "pdb_files",
-            _samples / "trajectory" / "hgbp1",
-        )
     except Exception:  # noqa: BLE001 - a partial install, or a settings backend that moved
         logging.getLogger(__name__).debug(
             "chimol keeps its own settings directory; ChiSurf's was not resolvable",

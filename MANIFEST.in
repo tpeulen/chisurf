@@ -41,3 +41,16 @@ exclude .gitmodules
 
 # Exclude development and playground directories
 prune playground
+
+# Test trees are development inputs, including when a VCS plugin adds them.
+# MANIFEST globs do not treat ** as a recursive directory wildcard.
+prune test
+prune tests
+prune chisurf/plugins/*/test
+prune chisurf/plugins/*/tests
+prune chisurf/plugins/*/*/test
+prune chisurf/plugins/*/*/tests
+prune chisurf/plugins/*/*/*/test
+prune chisurf/plugins/*/*/*/tests
+prune chisurf/plugins/core/acq/tcspc_devices/simulation/core/test
+prune chisurf/gui/widgets/node_editor/tests

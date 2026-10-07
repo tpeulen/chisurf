@@ -218,3 +218,11 @@ route. Local cached Structure groups stay unchanged; remote noncurve data
 requires its owning importer and is never silently flattened. Boolean masks
 roundtrip through transport/project capture/restore; measurement/error arrays
 retain the finite numeric-vector contract.
+
+
+## Installed runtime resources
+
+Source-only plugin tests and fixtures are excluded from runtime wheel/sdist
+resources. Reader JSON, settings and rendering shaders remain installed.
+The molecular viewer resolves its bundled 148L/topology/trajectory demos via
+its own resource catalogue, retaining explicit user data directories.
