@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W1: fold six historical root notes and the TCSPC plan into current owning concepts; verify35 links, preserve obsolete/rejected facts as provenance and archive all originals plus .hermes privately. Commit only tracked append deltas and an owned continuation instead of the foreign untracked inventory. Remove tracked root handovers/plan registration; next ordered UI-loader/native reader-host pass. [Fold receipt](validation/release-readiness-w1/note-folds.json).
+
 - PRD-154 W1: relocate four approved migration helper sources/README to build_tools/dev_utils/emtk_migration, correct root resolution and three tracked consumer paths, and make --help read-only. Three CLI help checks, Ruff/compilation and actual LUT native factory test pass. Preserve historical paths/evidence and keep the foreign untracked test docstring delta unstaged. [Record](validation/release-readiness-w1.md).
 
 - PRD-154 W1: archive thirteen approved root config/generated artifacts reversibly, remove tracked .env after confirming no dotenv consumers, and add only missing .crush/GEMINI/.hermes ignore rules. Preserve active .omx evidence until programme verification; hold notes/.hermes until their owner folds complete. [Disposition receipt](validation/release-readiness-w1/root-artifacts.json).

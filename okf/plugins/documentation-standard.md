@@ -258,3 +258,22 @@ A plugin documentation update is complete when:
 - Inputs, outputs, and persistence side effects are explicit.
 - Tests or manual verification commands are listed.
 - Known gaps are stated without claiming completion.
+
+# Migration acceptance after a root-note handoff
+
+The owner acceptance note `AGY_ACCEPTANCE.md` (2026-10-03), folded here during
+release-readiness tree hygiene, applies to existing ports as well as new ones.
+An emtk port leaves the [preview gate](../../chisurf/core/plugin/emtk_preview.json)
+only after all five checks agree: personally inspected headless renders in
+realistic states; real control interactions (including typed values, table
+selection, filters and awaited tour actions); a Qt-before/native-after control
+inventory with no lost controls; focused plugin and preview/parity guard tests;
+and a report, guide/figures, OKF evidence and focused local commit. A failing
+re-check returns the port to the gate until its owning defect is fixed.
+
+Use [the parity workflow](../workflows/testing.md) and
+[its capture helper](../../test/gui/migration_parity.py), not construction tests
+or pixel identity as substitutes for control parity. Toolkit gaps belong in
+emtk with a documented strict-xfail work item, never a silent skip. The shared
+interaction driver is `emtk.testing.Driver`; old session-specific driver paths,
+port queues and toolkit pins are historical, not continuation instructions.

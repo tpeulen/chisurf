@@ -7,6 +7,31 @@ tags: [mmfdb, metadata, provenance, sqlite, mmcif]
 timestamp: '2026-07-06T00:00:00Z'
 ---
 
+# Where to pick this up
+
+1. The old root `HANDOVER.md` is historical, not an active extraction plan.
+   Current code keeps backend/CLI in `modules/mmfdb/src/mmfdb/admin/` and the
+   host-coupled GUI in `chisurf/plugins/core/mmfdb_admin/gui/`; do not recreate
+   the abandoned `modules/mmfdb-admin/src` import/wrapper path. Use the package
+   boundary described below and its own targeted tests.
+2. Reconcile the old INC-04 follow-up against
+   [the current API](../../modules/mmfdb/src/mmfdb/api.py): setup updates call
+   `_require_existing_write`, semantic parameters check their owning operation,
+   and branch-head writes require `PERM_WRITE`. The old blanket claim that these
+   writes lack owner checks is superseded. What still needs measurement is token
+   round-trip coverage through the registered `mmfdb.v1.*` dispatcher rather
+   than direct API calls alone; begin with
+   [API auth tests](../../modules/mmfdb/tests/test_api_auth.py) and extend only
+   uncovered methods, without adopting a live user's database or daemon.
+3. Lower-priority schema cleanup still has a concrete entry point:
+   [schema.py](../../modules/mmfdb/src/mmfdb/schema/schema.py) defines historical
+   `CREATE_TABLES_SQL` text, replaces canonical entries via `_build_permissive_ddl`,
+   then derives `FRESH_DB_TABLES_SQL`. Remove duplication only after proving the
+   generated fresh/migration schemas stay equal; never delete the whole list
+   that callers still consume. Removing `security/base.py` was deliberately
+   deferred because its client-base type hints require a consumer migration;
+   re-count those consumers before attempting that change.
+
 # Purpose
 
 `modules/mmfdb/src/mmfdb/` is the vendored SQLite-backed metadata and
@@ -341,3 +366,21 @@ an interchange/export format for MMFDB provenance in the future.
 # Citations
 
 [1] [ChiSurf architecture doc](/references/architecture-doc.md)
+
+# Root handover provenance and superseded work
+
+`HANDOVER.md` described completed DAO/auth work and an intermediate admin-package
+extraction. Its durable DAO rules and package layout already live in this
+concept and [the SQL audit](../specs/mmfdb-sql-audit.md); the old SQL totals,
+branch HEAD, scratch extractor script and 466/236 test counts are not current
+baselines. Composite-primary-key upserts and UNIQUE-only upserts are not generic
+DAO limitations: use the actual reflected conflict columns, and verify that a
+suspected table exists before interpreting an empty `PRAGMA table_info` result.
+Bulk string replacement was rejected after it corrupted varied query blocks;
+changes should follow the exact owning DAO/query boundary and focused tests.
+
+The local/directory authentication scope is retained; the historical note did
+not authorize adding another identity-provider stack. Its conda-only/full-suite
+commands and co-author trailer instruction are superseded by the current
+[testing](../workflows/testing.md) and
+[change-tracking](../workflows/change-tracking.md) rules.
