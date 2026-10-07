@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- **2026-10-07 · Visual acceptance and model baseline:** central20 pass; caller24pass/1H2mm cleanup remains. Parent rejected genuine80px onboarding/Trace collapse and requires repaired enclosing/scrolled captures. All three measured MLE before scenes, authored Fit23 inputs and six-row/export baseline accepted and durably archived; additional state/selected-index/export-unit/snapshot roots have exact owners/tests. Private docs remain gated on actual accepted controls. [Resume](validation/release-readiness-w1/current-job/handoff.md).
+
 - **2026-10-07 · Native detector public switch:** central13 guards pass, including supplied-preview and refused-close fixes; working public classes now use the native page. Actual onboarding export→Finish→cleanup passes. Canonical callers are unblocked while deleted-detector named merge/reentrant delivery guards and real after scenes remain pending. MLE registry-driven model-choice implementation has exact five-path authority and before/parity gates. [Resume](validation/release-readiness-w1/current-job/handoff.md).
 
 - **2026-10-07 · Detector retirement review roots:** preserve supplied preview arrays without rereading, retain native editor on refused wizard close, and expose full-definition Save in the actual incomplete onboarding wizard. Exact fixes/tests assigned owning lanes. Burst canonical import also triggers separately snapshotted chiplot/PRD-reference cleanup. MLE visible panels and fixed Fit23 vectors explain the missing model choice; registry-driven design remains pending. [Current job](validation/release-readiness-w1/current-job/handoff.md).
