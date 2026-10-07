@@ -1,3 +1,9 @@
+## MMFDB result-registration static declarations incomplete (2026-10-07)
+
+status: open
+
+The focused archival session fix exposes12 inherited MMFDB registry/base/payload typing diagnostics under exact before/after shadow comparison with the test Python and separate cold caches. The initial shared-cache13-count contained one environment/cache artifact; it was not a source fix. The new session forwarding, archival service and tests add no diagnostics, and all four touched files pass Ruff. Finish the owning repository/codec type contracts with their payload regressions during W0 review; per-caller casts or blanket ignores would hide that boundary. Those broader contracts cannot be rewritten safely as mechanical annotation cleanup in this narrow actor handoff. [Exact commands, anchors and baselines](../validation/release-readiness-w1/reference-archive/receipt.json).
+
 ## Native form static type declarations incomplete (2026-10-07)
 
 status: open

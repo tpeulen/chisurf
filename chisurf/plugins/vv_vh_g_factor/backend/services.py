@@ -119,6 +119,7 @@ def archive_g_factor_handler(
         import numpy as np
         from mmfdb.provenance.result_registry import register_calibration, register_raw_measurement
         from mmfdb.repository import MFDatabase
+        from mmfdb.security.session import SessionContext, resolve_active_user_id
         from mmfdb.store.database_resolver import resolve_database_path
 
         db_path = resolve_database_path()
@@ -126,21 +127,11 @@ def archive_g_factor_handler(
             logger.warning("archive_g_factor_handler: MMFDB is unavailable")
             return {"ok": False, "error": "MMFDB is unavailable", "calibration_id": ""}
 
-        # Resolve active user from auth
+        # Resolve once, preserving an explicit actor and canonical auth/default fallback.
         user_id = active_user
         if not user_id:
-            try:
-                with MFDatabase(db_path) as db:
-                    if auth:
-                        from mmfdb.security.auth import principal_from_rpc_auth
-
-                        principal = principal_from_rpc_auth(db.conn, auth)
-                        if principal and not getattr(principal, "is_anonymous", False):
-                            user_id = principal.user_id
-            except Exception:
-                pass
-        if not user_id:
-            user_id = "user_default"
+            with MFDatabase(db_path) as actor_db:
+                user_id = resolve_active_user_id(auth, conn=actor_db.conn)
 
         # Calculate r_inf if not already provided or if we can refine it
         r_inf = parameters.get("r_inf")
@@ -234,6 +225,8 @@ def archive_g_factor_handler(
                 "perpendicular": "VH",
             },
             "active_user": user_id,
+            "source_measurement": parameters.get("source_measurement", ""),
+            "calibration_parameters": dict(parameters),
         }
         if "micro_time_resolution" in parameters:
             meta["micro_time_resolution"] = parameters["micro_time_resolution"]
@@ -244,10 +237,12 @@ def archive_g_factor_handler(
         from mmfdb.provenance.result_registry import database_context, register_result
 
         with MFDatabase(db_path) as db, database_context(db):
+            session = SessionContext(user_id=user_id, db=db, auth=auth)
             # Register raw measurement
             ref_decay_id = register_raw_measurement(
                 file_path=file_path,
                 metadata=meta,
+                session=session,
             )
             if not ref_decay_id:
                 logger.warning(
@@ -263,6 +258,7 @@ def archive_g_factor_handler(
                     data=derived_decays,
                     parent_artifact_id=ref_decay_id or "",
                     operation_type="calibration",
+                    session=session,
                     metadata={
                         "derived_from": "vv_vh_g_factor",
                         "columns": ["time", "vv_corrected", "vh_corrected", "anisotropy"],
@@ -306,6 +302,7 @@ def archive_g_factor_handler(
                 parameters=calib_params,
                 method="vv_vh_g_factor",
                 notes=f"Calculated G-factor: {g_val:.4f} using tail matching.",
+                session=session,
             )
 
         if not calib_id:

@@ -4,6 +4,7 @@ import json
 import sqlite3
 
 import numpy as np
+import pytest
 from mmfdb.repository import MFDatabase
 from mmfdb.schema import schema
 
@@ -149,3 +150,81 @@ def test_archive_g_factor_graceful_failure(tmp_path, monkeypatch):
     assert res.get("ok") is False
     assert res.get("calibration_id") == ""
     assert "unavailable" in res.get("error", "").lower()
+
+
+@pytest.mark.parametrize("mode", ["explicit", "authenticated", "fallback", "explicit-and-auth"])
+def test_real_archival_session_owns_all_records_and_preserves_context(tmp_path, monkeypatch, mode):
+    """Actual client/service/SQLite writes agree on actor, ACL and complete input context."""
+    from mmfdb import config
+    from mmfdb.security.auth import create_session
+
+    # Preserve the prior process configuration while isolating all storage/account writes.
+    monkeypatch.setattr(config, "_CONFIG", config.get_runtime_config())
+    db_path = tmp_path / "actor.sqlite"
+    config.configure_runtime(
+        settings_dir=tmp_path / "settings", database_path=db_path,
+        object_store_root=tmp_path / "objects", default_user_id="configured_actor",
+    )
+    auth = None
+    with MFDatabase(db_path) as db:
+        db.ensure_user("authenticated_actor")
+        if "auth" in mode:
+            auth = {"token": create_session(db.conn, "authenticated_actor")["token"]}
+            db.conn.commit()
+    vv = np.exp(-np.arange(100) / 20.0)
+    source = tmp_path / "reference.txt"
+    np.savetxt(source, np.concatenate([vv, vv / 1.5]))
+    parameters = {
+        "g_factor": 1.5, "region_min": 70.0, "region_max": 90.0,
+        "source_measurement": "actual-independent-reference.spc",
+        "micro_time_resolution": 25.0, "bg_region_min": 1.0, "bg_region_max": 8.0,
+        "fp_file_path": "protein.txt", "fp_dt_ns": 0.025, "fp_rho_ns": 16.0,
+        "fp_r0": 0.38, "fp_tau_ns": 4.0, "fp_r_s_expected": 0.076,
+        "future_primitive_context": {"kind": "known", "values": [True, None, 3, 0.5]},
+    }
+    explicit = "explicit_actor" if mode.startswith("explicit") else None
+    expected = explicit or ("authenticated_actor" if auth else "configured_actor")
+    client = VvVhGFactorClient()
+    if auth:
+        response = client._client.call("vv_vh_g_factor.archive_g_factor", {
+            "file_path": str(source), "parameters": parameters,
+            "active_user": explicit, "auth": auth,
+        })
+        result = response.get("result", response)
+    else:
+        result = client.archive_g_factor(str(source), parameters, active_user=explicit)
+    assert result["ok"], result
+    ids = [result[key] for key in ("reference_decay_id", "derived_decay_id", "calibration_id")]
+    assert all(ids)
+    with MFDatabase(db_path) as db:
+        rows = db.conn.execute(
+            "SELECT a.artifact_kind, a.created_by_user_id, o.operator_user_id, "
+            "aa.owner_user_id, oa.owner_user_id FROM mmfdb_artifact a "
+            "JOIN mmfdb_operation_artifact link ON link.artifact_id=a.artifact_id "
+            "AND link.direction='output' "
+            "JOIN mmfdb_operation o ON o.operation_id=link.operation_id "
+            "JOIN mmfdb_object_acl aa ON aa.object_type='artifact' AND aa.object_id=a.artifact_id "
+            "JOIN mmfdb_object_acl oa ON oa.object_type='operation' AND oa.object_id=o.operation_id "
+            "WHERE a.artifact_id IN (?,?,?)", ids,
+        ).fetchall()
+        assert {row[0] for row in rows} == {"raw_measurement", "processed_data", "calibration_data"}
+        assert len(rows) == 3
+        assert all(tuple(row)[1:] == (expected,) * 4 for row in rows)
+        for artifact_id in ids:
+            assert db.list_artifact_owners(artifact_id) == [expected]
+        raw = db.get_artifact(ids[0])
+        metadata = json.loads(raw["metadata_json"])
+        assert metadata["active_user"] == expected
+        assert metadata["source_measurement"] == parameters["source_measurement"]
+        assert metadata["calibration_parameters"] == parameters
+        raw_operation_metadata = db.conn.execute(
+            "SELECT o.metadata_json FROM mmfdb_operation o "
+            "JOIN mmfdb_operation_artifact link ON link.operation_id=o.operation_id "
+            "WHERE link.artifact_id=? AND link.direction='output'", (ids[0],),
+        ).fetchone()[0]
+        assert json.loads(raw_operation_metadata)["calibration_parameters"] == parameters
+        for derived_id in ids[1:]:
+            assert db.conn.execute(
+                "SELECT 1 FROM mmfdb_edge WHERE source_node_id=? AND target_node_id=? "
+                "AND relationship_type='derived_from' AND deleted_at IS NULL", (derived_id, ids[0]),
+            ).fetchone()

@@ -93,6 +93,13 @@ The **Batch anisotropy** tab queues further decays (**Add files...**; Delete rem
 tab-separated file. **Export calibration JSON...** writes the values and settings;
 **Archive reference calibration** registers the reference decay, corrected traces and provenance in MMFDB.
 
+The archive uses one resolved MMFDB session for the reference, processed traces
+and calibration, including their operation and ACL ownership. It also retains
+the supplied source measurement and complete calibration input settings in the
+reference metadata; the derived records link back to that reference. An
+explicit calibration actor takes precedence, otherwise the service resolves the
+authenticated actor or configured local default.
+
 ```{figure} figures/vv_vh_g_factor_native_batch.png
 :name: fig-vv-vh-g-factor-native-batch
 :width: 100%
