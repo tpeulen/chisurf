@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W1: publish exact rows8–14 loader/caller inventory and three inspected AV/SPC baselines. Correct stale registry/no-op test assumptions, record16 channel constructor sites/15 files, and require coordinated native-host retirement of live toolbox/CLI/export callers. Row7 retains the outer trajectory hub; text-ink diagnostic and legacy teardown remain explicit gates. [Inventory](validation/release-readiness-w1/remaining-loader-inventory/inventory.json).
+
 - PRD-154 W1: prepare full three-tab native Simulator/IRF/plots without changing eight scientific bodies; compose one app-owned context and distinguish auxiliary spectra from primary import sources.69 parent installed-SDK checks pass; six Prompt mode/tab and typed-host PNGs inspected. Pending typed-path flush preserves invalid/close/read-only behavior. Real cached local/remote group Add and YAML/legacy retirement remain the row5 gate. [Receipt](validation/release-readiness-w1/simulator-prerequisite/receipt.md).
 
 - PRD-154 W1: publish emtk309d97012 semantic tabs, ordinary pending-edit commit and scoped header targets; canonical installed revision passes81 tests and baseline/three after PNGs are inspected. Update all21 lock references while preserving foreign lock hunks. Rewrite the durable resume around completed CSV/SDT and open simulator cached-group/context/primary-input gates. [Receipt](validation/release-readiness-w1/form-tabs/receipt.json).
