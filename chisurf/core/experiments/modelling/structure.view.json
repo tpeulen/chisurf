@@ -1,0 +1,46 @@
+{
+  "title": "Structure",
+  "sections": [
+    {
+      "type": "custom",
+      "key": "data_source",
+      "description": "Single molecular structure source.",
+      "options": {
+        "attr": "filename",
+        "label": "PDB file",
+        "mode": "open",
+        "filter": "PDB structures (*.pdb *.pdb.gz)",
+        "extensions": [".pdb", ".gz"],
+        "mmfdb": false,
+        "description": "Choose one PDB structure file to import. A folder is not a structure file."
+      }
+    },
+    {
+      "type": "toggle",
+      "attr": "compute_internal_coordinates",
+      "label": "Internal coordinates",
+      "description": "Compute internal coordinates when loading the structure."
+    },
+    {
+      "type": "value",
+      "attr": "n_atoms",
+      "kind": "int",
+      "label": "Atoms",
+      "read_only": true,
+      "description": "Number of atoms in the last successfully imported structure."
+    },
+    {
+      "type": "value",
+      "attr": "n_residues",
+      "kind": "int",
+      "label": "Residues",
+      "read_only": true,
+      "description": "Number of residues in the last successfully imported structure."
+    },
+    {
+      "type": "info",
+      "text": "Import loads one structure from the selected PDB file. Atom and residue counts appear after import.",
+      "description": "Structure import workflow."
+    }
+  ]
+}

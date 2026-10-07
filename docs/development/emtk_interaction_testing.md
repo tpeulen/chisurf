@@ -139,3 +139,14 @@ yields1000/600 MHz in float64; its channel width is0.019537081674680934 ns.
 The native view preparation retains source/information/rate/curve controls.
 The old embedded Add was unconnected; the functional shell import remains.
 The legacy controller stays configured until the preceding CSV port lands.
+
+
+## Single-file structure reader declaration
+
+The prepared StructureReader form binds one PDB source, internal-coordinate
+computation and read-only atom/residue counts to the original reader. Counts
+appear after a successful import and clear when the selected source changes.
+An explicit read(filename=...) overrides the selected source. The inspected
+148L scene has1300 atoms and164 residues. The uncalled, nonfunctional folder
+wrapper is a separate retirement; the scientific reader imports one file.
+Legacy loader/configuration removal follows the CSV/SDT/simulator ports.
