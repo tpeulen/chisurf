@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W1: parent finalFCS review passes56 host/merger/namespace,84 burst and54 canonicalvisibility/layout cases; fullmeasured filter and allnative tabs inspected. Record discovered lagcaption/fixture seconds-vs-canonicalms contract and realMaxEntGUI preset mismatch, now assigned exactroot correction beforeFCSacceptance. SDK/pin and105-caseParameter codec units are committed/released; retain originalbefore facts and sourceownership. Programme continues with ordered row10→11.
+
 - PRD-154 W1: complete Parameter refresh and standalone scalarJSON/YAML root codec;105 parent targeted cases pass/zeroexpectedfailures, coldprocess/identity/nativeport/bounds/prior/metadata guarded and four qualified editor PNGs inspected. Preserve live dictionaries/links and graph/value/hotloops; replace stale raw-dict/load-only assertions, reject irrecoverable repr files and unsupported standalone graphs explicitly. Resolve owning file-corruption issue; no foreign hunks promoted. [Receipt](validation/release-readiness-w1/parameter-state/receipt.md).
 
 - PRD-154 W1: publish/install canonical emtkd998f93f1/version0.1.6 dense-marker/zero-outline/legend and stablecolumnvisibility roots;65 parent owner tests pass oninstalledSDK, all21lockrefs/version updated and lockcheck0. Actual183657 source/183648positive-marker hashes preserved; three PNGs inspected, timing scopes documented. FullFCS finalhost and diagnostic helper acceptance remain active; foreign SDK/lock/source preserved. [Receipt](validation/release-readiness-w1/dense-markers/receipt.json).
