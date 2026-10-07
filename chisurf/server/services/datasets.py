@@ -229,6 +229,228 @@ def get_dataset_info(
     }
 
 
+def _prepare_cached_dataset(payload: Any, _seen: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Validate a complete cached curve/group before constructing or appending objects."""
+    import copy
+
+    import numpy as np
+
+    from chisurf.core.project.session import (
+        _COMMON_READER_FIELDS,
+        _READER_FIELDS,
+        _restore_scientific_value,
+        _scientific_value,
+    )
+
+    if not isinstance(payload, dict):
+        raise ValueError("cached dataset must be an object")
+    seen = {} if _seen is None else _seen
+    kind = payload.get("kind", "legacy")
+    uid = payload.get("uid")
+    if uid:
+        encoded = _scientific_value(payload)
+        if uid in seen and seen[uid] != encoded:
+            raise ValueError("cached identity has inconsistent records")
+        seen[uid] = encoded
+    if kind == "group":
+        if payload.get("group_type") not in {
+            "DataGroup", "DataCurveGroup", "ExperimentDataGroup", "ExperimentDataCurveGroup",
+        }:
+            raise ValueError("unsupported cached group type")
+        members = payload.get("members")
+        if not isinstance(members, list) or not members:
+            raise ValueError("cached group has no members")
+        prepared = [_prepare_cached_dataset(member, seen) for member in members]
+        if any(member["kind"] != "curve" for member in prepared):
+            raise ValueError("cached groups contain curve records only")
+        uid = payload.get("uid")
+        if not isinstance(uid, str) or not uid:
+            raise ValueError("cached group UID is missing")
+        identities = [uid, *(member["uid"] for member in prepared)]
+        if len(set(identities)) != len(identities):
+            raise ValueError("cached group identities are not unique")
+        selected = payload.get("selected", 0)
+        if type(selected) is not int or not 0 <= selected < len(prepared):
+            raise ValueError("cached group selection is invalid")
+        metadata = _restore_scientific_value(payload.get("metadata", {}))
+        if not isinstance(metadata, dict):
+            raise ValueError("cached group metadata must be an object")
+        if "unique_identifier" in metadata and metadata["unique_identifier"] != uid:
+            raise ValueError("cached group metadata contradicts its UID")
+        _scientific_value(metadata)
+        return {**payload, "members": prepared, "metadata": metadata}
+    if kind not in {"curve", "legacy"}:
+        raise ValueError("unsupported cached dataset kind")
+    arrays = {}
+    raw_arrays = payload.get("arrays", {}) if kind == "curve" else payload
+    fields = ("x", "y", "ex", "ey", "mask") if kind == "curve" else ("x", "y", "ex", "ey")
+    for field in fields:
+        if field not in raw_arrays:
+            if kind == "curve" or field in {"x", "y"}:
+                raise ValueError(f"cached curve is missing {field}")
+            continue
+        values = raw_arrays[field]
+        if kind == "curve":
+            if not isinstance(values, dict) or not isinstance(values.get("dtype"), str):
+                raise ValueError("invalid cached array descriptor")
+            array = np.asarray(values.get("values"), dtype=np.dtype(values["dtype"]))
+        else:
+            if values is None:
+                continue
+            array = np.asarray(values, dtype=float)
+        allowed_kinds = "biuf" if field == "mask" else "iuf"
+        if array.dtype.kind not in allowed_kinds or array.ndim != 1 or not np.all(np.isfinite(array)):
+            raise ValueError("cached arrays must be finite numeric vectors")
+        arrays[field] = array.copy()
+    if len({len(array) for array in arrays.values()}) != 1:
+        raise ValueError("cached arrays have different lengths")
+    metadata = _restore_scientific_value(payload.get("metadata", {}))
+    if not isinstance(metadata, dict):
+        raise ValueError("cached curve metadata must be an object")
+    if "unique_identifier" in metadata and metadata["unique_identifier"] != uid:
+        raise ValueError("cached curve metadata contradicts its UID")
+    _scientific_value(metadata)
+    if payload.get("auxiliary"):
+        raise ValueError("cached curve auxiliary data requires its owning import service")
+    reader = payload.get("reader")
+    inputs = payload.get("reader_inputs", {})
+    if reader is not None:
+        if not isinstance(reader, dict):
+            raise ValueError("invalid cached reader descriptor")
+        module, class_name = reader.get("module"), reader.get("class")
+        if not isinstance(module, str) or not isinstance(class_name, str):
+            raise ValueError("invalid cached reader type")
+        reader_fields = _READER_FIELDS.get((module, class_name))
+        if reader_fields is None:
+            raise ValueError("cached reader type is not trusted")
+        state = reader.get("state")
+        if (not isinstance(reader.get("uid"), str) or not reader["uid"]
+                or not isinstance(state, dict) or set(state) - {*reader_fields, *_COMMON_READER_FIELDS}):
+            raise ValueError("invalid cached reader state")
+        identity = _scientific_value({"reader": reader, "experiment": payload.get("experiment")})
+        if reader["uid"] in seen and seen[reader["uid"]] != identity:
+            raise ValueError("cached reader identity has inconsistent records")
+        seen[reader["uid"]] = identity
+        _scientific_value(state)
+        dependencies = reader.get("dependencies", {})
+        irf_array = reader.get("irf_array")
+        if not isinstance(dependencies, dict):
+            raise ValueError("invalid cached reader dependencies")
+        if dependencies or irf_array is not None:
+            if (reader["module"], reader["class"]) != (
+                "chisurf.core.experiments.tcspc.simulator", "TCSPCSimulatorSetup",
+            ) or (dependencies and irf_array is not None):
+                raise ValueError("invalid cached reader IRF ownership")
+        if irf_array is not None:
+            if not isinstance(irf_array, dict) or not isinstance(irf_array.get("dtype"), str):
+                raise ValueError("invalid cached reader IRF array")
+            irf = np.asarray(irf_array.get("values"), dtype=np.dtype(irf_array["dtype"]))
+            if irf.dtype.kind not in "iuf" or irf.ndim != 1 or not np.all(np.isfinite(irf)):
+                raise ValueError("cached reader IRF must be a finite numeric vector")
+        if not isinstance(inputs, dict) or set(inputs) != set(dependencies):
+            raise ValueError("cached reader inputs do not match dependencies")
+        if set(inputs) - {"instrument_response_function"}:
+            raise ValueError("unsupported cached reader input")
+        inputs = {role: _prepare_cached_dataset(value, seen) for role, value in inputs.items()}
+        if any(value.get("uid") != dependencies[role] or value["kind"] != "curve"
+               for role, value in inputs.items()):
+            raise ValueError("cached reader dependency identity differs")
+    elif inputs:
+        raise ValueError("cached reader inputs have no owning reader")
+    if kind == "curve" and (not isinstance(payload.get("uid"), str) or not payload["uid"]):
+        raise ValueError("cached curve UID is missing")
+    experiment = payload.get("experiment")
+    if experiment is not None:
+        from chisurf.core.experiments.core.experiment import Experiment
+        from chisurf.core.project.session import _resolve_model
+
+        if (not isinstance(experiment, dict) or experiment.get("kind") != "experiment"
+                or (experiment.get("module"), experiment.get("class")) != (Experiment.__module__, Experiment.__name__)
+                or not isinstance(experiment.get("uid"), str) or not experiment["uid"]
+                or not isinstance(experiment.get("models", []), list)):
+            raise ValueError("unsupported cached experiment descriptor")
+        for model_state in experiment.get("models", []):
+            _resolve_model(model_state)
+    return {**copy.deepcopy(payload), "kind": kind, "arrays": arrays,
+            "metadata": metadata, "reader_inputs": inputs}
+
+
+def _restore_cached_dataset(prepared: dict[str, Any]) -> Any:
+    """Reconstruct validated data using fixed domain types and the trusted reader codec."""
+    from chisurf.core.data import (
+        DataCurve,
+        DataCurveGroup,
+        DataGroup,
+        ExperimentDataCurveGroup,
+        ExperimentDataGroup,
+    )
+    from chisurf.core.experiments.core.experiment import Experiment
+    from chisurf.core.project.session import _resolve_model, _restore_reader
+
+    readers: dict[str, Any] = {}
+    curves: dict[str, Any] = {}
+    experiments: dict[str, Any] = {}
+
+    def construct(record):
+        """Restore the known curve/group and reader-IRF edges without reading data."""
+        if record["kind"] == "group":
+            members = [construct(member) for member in record["members"]]
+            group_class = {"DataGroup": DataGroup, "DataCurveGroup": DataCurveGroup,
+                           "ExperimentDataGroup": ExperimentDataGroup,
+                           "ExperimentDataCurveGroup": ExperimentDataCurveGroup}[record["group_type"]]
+            group = group_class(members, name=record.get("name", ""), unique_identifier=record["uid"])
+            group.meta_data.update(record["metadata"])
+            group.current_dataset = record["selected"]
+            group.data_reader = getattr(members[0], "data_reader", None)
+            group.experiment = getattr(members[0], "experiment", None)
+            return group
+        uid = record.get("uid")
+        if uid and uid in curves:
+            return curves[uid]
+        experiment = None
+        state = record.get("experiment")
+        if state is not None:
+            if (not isinstance(state, dict) or state.get("kind") != "experiment"
+                    or (state.get("module"), state.get("class")) != (Experiment.__module__, Experiment.__name__)
+                    or not isinstance(state.get("uid"), str) or not state["uid"]):
+                raise ValueError("unsupported cached experiment descriptor")
+            if state["uid"] not in experiments:
+                experiment = Experiment(name=state.get("name", ""), unique_identifier=state["uid"])
+                experiment.hidden = bool(state.get("hidden", False))
+                for model_state in state.get("models", []):
+                    experiment.add_model_class(_resolve_model(model_state))
+                experiments[state["uid"]] = experiment
+            experiment = experiments[state["uid"]]
+        reader = _restore_reader(record.get("reader"), experiment, readers)
+        for role, source in record["reader_inputs"].items():
+            setattr(reader, role, construct(source))
+        curve = DataCurve(**record["arrays"], name=record.get("name", "dataset"),
+                          unique_identifier=uid, experiment=experiment, data_reader=reader, setup=reader)
+        curve.filename = record.get("filename", "")
+        curve.meta_data.update(record["metadata"])
+        if uid:
+            curves[uid] = curve
+        return curve
+
+    return construct(prepared)
+
+
+def _normalize_cached_group(dataset: Any) -> Any:
+    """Keep cached group UID/metadata/members while retaining the live macro's expected type."""
+    import copy
+
+    from chisurf.core.data import DataGroup, ExperimentDataCurveGroup, ExperimentDataGroup
+
+    if isinstance(dataset, DataGroup) and not isinstance(dataset, ExperimentDataGroup):
+        group = ExperimentDataCurveGroup(list(dataset), name=dataset.name,
+                                         unique_identifier=dataset.unique_identifier)
+        group.meta_data.update(copy.deepcopy(dataset.meta_data))
+        group.current_dataset = dataset._current_dataset
+        group.data_reader = getattr(dataset, "data_reader", None)
+        return group
+    return dataset
+
+
 def add_dataset(
     state: SessionState,
     reader: Any = None,
@@ -254,13 +476,28 @@ def add_dataset(
     name : str, optional
         Display name for the dataset.
     curve_data : dict, optional
-        Inline ``{"x": [...], "y": [...], "ex": [...], "ey": [...]}``.
+        Legacy x/y/ex/ey vectors or a trusted cached curve/group snapshot.
+        Cached groups are fully validated and appended as one dataset.
     _from_controller : bool
         Internal flag to suppress duplicate event publishing.
     event_bus : object, optional
         Event bus for broadcasting.
 
     """
+    if curve_data is not None:
+        try:
+            prepared = _prepare_cached_dataset(curve_data)
+            ds = _restore_cached_dataset(prepared)
+            if prepared["kind"] == "legacy" and name:
+                ds.name = str(name)
+            state.add_dataset(ds)
+            index = len(state.datasets) - 1
+            if event_bus is not None and not _from_controller:
+                event_bus.publish("dataset.added", {"dataset_index": index, "name": str(ds.name)})
+            return {"ok": True, "uid": str(ds.unique_identifier), "name": str(ds.name),
+                    "dataset_index": index}
+        except (TypeError, ValueError, KeyError, AttributeError) as error:
+            return service_error(f"invalid cached dataset: {error}", error_code=INVALID_INPUT, exception=error)
     if reader is None and reader_name and filename:
         try:
             import pathlib

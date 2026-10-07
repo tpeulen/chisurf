@@ -10,29 +10,50 @@ from chisurf.core.api.context import PluginContext
 from chisurf.server.session import SessionState
 
 
-def _extract_curve_data(dataset: Any) -> dict[str, list[float]] | None:
-    """Extract serializable x/y/ex/ey arrays from a DataCurve or container.
+def _extract_curve_data(dataset: Any) -> dict[str, Any] | None:
+    """Snapshot a cached curve/group without reading or changing its active child.
 
-    Returns ``None`` if the dataset does not have curve-like data.
+    Domain curves use the trusted scientific record/reader codec. Legacy
+    curve-like objects keep the bare x/y/ex/ey contract.
     """
-    try:
-        x = getattr(dataset, "x", None)
-        y = getattr(dataset, "y", None)
-        if x is None or y is None:
+    from chisurf.core.data import DataCurve, DataGroup
+    from chisurf.core.project.session import _curve_record, _scientific_value
+
+    def record(curve, ancestors=()):
+        """Capture the known reader IRF edge along with its exact cached arrays."""
+        uid = str(getattr(curve, "unique_identifier", ""))
+        if uid in ancestors:
+            raise ValueError("cyclic cached reader IRF dependency")
+        value = _curve_record(curve)
+        dependencies = (value.get("reader") or {}).get("dependencies") or {}
+        if dependencies:
+            source = getattr(curve.data_reader, "instrument_response_function", None)
+            value["reader_inputs"] = {"instrument_response_function": record(source, (*ancestors, uid))}
+        return value
+
+    if isinstance(dataset, DataGroup):
+        if any(not isinstance(member, DataCurve) for member in dataset):
             return None
-        result: dict[str, list[float]] = {
-            "x": np.asarray(x, dtype=float).tolist(),
-            "y": np.asarray(y, dtype=float).tolist(),
+        if not dataset:
+            raise ValueError("cached curve groups require nonempty DataCurve members")
+        return {
+            "kind": "group", "group_type": type(dataset).__name__,
+            "uid": str(dataset.unique_identifier), "name": str(dataset.name),
+            "selected": dataset._current_dataset,
+            "metadata": _scientific_value(dataset.meta_data or {}),
+            "members": [record(member) for member in dataset],
         }
-        ex = getattr(dataset, "ex", None)
-        if ex is not None:
-            result["ex"] = np.asarray(ex, dtype=float).tolist()
-        ey = getattr(dataset, "ey", None)
-        if ey is not None:
-            result["ey"] = np.asarray(ey, dtype=float).tolist()
-        return result
-    except Exception:
+    if isinstance(dataset, DataCurve):
+        return record(dataset)
+    x, y = getattr(dataset, "x", None), getattr(dataset, "y", None)
+    if x is None or y is None:
         return None
+    result = {"x": np.asarray(x, dtype=float).tolist(), "y": np.asarray(y, dtype=float).tolist()}
+    for field in ("ex", "ey"):
+        values = getattr(dataset, field, None)
+        if values is not None:
+            result[field] = np.asarray(values, dtype=float).tolist()
+    return result
 
 
 def _global_datasets() -> list[Any]:
@@ -262,38 +283,66 @@ class ChiSurfAPI:
         dataset: Any = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
+        """Import a supplied cached object once into this facade's owning session.
+
+        Supplied curve groups are validated completely before any append.
+        Live aliased sessions retain their existing macro/history route.
+        """
+        from chisurf.server.services import INVALID_INPUT, service_error
+        from chisurf.server.services.datasets import (
+            _normalize_cached_group,
+            _prepare_cached_dataset,
+        )
+
+        curve_data = None
+        if dataset is not None:
+            try:
+                curve_data = _extract_curve_data(dataset)
+                if curve_data is not None:
+                    _prepare_cached_dataset(curve_data)
+            except (TypeError, ValueError, AttributeError) as error:
+                return service_error(f"invalid cached dataset: {error}", error_code=INVALID_INPUT)
         if self.mode == "server" and self.client is not None:
             params: dict[str, Any] = dict(kwargs)
             if experiment_reader is not None:
-                rname = getattr(type(experiment_reader), "__name__", None)
-                if rname:
-                    params["reader_name"] = rname
-                fname = getattr(experiment_reader, "filename", None) or kwargs.get("filename")
-                if fname:
-                    params["filename"] = str(fname)
-                name = getattr(experiment_reader, "name", None) or kwargs.get("name")
-                if name:
-                    params["name"] = str(name)
-                # Extract data arrays from the dataset if available; else
-                # try to read them locally so the server has real x/y data.
-                if dataset is not None:
-                    curve_data = _extract_curve_data(dataset)
-                    if curve_data:
-                        params["curve_data"] = curve_data
-                else:
-                    try:
-                        local_data = experiment_reader.get_data(**kwargs)
-                        curve_data = _extract_curve_data(local_data)
-                        if curve_data:
-                            params["curve_data"] = curve_data
-                    except Exception:
-                        pass
+                params.setdefault("reader_name", type(experiment_reader).__name__)
+                filename = getattr(experiment_reader, "filename", None) or kwargs.get("filename")
+                if filename:
+                    params.setdefault("filename", str(filename))
+                params.setdefault("name", str(getattr(experiment_reader, "name", "dataset")))
+            if dataset is None and experiment_reader is not None:
+                # Reading once is only appropriate when the caller supplied no preview.
+                local_data = experiment_reader.get_data(**kwargs)
+                curve_data = _extract_curve_data(local_data)
+                if curve_data is not None:
+                    _prepare_cached_dataset(curve_data)
+            if curve_data is not None:
+                params["curve_data"] = curve_data
+            elif dataset is not None:
+                return service_error("supplied dataset has no supported curve data", error_code=INVALID_INPUT)
             return self.client.call("dataset.load", params)
+        if self._state.datasets is not _global_datasets():
+            if dataset is None:
+                if experiment_reader is None:
+                    return service_error("no reader or cached dataset provided", error_code=INVALID_INPUT)
+                dataset = experiment_reader.get_data(**kwargs)
+                try:
+                    curve_data = _extract_curve_data(dataset)
+                    if curve_data is not None:
+                        _prepare_cached_dataset(curve_data)
+                except (TypeError, ValueError, AttributeError) as error:
+                    return service_error(f"invalid cached dataset: {error}", error_code=INVALID_INPUT)
+            if dataset is None:
+                return service_error("reader returned no dataset", error_code=INVALID_INPUT)
+            self._state.add_dataset(dataset)
+            return {"ok": True, "uid": str(getattr(dataset, "unique_identifier", "")),
+                    "dataset_index": len(self._state.datasets) - 1}
         from chisurf.macros import core_data
 
+        local_dataset: Any = _normalize_cached_group(dataset) if dataset is not None else None
         core_data.add_dataset(
             experiment_reader=experiment_reader,
-            dataset=dataset,
+            dataset=local_dataset,
             _from_controller=True,
             **kwargs,
         )

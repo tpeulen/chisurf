@@ -1,5 +1,6 @@
 {
   "methods": [
+    {"name": "dataset__load", "rpc": "dataset.load", "params": [{"name": "reader_name", "default": null}, {"name": "filename", "default": null}, {"name": "name", "default": null}, {"name": "curve_data", "default": null}]},
     {"name": "dataset__list", "rpc": "dataset.list", "params": [], "result_key": "datasets", "default": []},
     {"name": "dataset__get", "rpc": "dataset.get", "params": [{"name": "dataset_index", "default": null}, {"name": "dataset_uid", "default": null}, {"name": "member_uid", "default": null}], "result_key": "dataset", "default": {}},
     {"name": "dataset__curve_data", "rpc": "dataset.curve_data", "params": [{"name": "dataset_index", "default": null}, {"name": "dataset_uid", "default": null}, {"name": "member_uid", "default": null}]},

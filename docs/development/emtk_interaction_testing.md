@@ -204,3 +204,17 @@ imports generators with filenameNone before considering inherited filename;
 only measurement inputs can launch the import picker. The simulator commits
 its nested spectrum-path buffer on tab use through the original setter;
 invalid input retains science/pending/error state and close/read-only guards.
+
+
+## Cached curve groups across the API
+
+Add sends the displayed curve group through dataset.load without regenerating
+its simulation. The existing payload accepts a validated group envelope with
+all member arrays/errors/masks, group/member identities, selected index and
+scientific metadata. Trusted reader calibration and its measured IRF survive
+JSON transfer. Validation finishes before any session append. Explicit local
+API state remains authoritative; the live aliased state keeps its macro/history
+route. Local cached Structure groups stay unchanged; remote noncurve data
+requires its owning importer and is never silently flattened. Boolean masks
+roundtrip through transport/project capture/restore; measurement/error arrays
+retain the finite numeric-vector contract.
