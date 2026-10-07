@@ -1038,3 +1038,13 @@ visible legacy/native pairs inspected. [Receipt](../validation/release-readiness
 Next W1 unit removes unused Designer helper/cache/source-jump branches while
 retaining actual drag-file injection and explicit main gui.ui packaging. The
 main shell remains W9, and the separate Burst MLE model feature remains active.
+
+### Designer helper cleanup complete — 2026-10-08
+
+The retired UI loader/cache/source-path branches are removed. Keep native specs
+and Python source resolution; do not restore obsolete UI metadata. The existing
+drag injector body is unchanged and actual MIME/drop behavior is regression
+tested. Main shell packaging is explicit, deferred to W9.
+[Receipt](../validation/release-readiness-w1/designer-helper-retirement/acceptance.json).
+Next active acceptance is the requested Burst MLE model feature; W0 owns the
+missing bundle guard/inherited typing before full programme closure.

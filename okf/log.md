@@ -2,6 +2,8 @@
 
 ## 2026-10-08
 
+- **2026-10-08 · Designer helper cleanup landed:** unusedloader/compiler/cache/XML-source branches and cache-only tests removed; exactdragbody preserved withrealQt MIME/drop/callback/HTTP andinspectedbefore-after. MainUIexplicitpackage declaration andactualbuild_py selectionverified;18targeted+959availableguards/16skips, lock0/oneworktree/oneUI, source3→2typing no newerrors. RequestedMLEfeature finalpublication remainsactive; no wholePRD completionclaim. [Receipt](validation/release-readiness-w1/designer-helper-retirement/acceptance.json), [resume](validation/release-readiness-w1/current-job/handoff.md).
+
 - **2026-10-08 · Native detector retirement source landed:** four obsolete forms removed, actual native host/flags/complete-export/Finish/callback/parent ownership preserved; independentlegacy105/currentcaller27/nativecalibration18 receipts and parent80 final checks accepted. Burst28rendering references ported with exact rawdata/log/SI/units; caption clear/nativebar ranges fixed atowner, parent116plotchecks+959availableguards/16skips pass. All real pairs/six-panel PG/native captures read; paired detector concept/guide/twofigures and ownership-safe catalogue included. CurrentMLEfeatureDelta2 remains separate29green, Designerhelpercleanup next, wholeW1/PRD open. [Acceptance](validation/release-readiness-w1/channel-definition-retirement/acceptance.json), [resume](validation/release-readiness-w1/current-job/handoff.md).
 
 ## 2026-10-07

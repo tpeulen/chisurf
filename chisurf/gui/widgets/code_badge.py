@@ -311,15 +311,10 @@ def make_widget_source_resolver(widget: QtWidgets.QWidget) -> Callable[[], tuple
 
     Priority:
     1. Widget's class source file via inspect
-    2. If widget has _chisurf_ui_path attribute, return (.ui, 1)
     """
 
     def resolver() -> tuple[str, int] | None:
         try:
-            ui_path = getattr(widget, "_chisurf_ui_path", None)
-            if ui_path:
-                return (str(ui_path), 1)
-
             widget_class = widget.__class__
             try:
                 file_path = inspect.getsourcefile(widget_class)

@@ -194,7 +194,7 @@ namespaces = true
     "*.json", "*.yaml",
     # The games' audio: two archives of ADPCM clips beside the engine.
     "*.zip",
-    "*.ui", "*.css", "*.qss",
+    "*.css", "*.qss",
     "*.png", "*.svg",
     "*.csv", "*.npy", "*.dat",
     "*.dll", "*.so", "*.dylib", "*.pyd", "*.ipynb",
@@ -207,6 +207,8 @@ namespaces = true
     "*.md"
 ]
 "chisurf.settings.constants" = ["*.json"]
+
+"chisurf.gui" = ["gui.ui"]
 
 [tool.setuptools.exclude-package-data]
 # include-package-data can otherwise reattach excluded descendants to a parent.

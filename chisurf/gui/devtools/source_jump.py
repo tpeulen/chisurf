@@ -20,8 +20,6 @@ def resolve_widget_source(widget: QtWidgets.QWidget) -> tuple[str, int] | None:
 
     Priority:
     1. Widget class source via inspect (Python source preferred)
-    2. Widget's _chisurf_ui_path attribute (for @init_with_ui widgets, fallback)
-    3. Focused child widget under cursor (if any)
 
     Args:
         widget: The widget to resolve source for
@@ -44,13 +42,6 @@ def resolve_widget_source(widget: QtWidgets.QWidget) -> tuple[str, int] | None:
                 return (file_path, 1)
     except (TypeError, OSError):
         pass
-
-    # Fallback to .ui file if Python source not available
-    ui_path = getattr(widget, "_chisurf_ui_path", None)
-    if ui_path:
-        path = pathlib.Path(ui_path)
-        if path.exists():
-            return (str(path), 1)
 
     return None
 
@@ -164,7 +155,7 @@ def resolve_model_view_spec_path(model: Any) -> tuple[str, int] | None:
     """Resolve the user-editable ``.view.json`` file for a model, if any.
 
     A pure model declares its editor layout via the ``view_spec_file`` class
-    attribute (see PRD-38), resolved next to the module that defines the
+    attribute, resolved next to the module that defines the
     *compute* model class (see :func:`resolve_compute_model_class`), so it works
     for both pure models and legacy model-widgets.
 
@@ -386,25 +377,17 @@ def make_resolver(
 
 def make_widget_resolver(
     widget: QtWidgets.QWidget,
-    include_ui: bool = True,
 ) -> Callable[[], tuple[str, int] | None]:
     """Create a resolver for a widget.
 
     Args:
         widget: The widget to resolve
-        include_ui: Whether to check for _chisurf_ui_path first
 
     Returns:
         A callable that returns (path, line) or None
     """
 
     def resolver() -> tuple[str, int] | None:
-        if include_ui:
-            ui_path = getattr(widget, "_chisurf_ui_path", None)
-            if ui_path:
-                path = pathlib.Path(ui_path)
-                if path.exists():
-                    return (str(path), 1)
         return resolve_widget_source(widget)
 
     return resolver

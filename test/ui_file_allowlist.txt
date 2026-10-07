@@ -1,0 +1,2 @@
+# Deferred shell surface; remove with the native main-window replacement.
+chisurf/gui/gui.ui
