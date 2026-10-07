@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- **2026-10-07 · Detector retirement review roots:** preserve supplied preview arrays without rereading, retain native editor on refused wizard close, and expose full-definition Save in the actual incomplete onboarding wizard. Exact fixes/tests assigned owning lanes. Burst canonical import also triggers separately snapshotted chiplot/PRD-reference cleanup. MLE visible panels and fixed Fit23 vectors explain the missing model choice; registry-driven design remains pending. [Current job](validation/release-readiness-w1/current-job/handoff.md).
+
 - **2026-10-07 · Burst MLE owner requirement:** preserve selectable registered tttrlib models, including Fit23, through the actual fitting path. Bounded diagnosis is active and recorded in the [midway handoff](validation/release-readiness-w1/current-job/handoff.md); no selector completion or extra source changes claimed.
 
 - **2026-10-07 · Channel14 midway evidence refreshed:** MLE10 native consumer cases and real BH after read pass; parent inspected both after scenes. Frozen owned patch preserves kernels and corrects only fallback ps→ns plus version3 reuse. Caller14pass/8close failures now identify the central lifecycle root; one Burst direct import is authorized for canonical routing. All before captures accepted; export/Finish IO precedes package switch, caller acceptance precedes old UI deletion. Durable archive and [handoff](validation/release-readiness-w1/current-job/handoff.md) permit another agent to resume mid-job.
