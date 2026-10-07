@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W1: complete configured native Structure reader retirement;10 parent targeted/root/import checks pass, final148L host PNG inspected, lazy filename and actual cached-source counts preserved. Retire modelling/controller and uncalled folder/thread/UI/export chain while preserving PDBSelector for row7 and all foreign hunks/modes. Global communication debt stays explicit. [Receipt](validation/release-readiness-w1/structure-retirement/receipt.md).
+
 - PRD-154 W1: reconcile the resume after completed simulator/configured Add acceptance; next active source unit is Structure row6, followed by the coordinated PDB/FRET native-host retirement. Cached mask/import, packaging, provider and metadata demo commits are landed; remaining RMF/communication/mixed-harness gates stay explicit.
 
 - PRD-154 W1: declare existing imp-tricks in extension builds and package statpot JSONs from a clean wheel (owner6d61c586a);3 parent provider/resource guards pass, canonical BFF unchanged. Record exact RMF output/back-end science gate instead of losing metadata or swapping formats. Integrate MMFDB342ebe4a5 administrative packaged demo evidence (45 parent/7 wheel checks, real120/63 row bytes and pinned DB), with caption sync remaining.

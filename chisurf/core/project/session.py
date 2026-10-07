@@ -1560,6 +1560,9 @@ def restore_session(
                     experiment_cache[experiment_uid] = (experiment, copy.deepcopy(experiment_state))
             reader = _restore_reader(record.get("reader"), experiment, reader_cache)
             if record["kind"] == "structure":
+                from pathlib import Path
+
+                from chisurf.core.experiments.modelling.reader import StructureReader
                 from chisurf.core.models.structure.snapshot import restore_structure
 
                 curve = restore_structure(record["structure"])
@@ -1567,6 +1570,18 @@ def restore_session(
                     raise ValueError("structure identity contradicts dataset UID")
                 curve.data_reader = reader
                 curve.experiment = experiment
+                source = record.get("filename")
+                if (
+                    isinstance(reader, StructureReader)
+                    and source
+                    and reader.filename
+                    and Path(source).expanduser().resolve(strict=False)
+                    == Path(reader.filename).expanduser().resolve(strict=False)
+                ):
+                    # Display facts come from embedded atoms, never duplicated
+                    # archive counters or a read of the original source.
+                    reader.n_atoms = curve.n_atoms
+                    reader.n_residues = curve.n_residues
             else:
                 curve = DataCurve(
                     x=arrays["x"],

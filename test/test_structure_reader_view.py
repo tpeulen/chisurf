@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import numpy as np
+import pytest
 from emtk.testing import Driver
 
 from chisurf.core.experiments.modelling.reader import StructureReader
@@ -80,3 +81,94 @@ def test_source_change_clears_previous_counts_and_toggle_reaches_structure(monke
     assert calls[0]["make_coarse"] is True
     reader.filename = "another.pdb"
     assert reader.n_atoms == reader.n_residues == 0
+
+
+def test_constructor_source_is_lazy_and_reaches_the_actual_structure_import(tmp_path):
+    """A configured source survives construction without eagerly opening a file."""
+    absent = tmp_path / "not-materialized.pdb"
+    reader = StructureReader(filename=str(absent), record_provenance=False)
+    assert reader.filename == str(absent)
+    assert reader.n_atoms == reader.n_residues == 0
+    selected = StructureReader(filename=str(PDB), record_provenance=False)
+    group = selected.get_data()
+    assert len(group) == 1
+    assert selected.filename == str(PDB)
+    assert selected.n_atoms == group[0].n_atoms == 1300
+    assert selected.n_residues == group[0].n_residues == 164
+
+
+@pytest.mark.parametrize("source_alias", [False, True])
+def test_source_free_restoration_preserves_structure_reader_facts(
+    tmp_path, monkeypatch, source_alias
+):
+    """Native counters describe the actual cached structure when its source is gone."""
+    from chisurf.core.experiments.core import Experiment
+    from chisurf.core.project.session import capture_session, restore_session
+
+    copied = tmp_path / "148l.pdb"
+    copied.write_bytes(PDB.read_bytes())
+    reader = StructureReader(
+        experiment=Experiment(name="Structure"),
+        compute_internal_coordinates=True,
+        record_provenance=False,
+    )
+    group = reader.get_data(filename=str(copied))
+    if source_alias:
+        reader.filename = str(copied.parent / "unused" / ".." / copied.name)
+    selected_source = reader.filename
+    project = capture_session([group], [])
+    copied.unlink()
+
+    def no_source_reads(*args, **kwargs):
+        """Reject source reads while restoring embedded atoms and reader facts."""
+        raise AssertionError("restoration reopened the missing PDB")
+
+    monkeypatch.setattr(StructureReader, "read", no_source_reads)
+    restored = restore_session(project)
+    structure = restored.datasets[0][0]
+    owner = structure.data_reader
+    np.testing.assert_array_equal(structure.atoms, group[0].atoms)
+    assert structure.n_atoms == 1300 and structure.n_residues == 164
+    assert owner.filename == selected_source
+    assert owner.compute_internal_coordinates is True
+    assert owner.n_atoms == structure.n_atoms
+    assert owner.n_residues == structure.n_residues
+
+
+def test_source_free_restoration_does_not_assign_counts_to_an_unimported_source(
+    tmp_path, monkeypatch
+):
+    """A newly selected source cannot inherit another cached structure's counts."""
+    from chisurf.core.experiments.core import Experiment
+    from chisurf.core.project.session import capture_session, restore_session
+
+    copied = tmp_path / "148l.pdb"
+    copied.write_bytes(PDB.read_bytes())
+    reader = StructureReader(experiment=Experiment(name="Structure"), record_provenance=False)
+    group = reader.get_data(filename=str(copied))
+    reader.filename = str(tmp_path / "not-imported.pdb")
+    assert reader.n_atoms == reader.n_residues == 0
+    project = capture_session([group], [])
+    copied.unlink()
+
+    def no_source_reads(*args, **kwargs):
+        """Use cached atoms only; no selection may trigger a source read."""
+        raise AssertionError("restoration reread a structure")
+
+    monkeypatch.setattr(StructureReader, "read", no_source_reads)
+    restored = restore_session(project)
+    cached = restored.datasets[0][0]
+    assert cached.n_atoms == 1300 and cached.n_residues == 164
+    assert cached.data_reader.filename == reader.filename
+    assert cached.data_reader.n_atoms == cached.data_reader.n_residues == 0
+
+
+def test_structure_configuration_declares_a_native_null_controller():
+    """The target row6 configuration must retire its legacy Qt controller."""
+    import yaml
+
+    entry = yaml.safe_load(Path("chisurf/core/settings/experiment_configs.yaml").read_text())[
+        "structure"
+    ]["readers"][0]
+    assert entry["reader_class"] == "chisurf.core.experiments.modelling.StructureReader"
+    assert entry["controller_class"] is None

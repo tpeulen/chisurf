@@ -46,7 +46,6 @@ EXPECTED_VIOLATIONS: dict[str, int] = {
     "chisurf/gui/main.py": 9,
     "chisurf/gui/main_helper.py": 23,
     "chisurf/gui/widgets/experiments/ics.py": 1,
-    "chisurf/gui/widgets/experiments/modelling/modelling.py": 2,
     "chisurf/gui/widgets/experiments/widgets.py": 5,
     "chisurf/gui/widgets/fio/fio.py": 1,
     "chisurf/gui/widgets/fitting/fit_controller.py": 12,

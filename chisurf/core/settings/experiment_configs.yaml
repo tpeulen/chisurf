@@ -293,7 +293,7 @@ structure:
   readers:
     - reader_class: chisurf.core.experiments.modelling.StructureReader
       reader_params: {}
-      controller_class: chisurf.gui.widgets.experiments.modelling.StructureReaderController
+      controller_class: null
   models:
     - chisurf.core.models.structure.proteinmc_model.ProteinMCModel
 

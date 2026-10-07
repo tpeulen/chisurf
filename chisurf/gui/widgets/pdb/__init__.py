@@ -1,1 +1,1 @@
-from .pdb import LoadThread, PDBFolderLoad, PDBSelector
+from .pdb import PDBSelector

@@ -19,7 +19,9 @@ class StructureReader(ExperimentReader):
     artifact_kind_source = "external_file"
     artifact_kind_derived = "processed_data"
 
-    def __init__(self, compute_internal_coordinates: bool = False, *args, **kwargs):
+    def __init__(
+        self, compute_internal_coordinates: bool = False, *args, filename: str = "", **kwargs
+    ):
         """Initialize a structure reader.
 
         Parameters
@@ -27,10 +29,12 @@ class StructureReader(ExperimentReader):
         compute_internal_coordinates : bool
             Whether to compute internal coordinates (dihedral angles etc.)
             when loading a structure.
+        filename : str, optional
+            Selected source for a later import. Construction does not open it.
         """
         super().__init__(*args, **kwargs)
         self.compute_internal_coordinates = compute_internal_coordinates
-        self._filename = ""
+        self._filename = str(filename or "")
         self.n_atoms = 0
         self.n_residues = 0
 
@@ -75,7 +79,9 @@ class StructureReader(ExperimentReader):
         """
         return 0, 0
 
-    def read(self, filename: str | None = None, *args, **kwargs) -> chisurf.core.data.ExperimentDataGroup:
+    def read(
+        self, filename: str | None = None, *args, **kwargs
+    ) -> chisurf.core.data.ExperimentDataGroup:
         """Load a molecular structure from a file.
 
         Parameters

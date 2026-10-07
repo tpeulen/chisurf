@@ -237,3 +237,12 @@ metadata; always use a clean source copy for runtime resource coverage.
 The Model-free BFF core remains the pinned provider; RMF output requires its
 explicit molecular-output/backend contract and cannot be replaced by a
 mislabeled coordinate-only file.
+
+
+## Configured Structure port
+
+The shipped Structure setup now has no legacy controller; its native form
+imports the selected PDB once through the existing shell action. Source-free
+restoration derives reader display facts from embedded atoms only for matching
+sources. Folder helper/thread exports and their UI files are retired while
+PDBSelector remains unchanged for the next FRET host migration.
