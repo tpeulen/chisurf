@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W1: publish ndxplorer3356d747 test-namespace retirement;201 tracked paths/modes preserved,42 caches privately archived,12 before/after plus11 additional targeted checks pass. The two parity fixture paths follow the move; foreign package edits remain untouched. Native SDT/Structure preparations are inspected; ordered loader switches remain pending CSV/simulator.
+
 - PRD-154 W1: preserve launcher precedence when inserting bundled roots and skip an already-resolved ndxplorer editable root;20 bootstrap/environment/native-shifter checks, Ruff and mypy pass. Remove only five obsolete import-order comments, preserving foreign test hunks. ndxplorer test namespace relocation is separately verified before pointer publication.
 
 - PRD-154 W1: fix IMP namespace bootstrap in owning imp-tricks commit eb198e21b;3 exact-tree regressions and pixi/arm64 cold imports pass, preserving foreign lazy-loader work. Verify current wgpu-py lock with pixi lock --check and resolve its stale issue. Bundled path regression is green9; reader/UI retirement and ndxplorer namespace work continue.

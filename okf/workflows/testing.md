@@ -452,3 +452,11 @@ module root on sys.path. Plugin test helpers can be imported after a native
 plugin; preimporting test.gui to conceal a shadowing companion is unnecessary.
 Verify test/core/test_bundled_packages.py and the existing foreign-environment
 path tests. Keep ndxplorer tests in tests/ rather than a top-level test package.
+
+
+## Companion test layout
+
+ndxplorer keeps test modules and their fixtures under tests/. The former
+top-level test package is retired, so source imports cannot shadow ChiSurf
+test.gui. The parity scenarios now resolve their MFD and sampling fixtures
+under tests/; the three real sampling tables remain unchanged.
