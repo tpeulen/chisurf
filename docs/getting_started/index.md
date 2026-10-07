@@ -105,3 +105,12 @@ could verify against the source code, and **reviewed** means a human has
 confirmed it against the running application. Only the second clears the release
 gate (`csc help review-check`), and either lapses automatically when the page
 is edited.
+
+
+## If startup fails
+
+ChiSurf reports the full diagnostic traceback through logging and exits with
+the original startup exception. It leaves your settings intact. Run
+`pixi run chisurf` in a terminal to inspect the diagnostic. Crash reports are
+written in the settings directory; a configured `CHISURF_SETTINGS_DIR` also
+applies to those reports. Save the traceback when reporting a startup problem.
