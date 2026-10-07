@@ -21,7 +21,7 @@ Manage the Multiparametric Fluorescence Database (MMFDB): samples, experiments, 
 | Menu path | Tools → System → **MMFDB Admin** |
 | Categories | Tools, System, Fluorescence, Database |
 | Version | 1.1.0 |
-| Surfaces | emtk, gui, services |
+| Surfaces | cli, emtk, gui, services |
 | State namespace | `mmfdb_admin` |
 
 ## Parameters

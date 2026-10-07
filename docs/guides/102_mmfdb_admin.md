@@ -18,6 +18,17 @@ Open **Tools → System → MMFDB Admin**, or run it on its own with `python -m 
 drawn natively (emtk). The older Qt widget is kept for now as the legacy
 `entrypoints.gui`.
 
+For headless fluorophore curation, the same plugin declares the owning MMFDB
+Click command under `csc fluorophore`. Its commands operate on the configured
+local MMFDB, independently of the GUI server connection:
+
+```bash
+pixi run -e test csc fluorophore --help
+pixi run -e test csc fluorophore list --json
+```
+
+Use `--help` on a subcommand for its options.
+
 ```{figure} figures/102_mmfdb_admin.png
 :name: fig-mmfdb-admin
 :width: 100%

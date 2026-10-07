@@ -13,11 +13,7 @@ if _manifest is not None:
 else:
     name = "Tools:System:MMFDB Admin"
 
-# Headless fluorophore curation CLI (`csc fluorophore`), migrated here from the
-# standalone fluorophore_db plugin (PRD-06).
-cli_entrypoint = "fluorophore=mmfdb.admin.cli:cli"
-
-__all__ = ["MMFDBWidget", "name", "cli_entrypoint"]
+__all__ = ["MMFDBWidget", "name"]
 
 
 def __getattr__(name: str):

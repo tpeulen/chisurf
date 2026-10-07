@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- **2026-10-07 · W1 MMFDB CLI root restored:** authoritative manifest now exposes existing `csc fluorophore`; duplicate declaration/old source planning mention removed. Three real dispatch regressions and39 targeted CLI/PRD cases pass, plus parent installed-command help. Guide/catalogue updated; four inherited GUI typing findings measured unchanged. Test-env editable installation restored the intended executable without dependency changes. [Receipt](validation/release-readiness-w1/mmfdb-cli/receipt.md).
+
 - **2026-10-07 · Local Zed tasks restored:** corrected W1 cleanup scope after owner feedback. `.zed/tasks.json` is back on disk with all four original task definitions, exact bytes/mode verified; it remains ignored and untracked. PRD now explicitly preserves local editor tasks during final hygiene. [Record](validation/release-readiness-w1.md#local-editor-tasks-retained--2026-10-07).
 
 - **2026-10-07 · W1 Burst Selection before preserved:** parent inspected eleven real native/legacy PNGs and froze numeric/control receipts before future row13 deletion. Actual measured native search yields198 bursts; loaded old fallback blank plots/clipping recorded as existing defects, without a search-parity claim. Source held until row12. [Evidence](validation/release-readiness-w1/burst-selection-before/receipt.md).

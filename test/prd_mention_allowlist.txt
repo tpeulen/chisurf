@@ -71,7 +71,6 @@ chisurf/plugins/calculator/phasor_calculator/__init__.py
 chisurf/plugins/calculator/phasor_calculator/tests/test_phasor_calculator.py
 chisurf/plugins/core/acq/tcspc_devices/simulation/core/algorithms.py
 chisurf/plugins/core/lightpath_simulator/gui/easy_mode.py
-chisurf/plugins/core/mmfdb_admin/__init__.py
 chisurf/plugins/core/mmfdb_admin/gui/calibrations_view.py
 chisurf/plugins/core/mmfdb_admin/gui/client.py
 chisurf/plugins/core/mmfdb_admin/gui/lifecycle_view.py
