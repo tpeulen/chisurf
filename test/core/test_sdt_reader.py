@@ -190,3 +190,50 @@ def test_sdt_source_configuration_stays_lazy_until_import(tmp_path):
     assert reader.curve_options() == []
     reader.filename = str(SDT)
     assert len(reader.get_data()) == 3
+
+
+def test_shipped_sdt_configuration_names_the_headless_reader():
+    """The shipped SDT setup requires no retired widget or controller import."""
+    import yaml
+
+    config = yaml.safe_load(Path("chisurf/core/settings/experiment_configs.yaml").read_text())
+    entry = next(
+        reader
+        for section in config.values()
+        if isinstance(section, dict)
+        for reader in section.get("readers", [])
+        if reader.get("reader_params", {}).get("name") == "Becker-SDT"
+    )
+    assert entry["reader_class"] == "chisurf.core.experiments.tcspc.sdt_reader.SDTReader"
+    assert entry["controller_class"] is None
+
+
+def test_historical_sdt_reader_descriptor_restores_without_the_retired_module(
+    monkeypatch, tmp_path
+):
+    """Historical SDT identities migrate to the existing trusted scientific owner."""
+    from chisurf.core.experiments.core import Experiment
+    from chisurf.core.project import session
+
+    experiment = Experiment(name="SDT")
+    reader = SDTReader(experiment=experiment, curve_nbr=2, record_provenance=False)
+    reader.load_file(str(SDT))
+    reader.filename = str(tmp_path / "missing-original.sdt")
+    descriptor = session._reader_state(reader)
+    descriptor["module"] = "chisurf.gui.widgets.experiments.tcspc.bh_sdt"
+    descriptor["class"] = "TCSPCSetupSDTWidget"
+    import_module = session.importlib.import_module
+
+    def no_legacy_import(name, *args, **kwargs):
+        """Refuse the old GUI module even if an archive requests it explicitly."""
+        assert name != "chisurf.gui.widgets.experiments.tcspc.bh_sdt"
+        return import_module(name, *args, **kwargs)
+
+    monkeypatch.setattr(session.importlib, "import_module", no_legacy_import)
+    restored = session._restore_reader(descriptor, experiment, {})
+    assert type(restored) is SDTReader
+    assert restored.curve_nbr == 2
+    assert restored.filename == reader.filename
+    assert restored.dt == reader.dt
+    assert restored.rep_rate == reader.rep_rate
+    assert restored.curve_options() == []

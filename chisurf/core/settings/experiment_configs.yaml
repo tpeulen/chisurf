@@ -46,7 +46,7 @@ tcspc:
         name: TTTR-file
       controller_class: chisurf.gui.widgets.experiments.tcspc.controller.TCSPCTTTRReaderControlWidget
       settings_key: tcspc_csv
-    - reader_class: chisurf.gui.widgets.experiments.tcspc.bh_sdt.TCSPCSetupSDTWidget
+    - reader_class: chisurf.core.experiments.tcspc.sdt_reader.SDTReader
       reader_params:
         name: Becker-SDT
       controller_class: null

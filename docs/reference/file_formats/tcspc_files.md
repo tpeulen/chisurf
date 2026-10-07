@@ -148,64 +148,38 @@ The curve name is derived from the filename and channel list, e.g.
 
 ## Becker-SDT {#tcspc-sdt}
 
-### Purpose
+Select **Becker-SDT**, then choose an SDT file with the native source input.
+The form decodes the file's identification, title, version, revision, date,
+time, author, company and contents. **Preview curve** selects one measured
+histogram for the displayed calibration. **+ Data** imports every measured
+curve, preserving their order and using each block's own time axis.
 
-The **Becker-SDT** reader loads Becker & Hickl `.sdt` histogram files using
-`chisurf.core.fio.fluorescence.sdtfile.SdtFile`. It is implemented by
-`TCSPCSetupSDTWidget`, which wraps a `TcspcSDTWidget` for inspecting and
-selecting curves.
+![Configured native SDT reader](figures/tcspc_sdt_native.png)
 
-Use this reader when you have TCSPC decays stored as Becker & Hickl SDT
-histograms rather than raw TTTR streams or ASCII/CSV files.
+Channel width is shown in nanoseconds and repetition rate in MHz, both
+read-only from the selected measurement descriptor. For an excitation period
+T in nanoseconds, the rate is `1000 / T` MHz. The shipped `140507p.sdt` has
+three 1024-bin curves, 0.019537081674680934 ns channel spacing and an exact
+600 ns excitation period (1.6666666666666667 MHz in float64).
 
-### SDT widget behavior
+1. Choose the SDT measurement and inspect its file information.
+2. Select a preview if you want to inspect another block's calibration.
+3. Press **+ Data**; preview selection does not filter imported curves.
 
-`TcspcSDTWidget` performs the low-level SDT handling:
+For a headless read:
 
-- **File** (`filename`)
-  - The selected `.sdt` file, opened via `SdtFile(filename)`.
-  - The widget populates a **Curve** combo box with indices `0..n_curves-1`.
+```python
+from chisurf.core.experiments.tcspc.sdt_reader import SDTReader
 
-- **Curve selection** (`curve_number`)
-  - Chooses which internal SDT histogram to expose.
-  - `ph_counts` returns the selected histogram as a NumPy array.
+reader = SDTReader(filename="test/data/tcspc/BH_SDT/140507p.sdt",
+                   curve_nbr=2, record_provenance=False)
+curves = reader.read()  # All three measured curves.
+```
 
-- **Time axis** (`times`)
-  - Uses `self._sdt.times[0] * 1e9` to convert the hardware time base into
-    **nanoseconds**.
-
-- **Repetition rate** (`rep_rate`)
-  - Computed from SDT `measure_info[curve]['rep_t']` as
-    `1.0 / (rep_t * 1e-3)` → **MHz**.
-
-- **Curve construction**
-  - `curve` builds a `chisurf.core.data.DataCurve` with:
-    - `x`: time in ns,
-    - `y`: photon counts,
-    - `ey`: Poisson noise via `chisurf.core.fluorescence.tcspc.counting_noise`,
-    - `name`: `"<filename> _ <curve_number>"`.
-
-`TCSPCSetupSDTWidget.read` iterates over all available curves in the file and
-returns a list of `DataCurve` objects, making each curve available as a
-separate dataset.
-
-### Typical workflow
-
-1. **Select experiment and reader**
-   - In the *Read data* dock, choose **Experiment → TCSPC**.
-   - In **File type**, choose **Becker-SDT**.
-
-2. **Open SDT file**
-   - Use the `...` button to select a `.sdt` file.
-   - Inspect header/metadata in the text area if needed.
-
-3. **Select curves**
-   - Use the **Curve** combo box to preview individual histograms.
-   - The reader will convert all curves into separate datasets when reading.
-
-4. **Load data**
-   - Click **Data** in the main GUI to import the SDT curves as TCSPC
-     datasets.
+Source configuration/restoration stays lazy, so an archive can reopen without
+its original file. Reading or previewing requires the source to be available.
+Historical SDT widget descriptors restore the scientific core reader. The old
+unconnected embedded Add button is retired; use the functional **+ Data** route.
 
 ---
 

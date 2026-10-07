@@ -132,20 +132,19 @@ def test_simulator_reader_keeps_its_measured_irf_dependency():
     assert capture_session(restored.datasets, []).datasets == project.datasets
 
 
-def test_configured_sdt_reader_restores_without_constructing_a_widget(qtbot, monkeypatch):
-    """The shipped SDT widget yields a portable headless scientific reader."""
-    from chisurf.gui.widgets.experiments.tcspc.bh_sdt import TCSPCSetupSDTWidget
+def test_configured_sdt_reader_restores_without_constructing_a_widget(monkeypatch):
+    """The shipped SDT reader restores without its retired UI or raw source."""
+    from chisurf.core.experiments.tcspc.sdt_reader import SDTReader
 
-    reader = TCSPCSetupSDTWidget(experiment=Experiment(name="SDT"), record_provenance=False)
-    qtbot.addWidget(reader)
+    reader = SDTReader(experiment=Experiment(name="SDT"), record_provenance=False)
     group = reader.get_data(filename="test/data/tcspc/BH_SDT/140507p.sdt")
     assert len(group) > 0
     project = capture_session([group], [])
 
     def forbidden(*args, **kwargs):
-        raise AssertionError("constructing legacy reader UI during restoration")
+        raise AssertionError("restoration reread the SDT source")
 
-    monkeypatch.setattr(TCSPCSetupSDTWidget, "__init__", forbidden)
+    monkeypatch.setattr(SDTReader, "load_file", forbidden)
     restored = restore_session(project)
     assert restored.datasets[0][0].data_reader.__class__.__module__.startswith("chisurf.core.")
     assert capture_session(restored.datasets, []).datasets == project.datasets
@@ -169,7 +168,7 @@ def test_configured_headless_reader_catalog_has_curated_roundtrip():
     }
     for path, params in sorted(classes.items()):
         if path.startswith("chisurf.gui."):
-            continue  # The actual SDT measurement is exercised separately above.
+            continue
         module, name = path.rsplit(".", 1)
         cls = getattr(importlib.import_module(module), name)
         experiment = Experiment(name="catalogued")

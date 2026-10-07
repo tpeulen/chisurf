@@ -1,4 +1,3 @@
-import chisurf.gui.widgets.experiments.tcspc.bh_sdt
 import chisurf.gui.widgets.experiments.tcspc.controller
 
 from .tcspc_simulator_setup_widget import TCSPCSimulatorSetupWidget

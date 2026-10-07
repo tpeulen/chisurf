@@ -388,6 +388,8 @@ def _restore_reader(state: Any, experiment: Any, cache: dict[str, Any]) -> Any:
     if not isinstance(module, str) or not isinstance(class_name, str):
         raise SessionCodecError("invalid reader type descriptor")
     key = (module, class_name)
+    if key == ("chisurf.gui.widgets.experiments.tcspc.bh_sdt", "TCSPCSetupSDTWidget"):
+        key = ("chisurf.core.experiments.tcspc.sdt_reader", "SDTReader")
     fields = _READER_FIELDS.get(key)
     if fields is None:
         raise SessionCodecError(f"reader {key[0]}.{key[1]} is not trusted")
