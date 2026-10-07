@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W1: preserve and personally inspect13 headless before scenes/inventories across actual CSV/SDT, simulator alltabs/VM-VV-VH,148L structure/selector, m000 channel and hgbp dipole controls.60 targeted reader/parity tests pass. Record simulator constructor spectrum overwrite/preview seed omission and nonfunctional folder UI; loaders remain untouched until nativehost migration. [Baselines](validation/release-readiness-w1/before/).
+
 - PRD-154 W1: preserve/archive both approved sibling worktrees with23,555-file checksum/mode manifest and retained commit refs; non-forced metadata prune leaves one worktree. Preserve lint A/B targets/env in testing workflow. Reconcile current reader/channel ownership before GUI edits: reuse SDTReader/core channel model and a shared native settings host; record CSV/structure/preview parity corrections. [Archive receipt](validation/release-readiness-w1/worktree-archive.json).
 
 - PRD-154 W1: orphan recovery landed8dbb679bf/33285017c without discarding tracked or untracked edits. Five newer copies are AST-identical to recovered blobs; scoped Ruff canonicalization matches HEAD.188 plugin robustness/menu checks remain green. Recover the ten explicitly approved discovery/CLI/menu/robustness files and register the CLI contract; next preserve/archive sibling worktrees and lint recipe. [Evidence](validation/release-readiness-w1.md).
