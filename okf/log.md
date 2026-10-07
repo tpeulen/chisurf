@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W1: archive thirteen approved root config/generated artifacts reversibly, remove tracked .env after confirming no dotenv consumers, and add only missing .crush/GEMINI/.hermes ignore rules. Preserve active .omx evidence until programme verification; hold notes/.hermes until their owner folds complete. [Disposition receipt](validation/release-readiness-w1/root-artifacts.json).
+
 - PRD-154 W1 resume: recovery/archive units and thirteen inspected before scenes are committed;188 robustness/menu and60 reader/parity cases pass. Next root-note disposition, then ordered native reader/loader migration; retain precise SDT calibration/all-curve import, CSV forwarding and simulator binding/seed traps. No GUI loader changed yet. Programme continues into the remaining approved workstreams. [Resume](prds/prd-154.md).
 
 - PRD-154 W1: preserve and personally inspect13 headless before scenes/inventories across actual CSV/SDT, simulator alltabs/VM-VV-VH,148L structure/selector, m000 channel and hgbp dipole controls.60 targeted reader/parity tests pass. Record simulator constructor spectrum overwrite/preview seed omission and nonfunctional folder UI; loaders remain untouched until nativehost migration. [Baselines](validation/release-readiness-w1/before/).
