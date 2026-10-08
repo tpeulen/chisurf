@@ -10,9 +10,23 @@ tags: [guides, imaging, microscopy, hub]
 **What you get:** one window for the whole imaging workflow. The list on the left holds the tools, the chosen tool
 opens on the right, and the hub keeps what they share, so you define the detectors once and choose the photon file once.
 
+```{figure} figures/ribbon_spectroscopy_imaging.png
+:name: fig-ribbon-spectroscopy-imaging
+:width: 100%
+
+Image Tools in the Spectroscopy ribbon, alongside Decay, Correlation,
+Single-Molecule and Kinetics. Plugin routes, identifiers and semantic categories
+are preserved. At narrow widths, use the horizontal arrow to reach Imaging.
+```
+
+Menu-path preferences stored under the old full addresses migrate on settings
+load, retaining disabled, toolbar, ordering and statefulness choices. Stable
+plugin IDs and service entrypoints are unchanged. Launch the native hub directly
+with `pixi run -e test python -m chisurf.emtk --plugin imaging_tools`.
+
 ## 1. Open the hub
 
-**Imaging → Image Tools**. The window opens on **Browser**. It needs no data to open.
+**Spectroscopy → Imaging → Image Tools**. The window opens on **Browser**. It needs no data to open.
 
 ```{figure} figures/imaging_tools.png
 :name: fig-imaging-tools

@@ -18,7 +18,7 @@ Region MLE lifetime analysis from TTTR imaging data (PTU).
 | Field | Value |
 | --- | --- |
 | Plugin id | `region_mle` |
-| Menu path | Imaging → Lifetime → **Region MLE** |
+| Menu path | Spectroscopy → Imaging → Lifetime → **Region MLE** |
 | Categories | Imaging, Lifetime |
 | Version | 2.1.0 |
 | Surfaces | cli, emtk, gui, services |

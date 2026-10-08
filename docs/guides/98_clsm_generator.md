@@ -1,6 +1,6 @@
 # CLSM Generator: a scan whose answer is known
 
-**Tool:** *Imaging -> CLSM Generator* (`clsm_generator`). It simulates the photon stream of a confocal lifetime scan from maps
+**Tool:** *Spectroscopy -> Imaging -> CLSM Generator* (`clsm_generator`). It simulates the photon stream of a confocal lifetime scan from maps
 you provide: a brightness image and one **fluorescence lifetime map per detector**. Because you chose the lifetimes, the
 result is a test for the analysis tools ([pixel MLE](24_scan_images.md), [CLSM-Draw](24_scan_images.md), the
 [Spot Finder](84_spot_finder.md)): they must give back what you put in.

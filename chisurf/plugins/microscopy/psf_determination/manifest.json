@@ -1,7 +1,7 @@
 {
   "id": "psf_determination",
   "version": "2.0.0",
-  "display_name": "Imaging:PSF Determination",
+  "display_name": "Spectroscopy:Imaging:PSF Determination",
   "description": "3D Gaussian PSF fitting and bead detection for confocal microscopy.",
   "authors": [
     "Thomas-Otavio Peulen"

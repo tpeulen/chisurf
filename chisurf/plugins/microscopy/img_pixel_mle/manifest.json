@@ -1,7 +1,7 @@
 {
   "id": "img_pixel_mle",
   "version": "2.0.0",
-  "display_name": "Imaging:Lifetime:Pixel-wise MLE",
+  "display_name": "Spectroscopy:Imaging:Lifetime:Pixel-wise MLE",
   "description": "Pixel-wise MLE lifetime analysis for TTTR imaging data.",
   "authors": [
     "Thomas-Otavio Peulen"

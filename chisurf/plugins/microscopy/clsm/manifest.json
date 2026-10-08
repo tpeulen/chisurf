@@ -1,7 +1,7 @@
 {
   "id": "clsm",
   "version": "2.0.0",
-  "display_name": "Imaging:CLSM-Draw",
+  "display_name": "Spectroscopy:Imaging:CLSM-Draw",
   "description": "Create CLSM-TTTR image representations, select pixels interactively, and export fluorescence-decay histograms.",
   "authors": [
     "Thomas-Otavio Peulen"

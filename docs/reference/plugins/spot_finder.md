@@ -18,7 +18,7 @@ Detect spots and regions in imaging data and persist them, with their pixels, in
 | Field | Value |
 | --- | --- |
 | Plugin id | `spot_finder` |
-| Menu path | Imaging → **Spot Finder** |
+| Menu path | Spectroscopy → Imaging → **Spot Finder** |
 | Categories | Imaging, Detection |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk, gui, services |

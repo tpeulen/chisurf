@@ -21,11 +21,11 @@ circularity, the inertia-tensor axes, why a perimeter is not a pixel count — s
 
 | Tool | What a region does there |
 |---|---|
-| **Imaging → Lifetime → Molecule-wise MLE** | the editor confines the molecule search; every measured molecule is drawn back as a region |
-| **Imaging → CLSM-Draw** | the full editor: paint, draw, name, combine, measure; the decay follows the combined region |
-| **Imaging → Colocalization** | every gate on the intensity scatter in one list — a typed box, a painted cloud, a drawn shape — combined rather than overriding |
-| **Imaging → Phasor-FLIM** | cursors on the $(g,s)$ plane; the *Selected* dock shows the pixels they pick out |
-| **Imaging → Drift Correction** | a structured patch gives a sharper correlation peak than a mostly-dark frame |
+| **Spectroscopy → Imaging → Lifetime → Molecule-wise MLE** | the editor confines the molecule search; every measured molecule is drawn back as a region |
+| **Spectroscopy → Imaging → CLSM-Draw** | the full editor: paint, draw, name, combine, measure; the decay follows the combined region |
+| **Spectroscopy → Imaging → Colocalization** | every gate on the intensity scatter in one list — a typed box, a painted cloud, a drawn shape — combined rather than overriding |
+| **Spectroscopy → Imaging → Phasor-FLIM** | cursors on the $(g,s)$ plane; the *Selected* dock shows the pixels they pick out |
+| **Spectroscopy → Imaging → Drift Correction** | a structured patch gives a sharper correlation peak than a mostly-dark frame |
 | **ndX** | a gate on any two parameters selects the bursts inside it |
 
 They are the same object in all six. A rectangle drawn on a confocal image and a
@@ -81,7 +81,7 @@ the first drag would destroy what you painted.
 
 ## The single-molecule imaging workflow
 
-This is the clearest use of all three roles at once. Open **Imaging → Lifetime →
+This is the clearest use of all three roles at once. Open **Spectroscopy → Imaging → Lifetime →
 Molecule-wise MLE**, add the CLSM file(s) and an IRF, and — optionally — an
 **Analysis region**.
 

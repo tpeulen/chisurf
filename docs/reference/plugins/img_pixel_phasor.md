@@ -18,7 +18,7 @@ Per-pixel phasor (g, s) maps and phasor plot from TTTR imaging data.
 | Field | Value |
 | --- | --- |
 | Plugin id | `img_pixel_phasor` |
-| Menu path | Imaging → **Phasor-FLIM** |
+| Menu path | Spectroscopy → Imaging → **Phasor-FLIM** |
 | Categories | Imaging, Phasor-FLIM |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk, gui, services |

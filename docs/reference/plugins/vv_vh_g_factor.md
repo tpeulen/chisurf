@@ -18,7 +18,7 @@ Calculate detector G-factors using tail-matching on VV/VH format files.
 | Field | Value |
 | --- | --- |
 | Plugin id | `vv_vh_g_factor` |
-| Menu path | Spectroscopy → Fluorescence decay → **VV/VH G-Factor Calculator** |
+| Menu path | Spectroscopy → Decay → **VV/VH G-Factor Calculator** |
 | Categories | Spectroscopy, Fluorescence decay |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk, services |

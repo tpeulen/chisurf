@@ -1,7 +1,7 @@
 {
   "id": "img_flow",
   "version": "1.0.0",
-  "display_name": "Imaging:Flow Maps",
+  "display_name": "Spectroscopy:Imaging:Flow Maps",
   "description": "Map the velocity field of a sample from its own correlations — one arrow per tile, over the image. No model and no fit: the velocity is read off where a correlation peak is. Ships a simulated demo whose flow profile is known, so the arrows can be checked.",
   "authors": [
     "Thomas-Otavio Peulen"

@@ -18,7 +18,7 @@ FCS conversion plugin.  Convert fluorescence correlation spectroscopy files betw
 | Field | Value |
 | --- | --- |
 | Plugin id | `fcs_convert` |
-| Menu path | Spectroscopy → Fluorescence Correlation Spectroscopy → **FCS Converter** |
+| Menu path | Spectroscopy → Correlation → **FCS Converter** |
 | Categories | Spectroscopy, Fluorescence Correlation Spectroscopy |
 | Version | 1.0.0 |
 | Surfaces | cli |

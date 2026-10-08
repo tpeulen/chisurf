@@ -18,7 +18,7 @@ Browse TTTR files in a folder and preview intensity images for all DetectorWizar
 | Field | Value |
 | --- | --- |
 | Plugin id | `tttr_image_browser` |
-| Menu path | Imaging → Tools → **Image Browser** |
+| Menu path | Spectroscopy → Imaging → Tools → **Image Browser** |
 | Categories | Imaging, Tools |
 | Version | 2.0.0 |
 | Surfaces | cli, emtk, gui, services |

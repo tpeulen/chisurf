@@ -18,7 +18,7 @@ Measure and remove inter-frame sample drift in TIFF stacks and photon-stream ima
 | Field | Value |
 | --- | --- |
 | Plugin id | `img_drift` |
-| Menu path | Imaging → **Drift Correction** |
+| Menu path | Spectroscopy → Imaging → **Drift Correction** |
 | Categories | Imaging |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk, gui |

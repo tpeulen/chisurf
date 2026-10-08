@@ -18,7 +18,7 @@ Unified imaging toolbox: Image Browser, Drift Correction, FRC Resolution, Flow M
 | Field | Value |
 | --- | --- |
 | Plugin id | `imaging_tools` |
-| Menu path | Imaging → **Image Tools** |
+| Menu path | Spectroscopy → Imaging → **Image Tools** |
 | Categories | Imaging |
 | Version | 1.0.0 |
 | Surfaces | emtk, gui |

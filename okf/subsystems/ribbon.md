@@ -28,7 +28,7 @@ nested). The ribbon knows nothing about hubs. A hosted tool leaves the ribbon
 only because its own manifest says `menu_hidden`. Hub list rows show each child's
 icon through `chisurf.emtk.plugin_icons.entry_icon`.
 
-# The layout (2026-10-05)
+# The layout (2026-10-08)
 
 Domain tabs, left to right (`TAB_ORDER`):
 
@@ -36,8 +36,7 @@ Domain tabs, left to right (`TAB_ORDER`):
 |---|---|
 | File | Recent · Project · Fits · Application (built in) · **Setup**: Settings, Switch User, Menu Switch · **Data**: File tools |
 | Main | **Window**: the toolbar's window actions, minus those File shows (`ribbon_file.FILE_ACTIONS`) · **Help** |
-| Spectroscopy | **Correlation**: FCS, PCH · **Decay**: Decay Analysis · **Kinetics**: Hidden Markov model · **Single-Molecule**: ALEX Suite, Burst Analysis, Intensity trace, Trace Browser, ebFRET |
-| Imaging | Image Tools |
+| Spectroscopy | **Correlation**: FCS, PCH · **Decay**: Decay Analysis · **Kinetics**: Hidden Markov model · **Single-Molecule**: ALEX Suite, Burst Analysis, Intensity trace, Trace Browser, ebFRET · **Imaging**: Image Tools |
 | Structure | **Modelling**: ChiMOL, Structure Tools |
 | Tools | **Calculators**: Calculators, Light Path Simulator, Spectra Downloader, Wizards · **Photon data**: TTTR Tools · **System**: Code Editor, Games, MMFDB Admin · **Views**: Acquisition, Global View, ndX |
 
@@ -115,3 +114,17 @@ reads `package_dir/manifest.json` itself (guard:
 - **The toolbar setting resolves by the last segment** (`gui/main.py`,
   `plugins.toolbar_plugins`), so a move does not drop a toolbar button. Users'
   copied settings keep the old addresses, and that is fine.
+
+
+# Where to pick this up
+
+W6g fold (2026-10-08): Imaging manifests move under Spectroscopy; Correlation
+and Decay addresses normalize, while categories/IDs/entrypoints remain intact.
+The35matched manifest snapshot preserves pre-change routes; actualQt1400px and
+640px scrolled before/after scenes and triggered Image Tools route are verified.
+Settings loader migrates historical full-address disabled/order/statefulness/
+toolbar preferences with explicit-current-key precedence. Continuation panels
+retain every8-record chunk; scroll tests reach the last button. Hidden FRET is
+not surfaced by a menu fold; its explicit workflow unit owns visibility.
+Remaining W6g work: shared tooltip/i18n/demo/window gates; the full programme
+resume is in [the current job](../validation/release-readiness-w6g/current-job.md).

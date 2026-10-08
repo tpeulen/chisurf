@@ -1,7 +1,7 @@
 {
   "id": "microtime_histogram",
   "version": "1.0.0",
-  "display_name": "Spectroscopy:Fluorescence decay:Histogram-Microtime",
+  "display_name": "Spectroscopy:Decay:Histogram-Microtime",
   "description": "Create and inspect TTTR microtime histograms.",
   "authors": [
     "Thomas-Otavio Peulen"

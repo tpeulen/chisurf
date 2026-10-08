@@ -1,7 +1,7 @@
 {
   "id": "lltf",
   "version": "1.0.0",
-  "display_name": "Spectroscopy:Fluorescence decay:Lazy Lifetime Analysis",
+  "display_name": "Spectroscopy:Decay:Lazy Lifetime Analysis",
   "description": "Lazy Lifetime Analysis for TCSPC fluorescence decay data.",
   "authors": [
     "Thomas-Otavio Peulen"

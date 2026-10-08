@@ -13,7 +13,7 @@ IRF to the data. **Phasor-FLIM** (step 5) and **Pixel-wise MLE** (step 6) use th
 raw data. The step is optional: skip it in the imaging workflow to calibrate nothing.
 
 The calibration is a step of the [Imaging Tools hub](98_imaging_tools.md) (**4. IRF & BG**), and the window also opens
-on its own (**Imaging → IRF & BG**).
+on its own (**Spectroscopy → Imaging → IRF & BG**).
 
 ## 1. Choose the photons and the detector
 

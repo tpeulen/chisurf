@@ -1,7 +1,7 @@
 {
   "id": "img_frc",
   "version": "1.0.0",
-  "display_name": "Imaging:FRC Resolution",
+  "display_name": "Spectroscopy:Imaging:FRC Resolution",
   "description": "Measure the resolution an image actually achieved by Fourier ring correlation — of a TIFF stack or a photon stream — and read it against the 1/7, ½-bit or 2σ criterion.",
   "authors": [
     "Thomas-Otavio Peulen"

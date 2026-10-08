@@ -18,7 +18,7 @@ Map the velocity field of a sample from its own correlations — one arrow per t
 | Field | Value |
 | --- | --- |
 | Plugin id | `img_flow` |
-| Menu path | Imaging → **Flow Maps** |
+| Menu path | Spectroscopy → Imaging → **Flow Maps** |
 | Categories | Imaging |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk, gui, services |

@@ -49,7 +49,7 @@ truth.
 
 ### The lifetime-FCS simulator
 
-**Spectroscopy ▸ Fluorescence Correlation Spectroscopy ▸ Lifetime-FCS
+**Spectroscopy ▸ Correlation ▸ Lifetime-FCS
 Simulator** simulates two diffusing species with lifetimes **τ₁**, **τ₂** and
 diffusion coefficients **D₁**, **D₂**, an optional symmetric interconversion
 rate **k (1/ms)** (0 = static), a **Photons** budget and a **Seed**; **Simulate

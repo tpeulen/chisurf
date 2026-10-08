@@ -1,7 +1,7 @@
 {
   "id": "vv_vh_g_factor",
   "version": "1.0.0",
-  "display_name": "Spectroscopy:Fluorescence decay:VV/VH G-Factor Calculator",
+  "display_name": "Spectroscopy:Decay:VV/VH G-Factor Calculator",
   "description": "Calculate detector G-factors using tail-matching on VV/VH format files.",
   "authors": [
     "Thomas-Otavio Peulen <thomas.peulen@tu-dortmund.de>"

@@ -1,7 +1,7 @@
 {
   "id": "fcs_filter_calculator",
   "version": "1.0.0",
-  "display_name": "Spectroscopy:Fluorescence Correlation Spectroscopy:FCS Filter Calculator",
+  "display_name": "Spectroscopy:Correlation:FCS Filter Calculator",
   "description": "Compute filtered-FCS (fFCS) lifetime filters from microtime decay patterns.",
   "authors": [
     "Thomas-Otavio Peulen"

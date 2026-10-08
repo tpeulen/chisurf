@@ -1,7 +1,7 @@
 {
   "id": "fcs_calculator",
   "version": "1.0.0",
-  "display_name": "Spectroscopy:Fluorescence Correlation Spectroscopy:Diffusion/Volume Calculator",
+  "display_name": "Spectroscopy:Correlation:Diffusion/Volume Calculator",
   "description": "FCS confocal diffusion/volume calculator (tau, D, r_h, Veff, concentration).",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Spectroscopy", "Fluorescence Correlation Spectroscopy"],

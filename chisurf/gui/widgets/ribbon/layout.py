@@ -29,13 +29,14 @@ GROUP_SEPARATOR = " › "
 
 #: The domain tabs, left to right. A tab not named here follows them alphabetically,
 #: and ``Dev`` is always last.
-TAB_ORDER = ("File", "Main", "Spectroscopy", "Imaging", "Structure", "Tools")
+TAB_ORDER = ("File", "Main", "Spectroscopy", "Structure", "Tools")
 
 #: Groups inside a tab, left to right: the order work happens in, not the alphabet.
 #: A group not named here follows the named ones in order of first appearance.
 GROUP_ORDER = {
     "File": ("Setup", "Data"),
-    "Spectroscopy": ("Decay", "Correlation", "Single-Molecule", "Kinetics"),
+    "Spectroscopy": ("Decay", "Correlation", "Single-Molecule", "FRET", "Kinetics",
+                     "Imaging", "Imaging › Lifetime", "Imaging › Tools", "Imaging › Simulate"),
     "Tools": ("Photon data", "Calculators", "Views", "System"),
 }
 

@@ -18,7 +18,7 @@ Blind IRF estimation from fluorescence decay data using truncated exponential fi
 | Field | Value |
 | --- | --- |
 | Plugin id | `irf_estimator` |
-| Menu path | Spectroscopy → Fluorescence decay → **IRF Estimation** |
+| Menu path | Spectroscopy → Decay → **IRF Estimation** |
 | Categories | Spectroscopy, Fluorescence decay |
 | Version | 2.0.0 |
 | Surfaces | cli, emtk, gui, services |

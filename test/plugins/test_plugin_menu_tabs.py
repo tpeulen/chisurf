@@ -36,7 +36,6 @@ ALLOWED_TOP_LEVEL = frozenset(
         "Setup",
         "Help",
         "Spectroscopy",
-        "Imaging",
         "Structure",
         "Tools",
     }
@@ -134,5 +133,5 @@ def test_particle_tracking_sits_with_the_other_imaging_tools():
     """Pin the manifest this guard was written for."""
     manifest = _plugins_root() / "microscopy" / "img_tracking" / "manifest.json"
     data = json.loads(manifest.read_text())
-    assert data["display_name"] == "Imaging:Particle Tracking"
+    assert data["display_name"] == "Spectroscopy:Imaging:Particle Tracking"
     assert data["categories"][0] == "Imaging"

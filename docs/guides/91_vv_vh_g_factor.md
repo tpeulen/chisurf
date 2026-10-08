@@ -25,7 +25,7 @@ $l_1 = l_2$, and an estimate outside 0 to 0.5 is shown but not applied. See {ref
 
 ## 1. Open the tool and load the fast reference
 
-*Spectroscopy → Fluorescence decay → VV/VH G-Factor Calculator*. Press **Fast reference...** and choose the
+*Spectroscopy → Decay → VV/VH G-Factor Calculator*. Press **Fast reference...** and choose the
 VV/VH file of the fast dye (or drop it on the window). The status line reports $G$ and the results table
 lists $G$ raw and its standard deviation.
 

@@ -18,7 +18,7 @@ Per-detector IRF file and background (kHz) calibration; transferred to phasor an
 | Field | Value |
 | --- | --- |
 | Plugin id | `img_calibration` |
-| Menu path | Imaging → **IRF & BG** |
+| Menu path | Spectroscopy → Imaging → **IRF & BG** |
 | Categories | Imaging |
 | Version | 1.0.0 |
 | Surfaces | emtk, gui |

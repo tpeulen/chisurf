@@ -18,7 +18,7 @@ Maximum-entropy analysis of TCSPC decays (lifetime and FRET distance).
 | Field | Value |
 | --- | --- |
 | Plugin id | `maxent_decay` |
-| Menu path | Spectroscopy → Fluorescence decay → **MaxEnt MEM** |
+| Menu path | Spectroscopy → Decay → **MaxEnt MEM** |
 | Categories | Spectroscopy, Fluorescence decay |
 | Version | 2.0.0 |
 | Surfaces | cli, emtk, gui, services |

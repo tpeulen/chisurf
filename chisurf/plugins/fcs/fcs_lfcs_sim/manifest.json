@@ -1,7 +1,7 @@
 {
   "id": "fcs-lfcs-sim",
   "version": "1.0.0",
-  "display_name": "Spectroscopy:Fluorescence Correlation Spectroscopy:Lifetime-FCS Simulator",
+  "display_name": "Spectroscopy:Correlation:Lifetime-FCS Simulator",
   "description": "Simulate diffusing species with distinct fluorescence lifetimes and optional interconversion, then recover them by lifetime-filtered (FLCS) correlation.",
   "authors": [
     "Thomas-Otavio Peulen"

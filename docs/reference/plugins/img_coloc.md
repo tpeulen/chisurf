@@ -18,7 +18,7 @@ Two-channel colocalization (Pearson, Manders, Costes, Li ICQ) on TIFF stacks and
 | Field | Value |
 | --- | --- |
 | Plugin id | `img_coloc` |
-| Menu path | Imaging → **Colocalization** |
+| Menu path | Spectroscopy → Imaging → **Colocalization** |
 | Categories | Imaging |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk, gui |

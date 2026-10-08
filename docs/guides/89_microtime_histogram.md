@@ -18,7 +18,7 @@ Theory: how photons are selected and combined is in {ref}`concept-microtime-hist
 
 ## 1. Open the tool
 
-**Spectroscopy → Fluorescence decay → Histogram-Microtime**. Two tabs share the left dock, as in the Qt tool:
+**Spectroscopy → Decay → Histogram-Microtime**. Two tabs share the left dock, as in the Qt tool:
 **Inputs and options** and **Detector definition** (the shared detector editor: reading routine, PIE windows,
 detectors, TAC linearization). The decay is on the right and gets the room. **Guide** walks through the tool, **Help**
 explains every group.

@@ -1,7 +1,7 @@
 {
   "id": "fcs_saturation",
   "version": "1.0.0",
-  "display_name": "Spectroscopy:Fluorescence Correlation Spectroscopy:FCS Saturation",
+  "display_name": "Spectroscopy:Correlation:FCS Saturation",
   "description": "FCS Saturation Calculator for arbitrary multi-state kinetic schemes (including Cy5).",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Spectroscopy", "Fluorescence Correlation Spectroscopy"],

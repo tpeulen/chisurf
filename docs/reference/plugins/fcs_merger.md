@@ -18,7 +18,7 @@ Merge / average multiple FCS correlation curves to improve signal-to-noise.
 | Field | Value |
 | --- | --- |
 | Plugin id | `fcs_merger` |
-| Menu path | Spectroscopy → Fluorescence Correlation Spectroscopy → **FCS-Merger** |
+| Menu path | Spectroscopy → Correlation → **FCS-Merger** |
 | Categories | Spectroscopy, Fluorescence Correlation Spectroscopy |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk, services |

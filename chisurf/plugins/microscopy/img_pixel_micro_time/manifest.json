@@ -1,7 +1,7 @@
 {
   "id": "img_pixel_micro_time",
   "version": "1.0.0",
-  "display_name": "Imaging:Mean Micro-Time",
+  "display_name": "Spectroscopy:Imaging:Mean Micro-Time",
   "description": "Per-pixel mean micro-time (arrival time) maps from TTTR imaging data.",
   "authors": [
     "Thomas-Otavio Peulen"

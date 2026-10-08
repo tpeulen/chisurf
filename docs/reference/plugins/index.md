@@ -19,7 +19,7 @@ Of the **130 plugins**, **90** build their interface from declarative AutoForm s
 *
 ```
 
-**130 plugins** across 36 categories.
+**130 plugins** across 34 categories.
 
 ## Core
 
@@ -40,44 +40,6 @@ Of the **130 plugins**, **90** build their interface from declarative AutoForm s
 | [About ChiSurf](about.md) | ChiSurf About Plugin  This plugin provides information about ChiSurf, including version, developer, and contact information.  Features: - Display ChiSurf logo - Show version information - Display developer contact details |
 | [Boarding Wizard](boarding.md) *(hidden)* | Startup onboarding wizard for first-run ChiSurf configuration. |
 | [Documentation](help.md) | Documentation browser and help resource viewer for ChiSurf. |
-
-## Imaging
-
-| Plugin | Summary |
-| --- | --- |
-| [CLSM-Draw](clsm.md) *(hidden)* | Create CLSM-TTTR image representations, select pixels interactively, and export fluorescence-decay histograms. |
-| [Colocalization](img_coloc.md) *(hidden)* | Two-channel colocalization (Pearson, Manders, Costes, Li ICQ) on TIFF stacks and photon-stream images, with an interactive intensity scatter gate. |
-| [Drift Correction](img_drift.md) *(hidden)* | Measure and remove inter-frame sample drift in TIFF stacks and photon-stream images. Photon streams are corrected photon by photon, so lifetimes and correlations stay valid. |
-| [FRC Resolution](img_frc.md) *(hidden)* | Measure the resolution an image actually achieved by Fourier ring correlation — of a TIFF stack or a photon stream — and read it against the 1/7, ½-bit or 2σ criterion. |
-| [Flow Maps](img_flow.md) *(hidden)* | Map the velocity field of a sample from its own correlations — one arrow per tile, over the image. No model and no fit: the velocity is read off where a correlation peak is. Ships a simulated demo whose flow profile is known, so the arrows can be checked. |
-| [IRF & BG](img_calibration.md) *(hidden)* | Per-detector IRF file and background (kHz) calibration; transferred to phasor and pixel-wise MLE. Optional (skippable) pipeline step. |
-| [Image Tools](imaging_tools.md) | Unified imaging toolbox: Image Browser, Drift Correction, FRC Resolution, Flow Maps, Particle Tracking, Colocalization, the per-pixel maps, CLSM Draw, Region MLE, PSF Determination, CLSM Generator. |
-| [Intensity](img_pixel_intensity.md) *(hidden)* | Per-pixel intensity map; creates the standard imaging HDF5 (with source back-reference) that N&B / phasor / MLE enrich. |
-| [Mean Micro-Time](img_pixel_micro_time.md) *(hidden)* | Per-pixel mean micro-time (arrival time) maps from TTTR imaging data. |
-| [Number & Brightness](img_pixel_nb.md) *(hidden)* | Per-pixel Number & Brightness from TTTR imaging stacks: apparent B and N, molecular brightness and number, cross N&B, analog-detector calibration, bleaching detrending, and gating a brightness population back onto the image. |
-| [PSF Determination](psf_determination.md) *(hidden)* | 3D Gaussian PSF fitting and bead detection for confocal microscopy. |
-| [Particle Tracking](img_tracking.md) *(hidden)* | Single-particle tracking: detect diffraction-limited particles in every frame, link them into trajectories by exact assignment with gap closing, and fit the diffusion coefficient and anomalous exponent from the mean squared displacement. |
-| [Phasor-FLIM](img_pixel_phasor.md) *(hidden)* | Per-pixel phasor (g, s) maps and phasor plot from TTTR imaging data. |
-| [Spot Finder](spot_finder.md) *(hidden)* | Detect spots and regions in imaging data and persist them, with their pixels, into the measurement's container. |
-
-## Imaging → Lifetime
-
-| Plugin | Summary |
-| --- | --- |
-| [Pixel-wise MLE](img_pixel_mle.md) *(hidden)* | Pixel-wise MLE lifetime analysis for TTTR imaging data. |
-| [Region MLE](region_mle.md) *(hidden)* | Region MLE lifetime analysis from TTTR imaging data (PTU). |
-
-## Imaging → Simulate
-
-| Plugin | Summary |
-| --- | --- |
-| [CLSM Generator](clsm_generator.md) *(hidden)* | Generate a synthetic CLSM photon image from an intensity image + per-detector lifetime map(s). |
-
-## Imaging → Tools
-
-| Plugin | Summary |
-| --- | --- |
-| [Image Browser](tttr_image_browser.md) *(hidden)* | Browse TTTR files in a folder and preview intensity images for all DetectorWizard-defined detector windows. |
 
 ## Main → Tools
 
@@ -115,14 +77,31 @@ Of the **130 plugins**, **90** build their interface from declarative AutoForm s
 
 | Plugin | Summary |
 | --- | --- |
+| [2D-FLCS](flc-2d.md) *(hidden)* | Two-dimensional fluorescence lifetime correlation spectroscopy (2D-FLCS): build 2D fluorescence-decay correlation maps from TTTR photon streams and resolve lifetime species and exchange dynamics. |
+| [Burst-wise FCS](burst_fcs_correlator.md) *(hidden)* | Compute fluorescence correlation functions on a per-burst basis from Burst-ID (.bst) / BUR files. |
+| [Correlator](fcs_correlator.md) *(hidden)* | FCS Correlator  This plugin provides a two-pane navigation-based correlator tool for computing and merging fluorescence correlation spectroscopy (FCS) data. Features include:  - Detector and PIE window definition - TTTR file selection with drag-and-drop - Optional photon/burst filtering - Multi-tau correlation with configurable parameters (bins, cascades, fine grid) - FCS curve merging and export  The existing Qt entry point hosts a native emtk workflow rail and declarative AutoForm controls.  The correlator workflow is no longer a standalone menu entry: it is hosted as the first section of the unified **FCS** tool (``fcs_toolbox``), which merges the correlator workflow with the optional FCS tools (2D-FLCS, Lifetime-FCS Sim, Burst-wise FCS, calculators). This module remains the reusable building block (``FcsCorrelatorTool`` + the correlator/filter/merger AutoForm panels) and is therefore hidden from the plugin menu. |
+| [Diffusion/Volume Calculator](fcs_calculator.md) *(hidden)* | FCS confocal diffusion/volume calculator (tau, D, r_h, Veff, concentration). |
 | [FCS](fcs_toolbox.md) | Unified **FCS** plugin — a meta tool hosting the FCS workflow behind a rail.  Merges the FCS *Correlator* workflow (detector → files → filter → correlate → merge) with the optional FCS tools (2D-FLCS, Lifetime-FCS Sim, Burst-wise FCS, diffusion/volume calculator, fFCS filter calculator, correlation-channel presets) into a single left-navigation tool. Built on the reusable ``NavigationPanelTool`` shell. The ribbon execs this file with ``__name__ == "plugin"``. |
+| [FCS Converter](fcs_convert.md) *(hidden)* | FCS conversion plugin.  Convert fluorescence correlation spectroscopy files between supported formats directly from the ChiSurf CLI. |
+| [FCS Filter Calculator](fcs_filter_calculator.md) *(hidden)* | Compute filtered-FCS (fFCS) lifetime filters from microtime decay patterns. |
+| [FCS Saturation](fcs_saturation.md) *(hidden)* | FCS Saturation Calculator for arbitrary multi-state kinetic schemes (including Cy5). |
+| [FCS-Merger](fcs_merger.md) *(hidden)* | Merge / average multiple FCS correlation curves to improve signal-to-noise. |
+| [Lifetime-FCS Simulator](fcs-lfcs-sim.md) *(hidden)* | Simulate diffusing species with distinct fluorescence lifetimes and optional interconversion, then recover them by lifetime-filtered (FLCS) correlation. |
 | [PCH](pch.md) | Photon Counting Histogram (PCH) analysis for single-molecule fluorescence data. Compute PCH histograms from TTTR files and fit multi-species models to extract molecular brightness and occupancy. |
 
 ## Spectroscopy → Decay
 
 | Plugin | Summary |
 | --- | --- |
+| [Anisotropy-Wizard](tr_anisotropy.md) *(hidden)* | Guided setup of a linked VV/VH global time-resolved anisotropy fit: load polarised decays, background-correct the IRFs, set instrument corrections and define lifetime/rotation spectra. |
 | [Decay Analysis](lifetime_analysis.md) | Integrated fluorescence lifetime analysis tools with IRF estimation, MaxEnt MEM, Lazy Lifetime Analysis, microtime histograms, VV/VH G-factor calibration, the VV/VH anisotropy decay, and a synthetic decay generator. |
+| [Histogram-Microtime](microtime_histogram.md) *(hidden)* | Create and inspect TTTR microtime histograms. |
+| [IRF Estimation](irf_estimator.md) *(hidden)* | Blind IRF estimation from fluorescence decay data using truncated exponential fitting and Richardson-Lucy deconvolution. |
+| [Lazy Lifetime Analysis](lltf.md) *(hidden)* | Lazy Lifetime Analysis for TCSPC fluorescence decay data. |
+| [MaxEnt MEM](maxent_decay.md) *(hidden)* | Maximum-entropy analysis of TCSPC decays (lifetime and FRET distance). |
+| [Synthetic Decay Generator](synthetic_decay.md) *(hidden)* | Generate synthetic TCSPC fluorescence-decay histograms from lifetimes/spectra (optional IRF convolution and Poisson shot noise) — the single canonical decay generator, exposed as API/CLI/RPC/GUI. |
+| [VV/VH Anisotropy Decay](vv_vh_anisotropy.md) *(hidden)* | Compute and plot the anisotropy decay r(t) of a VV/VH file with a g-factor, backgrounds and a fractional VH shift. |
+| [VV/VH G-Factor Calculator](vv_vh_g_factor.md) *(hidden)* | Calculate detector G-factors using tail-matching on VV/VH format files. |
 
 ## Spectroscopy → FRET
 
@@ -131,32 +110,43 @@ Of the **130 plugins**, **90** build their interface from declarative AutoForm s
 | [Accurate FRET](accurate_fret.md) *(hidden)* | Accurate FRET (Hellenkamp): automatic alpha/beta/gamma/delta from the burst populations, the optics prior of a saved light path and the static FRET line, with E-S and E-lifetime views. |
 | [FRET Line Generator](fret_line.md) *(hidden)* | Compute static, dynamic, WLC, and mixture FRET lines for parameter ranges. Results are suitable for overlaying on smFRET 2D histograms in ndX. |
 
-## Spectroscopy → Fluorescence Correlation Spectroscopy
+## Spectroscopy → Imaging
 
 | Plugin | Summary |
 | --- | --- |
-| [2D-FLCS](flc-2d.md) *(hidden)* | Two-dimensional fluorescence lifetime correlation spectroscopy (2D-FLCS): build 2D fluorescence-decay correlation maps from TTTR photon streams and resolve lifetime species and exchange dynamics. |
-| [Burst-wise FCS](burst_fcs_correlator.md) *(hidden)* | Compute fluorescence correlation functions on a per-burst basis from Burst-ID (.bst) / BUR files. |
-| [Correlator](fcs_correlator.md) *(hidden)* | FCS Correlator  This plugin provides a two-pane navigation-based correlator tool for computing and merging fluorescence correlation spectroscopy (FCS) data. Features include:  - Detector and PIE window definition - TTTR file selection with drag-and-drop - Optional photon/burst filtering - Multi-tau correlation with configurable parameters (bins, cascades, fine grid) - FCS curve merging and export  The existing Qt entry point hosts a native emtk workflow rail and declarative AutoForm controls.  The correlator workflow is no longer a standalone menu entry: it is hosted as the first section of the unified **FCS** tool (``fcs_toolbox``), which merges the correlator workflow with the optional FCS tools (2D-FLCS, Lifetime-FCS Sim, Burst-wise FCS, calculators). This module remains the reusable building block (``FcsCorrelatorTool`` + the correlator/filter/merger AutoForm panels) and is therefore hidden from the plugin menu. |
-| [Diffusion/Volume Calculator](fcs_calculator.md) *(hidden)* | FCS confocal diffusion/volume calculator (tau, D, r_h, Veff, concentration). |
-| [FCS Converter](fcs_convert.md) *(hidden)* | FCS conversion plugin.  Convert fluorescence correlation spectroscopy files between supported formats directly from the ChiSurf CLI. |
-| [FCS Filter Calculator](fcs_filter_calculator.md) *(hidden)* | Compute filtered-FCS (fFCS) lifetime filters from microtime decay patterns. |
-| [FCS Saturation](fcs_saturation.md) *(hidden)* | FCS Saturation Calculator for arbitrary multi-state kinetic schemes (including Cy5). |
-| [FCS-Merger](fcs_merger.md) *(hidden)* | Merge / average multiple FCS correlation curves to improve signal-to-noise. |
-| [Lifetime-FCS Simulator](fcs-lfcs-sim.md) *(hidden)* | Simulate diffusing species with distinct fluorescence lifetimes and optional interconversion, then recover them by lifetime-filtered (FLCS) correlation. |
+| [CLSM-Draw](clsm.md) *(hidden)* | Create CLSM-TTTR image representations, select pixels interactively, and export fluorescence-decay histograms. |
+| [Colocalization](img_coloc.md) *(hidden)* | Two-channel colocalization (Pearson, Manders, Costes, Li ICQ) on TIFF stacks and photon-stream images, with an interactive intensity scatter gate. |
+| [Drift Correction](img_drift.md) *(hidden)* | Measure and remove inter-frame sample drift in TIFF stacks and photon-stream images. Photon streams are corrected photon by photon, so lifetimes and correlations stay valid. |
+| [FRC Resolution](img_frc.md) *(hidden)* | Measure the resolution an image actually achieved by Fourier ring correlation — of a TIFF stack or a photon stream — and read it against the 1/7, ½-bit or 2σ criterion. |
+| [Flow Maps](img_flow.md) *(hidden)* | Map the velocity field of a sample from its own correlations — one arrow per tile, over the image. No model and no fit: the velocity is read off where a correlation peak is. Ships a simulated demo whose flow profile is known, so the arrows can be checked. |
+| [IRF & BG](img_calibration.md) *(hidden)* | Per-detector IRF file and background (kHz) calibration; transferred to phasor and pixel-wise MLE. Optional (skippable) pipeline step. |
+| [Image Tools](imaging_tools.md) | Unified imaging toolbox: Image Browser, Drift Correction, FRC Resolution, Flow Maps, Particle Tracking, Colocalization, the per-pixel maps, CLSM Draw, Region MLE, PSF Determination, CLSM Generator. |
+| [Intensity](img_pixel_intensity.md) *(hidden)* | Per-pixel intensity map; creates the standard imaging HDF5 (with source back-reference) that N&B / phasor / MLE enrich. |
+| [Mean Micro-Time](img_pixel_micro_time.md) *(hidden)* | Per-pixel mean micro-time (arrival time) maps from TTTR imaging data. |
+| [Number & Brightness](img_pixel_nb.md) *(hidden)* | Per-pixel Number & Brightness from TTTR imaging stacks: apparent B and N, molecular brightness and number, cross N&B, analog-detector calibration, bleaching detrending, and gating a brightness population back onto the image. |
+| [PSF Determination](psf_determination.md) *(hidden)* | 3D Gaussian PSF fitting and bead detection for confocal microscopy. |
+| [Particle Tracking](img_tracking.md) *(hidden)* | Single-particle tracking: detect diffraction-limited particles in every frame, link them into trajectories by exact assignment with gap closing, and fit the diffusion coefficient and anomalous exponent from the mean squared displacement. |
+| [Phasor-FLIM](img_pixel_phasor.md) *(hidden)* | Per-pixel phasor (g, s) maps and phasor plot from TTTR imaging data. |
+| [Spot Finder](spot_finder.md) *(hidden)* | Detect spots and regions in imaging data and persist them, with their pixels, into the measurement's container. |
 
-## Spectroscopy → Fluorescence decay
+## Spectroscopy → Imaging → Lifetime
 
 | Plugin | Summary |
 | --- | --- |
-| [Anisotropy-Wizard](tr_anisotropy.md) *(hidden)* | Guided setup of a linked VV/VH global time-resolved anisotropy fit: load polarised decays, background-correct the IRFs, set instrument corrections and define lifetime/rotation spectra. |
-| [Histogram-Microtime](microtime_histogram.md) *(hidden)* | Create and inspect TTTR microtime histograms. |
-| [IRF Estimation](irf_estimator.md) *(hidden)* | Blind IRF estimation from fluorescence decay data using truncated exponential fitting and Richardson-Lucy deconvolution. |
-| [Lazy Lifetime Analysis](lltf.md) *(hidden)* | Lazy Lifetime Analysis for TCSPC fluorescence decay data. |
-| [MaxEnt MEM](maxent_decay.md) *(hidden)* | Maximum-entropy analysis of TCSPC decays (lifetime and FRET distance). |
-| [Synthetic Decay Generator](synthetic_decay.md) *(hidden)* | Generate synthetic TCSPC fluorescence-decay histograms from lifetimes/spectra (optional IRF convolution and Poisson shot noise) — the single canonical decay generator, exposed as API/CLI/RPC/GUI. |
-| [VV/VH Anisotropy Decay](vv_vh_anisotropy.md) *(hidden)* | Compute and plot the anisotropy decay r(t) of a VV/VH file with a g-factor, backgrounds and a fractional VH shift. |
-| [VV/VH G-Factor Calculator](vv_vh_g_factor.md) *(hidden)* | Calculate detector G-factors using tail-matching on VV/VH format files. |
+| [Pixel-wise MLE](img_pixel_mle.md) *(hidden)* | Pixel-wise MLE lifetime analysis for TTTR imaging data. |
+| [Region MLE](region_mle.md) *(hidden)* | Region MLE lifetime analysis from TTTR imaging data (PTU). |
+
+## Spectroscopy → Imaging → Simulate
+
+| Plugin | Summary |
+| --- | --- |
+| [CLSM Generator](clsm_generator.md) *(hidden)* | Generate a synthetic CLSM photon image from an intensity image + per-detector lifetime map(s). |
+
+## Spectroscopy → Imaging → Tools
+
+| Plugin | Summary |
+| --- | --- |
+| [Image Browser](tttr_image_browser.md) *(hidden)* | Browse TTTR files in a folder and preview intensity images for all DetectorWizard-defined detector windows. |
 
 ## Spectroscopy → Kinetics
 

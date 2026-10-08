@@ -1,7 +1,7 @@
 {
   "id": "region_mle",
   "version": "2.1.0",
-  "display_name": "Imaging:Lifetime:Region MLE",
+  "display_name": "Spectroscopy:Imaging:Lifetime:Region MLE",
   "description": "Region MLE lifetime analysis from TTTR imaging data (PTU).",
   "authors": [
     "Thomas-Otavio Peulen"

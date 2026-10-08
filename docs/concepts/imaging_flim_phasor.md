@@ -362,3 +362,12 @@ fit the pixels that matter.
 - Guide: {doc}`/guides/77_phasor_calculator` — the Phasor-Calculator, with the
   headless equivalents of every overlay.
 - Tools in ChiSurf: the **Phasor-Calculator** (`chisurf/plugins/calculator/phasor_calculator/`) for the universal circle and the FRET trajectory; **Pixel Phasor** (`chisurf/plugins/microscopy/img_pixel_phasor/`), **Mean Micro-Time** (`chisurf/plugins/microscopy/img_pixel_micro_time/`) and **Pixel-wise MLE** (`chisurf/plugins/microscopy/img_pixel_mle/`) for the maps themselves.
+
+
+## Finding imaging methods
+
+Image Tools now sits under **Spectroscopy → Imaging**. The acquisition and
+analysis methods are unchanged: the move groups fluorescence imaging with the
+other spectroscopy workflows. Deeper addresses retain their method groups
+(Imaging › Lifetime, Tools or Simulate); hidden tools remain reached through
+the hub. See {doc}`/guides/98_imaging_tools` for navigation and the workflow.

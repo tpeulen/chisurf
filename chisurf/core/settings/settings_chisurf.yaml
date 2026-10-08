@@ -422,8 +422,8 @@ plugins:
   # its button here silently, so these are resolved leniently at load; keep them
   # exact anyway, because leniency refuses to guess between two candidates.
   toolbar_plugins:
-    - Spectroscopy:Fluorescence decay:Histogram-Microtime
-    - Spectroscopy:Fluorescence Correlation Spectroscopy:Correlator
+    - Spectroscopy:Decay:Histogram-Microtime
+    - Spectroscopy:Correlation:Correlator
     - Spectroscopy:Single-Molecule:Burst Selection
     - Spectroscopy:Single-Molecule:Burst MLE
     - Tools:Views:ndX

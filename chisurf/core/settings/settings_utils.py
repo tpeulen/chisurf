@@ -82,6 +82,45 @@ def _drop_former_defaults(user: dict) -> dict:
     return user
 
 
+def _migrate_plugin_addresses(settings: dict) -> dict:
+    """Move stored menu-address preferences to the current spectroscopy hierarchy."""
+    def address(value):
+        if not isinstance(value, str):
+            return value
+        for old, new in (
+            ("Imaging:", "Spectroscopy:Imaging:"),
+            ("Spectroscopy:Fluorescence Correlation Spectroscopy:", "Spectroscopy:Correlation:"),
+            ("Spectroscopy:Fluorescence decay:", "Spectroscopy:Decay:"),
+        ):
+            if value.startswith(old):
+                return new + value[len(old):]
+        return value
+
+    def keyed(mapping):
+        if not isinstance(mapping, dict):
+            return mapping
+        result = dict(mapping)
+        for key in mapping:
+            current = address(key)
+            if current != key:
+                result.setdefault(current, result[key])
+                del result[key]
+        return result
+
+    plugins = settings.get("plugins")
+    if not isinstance(plugins, dict):
+        return settings
+    for key in ("disabled_plugins", "toolbar_plugins"):
+        if isinstance(plugins.get(key), list):
+            plugins[key] = [address(value) for value in plugins[key]]
+    if "plugin_order" in plugins:
+        plugins["plugin_order"] = keyed(plugins["plugin_order"])
+    statefulness = plugins.get("statefulness")
+    if isinstance(statefulness, dict) and "per_plugin" in statefulness:
+        statefulness["per_plugin"] = keyed(statefulness["per_plugin"])
+    return settings
+
+
 def get_chisurf_settings(setting_file: pathlib.Path, use_source_folder: bool = False) -> dict:
     """Return a settings file's content: packaged defaults, overlaid by the user's.
 
@@ -123,7 +162,7 @@ def get_chisurf_settings(setting_file: pathlib.Path, use_source_folder: bool = F
     if not (isinstance(defaults, dict) and isinstance(user, dict)):
         return user if user else defaults
     if setting_file.name == "settings_chisurf.yaml":
-        migrated = prune_defaults(_drop_former_defaults(copy.deepcopy(user)), defaults)
+        migrated = prune_defaults(_drop_former_defaults(_migrate_plugin_addresses(copy.deepcopy(user))), defaults)
         if migrated != user:
             try:
                 with open(setting_file, "w", encoding="utf-8") as fh:

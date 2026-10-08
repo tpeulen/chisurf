@@ -18,7 +18,7 @@ FCS Correlator  This plugin provides a two-pane navigation-based correlator tool
 | Field | Value |
 | --- | --- |
 | Plugin id | `fcs_correlator` |
-| Menu path | Spectroscopy → Fluorescence Correlation Spectroscopy → **Correlator** |
+| Menu path | Spectroscopy → Correlation → **Correlator** |
 | Categories | Spectroscopy, Fluorescence Correlation Spectroscopy |
 | Version | 1.0.0 |
 | Surfaces | emtk, gui |

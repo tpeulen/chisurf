@@ -18,7 +18,7 @@ Compute fluorescence correlation functions on a per-burst basis from Burst-ID (.
 | Field | Value |
 | --- | --- |
 | Plugin id | `burst_fcs_correlator` |
-| Menu path | Spectroscopy → Fluorescence Correlation Spectroscopy → **Burst-wise FCS** |
+| Menu path | Spectroscopy → Correlation → **Burst-wise FCS** |
 | Categories | Spectroscopy, Fluorescence Correlation Spectroscopy |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk, gui, services |

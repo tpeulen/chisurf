@@ -18,7 +18,7 @@ Create and inspect TTTR microtime histograms.
 | Field | Value |
 | --- | --- |
 | Plugin id | `microtime_histogram` |
-| Menu path | Spectroscopy → Fluorescence decay → **Histogram-Microtime** |
+| Menu path | Spectroscopy → Decay → **Histogram-Microtime** |
 | Categories | Spectroscopy, Fluorescence decay, TTTR |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk |

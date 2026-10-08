@@ -18,7 +18,7 @@ Guided setup of a linked VV/VH global time-resolved anisotropy fit: load polaris
 | Field | Value |
 | --- | --- |
 | Plugin id | `tr_anisotropy` |
-| Menu path | Spectroscopy → Fluorescence decay → **Anisotropy-Wizard** |
+| Menu path | Spectroscopy → Decay → **Anisotropy-Wizard** |
 | Categories | Spectroscopy, Fluorescence decay |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk, gui |

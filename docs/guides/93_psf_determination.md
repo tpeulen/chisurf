@@ -25,7 +25,7 @@ width is the convolution of the PSF with the bead, so the bead must be much smal
 
 ## 1. Open the tool and load a stack
 
-*Imaging → PSF Determination*. Press **Load stack** and choose a 2-D or 3-D TIFF (or drop it on the window), or use
+*Spectroscopy → Imaging → PSF Determination*. Press **Load stack** and choose a 2-D or 3-D TIFF (or drop it on the window), or use
 **MMFDB dataset** for a registered one. **Demo stack** generates a stack with five beads of known size (FWHM 424 nm
 laterally, 2120 nm axially at 100 nm per pixel and 300 nm per slice) to try the tool. The z slider browses the
 slices; colormap, gamma and levels change only the display; the wheel zooms and a drag pans.

@@ -61,7 +61,7 @@ combinations — the format to prefer) or a `.tif` / `.npy` mask image for tools
 that read nothing else. **Load** reads all of those back, plus a Cellpose
 `_seg.npy` segmentation, which arrives as one region per detected object.
 
-The tool is **Imaging ▸ CLSM-Draw** (`chisurf/plugins/microscopy/clsm/`). Its left
+The tool is **Spectroscopy ▸ Imaging ▸ CLSM-Draw** (`chisurf/plugins/microscopy/clsm/`). Its left
 window holds the controls: **Open TTTR / imaging**, **Build CLSM**,
 **Add representation**, **Compute decay**, the exports, the **Setup preset** (PTU,
 Leica SP5/SP8, MFIS Olympus), **Detector channels**, the CLSM image and representation

@@ -18,7 +18,7 @@ Pixel-wise MLE lifetime analysis for TTTR imaging data.
 | Field | Value |
 | --- | --- |
 | Plugin id | `img_pixel_mle` |
-| Menu path | Imaging → Lifetime → **Pixel-wise MLE** |
+| Menu path | Spectroscopy → Imaging → Lifetime → **Pixel-wise MLE** |
 | Categories | Imaging, Lifetime |
 | Version | 2.0.0 |
 | Surfaces | cli, emtk, gui, services |

@@ -18,7 +18,7 @@ Simulate diffusing species with distinct fluorescence lifetimes and optional int
 | Field | Value |
 | --- | --- |
 | Plugin id | `fcs-lfcs-sim` |
-| Menu path | Spectroscopy → Fluorescence Correlation Spectroscopy → **Lifetime-FCS Simulator** |
+| Menu path | Spectroscopy → Correlation → **Lifetime-FCS Simulator** |
 | Categories | Spectroscopy, Fluorescence Correlation Spectroscopy |
 | Version | 1.0.0 |
 | Surfaces | emtk, gui |

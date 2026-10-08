@@ -18,7 +18,7 @@ Two-dimensional fluorescence lifetime correlation spectroscopy (2D-FLCS): build 
 | Field | Value |
 | --- | --- |
 | Plugin id | `flc-2d` |
-| Menu path | Spectroscopy → Fluorescence Correlation Spectroscopy → **2D-FLCS** |
+| Menu path | Spectroscopy → Correlation → **2D-FLCS** |
 | Categories | Spectroscopy, Fluorescence Correlation Spectroscopy |
 | Version | 1.1.0 |
 | Surfaces | cli, emtk, gui, services |

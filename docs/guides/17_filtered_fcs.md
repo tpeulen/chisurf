@@ -54,7 +54,7 @@ loop for validation.
 
 ### The Filter Calculator
 
-**Spectroscopy ▸ Fluorescence Correlation Spectroscopy ▸ FCS Filter Calculator**
+**Spectroscopy ▸ Correlation ▸ FCS Filter Calculator**
 opens with a built-in example (two lifetimes,
 scatter and afterpulsing) so the panel is never empty; **Mixed...** replaces
 it with a measured decay (`.pto`, TTTR, or a text histogram). The window has a **Sources** tab, a **Detector setup** tab (the shared detector editor), **Auto-fit**, **Instrument** and **Info** tabs on the left and the three plots on the right:

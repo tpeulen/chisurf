@@ -275,7 +275,7 @@ irf_estimation
 | [Spectra, overlap integrals and R₀](83_spectra_and_r0.md) | `spectra_downloader` (Spectroscopy menu), Förster calculator (TCSPC FRET κ² row → calc R0) |
 | [Finding spots and objects in an image](84_spot_finder.md) | `spot_finder` (Image Tools hub), `csc spot-finder`, `spot_finder.core.spots` |
 | [Checking a burst folder before an MFD fit](85_mfd_prepare.md) | `mfd_prepare` (no menu; CLI/RPC), `core.fluorescence.mfd.prepare` |
-| [Browsing a folder of scan images](86_image_browser.md) | `tttr_image_browser` (Imaging → Image Tools → Browser), `tttr-image-browser`, `core.image` |
+| [Browsing a folder of scan images](86_image_browser.md) | `tttr_image_browser` (Spectroscopy → Imaging → Image Tools → Browser), `tttr-image-browser`, `core.image` |
 | [Detector setup: channels, PIE windows, timing and LUTs](87_channel_definition.md) | `setup_channel_definition` (Setup → Channel Definition), the shared detector setup editor |
 | [Structure Tools: FPS JSON editor, docking and QuEst](88_structure_tools.md) | `structure_tools` (Structure → Modelling → Structure Tools), the structure-modelling hub |
 | [Games: a break between fits](95_games.md) | `games` hub (Tools → System → Games): Number Quest, Minesweeper, Tetris, Pong, Breakout |

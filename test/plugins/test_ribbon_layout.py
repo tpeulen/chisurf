@@ -46,8 +46,6 @@ EXPECTED = {
             "ebFRET",
         ],
         "Kinetics": ["Hidden Markov model"],
-    },
-    "Imaging": {
         "Imaging": ["Image Tools"],
     },
     "Structure": {
@@ -150,3 +148,30 @@ def test_hidden_disabled_and_cli_only_plugins_have_no_button():
     ]
     assert shown(False) == ["Shown"]
     assert shown(True) == ["Broken", "Cli", "Shown"]
+
+
+def test_imaging_subgroups_follow_the_existing_spectroscopy_methods():
+    """Deep method addresses remain intact inside the folded domain tab."""
+    layout = group_records(
+        [
+            {"plugin_name": "Spectroscopy:Imaging:Simulate:Generator"},
+            {"plugin_name": "Spectroscopy:Imaging:Lifetime:Pixel MLE"},
+            {"plugin_name": "Spectroscopy:Correlation:FCS"},
+            {"plugin_name": "Spectroscopy:Imaging:Tools:Browser"},
+            {"plugin_name": "Spectroscopy:Decay:Decay Analysis"},
+            {"plugin_name": "Spectroscopy:Imaging:Image Tools"},
+        ]
+    )
+    assert list(layout) == ["Spectroscopy"]
+    assert list(layout["Spectroscopy"]) == [
+        "Decay",
+        "Correlation",
+        "Imaging",
+        "Imaging › Lifetime",
+        "Imaging › Tools",
+        "Imaging › Simulate",
+    ]
+    assert (
+        split_address(layout["Spectroscopy"]["Imaging › Lifetime"][0]["plugin_name"])[2]
+        == "Pixel MLE"
+    )

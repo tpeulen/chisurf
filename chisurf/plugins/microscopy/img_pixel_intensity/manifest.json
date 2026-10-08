@@ -1,7 +1,7 @@
 {
   "id": "img_pixel_intensity",
   "version": "1.0.0",
-  "display_name": "Imaging:Intensity",
+  "display_name": "Spectroscopy:Imaging:Intensity",
   "description": "Per-pixel intensity map; creates the standard imaging HDF5 (with source back-reference) that N&B / phasor / MLE enrich.",
   "authors": [
     "Thomas-Otavio Peulen"

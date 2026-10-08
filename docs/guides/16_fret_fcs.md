@@ -63,7 +63,7 @@ from the burst or full photon streams.
 
 ### Burst-wise FCS
 
-**Spectroscopy ▸ Fluorescence Correlation Spectroscopy ▸ Burst-wise FCS** (also
+**Spectroscopy ▸ Correlation ▸ Burst-wise FCS** (also
 the *Burst FCS* tool of **Spectroscopy ▸ Burst Analysis**, and *Burst-wise FCS*
 in the [FCS hub](75_fcs_toolbox.md)) correlates each burst
 separately, using only the photons of that burst ± **Padding**. The window has

@@ -1,7 +1,7 @@
 {
   "id": "burst_fcs_correlator",
   "version": "1.0.0",
-  "display_name": "Spectroscopy:Fluorescence Correlation Spectroscopy:Burst-wise FCS",
+  "display_name": "Spectroscopy:Correlation:Burst-wise FCS",
   "description": "Compute fluorescence correlation functions on a per-burst basis from Burst-ID (.bst) / BUR files.",
   "authors": [
     "Thomas-Otavio Peulen"

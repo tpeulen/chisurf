@@ -1,7 +1,7 @@
 {
   "id": "tr_anisotropy",
   "version": "1.0.0",
-  "display_name": "Spectroscopy:Fluorescence decay:Anisotropy-Wizard",
+  "display_name": "Spectroscopy:Decay:Anisotropy-Wizard",
   "description": "Guided setup of a linked VV/VH global time-resolved anisotropy fit: load polarised decays, background-correct the IRFs, set instrument corrections and define lifetime/rotation spectra.",
   "authors": [
     "Thomas-Otavio Peulen"

@@ -18,7 +18,7 @@ Lazy Lifetime Analysis for TCSPC fluorescence decay data.
 | Field | Value |
 | --- | --- |
 | Plugin id | `lltf` |
-| Menu path | Spectroscopy → Fluorescence decay → **Lazy Lifetime Analysis** |
+| Menu path | Spectroscopy → Decay → **Lazy Lifetime Analysis** |
 | Categories | Spectroscopy, Fluorescence decay |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk |
