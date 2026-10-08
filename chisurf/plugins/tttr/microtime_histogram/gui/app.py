@@ -25,7 +25,7 @@ from chisurf.core.support.i18n import tr
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
-from chisurf.plugins.emtk_layout import LabelColumn, button_row, labelled, layout_spec
+from chisurf.plugins.emtk_layout import LabelColumn, button_row, labelled, layout_spec, window_size
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 
 from .model import HistogramModel
@@ -148,6 +148,7 @@ class HistogramApp(TourTarget, ImApp):
         self.item_rects = {}
         self.fields = HistogramFields(self)
         spec = layout_spec(json.loads((HERE / "histogram.view.json").read_text(encoding="utf-8")))
+        self.window_size = window_size(spec, (1100, 720))
         self.run_spec = {"sections": [p for p in spec["sections"] if p.get("title") == "Run"]}      # always on top
         self.spec = {"sections": [p for p in spec["sections"] if p.get("title") != "Run"]}
         for section in self.walk(self.spec["sections"]):

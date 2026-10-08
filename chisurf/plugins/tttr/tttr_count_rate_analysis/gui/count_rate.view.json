@@ -1,5 +1,6 @@
 {
   "_comment": "Declarative AutoForm layout for the Count Rate Analysis tool: a persistent dock area with the detector channel-definition page, the drag-drop file list + actions, the per-file count-rate plot and the per-channel results table.",
+  "window": {"width": 1100, "height": 720},
   "sections": [
     {
       "type": "dock_area",

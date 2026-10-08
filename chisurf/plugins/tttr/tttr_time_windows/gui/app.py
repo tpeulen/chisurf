@@ -10,6 +10,7 @@ the processing and the file-list state; this app renders and calls back.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 
@@ -21,6 +22,7 @@ from emtk.docking import DockManager, Region, Split
 from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.plugins.emtk_layout import window_size
 
 if TYPE_CHECKING:
     from .tool import TTTRTimeWindowTool
@@ -332,6 +334,8 @@ class TimeWindowApp(ImApp):
         on_browse: Callable[[], None] | None = None,
         on_add_files: Callable[[], None] | None = None,
     ) -> None:
+        spec = json.loads(Path(__file__).with_name("window.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(spec, (1100, 720))
         self.tool = tool
         self.time_window_gui = TimeWindowGui(
             tool,

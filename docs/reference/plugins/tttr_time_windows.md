@@ -43,3 +43,4 @@ This plugin's window is an EMTK app: its controls and tables are described in th
 
 - Plugin package: `chisurf/plugins/tttr/tttr_time_windows/`
 - Manifest: {src}`chisurf/plugins/tttr/tttr_time_windows/manifest.json`
+- UI spec: {src}`chisurf/plugins/tttr/tttr_time_windows/gui/window.view.json`

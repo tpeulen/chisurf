@@ -84,3 +84,8 @@ settings folder; valid caches are reused and `overwrite=True` regenerates them.
 - Workflow: {doc}`/guides/89_microtime_histogram`.
 - Implementation: {src}`chisurf/plugins/tttr/microtime_histogram/gui/model.py`.
 - Key literature: {cite}`becker2005`, {cite}`lakowicz2006`.
+
+Host geometry is independent of histogram construction: restoring a saved
+window size keeps photon selections, channel definitions, physical timing and
+computed curves. The [workflow](../guides/89_microtime_histogram.md) describes
+the native initial and saved dimensions.

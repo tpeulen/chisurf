@@ -11,6 +11,7 @@ this app renders its state.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 
@@ -22,6 +23,7 @@ from emtk.docking import DockManager, Region, Split
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.plugins.emtk_layout import window_size
 
 if TYPE_CHECKING:
     from .tool import CountRateAnalyzer
@@ -103,7 +105,7 @@ class CountRateGui(TourTarget):
         self.on_help = on_help
 
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
-        self.plot_signature = None
+        self.plot_signature: tuple[int, int, float] | None = None
         self.selected_file: str | None = None
         self.results_form = FormState()
 
@@ -436,6 +438,8 @@ class CountRateApp(ImApp):
         on_add_files: Callable[[], None] | None = None,
         on_clear: Callable[[], None] | None = None,
     ) -> None:
+        spec = json.loads(Path(__file__).with_name("count_rate.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(spec, (1100, 720))
         self.tool = tool
         self.count_rate_gui = CountRateGui(
             tool,

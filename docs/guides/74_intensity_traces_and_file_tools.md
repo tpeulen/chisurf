@@ -304,3 +304,9 @@ The native Photon Table tool starts at 1100×720; Trace Browser starts at
 1200×800. Saved custom geometry takes precedence. Loaded event rows, timing,
 selected traces and count histograms retain their original values across
 geometry restoration.
+
+The native Count Rate and Time Windows base apps declare1100×720 initial
+geometry, including standalone and hosted factories. Saved custom geometry
+retains precedence. Rate summaries/curves and the time-window burst rows keep
+the same values across window restoration; generated window files are still
+written only to the selected output folder.

@@ -206,3 +206,8 @@ combined-trace width. The unwanted all-source VH stream is absent.
 
 {doc}`73_tttr_decay_and_correlation` · {doc}`88_microtime_shifter` · {doc}`87_channel_definition` ·
 {doc}`/concepts/microtime_histogram`
+
+The native Microtime Histogram tool starts at1100×720 with saved custom
+geometry taking precedence. The raw/gated photon histograms, physical clocks,
+polarization curves and reported FWHM retain their values across geometry
+restoration. Both detector and analysis pages remain reachable.

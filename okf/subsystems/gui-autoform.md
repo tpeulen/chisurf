@@ -1139,3 +1139,12 @@ before/after scenes. The owner adds no new persistence subsystem or loader.
 Individual PNG inspection avoids a multi-image presentation artifact mistaken
 for a black canvas. [Owner acceptance](../validation/release-readiness-w6g/ndx-window-acceptance.json)
 records the exact wheel/source identities and inherited static diagnostics.
+
+Three TTTR base apps now declare1100×720 initial geometry while preserving
+saved host preferences, inputs and computed results. Time Windows uses a new
+host-only primary declaration, not a standalone-wrapper-only hint. Real detector
+scrolling proves late row/actions remain reachable; instrumented busy states
+are distinguished from naturally fast completion. The stale test painter now
+matches SDK stroke width semantics with its original counting/assertions.
+[Acceptance](../validation/release-readiness-w6g/tttr-window-acceptance.json)
+records exact physical arrays/rates/windowrows and remaining FPS/card work.
