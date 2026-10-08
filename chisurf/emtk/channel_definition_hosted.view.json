@@ -1,0 +1,6 @@
+{
+  "sections": [
+    {"type": "info", "source": "_hosted_setup_name", "description": "The shared detector definition used by this tool."},
+    {"type": "button_row", "buttons": [{"action": "edit_setup", "label": "Edit setup…", "description": "Open step 0 to change detectors, PIE windows and LUTs for every step."}]}
+  ]
+}

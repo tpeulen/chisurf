@@ -12,6 +12,7 @@ to the step being opened).
 
 from __future__ import annotations
 
+import copy
 import importlib
 import json
 from pathlib import Path
@@ -95,6 +96,18 @@ class ToolHubApp(ImApp):
         self.title = title
         #: A hub of steps (Next runs a step): it shows the fast-forward button; a hub of tools does not.
         self.steps = steps
+        from chisurf.core.setup_channel_definition import ChannelDefinition
+
+        self.uses_setup = [p["role"] for p in panels if p.get("uses_setup")]
+        self.setup_model = ChannelDefinition()
+        self.setup_model.on_changed = self._shared_setup_changed
+        self._hosted: dict[str, list[Any]] = {}
+        self._setup_handed: dict[str, str] = {}
+        panels = list(panels)
+        if self.uses_setup and not any(p.get("role") == "setup" for p in panels):
+            panels.insert(0, {"name": "0. Setup", "role": "setup", "optional": True,
+                              "factory": self._make_setup_step,
+                              "description": tr("Detector setup shared by every step: routing, PIE windows and LUTs.")})
         self.panels = [_with_icon(_with_maturity(dict(p))) for p in panels]
         self.tools = [p for p in self.panels if not p.get("separator")]
         self.selected = initial or (self.tools[0]["role"] if self.tools else None)
@@ -163,15 +176,62 @@ class ToolHubApp(ImApp):
             raise ValueError(f"Unknown {self.title} panel: {role}")
         if role not in self.children and role not in self.errors:
             try:
-                factory, route = self.resolver(panel)
+                factory, route = (plugin_factory(panel) if callable(panel.get("factory"))
+                                  else self.resolver(panel))
                 self.routes[role] = route
                 if factory is None:
                     self.errors[role] = "This tool has no native emtk app yet."
                 else:
                     self.children[role] = factory()
+                    if role in self.uses_setup:
+                        self._host_setup(role, self.children[role])
             except Exception as exc:  # noqa: BLE001 - shown in place of the tool, with Retry
                 self.errors[role] = f"{type(exc).__name__}: {exc}"
         return self.children.get(role)
+
+    def _make_setup_step(self):
+        """Create the only complete setup editor for this hub."""
+        from chisurf.emtk.setup_step import SetupStepApp
+
+        return SetupStepApp(model=self.setup_model, on_changed=self._shared_setup_changed)
+
+    def _host_setup(self, role, child):
+        """Find the child's real editor, including its bounded tool/controller owner."""
+        from chisurf.emtk.channel_definition import ChannelDefinitionWidget
+
+        editors = []
+        for owner in (child, getattr(child, "tool", None), getattr(child, "controller", None)):
+            for value in vars(owner).values() if hasattr(owner, "__dict__") else ():
+                if isinstance(value, ChannelDefinitionWidget) and value not in editors:
+                    editors.append(value)
+        if not editors:
+            raise ValueError(f"Setup-using child {role!r} has no detector editor.")
+        def can_apply():
+            for owner in (child, getattr(child, "controller", None), getattr(child, "tool", None)):
+                for target in (owner, getattr(owner, "job", None)):
+                    if any(getattr(target, name, False) is True for name in ("running", "busy")):
+                        return False
+            return True
+
+        rebound = any(editor.model is not self.setup_model for editor in editors)
+        for editor in editors:
+            editor.host(self.setup_model, on_edit_setup=lambda: self.select("setup"),
+                        can_apply=can_apply)
+        self._hosted[role] = editors
+        if rebound:
+            self._setup_handed.pop(role, None)
+        self._shared_setup_changed(self.setup_model.get_settings())
+
+    def _shared_setup_changed(self, settings):
+        """Deliver a complete private definition once per revision to every opened child."""
+        # LUT arrays must retain all values: their truncated repr is not an identity.
+        signature = json.dumps(settings, sort_keys=True, default=lambda value: value.tolist())
+        for role, editors in self._hosted.items():
+            if self._setup_handed.get(role) == signature:
+                continue
+            for editor in editors:
+                editor.hosted_changed(settings)
+            self._setup_handed[role] = signature
 
     def select(self, role: str, retry: bool = False, by_user: bool = True):
         panel = next((p for p in self.tools if p["role"] == role), None)
@@ -478,7 +538,7 @@ class ToolHubApp(ImApp):
             return True
         if not self.tour.active:
             return False
-        if x is None:
+        if x is None or y is None:
             return False
         try:
             from emtk.im_core import get_current_context
@@ -555,9 +615,21 @@ class ToolHubApp(ImApp):
             export = getattr(child, "export_settings", None) or getattr(child, "export_state", None)
             if callable(export):
                 children[role] = export()
-        return {"selected": self.selected, "children": children}
+        state = {"selected": self.selected, "children": children}
+        if self.uses_setup:
+            state["setup"] = json.loads(json.dumps(
+                self.setup_model.get_settings(), default=lambda value: value.tolist()
+            ))
+        return state
 
     def restore_settings(self, state):
+        if self.uses_setup and isinstance((state or {}).get("setup"), dict):
+            from chisurf.core.setup_channel_definition import ChannelDefinition
+
+            restored = ChannelDefinition(state["setup"])
+            self.setup_model.data = restored.data
+            self.setup_model.current_name = restored.current_name
+            self._shared_setup_changed(self.setup_model.get_settings())
         roles = {p["role"] for p in self.tools}
         for role, data in (state or {}).get("children", {}).items():
             if role in roles:
@@ -565,6 +637,8 @@ class ToolHubApp(ImApp):
                 restore = getattr(child, "restore_settings", None) or getattr(child, "restore_state", None)
                 if callable(restore):
                     restore(data)
+                    if role in self.uses_setup:
+                        self._host_setup(role, child)
         if (state or {}).get("selected") in roles:
             self.select(state["selected"], by_user=False)
 
@@ -574,6 +648,8 @@ class ToolHubApp(ImApp):
             if callable(close):
                 close()
         self.children.clear()
+        self._hosted.clear()
+        self._setup_handed.clear()
 
 
 __all__ = ["BAR", "HEADER", "ToolHubApp", "plugin_factory"]

@@ -8,6 +8,15 @@ before any analysis interprets it.
 
 Press **Guide** for the walk-through.
 
+## One detector setup in the native hub
+
+**0. Setup** contains the full detector editor. Count Rate Analysis and Audifier
+share its routing, PIE windows, reading calibration and LUTs. Their setup panes
+show the name and **Edit setup…**, which returns to step0; standalone tools keep
+the complete editor. Children are created lazily and receive the current setup.
+A running snapshot keeps its original inputs; the newest definition is delivered
+after it finishes. Re-run results that should change with the new definition.
+
 ## The two clocks
 
 Almost everything here comes down to keeping the two times straight.

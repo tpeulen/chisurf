@@ -1,0 +1,6 @@
+{
+  "window": {"width": 1100, "height": 720},
+  "sections": [
+    {"type": "custom", "key": "channel_definition", "description": "Detector setup shared by every step: routing channels, polarization, PIE windows, reading calibration, LUTs and optical setup."}
+  ]
+}

@@ -242,6 +242,13 @@ class ChannelDefinitionWidget:
         from emtk.dialog_window import DialogWindow
         self.model = model or ChannelDefinition(settings)
         self.model.on_changed = on_changed
+        self.hosted = False
+        self.on_edit_setup = None
+        self._own_on_changed = None
+        self._hosted_pending = None
+        self._hosted_can_apply = None
+        self._hosted_form = FormState(on_used=self._item_used)
+        self._hosted_spec = json.loads(Path(__file__).with_name("channel_definition_hosted.view.json").read_text())
         self.status = ""
         self.read_only = bool(read_only)
         self.host_app = host_app
@@ -1300,7 +1307,57 @@ class ChannelDefinitionWidget:
         self.shift_window.show()
 
     # ------------------------------------------------------------------ page
+    def host(self, model, on_edit_setup=None, can_apply=None):
+        """Use the hub's authoritative definition while retaining this child's callback."""
+        if self.model is not model:
+            self._own_on_changed = self.model.on_changed
+            self.cancel_read()
+            self.calibration_cancel()
+            self.model = model
+        self.hosted = True
+        self.on_edit_setup = on_edit_setup
+        self._hosted_can_apply = can_apply
+        self.item_rects.clear()
+
+    def hosted_changed(self, settings):
+        """Deliver a private copy, or defer it while this child is read-only."""
+        self._hosted_pending = copy.deepcopy(settings)
+        self._poll_hosted()
+
+    def _poll_hosted(self):
+        """Apply the latest shared definition once the child can accept edits."""
+        if self.read_only or self._hosted_pending is None:
+            return
+        if callable(self._hosted_can_apply) and not self._hosted_can_apply():
+            return
+        pending = self._hosted_pending
+        if callable(self._own_on_changed):
+            self._own_on_changed(copy.deepcopy(pending))
+        self._hosted_pending = None
+
+    def _hosted_setup_name(self):
+        """Describe the definition whose full editor lives at the hub's setup step."""
+        return str(tr("Setup: {name}")).format(name=self.model.current_name or tr("Unsaved"))
+
+    def edit_setup(self):
+        """Return the user to the hub's shared setup editor."""
+        if callable(self.on_edit_setup):
+            self.on_edit_setup()
+
+    def _item_used(self, name):
+        """Forward declared hosted-control use to the child's existing guide callback."""
+        if callable(self.on_used):
+            self.on_used(name)
+
+    def _draw_hosted(self):
+        """Render only the declared setup summary and Edit setup action."""
+        self._poll_hosted()
+        draw_form(self._hosted_spec, self, self._hosted_form)
+        self.item_rects.update(self._hosted_form.rects)
+
     def draw(self):
+        if self.hosted:
+            return self._draw_hosted()
         from emtk import im
         self.poll()
         im.begin_disabled(self._future is not None or self._reference_future is not None or self.reference_app is not None or self.reference_prompt.open or self.read_only or self.json_window.open)
@@ -1589,6 +1646,8 @@ class ChannelDefinitionWidget:
 
     def draw_dialogs(self, frame):
         """Draw the floating windows: prompts, file chooser, plot, LUT tools, shift adjuster, optical setup, help."""
+        if self.hosted:
+            return
         from emtk import im
         self.draw_prompt(frame)
         if self._draw_window(self.json_window, frame, self._json_body):
@@ -1657,6 +1716,8 @@ class ChannelDefinitionWidget:
         return snapshot
 
     def poll(self):
+        if self.hosted:
+            return self._poll_hosted()
         self._poll_reference()
         if self._future is None or not self._future.done():
             return
@@ -1680,6 +1741,8 @@ class ChannelDefinitionWidget:
     def files_dropped(self, paths):
         """Files dropped on the window: a ``.json`` library becomes the setups file, a LUT table is assigned to the
         selected channel, anything else is read as a measurement. Returns whether it did something."""
+        if self.hosted:
+            return False
         for path in (str(p) for p in paths):
             suffix = path.lower().rsplit('.', 1)[-1] if '.' in path else ''
             if suffix == 'json':

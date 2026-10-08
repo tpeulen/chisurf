@@ -193,6 +193,22 @@ so the residuals stay Poisson.
 Both fit in convolved space; they differ in the statistic and in how many
 parameters a given photon budget can support.
 
+## Shared detector definitions in tool hubs
+
+Routing channels identify detectors, PIE windows identify excitation periods,
+and a TAC linearization table maps electronics channels to their calibrated
+micro-time coordinates. These describe the acquisition rather than an
+individual analysis result. A native tool hub therefore keeps one working
+definition at **0. Setup** and gives each participating tool the same complete
+reading, routing, window and LUT settings. Standalone tools keep their editor.
+
+Sharing settings does not recompute or relabel a completed analysis. A running
+snapshot uses its original input definition; changes are delivered to that tool
+after it finishes. Re-run the analysis when changing the definition should
+change the result. See {doc}`/guides/101_tttr_toolbox` for the shared setup,
+count-rate and audification workflow, and {doc}`/guides/12_handling_tttr_files`
+for the two clocks and file formats.
+
 ## Registered burst estimators
 
 Burst MLE offers Fit23, Fit24 and Fit25 through the shared tttrlib facade.

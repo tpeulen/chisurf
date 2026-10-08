@@ -16,7 +16,7 @@ from emtk.testing import RecordingPainter
 from chisurf.plugins.tttr.tttr_toolbox.gui.app import make_app
 from chisurf.emtk.i18n import SUPPORTED_LOCALES, set_locale
 app = make_app()
-assert len(app.tools) == 5
+assert len(app.tools) == 6
 for panel in app.tools:
     child = app.select(panel['role'])
     assert child is not None, app.errors
@@ -55,6 +55,8 @@ def fake_child():
         def __init__(self):
             super().__init__(lambda: None)
             self.calls = []
+            from chisurf.emtk.channel_definition import ChannelDefinitionWidget
+            self.editor = ChannelDefinitionWidget(on_changed=lambda settings: None)
             self.value = 1
 
         def key(self, *args):
@@ -78,6 +80,7 @@ def fake_child():
 
         def close(self):
             self.calls.append(("close", ()))
+            self.editor.close()
 
     return Child()
 
@@ -98,12 +101,12 @@ def test_route_errors_stay_visible_and_retry():
         return fake_child, "test:child"
 
     app = make_app(resolver=resolver)
-    role = app.selected
+    role = "alex_creator"
     assert app.select(role) is None
     painter = RecordingPainter()
     app.draw(painter, 0, 0, 800, 600)
     assert any("no native emtk app" in text for text in painter.strings)
-    assert len(app.tools) == 5
+    assert len(app.tools) == 6
     app.select(role, retry=True)
     assert app.errors[role] == "RuntimeError: broken child dependency"
     assert app.select(role, retry=True)
@@ -120,7 +123,7 @@ def test_input_focus_capture_and_overlay():
     from chisurf.plugins.tttr.tttr_toolbox.gui.app import make_app
 
     app = make_app(resolver=lambda panel: (fake_child, "test:child"))
-    child = app.select(app.selected)
+    child = app.select("alex_creator")
     app.pointer_press(250, 120, LEFT_BUTTON)
     assert child.calls[-1] == ("press", (20, 120 - 62, LEFT_BUTTON, 0, 1))
     app.key(65, "a")

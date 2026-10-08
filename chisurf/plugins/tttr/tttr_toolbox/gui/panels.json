@@ -1,18 +1,18 @@
 {
-  "_comment": "Data-driven panel list for the TTTR Tools toolbox. Each entry names a tool by its GUI entrypoint (module:Class); the toolbox lazily imports and instantiates it. \"icon\" is drawn in the navigation list in front of the name. Set \"embed\": true for QMainWindow tools that must be flattened into a plain panel. Add a tool by adding an entry here — no Python needed. Use {\"separator\": true} to group.",
-  "title": "🧰 TTTR Tools",
+  "_comment": "Data-driven panel list for the TTTR Tools toolbox. Each entry names a tool by its GUI entrypoint (module:Class); the toolbox lazily imports and instantiates it. \"icon\" is drawn in the navigation list in front of the name. Set \"embed\": true for QMainWindow tools that must be flattened into a plain panel. Add a tool by adding an entry here \u2014 no Python needed. Use {\"separator\": true} to group.",
+  "title": "\ud83e\uddf0 TTTR Tools",
   "_scope": "Photon-level work on a TTTR stream. File-level operations (split/convert, header, .pto, time windows) live in File tools.",
   "panels": [
     {
       "name": "ALEX Creator",
-      "icon": "🔀",
+      "icon": "\ud83d\udd00",
       "role": "alex_creator",
       "entrypoint": "chisurf.plugins.tttr.ptu_alex_creator.gui.tool:AlexPTUCreator",
       "description": "Convert ALEX macro-time modulation into micro-time so ALEX data runs through PIE pipelines."
     },
     {
       "name": "Micro-time Shifter",
-      "icon": "⏱️",
+      "icon": "\u23f1\ufe0f",
       "role": "microtime_shifter",
       "entrypoint": "chisurf.plugins.tttr.tttr_microtime_shifter.gui.tool:MicrotimeShifterTool",
       "embed": true,
@@ -20,26 +20,31 @@
     },
     {
       "name": "Photon Table",
-      "icon": "🔆",
+      "icon": "\ud83d\udd06",
       "role": "photon_table",
       "entrypoint": "chisurf.plugins.tttr.photon_table.gui.tool:PhotonTableTool",
       "embed": true,
       "description": "Inspect the photons of a TTTR file in a table: routing channel, micro-time and macro-time, one row per photon."
     },
-    {"separator": true, "role": "separator_analysis"},
+    {
+      "separator": true,
+      "role": "separator_analysis"
+    },
     {
       "name": "Count Rate Analysis",
-      "icon": "📊",
+      "icon": "\ud83d\udcca",
       "role": "count_rate",
       "entrypoint": "chisurf.plugins.tttr.tttr_count_rate_analysis.gui.tool:CountRateAnalyzer",
-      "description": "Count rates per detector channel across many TTTR files, with mean/std and a per-file plot."
+      "description": "Count rates per detector channel across many TTTR files, with mean/std and a per-file plot.",
+      "uses_setup": true
     },
     {
       "name": "Audifier",
-      "icon": "🎵",
+      "icon": "\ud83c\udfb5",
       "role": "audifier",
       "entrypoint": "chisurf.plugins.tttr.audifier.gui.tool:TTTRAudifierWidget",
-      "description": "Convert TTTR photon streams to audio, with a live micro-time / lifetime waterfall preview."
+      "description": "Convert TTTR photon streams to audio, with a live micro-time / lifetime waterfall preview.",
+      "uses_setup": true
     }
   ]
 }
