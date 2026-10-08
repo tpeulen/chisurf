@@ -33,7 +33,7 @@ class BackgroundController:
             host_app=None,
         )
         model.channels_provider = lambda: self.channel_definition.model.get_settings()["detectors"]
-        model.tttr_provider = self.channel_definition.model.open_tttr
+        model.tttr_provider = lambda path: self.channel_definition.model.open_tttr(path)
         self.detector_text = json.dumps(model._channels(), indent=2)
         self.status = ""
         self.running = False

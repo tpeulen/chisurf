@@ -15,6 +15,18 @@ Back / Next names the setup, the number of files and the burst folder every late
 step reads; the rail marks a step that is done (✓), how many files or burst tables
 it holds, and (•) which analysis steps have bursts to work on.
 
+## One shared setup
+
+In the native hub, step0 owns the complete detector definition. Burst Selection,
+both MLE steps, Background, IRF/Background, H2MM, Accurate FRET and Burst FCS
+share it; their **Edit setup…** link returns here. Same-name edits and late-created
+children use the current setup. Standalone tools retain their editor.
+
+Running snapshot jobs keep their original inputs and receive the latest setup
+after completion. Re-run affected results. Restore retains sources, provenance,
+fused-folder selection and measured patterns; old child definitions cannot
+replace the shared authority.
+
 ## Why the steps are numbered
 
 The order is not a suggestion. Each step consumes what the one before it wrote:

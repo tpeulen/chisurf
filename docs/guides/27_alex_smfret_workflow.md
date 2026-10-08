@@ -54,6 +54,54 @@ searches) and moves on when it is done; **>>** walks the remaining steps; the li
 beside them names the setup, the files and the burst folder the later steps read.
 *Send to MLE* in IRF & Background fills both MLE steps.
 
+The native workflow keeps one complete detector editor at **0. Setup Selection**.
+The eight participating steps show **Setup: name** and **Edit setup…**, which
+returns there. Your per-tool fit/search settings and outputs remain in their
+own steps. Same-name edits reach every open child once; a late-opened child gets
+the current definition. Background/IRF readers resolve the current model rather
+than an old captured reader. Standalone tools still expose the complete editor.
+
+Restoring the hub retains raw/burst sources, provenance, fused-folder routing
+and measured IRF/background patterns. Saved child definitions cannot overwrite
+the authoritative setup. A running job holds its original input snapshot and
+receives the newest setup after completion; re-run results affected by an edit.
+
+```{figure} figures/burst_shared_setup.png
+:name: fig-burst-shared-setup
+:width: 100%
+
+The complete shared setup and declared Guide/Help/Proceed controls after the
+real two-file BH workflow found198 bursts (green0/1, red8/9). Every detector,
+reading, PIE, LUT and optical control remains reachable at step0.
+```
+
+```{figure} figures/burst_shared_mle.png
+:name: fig-burst-shared-mle
+:width: 100%
+
+The same198-burst workflow's pooled Fit23 after Auto IRF/background, with an
+unchanged primary lifetime2.009947318ns and window15–116 at binning32. The MLE
+controls/plot remain in the child; detector setup is shared through step0.
+```
+
+For the shared definition from Python:
+
+```python
+from chisurf.plugins.burst.burst_analysis.gui.native import create_app
+
+hub = create_app()
+setup = hub.ensure_child("setup")
+setup.page.load_definition(your_detector_definition)
+mle = hub.select("mle")  # Receives the same acquisition model, lazily.
+state = hub.export_settings()
+# Later: another_hub.restore_settings(state)
+hub.close()
+```
+
+Launch with `pixi run -e test python -m chisurf.emtk --plugin burst_analysis`.
+Use offscreen mode and scratch settings for headless Driver workflows; press
+Guide/Proceed/Next yourself when following the shipped tour.
+
 1. On **0. Setup Selection** choose the stored detector setup (or define one and
    **Save** it).
 2. **Next**, then drop the measurements on **1. Data Selection** (or **Add files**).

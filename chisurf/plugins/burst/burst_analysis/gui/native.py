@@ -176,6 +176,9 @@ class BurstAnalysisHubApp(ToolHubApp):
             {**p, "factory": factories[p["role"]]} if p.get("role") in factories else dict(p)
             for p in (STEPS if steps is None else steps)
         ]
+        for panel in panels:
+            if panel.get("role") in {"selection", "mle", "segment_mle", "background", "irf_bg", "h2mm", "accurate_fret", "burst_fcs"}:
+                panel["uses_setup"] = True
         super().__init__(
             title, panels, help_resource=HERE / "help.md", guide=HERE / "guide.json", initial="setup"
         )
@@ -186,7 +189,8 @@ class BurstAnalysisHubApp(ToolHubApp):
         from .setup_selection_app import BurstSetupSelectionApp
 
         app = (app_class or BurstSetupSelectionApp)(
-            on_changed=lambda _settings: self._setup_changed(),
+            model=self.setup_model,
+            on_changed=self._hub_setup_changed,
             on_proceed=lambda: self.select("data"),
         )
         app.page.on_used = self._used(app.tour)
@@ -225,6 +229,11 @@ class BurstAnalysisHubApp(ToolHubApp):
         return notify
 
     # -- context from the source steps ------------------------------------------------------------------- #
+    def _hub_setup_changed(self, settings: dict) -> None:
+        """Fan out shared acquisition settings and retain the workflow's context handoff."""
+        self._shared_setup_changed(settings)
+        self._setup_changed()
+
     def _setup_changed(self) -> None:
         setup = self.children.get("setup")
         if setup is None:
@@ -300,11 +309,6 @@ class BurstAnalysisHubApp(ToolHubApp):
             settings["setup_name"] = self.context.setup_name
         return settings
 
-    def _editor_to(self, role: str, editor, settings: dict[str, Any]) -> None:
-        """Show the workflow's setup in a step's own detector editor (its change callback updates the step)."""
-        if settings.get("detectors") and editor is not None and self._changed(role, "setup", settings):
-            editor.load_definition(settings)
-
     def _apply_downstream(self, skip: tuple[str, ...] = ()) -> None:
         """Hand the context to every open step but the ones it came from."""
         for role, child in list(self.children.items()):
@@ -334,9 +338,6 @@ class BurstAnalysisHubApp(ToolHubApp):
     def _to_selection(self, child) -> None:
         if self.context.raw_files and not child.model.files:
             child.model.add_paths(self.context.raw_files)
-        settings = self._setup_payload()
-        if settings.get("detectors") and self._changed("selection", "setup", settings):
-            child.apply_setup(settings, self.context.setup_name)
 
     def _to_fusion(self, child) -> None:
         settings = self.context.channel_settings
@@ -367,7 +368,6 @@ class BurstAnalysisHubApp(ToolHubApp):
 
     def _to_mle(self, child) -> None:
         role = child_role(self, child)
-        self._editor_to(role, child.editor, self._setup_payload())
         if self.context.bur_files and not child.model.session.bur_files:
             child.model.add_files(self.context.bur_files)
         patterns = self.context.irf_background_patterns
@@ -400,12 +400,11 @@ class BurstAnalysisHubApp(ToolHubApp):
 
     def _to_h2mm(self, child) -> None:
         folder = analysis_path(self.context)
-        context = {"channel_settings": self.context.channel_settings}
+        context = {}
         if folder is not None:
             context["burst_folder"] = str(folder)
         if self._changed("h2mm", "context", context):
             child.model.apply_workflow_context(context)
-        self._editor_to("h2mm", child.editor, self._setup_payload())
 
     def _to_browser(self, child) -> None:
         folder = analysis_path(self.context)
@@ -417,10 +416,6 @@ class BurstAnalysisHubApp(ToolHubApp):
             child.load_folder(folder)
 
     def _to_burst_fcs(self, child) -> None:
-        settings = self._setup_payload()
-        if settings.get("detectors") and self._changed("burst_fcs", "setup", settings):
-            child.setup.load_definition(settings)
-            child.controller.adopt_setup(self.context.setup_name, settings["detectors"])
         folder = self.context.burst_folder
         if folder is not None and not child.controller.checked_files():
             child.controller.add_files([str(folder)])
@@ -433,9 +428,8 @@ class BurstAnalysisHubApp(ToolHubApp):
             child.controller.add_files([str(p) for p in self.context.bur_files])
 
     def _to_accurate_fret(self, child) -> None:
-        self._editor_to("accurate_fret", child.controller.channel_definition, self._setup_payload())
         sources = burst_sources(self.context)
-        if not sources or getattr(child.model, "filename", "") or child.controller.running:
+        if not sources or getattr(child.model, "filename", None) or child.controller.running:
             return
         if Path(sources[0]).is_file() and self._changed("accurate_fret", "table", str(sources[0])):
             child.controller.load(str(sources[0]))
@@ -444,7 +438,6 @@ class BurstAnalysisHubApp(ToolHubApp):
         controller = child.controller
         if controller is None:
             return
-        self._editor_to(child_role(self, child), controller.channel_definition, self._setup_payload())
         if self.context.raw_files and not child.model.files:
             controller.add_files([str(p) for p in self.context.raw_files])
         # Compute on arrival, as the Qt step does: nothing is asked that the data cannot answer.
@@ -459,7 +452,6 @@ class BurstAnalysisHubApp(ToolHubApp):
         controller = child.controller
         if controller is None:
             return
-        self._editor_to("irf_bg", controller.channel_definition, self._setup_payload())
         if self.context.raw_files and not child.model.files:
             controller.add_files([str(p) for p in self.context.raw_files])
 
@@ -488,6 +480,35 @@ class BurstAnalysisHubApp(ToolHubApp):
         if ctx.burst_folder is not None:
             parts.append(f"bursts: {ctx.burst_folder.name}" if width >= 1000 else "bursts ready")
         return " · ".join(parts)
+
+    def export_settings(self):
+        """Keep workflow sources, provenance and measured patterns beside child UI state."""
+        state = super().export_settings()
+        payload = self.context.to_payload()
+        payload["irf_background_patterns"] = self.context.irf_background_patterns
+        state["workflow"] = json.loads(json.dumps(payload, default=lambda value: value.tolist()))
+        state["fusion_source"] = str(self._fusion_source) if self._fusion_source else None
+        state["fused_folder"] = str(self._fused_folder) if self._fused_folder else None
+        return state
+
+    def restore_settings(self, state):
+        """Restore workflow authority before reconnecting saved child views."""
+        from dataclasses import fields
+
+        state = state or {}
+        payload = dict(state.get("workflow") or {})
+        if payload:
+            for key in ("raw_files", "bur_files"):
+                payload[key] = [Path(path) for path in payload.get(key, [])]
+            if payload.get("burst_folder") is not None:
+                payload["burst_folder"] = Path(payload["burst_folder"])
+            names = {field.name for field in fields(BurstWorkflowContext)}
+            self.context = BurstWorkflowContext(**{key: value for key, value in payload.items() if key in names})
+        self._fusion_source = Path(state["fusion_source"]) if state.get("fusion_source") else None
+        self._fused_folder = Path(state["fused_folder"]) if state.get("fused_folder") else None
+        super().restore_settings(state)
+        self.context.channel_settings = self.setup_model.get_settings()
+        self.context.setup_name = self.setup_model.current_name
 
     def render(self):
         if self.status == getattr(self, "_summary_shown", None) or self.status == "Ready":

@@ -140,7 +140,7 @@ class BurstIrfBackgroundGui:
     def _sync_binning(self) -> None:
         """The micro-time binning is also the channel editor's ``tttr_reading`` value: keep the two equal."""
         controller = getattr(self, "controller", None)
-        if controller is None:
+        if controller is None or controller.channel_definition.hosted:
             return
         reading = controller.channel_definition.model.data["tttr_reading"]
         binning = int(self.model.micro_time_binning)
@@ -195,7 +195,6 @@ class BurstIrfBackgroundGui:
                 im.end()
 
     def _draw_parameters(self) -> None:
-        avail_w = im.get_content_region_avail()[0]
         if getattr(self, "controller", None) is not None:
             self.controller.draw_inputs(remember=self.remember, track=self.track)
             if "bg_channels" in self.item_rects:  # the guide's name for the channel editor button

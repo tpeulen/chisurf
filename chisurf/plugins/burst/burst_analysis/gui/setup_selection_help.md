@@ -19,3 +19,9 @@ windows (its per-detector burst columns are named after them), BVA, 2CDE, the ML
 fits and H2MM read the detector definition, Accurate FRET the window names.
 
 See [Photon burst identification](docs/guides/13_burst_identification.md).
+
+
+In the native workflow this is the single acquisition editor. Participating
+steps show a summary and Edit setup link; their analysis parameters remain local.
+Changes wait for active snapshot jobs, and restoring child settings retains this
+shared definition.

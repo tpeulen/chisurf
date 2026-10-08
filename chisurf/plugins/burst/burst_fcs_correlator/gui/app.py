@@ -60,7 +60,7 @@ class BurstFcsApp(TourTarget, ImApp):
         self.pairs_window = DialogWindow(
             "Channel pairs (JSON)", size=(480.0, 360.0), key="burst_fcs_pairs"
         )
-        self.setup = ChannelDefinitionWidget(host_app=self)
+        self.setup = ChannelDefinitionWidget(host_app=self, on_changed=self._definition_changed)
         self._setup_name = self.setup.model.current_name
         self.help_window = EmTkHelpWindow(title="Burst-wise FCS - Help", resource=HERE / "help.md", owner=self,
                                           on_start_guide=lambda: self.tour.start(), size=(700.0, 520.0))
@@ -148,6 +148,13 @@ class BurstFcsApp(TourTarget, ImApp):
                                                      {"pair_name": "cross_01", "chs_a": [0], "chs_b": [1]}]))
         self.controller.status = "Demonstration data added (8 bursts, two detectors)."
         self._used("example")
+
+    def _definition_changed(self, settings):
+        """Adopt detector edits, including same-name shared hub revisions, once."""
+        name = str(settings.get("setup_name") or "")
+        self._setup_name = name
+        if settings.get("detectors"):
+            self.controller.adopt_setup(name, settings["detectors"])
 
     def adopt_current_setup(self):
         model = self.setup.model

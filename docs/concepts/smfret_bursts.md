@@ -24,6 +24,22 @@ This page is the theory. For the step-by-step ChiSurf workflow see the guides
 {doc}`/guides/15_background_rates`, and the end-to-end
 {doc}`/guides/27_alex_smfret_workflow`.
 
+## One acquisition definition across the burst workflow
+
+Detector routing, polarization, PIE windows, calibration and TAC corrections
+describe the acquisition. The native Burst Analysis hub keeps that definition
+at step0 and shares it with Burst Selection, both MLE steps, Background,
+IRF/Background, H2MM, Accurate FRET and Burst FCS. A child keeps its analysis
+settings and results while its acquisition editor becomes a summary and a link
+back to step0. Standalone tools retain their own editor.
+
+Snapshot workers use the definition captured when they started. Later changes
+wait until those workers finish; a re-run applies them to prior results.
+Workflow restoration preserves photon/burst sources, provenance, fused-folder
+selection and measured IRF/background patterns, while the shared definition wins
+over old child copies. See {doc}`/guides/27_alex_smfret_workflow` for the UI and
+API workflow.
+
 ## Finding bursts
 
 A measurement is a long timestamp stream that is mostly background with

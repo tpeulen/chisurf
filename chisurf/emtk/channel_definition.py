@@ -1647,7 +1647,7 @@ class ChannelDefinitionWidget:
     def draw_dialogs(self, frame):
         """Draw the floating windows: prompts, file chooser, plot, LUT tools, shift adjuster, optical setup, help."""
         if self.hosted:
-            return
+            return self._poll_hosted()
         from emtk import im
         self.draw_prompt(frame)
         if self._draw_window(self.json_window, frame, self._json_body):

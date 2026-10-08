@@ -38,3 +38,4 @@ This plugin's window is an EMTK app: its controls and tables are described in th
 - Plugin package: `chisurf/plugins/burst/burst_analysis/`
 - Manifest: {src}`chisurf/plugins/burst/burst_analysis/manifest.json`
 - UI spec: {src}`chisurf/plugins/burst/burst_analysis/gui/data_selection.view.json`
+- UI spec: {src}`chisurf/plugins/burst/burst_analysis/gui/setup_selection_strip.view.json`

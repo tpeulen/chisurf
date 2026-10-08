@@ -636,6 +636,18 @@ class ToolHubApp(ImApp):
                 child = self.ensure_child(role)
                 restore = getattr(child, "restore_settings", None) or getattr(child, "restore_state", None)
                 if callable(restore):
+                    if role == "setup" and isinstance((state or {}).get("setup"), dict) and getattr(child, "model", None) is self.setup_model:
+                        child.page.restore_state(data.get("page", data))
+                        child.autoload = False
+                        continue
+                    # A child may restore in place, not only assign a new model.
+                    # Detach it so saved child state cannot corrupt hub authority.
+                    if role in self.uses_setup:
+                        from chisurf.core.setup_channel_definition import ChannelDefinition
+
+                        for editor in self._hosted.get(role, []):
+                            editor.model = ChannelDefinition(self.setup_model.get_settings())
+                            editor.model.on_changed = editor._own_on_changed
                     restore(data)
                     if role in self.uses_setup:
                         self._host_setup(role, child)
