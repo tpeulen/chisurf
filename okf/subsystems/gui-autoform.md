@@ -1120,3 +1120,13 @@ identities no longer cause premature wrapping. Existing selectors wrap without
 changing callbacks; a concise FRET title preserves its ##fretdist identity.
 [Acceptance and exact evidence](../validation/release-readiness-w6g/ordinary-window-acceptance.json)
 qualifies offscreen screen clamping and remaining74declarations.
+
+Photon Table/LUT Tools and Trace Browser consume explicit primary geometry,
+retaining saved preferences and exact event/trace/calibration values. LUT's
+native Normalize caption fits the initial clamped host. Both active native and
+legacy declared descriptions explain threshold normalization and masked bins;
+changing that setting can alter correction construction, not just plotted
+amplitudes. Existing algorithms/defaults are retained. Public setup setters
+repair stale parity fixtures without restoring a private alias.
+[Acceptance](../validation/release-readiness-w6g/photon-viewer-acceptance.json)
+records measured arrays, real tooltip renders and remaining71declarations.

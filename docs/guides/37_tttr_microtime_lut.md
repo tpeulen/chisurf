@@ -124,3 +124,10 @@ burst and PDA analyses.
 - Reading seam: `chisurf/core/fio/staging.py::open_tttr`.
 - Channel definition: `chisurf/gui/widgets/wizard/tttr_channeldefinition/`.
 - Felekyan et al., *Rev. Sci. Instrum.* 76.8 (2005) 083104.
+
+The native LUT tool starts at 1100×720; a saved custom size takes precedence.
+**Normalize** divides histogram counts by the selected region mean before
+comparison with the low-count threshold. Bins below that normalized threshold
+are masked from LUT construction, so changing it can change the LUT mapping
+and corrected preview. Choose normalization and threshold together; it is part
+of correction construction.

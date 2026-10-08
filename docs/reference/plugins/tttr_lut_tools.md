@@ -44,7 +44,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | TAC channels required | `ntac_required` | int |  | 2 … 1000000 | Target number of corrected NTAC bins (defaults to the input bin count). |
 | Noffset | `noffset` | int |  | 0 … 1000000 | Offset subtracted from corrected NTAC indices (or drag the red line). |
 | preview photons | `preview_photons` | int |  | 1000 … 100000000 | How many photons to use for the corrected-preview histogram. |
-| Normalize by region mean | `normalize` | bool |  |  | Divide the displayed histogram by the region mean (display only). |
+| Normalize by region mean | `normalize` | bool |  |  | Divide histogram counts by the selected region mean before comparing them with the low-count threshold. Bins below that normalized threshold are masked from LUT construction, so this setting can change the LUT and corrected preview. |
 
 ### Advanced
 

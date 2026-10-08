@@ -722,7 +722,7 @@ def test_the_qt_widget_and_the_emtk_app_show_the_same_series(alex_dir, qapp, qtb
 
     widget = TraceBrowser()
     qtbot.addWidget(widget)
-    widget.detector_page._load_data(json.loads(json.dumps(ALEX)))
+    widget.detector_page.set_settings(json.loads(json.dumps(ALEX)))
     widget._on_continue()
     monkeypatch.setattr(widget, "_precompute_all_traces", lambda *a, **k: None)
     widget._open_folder(alex_dir)

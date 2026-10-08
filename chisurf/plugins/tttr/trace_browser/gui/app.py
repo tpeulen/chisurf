@@ -58,6 +58,7 @@ from chisurf.core.setup_channel_definition import ChannelDefinition
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.jobs import SnapshotJob
+from chisurf.plugins.emtk_layout import window_size
 
 from .host_lookup import default_request_handler
 from .model import TraceBrowserModel
@@ -302,6 +303,7 @@ class TraceBrowserApp(ImApp):
         self.spec = json.loads(
             (HERE / "trace_browser_emtk.view.json").read_text(encoding="utf-8")
         )
+        self.window_size = window_size(self.spec, (1200, 800))
         self.form = FormState()
         self.dialog: FileDialog | None = None
         self.dialog_kind = ""

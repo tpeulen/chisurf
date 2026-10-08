@@ -31,7 +31,7 @@
         {"type": "value", "attr": "ntac_required", "label": "TAC channels required", "kind": "int", "minimum": 2, "maximum": 1000000, "call": "update", "description": "Target number of corrected NTAC bins (defaults to the input bin count)."},
         {"type": "value", "attr": "noffset", "label": "Noffset", "kind": "int", "minimum": 0, "maximum": 1000000, "call": "update", "description": "Offset subtracted from corrected NTAC indices (or drag the red line)."},
         {"type": "value", "attr": "preview_photons", "label": "preview photons", "kind": "int", "minimum": 1000, "maximum": 100000000, "call": "update", "description": "How many photons to use for the corrected-preview histogram."},
-        {"type": "toggle", "attr": "normalize", "label": "Normalize by region mean", "call": "update", "description": "Divide the displayed histogram by the region mean (display only)."}
+        {"type": "toggle", "attr": "normalize", "label": "Normalize by region mean", "call": "update", "description": "Divide histogram counts by the selected region mean before comparing them with the low-count threshold. Bins below that normalized threshold are masked from LUT construction, so this setting can change the LUT and corrected preview."}
       ]
     },
     {

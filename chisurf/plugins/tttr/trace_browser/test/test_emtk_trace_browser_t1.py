@@ -165,7 +165,7 @@ def test_qt_widget_and_emtk_app_derive_the_same_channels(qapp, qtbot, setup, exp
 
     widget = TraceBrowser()
     qtbot.addWidget(widget)
-    widget.detector_page._load_data(json.loads(json.dumps(setup)))
+    widget.detector_page.set_settings(json.loads(json.dumps(setup)))
     widget._on_continue()
 
     path = tmp_path / "setups.json"

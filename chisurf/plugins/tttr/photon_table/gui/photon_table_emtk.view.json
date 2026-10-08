@@ -1,6 +1,7 @@
 {
   "_comment": "Photon Table, native emtk window. Drawn by emtk.view_form over PhotonTableViewModel (gui/model.py): 'file' is the left window (open, copy, the file summary), 'photons' the right one (navigation, page fields, channel filter, the table of photons). Help and Guide are drawn by gui/app.py.",
   "title": "Photon Table",
+  "window": {"width": 1100, "height": 720},
   "sections": [
     {
       "type": "panel",

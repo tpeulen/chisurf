@@ -1,4 +1,5 @@
 {
+  "window": {"width": 1200, "height": 800},
   "_comment": "Trace Browser, Browser page (cards T2, T3b). Drawn by emtk.view_form over TraceBrowserModel (gui/model.py); the trace plot and the annotation box are drawn by gui/app.py (a plot cannot be a spec); the Export, CSV, DOCX, Delete and hand-off buttons (card T4) act on the table's selection (one row, or all rows after Select all); Delete asks for a confirmation that gui/app.py draws.",
   "title": "Trace browser",
   "sections": [

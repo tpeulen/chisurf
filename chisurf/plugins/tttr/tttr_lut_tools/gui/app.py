@@ -24,6 +24,7 @@ from emtk.view_form import FormState, draw_sections
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.jobs import SnapshotJob
+from chisurf.plugins.emtk_layout import window_size
 
 from .controller import COLORS
 from .model import LutToolModel
@@ -71,6 +72,7 @@ class LutToolsApp(ImApp):
         self.model = LutToolModel(apply_callback)
         self.job = SnapshotJob(self.model)
         self._spec_source = json.loads((HERE / "lut_tools_emtk.view.json").read_text("utf-8"))
+        self.window_size = window_size(self._spec_source, (1100, 720))
         self._spec_locale = None
         self.panels = {}
         self.form = FormState()

@@ -411,3 +411,9 @@ FRET distance distributions and anisotropy decays are resolved; see
   pixel-wise fits; {cite}`wahl2015` the timing electronics and acquisition
   modes; {cite}`isbaner2016` dead-time distortion and its correction.
 - Tools in ChiSurf: **Decay Analysis** (`chisurf/plugins/fluorescence_decay/lifetime_analysis/`) collects the decay tools — IRF estimation, **MaxEnt MEM** (`chisurf/plugins/fluorescence_decay/maxent_decay/`) for a lifetime *distribution*, **Lazy Lifetime Analysis** (`chisurf/plugins/fluorescence_decay/lltf/`) for an automated discrete-exponential fit of one decay file, and the **Synthetic Decay Generator** (`chisurf/plugins/fluorescence_decay/synthetic_decay/`) for a decay whose answer you know.
+
+Microtime linearization can mask low-count calibration bins before building
+the correction. When region-mean normalization is enabled, the low-count
+threshold compares counts relative to that mean. It can therefore change the
+accepted bins, correction mapping and corrected preview. The
+[LUT workflow](../guides/37_tttr_microtime_lut.md) documents this setting.

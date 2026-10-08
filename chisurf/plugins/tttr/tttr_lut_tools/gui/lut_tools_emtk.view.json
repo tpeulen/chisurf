@@ -1,6 +1,7 @@
 {
   "_comment": "TTTR LUT Tools, native emtk window. Drawn by emtk.view_form over LutToolModel (gui/model.py). Panels: 'header' (flow hint, Add all channels, Apply, Help, Guide, tab choice), 'files' (input files), 'compute' (tab 1: Compute LUT), 'assign' (tab 2: settings.tttr.json), 'status' (last message). The two plots are drawn by gui/app.py (a spec cannot draw a plot).",
   "title": "TTTR LUT Tools",
+  "window": {"width": 1100, "height": 720},
   "sections": [
     {
       "type": "panel", "name": "header", "title": "LUT flow",
@@ -75,8 +76,8 @@
             "description": "Offset subtracted from corrected NTAC indices (or drag the red line)."},
            {"type": "value", "attr": "preview_photons", "label": "Preview photons", "kind": "int", "minimum": 1000, "maximum": 100000000, "call": "param_changed",
             "description": "How many photons to use for the corrected-preview histogram."},
-           {"type": "toggle", "attr": "normalize", "label": "Normalize by region mean", "call": "param_changed",
-            "description": "Divide the displayed histogram by the region mean (display only)."}
+           {"type": "toggle", "attr": "normalize", "label": "Normalize", "call": "param_changed",
+            "description": "Divide histogram counts by the selected region mean before comparing them with the low-count threshold. Bins below that normalized threshold are masked from LUT construction, so this setting can change the LUT and corrected preview."}
          ]},
         {"type": "panel", "title": "Advanced", "n_col": 2, "collapsible": true, "collapsed": true,
          "description": "Rarely needed: seed, low-count threshold, wrap-spike mitigation.",

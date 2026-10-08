@@ -299,3 +299,8 @@ other computed results are retained across geometry restoration.
 Result-selector buttons wrap to remain readable in narrower panels. The FRET
 plot uses the concise caption “FRET efficiency by state”; its plot identity,
 axis state, data and user actions remain unchanged.
+
+The native Photon Table tool starts at 1100×720; Trace Browser starts at
+1200×800. Saved custom geometry takes precedence. Loaded event rows, timing,
+selected traces and count histograms retain their original values across
+geometry restoration.
