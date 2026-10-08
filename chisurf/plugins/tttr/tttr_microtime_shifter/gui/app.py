@@ -28,7 +28,14 @@ from emtk.view_form import FormState, draw_form, draw_sections
 
 from chisurf.core.fio.staging import TTTR_EXTENSIONS
 from chisurf.emtk.dataset_picker import DatasetPicker
-from chisurf.plugins.emtk_layout import NUMBER_WIDTH, LabelColumn, icon_label, labelled, layout_spec
+from chisurf.plugins.emtk_layout import (
+    NUMBER_WIDTH,
+    LabelColumn,
+    icon_label,
+    labelled,
+    layout_spec,
+    window_size,
+)
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 
@@ -57,7 +64,7 @@ class SampleFields:
         return json.loads(self._app.sample_definition)
 
     def __getattr__(self, name):
-        if name.startswith("_"):
+        if name not in self.SAMPLE and name not in self.ENTITY and name not in self.PROBES:
             raise AttributeError(name)
         data = self._data()
         if name in self.SAMPLE:
@@ -159,7 +166,9 @@ class MicrotimeShifterApp(TourTarget, ImApp):
         self.samples = []
         self.sample_definition = None
         self.item_rects = {}
-        self.spec = layout_spec(json.loads((HERE / "shifter.view.json").read_text(encoding="utf-8")))
+        spec = json.loads((HERE / "shifter.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(spec, (1100, 720))
+        self.spec = layout_spec(spec)
         self.labels = LabelColumn()                  # one caption column for the fields of every panel
         for panel in self.spec["sections"]:
             for group in panel["sections"]:
@@ -896,6 +905,8 @@ class MicrotimeShifterApp(TourTarget, ImApp):
         if self.sample_definition is not None:
             pressed = self.sample_window.begin(frame)
             im.begin_disabled(self.job.running)
+            body_height = max(80.0, im.get_content_region_avail()[1] - 34.0)
+            im.begin_child("sample_fields", (-1.0, body_height))
             self.draw_sample_form()
             if im.collapsing_header("Advanced sample definition"):
                 _, self.sample_definition = im.input_text_multiline(
@@ -905,6 +916,7 @@ class MicrotimeShifterApp(TourTarget, ImApp):
                     "Complete sample schema: name, description, entities, probes, FRET pairs, buffer, pH, "
                     "temperature and external-reference annotations."
                 )
+            im.end_child()
             self.button("Create sample", "Create the defined sample in the authenticated database.",
                         self.create_sample, key="sample_create")
             im.end_disabled()

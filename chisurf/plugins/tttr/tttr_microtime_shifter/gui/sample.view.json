@@ -9,7 +9,7 @@
           "type": "value",
           "attr": "name",
           "label": "Sample name",
-          "kind": "text",
+          "kind": "str",
           "description": "Sample identity recorded with the shifted files' provenance."
         },
         {
@@ -36,14 +36,14 @@
           "type": "value",
           "attr": "entity_name",
           "label": "Entity name",
-          "kind": "text",
+          "kind": "str",
           "description": "Name of the labelled molecule."
         },
         {
           "type": "value",
           "attr": "entity_type",
           "label": "Entity type",
-          "kind": "text",
+          "kind": "str",
           "description": "Kind of molecule (protein, DNA, RNA ...)."
         },
         {
@@ -57,28 +57,28 @@
           "type": "value",
           "attr": "uniprot_accession",
           "label": "UniProt accession",
-          "kind": "text",
+          "kind": "str",
           "description": "UniProt entry the reference sequence is fetched from."
         },
         {
           "type": "value",
           "attr": "pdb_id",
           "label": "PDB ID",
-          "kind": "text",
+          "kind": "str",
           "description": "PDB entry of the structure."
         },
         {
           "type": "value",
           "attr": "pdb_chain_id",
           "label": "PDB chain",
-          "kind": "text",
+          "kind": "str",
           "description": "Chain of the PDB entry."
         },
         {
           "type": "value",
           "attr": "organism",
           "label": "Organism",
-          "kind": "text",
+          "kind": "str",
           "description": "Source organism."
         },
         {
@@ -119,14 +119,14 @@
           "type": "value",
           "attr": "donor",
           "label": "Donor dye",
-          "kind": "text",
+          "kind": "str",
           "description": "Name of the donor probe on the first entity."
         },
         {
           "type": "value",
           "attr": "acceptor",
           "label": "Acceptor dye",
-          "kind": "text",
+          "kind": "str",
           "description": "Name of the acceptor probe on the first entity."
         }
       ]

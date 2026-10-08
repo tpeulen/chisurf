@@ -15,7 +15,7 @@ from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
-from chisurf.plugins.emtk_layout import button_row, layout_spec
+from chisurf.plugins.emtk_layout import button_row, layout_spec, window_size
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 
 from ..core import TTTRData, load_tttr_with_tttrlib
@@ -121,7 +121,9 @@ class AudifierApp(TourTarget, ImApp):
             lambda box: self.draw_mixer(box, detectors=False),
             dock="mixer",
         )
-        panels = json.loads(Path(__file__).with_name("audifier.view.json").read_text())["sections"][0]["sections"]
+        spec = json.loads(Path(__file__).with_name("audifier.view.json").read_text())
+        self.window_size = window_size(spec, (1100, 720))
+        panels = spec["sections"][0]["sections"]
         self.parameter_specs = panels
         self.specs = {}
         for panel in panels:

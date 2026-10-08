@@ -1,4 +1,5 @@
 {
+  "window": {"width": 1100, "height": 720},
   "_comment": "Controls of the micro-time shifter, drawn by emtk's view_form against the app (gui/app.py), which is the model: attrs are its fields, button actions its methods, `enabled(name)` and `bounds(name)` its hooks. The per-channel shift rows depend on the loaded file, so they are the custom `channel_shifts` section; the MMFDB sample list is the custom `sample_list` section. Each run of fields is a panel of its own (a grid with one label column), so the buttons beside them start at the left edge instead of the label column.",
   "sections": [
     {
@@ -108,7 +109,7 @@
               "type": "value",
               "attr": "output_folder",
               "label": "Batch folder",
-              "kind": "text",
+              "kind": "str",
               "placeholder": "Output folder",
               "description": "Directory for a batch of shifted files; the inputs stay unchanged."
             }

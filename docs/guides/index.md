@@ -43,6 +43,7 @@ saving_projects
 74_intensity_traces_and_file_tools
 73_tttr_decay_and_correlation
 88_microtime_shifter
+94_tttr_audifier
 37_tttr_microtime_lut
 34_exporting_burst_data
 35_combining_repeats
@@ -321,3 +322,5 @@ PYTHONPATH=. python docs/guides/make_figures.py
 
 All lengths in the polymer tutorials are in Ångström, FCS lag times in seconds
 (displayed in ms), and diffusion coefficients in µm²/s.
+
+| [Photon streams as sound and a waterfall](94_tttr_audifier.md) | `tttr_audifier` (Tools → Photon data → TTTR Tools) |

@@ -233,3 +233,10 @@ silently re-interpreting old data.
   importing and reading photon data in practice.
 - {doc}`Burst fusion </concepts/burst_fusion>` and {doc}`H2MM </concepts/h2mm>`
   — the two analyses whose shapes the older format could not hold.
+
+A photon recording can drive both a count-based sound envelope and a
+macro-time/micro-time waterfall. Those derived arrays depend on the photon
+stream, channel gates and analysis settings, rather than the size of their
+native host. [Audifier](../guides/94_tttr_audifier.md) preserves its waveform
+and waterfall across layout changes; reopening preferences restores the
+configuration, while the recording is loaded again for recomputation.

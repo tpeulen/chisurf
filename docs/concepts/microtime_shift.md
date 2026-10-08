@@ -85,3 +85,10 @@ still needs one IRF per detector.
   (the window and the rising-edge search).
 - Key literature: {cite}`becker2005` (TCSPC instrumentation, detector and
   cable delays); {cite}`wahl2015` (timing electronics).
+
+Native host geometry and sample metadata do not change the cyclic-shift
+operation. The same detector offsets produce the same exported micro-time
+bins while macro-times, routing channels and acquisition clocks are retained.
+The [shifter workflow](../guides/88_microtime_shifter.md) documents committed
+batch paths, persistent settings and a sample form whose actions remain
+reachable independently of its scrolling content.

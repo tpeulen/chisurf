@@ -351,7 +351,7 @@ def test_layout_at_both_sizes(size):
                   "waterfall": (0.37 * w, 24, 0.63 * w, 0.62 * h - 24), "mixer": (0.37 * w, 0.62 * h + 24, 0.63 * w, 0.38 * h - 24),
                   "notes": (0.37 * w, 0.62 * h + 24, 0.63 * w, 0.38 * h - 24)}[panel]    # the dock tab strips are emtk's chrome
         if panel != "setup":      # the setup panel is the shared detector editor (its headers: see the report)
-            flat = type("P", (), {"texts": [t for t in painter.texts if t[5] not in {"Micro-time (bin)", "Lifetime (ns)"}]})
+            flat = type("P", (), {"visible_texts": [t for t in painter.visible_texts if t[5] not in {"Micro-time (bin)", "Lifetime (ns)"}]})
             assert_texts_apart(flat, region=region)      # (the rotated y label has an unrotated box in the recording)
     for key in ("load", "update", "play", "save_wav", "guide", "help", "range_start", "range_end"):
         x, y, w, h = app.item_rects[key]

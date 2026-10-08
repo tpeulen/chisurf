@@ -1,6 +1,13 @@
+---
+type: Guide
+title: 'Audifier: photon streams as sound and as a waterfall'
+description: Render photon counts as sound and inspect a detector-colored micro-time or lifetime waterfall.
+tags: [guides, tttr, audio, waterfall]
+---
+
 # Audifier: photon streams as sound and as a waterfall
 
-**Tool:** *Tools -> TTTR -> Audifier* (`tttr_audifier`). It turns a photon stream into sound (louder = more photons) and
+**Tool:** *Tools → Photon data → TTTR Tools*, then **Audifier** (`tttr_audifier`). It turns a photon stream into sound (louder = more photons) and
 shows the same stream as a **waterfall**: macro-time horizontally, micro-time (or lifetime) vertically, each detector in its
 own colour. Hearing a burst, a blink or a drift is often faster than finding it in a trace.
 
@@ -33,3 +40,13 @@ restarts; a white line follows the playback in the waterfall. **Save WAV** write
 **Guide** walks through all of this; **Help** is the reference.
 
 Concept: [lifetime from photon streams](../concepts/fret.md) for the lifetime waterfall's inverse-Laplace model.
+
+## Native layout and saved preferences
+
+Audifier starts at 1100 × 720; saved dimensions and dock placement win.
+Detector setup tables scroll horizontally to reach the trailing G-factor and
+remove controls. Window changes preserve the loaded photon data, waterfall,
+rendered waveform, range and channel configuration. Reopening restores setup
+and sound preferences; load the recording again to recompute its output.
+
+![Real BH photon waterfall at the native initial layout](figures/audifier_native_window.png)

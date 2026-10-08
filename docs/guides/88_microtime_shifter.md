@@ -19,7 +19,7 @@ channels is {doc}`87_channel_definition`.
 
 ## 1. Open the tool
 
-**Tools → TTTR → Microtime Shifter**. The window has three docks: **Files**
+**Tools → Photon data → TTTR Tools**, then **Micro-time Shift**. The window has three docks: **Files**
 (the queue, top left), **Micro-time shift** (the controls, below it; a
 **Status** tab beside them) and the **Micro-time histograms** (right), which
 gets the room. Buttons use a pictogram and a caption; every control has a
@@ -119,3 +119,15 @@ and reuse them for the rest of a series.
 
 {doc}`87_channel_definition` · {doc}`12_handling_tttr_files` ·
 {doc}`/concepts/microtime_shift`
+
+## Native layout and sample editing
+
+The native shifter starts at 1100 × 720 and retains saved custom dimensions.
+Changing the layout leaves histogram values, trigger position, channel shifts
+and exported photon arrays intact. **Batch folder** is a single-line path:
+Enter commits it before **Save batch**. In **New sample**, identifiers are
+single-line fields; descriptions, buffer details and sequences remain multiline.
+The form scrolls while **Create sample** and **Cancel sample** remain visible.
+Opening native preferences does not parse an unopened sample definition.
+
+![Native detector alignment with real shifted photon output](figures/microtime_shifter_native_window.png)
