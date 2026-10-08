@@ -1130,3 +1130,12 @@ amplitudes. Existing algorithms/defaults are retained. Public setup setters
 repair stale parity fixtures without restoring a private alias.
 [Acceptance](../validation/release-readiness-w6g/photon-viewer-acceptance.json)
 records measured arrays, real tooltip renders and remaining71declarations.
+
+The external ndX owner now reads and packages a1200×800 primary declaration.
+Its standalone launchers deliver that default instead of forcing900×600;
+explicit CLI sizes and existing ChiSurf saved geometry retain precedence.
+Source tables, axes, histograms/marginals and controls remain exact across real
+before/after scenes. The owner adds no new persistence subsystem or loader.
+Individual PNG inspection avoids a multi-image presentation artifact mistaken
+for a black canvas. [Owner acceptance](../validation/release-readiness-w6g/ndx-window-acceptance.json)
+records the exact wheel/source identities and inherited static diagnostics.

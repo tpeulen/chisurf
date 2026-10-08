@@ -355,3 +355,8 @@ A write-back failure is reported separately from the successfully saved burst-ID
 - {cite}`kalinin2010` — photon distribution analysis combined with lifetime, and what each adds.
 - {cite}`mcinnes2018` — the embedding used to lay out a many-dimensional burst set in two.
 - {cite}`campello2013` — the density-based clustering that finds populations without being told how many; the method is in {ref}`concept-density-clustering`.
+
+Viewer geometry is a presentation property: changing the owner window default
+or restoring a saved ChiSurf host size retains source tables, axis definitions,
+histograms and marginals. The [workflow](../guides/46_ndxplorer.md) distinguishes
+the declared default, explicit launcher override and existing host persistence.

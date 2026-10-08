@@ -6618,3 +6618,19 @@ Do not absorb or overwrite those foreign edits to obtain a green local test.
 Re-derive with targeted test/test_docs_sources.py and the docs receipt in the
 [demo archive](../validation/release-readiness-w6g/demo-contracts-final-source.zip).
 Resolve with those pages' owner during W0/W14 integration.
+
+## ndX inherited frame/launcher static diagnostics (2026-10-08)
+
+The declared-window unit preserves eight existing Ruff findings (import sorting,
+quoted annotation, legacy Dict spelling) and eight mypy findings in frame.py
+(names annotation, optional tuple/message/drag state, and pointer_release call
+inference). Original/final identities are in static-baseline-diagnostics.json
+inside [exact owner archive](../validation/release-readiness-w6g/ndx-window-final-source.zip).
+No suppression was added. Owner45geometry/data tests pass; these do not prove
+all unrelated callback paths. The callable pointer_release signature accepts
+x/y/button/modifiers; its starred tuple inference is not a demonstrated runtime
+failure. Static cleanup requires a separate bounded behavior-preserving plan;
+the geometry source excludes six foreign sibling changes. Re-derive with the
+same ChiSurf Ruff config and test-environment mypy follow-imports=skip as the
+recorded before/after commands. Programme root owns this follow-up; do not
+interpret unchanged baseline counts as clean static analysis.

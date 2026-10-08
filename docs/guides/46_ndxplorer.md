@@ -732,3 +732,10 @@ the status line.
   {doc}`FRET-efficiency histogram fitting <29_fret_histogram_fitting>`.
 </content>
 - Tool: **ndX** (`chisurf/plugins/ndxplorer/`).
+
+The native ndX owner declares a 1200×800 initial window, packaged with its
+application. Native/Tk launchers derive this default when `--size` is omitted;
+explicit sizes retain precedence. ChiSurf restores saved custom geometry after
+the owner default. Standalone host-size persistence is not introduced by this
+declaration. Numeric source tables, axes, histograms and marginals retain their
+values across window changes.
