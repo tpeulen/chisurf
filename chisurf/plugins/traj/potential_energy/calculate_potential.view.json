@@ -1,14 +1,17 @@
 {
   "_comment": "Declarative AutoForm layout for the Potential-Energy calculator. A single panel with the trajectory picker + potential-type combo + dynamic parameter editor + weight + Add button (custom `potential_energy_setup` section), the read stride, a table of the added potentials (double-click a row to remove it), the Process button + progress bar (custom `potential_energy_run` section) and a live log rendered by the built-in `info` section bound to the view-model's `log_html`. Replaces the former calculate_potential.ui.",
+  "window": {"width": 1100, "height": 720},
   "sections": [
     {
       "type": "panel",
       "title": "Potential energy",
+      "description": "Configure weighted molecular potentials and score the sampled trajectory frames.",
       "n_col": 1,
       "sections": [
         {
           "type": "custom",
-          "key": "potential_energy_setup"
+          "key": "potential_energy_setup",
+          "description": "Choose the trajectory and topology, configure a potential and add it with the desired weight."
         },
         {
           "type": "value",
@@ -22,6 +25,7 @@
         {
           "type": "table",
           "source": "added_potentials",
+          "description": "Potentials used to score each frame; double-click a row or select it and press Delete to remove it.",
           "activated_call": "remove_potential_activated",
           "height": 120,
           "columns": [
@@ -31,11 +35,13 @@
         },
         {
           "type": "custom",
-          "key": "potential_energy_run"
+          "key": "potential_energy_run",
+          "description": "Score the sampled frames and write a frame-number column followed by one energy column per potential."
         },
         {
           "type": "info",
           "source": "log_html",
+          "description": "Input files, added potentials, processing progress and the number of energy rows written.",
           "height": 100
         }
       ]

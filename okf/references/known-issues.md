@@ -1,3 +1,20 @@
+## Three generated parameter-context pages need shared-edit reconciliation (2026-10-08)
+
+status: open
+
+The catalogue now retains reused adapter attributes within distinct parameter
+panels, so Fit23 and Fit24 meanings cannot collapse. Generation succeeds against
+the prospective committed package. Owned before/after deltas merge into ten
+pages; they conflict with existing document edits in
+`docs/reference/plugins/batch_analysis.md`, `phasor_calculator.md` and
+`tr_anisotropy.md`. Those files were preserved. This blocks claiming a fully
+fresh generated catalogue, not the verified primary-spec GUI changes.
+
+Reconcile only parameter-context rows against the archived old/new generator
+outputs in the W6g primary-spec evidence, preserving the existing document
+edits. Re-run `pixi run -e docs docs-plugins` in a private owned-source tree and
+compare the three pages. Do not overwrite them from a dirty-tree generator.
+
 ## Native detector caller and mixin static declarations incomplete (2026-10-07)
 
 status: open

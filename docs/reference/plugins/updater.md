@@ -64,6 +64,12 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | --- | --- | --- | --- | --- | --- |
 | Available versions | `selected_version` | choice |  | choices: `version_labels` | The versions the update server lists, newest first. Picking one shows the changes up to it. Empty until Check for Updates has found some. |
 
+### ChiSurf Updater
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Value | `dialog_input` | str |  |  | The text the question asks for. |
+
 ## Source
 
 - Plugin package: `chisurf/plugins/core/updater/`

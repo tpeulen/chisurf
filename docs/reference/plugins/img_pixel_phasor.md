@@ -41,6 +41,9 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
+| TTTR file | `filename` | str |  |  | PTU/HT3 imaging file with line and frame markers (or drop one onto the window: it is loaded and run). The scanner geometry is read from its header. Press Enter to select a typed path. |
+| Min photons | `n_ph_min` | int |  | 1 … 10000 | Minimum photons per pixel for a valid phasor; Run applies a changed value. |
+| Frequency (MHz, -1=auto) | `frequency` | float |  | -1.0 … 1000.0 (step 1.0) | Modulation frequency in MHz; -1 derives it from the TTTR header. Run applies a changed value. |
 | View | `view_tab` | choice |  | choices: `tab_titles` | Bring any map or plot tab forward, also when the row of tabs is wider than the window. |
 | Detector window | `display_window` | choice |  | choices: `window_names` | The detector window shown in the maps. Every window is computed and written; this only chooses which one is drawn. The windows come from the Detectors tab (or the Imaging Tools setup step); without any, the channel-0 window is used. |
 

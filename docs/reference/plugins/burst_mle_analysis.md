@@ -37,6 +37,12 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Window start [bin] | `micro_time_start` | int |  | 0 … 100000 | First micro-time bin of the fit window (after binning). Leave out the empty bins before the prompt. |
 | Window stop [bin] | `micro_time_stop` | int |  | 1 … 100000 | Micro-time bin after the last bin of the fit window. Leave out the noisy tail. |
 
+### Burst files
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Fit model | `fit_model` | choice |  | choices: `fit_model_choices` | Registered tttrlib lifetime estimator used by the preview and every detector's batch fit. Fit23 measures a single lifetime with anisotropy, Fit24 a bi-exponential decay, and Fit25 selects among four fixed candidate lifetimes. Each model retains its start values and fixed flags. |
+
 ### Detector and window
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
@@ -44,6 +50,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Detector | `current_detector` | choice |  | choices: `detector_names` | The detector (colour) whose decay is shown and fitted. Define detectors in the Detector setup tab. |
 | Current file | `current_file` | int |  | 0 … 100000 | Index of the burst file whose decay is shown (0 is the first). |
 | Binning | `binning` | choice |  | choices: `binning_options` | Micro-time binning factor: raw channels per bin. Too fine leaves bins empty, finer than the IRF resolves nothing. Auto picks one. |
+| Window start [bin] | `micro_time_start` | int |  | 0 … 100000 | First micro-time bin of the fit window (after binning). Leave out the empty bins before the prompt. |
+| Window stop [bin] | `micro_time_stop` | int |  | 1 … 100000 | Micro-time bin after the last bin of the fit window. Leave out the noisy tail. |
 | Min photons | `min_photons` | int |  | 2 … 100000 | A burst with fewer photons in the fit window is not fitted (its lifetime is left empty). |
 
 ### IRF

@@ -1,5 +1,9 @@
 {
   "_comment": "Colocalization, drawn by emtk. The Qt tool's AutoForm spec is coloc.view.json.",
+  "window": {
+    "width": 1100,
+    "height": 720
+  },
   "sections": [
     {
       "type": "panel",
@@ -116,6 +120,7 @@
         {
           "type": "panel",
           "title": "Background / thresholds",
+          "description": "Subtract measured or quantile-estimated channel backgrounds, then choose manual or Costes-derived intensity thresholds before calculating overlap.",
           "collapsed": false,
           "n_col": 1,
           "sections": [
@@ -185,6 +190,7 @@
         {
           "type": "panel",
           "title": "Scatter gate",
+          "description": "Select a population in the channel-A versus channel-B intensity plane using a rectangle, painted pixels or combined regions. The gated coefficients use that selection.",
           "collapsed": true,
           "n_col": 1,
           "sections": [
@@ -263,6 +269,7 @@
         {
           "type": "panel",
           "title": "Region of interest",
+          "description": "Limit the analysis to pixels painted on the Channel A map; clearing the region restores analysis of the full image.",
           "collapsed": true,
           "n_col": 1,
           "sections": [
@@ -305,6 +312,7 @@
         {
           "type": "panel",
           "title": "Objects (punctate signal)",
+          "description": "Segment thresholded channel images into objects, discard undersized regions, and match their centroids within the chosen pixel tolerance.",
           "collapsed": true,
           "n_col": 1,
           "sections": [
@@ -360,6 +368,7 @@
         {
           "type": "panel",
           "title": "Significance / profile",
+          "description": "Compare correlation with reproducible block-randomized null images, and inspect shift-dependent and intensity-binned correlations; histogram bins set the scatter-map resolution.",
           "collapsed": true,
           "n_col": 1,
           "sections": [

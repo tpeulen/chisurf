@@ -179,3 +179,8 @@ the ground truth, which is the one diagnostic the GUI cannot show you.
 ## See also
 
 - Tool: **Particle Tracking** (`chisurf/plugins/microscopy/img_tracking/`).
+
+The native window declares 1100×720 initial dimensions and retains saved resizing.
+Its display and tooltips use the same scientific results. Validation compares
+exact detections/MSD samples and independently profiled fit objectives, so small
+optimizer decimal differences are checked against the actual fitting problem.

@@ -61,6 +61,12 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | --- | --- | --- | --- | --- | --- |
 | stage_name | `stage_name` | choice |  | choices: Compute LUT, settings.tttr.json (optional) | Compute LUT: MAKE a per-routing-channel LUT from a flat / uniform-illumination measurement (the main tool). settings.tttr.json: OPTIONAL, save or load a portable settings file, or assign LUT files to channels by hand. |
 
+### Compute LUT
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Preview channel | `channel` | choice |  | choices: `channels_options` | Preview / tune THIS routing channel's histogram and region. Add all channels to setup computes and assigns a LUT for ALL channels. |
+
 ### settings.tttr.json
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |

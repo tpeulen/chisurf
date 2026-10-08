@@ -1,14 +1,17 @@
 {
   "_comment": "Declarative AutoForm layout for the Align-Trajectory tool. A single panel with the trajectory picker + save-aligned button (custom section, H5 browse/drag-drop), the atom-selection text field and read stride, above a live log rendered by the built-in `info` section bound to the view-model's `log_html`. Replaces the former align_trajectory.ui.",
+  "window": {"width": 1100, "height": 720},
   "sections": [
     {
       "type": "panel",
       "title": "Align trajectory",
+      "description": "Superpose sampled trajectory frames onto the first frame using the selected reference atoms.",
       "n_col": 1,
       "sections": [
         {
           "type": "custom",
-          "key": "traj_align_io"
+          "key": "traj_align_io",
+          "description": "Choose the coordinate trajectory and its topology, then save the aligned coordinates to a new DCD."
         },
         {
           "type": "value",
@@ -30,6 +33,7 @@
         {
           "type": "info",
           "source": "log_html",
+          "description": "Input files, alignment progress and the destination of the aligned trajectory.",
           "height": 100
         }
       ]

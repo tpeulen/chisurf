@@ -261,7 +261,6 @@ def preserve_finished_translations(before: str, path: pathlib.Path) -> None:
         if text:
             finished.setdefault(source, set()).add(text)
     tree = ET.parse(path)
-    changed = False
     for message in tree.getroot().findall(".//message"):
         translation = message.find("translation")
         source = message.findtext("source")
@@ -277,12 +276,10 @@ def preserve_finished_translations(before: str, path: pathlib.Path) -> None:
             continue
         translation.text = old
         translation.attrib.pop("type", None)
-        changed = True
-    if changed:
-        ET.indent(tree, space="    ")
-        content = ET.tostring(tree.getroot(), encoding="unicode")
-        content = re.sub(r" +(?=\n)", lambda match: "&#32;" * len(match[0]), content)
-        path.write_text('<?xml version="1.0" encoding="utf-8"?>\n<!DOCTYPE TS>\n' + content + "\n", encoding="utf-8")
+    ET.indent(tree, space="    ")
+    content = ET.tostring(tree.getroot(), encoding="unicode")
+    content = re.sub(r" +(?=\n)", lambda match: "&#32;" * len(match[0]), content)
+    path.write_text('<?xml version="1.0" encoding="utf-8"?>\n<!DOCTYPE TS>\n' + content + "\n", encoding="utf-8")
 
 
 def main() -> int:

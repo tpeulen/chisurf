@@ -1,14 +1,17 @@
 {
   "_comment": "Declarative AutoForm layout for the MD-Converter (trajectory converter) tool. An Input panel with the file rows (topology, trajectory, target folder — custom `traj_convert_io` section, browse respects the folder toggle), the folder toggle and the frame range/stride; an Output panel with the base name, extension combo, split toggle and the `▶ Convert` action; a live log rendered by the built-in `info` section bound to the view-model's `log_html`. Replaces the former convert_structures.ui.",
+  "window": {"width": 1100, "height": 720},
   "sections": [
     {
       "type": "panel",
       "title": "Input",
+      "description": "Choose the topology and coordinate source, output folder and source-frame range to convert.",
       "n_col": 1,
       "sections": [
         {
           "type": "custom",
-          "key": "traj_convert_io"
+          "key": "traj_convert_io",
+          "description": "Select the topology, DCD trajectory or PDB folder, and destination directory."
         },
         {
           "type": "toggle",
@@ -48,6 +51,7 @@
     {
       "type": "panel",
       "title": "Output",
+      "description": "Choose the output filename, writable format and whether to create a separate file for each frame.",
       "n_col": 1,
       "sections": [
         {
@@ -73,11 +77,13 @@
         },
         {
           "type": "custom",
-          "key": "traj_convert_run"
+          "key": "traj_convert_run",
+          "description": "Convert the selected input frames with the output format and split setting shown above."
         },
         {
           "type": "info",
           "source": "log_html",
+          "description": "Input frame range, output files and the frame and atom counts written during conversion.",
           "height": 100
         }
       ]

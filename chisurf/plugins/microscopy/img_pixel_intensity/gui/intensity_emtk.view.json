@@ -1,5 +1,6 @@
 {
   "_comment": "Per-pixel intensity, drawn by emtk. The settings window on the left (file, detector window, the actions), the maps as tabs on the right. The Qt tool's AutoForm spec is intensity.view.json.",
+  "window": {"width": 1100, "height": 720},
   "sections": [
     {
       "type": "panel",

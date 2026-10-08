@@ -1,5 +1,6 @@
 {
   "_comment": "Mean micro-time, drawn by emtk. The Qt tool's AutoForm spec is micro_time.view.json.",
+  "window": {"width": 1100, "height": 720},
   "sections": [
     {
       "type": "panel",

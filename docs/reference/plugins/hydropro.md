@@ -72,6 +72,12 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | --- | --- | --- | --- | --- | --- |
 | Status | `status` | str |  |  | Outcome of the last run. |
 
+### General
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Status | `status` | str |  |  | Outcome of the last run. |
+
 ## JSON-RPC methods
 
 | Method | Long-running | Summary |

@@ -26,8 +26,16 @@ def draw(app, size, frames: int = 3) -> RecordingPainter:
 
 
 def boxes(painter: RecordingPainter) -> list[tuple[float, float, float, float, str]]:
-    """``(x, y, w, h, string)`` of every drawn string that has a width."""
-    return [(x, y, w, h, s) for x, y, w, h, _a, s, *_ in painter.texts if s.strip() and w > 0]
+    """Read occupied font bounds captured with each draw's alignment and active clips.
+
+    Textbox widths describe alignment or clipping space rather than glyph width.
+    The recorder preserves both, including font changes between individual calls.
+    """
+    return [
+        (x, y, w, h, s)
+        for x, y, w, h, _align, s, *_ in painter.visible_texts
+        if s.strip() and w > 0 and h > 0
+    ]
 
 
 def _overlap(a, b) -> float:

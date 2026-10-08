@@ -371,3 +371,9 @@ analysis methods are unchanged: the move groups fluorescence imaging with the
 other spectroscopy workflows. Deeper addresses retain their method groups
 (Imaging › Lifetime, Tools or Simulate); hidden tools remain reached through
 the hub. See {doc}`/guides/98_imaging_tools` for navigation and the workflow.
+
+Native parameter hints identify lifetime/rotation times in nanoseconds and
+separate starting values from fixed inputs. The analysis-window defaults and
+fold help are described in the [scan-image workflow](../guides/24_scan_images.md).
+A before/after output comparison proves UI preservation; an intentionally shifted
+IRF fixture is not proof of recovery of a simulated lifetime.

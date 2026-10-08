@@ -49,6 +49,9 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | Periodic convolution | `periodic` | bool |  |  | Model the finite laser repetition period: the previous pulse's decay tail wraps into the window. |
+| ↔ Pol | `polarized` | bool |  |  | Stack parallel and perpendicular detector-routing channels for anisotropy-aware filter computation. |
+| ▤ AP | `fit_background` | bool |  |  | Add a constant microtime basis pattern representing afterpulsing and uniform dark-count background. |
+| ⚡ IRF | `scatter_irf` | bool |  |  | Model scattered excitation light (the IRF) as a nuisance component. Each detector's measured IRF file, or its synthetic-IRF Width/Skew, is set per row in the Detectors table below. Afterpulse and scatter/IRF are always absorbed by their filters and excluded from the correlation-facing output. |
 
 ### Auto-fit
 

@@ -386,8 +386,6 @@ def test_the_database_buttons_pick_the_first_and_the_second_acquisition(app, drv
     assert Path(app.model.second_filename) == stack_b and Path(app.model.filename) == stack_a
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the dataset picker's buttons share one id ('...##dataset') and its Open selected / Cancel "
-                   "never fire; see REPORT.md section 10")
 def test_the_open_selected_button_of_the_database_picker_can_be_pressed(app, drv, stack_a):
     import time
 
@@ -750,7 +748,6 @@ def test_the_ring_table_header_sorts_by_value_and_a_row_click_changes_nothing(ap
     assert app.model.export_settings() == before and app.model.result is not None
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the wheel never reaches an implot inside a DockManager window; see REPORT.md section 10")
 def test_the_wheel_zooms_the_curve(app, drv, stack_a):
     loaded(app, drv, stack_a)
     measure(app, drv)
@@ -761,7 +758,6 @@ def test_the_wheel_zooms_the_curve(app, drv, stack_a):
     assert numeric_ticks(drv.draw(2)) != before
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the wheel does not reach a spin field inside a DockManager window; see REPORT.md section 10")
 def test_the_wheel_over_the_pixel_size_field_steps_it(app, drv):
     x, y, w, h = drv.rect("pixel_size_nm")
     drv.wheel(x + w * 0.3, y + h / 2, 1)

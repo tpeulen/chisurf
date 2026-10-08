@@ -227,8 +227,12 @@ def test_every_spec_field_is_drawn_with_its_description(monkeypatch):
         _draw(app)
         names = {"join_mode", "reverse_traj_1", "reverse_traj_2", "chunk_size"}
         assert {f["attr"] for f in fields} == names and names <= set(app.form.rects)
-        assert all(f["description"] in tips for f in fields)
-        assert not any("chunk of trajectory" in f["description"] for f in fields)   # whole-trajectory reversal
+        for field in fields:
+            descriptions = field.get("descriptions") or [field["description"]]
+            assert all(description in tips for description in descriptions)
+        assert not any(
+            "chunk of trajectory" in f["description"] for f in fields
+        )  # whole-trajectory reversal
         _commit(app.model, next(f for f in fields if f["attr"] == "join_mode"), "atoms", app.form)
         assert app.model.join_mode == "atoms" and app.export_settings()["join_mode"] == "atoms"
     finally:

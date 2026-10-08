@@ -1,14 +1,17 @@
 {
   "_comment": "Declarative native AutoForm layout for the Trajectory-to-FRET tool. Trajectory/topology sources and read stride (Reference), twelve cascading donor/acceptor chain/residue/atom choices (Dipole atoms), dye parameters (R0, tau0, dipole averaging, frame time-step), and Process with its live log.",
+  "window": {"width": 1100, "height": 720},
   "sections": [
     {
       "type": "panel",
       "title": "Reference",
+      "description": "Choose the coordinate trajectory and atom topology, then set the frame sampling stride.",
       "n_col": 1,
       "sections": [
         {
           "type": "custom",
-          "key": "fret_traj_io"
+          "key": "fret_traj_io",
+          "description": "Select the DCD trajectory and its PDB topology; the topology supplies the atom choices."
         },
         {
           "type": "value",
@@ -24,17 +27,20 @@
     {
       "type": "panel",
       "title": "Dipole atoms",
+      "description": "Identify two donor atoms and two acceptor atoms to define the transition dipole vectors.",
       "n_col": 1,
       "sections": [
         {
           "type": "custom",
-          "key": "fret_atom_pairs"
+          "key": "fret_atom_pairs",
+          "description": "Choose chain, residue and atom for both ends of each donor and acceptor dipole."
         }
       ]
     },
     {
       "type": "panel",
       "title": "Parameters",
+      "description": "Set the dye-pair distance scale, donor lifetime, trajectory timing and orientation-factor model.",
       "n_col": 1,
       "sections": [
         {
@@ -80,15 +86,18 @@
     {
       "type": "panel",
       "title": "Process",
+      "description": "Write per-frame donor\u2013acceptor distances, orientation factors and transfer rates to a text file.",
       "n_col": 1,
       "sections": [
         {
           "type": "custom",
-          "key": "fret_run"
+          "key": "fret_run",
+          "description": "Process the selected frames using the atom pairs and dye parameters shown above."
         },
         {
           "type": "info",
           "source": "log_html",
+          "description": "Trajectory-loading messages, processing progress and completed frame counts for the FRET export.",
           "height": 110
         }
       ]

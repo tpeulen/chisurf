@@ -1,5 +1,6 @@
 {
   "_comment": "Pixel-wise MLE, drawn by emtk. The Qt tool's AutoForm spec is pixel_mle.view.json.",
+  "window": {"width": 1100, "height": 720},
   "sections": [
     {
       "type": "panel",
@@ -161,7 +162,7 @@
               "minimum": 0.0,
               "maximum": 100.0,
               "style": "spin",
-              "description": "Initial value of tau."
+              "description": "Starting fluorescence lifetime in nanoseconds for the single-exponential decay; it is optimised unless fixed."
             },
             {
               "type": "toggle",
@@ -178,7 +179,7 @@
               "minimum": 0.0,
               "maximum": 1.0,
               "style": "spin",
-              "description": "Initial value of gamma."
+              "description": "Starting dimensionless scatter/background fraction (0–1); the remainder is assigned to the fluorescence decay."
             },
             {
               "type": "toggle",
@@ -195,7 +196,7 @@
               "minimum": 0.0,
               "maximum": 0.4,
               "style": "spin",
-              "description": "Initial value of r0."
+              "description": "Fundamental anisotropy at time zero, set by the absorption/emission dipole angle; dimensionless, with 0.4 for parallel dipoles."
             },
             {
               "type": "toggle",
@@ -212,7 +213,7 @@
               "minimum": 0.0,
               "maximum": 1000.0,
               "style": "spin",
-              "description": "Initial value of rho."
+              "description": "Starting rotational correlation time in nanoseconds, controlling the anisotropy decay r(t) = r0 exp(−t/ρ)."
             },
             {
               "type": "toggle",
@@ -241,7 +242,7 @@
               "minimum": 0.0,
               "maximum": 100.0,
               "style": "spin",
-              "description": "Initial value of tau1."
+              "description": "First fluorescence lifetime in nanoseconds; a fitted component for fit24 or a fixed candidate for fit25."
             },
             {
               "type": "toggle",
@@ -258,7 +259,7 @@
               "minimum": 0.0,
               "maximum": 1.0,
               "style": "spin",
-              "description": "Initial value of gamma."
+              "description": "Starting dimensionless scatter/background fraction (0–1); the remainder is assigned to the fluorescence decay."
             },
             {
               "type": "toggle",
@@ -275,7 +276,7 @@
               "minimum": 0.0,
               "maximum": 100.0,
               "style": "spin",
-              "description": "Initial value of tau2."
+              "description": "Second fluorescence lifetime in nanoseconds; a fitted component for fit24 or a fixed candidate for fit25."
             },
             {
               "type": "toggle",
@@ -292,7 +293,7 @@
               "minimum": 0.0,
               "maximum": 1.0,
               "style": "spin",
-              "description": "Initial value of A2."
+              "description": "Starting amplitude fraction of the second exponential (0–1); the first component has amplitude fraction 1 − A2."
             },
             {
               "type": "toggle",
@@ -309,7 +310,7 @@
               "minimum": 0.0,
               "maximum": 1000000.0,
               "style": "spin",
-              "description": "Initial value of offset."
+              "description": "Starting total flat baseline contribution, divided equally among the micro-time channels by fit24."
             },
             {
               "type": "toggle",
@@ -327,7 +328,7 @@
             "attr": "fit_model",
             "not_equals": "fit25"
           },
-          "description": "Initial values and fixed flags of the fit25 parameters.",
+          "description": "Four candidate lifetimes in nanoseconds and their fixed flags, plus the scatter fraction; fit25 compares candidates rather than fitting a four-exponential mixture.",
           "sections": [
             {
               "type": "value",
@@ -338,7 +339,7 @@
               "minimum": 0.0,
               "maximum": 100.0,
               "style": "spin",
-              "description": "Initial value of tau1."
+              "description": "First fluorescence lifetime in nanoseconds; a fitted component for fit24 or a fixed candidate for fit25."
             },
             {
               "type": "toggle",
@@ -355,7 +356,7 @@
               "minimum": 0.0,
               "maximum": 100.0,
               "style": "spin",
-              "description": "Initial value of tau2."
+              "description": "Second fluorescence lifetime in nanoseconds; a fitted component for fit24 or a fixed candidate for fit25."
             },
             {
               "type": "toggle",
@@ -372,7 +373,7 @@
               "minimum": 0.0,
               "maximum": 100.0,
               "style": "spin",
-              "description": "Initial value of tau3."
+              "description": "Third fixed candidate lifetime in nanoseconds; fit25 selects the candidate that best describes each pixel."
             },
             {
               "type": "toggle",
@@ -389,7 +390,7 @@
               "minimum": 0.0,
               "maximum": 100.0,
               "style": "spin",
-              "description": "Initial value of tau4."
+              "description": "Fourth fixed candidate lifetime in nanoseconds; fit25 selects the candidate that best describes each pixel."
             },
             {
               "type": "toggle",
@@ -406,7 +407,7 @@
               "minimum": 0.0,
               "maximum": 1.0,
               "style": "spin",
-              "description": "Initial value of gamma."
+              "description": "Starting dimensionless scatter/background fraction (0–1); the remainder is assigned to the fluorescence decay."
             },
             {
               "type": "toggle",
@@ -419,6 +420,7 @@
         {
           "type": "panel",
           "title": "IRF preparation",
+          "description": "Trim the measured IRF below its peak fraction and align the parallel/perpendicular responses by fractional micro-time bins before reconvolution.",
           "n_col": 2,
           "collapsed": true,
           "sections": [
@@ -461,6 +463,7 @@
         {
           "type": "panel",
           "title": "Fit flags",
+          "description": "Choose whether the likelihood uses the combined P + 2S decay and whether the BIFL background contribution is removed from the fit statistic.",
           "n_col": 2,
           "collapsed": true,
           "sections": [
@@ -482,6 +485,7 @@
         {
           "type": "panel",
           "title": "Background",
+          "description": "Optional flat background counts for each polarisation, spread uniformly over the selected fit window before fitting.",
           "n_col": 2,
           "collapsed": true,
           "sections": [
@@ -519,6 +523,7 @@
         {
           "type": "panel",
           "title": "Performance",
+          "description": "Choose histogram extraction and fit concurrency; these settings control execution rather than the physical decay model.",
           "n_col": 2,
           "collapsed": true,
           "sections": [

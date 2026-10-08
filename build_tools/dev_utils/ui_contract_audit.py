@@ -320,6 +320,82 @@ def audit_python(text: str, path: str) -> list[Finding]:
     return findings
 
 
+def audit_translation_python(text: str, path: str) -> list[Finding]:
+    """Report bare visible literals at declared emtk text sinks without importing a GUI.
+
+    Parameters
+    ----------
+    text : str
+        Authored Python source.
+    path : str
+        Repository-relative source identity.
+
+    Returns
+    -------
+    list[Finding]
+        Literal locations or an actionable parse error. Wrapped expressions and
+        dynamic values are outside this static literal contract.
+    """
+    try:
+        tree = ast.parse(text, filename=path)
+    except SyntaxError as exc:
+        return [Finding(path, "/", "invalid-python", str(exc), exc.lineno)]
+    sinks = {
+        "text",
+        "text_wrapped",
+        "text_disabled",
+        "button",
+        "checkbox",
+        "selectable",
+        "set_item_tooltip",
+    }
+    namespaces = {"im", "emtk.im"}
+    imported = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "emtk.im":
+                    namespaces.add(alias.asname or alias.name)
+        elif isinstance(node, ast.ImportFrom):
+            for alias in node.names:
+                if node.module == "emtk" and alias.name == "im":
+                    namespaces.add(alias.asname or alias.name)
+                elif node.module == "emtk.im":
+                    imported[alias.asname or alias.name] = alias.name
+    findings = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        name = _dotted(node.func)
+        prefix, _, method = name.rpartition(".")
+        if name in imported:
+            method = imported[name]
+        elif prefix not in namespaces:
+            continue
+        values = []
+        if method in sinks and node.args:
+            values.append(("arg0", node.args[0]))
+        if method == "input_text":
+            values.extend(("hint", kw.value) for kw in node.keywords if kw.arg == "hint")
+        for position, value in values:
+            if (
+                isinstance(value, ast.Constant)
+                and isinstance(value.value, str)
+                and not value.value.startswith("##")
+                and any(character.isalpha() for character in value.value)
+            ):
+                findings.append(
+                    Finding(
+                        path,
+                        f"call@{node.lineno}:{node.col_offset}/{position}",
+                        "untranslated-literal",
+                        value.value,
+                        node.lineno,
+                    )
+                )
+    return findings
+
+
 def _included(path: str) -> bool:
     """Exclude copied builds, tests and scaffolds from shipped-source coverage."""
     parts = Path(path).parts
@@ -328,10 +404,20 @@ def _included(path: str) -> bool:
     ) and not Path(path).name.startswith("test_")
 
 
-def _kind(path: str) -> str | None:
+def _kind(path: str, contract: str = "tooltip") -> str | None:
     """Select view declarations and the imperative GUI trees required by the contract."""
     if not _included(path):
         return None
+    if (
+        contract == "translation"
+        and path.endswith(".py")
+        and (
+            path.startswith("chisurf/emtk/")
+            or path.startswith("chisurf/plugins/")
+            or path.startswith("modules/ndxplorer/ndxplorer/")
+        )
+    ):
+        return "python"
     if path.endswith("view.json"):
         return "json"
     if path.endswith(".py") and (
@@ -343,8 +429,12 @@ def _kind(path: str) -> str | None:
     return None
 
 
-def audit_tree(root: Path = ROOT, *, revision: str | None = None) -> dict:
+def audit_tree(
+    root: Path = ROOT, *, revision: str | None = None, contract: str = "tooltip"
+) -> dict:
     """Measure committed bytes separately from the live tree, recording companion identities."""
+    if contract not in {"tooltip", "translation"}:
+        raise ValueError(f"Unknown UI contract: {contract}")
     sources = {}
     owners = {}
 
@@ -360,7 +450,7 @@ def audit_tree(root: Path = ROOT, *, revision: str | None = None) -> dict:
             meta, name = entry.decode().split("\t", 1)
             mode, _, object_id = meta.split()
             path = f"{prefix}/{name}" if prefix else name
-            kind = _kind(path)
+            kind = _kind(path, contract)
             if mode == "160000" and path == "modules/ndxplorer":
                 repository(root / path, path, object_id)
             elif mode == "120000" and path == "modules/chimol" and (root / path).exists():
@@ -392,7 +482,7 @@ def audit_tree(root: Path = ROOT, *, revision: str | None = None) -> dict:
             if folder.exists():
                 for path in folder.rglob("*"):
                     relative = str(path.relative_to(root))
-                    kind = _kind(relative)
+                    kind = _kind(relative, contract)
                     if kind and path.is_file():
                         sources[relative] = (kind, path.read_text())
         # pathlib does not descend module symlinks as part of root.rglob.
@@ -400,14 +490,21 @@ def audit_tree(root: Path = ROOT, *, revision: str | None = None) -> dict:
             folder = root / prefix
             if folder.exists():
                 for path in folder.rglob("*"):
-                    kind = _kind(f"{prefix}/{path.relative_to(folder)}")
+                    kind = _kind(f"{prefix}/{path.relative_to(folder)}", contract)
                     if kind and path.is_file():
                         sources[f"{prefix}/{path.relative_to(folder)}"] = (kind, path.read_text())
+    if contract == "translation":
+        sources = {path: item for path, item in sources.items() if item[0] == "python"}
     findings = []
     digest = hashlib.sha256()
     for path, (kind, source) in sorted(sources.items()):
         digest.update(path.encode() + b"\0" + hashlib.sha256(source.encode()).digest())
-        findings.extend(audit_json(source, path) if kind == "json" else audit_python(source, path))
+        if contract == "translation":
+            findings.extend(audit_translation_python(source, path))
+        else:
+            findings.extend(
+                audit_json(source, path) if kind == "json" else audit_python(source, path)
+            )
     return {
         "revision": revision or "working-tree",
         "owners": owners,
@@ -429,9 +526,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=ROOT)
     parser.add_argument("--revision")
+    parser.add_argument("--contract", choices=("tooltip", "translation"), default="tooltip")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
-    report = audit_tree(args.root, revision=args.revision)
+    report = audit_tree(args.root, revision=args.revision, contract=args.contract)
     output = json.dumps(report, indent=2) + "\n"
     if args.output:
         args.output.write_text(output)

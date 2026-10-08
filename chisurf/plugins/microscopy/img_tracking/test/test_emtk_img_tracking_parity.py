@@ -35,6 +35,93 @@ SMALL = dict(use_simulation=True, sim_n_frames=40, sim_size=160, sim_n_particles
              sim_seed=1, max_distance=4.0, n_bootstrap=50)
 
 
+
+def independent_msd_profile(tau, msd, alpha):
+    """Fit D and the unrestricted constant offset by independent linear least squares."""
+    design = np.column_stack((4.0 * np.power(tau, alpha), np.ones(len(tau))))
+    parameters = np.linalg.lstsq(design, msd, rcond=None)[0]
+    if parameters[0] < 0.0:
+        parameters = np.array([0.0, np.mean(msd)])
+    residual = design @ parameters - msd
+    return float(residual @ residual), parameters
+
+
+def independent_msd_minimum(tau, msd, fixed_alpha=None):
+    """Profile the declared alpha bounds, then refine their best bracket without curve_fit."""
+    if fixed_alpha is not None:
+        objective, parameters = independent_msd_profile(tau, msd, fixed_alpha)
+        return fixed_alpha, parameters, objective
+    grid = np.linspace(0.05, 3.0, 297)
+    best = int(np.argmin([independent_msd_profile(tau, msd, alpha)[0] for alpha in grid]))
+    lower, upper = grid[max(0, best - 1)], grid[min(len(grid) - 1, best + 1)]
+    ratio = (np.sqrt(5.0) - 1.0) / 2.0
+    left, right = upper - ratio * (upper - lower), lower + ratio * (upper - lower)
+    for _ in range(100):
+        if independent_msd_profile(tau, msd, left)[0] < independent_msd_profile(tau, msd, right)[0]:
+            upper, right = right, left
+            left = upper - ratio * (upper - lower)
+        else:
+            lower, left = left, right
+            right = lower + ratio * (upper - lower)
+    alpha = (lower + upper) / 2.0
+    objective, parameters = independent_msd_profile(tau, msd, alpha)
+    return alpha, parameters, objective
+
+
+def assert_msd_minimum(fit, frame_interval):
+    """Require the fitted transport curve to attain the independent minimum within roundoff."""
+    tau, msd = fit.lags * frame_interval, np.asarray(fit.msd)
+    alpha, parameters, minimum = independent_msd_minimum(tau, msd, 1.0 if fit.alpha_fixed else None)
+    assert fit.success and fit.diffusion_coefficient >= 0.0
+    assert 0.05 <= fit.alpha <= 3.0
+    offset = np.mean(msd - 4.0 * fit.diffusion_coefficient * tau**fit.alpha)
+    residual = 4.0 * fit.diffusion_coefficient * tau**fit.alpha + offset - msd
+    roundoff = 64.0 * np.finfo(float).eps * float(msd @ msd)
+    assert float(residual @ residual) <= minimum + roundoff
+    assert fit.localisation_error == pytest.approx(np.sqrt(max(offset, 0.0) / 4.0), abs=np.sqrt(roundoff))
+    return parameters
+
+
+def independent_fixed_alpha_bootstrap(model):
+    """Resample the same tracks and counts, solving each normal-diffusion fit analytically."""
+    kept = model.result.tracks.filter_by_length(model.min_track_length)
+    per_track = []
+    for identifier in kept.ids():
+        frames, positions = kept.track(identifier)
+        per_track.append(tk.mean_squared_displacement(positions, frames))
+    rng, coefficients = np.random.default_rng(1), []
+    for _ in range(model.n_bootstrap):
+        totals, weights = {}, {}
+        for index in rng.integers(0, len(per_track), len(per_track)):
+            lags, msd, counts = per_track[index]
+            for lag, value, count in zip(lags, msd, counts):
+                if np.isfinite(value) and count > 0:
+                    totals[int(lag)] = totals.get(int(lag), 0.0) + float(value) * int(count)
+                    weights[int(lag)] = weights.get(int(lag), 0) + int(count)
+        keys = np.asarray(sorted(totals), dtype=float)
+        msd = np.asarray([totals[int(k)] / weights[int(k)] for k in keys]) * model.pixel_size**2
+        _, parameters = independent_msd_profile(keys * model.frame_interval, msd, 1.0)
+        coefficients.append(parameters[0])
+    return np.std(coefficients, ddof=1)
+
+
+def test_independent_msd_oracle_rejects_wrong_transport_parameters():
+    """The independent objective catches a changed D or alpha despite optimizer digit drift."""
+    from types import SimpleNamespace
+
+    tau = np.arange(1.0, 10.0)
+    msd = 4.0 * 0.6 * tau**1.2 + 0.4
+    fit = SimpleNamespace(lags=tau, msd=msd, alpha_fixed=False, success=True,
+                          diffusion_coefficient=0.6, alpha=1.2, localisation_error=np.sqrt(0.1))
+    assert_msd_minimum(fit, 1.0)
+    fit.diffusion_coefficient = 0.6001
+    with pytest.raises(AssertionError):
+        assert_msd_minimum(fit, 1.0)
+    fit.diffusion_coefficient, fit.alpha = 0.6, 1.2001
+    with pytest.raises(AssertionError):
+        assert_msd_minimum(fit, 1.0)
+
+
 @pytest.fixture(autouse=True)
 def hermetic(tmp_path, monkeypatch):
     hermetic_env(tmp_path, monkeypatch)
@@ -92,8 +179,14 @@ def test_the_track_button_gives_the_numbers_the_qt_window_showed(app, drv):
     assert m.status_line == qt["status"] == "6 tracks, D = 0.5581 ± 0.098"
     assert m.results_text == qt["results_text"]
     fit = m.result.fit
-    assert fit.diffusion_coefficient == pytest.approx(qt["fit"]["D"], rel=1e-12)
-    assert fit.diffusion_coefficient_error == pytest.approx(qt["fit"]["D_err"], rel=1e-9)
+    assert fit.alpha_fixed and fit.alpha == 1.0
+    assert_msd_minimum(fit, m.frame_interval)
+    bootstrap = independent_fixed_alpha_bootstrap(m)
+    # Finite-difference optimizer digits vary at sqrt(machine epsilon); the
+    # independent reference locks the actual whole-track uncertainty.
+    assert fit.diffusion_coefficient_error == pytest.approx(
+        bootstrap, abs=np.sqrt(np.finfo(float).eps) * max(1.0, bootstrap)
+    )
     np.testing.assert_allclose(np.asarray(fit.msd), qt["fit"]["msd"], rtol=1e-12)
     assert len(m.result.detections) == qt["n_detections"] and len(m.result.tracks) == qt["n_tracks"]
     assert [int(v) for v in m.result.track_lengths()] == qt["track_lengths"]
@@ -110,8 +203,10 @@ def test_the_fit_alpha_checkbox_gives_the_qt_numbers_for_the_anomalous_fit(app, 
     drv.settle()
     qt = QT_VALUES["fit_alpha"]
     assert app.model.status_line == qt["status"] == "6 tracks, D = 0.5256 ± 0.13"
-    assert app.model.result.fit.alpha == pytest.approx(qt["fit"]["alpha"], rel=1e-9)
-    assert app.model.result.fit.diffusion_coefficient == pytest.approx(qt["fit"]["D"], rel=1e-9)
+    fit = app.model.result.fit
+    assert not fit.alpha_fixed
+    np.testing.assert_array_equal(fit.msd, qt["fit"]["msd"])
+    assert_msd_minimum(fit, app.model.frame_interval)
 
 
 def test_the_core_functions_give_the_same_answer_without_the_view_model(movie_frames):
@@ -670,8 +765,6 @@ def test_guide_button_starts_the_tour_and_close_tour_ends_it(app):
     assert not app.tour.active
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: a tour card drawn over a control of a window cannot be pressed: the control "
-                   "underneath claims the pointer (hovered id) first; see REPORT.md section 10")
 def test_the_tour_card_buttons_work_when_the_card_lies_over_a_form_field(app, drv):
     drv.click("guide")
     drv.click_text("Close Tour")
@@ -792,8 +885,6 @@ def test_the_wheel_scrolls_the_settings_window_when_the_form_is_taller_than_it(a
     assert app.form.rects["track"][1] == top
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the wheel does not reach a spin field inside a DockManager window (it does in a plain "
-                   "window); see REPORT.md section 10")
 def test_the_wheel_over_a_spin_field_steps_it(app, drv):
     x, y, w, h = drv.rect("max_distance")
     start = app.model.max_distance
@@ -801,8 +892,6 @@ def test_the_wheel_over_a_spin_field_steps_it(app, drv):
     assert app.model.max_distance == pytest.approx(start + 1.0)
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the wheel never reaches an implot inside a DockManager window, so no docked plot "
-                   "can be zoomed with it; see REPORT.md section 10")
 def test_the_wheel_zooms_the_trajectory_plot(app, drv):
     tracked(app, drv)
     drv.click_text("Trajectories")

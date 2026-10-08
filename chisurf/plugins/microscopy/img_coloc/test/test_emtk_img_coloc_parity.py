@@ -28,7 +28,47 @@ PLUGIN = HERE.parent
 EMTK_SPEC = json.loads((PLUGIN / "gui" / "coloc_emtk.view.json").read_text(encoding="utf-8"))
 QT_SPEC = json.loads((PLUGIN / "gui" / "coloc.view.json").read_text(encoding="utf-8"))
 BIG = (1200, 800)
-_REAL_BEFORE = data.real_settings_state()
+
+def persistent_settings_state(root=None):
+    """Snapshot persistent files while ignoring only root logs and generated caches."""
+    import os
+
+    root = Path(root) if root is not None else data._REAL_HOME / ".chisurf"
+    state = {}
+    for directory, dirs, files in os.walk(root):
+        if Path(directory) == root:
+            dirs[:] = [name for name in dirs if name not in {"logs", "cache"}]
+        for name in files:
+            path = Path(directory) / name
+            stat = path.stat()
+            state[str(path)] = (stat.st_size, stat.st_mtime_ns, path.read_bytes())
+    return state
+
+
+def test_persistent_settings_guard_detects_actual_changes_and_ignores_generated_files(tmp_path):
+    """Cache/log writes are harmless; persistent edits, additions and deletions are visible."""
+    root = tmp_path / "user-settings"
+    (root / "cache").mkdir(parents=True)
+    (root / "logs").mkdir()
+    settings = root / "settings.json"
+    settings.write_text('{"language":"en"}')
+    baseline = persistent_settings_state(root)
+    (root / "cache" / "module.pyc").write_bytes(b"generated")
+    (root / "logs" / "session.log").write_text("generated log")
+    assert persistent_settings_state(root) == baseline
+    settings.write_text('{"language":"de"}')
+    assert persistent_settings_state(root) != baseline
+    settings.unlink()
+    assert persistent_settings_state(root) != baseline
+    (root / "new-preset.json").write_text("{}")
+    assert persistent_settings_state(root) != baseline
+    # A nested directory named cache can carry actual preset state.
+    (root / "presets" / "cache").mkdir(parents=True)
+    (root / "presets" / "cache" / "definition.json").write_text("{}")
+    assert any("presets/cache" in path for path in persistent_settings_state(root))
+
+
+_REAL_BEFORE = persistent_settings_state()
 TABS = ("Coefficients", "Channels", "Colocalized pixels", "Intensity scatter", "van Steensel CCF", "CCF map (2-D)", "PCC vs intensity", "Objects", "Object distances")
 
 
@@ -90,15 +130,23 @@ def qt_model(path, **settings):
 
 
 def test_the_coefficients_equal_the_qt_tool_and_an_independent_pearson(app, drv, pair):
-    from scipy import stats
+    from chisurf.core.fio.image import imread
 
     m = computed(app, drv, pair)
     qt = qt_model(pair)
-    assert m.metric_rows() == qt.metric_rows() and m.results_text == qt.results_text == "pair.tif · 64×64 px · ch0 vs ch1 · PCC = 0.675"
-    stack = __import__("tifffile").imread(str(pair)).astype(float)
+    assert (
+        m.metric_rows() == qt.metric_rows()
+        and m.results_text == qt.results_text == "pair.tif · 64×64 px · ch0 vs ch1 · PCC = 0.675"
+    )
+    stack = imread(pair).astype(float)
     a, b = stack[0] - m.background_a, stack[1] - m.background_b
     keep = (a > 0) & (b > 0)  # above both (zero) thresholds, after the background subtraction
-    assert m._metrics["pearson"] == pytest.approx(stats.pearsonr(a[keep], b[keep])[0], rel=1e-9)
+    a_centered = a[keep] - a[keep].mean()
+    b_centered = b[keep] - b[keep].mean()
+    independent_pearson = np.dot(a_centered, b_centered) / (
+        np.linalg.norm(a_centered) * np.linalg.norm(b_centered)
+    )
+    assert m._metrics["pearson"] == pytest.approx(independent_pearson, rel=1e-9)
     assert m._metrics["pearson"] == pytest.approx(0.675, abs=5e-4)
     np.testing.assert_array_equal(m.image_a(), qt.image_a())
     np.testing.assert_array_equal(m.histogram_image(), qt.histogram_image())
@@ -196,7 +244,6 @@ def test_the_database_button_picks_a_dataset_and_runs_it(app, drv, pair):
     assert app.model.metric_rows()
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the dataset picker's buttons share one id and its Open selected / Cancel never fire; see okf/plugins/emtk-ports/img_drift/REPORT.md")
 def test_the_open_selected_button_of_the_database_picker_can_be_pressed(app, drv, pair):
     C.open_selected_button_of_the_database_picker_can_be_pressed(app, drv, pair)
 
@@ -678,4 +725,4 @@ def test_the_views_get_the_space_and_the_settings_stay_beside_them(app, pair, si
 
 
 def test_zz_the_real_user_settings_were_never_touched():
-    assert data.real_settings_state() == _REAL_BEFORE
+    assert persistent_settings_state() == _REAL_BEFORE

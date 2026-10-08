@@ -1,5 +1,6 @@
 {
   "_comment": "Phasor-FLIM, drawn by emtk. The Qt tool's AutoForm spec is phasor.view.json.",
+  "window": {"width": 1100, "height": 720},
   "sections": [
     {
       "type": "panel",

@@ -394,9 +394,10 @@ def _plugin_page(manifest: dict, plugin_dir: pathlib.Path, registry_params: dict
             continue
         for panel, sec in _iter_view_params(data):
             attr = sec.get("attr")
-            if attr in seen:
+            context = (panel or "General", attr)
+            if context in seen:
                 continue
-            seen.add(attr)
+            seen.add(context)
             label, a, kind, default, rng, desc = _param_row(sec)
             if not desc and attr in registry_params:
                 desc = _md(registry_params[attr].get("description", ""))

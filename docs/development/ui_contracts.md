@@ -64,3 +64,22 @@ other primary specs still need their individual sizing/render review. Automatic
 plot labels use their final measured bounds to stay separate in narrow panes.
 Explicit custom labels remain as requested; tick/grid positions and data ranges
 are unchanged.
+
+## Imperative translation worklist
+
+Use `pixi run -e test python build_tools/dev_utils/ui_contract_audit.py --contract translation --revision HEAD --output /tmp/i18n-literals.json`
+to measure bare visible literals at the declared emtk text sinks and input hints.
+Imports using aliases or direct widget names are included. Numeric decoration
+and hidden `##` identifiers are exempt. Parse errors are findings. The audit
+reads committed source and the recorded companion revisions; it does not import
+GUI code or create a translation allowance. Dynamic expressions require separate
+runtime review. The initial measured worklist remains open; pure scanner tests
+do not establish completed wrapping.
+
+Layout checks now consume the recorder's per-draw visible logical font bounds,
+with alignment and active clips. Text alignment boxes do not implicitly clip
+text. Real overlap and overflow remain errors; actual PNG inspection is needed
+for rasterized ink. Tracking fit tests compare exact data and independently
+profiled least-squares objectives, preserving unrestricted nuisance offsets
+and checking bootstrap results independently. Optimizer-specific decimals in
+old archived output are not an accuracy oracle.

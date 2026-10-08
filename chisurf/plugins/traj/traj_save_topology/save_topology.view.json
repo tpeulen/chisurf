@@ -1,17 +1,21 @@
 {
   "_comment": "Declarative AutoForm layout for the Save-Topology tool. A single panel with the trajectory picker + save-topology button (custom section, H5 browse/drag-drop) above a live log rendered by the built-in `info` section bound to the view-model's `log_html`. Replaces the former save_topology.ui.",
+  "window": {"width": 1100, "height": 720},
   "sections": [
     {
       "type": "panel",
       "title": "Save topology",
+      "description": "Export the atom topology and first-frame coordinates of a trajectory as a structure file.",
       "sections": [
         {
           "type": "custom",
-          "key": "traj_save_topology_io"
+          "key": "traj_save_topology_io",
+          "description": "Choose the coordinate trajectory and its topology, then save its first frame as a PDB structure."
         },
         {
           "type": "info",
           "source": "log_html",
+          "description": "First-frame loading and structure export messages, including any save failure.",
           "height": 120
         }
       ]

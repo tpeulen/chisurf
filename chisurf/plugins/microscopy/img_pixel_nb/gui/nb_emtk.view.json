@@ -1,5 +1,6 @@
 {
   "_comment": "Number & Brightness, drawn by emtk. The Qt tool's AutoForm spec is nb.view.json.",
+  "window": {"width": 1100, "height": 720},
   "sections": [
     {
       "type": "panel",
@@ -105,6 +106,7 @@
         {
           "type": "panel",
           "title": "Stack corrections",
+          "description": "Remove bleaching, immobile structure and slow drift before calculating frame-to-frame moments; add a mean back so brightness retains its meaning.",
           "collapsed": true,
           "n_col": 1,
           "sections": [
@@ -178,6 +180,7 @@
         {
           "type": "panel",
           "title": "Detector",
+          "description": "Correct pixel counts for dead time using the dwell time, or specify analog gain, zero-photon offset and dark read-noise variance.",
           "collapsed": true,
           "n_col": 1,
           "sections": [
@@ -238,6 +241,7 @@
         {
           "type": "panel",
           "title": "Estimator",
+          "description": "Set the observation-volume shape factor and moment smoothing used to convert fluctuation moments into brightness and molecule-number maps.",
           "collapsed": true,
           "n_col": 1,
           "sections": [
@@ -287,6 +291,7 @@
         {
           "type": "panel",
           "title": "Parameter plane / gates",
+          "description": "Choose the two per-pixel quantities and histogram resolution, then gate populations on that plane to locate their pixels in the image.",
           "collapsed": false,
           "n_col": 1,
           "sections": [
@@ -351,6 +356,7 @@
         {
           "type": "panel",
           "title": "Cross N&B",
+          "description": "Measure covariance with a second detector window to distinguish joint molecular fluctuations from independent shot noise.",
           "collapsed": true,
           "n_col": 1,
           "sections": [

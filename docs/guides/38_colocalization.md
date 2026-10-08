@@ -234,3 +234,14 @@ what a defensible report contains.
 ## See also
 
 - Tool: **Colocalization** (`chisurf/plugins/microscopy/img_coloc/`).
+
+## Native window and image orientation
+
+The native tool declares an initial 1100×720 window, limited by the display and
+overridden by saved dimensions. Hover the Background, Scatter gate, Region,
+Objects and Significance folds for their method explanations. The intensity
+scatter shows the computed histogram with increasing channel intensities on
+its axes; flipped texture coordinates now render correctly in the Qt host
+without changing coefficients or histogram counts.
+
+![Computed colocalization intensity histogram](figures/w6g_coloc_scatter.png)

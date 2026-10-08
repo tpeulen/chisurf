@@ -1,5 +1,9 @@
 {
   "_comment": "Flow maps, drawn by emtk. Top-level panels are dock windows: the settings on the left, the headline numbers above the field and its profile on the right. The Qt tool's AutoForm spec is flow.view.json.",
+  "window": {
+    "width": 1100,
+    "height": 720
+  },
   "sections": [
     {
       "type": "panel",

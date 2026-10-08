@@ -400,3 +400,9 @@ view spec before arranging its sections; an older spec defaults to 1100×720.
 Rotate/translate explicitly declares that size. Resizing is remembered by the
 native launcher, and Qt limits startup dimensions to the display. Geometry
 does not change matrices, translation, stride or exported coordinates.
+
+The FRET, energy, align, convert, join, clash-filter and topology tools now
+declare 1100×720 initial windows. Their fold and log descriptions explain inputs
+and outputs. Join's two radio options explain frame concatenation and atom
+stacking separately; atom stacking requires matching frame counts and an
+appropriate combined topology. Saved dimensions continue to take precedence.

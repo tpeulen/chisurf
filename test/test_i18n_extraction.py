@@ -138,3 +138,17 @@ def test_committed_authored_ui_text_has_german_and_french_catalogue_sources(tmp_
         assert not required - present, (
             f"{locale}: missing catalogue sources {sorted(required - present)[:20]}"
         )
+
+
+def test_catalogue_whitespace_is_preserved_without_translation_transfer(tmp_path):
+    """An idempotent merge must still encode authored trailing spaces cleanly."""
+    from build_tools.i18n.extract_strings import preserve_finished_translations
+
+    source = '<TS><context><name>chisurf</name><message><source>Alpha \nBeta</source><translation type="unfinished"/></message></context></TS>'
+    path = tmp_path / "catalogue.ts"
+    path.write_text(source)
+    preserve_finished_translations(source, path)
+    assert "Alpha&#32;\nBeta" in path.read_text()
+    import xml.etree.ElementTree as ET
+
+    assert ET.parse(path).findtext(".//source") == "Alpha \nBeta"

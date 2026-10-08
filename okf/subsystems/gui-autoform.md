@@ -1076,3 +1076,15 @@ coordinate error are unchanged across full/small pairs. Inherited narrow
 projection label overlap was fixed in emtk 0df138cd using final measured bounds,
 without changing ticks/grid/data. Six trajectory typing errors and five stale
 strict picker/wheel xfails were also corrected.
+
+The remaining 16 shared imaging/trajectory primary specs now declare1100×720
+and remove 39 missing tooltip contracts. Scientific arrays and control inventories
+match actual before/after scenes. Qt signed UVs now render scientific histograms
+through emtk 6e685bb8; recorder visible-text bounds are in b38bb892. The installed
+pin includes both fixes. Existing text tuple shapes remain intact, and layout
+checks use active clips without hiding overflow at alignment boxes.
+
+Initial imperative audit reads 1,750 committed Python files and measures 1,202 bare
+visible literals (before alias refinement); the ledger is an open worklist,
+not an allowance or completed i18n claim. Tooltips now have 1,104 open findings.
+See the [active acceptance](../validation/release-readiness-w6g/current-job.md).

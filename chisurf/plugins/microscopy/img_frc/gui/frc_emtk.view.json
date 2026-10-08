@@ -1,5 +1,9 @@
 {
   "_comment": "FRC resolution, drawn by emtk. Top-level panels are dock windows: the settings on the left, the resolution above the curve and the diagnostics on the right. The Qt tool's AutoForm spec is frc.view.json.",
+  "window": {
+    "width": 1100,
+    "height": 720
+  },
   "sections": [
     {
       "type": "panel",

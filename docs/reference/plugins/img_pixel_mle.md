@@ -76,27 +76,57 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
+| Parallel channels (∥) | `channels_parallel_text` | str |  |  | Space-separated routing channels forming the parallel (VV) detection. |
+| Perpendicular channels (⊥) | `channels_perpendicular_text` | str |  |  | Space-separated routing channels forming the perpendicular (VH) detection. |
+| Fit start | `micro_time_start` | int |  | 0 … 1000000 | Fit-window start on the binned micro-time axis. |
+| Fit stop | `micro_time_stop` | int |  | 1 … 1000000 | Fit-window stop on the binned micro-time axis. |
+| Micro-time binning | `micro_time_binning` | int |  | 1 … 100000 | Integer down-binning of the micro-time axis before fitting. |
+| Min photons | `min_photons` | int |  | 1 … 10000000 | Pixels with fewer photons in the fit window are not fitted. |
+| Region | `roi_path` | str |  |  | Optional region confining the fit to part of the frame — regions saved in CLSM Draw (.json), a Cellpose segmentation (_seg.npy), a label image or a binary mask. Leave empty to fit the whole frame. |
 | Fit model | `fit_model` | choice |  | choices: fit23, fit24, fit25 | Per-pixel fit2x estimator. fit23 = one lifetime + anisotropy; fit24 = bi-exponential; fit25 = pick the best of four fixed lifetimes. The tau map is x[0] for every model. |
 
 ### Fit parameters (fit23)
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| τ (ns) | `p0_value` | float |  | 0.0 … 100.0 | Initial value of tau. |
+| τ (ns) | `p0_value` | float |  | 0.0 … 100.0 | Starting fluorescence lifetime in nanoseconds for the single-exponential decay; it is optimised unless fixed. |
 | fix | `p0_fix` | bool |  |  | Hold tau fixed during the fit. |
-| γ | `p1_value` | float |  | 0.0 … 1.0 | Initial value of gamma. |
+| γ | `p1_value` | float |  | 0.0 … 1.0 | Starting dimensionless scatter/background fraction (0–1); the remainder is assigned to the fluorescence decay. |
 | fix | `p1_fix` | bool |  |  | Hold gamma fixed during the fit. |
-| r0 | `p2_value` | float |  | 0.0 … 0.4 | Initial value of r0. |
+| r0 | `p2_value` | float |  | 0.0 … 0.4 | Fundamental anisotropy at time zero, set by the absorption/emission dipole angle; dimensionless, with 0.4 for parallel dipoles. |
 | fix | `p2_fix` | bool |  |  | Hold r0 fixed during the fit. |
-| ρ (ns) | `p3_value` | float |  | 0.0 … 1000.0 | Initial value of rho. |
+| ρ (ns) | `p3_value` | float |  | 0.0 … 1000.0 | Starting rotational correlation time in nanoseconds, controlling the anisotropy decay r(t) = r0 exp(−t/ρ). |
 | fix | `p3_fix` | bool |  |  | Hold rho fixed during the fit. |
 
 ### Fit parameters (fit24)
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| offset | `p4_value` | float |  | 0.0 … 1000000.0 | Initial value of offset. |
+| τ1 (ns) | `p0_value` | float |  | 0.0 … 100.0 | First fluorescence lifetime in nanoseconds; a fitted component for fit24 or a fixed candidate for fit25. |
+| fix | `p0_fix` | bool |  |  | Hold tau1 fixed during the fit. |
+| γ | `p1_value` | float |  | 0.0 … 1.0 | Starting dimensionless scatter/background fraction (0–1); the remainder is assigned to the fluorescence decay. |
+| fix | `p1_fix` | bool |  |  | Hold gamma fixed during the fit. |
+| τ2 (ns) | `p2_value` | float |  | 0.0 … 100.0 | Second fluorescence lifetime in nanoseconds; a fitted component for fit24 or a fixed candidate for fit25. |
+| fix | `p2_fix` | bool |  |  | Hold tau2 fixed during the fit. |
+| A2 | `p3_value` | float |  | 0.0 … 1.0 | Starting amplitude fraction of the second exponential (0–1); the first component has amplitude fraction 1 − A2. |
+| fix | `p3_fix` | bool |  |  | Hold A2 fixed during the fit. |
+| offset | `p4_value` | float |  | 0.0 … 1000000.0 | Starting total flat baseline contribution, divided equally among the micro-time channels by fit24. |
 | fix | `p4_fix` | bool |  |  | Hold offset fixed during the fit. |
+
+### Fit parameters (fit25)
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| τ1 (ns) | `p0_value` | float |  | 0.0 … 100.0 | First fluorescence lifetime in nanoseconds; a fitted component for fit24 or a fixed candidate for fit25. |
+| fix | `p0_fix` | bool |  |  | Hold tau1 fixed during the fit. |
+| τ2 (ns) | `p1_value` | float |  | 0.0 … 100.0 | Second fluorescence lifetime in nanoseconds; a fitted component for fit24 or a fixed candidate for fit25. |
+| fix | `p1_fix` | bool |  |  | Hold tau2 fixed during the fit. |
+| τ3 (ns) | `p2_value` | float |  | 0.0 … 100.0 | Third fixed candidate lifetime in nanoseconds; fit25 selects the candidate that best describes each pixel. |
+| fix | `p2_fix` | bool |  |  | Hold tau3 fixed during the fit. |
+| τ4 (ns) | `p3_value` | float |  | 0.0 … 100.0 | Fourth fixed candidate lifetime in nanoseconds; fit25 selects the candidate that best describes each pixel. |
+| fix | `p3_fix` | bool |  |  | Hold tau4 fixed during the fit. |
+| γ | `p4_value` | float |  | 0.0 … 1.0 | Starting dimensionless scatter/background fraction (0–1); the remainder is assigned to the fluorescence decay. |
+| fix | `p4_fix` | bool |  |  | Hold gamma fixed during the fit. |
 
 ### Lifetime map
 

@@ -126,3 +126,7 @@ images is not a difference.
 ## See also
 
 - Tool: **FRC Resolution** (`chisurf/plugins/microscopy/img_frc/`).
+
+The native window declares 1100×720 initial dimensions; saved dimensions override
+that default. Image halves, FRC curves and resolution results retain their
+existing controls and calculations.

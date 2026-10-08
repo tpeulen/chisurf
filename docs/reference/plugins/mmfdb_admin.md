@@ -43,6 +43,12 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | --- | --- | --- | --- | --- | --- |
 | Value | `value` | choice |  | choices: `option_list` | The value to apply. |
 
+### Enter a value
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Value | `value` | str |  |  | The value to apply. |
+
 ### Change password
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
@@ -76,6 +82,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | Kind | `kind` | choice |  | choices: `kind_options` | Show one kind of record, or all. |
+| search | `search` | str |  |  | Keep rows whose kind, id, sample or project contains this text. |
 
 ### Sample Metadata
 
@@ -97,6 +104,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | Component Type | `component` | choice |  | choices: `component_options` | Which kind of optical component to list. |
+| Search | `search` | str |  |  | List the components whose name contains this (Enter or a click elsewhere searches). |
 | Status | `status_filter` | choice |  | choices: `status_options` | List only the components with this curation status. |
 
 ### Provenance Graph
@@ -135,6 +143,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | Existing | `conflict` | choice |  | choices: skip, update, error | What to do with an experiment that was imported before. |
+| Sample | `sample_id` | str |  |  | Attach the imported experiments to this sample (optional). |
 
 ### Export from MMFDB
 
@@ -159,6 +168,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
+| Scope | `scope` | choice |  | choices: `scope_options` | All protocols, your own, or the public ones. |
+| new_name | `new_name` | str |  |  | The protocol's name (an existing name makes a new version). |
 | new_category | `new_category` | choice |  | choices: `category_options` | measurement, processing or analysis. |
 | new_operation_type | `new_operation_type` | str |  |  | The operation type whose parameters it records (optional). |
 
@@ -191,21 +202,16 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | Kind | `new_kind` | choice |  | choices: `kind_options` | The reagent kind. |
+| Name | `new_name` | str |  |  | Its name. |
 | Lot # | `new_lot_number` | str |  |  | The vendor's lot number. |
 | Vendor | `new_vendor` | str |  |  | Who sold it. |
 | Expiry | `new_expiry` | str |  |  | When it expires. |
-
-### Advanced — user & connection
-
-| Parameter | Attribute | Type | Default | Range / options | Meaning |
-| --- | --- | --- | --- | --- | --- |
-| Command port | `cmd_port` | int |  | 1 … 65535 | ZMQ command port. |
-| Publish port | `pub_port` | int |  | 1 … 65535 | ZMQ publish port. |
 
 ### General
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
+| Password | `password` | password |  |  | MMFDB password for the user below. Blank attempts a passwordless login. |
 | Probe ID | `probe_id` | str |  |  | MMFDB probe identifier. |
 | Name | `chromophore_name` | str |  |  | Detector name / model. |
 | Category | `category` | str |  |  | Probe category (detector). |
@@ -215,6 +221,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Source ref | `source_ref` | str |  |  | Source reference / URL. |
 | Verified by | `verified_by` | str |  |  | User who approved/rejected this detector. |
 | Verified at | `verified_at` | str |  |  | Timestamp of the verification decision. |
+| Description | `description` | str |  |  | Free-text description. |
 | Cut-On (nm) | `cut_on` | str |  |  | Cut-on wavelength. |
 | Cut-Off (nm) | `cut_off` | str |  |  | Cut-off wavelength. |
 | Center Wavelength (nm) | `center_wavelength` | str |  |  | Center wavelength. |
@@ -227,6 +234,15 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Lifetime | `lifetime` | str |  |  | Fluorescence lifetime (ns). |
 | D₂₅ | `d25` | str |  |  | Translational diffusion coefficient in water at 25 °C (µm²/s); used by the FCS diffusion/volume calculator. |
 | Quality | `quality` | str |  |  | Quality grade: unknown / low / medium / high. |
+
+### Advanced — user & connection
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| User | `user` | str |  |  | MMFDB user id to authenticate as. |
+| Host | `host` | str |  |  | MMFDB server host. Change to connect to a different server. |
+| Command port | `cmd_port` | int |  | 1 … 65535 | ZMQ command port. |
+| Publish port | `pub_port` | int |  | 1 … 65535 | ZMQ publish port. |
 
 ## JSON-RPC methods
 

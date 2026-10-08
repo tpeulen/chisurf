@@ -197,3 +197,12 @@ The pixel-wise MLE lifetime map of the simulated two-detector scan.
 
 - The *Brush & Decay* dock tab of CLSM-Draw reads **Brush _Decay**: the `&` in
   the title is taken as a Qt mnemonic marker.
+
+## Native analysis window defaults
+
+The intensity, mean micro-time, pixel MLE, number/brightness and phasor panels
+declare 1100×720 initial dimensions. Shared detector setup and saved resizing
+remain available. MLE parameter hints state units, physical roles and fixed
+candidate behavior; IRF/background/performance folds explain their purpose.
+Number/brightness folds describe corrections, detectors, estimation and gates.
+These changes preserve computed maps and exported values.

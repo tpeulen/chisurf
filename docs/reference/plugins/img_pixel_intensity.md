@@ -38,6 +38,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
+| TTTR file | `filename` | str |  |  | PTU/HT3 imaging file with line and frame markers (or drop one onto the window: it is loaded and run). The scanner geometry is read from its header. Press Enter to select a typed path. |
 | Detector window | `display_window` | choice |  | choices: `window_names` | The detector window shown in the maps. Every window is computed and written; this only chooses which one is displayed. The windows come from the Detectors tab (or the Imaging Tools setup step); without any, the channel-0 window is used. |
 
 ## Theory and workflow
