@@ -2,6 +2,8 @@
 
 ## 2026-10-08
 
+- **2026-10-08 · Exact shared-contract publication checkpoint:** source86a42f2e7/SDK95705e20f and board100644b7c recorded in durablePRD/current-job/state/acceptance;27post-commitchecks pass. Finalsourcearchive andlosslessXMLspaceencoding preserve executableresume/diff hygiene.1143tooltipomissions,imperativewrapping,demo/window contracts remainexplicitlyopen;wholeprogramme active. [Resume](validation/release-readiness-w6g/current-job.md).
+
 - **2026-10-08 · Shared text/tooltip audit mechanisms:** SDK95705e20f exports immutable15textkeys;21canonicalpins/testinstallverified. Extractor nowincludesbareviews/namedguides/arrays/choicefallbacklabels andrejectsinvalidsources;9010committedstrings present inde/fr,unambiguousfinishedcontexttranslationsretained. Newtooltipscanner records1143committed/1106live omissions andauthorizedinitialshrinkingbaseline,notcompletecoverage. SDK50,27focused,984availableguards+contracts/16skips;targetedtypes/Ruff/lockclean andlocaleformPNGsread. Fulltooltipdebt/imperativewrapping/demo/window gates remainactive. [Resume](validation/release-readiness-w6g/current-job.md).
 
 - **2026-10-08 · Exact ribbon publication checkpoint:** source753b8564e and boardf6d49a9fe recorded in durablePRD/current-job/state/acceptance;6post-commit inventorychecks pass. Next sharedtooltip/i18n/demo/windowcontracts, thenW6f/W0/Wave2; wholeprogramme remainsactive, .zed/tasks stays on disk andforeignhunks preserved. [Resume](validation/release-readiness-w6g/current-job.md).
