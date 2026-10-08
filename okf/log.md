@@ -2,6 +2,8 @@
 
 ## 2026-10-08
 
+- **2026-10-08 · Exact Burst adapter publication checkpoint:** sourcee8902b16d and board799a14b1e recorded in PRD/current-job/state/acceptance. Committed inventory freshness guard remains green; next ribbon fold/group normalization. Wholeprogramme remains active and all foreign formatting/source paths preserved. [Resume](validation/release-readiness-w6g/current-job.md).
+
 - **2026-10-08 · Burst workflow shared setup:** all8real child editors sharestep0; context/folder/pattern handoffs retained and oldduplicate delivery removed. In-place childrestore protected, closed-dock/latest busy delivery and IRF binningauthority guarded, same-name FCS callback and dynamicBackground/IRF reader root fixed.27real/newcases,965availableguards/16skips; exact198bursts/pooledtau2.0099473181423733 and396hosted/24standaloneFCS renders inspected. Native/setup/hub types clean;11consumer diagnostics unchanged. Pairedtheory/guide/twofigures/catalogue and durable before/source/after archive accompany owned source; foreign formatting preserved. W6g next ribbon; wholeprogramme active. [Resume](validation/release-readiness-w6g/current-job.md).
 
 - **2026-10-08 · Exact shared-setup publication checkpoint:** source845087480 and board9073e22ba committed locally; acceptance/state/PRD record hashes and next Burst adapter. Fresh committed-inventory guard passes after source publication; foreign widget formatting and other lanes remain intact. Wholeprogramme remains active. [Resume](validation/release-readiness-w6g/current-job.md).
