@@ -99,7 +99,12 @@ P(tau_D)** in MaxEnt mode. In Simple mode that panel shows a single estimate
 marker at the fitted diffusion time; it is not a probability distribution.
 **Export curves...** saves the curves as JSON.
 **Example** writes a small seeded demonstration data set (eight bursts on two
-detectors) and adds it, so the **Guide** can be walked without data.
+detectors) and adds it, so the **Guide** can be walked without data. It waits
+for your **Example** click; correlation starts only when you press **Run FCS**.
+`make_demo()` from `chisurf.plugins.burst.burst_fcs_correlator.demo` returns
+the primary BST path; the photon file is alongside it as `SPC_FILENAME`. The
+files and JSON parameters live in `demos/burst_fcs_correlator` under the
+ChiSurf settings folder (`overwrite=True` regenerates them).
 
 The Run worker also publishes `<stem>.pto`, `td4/<stem>.td4` and
 `td4/td4_settings.json` beside the measurement/analysis inputs. The TD4

@@ -86,20 +86,18 @@ def drv(app):
 
 @pytest.fixture(scope="module")
 def demo_file(tmp_path_factory):
-    """The monomer / dimer demo stream, simulated once; ``demo_path`` is redirected to it so ``Load demo`` reuses it."""
-    path = tmp_path_factory.mktemp("demo") / "nb_demo.ptu"
-    demo.create_demo(path)
-    return path
+    """The monomer / dimer demo stream, simulated once; ``demo_folder`` is redirected to it so ``Load demo`` reuses it."""
+    return demo.make_demo(tmp_path_factory.mktemp("demo"))
 
 
 @pytest.fixture
 def with_demo(demo_file, monkeypatch):
-    monkeypatch.setattr(demo, "demo_path", lambda directory=None: demo_file)
+    monkeypatch.setattr(demo, "demo_folder", lambda: demo_file.parent)
     return demo_file
 
 
 def run_demo(app, drv):
-    drv.click("demo")
+    drv.click("load_example")
     assert app.job.busy
     drv.settle(timeout=300)
     assert not app.job.error, app.job.error
@@ -236,8 +234,8 @@ def test_the_load_demo_failure_is_reported(app, drv, monkeypatch):
     def broken(*a, **k):
         raise RuntimeError("no simulator in this build")
 
-    monkeypatch.setattr(demo, "create_demo", broken)
-    drv.click("demo")
+    monkeypatch.setattr(demo, "make_demo", broken)
+    drv.click("load_example")
     drv.settle(timeout=60)
     assert app.model.status_line == "Demo failed: no simulator in this build"
 
@@ -515,7 +513,7 @@ def test_guide_button_starts_the_tour_and_close_tour_ends_it(app):
 
 
 def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(app, drv, with_demo):
-    C.tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(app, drv, with_demo, {"demo": lambda: drv.click("demo")})
+    C.tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(app, drv, with_demo, {"load_example": lambda: drv.click("load_example")})
     assert app.model._columns and not app.job.error
 
 

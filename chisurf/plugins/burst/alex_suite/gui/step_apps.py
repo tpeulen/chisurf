@@ -10,7 +10,6 @@ Suite's demo measurement under its proceed button.
 from __future__ import annotations
 
 import logging
-import tempfile
 from pathlib import Path
 from typing import Any, Callable
 
@@ -84,11 +83,10 @@ class AlexDataSelectionApp(BurstDataSelectionApp):
     PROCEED_LABEL = "Proceed to 3. Alternation"
     PROCEED_TIP = "Go on to 3. Alternation with these files (µs-ALEX data is converted there on arrival)."
 
-    def load_demo(self, folder: Path | None = None) -> Path:
-        """Write the simulated µs-ALEX measurement (:mod:`..demo`) into a fresh folder and add it to the files."""
+    def load_example(self, folder: Path | None = None) -> Path:
+        """Write the simulated µs-ALEX measurement (:mod:`..demo`) into the plugin cache and add it to the files."""
         from ..demo import make_demo
 
-        folder = Path(folder) if folder is not None else Path(tempfile.mkdtemp(prefix="alex_suite_demo_"))
         path = make_demo(folder)
         self.source.add_paths([path])
         self.message = f"Demo µs-ALEX measurement written to {path} (simulated; the answer is known)."
@@ -99,17 +97,17 @@ class AlexDataSelectionApp(BurstDataSelectionApp):
     def _draw_summary_extra(self) -> None:
         im.separator()
         im.text_wrapped("No µs-ALEX measurement at hand?")
-        if im.button("Load demo data"):
-            self.track("demo")
+        if im.button("Demo"):
+            self.track("load_example")
             try:
-                self.load_demo()
+                self.load_example()
             except Exception as exc:  # noqa: BLE001 - shown in the window
                 self.message = f"Could not write the demo data: {exc}"
         im.set_item_tooltip(
             "Write a simulated µs-ALEX measurement (100 µs alternation, donor channel 0, acceptor channel 1; low FRET, "
-            "high FRET, donor-only and acceptor-only molecules) into a temporary folder and add it."
+            "high FRET, donor-only and acceptor-only molecules) into this plugin’s generated-data folder and add it."
         )
-        self.remember("demo")
+        self.remember("load_example")
 
 
 # -- 3. Alternation ----------------------------------------------------------------------------------------- #

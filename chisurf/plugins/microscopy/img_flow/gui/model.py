@@ -74,7 +74,7 @@ class FlowModel(EmtkModelMixin, FlowViewModel):
             self.channel = names[self.channel]
 
     # -- the demo ------------------------------------------------------------------ #
-    def demo(self) -> None:
+    def load_example(self) -> None:
         """Simulate (or reuse) the demo photon stream and select it (the Qt Load demo): a scan with a known flow, about twenty seconds the first time."""
         self.status_line = "Simulating the demo scan..."
         self.run_job("demo_job")

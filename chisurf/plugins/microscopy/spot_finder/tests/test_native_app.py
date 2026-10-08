@@ -185,8 +185,8 @@ sys.meta_path.insert(0,BlockQt())
 from pathlib import Path
 from chisurf.plugins.microscopy.spot_finder import demo
 from chisurf.plugins.microscopy.spot_finder.gui.app import make_app
-original=demo.create_demo
-demo.create_demo=lambda:original(directory=Path(sys.argv[1]))
+original=demo.make_demo
+demo.make_demo=lambda folder=None, **kwargs:original(Path(sys.argv[1]), **kwargs)
 app=make_app()
 assert app.start('load_demo')
 app.job.thread.join(timeout=30)

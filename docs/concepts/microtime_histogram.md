@@ -72,6 +72,13 @@ hosts. Transfer passes the effective time step, G-factor and polarization to
 the TCSPC reader; the plain integer export carries no timing header. Preserve
 the calibration separately when loading that file outside the transfer route.
 
+## Synthetic workflow check
+
+The [histogram workflow](../guides/89_microtime_histogram.md) generates the
+same demonstration with `make_demo()`, returning its PTU path. Parameters and
+a byte checksum accompany the file under `demos/microtime_histogram` in the
+settings folder; valid caches are reused and `overwrite=True` regenerates them.
+
 ## See also
 
 - Workflow: {doc}`/guides/89_microtime_histogram`.

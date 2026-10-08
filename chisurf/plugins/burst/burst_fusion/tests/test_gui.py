@@ -187,8 +187,8 @@ def test_loading_the_demo_selects_a_folder_with_a_known_answer(qapp, monkeypatch
 
     widget = BurstFusionTool()
     monkeypatch.setattr(
-        "chisurf.plugins.burst.burst_fusion.demo.demo_directory",
-        lambda directory=None: tmp_path / "demo",
+        "chisurf.plugins.burst.burst_fusion.demo.demo_folder",
+        lambda: tmp_path / "demo",
     )
     widget.load_demo()
 

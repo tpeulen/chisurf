@@ -375,7 +375,7 @@ def fcs_hub() -> None:
 
     hub = make_app()
     files = hub.select("files")
-    files.add_example()
+    files.load_example()
     files.use_filter = True
     _native(hub, "fcs_hub_files.png")
     hub.select("filter")

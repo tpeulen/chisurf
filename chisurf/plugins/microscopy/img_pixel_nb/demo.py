@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import tempfile
 from typing import Any
 
 import numpy as np
@@ -38,32 +39,11 @@ DEMO = {
 }
 
 
-def demo_path(directory: str | pathlib.Path | None = None) -> pathlib.Path:
-    """Return where the demo file lives (ChiSurf's settings folder by default).
+def demo_folder() -> pathlib.Path:
+    """Return this plugin's demo folder within the current settings directory."""
+    from chisurf.core.settings.path_utils import get_path
 
-    Parameters
-    ----------
-    directory : str or pathlib.Path, optional
-        Folder to hold it.
-
-    Returns
-    -------
-    pathlib.Path
-        The file path, whether or not it exists yet.
-    """
-    if directory is None:
-        base = None
-        try:
-            import chisurf.core.settings as settings_mod
-
-            base = getattr(settings_mod, "chisurf_settings_path", None)
-        except Exception:  # pragma: no cover - settings unavailable
-            base = None
-        base = pathlib.Path(base) if base else pathlib.Path.home() / ".chisurf"
-        if not base.is_absolute():
-            base = pathlib.Path.home() / ".chisurf"
-        directory = base / "demo"
-    return pathlib.Path(directory) / "nb_demo_monomer_dimer.ptu"
+    return get_path("settings") / "demos" / "img_pixel_nb"
 
 
 def truth(cfg: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -191,15 +171,15 @@ def counts_to_tttr(counts: np.ndarray, pixel_dwell_s: float, seed: int = 0):
     return tttr
 
 
-def create_demo(
-    path: str | pathlib.Path | None = None, *, overwrite: bool = False, **overrides: Any
-) -> dict[str, Any]:
+def make_demo(
+    folder: str | pathlib.Path | None = None, *, overwrite: bool = False, **overrides: Any
+) -> pathlib.Path:
     """Simulate the monomer/dimer demo and write it as a PTU file (cached).
 
     Parameters
     ----------
-    path : str or pathlib.Path, optional
-        Target file; defaults to :func:`demo_path`.
+    folder : str or pathlib.Path, optional
+        Folder for the photon stream and truth sidecar; defaults to :func:`demo_folder`.
     overwrite : bool
         Regenerate even if a file made with the same settings exists.
     **overrides
@@ -207,25 +187,33 @@ def create_demo(
 
     Returns
     -------
-    dict
-        ``path``, ``created`` and the :func:`truth`.
+    pathlib.Path
+        Primary PTU file. Its JSON sidecar records the settings and :func:`truth`.
     """
     cfg = {**DEMO, **{k: v for k, v in overrides.items() if k in DEMO}}
-    target = pathlib.Path(path) if path is not None else demo_path()
+    directory = pathlib.Path(folder) if folder is not None else demo_folder()
+    target = directory / "nb_demo_monomer_dimer.ptu"
     sidecar = target.with_suffix(".json")
     expected = truth(cfg)
     if not overwrite and target.exists() and sidecar.exists():
         try:
             if json.loads(sidecar.read_text(encoding="utf-8")).get("settings") == cfg:
-                return {"path": str(target), "created": False, **expected}
+                return target
         except Exception:  # noqa: BLE001 - a broken sidecar means regenerate
             pass
     target.parent.mkdir(parents=True, exist_ok=True)
     tttr = counts_to_tttr(simulate_counts(cfg), float(cfg["pixel_dwell_s"]), int(cfg["seed"]))
-    if not tttr.write(str(target), "PTU"):
-        raise RuntimeError(f"could not write the demo photon stream to {target}")
-    sidecar.write_text(json.dumps(expected, indent=2), encoding="utf-8")
-    return {"path": str(target), "created": True, **expected}
+    # Some writer versions refuse an existing path while still reporting success.
+    # Generate beside the dedicated cache, then publish only completed files.
+    with tempfile.TemporaryDirectory(prefix=".nb-demo-", dir=target.parent) as temporary:
+        generated = pathlib.Path(temporary) / target.name
+        metadata = pathlib.Path(temporary) / sidecar.name
+        if not tttr.write(str(generated), "PTU"):
+            raise RuntimeError(f"could not write the demo photon stream to {target}")
+        metadata.write_text(json.dumps(expected, indent=2), encoding="utf-8")
+        generated.replace(target)
+        metadata.replace(sidecar)
+    return target
 
 
-__all__ = ["DEMO", "counts_to_tttr", "create_demo", "demo_path", "simulate_counts", "truth"]
+__all__ = ["DEMO", "counts_to_tttr", "demo_folder", "make_demo", "simulate_counts", "truth"]

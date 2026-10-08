@@ -144,7 +144,7 @@ def test_workflow_hands_photons_filter_and_curves_on(tmp_path):
 def test_example_correlate_and_merge(size):
     hub = _hub(size)
     assert hub.app.selected == "files"
-    hub.click("example")
+    hub.click("load_example")
     files = hub.child
     assert len(files.checked_files) == 1 and files.checked_files[0].endswith("fcs_demo.spc")
     assert not hub.app.panel_enabled("filter")  # off by default, as in Qt
@@ -169,7 +169,7 @@ def test_example_correlate_and_merge(size):
 
 def test_steps_switch_the_filter_and_merger_on_and_off():
     hub = _hub()
-    hub.click("example")
+    hub.click("load_example")
     hub.click("use_filter")
     assert hub.child.use_filter and hub.app.panel_enabled("filter")
     hub.nav("filter")
@@ -305,7 +305,7 @@ def test_spc_correlates_like_the_qt_tool():
 @pytest.mark.parametrize("size", SIZES, ids=lambda s: f"{s[0]}x{s[1]}")
 def test_every_step_and_tool_opens_and_its_controls_are_inside(size):
     hub = _hub(size)
-    hub.click("example")
+    hub.click("load_example")
     hub.click("use_filter")
     bx, by, bw, bh = hub.app.child_box
     for panel in hub.app.tools:
@@ -324,7 +324,7 @@ def test_every_step_and_tool_opens_and_its_controls_are_inside(size):
 def test_filter_step_scrolls_to_its_last_plot():
     """At 800x600 the filter step is taller than its window: the wheel reaches the count-rate plot."""
     hub = _hub((800, 600))
-    hub.click("example")
+    hub.click("load_example")
     hub.click("use_filter")
     hub.nav("filter")
     bh = hub.app.child_box[3]
@@ -352,7 +352,7 @@ def test_help_guide_and_the_tour_waits_for_the_user():
     assert tour.active and len(tour.steps) >= 5
     hub.press_text("Next ►")
     assert tour.step_idx == 1 and tour.awaiting  # "press Example": waits
-    hub.click("example")
+    hub.click("load_example")
     assert not tour.awaiting
     hub.press_text("Next ►")
     hub.press_text("Next ►")
@@ -378,7 +378,7 @@ def test_the_correlator_entry_is_the_workflow_without_the_tools():
 
 def test_filter_calc_reads_the_correlator_files_and_tools_carry_their_maturity_flag():
     hub = _hub()
-    hub.click("example")
+    hub.click("load_example")
     hub.nav("filter_calc")
     calc = hub.child
     assert hub.app.selected == "filter_calc"
@@ -396,7 +396,7 @@ def test_filter_calc_reads_the_correlator_files_and_tools_carry_their_maturity_f
 def test_next_runs_the_step_and_fast_forward_walks_the_workflow():
     """Next runs the open step (Correlate), then advances; >> walks the rest of the group, waiting for each step."""
     hub = _hub()
-    hub.click("example")
+    hub.click("load_example")
     hub.nav("correlator")
     hub.click("next")
     end = time.monotonic() + 120

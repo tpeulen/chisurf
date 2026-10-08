@@ -140,11 +140,11 @@ class FlowViewModel:
         str
             The path that was loaded.
         """
-        from ..demo import create_demo
+        from ..demo import demo_folder, demo_info, make_demo
 
         self._status = "Simulating the demo scan…"
         self.notify()
-        result = create_demo(progress=progress)
+        result = demo_info(make_demo(demo_folder(), progress=progress))
         self._demo = result
         timing = result["timing"]
         self.pixel_duration_us = float(timing["pixel_duration_us"])

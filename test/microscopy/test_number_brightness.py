@@ -342,9 +342,10 @@ def test_demo_photon_stream_round_trips_and_carries_its_truth(tmp_path):
     from chisurf.plugins.microscopy.img_pixel_nb import demo
 
     cfg = {"n_pixel": 16, "n_frames": 400}
-    info = demo.create_demo(tmp_path / "nb_demo.ptu", **cfg)
+    primary = demo.make_demo(tmp_path, **cfg)
+    info = demo.truth(cfg)
     counts = demo.simulate_counts({**demo.DEMO, **cfg})
-    clsm = build_clsm_windowed(tttrlib.TTTR(info["path"]), [0], [])
+    clsm = build_clsm_windowed(tttrlib.TTTR(str(primary)), [0], [])
     stack = np.asarray(clsm.get_intensity(), dtype=float)
     np.testing.assert_array_equal(stack, counts)
     maps = nbm.nb_maps(stack)
@@ -361,9 +362,9 @@ def test_view_model_gates_back_map_the_dimers(tmp_path):
     from chisurf.plugins.microscopy.img_pixel_nb import demo
     from chisurf.plugins.microscopy.img_pixel_nb.gui.view_model import NBViewModel
 
-    info = demo.create_demo(tmp_path / "nb_demo.ptu", n_pixel=16, n_frames=300)
+    primary = demo.make_demo(tmp_path, n_pixel=16, n_frames=300)
     vm = NBViewModel()
-    vm.filename = info["path"]
+    vm.filename = str(primary)
     vm.run()
     assert "median ε" in vm.results_text
     assert set(vm._by_window["ch0"]) >= {"B", "N", "epsilon", "n", "mean", "variance"}

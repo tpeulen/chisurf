@@ -64,7 +64,7 @@ class Window:
             self.frame()
 
     def load_demo(self, tmp_path):
-        path = demo.write_demo(tmp_path / "demo.dat", seed=4)
+        path = demo.make_demo(tmp_path, seed=4)
         self.gui._loaded([str(path)], 2)
         self.frame(2)
 

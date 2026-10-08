@@ -101,9 +101,9 @@ def test_prepare_resolves_the_folder_and_detectors_from_a_workflow_context():
 
 def test_analyze_over_rpc_returns_the_curve_json_shape(tmp_path):
     """``None`` in ``p_same`` means "too few pairs to judge", not zero."""
-    from chisurf.plugins.burst.burst_fusion.demo import create_demo
+    from chisurf.plugins.burst.burst_fusion.demo import make_demo, read_demo
 
-    demo = create_demo(directory=tmp_path / "demo")
+    demo = read_demo(make_demo(tmp_path / "demo"))
     response = services.analyze_handler(analysis_folder=demo["folder"], settings={"threshold": 0.7})
     assert response["status"] == "ok"
     curve = response["curve"]
@@ -116,9 +116,9 @@ def test_analyze_over_rpc_returns_the_curve_json_shape(tmp_path):
 
 
 def test_fuse_over_rpc_writes_a_folder(tmp_path):
-    from chisurf.plugins.burst.burst_fusion.demo import create_demo
+    from chisurf.plugins.burst.burst_fusion.demo import make_demo, read_demo
 
-    demo = create_demo(directory=tmp_path / "demo")
+    demo = read_demo(make_demo(tmp_path / "demo"))
     response = services.fuse_handler(
         analysis_folder=demo["folder"],
         settings={"threshold": 0.7},

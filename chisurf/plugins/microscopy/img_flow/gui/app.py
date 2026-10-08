@@ -31,7 +31,7 @@ class ImgFlowApp(ImagingToolApp):
         "export": ("Export flow map", "save", "CSV (*.csv)", "write_export"),
     }
     #: model event -> the control a tour step waits for
-    OUTCOMES = {"file": "filename", "demo": "demo", "computed": "map_flow"}
+    OUTCOMES = {"file": "filename", "demo": "load_example", "computed": "map_flow"}
 
     def __init__(self, model: FlowModel | None = None) -> None:
         super().__init__(model or FlowModel())

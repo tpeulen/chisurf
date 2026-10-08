@@ -22,7 +22,7 @@
               "description": "Track each tile's correlation peak and read its velocity. Runs in the background."
             },
             {
-              "action": "demo",
+              "action": "load_example",
               "label": "Load demo",
               "description": "Simulate a scan whose flow profile is known, and load it, so the arrows can be checked against a number. The first time it simulates the scan, which takes about twenty seconds; later it reuses the file."
             },

@@ -1100,3 +1100,13 @@ tour checker performs real example clicks and records pending/unwired waits
 without forging satisfaction; its whole-plugin interaction gate remains open.
 The calculator slice removes 22 more tooltip gaps (1,082 remain) and36 imperative
 literals (1,167 remain). Source/science/PNG receipts are in W6g validation.
+
+Eleven existing demos expose the settings/demos/plugin cache through DEMO,
+demo_folder and make_demo, returning a primary Path. Actual member hashes and
+effective parameters validate reuse; overwrite and failed-write retention are
+checked. Each first example tour step awaits the real load_example control;
+shared hub page routing reveals that control without pressing it. The SDK and
+ChiSurf tour title reserve a separate drag row. Existing scientific results
+remain exact; the reader-owner repair restores all Flow frames and photons.
+[Demo acceptance](../validation/release-readiness-w6g/demo-contracts-acceptance.json)
+records the qualified flow bias and remaining broader uniformity gates.

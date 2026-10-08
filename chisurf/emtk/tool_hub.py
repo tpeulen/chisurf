@@ -371,7 +371,12 @@ class ToolHubApp(ImApp):
         return None
 
     def _tour_step(self, index, step):
-        target = (step.get("target") or {}).get("panel", "")
+        page = step.get("page")
+        if page in {panel["role"] for panel in self.tools}:
+            self.select(page, by_user=False)
+            return
+        target = step.get("target") or {}
+        target = target.get("panel", "") if isinstance(target, dict) else ""
         panel = next((p for p in self.tools if target and target.casefold() in p["name"].casefold()), None)
         if panel and not step.get("await"):
             self.select(panel["role"], by_user=False)

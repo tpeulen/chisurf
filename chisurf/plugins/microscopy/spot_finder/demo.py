@@ -43,7 +43,9 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["DEMO_BLOBS", "create_demo", "demo_paths", "truth_table"]
+__all__ = ["DEMO", "DEMO_BLOBS", "IRF_FILENAME", "demo_folder", "make_demo", "truth_table"]
+
+IRF_FILENAME = "spot_demo_mixture_irf.ptu"
 
 #: ``(ix, iy, tau_ns)`` of every simulated object. Four lifetimes spanning a
 #: factor of six, well separated on the grid so a segmentation failure is a
@@ -54,7 +56,7 @@ DEMO_BLOBS = ((14, 14, 1.0), (34, 14, 3.6), (14, 34, 2.2), (34, 34, 0.6))
 #: The simulator's, not the sample's — see the module docstring.
 _INDEX_YIELD = (659.0, 32336.0, 169099.0, 97421.0)
 
-_CONFIG: dict[str, Any] = {
+DEMO: dict[str, Any] = {
     "blobs": [list(b) for b in DEMO_BLOBS],
     "n_pixel": 48,
     "n_micro": 128,
@@ -69,50 +71,28 @@ _CONFIG: dict[str, Any] = {
 }
 
 
-def demo_paths(directory: str | pathlib.Path | None = None) -> tuple:
-    """Return ``(sample, irf)`` paths for the demo, whether or not they exist.
+def demo_folder() -> pathlib.Path:
+    """Return the settings-owned folder for this plugin's demonstration."""
+    from chisurf.core.settings import get_path
+
+    return get_path("settings") / "demos" / "spot_finder"
+
+
+def make_demo(folder: pathlib.Path | None = None, *, overwrite: bool = False) -> pathlib.Path:
+    """Write the known sample and its matching IRF, returning the sample path.
 
     Parameters
     ----------
-    directory : str or pathlib.Path, optional
-        Folder to hold them. Defaults to ChiSurf's own settings directory, so
-        the demo survives between sessions and is never written into the user's
-        data.
-
-    Returns
-    -------
-    tuple of pathlib.Path
-    """
-    if directory is None:
-        base = None
-        try:
-            import chisurf.core.settings as settings_mod
-
-            base = getattr(settings_mod, "chisurf_settings_path", None)
-        except Exception:  # pragma: no cover - settings unavailable
-            base = None
-        base = pathlib.Path(base) if base else pathlib.Path.home() / ".chisurf"
-        if not base.is_absolute():
-            base = pathlib.Path.home() / ".chisurf"
-        directory = base / "demo"
-    directory = pathlib.Path(directory)
-    return directory / "spot_demo_mixture.ptu", directory / "spot_demo_mixture_irf.ptu"
-
-
-def create_demo(directory: str | pathlib.Path | None = None, *, overwrite: bool = False) -> tuple:
-    """Write the demo scan and its IRF, reusing a cached pair when it matches.
-
-    Parameters
-    ----------
-    directory : str or pathlib.Path, optional
-        Where to write them.
+    folder : pathlib.Path, optional
+        Destination directory; defaults to :func:`demo_folder`.
     overwrite : bool, optional
-        Regenerate even when a matching pair is already there.
+        Regenerate both photon streams even when the cache matches.
 
     Returns
     -------
-    tuple of pathlib.Path
-        ``(sample, irf)``.
+    pathlib.Path
+        Primary sample. Its IRF is alongside it under ``IRF_FILENAME`` and
+        its JSON sidecar records ``DEMO``, including the scanner layout.
     """
     from chisurf.core.fluorescence.imaging.simulate import (
         Blob,
@@ -121,14 +101,15 @@ def create_demo(directory: str | pathlib.Path | None = None, *, overwrite: bool 
         write_mixture_ptu,
     )
 
-    sample, irf_path = demo_paths(directory)
+    folder = demo_folder() if folder is None else pathlib.Path(folder)
+    sample, irf_path = folder / "spot_demo_mixture.ptu", folder / IRF_FILENAME
     if not overwrite and _cache_is_good(sample, irf_path):
         logger.debug("spot finder demo: reusing %s", sample)
-        return sample, irf_path
+        return sample
 
     sample.parent.mkdir(parents=True, exist_ok=True)
     yields = np.asarray(_INDEX_YIELD, dtype=float)
-    brightness = 20000.0 * float(_CONFIG["target_photons"]) / yields
+    brightness = 20000.0 * float(DEMO["target_photons"]) / yields
     blobs = [
         Blob(int(ix), int(iy), float(tau), brightness=float(q))
         for (ix, iy, tau), q in zip(DEMO_BLOBS, brightness)
@@ -136,27 +117,27 @@ def create_demo(directory: str | pathlib.Path | None = None, *, overwrite: bool 
 
     scan = simulate_molecule_mixture(
         blobs,
-        n_pixel=int(_CONFIG["n_pixel"]),
-        n_micro=int(_CONFIG["n_micro"]),
-        dt=float(_CONFIG["dt"]),
-        dwell=float(_CONFIG["dwell"]),
-        psf_w0=float(_CONFIG["psf_w0"]),
-        seed=int(_CONFIG["seed"]),
+        n_pixel=int(DEMO["n_pixel"]),
+        n_micro=int(DEMO["n_micro"]),
+        dt=float(DEMO["dt"]),
+        dwell=float(DEMO["dwell"]),
+        psf_w0=float(DEMO["psf_w0"]),
+        seed=int(DEMO["seed"]),
     )
     instrument = simulate_irf_measurement(
         n_pixel=16,
-        n_micro=int(_CONFIG["n_micro"]),
-        dt=float(_CONFIG["dt"]),
-        dwell=float(_CONFIG["dwell"]),
-        psf_w0=float(_CONFIG["psf_w0"]),
+        n_micro=int(DEMO["n_micro"]),
+        dt=float(DEMO["dt"]),
+        dwell=float(DEMO["dwell"]),
+        psf_w0=float(DEMO["psf_w0"]),
         brightness=20000.0,
-        seed=int(_CONFIG["irf_seed"]),
+        seed=int(DEMO["irf_seed"]),
     )
     write_mixture_ptu(scan, sample)
     write_mixture_ptu(instrument, irf_path)
-    sample.with_suffix(".json").write_text(json.dumps(_CONFIG, sort_keys=True, indent=2))
+    sample.with_suffix(".json").write_text(json.dumps(DEMO, sort_keys=True, indent=2))
     logger.info("spot finder demo written to %s", sample)
-    return sample, irf_path
+    return sample
 
 
 def truth_table() -> dict:
@@ -170,10 +151,10 @@ def truth_table() -> dict:
     """
     return {
         "blobs": [tuple(b) for b in DEMO_BLOBS],
-        "n_pixel": int(_CONFIG["n_pixel"]),
-        "n_micro": int(_CONFIG["n_micro"]),
-        "dt": float(_CONFIG["dt"]),
-        "period": float(_CONFIG["n_micro"]) * float(_CONFIG["dt"]),
+        "n_pixel": int(DEMO["n_pixel"]),
+        "n_micro": int(DEMO["n_micro"]),
+        "dt": float(DEMO["dt"]),
+        "period": float(DEMO["n_micro"]) * float(DEMO["dt"]),
     }
 
 
@@ -194,6 +175,6 @@ def _cache_is_good(sample: pathlib.Path, irf: pathlib.Path) -> bool:
     if not sidecar.is_file():
         return False
     try:
-        return json.loads(sidecar.read_text()) == _CONFIG
+        return json.loads(sidecar.read_text()) == DEMO
     except Exception:  # noqa: BLE001 - an unreadable sidecar is a stale cache
         return False

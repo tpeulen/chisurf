@@ -133,12 +133,12 @@ class BurstFcsApp(TourTarget, ImApp):
         self.pairs_window.show()
 
     def load_example(self):
-        """Write the demonstration photon stream and burst table into a temporary folder and list the table."""
-        from ..demo import make_demo
+        """Create or reuse the cached demonstration stream and list its burst table."""
+        from ..demo import demo_folder, make_demo
 
-        folder = Path(tempfile.mkdtemp(prefix="burst_fcs_demo_"))
+        folder = demo_folder()
         try:
-            _spc, table = make_demo(folder)
+            table = make_demo(folder)
         except Exception as exc:  # noqa: BLE001
             self.controller.status = f"Error: could not write the demonstration data: {exc}"
             return
@@ -147,7 +147,7 @@ class BurstFcsApp(TourTarget, ImApp):
             self.controller.apply_pairs(json.dumps([{"pair_name": "ACF_0", "chs_a": [0], "chs_b": [0]}, {"pair_name": "ACF_1", "chs_a": [1], "chs_b": [1]},
                                                      {"pair_name": "cross_01", "chs_a": [0], "chs_b": [1]}]))
         self.controller.status = "Demonstration data added (8 bursts, two detectors)."
-        self._used("example")
+        self._used("load_example")
 
     def _definition_changed(self, settings):
         """Adopt detector edits, including same-name shared hub revisions, once."""

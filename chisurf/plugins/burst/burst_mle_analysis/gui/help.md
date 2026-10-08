@@ -4,7 +4,7 @@ A single-molecule burst holds a few hundred photons, so its micro-time decay is 
 those counts; the burst-MLE tool fits **one lifetime (and anisotropy) per burst and detector** by Poisson maximum
 likelihood, with the instrument response (IRF) and the background held fixed.
 
-Press **Guide** for the walk-through. **Generate synthetic demo** loads 16 generated bursts of 1000 photons each with a known input lifetime of 2 ns and a 32 ps clock into the settings cache. It replaces working inputs; press Auto IRF/background and Fit bursts yourself. Fitted estimates fluctuate.
+Press **Guide** for the walk-through. **Demo** loads 16 generated bursts of 1000 photons each with a known input lifetime of 2 ns and a 32 ps clock into `demos/burst_mle_analysis` under the ChiSurf settings folder, with a parameter sidecar. It replaces working inputs; press Auto IRF/background and Fit bursts yourself. Fitted estimates fluctuate.
 
 ## What the windows show
 

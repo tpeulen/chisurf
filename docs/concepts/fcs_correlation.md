@@ -471,6 +471,15 @@ skipping a burst cannot shift later diffusion times onto the wrong bursts.
 - {cite}`koppel1974` — the variance of a measured curve from counting
   statistics; {cite}`wohland2001` — which way of estimating it to trust.
 
+## Synthetic workflow check
+
+The [FCS toolbox](../guides/75_fcs_toolbox.md) and
+[burst-wise FCS workflow](../guides/16_fret_fcs.md) provide seeded examples
+through `make_demo()`. The former returns the photon SPC; the latter returns
+the burst BST with its SPC alongside it. Parameters are recorded in JSON under
+the respective settings-owned `demos` folder. The guides await a real Example
+click before correlation; these simulations check a workflow, not a sample.
+
 ## See also
 
 - Fundamentals: {ref}`fundamentals-quenching` (the triplet term) ·

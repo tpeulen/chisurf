@@ -201,6 +201,13 @@ the trend.
 | peak time flat, then a step | two compartments with different transport |
 | arrows everywhere on a still sample | the quality threshold is too low; peak jitter fitted to a line is always *some* velocity |
 
+## Synthetic workflow check
+
+The Flow demo supplies known synthetic velocity truth. `make_demo()` returns
+a PTU with a parameter/truth sidecar; the [workflow](../guides/55_pair_correlation.md)
+compares the recovered profile with its input. The current default peak estimate
+is about 0.76845 of truth because of shear within a tile; it is not a calibration.
+
 ## See also
 
 - Tools in ChiSurf: **Flow Maps** (`chisurf/plugins/microscopy/img_flow/`) draws the velocity field one arrow per tile; the pCF carpet itself is computed alongside it.

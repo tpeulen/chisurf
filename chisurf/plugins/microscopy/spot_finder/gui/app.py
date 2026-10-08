@@ -13,6 +13,7 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.core.datastore import rows_from_table
@@ -110,6 +111,13 @@ class SpotFinderApp(ImApp):
             "sections"
         ][0]["sections"]
         detection = self.sections[0]["sections"]
+        self.demo_action = next(
+            button
+            for section in detection
+            if section.get("type") == "button_row"
+            for button in section.get("buttons", [])
+            if button.get("action") == "load_example"
+        )
         top = [s for s in detection if s.get("attr") in ("workflow", "name")]
         panels = [json.loads(json.dumps(s)) for s in detection if s.get("type") == "panel"]
         for panel in panels:
@@ -326,7 +334,7 @@ class SpotFinderApp(ImApp):
         self.item_rects.update(self.forms["input"].rects)
         im.end_disabled()
         actions = [
-            ("Load demo", "Simulate/cache the known four-object photon field for validating a detection.", lambda: self.start("load_demo"), True),
+            ("load_example", self.demo_action["description"], lambda: self.start("load_demo"), True),
             ("Preview", "Detect in the first input only and write nothing.", lambda: self.start("preview"), True),
             ("Detect", "Detect in every input; retain a run-table row even for empty or failed files.", lambda: self.start("run"), True),
             ("Add picks", "Add fitted picked ellipses to the current detection and remeasure the regions.", lambda: self.start("add_picked_to_detection"), True),
@@ -336,7 +344,7 @@ class SpotFinderApp(ImApp):
             ("Load settings", "Restore the complete analysis configuration from JSON.", lambda: self.choose("load_settings"), True),
         ]
         im.begin_disabled(busy)
-        pressed = button_row([{"label": l, "key": l, "tip": t, "enabled": e} for l, t, _a, e in actions], remember=self.remember)
+        pressed = button_row([{"label": tr(self.demo_action["label"]) if l == "load_example" else l, "key": l, "keys": ("Load demo",) if l == "load_example" else (), "tip": tr(t) if l == "load_example" else t, "enabled": e} for l, t, _a, e in actions], remember=self.remember)
         im.end_disabled()
         if pressed and not busy:
             dict((l, a) for l, _t, a, _e in actions)[pressed]()

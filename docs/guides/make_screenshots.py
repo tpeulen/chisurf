@@ -1641,7 +1641,7 @@ def _grab_fcs_correlator_step():
     from chisurf.plugins.fcs.fcs_toolbox.gui.app import make_app
 
     hub = make_app()
-    hub.select("files").add_example()
+    hub.select("files").load_example()
     corr = hub.select("correlator")
     corr.model.channel_a, corr.model.channel_b, corr.model.n_splits = "0", "1", 3
     corr.model.method = "laurence"

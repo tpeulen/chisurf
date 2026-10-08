@@ -424,7 +424,7 @@ class SpotFinderViewModel(MleObserverMixin):
         """Button action: ask the host for a path and export the region table."""
         self.notify("start_export")
 
-    def request_demo(self) -> None:
+    def load_example(self) -> None:
         """Button action: generate and load the demo field on a worker thread."""
         self.notify("start_demo")
 
@@ -440,11 +440,11 @@ class SpotFinderViewModel(MleObserverMixin):
         str
             Path of the demo scan.
         """
-        from ..demo import create_demo, truth_table
+        from ..demo import demo_folder, make_demo, truth_table
 
         self.status_text = "Simulating a field with known lifetimes…"
         self.notify("progress")
-        sample, _irf = create_demo()
+        sample = make_demo(demo_folder())
         self.files = [str(sample)]
         truth = truth_table()
         taus = ", ".join(f"{tau:g}" for *_xy, tau in truth["blobs"])

@@ -19,36 +19,12 @@ from qtpy import QtCore, QtWidgets
 from chisurf.gui.widgets.tools.help_guide import HelpGuideMixin
 
 from ..api.client import EbfretClient
-from .app import WINDOW_BG, App, EbfretGui
+from .app import TOUR_TARGETS, WINDOW_BG, App, EbfretGui
 
 __all__ = ["EbfretTool", "TourAnchor", "ANCHORS"]
 
 #: Controls a tour may point at: anchor object name -> the emtk control key.
-ANCHORS = {
-    "ebfret_menu_file": "menu.File",
-    "ebfret_menu_analysis": "menu.Analysis",
-    "ebfret_menu_view": "menu.View",
-    "ebfret_plot_signal": "plot.signal",
-    "ebfret_plot_raw": "plot.raw",
-    "ebfret_series_slider": "series_value.slider",
-    "ebfret_series_edit": "series_value.edit",
-    "ebfret_crop_min": "crop_min",
-    "ebfret_crop_max": "crop_max",
-    "ebfret_exclude": "exclude",
-    "ebfret_plot_obs": "plot.obs",
-    "ebfret_plot_mean": "plot.mean",
-    "ebfret_plot_noise": "plot.noise",
-    "ebfret_plot_dwell": "plot.dwell",
-    "ebfret_states_slider": "ensemble_value.slider",
-    "ebfret_min_states": "min_states",
-    "ebfret_max_states": "max_states",
-    "ebfret_run_all": "run_scope",
-    "ebfret_restarts": "restarts",
-    "ebfret_precision": "run_precision",
-    "ebfret_run": "run",
-    "ebfret_stop": "stop",
-    "ebfret_reset": "reset",
-}
+ANCHORS = TOUR_TARGETS
 
 
 class TourAnchor(QtWidgets.QWidget):
@@ -118,6 +94,7 @@ class EbfretTool(HelpGuideMixin, QtWidgets.QMainWindow):
         self.host.update()
 
     def _used(self, key: str) -> None:
+        self.app.tour.notify_used(key)
         name = self._keys.get(key)
         if name is not None:
             self.anchors[name].clicked.emit()

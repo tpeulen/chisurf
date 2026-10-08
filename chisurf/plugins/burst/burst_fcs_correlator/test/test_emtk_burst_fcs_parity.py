@@ -38,7 +38,8 @@ def hermetic(tmp_path, monkeypatch):
 
 @pytest.fixture(scope="module")
 def data(tmp_path_factory):
-    return demo.make_demo(tmp_path_factory.mktemp("burst_demo"))
+    table = demo.make_demo(tmp_path_factory.mktemp("burst_demo"))
+    return table.parent / demo.SPC_FILENAME, table
 
 
 @pytest.fixture
@@ -63,8 +64,10 @@ def run(drv, data, pairs=PAIRS):
 
 
 def test_the_demonstration_data_is_deterministic(tmp_path):
-    a = demo.make_demo(tmp_path / "a")
-    b = demo.make_demo(tmp_path / "b")
+    table_a = demo.make_demo(tmp_path / "a")
+    a = table_a.parent / demo.SPC_FILENAME, table_a
+    table_b = demo.make_demo(tmp_path / "b")
+    b = table_b.parent / demo.SPC_FILENAME, table_b
     assert hashlib.sha256(a[0].read_bytes()).digest() == hashlib.sha256(b[0].read_bytes()).digest()
     assert a[1].read_text() == b[1].read_text()
     ranges = [tuple(map(int, line.split())) for line in a[1].read_text().splitlines()]

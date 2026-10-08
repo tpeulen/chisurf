@@ -10,10 +10,10 @@
       "title": "Generate demonstration photons",
       "text": "Generate 16 synthetic bursts of 1000 photons each. The input lifetime is 2 ns; fitted estimates fluctuate. This replaces current working inputs. Fitting is still your next action.",
       "target": {
-        "name": "load_demo"
+        "name": "load_example"
       },
       "await": {
-        "hint": "Press Generate synthetic demo."
+        "hint": "Press Demo."
       }
     },
     {

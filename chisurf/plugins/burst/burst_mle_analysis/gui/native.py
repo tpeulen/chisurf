@@ -75,7 +75,8 @@ class MleNativeApp(TourTarget, ImApp):
             on_start_guide=self.start_guide, size=(700.0, 520.0),
         )
         self.tour = EmTkGuidedTour(
-            steps=HERE / "guide.json", get_target_rect=lambda k: self.item_rects.get(k) or self.form.rects.get(k),
+            steps=HERE / "guide.json",
+            on_step_change=self._tour_step, get_target_rect=lambda k: self.item_rects.get(k) or self.form.rects.get(k),
             owner=self.model, wait_for_controls=True,
         )
         self.form.on_used = self.tour.notify_used
@@ -95,6 +96,11 @@ class MleNativeApp(TourTarget, ImApp):
         super().__init__(gui=self._render)
 
     # -- tour / help -------------------------------------------------------------------------------------- #
+    def _tour_step(self, index, step) -> None:
+        """Expose the real example control when the tour awaits its use."""
+        if (step.get("target") or {}).get("name") == "load_example":
+            self.docks.focus("controls")
+
     def start_guide(self) -> None:
         self.tour.start()
 

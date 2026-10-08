@@ -14,7 +14,7 @@ from chisurf.plugins.burst.burst_ebfret.backend import services
 @pytest.fixture
 def client(tmp_path):
     c = EbfretClient(seed=5)
-    c.load([str(demo.write_demo(tmp_path / "demo.dat", seed=11))], 2)
+    c.load([str(demo.make_demo(tmp_path, seed=11))], 2)
     yield c
     c.close()
 

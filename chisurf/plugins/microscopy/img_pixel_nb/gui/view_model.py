@@ -308,10 +308,11 @@ class NBViewModel(ImagingMapViewModel):
     # ── demo ──
     def load_demo(self) -> dict:
         """Write (or reuse) the monomer/dimer demo photon stream and load it."""
-        from chisurf.plugins.microscopy.img_pixel_nb.demo import create_demo
+        from chisurf.plugins.microscopy.img_pixel_nb.demo import make_demo, truth
 
-        info = create_demo()
+        path = make_demo()
+        info = {"path": str(path), **truth()}
         self.detectors = {}
         self.display_window = "ch0"
-        self.load_file(info["path"])
+        self.load_file(str(path))
         return info

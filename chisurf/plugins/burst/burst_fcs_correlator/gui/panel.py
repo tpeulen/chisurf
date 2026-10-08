@@ -243,7 +243,7 @@ class BurstFcsPanel:
     def export_curves(self):
         self.app.choose("export_curves")
 
-    def example(self):
+    def load_example(self):
         self.app.load_example()
 
     def guide(self):

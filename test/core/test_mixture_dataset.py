@@ -37,11 +37,12 @@ DT = _TRUTH["dt"]
 def demo_files(tmp_path_factory):
     """Generate the test set once per session, into a scratch directory."""
     from chisurf.core.fluorescence.imaging.simulate import have_simulator
-    from chisurf.plugins.microscopy.spot_finder.demo import create_demo
+    from chisurf.plugins.microscopy.spot_finder.demo import IRF_FILENAME, make_demo
 
     if not have_simulator():
         pytest.skip("tttrlib was built without the photon simulator")
-    return create_demo(tmp_path_factory.mktemp("mixture"))
+    sample = make_demo(tmp_path_factory.mktemp("mixture"))
+    return sample, sample.with_name(IRF_FILENAME)
 
 
 @pytest.fixture(scope="module")

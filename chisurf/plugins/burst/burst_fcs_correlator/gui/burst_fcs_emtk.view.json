@@ -16,7 +16,7 @@
       "description": "Cancel between burst files; the previous results are kept."
      },
      {
-      "action": "example",
+      "action": "load_example",
       "label": "Example",
       "description": "Generate a small deterministic demonstration data set (photon stream and burst table) and add it."
      },

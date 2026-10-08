@@ -16,20 +16,26 @@ leading label row per series.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import pathlib
 import tempfile
+from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 
-__all__ = ["DEMO", "simulate", "write_demo"]
+__all__ = ["DEMO", "simulate", "demo_folder", "make_demo"]
 
 #: The ground truth, in one place so the tour, the docs and the tests agree.
-DEMO = {
+DEMO: dict[str, Any] = {
+    "version": 1,
+    "filename": "simulated-K04-demo-raw-stacked.dat",
     "n_series": 40,
     "min_length": 120,
     "max_length": 220,
-    "efret": (0.1, 0.35, 0.55, 0.75),
-    "dwell": (40.0, 25.0, 30.0, 50.0),
+    "efret": [0.1, 0.35, 0.55, 0.75],
+    "dwell": [40.0, 25.0, 30.0, 50.0],
     "total_intensity": 400.0,
     "noise": 25.0,
     "seed": 20140301,
@@ -61,7 +67,7 @@ def simulate(seed: int | None = None, **overrides) -> tuple[list, list, list]:
     donors, acceptors, states = [], [], []
     for _ in range(int(cfg["n_series"])):
         length = int(rng.integers(cfg["min_length"], cfg["max_length"] + 1))
-        path = np.empty(length, dtype=int)
+        path: NDArray[np.int64] = np.empty(length, dtype=int)
         path[0] = rng.integers(k)
         for t in range(1, length):
             path[t] = rng.choice(k, p=transition[path[t - 1]])
@@ -73,33 +79,71 @@ def simulate(seed: int | None = None, **overrides) -> tuple[list, list, list]:
     return donors, acceptors, states
 
 
-def write_demo(path: str | pathlib.Path | None = None, seed: int | None = None) -> pathlib.Path:
-    """Write the demo as an ebFRET stacked raw ``.dat`` file.
+def demo_folder() -> pathlib.Path:
+    """Return the settings-owned directory for the known donor/acceptor dataset."""
+    from chisurf.core.settings import get_path
+
+    return get_path("settings") / "demos" / "burst_ebfret"
+
+
+def _cache_is_good(path: pathlib.Path, parameters: dict) -> bool:
+    """Require the requested configuration and complete recorded data bytes."""
+    try:
+        cfg = json.loads(path.with_suffix(".json").read_text(encoding="utf-8"))
+        checksum = path.with_suffix(".sha256").read_text(encoding="ascii").split()
+        data = path.read_bytes()
+        return (
+            cfg == parameters
+            and len(data) > 4
+            and checksum == [str(len(data)), hashlib.sha256(data).hexdigest()]
+        )
+    except (OSError, ValueError):
+        return False
+
+
+def make_demo(
+    folder: pathlib.Path | None = None, *, overwrite: bool = False, seed: int | None = None
+) -> pathlib.Path:
+    """Write or reuse the deterministic stacked donor/acceptor demonstration.
 
     Parameters
     ----------
-    path : str or pathlib.Path, optional
-        Output file; a file in the temporary folder by default. Rewritten only
-        when missing, since the content is fixed by the seed.
+    folder : pathlib.Path, optional
+        Dedicated cache directory; defaults to :func:`demo_folder`.
+    overwrite : bool, optional
+        Regenerate even when parameters and the file checksum match.
     seed : int, optional
-        Random seed.
+        Explicit simulation seed, recorded in the effective parameter sidecar.
 
     Returns
     -------
     pathlib.Path
-        The file written.
+        Primary stacked raw ``.dat`` input, accompanied by its JSON parameters
+        and recorded byte-size/SHA-256 checksum.
     """
-    if path is None:
-        folder = pathlib.Path(tempfile.gettempdir()) / "chisurf_ebfret_demo"
-        folder.mkdir(parents=True, exist_ok=True)
-        path = folder / "simulated-K04-demo-raw-stacked.dat"
-    path = pathlib.Path(path)
-    if path.exists() and seed is None:
+    parameters = dict(DEMO)
+    if seed is not None:
+        parameters["seed"] = int(seed)
+    folder = demo_folder() if folder is None else pathlib.Path(folder)
+    path = folder / parameters["filename"]
+    if not overwrite and _cache_is_good(path, parameters):
         return path
-    donors, acceptors, _states = simulate(seed)
+    folder.mkdir(parents=True, exist_ok=True)
+    donors, acceptors, _states = simulate(parameters["seed"])
     rows = []
     for n, (donor, acceptor) in enumerate(zip(donors, acceptors), start=1):
         rows.append(np.array([[n, n, 0.0]]))
         rows.append(np.column_stack([np.full(donor.size, n), donor, acceptor]))
-    np.savetxt(path, np.vstack(rows), fmt="%15.7e")
+    # A failed writer must leave a previously complete demonstration available.
+    with tempfile.TemporaryDirectory(prefix=".ebfret_", dir=folder) as temporary:
+        new = pathlib.Path(temporary) / path.name
+        np.savetxt(new, np.vstack(rows), fmt="%15.7e")
+        cfg = new.with_suffix(".json")
+        cfg.write_text(json.dumps(parameters, sort_keys=True, indent=2), encoding="utf-8")
+        data = new.read_bytes()
+        checksum = new.with_suffix(".sha256")
+        checksum.write_text(f"{len(data)} {hashlib.sha256(data).hexdigest()}\n", encoding="ascii")
+        new.replace(path)
+        cfg.replace(path.with_suffix(".json"))
+        checksum.replace(path.with_suffix(".sha256"))
     return path

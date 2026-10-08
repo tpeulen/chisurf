@@ -25,40 +25,125 @@ STREAM_NAME = "burst_fcs_demo.spc"
 TABLE_NAME = "burst_fcs_demo.spc.bst"
 
 
-def photon_stream(seed: int = SEED, n_bursts: int = N_BURSTS):
+
+import hashlib
+
+
+import json
+
+
+import os
+
+
+import tempfile
+
+
+SPC_FILENAME = STREAM_NAME
+
+
+MEMBERS = (SPC_FILENAME, TABLE_NAME)
+
+
+DEMO = {
+    "seed": SEED, "n_bursts": N_BURSTS, "photons_per_burst": PHOTONS_PER_BURST,
+    "macro_resolution_s": MACRO_RES, "micro_resolution_s": MICRO_RES,
+    "micro_channels": N_MICRO, "lifetime_s": LIFETIME_S,
+    "initial_ticks": 5000000, "centre_ticks": 370000, "width_ticks": 74000,
+    "width_base": 0.7, "width_range": 0.6, "signal_fraction": 0.8,
+    "burst_span_ticks": 740000, "gap_ticks": 3700000,
+    "routing_channels": 2, "format": "SPC-130",
+}
+
+
+def demo_folder() -> Path:
+    """Return this tool's generated-data directory in the settings tree."""
+    from chisurf.core.settings import get_path
+
+    return get_path("settings") / "demos" / "burst_fcs_correlator"
+
+
+def _cache_is_good(folder: Path, config: dict) -> bool:
+    """Reuse only a complete artifact set with matching parameters and byte hashes."""
+    try:
+        record = json.loads((folder / "demo.json").read_text(encoding="utf-8"))
+        return record["parameters"] == config and set(record["sha256"]) == set(MEMBERS) and all(
+            (folder / name).is_file()
+            and hashlib.sha256((folder / name).read_bytes()).hexdigest() == record["sha256"][name]
+            for name in MEMBERS
+        )
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+
+
+def photon_stream(seed: int = SEED, n_bursts: int = N_BURSTS, *, config: dict | None = None):
     """The photons and the burst ranges: ``(macro, micro, routing, ranges)`` as numpy arrays and (first, last) index pairs."""
+    values = dict(DEMO) if config is None else config
     rng = np.random.default_rng(seed)
     macro, micro, routing, ranges = [], [], [], []
-    t0, index = 5_000_000, 0
+    t0, index = values["initial_ticks"], 0
     for _ in range(n_bursts):
-        centre = t0 + 370_000  # a burst 10 ms (370 000 ticks) long, its envelope 1 ms wide
-        width = 74_000 * (0.7 + 0.6 * rng.random())
-        n = PHOTONS_PER_BURST
-        times = np.sort(np.concatenate([rng.normal(centre, width, int(0.8 * n)), rng.uniform(t0, t0 + 740_000, n - int(0.8 * n))]))
-        times = np.clip(times, t0, t0 + 740_000).astype(np.uint64)
+        centre = t0 + values["centre_ticks"]  # a burst 10 ms (370 000 ticks) long, its envelope 1 ms wide
+        width = values["width_ticks"] * (values["width_base"] + values["width_range"] * rng.random())
+        n = values["photons_per_burst"]
+        times = np.sort(
+            np.concatenate(
+                [
+                    rng.normal(centre, width, int(values["signal_fraction"] * n)),
+                    rng.uniform(t0, t0 + values["burst_span_ticks"], n - int(values["signal_fraction"] * n)),
+                ]
+            )
+        )
+        times = np.clip(times, t0, t0 + values["burst_span_ticks"]).astype(np.uint64)
         macro.append(times)
-        micro.append(np.clip(rng.exponential(LIFETIME_S / MICRO_RES, n), 0, N_MICRO - 1).astype(np.uint16))
-        routing.append(rng.integers(0, 2, n).astype(np.int8))
+        micro.append(
+            np.clip(rng.exponential(values["lifetime_s"] / values["micro_resolution_s"], n), 0, values["micro_channels"] - 1).astype(np.uint16)
+        )
+        routing.append(rng.integers(0, values["routing_channels"], n).astype(np.int8))
         ranges.append((index, index + n - 1))
         index += n
-        t0 += 740_000 + 3_700_000  # 50 ms of nothing between bursts
+        t0 += values["burst_span_ticks"] + values["gap_ticks"]  # 50 ms of nothing between bursts
     return (np.concatenate(macro), np.concatenate(micro), np.concatenate(routing), ranges)
 
 
-def make_demo(folder, seed: int = SEED) -> tuple[Path, Path]:
-    """Write the demonstration photon stream and burst table into *folder*; return their paths."""
+def make_demo(folder: str | Path | None = None, *, overwrite: bool = False) -> Path:
+    """Create or reuse the declared synthetic input and its provenance sidecar.
+
+    Parameters
+    ----------
+    folder : str or pathlib.Path, optional
+        Generated-data directory; defaults to :func:`demo_folder`.
+    overwrite : bool, optional
+        Regenerate this demo's declared files even when its cache is valid.
+
+    Returns
+    -------
+    pathlib.Path
+        Burst table; the explicitly named SPC stream is its companion.
+    """
     import tttrlib
 
-    folder = Path(folder)
+    folder = Path(folder) if folder is not None else demo_folder()
+    config = dict(DEMO)
+    if not overwrite and _cache_is_good(folder, config):
+        return folder / TABLE_NAME
     folder.mkdir(parents=True, exist_ok=True)
-    macro, micro, routing, ranges = photon_stream(seed)
-    stream = tttrlib.TTTR()
-    stream.append_events(macro, micro, routing, np.zeros(len(macro), dtype=np.int8))
-    spc, table = folder / STREAM_NAME, folder / TABLE_NAME
-    header = stream.header
-    header.set_macro_time_resolution(MACRO_RES)
-    header.set_micro_time_resolution(MICRO_RES)
-    if not stream.write(str(spc), "SPC-130", header):
-        raise OSError(f"could not write {spc}")
-    table.write_text("".join(f"{a} {b}\n" for a, b in ranges))
-    return spc, table
+    # Publish only complete newly written files. A failed writer cannot corrupt
+    # the previously usable input; no unrelated folder members are removed.
+    with tempfile.TemporaryDirectory(prefix=".demo-", dir=folder) as staging:
+        staged = Path(staging)
+        macro, micro, routing, ranges = photon_stream(config["seed"], config["n_bursts"], config=config)
+        stream = tttrlib.TTTR()
+        stream.append_events(macro, micro, routing, np.zeros(len(macro), dtype=np.int8))
+        header = stream.header
+        header.set_macro_time_resolution(config["macro_resolution_s"])
+        header.set_micro_time_resolution(config["micro_resolution_s"])
+        if not stream.write(str(staged / SPC_FILENAME), config["format"], header):
+            raise OSError(f"could not write {staged / SPC_FILENAME}")
+        (staged / TABLE_NAME).write_text("".join(f"{a} {b}\n" for a, b in ranges), encoding="utf-8")
+        record = {"parameters": config, "sha256": {
+            name: hashlib.sha256((staged / name).read_bytes()).hexdigest() for name in MEMBERS
+        }}
+        (staged / "demo.json").write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
+        for name in (*MEMBERS, "demo.json"):
+            os.replace(staged / name, folder / name)
+    return folder / TABLE_NAME

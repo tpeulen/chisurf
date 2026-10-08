@@ -195,6 +195,15 @@ four-state fit settles at E = [0.20, 0.38, 0.50, 0.72], with the default two it
 recovers [0.10, 0.35, 0.55, 0.75]. Widen the scan range when the best model sits
 at either end of it.
 
+## Synthetic workflow check
+
+The [ebFRET workflow](../guides/20_ebfret_binned_hmm.md) exposes a seeded
+40-trace, four-state example through `make_demo()`, returning the stacked raw
+`.dat` path. Parameters are recorded in JSON under settings-owned
+`demos/burst_ebfret`. Loading the example does not fit it; the tour waits for
+the real Load demo and Run actions. Input state levels are synthetic truth,
+not a guarantee that every fitting configuration recovers them.
+
 ## See also
 
 - Guide: {doc}`/guides/20_ebfret_binned_hmm`; photon-by-photon alternative

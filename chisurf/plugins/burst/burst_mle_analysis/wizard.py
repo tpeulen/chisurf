@@ -2858,11 +2858,11 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         """
         self.doubleSpinBox_scatter_Countrate.setValue(self.scatter_count_rate)
 
-    def load_demo(self) -> None:
+    def load_example(self) -> None:
         """Load generated photons without running an analysis on the user's behalf."""
-        from .demo import SETUP, demo_folder, make_demo
+        from .demo import SETUP, make_demo
 
-        path = make_demo(demo_folder())
+        path = make_demo()
         self.burst_files_list.clear()
         self.df_bursts = None
         self.tttrs.clear()

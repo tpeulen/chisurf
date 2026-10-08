@@ -63,7 +63,7 @@ class NBModel(PixelModelMixin, NBViewModel):
         self.notify("run")
 
     # -- the demo and the analog calibration (the Qt toolbar's) ----------------------------------- #
-    def demo(self) -> None:
+    def load_example(self) -> None:
         """Write (or reuse) the monomer / dimer demo stream, load it and compute (the Qt Load demo)."""
         self.status_line = "Simulating the demo scan..."
         self.cancel_event.clear()

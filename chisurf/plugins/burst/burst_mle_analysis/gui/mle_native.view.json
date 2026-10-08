@@ -10,8 +10,8 @@
           "type": "button_row",
           "buttons": [
             {
-              "action": "load_demo",
-              "label": "Generate synthetic demo",
+              "action": "load_example",
+              "label": "Demo",
               "description": "Replace working inputs with a reproducible real PTU/BUR demo in the settings cache: 16 bursts of 1000 photons, generated lifetime2ns and32ps clock. Press Auto IRF/background separately; saved measurement files are unchanged."
             }
           ]

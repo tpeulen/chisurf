@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
-import os
+import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -33,13 +34,33 @@ SETUP = {
 }
 
 
+DEMO = {
+    "seed": SEED,
+    "burst_count": BURST_COUNT,
+    "photons_per_burst": BURST_PHOTONS,
+    "signal_lifetime_ns": SIGNAL_LIFETIME_NS,
+    "micro_resolution_s": MICRO_RESOLUTION_S,
+    "channels": CHANNELS,
+    "macro_resolution_s": MACRO_RESOLUTION_S,
+    "reference_photons": 4096,
+    "background_photons": 1024,
+    "prompt_mean_channels": 20.0,
+    "prompt_sigma_channels": 2.0,
+    "macro_ticks_per_photon": 100,
+    "setup": SETUP,
+}
+
+
 def demo_folder() -> Path:
     """Keep generated data in the settings cache, separate from measurement files."""
-    settings = os.environ.get("CHISURF_SETTINGS_DIR") or str(Path.home() / ".chisurf")
-    return Path(settings) / "cache" / "burst_mle_demo_v1"
+    from chisurf.core.settings.path_utils import get_path
+
+    return get_path("settings") / "demos" / "burst_mle_analysis"
 
 
-def make_demo(folder: str | Path) -> Path:
+def make_demo(
+    folder: str | Path | None = None, *, overwrite: bool = False, seed: int = SEED
+) -> Path:
     """Write real synthetic PTU photons and declared burst summaries without overwriting inputs.
 
     Parameters
@@ -57,57 +78,97 @@ def make_demo(folder: str | Path) -> Path:
     from chisurf.plugins.burst.burst_selection.api.io import write_bur
     from chisurf.plugins.burst.burst_selection.api.selection import summarize_bursts
 
-    folder = Path(folder)
+    folder = Path(folder) if folder is not None else demo_folder()
     raw = folder / "synthetic_mle.ptu"
     bur = folder / "analysis" / "bur4" / "synthetic_mle.bur"
     manifest = folder / "demo.json"
-    if manifest.is_file():
-        metadata = json.loads(manifest.read_text())
-        if metadata.get("seed") != SEED or not raw.is_file() or not bur.is_file():
-            raise ValueError(
-                "The generated demonstration is incomplete or belongs to another version."
-            )
-        return bur
-    if raw.exists() or bur.exists():
-        raise FileExistsError("An incomplete demonstration already occupies this cache directory.")
-    folder.mkdir(parents=True, exist_ok=True)
-    rng = np.random.default_rng(SEED)
-    reference = np.clip(np.rint(rng.normal(20.0, 2.0, 4096)), 0, CHANNELS - 1)
-    background = rng.integers(0, CHANNELS, 1024)
-    decay = rng.exponential(
-        SIGNAL_LIFETIME_NS / (MICRO_RESOLUTION_S * 1e9), BURST_COUNT * BURST_PHOTONS
+    settings = {**DEMO, "seed": seed}
+    artifacts = (
+        Path("synthetic_mle.ptu"),
+        Path("analysis/bur4/synthetic_mle.bur"),
+        Path("analysis/Info/photon_selection_parameters.json"),
     )
-    prompt = rng.normal(20.0, 2.0, len(decay))
-    signal = np.clip(np.rint(prompt + decay), 0, CHANNELS - 1)
-    micro = np.concatenate((reference, background, signal)).astype(np.uint16)
-    routing: np.ndarray = (np.arange(len(micro)) % 2).astype(np.int8)
-    macro = np.arange(len(micro), dtype=np.uint64) * np.uint64(100)
-    stream = tttrlib.TTTR(macro, micro, routing, np.zeros(len(micro), dtype=np.int8))
-    stream.header.set_macro_time_resolution(MACRO_RESOLUTION_S)
-    stream.header.set_micro_time_resolution(MICRO_RESOLUTION_S)
-    stream.header.set_number_of_micro_time_channels(CHANNELS)
-    if not stream.write(str(raw), "PTU"):
-        raise OSError("Could not write synthetic Burst MLE photons.")
-    first = len(reference) + len(background)
-    starts: np.ndarray = first + np.arange(BURST_COUNT) * BURST_PHOTONS
-    intervals = np.column_stack((starts, starts + BURST_PHOTONS - 1))
-    table = summarize_bursts(intervals, raw.name, stream, detectors=SETUP["detectors"])
-    write_bur(table, bur)
-    info = bur.parent.parent / "Info" / "photon_selection_parameters.json"
-    info.parent.mkdir(exist_ok=True)
-    info.write_text(json.dumps({"setup_info": SETUP}, indent=2) + "\n")
-    manifest.write_text(
-        json.dumps(
-            {
-                "seed": SEED,
-                "signal_lifetime_ns": SIGNAL_LIFETIME_NS,
-                "burst_count": BURST_COUNT,
-                "photons_per_burst": BURST_PHOTONS,
-                "micro_resolution_s": MICRO_RESOLUTION_S,
+    if not overwrite and manifest.is_file():
+        try:
+            metadata = json.loads(manifest.read_text())
+            hashes = {
+                str(name): hashlib.sha256((folder / name).read_bytes()).hexdigest()
+                for name in artifacts
+            }
+            if metadata.get("settings") == settings and metadata.get("files") == hashes:
+                return bur
+        except (OSError, ValueError):
+            pass
+    folder.mkdir(parents=True, exist_ok=True)
+    temporary = tempfile.TemporaryDirectory(prefix=".mle-demo-", dir=folder)
+    try:
+        generated_folder = Path(temporary.name)
+        generated_raw = generated_folder / raw.name
+        generated_bur = generated_folder / "analysis" / "bur4" / bur.name
+        rng = np.random.default_rng(seed)
+        reference = np.clip(
+            np.rint(
+                rng.normal(
+                    settings["prompt_mean_channels"],
+                    settings["prompt_sigma_channels"],
+                    settings["reference_photons"],
+                )
+            ),
+            0,
+            settings["channels"] - 1,
+        )
+        background = rng.integers(0, settings["channels"], settings["background_photons"])
+        decay = rng.exponential(
+            settings["signal_lifetime_ns"] / (settings["micro_resolution_s"] * 1e9),
+            settings["burst_count"] * settings["photons_per_burst"],
+        )
+        prompt = rng.normal(
+            settings["prompt_mean_channels"], settings["prompt_sigma_channels"], len(decay)
+        )
+        signal = np.clip(np.rint(prompt + decay), 0, settings["channels"] - 1)
+        micro = np.concatenate((reference, background, signal)).astype(np.uint16)
+        routing: np.ndarray = (np.arange(len(micro)) % 2).astype(np.int8)
+        macro = np.arange(len(micro), dtype=np.uint64) * np.uint64(
+            settings["macro_ticks_per_photon"]
+        )
+        stream = tttrlib.TTTR(macro, micro, routing, np.zeros(len(micro), dtype=np.int8))
+        stream.header.set_macro_time_resolution(settings["macro_resolution_s"])
+        stream.header.set_micro_time_resolution(settings["micro_resolution_s"])
+        stream.header.set_number_of_micro_time_channels(settings["channels"])
+        if not stream.write(str(generated_raw), "PTU"):
+            raise OSError("Could not write synthetic Burst MLE photons.")
+        first = len(reference) + len(background)
+        starts: np.ndarray = (
+            first + np.arange(settings["burst_count"]) * settings["photons_per_burst"]
+        )
+        intervals = np.column_stack((starts, starts + settings["photons_per_burst"] - 1))
+        table = summarize_bursts(
+            intervals, raw.name, stream, detectors=settings["setup"]["detectors"]
+        )
+        write_bur(table, generated_bur)
+        info = generated_bur.parent.parent / "Info" / "photon_selection_parameters.json"
+        info.parent.mkdir(exist_ok=True)
+        info.write_text(json.dumps({"setup_info": settings["setup"]}, indent=2) + "\n")
+        metadata = {
+            "settings": settings,
+            "files": {
+                str(name): hashlib.sha256((generated_folder / name).read_bytes()).hexdigest()
+                for name in artifacts
+            },
+            "truth": {
+                "signal_lifetime_ns": settings["signal_lifetime_ns"],
+                "burst_count": settings["burst_count"],
+                "photons_per_burst": settings["photons_per_burst"],
                 "qualification": "Synthetic input ground truth; fitted estimates are not exact or acquisition calibration.",
             },
-            indent=2,
-        )
-        + "\n"
-    )
+        }
+        generated_manifest = generated_folder / manifest.name
+        generated_manifest.write_text(json.dumps(metadata, indent=2) + "\n")
+        for name in artifacts:
+            destination = folder / name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            (generated_folder / name).replace(destination)
+        generated_manifest.replace(manifest)
+    finally:
+        temporary.cleanup()
     return bur

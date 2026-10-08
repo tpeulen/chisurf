@@ -72,7 +72,7 @@ def test_detect_only_writes_nothing(stream):
     assert model.run(convert=False)
     model.wait()
     assert model.period == demo.PERIOD and not model.converted
-    assert sorted(p.name for p in stream.parent.iterdir()) == ["alex_demo.spc"]
+    assert sorted(p.name for p in stream.parent.iterdir()) == ["alex_demo.json", "alex_demo.spc"]
 
 
 def test_bad_channel_fields_are_refused(stream):

@@ -46,7 +46,13 @@ The bursts are the bright state. Right: the dwell times of the two states.
    detectors, LUT handling) as a tab beside the results; a change there re-bins the
    file. Each detector becomes one trace. **Example** loads a simulated molecule
    switching between two FRET states (dwells 20 / 80 ms), to try the tool on data
-   whose answer is known.
+   whose input kinetics are known. The measured demonstration HMM dwell fits
+   are 22.0 / 87.2 ms; they are estimates, not the 20 / 80 ms generator means.
+   **Guide** waits for your **Example** click and later analysis actions.
+   The SPC and JSON parameters live in `demos/intensity_trace` under the
+   ChiSurf settings folder; `make_demo()` from
+   `chisurf.plugins.tttr.intensity_trace.demo` returns that primary SPC path
+   (`overwrite=True` regenerates it).
 2. **Load TTTR** — pick the file. It is binned at once.
 3. **Time Window → ms** — the bin width $\Delta t$ (0.1–999 ms, default 10 ms).
    Changing it re-bins the file. Pick it from the dwell you want to see: about

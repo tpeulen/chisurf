@@ -71,10 +71,23 @@ def list_methods() -> dict[str, Any]:
 
 
 def create_demo(**kwargs: Any) -> dict[str, Any]:
-    """Simulate the demo photon stream; see :func:`..demo.create_demo`."""
-    from ..demo import create_demo as _create
+    """Return the RPC descriptor for the standard primary-file demo producer."""
+    from pathlib import Path
 
-    return _create(**kwargs)
+    from ..demo import DEMO, _cache_is_good, demo_folder, demo_info, make_demo
+
+    explicit = kwargs.pop("path", None)
+    target = Path(explicit) if explicit is not None else demo_folder() / "flow_demo_poiseuille.ptu"
+    cfg = {**DEMO, **{key: value for key, value in kwargs.items() if key in DEMO}}
+    created = bool(kwargs.get("overwrite", False)) or not _cache_is_good(target, cfg)
+    primary = make_demo(target.parent, filename=target.name, **kwargs)
+    result = demo_info(primary)
+    result["created"] = created
+    if created:
+        import tttrlib
+
+        result["n_events"] = int(len(tttrlib.TTTR(str(primary))))
+    return result
 
 
 def profile_check(filename: str, **kwargs: Any) -> dict[str, Any]:

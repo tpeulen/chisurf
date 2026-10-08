@@ -146,7 +146,7 @@ def test_without_a_setup_every_channel_the_file_uses_is_offered(spc):
 def test_example_hmm_and_results_by_pointer_and_keyboard(size):
     ui = Ui(make_app(), size)
     m = ui.app.model
-    ui.click("request_example")
+    ui.click("load_example")
     ui.settle()
     assert m.labels == ["Ch0", "Ch1"] and m.window_ms == 2.0
     ui.type_into("window_ms", "5")
@@ -179,7 +179,7 @@ def test_example_hmm_and_results_by_pointer_and_keyboard(size):
 
 def test_bic_elbow_and_the_save_dialogs(tmp_path):
     ui = Ui(make_app())
-    ui.click("request_example")
+    ui.click("load_example")
     ui.settle()
     ui.click("tab_HMM")
     ui.click("request_bic")
@@ -263,7 +263,7 @@ def test_help_and_the_tour_waits_for_the_user():
     assert tour.active and len(tour.steps) >= 5
     ui.press_text("Next ►")
     assert tour.awaiting
-    ui.click("request_example")
+    ui.click("load_example")
     ui.settle()
     assert not tour.awaiting
     ui.app.close()

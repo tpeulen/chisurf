@@ -142,8 +142,8 @@ class FilesStepApp(ImApp):
         self.checked = set(self.paths) if on else set()
         self.changed()
 
-    def add_example(self) -> None:
-        """The demonstration photon stream (:mod:`..demo`), written once into the settings cache, added and ticked."""
+    def load_example(self) -> None:
+        """The demonstration photon stream (:mod:`..demo`), cached in the settings demos folder, added and ticked."""
         from ..demo import demo_folder, make_demo
 
         self.add_paths([make_demo(demo_folder())])
@@ -214,8 +214,8 @@ class FilesStepApp(ImApp):
                 ("Folder...", "add_folder", "Add a folder: its TTTR files are correlated.", True,
                  lambda: self.dialogs.ask("Add a folder", "folder", "All files (*)", self.add_paths)),
                 ("Database", "database", "Add a TTTR dataset registered in the database.", True, self.open_database),
-                ("Example", "example", "Add a simulated FCS measurement (molecules crossing the focus in about "
-                 "0.25 ms) to try the workflow on data whose answer is known.", True, self.add_example),
+                ("Example", "load_example", "Add a simulated FCS measurement (molecules crossing the focus in about "
+                 "0.25 ms) to try the workflow on data whose answer is known.", True, self.load_example),
                 ("All", "all", "Tick every file.", bool(self.paths), lambda: self.set_all(True)),
                 ("None", "none", "Untick every file.", bool(self.paths), lambda: self.set_all(False)),
                 ("Remove", "remove", "Remove the highlighted file from the list (the file is kept).",

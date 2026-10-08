@@ -1,5 +1,5 @@
 {
-  "_comment": "Guided tour of the native ALEX Suite hub (gui/native.py). It walks the pipeline the way a user does: Load demo data, then Next, Next, Next. Every action step points at the real control (the hub's Next button, the files step's Load demo data) and WAITS for the user to press it (await); nothing is pressed on the user's behalf. Read by chisurf.emtk.help_guide.EmTkGuidedTour.",
+  "_comment": "Guided tour of the native ALEX Suite hub (gui/native.py). It walks the pipeline the way a user does: Demo, then Next, Next, Next. Every action step points at the real control (the hub's Next button, the files step's Demo) and WAITS for the user to press it (await); nothing is pressed on the user's behalf. Read by chisurf.emtk.help_guide.EmTkGuidedTour.",
   "steps": [
     {
       "title": "Your old workflow, as one pipeline",
@@ -7,57 +7,92 @@
       "target": {}
     },
     {
+      "title": "2 — the files",
+      "text": "Drop files or a folder here. <b><code>.sm</code> files work directly</b>, no conversion, no cache files beside them.<br/><br/>No measurement at hand: <b>Demo</b> writes a simulated µs-ALEX stream (100 µs alternation, donor on channel 0, acceptor on channel 1; low-FRET, high-FRET, donor-only and acceptor-only molecules) into a plugin’s generated-data folder and adds it.",
+      "target": {
+        "name": "load_example",
+        "panel": "2. Files"
+      },
+      "await": {
+        "hint": "Press <b>Demo</b> in the Summary box."
+      }
+    },
+    {
       "title": "1 — the detector setup",
       "text": "Which routing channels are the donor and the acceptor, and which micro-time window is which excitation. <b>Every later step reads it.</b><br/><br/>PIE / ns-ALEX: pick or edit your setup here. µs-ALEX (and this demo): leave it; step 3 measures the channels and the laser gates and writes a setup called <i>ALEX Suite (auto)</i>.",
-      "target": {"panel": "1. Setup"},
-      "await": {"hint": "Select <b>1. Setup</b> in the list on the left."}
+      "target": {
+        "panel": "1. Setup"
+      },
+      "await": {
+        "hint": "Select <b>1. Setup</b> in the list on the left."
+      }
     },
     {
       "title": "Next walks the pipeline",
       "text": "<b>Next</b> runs the open step where it has something to run, waits for it, and opens the next one. <b>>></b> does that for every remaining step. Steps marked <i>(optional)</i> are never run by Next.",
-      "target": {"name": "next"},
-      "await": {"hint": "Press <b>Next</b> (bottom right) to go to 2. Files."}
-    },
-    {
-      "title": "2 — the files",
-      "text": "Drop files or a folder here. <b><code>.sm</code> files work directly</b>, no conversion, no cache files beside them.<br/><br/>No measurement at hand: <b>Load demo data</b> writes a simulated µs-ALEX stream (100 µs alternation, donor on channel 0, acceptor on channel 1; low-FRET, high-FRET, donor-only and acceptor-only molecules) into a temporary folder and adds it.",
-      "target": {"name": "demo"},
-      "await": {"hint": "Press <b>Load demo data</b> in the Summary box."}
+      "target": {
+        "name": "next"
+      },
+      "await": {
+        "hint": "Press <b>Next</b> (bottom right) to go to 2. Files."
+      }
     },
     {
       "title": "On to the microscope settings",
       "text": "The next step is where the old <i>Burst Search Settings → Microscope</i> dialog went: the ALEX period, the phase shift, four laser edges and the channel flip. All seven are in the data.",
-      "target": {"name": "next"},
-      "await": {"hint": "Press <b>Next</b>: the alternation step opens and converts the file on arrival."}
+      "target": {
+        "name": "next"
+      },
+      "await": {
+        "hint": "Press <b>Next</b>: the alternation step opens and converts the file on arrival."
+      }
     },
     {
       "title": "3 — measured, not typed",
       "text": "Arriving with µs-ALEX data, this step found the period, the two laser gates and which detector is the donor, folded the alternation into the micro-time (one <code>.pto</code> container beside your file) and wrote the setup. PIE data is left alone.<br/><br/><b>Check the plot</b>: two plateaus, the donor detector brighter in one, the acceptor in the other. That crossover is what the old channel-flip checkbox was guessing at. The gates are editable here and as bands on the plot.",
-      "target": {"name": "phase_plot"}
+      "target": {
+        "name": "phase_plot"
+      }
     },
     {
       "title": "4 — the burst search",
       "text": "The burst search already has the converted file and the setup. One habit worth changing: <b>search permissively and cut on burst size afterwards</b>; a size cut inside the search biases which molecules you ever see.",
-      "target": {"name": "next"},
-      "await": {"hint": "Press <b>Next</b> to open 4. Burst search."}
+      "target": {
+        "name": "next"
+      },
+      "await": {
+        "hint": "Press <b>Next</b> to open 4. Burst search."
+      }
     },
     {
       "title": "Next runs the search",
       "text": "On the burst search, Next runs it, waits until every file is searched, and moves on. The bursts are kept inside the measurement's <code>.pto</code>, and every later step reads them from there.",
-      "target": {"name": "next"},
-      "await": {"hint": "Press <b>Next</b>: the search runs, then 5. Background opens."}
+      "target": {
+        "name": "next"
+      },
+      "await": {
+        "hint": "Press <b>Next</b>: the search runs, then 5. Background opens."
+      }
     },
     {
       "title": "5 — the background, measured",
       "text": "The <code>bkg_DD</code> / <code>bkg_DA</code> / <code>bkg_AA</code> fields you used to type are estimated here on arrival, from the inter-photon times of your own measurement. Getting them wrong moves <i>E</i> for the dim bursts while the bright ones stay put, which looks exactly like a sub-population.",
-      "target": {"name": "next"},
-      "await": {"hint": "Press <b>Next</b> to open 6. Accurate FRET."}
+      "target": {
+        "name": "next"
+      },
+      "await": {
+        "hint": "Press <b>Next</b> to open 6. Accurate FRET."
+      }
     },
     {
       "title": "6 — α, δ, γ and β from your own bursts",
       "text": "The burst table is loaded. Next <b>calibrates</b>: the step classifies donor-only, acceptor-only and FRET bursts, takes α and δ from the single-labelled ones and γ and β from the FRET populations, stores them in the measurement, and opens the E–S histogram, which picks them up.<br/><br/>The check that catches most errors: <b>donor-only must land at E ≈ 0</b>.",
-      "target": {"name": "next"},
-      "await": {"hint": "Press <b>Next</b>: the calibration runs, then 7. E–S histogram opens."}
+      "target": {
+        "name": "next"
+      },
+      "await": {
+        "hint": "Press <b>Next</b>: the calibration runs, then 7. E–S histogram opens."
+      }
     },
     {
       "title": "7 — E vs S and the Dataset Viewer, in one",

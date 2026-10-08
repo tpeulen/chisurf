@@ -19,6 +19,9 @@ The photons are drawn from a seeded generator, so the file is the same on every 
 
 from __future__ import annotations
 
+import hashlib
+import json
+import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -45,39 +48,65 @@ PHOTONS_PER_BURST = (150, 450)
 STREAM_NAME = "alex_demo.spc"
 
 
+DEMO = {
+    "seed": SEED,
+    "seconds": SECONDS,
+    "macro_resolution_s": MACRO_RES,
+    "period": PERIOD,
+    "donor_gate": list(DONOR_GATE),
+    "acceptor_gate": list(ACCEPTOR_GATE),
+    "donor_channel": DONOR_CHANNEL,
+    "acceptor_channel": ACCEPTOR_CHANNEL,
+    "burst_rate": BURST_RATE,
+    "background_hz": BACKGROUND_HZ,
+    "species": [list(species) for species in SPECIES],
+    "photons_per_burst": list(PHOTONS_PER_BURST),
+}
+
+
+def demo_folder() -> Path:
+    """Return the plugin's generated-data folder in the current settings tree."""
+    from chisurf.core.settings.path_utils import get_path
+
+    return get_path("settings") / "demos" / "alex_suite"
+
+
 def photon_stream(seed: int = SEED, seconds: float = SECONDS):
     """The simulated photons: ``(macro_times, routing_channels, species_of_each_burst)``."""
+    cfg = DEMO
     rng = np.random.default_rng(seed)
-    span = int(seconds / MACRO_RES)
-    n_bursts = int(rng.poisson(BURST_RATE * seconds))
-    edge = 0.002 / MACRO_RES
+    span = int(seconds / cfg["macro_resolution_s"])
+    n_bursts = int(rng.poisson(cfg["burst_rate"] * seconds))
+    edge = 0.002 / cfg["macro_resolution_s"]
     centres = np.sort(rng.uniform(edge, span - edge, n_bursts))
-    weights = np.array([s[4] for s in SPECIES], dtype=float)
-    kinds = rng.choice(len(SPECIES), n_bursts, p=weights / weights.sum())
+    weights = np.array([s[4] for s in cfg["species"]], dtype=float)
+    kinds = rng.choice(len(cfg["species"]), n_bursts, p=weights / weights.sum())
     times, channels = [], []
     for centre, kind in zip(centres, kinds):
-        _name, has_donor, has_acceptor, efficiency, _w = SPECIES[kind]
-        n = int(rng.integers(*PHOTONS_PER_BURST))
-        t = rng.normal(centre, 0.3e-3 / MACRO_RES, n)
-        phase = np.mod(t, PERIOD)
-        donor_exc = (phase >= DONOR_GATE[0]) & (phase < DONOR_GATE[1])
-        acceptor_exc = (phase >= ACCEPTOR_GATE[0]) & (phase < ACCEPTOR_GATE[1])
+        _name, has_donor, has_acceptor, efficiency, _w = cfg["species"][kind]
+        n = int(rng.integers(*cfg["photons_per_burst"]))
+        t = rng.normal(centre, 0.3e-3 / cfg["macro_resolution_s"], n)
+        phase = np.mod(t, cfg["period"])
+        donor_exc = (phase >= cfg["donor_gate"][0]) & (phase < cfg["donor_gate"][1])
+        acceptor_exc = (phase >= cfg["acceptor_gate"][0]) & (phase < cfg["acceptor_gate"][1])
         detector = np.full(n, -1)
         u = rng.random(n)
         if has_donor:
             # donor excitation: the donor emits, or transfers to the acceptor with probability E
-            detector[donor_exc] = np.where(u[donor_exc] < efficiency, ACCEPTOR_CHANNEL, DONOR_CHANNEL)
+            detector[donor_exc] = np.where(
+                u[donor_exc] < efficiency, cfg["acceptor_channel"], cfg["donor_channel"]
+            )
         else:
             # direct excitation of the acceptor by the donor laser (a few per cent)
-            detector[donor_exc] = np.where(u[donor_exc] < 0.06, ACCEPTOR_CHANNEL, -1)
+            detector[donor_exc] = np.where(u[donor_exc] < 0.06, cfg["acceptor_channel"], -1)
         if has_acceptor:
-            detector[acceptor_exc] = ACCEPTOR_CHANNEL
+            detector[acceptor_exc] = cfg["acceptor_channel"]
         else:
-            detector[acceptor_exc] = np.where(u[acceptor_exc] < 0.02, DONOR_CHANNEL, -1)
+            detector[acceptor_exc] = np.where(u[acceptor_exc] < 0.02, cfg["donor_channel"], -1)
         keep = detector >= 0
         times.append(t[keep])
         channels.append(detector[keep])
-    n_background = int(rng.poisson(BACKGROUND_HZ * seconds))
+    n_background = int(rng.poisson(cfg["background_hz"] * seconds))
     times.append(rng.uniform(0, span, n_background))
     channels.append(rng.integers(0, 2, n_background))
     t = np.clip(np.concatenate(times), 0, span - 1).astype(np.uint64)
@@ -86,22 +115,51 @@ def photon_stream(seed: int = SEED, seconds: float = SECONDS):
     return t[order], c[order], kinds
 
 
-def make_demo(folder, seed: int = SEED) -> Path:
-    """Write the demonstration µs-ALEX measurement into *folder*; return its path."""
+def make_demo(
+    folder: str | Path | None = None, *, overwrite: bool = False, seed: int = SEED
+) -> Path:
+    """Write or reuse the known µs-ALEX stream, with its settings and integrity sidecar."""
     import tttrlib
 
-    folder = Path(folder)
-    folder.mkdir(parents=True, exist_ok=True)
-    macro, routing, _kinds = photon_stream(seed)
-    stream = tttrlib.TTTR()
-    stream.append_events(macro, np.zeros(macro.size, dtype=np.uint16), routing, np.zeros(macro.size, dtype=np.int8))
-    header = stream.header
-    header.set_macro_time_resolution(MACRO_RES)
-    header.set_micro_time_resolution(MACRO_RES / 4096)
+    folder = Path(folder) if folder is not None else demo_folder()
     path = folder / STREAM_NAME
-    if not stream.write(str(path), "SPC-130", header):
-        raise OSError(f"could not write {path}")
+    sidecar = folder / "alex_demo.json"
+    settings = {**DEMO, "seed": seed}
+    if not overwrite and path.is_file() and sidecar.is_file():
+        try:
+            metadata = json.loads(sidecar.read_text())
+            if metadata.get("settings") == settings and metadata.get("files") == {
+                STREAM_NAME: hashlib.sha256(path.read_bytes()).hexdigest()
+            }:
+                return path
+        except (OSError, ValueError):
+            pass
+    folder.mkdir(parents=True, exist_ok=True)
+    macro, routing, kinds = photon_stream(seed, seconds=settings["seconds"])
+    stream = tttrlib.TTTR()
+    stream.append_events(
+        macro, np.zeros(macro.size, dtype=np.uint16), routing, np.zeros(macro.size, dtype=np.int8)
+    )
+    header = stream.header
+    header.set_macro_time_resolution(settings["macro_resolution_s"])
+    header.set_micro_time_resolution(settings["macro_resolution_s"] / 4096)
+    with tempfile.TemporaryDirectory(prefix=".alex-demo-", dir=folder) as temporary:
+        generated = Path(temporary) / STREAM_NAME
+        if not stream.write(str(generated), "SPC-130", header):
+            raise OSError(f"could not write {path}")
+        metadata = {
+            "settings": settings,
+            "files": {STREAM_NAME: hashlib.sha256(generated.read_bytes()).hexdigest()},
+            "truth": {
+                "species_counts": np.bincount(kinds, minlength=len(SPECIES)).tolist(),
+                "qualification": "Synthetic input populations, not acquisition calibration.",
+            },
+        }
+        record = Path(temporary) / sidecar.name
+        record.write_text(json.dumps(metadata, indent=2) + "\n")
+        generated.replace(path)
+        record.replace(sidecar)
     return path
 
 
-__all__ = ["PERIOD", "SPECIES", "make_demo", "photon_stream"]
+__all__ = ["DEMO", "PERIOD", "SPECIES", "demo_folder", "make_demo", "photon_stream"]

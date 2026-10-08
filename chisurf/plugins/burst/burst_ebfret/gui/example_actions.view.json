@@ -1,0 +1,25 @@
+{
+  "sections": [
+    {
+      "type": "button_row",
+      "description": "Load the known synthetic traces, walk the controls or read the shared method reference.",
+      "buttons": [
+        {
+          "action": "load_example",
+          "label": "Load demo",
+          "description": "Load 40 synthetic donor/acceptor traces with four known FRET states. Analysis begins only after you press Run."
+        },
+        {
+          "action": "start_guide",
+          "label": "Guide",
+          "description": "Point at the actual controls in order and wait for your own actions."
+        },
+        {
+          "action": "show_help",
+          "label": "Help",
+          "description": "Explain the empirical-Bayes HMM, controls, input formats and workflow."
+        }
+      ]
+    }
+  ]
+}

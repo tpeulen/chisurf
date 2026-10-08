@@ -47,10 +47,14 @@ The result is cached, so pressing the demo button a second time is instant.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import pathlib
+import shutil
+import tempfile
 from collections.abc import Callable
+from concurrent.futures import CancelledError
 from typing import Any
 
 import numpy as np
@@ -63,6 +67,7 @@ DEMO: dict[str, Any] = {
     #: Chosen so the three thresholds the guide walks through tell the whole
     #: story on this one file: 0.9 under-fuses, 0.7 lands on the truth, 0.5
     #: overshoots it by merging molecules that only *look* like recurrences.
+    "version": 1,
     "n_molecules": 300,
     "duration_s": 12.0,
     #: Fraction of crossings the search is meant to cut in two or three.
@@ -86,6 +91,7 @@ DEMO: dict[str, Any] = {
     "background_khz": 1.5,
     "macro_time_resolution": 20e-9,
     "micro_time_channels": 4096,
+    "micro_time_resolution": 1e-11,
     "seed": 11,
 }
 
@@ -101,36 +107,11 @@ SEARCH = {"min_photons": 30, "photon_window": 5, "time_window_ms": 0.5}
 DEMO_STEM = "burst_fusion_demo"
 
 
-def demo_directory(directory: str | pathlib.Path | None = None) -> pathlib.Path:
-    """Return the folder the demo measurement lives in.
+def demo_folder() -> pathlib.Path:
+    """Return the settings-owned folder for this plugin's demonstration."""
+    from chisurf.core.settings import get_path
 
-    Parameters
-    ----------
-    directory : path-like, optional
-        Where to keep it. Defaults to ChiSurf's own settings directory, so the
-        demo survives between sessions and is never written into the user's data.
-
-    Returns
-    -------
-    pathlib.Path
-        The directory, whether or not it exists yet.
-    """
-    if directory is not None:
-        return pathlib.Path(directory)
-    base = None
-    try:
-        import chisurf.core.settings as settings_mod
-
-        base = getattr(settings_mod, "chisurf_settings_path", None)
-    except Exception:  # pragma: no cover - settings unavailable
-        base = None
-    # An absolute path is required, not merely a truthy one: a missing setting
-    # would otherwise leave ``Path("")``, whose ``str`` is ``"."``, and the demo
-    # would be written relative to the working directory.
-    root = pathlib.Path(base) if base else pathlib.Path.home() / ".chisurf"
-    if not root.is_absolute():
-        root = pathlib.Path.home() / ".chisurf"
-    return root / "demo" / "burst_fusion"
+    return get_path("settings") / "demos" / "burst_fusion"
 
 
 def _fragment_plan(rng, settings: dict) -> list[list[float]]:
@@ -263,15 +244,16 @@ def _write_tttr(stream: dict, path: pathlib.Path, settings: dict):
     )
     header = tttr.header
     header.set_macro_time_resolution(float(settings["macro_time_resolution"]))
-    header.set_micro_time_resolution(1e-11)
+    header.set_micro_time_resolution(float(settings["micro_time_resolution"]))
     header.set_number_of_micro_time_channels(int(settings["micro_time_channels"]))
     tttr.set_header(header)
     path.parent.mkdir(parents=True, exist_ok=True)
-    tttr.write(str(path))
+    if not tttr.write(str(path)):
+        raise OSError(f"Could not write demonstration photon file: {path}")
     return tttr
 
 
-def _run_burst_search(source: pathlib.Path, settings: dict) -> pathlib.Path:
+def _run_burst_search(source: pathlib.Path, settings: dict, search: dict) -> pathlib.Path:
     """Produce the demo's burst folder with the ordinary burst search.
 
     Going through the real search is the point: the fragments in the folder are
@@ -292,9 +274,9 @@ def _run_burst_search(source: pathlib.Path, settings: dict) -> pathlib.Path:
     # demo has to produce for the tour to have anything to open. The default is
     # the container alone.
     analysis_settings.output_formats = ["pto", "bur"]
-    analysis_settings.burst_detection.min_photons = int(SEARCH["min_photons"])
-    analysis_settings.burst_detection.photon_window = int(SEARCH["photon_window"])
-    analysis_settings.burst_detection.time_window = float(SEARCH["time_window_ms"]) * 1e-3
+    analysis_settings.burst_detection.min_photons = int(search["min_photons"])
+    analysis_settings.burst_detection.photon_window = int(search["photon_window"])
+    analysis_settings.burst_detection.time_window = float(search["time_window_ms"]) * 1e-3
     analysis_settings.photon_filter.used_filter = "burst"
     analysis_settings.photon_filter.filter_active = True
     # The whole micro-time axis: the demo's micro times carry no information, and
@@ -323,84 +305,156 @@ def demo_detectors() -> dict[str, Any]:
     }
 
 
-def create_demo(
-    directory: str | pathlib.Path | None = None,
+def read_demo(folder: str | pathlib.Path) -> dict[str, Any]:
+    """Read the generated measurement, search and truth record for a demo folder."""
+    return json.loads(
+        (pathlib.Path(folder).parent / f"{DEMO_STEM}.json").read_text(encoding="utf-8")
+    )
+
+
+def _cache_is_good(root: pathlib.Path, values: dict, search: dict) -> bool:
+    """Require the requested configuration and every recorded measurement member."""
+    try:
+        cached = read_demo(root / "burstwise_demo")
+        source = root / f"{DEMO_STEM}.ht3"
+        folder = root / "burstwise_demo"
+        required = {
+            source.name,
+            f"burstwise_demo/bi4_bur/{DEMO_STEM}.bur",
+            "burstwise_demo/Info/analysis.json",
+            f"burstwise_demo/Info/{DEMO_STEM}.mti",
+        }
+        members = cached["members"]
+        if not isinstance(members, dict):
+            return False
+        if (
+            cached["parameters"] != values
+            or cached["search"] != search
+            or cached["source"] != str(source)
+            or cached["folder"] != str(folder)
+            or not required <= set(members)
+            or cached["bursts"] <= 0
+        ):
+            return False
+        for name, receipt in members.items():
+            member = pathlib.Path(name)
+            if member.is_absolute() or ".." in member.parts:
+                return False
+            data = (root / member).read_bytes()
+            if len(data) == 0 or receipt != {
+                "size": len(data),
+                "sha256": hashlib.sha256(data).hexdigest(),
+            }:
+                return False
+        return isinstance(cached["truth"], dict) and cached["truth"]["search"] == search
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+
+
+def make_demo(
+    folder: pathlib.Path | None = None,
+    *,
+    overwrite: bool = False,
     settings: dict[str, Any] | None = None,
     progress: Callable[[float, str], None] | None = None,
-    force: bool = False,
-) -> dict[str, Any]:
-    """Create (or reuse) the demo measurement and its burst folder.
+) -> pathlib.Path:
+    """Write or reuse a real searched measurement and return its analysis folder.
 
     Parameters
     ----------
-    directory : path-like, optional
-        Where the demo lives; defaults to :func:`demo_directory`.
+    folder : pathlib.Path, optional
+        Dedicated cache directory; defaults to :func:`demo_folder`.
+    overwrite : bool, optional
+        Regenerate even when configuration and all cached members match.
     settings : dict, optional
-        Overrides of :data:`DEMO`.
+        Overrides of ``DEMO``; the effective values are recorded with ``SEARCH``.
     progress : callable, optional
-        Called with ``(fraction, message)`` while generating.
-    force : bool
-        Regenerate even when a cached demo is present.
+        Receive ``(fraction, message)`` during simulation and search. Cancellation
+        rolls back the generated files and retains the previous complete cache.
 
     Returns
     -------
-    dict
-        ``folder`` (the burst-analysis folder to fuse), ``source`` (the photon
-        file), ``truth`` (what generated it) and ``bursts`` (what the search
-        found).
+    pathlib.Path
+        Burst-analysis folder holding ``bi4_bur``. :func:`read_demo` reads its
+        source, truth and search record; every required member has a checksum.
     """
     values = dict(DEMO)
     values.update(settings or {})
-    root = demo_directory(directory)
+    search = dict(SEARCH)
+    root = demo_folder() if folder is None else pathlib.Path(folder)
+    source, analysis = root / f"{DEMO_STEM}.ht3", root / "burstwise_demo"
     record = root / f"{DEMO_STEM}.json"
+    if not overwrite and _cache_is_good(root, values, search):
+        return analysis
+    root.mkdir(parents=True, exist_ok=True)
 
-    if record.is_file() and not force:
-        try:
-            cached = json.loads(record.read_text(encoding="utf-8"))
-            folder = pathlib.Path(cached["folder"])
-            if folder.is_dir() and any(folder.glob("bi4_bur/*.bur")):
-                logger.info("Burst fusion: reusing the cached demo at %s", folder)
-                return cached
-        except (OSError, ValueError, KeyError):
-            logger.debug("burst fusion: unusable demo cache, regenerating", exc_info=True)
-
-    def _step(fraction: float, message: str) -> None:
+    def step(fraction: float, message: str) -> None:
+        """Deliver progress while preserving cooperative cancellation."""
         if progress is not None:
             try:
                 progress(fraction, message)
-            except Exception:  # pragma: no cover - a reporter must not stop the demo
+            except CancelledError:
+                raise
+            except Exception:
                 logger.debug("burst fusion: demo progress reporter failed", exc_info=True)
 
-    _step(0.05, "Simulating molecules crossing the focus…")
-    stream = _simulate_photons(values)
-
-    _step(0.55, "Writing the photon file…")
-    source = root / f"{DEMO_STEM}.ht3"
-    _write_tttr(stream, source, values)
-
-    _step(0.75, "Running the burst search…")
-    folder = _run_burst_search(source, values)
-
-    n_bursts = _count_bursts(folder)
-    truth = dict(stream["truth"])
-    truth["search"] = dict(SEARCH)
-    result = {
-        "folder": str(folder),
-        "source": str(source),
-        "truth": truth,
-        "bursts": n_bursts,
-        "detectors": demo_detectors(),
-    }
-    record.write_text(json.dumps(result, indent=2), encoding="utf-8")
-    _step(1.0, f"{n_bursts} bursts from {truth['n_molecules']} molecules.")
-    logger.info(
-        "Burst fusion demo: %d molecules (%d of them cut up) -> %d bursts in %s",
-        truth["n_molecules"],
-        truth["n_crossings_split"],
-        n_bursts,
-        folder,
-    )
-    return result
+    owned = (source, source.with_suffix(".pto"), analysis, record)
+    # The ordinary search appends BUR rows. Give it a fresh owned folder, and
+    # retain the previous complete cache until the writer/search both succeed.
+    with tempfile.TemporaryDirectory(prefix=".burst_fusion_", dir=root) as temporary:
+        backup = pathlib.Path(temporary)
+        moved = []
+        try:
+            for path in owned:
+                if path.exists():
+                    shutil.move(str(path), str(backup / path.name))
+                    moved.append(path)
+            step(0.05, "Simulating molecules crossing the focus…")
+            stream = _simulate_photons(values)
+            step(0.55, "Writing the photon file…")
+            _write_tttr(stream, source, values)
+            step(0.75, "Running the burst search…")
+            generated = _run_burst_search(source, values, search)
+            n_bursts = _count_bursts(generated)
+            if n_bursts <= 0:
+                raise RuntimeError("The demonstration burst search produced no bursts")
+            truth = dict(stream["truth"], search=search)
+            members = [source, *sorted(generated.rglob("*"))]
+            if source.with_suffix(".pto").is_file():
+                members.append(source.with_suffix(".pto"))
+            receipts = {}
+            for path in members:
+                if path.is_file():
+                    data = path.read_bytes()
+                    receipts[str(path.relative_to(root))] = {
+                        "size": len(data),
+                        "sha256": hashlib.sha256(data).hexdigest(),
+                    }
+            result = {
+                "folder": str(generated),
+                "source": str(source),
+                "truth": truth,
+                "bursts": n_bursts,
+                "detectors": demo_detectors(),
+                "parameters": values,
+                "search": search,
+                "members": receipts,
+            }
+            record.write_text(json.dumps(result, indent=2), encoding="utf-8")
+            if not _cache_is_good(root, values, search):
+                raise RuntimeError("The demonstration measurement is incomplete")
+            step(1.0, f"{n_bursts} bursts from {truth['n_molecules']} molecules.")
+        except BaseException:
+            for path in owned:
+                if path.is_dir():
+                    shutil.rmtree(path)
+                elif path.exists():
+                    path.unlink()
+            for path in moved:
+                shutil.move(str(backup / path.name), str(path))
+            raise
+    logger.info("Burst fusion demo: %d bursts in %s", n_bursts, analysis)
+    return analysis
 
 
 def _count_bursts(folder: pathlib.Path) -> int:
@@ -435,8 +489,9 @@ def describe(result: dict[str, Any]) -> str:
 __all__ = [
     "DEMO",
     "SEARCH",
-    "create_demo",
+    "make_demo",
+    "read_demo",
     "demo_detectors",
-    "demo_directory",
+    "demo_folder",
     "describe",
 ]

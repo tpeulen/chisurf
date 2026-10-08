@@ -8,8 +8,9 @@
     },
     {
       "title": "Start with data whose answer you know",
+      "page": "files",
       "text": "<b>Example</b> writes a simulated measurement: molecules crossing the focus in about 0.25 ms on a weak background, split over two detectors. Its curve must decay near half a millisecond. If it does not, the settings are wrong, not the sample.",
-      "target": {"name": "example"},
+      "target": {"name": "load_example"},
       "await": {"hint": "Press <b>Example</b> in Files & Steps."}
     },
     {

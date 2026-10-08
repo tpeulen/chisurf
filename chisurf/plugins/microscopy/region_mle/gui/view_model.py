@@ -416,11 +416,17 @@ class RegionMleViewModel(MleObserverMixin):
         """
         from chisurf.plugins.microscopy.spot_finder.api.models import SpotFinderRequest
         from chisurf.plugins.microscopy.spot_finder.api.spot_finder import detect_request
-        from chisurf.plugins.microscopy.spot_finder.demo import create_demo, truth_table
+        from chisurf.plugins.microscopy.spot_finder.demo import (
+            IRF_FILENAME,
+            demo_folder,
+            make_demo,
+            truth_table,
+        )
 
         self.status_text = "Simulating a field with known lifetimes…"
         self.notify("progress")
-        sample, irf = create_demo()
+        sample = make_demo(demo_folder())
+        irf = sample.with_name(IRF_FILENAME)
 
         self.status_text = "Detecting the regions (the standard workflow)…"
         self.notify("progress")

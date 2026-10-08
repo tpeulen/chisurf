@@ -42,22 +42,25 @@ def test_actual_native_demo_button_loads_and_syncs_definition(tmp_path, monkeypa
     driver = Driver(app, (1280, 900))
     try:
         driver.frame(3)
-        assert "load_demo" in driver.ids()
+        assert "load_example" in driver.ids()
         step = next(
             i
             for i, step in enumerate(app.tour.steps)
-            if step.get("target", {}).get("name") == "load_demo"
+            if step.get("target", {}).get("name") == "load_example"
         )
+        app.docks.focus("detectors")
         app.tour.start(step)
+        driver.frame(3)
+        assert app.tour.get_target_rect("load_example") is not None
         assert app.tour.awaiting
-        driver.click("load_demo")
+        driver.click("load_example")
         driver.frame(3)
         assert not app.tour.awaiting
         app.tour.stop()
         assert app.model.n_bursts == 16
         assert app.editor.model.get_settings()["detectors"] == app.model.session.detectors
         assert app.model.session.outcome is None
-        assert app.tour.get_target_rect("load_demo") is not None
+        assert app.tour.get_target_rect("load_example") is not None
         assert "synthetic" in app.model.status_text.lower()
         step = next(
             i

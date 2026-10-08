@@ -76,7 +76,7 @@ def grab_correlator_steps() -> None:
 
     hub = make_app()
     files = hub.select("files")
-    files.add_example()
+    files.load_example()
     files.use_merger = True
     hub._files_changed()
     corr = hub.select("correlator")

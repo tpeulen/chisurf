@@ -46,7 +46,7 @@ STEPS: list[dict[str, Any]] = [
         "role": "data",
         "help": str(BURST_GUI / "data_selection_help.md"),
         "description": "The measurements: any format tttrlib reads, including the .sm files of the old "
-        "ALEX-Suite. No measurement at hand: Load demo data.",
+        "ALEX-Suite. No measurement at hand: Demo.",
     },
     {
         "name": "3. Alternation (optional)",
@@ -132,7 +132,7 @@ ES_Y = ("Stoichiometry (accurate)", "Stoichiometry (ALEX)", "Stoichiometry (PIE)
 #: What the status line asks for on each step (before anything else it says).
 NEEDS = {
     "setup": "Pick your setup (PIE), or press Next (µs-ALEX: step 3 writes one).",
-    "data": "Drop measurement files, or Load demo data; then Next.",
+    "data": "Drop measurement files, or Demo; then Next.",
     "alternation": "µs-ALEX is converted on arrival; then Next.",
     "selection": "Next runs the burst search.",
     "background": "Background is estimated on arrival; Next.",
@@ -179,6 +179,13 @@ class AlexHubApp(BurstAnalysisHubApp):
             wait_for_controls=True,
         )
 
+    def _tour_step(self, index, step):
+        """Bring the real example button into view while its tour waits for the user."""
+        if (step.get("target") or {}).get("name") == "load_example":
+            self.select("data", by_user=False)
+        else:
+            super()._tour_step(index, step)
+
     # -- the steps only ALEX has ------------------------------------------------------------------------------ #
     def _make_setup(self, app_class=None):
         from .step_apps import AlexSetupSelectionApp
@@ -194,7 +201,7 @@ class AlexHubApp(BurstAnalysisHubApp):
         app = AlexDataSelectionApp(model, on_proceed=lambda: self.select("alternation"))
         own = app.track
 
-        def track(name: str) -> None:  # the step's controls (Load demo data) also advance the hub's tour
+        def track(name: str) -> None:  # the step's controls (Demo) also advance the hub's tour
             own(name)
             self.tour.notify_used(name)
 

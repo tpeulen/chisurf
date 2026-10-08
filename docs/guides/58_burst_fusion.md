@@ -35,7 +35,7 @@ it changes nothing until you write the fused folder.
 
 ## 0. Learn it on a measurement whose answer is known
 
-Press **🧪 Load demo** in the toolbar. It simulates a measurement in which
+Press **🧪 Demo** in the toolbar. It simulates a measurement in which
 **300 molecules** crossed the focus and about 60 % of those crossings were
 interrupted — the molecule dimming for a fraction of a millisecond and coming
 back — writes it as an ordinary photon file, and runs the *real* burst search
@@ -230,12 +230,19 @@ The demo is available headlessly too, which makes it a convenient fixture for
 trying settings without any data:
 
 ```python
-from chisurf.plugins.burst.burst_fusion.demo import create_demo
+from chisurf.plugins.burst.burst_fusion.demo import make_demo, read_demo
 
-demo = create_demo()          # cached after the first call
+folder = make_demo()          # primary burst-analysis folder; valid cache is reused
+demo = read_demo(folder)      # source, search settings and synthetic truth
 print(demo["truth"]["n_molecules"], "molecules ->", demo["bursts"], "bursts")
-analyze(demo["folder"], FusionSettings(threshold=0.7))
+analyze(folder, FusionSettings(threshold=0.7))
 ```
+
+The source photons, searched folder and parameter/truth sidecar live in
+`demos/burst_fusion` under the ChiSurf settings folder. Pass a dedicated folder
+to `make_demo(folder)` to choose another location, or `overwrite=True` to
+regenerate it. **Guide** waits for your **Demo** click; estimating and writing
+fused bursts remain separate actions.
 
 ## The method, and when *not* to fuse
 

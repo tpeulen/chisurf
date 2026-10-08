@@ -8,12 +8,12 @@
     },
     {
       "title": "Start with data whose answer you know",
-      "text": "A segmentation is hard to judge the first time: regions appear over an image and there is nothing to compare them with.<br/><br/>So start with a <b>simulated</b> field — four objects at known places, with lifetimes of 1.0, 3.6, 2.2 and 0.6 ns, recorded on two detectors with the IRF measurement that belongs to them. It is a real photon stream written as an ordinary PTU, so nothing about the rest of the tour is a special case.",
+      "text": "Load a simulated field with four objects at known positions and lifetimes of <b>1.0, 3.6, 2.2 and 0.6 ns</b>. The ordinary PTU includes two detector channels; a matching IRF measurement and scanner-layout sidecar are stored alongside it. Detection remains your next explicit action.",
       "target": {
-        "action": "Load demo"
+        "name": "load_example"
       },
       "await": {
-        "hint": "Press <b>🧪 Load demo</b>. The first time it simulates the scan, which takes a few seconds; afterwards the cached file is reused."
+        "hint": "Press <b>Load example</b>; the first generation takes a few seconds."
       }
     },
     {

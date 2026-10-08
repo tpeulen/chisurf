@@ -41,7 +41,8 @@ def no_failed_draws(caplog):
 
 @pytest.fixture(scope="module")
 def data(tmp_path_factory):
-    return demo.make_demo(tmp_path_factory.mktemp("burst_clicks"))
+    table = demo.make_demo(tmp_path_factory.mktemp("burst_clicks"))
+    return table.parent / demo.SPC_FILENAME, table
 
 
 @pytest.fixture
@@ -79,7 +80,7 @@ def edit(drv, table, row, column, text):
 
 
 def example_run(drv):
-    drv.click("example")
+    drv.click("load_example")
     drv.click("run")
     drv.settle()
 
@@ -93,12 +94,18 @@ def test_run_is_greyed_without_input_and_a_click_does_nothing(drv):
 
 
 def test_example_adds_the_demonstration_data_and_the_pairs(drv):
-    drv.click("example")
+    drv.click("load_example")
     c = ctrl(drv)
     assert len(c.files) == 1 and c.files[0].endswith(demo.TABLE_NAME)
     assert [p["pair_name"] for p in c._pair_presets] == ["ACF_0", "ACF_1", "cross_01"]
     assert c.status.startswith("Demonstration data added")
-    assert any(s.startswith("burst_fcs_demo") for s in drv.draw(2).strings)
+    assert drv.control("file_rows").value(0, "name") == demo.TABLE_NAME
+    # A long settings-cache folder can elide the filename by one more character.
+    # Require the displayed identity to be a true prefix of the actual table.
+    assert any(
+        s.startswith("burst_fcs_") and demo.TABLE_NAME.startswith(s.rstrip(".…"))
+        for s in drv.draw(2).strings
+    )
 
 
 def test_run_correlates_every_burst_with_every_pair(drv):
@@ -129,7 +136,7 @@ def test_stop_cancels_a_running_correlation_and_keeps_the_previous_results(drv, 
 
 
 def test_the_controls_are_inert_while_a_run_is_in_progress(drv, monkeypatch):
-    drv.click("example")
+    drv.click("load_example")
 
     def slow(*a, cancel_check=None, **k):
         for _ in range(300):
@@ -142,7 +149,7 @@ def test_the_controls_are_inert_while_a_run_is_in_progress(drv, monkeypatch):
     n_bins = model(drv).n_bins
     drv.click("clear")
     assert ctrl(drv).files
-    drv.click("example")
+    drv.click("load_example")
     assert len(ctrl(drv).files) == 1
     ctrl(drv).stop()
     drv.settle()
@@ -150,7 +157,7 @@ def test_the_controls_are_inert_while_a_run_is_in_progress(drv, monkeypatch):
 
 
 def test_a_failing_correlation_reports_instead_of_raising(drv, monkeypatch):
-    drv.click("example")
+    drv.click("load_example")
 
     def broken(*a, **k):
         raise RuntimeError("no photons")
@@ -175,22 +182,25 @@ def test_guide_and_help_buttons(drv):
     assert not window.open
     drv.click("guide")
     tour = drv.app.tour
-    assert tour.active and tour.awaiting  # step one waits for Example
+    assert tour.active and not tour.awaiting  # intro does not generate data
     drv.click_text("Next ►")
-    assert tour.step_idx == 0
-    drv.click("example")
+    assert tour.step_idx == 1 and tour.awaiting
+    drv.click_text("Next ►")
+    assert tour.step_idx == 1  # the real Example press is still required
+    drv.click("load_example")
     assert not tour.awaiting
     drv.click_text("Next ►")
-    assert tour.step_idx == 1
+    assert tour.step_idx == 2
     drv.click_text("◄ Prev")
-    assert tour.step_idx == 0
-    drv.escape()  # Close Tour is under the dock windows while a step waits for its control (emtk gap, REPORT.md)
+    assert tour.step_idx == 1
+    drv.escape()
     drv.draw(2)
     assert not tour.active
     drv.click("guide")
-    drv.click("example")
     drv.click_text("Next ►")
-    drv.click_text("Close Tour")  # not awaiting: the card has its own window and its buttons work
+    drv.click("load_example")
+    drv.click_text("Next ►")
+    drv.click_text("Close Tour")
     assert not tour.active
 
 
@@ -206,9 +216,14 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_
         assert_tour_card_clear(tour, drv.size)
         if tour.awaiting:
             target = step["target"]
-            key = target.get("action") or target.get("name") or target.get("key") or target.get("attr")
-            if key == "example":
-                drv.click("example")
+            key = (
+                target.get("action")
+                or target.get("name")
+                or target.get("key")
+                or target.get("attr")
+            )
+            if key == "load_example":
+                drv.click("load_example")
             elif key == "run":
                 drv.click("run")
                 drv.settle()
@@ -224,11 +239,13 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_
                 if not tour.awaiting:
                     pass
             done.append(key)
-            if key == "correlation_plot" and tour.awaiting:  # the line is not under the guess: use the drawn tick positions
+            if (
+                key == "correlation_plot" and tour.awaiting
+            ):  # the line is not under the guess: use the drawn tick positions
                 break
         drv.draw(2)
         drv.click_text("Finish ✓" if tour.step_idx == len(tour.steps) - 1 else "Next ►")
-    assert done[:4] == ["example", "run", "curves", "fit_mode"]
+    assert done[:4] == ["load_example", "run", "curves", "fit_mode"]
 
 
 # -- the inputs -------------------------------------------------------------------------------------------------------- #
@@ -307,7 +324,7 @@ def test_clear_also_drops_the_curves(drv):
 
 
 def test_an_unticked_file_is_not_correlated(drv):
-    drv.click("example")
+    drv.click("load_example")
     drv.click_cell("file_rows", 0, "use")
     drv.click("run")
     assert not ctrl(drv).running and ctrl(drv)._curves == []
@@ -322,10 +339,12 @@ def test_the_database_button_opens_the_dataset_picker(drv):
 
 
 def test_a_pair_is_renamed_retargeted_gated_and_ticked_off(drv):
-    drv.click("example")
+    drv.click("load_example")
     drv.draw(3)
     assert edit(drv, "pair_rows", 0, "name", "G_ACF")
-    assert [p["pair_name"] for p in ctrl(drv)._pair_presets][0] == "G_ACF" and "G_ACF" in ctrl(drv).enabled_pairs
+    assert [p["pair_name"] for p in ctrl(drv)._pair_presets][0] == "G_ACF" and "G_ACF" in ctrl(
+        drv
+    ).enabled_pairs
     assert edit(drv, "pair_rows", 0, "chs_a", "0, 8")
     assert ctrl(drv)._pair_presets[0]["chs_a"] == [0, 8]
     assert edit(drv, "pair_rows", 0, "micro_a", "0:100;200:300")
@@ -337,14 +356,19 @@ def test_a_pair_is_renamed_retargeted_gated_and_ticked_off(drv):
     example.check_all()
     drv.click("run")
     drv.settle()
-    assert {c["pair_name"] for c in ctrl(drv)._curves} == {"G_ACF", "cross_01"}  # the unticked pair is not computed
+    assert {c["pair_name"] for c in ctrl(drv)._curves} == {
+        "G_ACF",
+        "cross_01",
+    }  # the unticked pair is not computed
 
 
 def test_invalid_pair_edits_are_refused_with_a_message(drv):
-    drv.click("example")
+    drv.click("load_example")
     drv.draw(3)
     edit(drv, "pair_rows", 0, "chs_a", "x")
-    assert ctrl(drv).status.startswith("Invalid channel pairs:") and ctrl(drv)._pair_presets[0]["chs_a"] == [0]
+    assert ctrl(drv).status.startswith("Invalid channel pairs:") and ctrl(drv)._pair_presets[0][
+        "chs_a"
+    ] == [0]
     edit(drv, "pair_rows", 0, "chs_b", "")
     assert ctrl(drv)._pair_presets[0]["chs_b"] == [0]
     edit(drv, "pair_rows", 0, "name", "ACF_1")  # taken
@@ -367,7 +391,7 @@ def test_add_and_remove_a_pair(drv):
 
 
 def test_save_pairs_load_pairs_and_show_json(drv, tmp_path):
-    drv.click("example")
+    drv.click("load_example")
     drv.click("save_pairs")
     drv.draw(3)
     drv.click_text("burst_fcs_pairs.json")
@@ -425,7 +449,7 @@ def test_the_settings_reach_the_correlation(drv):
     drv.tab("Settings")
     drv.type_into("n_bins", "5")
     drv.type_into("n_casc", "12")
-    drv.click("example")
+    drv.click("load_example")
     drv.click("run")
     drv.settle()
     short = ctrl(drv)._curves[0]
@@ -470,9 +494,12 @@ def test_an_inverted_fit_window_is_refused_when_running(drv):
     drv.tab("Settings")
     drv.type_into("tmin_fit", "5")
     drv.type_into("tmax_fit", "1")
-    drv.click("example")
+    drv.click("load_example")
     drv.click("run")
-    assert not ctrl(drv).running and ctrl(drv).status == "Invalid settings: Fit minimum lag must be below the maximum."
+    assert (
+        not ctrl(drv).running
+        and ctrl(drv).status == "Invalid settings: Fit minimum lag must be below the maximum."
+    )
 
 
 def test_save_and_load_settings_dialogs_round_trip(drv, tmp_path):
@@ -540,7 +567,7 @@ def test_export_curves_writes_the_curves_as_json(drv, tmp_path):
 def test_maxent_shows_the_distribution_plot(drv):
     drv.tab("Settings")
     drv.click("fit_mode.2")
-    drv.click("example")
+    drv.click("load_example")
     drv.click("run")
     drv.settle()
     assert model(drv).dist_plot_series()
@@ -582,7 +609,7 @@ def test_the_fit_window_lines_are_dragged_and_set_t_min_and_t_max(drv):
 def test_a_wheel_zoom_on_the_distribution_plot(drv):
     drv.tab("Settings")
     drv.click("fit_mode.2")
-    drv.click("example")
+    drv.click("load_example")
     drv.click("run")
     drv.settle()
     before = ticks(drv.draw(2))
@@ -633,7 +660,7 @@ def test_choosing_a_saved_setup_adopts_its_pairs(drv, monkeypatch):
 def test_the_flow_works_in_the_small_window_too(drv):
     drv.size = SMALL
     drv.draw(3)
-    drv.click("example")
+    drv.click("load_example")
     drv.click("run")
     drv.settle()
     assert len(ctrl(drv)._curves) == demo.N_BURSTS * 3

@@ -10,11 +10,11 @@
       "title": "Start with data whose answer is known",
       "text": "The demo is a simulated confocal scan written as an ordinary PTU file: <b>monomers</b> (ε = 0.5 counts per dwell, n = 6) on the left half, <b>dimers</b> (ε = 1.0, n = 3) on the right. Both halves have the same mean intensity.",
       "target": {
-        "name": "demo",
-        "action": "Load demo"
+        "name": "load_example",
+        "action": "Demo"
       },
       "await": {
-        "hint": "Press <b>Load demo</b>. It writes the file once and runs the analysis."
+        "hint": "Press <b>Demo</b>. It writes the file once and runs the analysis."
       }
     },
     {

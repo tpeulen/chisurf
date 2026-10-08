@@ -196,7 +196,7 @@ class BurstMleGui(TourTarget):
         # written to it when changed (the wizard then refits).
         draw_sections(self._fields, wiz, self.form_state)
         for attr, key in (
-            ("load_demo", "load_demo"),
+            ("load_example", "load_example"),
             ("fit_model", "fit_model"),
             ("tau", "tau_start"),
             ("micro_time_start", "window_start"),

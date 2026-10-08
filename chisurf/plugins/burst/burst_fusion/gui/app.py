@@ -219,15 +219,15 @@ class BurstFusionGui(TourTarget):
              "tip": "Fuse burst fragments that likely belong to the same molecule using the P(same) threshold."},
             {"label": icon_label("🔄", "Estimate"), "key": "toolAction_refresh", "enabled": not running,
              "tip": "Estimate the P(same) curve and thresholds from the loaded bursts without fusing."},
-            *([{"label": icon_label("🧪", "Demo"), "key": "load_demo", "enabled": not running, "keys": ("Load demo",),
+            *([{"label": icon_label("🧪", "Demo"), "key": "load_example", "enabled": not running, "keys": ("Load demo",),
                 "tip": "Load a demo dataset to try the fusion analysis."}] if self.on_demo is not None else []),
             {"label": "Stop fusion", "key": "Stop", "enabled": running,
              "tip": "Cancel the estimate before writing; an output write already started finishes consistently."
              if running else "Nothing is running; a fusion in progress can be stopped here."},
         ], remember=self.remember)
-        if pressed in ("toolAction_run", "toolAction_refresh", "load_demo"):
+        if pressed in ("toolAction_run", "toolAction_refresh", "load_example"):
             self.track(pressed)
-            if pressed != "load_demo":
+            if pressed != "load_example":
                 self.track("fusion_actions")
             else:
                 self.track("Load demo")

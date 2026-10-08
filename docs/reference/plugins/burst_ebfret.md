@@ -153,6 +153,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 - Manifest: {src}`chisurf/plugins/burst/burst_ebfret/manifest.json`
 - UI spec: {src}`chisurf/plugins/burst/burst_ebfret/gui/assign_smd_channels.view.json`
 - UI spec: {src}`chisurf/plugins/burst/burst_ebfret/gui/clip_outliers.view.json`
+- UI spec: {src}`chisurf/plugins/burst/burst_ebfret/gui/example_actions.view.json`
 - UI spec: {src}`chisurf/plugins/burst/burst_ebfret/gui/main.view.json`
 - UI spec: {src}`chisurf/plugins/burst/burst_ebfret/gui/remove_bleaching.view.json`
 - UI spec: {src}`chisurf/plugins/burst/burst_ebfret/gui/select_analysis.view.json`

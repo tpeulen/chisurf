@@ -36,9 +36,9 @@ def qapp():
 @pytest.fixture
 def demo(tmp_path):
     """Return a real burst folder with a known answer, and its detectors."""
-    from chisurf.plugins.burst.burst_fusion.demo import create_demo, demo_detectors
+    from chisurf.plugins.burst.burst_fusion.demo import make_demo, read_demo, demo_detectors
 
-    result = create_demo(directory=tmp_path / "demo")
+    result = read_demo(make_demo(tmp_path / "demo"))
     return result, demo_detectors()
 
 

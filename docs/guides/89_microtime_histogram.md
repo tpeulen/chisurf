@@ -60,7 +60,7 @@ deterministic PTU with exactly **3,000 VV** and **1,500 VH** photons and selects
 the explicit synthetic VV/VH setup. Its generated header declares a 32 ps
 micro-time step and 25 ns macro-time clock; the known four-channel FWHM is
 0.128 ns. This is a synthetic workflow check, not instrument calibration.
-The file lives in `cache/microtime_histogram_demo_v1` under the ChiSurf settings
+The file lives in `demos/microtime_histogram` under the ChiSurf settings
 folder. Generation replaces the queued inputs, leaves saved setups/data
 intact, and does not start computation. Press **Compute** yourself; the
 **Guide** waits for these real button clicks.
@@ -152,7 +152,8 @@ The same synthetic demonstration can be generated and checked without a GUI:
 from chisurf.plugins.tttr.microtime_histogram.demo import SETUP, demo_folder, make_demo
 from chisurf.plugins.tttr.microtime_histogram.gui.model import HistogramModel
 
-source = make_demo(demo_folder())  # reuses an existing cache file without overwriting it
+source = make_demo()  # reuses a valid file + parameter/checksum cache
+# make_demo(folder=demo_folder(), overwrite=True) explicitly regenerates it
 demo_model = HistogramModel()
 demo_model.set_setup(SETUP)
 demo_model.filetype = "PTU"

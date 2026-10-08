@@ -14,7 +14,7 @@
               "description": "Open a TTTR file (PTU, HT3, SPC, HDF5, ...) and bin it into an intensity trace; a dropped file does the same."
             },
             {
-              "action": "request_example",
+              "action": "load_example",
               "label": "Example",
               "description": "Load a simulated molecule switching between two FRET states (dwell 20 / 80 ms, two detectors): data whose answer is known, for trying the tool."
             },

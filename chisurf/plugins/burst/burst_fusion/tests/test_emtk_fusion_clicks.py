@@ -37,7 +37,7 @@ def hermetic(tmp_path, monkeypatch):
     monkeypatch.setenv("MMFDB_SETTINGS_DIR", str(tmp_path / "mmfdb"))
     monkeypatch.setenv("MMFDB_DATABASE_PATH", str(tmp_path / "mmfdb.sqlite"))
     # the demo of this test only: the cached one already holds fused folders from earlier runs
-    monkeypatch.setattr(demo_module, "create_demo", functools.partial(demo_module.create_demo, directory=tmp_path / "own"))
+    monkeypatch.setattr(demo_module, "make_demo", functools.partial(demo_module.make_demo, folder=tmp_path / "own"))
     monkeypatch.chdir(tmp_path)
 
 
@@ -127,7 +127,7 @@ def type_into_text(app, label, text, size=SIZE, enter=True):
 
 
 def load_demo(app):
-    press(app, "load_demo")
+    press(app, "load_example")
     return settle(app)
 
 
@@ -139,7 +139,7 @@ def shown(app, size=SIZE):
 
 
 def test_demo_click_generates_and_loads_the_demo_with_its_declared_truth(app, tmp_path):
-    press(app, "load_demo")
+    press(app, "load_example")
     status = app.controller.status
     assert app.controller.running and status and "…" in status        # "Generating demo …", then the generator's progress text
     settle(app)
@@ -275,7 +275,7 @@ def test_a_dropped_folder_is_taken_and_a_stray_file_is_reported(app, tmp_path):
 
 
 def test_a_dropped_demo_folder_is_what_the_estimate_runs_on(app):
-    folder = demo_module.create_demo()["folder"]
+    folder = demo_module.make_demo()
     assert app.files_dropped([str(folder)])
     press(app, "toolAction_refresh")
     settle(app)
@@ -283,7 +283,7 @@ def test_a_dropped_demo_folder_is_what_the_estimate_runs_on(app):
 
 
 def test_mmfdb_datasets_picker_lists_a_dataset_selects_it_and_the_window_closes(app):
-    folder = demo_module.create_demo()["folder"]
+    folder = demo_module.make_demo()
 
     class Client:
         def call(self, name, args=None):
@@ -306,7 +306,7 @@ def test_mmfdb_datasets_picker_lists_a_dataset_selects_it_and_the_window_closes(
 @pytest.mark.xfail(strict=True, reason="emtk/picker gap: after its first click the MMFDB picker's buttons (Open selected, Cancel, "
                    "Refresh, scopes) never fire; see REPORT.md 'emtk gaps'")
 def test_mmfdb_datasets_picker_open_selected_takes_the_folder_and_cancel_closes(app):
-    folder = demo_module.create_demo()["folder"]
+    folder = demo_module.make_demo()
 
     class Client:
         def call(self, name, args=None):
@@ -601,14 +601,16 @@ def test_the_wheel_zooms_a_plot(app):
 def test_guide_click_starts_the_tour_that_waits_for_the_demo_button_and_next_is_greyed(app):
     press(app, "guide")
     tour = app.fusion_gui.tour
-    assert tour.active and tour.awaiting                                      # step 0 asks for Load demo
+    assert tour.active and not tour.awaiting  # Introduction performs no action.
     click(app, text_rect(draw(app), "Next ►"))
-    assert tour.step_idx == 0                                                  # greyed
-    press(app, "load_demo")
+    assert tour.step_idx == 1 and tour.awaiting
+    click(app, text_rect(draw(app), "Next ►"))
+    assert tour.step_idx == 1  # The example awaits the real button.
+    press(app, "load_example")
     assert not tour.awaiting
     settle(app)
     click(app, text_rect(draw(app), "Next ►"))
-    assert tour.step_idx == 1
+    assert tour.step_idx == 2
     click(app, text_rect(draw(app), "Close Tour"))
     assert not tour.active
 
@@ -622,17 +624,19 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_
         draw(app)
         target = tour.steps[tour.step_idx].get("target") or {}
         if tour.awaiting:
-            if target.get("action") == "Load demo":
-                press(app, "load_demo")
-            elif target.get("key") == "fusion_actions":
-                press(app, "toolAction_run" if "write" in tour.steps[tour.step_idx]["title"] else "toolAction_refresh")
+            if target.get("name") == "load_example":
+                press(app, "load_example")
+            elif target.get("name") in ("toolAction_run", "toolAction_refresh"):
+                press(app, target["name"])
             elif target.get("attr") == "threshold":
                 type_into(app, "threshold", "0.7")
             elif target.get("attr") == "max_gap_ms":
                 type_into(app, "max_gap_ms", "5")
             if app.controller.running:
                 settle(app)
-            assert not tour.awaiting, f"{tour.steps[tour.step_idx]['title']}: operating {target} did not release the step"
+            assert not tour.awaiting, (
+                f"{tour.steps[tour.step_idx]['title']}: operating {target} did not release the step"
+            )
         draw(app)
         if tour.step_idx == len(tour.steps) - 1:
             tour.next()
@@ -664,7 +668,7 @@ def test_help_click_opens_the_window_whose_buttons_and_escape_close_it(app):
 
 def test_the_flow_works_in_the_small_window_too(app):
     draw(app, SMALL)
-    click(app, rect(app, "load_demo"), SMALL)
+    click(app, rect(app, "load_example"), SMALL)
     settle(app, SMALL)
     click(app, rect(app, "toolAction_refresh"), SMALL)
     settle(app, SMALL)

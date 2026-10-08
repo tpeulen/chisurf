@@ -92,7 +92,7 @@ def test_the_demo_fuses_as_in_the_qt_tool(tmp_path, monkeypatch):
     qt = _qt_facts(tmp_path / "qt_settings")
     # A demo of its own: the cached one already holds fused folders from earlier runs, and the
     # writer then picks a new name ("…_0") instead of overwriting.
-    monkeypatch.setattr(demo, "create_demo", functools.partial(demo.create_demo, directory=tmp_path / "own"))
+    monkeypatch.setattr(demo, "make_demo", functools.partial(demo.make_demo, folder=tmp_path / "own"))
     app = _demo(create_app())
     try:
         truth = app.model._demo["truth"]
@@ -104,7 +104,7 @@ def test_the_demo_fuses_as_in_the_qt_tool(tmp_path, monkeypatch):
         # The status names the written folder, under each side's own settings folder (the demo is
         # cached there; this process resolved its settings folder at import).
         assert (app.model._status.replace(str(out.parent), "<demo>")
-                == qt["status"].replace(str(tmp_path / "qt_settings" / "demo" / "burst_fusion"), "<demo>"))
+                == qt["status"].replace(str(tmp_path / "qt_settings" / "demos" / "burst_fusion"), "<demo>"))
         assert json.loads(json.dumps(app.model.summary_rows(), default=str)) == qt["summary"]
         stats = app.model.analysis.statistics
         before, after = stats["n_bursts_before"], stats["n_bursts_after"]

@@ -10,8 +10,8 @@
           "type": "button_row",
           "buttons": [
             {
-              "label": "Generate synthetic demo",
-              "action": "load_demo",
+              "label": "Demo",
+              "action": "load_example",
               "description": "Replace working inputs with 16 generated bursts of 1000 photons each and a known input lifetime of 2 ns. Fitting remains an explicit user action."
             }
           ]

@@ -21,7 +21,7 @@ from chisurf.plugins.burst.burst_ebfret.core.session import RAW, SESSION, Sessio
 
 @pytest.fixture(scope="module")
 def demo_file(tmp_path_factory):
-    return demo.write_demo(tmp_path_factory.mktemp("demo") / "demo.dat", seed=7)
+    return demo.make_demo(tmp_path_factory.mktemp("demo"), seed=7)
 
 
 @pytest.fixture
@@ -186,6 +186,6 @@ def test_a_group_export_reestimates_the_prior(session, demo_file):
 def test_the_demo_file_is_what_load_raw_reads():
     donors, acceptors, states = demo.simulate(seed=1, n_series=3)
     assert len(donors) == 3 and all(len(d) == len(s) for d, s in zip(donors, states))
-    path = demo.write_demo(seed=1)
+    path = demo.make_demo(seed=1)
     loaded = ebio.load_raw(str(path), has_labels=True)
     assert len(loaded[0]) == demo.DEMO["n_series"]

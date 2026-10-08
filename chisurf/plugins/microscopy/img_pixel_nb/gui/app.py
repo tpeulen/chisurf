@@ -23,7 +23,7 @@ class NBApp(PixelToolApp):
     HELP_TITLE = "Number & Brightness - Help"
     ROLE = "pixel_nb"
     LAYOUT = Split("h", 0.34, Region("settings"), Region("views"))
-    OUTCOMES = {**PixelToolApp.OUTCOMES, "demo": "demo"}
+    OUTCOMES = {**PixelToolApp.OUTCOMES, "demo": "load_example"}
 
     def __init__(self, model: NBModel | None = None, coordinator=None, ndx_callback=None, **binding) -> None:
         super().__init__(model or NBModel(), coordinator, ndx_callback, **binding)

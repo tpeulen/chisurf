@@ -9,7 +9,7 @@
           "type": "button_row",
           "buttons": [
             {
-              "action": "demo",
+              "action": "load_example",
               "label": "Generate synthetic demo",
               "description": "Replace queued inputs with a deterministic synthetic PTU in the settings cache: 3000 VV + 1500 VH photons at 32 ps per channel. Press Compute separately; saved setups and measurement files are unchanged."
             }

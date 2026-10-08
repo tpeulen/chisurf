@@ -24,7 +24,11 @@ For what the curve means and how its error bars are estimated, see
 * **Correlator** — the five-step workflow this guide walks through:
   *Channel Definitions → Files & Steps → Photon / Burst Filter → Correlator →
   FCS Merger*. It opens on *Files & Steps* (**Example** there adds a simulated
-  measurement whose curve falls near 0.5 ms). **Next** runs the open step where
+  measurement whose curve falls near 0.5 ms). Its photon file and JSON
+  parameters live in `demos/fcs_correlator` under the ChiSurf settings folder;
+  `make_demo()` from `chisurf.plugins.fcs.fcs_correlator.demo` returns the
+  primary SPC path (`overwrite=True` regenerates it). The tour first reveals
+  this Files page and waits for your **Example** click. **Next** runs the open step where
   it has a run (the Correlator correlates) and then moves on, **Back** goes back,
   and **>>** runs the remaining steps in order (press it again to stop). A step
   switched off in *Files & Steps* is grey and skipped. **Help** and **Guide** at

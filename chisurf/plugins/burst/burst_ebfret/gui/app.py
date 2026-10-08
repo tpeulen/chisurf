@@ -27,8 +27,9 @@ from typing import Any
 
 import emtk
 from emtk import im, implot, keys
+from emtk.i18n import tr
 from emtk.overlays import holding
-from emtk.view_form import FormState, draw_sections, find_section
+from emtk.view_form import FormState, draw_form, draw_sections, find_section
 from emtk.widgets.menus import Menu, MenuBar, MenuItem
 from emtk.widgets.view_spec import load_view_spec
 
@@ -41,6 +42,34 @@ SPECS = dlg.SPECS
 __all__ = ["EbfretGui", "App", "MENU_H", "GEOMETRY"]
 
 MENU_H = 22.0
+ACTIONS_H = 28.0
+
+TOUR_TARGETS = {
+    "ebfret_menu_file": "menu.File",
+    "ebfret_menu_analysis": "menu.Analysis",
+    "ebfret_menu_view": "menu.View",
+    "ebfret_plot_signal": "plot.signal",
+    "ebfret_plot_raw": "plot.raw",
+    "ebfret_series_slider": "series_value.slider",
+    "ebfret_series_edit": "series_value.edit",
+    "ebfret_crop_min": "crop_min",
+    "ebfret_crop_max": "crop_max",
+    "ebfret_exclude": "exclude",
+    "ebfret_plot_obs": "plot.obs",
+    "ebfret_plot_mean": "plot.mean",
+    "ebfret_plot_noise": "plot.noise",
+    "ebfret_plot_dwell": "plot.dwell",
+    "ebfret_states_slider": "ensemble_value.slider",
+    "ebfret_min_states": "min_states",
+    "ebfret_max_states": "max_states",
+    "ebfret_run_all": "run_scope",
+    "ebfret_restarts": "restarts",
+    "ebfret_precision": "run_precision",
+    "ebfret_run": "run",
+    "ebfret_stop": "stop",
+    "ebfret_reset": "reset",
+    "load_example": "load_example",
+}
 #: Button / control-row height of the MATLAB layout (``bh = 40`` there, raised
 #: to fit a titled frame around an emtk field row).
 ROW_H = 50.0
@@ -84,7 +113,7 @@ def _rgb255(colour: Sequence[float] | None) -> tuple | None:
     return tuple(int(round(float(c) * 255)) for c in list(colour)[:3]) + (255,)
 
 
-from chisurf.emtk.help_guide import TourTarget
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 
 
 class EbfretGui(TourTarget):
@@ -390,8 +419,9 @@ class EbfretGui(TourTarget):
         """Write the simulated demo dataset and load it (the tour's first step)."""
         from .. import demo
 
-        path = demo.write_demo()
+        path = demo.make_demo()
         self._loaded([str(path)], 2)
+        self.track("load_example")
 
     def save_data(self) -> None:
         """*File > Save* (``save_data.m``)."""
@@ -548,14 +578,28 @@ class App:
     def __init__(self, gui: EbfretGui, on_exit: Callable[[], None] | None = None) -> None:
         self.gui = gui
         self.on_exit = on_exit
-        self.io, self.storage = emtk.IO(), {}
+        self.actions_spec = load_view_spec(SPECS / "example_actions.view.json")
+        self.tour = EmTkGuidedTour(
+            steps=SPECS / "guide.json", owner=gui, wait_for_controls=True,
+            get_target_rect=lambda key: gui.item_rects.get(TOUR_TARGETS.get(key or "", key or "")),
+        )
+        self.help = EmTkHelpWindow(
+            title=tr("ebFRET — Help"), resource=SPECS / "help.md", owner=gui,
+            on_start_guide=self.start_guide,
+        )
+        self.actions_state = FormState(on_used=self.tour.notify_used)
+        gui.on_used = self.tour.notify_used
+        self.io = emtk.IO()
+        self.storage: dict[Any, Any] = {}
         #: The dialog is its own frame, drawn after the panels have flushed, so
         #: the dimming lies over them rather than under them -- and its own IO,
         #: so while it is open the panels receive no pointer at all.
-        self.dialog_io, self.dialog_storage = emtk.IO(), {}
+        self.dialog_io = emtk.IO()
+        self.dialog_storage: dict[Any, Any] = {}
         #: The table overlays are drawn after the panels, in their own frame; they
         #: share the panels' input, delivered to them when the pointer is over one.
-        self.table_io, self.table_storage = emtk.IO(), {}
+        self.table_io = emtk.IO()
+        self.table_storage: dict[Any, Any] = {}
         self.table_boxes: list[tuple] = []
         self._pressed_io: Any = None
         self._focus_io: Any = None
@@ -602,6 +646,27 @@ class App:
         self.box = (0.0, 0.0, 0.0, 0.0)
         self.panels: dict[str, tuple] = {}
 
+    @property
+    def item_rects(self) -> dict[str, tuple]:
+        """Return the real control rectangles shared with the guide."""
+        return self.gui.item_rects
+
+    def enabled(self, name: str) -> bool:
+        """Keep replacing the sample disabled during a running backend analysis."""
+        return name != "load_example" or not self.gui.status.get("running", False)
+
+    def load_example(self) -> None:
+        """Load the known donor/acceptor input without starting an analysis."""
+        self.gui.load_demo()
+
+    def start_guide(self) -> None:
+        """Start the native guide without acting on any highlighted control."""
+        self.tour.start()
+
+    def show_help(self) -> None:
+        """Open the shared method and workflow reference."""
+        self.help.show()
+
     # -- commands ---------------------------------------------------------- #
     def command(self, name: str) -> None:
         """Run a menu entry by its key."""
@@ -641,8 +706,8 @@ class App:
         dict
             Panel title -> ``(x, y, w, h)`` with ``y`` downwards.
         """
-        top = y + MENU_H
-        body_h = max(h - MENU_H, 200.0)
+        top = y + MENU_H + ACTIONS_H
+        body_h = max(h - MENU_H - ACTIONS_H, 200.0)
         hp, vp, bh = PAD / w, PAD / body_h, ROW_H / body_h
         boxes = {}
         for title, geometry in GEOMETRY.items():
@@ -664,6 +729,12 @@ class App:
 
         modal = self.modal()
         with emtk.frame(painter, (x, y, w, h), io=self.io, storage=self.storage):
+            self.actions_state.rects.clear()
+            im.begin("##example-actions", (x + 6, y + MENU_H, w - 12, ACTIONS_H),
+                     im.WindowFlags.NO_TITLE_BAR)
+            draw_form(self.actions_spec, self, self.actions_state, titles=False)
+            im.end()
+            g.item_rects.update(self.actions_state.rects)
             bodies = {
                 "Time Series": g.draw_time_series,
                 "Select Series": g.draw_select_series,
@@ -677,14 +748,17 @@ class App:
                 px, py, pw, ph = self.panels[title]
                 inner = (px + 6.0, py + 12.0, pw - 12.0, ph - 16.0)
                 im.begin(f"##panel-{title}", inner, im.WindowFlags.NO_TITLE_BAR)
-                im.begin_disabled(modal)
+                im.begin_disabled(modal or self.help.open)
                 body(inner[2] - 8.0, inner[3] - 8.0)
                 im.end_disabled()
                 im.end()
             # Inside the panels' frame, so a choice's list -- drawn over
             # that frame at its end (emtk.overlays) -- lies over the tables too.
-            self._draw_tables(painter, x, y, w, h, modal)
-        g.item_rects.update(g.form_state.rects)
+            self._draw_tables(painter, x, y, w, h, modal or self.help.open)
+            g.item_rects.update(g.form_state.rects)
+            self.help.draw((x, y, w, h))
+            if self.tour.active:
+                self.tour.draw(w, h)
         if modal:
             self._draw_dialog(painter, x, y, w, h)
         g.dialogs = [d for d in g.dialogs if not d.done]
@@ -769,7 +843,7 @@ class App:
         that is up takes it first: emtk.overlays)."""
         x, y, w, h = self.box
         clicks = extra[5] if len(extra) > 5 else 1
-        if not (holding(self.storage) or holding(self.dialog_storage)):
+        if not (self.help.open or holding(self.storage) or holding(self.dialog_storage)):
             result = self.menubar.press(px, py, x, y, w, MENU_H)
             if result.item is not None:
                 for name, item in self.items.items():
@@ -803,6 +877,12 @@ class App:
     def key(self, key: int, text: str = "", modifiers: int = 0) -> bool:
         """A key press: Escape closes the top popup/menu/dialog, the rest types."""
         listing = holding(self.storage) and not self.modal()
+        if key == keys.KEY_ESCAPE and self.tour.active:
+            self.tour.stop()
+            return True
+        if key == keys.KEY_ESCAPE and self.help.open:
+            self.help.open = False
+            return True
         if key == keys.KEY_ESCAPE and not listing:
             if any(m.open for m in self.menubar.menus):
                 self.menubar.close()

@@ -6607,3 +6607,14 @@ skip/retention/forced-exit workaround is added. A deterministic minimal owner
 reproduction is not yet established; the chiplot/Qt retirement owners must
 close this lifetime gate before programme completion. Keep original crash
 evidence, diagnose ownership, and do not infer a product fix from isolation.
+
+## Demo documentation validation: foreign source metadata drift (2026-10-08)
+
+The active demo unit's link checks pass. Its source-attribution guard sees1,617
+scalar entries in four unrelated foreign working-tree pages: factor_graphs,
+frap, us_alex and fundamentals/instrumentation. The corresponding committed
+HEAD has zero malformed entries; none is introduced by these21doccandidates.
+Do not absorb or overwrite those foreign edits to obtain a green local test.
+Re-derive with targeted test/test_docs_sources.py and the docs receipt in the
+[demo archive](../validation/release-readiness-w6g/demo-contracts-final-source.zip).
+Resolve with those pages' owner during W0/W14 integration.

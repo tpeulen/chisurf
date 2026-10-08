@@ -57,38 +57,11 @@ DEMO = {
 }
 
 
-def demo_path(directory: str | pathlib.Path | None = None) -> pathlib.Path:
-    """Return where the demo file lives.
+def demo_folder() -> pathlib.Path:
+    """Return the plugin-owned demonstration cache in the settings directory."""
+    from chisurf.core.settings.path_utils import get_path
 
-    Parameters
-    ----------
-    directory : str or pathlib.Path, optional
-        Folder to hold it. Defaults to ChiSurf's own settings directory, so the
-        demo survives between sessions and is not written into the user's data.
-
-    Returns
-    -------
-    pathlib.Path
-        The file path, whether or not it exists yet.
-    """
-    if directory is None:
-        base = None
-        try:
-            import chisurf.core.settings as settings_mod
-
-            base = getattr(settings_mod, "chisurf_settings_path", None)
-        except Exception:  # pragma: no cover - settings unavailable
-            base = None
-        # An absolute path is required, not merely a truthy one: a missing
-        # attribute used to leave this as ``Path("")``, whose ``str`` is ``"."``
-        # — so the demo was written *relative to the working directory* and a
-        # session started elsewhere could not find the file it had just made.
-        base = pathlib.Path(base) if base else pathlib.Path.home() / ".chisurf"
-        if not base.is_absolute():
-            base = pathlib.Path.home() / ".chisurf"
-        directory = base / "demo"
-    directory = pathlib.Path(directory)
-    return directory / "flow_demo_poiseuille.ptu"
+    return get_path("settings") / "demos" / "img_flow"
 
 
 def expected_profile(
@@ -122,32 +95,33 @@ def expected_profile(
     return v_max * np.clip(1.0 - (offset / radius) ** 2, 0.0, None)
 
 
-def create_demo(
-    path: str | pathlib.Path | None = None,
+def make_demo(
+    folder: str | pathlib.Path | None = None,
     *,
     overwrite: bool = False,
     progress: Callable[[float, str], None] | None = None,
+    filename: str = "flow_demo_poiseuille.ptu",
     **overrides: Any,
-) -> dict[str, Any]:
+) -> pathlib.Path:
     """Simulate the demo scan and write it as a PTU file.
 
     Parameters
     ----------
-    path : str or pathlib.Path, optional
-        Where to write it; defaults to :func:`demo_path`.
+    folder : str or pathlib.Path, optional
+        Cache directory; defaults to :func:`demo_folder`.
     overwrite : bool
         Regenerate even when the file is already there.
     progress : callable, optional
         Called as ``progress(fraction, text)`` while frames are scanned.
+    filename : str
+        Primary file name, also used by the CLI explicit-output adapter.
     **overrides
         Any key of :data:`DEMO`, to make a bigger, faster or slower demo.
 
     Returns
     -------
-    dict
-        ``path``, ``created`` (whether it was generated now) and the ground
-        truth: the settings, the timing the tool should be given, and the peak
-        velocity to compare against.
+    pathlib.Path
+        Primary PTU path. Its JSON sidecar declares settings, timing and truth.
 
     Raises
     ------
@@ -160,11 +134,14 @@ def create_demo(
         raise RuntimeError("this tttrlib build has no photon simulator, so the demo cannot be made")
 
     cfg = {**DEMO, **{k: v for k, v in overrides.items() if k in DEMO}}
-    target = pathlib.Path(path) if path is not None else demo_path()
+    target = pathlib.Path(folder) if folder is not None else demo_folder()
+    if pathlib.Path(filename).name != filename:
+        raise ValueError("filename must be a file name within the demo folder")
+    target = target / filename
     truth = _truth(cfg, target)
     if not overwrite and _cache_is_good(target, cfg):
-        truth["created"] = False
-        return truth
+        _write_sidecar(target, cfg, truth)
+        return target
 
     target.parent.mkdir(parents=True, exist_ok=True)
     n_pixel = int(cfg["n_pixel"])
@@ -254,23 +231,50 @@ def create_demo(
         ("ChiSurf_DemoFrames", n_frames),
     ):
         header.set_tag(name, int(value), _TY_INT8)
-    if not tttr.write(str(target), "PTU"):
-        raise RuntimeError(f"could not write the demo photon stream to {target}")
+    # The PTU writer refuses existing files. Write a complete replacement before
+    # replacing our cache, so overwrite and changed settings actually take effect.
+    import tempfile
+
+    with tempfile.TemporaryDirectory(prefix="flow-demo-", dir=target.parent) as staging:
+        replacement = pathlib.Path(staging) / target.name
+        if not tttr.write(str(replacement), "PTU"):
+            raise RuntimeError(f"could not write the demo photon stream to {target}")
+        replacement.replace(target)
     # Only now, with the file complete on disk, record what it was made with —
     # so an interrupted run leaves a file with no sidecar, which is treated as
     # absent rather than reused.
-    import json
-
-    target.with_suffix(".json").write_text(
-        json.dumps({"fingerprint": _fingerprint(cfg), **truth["truth"]}, indent=2),
-        encoding="utf-8",
-    )
-
-    truth["created"] = True
-    truth["n_events"] = int(len(tttr))
+    _write_sidecar(target, cfg, truth)
     if progress is not None:
         progress(1.0, f"Wrote {target.name}")
-    return truth
+    return target
+
+
+def _write_sidecar(target: pathlib.Path, cfg: dict[str, Any], truth: dict[str, Any]) -> None:
+    """Record the declared clock, truth and completed primary-file identity."""
+    import hashlib
+    import json
+
+    payload = {
+        "fingerprint": _fingerprint(cfg),
+        "sha256": hashlib.sha256(target.read_bytes()).hexdigest(),
+        **truth["truth"],
+        "settings": dict(cfg),
+        "timing": truth["timing"],
+        "truth": truth["truth"],
+    }
+    sidecar = target.with_suffix(".json")
+    content = json.dumps(payload, indent=2)
+    if not sidecar.is_file() or sidecar.read_text(encoding="utf-8") != content:
+        sidecar.write_text(content, encoding="utf-8")
+
+
+def demo_info(path: str | pathlib.Path) -> dict[str, Any]:
+    """Read the generated scan's timing and truth from its declared sidecar."""
+    import json
+
+    target = pathlib.Path(path)
+    stored = json.loads(target.with_suffix(".json").read_text(encoding="utf-8"))
+    return {"path": str(target), **{key: stored[key] for key in ("settings", "timing", "truth")}}
 
 
 def _fingerprint(cfg: dict[str, Any]) -> str:
@@ -313,7 +317,13 @@ def _cache_is_good(target: pathlib.Path, cfg: dict[str, Any]) -> bool:
         stored = json.loads(sidecar.read_text(encoding="utf-8"))
     except Exception:
         return False
-    return str(stored.get("fingerprint", "")) == _fingerprint(cfg)
+    import hashlib
+
+    checksum = stored.get("sha256")
+    return (
+        str(stored.get("fingerprint", "")) == _fingerprint(cfg)
+        and (checksum is None or checksum == hashlib.sha256(target.read_bytes()).hexdigest())
+    )
 
 
 def _truth(cfg: dict[str, Any], target: pathlib.Path) -> dict[str, Any]:

@@ -142,6 +142,15 @@ $10^{-10}$ relative; the fixture and its generator live in `test/data/nb/`.
 - {cite}`dalal2008` — analog detectors and the gradient calibration of $S$ and the offset.
 - {cite}`schrimpf2018` — PAM, the reference implementation compared against.
 
+## Synthetic workflow check
+
+The [N&B workflow](../guides/67_number_and_brightness.md) provides a known
+monomer/dimer field through `make_demo()`, returning its primary PTU. Parameters
+are recorded in JSON under settings-owned `demos/img_pixel_nb`; a valid cache
+is reused and `overwrite=True` regenerates it. The tour waits for the real Demo
+click, which loads and analyzes the generated scan. The declared brightness and
+number are simulator inputs; the maps and gates are estimates from its photons.
+
 ## See also
 
 - {ref}`concept-pch-fida` — the full photon-counting histogram, of which N&B uses the first two moments.

@@ -122,7 +122,7 @@ class HistogramFields:
     def enabled(self, name):
         app = self._app
         model = app.model
-        if name == "demo":
+        if name == "load_example":
             return not app.job.running and app.editor._future is None
         if name in ("compute",):
             return bool(model.selected_files()) and not app.job.running
@@ -257,9 +257,9 @@ class HistogramApp(TourTarget, ImApp):
             self.model.message = f"{len(self.model.bid_files)} burst selection(s) queued."
             self.find_sources()
 
-    def demo(self):
+    def load_example(self):
         """Queue a known synthetic PTU without changing saved setups or starting analysis."""
-        if not self.fields.enabled("demo"):
+        if not self.fields.enabled("load_example"):
             return False
         from ..demo import SETUP, demo_folder, make_demo
 

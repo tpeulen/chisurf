@@ -153,6 +153,14 @@ efficiency. They are recomputed on the fused folder instead.
 * {doc}`Burst variance analysis <bva>` and {doc}`2CDE <burst_2cde>` — steps that
   read the folder fusion produces.
 
+## Synthetic workflow check
+
+The [fusion workflow](../guides/58_burst_fusion.md) generates a known
+300-molecule example through `make_demo()`, returning the searched burst-analysis
+folder. `read_demo(folder)` reads the source, search settings and truth sidecar.
+The cache lives under settings-owned `demos/burst_fusion`; its known molecule
+count is synthetic ground truth, distinct from fusion estimates.
+
 ## See also
 
 - Tools in ChiSurf: **Burst Fusion** (`chisurf/plugins/burst/burst_fusion/`) estimates the same-molecule probability and writes the fused folder.

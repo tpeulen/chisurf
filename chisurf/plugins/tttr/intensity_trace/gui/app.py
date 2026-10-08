@@ -69,7 +69,7 @@ class _Form:
         app, m = self._app, self._app.model
         if name == "request_cancel":
             return app.busy and app._cancellable and not app._cancel_event.is_set()
-        if name in ("request_help", "request_guide", "request_load", "request_example"):
+        if name in ("request_help", "request_guide", "request_load", "load_example"):
             return not app.busy
         if name in ("request_matrix", "request_dwell", "request_fret"):
             return m.states is not None and not (name == "request_fret" and m.fret is None)
@@ -92,7 +92,8 @@ class _Form:
     def request_load(self):
         self._app.ask("Open TTTR File", "open", TTTR_FILTER, lambda p: self._app.open_file(p[0]))
 
-    def request_example(self):
+    def load_example(self):
+        """Open the known switching sample with two states and 2 ms bins."""
         from ..demo import demo_folder, make_demo
 
         self._app.model.window_ms = 2.0

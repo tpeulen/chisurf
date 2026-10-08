@@ -15,13 +15,13 @@ def test_demo_click_writes_real_ptu_and_compute_recovers_declared_counts(tmp_pat
     driver = Driver(app, (1280, 900))
     try:
         driver.frame(3)
-        assert "demo" in driver.ids()
-        driver.click("demo")
+        assert "load_example" in driver.ids()
+        driver.click("load_example")
         assert not app.job.running
         assert app.model.cumulative_ps is None
         assert "Synthetic" in app.model.message
         source = app.model.selected_files()[0]
-        assert source.is_relative_to(tmp_path / "cache")
+        assert source.is_relative_to(tmp_path / "demos")
         stream = tttrlib.TTTR(str(source), "PTU")
         assert len(stream.micro_times) == 4500
         assert stream.header.micro_time_resolution == 32e-12
@@ -44,7 +44,7 @@ def test_demo_click_writes_real_ptu_and_compute_recovers_declared_counts(tmp_pat
         assert model.fwhm_bins == 4
         assert model.fwhm_ns == 0.128
         assert model.cumulative_ps.sum() == 4500
-        driver.click("demo")
+        driver.click("load_example")
         assert source.read_bytes() == original_bytes
         assert source.stat().st_mtime_ns == original_mtime
     finally:
@@ -61,7 +61,7 @@ def test_demo_guide_waits_for_the_real_button(tmp_path, monkeypatch):
 
     monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path))
     steps = json.loads((HERE / "guide.json").read_text())["steps"]
-    demo_step = next(step for step in steps if step.get("target", {}).get("name") == "demo")
+    demo_step = next(step for step in steps if step.get("target", {}).get("name") == "load_example")
     assert demo_step.get("await")
     app = create_app()
     driver = Driver(app, (1280, 900))
@@ -74,7 +74,7 @@ def test_demo_guide_waits_for_the_real_button(tmp_path, monkeypatch):
         app.tour.start(index)
         driver.frame(3)
         assert app.tour.awaiting
-        driver.click("demo")
+        driver.click("load_example")
         assert app.model.files
         assert not app.tour.awaiting
         assert not app.job.running

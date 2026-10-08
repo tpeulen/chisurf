@@ -6,7 +6,7 @@
      "target": {}},
     {"title": "Generate known demonstration photons",
      "text": "Without your own data, generate a clearly synthetic PTU in the settings cache. It contains exactly 3000 VV and 1500 VH photons; the 32 ps header resolution gives a four-channel FWHM of 0.128 ns. The button replaces queued inputs and selects the demonstration setup. It does not start computation or change saved setups.",
-     "target": {"name": "demo"},
+     "target": {"name": "load_example"},
      "await": {"hint": "Press <b>Generate synthetic demo</b>."}},
     {"title": "Queue photon files",
      "text": "The demonstration file is already queued. For your own measurements, add files, a folder or datasets from the database, or drop them on the window. Untick a file to leave it out; Burst selections (BID/BUR) restrict the photons to bursts.",

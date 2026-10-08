@@ -6,7 +6,7 @@
      "target": {}},
     {"title": "Start with data whose answer you know",
      "text": "<b>Example</b> loads a simulated molecule that switches between two FRET states (visits of 20 and 80 ms) on two detectors. Two levels must be visible, anti-correlated between the detectors.",
-     "target": {"name": "request_example"}, "await": {"hint": "Press <b>Example</b>."}},
+     "target": {"name": "load_example"}, "await": {"hint": "Press <b>Example</b>."}},
     {"title": "The time window decides what you can resolve",
      "text": "Short bins resolve fast switching but carry few photons each; long bins average short visits away. The file is binned again when you change it.",
      "target": {"attr": "window_ms"}},

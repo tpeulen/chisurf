@@ -257,12 +257,12 @@ class MleViewModel:
         self.status_text = "Add burst (.bur) files to begin."
         self.notify("files")
 
-    def load_demo(self) -> None:
+    def load_example(self) -> None:
         """Replace working inputs with generated synthetic bursts; leave fitting to the user."""
-        from ..demo import SETUP, demo_folder, make_demo
+        from ..demo import SETUP, make_demo
 
         self._ensure_editable()
-        path = make_demo(demo_folder())
+        path = make_demo()
         self.session = engine.MleSession(template=engine.MleSettings(gamma=0., r0=0.))
         self.session.set_definition(SETUP)
         self.session.add_burst_files([path])
@@ -276,7 +276,7 @@ class MleViewModel:
 
     def enabled(self, name: str) -> bool:
         """Demo input replacement is unavailable during an immutable snapshot job."""
-        return not self._snapshot_running.is_set() if name == "load_demo" else True
+        return not self._snapshot_running.is_set() if name == "load_example" else True
 
     def select_file(self, record) -> None:
         """A row of the file table was selected: show that file's decay."""

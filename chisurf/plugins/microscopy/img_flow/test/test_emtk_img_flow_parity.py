@@ -1,10 +1,3 @@
-"""The native flow-map tool against the Qt tool it replaces: numbers, the demo workflow, every action and every error path.
-
-Hermetic: settings in a temporary folder, files and the demo in a temporary folder (``demo_path`` is redirected), no network (the database picker
-gets a stub client). References: (a) what the Qt window showed on a drifting TIFF with a known speed
-(``okf/plugins/emtk-ports/img_flow/qt_values.json``, captured by ``scripts/capture_qt_populated.py`` before the port), (b) the Qt tool itself,
-constructed offscreen and run on the same files, and (c) the plugin's own estimator called without the view model, and the speed written into the stack.
-"""
 
 from __future__ import annotations
 
@@ -39,6 +32,16 @@ TIMING = _data.TIMING
 BASE = dict(tile=16, n_lags=4, min_quality=0.5, step=0, method="stics", distance=4, subtract_average="frame", arrow_scale=1.0, **TIMING)
 
 
+"""The native flow-map tool against the Qt tool it replaces: numbers, the demo workflow, every action and every error path.
+
+Hermetic: settings in a temporary folder, files and the demo in a temporary folder (``demo_folder`` is redirected), no network (the database picker
+gets a stub client). References: (a) what the Qt window showed on a drifting TIFF with a known speed
+(``okf/plugins/emtk-ports/img_flow/qt_values.json``, captured by ``scripts/capture_qt_populated.py`` before the port), (b) the Qt tool itself,
+constructed offscreen and run on the same files, and (c) the plugin's own estimator called without the view model, and the speed written into the stack.
+"""
+
+
+
 def have_simulator() -> bool:
     try:
         import tttrlib
@@ -57,15 +60,14 @@ def hermetic(tmp_path, monkeypatch):
 
 @pytest.fixture(scope="module")
 def demo_file(tmp_path_factory):
-    """The demo photon stream, simulated once (about 20 s); ``demo_path`` is redirected to it so ``Load demo`` reuses it."""
-    path = tmp_path_factory.mktemp("demo") / "flow_demo_poiseuille.ptu"
-    demo.create_demo(path)
+    """The demo photon stream, simulated once (about 20 s); ``demo_folder`` is redirected to it so ``Load demo`` reuses it."""
+    path = demo.make_demo(tmp_path_factory.mktemp("demo"))
     return path
 
 
 @pytest.fixture
 def with_demo(demo_file, monkeypatch):
-    monkeypatch.setattr(demo, "demo_path", lambda directory=None: demo_file)
+    monkeypatch.setattr(demo, "demo_folder", lambda: demo_file.parent)
     return demo_file
 
 
@@ -244,13 +246,24 @@ def test_the_qt_tool_and_the_emtk_app_agree_on_every_result(app, drv, qt_tool, f
 def test_the_demo_is_loaded_and_mapped_as_the_qt_tool_does(app, drv, qt_tool, with_demo):
     from chisurf.plugins.microscopy.img_flow.gui.view_model import FlowViewModel
 
-    drv.click("demo")
+    drv.click("load_example")
     drv.settle(timeout=300)
     m = app.model
     qt = qt_tool.model
     fresh = FlowViewModel()
-    for k in ("method", "tile", "step", "n_lags", "distance", "subtract_average", "min_quality", "arrow_scale"):
-        setattr(qt, k, getattr(fresh, k))  # the Qt tool is shared by the module: start from the defaults the new app has
+    for k in (
+        "method",
+        "tile",
+        "step",
+        "n_lags",
+        "distance",
+        "subtract_average",
+        "min_quality",
+        "arrow_scale",
+    ):
+        setattr(
+            qt, k, getattr(fresh, k)
+        )  # the Qt tool is shared by the module: start from the defaults the new app has
     qt.load_demo()
     assert m.status_line == qt.status and "frames of 64x64, 1 channel(s). Ready." in m.status_line
     assert Path(m.filename) == with_demo == Path(qt.filename)
@@ -266,15 +279,17 @@ def test_the_demo_is_loaded_and_mapped_as_the_qt_tool_does(app, drv, qt_tool, wi
 
 
 @needs_simulator
-@pytest.mark.xfail(strict=True, reason="tttrlib 0.27.0 reads the simulated demo PTU back as an all-zero stack, so Map flow ends in 'No arrows' "
-                   "(the plugin's own test_the_demo_is_a_readable_ptu_whose_flow_comes_back fails the same way); see REPORT.md section 10")
 def test_the_demo_gives_arrows_along_plus_x_with_a_parabolic_profile(app, drv, with_demo):
-    drv.click("demo")
+    drv.click("load_example")
     drv.settle(timeout=300)
     drv.click("map_flow")
     drv.settle()
     summary = app.model.result.summary(0.5)
-    assert app.model.result.n_escaped == 0 and summary["n_kept"] >= 0.8 * summary["n_tiles"] and summary["mean_vx"] > 0
+    assert (
+        app.model.result.n_escaped == 0
+        and summary["n_kept"] >= 0.8 * summary["n_tiles"]
+        and summary["mean_vx"] > 0
+    )
 
 
 @pytest.mark.parametrize("attr", ["tile", "n_lags", "distance", "min_quality", "pixel_duration_us", "frame_duration_ms", "line_duration_ms",
@@ -502,9 +517,9 @@ def test_a_worker_that_raises_is_reported_not_swallowed(app, drv, flow_tif, monk
 
 @needs_simulator
 def test_a_demo_that_cannot_be_made_is_reported(app, drv, monkeypatch, tmp_path):
-    monkeypatch.setattr(demo, "demo_path", lambda directory=None: tmp_path / "blocked" / "x.ptu")
+    monkeypatch.setattr(demo, "demo_folder", lambda: tmp_path / "blocked")
     (tmp_path / "blocked").write_text("a file where the folder should be")
-    drv.click("demo")
+    drv.click("load_example")
     drv.settle(timeout=120)
     assert app.model.status_line.startswith("Could not make the demo:") and app.model.filename == ""
 
@@ -663,13 +678,17 @@ def test_the_profile_shows_speed_and_vx_and_the_demo_truth_only_for_the_demo(app
 
 
 @needs_simulator
-def test_the_demo_adds_its_simulated_truth_to_the_profile_even_when_no_arrow_survives(app, drv, with_demo):
-    drv.click("demo")
+def test_the_demo_adds_its_simulated_truth_to_the_profile_even_when_no_arrow_survives(
+    app, drv, with_demo
+):
+    drv.click("load_example")
     drv.settle(timeout=300)
     drv.click("map_flow")
     drv.settle()
     drv.click_text("Profile")
-    assert "simulated truth" in drv.draw(3).strings and "simulated truth" in [s["name"] for s in app.model.profile_series()]
+    assert "simulated truth" in drv.draw(3).strings and "simulated truth" in [
+        s["name"] for s in app.model.profile_series()
+    ]
 
 
 def test_a_drag_pans_the_flow_field_and_the_profile_and_a_new_result_refits_it(app, drv, flow_tif):
@@ -768,7 +787,9 @@ def test_guide_button_starts_the_tour_and_close_tour_ends_it(app):
 
 
 @needs_simulator
-def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(app, with_demo):
+def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(
+    app, with_demo
+):
     """The guided tour keeps the demo workflow: Load demo, then Map flow, each pressed by the user."""
     drv = Driver(app, BIG)
     drv.click("guide")
@@ -779,16 +800,25 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_
         step = app.tour.steps[app.tour.step_idx]
         target = step.get("target") or {}
         if app.tour.awaiting:
-            if target.get("name") == "demo":
-                drv.click("demo")
+            if target.get("name") == "load_example":
+                drv.click("load_example")
                 drv.settle(timeout=300)
             elif target.get("name") == "computed":
                 drv.click("map_flow")
                 drv.settle()
             drv.draw(2)
-            assert not app.tour.awaiting, f"{step['title']}: operating the control did not release the step"
-        drv.click_text("Finish ✓" if app.tour.step_idx == len(app.tour.steps) - 1 else "Next ►", last=True)
-    assert not app.tour.active and app.model.result is not None and "frames of 64x64" in app.model.status or app.model.result is not None
+            assert not app.tour.awaiting, (
+                f"{step['title']}: operating the control did not release the step"
+            )
+        drv.click_text(
+            "Finish ✓" if app.tour.step_idx == len(app.tour.steps) - 1 else "Next ►", last=True
+        )
+    assert (
+        not app.tour.active
+        and app.model.result is not None
+        and "frames of 64x64" in app.model.status
+        or app.model.result is not None
+    )
 
 
 def test_every_guide_target_is_a_drawn_control_or_window(app, drv, flow_tif):
@@ -809,7 +839,17 @@ def test_every_guide_target_is_a_drawn_control_or_window(app, drv, flow_tif):
         assert rect and rect[2] > 0 and rect[3] > 0, f"{step['title']}: nothing drawn for {key!r}"
         seen.add(key)
     app.tour.stop()
-    assert {"demo", "filename", "Scanner.fold", "tile", "n_lags", "computed", "Flow field", "Profile", "min_quality"} <= seen
+    assert {
+        "load_example",
+        "filename",
+        "Scanner.fold",
+        "tile",
+        "n_lags",
+        "computed",
+        "Flow field",
+        "Profile",
+        "min_quality",
+    } <= seen
 
 
 def test_a_file_chosen_in_the_dialog_does_not_release_the_demo_step_but_the_demo_does(app, flow_tif):

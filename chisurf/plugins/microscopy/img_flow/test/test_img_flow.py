@@ -24,7 +24,8 @@ import chisurf.plugins.microscopy.img_flow
 from chisurf.plugins.microscopy.img_flow import core
 from chisurf.plugins.microscopy.img_flow.api import flow as flow_api
 from chisurf.plugins.microscopy.img_flow.client import FlowClient
-from chisurf.plugins.microscopy.img_flow.demo import DEMO, create_demo, expected_profile
+from chisurf.plugins.microscopy.img_flow.demo import DEMO, expected_profile
+from chisurf.plugins.microscopy.img_flow.api.flow import create_demo
 
 pytestmark = pytest.mark.filterwarnings("ignore::RuntimeWarning")
 
@@ -182,7 +183,7 @@ def test_the_demo_is_a_readable_ptu_whose_flow_comes_back(tmp_path):
     """
     from chisurf.core.fluorescence.imaging import load_image_stack
 
-    result = create_demo(tmp_path / "demo.ptu", n_frames=30)
+    result = create_demo(path=tmp_path / "demo.ptu", n_frames=30)
     assert result["created"] is True
     path = pathlib.Path(result["path"])
     assert path.is_file() and path.stat().st_size > 100_000
@@ -198,9 +199,9 @@ def test_the_demo_is_a_readable_ptu_whose_flow_comes_back(tmp_path):
     # twice -- but asking for different settings regenerates, because a cached
     # file made with another flow is not the demo that was requested and would
     # quietly produce a map that does not match what the tool says it is showing.
-    again = create_demo(tmp_path / "demo.ptu", n_frames=30)
+    again = create_demo(path=tmp_path / "demo.ptu", n_frames=30)
     assert again["created"] is False
-    changed = create_demo(tmp_path / "demo.ptu", n_frames=10)
+    changed = create_demo(path=tmp_path / "demo.ptu", n_frames=10)
     assert changed["created"] is True
 
     analysis = core.analyse_file(
@@ -228,7 +229,7 @@ def test_the_demo_is_a_readable_ptu_whose_flow_comes_back(tmp_path):
 @pytest.mark.slow
 def test_the_demo_reports_its_own_ground_truth(tmp_path):
     """The descriptor carries what the tool has to be checked against."""
-    result = create_demo(tmp_path / "demo.ptu", n_frames=10)
+    result = create_demo(path=tmp_path / "demo.ptu", n_frames=10)
     truth, timing = result["truth"], result["timing"]
     assert truth["profile"] == "poiseuille" and truth["axis"] == "x"
     assert truth["v_max_um_s"] == DEMO["v_max"]

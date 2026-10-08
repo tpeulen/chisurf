@@ -183,6 +183,14 @@ $f \in \{0, 0.25, 0.5, 0.75, 1\}$.
 - {cite}`page1957`, {cite}`watkins2005`, {cite}`ensign2010` — change-point
   detection, classical and photon-by-photon.
 
+## Synthetic workflow check
+
+The [intensity workflow](../guides/74_intensity_traces_and_file_tools.md)
+provides a seeded two-state photon demo through `make_demo()`. The primary SPC
+and JSON settings are cached under `demos/intensity_trace` in the settings
+folder. Generator mean dwells of 20 / 80 ms and fitted demonstration dwells
+of 22.0 / 87.2 ms are distinct quantities; the latter are finite-sample estimates.
+
 ## Cooperative fitting cancellation
 
 HMM estimation and BIC state-count scans may be stopped between EM maps.

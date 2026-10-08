@@ -88,7 +88,7 @@ def test_data_step_load_demo_button(tmp_path, monkeypatch):
     app = AlexDataSelectionApp()
     drv = Driver(app, (1200, 800))
     drv.draw(2)
-    drv.click(app.item_rects["demo"])
+    drv.click(app.item_rects["load_example"])
     assert [p.name for p in app.model.paths()] == ["alex_demo.spc"]
     drv.draw(2)
     assert app.item_rects.get("proceed")

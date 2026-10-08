@@ -29,7 +29,7 @@ the menu bar.
 :name: fig-spot-finder-hub
 :width: 100%
 
-The Spot Finder with its built-in known-field demo detected (Load demo, then
+The Spot Finder with its built-in known-field demo detected (Load example, then
 Detect): the left window holds the files, workflow, detector settings and the
 action buttons; **Regions** shows what was found (the image with the region
 outlines, a region list and the analysis-region editing); the lower window has
@@ -67,7 +67,7 @@ search, and the Otsu level is then computed from those pixels only.
 
 **Preview** detects in the first file and writes nothing. **Detect** runs
 every file and writes each result into its own container. **Export** writes
-the combined region table to TSV/CSV. **Load demo** simulates a PTU with four
+the combined region table to TSV/CSV. **Load example** simulates a PTU with four
 objects of known lifetimes.
 
 ## 3. A real image
@@ -196,6 +196,21 @@ result.write(path, name="puncta")   # label raster + region table, into the cont
 
 Over RPC: `spot_finder.detect.run` with `files`, `workflow` and `settings`
 overrides (an unknown key is refused).
+
+The same known field can be generated from Python:
+
+```python
+from chisurf.plugins.microscopy.spot_finder.demo import IRF_FILENAME, make_demo
+
+sample = make_demo()
+irf = sample.parent / IRF_FILENAME
+# make_demo(overwrite=True) regenerates the sample and matching IRF.
+```
+
+The primary sample, matching IRF and JSON parameters live in
+`demos/spot_finder` under the ChiSurf settings folder. **Guide** waits for your
+**Load example** click and a separate **Detect** action; generation does not
+detect regions. The four input spots are synthetic references for the workflow.
 
 ## Using it well
 

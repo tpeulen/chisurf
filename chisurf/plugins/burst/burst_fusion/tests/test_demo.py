@@ -20,9 +20,10 @@ from chisurf.plugins.burst.burst_fusion.api.models import FusionSettings
 from chisurf.plugins.burst.burst_fusion.core.fusion import analyze, read_measurements
 from chisurf.plugins.burst.burst_fusion.demo import (
     DEMO,
-    create_demo,
+    make_demo,
+    read_demo,
     demo_detectors,
-    demo_directory,
+    demo_folder,
     describe,
 )
 
@@ -30,7 +31,7 @@ from chisurf.plugins.burst.burst_fusion.demo import (
 @pytest.fixture(scope="module")
 def demo(tmp_path_factory):
     """Build the demo once; it is deterministic, so the module can share it."""
-    return create_demo(directory=tmp_path_factory.mktemp("burst_fusion_demo"))
+    return read_demo(make_demo(tmp_path_factory.mktemp("burst_fusion_demo")))
 
 
 def test_demo_writes_a_real_measurement_and_a_real_burst_folder(demo):
@@ -93,7 +94,7 @@ def test_the_gaps_are_inside_the_default_ceiling(demo):
 
 def test_the_demo_is_cached_not_rebuilt(demo, tmp_path):
     """The second press of the button must be instant, and the same folder."""
-    again = create_demo(directory=pathlib.Path(demo["source"]).parent)
+    again = read_demo(make_demo(pathlib.Path(demo["source"]).parent))
     assert again["folder"] == demo["folder"]
     assert again["bursts"] == demo["bursts"]
 
@@ -118,9 +119,9 @@ def test_describe_states_the_truth_next_to_the_result(demo):
     assert str(demo["bursts"]) in text
 
 
-def test_demo_directory_is_absolute_even_without_settings(monkeypatch):
+def test_demo_folder_is_absolute_even_without_settings(monkeypatch):
     """A relative default would write the demo into the working directory."""
     import chisurf.core.settings as settings_mod
 
     monkeypatch.setattr(settings_mod, "chisurf_settings_path", "", raising=False)
-    assert demo_directory().is_absolute()
+    assert demo_folder().is_absolute()

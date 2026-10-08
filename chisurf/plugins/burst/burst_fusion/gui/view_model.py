@@ -200,9 +200,9 @@ class FusionViewModel:
         str
             The demo's burst-analysis folder.
         """
-        from ..demo import create_demo, demo_detectors
+        from ..demo import demo_detectors, make_demo, read_demo
 
-        result = create_demo(progress=progress)
+        result = read_demo(make_demo(progress=progress))
         self._demo = result
         # The demo folder carries its own reading manifest, so these are only a
         # fallback — set anyway, so the step still works if a folder ever arrives
