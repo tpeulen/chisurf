@@ -32,19 +32,35 @@ TOUR_KEYS = {
 }
 
 
+
+from emtk.i18n import tr
+
+
+from chisurf.plugins.emtk_layout import window_size
+
+
 class ConfocalApp(ImApp):
     def __init__(self, model=None):
         self.model = model or ConfocalModel()
         self.spec = json.loads((HERE / "fcs_calculator_emtk.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(self.spec, (640, 480))
         self.item_rects = {}
         self.dialog = None
         self.dialog_window = None
         self.form = FormState()
         self.form.custom["confocal_json"] = self.draw_json
-        self.help_window = EmTkHelpWindow(title="FCS confocal calculator — help", resource=PLUGIN / "help.md",
-                                          owner=self, on_start_guide=self.start_guide)
-        self.tour = EmTkGuidedTour(steps=PLUGIN / "guide.json", get_target_rect=self.target_rect, owner=self,
-                                   wait_for_controls=True)
+        self.help_window = EmTkHelpWindow(
+            title=tr("FCS confocal calculator — help"),
+            resource=PLUGIN / "help.md",
+            owner=self,
+            on_start_guide=self.start_guide,
+        )
+        self.tour = EmTkGuidedTour(
+            steps=PLUGIN / "guide.json",
+            get_target_rect=self.target_rect,
+            owner=self,
+            wait_for_controls=True,
+        )
         self.form.on_used = self.tour.notify_used
         super().__init__(self.render, continuous=False)
 
@@ -66,8 +82,11 @@ class ConfocalApp(ImApp):
         self.model.shape_type = ("Sphere", "Ellipsoid", "Cylinder")[int(index)]
 
     def edited(self, attr):
-        {"conc_nM": self.model.conc_edited, "num_mols": self.model.N_edited,
-         "invN": self.model.invN_edited}.get(attr, self.model.recompute)()
+        {
+            "conc_nM": self.model.conc_edited,
+            "num_mols": self.model.N_edited,
+            "invN": self.model.invN_edited,
+        }.get(attr, self.model.recompute)()
 
     def apply_dye(self):
         return self.model.apply_dye()
@@ -83,9 +102,13 @@ class ConfocalApp(ImApp):
         self.tour.start()
 
     def choose_file(self, save):
-        title = "Save FCS Calculator Settings" if save else "Load FCS Calculator Settings"
-        self.dialog = FileDialog(title, mode="save" if save else "open",
-                                 filename="fcs_calculator.json" if save else "", filters=JSON_FILTERS)
+        title = tr("Save FCS Calculator Settings") if save else tr("Load FCS Calculator Settings")
+        self.dialog = FileDialog(
+            title,
+            mode="save" if save else "open",
+            filename="fcs_calculator.json" if save else "",
+            filters=tr(JSON_FILTERS),
+        )
         self.dialog_window = DialogWindow(title, size=(720, 520))
 
     def file_chosen(self, path):
@@ -95,7 +118,9 @@ class ConfocalApp(ImApp):
         try:
             (self.model.export_json if save else self.model.import_json)(path)
         except Exception as exc:  # noqa: BLE001 - shown to the user
-            self.model.error = f"{'Saving' if save else 'Loading'} {Path(path).name} failed: {exc}"
+            self.model.error = tr("{action} {name} failed: {error}").format(
+                action=tr("Saving") if save else tr("Loading"), name=Path(path).name, error=exc
+            )
 
     def files_dropped(self, paths):
         """A dropped .json file is imported, as Import JSON does."""
@@ -105,7 +130,7 @@ class ConfocalApp(ImApp):
         try:
             self.model.import_json(path)
         except Exception as exc:  # noqa: BLE001
-            self.model.error = f"Loading {Path(path).name} failed: {exc}"
+            self.model.error = tr("Loading {name} failed: {error}").format(name=Path(path).name, error=exc)
         return True
 
     def close(self):
@@ -115,32 +140,57 @@ class ConfocalApp(ImApp):
 
     # -- drawing -----------------------------------------------------------------------
     def draw_json(self, section, model, state, width):
-        for index, (label, save, tip) in enumerate((
-            ("Export JSON", True, "Save every value, the constraint, the reference and the shape to a JSON file."),
-            ("Import JSON", False, "Load calculator settings from a JSON file (unknown entries are ignored)."),
-        )):
+        for index, (label, save, tip) in enumerate(
+            (
+                (
+                    "Export JSON",
+                    True,
+                    "Save every value, the constraint, the reference and the shape to a JSON file.",
+                ),
+                (
+                    "Import JSON",
+                    False,
+                    "Load calculator settings from a JSON file (unknown entries are ignored).",
+                ),
+            )
+        ):
             if index:
                 im.same_line()
             # One id per button: two labels sharing "##confocal_json" are one ImGui id, and the
             # second button never fires.
-            if im.button(f"{label}##confocal_json_{'export' if save else 'import'}"):
+            if im.button(f"{tr(label)}##confocal_json_{'export' if save else 'import'}"):
                 self.choose_file(save)
-            im.set_item_tooltip(tip)
+            im.set_item_tooltip(tr(tip))
             state.rects["export_json" if save else "import_json"] = tuple(im.get_item_rect())
 
     def toolbar(self, width):
-        labels = (("📖 Guide", self.start_guide, "Walk through the relations, the constraint and the calibration.",
-                   "guide"),
-                  ("❓ Help", self.help_window.show, "What each quantity means, the formulas and their assumptions.",
-                   "help"))
-        widths = [im.calc_text_size(label)[0] + 2 * im.get_style().frame_padding[0] for label, *_ in labels]
+        labels = (
+            (
+                "📖 Guide",
+                self.start_guide,
+                "Walk through the relations, the constraint and the calibration.",
+                "guide",
+            ),
+            (
+                "❓ Help",
+                self.help_window.show,
+                "What each quantity means, the formulas and their assumptions.",
+                "help",
+            ),
+        )
+        widths = [
+            im.calc_text_size(tr(label))[0] + 2 * im.get_style().frame_padding[0]
+            for label, *_ in labels
+        ]
         spacing = im.get_style().item_spacing[0]
-        im.dummy(max(1.0, width - sum(widths) - 2 * spacing), 1.0)    # right-aligned, as the Qt toolbar
+        im.dummy(
+            max(1.0, width - sum(widths) - 2 * spacing), 1.0
+        )  # right-aligned, as the Qt toolbar
         for label, action, tip, key in labels:
             im.same_line()
-            if im.button(label):
+            if im.button(tr(label) + "##" + key):
                 action()
-            im.set_item_tooltip(tip)
+            im.set_item_tooltip(tr(tip))
             self.item_rects[key] = tuple(im.get_item_rect())
 
     def render(self):
@@ -149,8 +199,10 @@ class ConfocalApp(ImApp):
         im.set_next_window_pos(viewport.pos, im.Cond.ALWAYS)
         im.set_next_window_size(viewport.size, im.Cond.ALWAYS)
         im.begin_disabled(self.dialog is not None)
-        if im.begin("FCS confocal calculator", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE
-                    | im.WindowFlags.NO_MOVE):
+        if im.begin(
+            tr("FCS confocal calculator") + "##confocal",
+            flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE | im.WindowFlags.NO_MOVE,
+        ):
             self.toolbar(im.get_content_region_avail()[0])
             if im.begin_child("confocal_form", (0.0, 0.0)):
                 self.form.rects.clear()

@@ -25,6 +25,10 @@ from .driving import BIG, SMALL, SatDriver, hermetic_env
 GOLDEN = json.loads((Path(__file__).with_name("golden_qt.json")).read_text())
 
 
+
+from .test_emtk_saturation_parity import assert_saturation_series
+
+
 @pytest.fixture(autouse=True)
 def hermetic(tmp_path, monkeypatch):
     hermetic_env(tmp_path, monkeypatch)
@@ -122,7 +126,7 @@ def test_compute_recomputes_from_scratch_and_says_so(drv):
 def test_compute_gives_the_qt_tools_curves(drv):
     drv.click("compute")
     for name, y in golden_y("default").items():
-        assert np.allclose(series(drv)[name], y, rtol=1e-9, atol=1e-12)
+        assert_saturation_series(model(drv), "fcs_curves_series", name, series(drv)[name], y)
 
 
 def test_save_and_load_session_buttons_write_and_restore_the_settings_file(drv, tmp_path):
@@ -247,7 +251,7 @@ def test_picking_the_cyanine_preset_gives_the_qt_tools_curves(drv):
     pick(drv, "scheme_preset", "Cyanine 5 (4-state, isomer + triplet)")
     for source in ("fcs_curves_series", "volume_profile_series", "volume_power_series"):
         for name, y in golden_y("cy5_1mW", source).items():
-            assert np.allclose(series(drv, source)[name], y, rtol=1e-9, atol=1e-12), (source, name)
+            assert_saturation_series(model(drv), source, name, series(drv, source)[name], y)
 
 
 @pytest.mark.parametrize("text, expected", [("2", 2.0), ("0", 0.0), ("0.05", 0.05), ("500", 100.0), ("-3", 0.0), ("1e-3", 0.001)])
@@ -260,12 +264,14 @@ def test_a_typed_power_gives_the_qt_tools_curves_and_summary(drv):
     type_power(drv, "2")
     for source in ("fcs_curves_series", "volume_power_series", "tau_d_power_series"):
         for name, y in golden_y("power_2mW", source).items():
-            assert np.allclose(series(drv, source)[name], y, rtol=1e-9, atol=1e-12)
+            assert_saturation_series(model(drv), source, name, series(drv, source)[name], y)
     assert model(drv).info_text() == GOLDEN["power_2mW"]["info"]
     type_power(drv, "0")
     for name, y in golden_y("power_0").items():
-        assert np.allclose(series(drv)[name], y, rtol=1e-9, atol=1e-12)
-    assert np.allclose(series(drv)["Saturated"], series(drv)["Unperturbed Gaussian"])  # no excitation, no saturation
+        assert_saturation_series(model(drv), "fcs_curves_series", name, series(drv)[name], y)
+    assert np.allclose(
+        series(drv)["Saturated"], series(drv)["Unperturbed Gaussian"]
+    )  # no excitation, no saturation
 
 
 def test_a_typed_text_that_is_not_a_number_is_ignored(drv):
@@ -308,7 +314,7 @@ def test_the_wavelength_changes_the_curves_and_matches_the_qt_tool(drv):
     # the golden state sets the unit by the Qt tool's setter after the preset; do the same by the unit list
     pick(drv, "rate_unit", "1/ms")
     for name, y in golden_y("two_state_640_ms").items():
-        assert np.allclose(series(drv)[name], y, rtol=1e-9, atol=1e-12), name
+        assert_saturation_series(model(drv), "fcs_curves_series", name, series(drv)[name], y)
 
 
 def test_the_dye_list_reads_the_extinction_from_the_chosen_dye(drv):
@@ -510,11 +516,15 @@ def test_the_normalise_checkbox_scales_both_curves_to_one_and_back(drv):
     tab(drv, "FCS curve")
     drv.click("normalize_fcs")
     s = series(drv)
-    assert model(drv).normalize_fcs and s["Saturated"][0] == pytest.approx(1.0) and s["Unperturbed Gaussian"][0] == pytest.approx(1.0)
+    assert (
+        model(drv).normalize_fcs
+        and s["Saturated"][0] == pytest.approx(1.0)
+        and s["Unperturbed Gaussian"][0] == pytest.approx(1.0)
+    )
     drv.click("normalize_fcs")
     assert not np.isclose(series(drv)["Saturated"][0], 1.0)
     for name, y in golden_y("default").items():
-        assert np.allclose(series(drv)[name], y, rtol=1e-9, atol=1e-12)
+        assert_saturation_series(model(drv), "fcs_curves_series", name, series(drv)[name], y)
 
 
 def test_the_one_component_fit_checkbox_adds_and_removes_the_fit_and_the_residual(drv):
@@ -525,7 +535,8 @@ def test_the_one_component_fit_checkbox_adds_and_removes_the_fit_and_the_residua
     drv.click("show_gaussian_fit")
     assert "1-component Gaussian fit" in series(drv)
     for name, y in golden_y("default", "fcs_residual_series").items():
-        assert np.allclose(series(drv, "fcs_residual_series")[name], y, rtol=1e-9, atol=1e-12)
+        assert_saturation_series(model(drv), "fcs_residual_series", name,
+                                 series(drv, "fcs_residual_series")[name], y)
 
 
 def test_the_three_profile_checkboxes_remove_and_restore_their_curves(drv):
@@ -543,7 +554,7 @@ def test_the_three_profile_checkboxes_remove_and_restore_their_curves(drv):
     drv.click("show_fluorescence_profile")
     for source in ("volume_profile_series",):
         for name, y in golden_y("default", source).items():
-            assert np.allclose(series(drv, source)[name], y, rtol=1e-9, atol=1e-12)
+            assert_saturation_series(model(drv), source, name, series(drv, source)[name], y)
 
 
 def ticks(painter):

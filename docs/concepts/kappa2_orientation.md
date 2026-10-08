@@ -237,3 +237,8 @@ do not, because $E(R)$ is non-linear.
   mobility and the $\kappa^2$ uncertainty into time-resolved FRET analysis;
   {cite}`lakowicz2006`,
   energy-transfer chapters, for the geometry and the averaging regimes.
+
+The native calculator's input, model and statistic hints distinguish anisotropy
+assumptions from the sampled orientation distribution. Seeded before/after
+comparisons verify that compact geometry and text localization do not change
+that distribution. See the [workflow](../guides/61_kappa2_distribution.md).

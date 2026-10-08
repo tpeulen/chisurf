@@ -45,7 +45,7 @@ class RicsPrecisionTool(ChisurfDockTool):
         self._embedded = bool(embedded)
         self.model = view_model or PrecisionViewModel()
         self.setWindowTitle("RICS precision")
-        self.setMinimumSize(900, 600)
+        self.setMinimumSize(120, 120)
 
         from emtk.qt_host import ControlHost
 
@@ -58,7 +58,9 @@ class RicsPrecisionTool(ChisurfDockTool):
 
         self.modelEvent.connect(self._handle_model_event)
         self.model.add_observer(self.modelEvent.emit)
-        self.restore_window_geometry()
+        if not self._embedded:
+            self.resize(*self.host.window_size_hint())
+            self.restore_window_geometry()
 
     # ── actions ──
     def run_with_progress(self) -> None:

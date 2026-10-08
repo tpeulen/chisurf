@@ -1,4 +1,5 @@
 {
+ "window": {"width": 640, "height": 480},
  "_comment": "FCS saturation calculator for the emtk window: the controls of view.json (the AutoForm spec the Qt tool rendered) drawn by emtk.view_form over SaturationPanel (gui/panel.py). The state diagram and the plots are drawn by gui/app.py.",
  "toolbar": {
   "sections": [
@@ -220,6 +221,7 @@
   "sections": [
    {
     "type": "toggle_row",
+    "description": "Compare normalized curve shapes and show the fitted single diffusion component.",
     "items": [
      {
       "type": "toggle",

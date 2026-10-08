@@ -61,13 +61,11 @@ def edit_cell(drv, row_label, column, text):
     drv.draw(2)
     drv.app.pointer_release(hx + 6, y + h / 2, 1, 0)
     drv.draw(1)
-    for _ in range(14):  # Ctrl+A does not select in a table cell editor (emtk gap, test below): clear it by hand
-        drv.key(keys.KEY_BACKSPACE)
+    drv.select_all()
     drv.type_text(text)
     drv.enter()
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: Ctrl+A in a table cell editor does not select its text (it does in every input field)")
 def test_ctrl_a_selects_the_text_of_a_table_cell_being_edited(drv):
     x, y, w, h = drv.text_rect("RDA0")
     hx = drv.text_rect("Value")[0]
@@ -303,11 +301,10 @@ def test_the_filter_narrows_the_vary_list_and_the_choice_is_clicked(drv):
     drv.click("sweep_filter", fx=0.3)
     drv.select_all()
     drv.key(keys.KEY_BACKSPACE)
-    drv.click("minimum")  # a click away commits the emptied field (Enter does not: emtk gap, test below)
+    drv.click("minimum")  # Moving focus also commits the empty filter.
     assert m.sweep_filter == "" and len(m.sweep_labels()) > 10
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: Enter in a text field that was emptied does not commit it (a click away does)")
 def test_enter_commits_an_emptied_filter_field(drv):
     tab(drv, "Sweep")
     drv.type_into("sweep_filter", "fraction")
@@ -592,4 +589,24 @@ def test_the_whole_flow_works_in_the_small_window_too(tmp_path):
     d.click("save_csv")
     assert app.file_dialog is not None
     d.click(d.text_rect("Cancel"))
+    app.close()
+
+
+def test_compact_editor_tab_keeps_parameter_edits_and_subcomponent_callbacks_reachable():
+    """At 640 pixels, real clicks reach the editor, table and folded model controls."""
+    app = FRETLineApp()
+    d = Driver(app, (640, 480))
+    d.draw(3)
+    tab(d, "Live model editor")
+    edit_cell(d, "RDA0", "Value", "68")
+    assert param(d).value == 68.0
+    before = len(param_ids(d))
+    d.click("subcomponents")
+    d.click(d.text_rect("Add subcomponent"))
+    assert len(param_ids(d)) > before
+    d.click(d.text_rect("Remove subcomponent"))
+    assert len(param_ids(d)) == before
+    tab(d, "Components")
+    d.click("add_component")
+    assert len(app.model.components) == 2
     app.close()

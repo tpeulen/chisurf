@@ -172,3 +172,8 @@ by tens of per cent.
 - Tool: **PSF calculator** (`chisurf/plugins/calculator/psf_calculator/`),
   reached through the Calculators hub. Press **Guide** on its toolbar for
   a walk-through.
+
+The native window declares 640×480 initial dimensions and retains saved resizing.
+All three slice planes and the computed volume remain reachable; scroll the
+parameter and result docks when constrained. Geometry changes preserve the
+physical PSF volume and reported widths.

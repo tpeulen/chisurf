@@ -367,7 +367,11 @@ def test_every_spec_attribute_call_and_action_exists_on_the_model(model):
 def test_every_control_has_a_tooltip():
     from test.gui.emtk_port_parity import build_emtk_app, emtk_inventory
 
-    assert emtk_inventory(build_emtk_app("fret_line"))["controls_without_tooltip"] == []
+    app = build_emtk_app("fret_line")
+    try:
+        assert emtk_inventory(app)["controls_without_tooltip"] == []
+    finally:
+        app.close()
 
 
 def test_the_port_is_qt_free():

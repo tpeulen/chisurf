@@ -296,3 +296,9 @@ brightnesses.
   the volume is no longer Gaussian.
 * {cite}`gregor2005` — how optical saturation distorts an FCS measurement, and
   the correction this page implements.
+
+The displayed one-component approximation is assessed by its fitting objective
+and reconstructed curve. Small optimizer-decimal changes are bounded using
+convergence tolerance and Jacobian conditioning; the underlying diffusion and
+photokinetic calculations remain exact between renderer changes. See the
+[workflow](../guides/56_fcs_saturation.md) for the sampling normalization convention.

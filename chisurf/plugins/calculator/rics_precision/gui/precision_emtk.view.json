@@ -1,6 +1,7 @@
 {
   "_comment": "RICS precision, native emtk windows. Drawn by emtk.view_form over PrecisionViewModel (gui/view_model.py): 'settings' is the left window, 'numbers' the table window. The plot, the file dialog, Help and Guide are drawn by gui/app.py. Field names, ranges, decimals and descriptions are those of precision.view.json (the Qt AutoForm spec).",
   "title": "RICS precision",
+  "window": {"width": 640, "height": 480},
   "sections": [
     {
       "type": "panel",

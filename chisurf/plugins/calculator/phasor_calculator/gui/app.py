@@ -29,6 +29,13 @@ if TYPE_CHECKING:
 
 WINDOW_BG = (30, 32, 38, 255)
 
+
+from emtk.i18n import tr
+
+
+from chisurf.plugins.emtk_layout import window_size as shared_window_size
+
+
 def _leaves(section: dict):
     """Every section inside *section*, toggles of a row included."""
     for inner in section.get("sections") or []:
@@ -98,7 +105,7 @@ class PhasorForm:
 
     def effective_text(self) -> str:
         m = self._gui.model
-        return f"Effective f = {float(m.frequency) * int(m.harmonic):g} MHz"
+        return tr("Effective f = {frequency:g} MHz").format(frequency=float(m.frequency) * int(m.harmonic))
 
     def reference_rows(self) -> list[dict]:
         return [{"tau": tau, "g": g, "s": s} for tau, g, s in self._gui._rows()]
@@ -133,12 +140,16 @@ class PhasorGui(TourTarget):
             Region("plot"),
         )
         self.docks = DockManager(layout)
-        self.docks.add_window("controls", "Controls", self._draw_controls, dock="controls", closable=False)
-        self.docks.add_window("results", "Reference lifetimes", self._draw_results, dock="results", closable=False)
-        self.docks.add_window("plot", "Phasor plot", self._draw_plot, dock="plot", closable=False)
+        self.docks.add_window(
+            "controls", tr("Controls"), self._draw_controls, dock="controls", closable=False
+        )
+        self.docks.add_window(
+            "results", tr("Reference lifetimes"), self._draw_results, dock="results", closable=False
+        )
+        self.docks.add_window("plot", tr("Phasor plot"), self._draw_plot, dock="plot", closable=False)
 
         self.help_window = EmTkHelpWindow(
-            title="Phasor calculator - Help & Reference",
+            title=tr("Phasor calculator - Help & Reference"),
             resource=Path(__file__).parent / "help.md",
             owner=tool,
             on_start_guide=self.start_guide,
@@ -233,7 +244,7 @@ class PhasorGui(TourTarget):
         m = self.model
         # Equal scale: the semicircle and the cursor are circles (they drew as ellipses).
         if implot.begin_plot("##phasor", (-1, -1), implot.FLAGS_EQUAL):
-            implot.setup_axes("g (real)", "s (imaginary)")
+            implot.setup_axes(tr("g (real)"), tr("s (imaginary)"))
             implot.setup_axes_limits(*m.PHASOR_G_RANGE, *m.PHASOR_S_RANGE, implot.COND_ONCE)
             implot.setup_legend(implot.LOCATION_NORTH_EAST)
             for overlay in self._overlays():
@@ -246,8 +257,14 @@ class PhasorGui(TourTarget):
                     continue
                 if overlay.get("kind") == "scatter":
                     implot.set_next_marker_style(implot.MARKER_CIRCLE, 5.0, colour)
-                    implot.plot_scatter(name, xs, ys, spec=None if _in_legend(name)
-                                        else implot.PlotSpec(flags=implot.ITEM_FLAGS_NO_LEGEND))
+                    implot.plot_scatter(
+                        name,
+                        xs,
+                        ys,
+                        spec=None
+                        if _in_legend(name)
+                        else implot.PlotSpec(flags=implot.ITEM_FLAGS_NO_LEGEND),
+                    )
                 else:
                     dash = style.get("dash")
                     implot.set_next_line_style(
@@ -271,12 +288,14 @@ class PhasorGui(TourTarget):
                         implot.plot_text(str(text), float(lx), float(ly), (9, -13))
             implot.end_plot()
             im.set_item_tooltip(
-                "The universal semicircle with the selected reference geometry: "
-                "a single exponential of lifetime τ sits on the semicircle, a "
-                "mixture inside on the chord between its components."
+                tr("The universal semicircle with the selected reference geometry: "
+                   "a single exponential of lifetime τ sits on the semicircle, a "
+                   "mixture inside on the chord between its components.")
             )
         self.remember("plot", tuple(box))  # the window's content: the plot fills it
-        self.remember("phasor", tuple(box))  # the spec's name for the plot section, which the guide targets
+        self.remember(
+            "phasor", tuple(box)
+        )  # the spec's name for the plot section, which the guide targets
         if im.is_item_clicked():
             self.tour.notify_used("plot")
             self.tour.notify_used("phasor")
@@ -301,6 +320,7 @@ class PhasorCalcApp(ImApp):
     """The EMTK ImApp for the phasor calculator."""
 
     def __init__(self, tool: PhasorCalculatorTool) -> None:
+        self.window_size = shared_window_size(SPEC, (640, 480))
         self.tool = tool
         self.phasor_gui = PhasorGui(
             tool,
@@ -347,7 +367,9 @@ class PhasorCalcApp(ImApp):
                     continue
                 spec = limits.get(name, {})
                 lo, hi = spec.get("minimum"), spec.get("maximum")
-                value = min(max(value, lo if lo is not None else value), hi if hi is not None else value)
+                value = min(
+                    max(value, lo if lo is not None else value), hi if hi is not None else value
+                )
                 setattr(model, name, int(value) if isinstance(current, int) else float(value))
             elif isinstance(current, str) and isinstance(value, str):
                 setattr(model, name, value)

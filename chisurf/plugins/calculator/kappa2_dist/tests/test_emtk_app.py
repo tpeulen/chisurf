@@ -32,6 +32,7 @@ class RecordingPainter:
     def __init__(self) -> None:
         self.strings: list[str] = []
         self.ops = 0
+        self.stroke_widths: list[float] = []
 
     def _op(self) -> None:
         self.ops += 1
@@ -39,7 +40,8 @@ class RecordingPainter:
     def fill_rect(self, *a) -> None:
         self._op()
 
-    def stroke_rect(self, *a) -> None:
+    def stroke_rect(self, *a, width=1.0) -> None:
+        self.stroke_widths.append(width)
         self._op()
 
     def gradient_rect(self, *a) -> None:
@@ -111,6 +113,7 @@ def test_a_frame_draws_controls_plot_and_results(widget):
     painter = RecordingPainter()
     widget.app.draw(painter, 0.0, 0.0, 900.0, 620.0)
 
+    assert painter.stroke_widths and all(width > 0 for width in painter.stroke_widths)
     assert painter.ops > 150
     # Controls…
     assert "r₀ (fund.)" in painter.strings
@@ -198,3 +201,25 @@ def test_save_with_nothing_computed_warns(widget, tmp_path, monkeypatch):
     widget._on_save()
     assert calls, "the nothing-to-save warning was not shown"
     assert not (tmp_path / "none.csv").exists()
+
+
+@_needs_qt
+def test_declared_window_and_translated_actions_keep_identity(widget, monkeypatch):
+    """A translated caption keeps each action's original immediate-mode ID."""
+    from emtk.im_core import split_label
+
+    from chisurf.plugins.calculator.kappa2_dist.gui import app as module
+
+    assert widget.app.window_size == (640, 480)
+    captions = []
+    original = module.im.button
+    monkeypatch.setattr(module, "tr", lambda source: "Translated " + source)
+
+    def remember(label, *args, **kwargs):
+        captions.append(label)
+        return original(label, *args, **kwargs)
+
+    monkeypatch.setattr(module.im, "button", remember)
+    widget.app.draw(RecordingPainter(), 0.0, 0.0, 640.0, 480.0)
+    assert [split_label(label)[1] for label in captions] == ["Compute", "Save", "Guide", "Help"]
+    assert all(split_label(label)[0].startswith("Translated ") for label in captions)

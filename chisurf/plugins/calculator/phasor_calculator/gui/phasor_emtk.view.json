@@ -1,5 +1,9 @@
 {
   "_comment": "Phasor calculator for the emtk window: the controls of phasor.view.json (the AutoForm spec the Qt tool rendered), grouped, with spin arrows and two columns for the g/s pairs; the results table is a data_table. Drawn by emtk.view_form.",
+  "window": {
+    "width": 640,
+    "height": 480
+  },
   "toolbar": {
     "sections": [
       {
@@ -94,7 +98,8 @@
                 "label": "FRET trajectory",
                 "description": "Draw the quenched-donor FRET trajectory for the donor-only lifetime below."
               }
-            ]
+            ],
+            "description": "Choose the reference grid, lifetime ticks, polar grid and FRET trajectory drawn on the plot."
           },
           {
             "type": "value",
@@ -109,7 +114,8 @@
             "style": "spin",
             "step": 0.1
           }
-        ]
+        ],
+        "description": "Overlay reference grids and the donor lifetime used for the FRET trajectory."
       },
       {
         "type": "panel",
@@ -126,7 +132,8 @@
                 "label": "Two-component line",
                 "description": "Draw a mixing line between the two component phasors below."
               }
-            ]
+            ],
+            "description": "Show the two-component mixing line."
           },
           {
             "type": "panel",
@@ -180,9 +187,11 @@
                 "description": "Component 2 s.",
                 "style": "spin"
               }
-            ]
+            ],
+            "description": "Real and imaginary coordinates of the two component phasors."
           }
-        ]
+        ],
+        "description": "Compare the two component phasors and the line joining their intensity mixtures."
       },
       {
         "type": "panel",
@@ -199,7 +208,8 @@
                 "label": "Mixing region",
                 "description": "Draw the two-component mixing geometry and the fraction-weighted mixture point (uses g1/s1, g2/s2 as the components)."
               }
-            ]
+            ],
+            "description": "Show the mixing region and the intensity-weighted mixture point."
           },
           {
             "type": "value",
@@ -213,7 +223,8 @@
             "description": "Fractional intensity of component 1 (component 2 gets the remainder); sets the mixture point.",
             "style": "spin"
           }
-        ]
+        ],
+        "description": "Display the component mixing geometry and select the fractional intensity of component 1."
       },
       {
         "type": "panel",
@@ -230,7 +241,8 @@
                 "label": "Cursor",
                 "description": "Draw a circular gating-cursor outline at the position below."
               }
-            ]
+            ],
+            "description": "Show the circular gating cursor on the phasor plot."
           },
           {
             "type": "panel",
@@ -260,7 +272,8 @@
                 "description": "Cursor centre s.",
                 "style": "spin"
               }
-            ]
+            ],
+            "description": "Real and imaginary coordinates of the circular gate center."
           },
           {
             "type": "value",
@@ -274,7 +287,8 @@
             "description": "Radius of the circular gating cursor.",
             "style": "spin"
           }
-        ]
+        ],
+        "description": "Position the circular phasor gate and choose its radius."
       }
     ]
   },

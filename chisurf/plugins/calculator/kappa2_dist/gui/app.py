@@ -64,6 +64,13 @@ RESULTS_TABLE = {
 }
 
 
+
+from emtk.i18n import tr
+
+
+from chisurf.plugins.emtk_layout import window_size
+
+
 class Kappa2Gui(TourTarget):
     """EMTK GUI for the k² orientation-factor distribution calculator."""
 
@@ -86,8 +93,13 @@ class Kappa2Gui(TourTarget):
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         spec = json.loads(_SPEC_PATH.read_text(encoding="utf-8"))
         # Inputs only: the Results panel is the statistics window, the plot its own window.
-        self.input_spec = {"sections": [s for s in spec["sections"]
-                                        if s.get("type") == "panel" and s.get("title") != "Results"]}
+        self.input_spec = {
+            "sections": [
+                s
+                for s in spec["sections"]
+                if s.get("type") == "panel" and s.get("title") != "Results"
+            ]
+        }
         # The Qt radio row does not wrap in a narrow dock ("Isotropic" was cut at
         # 800 px); a combo with the same labels fits any width.
         for panel in self.input_spec["sections"]:
@@ -95,7 +107,9 @@ class Kappa2Gui(TourTarget):
                 if section.get("type") == "choice":
                     section.pop("style", None)
                 if section.get("type") == "value" and not section.get("read_only"):
-                    section["style"] = "spin"  # the Qt fields were spin boxes: arrows step by the spec's step
+                    section["style"] = (
+                        "spin"  # the Qt fields were spin boxes: arrows step by the spec's step
+                    )
         self.form = FormState()
         self.results_form = FormState()
 
@@ -108,28 +122,28 @@ class Kappa2Gui(TourTarget):
         self.docks = DockManager(layout)
         self.docks.add_window(
             "controls",
-            "Model & parameters",
+            tr("Model & parameters"),
             self._draw_controls,
             dock="controls",
             closable=False,
         )
         self.docks.add_window(
             "plot",
-            "κ² distribution",
+            tr("κ² distribution"),
             self._draw_plot,
             dock="plot",
             closable=False,
         )
         self.docks.add_window(
             "results",
-            "Orientation statistics",
+            tr("Orientation statistics"),
             self._draw_results,
             dock="results",
             closable=False,
         )
 
         self.help_window = EmTkHelpWindow(
-            title="κ² distribution — Help & Reference",
+            title=tr("κ² distribution — Help & Reference"),
             resource=Path(__file__).parent / "help.md",
             owner=tool,
             on_start_guide=self.start_guide,
@@ -153,7 +167,6 @@ class Kappa2Gui(TourTarget):
 
     def show_help(self) -> None:
         self.help_window.show()
-
 
     def draw(self, w: float = 0.0, h: float = 0.0) -> None:
         vp = im.get_main_viewport()
@@ -183,8 +196,11 @@ class Kappa2Gui(TourTarget):
         self.item_rects.update(self.form.rects)
         im.end_disabled()
 
-        changed = [name for name, before in before_inputs.items()
-                   if getattr(self.model, name, before) != before]
+        changed = [
+            name
+            for name, before in before_inputs.items()
+            if getattr(self.model, name, before) != before
+        ]
         for name in changed:
             self.tour.notify_used(name)
         if changed:
@@ -193,22 +209,32 @@ class Kappa2Gui(TourTarget):
 
     def _toolbar(self, busy: bool) -> None:
         im.begin_disabled(busy)
-        if im.button("Compute"):
+        if im.button(tr("Compute") + "###Compute"):
             if callable(self.on_compute):
                 self.on_compute()
                 self.tour.notify_used("compute")
         im.set_item_tooltip(
-            "Run the selected orientation model and draw its κ² distribution "
-            "and orientation statistics."
+            tr("Run the selected orientation model and draw its κ² distribution "
+            "and orientation statistics.")
         )
         self.remember("compute")
         im.end_disabled()
         for label, key, tip, action in (
-            ("Save", "save", "Save the κ² distribution and the orientation statistics as CSV "
-                             "(enabled once a distribution is computed).", self.on_save),
-            ("Guide", "guide", "A step-by-step walk through the tool.", self.start_guide),
-            ("Help", "help", "The short help page: the three models, the anisotropies to measure "
-                             "first, and reading the result.", self.show_help),
+            (
+                tr("Save"),
+                "save",
+                tr("Save the κ² distribution and the orientation statistics as CSV "
+                   "(enabled once a distribution is computed)."),
+                self.on_save,
+            ),
+            (tr("Guide"), "guide", tr("A step-by-step walk through the tool."), self.start_guide),
+            (
+                tr("Help"),
+                "help",
+                tr("The short help page: the three models, the anisotropies to measure "
+                   "first, and reading the result."),
+                self.show_help,
+            ),
         ):
             # A narrow dock wraps the row instead of clipping a button at its border.
             if im.get_line_avail() < im.calc_text_size(label)[0] + 24.0:
@@ -217,7 +243,7 @@ class Kappa2Gui(TourTarget):
                 im.same_line()
             # The Qt Save button was enabled only while a distribution with weight existed.
             im.begin_disabled(key == "save" and not self.has_results())
-            if im.button(label) and callable(action):
+            if im.button(label + "###" + key.title()) and callable(action):
                 action()
             im.end_disabled()
             im.set_item_tooltip(tip)
@@ -238,23 +264,23 @@ class Kappa2Gui(TourTarget):
     def _draw_plot(self, box: tuple[float, float, float, float]) -> None:
         m = self.model
         if implot.begin_plot("##k2dist", (-1, -1)):
-            implot.setup_axes("κ²", "p(κ²)")
+            implot.setup_axes(tr("κ²"), tr("p(κ²)"))
             implot.setup_legend(implot.LOCATION_NORTH_EAST)
             if m._k2scale is not None and m._k2hist is not None and len(m._k2hist):
                 x = np.asarray(m._k2scale[1:], dtype=float)
                 y = np.asarray(m._k2hist, dtype=float)
                 implot.set_next_line_style(ACCENT_BLUE, 2.0)
-                implot.plot_line("p(κ²)", x, y)
+                implot.plot_line(tr("p(κ²)"), x, y)
                 # The assumed value the distribution should reproduce, as a line in the
                 # legend (an axis tag printed over the x tick labels).
                 implot.set_next_line_style(TRUE_K2_COLOUR, 1.0)
-                implot.plot_inf_lines(f"true κ² = {m.kappa2_true:.3g}", [float(m.kappa2_true)])
+                implot.plot_inf_lines(tr("true κ² = {value}").format(value=f"{m.kappa2_true:.3g}"), [float(m.kappa2_true)])
             else:
-                implot.plot_dummy("press Compute to draw the distribution")
+                implot.plot_dummy(tr("press Compute to draw the distribution"))
             implot.end_plot()
             im.set_item_tooltip(
-                "Probability distribution of κ² the selected orientation model "
-                "produces, with the assumed true κ² marked."
+                tr("Probability distribution of κ² the selected orientation model "
+                "produces, with the assumed true κ² marked.")
             )
         self.remember("plot", tuple(box))  # the window's content: the plot fills it
 
@@ -268,13 +294,13 @@ class Kappa2Gui(TourTarget):
         """The statistics table: the Qt Results panel's five values and the two order parameters."""
         m = self.model
         return [
-            {"quantity": "Mean κ²", "value": f"{m.k2_mean:.4f}"},
-            {"quantity": "SD κ²", "value": f"{m.k2_sd:.4f}"},
-            {"quantity": "Mean R_app/R_DA", "value": f"{m.Rapp_mean:.4f}"},
-            {"quantity": "SD R_app/R_DA", "value": f"{m.RappSD:.4f}"},
-            {"quantity": "δ (deg)", "value": f"{m.delta_deg:.2f}"},
-            {"quantity": "SD₂ (donor)", "value": f"{m.SD2:.4f}"},
-            {"quantity": "Sₐ₂ (acceptor)", "value": f"{m.SA2:.4f}"},
+            {"quantity": tr("Mean κ²"), "value": f"{m.k2_mean:.4f}"},
+            {"quantity": tr("SD κ²"), "value": f"{m.k2_sd:.4f}"},
+            {"quantity": tr("Mean R_app/R_DA"), "value": f"{m.Rapp_mean:.4f}"},
+            {"quantity": tr("SD R_app/R_DA"), "value": f"{m.RappSD:.4f}"},
+            {"quantity": tr("δ (deg)"), "value": f"{m.delta_deg:.2f}"},
+            {"quantity": tr("SD₂ (donor)"), "value": f"{m.SD2:.4f}"},
+            {"quantity": tr("Sₐ₂ (acceptor)"), "value": f"{m.SA2:.4f}"},
         ]
 
 
@@ -289,6 +315,7 @@ class Kappa2App(ImApp):
         on_save: Callable[[], None] | None = None,
     ) -> None:
         self.tool = tool
+        self.window_size = window_size(json.loads(_SPEC_PATH.read_text(encoding="utf-8")), (640, 480))
         self.kappa2_gui = Kappa2Gui(
             tool,
             on_compute=on_compute,
@@ -324,8 +351,12 @@ class Kappa2App(ImApp):
         if not isinstance(settings, dict):
             return
         model = self.tool._model
-        limits = {s["attr"]: s for p in self.kappa2_gui.input_spec["sections"]
-                  for s in p.get("sections", []) if s.get("attr")}
+        limits = {
+            s["attr"]: s
+            for p in self.kappa2_gui.input_spec["sections"]
+            for s in p.get("sections", [])
+            if s.get("attr")
+        }
         for name in INPUT_FIELDS:
             value = settings.get(name)
             if name == "model_type":
@@ -334,7 +365,11 @@ class Kappa2App(ImApp):
             elif name == "rAD_known":
                 if isinstance(value, bool):
                     model.rAD_known = value
-            elif isinstance(value, (int, float)) and not isinstance(value, bool) and np.isfinite(value):
+            elif (
+                isinstance(value, (int, float))
+                and not isinstance(value, bool)
+                and np.isfinite(value)
+            ):
                 lo, hi = limits[name].get("minimum"), limits[name].get("maximum")
                 value = min(max(float(value), float(lo)), float(hi))
                 setattr(model, name, int(round(value)) if name == "n_bins" else value)
@@ -359,9 +394,10 @@ def _install_save_dialog(app, write):
     shown: dict = {"dialog": None, "window": None, "error": ""}
 
     def request() -> None:
-        shown["dialog"] = FileDialog("Save κ² distribution", mode="save", filename="kappa2.csv",
-                                     filters="CSV (*.csv)")
-        shown["window"] = DialogWindow("Save κ² distribution", size=(640.0, 480.0))
+        shown["dialog"] = FileDialog(
+            tr("Save κ² distribution"), mode="save", filename="kappa2.csv", filters="CSV (*.csv)"
+        )
+        shown["window"] = DialogWindow(tr("Save κ² distribution"), size=(640.0, 480.0))
         shown["error"] = ""
 
     def draw() -> None:
@@ -380,7 +416,7 @@ def _install_save_dialog(app, write):
                 write(path if path.suffix.lower() == ".csv" else path.with_suffix(".csv"))
                 shown["dialog"] = None
             except Exception as exc:  # noqa: BLE001 - shown in the dialog, which stays open
-                shown["error"] = f"Could not save: {exc}"
+                shown["error"] = tr("Could not save: {error}").format(error=exc)
         elif result is False or pressed == "close":
             shown["dialog"] = None
 
@@ -410,7 +446,7 @@ def make_app(kappa2: float = 0.667, **kwargs):
     def call(**params):
         """The backend handler; a failed answer is remembered for the status line."""
         answer = _kappa2_compute_handler(**params)
-        state.error = "" if answer.get("ok") else f"The calculation failed: {answer.get('error')}"
+        state.error = "" if answer.get("ok") else tr("The calculation failed: {error}").format(error=answer.get("error"))
         return answer
 
     client = SimpleNamespace(compute=call)
@@ -423,7 +459,7 @@ def make_app(kappa2: float = 0.667, **kwargs):
         if state.error:
             state.status = state.error
         elif not finite():
-            state.status = "These inputs give no finite result (the statistics are not numbers)."
+            state.status = tr("These inputs give no finite result (the statistics are not numbers).")
         else:
             state.status = ""
 
@@ -455,8 +491,11 @@ def make_app(kappa2: float = 0.667, **kwargs):
     def draw():
         if pending:
             result = pending.pop()
-            inputs = {k: v for k, v in state._model.__dict__.items() if not k.startswith("_")
-                      and k not in _RESULT_FIELDS}
+            inputs = {
+                k: v
+                for k, v in state._model.__dict__.items()
+                if not k.startswith("_") and k not in _RESULT_FIELDS
+            }
             state._model.__dict__.update(result.__dict__)
             # Keep what the user typed meanwhile; only the results come from the run.
             state._model.__dict__.update(inputs)
@@ -488,7 +527,7 @@ def make_app(kappa2: float = 0.667, **kwargs):
         lines = [f"{x:.6f},{y:.6f}" for x, y in zip(m._k2scale[1:], m._k2hist)]
         path.write_text("\n".join(header + lines) + "\n")
         # the Qt tool said so in a message box; the file name, as a long path would not wrap in the window
-        state.status = f"Saved to {path.name} ({path.parent})"
+        state.status = tr("Saved to {name} ({folder})").format(name=path.name, folder=path.parent)
 
     app.kappa2_gui.on_save = _install_save_dialog(app, write)
     app.write_csv = write

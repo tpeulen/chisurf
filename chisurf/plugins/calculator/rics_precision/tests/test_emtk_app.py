@@ -31,6 +31,7 @@ class RecordingPainter:
     def __init__(self) -> None:
         self.strings: list[str] = []
         self.ops = 0
+        self.stroke_widths: list[float] = []
 
     def _op(self) -> None:
         self.ops += 1
@@ -38,7 +39,8 @@ class RecordingPainter:
     def fill_rect(self, *a) -> None:
         self._op()
 
-    def stroke_rect(self, *a) -> None:
+    def stroke_rect(self, *a, width=1.0) -> None:
+        self.stroke_widths.append(width)
         self._op()
 
     def gradient_rect(self, *a) -> None:
@@ -113,7 +115,61 @@ def test_one_sweep_flows_through_the_app(qapp):
 
         painter = RecordingPainter()
         tool.app.draw(painter, 0.0, 0.0, 900.0, 600.0)
+        assert painter.stroke_widths and all(width > 0 for width in painter.stroke_widths)
         assert painter.ops > 50, "the app drew nothing"
         assert tool.model.status in painter.strings
     finally:
         tool.close()
+
+
+@_needs_qt
+def test_declared_window_and_translated_actions_keep_identity(qapp, monkeypatch):
+    """The small calculator declaration preserves action IDs across locale changes."""
+    from emtk.im_core import split_label
+
+    from chisurf.plugins.calculator.rics_precision.gui import app as module
+
+    app = module.RicsPrecisionApp()
+    assert app.window_size == (640, 480)
+    captions = []
+    original = module.im.button
+    monkeypatch.setattr(module, "tr", lambda source: "Translated " + source)
+
+    def remember(label, *args, **kwargs):
+        captions.append(label)
+        return original(label, *args, **kwargs)
+
+    monkeypatch.setattr(module.im, "button", remember)
+    app.draw(RecordingPainter(), 0.0, 0.0, 640.0, 480.0)
+    own_actions = [label for label in captions if "###" in label]
+    assert [split_label(label)[1] for label in own_actions] == ["Guide", "Help"]
+    assert all(split_label(label)[0].startswith("Translated ") for label in own_actions)
+
+
+@_needs_qt
+def test_standalone_geometry_uses_declaration_and_restores_user_size(qapp, tmp_path):
+    """Actual Qt persistence keeps a custom size ahead of the declared default."""
+    from qtpy import QtCore
+
+    from chisurf.plugins.calculator.rics_precision.gui.tool import RicsPrecisionTool
+
+    class IsolatedTool(RicsPrecisionTool):
+        tool_settings_name = "RicsPrecisionGeometryTest-" + tmp_path.name
+
+    settings = QtCore.QSettings("chisurf", IsolatedTool.tool_settings_name)
+    settings.clear()
+    tool = IsolatedTool()
+    try:
+        assert (tool.width(), tool.height()) == (640, 480)
+        assert (tool.minimumWidth(), tool.minimumHeight()) == (120, 120)
+        tool.resize(701, 503)
+        tool.save_window_geometry()
+        assert settings.value("geometry") is not None
+    finally:
+        tool.close()
+    restored = IsolatedTool()
+    try:
+        assert (restored.width(), restored.height()) == (701, 503)
+    finally:
+        restored.close()
+        settings.clear()

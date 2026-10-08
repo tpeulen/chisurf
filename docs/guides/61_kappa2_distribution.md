@@ -126,3 +126,8 @@ print(result["k2_mean"], result["RappSD"])
   {doc}`23_accessible_volume` (the positional half of the same problem) ·
   {doc}`41_accurate_fret`.
 - Tool: **Kappa2 Distribution** (`chisurf/plugins/calculator/kappa2_dist/`).
+
+The native calculator declares 640×480 initial dimensions, with saved sizing
+retained. Hover the model, inputs and statistic columns for their definitions.
+Distribution draws remain stochastic; window and tooltip changes preserve
+the seeded results and computed statistics.

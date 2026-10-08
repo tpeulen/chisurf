@@ -97,7 +97,7 @@ class ClipPainter(MetricPainter):
         ]
         return [piece for piece in pieces if piece[2] > 0 and piece[3] > 0]
 
-    def visible_texts(self):
+    def visible_text_fragments(self):
         """Yield measured text pieces that survive scissoring and later opaque paint."""
         covers, stack = [], []
         for index, call in enumerate(self.calls):
@@ -144,7 +144,7 @@ class ClipPainter(MetricPainter):
 def clipped_texts(painter, ignore=()):
     """Texts that begin inside their clip rectangle but are cut by its right edge or sit half outside it vertically."""
     out = []
-    for (_allocated, s, clip, need), (x, y, w, h), _pieces in painter.visible_texts():
+    for (_allocated, s, clip, need), (x, y, w, h), _pieces in painter.visible_text_fragments():
         if clip is None or not s.strip() or any(overlaps((x, y, w, h), g, 0) for g in ignore):
             continue
         x0, y0, x1, y1 = clip
@@ -180,7 +180,7 @@ def layout_problems(painter, size, ignore=()):
     """
     problems = []
     visible = []
-    for (_, s, _clip, _need), (x, y, w, h), pieces in painter.visible_texts():
+    for (_, s, _clip, _need), (x, y, w, h), pieces in painter.visible_text_fragments():
         if not s.strip() or any(overlaps((x, y, w, h), g, 0) for g in ignore):
             continue
         for rect in pieces:

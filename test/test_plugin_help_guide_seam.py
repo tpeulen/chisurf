@@ -28,6 +28,7 @@ from __future__ import annotations
 import json
 import pathlib
 import re
+import subprocess
 
 import pytest
 
@@ -53,8 +54,13 @@ class GuiPlugin:
     def __init__(self, manifest: pathlib.Path, data: dict) -> None:
         self.manifest = manifest
         self.id = str(data.get("id") or manifest.parent.name)
-        self.gui = str((data.get("entrypoints") or {}).get("gui") or "")
+        self.gui = str(
+            (data.get("entrypoints") or {}).get("gui")
+            or (data.get("entrypoints") or {}).get("emtk")
+            or ""
+        )
         self.directory = self._module_directory()
+        self.native_only = not (data.get("entrypoints") or {}).get("gui")
 
     def _module_directory(self) -> pathlib.Path | None:
         """Resolve the directory the help files are looked for in.
@@ -98,13 +104,24 @@ class GuiPlugin:
             return self.id
         return self.directory.relative_to(_ROOT).as_posix()
 
+    def _resource(self, name: str) -> pathlib.Path | None:
+        """Resolve native plugin-root resources without changing legacy Qt anchoring."""
+        if self.directory is None:
+            return None
+        direct = self.directory / name
+        if self.native_only and not direct.is_file() and self.directory.name == "gui":
+            parent = self.directory.parent / name
+            if parent.is_file():
+                return parent
+        return direct
+
     @property
     def help_file(self) -> pathlib.Path | None:
-        return self.directory / "help.md" if self.directory else None
+        return self._resource("help.md")
 
     @property
     def guide_file(self) -> pathlib.Path | None:
-        return self.directory / "guide.json" if self.directory else None
+        return self._resource("guide.json")
 
     def has_help(self) -> bool:
         return self.help_file is not None and self.help_file.is_file()
@@ -116,17 +133,42 @@ class GuiPlugin:
         return self.has_help() and self.has_guide()
 
 
-def gui_plugins() -> list[GuiPlugin]:
+def gui_plugins(*, revision: str | None = "HEAD") -> list[GuiPlugin]:
     """Return every plugin whose manifest declares a GUI entry point."""
     found: list[GuiPlugin] = []
-    for manifest in sorted(_PLUGINS.rglob("manifest.json")):
+    if revision is None:
+        records = [
+            (path, path.read_text(encoding="utf-8"))
+            for path in sorted(_PLUGINS.rglob("manifest.json"))
+        ]
+    else:
+        names = subprocess.check_output(
+            ["git", "ls-tree", "-r", "--name-only", revision, "--", "chisurf/plugins"],
+            cwd=_ROOT,
+            text=True,
+        ).splitlines()
+        names = [name for name in names if name.endswith("/manifest.json")]
+        data = subprocess.check_output(
+            ["git", "cat-file", "--batch"],
+            cwd=_ROOT,
+            input="".join(f"{revision}:{name}\n" for name in names).encode(),
+        )
+        records = []
+        offset = 0
+        for name in names:
+            end = data.index(b"\n", offset)
+            header = data[offset:end].decode().split()
+            if len(header) != 3 or header[1] != "blob":
+                raise ValueError(f"Cannot read committed manifest: {name}")
+            start = end + 1
+            stop = start + int(header[2])
+            records.append((_ROOT / name, data[start:stop].decode()))
+            offset = stop + 1
+    for manifest, source in records:
         if any(marker in manifest.as_posix() for marker in _SKIP_MARKERS):
             continue
-        try:
-            data = json.loads(manifest.read_text(encoding="utf-8"))
-        except Exception:
-            continue
-        if not (data.get("entrypoints") or {}).get("gui"):
+        data = json.loads(source)
+        if not any((data.get("entrypoints") or {}).get(surface) for surface in ("gui", "emtk")):
             continue
         found.append(GuiPlugin(manifest, data))
     return found
@@ -260,6 +302,9 @@ def test_guide_steps_point_at_real_widgets(plugin: GuiPlugin):
     unresolved = []
     for step in steps:
         target = step.get("target") or {}
+        if isinstance(target, str):
+            # Native tours resolve a string as a runtime control name.
+            target = {"name": target}
         # ``action``/``name``/``tab``/``panel`` point at things that live in code
         # or in a shell, not in the view spec. Only the two that must name a spec
         # entry are checked, each against its own namespace.

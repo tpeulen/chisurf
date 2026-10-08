@@ -1,6 +1,7 @@
 {
   "_comment": "FRET line generator, native emtk window. Drawn by emtk.view_form over FretLineModel (gui/model.py): 'components', 'sweep' and 'lines' are the three tabs of the left window (the Qt tool's Components / Sweep / FRET lines pages), 'actions' the bar under everything (Add FRET line, Save CSV, Push to ndX), 'dialog' the in-app notice the Qt tool showed as message boxes. The model editor and the plots are drawn by gui/app.py (a spec cannot draw them).",
   "title": "FRET lines",
+  "window": {"width": 640, "height": 480},
   "sections": [
     {
       "type": "panel",

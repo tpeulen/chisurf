@@ -1,9 +1,11 @@
 {
+  "window": {"width": 640, "height": 480},
   "sections": [
     {
       "type": "panel",
       "title": "",
       "collapsible": false,
+      "description": "Select the orientation model used to calculate the κ² distribution.",
       "sections": [
         {
           "type": "choice",
@@ -11,6 +13,11 @@
           "label": "Model",
           "options": ["cone", "diffusion", "isotropic"],
           "labels": ["WIC (Cone)", "DWT (Diffusion)", "Isotropic"],
+          "descriptions": [
+            "Wobbling-in-cone orientations constrained by the measured donor and acceptor residual anisotropies.",
+            "Diffusion-with-traps orientation model including the supplied FRET efficiency.",
+            "Unrestricted isotropic donor and acceptor orientations, whose mean orientation factor is two thirds."
+          ],
           "style": "radio",
           "description": "Wobbling-in-Cone, Diffusion-with-Traps, or isotropic orientation model."
         }
@@ -19,6 +26,7 @@
     {
       "type": "panel",
       "title": "Anisotropy Parameters",
+      "description": "Measured fundamental and residual anisotropies constrain donor and acceptor orientations.",
       "collapsed": false,
       "sections": [
         {
@@ -46,6 +54,7 @@
     {
       "type": "panel",
       "title": "Calculation Options",
+      "description": "Set the assumed orientation factor and the numerical resolution of the distribution.",
       "collapsed": false,
       "sections": [
         {
@@ -77,26 +86,27 @@
     {
       "type": "panel",
       "title": "Results",
+      "description": "Statistics of the computed orientation-factor distribution and its relative distance uncertainty.",
       "collapsed": false,
       "sections": [
         {
-          "type": "value", "attr": "k2_mean", "label": "Mean \u03ba\u00b2", "kind": "float",
+          "type": "value", "attr": "k2_mean", "description": "Mean orientation factor of the computed distribution.", "label": "Mean \u03ba\u00b2", "kind": "float",
           "decimals": 4, "read_only": true
         },
         {
-          "type": "value", "attr": "k2_sd", "label": "SD \u03ba\u00b2", "kind": "float",
+          "type": "value", "attr": "k2_sd", "description": "Standard deviation of the orientation factor over the computed distribution.", "label": "SD \u03ba\u00b2", "kind": "float",
           "decimals": 4, "read_only": true
         },
         {
-          "type": "value", "attr": "Rapp_mean", "label": "Mean R_app/R_DA", "kind": "float",
+          "type": "value", "attr": "Rapp_mean", "description": "Mean apparent-to-true donor–acceptor distance ratio for the assumed orientation factor.", "label": "Mean R_app/R_DA", "kind": "float",
           "decimals": 4, "read_only": true
         },
         {
-          "type": "value", "attr": "RappSD", "label": "SD R_app/R_DA", "kind": "float",
+          "type": "value", "attr": "RappSD", "description": "Standard deviation of the apparent-to-true distance ratio; the relative orientation-induced distance uncertainty.", "label": "SD R_app/R_DA", "kind": "float",
           "decimals": 4, "read_only": true
         },
         {
-          "type": "value", "attr": "delta_deg", "label": "\u03b4 (deg)", "kind": "float",
+          "type": "value", "attr": "delta_deg", "description": "Inter-dipole angle inferred from the measured residual anisotropies, in degrees.", "label": "\u03b4 (deg)", "kind": "float",
           "decimals": 2, "read_only": true
         }
       ]
@@ -104,6 +114,7 @@
     {
       "type": "plot",
       "source": "kappa2_plot_series",
+      "description": "Probability distribution of the orientation factor κ² for the selected model.",
       "x_label": "\u03ba\u00b2",
       "y_label": "p(\u03ba\u00b2)",
       "height": 200,

@@ -1,5 +1,6 @@
 {
   "_comment": "PSF calculator for the emtk window: the parameter panels of psf_calculator.view.json (the AutoForm spec the Qt tool rendered) with spin arrows, drawn by emtk.view_form over PSFPanel (gui/panel.py). The 3-D volume and the slice are drawn by gui/app.py (plots).",
+  "window": {"width": 640, "height": 480},
   "toolbar": {
     "sections": [
       {

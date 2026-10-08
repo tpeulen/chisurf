@@ -276,3 +276,14 @@ closed form (see below). The curve $E(\tau_F)$ is the same either way.
   {doc}`28_selecting_fret_populations` · {doc}`46_ndxplorer`.
 - Tool: **FRET Line Generator** (`chisurf/plugins/fret_line/`), reached through
   the Calculators hub.
+
+## Compact native window
+
+The native FRET Line tool declares 640×480 initial dimensions. On a fresh narrow
+window, **Live model editor** is a full-width tab beside Components, Sweep and
+FRET lines. The plots remain below it; scroll the parameter table to reach its
+lower rows. **Subcomponents** can fold to leave more room. Tour targets reveal
+their own tab. Wide windows retain the side-by-side editor, and saved custom
+layouts win over either default. Reset restores the chosen initial layout.
+Deleting all text and pressing Enter now commits an empty filter; Escape keeps
+the previous value. These layout/editing changes preserve computed line arrays.

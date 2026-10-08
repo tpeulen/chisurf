@@ -83,3 +83,27 @@ for rasterized ink. Tracking fit tests compare exact data and independently
 profiled least-squares objectives, preserving unrestricted nuisance offsets
 and checking bootstrap results independently. Optimizer-specific decimals in
 old archived output are not an accuracy oracle.
+
+## Fresh compact calculator layouts
+
+Native calculators declare 640×480 initial dimensions, with saved user geometry
+taking precedence. FRET Line selects a compact layout once for a fresh viewport
+under 900 pixels: its live editor becomes a full-width tab above the plots. Wide
+initial and saved custom layouts are retained. The SDK's atomic default-layout
+API also records this declaration for Reset; applications do not inspect private
+persistence fields. Empty text commits on Enter, Escape cancels buffered edits,
+and fractional-height rows can scroll completely into view without growing the
+scroll range.
+
+The shared help gate reads committed manifest enrollment. Local uncommitted
+native ports remain a separate diagnostic; deleting a Qt entry cannot hide a
+committed native tool. Native resources may live beside a gui module or at the
+plugin root, and string tour targets are valid runtime names.
+
+Use `pixi run -e test python build_tools/dev_utils/check_plugin_guide.py traj_save_topology /tmp/guide-check --native --width 1100 --height 720`.
+The checker records targets, truncation and actual wait states. It presses a
+real `load_example` control when present and settles its worker; other awaited
+file, save or external actions remain pending. Pending/unwired actions fail
+the interaction gate. `--all` runs isolated bounded workers. Release enrollment
+comes from frozen HEAD; `--live` explicitly diagnoses local prototypes, and
+reports qualify current runtime bytes. No wait is marked satisfied by fiat.

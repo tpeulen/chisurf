@@ -57,11 +57,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Mean κ² | `k2_mean` | float |  |  |  |
-| SD κ² | `k2_sd` | float |  |  |  |
-| Mean R_app/R_DA | `Rapp_mean` | float |  |  |  |
-| SD R_app/R_DA | `RappSD` | float |  |  |  |
-| δ (deg) | `delta_deg` | float |  |  |  |
+| Mean κ² | `k2_mean` | float |  |  | Mean orientation factor of the computed distribution. |
+| SD κ² | `k2_sd` | float |  |  | Standard deviation of the orientation factor over the computed distribution. |
+| Mean R_app/R_DA | `Rapp_mean` | float |  |  | Mean apparent-to-true donor–acceptor distance ratio for the assumed orientation factor. |
+| SD R_app/R_DA | `RappSD` | float |  |  | Standard deviation of the apparent-to-true distance ratio; the relative orientation-induced distance uncertainty. |
+| δ (deg) | `delta_deg` | float |  |  | Inter-dipole angle inferred from the measured residual anisotropies, in degrees. |
 
 ## JSON-RPC methods
 

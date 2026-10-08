@@ -1088,3 +1088,15 @@ Initial imperative audit reads 1,750 committed Python files and measures 1,202 b
 visible literals (before alias refinement); the ledger is an open worklist,
 not an allowance or completed i18n claim. Tooltips now have 1,104 open findings.
 See the [active acceptance](../validation/release-readiness-w6g/current-job.md).
+
+Seven remaining calculators now consume explicit 640×480 defaults and preserve
+computed state. Compact FRET uses the SDK public first-viewport declaration,
+with saved custom layouts and Reset precedence; text Enter/Escape and fractional
+scrolling defects are fixed in emtk. The actual RICS Qt wrapper also respects
+the declared default before its saved-geometry restoration.
+
+Committed-only help enrollment prevents foreign prototype claims. The native
+tour checker performs real example clicks and records pending/unwired waits
+without forging satisfaction; its whole-plugin interaction gate remains open.
+The calculator slice removes 22 more tooltip gaps (1,082 remain) and36 imperative
+literals (1,167 remain). Source/science/PNG receipts are in W6g validation.

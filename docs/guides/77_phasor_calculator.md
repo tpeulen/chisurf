@@ -202,3 +202,8 @@ become the fractions used here via $f_i = a_i\tau_i / \sum_j a_j\tau_j$.
 - Tool: `chisurf/plugins/calculator/phasor_calculator/`, reached through the
   Calculators hub; the geometry lives in
   `chisurf/plugins/microscopy/img_pixel_phasor/analysis.py`.
+
+The native window declares 640×480 initial dimensions. Scroll the controls to
+reach the Cursor fields; the full final radius row remains visible at maximum
+scroll. Panel hints explain reference geometry, excitation and mixing. Saved
+geometry takes precedence, and overlays/reference values are unchanged.

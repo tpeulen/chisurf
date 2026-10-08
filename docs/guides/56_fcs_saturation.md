@@ -202,3 +202,11 @@ model tells you how far from zero you are.
 * [Diffusion and FCS](09_diffusion_fcs.md) — the unsaturated case
 * [Photon-by-photon kinetics](../concepts/photon_by_photon_kinetics.md)
 - Tool: the **FCS Saturation Calculator** (`chisurf/plugins/calculator/fcs_saturation_calc/`).
+
+The native saturation calculator declares 640×480 initial dimensions. All six
+prediction tabs remain reachable; their controls and calculated curves are
+unchanged. Validation fits the one-component overlay against an independent
+Gaussian-shape least-squares reference, including declared convergence tolerance
+and parameter conditioning, instead of treating historical solver decimals as
+an accuracy oracle. The target is normalized to its first sampled lag while the
+fitted Gaussian shape is normalized at zero; this existing convention is retained.

@@ -32,10 +32,18 @@ SETTINGS = ("na", "n_immersion", "wavelength_nm", "model", "polarization", "angl
             "z_step_nm", "quality", "threshold", "gamma", "colormap", "show_polarization")
 
 
+
+from emtk.i18n import tr
+
+
+from chisurf.plugins.emtk_layout import window_size as shared_window_size
+
+
 class PSFApp(TourTarget, ImApp):
     """The PSF window: parameters left, the volume and a central slice right."""
 
     def __init__(self, model=None):
+        self.window_size = shared_window_size(SPEC, (640, 480))
         self.model = model or PSFModel()
         self.item_rects: dict = {}
         self.busy = False
@@ -50,16 +58,36 @@ class PSFApp(TourTarget, ImApp):
         self._lock = threading.Lock()
         self._result = None
         self._context = None
-        self.help_window = EmTkHelpWindow(title="PSF calculator - Help", resource=HERE / "help.md", owner=self,
-                                          on_start_guide=lambda: self.tour.start())
-        self.tour = EmTkGuidedTour(steps=HERE / "guide.json", get_target_rect=lambda k: self.item_rects.get(k), owner=self,
-                                   wait_for_controls=True)
+        self.help_window = EmTkHelpWindow(
+            title=tr("PSF calculator - Help"),
+            resource=HERE / "help.md",
+            owner=self,
+            on_start_guide=lambda: self.tour.start(),
+        )
+        self.tour = EmTkGuidedTour(
+            steps=HERE / "guide.json",
+            get_target_rect=lambda k: self.item_rects.get(k),
+            owner=self,
+            wait_for_controls=True,
+        )
         self.panel = PSFPanel(self)
-        self.forms = {n: FormState(on_used=self.tour.notify_used) for n in ("toolbar", "parameters", "result", "slice")}
-        self.docks = DockManager(Split("h", 0.38, Region("controls"), Split("v", 0.62, Region("volume"), Region("slice"))), name="psf")
-        self.docks.add_window("controls", "Parameters", self._draw_controls, dock="controls", closable=False)
-        self.docks.add_window("volume", "3-D PSF", self._draw_volume, dock="volume", closable=False)
-        self.docks.add_window("slice", "Orthogonal Slice", self._draw_slice, dock="slice", closable=False)
+        self.forms = {
+            n: FormState(on_used=self.tour.notify_used)
+            for n in ("toolbar", "parameters", "result", "slice")
+        }
+        self.docks = DockManager(
+            Split(
+                "h", 0.38, Region("controls"), Split("v", 0.62, Region("volume"), Region("slice"))
+            ),
+            name="psf",
+        )
+        self.docks.add_window(
+            "controls", tr("Parameters"), self._draw_controls, dock="controls", closable=False
+        )
+        self.docks.add_window("volume", tr("3-D PSF"), self._draw_volume, dock="volume", closable=False)
+        self.docks.add_window(
+            "slice", tr("Orthogonal Slice"), self._draw_slice, dock="slice", closable=False
+        )
         self.native_layouts = {"main": self.docks}
         super().__init__(self._render, continuous=False)
 
@@ -106,11 +134,15 @@ class PSFApp(TourTarget, ImApp):
             self.model._volume = snapshot.volume
             self.model._key = snapshot._key
         if self.error:
-            self.error = "Error: " + self.error
+            self.error = tr("Error: {error}").format(error=self.error)
 
     def animating(self) -> bool:
         """Frames while the volume is being computed or an edit waits for its debounce."""
-        if self.busy or (self.model.is_stale and not self.error and self.model.volume is None) or (self.model.is_stale and not self.error):
+        if (
+            self.busy
+            or (self.model.is_stale and not self.error and self.model.volume is None)
+            or (self.model.is_stale and not self.error)
+        ):
             return True
         return super().animating()
 
@@ -124,10 +156,12 @@ class PSFApp(TourTarget, ImApp):
     def _draw_controls(self, box) -> None:
         self._form("toolbar", SPEC["toolbar"])
         if "export_npy" in self.item_rects:
-            self.item_rects["Export"] = self.item_rects["export_npy"]  # the guide's name for the export buttons
+            self.item_rects["Export"] = self.item_rects[
+                "export_npy"
+            ]  # the guide's name for the export buttons
         # One line is always reserved, so the fields below do not jump when a computation starts or ends.
         if self.busy:
-            im.text_disabled("Computing the volume ...")
+            im.text_disabled(tr("Computing the volume ..."))
         elif self.error:
             im.push_style_color(im_Col.TEXT, (255, 115, 100, 255))
             im.text_wrapped(self.error)
@@ -138,7 +172,9 @@ class PSFApp(TourTarget, ImApp):
             im.text_disabled(" ")
         self._form("parameters", SPEC["parameters"])
         if self.model.volume is None:
-            im.text_wrapped("Not computed yet." if not self.error else "No volume: see the message above.")
+            im.text_wrapped(
+                tr("Not computed yet.") if not self.error else tr("No volume: see the message above.")
+            )
         else:
             self._form("result", SPEC["result"])
         self.remember("parameters", tuple(box))
@@ -146,11 +182,13 @@ class PSFApp(TourTarget, ImApp):
     def _draw_volume(self, box) -> None:
         volume = self.model.volume
         if volume is None:
-            im.text_wrapped("Waiting for the first PSF calculation." if not self.error else "No volume to show.")
+            im.text_wrapped(
+                tr("Waiting for the first PSF calculation.") if not self.error else tr("No volume to show.")
+            )
             return
         flags = implot3d.FLAGS_NO_LEGEND
-        if implot3d.begin_plot("PSF volume", (-1, -1), flags):
-            implot3d.setup_axes("x [nm]", "y [nm]", "z [nm]")
+        if implot3d.begin_plot(tr("PSF volume") + "##psf-volume", (-1, -1), flags):
+            implot3d.setup_axes(tr("x [nm]"), tr("y [nm]"), tr("z [nm]"))
             model = self.model
             nz, ny, nx = volume.shape
             peak = max(float(volume.max()), 1e-30)
@@ -162,24 +200,37 @@ class PSFApp(TourTarget, ImApp):
 
             cmap = colormaps.get(model.colormap)
             for k in range(12):
-                mask = (intensity >= k / 12) & (intensity < (k + 1) / 12 if k < 11 else intensity <= 1)
+                mask = (intensity >= k / 12) & (
+                    intensity < (k + 1) / 12 if k < 11 else intensity <= 1
+                )
                 if mask.any():
                     # Outline and fill both: a 2 px marker is mostly outline, which would
                     # otherwise take the item's automatic colour, one blue for all.
                     band = cmap((k + 0.5) / 12)
                     spec = implot3d.Spec(marker_size=2, marker_fill_color=band, marker_line_color=band)
-                    implot3d.plot_scatter(f"Intensity {k}##psf{k}", (x[mask] - (nx - 1) / 2) * model.pixel_size_nm,
-                                          (y[mask] - (ny - 1) / 2) * model.pixel_size_nm, (z[mask] - (nz - 1) / 2) * model.z_step_nm, spec=spec)
+                    implot3d.plot_scatter(
+                        tr("Intensity {band}").format(band=k) + f"##psf{k}",
+                        (x[mask] - (nx - 1) / 2) * model.pixel_size_nm,
+                        (y[mask] - (ny - 1) / 2) * model.pixel_size_nm,
+                        (z[mask] - (nz - 1) / 2) * model.z_step_nm,
+                        spec=spec,
+                    )
             if model.show_polarization and model.model == "vectorial":
                 segments = model.polarization_segments()
                 if segments is not None:
                     for i, segment in enumerate(segments):
                         a = np.asarray(segment)
-                        implot3d.plot_line(f"Polarization {i}", (a[:, 0] - (nx - 1) / 2) * model.pixel_size_nm,
-                                           (a[:, 1] - (ny - 1) / 2) * model.pixel_size_nm, (a[:, 2] - (nz - 1) / 2) * model.z_step_nm)
+                        implot3d.plot_line(
+                            tr("Polarization {index}").format(index=i) + f"##polarization{i}",
+                            (a[:, 0] - (nx - 1) / 2) * model.pixel_size_nm,
+                            (a[:, 1] - (ny - 1) / 2) * model.pixel_size_nm,
+                            (a[:, 2] - (nz - 1) / 2) * model.z_step_nm,
+                        )
             implot3d.end_plot()
-            im.set_item_tooltip("Drag to rotate the physical PSF volume. Threshold hides dim voxels; gamma changes their brightness. "
-                                "The view draws up to 6,000 voxels; the export keeps every voxel.")
+            im.set_item_tooltip(
+                tr("Drag to rotate the physical PSF volume. Threshold hides dim voxels; gamma changes their brightness. "
+                   "The view draws up to 6,000 voxels; the export keeps every voxel.")
+            )
         self.remember("volume", tuple(box))
 
     def _slice_colours(self) -> list:
@@ -198,36 +249,53 @@ class PSFApp(TourTarget, ImApp):
         px, dz = float(self.model.pixel_size_nm), float(self.model.z_step_nm)
         axis = self.slice_plane
         if axis == "XY":
-            plane, (u, v), labels = volume[nz // 2], (nx * px, ny * px), ("x [nm]", "y [nm]")
+            plane, (u, v), labels = volume[nz // 2], (nx * px, ny * px), (tr("x [nm]"), tr("y [nm]"))
         elif axis == "XZ":
-            plane, (u, v), labels = volume[:, ny // 2, :], (nx * px, nz * dz), ("x [nm]", "z [nm]")
+            plane, (u, v), labels = volume[:, ny // 2, :], (nx * px, nz * dz), (tr("x [nm]"), tr("z [nm]"))
         else:
-            plane, (u, v), labels = volume[:, :, nx // 2], (ny * px, nz * dz), ("y [nm]", "z [nm]")
-        plane = np.asarray(plane)[::-1]  # the heatmap puts row 0 on top: flip so y and z grow upwards
-        if implot.begin_plot(f"Central PSF slice##{axis}", (-1, -1), implot.FLAGS_EQUAL):
+            plane, (u, v), labels = volume[:, :, nx // 2], (ny * px, nz * dz), (tr("y [nm]"), tr("z [nm]"))
+        plane = np.asarray(plane)[
+            ::-1
+        ]  # the heatmap puts row 0 on top: flip so y and z grow upwards
+        if implot.begin_plot(tr("Central PSF slice") + f"##{axis}", (-1, -1), implot.FLAGS_EQUAL):
             implot.push_colormap(self._slice_colours())
             implot.setup_axes(*labels)
             # No limits: the first frame of each plane's plot fits the heatmap, and equal
             # axes then keep that y range and widen x (ImPlot's rule), so the whole
             # section shows. Asking for its width cropped its height to a band.
-            implot.setup_legend(0, implot.LEGEND_FLAGS_NO_BUTTONS if hasattr(implot, "LEGEND_FLAGS_NO_BUTTONS") else 0)
-            implot.plot_heatmap("Intensity##slice", plane.ravel(), *plane.shape, 0.0, float(volume.max()), label_fmt="",
-                                bounds_min=(-u / 2, -v / 2), bounds_max=(u / 2, v / 2),
-                                spec=implot.PlotSpec(flags=implot.ITEM_FLAGS_NO_LEGEND))
+            implot.setup_legend(
+                0,
+                implot.LEGEND_FLAGS_NO_BUTTONS if hasattr(implot, "LEGEND_FLAGS_NO_BUTTONS") else 0,
+            )
+            implot.plot_heatmap(
+                tr("Intensity") + "##slice",
+                plane.ravel(),
+                *plane.shape,
+                0.0,
+                float(volume.max()),
+                label_fmt="",
+                bounds_min=(-u / 2, -v / 2),
+                bounds_max=(u / 2, v / 2),
+                spec=implot.PlotSpec(flags=implot.ITEM_FLAGS_NO_LEGEND),
+            )
             implot.pop_colormap()
             implot.end_plot()
-            im.set_item_tooltip("The central section of the full computed volume, without voxel subsampling.")
+            im.set_item_tooltip(
+                tr("The central section of the full computed volume, without voxel subsampling.")
+            )
         self.remember("slice", tuple(box))
 
     # -- export ----------------------------------------------------------------------------------------------- #
     def begin_export(self, suffix: str) -> None:
         if self.model.volume is None:
-            self.error = "Error: The PSF has not been computed yet -- wait for the view to fill in."
+            self.error = tr("Error: The PSF has not been computed yet -- wait for the view to fill in.")
             return
         self.dialog_suffix = suffix
-        title = f"Export PSF as {suffix}"
-        filters = "NumPy array (*.npy)" if suffix == ".npy" else "TIFF stack (*.tif *.tiff)"
-        self.dialog = FileDialog(title, mode="save", filename=self.model.export_basename() + suffix, filters=filters)
+        title = tr("Export PSF as {suffix}").format(suffix=suffix)
+        filters = tr("NumPy array (*.npy)") if suffix == ".npy" else tr("TIFF stack (*.tif *.tiff)")
+        self.dialog = FileDialog(
+            title, mode="save", filename=self.model.export_basename() + suffix, filters=filters
+        )
         self.file_window = DialogWindow(title, size=(560, 420), key=title)
         self.file_window.show()
 
@@ -243,18 +311,25 @@ class PSFApp(TourTarget, ImApp):
             path = pathlib.Path(chosen[0])
             self.dialog = None
             if not path.suffix:
-                path = path.with_suffix(self.dialog_suffix)  # a bare name would give a file neither NumPy nor ImageJ opens
+                path = path.with_suffix(
+                    self.dialog_suffix
+                )  # a bare name would give a file neither NumPy nor ImageJ opens
             try:
                 written = self.model.save(path)
-                self.status = f"Exported to {written}"
+                self.status = tr("Exported to {path}").format(path=written)
                 self.error = ""
             except Exception as exc:  # noqa: BLE001
-                self.error = f"Error: Export failed: {exc}"
+                self.error = tr("Error: Export failed: {error}").format(error=exc)
 
     # -- one frame ------------------------------------------------------------------------------------------ #
     def _render(self) -> None:
         self._poll()
-        if not self.busy and not self.error and self.model.is_stale and time.monotonic() >= self.deadline:
+        if (
+            not self.busy
+            and not self.error
+            and self.model.is_stale
+            and time.monotonic() >= self.deadline
+        ):
             self.compute()
         vp = im.get_main_viewport()
         box = (0.0, 0.0, float(vp.size[0]), float(vp.size[1]))
@@ -273,7 +348,12 @@ class PSFApp(TourTarget, ImApp):
         """Restore :meth:`export_settings`; unusable entries are ignored and numbers are clamped to the field's range."""
         if not isinstance(settings, dict):
             return
-        fields = {s["attr"]: s for p in SPEC["parameters"]["sections"] for s in p["sections"] if "attr" in s}
+        fields = {
+            s["attr"]: s
+            for p in SPEC["parameters"]["sections"]
+            for s in p["sections"]
+            if "attr" in s
+        }
         for name in SETTINGS:
             if name not in settings:
                 continue
@@ -285,9 +365,15 @@ class PSFApp(TourTarget, ImApp):
                 if isinstance(value, bool) or not isinstance(value, (int, float)) or value != value:
                     continue
                 lo, hi = spec.get("minimum"), spec.get("maximum")
-                value = min(max(value, lo if lo is not None else value), hi if hi is not None else value)
+                value = min(
+                    max(value, lo if lo is not None else value), hi if hi is not None else value
+                )
                 setattr(self.model, name, int(value) if isinstance(current, int) else float(value))
-            elif isinstance(current, str) and isinstance(value, str) and value in (spec.get("options") or [value]):
+            elif (
+                isinstance(current, str)
+                and isinstance(value, str)
+                and value in (spec.get("options") or [value])
+            ):
                 setattr(self.model, name, value)
         if settings.get("slice_plane") in ("XY", "XZ", "YZ"):
             self.slice_plane = settings["slice_plane"]

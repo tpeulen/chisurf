@@ -1,4 +1,5 @@
 {
+ "window": {"width": 640, "height": 480},
   "_comment": "FCS confocal calculator, drawn by emtk.view_form over ConfocalModel (gui/model.py). The fields and descriptions of fcs_calculator.view.json (the Qt tool's spec); its custom constraint, dye and shape sections are spec sections here (radio choices, a dye choice, value fields, buttons). Computed fields are read-only through ConfocalModel.enabled. The custom section confocal_json (Export / Import JSON with file dialogs) is drawn by gui/app.py.",
   "sections": [
     {
@@ -26,6 +27,11 @@
               "V",
               "Fix Veff"
             ]
+          ],
+          "descriptions": [
+            "Use the entered diffusion coefficient to calculate hydrodynamic radius and effective volume.",
+            "Use the entered hydrodynamic radius to calculate diffusion coefficient and effective volume.",
+            "Use the entered effective confocal volume to calculate diffusion coefficient and hydrodynamic radius."
           ],
           "description": "Fix D, rₕ or Veff: that field is the input, the other two are computed and read-only."
         }
@@ -226,6 +232,10 @@
               false,
               "Apply at 25 °C (no scaling)"
             ]
+          ],
+          "descriptions": [
+            "Rescale the reference diffusion coefficient from water at 25 °C to the current temperature and viscosity.",
+            "Use the tabulated diffusion coefficient in water at 25 °C without temperature or viscosity correction."
           ],
           "description": "Scale the reference D from 25 °C water to the current temperature and viscosity (Stokes-Einstein), or use it as tabulated."
         }
