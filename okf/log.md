@@ -2,6 +2,8 @@
 
 ## 2026-10-08
 
+- **2026-10-08 · W6g inventory first unit:** added source-only generator/freshness guard with nested ownership, real AST imports, test/template exclusion and malformed-record errors;6inventorycases plus five available guards965pass/16skips; Ruff/format and targeted mypy clean. Private HEAD archive prevents foreign dirty ports becoming release claims; committed129/116emtk/22missinghelp-guide versus live129/123/18 are recorded separately. Appendix regenerated with reference/viewport qualifications. Hub/ribbon/shared guards remain next; full programme active. [Current job](validation/release-readiness-w6g/current-job.md).
+
 - **2026-10-08 · W1 publication checkpoint:** Burst MLE source54ed9cb1c and tttrlib board185fd477b committed locally; exact source and board hashes recorded in durable acceptance/state. Next W6g; complete programme remains active. [Resume](validation/release-readiness-w1/current-job/handoff.md).
 
 - **2026-10-08 · Burst MLE model/source acceptance:** native and embedded Fit23/24/25 choices, editable registry parameter tables, persistence, worker/state/export contracts and physical Fit23 hashes verified; explicit embedded LUT/clock reader root and stale-demo curve fixed. Real generated16-burst PTU/BUR Demo and shipped manual awaits pass.65 targeted cases,970 availableguards/16skips, Ruff clean,38→37types/no new errors, lock0; all measured pairs/actualQt-host/tabs/fittedDemo PNGs personally read. Foreign source/test/formatting preserved by owned candidate composition. W1 source complete; next W6g; full programme and W0 bundle guard remain open. [Acceptance](validation/release-readiness-w1/mle-model-selection/acceptance.json), [durable handoff](validation/release-readiness-w1/current-job/handoff.md).

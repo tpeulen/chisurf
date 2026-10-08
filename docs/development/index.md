@@ -35,6 +35,7 @@ emtk_interaction_testing
 chimol_widget_toolkit
 plugin_architecture
 plugin_cli_contract
+plugin_inventory
 proxy_rpc_design
 history_project_mcp
 client_server_migration_plan
