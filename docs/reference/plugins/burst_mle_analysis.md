@@ -32,6 +32,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
+| Fit model | `fit_model` | choice |  | choices: `fit_model_choices` | Select the registered tttrlib lifetime estimator for the preview and batch fit. Fit23, Fit24 and Fit25 use the existing IRF/background facade. The existing tail fitter is preview-only. Each model retains its parameter edits. |
 | Tau start [ns] | `tau` | float |  | 0.01 … 100.0 | Starting value of the lifetime in ns (the wizard's Tau start). A change refits the current decay. |
 | Window start [bin] | `micro_time_start` | int |  | 0 … 100000 | First micro-time bin of the fit window (after binning). Leave out the empty bins before the prompt. |
 | Window stop [bin] | `micro_time_stop` | int |  | 1 … 100000 | Micro-time bin after the last bin of the fit window. Leave out the noisy tail. |

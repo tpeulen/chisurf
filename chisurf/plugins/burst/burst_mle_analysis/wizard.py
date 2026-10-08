@@ -1,3 +1,4 @@
+import copy
 import faulthandler
 import typing
 
@@ -33,6 +34,7 @@ from chisurf.core.datastore import (
     take_where,
     write_csv_table,
 )
+from chisurf.core.support.i18n import tr
 from chisurf.gui import chiplot
 from chisurf.gui.autoform import AutoForm
 from chisurf.gui.autoform.sections.registry import register_section
@@ -45,7 +47,8 @@ from chisurf.gui.widgets.tool_buttons import action_button, flag_attention
 #: 2: a split-by-state run first fits each state's pooled decay and starts that
 #: state's per-burst fits from it, so its per-burst lifetimes differ from v1's.
 #: 3: missing-header timing converts the declared picoseconds to the fit API's nanoseconds.
-ALGORITHM_VERSION = 3
+#: 4: effective Fit24 reports and explicit setup corrections invalidate older fit exports.
+ALGORITHM_VERSION = 4
 
 
 def _coerce_float(value) -> float:
@@ -859,6 +862,9 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
     @property
     def tau_result(self) -> float:
         """Fitted fluorescence lifetime (tau) result in nanoseconds."""
+        result = getattr(self, "_model_fit_result", None)
+        if self.fit_model != "fit23" and result is not None:
+            return float(result.x[1] if self.fit_model == "tail" else result.x[0])
         return self.doubleSpinBox_tau_result.value()
 
     @tau_result.setter
@@ -895,6 +901,9 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
     @property
     def twoIstar_result(self) -> float:
         """Fitted 2I* result."""
+        result = getattr(self, "_model_fit_result", None)
+        if self.fit_model != "fit23" and result is not None:
+            return float(result.twoIstar)
         return self.doubleSpinBox_twoIstar_result.value()
 
     @twoIstar_result.setter
@@ -955,7 +964,11 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
 
     def _header_time_ns(self):
         """(dt_ns, period_ns) from the current file's TTTR header, or ``None`` (``engine.header_time_ns``)."""
-        return engine.header_time_ns(self._current_tttr(), self.micro_time_binning)
+        reading = self.channel_definer.get_settings().get("tttr_reading") or {}
+        dt, period = engine.effective_timing_ns(
+            self._current_tttr(), self.micro_time_binning, reading
+        )
+        return (dt, period) if dt is not None and period is not None else None
 
     @property
     def dt_effective(self):
@@ -1047,7 +1060,10 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         # registry-driven editor built for them.
         if self.fit_model != "fit23" and getattr(self, "_dyn_params", None):
             rows = self._dyn_params
-            return np.array(rows.initial_values()), np.array(rows.fixed_flags())
+            flags = rows.fixed_flags()
+            if self.fit_model == "fit25":
+                flags = [1 if name.startswith("tau") else flag for name, flag in zip(rows.names, flags)]
+            return np.array(rows.initial_values()), np.array(flags)
         tau = self.tau
         gamma = self.gamma
         r0 = self.r0
@@ -2477,7 +2493,10 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         self.stop_processing = False
 
         self._tttr_paths: dict[str, Path] = {}
-        self.tttrs = LazyTTTRDict(self._tttr_paths, lambda: self.tttr_file_type)
+        self.tttrs = LazyTTTRDict(
+            self._tttr_paths, lambda: self.tttr_file_type,
+            lambda: self.channel_definer.get_settings(),
+        )
 
         self.irf_np = {}
         self.bg_np = {}
@@ -2839,6 +2858,37 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         """
         self.doubleSpinBox_scatter_Countrate.setValue(self.scatter_count_rate)
 
+    def load_demo(self) -> None:
+        """Load generated photons without running an analysis on the user's behalf."""
+        from .demo import SETUP, demo_folder, make_demo
+
+        path = make_demo(demo_folder())
+        self.burst_files_list.clear()
+        self.df_bursts = None
+        self.tttrs.clear()
+        self.irf_np.clear()
+        self.bg_np.clear()
+        self._fit = None
+        self._model_fit_result = None
+        self.fit_curves = None
+        self.burst_results = []
+        self.state_lifetimes = []
+        self.channel_definer.set_settings(SETUP)
+        self._init_channels_from_wizard()
+        self.fit_model = "fit23"
+        self.tau = 4.
+        self.rho = 1.22
+        self.fix_tau = False
+        self.fix_gamma = True
+        self.fix_r0 = True
+        self.fix_rho = True
+        self.gamma = 0.
+        self.r0 = 0.
+        self._auto_populated = True
+        self.burst_files_list.add_file(str(path))
+        self.load_burst_data()
+        self.update_burst_files()
+
     def load_burst_data(self):
         files = self.burst_files_list.get_selected_files()
         if not files:
@@ -3056,10 +3106,17 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         # so the tail fit's numbers never reached the panel).
         x = np.asarray(res.x, dtype=float)
         two = float(res.twoIstar)
+        self._model_fit_result = res
 
         # Non-fit23 models write to the registry-driven editor, by schema order.
         if self.fit_model != "fit23" and getattr(self, "_dyn_params", None):
-            self._dyn_params.set_results(x)
+            display = x.copy()
+            if self.fit_model == "fit25":
+                starts, _fixed = self.fit_parameters
+                for i, name in enumerate(self._dyn_params.names):
+                    if name.startswith("tau"):
+                        display[i] = starts[i]
+            self._dyn_params.set_results(display)
             form = getattr(self, "_dyn_form", None)
             if form is not None:
                 form.refresh_plots()
@@ -3362,27 +3419,105 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         combo = getattr(self, "comboBox_fit_model", None)
         return (combo.currentData() if combo is not None else None) or "fit23"
 
+    @fit_model.setter
+    def fit_model(self, name: str) -> None:
+        """Select the actual existing model control, rejecting unavailable estimators."""
+        if name not in self.fit_model_options():
+            raise ValueError(f"Model {name!r} is unavailable in this Burst MLE workflow.")
+        index = self.comboBox_fit_model.findData(name)
+        self.comboBox_fit_model.setCurrentIndex(index)
+
+    def fit_model_options(self) -> list[str]:
+        """Return compatible registry names and the existing preview-only tail fitter."""
+        return [self.comboBox_fit_model.itemData(i) for i in range(self.comboBox_fit_model.count())]
+
+    def fit_model_choices(self) -> list[tuple[str, str]]:
+        """Pair registry values with the actual existing model control's readable labels."""
+        return [(self.comboBox_fit_model.itemData(i), str(tr(self.comboBox_fit_model.itemText(i))))
+                for i in range(self.comboBox_fit_model.count())]
+
+    def parameter_records(self) -> list[dict]:
+        """Expose the actual model's inputs and results to the native editable table."""
+        names = self._fit_param_names(self.fit_model)
+        starts, fixed = self.fit_parameters
+        result = getattr(self, "_model_fit_result", None)
+        properties = self._model_schema(self.fit_model).get("properties", {})
+        rows = []
+        for i, name in enumerate(names):
+            value = float(result.x[i]) if result is not None and i < len(result.x) else float("nan")
+            if self.fit_model == "fit25" and name.startswith("tau"):
+                value = float(starts[i])
+            rows.append({"name": name, "start": float(starts[i]), "fixed": bool(fixed[i]),
+                         "result": f"{value:.4g}" if result is not None else "",
+                         "description": properties.get(name, {}).get("description", "")})
+        return rows
+
+    def parameter_cell_editable(self, record: dict, key: str) -> bool:
+        """Keep discrete lifetime candidates fixed while allowing their numeric inputs."""
+        return key == "start" or (key == "fixed" and not (
+            self.fit_model == "fit25" and str(record.get("name", "")).startswith("tau")))
+
+    def edit_parameter(self, record: dict, key: str, value) -> None:
+        """Write one native cell to the owning authored or registry-driven parameter state."""
+        if getattr(self, "_inputs_frozen", False):
+            raise RuntimeError(tr("Wait for the running Burst MLE job before changing its inputs."))
+        name = str(record.get("name", ""))
+        names = self._fit_param_names(self.fit_model)
+        if name not in names or key not in ("start", "fixed"):
+            raise ValueError(f"Unknown parameter cell {name!r}/{key!r}.")
+        if not self.parameter_cell_editable(record, key):
+            raise ValueError("Fit25 lifetime candidates are always fixed.")
+        if key == "start":
+            value = float(value)
+            if self.fit_model == "fit23":
+                widget = getattr(self, f"doubleSpinBox_{name}")
+                minimum, maximum = widget.minimum(), widget.maximum()
+            else:
+                spec = self._model_schema(self.fit_model)["properties"][name]
+                minimum, maximum = spec.get("minimum", -np.inf), spec.get("maximum", np.inf)
+            if not np.isfinite(value) or value < minimum or value > maximum:
+                raise ValueError(f"Parameter {name!r} is outside its declared bounds.")
+        if self.fit_model == "fit23":
+            setattr(self, name if key == "start" else f"fix_{name}", value)
+        else:
+            row = names.index(name)
+            if key == "start":
+                self._dyn_params.values[row] = float(value)
+            else:
+                self._dyn_params.fixed[row] = bool(value)
+            self.update_variable_fit_parameters()
+
+    def model_availability(self) -> str:
+        """Explain registered models and the additional inputs unsupported here."""
+        return engine.model_availability()
+
+    def model_result_text(self) -> str:
+        """Show the current model's primary lifetime and any declared classification output."""
+        result = getattr(self, "_model_fit_result", None)
+        if result is None:
+            return str(tr("No fit result yet."))
+        if self.fit_model == "tail":
+            return str(tr("Tail lifetimes: {lifetimes} ns; score: {score:.4g}.")).format(
+                lifetimes=" / ".join(f"{float(value):.4g}" for value in result.x[1:]),
+                score=float(result.twoIstar))
+        text = str(tr("Primary lifetime: {tau:.4g} ns; 2I*: {score:.4g}.")).format(
+            tau=float(result.x[0]), score=float(result.twoIstar))
+        for name in engine.fit_result_names(self.fit_model) if self.fit_model != "tail" else ():
+            text += str(tr(" {name}: {value:.0f} (0-based).")).format(name=name, value=result.result(name))
+        return text
+
+    def _model_parameter_payload(self) -> dict:
+        """Capture all model-specific starts and flags, including the current editor."""
+        states = copy.deepcopy(getattr(self, "_model_parameter_states", {}))
+        rows = getattr(self, "_dyn_params", None)
+        if self.fit_model != "fit23" and rows is not None:
+            states[self.fit_model] = {str(name): {"value": float(value), "fixed": bool(fixed)}
+                                      for name, value, fixed in zip(rows.names, rows.values, rows.fixed)}
+        return states
+
     def _is_fit2x_constructible(self, model: str) -> bool:
-        """Whether ``model``'s estimator is built from dt/IRF/background.
-
-        The burst-MLE workflow constructs every fit from the acquisition inputs
-        (``dt``, ``irf``, ``background``, …). Some registry models (e.g. fit26,
-        pattern fractioning) are defined against fixed reference patterns
-        instead, and are not offered here.
-
-        The registry states this directly as ``n_patterns``. It used to be
-        inferred by introspecting the estimator class's ``__init__`` for
-        ``pattern_1``/``pattern_2`` arguments — a guess about a Python signature
-        that said nothing about the model, and that silently answered "yes" for
-        any class whose constructor was ``*args, **kwargs``.
-        """
-        try:
-            from chisurf.core.registry import tttrlib as _reg
-
-            entry = _reg.describe(_reg.FIT_MODEL, model) or {}
-            return int(entry.get("n_patterns", 0)) == 0
-        except Exception:
-            return False
+        """Whether the registered estimator is supported by the acquisition-input facade."""
+        return model in engine.fit_model_specs()
 
     def _fit_model_name(self) -> str:
         """Registry name of the selected fit, e.g. ``"fit23"``.
@@ -3390,13 +3525,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         A fit is built by name now, so there is no class to look up and no
         model-to-class table to keep in step.
         """
-        name = self.fit_model
-        try:
-            if name in tttrlib.fit_names():
-                return name
-        except Exception:
-            pass
-        return "fit23"
+        return engine.validate_fit_model(self.fit_model)
 
     @staticmethod
     def _tail_schema() -> dict:
@@ -3450,20 +3579,13 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             return {}
 
     def _fit_param_names(self, model: str) -> list:
-        """Ordered parameter names for ``model`` from its schema.
+        """Return ordered free facade inputs, excluding provider-supplied constants."""
+        if model == "tail":
+            return list(self._tail_schema()["properties"])
+        from chisurf.core.fluorescence.mle.fit2x import parameter_names_of
 
-        Uses the schema ``properties`` order, which (for fit2x) the registry
-        guarantees to match the estimator's ``initial_values`` layout. Falls back
-        to ``required`` then to the fit23 set.
-        """
-        schema = self._model_schema(model)
-        props = schema.get("properties")
-        if props:
-            return list(props.keys())
-        required = schema.get("required")
-        if required:
-            return list(required)
-        return ["tau", "gamma", "r0", "rho"]
+        engine.validate_fit_model(model)
+        return list(parameter_names_of(model))
 
     def _rebuild_dyn_params(self, model: str) -> None:
         """(Re)build the schema-driven parameter rows for a non-fit23 model.
@@ -3488,14 +3610,16 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         schema = self._model_schema(model)
         props = schema.get("properties") or {}
         rows = _MleParameterRows()
+        saved = getattr(self, "_model_parameter_states", {}).get(model, {})
         for name in self._fit_param_names(model):
             spec = props.get(name, {})
+            state = saved.get(name, {})
             rows.append(
                 name=name,
                 label=spec.get("title", name),
                 description=spec.get("description", ""),
-                value=float(spec.get("default", 0.0)),
-                fixed=bool(spec.get("fixed_default", False)),
+                value=float(state.get("value", spec.get("default", 0.0))),
+                fixed=bool(state.get("fixed", spec.get("fixed_default", False))),
                 minimum=float(spec.get("minimum", -1e9)),
                 maximum=float(spec.get("maximum", 1e9)),
             )
@@ -3519,6 +3643,18 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         The two panels swap visibility so fit23 is never disturbed.
         """
         model = self.fit_model
+        previous = getattr(self, "_last_fit_model", "fit23")
+        states = getattr(self, "_model_parameter_states", {})
+        rows = getattr(self, "_dyn_params", None)
+        if previous != "fit23" and rows is not None and not getattr(self, "_loading_model_parameters", False):
+            states[previous] = {str(name): {"value": float(value), "fixed": bool(fixed)}
+                                for name, value, fixed in zip(rows.names, rows.values, rows.fixed)}
+        self._model_parameter_states = states
+        self._last_fit_model = model
+        self._model_fit_result = None
+        # A table from another estimator must never be exported under this one's schema.
+        self.burst_results = []
+        self.state_lifetimes = []
         is23 = model == "fit23"
         self.groupBox_model_params.setVisible(is23)
         self.groupBox_dyn_params.setVisible(not is23)
@@ -4847,6 +4983,8 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
 
         payload = {
             "tttr_file_type": self.channel_definer.filetype or "Auto",
+            "model": self.fit_model,
+            "model_parameter_states": self._model_parameter_payload(),
             "channel_settings": self.channel_settings,
             "detector_settings": detwiz.get_settings(),
             "micro_time_binning": self.micro_time_binning,
@@ -4956,6 +5094,18 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             the status line. A caller that built the payload itself passes
             nothing, and those two places are left alone.
         """
+        model = payload.get("model", "fit23")
+        if model not in self.fit_model_options():
+            raise ValueError(f"Model {model!r} is unavailable in this Burst MLE workflow.")
+        self._model_parameter_states = copy.deepcopy(payload.get("model_parameter_states") or {})
+        self._loading_model_parameters = True
+        try:
+            self.fit_model = model
+            if model != "fit23":
+                self._rebuild_dyn_params(model)
+        finally:
+            self._loading_model_parameters = False
+
         # Micro time binning
         mtb = payload.get("micro_time_binning", None)
         if mtb is not None:

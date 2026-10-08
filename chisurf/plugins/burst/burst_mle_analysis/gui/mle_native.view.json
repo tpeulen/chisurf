@@ -7,6 +7,33 @@
       "collapsed": false,
       "sections": [
         {
+          "type": "button_row",
+          "buttons": [
+            {
+              "action": "load_demo",
+              "label": "Generate synthetic demo",
+              "description": "Replace working inputs with a reproducible real PTU/BUR demo in the settings cache: 16 bursts of 1000 photons, generated lifetime2ns and32ps clock. Press Auto IRF/background separately; saved measurement files are unchanged."
+            }
+          ]
+        },
+        {
+          "type": "choice",
+          "attr": "fit_model",
+          "label": "Fit model",
+          "options_source": "fit_model_choices",
+          "description": "Registered tttrlib lifetime estimator used by the preview and every detector's batch fit. Fit23 measures a single lifetime with anisotropy, Fit24 a bi-exponential decay, and Fit25 selects among four fixed candidate lifetimes. Each model retains its start values and fixed flags."
+        },
+        {
+          "type": "info",
+          "source": "model_availability",
+          "description": "Available registered estimators and the additional inputs required by models unavailable in this workflow."
+        },
+        {
+          "type": "info",
+          "source": "model_result_text",
+          "description": "The current fit's primary lifetime and score. Fit25 additionally reports the registered winning candidate index (0-based); candidate lifetimes remain input parameters."
+        },
+        {
           "type": "custom",
           "key": "data_table",
           "title": "",
@@ -186,12 +213,13 @@
       "type": "custom",
       "key": "data_table",
       "title": "Fit parameters",
-      "description": "Start value, fixed flag and fitted value of tau, gamma, r0 and rho. Double-click a start value to type; the check box fixes the parameter at its start value. A change refits the current decay.",
+      "description": "The selected model's free input parameters, start values, fixed flags and fitted values. Fit25 lifetimes remain classification candidates; its primary fitted lifetime identifies the winning candidate. Double-click a start value to type. A change refits the current decay.",
       "options": {
         "source": "parameter_records",
         "row_key": "name",
         "editable": true,
         "edited_call": "edit_parameter",
+        "editable_call": "parameter_cell_editable",
         "height": 112,
         "fit_columns": false,
         "min_column_width": 60,
@@ -201,7 +229,7 @@
             "title": "Parameter",
             "width": 90,
             "editable": false,
-            "tooltip": "tau: lifetime (ns); gamma: scatter fraction; r0: fundamental anisotropy; rho: rotational correlation time (ns)."
+            "tooltip": "Parameters declared by the selected tttrlib model. Lifetimes and rotational correlation times are in ns; fractions and anisotropy are dimensionless."
           },
           {
             "key": "start",

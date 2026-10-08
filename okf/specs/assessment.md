@@ -807,6 +807,7 @@ rather than adding another `Structure(...)` call site; a new call site violates 
 
 | ID | Subsystem | Finding | Status |
 |---|---|---|---|
+| [W1](/prds/prd-154.md) | Tree/GUI inputs | Legacy forms/helpers, environment paths and missing Burst MLE model selection blocked release | ✅ SOURCE FIXED — [model acceptance](/validation/release-readiness-w1/mle-model-selection/acceptance.json); bundle-wide guard remains W0 |
 | [W5](/prds/prd-154.md) | emtk/GUI | Input navigation, overflowing graph zoom, frames, grids, host lifecycle and geometry lacked shared root contracts | ✅ FIXED — [evidence](/validation/release-readiness-w5.md) |
 
 W7's 102 schema failures and W0's missing bundle guard remain open in the

@@ -166,7 +166,9 @@ class BurstMleGui(TourTarget):
         if im.button("Refit"):
             self.track("toolAction_restart")
             self.wizard.refit()
-        im.set_item_tooltip("Fit the current burst file's decay again with the current start values and fit window.")
+        im.set_item_tooltip(
+            "Fit the current burst file's decay again with the current start values and fit window."
+        )
         self.remember("toolAction_restart")
 
         im.same_line()
@@ -193,7 +195,13 @@ class BurstMleGui(TourTarget):
         # Start value and fit window are the wizard's own settings (one source of truth): shown from it,
         # written to it when changed (the wizard then refits).
         draw_sections(self._fields, wiz, self.form_state)
-        for attr, key in (("tau", "tau_start"), ("micro_time_start", "window_start"), ("micro_time_stop", "window_stop")):
+        for attr, key in (
+            ("load_demo", "load_demo"),
+            ("fit_model", "fit_model"),
+            ("tau", "tau_start"),
+            ("micro_time_start", "window_start"),
+            ("micro_time_stop", "window_stop"),
+        ):
             rect = self.form_state.rects.get(attr)
             if rect is not None:
                 self.item_rects[key] = tuple(rect)
@@ -203,30 +211,7 @@ class BurstMleGui(TourTarget):
 
         im.separator()
 
-        if im.collapsing_header("Fit parameters", im.TreeNodeFlags.DEFAULT_OPEN):
-            self.remember("fit_parameters")
-            rows = fit_view.parameter_rows(wiz)
-            if not rows:
-                im.text_wrapped("The wizard has no fit parameters yet.")
-            elif im.begin_table(
-                "fit_param_tbl", 4, im.TableFlags.BORDERS | im.TableFlags.ROW_BG, (0, 24.0 + 22.0 * len(rows))
-            ):
-                im.table_setup_column("Parameter", im.TableColumnFlags.WIDTH_STRETCH)
-                im.table_setup_column("Start", im.TableColumnFlags.WIDTH_FIXED, 70.0)
-                im.table_setup_column("Fixed", im.TableColumnFlags.WIDTH_FIXED, 50.0)
-                im.table_setup_column("Result", im.TableColumnFlags.WIDTH_FIXED, 70.0)
-                im.table_headers_row()
-                for row in rows:
-                    im.table_next_row()
-                    im.table_set_column_index(0)
-                    im.text(row.name)
-                    im.table_set_column_index(1)
-                    im.text(f"{row.initial:.4g}")
-                    im.table_set_column_index(2)
-                    im.text("yes" if row.fixed else "no")
-                    im.table_set_column_index(3)
-                    im.text(f"{row.result:.4g}" if wiz.fit_curves is not None else "-")
-                im.end_table()
+        self.remember("fit_parameters", self.form_state.rects.get("Fit parameters.fold"))
 
         im.separator()
 
@@ -238,7 +223,9 @@ class BurstMleGui(TourTarget):
                     f"IRF and background loaded for {wiz.current_detector}", (0.3, 0.85, 0.4, 1.0)
                 )
             else:
-                im.text_colored("No IRF and background for the current detector yet", (0.8, 0.8, 0.4, 1.0))
+                im.text_colored(
+                    "No IRF and background for the current detector yet", (0.8, 0.8, 0.4, 1.0)
+                )
             im.text(f"Burst files: {fit_view.burst_file_count(wiz)}")
 
     def _draw_decay_dock(self, box: tuple[float, float, float, float]) -> None:

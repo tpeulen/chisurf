@@ -26,7 +26,7 @@ likelihood** rather than least squares.
 
 ## In ChiSurf
 
-The `burst_mle_analysis` plugin fits a single lifetime + anisotropy per burst per
+The `burst_mle_analysis` plugin fits the selected registered lifetime model per burst per
 detector using tttrlib's C++ maximum-likelihood estimator (the Maus-2001 `2I*`
 `Fit23`, and `Fit24`/`Fit25` variants), wrapped by one Qt-free harness:
 
@@ -68,17 +68,59 @@ tables that open in ndxplorer.
 ### The Burst MLE tool
 
 **Spectroscopy ▸ Single-Molecule ▸ Burst MLE**, or step *6. Burst MLE* of
-**Spectroscopy ▸ Burst Analysis**. Tabs: **Detector Definition**, **Burst
-Files** (`.bur` tables), **IRF Files**, **Background Files** and
-**Burst-MLE**. The Burst-MLE tab holds the file and **Detector**, the fit
-**Range** (micro-time channels after binning), **Min photons**, the collapsed
-*IRF (shift · threshold · range)* and *Shift · scatter · G/l1/l2* groups, and
-*Fit parameters*: the **Model** (Fit23/24/25, tail fit), **Split by H2MM
-state** with its own **min ph.**, **BIFL scatter**, **2I\*: P+2S**, **Save
-VV/VHs**, and per parameter an initial value, a fix box **F** and the fitted
-value. **⚡ Auto** picks the micro-time binning and fit window, **✨ Auto IRF**
-estimates a Gaussian IRF and background from the non-burst photons; **🎯 Opt**
-optimises; **▶** runs the batch over all bursts.
+**Spectroscopy ▸ Burst Analysis**. In the native tool, **Burst MLE** holds the
+input files, detector, fit window and editable parameter table; **IRF** holds
+pattern settings and **Detector setup** the shared channel editor. The existing
+wizard also exposes the same model selector in its embedded emtk panel.
+
+Select **Fit model** before running the preview or batch:
+
+| Model | Inputs in parameter order | Interpretation |
+|---|---|---|
+| Fit23 | `tau`, `gamma`, `r0`, `rho` | Single lifetime with polarization. |
+| Fit24 | `tau1`, `gamma`, `tau2`, `A2`, `offset` | Two-lifetime mixture; `A2` is the effective second-component amplitude. |
+| Fit25 | `tau1`, `tau2`, `tau3`, `tau4`, `gamma` | Four editable, fixed candidate lifetimes; the result reports the winning `selected_index` (0-based). |
+
+Double-click **Start** to edit a value; use **Fixed** to hold a fitted parameter.
+Each model retains its own edits when you switch away and back, including in
+saved settings. Fit25 candidate lifetimes remain fixed inputs; `r0` is supplied
+by its provider and is not a free table parameter. Fit26 needs two reference
+patterns and `fit_nexp` needs its array-input workflow, so neither is offered by
+this tool. The legacy wizard's tail fit remains preview-only.
+
+For a self-contained walk-through, press **Guide**, then press the highlighted
+**Generate synthetic demo** yourself. It replaces working inputs with 16
+synthetic bursts of 1000 photons each, a known input lifetime of 2 ns and a
+32 ps micro-time clock, stored in the settings cache. It does not fit for you.
+Choose a model, press **Auto IRF/background**, inspect the decay, then press
+**Fit bursts**. The generated ground truth is not an acquisition calibration;
+finite-photon estimates fluctuate. With measured inputs, add your `.bur` files
+and use your measured IRF/background wherever available.
+
+Saved detector definitions carry LUTs and channel shifts to the canonical
+photon reader in both interfaces. Physical header timing is used unless
+**Override timing** is explicitly selected; setup micro-time values are in ps,
+macro-time/period values in ns, and binning is applied once. A completed batch
+retains its original model/schema when you subsequently change the selector,
+so **Save results** cannot relabel earlier results as a different model.
+
+```python
+from chisurf.plugins.burst.burst_mle_analysis.demo import SETUP, make_demo
+from chisurf.plugins.burst.burst_mle_analysis.engine import MleSession
+
+bur = make_demo("/tmp/burst-mle-demo")
+session = MleSession()
+session.set_definition(SETUP)
+session.add_burst_files([bur])
+session.set_model("fit24")
+session.auto_extract()
+rows = session.run_batch(max_workers=1)
+paths = session.export_results()
+```
+
+Run the same script headlessly through `pixi run -e test python demo_fit.py`.
+Use a fresh dedicated output directory for the demo. Its generated files can
+also be loaded through the normal burst-file selector.
 
 ```{figure} figures/21_burst_mle.png
 :name: fig-21-burst-mle
@@ -94,6 +136,24 @@ model (green); top, the weighted residuals.
 The status line says what the Auto IRF did and that a measured IRF/background
 gives better lifetimes: the Gaussian stand-in leaves the systematic residual on
 the rising edge seen here.
+
+```{figure} figures/21_burst_mle_model_selection.png
+:name: fig-21-burst-mle-model-selection
+:width: 100%
+
+Real BH SPC-132 photons (green routing0/1), selected Fit24, editable registered
+parameter rows and the matching measured decay. The effective A2 is zero in
+this fit; this is not evidence for an identifiable second population.
+```
+
+```{figure} figures/21_burst_mle_synthetic_demo.png
+:name: fig-21-burst-mle-synthetic-demo
+:width: 100%
+
+Generated 2 ns single-lifetime demonstration after Auto IRF/background and
+16 per-burst fits. The estimated pooled lifetime is 1.918 ns; finite counts,
+window selection and the estimated IRF give imperfect recovery of the input.
+```
 
 ## Result
 

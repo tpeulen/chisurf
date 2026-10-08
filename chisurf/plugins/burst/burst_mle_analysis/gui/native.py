@@ -18,6 +18,7 @@ from emtk.im_core import get_current_context
 from emtk.view_form import FormState, draw_sections
 from emtk.widgets.view_spec import load_view_spec
 
+from chisurf.core.support.i18n import tr
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.jobs import SnapshotJob
@@ -63,8 +64,9 @@ class MleNativeApp(TourTarget, ImApp):
         self._dialog_window = None
         self.gate_min: float | None = None
         self.gate_max: float | None = None
+        self._editor_read_only_before_job: bool | None = None
         self.editor = ChannelDefinitionWidget(
-            {"detectors": self.model.session.detectors, "windows": {}, "tttr_reading": {"file_type": self.model.session.file_type}},
+            self.model.session.definition_payload(),
             on_changed=self.model.set_setup,
             host_app=self,
         )
@@ -236,7 +238,12 @@ class MleNativeApp(TourTarget, ImApp):
         im.begin_disabled(running)
         draw_sections(self._fields(), target, self.form)
         im.end_disabled()
-        for attr, key in (("micro_time_start", "window_start"), ("micro_time_stop", "window_stop"), ("current_detector", "detector")):
+        for attr, key in (
+            ("fit_model", "fit_model"),
+            ("micro_time_start", "window_start"),
+            ("micro_time_stop", "window_stop"),
+            ("current_detector", "detector"),
+        ):
             if attr in self.form.rects:
                 self.item_rects[key] = tuple(self.form.rects[attr])
 
@@ -247,6 +254,9 @@ class MleNativeApp(TourTarget, ImApp):
 
     def _detectors(self, box=None) -> None:
         self.remember("detectors", box)
+        if self.job.busy:
+            im.text_wrapped(str(tr("Detector settings are locked while Burst MLE is running.")))
+            return
         self.editor.draw()
 
     def _decay(self, box=None) -> None:
@@ -309,15 +319,36 @@ class MleNativeApp(TourTarget, ImApp):
             return
         draw_sections(self.tables, self.model, self.form)
 
+    def _sync_editor_read_only(self) -> None:
+        """Retain the editor's own policy while locking all of its dialogs during a fit."""
+        if self.job.busy:
+            if self._editor_read_only_before_job is None:
+                self._editor_read_only_before_job = self.editor.read_only
+            self.editor.read_only = True
+        elif self._editor_read_only_before_job is not None:
+            self.editor.read_only = self._editor_read_only_before_job
+            self._editor_read_only_before_job = None
+
     def _render(self) -> None:
-        self.editor.poll()
-        if self.job.poll() or self.job.busy:
+        changed = self.job.poll()
+        self._sync_editor_read_only()
+        if not self.job.busy:
+            self.editor.poll()
+            if self.model.detector_editor_data is not None:
+                status = self.model.status_text
+                self.editor.load_definition(self.model.detector_editor_data)
+                self.model.detector_editor_data = None
+                self.model.status_text = status
+        if changed or self.job.busy:
             ctx = get_current_context()
             ctx.request_frame_at(ctx.io.now + 0.1)
         w, h = im.get_main_viewport().size
         self.docks.draw((0.0, 0.0, float(w), float(h)))
         frame = (0.0, 0.0, float(w), float(h))
+        self._sync_editor_read_only()
+        im.begin_disabled(self.editor.read_only)
         self.editor.draw_dialogs(frame)
+        im.end_disabled()
         if self.dialog is not None:
             pressed = self._dialog_window.begin(frame)
             result = self.dialog.draw()
@@ -334,6 +365,11 @@ class MleNativeApp(TourTarget, ImApp):
 
     # -- host input --------------------------------------------------------------------------------------- #
     def files_dropped(self, paths) -> bool:
+        if self.job.busy:
+            self.model.status_text = str(
+                tr("Wait for the running Burst MLE job before changing its inputs.")
+            )
+            return False
         paths = list(paths)
         return bool(paths) and self.model.add_files(paths) > 0
 
@@ -341,6 +377,9 @@ class MleNativeApp(TourTarget, ImApp):
 
     def close(self) -> None:
         self.model.stop()
+        if self._editor_read_only_before_job is not None:
+            self.editor.read_only = self._editor_read_only_before_job
+            self._editor_read_only_before_job = None
         self.editor.close()
 
 

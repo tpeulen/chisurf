@@ -17,7 +17,8 @@ class LazyTTTRDict(collections.abc.MutableMapping):
     but only calls tttrlib.TTTR(path, file_type) on first access.
     """
 
-    def __init__(self, path_map: dict[str, Path], file_type_getter: Callable[[], str]):
+    def __init__(self, path_map: dict[str, Path], file_type_getter: Callable[[], str] | None,
+                 setup_getter: Callable[[], dict] | None = None):
         """
         Parameters
         ----------
@@ -25,17 +26,31 @@ class LazyTTTRDict(collections.abc.MutableMapping):
             Maps file‐stem (no extension) → full Path to .ptu/.ht3/etc.
         file_type_getter : () → str
             A zero‐argument callable returning current TTTR file‐type (e.g. self.tttr_file_type).
+        setup_getter : callable, optional
+            The portable detector definition carrying explicit LUT and shift corrections.
         """
         self._paths = path_map
         self._cache: dict[str, tttrlib.TTTR] = {}
         self._file_type_getter = file_type_getter
         self._warning_shown = False
+        self._setup_getter = setup_getter
+        self._read_signatures: dict[str, str] = {}
 
     def __getitem__(self, key: str) -> tttrlib.TTTR:
         if key not in self._paths:
             raise KeyError(f"No TTTR path for key {key!r}")
+        from chisurf.core.data_io.detector_setups import setup_lut_open_kwargs
+        from chisurf.core.fio.staging import open_tttr
+
+        kwargs = setup_lut_open_kwargs(self._setup_getter() if self._setup_getter else {})
+        file_type = self._file_type_getter() if self._file_type_getter else None
+        path = self._paths[key]
+        stat = path.stat()
+        signature = json.dumps([str(path.resolve()), stat.st_mtime_ns, stat.st_size,
+                                file_type, kwargs], sort_keys=True, cls=NumpyEncoder)
+        if self._read_signatures.get(key) != signature:
+            self._cache.pop(key, None)
         if key not in self._cache:
-            path = self._paths[key]
             # Check if _file_type_getter is None
             if self._file_type_getter is None:
                 if not self._warning_shown:
@@ -59,7 +74,8 @@ class LazyTTTRDict(collections.abc.MutableMapping):
                 if not file_type or (isinstance(file_type, str) and file_type.lower() == "auto"):
                     file_type = tttrlib.inferTTTRFileType(str(path))
             # instantiate on first use
-            self._cache[key] = tttrlib.TTTR(str(path), file_type)
+            self._cache[key] = open_tttr(path, file_type, cache=False, **kwargs)
+            self._read_signatures[key] = signature
         return self._cache[key]
 
     def __setitem__(self, key: str, value: tttrlib.TTTR):
@@ -69,6 +85,7 @@ class LazyTTTRDict(collections.abc.MutableMapping):
     def __delitem__(self, key: str):
         self._paths.pop(key, None)
         self._cache.pop(key, None)
+        self._read_signatures.pop(key, None)
 
     def __iter__(self) -> Iterator[str]:
         return iter(self._paths)
@@ -91,6 +108,7 @@ class LazyTTTRDict(collections.abc.MutableMapping):
     def clear(self):
         self._paths.clear()
         self._cache.clear()
+        self._read_signatures.clear()
 
 
 class NumpyEncoder(json.JSONEncoder):

@@ -4,7 +4,7 @@ A single-molecule burst holds a few hundred photons, so its micro-time decay is 
 those counts; the burst-MLE tool fits **one lifetime (and anisotropy) per burst and detector** by Poisson maximum
 likelihood, with the instrument response (IRF) and the background held fixed.
 
-Press **Guide** for the walk-through.
+Press **Guide** for the walk-through. **Generate synthetic demo** loads 16 generated bursts of 1000 photons each with a known input lifetime of 2 ns and a 32 ps clock into the settings cache. It replaces working inputs; press Auto IRF/background and Fit bursts yourself. Fitted estimates fluctuate.
 
 ## What the windows show
 
@@ -35,6 +35,18 @@ curve is the exponential decay convolved with the IRF, plus the scaled backgroun
   noisy tail.
 * A fit whose $\gamma$ ran to its bound is marked as diverged; the displayed model is then clipped and the status line
   says so. Fix $\gamma$ or use a measured IRF.
+
+## Selecting the tttrlib model
+
+**Fit model** selects Fit23, Fit24 or Fit25 for both preview and batch. Double-click a parameter's **Start** to edit it; click **Fixed** to hold a fitted parameter. Each model retains its edits in saved settings.
+
+* **Fit23:** tau, gamma, r0 and rho; one lifetime with polarization.
+* **Fit24:** tau1, gamma, tau2, A2 and offset; a two-lifetime mixture. A2 reports the effective second-component amplitude.
+* **Fit25:** four fixed candidate lifetimes and gamma. Candidate values are editable but remain fixed inputs; the winner is reported as selected_index (0-based). Its r0 is supplied by the provider.
+
+Fit26 needs two reference patterns and fit_nexp needs array inputs, so neither is offered here. The existing wizard's tail fitter is preview-only. A completed batch retains its original model and output schema even if you change the selector before saving.
+
+The saved detector definition supplies channel LUTs and shifts to the canonical reader. Header timing is used unless Override timing is explicitly selected; setup micro-time values are in ps and period values in ns. Binning is applied once.
 
 ## Splitting by H2MM state
 

@@ -19,6 +19,8 @@ from typing import Any, Callable
 
 import numpy as np
 
+from chisurf.core.support.i18n import tr
+
 from .. import engine
 from ..engine import MleSession
 from . import fit_view
@@ -56,6 +58,7 @@ def _setting_property(name: str, kind: type, rebuild_decay: bool):
         return kind(getattr(self.session.settings, name))
 
     def setter(self, value):
+        self._ensure_editable()
         value = kind(value)
         if getattr(self.session.settings, name) == value:
             return
@@ -72,6 +75,7 @@ class MleViewModel:
         self.session = session or MleSession()
         self._observers: list[Callable[[str], None]] = []
         self._cancel = threading.Event()
+        self._snapshot_running = threading.Event()
         self.status_text = "Add burst (.bur) files to begin."
         self.burst_results: list[dict] = []
         self.nav_burst = 0
@@ -88,6 +92,53 @@ class MleViewModel:
                 "auto",
             )
 
+    def __copy__(self):
+        """Isolate a worker's mutable state while sharing read-only physical TTTR inputs."""
+        self._snapshot_running.set()
+        snapshot = object.__new__(type(self))
+        snapshot.__dict__ = self.__dict__.copy()
+        session = copy.copy(self.session)
+        for key, value in vars(self.session).items():
+            if key == "tttrs":
+                tttrs = copy.copy(value)
+                tttrs.paths = dict(value.paths)
+                tttrs._cache = dict(value._cache)
+                tttrs.read_kwargs = copy.deepcopy(value.read_kwargs)
+                setattr(session, key, tttrs)
+            elif key == "df_bursts" and value is not None:
+                from chisurf.core.datastore import column_names, store_from_arrays
+
+                setattr(
+                    session,
+                    key,
+                    store_from_arrays(
+                        {name: np.asarray(value[name]).copy() for name in column_names(value)}
+                    ),
+                )
+            else:
+                setattr(session, key, copy.deepcopy(value))
+        session.tttrs.paths = session.tttr_paths
+        snapshot.session = session
+        snapshot._observers = []
+        snapshot.burst_results = copy.deepcopy(self.burst_results)
+        snapshot._snapshot_running = threading.Event()
+        snapshot._source_snapshot_running = self._snapshot_running
+        return snapshot
+
+    def _ensure_editable(self) -> None:
+        """Reject edits of acquisition or model state while its snapshot job is running."""
+        if self._snapshot_running.is_set():
+            raise RuntimeError(tr("Wait for the running Burst MLE job before changing its inputs."))
+
+    def _release_snapshot(self) -> None:
+        """Release the original model's edit guard after worker success or failure."""
+        self._snapshot_running.clear()
+        import sys
+
+        source = getattr(self, "_source_snapshot_running", None)
+        if source is not None and sys.exc_info()[0] is not None:
+            source.clear()
+
     # -- observers ------------------------------------------------------------------------------------------- #
     def notify(self, event: str = "updated") -> None:
         for observer in list(self._observers):
@@ -99,8 +150,13 @@ class MleViewModel:
 
     def set_setup(self, settings: dict) -> None:
         """Take the detector definition of the shared editor (every change of it)."""
-        file_type = (settings.get("tttr_reading") or {}).get("file_type")
-        self.session.set_detectors(settings.get("detectors") or {}, file_type)
+        self._ensure_editable()
+        self.session.set_definition(settings)
+        if self.session.current_tttr() is not None:
+            if self.auto_patterns:
+                self.session.extract_irf_background()
+            self.session.build_decay()
+            self.refit()
         self.notify("setup")
 
     # -- split by H2MM state ------------------------------------------------------------------------------------ #
@@ -111,6 +167,7 @@ class MleViewModel:
 
     @split_by_state.setter
     def split_by_state(self, value: bool) -> None:
+        self._ensure_editable()
         self.session.split_by_state = bool(value)
         self.notify("settings")
 
@@ -121,6 +178,7 @@ class MleViewModel:
 
     @state_min_photons.setter
     def state_min_photons(self, value: int) -> None:
+        self._ensure_editable()
         self.session.state_min_photons = max(1, int(value))
 
     def state_lifetime_text(self) -> str:
@@ -143,6 +201,7 @@ class MleViewModel:
 
     @current_detector.setter
     def current_detector(self, value: str) -> None:
+        self._ensure_editable()
         if value in self.session.detectors and value != self.session.current_detector:
             self.session.current_detector = value
             self.session.build_decay()
@@ -158,6 +217,7 @@ class MleViewModel:
 
     def add_files(self, paths) -> int:
         """Add ``.bur`` tables (a folder adds the tables under it); returns how many were new."""
+        self._ensure_editable()
         found: list[Path] = []
         for value in map(Path, paths):
             if value.is_dir():
@@ -175,6 +235,7 @@ class MleViewModel:
         return len(new)
 
     def remove_file(self, path: str) -> None:
+        self._ensure_editable()
         keep = [p for p in self.session.bur_files if str(p) != path]
         self.session.bur_files = []
         self.session.df_bursts = None
@@ -196,6 +257,27 @@ class MleViewModel:
         self.status_text = "Add burst (.bur) files to begin."
         self.notify("files")
 
+    def load_demo(self) -> None:
+        """Replace working inputs with generated synthetic bursts; leave fitting to the user."""
+        from ..demo import SETUP, demo_folder, make_demo
+
+        self._ensure_editable()
+        path = make_demo(demo_folder())
+        self.session = engine.MleSession(template=engine.MleSettings(gamma=0., r0=0.))
+        self.session.set_definition(SETUP)
+        self.session.add_burst_files([path])
+        self.session.build_decay()
+        self.burst_results = []
+        self.auto_patterns = False
+        self.nav_burst = 0
+        self.detector_editor_data = self.session.definition_payload()
+        self.status_text = str(tr("Synthetic demo: 16 bursts, 1000 photons each; input lifetime 2 ns. Press Auto IRF/background to fit."))
+        self.notify("files")
+
+    def enabled(self, name: str) -> bool:
+        """Demo input replacement is unavailable during an immutable snapshot job."""
+        return not self._snapshot_running.is_set() if name == "load_demo" else True
+
     def select_file(self, record) -> None:
         """A row of the file table was selected: show that file's decay."""
         path = str(record.get("path", "")) if isinstance(record, dict) else ""
@@ -215,6 +297,7 @@ class MleViewModel:
 
     @current_file.setter
     def current_file(self, value: int) -> None:
+        self._ensure_editable()
         value = max(0, min(int(value), max(0, len(self.session.bur_files) - 1)))
         if value != self.session.current_index:
             self.session.current_index = value
@@ -228,6 +311,7 @@ class MleViewModel:
 
     @binning.setter
     def binning(self, value) -> None:
+        self._ensure_editable()
         value = int(value)
         if value == self.binning:
             return
@@ -243,7 +327,48 @@ class MleViewModel:
     # -- derived read-only ----------------------------------------------------------------------------------- #
     @property
     def fit_model(self) -> str:
+        """Return the selected registered model for preview and batch fitting."""
         return self.session.settings.model
+
+    @fit_model.setter
+    def fit_model(self, name: str) -> None:
+        """Select a compatible model without discarding another model's parameter edits."""
+        self._ensure_editable()
+        engine.validate_fit_model(name)
+        if self.fit_model == name:
+            return
+        self.session.set_model(name)
+        self.refit()
+        self.notify("settings")
+
+    def fit_model_options(self) -> list[str]:
+        """Return registered models that the acquisition-input facade can construct."""
+        return list(engine.fit_model_specs())
+
+    def fit_model_choices(self) -> list[tuple[str, str]]:
+        """Pair canonical model values with the provider's human-readable labels."""
+        return [
+            (name, str(tr(spec.get("label", name))))
+            for name, spec in engine.fit_model_specs().items()
+        ]
+
+    def model_availability(self) -> str:
+        """Describe compatible models and the missing inputs of unavailable registry models."""
+        return engine.model_availability()
+
+    def model_result_text(self) -> str:
+        """Show the primary lifetime and the provider's declared classification result."""
+        outcome = self.session.outcome
+        if outcome is None:
+            return str(tr("No fit result yet."))
+        text = str(tr("Primary lifetime: {tau:.4g} ns; 2I*: {score:.4g}.")).format(
+            tau=self.tau_result, score=outcome.two_istar
+        )
+        for name in engine.fit_result_names(self.fit_model):
+            text += str(tr(" {name}: {value:.0f} (0-based).")).format(
+                name=name, value=outcome.result.result(name)
+            )
+        return text
 
     @property
     def fit_curves(self):
@@ -252,7 +377,9 @@ class MleViewModel:
 
     @property
     def tau_result(self) -> float:
-        return self._result("tau")
+        """Return the provider's primary lifetime, including a classified Fit25 winner."""
+        outcome = self.session.outcome
+        return float(outcome.x[0]) if outcome is not None else float("nan")
 
     @property
     def gamma_result(self) -> float:
@@ -278,22 +405,40 @@ class MleViewModel:
         return float(outcome.two_istar) if outcome is not None else float("nan")
 
     def parameter_records(self) -> list[dict]:
-        """Rows of the fit-parameter table: start value, fixed flag and fitted result of tau, gamma, r0, rho."""
-        out = []
-        for row in fit_view.parameter_rows(self):
-            out.append({
-                "name": row.name, "start": float(row.initial), "fixed": bool(row.fixed),
-                "result": f"{row.result:.4g}" if self.session.outcome is not None else "",
-            })
-        return out
+        """Return the selected model's declared free parameters and their fitted values."""
+        names, values, fixed = self.session.settings.parameter_state()
+        outcome = self.session.outcome
+        rows = []
+        for i, name in enumerate(names):
+            result = self._result(name)
+            if self.fit_model == "fit25" and name.startswith("tau"):
+                result = float(values[i])  # Candidates stay inputs; the winner is shown as tau_result.
+            rows.append(
+                {
+                    "name": name,
+                    "start": float(values[i]),
+                    "fixed": bool(fixed[i]),
+                    "result": f"{result:.4g}" if outcome is not None else "",
+                }
+            )
+        return rows
 
     def edit_parameter(self, record: dict, key: str, value: Any) -> None:
         """A cell of the parameter table was edited (the start value or the fixed flag)."""
         name = str(record.get("name"))
-        if key == "start":
-            setattr(self, name, float(value))
-        elif key == "fixed":
-            setattr(self, f"fix_{name}", bool(value))
+        self._ensure_editable()
+        if not self.parameter_cell_editable(record, key):
+            raise ValueError("Fit25 lifetime candidates are always fixed.")
+        if key in ("start", "fixed"):
+            self.session.settings.edit_parameter(name, value, fixed=key == "fixed")
+            self.refit()
+
+    def parameter_cell_editable(self, record: dict, key: str) -> bool:
+        """Keep discrete candidates fixed while retaining editable lifetime inputs."""
+        return key == "start" or (
+            key == "fixed"
+            and not (self.fit_model == "fit25" and str(record.get("name", "")).startswith("tau"))
+        )
 
     def lifetime_rows(self) -> list[dict]:
         """One row per detector series of the last batch: bursts fitted, median and mean lifetime."""
@@ -329,15 +474,20 @@ class MleViewModel:
         """One click: binning, IRF and background from the non-burst photons, fit window, fit."""
         if self.session.current_tttr() is None:
             self.status_text = "Add burst files first: there is no data to extract an IRF from."
+            self._release_snapshot()
             return
-        self.session.auto_extract()
-        self.auto_patterns = True
-        self.status_text = self.session.status
-        self.notify("fit")
+        try:
+            self.session.auto_extract()
+            self.auto_patterns = True
+            self.status_text = self.session.status
+            self.notify("fit")
+        finally:
+            self._release_snapshot()
 
     def run_batch(self) -> None:
         """Fit every burst of every loaded file and detector (worker processes) and keep the rows."""
         if self.session.df_bursts is None:
+            self._release_snapshot()
             raise ValueError("Add burst files first.")
         self._cancel.clear()
 
@@ -345,11 +495,14 @@ class MleViewModel:
             self.status_text = f"Fitting bursts ... {done}/{total}"
             self.notify("progress")
 
-        rows = self.session.run_batch(progress=progress, should_stop=self._cancel.is_set)
-        self.burst_results = rows
-        n = len(fit_view.burst_lifetimes(rows))
-        self.status_text = f"Fitted {self.n_bursts} bursts ({n} lifetime series)."
-        self.notify("batch")
+        try:
+            rows = self.session.run_batch(progress=progress, should_stop=self._cancel.is_set)
+            self.burst_results = rows
+            n = len(fit_view.burst_lifetimes(rows))
+            self.status_text = f"Fitted {self.n_bursts} bursts ({n} lifetime series)."
+            self.notify("batch")
+        finally:
+            self._release_snapshot()
 
     def stop(self) -> None:
         self._cancel.set()
@@ -376,6 +529,8 @@ class MleViewModel:
         Path(path).write_text(json.dumps(payload, indent=2, cls=engine.NumpyEncoder), encoding="utf-8")
 
     def load_settings(self, path: str | Path) -> None:
+        """Restore all detectors and per-model parameter edits from a settings file."""
+        self._ensure_editable()
         payload = json.loads(Path(path).read_text(encoding="utf-8"))
         if payload.get("kind") != SETTINGS_KIND:
             raise ValueError("Not a burst-MLE settings file written by this tool.")
@@ -387,9 +542,22 @@ class MleViewModel:
     def values_snapshot(self) -> SimpleNamespace:
         """The spec's values as a throw-away object: edits made while a job runs go nowhere."""
         ns = SimpleNamespace(**{name: getattr(self, name) for name in SETTING_ATTRS})
-        for name in ("binning", "current_detector", "current_file", "nav_burst"):
+        for name in ("binning", "current_detector", "current_file", "nav_burst", "fit_model"):
             setattr(ns, name, getattr(self, name))
-        for method in ("detector_names", "binning_options", "file_rows", "parameter_records", "lifetime_rows", "select_file", "remove_file_row"):
+        for method in (
+            "detector_names",
+            "binning_options",
+            "fit_model_options",
+            "fit_model_choices",
+            "model_availability",
+            "model_result_text",
+            "file_rows",
+            "parameter_records",
+            "parameter_cell_editable",
+            "lifetime_rows",
+            "select_file",
+            "remove_file_row",
+        ):
             setattr(ns, method, getattr(self, method))
         ns.edit_parameter = lambda *a, **k: None
         return ns

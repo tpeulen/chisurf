@@ -159,7 +159,15 @@ def fit_pooled_state_decays(
             cp = np.asarray(arr[state, 0], dtype=np.uint32)
             cs_ = np.asarray(arr[state, 1], dtype=np.uint32)
             cp_sum, cs_sum = int(cp.sum()), int(cs_.sum())
-            entry = {"x": None, "two_istar": float("nan"), "cp": cp_sum, "cs": cs_sum}
+            entry: dict[str, Any] = {
+                "x": None,
+                "two_istar": float("nan"),
+                "cp": cp_sum,
+                "cs": cs_sum,
+            }
+            entry["model"] = cfg.get("model", "fit23")
+            entry["param_names"] = list(cfg.get("param_names") or ())
+            entry["initial_x0"] = np.asarray(cfg["x0"], dtype=float).copy()
             if (cp_sum + cs_sum) < int(cfg["min_photons"]) or s1 <= s0:
                 per_state[state] = entry
                 continue
@@ -177,18 +185,23 @@ def fit_pooled_state_decays(
                 continue
             entry["x"] = np.asarray(res.x, dtype=np.float64)
             entry["two_istar"] = float(res.twoIstar)
+            entry["selected_index"] = res.result("selected_index")
             per_state[state] = entry
         out[det] = per_state
     return out
 
 
-def state_lifetime_rows(fits: dict, model: str, param_names) -> list[dict]:
+def state_lifetime_rows(fits: dict, model: str, param_names, *, perdet_cfg=None) -> list[dict]:
     """The pooled per-state fits as plain rows, one per ``(detector, state)``."""
     rows: list[dict] = []
     for det, per_state in fits.items():
+        cfg = (perdet_cfg or {}).get(det, {})
         for state in sorted(per_state):
             entry = per_state[state]
             x = entry["x"]
+            det_model = cfg.get("model", entry.get("model", model))
+            names = cfg.get("param_names", entry.get("param_names", param_names))
+            starts = cfg.get("x0", entry.get("initial_x0"))
 
             def g(i, x=x):
                 try:
@@ -206,13 +219,24 @@ def state_lifetime_rows(fits: dict, model: str, param_names) -> list[dict]:
                 "Tau": g(0),
                 "2I*": entry["two_istar"],
             }
-            if model == "fit23":
+            if det_model == "fit23":
                 row["gamma"] = g(1)
                 row["r0"] = g(2)
                 row["rho"] = g(3)
             else:
-                for i, nm in enumerate(param_names or ()):
-                    row[nm] = g(i)
+                for i, nm in enumerate(names or ()):
+                    row[nm] = (
+                        float(starts[i])
+                        if x is not None
+                        and starts is not None
+                        and det_model == "fit25"
+                        and nm.startswith("tau")
+                        else g(i)
+                    )
+                from .engine import fit_result_names
+
+                for name in fit_result_names(det_model):
+                    row[name] = float(entry.get(name, float("nan")))
             rows.append(row)
     return rows
 
@@ -235,7 +259,8 @@ def seed_state_fits(jobs: list, fits: dict) -> int:
                 if x is None or not np.isfinite(x[0]) or float(x[0]) <= 0.0:
                     continue  # nothing was fitted; leave the panel's guess
                 start = np.asarray(cfg["x0"], dtype=np.float64).copy()
-                start[0] = float(x[0])
+                if cfg.get("model", "fit23") != "fit25":
+                    start[0] = float(x[0])
                 seeds[int(state)] = start
             if seeds:
                 cfg["state_x0"] = seeds
@@ -265,7 +290,7 @@ def pooled_state_fits(
     # and can be first, so take the first real one.
     shared_cfg = next((j[9] for j in jobs if j[9]), {})
     fits = fit_pooled_state_decays(pooled, det_order, shared_cfg, shift)
-    rows = state_lifetime_rows(fits, model, param_names)
+    rows = state_lifetime_rows(fits, model, param_names, perdet_cfg=shared_cfg)
     seeded = seed_state_fits(jobs, fits)
     taus = ", ".join(
         f"S{r['State']} {r['Colour']} {r['Tau']:.2f} ns" for r in rows if np.isfinite(r["Tau"])

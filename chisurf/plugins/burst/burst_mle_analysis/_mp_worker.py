@@ -161,7 +161,19 @@ def _record(fname, det, color, cfg, x, two_istar, cp_sum, cs_sum, state=None, ex
         rec[f"r Experimental{sfx} ({color})"] = float(extras.get("r_experimental", float("nan")))
     else:
         for i, nm in enumerate(cfg.get("param_names") or ()):
-            rec[f"{nm}{sfx} ({color})"] = g(i)
+            rec[f"{nm}{sfx} ({color})"] = (
+                (
+                    float(cfg["x0"][i])
+                    if cfg.get("model") == "fit25" and nm.startswith("tau")
+                    else g(i)
+                )
+                if x is not None
+                else float("nan")
+            )
+        from .engine import fit_result_names
+
+        for name in fit_result_names(cfg["model"]):
+            rec[f"{name}{sfx} ({color})"] = float(extras.get(name, float("nan")))
     return rec
 
 
@@ -409,6 +421,7 @@ def process_one_file_worker(args):
                             extras={
                                 "r_scatter": res.r_scatter,
                                 "r_experimental": res.r_experimental,
+                                "selected_index": res.result("selected_index"),
                             },
                         )
                     )

@@ -11,6 +11,7 @@ No Qt and no emtk are imported here.
 from __future__ import annotations
 
 import collections.abc
+import copy
 import dataclasses
 import re
 from dataclasses import dataclass, field
@@ -27,6 +28,7 @@ from chisurf.core.datastore import (
     set_constant,
     take_where,
 )
+from chisurf.core.support.i18n import tr
 
 from .fit_display import DecayCurves, TailFitResult, decay_curves
 from .interpolate import interpolate_shift
@@ -68,6 +70,20 @@ def header_time_ns(tttr: Any, binning: int) -> tuple[float, float] | None:
     if not (micro_s > 0.0 and n_chan > 0.0):
         return None
     return micro_s * 1e9 * max(1, int(binning)), n_chan * micro_s * 1e9
+
+
+def effective_timing_ns(tttr: Any, binning: int, reading: dict) -> tuple[float | None, float | None]:
+    """Use per-file physical timing unless an explicit ps/ns calibration overrides it."""
+    physical = header_time_ns(tttr, binning)
+    dt, period = physical if physical is not None else (None, None)
+    if reading.get("override_timing") or physical is None:
+        micro = float(reading.get("micro_time_resolution", 0.) or 0.)
+        macro = float(reading.get("macro_time_resolution", 0.) or 0.)
+        if micro > 0.:
+            dt = micro * 1e-3 * max(1, int(binning))
+        if macro > 0.:
+            period = macro
+    return dt, period
 
 
 def window_bins(
@@ -314,6 +330,7 @@ def burst_result_columns(color: str, model: str, param_names) -> list:
         f"Tau ({color})",
     ]
     cols += [f"{nm} ({color})" for nm in param_names]
+    cols += [f"{name} ({color})" for name in fit_result_names(model)]
     cols += [f"BIFL scatter? ({color})", f"2I*: P+2S? ({color})"]
     return cols
 
@@ -340,6 +357,7 @@ def state_result_columns(color: str, model: str, param_names, n_states: int) -> 
             cols += [f"gamma{sfx} ({color})", f"r0{sfx} ({color})", f"rho{sfx} ({color})"]
         else:
             cols += [f"{nm}{sfx} ({color})" for nm in (param_names or ())]
+            cols += [f"{name}{sfx} ({color})" for name in fit_result_names(model)]
         cols += [f"BIFL scatter?{sfx} ({color})", f"2I*: P+2S?{sfx} ({color})"]
         if model == "fit23":
             cols += [f"r Scatter{sfx} ({color})", f"r Experimental{sfx} ({color})"]
@@ -405,7 +423,7 @@ def write_b4_tables(results, files_by_stem, det_meta, channel_settings, *, on_ne
         by_stem.setdefault(stem, {})[det] = store_from_arrays({c: arr[:, i] for i, c in enumerate(cols)})
         out = np.zeros((arr.shape[0] * 2 + 1, arr.shape[1]), dtype=float)
         out[1::2] = arr
-        out_file = out_dir / f"{stem}.b{letter}4"
+        out_file = out_dir / f"{Path(file_path).stem}.b{letter}4"
         written_files.append(out_file)
         with open(out_file, "w", newline="") as f:
             f.write("\t".join(cols) + "\t\n")  # the trailing tab and newline are part of the format
@@ -478,6 +496,11 @@ def read_burst_analysis(paris_path: Path, pattern: str = "**/*.bur") -> tuple[An
     for fn in bur_files:
         table = deinterleave_bursts(read_bur_file(fn))
         set_constant(table, "burst_file", str(fn.name))
+        set_constant(table, "_burst_path", str(fn.resolve()))
+        table["_measurement_path"] = [
+            str((paris_path.parent / Path(str(name).replace("\\", "/")).name).resolve())
+            for name in np.asarray(table["First File"], dtype=object)
+        ]
         tables.append(table)
     df = concat_stores(tables)
     base_dir = paris_path.parent
@@ -490,25 +513,100 @@ def read_burst_analysis(paris_path: Path, pattern: str = "**/*.bur") -> tuple[An
 # --------------------------------------------------------------------------------------------------------------------
 # the session
 # --------------------------------------------------------------------------------------------------------------------
-class LazyTTTRs(collections.abc.MutableMapping):
-    """File stem -> ``tttrlib.TTTR``, opened on first use."""
+def fit_model_specs() -> dict[str, dict]:
+    """Return registry models supported by the existing acquisition-input facade."""
+    from chisurf.core.fluorescence.mle.fit2x import Fit2xModel
+    from chisurf.core.fluorescence.mle.registry import fit_models
 
-    def __init__(self, paths: dict[str, Path], file_type: str = "auto") -> None:
+    supported = {model.value for model in Fit2xModel}
+    return {name: spec for name, spec in fit_models().items() if name in supported}
+
+
+def validate_fit_model(name: str) -> str:
+    """Reject unknown models and models requiring inputs this workflow cannot supply."""
+    if name not in fit_model_specs():
+        raise ValueError(f"Model {name!r} is unavailable for IRF/background lifetime fitting.")
+    return name
+
+
+def model_availability() -> str:
+    """Describe supported models and declare why other registry models are unavailable."""
+    from chisurf.core.fluorescence.mle.registry import fit_models
+
+    specs = fit_models()
+    available = fit_model_specs()
+    lines = []
+    for name, spec in specs.items():
+        if name not in available:
+            if spec.get("n_patterns", 0):
+                reason = str(tr("requires {count} reference patterns")).format(count=spec["n_patterns"])
+            else:
+                properties = spec.get("params_schema", {}).get("properties", {})
+                inputs = [str(tr(item.get("title", key))) for key, item in properties.items()
+                          if item.get("type") == "array"]
+                reason = str(tr("requires {inputs}")).format(inputs=" / ".join(inputs))
+            lines.append(str(tr("{name}: unavailable here ({reason}).")).format(name=name, reason=reason))
+    return "\n".join(lines)
+
+
+def fit_result_names(model: str) -> tuple[str, ...]:
+    """Return declared derived outputs that add information beyond the parameter vector."""
+    from chisurf.core.fluorescence.mle.registry import fit_models
+
+    properties = fit_models()[model].get("results_schema", {}).get("properties", {})
+    return tuple(name for name in properties if name == "selected_index")
+
+
+class LazyTTTRs(collections.abc.MutableMapping):
+    """Canonical physical path -> lazily read TTTR; legacy stems resolve only when unique."""
+
+    def __init__(self, paths: dict[str, Path], file_type: str = "auto", setup=None) -> None:
         self.paths = paths
-        self.file_type = file_type
         self._cache: dict[str, Any] = {}
+        self.file_type = file_type
+        self.read_kwargs: dict = {}
+        self._read_signature = ""
+        self.set_setup(setup or {})
+
+    @property
+    def file_type(self):
+        """Return the selected reader routine."""
+        return self._file_type
+
+    @file_type.setter
+    def file_type(self, value):
+        """Invalidate cached photons when their reader routine changes."""
+        if getattr(self, "_file_type", None) != value:
+            self._cache.clear()
+        self._file_type = value
+
+    def set_setup(self, setup: dict) -> None:
+        """Freeze explicit portable LUT/shift inputs, isolated from other apps' global context."""
+        import json
+
+        from chisurf.core.data_io.detector_setups import setup_lut_open_kwargs
+
+        kwargs = copy.deepcopy(setup_lut_open_kwargs(setup))
+        signature = json.dumps(kwargs, sort_keys=True, cls=NumpyEncoder)
+        if signature != self._read_signature:
+            self._cache.clear()
+            self._read_signature = signature
+        self.read_kwargs = kwargs
 
     def __getitem__(self, key: str):
-        import tttrlib
+        from chisurf.core.fio.staging import open_tttr
 
         if key not in self.paths:
-            raise KeyError(key)
+            matches = [identity for identity, path in self.paths.items() if path.stem == key]
+            if len(matches) != 1:
+                raise KeyError(f"Measurement {key!r} is missing or ambiguous; use its complete path.")
+            key = matches[0]
         if key not in self._cache:
             path = self.paths[key]
             file_type = self.file_type
             if not file_type or str(file_type).lower() == "auto":
-                file_type = tttrlib.inferTTTRFileType(str(path))
-            self._cache[key] = tttrlib.TTTR(str(path), file_type)
+                file_type = None
+            self._cache[key] = open_tttr(path, file_type, cache=False, **self.read_kwargs)
         return self._cache[key]
 
     def __setitem__(self, key, value) -> None:
@@ -530,6 +628,8 @@ class MleSettings:
     """Everything the fit and the displayed IRF depend on (the wizard's spin boxes and check boxes)."""
 
     model: str = "fit23"
+    model_values: dict[str, dict[str, float]] = field(default_factory=dict)
+    model_fixed: dict[str, dict[str, bool]] = field(default_factory=dict)
     tau: float = 4.0
     gamma: float = 0.1
     r0: float = 0.38
@@ -553,6 +653,43 @@ class MleSettings:
     BIFL_scatter: bool = False
     irf_model: str = "gaussian"
 
+    def parameter_state(self) -> tuple[list[str], np.ndarray, np.ndarray]:
+        """Return free facade names, starts and fixed flags for this selected model."""
+        from chisurf.core.fluorescence.mle.fit2x import parameter_names_of
+
+        name = validate_fit_model(self.model)
+        names = list(parameter_names_of(name))
+        if name == "fit23":
+            values = [getattr(self, key) for key in names]
+            fixed = [getattr(self, f"fix_{key}") for key in names]
+        else:
+            properties = fit_model_specs()[name]["params_schema"]["properties"]
+            saved_values = self.model_values.setdefault(name, {})
+            saved_fixed = self.model_fixed.setdefault(name, {})
+            values = [saved_values.get(key, properties[key].get("default", 0.)) for key in names]
+            fixed = [saved_fixed.get(key, properties[key].get("fixed_default", False)) for key in names]
+            if name == "fit25":
+                fixed = [True if key.startswith("tau") else value for key, value in zip(names, fixed)]
+        return names, np.asarray(values, dtype=float), np.asarray(fixed, dtype=np.int32)
+
+    def edit_parameter(self, name: str, value: Any, *, fixed: bool = False) -> None:
+        """Update one declared free parameter without disturbing another model's starts."""
+        names, _, _ = self.parameter_state()
+        if name not in names:
+            raise ValueError(f"Unknown free parameter {name!r} for {self.model}.")
+        if fixed and self.model == "fit25" and name.startswith("tau") and not bool(value):
+            raise ValueError("Fit25 lifetime candidates are always fixed.")
+        if self.model == "fit23":
+            setattr(self, f"fix_{name}" if fixed else name, bool(value) if fixed else float(value))
+        elif fixed:
+            self.model_fixed.setdefault(self.model, {})[name] = bool(value)
+        else:
+            spec = fit_model_specs()[self.model]["params_schema"]["properties"][name]
+            value = float(value)
+            if not np.isfinite(value) or value < spec.get("minimum", -np.inf) or value > spec.get("maximum", np.inf):
+                raise ValueError(f"Parameter {name!r} is outside its declared bounds.")
+            self.model_values.setdefault(self.model, {})[name] = value
+
 
 @dataclass
 class FitOutcome:
@@ -572,6 +709,7 @@ class MleSession:
     """Detectors, burst files, patterns and settings of a burst-MLE analysis; the wizard's state without Qt."""
 
     detectors: dict = field(default_factory=dict)
+    definition: dict = field(default_factory=dict)
     file_type: str = "auto"
     #: Start values for a detector nobody has set yet.
     template: MleSettings = field(default_factory=MleSettings)
@@ -591,26 +729,38 @@ class MleSession:
     state_min_photons: int = 20
 
     def __post_init__(self) -> None:
-        self.tttrs = LazyTTTRs(self.tttr_paths, self.file_type)
+        self.tttrs = LazyTTTRs(self.tttr_paths, self.file_type, self.definition)
         self.det_settings: dict[str, MleSettings] = {}
         #: Rows of the last batch run, one mapping per burst and detector.
         self.burst_results: list[dict] = []
         #: Pooled per-state lifetimes of the last batch (one row per detector and state) and the state count.
         self.state_lifetimes: list[dict] = []
         self.n_states = 0
+        self.batch_settings_snapshot: dict[str, dict] = {}
+        self.batch_files_snapshot: dict[str, Path] = {}
 
     @property
     def settings(self) -> MleSettings:
         """The settings of the current detector (created from the template on first use)."""
         det = self.current_detector
         if det not in self.det_settings:
-            self.det_settings[det] = dataclasses.replace(self.template)
+            self.det_settings[det] = copy.deepcopy(self.template)
         return self.det_settings[det]
 
     def settings_of(self, det: str) -> MleSettings:
         if det not in self.det_settings:
-            self.det_settings[det] = dataclasses.replace(self.template)
+            self.det_settings[det] = copy.deepcopy(self.template)
         return self.det_settings[det]
+
+    def set_model(self, name: str) -> None:
+        """Select one validated model for all detectors, retaining each model's edits."""
+        validate_fit_model(name)
+        if self.template.model == name and all(st.model == name for st in self.det_settings.values()):
+            return
+        self.template.model = name
+        for settings in self.det_settings.values():
+            settings.model = name
+        self.outcome = None
 
     def set_binning(self, binning: int) -> None:
         """The micro-time binning is global: every detector's histograms and IRF share it."""
@@ -627,6 +777,25 @@ class MleSession:
         if self.current_detector not in self.detectors:
             self.current_detector = next(iter(self.detectors), "")
 
+    def set_definition(self, settings: dict) -> None:
+        """Keep the complete portable setup, including undeclared future metadata."""
+        self.definition = copy.deepcopy(settings)
+        reading = settings.get("tttr_reading") or {}
+        self.set_detectors(settings.get("detectors", self.detectors), reading.get("file_type"))
+        self.tttrs.set_setup(self.definition)
+
+    def definition_payload(self) -> dict:
+        """Return the portable setup with the current authoritative detector and reader state."""
+        result = copy.deepcopy(self.definition)
+        result["detectors"] = copy.deepcopy(self.detectors)
+        result.setdefault("windows", {})
+        result.setdefault("tttr_reading", {})["file_type"] = self.file_type
+        return result
+
+    def timing_ns(self, tttr: Any, binning: int) -> tuple[float | None, float | None]:
+        """Return this file's effective timing without overwriting its physical header."""
+        return effective_timing_ns(tttr, binning, self.definition.get("tttr_reading") or {})
+
     def add_burst_files(self, paths: list[str | Path]) -> None:
         """Add ``.bur`` tables. As in the wizard, the analysis folder of the first file is read whole: every ``.bur``
         under it (``<analysis>/<ending>/<stem>.bur``) becomes rows of the burst table."""
@@ -637,10 +806,22 @@ class MleSession:
             self.df_bursts = None
             self.tttr_paths.clear()
             return
-        table, raw_paths, setup_info = read_burst_analysis(self.bur_files[0].parent.parent)
-        self.df_bursts = table
+        tables = []
+        raw_paths = {}
+        setup_info = None
+        roots = dict.fromkeys(path.parent.parent.resolve() for path in self.bur_files)
+        for index, root in enumerate(roots):
+            table, raw, setup = read_burst_analysis(root)
+            tables.append(table)
+            raw_paths.update({str(path.resolve()): path.resolve() for path in raw.values()})
+            if index == 0:
+                setup_info = setup
+        self.df_bursts = concat_stores(tables)
+        changed_paths = self.tttr_paths != raw_paths
         self.tttr_paths.clear()
         self.tttr_paths.update(raw_paths)
+        if changed_paths:
+            self.tttrs = LazyTTTRs(self.tttr_paths, self.file_type, self.definition)
         if setup_info and setup_info.get("detectors"):
             self.detectors = {k: dict(v) for k, v in setup_info["detectors"].items()}
         self.current_index = min(self.current_index, max(0, len(self.bur_files) - 1))
@@ -654,18 +835,54 @@ class MleSession:
         if self.df_bursts is None or not self.tttrs:
             return None
         df = self.df_bursts
-        curr = Path(self.current_filename).name if self.current_filename else None
+        curr = str(Path(self.current_filename).resolve()) if self.current_filename else None
         names = column_names(df)
-        if "burst_file" in names and curr:
-            sub = take_where(df, np.asarray(df["burst_file"]) == curr)
+        if "_burst_path" in names and curr:
+            sub = take_where(df, np.asarray(df["_burst_path"]) == curr)
             if row_count(sub) > 0:
                 df, names = sub, column_names(sub)
         if "First File" not in names or row_count(df) == 0:
             return None
+        if "_measurement_path" in names:
+            return self.tttrs.get(str(np.asarray(df["_measurement_path"], dtype=object)[0]))
         return self.tttrs.get(Path(str(np.asarray(df["First File"], dtype=object)[0])).stem)
 
     def burst_indices(self) -> list[int]:
-        return burst_photon_indices(self.df_bursts, self.current_filename)
+        """Return inclusive burst coverage of the complete selected BUR identity."""
+        table = self.df_bursts
+        if table is not None and "_burst_path" in column_names(table) and self.current_filename:
+            selected = str(Path(self.current_filename).resolve())
+            table = take_where(table, np.asarray(table["_burst_path"], dtype=object) == selected)
+        return burst_photon_indices(table, self.current_filename)
+
+    def measurement_files(self) -> dict[str, Path]:
+        """Associate each loaded physical measurement with its exact selected burst table."""
+        if self.df_bursts is None or "_measurement_path" not in column_names(self.df_bursts):
+            return {p.stem: p for p in self.bur_files}
+        selected = {str(path.resolve()) for path in self.bur_files}
+        return {str(raw): Path(burst) for raw, burst in zip(
+            self.df_bursts["_measurement_path"], self.df_bursts["_burst_path"]
+        ) if str(burst) in selected}
+
+    def state_arrays_by_measurement(self) -> tuple[dict, int, str]:
+        """Resolve H2MM states within each analysis, then retain complete raw-file identities."""
+        from . import state_split
+
+        arrays, count, messages = {}, 0, []
+        roots = dict.fromkeys(path.parent.parent.resolve() for path in self.bur_files)
+        for root in roots:
+            selected = np.array([Path(str(path)).parent.parent == root
+                                 for path in self.df_bursts["_burst_path"]])
+            identities = dict.fromkeys(str(value) for value in np.asarray(
+                self.df_bursts["_measurement_path"], dtype=object)[selected])
+            scoped = {Path(identity).stem: self.tttrs[identity] for identity in identities}
+            states, n_states, message = state_split.load_state_arrays(root, scoped)
+            for identity in identities:
+                if Path(identity).stem in states:
+                    arrays[identity] = states[Path(identity).stem]
+            count = max(count, n_states)
+            messages.append(message)
+        return arrays, count, "\n".join(messages)
 
     # -- derived ----------------------------------------------------------------------------------------------- #
     @property
@@ -763,17 +980,16 @@ class MleSession:
 
     # -- fit --------------------------------------------------------------------------------------------------- #
     def parameter_vector(self) -> tuple[np.ndarray, np.ndarray]:
-        s = self.settings
-        return (np.array([s.tau, s.gamma, s.r0, s.rho]),
-                np.array([int(s.fix_tau), int(s.fix_gamma), int(s.fix_r0), int(s.fix_rho)]))
+        """Return the selected model's ordered free starts and fixed flags."""
+        _, values, fixed = self.settings.parameter_state()
+        return values, fixed
 
     def create_fit(self):
         """The ``Fit2x`` of the current detector, IRF and background (the wizard's ``create_fit_instance``)."""
         from chisurf.core.fluorescence.mle.fit2x import Fit2x, Fit2xModel, Fit2xSettings
 
         tttr = self.current_tttr()
-        header = header_time_ns(tttr, self.settings.micro_time_binning)
-        dt, period = header if header is not None else (None, None)
+        dt, period = self.timing_ns(tttr, self.settings.micro_time_binning)
         gf, l1, l2 = self.polarisation()
         irf = self.irf().astype(np.float64, copy=True)
         bg = self.background().astype(np.float64, copy=True)
@@ -828,8 +1044,8 @@ class MleSession:
         st = self.settings_of(det)
         info = self.detectors.get(det, {})
         tttr = self.current_tttr()
-        header = header_time_ns(tttr, st.micro_time_binning)
-        dt, period = header if header is not None else (1.0, 1.0)
+        dt, period = self.timing_ns(tttr, st.micro_time_binning)
+        dt, period = (1.0 if dt is None else dt), (1.0 if period is None else period)
         sb, eb = st.micro_time_start, st.micro_time_stop
         if eb <= sb:
             sb, eb = self.micro_time_range
@@ -840,15 +1056,25 @@ class MleSession:
         ) if np.asarray(self.irf_np.get(det, [])).size else np.asarray(self.irf_np.get(det, np.array([])), dtype=float)
         raw_bg = np.asarray(self.bg_np.get(det, np.array([])), dtype=float)
         bg = process_background(raw_bg, st.shift, irf) if raw_bg.size else raw_bg
-        x0 = np.array([st.tau, st.gamma, st.r0, st.rho], dtype=np.float64)
-        fixed = np.array([int(st.fix_tau), int(st.fix_gamma), int(st.fix_r0), int(st.fix_rho)], dtype=np.int32)
+        names, x0, fixed = st.parameter_state()
         return {
-            "sb": int(sb), "eb": int(eb), "dt": float(dt), "period": float(period),
-            "g_factor": float(info.get("g_factor", 1.0)), "l1": float(info.get("l1", 0.0)), "l2": float(info.get("l2", 0.0)),
-            "p2s_twoIstar": bool(st.p2s_twoIstar), "BIFL_scatter": bool(st.BIFL_scatter), "min_photons": int(st.min_photons),
-            "state_min_photons": int(self.state_min_photons), "x0": x0, "fixed": fixed, "irf": np.asarray(irf, dtype=np.float64),
-            "bg": np.asarray(bg, dtype=np.float64), "model": st.model,
-            "param_names": ["tau", "gamma", "r0", "rho"] if st.model == "fit23" else [],
+            "sb": int(sb),
+            "eb": int(eb),
+            "dt": float(dt),
+            "period": float(period),
+            "g_factor": float(info.get("g_factor", 1.0)),
+            "l1": float(info.get("l1", 0.0)),
+            "l2": float(info.get("l2", 0.0)),
+            "p2s_twoIstar": bool(st.p2s_twoIstar),
+            "BIFL_scatter": bool(st.BIFL_scatter),
+            "min_photons": int(st.min_photons),
+            "state_min_photons": int(self.state_min_photons),
+            "x0": x0,
+            "fixed": fixed,
+            "irf": np.asarray(irf, dtype=np.float64),
+            "bg": np.asarray(bg, dtype=np.float64),
+            "model": st.model,
+            "param_names": names,
         }
 
     def run_batch(self, progress=None, max_workers: int | None = None, should_stop=None) -> list[dict]:
@@ -872,8 +1098,13 @@ class MleSession:
         configs = {det: self.batch_config(det) for det in det_order}
         for det, cfg in configs.items():
             cfg["half_len"] = max(1, cfg["irf"].size // 2)
-        rc_max_seen = max((int(np.max(info["chs"])) for info in self.detectors.values() if info.get("chs")), default=0)
-        first_file = np.array([str(v) for v in np.asarray(self.df_bursts["First File"], dtype=object)], dtype=object)
+        rc_max_seen = max(
+            (int(np.max(info["chs"])) for info in self.detectors.values() if info.get("chs")),
+            default=0,
+        )
+        identity_column = ("_measurement_path" if "_measurement_path" in column_names(self.df_bursts)
+                           else "First File")
+        first_file = np.array([str(v) for v in self.df_bursts[identity_column]], dtype=object)
         fp = numeric_column(self.df_bursts, "First Photon")
         lp = numeric_column(self.df_bursts, "Last Photon")
         groups: dict = {}
@@ -885,14 +1116,12 @@ class MleSession:
         if self.split_by_state and self.bur_files:
             from . import state_split
 
-            state_arrays, n_states, self.status = state_split.load_state_arrays(
-                self.bur_files[0].parent.parent, self.tttrs
-            )
+            state_arrays, n_states, self.status = self.state_arrays_by_measurement()
         self.n_states = int(n_states)
         blocks, jobs = [], []
         try:
             for fname, bursts in groups.items():
-                tttr = self.tttrs.get(Path(fname).stem)
+                tttr = self.tttrs.get(fname if identity_column == "_measurement_path" else Path(fname).stem)
                 if tttr is None:
                     jobs.append((fname, bursts, None, None, None, None, None, None, det_order, {}, int(self.settings.shift or 0), None))
                     continue
@@ -910,7 +1139,7 @@ class MleSession:
                 blocks.extend([rc_shm, mt_shm])
                 # The per-photon state, indexed as the routing channels are, in a third shared block.
                 state_info = None
-                states_full = state_arrays.get(Path(fname).stem)
+                states_full = state_arrays.get(fname)
                 if states_full is not None and n_states > 0:
                     states_full = np.ascontiguousarray(states_full, dtype=np.int8)
                     st_shm = shared_memory.SharedMemory(create=True, size=states_full.nbytes)
@@ -929,8 +1158,25 @@ class MleSession:
                     if schs.size:
                         lut[schs] = 1
                     perdet[det] = dict(configs[det], class_lut=lut)
-                jobs.append((fname, bursts, rc_shm.name, rc_full.shape, str(rc_full.dtype), mt_shm.name, mt_bins.shape,
-                             str(mt_bins.dtype), det_order, perdet, int(self.settings.shift or 0), state_info))
+                    timing = self.timing_ns(tttr, binning)
+                    if timing[0] is not None and timing[1] is not None:
+                        perdet[det]["dt"], perdet[det]["period"] = timing
+                jobs.append(
+                    (
+                        fname,
+                        bursts,
+                        rc_shm.name,
+                        rc_full.shape,
+                        str(rc_full.dtype),
+                        mt_shm.name,
+                        mt_bins.shape,
+                        str(mt_bins.dtype),
+                        det_order,
+                        perdet,
+                        int(self.settings.shift or 0),
+                        state_info,
+                    )
+                )
             ctx = mp.get_context("spawn")
             workers = max_workers or max(1, min(os.cpu_count() or 8, len(jobs)) - 1)
             results: list[dict] = []
@@ -977,6 +1223,8 @@ class MleSession:
                 except Exception:
                     pass
         self.burst_results = results
+        self.batch_settings_snapshot = copy.deepcopy(self.channel_settings())
+        self.batch_files_snapshot = self.measurement_files()
         return results
 
 
@@ -987,20 +1235,27 @@ class MleSession:
 
     def export_results(self, tick=None) -> list[Path]:
         """Write the ``b?4`` tables of the last batch beside the burst folders (the wizard's export, without the dialogs)."""
-        files_by_stem = {p.stem: p for p in self.bur_files}
+        files_by_stem = self.batch_files_snapshot or self.measurement_files()
         rows = []
         for row in self.burst_results:
-            stem = Path(row["First File"]).stem
+            identity = str(row["First File"])
+            stem = identity if identity in files_by_stem else Path(identity).stem
             if stem in files_by_stem:
                 rows.append(dict(row, **{"First Stem": stem}))
         if not rows:
             raise ValueError("No burst-fit rows to save: run the batch first.")
         det_meta = {}
-        names = ["tau", "gamma", "r0", "rho"]
-        for det in self.detectors:
+        settings = self.batch_settings_snapshot or self.channel_settings()
+        for det, payload in settings.items():
+            st = MleSettings(**payload)
+            names, _, _ = st.parameter_state()
             color = det.lower()
-            det_meta[det] = (color, color[0], state_result_columns(color, self.settings_of(det).model, names, self.n_states))
-        written = write_b4_tables(rows, files_by_stem, det_meta, self.channel_settings(), tick=tick)
+            det_meta[det] = (
+                color,
+                color[0],
+                state_result_columns(color, st.model, names, self.n_states),
+            )
+        written = write_b4_tables(rows, files_by_stem, det_meta, settings, tick=tick)
         paths = [] if written is None else list(written[0])
         if self.state_lifetimes:
             from . import state_split
@@ -1013,17 +1268,24 @@ class MleSession:
         return {
             "file_type": self.file_type,
             "detectors": self.detectors,
+            "definition": self.definition_payload(),
             "micro_time_binning": int(self.template.micro_time_binning),
             "detector_settings": self.channel_settings(),
         }
 
     def apply_settings_payload(self, payload: dict) -> None:
         """Load a settings file written by :meth:`settings_payload`."""
+        known = {f.name for f in dataclasses.fields(MleSettings)}
+        restored = {}
+        for det, values in (payload.get("detector_settings") or {}).items():
+            settings = MleSettings(**copy.deepcopy({k: v for k, v in values.items() if k in known}))
+            validate_fit_model(settings.model)
+            restored[det] = settings
         if payload.get("detectors"):
             self.set_detectors(payload["detectors"], payload.get("file_type"))
-        known = {f.name for f in dataclasses.fields(MleSettings)}
-        for det, values in (payload.get("detector_settings") or {}).items():
-            self.det_settings[det] = MleSettings(**{k: v for k, v in values.items() if k in known})
+        if payload.get("definition"):
+            self.set_definition(payload["definition"])
+        self.det_settings.update(restored)
         if payload.get("micro_time_binning"):
             self.set_binning(int(payload["micro_time_binning"]))
 
@@ -1036,7 +1298,9 @@ class MleSession:
         n = int(row_count(self.df_bursts))
         if not 0 <= idx < n:
             return {}
-        key = Path(str(np.asarray(self.df_bursts["First File"], dtype=object)[idx])).stem
+        names = column_names(self.df_bursts)
+        key = (str(self.df_bursts["_measurement_path"][idx]) if "_measurement_path" in names
+               else Path(str(self.df_bursts["First File"][idx])).stem)
         tttr = self.tttrs.get(key)
         if tttr is None:
             return {}

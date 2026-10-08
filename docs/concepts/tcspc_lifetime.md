@@ -193,6 +193,23 @@ so the residuals stay Poisson.
 Both fit in convolved space; they differ in the statistic and in how many
 parameters a given photon budget can support.
 
+## Registered burst estimators
+
+Burst MLE offers Fit23, Fit24 and Fit25 through the shared tttrlib facade.
+Fit23 models a single lifetime with polarization; Fit24 models a two-exponential
+mixture. Fit25 evaluates four fixed lifetime candidates and returns the selected
+index, rather than optimizing those candidate lifetimes continuously. Candidate
+values therefore remain inputs even after fitting. The provider's declared
+parameter/result schema determines table rows, units and exported columns.
+
+A scarce photon budget can make a two-lifetime decomposition poorly determined.
+Choose the model for the scientific question and inspect the fitted decay and
+residuals; adding components does not guarantee identifiable lifetimes. The
+single-lifetime generated demo has an input lifetime of 2 ns, so it demonstrates
+controls and finite-count variability rather than validating a multicomponent
+sample. See {doc}`/guides/21_lifetime_from_bursts` for model selection, parameter
+editing, the generated demonstration and the API.
+
 ## Average lifetimes and fractions
 
 A multi-exponential decay has **two inequivalent averages**. The

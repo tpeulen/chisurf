@@ -84,12 +84,27 @@ def _units_by_prefix(columns) -> dict[str, str]:
     dict
     """
     out: dict[str, str] = {}
+    from chisurf.core.fluorescence.mle.registry import fit_models
+
+    # The provider already declares parameter units. State suffixes and detector
+    # labels decorate a name without changing the quantity that was fitted.
+    declared = {}
+    for entry in fit_models().values():
+        for key in ("params_schema", "results_schema"):
+            for parameter, spec in entry.get(key, {}).get("properties", {}).items():
+                unit = spec.get("unit")
+                if unit:
+                    declared[parameter] = "nanoseconds" if unit == "ns" else str(unit)
     for name in columns:
         text = str(name)
         for prefix, unit in _UNIT_BY_PREFIX:
             if text.startswith(prefix):
                 out[text] = unit
                 break
+        if text not in out:
+            parameter = text.split(" (")[0].split(" S")[0]
+            if parameter in declared:
+                out[text] = declared[parameter]
     return out
 
 
