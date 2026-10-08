@@ -247,3 +247,9 @@ share navigation rather than an additional photon algorithm. Host resizing
 retains the actual child contexts and scientific settings. The
 [File tools workflow](../guides/74_intensity_traces_and_file_tools.md) lists all
 seven routes and their distinct input requirements.
+
+PTO Inspector's declared host dimensions are presentation preferences.
+Resizing or restoring them does not rewrite the container or regenerate its
+artifacts. Data rows, curve points, checksums and provenance remain properties
+of the same stored measurement. The [Inspector workflow](../guides/63_pto_inspector.md)
+explains artifact selection, graph preferences and wide-table navigation.

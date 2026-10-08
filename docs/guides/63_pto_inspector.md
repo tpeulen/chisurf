@@ -185,3 +185,13 @@ not discard columns or alter exported rows. The table, export and provenance
 remain views of the same stored artifact.
 
 ![Native computed workflow with readable controls and results](figures/pto_inspector_readable_data.png)
+
+### Native viewer dimensions and restored state
+
+PTO Inspector reads its 1200 × 800 initial host dimensions from the primary
+view specification. Saved user dimensions, selected artifact, filters and graph
+preferences take precedence. Changing the host size preserves the container,
+artifact data, curve coordinates, exported CSV and provenance relationships.
+The data table retains readable column widths and horizontal navigation.
+
+![Native PTO Inspector showing a stored measured decay and provenance](figures/pto_inspector_native_curve.png)

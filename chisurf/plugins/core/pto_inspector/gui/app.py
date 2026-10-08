@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import html
+import json
 import re
 from pathlib import Path
 
@@ -19,6 +20,7 @@ from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.node_editor.control import GraphControl, NodeContentRenderer
 from chisurf.emtk.node_editor.document import GraphDocument
 from chisurf.emtk.plugins import load_plugin
+from chisurf.plugins.emtk_layout import window_size
 
 from .translations import install, tr
 from .view_model import PtoInspectorViewModel
@@ -47,6 +49,8 @@ class PtoInspectorApp(ImApp):
 
     def __init__(self, model=None, tool_loader=None):
         install()
+        spec = json.loads(Path(__file__).with_name("pto.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(spec, self.window_size)
         self.model = model or PtoInspectorViewModel()
         self.tool_loader = tool_loader or load_plugin
         self.notice = ''

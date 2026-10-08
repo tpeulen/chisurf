@@ -1972,3 +1972,16 @@ OpenGL viewport does need a display, so `png` will not work headlessly while
 ## See also
 
 - Tool: **ChiMOL** (`chisurf/plugins/chimol/`).
+
+### Native host dimensions
+
+The ChiSurf native molecular viewer declares an initial 1200 × 800 host.
+Saved user dimensions take precedence. The renderer's internal initialization
+size is separate; it continues to render at the actual viewport dimensions
+when the host changes size. Loading, representation commands and pointer/wheel
+interaction retain the same atom coordinates and molecular state.
+
+Reopening restores host dimensions; the adapter does not add a molecular-scene
+snapshot to its preferences. ChiMOL keeps its own display and layout settings.
+
+![Native viewer with the T4 lysozyme fixture](figures/chimol_native_host.png)

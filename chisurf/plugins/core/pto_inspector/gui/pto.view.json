@@ -1,4 +1,5 @@
 {
+  "window": {"width": 1200, "height": 800},
   "_comment": "PTO inspector. AutoForm over PtoInspectorViewModel. Left: the file, what it is, and every object in it. Right: four docks answering the four questions a container gets asked — how did this come to be (the provenance graph), what are the numbers (the table), what does it look like (the curve), and what exactly was recorded (the details, including the settings that are the recipe). Open / verify / open-the-tool live in the host toolbar.",
   "sections": [
     {

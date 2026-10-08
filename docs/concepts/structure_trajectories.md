@@ -271,3 +271,9 @@ names through the same public properties as its editor. Explicit atom lists
 retain their specified membership and unit rate; residue rate dictionaries
 use CB atoms or all non-excluded atoms according to the flag. The scale
 multiplies the resulting rates.
+
+The native molecular host separates its window dimensions from molecular
+coordinates and representations. A stored host size does not rescale the
+scientific coordinate arrays; camera and viewport transforms determine how
+they are drawn. The [molecular viewer workflow](../guides/44_molecular_viewer.md)
+distinguishes host preferences from ChiMOL's display configuration and scene.

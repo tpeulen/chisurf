@@ -10,8 +10,10 @@ handlers its own window drives, so orbit/pan/zoom behave identically.
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 from emtk import im
@@ -19,6 +21,10 @@ from emtk.app import ImApp
 from emtk.im_core import get_current_context
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.plugins.emtk_layout import window_size
+
+if TYPE_CHECKING:
+    from chimol.hosts.native.app import ChimolApp
 
 HERE = Path(__file__).parent
 
@@ -40,8 +46,10 @@ class ChimolHostApp(ImApp):
     PROMPT_H = 18.0
 
     def __init__(self, size: tuple[int, int] = (900, 620)):
+        spec = json.loads((HERE / "window.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(spec, (1200, 800))
         self._chimol_size = size
-        self._chimol = None
+        self._chimol: ChimolApp | None = None
         self._chimol_error = ""
         self._frame: np.ndarray | None = None
         self._surface = size
@@ -103,7 +111,7 @@ class ChimolHostApp(ImApp):
             max(760, int(w)),
             max(420, int(h - self.STATUS_H)),
         )
-        if self._ensure_chimol():
+        if self._ensure_chimol() and self._chimol is not None:
             self._resize_chimol(*self._surface)
             frame = self._chimol.renderer.draw_frame()
             if frame is not None:
@@ -111,6 +119,8 @@ class ChimolHostApp(ImApp):
         super().draw(painter, x, y, w, h)
 
     def _resize_chimol(self, w, h) -> None:
+        if self._chimol is None:
+            return
         renderer = self._chimol.renderer
         canvas = renderer._canvas
         try:
