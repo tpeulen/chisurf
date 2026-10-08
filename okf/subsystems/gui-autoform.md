@@ -1148,3 +1148,10 @@ are distinguished from naturally fast completion. The stale test painter now
 matches SDK stroke width semantics with its original counting/assertions.
 [Acceptance](../validation/release-readiness-w6g/tttr-window-acceptance.json)
 records exact physical arrays/rates/windowrows and remaining FPS/card work.
+
+The FPS JSON card has its own1100×720 host declaration and preserves saved
+custom dimensions without changing other CardShell siblings. Actual AV
+computation, molecular rendering, point clouds/means/grid spacing and complete
+position/restraint/configuration data prove real before/after parity; a
+load-onlyfixture orskippedrenderer is not acceptance. [Exactcardacceptance](../validation/release-readiness-w6g/fps-card-window-acceptance.json)
+records tested geometry, fixture identity and scoped static limits.

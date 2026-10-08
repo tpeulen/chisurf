@@ -144,3 +144,9 @@ Accessible volumes and the inter-dye distance distribution.
 
 - `chisurf/core/structure/av/` (`BasicAV`, `ACV`, `DynamicAV`, `calculate_1_radius`/`calculate_3_radius`); plugin `modelling/fps_json_editor`; the AV decay model `models/tcspc/av_decay.py`.
 - Tool: the **FPS JSON Editor** (`chisurf/plugins/modelling/fps_json_editor/`) and **Structure Tools** (`chisurf/plugins/modelling/structure_tools/`).
+
+The standalone native FPS JSON card declares a1100×720 initial host window.
+Saved custom geometry retains precedence. This declaration applies only to the
+FPS card; other Structure Tools cards keep their own host behavior. Loaded
+position/restraint/FlexFit data and actually computed accessible-volume point
+clouds, means and grid spacing retain their values across geometry restoration.

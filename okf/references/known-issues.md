@@ -6634,3 +6634,16 @@ the geometry source excludes six foreign sibling changes. Re-derive with the
 same ChiSurf Ruff config and test-environment mypy follow-imports=skip as the
 recorded before/after commands. Programme root owns this follow-up; do not
 interpret unchanged baseline counts as clean static analysis.
+
+## FPS card inherited typing diagnostics (2026-10-08)
+
+Thirteenexisting mypy findings in fps_json.py remain unchanged by the host
+geometry declaration: dynamic _View.card/ed attributes assigned via
+object.__setattr__, cache/drawsignature annotations, sideeffect tuples involving
+None-returning sync_status, andexactremaining messages recorded in
+static-baseline-diagnostics.json inside [cardarchive](../validation/release-readiness-w6g/fps-card-window-final-source.zip).
+No suppression ornewruntime failure is introduced. Actual11AV computation,
+scoring/FlexFit/renderer andsavedgeometry tests pass; these do not prove all
+unrelated callback paths. Re-derive using recorded before/final commands and
+same testenvmypy. Rootowns a separate bounded behavior-preserving typing cleanup
+plan; geometry acceptance is qualified, not a cleanstatic claim.

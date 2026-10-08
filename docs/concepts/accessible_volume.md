@@ -238,3 +238,8 @@ hands the network to an AV-restraint scoring function for docking and refinement
   measures what the linker does to a distance; {cite}`kalinin2012` is the FPS
   toolkit and its benchmark; {cite}`dimura2016` reviews FRET-restrained
   integrative modelling.
+
+Host layout is independent of accessible-volume computation. The native FPS
+card preserves the calculated point clouds, mean positions and grid spacing
+when its host window changes. The [workflow](../guides/23_accessible_volume.md)
+distinguishes loaded input from actual AV computation.

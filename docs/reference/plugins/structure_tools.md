@@ -100,6 +100,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 - Plugin package: `chisurf/plugins/modelling/structure_tools/`
 - Manifest: {src}`chisurf/plugins/modelling/structure_tools/manifest.json`
+- UI spec: {src}`chisurf/plugins/modelling/structure_tools/cards/resources/fps_json/window.view.json`
 - UI spec: {src}`chisurf/plugins/modelling/structure_tools/cards/views/fps_distances.view.json`
 - UI spec: {src}`chisurf/plugins/modelling/structure_tools/cards/views/fps_flexfit.view.json`
 - UI spec: {src}`chisurf/plugins/modelling/structure_tools/cards/views/fps_positions.view.json`

@@ -19,6 +19,7 @@ from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.chimol_view import ChimolView
 from chisurf.plugins.emtk_layout import LabelColumn, layout_spec
+from chisurf.plugins.emtk_layout import window_size as shared_window_size
 
 from .fps_model import (
     ALL_DISTANCES,
@@ -337,6 +338,8 @@ class FpsJsonCard(CardShell):
     """The FPS JSON editor window."""
 
     def __init__(self, editor: FpsEditor | None = None) -> None:
+        host_spec = json.loads((RES / "window.view.json").read_text(encoding="utf-8"))
+        self.window_size = shared_window_size(host_spec, (1100, 720))
         self.editor = editor or FpsEditor()
         self._tab = TABS[0]
         self._seen_selection: dict = {}
