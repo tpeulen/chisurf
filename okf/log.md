@@ -41340,3 +41340,5 @@ side of the line.
 - 2026-10-08 — PRD154 W6g window unit source9f2b7dd76, boardcc90dd27:56postcommit contract checks pass (20.24s). Midway resume now starts with the shared imaging/trajectory primary-spec map before any new app-base writes.
 
 - 2026-10-08 — PRD154 W6g shared-family midway: geometry readers and two primary declarations added; regression2RED→23PASS, broad761pass exposed five obsolete strict xfails, now retired pending rerun. Real drift/trajectory before/after science and controls match. Measured existing narrow-axis label overlap0.828125px is under root emtk repair; exact sources/20PNGs/active-agent ownership archived for continuation.
+
+- 2026-10-08 — PRD154 W6g shared imaging/trajectory window readers verified with emtk0df138cd root label-spacing fix.1105targetedChiSurf checks pass/15skip,97SDKchecks pass,15owned-testcandidate checks pass; five stale strict xfails retired and six inherited typing errors fixed. Real-data controls/science unchanged; smallprojection overlapping labels fixed, fullprojection byte-identical. Exact finalsource/PNG/SDK evidence and remaining16primary-spec work archived in OKF.

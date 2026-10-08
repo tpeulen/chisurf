@@ -23,6 +23,7 @@ from emtk.view_form import FormState, draw_sections
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.jobs import SnapshotJob
+from chisurf.plugins.emtk_layout import window_size
 
 from .views import ImagePanel, QuiverPanel, draw_series_plot
 
@@ -59,7 +60,9 @@ class ImagingToolApp(ImApp):
         self.job = SnapshotJob(model)
         model.runner = self.start_job
         model.add_observer(self._on_event)
-        self.spec = self.prepare_spec(json.loads((self.GUI_DIR / self.SPEC).read_text(encoding="utf-8")))
+        specification = json.loads((self.GUI_DIR / self.SPEC).read_text(encoding="utf-8"))
+        self.window_size = window_size(specification, (1100, 720))
+        self.spec = self.prepare_spec(specification)
         self.form = FormState()
         self.item_rects: dict[str, tuple] = {}
         self.dialog: FileDialog | None = None

@@ -1,4 +1,5 @@
 {
+  "window": {"width": 1100, "height": 720},
   "_comment": "Declarative AutoForm layout for the Rotate/Translate-Trajectory tool. A single panel with the custom IO section (trajectory picker + 3x3 rotation-matrix grid + 3-field translation row + save button, H5 browse/drag-drop), the read stride, above a live log rendered by the built-in `info` section bound to the view-model's `log_html`. Replaces the former rotate_translate_traj.ui.",
   "sections": [
     {

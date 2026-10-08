@@ -56,3 +56,11 @@ Run `pixi run -e test python -m pytest test/native_emtk/test_declared_window_siz
 Regenerate the schema with `pixi run -e test python -m chisurf.core.dataspec.schema`.
 Only the measured consumers above are covered so far; the committed factory
 map in OKF identifies the remaining families and unresolved primary loaders.
+
+The shared imaging and trajectory shells read geometry from the raw loaded
+spec before preparing or flattening form sections. A missing declaration uses
+1100×720. Drift correction and rotate/translate declare that size explicitly;
+other primary specs still need their individual sizing/render review. Automatic
+plot labels use their final measured bounds to stay separate in narrow panes.
+Explicit custom labels remain as requested; tick/grid positions and data ranges
+are unchanged.

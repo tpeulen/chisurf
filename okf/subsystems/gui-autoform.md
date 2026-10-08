@@ -1066,3 +1066,13 @@ Remaining native factories still need explicit primary-spec declarations and
 real render acceptance. See [active job](../validation/release-readiness-w6g/current-job.md)
 and native-window-map.json; do not treat geometry-only declarations as new
 AutoForm control coverage.
+
+Shared imaging/trajectory shells now read raw primary-spec geometry before
+prepare_spec/sectionflattening. Drift/rotate declarations are explicit 1100×720;
+remaining 16specs use fallback and still require individual metadata/render
+review. Exact 10 imaging/8 trajectory route map is archived in W6g evidence.
+Real drift 12-frame known shifts and trajectory 8 frames×5235atoms with zero
+coordinate error are unchanged across full/small pairs. Inherited narrow
+projection label overlap was fixed in emtk 0df138cd using final measured bounds,
+without changing ticks/grid/data. Six trajectory typing errors and five stale
+strict picker/wheel xfails were also corrected.

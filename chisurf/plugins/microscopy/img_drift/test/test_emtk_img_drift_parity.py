@@ -312,8 +312,6 @@ def test_the_database_button_opens_the_picker_and_a_dataset_is_selected_and_meas
     assert Path(app.model.filename) == tiff and app.model.result is not None and not app.picker.is_open
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the dataset picker's Refresh / Previous / Next / Open selected buttons share one id "
-                   "('...##dataset'), so the disabled Previous / Next swallow the release and 'Open selected' never fires; see REPORT.md section 10")
 def test_the_open_selected_button_of_the_database_picker_can_be_pressed(app, drv, tiff):
     import time
 
@@ -333,8 +331,6 @@ def test_the_database_picker_window_close_button_closes_it_and_loads_nothing(app
     assert not app.picker.is_open and app.model.filename == ""
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the picker's Cancel button shares the id '...##dataset' with Refresh / Previous / Next / "
-                   "Open selected and never fires; see REPORT.md section 10")
 def test_the_cancel_button_of_the_database_picker_can_be_pressed(app, drv, tiff):
     open_picker(app, drv, tiff)
     drv.click_text("Cancel")
@@ -659,7 +655,6 @@ def test_the_shift_table_header_sorts_by_value_and_a_row_click_changes_nothing(a
     assert app.model.export_settings() == before and app.model.result is not None
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the wheel never reaches an implot inside a DockManager window; see REPORT.md section 10")
 def test_the_wheel_zooms_the_drift_trace(app, drv, tiff):
     measured(app, drv, tiff)
     drv.click_text("Drift trace")
@@ -670,7 +665,6 @@ def test_the_wheel_zooms_the_drift_trace(app, drv, tiff):
     assert numeric_ticks(drv.draw(2)) != before
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the wheel does not reach a spin field inside a DockManager window; see REPORT.md section 10")
 def test_the_wheel_over_the_smoothing_field_steps_it(app, drv):
     drv.click("Estimator.fold")
     x, y, w, h = drv.rect("smooth")

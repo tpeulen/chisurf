@@ -34,7 +34,7 @@ from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import (
-    NUMBER_WIDTH, LabelColumn, cap_widths, group_by_width, icon_label, labelled, layout_spec,
+    NUMBER_WIDTH, LabelColumn, cap_widths, group_by_width, icon_label, labelled, layout_spec, window_size,
 )
 
 ERROR = (1.0, 0.45, 0.45, 1.0)
@@ -118,7 +118,7 @@ class SaveAction:
 
 def trajectory_field(**overrides) -> PathField:
     """The trajectory row every tool has (DCD, as the Qt sections filter)."""
-    values = dict(
+    values: dict[str, Any] = dict(
         key="trajectory", label="Trajectory", attr="trajectory_filename", setter="set_trajectory",
         filters=TRAJECTORY_FILTERS, placeholder="Drop a DCD trajectory here or browse…",
         tooltip="The trajectory the tool reads. Drop a .dcd here or press … to pick one.",
@@ -130,7 +130,7 @@ def trajectory_field(**overrides) -> PathField:
 
 def topology_field(**overrides) -> PathField:
     """The topology row: the PDB that names the atoms a DCD stores coordinates for."""
-    values = dict(
+    values: dict[str, Any] = dict(
         key="topology", label="Topology", attr="topology_filename", setter="set_topology",
         filters=STRUCTURE_FILTERS, placeholder="PDB naming the atoms — required for DCD",
         tooltip="The structure that names the atoms; a DCD stores coordinates only.",
@@ -194,6 +194,7 @@ class TrajToolApp(TourTarget, ImApp):
         self._log_seen = 0
 
         spec = json.loads((self.folder / spec_name).read_text(encoding="utf-8"))
+        self.window_size = window_size(spec, (1100, 720))
         panel = spec["sections"][0]
         top = panel.get("sections", []) if len(spec["sections"]) == 1 else [
             dict(s, collapsible=True) if s.get("type") == "panel" else s for s in spec["sections"]
@@ -349,12 +350,16 @@ class TrajToolApp(TourTarget, ImApp):
         self.tour.draw(*vp.size)
 
     def _draw_dialog(self, box) -> None:
+        dialog = self.dialog
+        if dialog is None:
+            return
         pressed = self.dialog_window.begin(box)
-        result = self.dialog.draw()
+        result = dialog.draw()
         self.dialog_window.end()
         if result:
             pick, self.dialog = self._on_pick, None
-            pick(result[0])
+            if pick is not None:
+                pick(result[0])
         elif result is False or pressed == "close":
             cancel, self.dialog = self._on_cancel, None
             if cancel is not None:

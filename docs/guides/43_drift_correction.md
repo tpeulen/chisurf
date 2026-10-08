@@ -148,3 +148,11 @@ clsm, shifts = core.correct_photon_image("scan.ptu", channels=[0])
 ## See also
 
 - Tool: **Drift Correction** (`chisurf/plugins/microscopy/img_drift/`).
+
+## Native window geometry
+
+Drift correction initially requests 1100×720 logical pixels, limited by the
+display when Qt hosts it. The native launcher restores dimensions after a
+resize. The shared shell reads the declaration before arranging the form.
+Narrow projection panes retain the image and controls, and automatically
+space axis labels; this does not change measured shifts or corrected pixels.

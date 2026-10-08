@@ -392,3 +392,11 @@ historical `k_quench_protein` option applies when no canonical value is given.
 The atom-exclusion editor accepts a whitespace-separated list, while the
 all-atoms flag chooses CB-only or non-excluded atoms for residue rate settings.
 Explicit per-residue atom lists keep their original meaning.
+
+## Native window geometry
+
+The shared native trajectory shell reads initial width/height from the tool's
+view spec before arranging its sections; an older spec defaults to 1100×720.
+Rotate/translate explicitly declares that size. Resizing is remembered by the
+native launcher, and Qt limits startup dimensions to the display. Geometry
+does not change matrices, translation, stride or exported coordinates.

@@ -87,8 +87,6 @@ def test_the_stride_field_is_typed_clicked_away_clamped_and_stepped_by_its_arrow
     check_number_field(make_app, "stride", start=1, typed=5, minimum=1, maximum=999999, step=1, as_type=int)
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the wheel does not reach a field inside a DockManager window "
-                                       "(repro in the report); the Qt spin box steps on the wheel")
 def test_the_wheel_steps_the_stride_field():
     before, after = wheel_steps_a_number_field(make_app, "stride")
     assert after != before
