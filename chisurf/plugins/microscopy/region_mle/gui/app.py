@@ -25,6 +25,7 @@ from emtk import im, implot
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.dataset_picker import DatasetPicker
@@ -32,6 +33,7 @@ from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.image_canvas import ImageCanvas
 from chisurf.emtk.jobs import SnapshotJob
 from chisurf.emtk.regions import RegionControls
+from chisurf.plugins.emtk_layout import window_size
 
 from .model import PHOTON_FILE_FILTER, RegionMleModel
 
@@ -69,6 +71,7 @@ class RegionMleApp(ImApp):
         self.job = SnapshotJob(self.model)
         self.model.add_observer(self._on_event)
         self.spec = json.loads((HERE / "region_mle_emtk.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(self.spec, (1100, 720))
         self.windows = self.spec["sections"][0]["sections"]
         self.form = FormState()
         self.form.custom.update(
@@ -329,14 +332,21 @@ class RegionMleApp(ImApp):
         """Filterable region list with its fit summary, and the image with region overlays."""
         view = self._view_of_results()
         entries = view["entries"]
-        _, self.region_filter = im.input_text("Filter regions", self.region_filter,
-                                              hint="Region name")
-        im.set_item_tooltip("Show only regions whose name contains this text; the image is unchanged.")
+        filter_label = tr("Filter regions")
+        im.set_next_item_width(max(80.0, width - im.calc_text_size(filter_label)[0] - 16.0))
+        _, self.region_filter = im.input_text(
+            filter_label, self.region_filter, hint=tr("Region name")
+        )
+        im.set_item_tooltip(
+            tr("Show only regions whose name contains this text; the image is unchanged.")
+        )
         shown = [e for e in entries if self.region_filter.casefold() in e["label"].casefold()]
         if shown:
             current = next((i for i, e in enumerate(shown) if e["id"] == model.current_molecule), 0)
+            region_label = tr("Region")
+            im.set_next_item_width(max(80.0, width - im.calc_text_size(region_label)[0] - 16.0))
             changed, index = im.combo(
-                "Region", current, [f"{e['label']}   {e['badge']}" for e in shown]
+                region_label, current, [f"{e['label']}   {e['badge']}" for e in shown]
             )
             im.set_item_tooltip(section.get("description", ""))
             if changed:

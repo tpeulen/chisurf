@@ -1186,3 +1186,5 @@ independently ofpreexistingworkingtree edits. Pythonimage counts use canonical
 owneru32 anddeferredchannel layout isaccurate; actualdataGUIacceptance must be
 recaptured afterthese scientificroots instead ofpreserving wrappedcounts. [Rootacceptance](../validation/release-readiness-w6g/region-root-acceptance.json)
 records realbroken/explicitreference physics and installedtest/arm64 identities.
+
+Spot Finder and Region MLE now declare1100×720 on their raw primary specs. Region filter/selector reserve measured caption widths; saved dimensions retain precedence. Actual corrected wide-count data and all control/scientific identities match before/after. [Pair acceptance](../validation/release-readiness-w6g/spot-region-window-acceptance.json) qualifies frozen-dipole versus ensemble polarization residuals and records actual arm64 screenshots, original/owned sources and commands. Reopening restores configuration; Preview/Run rebuild computed results.

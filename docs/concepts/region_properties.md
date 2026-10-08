@@ -234,3 +234,18 @@ producer scanner metadata defines simulated-raster geometry, and physical PTU
 clocks define time units. Neither missing geometry nor placeholder timing can
 be repaired by adding duplicate frames or monkeypatching the reader. See the
 [region workflow](../guides/48_regions.md) for reconstruction and fitting.
+
+### Frozen molecules and the polarized model
+
+A single immobilized dipole is not an orientationally averaged ensemble.
+The simulated four-object field samples one fixed orientation per molecule;
+its VV/VH ratio is determined by the direction cosines and emission cone. An
+ensemble fit with fixed positive fundamental anisotropy and finite rotational
+correlation time can consequently miss both channel amplitudes. Matching the
+same reference implementation proves data delivery, not model adequacy.
+
+The lifetime demonstration selects the **2I* (P+2S)** objective; retain its
+split-channel residuals when assessing the fit and do not interpret the fixed
+anisotropy parameters as recovered physical values. The [Region MLE workflow](../guides/48_regions.md)
+explains this limitation. Region intensity measurements use uint32 photon
+counts independently of those lifetime and anisotropy assumptions.

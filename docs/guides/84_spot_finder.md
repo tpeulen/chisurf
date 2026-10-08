@@ -250,3 +250,14 @@ automatic hardware reconstruction remains the fallback for ordinary inputs.
 The producer writes its physical macro/micro clocks and TAC-bin count into the
 PTU header. Python image intensities use wide counters so bright regions retain
 all photons; the explicit legacy native16-bit getter remains available.
+
+## Window layout and bright pixels
+
+The native Spot Finder starts at 1100 × 720; a saved user layout takes
+precedence. Changing the host size preserves the detection settings, region
+selection and measurements. The measurements table scrolls horizontally to
+reach all columns. Preview and Detect use uint32 photon counts, including
+pixels brighter than 65,535 photons, so the maximum and mean describe the
+actual photon population rather than a wrapped count.
+
+![Native known-field demonstration at the initial layout](figures/spot_finder_native_wide_counts.png)

@@ -1,4 +1,5 @@
 {
+  "window": {"width": 1100, "height": 720},
   "_comment": "Region MLE, drawn by emtk.view_form over RegionMleModel (gui/model.py). Same fields and descriptions as region_mle.view.json (the Qt tool's spec) without emoji in labels. The three top-level sections are the three dock windows of gui/app.py; the custom sections path_list, region_list, image_browser and decay_panel are drawn by callbacks registered in app.py (FormState.custom).",
   "sections": [
     {

@@ -1,5 +1,6 @@
 {
   "_comment": "Spot Finder tool. AutoForm over SpotFinderViewModel: a Detection dock (file list, workflow selector, the settings that deviate from it, an analysis region, Detect/Preview/Export) plus result docks (the field with the found regions marked, and the run table with one row per input). Writes each detection into its measurement's own container, for the Region MLE panel below to fit.",
+  "window": {"width": 1100, "height": 720},
   "sections": [
     {
       "type": "dock_area",

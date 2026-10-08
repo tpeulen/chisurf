@@ -21,7 +21,7 @@ from chisurf.core.roi import RegionCollection
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.calculator.native_form import plain
-from chisurf.plugins.emtk_layout import button_row, layout_spec
+from chisurf.plugins.emtk_layout import button_row, layout_spec, window_size
 from chisurf.plugins.microscopy.psf_determination.gui.canvas import ImageCanvas
 from chisurf.plugins.microscopy.psf_determination.gui.jobs import SnapshotJob
 
@@ -107,9 +107,9 @@ class SpotFinderApp(ImApp):
         self.item_rects = {}
         self._deferred_context = {}
         self._image = None
-        self.sections = json.loads(Path(__file__).with_name("spot_finder.view.json").read_text())[
-            "sections"
-        ][0]["sections"]
+        spec = json.loads(Path(__file__).with_name("spot_finder.view.json").read_text())
+        self.window_size = window_size(spec, (1100, 720))
+        self.sections = spec["sections"][0]["sections"]
         detection = self.sections[0]["sections"]
         self.demo_action = next(
             button

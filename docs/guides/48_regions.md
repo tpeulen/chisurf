@@ -308,3 +308,22 @@ hardware inputs keep automatic reconstruction. Preview image counts and region
 photon indices stay consistent for bright pixels; physical timing is read from
 the correctly written PTU header. Compare finite-period lifetime fits against
 the same calibrated reference, rather than forcing ideal input lifetimes.
+
+## Region MLE: layout and the demo's fit assumptions
+
+Region MLE starts at 1100 × 720; saved dimensions and dock placement take
+precedence. The filter and region selector reserve space for their captions.
+Resizing preserves the selected region, fit settings, decays, model curves
+and exported rows. Reopening restores the input files, fit settings and layout;
+press Preview or Run to rebuild the result display.
+
+The four-object demo is a lifetime exercise using the **2I* (P+2S)** objective.
+Its individual simulated molecules have frozen dipole orientations. Their
+parallel/perpendicular intensity ratios therefore differ from the orientationally
+averaged anisotropy assumed by the fixed r0 and rho settings. Inspect **Decay**:
+the split-channel residuals can be strongly systematic even when the lifetime
+matches the explicit reference. This example does not validate anisotropy or a
+good polarized fit. Longer lifetimes also carry the finite 8.192 ns period
+bias discussed in [region properties](../concepts/region_properties.md).
+
+![Native known-field demonstration at the initial layout](figures/region_mle_native_wide_counts.png)
