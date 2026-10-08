@@ -291,3 +291,11 @@ many short traces, ebFRET ({doc}`20_ebfret_binned_hmm`).
   **File tools** (`chisurf/plugins/tttr/filetools/`) hosting
   `tttr_splitter`, `tttr_to_pto`, `pto_inspector`, `tttr_header_edit`,
   `tttr_time_windows`, `bid_to_analysis` and `mfd_prepare`.
+
+The standalone native Intensity Trace tool declares an initial 1100×720 window.
+A saved custom size takes precedence. Traces, HMM states, dwell estimates and
+other computed results are retained across geometry restoration.
+
+Result-selector buttons wrap to remain readable in narrower panels. The FRET
+plot uses the concise caption “FRET efficiency by state”; its plot identity,
+axis state, data and user actions remain unchanged.

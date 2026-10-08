@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import json
 from pathlib import Path
 
 from emtk import im
@@ -13,6 +14,7 @@ from emtk.file_dialog import FileDialog
 from chisurf.core.support.i18n import tr
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.i18n import install
+from chisurf.plugins.emtk_layout import window_size
 
 from .view_model import FCSChannelViewModel
 
@@ -30,6 +32,8 @@ class PresetApp(ImApp):
         self.dialog_action = ""
         self.drafts = {}
         self.item_rects = {}
+        spec = json.loads(Path(__file__).with_name("fcs_channel_preset.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(spec, (1100, 720))
         root = Path(__file__).parents[1]
         self.help = EmTkHelpWindow(title="FCS channel definitions", resource=root / "help.md")
         self.tour = EmTkGuidedTour(steps=root / "guide.json", get_target_rect=self.item_rects.get)

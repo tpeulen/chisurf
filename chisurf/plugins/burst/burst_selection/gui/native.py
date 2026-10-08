@@ -25,7 +25,7 @@ from emtk.widgets.view_spec import load_view_spec
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.jobs import SnapshotJob
-from chisurf.plugins.emtk_layout import LabelColumn, button_row, cap_widths, labelled
+from chisurf.plugins.emtk_layout import LabelColumn, button_row, cap_widths, labelled, window_size
 
 from .model import BurstSelectionModel
 
@@ -83,6 +83,7 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.form = FormState()
         spec = load_view_spec(str(HERE / "native.view.json"))
+        self.window_size = window_size(spec, (1100, 720))
         cap_widths(spec["sections"])
         self.files_sections = _sections(spec, "Files")
         self.output_sections = _sections(spec, "Output")

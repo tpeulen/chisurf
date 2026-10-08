@@ -78,3 +78,6 @@ rename an old archive to `.cs.pto` to try to convert it.
 
 For architecture and verification details, see the project-persistence record
 in `okf/subsystems/project-persistence.md`.
+
+The native Project Browser starts at 1200×800. Its project, version and artifact
+views use the same persisted data; a saved custom window size takes precedence.

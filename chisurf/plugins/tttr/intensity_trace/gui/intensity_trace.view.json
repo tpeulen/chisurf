@@ -1,5 +1,6 @@
 {
   "_comment": "Native intensity-trace tool, drawn by emtk.view_form over gui/app.py's _Form (the model's fields, the app's actions). Two panels shown as the Qt widget's two tabs; the detector list is the custom section `detectors` (one tick per detector of the setup, else per routing channel). The plots and the result views are dock windows drawn by gui/app.py.",
+  "window": {"width": 1100, "height": 720},
   "panels": {
     "file": {
       "sections": [

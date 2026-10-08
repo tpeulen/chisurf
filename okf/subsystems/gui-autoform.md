@@ -1110,3 +1110,13 @@ ChiSurf tour title reserve a separate drag row. Existing scientific results
 remain exact; the reader-owner repair restores all Flow frames and photons.
 [Demo acceptance](../validation/release-readiness-w6g/demo-contracts-acceptance.json)
 records the qualified flow bias and remaining broader uniformity gates.
+
+Five more ordinary primary specs now declare host geometry while saved user
+sizes retain precedence. Browser uses1200×800; Selection, AI Settings, FCS Preset
+and Intensity Trace use1100×720. Scientific/configuration/control parity is
+verified in actual scratch Qt captures. Result-selector rows measure visible
+labels with hide_double_hash=True, matching real button rectangles; hidden
+identities no longer cause premature wrapping. Existing selectors wrap without
+changing callbacks; a concise FRET title preserves its ##fretdist identity.
+[Acceptance and exact evidence](../validation/release-readiness-w6g/ordinary-window-acceptance.json)
+qualifies offscreen screen clamping and remaining74declarations.

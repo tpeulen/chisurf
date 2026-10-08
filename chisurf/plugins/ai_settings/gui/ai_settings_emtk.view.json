@@ -1,6 +1,7 @@
 {
   "_comment": "AI Settings, native emtk window. The three collapsible panels, the Test / Save / Reset row and the result line of the Qt tool (ai_settings.view.json), drawn by emtk.view_form over AISettingsModel (gui/model.py). The Qt text/image model boxes are editable combos; emtk's choice is not, so each model is a text field (any id) plus a pick list of the fetched ids. The eye toggle of the Qt key field is the 'Show key' check box: two fields on the same attribute, one masked and one in clear text. 'settings' is the scrolling form, 'actions' the Test / Save / Reset bar and the result line, each a window of gui/app.py.",
   "title": "AI Settings",
+  "window": {"width": 1100, "height": 720},
   "sections": [
     {
       "type": "panel",

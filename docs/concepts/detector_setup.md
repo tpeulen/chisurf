@@ -88,3 +88,8 @@ The current controls and Python interfaces are described in
 - [Measurement and provenance](measurement_database.md).
 - Portable model: {src}`chisurf/core/setup_channel_definition.py`.
 - Reading/LUT adapter: {src}`chisurf/core/data_io/detector_setups.py`.
+
+Native preset-editor geometry is declared alongside its controls. Restoring a
+window retains the selected detector setup and correlation pairs; changing its
+size does not modify the instrument definition or saved presets. See the
+[channel workflow](../guides/87_channel_definition.md).

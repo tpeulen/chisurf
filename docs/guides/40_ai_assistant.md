@@ -319,3 +319,7 @@ knowing:
 A request that never reaches the provider (no route, blocked port, wrong proxy)
 is reported as a connection error rather than a model error — worth checking
 before you blame the model or the key.
+
+Native AI Settings declares an initial 1100×720 window. Saved custom geometry
+takes precedence; sizing does not change provider endpoints, selected models or
+generation settings, and opening the panel makes no provider request.

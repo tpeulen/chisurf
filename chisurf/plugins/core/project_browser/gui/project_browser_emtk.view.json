@@ -1,4 +1,5 @@
 {
+  "window": {"width": 1200, "height": 800},
   "_comment": "Project Browser for the emtk window, drawn by emtk.view_form over ProjectPanel (gui/panel.py): the toolbar, the search row, the project/version tree as a data_table with disclosure triangles, and the details tabs. The dialogs and the context menu are drawn by gui/app.py.",
   "toolbar": {
     "sections": [

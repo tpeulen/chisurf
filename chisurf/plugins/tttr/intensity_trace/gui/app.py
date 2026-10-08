@@ -24,6 +24,8 @@ from emtk.view_form import FormState, draw_form
 from chisurf.core.support.i18n import tr
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.plugins.emtk_layout import button_row
+from chisurf.plugins.emtk_layout import window_size as shared_window_size
 
 from ..model import IntensityTraceModel, dwell_histograms
 
@@ -157,13 +159,15 @@ class IntensityTraceApp(ImApp):
         self.dialog = None
         self.dialog_window = None
         self._on_pick = None
-        self.spec = json.loads((HERE / "intensity_trace.view.json").read_text(encoding="utf-8"))["panels"]
+        raw_spec = json.loads((HERE / "intensity_trace.view.json").read_text(encoding="utf-8"))
+        self.window_size = shared_window_size(raw_spec, (1100, 720))
+        self.spec = raw_spec["panels"]
         self.form_model = _Form(self)
         self.forms = {name: FormState(on_used=self._used) for name in self.spec}
         self.forms["processing"].custom["detectors"] = self._draw_detectors
         self.help = EmTkHelpWindow(title="Intensity trace — Help", resource=PLUGIN / "help.md", owner=self,
                                    on_start_guide=lambda: self.tour.start())
-        self.tour = EmTkGuidedTour(steps=PLUGIN / "guide.json", owner=self, wait_for_controls=True,
+        self.tour: EmTkGuidedTour = EmTkGuidedTour(steps=PLUGIN / "guide.json", owner=self, wait_for_controls=True,
                                    get_target_rect=self.item_rects.get)
         self.docks = DockManager(Split("v", 0.40, Region("controls"), Split("h", 0.66, Region("traces"),
                                                                               Region("results"))))
@@ -451,22 +455,26 @@ class IntensityTraceApp(ImApp):
             implot.end_plot()
 
     def _draw_results(self, box) -> None:
+        """Draw a wrapping selector and the selected scientific result panel."""
         m = self.model
-        for i, name in enumerate(RESULTS):
-            if i:
-                im.same_line()
-            selected = name == self.result
-            if selected:
-                im.push_style_color(im.Col.BUTTON, im.get_style().color(im.Col.TAB_SELECTED))
-            if im.button(f"{name}##result_{i}"):
-                self.result = name
-            if selected:
-                im.pop_style_color(1)
-            im.set_item_tooltip({"BIC Elbow": "BIC of models with 1 to 15 states.",
-                                 "Dwell Times": "Dwell-time histograms per state with exponential fits.",
-                                 "HMM Matrix": "Transition probabilities between the states, per bin.",
-                                 "FRET Distributions": "FRET efficiency of the bins in each state."}[name])
-            self.item_rects[f"result.{name}"] = im.get_item_rect()
+        tips = {
+            "BIC Elbow": tr("BIC of models with 1 to 15 states."),
+            "Dwell Times": tr("Dwell-time histograms per state with exponential fits."),
+            "HMM Matrix": tr("Transition probabilities between the states, per bin."),
+            "FRET Distributions": tr("FRET efficiency of the bins in each state."),
+        }
+        style = im.get_style()
+        selected_colours = tuple(style.color(col) for col in (
+            im.Col.TAB_SELECTED, im.Col.BUTTON_HOVERED, im.Col.BUTTON_ACTIVE
+        ))
+        pressed = button_row(
+            [{"label": f"{tr(name)}##result_{i}", "key": name, "tip": tips[name],
+              "colours": selected_colours if name == self.result else None}
+             for i, name in enumerate(RESULTS)],
+            remember=lambda name: self.item_rects.__setitem__(f"result.{name}", im.get_item_rect()),
+        )
+        if pressed is not None:
+            self.result = pressed
         im.separator()
         if self.result == "BIC Elbow":
             if not self.bics:
@@ -510,7 +518,7 @@ class IntensityTraceApp(ImApp):
             if m.fret is None:
                 im.text_wrapped("FRET needs two detectors (first detector over the sum).")
             else:
-                self._fret_hist_plot("FRET Efficiency Distributions by State##fretdist")
+                self._fret_hist_plot(f"{tr('FRET efficiency by state')}##fretdist")
         self.item_rects["results"] = tuple(box)
 
     def render(self):

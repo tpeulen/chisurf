@@ -253,3 +253,7 @@ to store the working definition. If a later named-setup save fails, the
 working detector is restored, but the successful archive may already contain
 the reference/calibration records. **Preview G** remains a separate, quick
 loaded-decay estimate: it does not perform this reference archival.
+
+The native FCS channel-preset editor starts at 1100×720. Saved custom geometry
+takes precedence. Detector definitions, correlation pairs and exported preset
+bytes are independent of the window size.

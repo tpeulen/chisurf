@@ -14,6 +14,7 @@ from emtk.view_form import FormState, draw_form
 from emtk.widgets.menus import MenuItem, Popup
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.plugins.emtk_layout import window_size
 
 from .controller import ProjectJobs
 from .model import ProjectBrowserModel
@@ -33,6 +34,7 @@ DETAIL_TABS = (
 
 class ProjectBrowserApp(ImApp):
     def __init__(self, model=None, autoload=True):
+        self.window_size = window_size(SPEC, (1200, 800))
         self.model = model or ProjectBrowserModel()
         self.jobs = ProjectJobs(self.model)
         self.autoload = autoload

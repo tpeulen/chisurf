@@ -191,7 +191,7 @@ class LabelColumn:
 
 def button_width(label: str) -> float:
     """The width ``im.button(label)`` takes."""
-    return im.calc_text_size(label)[0] + 2.0 * im.get_style().frame_padding[0]
+    return im.calc_text_size(label, hide_double_hash=True)[0] + 2.0 * im.get_style().frame_padding[0]
 
 
 def button_row(buttons: Sequence[dict], width: float | None = None,
