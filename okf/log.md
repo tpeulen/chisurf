@@ -2,6 +2,8 @@
 
 ## 2026-10-08
 
+- **2026-10-08 · Exact shared-setup publication checkpoint:** source845087480 and board9073e22ba committed locally; acceptance/state/PRD record hashes and next Burst adapter. Fresh committed-inventory guard passes after source publication; foreign widget formatting and other lanes remain intact. Wholeprogramme remains active. [Resume](validation/release-readiness-w6g/current-job.md).
+
 - **2026-10-08 · Shared hub setup and TTTR integration:** one declared step0 and hosted summary/Edit links, exact lazy/restore callback ownership and full metadata fanout/export implemented. Actual SnapshotJob first-frame race reproduced and fixed by live-job deferral; factory routing honors declared setup factories.13hosting/toolbox +63editor +38MLE neighbors and963availableguards/16skips pass; targeted types clean. Physical CountRate/waterfall before-after and actualQt-host PNGs read; paired theory/guide/twofigures updated, owning generated catalogue byte-identical. Owned source composition excludes foreign widget formatting. Burst-specific context/FCS callback adapter remains next; W6g/wholeprogramme active. [Resume](validation/release-readiness-w6g/current-job.md).
 
 - **2026-10-08 · W6g shared-setup baseline checkpoint:** inventory93ed8c80a/board8a484e310 landed. Captured and personally inspected real174438-event BH Count Rate calculation and enabled2s Audifier waterfall before hub migration; source/modes/foreign diff/producer archived. P-F now records nested Count Rate editor, existing Burst callback collision, restore reattachment and actual five-panel TTTR layout. Shared-setup production edits have not started; current job gives the exact next unit. [Resume](validation/release-readiness-w6g/current-job.md).
