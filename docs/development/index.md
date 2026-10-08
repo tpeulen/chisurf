@@ -31,6 +31,7 @@ architecture_client_server
 architecture_mvc_actions
 dialogs_and_progress
 ui_data_scheme
+ui_contracts
 emtk_interaction_testing
 chimol_widget_toolkit
 plugin_architecture

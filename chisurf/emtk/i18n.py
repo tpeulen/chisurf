@@ -16,8 +16,8 @@ def catalog_directory() -> Path:
     return Path(__file__).resolve().parents[1] / "gui" / "i18n"
 
 
-def read_catalog(path: str | Path) -> dict[str, dict[str, str]]:
-    """Read finished, singular translations grouped by their original context."""
+def read_catalog(path: str | Path, *, include_unfinished: bool = False) -> dict[str, dict[str, str]]:
+    """Read singular translations; optionally retain unfinished source entries for audits."""
     root = ET.parse(path).getroot()
     contexts: dict[str, dict[str, str]] = {}
     for context in root.findall("context"):
@@ -28,13 +28,14 @@ def read_catalog(path: str | Path) -> dict[str, dict[str, str]]:
             translation = message.find("translation")
             if not source or translation is None:
                 continue
-            if translation.get("type") in {"unfinished", "obsolete", "vanished"}:
+            status = translation.get("type")
+            if status in {"obsolete", "vanished"} or (status == "unfinished" and not include_unfinished):
                 continue
             # Plurals require count-aware selection and must not become concatenated text.
             if message.get("numerus") == "yes" or translation.find("numerusform") is not None:
                 continue
             text = "".join(translation.itertext())
-            if text:
+            if text or include_unfinished:
                 messages[source] = text
     return contexts
 

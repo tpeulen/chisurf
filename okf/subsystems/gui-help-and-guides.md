@@ -347,3 +347,15 @@ clicking it.
   `toolAction_*` object names `{"name": …}` targets.
 * [Testing workflow](/workflows/testing.md) — why a GUI change is unfinished
   until the PNG has been looked at.
+
+## Shared text and tooltip contract (2026-10-08)
+
+The renderer exports TEXT_KEYS; the extractor now includes bare/named views,
+guides and authored arrays while excluding binding identities. Committed9010
+sources are present in German/French catalogues; unfinished entries remain
+audit-visible but are not installed as translations. Unambiguous finished text
+survives retired-form context changes. The new GUI-free tooltip audit records
+1143committed omissions separately from1106live omissions. Its initial shrinking
+baseline protects against new/stale debt; coverage is not complete until empty.
+[Developer workflow](../../docs/development/ui_contracts.md),
+[current release job](../validation/release-readiness-w6g/current-job.md).
