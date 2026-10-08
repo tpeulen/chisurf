@@ -20,6 +20,7 @@ from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.jobs import SnapshotJob
+from chisurf.plugins.emtk_layout import window_size
 
 from .model import TTTR_FILE_FILTER, PchModel
 
@@ -37,6 +38,7 @@ class PchApp(ImApp):
         self.job = SnapshotJob(self.model)
         self.model.runner = self.start_job
         self.spec = json.loads((HERE / "pch.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(self.spec, (1100, 720))
         self.form = FormState()
         self.dialog: FileDialog | None = None
         self.dialog_kind = ""

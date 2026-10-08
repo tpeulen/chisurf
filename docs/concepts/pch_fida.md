@@ -238,3 +238,9 @@ rather than assuming the ideal profile.
   noise dominates: the practical ceiling on cumulant order.
 - {cite}`muellerjd2004` — cumulant analysis as the cheap route to brightness,
   and how species combine in it.
+
+Permutation of independent mixture components preserves a PCH model when
+brightness and occupancy remain paired. Fit validation therefore compares
+paired species and the predicted distribution/objective, with the same physical
+tolerances, rather than assigning accuracy to a fixed component order or
+rounded GUI text. See the [workflow](../guides/04_fida_pch.md).

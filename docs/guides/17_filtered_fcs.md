@@ -192,3 +192,10 @@ Filtered FCS patterns and filters.
 
 - {src}`chisurf/core/fluorescence/fcs/filtered.py`; plugins `fcs_filter_calculator`, `flc_2d`.
 - Tool: the **FCS Filter Calculator** (`chisurf/plugins/fcs/fcs_filter_calculator/`) and **2D-FLCS** (`chisurf/plugins/fcs/flc_2d/`).
+
+The native2D-FLCS tool declares1100×720 and retains saved geometry. Successful
+optional1D-MEM processing restores the completed lifetime/kinetic status instead
+of leaving a Building message. Scientific spectra, residuals and correlations
+are retained. MEM solver comparisons use the same objective/gradient/bounds and
+stopping input; a broad unnormalized amplitude sum is not an invariant across
+the full regularization schedule.

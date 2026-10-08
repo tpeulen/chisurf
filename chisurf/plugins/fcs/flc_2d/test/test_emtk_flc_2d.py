@@ -27,7 +27,7 @@ SHORT = dict(
     amp=[3.3212772022186057, 10.232069737980911, 23.748930511678953, 0.0],  # points 5, 15, 25, 35
     lcurve_corner=7,
     lcurve_residual_3=77.29749431033059,
-    mem_sum=3109.5190791496216,
+    mem_mode_tau=1.9121144034260718,  # both independent MEM providers; one-grid-bin resolution
 )
 
 #: The same simulator for 60 s: the species correlation and the rate fit exist. The
@@ -85,7 +85,61 @@ def long_app():
 
 
 # 1. the model does the science without any GUI
-def test_model_produces_the_reference_result(short_app, long_app):
+
+def _assert_optional_mem_quality(model, monkeypatch):
+    """Check the measured MEM spectrum and its optimized objective, independent of scale."""
+    from chisurf.core.math import numerics
+    from chisurf.plugins.fcs.flc_2d import api
+
+    tau, amp = model._mem1d["tau"], model._mem1d["amp"]
+    np.testing.assert_array_equal(tau, model._lifetime["tau"])
+    assert np.all(np.isfinite(amp)) and np.all(amp > 0)
+    # Both independently evaluated providers resolve this mode; one grid interval is
+    # the lifetime resolution. The total amplitude depends on outer-step stopping.
+    grid_step = np.log(tau[1] / tau[0])
+    assert abs(np.log(tau[amp.argmax()] / SHORT["mem_mode_tau"])) <= grid_step
+    calls = []
+    provider = numerics.minimize
+
+    def measured_minimize(fun, x0, *args, **kwargs):
+        result = provider(fun, x0, *args, **kwargs)
+        problem = kwargs["args"]
+        assert result.success, result.message
+        assert result.fun <= fun(x0, *problem)[0] + 1e-12
+        calls.append((fun, np.array(x0), problem, result))
+        return result
+
+    resolution = model.tttr.micro_time_resolution_ns
+    fdc = api.one_d_fdc(
+        model.tttr.macro_times, model.tttr.micro_times,
+        tMin=max(1, int(round(model.tmin_ns / resolution))),
+        tMax=int(round(model.tmax_ns / resolution)), max_bins=400,
+    )
+    with monkeypatch.context() as context:
+        context.setattr(numerics, "minimize", measured_minimize)
+        result = api.lifetime_spectrum_mem(
+            fdc["lin"], fdc["lin_t"].astype(float) * resolution,
+            tau_range=(model.tau_min_ns, model.tau_max_ns), n_components=model.n_components,
+            irf=model.irf, irf_time_ns=model.irf_time_ns,
+            reg=model.mem_reg, mi_type=int(model.mem_mi_type),
+        )
+    np.testing.assert_array_equal(result.amplitudes, amp)
+    assert len(calls) == 12
+    fun, _, problem, fit = calls[-1]
+    q, gradient = fun(fit.x, *problem)
+    assert q == pytest.approx(result.estimator_q, rel=1e-12)
+    # Reconstruct the same final objective at the initial flat spectrum: the fit
+    # must improve the data-driven objective, rather than merely return finite A.
+    assert q < fun(calls[0][1], *problem)[0]
+    h = 1e-6
+    numerical = np.array([
+        (fun(fit.x + h * axis, *problem)[0] - fun(fit.x - h * axis, *problem)[0]) / (2 * h)
+        for axis in np.eye(fit.x.size)
+    ])
+    np.testing.assert_allclose(gradient, numerical, rtol=2e-4, atol=1e-7)
+
+
+def test_model_produces_the_reference_result(short_app, long_app, monkeypatch):
     m = short_app.model
     assert m.tttr.n_photons == SHORT["n_photons"]
     assert m.tmax_ns == SHORT["tmax_ns"]
@@ -98,7 +152,7 @@ def test_model_produces_the_reference_result(short_app, long_app):
     lcurve = m.lcurve_data()
     assert lcurve.corner_index == SHORT["lcurve_corner"]
     assert np.isclose(lcurve.residual_norm[3], SHORT["lcurve_residual_3"], rtol=1e-6)
-    assert np.isclose(m._mem1d["amp"].sum(), SHORT["mem_sum"], rtol=1e-6)
+    _assert_optional_mem_quality(m, monkeypatch)
     assert "gauss" in m._mem1d
     assert [s["name"] for s in m.irf_series()] == ["decay", "IRF"]
     # the 60 s stream: species correlation and the interconversion fit
@@ -404,3 +458,47 @@ def test_help_window_shows_from_the_button():
     assert any("2D-FLCS" in s for s in painter.strings)
     app.model.request_guide()
     assert app.tour.active
+
+
+def test_optional_mem_restores_real_analysis_completion(short_app):
+    """Actual seeded MEM and Gaussian output leave a truthful completed analysis status."""
+    model = short_app.model
+    assert model._mem1d is not None and "gauss" in model._mem1d
+    assert not short_app.job.busy
+    assert model.status_text.startswith("tau = ") or model.status_text.startswith(
+        "Resolved lifetimes: tau = "
+    )
+    assert "Building" not in model.status_text
+
+
+def test_optional_mem_reports_failure_without_losing_completed_analysis(monkeypatch):
+    """A caught optional-stage failure preserves the usable main result and names the error."""
+    from chisurf.plugins.fcs.flc_2d import api
+    from chisurf.plugins.fcs.flc_2d.gui.model import FlcModel
+
+    model = FlcModel()
+    model.run_1d_mem = True
+    model.status_text = "Resolved lifetimes: tau = 1.00, 3.00 ns"
+
+    def fail_fdc(*args, **kwargs):
+        raise RuntimeError("Measured decay unavailable")
+
+    monkeypatch.setattr(api, "one_d_fdc", fail_fdc)
+    model.run_optional_mem(api, np.array([], dtype=int), np.array([], dtype=int), 1, 2, 0.004)
+    assert model._mem1d is None
+    assert model.status_text == (
+        "Resolved lifetimes: tau = 1.00, 3.00 ns; 1D-MEM failed: Measured decay unavailable"
+    )
+
+
+def test_disabled_optional_mem_keeps_main_completion():
+    """Skipping optional MEM makes no false success claim or progress announcement."""
+    from chisurf.plugins.fcs.flc_2d import api
+    from chisurf.plugins.fcs.flc_2d.gui.model import FlcModel
+
+    model = FlcModel()
+    model.run_1d_mem = False
+    model.status_text = "Resolved lifetimes: tau = 1.00, 3.00 ns"
+    model.run_optional_mem(api, np.array([], dtype=int), np.array([], dtype=int), 1, 2, 0.004)
+    assert model._mem1d is None
+    assert model.status_text == "Resolved lifetimes: tau = 1.00, 3.00 ns"

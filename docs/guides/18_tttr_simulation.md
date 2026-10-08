@@ -139,3 +139,9 @@ configuration and seeded signal arrays remain unchanged. Positive-background
 streams consume the appropriate microtime random samples, so seeded photon
 arrays can change; compare the corrected physical setup rather than historical
 prompt-scatter hashes.
+
+The native Lifetime-FCS simulator starts at1100×720 with saved custom geometry
+taking precedence. Its concise Species fold retains all lifetime/diffusion
+controls and help in both native and legacy surfaces. Corrected uniform-TAC
+background results match the direct native reference; seeded outputs from the
+former prompt-scatter fallback are a separate physical baseline.

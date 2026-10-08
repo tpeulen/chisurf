@@ -1163,3 +1163,11 @@ uniform calibrated bins; zero-background config/signal arrays are exact, while
 positive-background seeded outputs legitimately change. [Physical acceptance](../validation/release-readiness-w6g/lfcs-background-acceptance.json)
 records actual native distribution/clock/provider checks. GUI geometry acceptance
 must be recaptured under this corrected caller, not force old scatter hashes.
+
+Three spectraltools declare1100×720 andpreserve savedhostgeometry andreal
+computedcontrols/data. UniformTCSPCbackground fixes the lifetime-FCS caller's
+physicalcontract; afterbaseline/reference recapture is explicit. OptionalMEM
+completionstatus reports actualmainanalysis/failure; stochasticmodeltest
+assumptions usepairedspecies andobjective/gradient/convergence evidence rather
+than fixedcomponentorder/roundedtext orunnormalizedamplitudesum. [Spectralacceptance](../validation/release-readiness-w6g/spectral-window-acceptance.json)
+records independentproviderdiagnostics, realPNG andscopedstaticlimits.

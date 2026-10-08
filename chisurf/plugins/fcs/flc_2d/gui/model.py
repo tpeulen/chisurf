@@ -18,6 +18,7 @@ import numpy as np
 
 from chisurf.core.fio.staging import TTTR_FILE_FILTER
 from chisurf.core.math.regularization import LCurveData
+from chisurf.core.support.i18n import tr
 
 from .client import FlcClient
 
@@ -605,6 +606,7 @@ class _FlcModel:
         self._mem1d = None
         if not self.run_1d_mem:
             return
+        analysis_status = self.status_text
         self._status("Building 1D-FDC + 1D-MEM...")
         try:
             fdc1d = api.one_d_fdc(macro, micro, tMin=t_min, tMax=t_max, max_bins=400)
@@ -639,6 +641,9 @@ class _FlcModel:
             self._mem1d["gauss"] = gaussian.model
         except Exception as exc:  # noqa: BLE001
             logger.warning("1D-MEM failed: %s", exc)
+            self._status(analysis_status + "; " + tr("1D-MEM failed: {error}").format(error=exc))
+        else:
+            self._status(analysis_status)
 
 
 #: The alias the native app and the tests use.

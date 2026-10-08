@@ -271,3 +271,10 @@ laser period in lifetime-FCS simulations. Prompt scatter at microtime zero is a
 different decay shape and changes lifetime filtering. The
 [simulation workflow](../guides/18_tttr_simulation.md) records the declared
 background pattern and qualified seeded-output change.
+
+MEM numerical validation uses reconstructed objective and analytic-gradient
+checks, feasible finite spectrum/grid, convergence and normalization-independent
+mode resolution. Tiny stopping differences can accumulate through an outer
+regularization schedule and change total spectrum amplitude while preserving
+its mode. Same-input comparisons distinguish this effect from a solver defect;
+the [workflow](../guides/17_filtered_fcs.md) records the software behavior.

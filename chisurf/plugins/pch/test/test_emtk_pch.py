@@ -63,12 +63,29 @@ def test_model_produces_the_reference_result():
     model.species[0].update(epsilon=2.0, n_mean=3.0)
     model.fit_now()
     fit = model.fit_result
-    assert fit.epsilons == pytest.approx([8.28225986388613, 0.058043027099024654], rel=1e-4)
-    assert fit.avg_Ns == pytest.approx([0.021963498790065913, 8.750137325612235], rel=1e-4)
+    # Species labels are interchangeable; brightness and occupancy must remain paired.
+    np.testing.assert_allclose(
+        sorted(zip(fit.epsilons, fit.avg_Ns)),
+        [(0.058043027099024654, 8.750137325612235),
+         (8.28225986388613, 0.021963498790065913)],
+        rtol=1e-4, atol=0,
+    )
     assert fit.chi2 == pytest.approx(1018.399056377842, rel=1e-4)
     assert fit.dof == 21
-    assert "Comp2: ε=0.0580  ⟨N⟩=8.7501  x=99.7%" in model.results_text
-    assert "χ² = 1018.40   red. χ² = 48.495   dof = 21" in model.results_text
+    for i, (epsilon, occupancy, fraction) in enumerate(
+        zip(fit.epsilons, fit.avg_Ns, fit.fractions), start=1
+    ):
+        assert (
+            f"Comp{i}: ε={epsilon:.4f}  ⟨N⟩={occupancy:.4f}  x={fraction:.1f}%"
+            in model.results_text
+        )
+    summary = model.results_text.splitlines()[-1].split()
+    assert summary[0:2] == ["χ²", "="]
+    assert summary[3:6] == ["red.", "χ²", "="]
+    assert summary[7:9] == ["dof", "="]
+    assert float(summary[2]) == pytest.approx(1018.399056377842, rel=1e-4)
+    assert float(summary[6]) == pytest.approx(1018.399056377842 / 21, rel=1e-4)
+    assert int(summary[9]) == 21
 
 
 def test_model_matches_the_qt_tool(qapp):
@@ -258,7 +275,12 @@ def test_main_action_end_to_end(tmp_path):
     model.fit()
     pump(app)
     assert model.fit_result.chi2 == pytest.approx(1018.399056377842, rel=1e-4)
-    assert [round(r["epsilon"], 4) for r in model.species] == [8.2823, 0.0580]
+    np.testing.assert_allclose(
+        sorted((row["epsilon"], row["n_mean"]) for row in model.species),
+        [(0.058043027099024654, 8.750137325612235),
+         (8.28225986388613, 0.021963498790065913)],
+        rtol=1e-4, atol=0,
+    )
 
     # Save Results opens the save dialog; choosing a name writes the files
     model.save()
@@ -284,10 +306,14 @@ def test_every_control_has_a_tooltip():
     inv = emtk_inventory(build_emtk_app("pch"))
     assert inv["controls_without_tooltip"] == []
     labelled = {row["label"] for row in inv["interactive"]}
-    assert labelled == {"Help", "Guide", "Load TTTR", "Compute PCH", "Fit Model", "Save Results"}
+    assert labelled == {
+        "Help", "Guide", "Load TTTR", "Compute PCH", "Fit Model", "Save Results",
+        "filename", "channels", "bin_time_us", "micro_time_min", "micro_time_max",
+        "n_components",
+    }
 
-    # the recorder only sees labelled controls; the spec's fields and table columns
-    # (drawn with an empty label) must say what they are through their description
+    # Visible fields now have recorded IDs; fields and table columns must still
+    # say what they are through their description.
     spec = json.loads((GUI / "pch.view.json").read_text(encoding="utf-8"))
 
     def walk(sections):

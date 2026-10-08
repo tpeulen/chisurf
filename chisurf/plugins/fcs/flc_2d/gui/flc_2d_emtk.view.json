@@ -1,5 +1,6 @@
 {
   "_comment": "2D-FLCS, drawn by emtk.view_form over FlcModel (gui/model.py). Same fields and descriptions as flc_2d.view.json (the Qt tool's spec) without emoji; the Qt toolbar (Open, IRF, Sim, Run) and status bar are the Toolbar window: a button row and an info line, above the tabs. The top-level sections are the dock windows of gui/app.py; the custom sections image, series_plot and lcurve are drawn by callbacks registered in app.py (FormState.custom).",
+  "window": {"width": 1100, "height": 720},
   "sections": [
     {
       "type": "dock_area",

@@ -6647,3 +6647,15 @@ scoring/FlexFit/renderer andsavedgeometry tests pass; these do not prove all
 unrelated callback paths. Re-derive using recorded before/final commands and
 same testenvmypy. Rootowns a separate bounded behavior-preserving typing cleanup
 plan; geometry acceptance is qualified, not a cleanstatic claim.
+
+## Spectral model inherited typing limits (2026-10-08)
+
+FLCSgui/model.py retains16exactbefore/finalmypy identities; corelifetime-FCS
+simulate.py retains its dataclass total_decay ndarray=None annotation. No new
+runtimefailure orsuppression is inferred. Fullmessages/commands/originals are
+in [spectralarchive](../validation/release-readiness-w6g/spectral-window-final-source.zip)
+and [backgroundarchive](../validation/release-readiness-w6g/lfcs-background-final-source.zip).
+ActualNNLS/MEM/correlation anduniformbackground/zero-signalphysics tests pass;
+this is not cleanstaticanalysis. Rootowns a separate boundedtypingcleanup with
+existingbehavior locked; do not alter numericalalgorithms orregolden spectra
+to silence these diagnostics.

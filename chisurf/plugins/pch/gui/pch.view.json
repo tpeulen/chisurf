@@ -1,4 +1,5 @@
 {
+  "window": {"width": 1100, "height": 720},
   "_comment": "Photon counting histogram tool. Drawn by emtk.view_form over PchModel (gui/model.py); the two plots are hand-drawn in gui/app.py.",
   "sections": [
     {"type": "panel", "title": "Actions", "sections": [

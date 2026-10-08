@@ -1,8 +1,9 @@
 {
+  "window": {"width": 1100, "height": 720},
   "sections": [
     {
       "type": "panel",
-      "title": "Species (lifetime + diffusion)",
+      "title": "Species",
       "collapsed": false,
       "sections": [
         {"type": "value", "attr": "tau1_ns", "label": "τ₁ (ns)", "kind": "float",

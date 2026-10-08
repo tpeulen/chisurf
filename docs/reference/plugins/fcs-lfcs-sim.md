@@ -27,7 +27,7 @@ Simulate diffusing species with distinct fluorescence lifetimes and optional int
 
 Editable parameters exposed by the plugin's declarative (AutoForm) interface, grouped by panel.
 
-### Species (lifetime + diffusion)
+### Species
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |

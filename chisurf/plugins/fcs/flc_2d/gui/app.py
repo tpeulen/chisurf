@@ -27,6 +27,7 @@ from emtk.view_form import FormState, draw_sections
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.image_canvas import ImageCanvas
 from chisurf.emtk.jobs import SnapshotJob
+from chisurf.plugins.emtk_layout import window_size
 
 from .model import PHOTON_FILE_FILTER, FlcModel
 
@@ -80,6 +81,7 @@ class FlcApp(ImApp):
         self.job = SnapshotJob(self.model)
         self.model.add_observer(self._on_event)
         self.spec = json.loads((HERE / "flc_2d_emtk.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(self.spec, (1100, 720))
         self.windows = self.spec["sections"][0]["sections"]
         self.form = FormState()
         self.form.custom.update(

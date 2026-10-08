@@ -10,7 +10,7 @@ so the window stays responsive for the few seconds it takes.
 from __future__ import annotations
 
 import json
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 
 import numpy as np
@@ -21,6 +21,7 @@ from emtk.im_core import Col, get_current_context
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.plugins.emtk_layout import window_size
 
 from .model import LifetimeFcsSimModel
 from .strings import install_translations
@@ -47,13 +48,14 @@ class LifetimeFcsSimApp(ImApp):
         self.model = model or LifetimeFcsSimModel()
         self.message = tr("Set parameters and simulate.")
         self.spec = json.loads((GUI_DIR / "lfcs_sim.view.json").read_text())
+        self.window_size = window_size(self.spec, (1100, 720))
         for panel in self.spec["sections"]:  # the Qt form's panels fold
             panel["collapsible"] = True
         self.form = FormState()
         self.form.custom["lfcs_sim_controls"] = self._draw_run_panel
         self.item_rects: dict[str, tuple] = {}
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="lfcs-sim")
-        self._future = None
+        self._future: Future | None = None
         self.help_window = EmTkHelpWindow(title="Lifetime-FCS simulator — help", resource=GUI_DIR / "help.md",
                                           owner=self)
         self.tour = EmTkGuidedTour(steps=GUI_DIR / "guide.json", get_target_rect=self.target_rect, owner=self,
