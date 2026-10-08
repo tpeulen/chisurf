@@ -206,3 +206,13 @@ remain available. MLE parameter hints state units, physical roles and fixed
 candidate behavior; IRF/background/performance folds explain their purpose.
 Number/brightness folds describe corrections, detectors, estimation and gates.
 These changes preserve computed maps and exported values.
+
+### Native layout and saved settings
+
+CLSM-Draw starts at 1100 × 720. Saved user dimensions and dock placement
+win over that default. Resizing leaves the reconstruction, painted pixels and
+selected-photon decay intact. Acquisition, brush, decay and named-region
+settings now restore automatically on reopening, using the same format as
+**Save settings**. Load the measurement again to rebuild its image and decays.
+
+![Native CLSM-Draw with a real Leica scan and painted decay](figures/clsm_native_window.png)

@@ -290,7 +290,7 @@ irf_estimation
 | [One window for the TTTR file tools](101_tttr_toolbox.md) | `tttr_toolbox` (Tools → Photon data → TTTR Tools) |
 | [Turning ALEX alternation into micro-time](100_alex_creator.md) | `ptu_alex_creator` (Tools → Converter), `csc alex`, `core.alex_histogram` |
 | [Aligning detectors in micro time](88_microtime_shifter.md) | `microtime_shifter` (Tools → TTTR), `csc microtime-shift`, `core.fio.tttr_shift` |
-| [CLSM Generator: a scan whose answer is known](98_clsm_generator.md) | `clsm_generator` (Imaging → CLSM Generator) |
+| [CLSM Generator: a scan whose answer is known](98_clsm_generator.md) | `clsm_generator` (Spectroscopy → Imaging → Image Tools) |
 
 ## Regenerating the figures
 

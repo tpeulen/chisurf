@@ -7308,7 +7308,7 @@ L'aperçu se met à jour en direct au fil de vos modifications.</translation>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4854" />
             <source>Peak per-pixel brightness (the brightest pixel).</source>
-            <translation>Brillance au pic par pixel (le pixel le plus brillant).</translation>
+            <translation type="obsolete">Brillance au pic par pixel (le pixel le plus brillant).</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4864" />
@@ -32025,7 +32025,7 @@ works best for their workflow.</source>
             <translation type="unfinished" />
         </message>
         <message>
-            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4855" />
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4854" />
             <source>Peak photon count before Poisson sampling.</source>
             <translation type="unfinished" />
         </message>
@@ -49198,6 +49198,11 @@ presets) into a single left-navigation tool. Built on the reusable
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6468" />
             <source>Show only regions whose name contains this text; the image is unchanged.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4855" />
+            <source>Peak photon emission rate per detector at the brightest input pixel. Counts also depend on dwell time and the excitation profile.</source>
             <translation type="unfinished" />
         </message>
     </context>

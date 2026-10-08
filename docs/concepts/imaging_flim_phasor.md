@@ -377,3 +377,10 @@ separate starting values from fixed inputs. The analysis-window defaults and
 fold help are described in the [scan-image workflow](../guides/24_scan_images.md).
 A before/after output comparison proves UI preservation; an intentionally shifted
 IRF fixture is not proof of recovery of a simulated lifetime.
+
+Native CLSM host geometry is independent of the reconstruction and photon
+selection. A painted mask denotes the same pixel indices after resizing;
+its selected-photon decay retains its counts and time axis. Named masks and
+acquisition preferences share the existing settings serialization. The
+[CLSM workflow](../guides/24_scan_images.md) distinguishes saved preferences
+from reloading and recomputing the measurement.

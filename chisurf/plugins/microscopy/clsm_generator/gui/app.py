@@ -18,7 +18,7 @@ from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.image_canvas import ImageCanvas
 from chisurf.emtk.jobs import SnapshotJob
-from chisurf.plugins.emtk_layout import button_row, layout_spec
+from chisurf.plugins.emtk_layout import button_row, layout_spec, window_size
 
 from .view_model import ClsmGeneratorViewModel
 
@@ -104,6 +104,7 @@ class ClsmGeneratorApp(ImApp):
             on_paths=lambda paths: self.load_maps(paths, lifetime=True),
         )
         spec = json.loads(Path(__file__).with_name("generator.view.json").read_text())
+        self.window_size = window_size(spec, (1100, 720))
         self.parameters = spec["sections"][0]["sections"][0]["sections"][3]["sections"]
         panel = json.loads(json.dumps(spec["sections"][0]["sections"][0]["sections"][3]))
         panel["collapsible"] = True
@@ -407,6 +408,10 @@ class ClsmGeneratorApp(ImApp):
         if self.canvas.colormap not in ("magma", "inferno", "viridis", "gray"):
             self.canvas.colormap = "inferno"
         return True
+
+    # Reuse the manual settings contract for native preference persistence.
+    export_settings = state_dict
+    restore_settings = apply_state
 
     def animating(self):
         return self.job.busy or self.picker.is_open or super().animating()

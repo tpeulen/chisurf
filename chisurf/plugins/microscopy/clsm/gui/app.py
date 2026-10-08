@@ -21,7 +21,7 @@ from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.image_canvas import ImageCanvas
 from chisurf.emtk.jobs import SnapshotJob
 from chisurf.emtk.regions import RegionControls
-from chisurf.plugins.emtk_layout import button_row, layout_spec
+from chisurf.plugins.emtk_layout import button_row, layout_spec, window_size
 
 from ..core import imaging
 from .view_model import ClsmViewModel
@@ -84,9 +84,9 @@ class ClsmApp(ImApp):
         self._frame_signature = (self.model.decay.frame_mode, self.model.decay.frame_idx)
         self._curve_name = ""
         self._roi_name = "Selection"
-        self.sections = json.loads(Path(__file__).with_name("clsm.view.json").read_text())[
-            "sections"
-        ][0]["sections"]
+        spec = json.loads(Path(__file__).with_name("clsm.view.json").read_text())
+        self.window_size = window_size(spec, (1100, 720))
+        self.sections = spec["sections"][0]["sections"]
         self.help = EmTkHelpWindow(
             title="CLSM Pixel Select — Help",
             resource=Path(__file__).with_name("help.md"),
@@ -480,6 +480,10 @@ class ClsmApp(ImApp):
             self.model.regions = RegionCollection.from_dict(data["regions"])
         self.model.colormap = data.get("colormap", self.model.colormap)
         self.settings_changed()
+
+    # Reuse the manual settings contract for native preference persistence.
+    export_settings = state_dict
+    restore_settings = apply_state
 
     def animating(self):
         return (

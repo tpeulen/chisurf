@@ -1,6 +1,13 @@
+---
+type: Guide
+title: 'CLSM Generator: a scan whose answer is known'
+description: Generate confocal photon scans from brightness and per-detector lifetime maps, then inspect and export them.
+tags: [guides, microscopy, simulation]
+---
+
 # CLSM Generator: a scan whose answer is known
 
-**Tool:** *Spectroscopy -> Imaging -> CLSM Generator* (`clsm_generator`). It simulates the photon stream of a confocal lifetime scan from maps
+**Tool:** *Spectroscopy → Imaging → Image Tools*, then **CLSM Generator** (`clsm_generator`). It simulates the photon stream of a confocal lifetime scan from maps
 you provide: a brightness image and one **fluorescence lifetime map per detector**. Because you chose the lifetimes, the
 result is a test for the analysis tools ([pixel MLE](24_scan_images.md), [CLSM-Draw](24_scan_images.md), the
 [Spot Finder](84_spot_finder.md)): they must give back what you put in.
@@ -20,7 +27,7 @@ All maps must have the same shape.
 
 ## 2. Simulation
 The folded **Simulation** panel sets the physical pixel size, the dwell time, the number of micro-time channels and their width,
-the peak brightness (photons of the brightest pixel), the Gaussian IRF (centre, sigma) and the number of lifetime and intensity
+the peak photon emission rate, the Gaussian IRF (centre, sigma) and the number of lifetime and intensity
 quantization levels. **Generate** runs the simulation in the background (**Cancel generation** discards its result); the
 status line reports the photon count.
 
@@ -29,3 +36,22 @@ The **Map** choice in the Maps window browses the input brightness, each detecto
 the colormap, gamma and levels are the image canvas's. **Save photon stream** writes the photons as `.pto` (with the embedded
 intensity), `.npz`, `.ptu`, `.spc` or `.ht3` (the **Output format** choice) and the reconstructed intensity as a TIFF; **Save /
 Load settings** keep the inputs and parameters as JSON. **Guide** walks through the whole sequence, **Help** is the reference.
+
+## Native layout and saved settings
+
+The native generator starts at 1100 × 720; saved custom geometry wins.
+Input paths, simulation parameters, output format and display preferences
+restore automatically using the **Save settings** contract. Press **Generate**
+to recompute photons after reopening. Resizing preserves the existing inputs,
+reconstructed image and generated photon arrays.
+
+**Brightness** sets an emission rate per detector at the brightest input
+pixel, rather than a guaranteed count in that pixel. Detected counts also
+depend on dwell and the excitation profile. Dwell is rounded to whole 10 ms
+integration windows, with a minimum of one window. Use multiples of 0.01 s
+when an exact requested exposure matters. The native simulator's default
+random seeds are 12345 and 54321, so unchanged maps and parameters repeat the
+same stream. Finite photon counts, map quantization and the excitation period
+must be included when comparing fitted lifetimes with the input maps.
+
+![Native generator after real map simulation](figures/clsm_generator_native_window.png)
