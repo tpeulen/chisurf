@@ -2,6 +2,8 @@
 
 ## 2026-10-08
 
+- **2026-10-08 · Exact ribbon publication checkpoint:** source753b8564e and boardf6d49a9fe recorded in durablePRD/current-job/state/acceptance;6post-commit inventorychecks pass. Next sharedtooltip/i18n/demo/windowcontracts, thenW6f/W0/Wave2; wholeprogramme remainsactive, .zed/tasks stays on disk andforeignhunks preserved. [Resume](validation/release-readiness-w6g/current-job.md).
+
 - **2026-10-08 · Ribbon fold and preference preservation:**35display-name-only manifest addresses move18Imaging underSpectroscopy andnormalize9Correlation/8Decay; semanticcategories/IDs/routes unchanged. Two toolbar defaults andexistingloader migrate saveddisabled/order/toolbar/statefulness addresses withcurrent-key precedence. ActualQt ImageTools route, deepgroups and32button/4panel scrollingverified;1400/640px pairs personally inspected.26targetedcases and965availableguards/16skips; Ruffclean, settings3inheritedtypes unchanged. Menu prose/pairedtheory/guide/figure/catalogue andprospective owned-tree inventory accompany source. FRET visibility andremainingW6gmechanisms stayopen. [Resume](validation/release-readiness-w6g/current-job.md).
 
 - **2026-10-08 · Exact Burst adapter publication checkpoint:** sourcee8902b16d and board799a14b1e recorded in PRD/current-job/state/acceptance. Committed inventory freshness guard remains green; next ribbon fold/group normalization. Wholeprogramme remains active and all foreign formatting/source paths preserved. [Resume](validation/release-readiness-w6g/current-job.md).
