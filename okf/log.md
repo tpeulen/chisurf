@@ -2,6 +2,8 @@
 
 ## 2026-10-08
 
+- **2026-10-08 · W6g shared-setup baseline checkpoint:** inventory93ed8c80a/board8a484e310 landed. Captured and personally inspected real174438-event BH Count Rate calculation and enabled2s Audifier waterfall before hub migration; source/modes/foreign diff/producer archived. P-F now records nested Count Rate editor, existing Burst callback collision, restore reattachment and actual five-panel TTTR layout. Shared-setup production edits have not started; current job gives the exact next unit. [Resume](validation/release-readiness-w6g/current-job.md).
+
 - **2026-10-08 · W6g inventory first unit:** added source-only generator/freshness guard with nested ownership, real AST imports, test/template exclusion and malformed-record errors;6inventorycases plus five available guards965pass/16skips; Ruff/format and targeted mypy clean. Private HEAD archive prevents foreign dirty ports becoming release claims; committed129/116emtk/22missinghelp-guide versus live129/123/18 are recorded separately. Appendix regenerated with reference/viewport qualifications. Hub/ribbon/shared guards remain next; full programme active. [Current job](validation/release-readiness-w6g/current-job.md).
 
 - **2026-10-08 · W1 publication checkpoint:** Burst MLE source54ed9cb1c and tttrlib board185fd477b committed locally; exact source and board hashes recorded in durable acceptance/state. Next W6g; complete programme remains active. [Resume](validation/release-readiness-w1/current-job/handoff.md).
