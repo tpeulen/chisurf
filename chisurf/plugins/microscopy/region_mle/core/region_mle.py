@@ -955,6 +955,8 @@ def fit_regions_from_files(
     """
     import tttrlib
 
+    from chisurf.core.fluorescence.imaging.simulate import clsm_from_file
+
     tttr = tttrlib.TTTR(ptu_path)
     if settings.irf is None:
         irf_tttr = tttrlib.TTTR(irf_path)
@@ -978,4 +980,5 @@ def fit_regions_from_files(
                 settings.micro_time_range,
                 settings.micro_time_binning,
             )
-    return fit_regions(tttr, settings, progress=progress, keep_curves=keep_curves)
+    clsm = clsm_from_file(tttr, ptu_path, channels=settings.detector_chs)
+    return fit_regions(tttr, settings, clsm=clsm, progress=progress, keep_curves=keep_curves)

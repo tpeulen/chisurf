@@ -500,6 +500,8 @@ class RegionMleViewModel(MleObserverMixin):
         """
         import tttrlib
 
+        from chisurf.core.fluorescence.imaging.simulate import clsm_from_file
+
         from ..core.region_mle import region_preview
 
         if not self.files:
@@ -510,7 +512,7 @@ class RegionMleViewModel(MleObserverMixin):
         path = self.files[0]
         try:
             tttr = tttrlib.TTTR(path)
-            clsm = tttrlib.CLSMImage(tttr, channels=list(self.settings.detector_chs), fill=True)
+            clsm = clsm_from_file(tttr, path, channels=self.settings.detector_chs)
             intensity = np.asarray(clsm.intensity).sum(axis=0)
         except Exception as exc:  # noqa: BLE001 - surfaced in the status line
             logger.debug("preview: could not read %s", path, exc_info=True)

@@ -243,3 +243,10 @@ detect regions. The four input spots are synthetic references for the workflow.
 - {doc}`48_regions` — drawing, combining and reusing regions.
 - {doc}`50_particle_tracking` — the same detection problem, in time.
 - {ref}`concept-region-properties` — what each column measures.
+
+Simulated-raster measurements carry a versioned scanner layout beside the
+photon file. Both region preview and filepath fitting use that declared layout;
+automatic hardware reconstruction remains the fallback for ordinary inputs.
+The producer writes its physical macro/micro clocks and TAC-bin count into the
+PTU header. Python image intensities use wide counters so bright regions retain
+all photons; the explicit legacy native16-bit getter remains available.

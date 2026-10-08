@@ -301,3 +301,10 @@ survives a save, a reload and a hop to a headless backend.
   {doc}`38_colocalization`.
 - Confocal images and per-pixel lifetime analysis: {doc}`24_scan_images`.
 - Tool: **Image Tools** (`chisurf/plugins/microscopy/imaging_tools/`).
+
+Region lifetime preview and file-based Fit23 reconstruction use the recognized
+simulated-raster sidecar when present, matching the producer scanner. Ordinary
+hardware inputs keep automatic reconstruction. Preview image counts and region
+photon indices stay consistent for bright pixels; physical timing is read from
+the correctly written PTU header. Compare finite-period lifetime fits against
+the same calibrated reference, rather than forcing ideal input lifetimes.

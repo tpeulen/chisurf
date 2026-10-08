@@ -1179,3 +1179,10 @@ ConciseemptyIRFcaption fits the initialhost, while metric-aware testpainter
 coverage retains actualclip/occlusion data. [Pairacceptance](../validation/release-readiness-w6g/imaging-window-acceptance.json)
 records scientifictruth versus four detectedregions, ownership residue and
 headlessbefore/after/resize/reopen evidence.
+
+Regionfilepath lifetime fitting andpreview now share declaredproducer scanner
+metadata delivery. Source-onlyproducer headers expose correct physical clocks,
+independently ofpreexistingworkingtree edits. Pythonimage counts use canonical
+owneru32 anddeferredchannel layout isaccurate; actualdataGUIacceptance must be
+recaptured afterthese scientificroots instead ofpreserving wrappedcounts. [Rootacceptance](../validation/release-readiness-w6g/region-root-acceptance.json)
+records realbroken/explicitreference physics and installedtest/arm64 identities.

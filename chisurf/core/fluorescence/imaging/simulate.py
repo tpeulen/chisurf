@@ -488,6 +488,54 @@ def clsm_from_scan(tttr, n_pixel: int, channels=(0, 1)):
     return clsm
 
 
+
+def clsm_from_file(tttr, path, channels=(0, 1)):
+    """Reconstruct a stream using declared scanner metadata when available.
+
+    The simulated raster producer writes its marker convention and square grid
+    in the adjacent JSON sidecar. Only that recognized producer selects the
+    explicit scanner; ordinary measurements retain tttrlib auto-detection.
+
+    Parameters
+    ----------
+    tttr : tttrlib.TTTR
+        The stream opened from *path*.
+    path : str or pathlib.Path
+        Measurement path; the scanner declaration is in its ``.json`` sidecar.
+    channels : sequence of int
+        Routing channels to fill.
+
+    Returns
+    -------
+    tttrlib.CLSMImage
+        Image reconstructed and filled from the actual stream.
+
+    Raises
+    ------
+    ValueError
+        A recognized simulated raster declares an invalid scan grid.
+    """
+    import json
+    import pathlib
+
+    import tttrlib
+
+    sidecar = pathlib.Path(path).with_suffix(".json")
+    layout = {}
+    try:
+        payload = json.loads(sidecar.read_text())
+        if isinstance(payload, dict):
+            layout = payload.get("scan_layout", {})
+    except (OSError, ValueError):
+        pass
+    if isinstance(layout, dict) and layout.get("kind") == "chisurf-simulated-raster":
+        pixels = layout.get("n_pixel_per_line")
+        if isinstance(pixels, bool) or not isinstance(pixels, int) or pixels <= 0:
+            raise ValueError("The simulated scanner grid must be a positive integer.")
+        return clsm_from_scan(tttr, pixels, channels=channels)
+    return tttrlib.CLSMImage(tttr, channels=list(channels), fill=True)
+
+
 def write_mixture_ptu(sim, path) -> str:
     """Write a simulated scan out as a PTU.
 
@@ -518,6 +566,10 @@ def write_mixture_ptu(sim, path) -> str:
 
     target = pathlib.Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
+    # A reconstructed array stream can carry placeholder metadata; the
+    # simulation declares its microtime width in ns and the header uses seconds.
+    sim.tttr.header.set_number_of_micro_time_channels(int(sim.n_micro))
+    sim.tttr.header.set_micro_time_resolution(float(sim.dt) * 1e-9)
     if not sim.tttr.write(str(target), "PTU"):
         raise RuntimeError(f"tttrlib refused to write {target}")
     return str(target)
@@ -942,6 +994,11 @@ def _run_scan(
         np.asarray(engine.channel(), np.int8),
         np.asarray(engine.event_type(), np.int8),
     )
+    # Macro timestamps count integration windows of window_dt seconds; micro
+    # timestamps count dt-ns bins. Array construction otherwise uses 1-s clocks.
+    tttr.header.set_macro_time_resolution(float(window_dt))
+    tttr.header.set_micro_time_resolution(float(dt) * 1e-9)
+    tttr.header.set_number_of_micro_time_channels(int(n_micro))
     clsm = tttrlib.CLSMImage(
         tttr_data=tttr,
         marker_frame_start=[4],

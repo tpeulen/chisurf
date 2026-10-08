@@ -226,3 +226,11 @@ closes the loop between measuring and selecting.
 - Restricting a drift estimate to a structured patch:
   {ref}`concept-drift-correction`.
 - Tools in ChiSurf: **Region MLE** (`chisurf/plugins/microscopy/region_mle/`) fits each segmented region, and **Image Tools** (`chisurf/plugins/microscopy/imaging_tools/`) draws and stores the regions.
+
+Image intensity is a photon count and must retain bright-pixel values. Python
+CLSM images and selected-channel views use existing unsigned32-bit counters;
+the explicitly named legacy native getter remains unsigned16-bit. Versioned
+producer scanner metadata defines simulated-raster geometry, and physical PTU
+clocks define time units. Neither missing geometry nor placeholder timing can
+be repaired by adding duplicate frames or monkeypatching the reader. See the
+[region workflow](../guides/48_regions.md) for reconstruction and fitting.
