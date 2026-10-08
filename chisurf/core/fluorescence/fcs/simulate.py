@@ -118,7 +118,8 @@ def simulate_lifetime_fcs(
     population : sequence of float, optional
         Mean number of molecules of each species in the box. Defaults to ``1.5`` each.
     background_cps : float, optional
-        Uncorrelated background count rate (counts/s).
+        Uncorrelated background count rate (counts/s), with uniform micro-times
+        over the laser period.
 
     Returns
     -------
@@ -169,6 +170,13 @@ def simulate_lifetime_fcs(
             "spacing": 0.1,
         },
     }
+
+    if background_cps > 0.0:
+        # Without a decay, the engine models prompt scatter at micro-time zero.
+        cfg["background_decay"] = {
+            "pattern": [1.0] * int(n_microtime_channels),
+            "dt": float(micro_time_resolution_ns),
+        }
 
     engine = build_engine(cfg)
     engine.run()

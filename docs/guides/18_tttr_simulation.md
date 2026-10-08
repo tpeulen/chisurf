@@ -131,3 +131,11 @@ Simulated confocal trace and its correlation.
 
 - `tttrlib.SimEngine`; {src}`chisurf/core/fluorescence/fcs/simulate.py`.
 - Tool: the **lifetime-FCS simulator** (`chisurf/plugins/fcs/fcs_lfcs_sim/`).
+
+The lifetime-FCS simulator declares a uniform microtime distribution over the
+configured laser period for positive uncorrelated background. It no longer
+uses the provider default of prompt scatter at microtime zero. Zero-background
+configuration and seeded signal arrays remain unchanged. Positive-background
+streams consume the appropriate microtime random samples, so seeded photon
+arrays can change; compare the corrected physical setup rather than historical
+prompt-scatter hashes.

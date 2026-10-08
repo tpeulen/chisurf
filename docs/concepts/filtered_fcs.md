@@ -265,3 +265,9 @@ Three details of the original implementation decide what its maps contain.
   the single-molecule application — microsecond-to-millisecond exchange in the
   photosynthetic protein LHCSR1 — that the ChiSurf plugin's original MATLAB code
   was written for.
+
+An uncorrelated TCSPC background is represented uniformly across the configured
+laser period in lifetime-FCS simulations. Prompt scatter at microtime zero is a
+different decay shape and changes lifetime filtering. The
+[simulation workflow](../guides/18_tttr_simulation.md) records the declared
+background pattern and qualified seeded-output change.

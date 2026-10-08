@@ -1155,3 +1155,11 @@ computation, molecular rendering, point clouds/means/grid spacing and complete
 position/restraint/configuration data prove real before/after parity; a
 load-onlyfixture orskippedrenderer is not acceptance. [Exactcardacceptance](../validation/release-readiness-w6g/fps-card-window-acceptance.json)
 records tested geometry, fixture identity and scoped static limits.
+
+A real spectral-window baseline exposed a provider-call mismatch in the owning
+lifetime-FCS simulator: positive uncorrelated background lacked a decay pattern,
+so the engine generated prompt scatter at microtime zero. The caller now declares
+uniform calibrated bins; zero-background config/signal arrays are exact, while
+positive-background seeded outputs legitimately change. [Physical acceptance](../validation/release-readiness-w6g/lfcs-background-acceptance.json)
+records actual native distribution/clock/provider checks. GUI geometry acceptance
+must be recaptured under this corrected caller, not force old scatter hashes.
