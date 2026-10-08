@@ -160,3 +160,11 @@ wizard page had (no CZ-RAW, SM, PHOTONS, PHOTON-HDF5, SPC-QC, SPC-600_4096,
 BRIGHTEYES-TTR or FLIMLABS); a saved setup that has one keeps it. The
 preview is limited to 512 pixels on its longer side. Ratings and notes live in
 the data folder, not in ChiSurf's settings.
+
+## Window size
+
+The standalone native image browser initially requests 1200×800 logical pixels.
+The native launcher remembers dimensions after resizing, and Qt clamps the
+initial window to the display. The mosaic and detector controls follow the
+available area; changing geometry does not alter the photon data or detector
+selection.

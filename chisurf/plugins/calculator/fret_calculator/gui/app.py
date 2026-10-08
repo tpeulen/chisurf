@@ -18,6 +18,7 @@ from emtk.docking import DockManager, Region, Split
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.plugins.emtk_layout import window_size
 
 from .model import FretCalculatorModel
 
@@ -140,6 +141,7 @@ class FretCalcApp(ImApp):
 
     def __init__(self, model: FretCalculatorModel | None = None) -> None:
         self.model = model or FretCalculatorModel()
+        self.window_size = window_size(self.model.hetero.view_spec(), (640, 480))
         self.hetero = _Tab(self, self.model.hetero, "rate", "FRET parameters")
         self.homo = _Tab(self, self.model.homo, "aniso", "Homo-FRET parameters")
         self.tabs = (self.hetero, self.homo)

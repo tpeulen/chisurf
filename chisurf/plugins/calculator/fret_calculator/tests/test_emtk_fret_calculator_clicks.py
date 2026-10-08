@@ -98,8 +98,6 @@ def test_a_step_is_one_decade_below_the_value_when_the_spec_names_none(app):
     assert spin_step(50.0, section) == 1.0 and spin_step(4.0, section) == 0.1  # what the arrows moved in the checks above
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: a DockManager window consumes the wheel, a spin field inside it never sees it "
-                   "(works in a plain im.begin window); see REPORT.md section 10")
 def test_the_wheel_over_a_field_steps_it(app):
     m = app.model.hetero
     draw(app)
@@ -197,8 +195,6 @@ def tick_labels(painter):
     return [s for s in painter.strings if s.replace(".", "").replace("-", "").isdigit()]
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the wheel never reaches an implot inside a DockManager window, so no docked plot can be "
-                   "zoomed with it (works in a plain im.begin window); see REPORT.md section 10")
 def test_the_wheel_zooms_a_plot(app):
     draw(app)
     before = tick_labels(draw(app))

@@ -88,3 +88,11 @@ hub.close()
 
 - [Plugin reference: TTTR Tools](../reference/plugins/tttr_toolbox.md)
 - [Handling TTTR files](12_handling_tttr_files.md)
+
+## Window size
+
+TTTR Tools initially requests 1100×720 logical pixels. Resize it to suit your
+screen; reopening through the native launcher retains the saved dimensions.
+Qt clamps the initial window to the available display. A narrow setup pane
+scrolls to reach the LUT and optical setup controls. Geometry changes leave
+photon counts and analysis settings unchanged.

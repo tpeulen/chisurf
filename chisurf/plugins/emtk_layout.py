@@ -37,6 +37,39 @@ TEXT_WIDTH = 320.0
 ICON_GAP = "  "
 
 
+
+def window_size(spec: dict, default: tuple[int, int]) -> tuple[int, int]:
+    """Read a bounded logical-pixel window declaration or the app family default.
+
+    Parameters
+    ----------
+    spec : dict
+        Loaded view specification, optionally declaring ``window``.
+    default : tuple[int, int]
+        Width and height used when the declaration is absent.
+
+    Returns
+    -------
+    tuple[int, int]
+        Initial host dimensions; saved user geometry takes precedence later.
+
+    Raises
+    ------
+    ValueError
+        The declaration is incomplete, misspelled, or outside 120–8192 pixels.
+    """
+    if "window" not in spec:
+        return default
+    declaration = spec["window"]
+    if (not isinstance(declaration, dict)
+            or set(declaration) != {"width", "height"}
+            or any(type(declaration[key]) is not int
+                   or not 120 <= declaration[key] <= 8192
+                   for key in ("width", "height"))):
+        raise ValueError("window requires integer width and height between 120 and 8192")
+    return declaration["width"], declaration["height"]
+
+
 def icon_label(icon: str, text: str) -> str:
     """A button caption with its pictogram set clear of the text (``💾  Save``).
 

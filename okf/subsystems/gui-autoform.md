@@ -1048,3 +1048,21 @@ tested. Main shell packaging is explicit, deferred to W9.
 [Receipt](../validation/release-readiness-w1/designer-helper-retirement/acceptance.json).
 Next active acceptance is the requested Burst MLE model feature; W0 owns the
 missing bundle guard/inherited typing before full programme closure.
+
+## Declared initial native geometry
+
+The shared `window_size(spec, default)` parser reads bounded width/height
+metadata from loaded view specs. The schema requires both integer fields
+120–8192 and rejects typos. Shared ToolHub/CalculatorHub defaults 1100×720, FRET
+calculator 640×480, TTTRimagebrowser 1200×800; SetupStep uses the same parser.
+Saved geometry overrides the default through attach_native_state. emtk native
+and Qt hosts read window_size only; responsive ALWAYS regions are retained.
+Ten real-data before/after pairs preserve all controls and exact computed
+results; eight same-size pairs are byte-identical. Baselines were first taken
+before edits, then reconstructed from frozen source after a concurrent capture
+rerun overwrote files; both phases and SDK revisions are recorded.
+
+Remaining native factories still need explicit primary-spec declarations and
+real render acceptance. See [active job](../validation/release-readiness-w6g/current-job.md)
+and native-window-map.json; do not treat geometry-only declarations as new
+AutoForm control coverage.

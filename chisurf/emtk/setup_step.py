@@ -10,6 +10,7 @@ from emtk.view_form import FormState, draw_sections
 from emtk.widgets.view_spec import load_view_spec
 
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
+from chisurf.plugins.emtk_layout import window_size
 
 
 class SetupStepApp(ImApp):
@@ -21,7 +22,7 @@ class SetupStepApp(ImApp):
         self.item_rects = self.page.item_rects
         spec = load_view_spec(str(Path(__file__).with_suffix(".view.json")))
         self.sections = spec["sections"]
-        self.window_size = (spec["window"]["width"], spec["window"]["height"])
+        self.window_size = window_size(spec, (1100, 720))
         self.form = FormState()
         self.form.custom["channel_definition"] = self._draw_editor
         self.docks = DockManager(Region("setup"), name="shared_setup")

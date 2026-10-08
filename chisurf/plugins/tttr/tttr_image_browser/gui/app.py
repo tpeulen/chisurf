@@ -37,7 +37,7 @@ from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.image_canvas import ImageCanvas
 from chisurf.emtk.jobs import SnapshotJob
-from chisurf.plugins.emtk_layout import cap_widths, group_by_width
+from chisurf.plugins.emtk_layout import cap_widths, group_by_width, window_size
 
 from .model import ImageBrowserModel, MosaicLoader
 
@@ -117,6 +117,7 @@ class TTTRImageBrowserApp(ImApp):
         self._queue: deque[tuple[str, tuple]] = deque()
         self._reported_error = ""
         self.spec = json.loads((HERE / "browser_emtk.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(self.spec, (1200, 800))
         # capped widths everywhere; the Files column also gets one grid per kind of field (the spec file stays as the
         # AutoForm dialect reads it). The toolbar and the display strip keep their rows of mixed fields.
         cap_widths(self.spec["sections"])
@@ -333,7 +334,8 @@ class TTTRImageBrowserApp(ImApp):
             self.model.status_line = "Next needs Imaging Tools: open the browser from there."
             return
         try:
-            source = self.model.current_file or (self.model.paths() or [None])[0]
+            paths = self.model.paths()
+            source = self.model.current_file or (paths[0] if paths else None)
             if source:
                 coordinator.set_pipeline(source=str(source))
             coordinator.goto_role("pixel_intensity")

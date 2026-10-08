@@ -23,6 +23,7 @@ from emtk.app import ImApp
 from emtk.i18n import tr
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.plugins.emtk_layout import window_size
 
 PLUGINS = Path(__file__).resolve().parents[1] / "plugins"
 #: Height of the window naming the selected tool.
@@ -93,6 +94,10 @@ class ToolHubApp(ImApp):
         initial: str | None = None,
         steps: bool = False,
     ) -> None:
+        self.window_size = window_size(
+            json.loads(Path(__file__).with_suffix(".view.json").read_text(encoding="utf-8")),
+            (1100, 720),
+        )
         self.title = title
         #: A hub of steps (Next runs a step): it shows the fast-forward button; a hub of tools does not.
         self.steps = steps
@@ -128,7 +133,7 @@ class ToolHubApp(ImApp):
         self.help = EmTkHelpWindow(title=f"{title} — Help", resource=help_resource, owner=self)
         self.child_help = None
         self.tour = EmTkGuidedTour(
-            guide,
+            guide if guide is not None else [],
             owner=self,
             on_step_change=self._tour_step,
             get_target_rect=self._target_rect,

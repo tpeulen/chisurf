@@ -23,7 +23,24 @@
       "$ref": "#/$defs/section"
     },
     "window": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 120,
+          "maximum": 8192
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 120,
+          "maximum": 8192
+        }
+      },
+      "required": [
+        "width",
+        "height"
+      ],
+      "additionalProperties": false
     },
     "n_col": {
       "type": "integer",
@@ -108,7 +125,24 @@
               "$ref": "#/$defs/section"
             },
             "window": {
-              "type": "object"
+              "type": "object",
+              "properties": {
+                "width": {
+                  "type": "integer",
+                  "minimum": 120,
+                  "maximum": 8192
+                },
+                "height": {
+                  "type": "integer",
+                  "minimum": 120,
+                  "maximum": 8192
+                }
+              },
+              "required": [
+                "width",
+                "height"
+              ],
+              "additionalProperties": false
             },
             "n_col": {
               "type": "integer",

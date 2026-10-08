@@ -81,7 +81,15 @@ _VIEW_TOP_LEVEL = {
     },
     "sections": {"type": "array", "items": {"$ref": "#/$defs/section"}},
     "section": {"$ref": "#/$defs/section"},
-    "window": {"type": "object"},
+    "window": {
+        "type": "object",
+        "properties": {
+            "width": {"type": "integer", "minimum": 120, "maximum": 8192},
+            "height": {"type": "integer", "minimum": 120, "maximum": 8192},
+        },
+        "required": ["width", "height"],
+        "additionalProperties": False,
+    },
     "n_col": {"type": "integer", "minimum": 1},
     "plots": {"type": "array", "items": {"$ref": "#/$defs/plot"}},
     "title": {"type": "string", "description": "Window title; read by chimol's painted forms."},

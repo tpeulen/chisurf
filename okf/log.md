@@ -41334,3 +41334,5 @@ side of the line.
   icon takes its manifest icon (`plugin_icons.entry_icon`); `disabled_reason(role)` words the rail tooltip.
 
 - 2026-10-07 — W1 FCS row10: native caller hosts replace dead central FCS/TTTR wizard chains; corrected physical header-ms parity and real MaxEnt grid, publication/PTO/td4 lineage/sentinels/cancel rollback verified. Historical wrong-second baseline retained; next GF row11 and remaining ordered W1 gates. See validation/release-readiness-w1/fcs-retirement/acceptance.json.
+
+- 2026-10-08 — PRD154 W6g declared window contracts: emtk dffa269 committed/pinned/installed; bounded helper/schema, shared hubs, FRET and TTTR viewer defaults, saved geometry preserved.700focusedchecks and43SDKchecks pass; root inspected10real-data pairs with no lost controls or changed results. Two obsolete strict wheel xfails retired (29clicks pass/2separate xfails); typing clean. Remaining factory-family, tooltip/i18n/demo/tour work and exact midway evidence archived in release-readiness-w6g.

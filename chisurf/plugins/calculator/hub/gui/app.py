@@ -8,6 +8,7 @@ asks for a frame whenever the embedded app does.
 from __future__ import annotations
 
 import importlib
+import json
 from pathlib import Path
 
 from emtk import im, keys
@@ -15,6 +16,7 @@ from emtk.app import ImApp
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.plugin_icons import entry_icon
+from chisurf.plugins.emtk_layout import window_size
 
 from ..core.registry import default_calculators
 
@@ -40,6 +42,9 @@ class CalculatorHubApp(ImApp):
     """Two panels: the calculator list, and the chosen calculator under its description."""
 
     def __init__(self, entries=None):
+        self.window_size = window_size(
+            json.loads((HERE / "hub.view.json").read_text(encoding="utf-8")), (1100, 720)
+        )
         self.entries = default_calculators() if entries is None else entries
         self.children = {}
         self.selected = self.entries[0].id if self.entries else None
