@@ -41338,3 +41338,5 @@ side of the line.
 - 2026-10-08 — PRD154 W6g declared window contracts: emtk dffa269 committed/pinned/installed; bounded helper/schema, shared hubs, FRET and TTTR viewer defaults, saved geometry preserved.700focusedchecks and43SDKchecks pass; root inspected10real-data pairs with no lost controls or changed results. Two obsolete strict wheel xfails retired (29clicks pass/2separate xfails); typing clean. Remaining factory-family, tooltip/i18n/demo/tour work and exact midway evidence archived in release-readiness-w6g.
 
 - 2026-10-08 — PRD154 W6g window unit source9f2b7dd76, boardcc90dd27:56postcommit contract checks pass (20.24s). Midway resume now starts with the shared imaging/trajectory primary-spec map before any new app-base writes.
+
+- 2026-10-08 — PRD154 W6g shared-family midway: geometry readers and two primary declarations added; regression2RED→23PASS, broad761pass exposed five obsolete strict xfails, now retired pending rerun. Real drift/trajectory before/after science and controls match. Measured existing narrow-axis label overlap0.828125px is under root emtk repair; exact sources/20PNGs/active-agent ownership archived for continuation.
