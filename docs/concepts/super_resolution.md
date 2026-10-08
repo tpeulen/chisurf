@@ -163,3 +163,8 @@ photons-versus-time reasoning appears in {ref}`concept-scan-precision`.
 - Concepts: {ref}`concept-frc-resolution` · {ref}`concept-drift-correction` ·
   {ref}`concept-density-clustering` · {ref}`concept-colocalization` ·
   {ref}`concept-particle-tracking` · {ref}`concept-region-properties`.
+
+Host geometry is independent of bead-based PSF measurement. The native PSF
+tool preserves detected regions, fitted profiles and physical FWHM values when
+restoring saved dimensions. The [measurement workflow](../guides/93_psf_determination.md)
+distinguishes synthetic bead truth from actual detected and fitted regions.

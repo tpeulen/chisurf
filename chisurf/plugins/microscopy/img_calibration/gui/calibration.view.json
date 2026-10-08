@@ -1,5 +1,6 @@
 {
   "_comment": "IRF & BG calibration step. AutoForm over CalibrationViewModel: pick a detector, set its IRF file, convolution range (start/stop) and background (kHz) against a live decay/IRF plot (custom `decay_conv` section, draggable range). Apply transfers the per-detector calibration to Phasor + pixel-wise MLE. Optional/skippable (after N&B, before Phasor).",
+  "window": {"width": 1100, "height": 720},
   "sections": [
     {
       "type": "dock_area",

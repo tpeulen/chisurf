@@ -189,7 +189,7 @@ def test_the_irf_list_adds_removes_and_clears(spc, tmp_path):
         app.on_files_dropped([str(other)])                        # a drop adds to this detector's IRF
         assert app.model.sel_irf_files == [spc, str(other)]
         app.model.sel_irf_files = []
-        assert "No IRF file: the raw data are used" in _draw(app).strings
+        assert "No IRF: using raw data" in _draw(app).strings
     finally:
         app.close()
 

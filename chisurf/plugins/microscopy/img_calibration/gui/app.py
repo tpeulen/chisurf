@@ -11,6 +11,7 @@ windows. The photon histograms are binned on a worker thread.
 from __future__ import annotations
 
 import copy
+import json
 import queue
 import threading
 from pathlib import Path
@@ -26,6 +27,7 @@ from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.plugins.emtk_layout import window_size
 
 from .view_model import CalibrationViewModel
 
@@ -33,11 +35,8 @@ HERE = Path(__file__).parent
 ERROR = (1.0, 0.45, 0.45, 1.0)
 
 
-def _controls_spec() -> dict:
+def _controls_spec(spec: dict) -> dict:
     """The spec's Calibration panel (its plot section is the plot dock)."""
-    import json
-
-    spec = json.loads((HERE / "calibration.view.json").read_text(encoding="utf-8"))
     dock = spec["sections"][0]
     panel = next(s for s in dock["sections"] if s.get("title") == "Calibration")
     return {"sections": panel["sections"]}
@@ -65,7 +64,9 @@ class CalibrationApp(TourTarget, ImApp):
         self.dialog_action = ""
         self.file_selection = -1
         self.item_rects = {}
-        self.spec = _controls_spec()
+        primary = json.loads((HERE / "calibration.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(primary, (1100, 720))
+        self.spec = _controls_spec(primary)
         self.form = FormState()
         self.form.custom["path_list"] = self.draw_irf_files
         self.dataset_picker = DatasetPicker(on_paths=self.add_irfs)
@@ -240,7 +241,7 @@ class CalibrationApp(TourTarget, ImApp):
                 self.file_selection = index
             im.set_item_tooltip(path)
         if not self.model.sel_irf_files:
-            im.text_disabled(label("No IRF file: the raw data are used"))
+            im.text_disabled(label("No IRF: using raw data"))
         self.remember("path_list", (top[0], top[1] - 24.0, width, im.get_cursor_screen_pos()[1] - top[1] + 24.0))
 
     def remove_irf(self):

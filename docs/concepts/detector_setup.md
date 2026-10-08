@@ -93,3 +93,8 @@ Native preset-editor geometry is declared alongside its controls. Restoring a
 window retains the selected detector setup and correlation pairs; changing its
 size does not modify the instrument definition or saved presets. See the
 [channel workflow](../guides/87_channel_definition.md).
+
+The native calibration host reads its primary size before preparing controls.
+Saved host geometry does not modify detector histograms, IRF/background windows
+or the deep-copied snapshot published by Apply. The
+[calibration workflow](../guides/99_img_calibration.md) documents this distinction.

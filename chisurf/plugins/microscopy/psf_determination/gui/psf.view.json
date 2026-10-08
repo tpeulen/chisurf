@@ -1,4 +1,5 @@
 {
+  "window": {"width": 1100, "height": 720},
   "_comment": "Single dock-area layout for the PSF Determination tool. Settings render as compact foldable panels; the bead stack uses AutoForm's reusable 3D `image` section (z-slider + click-to-pick + bead markers + fit-ROI circle); the x/y/z profiles are declarative `plot` sections. All panels are draggable docks.",
   "sections": [
     {

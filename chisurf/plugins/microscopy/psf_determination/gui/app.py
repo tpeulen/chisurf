@@ -16,7 +16,7 @@ from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
-from chisurf.plugins.emtk_layout import LabelColumn, button_row, labelled, layout_spec
+from chisurf.plugins.emtk_layout import LabelColumn, button_row, labelled, layout_spec, window_size
 
 from .canvas import ImageCanvas
 from .jobs import SnapshotJob
@@ -69,6 +69,8 @@ class PsfDeterminationApp(ImApp):
         self._restore_selection = None
         self.item_rects = {}
         self.beads = BeadNavigator(self)
+        spec = json.loads((HERE / "psf.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(spec, (1100, 720))
         self.panels = self.build_panels()
         self.forms = {n: FormState() for n in self.panels}
         self.columns = {n: LabelColumn() for n in self.panels}

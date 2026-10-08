@@ -1171,3 +1171,11 @@ completionstatus reports actualmainanalysis/failure; stochasticmodeltest
 assumptions usepairedspecies andobjective/gradient/convergence evidence rather
 than fixedcomponentorder/roundedtext orunnormalizedamplitudesum. [Spectralacceptance](../validation/release-readiness-w6g/spectral-window-acceptance.json)
 records independentproviderdiagnostics, realPNG andscopedstaticlimits.
+
+Calibration and PSF composite hosts now read declared1100×720 geometry before
+preparing/slicing their controls. Savedcustomdimensions retain precedence;
+actualphotons/calibrationApply andnoisybeadGaussian measurements are unchanged.
+ConciseemptyIRFcaption fits the initialhost, while metric-aware testpainter
+coverage retains actualclip/occlusion data. [Pairacceptance](../validation/release-readiness-w6g/imaging-window-acceptance.json)
+records scientifictruth versus four detectedregions, ownership residue and
+headlessbefore/after/resize/reopen evidence.

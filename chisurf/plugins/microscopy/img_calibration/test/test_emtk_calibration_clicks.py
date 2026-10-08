@@ -201,7 +201,7 @@ def test_a_click_on_a_row_selects_it_remove_removes_it_and_clear_empties_the_lis
     drv.click(drv.rect("remove_irf"))  # nothing selected: nothing removed
     assert m(drv).sel_irf_files == [spc]
     drv.click(drv.rect("clear_irf"))
-    assert m(drv).sel_irf_files == [] and "No IRF file: the raw data are used" in drv.draw(2).strings
+    assert m(drv).sel_irf_files == [] and "No IRF: using raw data" in drv.draw(2).strings
 
 
 def test_database_button_opens_the_dataset_picker_and_cancel_closes_it(drv):
@@ -355,16 +355,27 @@ def test_draws_empty_and_populated_without_clipped_or_overlapping_text(spc, size
     d.settle()
     painter = d.draw(3)
     left = app.item_rects["controls"]
-    controls = [t for t in painter.texts if left[0] <= t[0] <= left[0] + left[2] and left[1] <= t[1] <= left[1] + left[3]]
+    controls = [
+        t
+        for t in painter.texts
+        if left[0] <= t[0] <= left[0] + left[2] and left[1] <= t[1] <= left[1] + left[3]
+    ]
     from chisurf.plugins.core.project_browser.test.driving import ClipPainter
 
     clip = ClipPainter()
     for _ in range(3):
         clip = ClipPainter()
         app.draw(clip, 0, 0, *size)
-    inside = [t for t in clip.shown if left[0] <= t[0][0] <= left[0] + left[2] and left[1] <= t[0][1] <= left[1] + left[3]]
-    holder = type("P", (), {"shown": inside})()
-    assert layout_problems(holder, size) == [] and clipped_texts(holder) == []
+    inside = [
+        (shown, ink, index)
+        for shown, ink, index in zip(clip.shown, clip.ink_rects, clip._text_calls, strict=True)
+        if left[0] <= shown[0][0] <= left[0] + left[2]
+        and left[1] <= shown[0][1] <= left[1] + left[3]
+    ]
+    clip.shown = [shown for shown, _, _ in inside]
+    clip.ink_rects = [ink for _, ink, _ in inside]
+    clip._text_calls = [index for _, _, index in inside]
+    assert layout_problems(clip, size) == [] and clipped_texts(clip) == []
     assert controls
     app.close()
 

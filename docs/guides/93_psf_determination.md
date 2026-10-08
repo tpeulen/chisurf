@@ -71,3 +71,10 @@ m.detect_beads(); m.fit_all(); m.export_csv("psf_batch_results.csv")
 
 - Concept: {ref}`concept-point-spread-function`; calculator: {doc}`72_psf_calculator`.
 - Super-resolution and ISM reconstruction use the measured PSF: {ref}`concept-super-resolution`.
+
+The native PSF tool declares an initial1100×720 size before its primary spec
+is split into panels. Saved custom geometry retains precedence. Detection,
+selected-bead profiles, Gaussian parameters and exported scientific rows retain
+their values across host restoration. In the seeded five-bead demonstration,
+the configured detector resolves four regions because one pair is unresolved;
+this is distinct from a missing GUI control.
