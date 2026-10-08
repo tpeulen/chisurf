@@ -7,6 +7,8 @@ import tttrlib
 from emtk import im
 from emtk.file_dialog import FileDialog
 
+from chisurf.core.support.i18n import tr
+
 from .app import SplitterApp
 from .jobs import BackgroundJob
 from .view_model import SplitterViewModel
@@ -179,6 +181,23 @@ class _StandaloneApp(SplitterApp):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.continuous = True
+        self.splitter_gui.docks.window("io").draw = self._draw_io
+
+    def _draw_io(self, box):
+        """Keep operation status and cancellation inside the existing input/output dock."""
+        self.splitter_gui._draw_io(box)
+        if self.tool.job.running:
+            im.text(tr("Working…"))
+            if im.button(tr("Stop")):
+                self.tool.job.stop()
+                self.tool.message = (
+                    "Stopping after the current chunk or file. Completed output remains."
+                )
+            im.set_item_tooltip(
+                tr("Stop between chunks or files; retain output already written.")
+            )
+        if self.tool.message:
+            im.text_wrapped(self.tool.message)
 
     def _render(self):
         self.tool.job.poll()
@@ -189,20 +208,6 @@ class _StandaloneApp(SplitterApp):
         if self.tool.dataset_picker is not None:
             vp = im.get_main_viewport()
             self.tool.dataset_picker.render((0.0, 0.0, *vp.size))
-        if self.tool.job.running:
-            if im.begin("TTTR operation"):
-                im.text("Working…")
-                if im.button("Stop"):
-                    self.tool.job.stop()
-                    self.tool.message = (
-                        "Stopping after the current chunk or file. Completed output remains."
-                    )
-                im.set_item_tooltip("Stop between chunks or files; retain output already written.")
-            im.end()
-        if self.tool.message:
-            if im.begin("Status"):
-                im.text_wrapped(self.tool.message)
-            im.end()
         if self.tool.dialog is not None:
             if im.begin("Choose files or folder"):
                 result = self.tool.dialog.draw()

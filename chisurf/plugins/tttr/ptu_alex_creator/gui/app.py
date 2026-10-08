@@ -24,7 +24,7 @@ from chisurf.core.settings.path_utils import get_path
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.i18n import install
-from chisurf.plugins.emtk_layout import LabelColumn, button_row, labelled, layout_spec
+from chisurf.plugins.emtk_layout import LabelColumn, button_row, labelled, layout_spec, window_size
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 
 from .. import core
@@ -73,6 +73,14 @@ def translated(node):
     return node
 
 
+def _model_field(name: str) -> property:
+    """Expose an existing view-model field through the form model."""
+    return property(
+        lambda self: getattr(self.model, name),
+        lambda self, value: setattr(self.model, name, value),
+    )
+
+
 class AlexApp(TourTarget, ImApp):
     """The ALEX Creator window; also the model its spec form reads and writes."""
 
@@ -96,6 +104,7 @@ class AlexApp(TourTarget, ImApp):
         self.state_path = Path(state_path) if state_path else get_path("settings") / "alex-emtk.json"
         self.form = FormState(on_used=self.used)
         self.spec_source = json.loads((HERE / "alex_emtk.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(self.spec_source, (1100, 720))
         self.spec, self.spec_locale = None, None
         self.help = EmTkHelpWindow(
             title=tr("ALEX Creator"),
@@ -116,17 +125,13 @@ class AlexApp(TourTarget, ImApp):
         super().__init__(gui=self.render, continuous=False)
 
     # -- the form's model: the Qt view model's fields -------------------------------------------------------- #
-    def _field(name):  # noqa: N805 - a descriptor factory used in the class body
-        return property(lambda self: getattr(self.model, name), lambda self, value: setattr(self.model, name, value))
-
-    input_file = _field("input_file")
-    input_format = _field("input_format")
-    output_format = _field("output_format")
-    alex_period = _field("alex_period")
-    period_shift = _field("period_shift")
-    batch_mode = _field("batch_mode")
-    batch_output_folder = _field("batch_output_folder")
-    del _field
+    input_file = _model_field("input_file")
+    input_format = _model_field("input_format")
+    output_format = _model_field("output_format")
+    alex_period = _model_field("alex_period")
+    period_shift = _model_field("period_shift")
+    batch_mode = _model_field("batch_mode")
+    batch_output_folder = _model_field("batch_output_folder")
 
     def input_format_options(self):
         return self.model.input_format_options()

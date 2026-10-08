@@ -35,3 +35,4 @@ This plugin's window is an EMTK app: its controls and tables are described in th
 
 - Plugin package: `chisurf/plugins/tttr/filetools/`
 - Manifest: {src}`chisurf/plugins/tttr/filetools/manifest.json`
+- UI spec: {src}`chisurf/plugins/tttr/filetools/gui/window.view.json`

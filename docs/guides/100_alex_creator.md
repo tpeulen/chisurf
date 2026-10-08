@@ -72,3 +72,13 @@ core.convert_file("data.ptu", "data_alex.ptu", 4000, 23, "PTU", "Auto")
 - [Plugin reference: ALEX Creator](../reference/plugins/ptu_alex_creator.md)
 - [µs-ALEX concept](../concepts/us_alex.md)
 - [Handling TTTR files](12_handling_tttr_files.md)
+
+## Native layout and saved conversion settings
+
+The native ALEX Creator starts at 1100 × 720; a saved user size takes
+precedence. Period, phase shift, input/output format and queue settings keep
+their values when the host is resized or reopened. Changing the layout does
+not change the live phase histogram or the photons and header written by the
+conversion. Reload the input to regenerate its preview after reopening.
+
+![Native ALEX Creator after converting real TTTR events](figures/alex_creator_native_window.png)

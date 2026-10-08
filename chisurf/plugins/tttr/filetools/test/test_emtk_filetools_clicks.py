@@ -265,8 +265,11 @@ def test_the_hub_draws_without_clipped_or_overlapping_text_around_a_child(size):
     app = fake_hub()
     painter = draw_clip(app, size, frames=3)
     left, top = app.child_box[0], app.child_box[1]
-    hub = [t for t in painter.shown if t[0][0] < left or t[0][1] < top]
-    holder = type("P", (), {"shown": hub})()
+    hub = [
+        fragment for fragment in painter.visible_text_fragments()
+        if fragment[0][0][0] < left or fragment[0][0][1] < top
+    ]
+    holder = type("P", (), {"visible_text_fragments": lambda _self: iter(hub)})()
     assert layout_problems(holder, size) == [] and clipped_texts(holder) == []
     assert {"Guide", "Help"} <= set(painter.strings)
     app.close()

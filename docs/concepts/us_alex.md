@@ -180,3 +180,9 @@ baseline.
 - {cite}`stefan2013` — cooperative binding, and what the Hill coefficient does and
   does not say.
 - {ref}`concept-smfret-bursts`, {ref}`concept-accurate-fret`.
+
+The native conversion host separates window geometry from alternation
+parameters. A stored size does not change the selected period or phase shift,
+and the same input produces the same converted event arrays and header.
+The [ALEX Creator workflow](../guides/100_alex_creator.md) documents saved
+settings and distinguishes state restoration from recomputing the preview.

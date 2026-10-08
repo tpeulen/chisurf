@@ -20,6 +20,7 @@ from emtk.app import ImApp
 from chisurf.core.support.i18n import tr
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.plugin_icons import entry_icon
+from chisurf.plugins.emtk_layout import window_size
 
 SPEC = json.loads(Path(__file__).with_name("panels.json").read_text())
 SPLITTER_FIELDS = (
@@ -57,6 +58,8 @@ class FileToolsApp(TourTarget, ImApp):
     """The File tools hub."""
 
     def __init__(self, panels=None, resolver=native_factory):
+        spec = json.loads(Path(__file__).with_name("window.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(spec, (1100, 720))
         self.panels = list(SPEC["panels"] if panels is None else panels)
         self.resolver = resolver
         self.children = {}

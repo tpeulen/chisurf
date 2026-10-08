@@ -240,3 +240,10 @@ stream, channel gates and analysis settings, rather than the size of their
 native host. [Audifier](../guides/94_tttr_audifier.md) preserves its waveform
 and waterfall across layout changes; reopening preferences restores the
 configuration, while the recording is loaded again for recomputation.
+
+The native File tools hub keeps container operations in the tools that own
+them. Packing, inspecting provenance, editing tags and preparing burst results
+share navigation rather than an additional photon algorithm. Host resizing
+retains the actual child contexts and scientific settings. The
+[File tools workflow](../guides/74_intensity_traces_and_file_tools.md) lists all
+seven routes and their distinct input requirements.

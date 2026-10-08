@@ -80,6 +80,7 @@ class PtoInspectorApp(ImApp):
             ]], 'selected_call': 'select_row', 'activated_call': 'open_row',
             'row_key': 'uid', 'filter': True, 'column_picker': True, 'min_column_width': 40, 'expand': True}, self.model)
         self.table = TableBinding({'source': 'payload', 'columns_source': 'payload_columns',
+                                   'fit_columns': False, 'min_column_width': 130,
                                    'filter': True, 'column_picker': True, 'expand': True}, self)
         self.docks = DockManager(Split('h', .46, Region('container'),
                                       Split('v', .30, Region('provenance'), Split('v', .32, Region('data'), Split('v', .53, Region('curve'), Region('details'))))))

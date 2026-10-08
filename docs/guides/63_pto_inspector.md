@@ -176,3 +176,12 @@ with PtoInspection("measurement.pto") as m:
   measurement into one.
 - {doc}`Reusing results </guides/53_reusing_results>` — the settings hash seen
   from the writing side.
+
+### Wide data tables
+
+A result with many columns retains readable headers and cells. The data table
+scrolls horizontally to reach the rest of the schema; narrowing the host does
+not discard columns or alter exported rows. The table, export and provenance
+remain views of the same stored artifact.
+
+![Native computed workflow with readable controls and results](figures/pto_inspector_readable_data.png)

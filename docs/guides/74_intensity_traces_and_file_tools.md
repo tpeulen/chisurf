@@ -310,3 +310,20 @@ geometry, including standalone and hosted factories. Saved custom geometry
 retains precedence. Rate summaries/curves and the time-window burst rows keep
 the same values across window restoration; generated window files are still
 written only to the selected output folder.
+
+### Native File tools layout
+
+The native File tools hub starts at 1100 × 720, with a saved size taking
+precedence. Its seven routes open the actual native tools: Split / Convert,
+TTTR ⇄ PTO, PTO Inspector, TTTR header, Time Windows, BID → Analysis and
+MFD Prepare. Switching panels preserves each child instance and its settings.
+Resizing keeps the navigation and child viewport responsive without changing
+the underlying photon operations.
+
+Split / Convert keeps progress, **Stop** and completion messages inside its
+existing input/output dock, so a completed operation leaves its controls
+reachable. PTO Inspector preserves useful column widths in wide result tables;
+scroll horizontally to inspect trailing values rather than shrinking every
+column to fit the viewport.
+
+![Native computed workflow with readable controls and results](figures/filetools_native_window.png)

@@ -1,4 +1,5 @@
 {
+  "window": {"width": 1100, "height": 720},
   "_comment": "The emtk layout of the ALEX Creator: the same controls as alex.view.json (file, formats, period/shift, batch) drawn by emtk.view_form with the app as the model. Number fields are spin fields (typed value or arrows or wheel); the batch queue is a data_table.",
   "sections": [
     {
