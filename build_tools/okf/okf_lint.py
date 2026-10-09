@@ -106,14 +106,22 @@ def _prose(text: str) -> str:
 class Bundle:
     """Snapshot discoverable Markdown and enforce safe, concurrent-aware writes."""
 
-    def __init__(self, root: Path):
+    def __init__(self, root: Path, revision: str | None = None):
         """Discover tracked and nonignored untracked files, including board links."""
         self.root = root.absolute()
         if not self.root.is_dir():
             raise ValueError(f"Bundle root is not a directory: {self.root}")
+        self.revision = revision
+        self.providers: dict[str, str] = {}
+        self._trees: dict[tuple[Path, str], dict[str, tuple[str, str]]] = {}
         self._writable_cache: dict[Path, bool] = {}
         repo = _git(self.root, "rev-parse", "--show-toplevel").strip()
         self.repo = Path(repo) if repo else self.root.parent
+        if revision is not None:
+            if not repo:
+                raise ValueError("A committed revision requires a Git repository")
+            self.pages = self._committed_pages()
+            return
         if repo:
             paths = _git(
                 self.repo,
@@ -128,11 +136,137 @@ class Bundle:
             candidates = (self.repo / p for p in paths.split("\0") if p)
         else:
             candidates = self.root.rglob("*.md")
+        discovered = sorted(set(candidates))
+        for candidate in discovered:
+            if candidate.suffix == ".md" and candidate.is_symlink() and not candidate.is_file():
+                raise ValueError(f"Markdown symlink target unavailable: {candidate}")
         self.pages = {
             p: p.read_text(encoding="utf-8")
-            for p in sorted(set(candidates))
+            for p in discovered
             if p.suffix == ".md" and p.is_file()
         }
+
+    def _tree(self, repo: Path, revision: str) -> dict[str, tuple[str, str]]:
+        """Cache a committed tree as relative path to mode/blob pairs."""
+        key = (repo, revision)
+        if key not in self._trees:
+            output = subprocess.run(
+                ["git", "-C", str(repo), "ls-tree", "-rz", "--full-tree", revision],
+                capture_output=True,
+                check=True,
+            ).stdout
+            entries = {}
+            for record in output.split(b"\0"):
+                if record:
+                    info, name = record.split(b"\t", 1)
+                    mode, _, oid = info.decode().split()
+                    entries[os.fsdecode(name)] = (mode, oid)
+            self._trees[key] = entries
+        return self._trees[key]
+
+    def _blobs(self, repo: Path, ids: list[str]) -> dict[str, str]:
+        """Read selected text blobs in one git process, preserving source bytes."""
+        ids = list(dict.fromkeys(ids))
+        result = subprocess.run(
+            ["git", "-C", str(repo), "cat-file", "--batch"],
+            input=("\n".join(ids) + "\n").encode(),
+            capture_output=True,
+            check=True,
+        ).stdout
+        blobs = {}
+        offset = 0
+        for oid in ids:
+            end = result.index(b"\n", offset)
+            header = result[offset:end].split()
+            if len(header) != 3 or header[1] != b"blob":
+                raise ValueError(f"Cannot read committed Markdown blob {oid}")
+            size = int(header[2])
+            blobs[oid] = result[end + 1 : end + 1 + size].decode("utf-8")
+            offset = end + size + 2
+        return blobs
+
+    def _locate(
+        self, path: Path, depth: int = 0, context: tuple[Path, str] | None = None
+    ) -> tuple[Path, str, str] | None:
+        """Resolve committed symlinks and gitlinks without consulting live contents."""
+        if depth > 20:
+            return None
+        path = Path(os.path.abspath(path))
+        repo, revision = context or (self.repo, str(self.revision))
+        if not path.is_relative_to(repo):
+            directory = path.parent
+            while not directory.is_dir() and directory != directory.parent:
+                directory = directory.parent
+            owner = _git(directory, "rev-parse", "--show-toplevel").strip()
+            if not owner:
+                return None
+            repo = Path(owner)
+            revision = str(self.revision) if repo == self.repo else "HEAD"
+        relative = path.relative_to(repo)
+        tree = self._tree(repo, revision)
+        for index in range(1, len(relative.parts) + 1):
+            prefix = Path(*relative.parts[:index])
+            entry = tree.get(prefix.as_posix())
+            if entry and entry[0] == "120000":
+                target = self._blobs(repo, [entry[1]])[entry[1]]
+                suffix = Path(*relative.parts[index:])
+                return self._locate(
+                    repo / prefix.parent / target / suffix, depth + 1, (repo, revision)
+                )
+            if entry and entry[0] == "160000":
+                return self._locate(path, depth + 1, (repo / prefix, entry[1]))
+        name = relative.as_posix()
+        if name == "." or name in tree or any(p.startswith(name + "/") for p in tree):
+            return repo, revision, name
+        # A separately owned checkout may be nested below the application repo
+        # without being its submodule (the shared-board fixtures use this layout).
+        for directory in path.parents:
+            if directory == repo:
+                break
+            if (directory / ".git").exists():
+                foreign_tree = self._tree(directory, "HEAD")
+                name = path.relative_to(directory).as_posix()
+                if name in foreign_tree or any(p.startswith(name + "/") for p in foreign_tree):
+                    return directory, "HEAD", name
+                return None
+        return None
+
+    def _committed_pages(self) -> dict[Path, str]:
+        """Read Markdown from the selected revision, resolving the shared board."""
+        tree = self._tree(self.repo, str(self.revision))
+        prefix = self.root.relative_to(self.repo).as_posix().rstrip(".")
+        entries = {
+            name: entry
+            for name, entry in tree.items()
+            if name.endswith(".md") and (not prefix or name.startswith(prefix + "/"))
+        }
+        blobs = self._blobs(self.repo, [entry[1] for entry in entries.values()]) if entries else {}
+        pages = {}
+        for name, (mode, oid) in sorted(entries.items()):
+            path = self.repo / name
+            if mode == "120000":
+                located = self._locate(path)
+                if located is None:
+                    raise ValueError(f"Committed symlink has no available tracked target: {path}")
+                owner, revision, target = located
+                if owner != self.repo:
+                    self.providers[path.relative_to(self.root).as_posix()] = _git(
+                        owner, "rev-parse", revision
+                    ).strip()
+                target_oid = self._tree(owner, revision)[target][1]
+                pages[path] = self._blobs(owner, [target_oid])[target_oid]
+            else:
+                pages[path] = blobs[oid]
+        return pages
+
+    def exists(self, path: Path) -> bool:
+        """Test live existence or membership in the selected committed trees."""
+        if self.revision is None:
+            return path.exists()
+        try:
+            return self._locate(path) is not None
+        except subprocess.CalledProcessError:
+            return False
 
     def finding(
         self, rule: str, path: Path, offset: int, msg: str, fixable: bool = False
@@ -148,6 +282,8 @@ class Bundle:
 
     def writable(self, path: Path) -> bool:
         """Allow writes only within this repository, refusing dirty shared ledgers."""
+        if self.revision is not None:
+            return False
         if path.is_symlink() and not path.resolve().is_relative_to(self.root.resolve()):
             return False
         if not path.resolve().is_relative_to(self.repo.resolve()):
@@ -268,8 +404,8 @@ def links(bundle: Bundle, fix: bool) -> list[Finding]:
                     else path.parent / value
                 )
             )
-            if foreign or repo_link or not resolved.exists():
-                repair = (foreign or repo_link) and resolved.exists()
+            if foreign or repo_link or not bundle.exists(resolved):
+                repair = (foreign or repo_link) and bundle.exists(resolved)
                 findings.append(
                     bundle.finding(
                         "LINK",
@@ -404,7 +540,15 @@ def ki(bundle: Bundle, fix: bool) -> list[Finding]:
             date_match[0]
             if date_match
             else _git(
-                bundle.repo, "log", "--follow", "--format=%cs", "-1", "-S" + title, "--", str(path)
+                bundle.repo,
+                "log",
+                "--follow",
+                "--format=%cs",
+                "-1",
+                "-S" + title,
+                bundle.revision or "HEAD",
+                "--",
+                str(path),
             ).strip()
         )
         if not entry_date:
@@ -735,9 +879,9 @@ RULES: dict[str, Callable[[Bundle, bool], list[Finding]]] = {
 }
 
 
-def scan(root: Path) -> list[Finding]:
+def scan(root: Path, revision: str | None = None) -> list[Finding]:
     """Return all findings without modifying the bundle."""
-    bundle = Bundle(Path(root))
+    bundle = Bundle(Path(root), revision=revision)
     return [finding for rule in RULES.values() for finding in rule(bundle, False)]
 
 
@@ -748,18 +892,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--only", help="comma-separated rule names")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--fix", action="store_true")
+    parser.add_argument("--revision", help="read committed Markdown from this Git revision")
     args = parser.parse_args(argv)
+    if args.fix and args.revision:
+        parser.error("--revision is read-only and cannot be combined with --fix")
     selected = args.only.upper().split(",") if args.only else list(RULES)
     if any(name not in RULES for name in selected):
         parser.error("unknown rule; choose " + ",".join(RULES))
     if not args.root.is_dir():
         parser.error("bundle root must be an existing directory")
     try:
-        bundle = Bundle(args.root)
+        bundle = Bundle(args.root, revision=args.revision)
         if args.fix:
             for name in selected:
                 RULES[name](bundle, True)
-            bundle = Bundle(args.root)
+            bundle = Bundle(args.root, revision=args.revision)
         findings = [finding for name in selected for finding in RULES[name](bundle, False)]
     except Exception as error:
         print(f"okf_lint: {error}", file=sys.stderr)

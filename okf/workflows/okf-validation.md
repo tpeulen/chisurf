@@ -12,9 +12,9 @@ tags: [okf, validation]
 1. Open: W0b owns every existing finding in `test/okf_bundle_baseline.json`.
    Remove the defect and its exact record together; W0b is complete only when
    the validator reports zero findings and the baseline is empty.
-2. Measure: run the commands below against the shared working tree. The agent
-   board is a symlink into the companion repository, whose changes affect the
-   guard immediately. Coordinate board edits with its owner.
+2. Measure: run the commands below. The lint command inspects the working tree;
+   the production guard reads committed source and the companion board HEAD.
+   Coordinate board commits with its owner; a missing provider fails explicitly.
 3. Blocked: aggregate release acceptance remains open while baseline debt exists.
    A passing incremental guard proves only that no new or stale findings exist.
 
@@ -22,6 +22,7 @@ tags: [okf, validation]
 
 ```sh
 pixi run -e test python -m build_tools.okf.okf_lint --root okf --json
+pixi run -e test python -m build_tools.okf.okf_lint --root okf --revision HEAD --json
 pixi run -e test python -m build_tools.okf.baseline
 pixi run -e test python -m pytest test/test_okf_bundle.py test/test_okf_baseline.py -q
 pixi run -e docs docs-check-frontmatter
@@ -38,6 +39,13 @@ repository-root paths are diagnosed rather than silently reinterpreted.
 Run fixes only on explicitly owned content. The validator reads a symlinked board
 but refuses to mutate its external target; repair and commit it in its owning
 repository. W0a does not run broad fixes against the live bundle.
+
+The production guard reads one committed snapshot for both findings and source
+context; link targets resolve in that Git tree, including pinned module trees.
+The shared board is read from its owning repository HEAD, whose hash is reported.
+A missing provider fails explicitly. `--revision` is read-only and cannot be used
+with `--fix`. Dirty and untracked content remains visible to normal working-tree
+lint and cannot leak into the committed baseline.
 
 The baseline records rule, path, message, source line, owner and acceptance for
 **each** existing finding. Comparison uses exact source context and occurrence
@@ -61,11 +69,13 @@ keeps the docs release gate open and is not a validator implementation failure.
 
 ## Initial W0a verification
 
-The frozen initial baseline contains 2,513 findings: FM232, LINK89, WIKI11,
-PRD26, KI220, BOARD166, LOG92, NAMES962 and PICKUP715. All 42 targeted cases
-pass, including the exact production comparison; scoped lint, format and typing
-pass. Fix regression coverage includes typed YAML preservation, encoded filenames,
-log content conservation and one-time board moves. Resume inspection stops at
-the next heading, so later design sections are not misclassified as pickup work.
+The corrected committed-source baseline contains 2,420 findings: FM222, LINK41,
+WIKI11, PRD26, KI217, BOARD126, LOG117, NAMES958 and PICKUP702. The first live-tree
+snapshot was unsuitable for publication because it included foreign untracked
+and modified pages; it has been replaced, not retained as extra allowances.
+Fixture coverage proves dirty/untracked isolation, detection of new committed
+debt, provider failure, typed YAML preservation, encoded filenames, log content
+conservation and one-time board moves. Resume inspection stops at the next
+heading, so later design sections are not misclassified as pickup work.
 [Acceptance](../validation/release-readiness-w0a/acceptance.json) binds the single
 [source archive](../validation/release-readiness-w0a/source-evidence.zip) to file hashes.

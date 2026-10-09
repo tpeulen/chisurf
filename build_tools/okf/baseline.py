@@ -8,19 +8,17 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from build_tools.okf.okf_lint import Finding, scan
+from build_tools.okf.okf_lint import RULES, Bundle, Finding
 
 
-def records(root: Path, findings: list[Finding]) -> list[dict[str, Any]]:
+def records(bundle: Bundle, findings: list[Finding]) -> list[dict[str, Any]]:
     """Attach exact source context and accountable cleanup ownership to findings."""
     contents: dict[str, list[str]] = {}
     result = []
     for finding in findings:
         if finding.path not in contents:
-            path = root / finding.path
-            contents[finding.path] = (
-                path.read_text(encoding="utf-8").splitlines() if path.is_file() else []
-            )
+            path = bundle.root / finding.path
+            contents[finding.path] = bundle.pages[path].splitlines()
         lines = contents[finding.path]
         source = lines[finding.line - 1] if 0 < finding.line <= len(lines) else ""
         result.append(
@@ -35,6 +33,13 @@ def records(root: Path, findings: list[Finding]) -> list[dict[str, Any]]:
             }
         )
     return result
+
+
+def collect(root: Path) -> tuple[list[dict[str, Any]], dict[str, str]]:
+    """Freeze committed source once for both findings and their exact context."""
+    bundle = Bundle(root, revision="HEAD")
+    findings = [finding for rule in RULES.values() for finding in rule(bundle, False)]
+    return records(bundle, findings), bundle.providers
 
 
 def identity(record: dict[str, Any]) -> str:
@@ -61,14 +66,24 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--baseline", type=Path, default=Path("test/okf_bundle_baseline.json"))
     args = parser.parse_args(argv)
     expected = json.loads(args.baseline.read_text(encoding="utf-8"))
-    if expected.get("version") != 1 or any(
-        record.get("owner") != "W0b" or not record.get("acceptance")
-        for record in expected["findings"]
+    if (
+        expected.get("version") != 2
+        or expected.get("source") != "HEAD"
+        or any(
+            record.get("owner") != "W0b" or not record.get("acceptance")
+            for record in expected["findings"]
+        )
     ):
         raise ValueError("Every baseline finding must have W0b ownership and an acceptance check")
-    current = records(args.root, scan(args.root))
+    current, providers = collect(args.root)
     delta = compare(current, expected["findings"])
-    print(json.dumps({"findings": len(current), **delta}, ensure_ascii=False, indent=2))
+    print(
+        json.dumps(
+            {"findings": len(current), "providers": providers, **delta},
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
     return int(any(delta.values()))
 
 

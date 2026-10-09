@@ -493,3 +493,88 @@ def test_pickup_stops_at_next_heading_even_when_subordinate(bundle: Path) -> Non
         ),
     )
     assert not findings(bundle, "PICKUP")
+
+
+def test_revision_scan_uses_committed_text_and_excludes_untracked_pages(bundle: Path) -> None:
+    """Publication checks ignore pending edits and files absent from the revision."""
+    path = write(bundle, "references/committed.md", page("# Committed\n"))
+    commit_fixture(bundle, path)
+    path.write_text("# Dirty metadata-free replacement\n")
+    write(bundle, "references/untracked.md", "# Untracked metadata-free page\n")
+    assert len(findings(bundle, "FM")) == 2
+    assert not [item for item in okf_lint.scan(bundle, revision="HEAD") if item.rule == "FM"]
+
+
+def test_revision_links_cannot_resolve_against_untracked_worktree_targets(bundle: Path) -> None:
+    """A locally available target is still missing from a published snapshot."""
+    source = write(bundle, "references/source.md", page("# Source\n\n[Target](target.md)\n"))
+    commit_fixture(bundle, source)
+    write(bundle, "references/target.md", page("# Pending target\n"))
+    assert not findings(bundle, "LINK")
+    missing = [item for item in okf_lint.scan(bundle, revision="HEAD") if item.rule == "LINK"]
+    assert len(missing) == 1
+    assert missing[0].path == "references/source.md"
+
+
+def test_revision_board_reads_companion_commit_not_dirty_worktree(
+    bundle: Path, tmp_path: Path
+) -> None:
+    """Linked board validation uses its owner's published state in revision mode."""
+    companion = tmp_path / "companion"
+    subprocess.run(["git", "init", "-q", str(companion)], check=True)
+    companion_bundle = companion / "okf"
+    board = write(
+        companion_bundle,
+        "agent-board.md",
+        "# Board\n\n## Open\n\n- **T-1** ✅ Done\n\n## Resolved\n",
+    )
+    commit_fixture(companion_bundle, board)
+    link = bundle / "agent-board.md"
+    link.symlink_to(board)
+    commit_fixture(bundle, link)
+    board.write_text("# Board\n\n## Open\n\n## Resolved\n\n- **T-1** ✅ Done\n")
+    assert not findings(bundle, "BOARD")
+    committed = [item for item in okf_lint.scan(bundle, revision="HEAD") if item.rule == "BOARD"]
+    assert committed
+    assert all(item.path == "agent-board.md" for item in committed)
+
+
+def test_revision_fix_is_rejected_without_worktree_mutation(bundle: Path) -> None:
+    """A historical validation mode must never write to current source files."""
+    path = write(bundle, "references/missing.md", "# Missing metadata\n")
+    commit_fixture(bundle, path)
+    path.write_text("# User's pending replacement\n")
+    before = path.read_bytes()
+    try:
+        result = okf_lint.main(["--root", str(bundle), "--revision", "HEAD", "--fix"])
+    except SystemExit as error:
+        result = error.code
+    assert result == 2
+    assert path.read_bytes() == before
+
+
+def test_committed_baseline_detects_new_defect_only_after_commit(bundle: Path) -> None:
+    """The publication guard rejects new committed debt without claiming dirty work."""
+    from build_tools.okf import baseline
+
+    path = write(bundle, "references/published.md", page("# Published\n"))
+    commit_fixture(bundle, path)
+    expected, _ = baseline.collect(bundle)
+    path.write_text(page("# Published\n\n[[new unsupported wiki link]]\n"))
+    dirty, _ = baseline.collect(bundle)
+    assert baseline.compare(dirty, expected) == {"new": [], "stale": []}
+    commit_fixture(bundle, path)
+    published, _ = baseline.collect(bundle)
+    difference = baseline.compare(published, expected)
+    assert len(difference["new"]) == 1
+    assert '"WIKI"' in difference["new"][0]
+    assert not difference["stale"]
+
+
+def test_revision_missing_companion_is_explicit_failure(bundle: Path, tmp_path: Path) -> None:
+    """A missing linked provider must never silently produce a clean snapshot."""
+    link = bundle / "agent-board.md"
+    link.symlink_to(tmp_path / "unavailable-companion" / "okf" / "agent-board.md")
+    commit_fixture(bundle, link)
+    with pytest.raises(ValueError):
+        okf_lint.scan(bundle, revision="HEAD")
