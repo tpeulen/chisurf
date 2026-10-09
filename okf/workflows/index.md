@@ -1,5 +1,7 @@
 # Workflows
 
+* [Knowledge bundle validation](okf-validation.md) — Exact findings, safe fixes and shrinking debt ownership.
+
 * [PRD154 completion prompt](prd-154-execution.md) — Family-sized batches, explicit workstream handoffs and proportionate release verification.
 
 * [Change Tracking](change-tracking.md) - The mandatory loop for every material change: update the matching OKF concept + burn-down, append to the log, mark done, and commit (locally). Keeps changes traceable.

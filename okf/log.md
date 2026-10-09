@@ -1,5 +1,9 @@
 # Update Log
 
+## 2026-10-09
+
+- W0a adds nine-rule knowledge validation, safe fixture-proven repairs and an exact shrinking debt guard. W0b retains all enumerated debt and four docs-header failures; W6g handoff is next. [Contract](workflows/okf-validation.md).
+
 ## 2026-10-08
 
 - **2026-10-09 · Frozen section-help batch completed; user-requested pause:** owning emtk e73a68973 makes existing caption/table help reachable while preserving specific tips and geometry. Actual test/arm64 hashes and21 exact lock references match; source68 evidence reused, installed22 and affected schema/i18n697 pass. Authorized A0/execution prompt/index commit with owned pin/OKF/one archive, preserving foreign edits. Handoff records exact W0a/W6g/family/W6f/W7/PartD criteria; no next batch started. [Current job](validation/release-readiness-w6g/current-job.md).

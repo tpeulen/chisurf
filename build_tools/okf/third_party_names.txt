@@ -1,0 +1,11 @@
+# External software names: describe their role in ordinary concepts instead.
+PyMOL
+ChimeraX
+VMD
+Orange3
+MATLAB
+LabVIEW
+SymPhoTime
+Origin
+Igor
+Margarita
