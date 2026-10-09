@@ -346,6 +346,13 @@ value wins. Adding an exponential costs 4 in AIC and $2\ln N$ in BIC (16 at
 (concept-tcspc-synthetic-decays)=
 ## Synthetic decays
 
+The generator’s window size and dock layout are presentation settings. Its
+channel width, lifetime/rotation spectra, instrument response and noise settings
+determine the curve; resizing does not change those physical inputs. A file
+containing time/count columns supplies its last count column, so its sample
+spacing still must match the requested channel width. The native workflow is in
+{doc}`/guides/76_decay_analysis_tools`.
+
 A decay generated from known parameters is the only data on which a fitted
 lifetime can be called right or wrong. ChiSurf builds one as the measurement
 does: the ideal decay on the channel grid, convolved with a normalized IRF, then

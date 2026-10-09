@@ -252,6 +252,21 @@ drop yourself.
 
 ## Synthetic Decay Generator
 
+The standalone native generator declares **1100 × 720** pixels on first use.
+Generate in **VM** or **VV/VH** mode, and scroll the settings dock to reach the
+final spectrum controls on a small host. Saved geometry takes precedence over
+the declaration. The existing settings restore the input configuration; use
+**Generate** to rebuild the result rather than treating stored preferences as
+saved measured data. There is no separate FRET mode in this native window.
+
+```{figure} figures/synthetic_decay_native_window.png
+:name: fig-synthetic-decay-native-window
+:width: 100%
+
+The native generator with its lifetime/rotation settings and generated curves.
+The Mode options remain readable in small hosts through a vertical radio list.
+```
+
 ```{figure} figures/synthetic_decay_vm.png
 :name: fig-synthetic-decay-vm
 :width: 70%
@@ -273,10 +288,10 @@ where the IRF sits, delayed further by **Start**.
 
 *IRF & noise* — **IRF**: a text or `.npy` file with **one** count column,
 normalized to unit area and cropped or zero-padded to *Bins*; empty means no
-convolution. A two-column time/count file, such as the LLTF IRF, is not
-rejected but flattened into one interleaved vector: the LLTF example IRF read
-that way put the decay maximum at channel 1238 instead of 624. Strip the time
-column first (`awk '{print $2}'`, as in *Headless*). **Noise** on draws Poisson counts with
+convolution. For a multi-column file, including a time/count table, the generator
+reads counts from the last column. This selects the count vector; it does not
+rebin it onto another channel width. Supply an IRF sampled at the generator’s
+**Δt**, or rebin it explicitly before loading. **Noise** on draws Poisson counts with
 **Photons** as the expected total and **Seed** for the realization; off returns
 the exact decay normalized to unit sum.
 
@@ -291,9 +306,9 @@ $r(t) = \sum_i b_i e^{-t/\rho_i}$. The two channels follow the forward model of
 :width: 70%
 
 The same spectrum as a polarized pair, $g = 1.1$, one rotation of 2 ns with
-$r_0 = 0.38$. VV starts above VH and the two converge as $r(t)$ decays. The
-*Generate / Save / Fit group* row under the rotation table is a duplicate of the
-toolbar that appears after switching mode (see *Known defects*).
+$r_0 = 0.38$. VV starts above VH and the two converge as $r(t)$ decays. This
+older Qt capture contains a second action row; the native window keeps one
+**Generate / Save / Fit group** toolbar in both modes.
 ```
 
 *Actions* (toolbar) — **🧪 Generate** computes and plots; the status line
@@ -429,12 +444,6 @@ default 4 ns component.
   called from Python without `fixed`: the degrees of freedom are set to 0
   (measured: `dof` 0, `reduced_chi_square` 31671). The CLI and GUI pass `fixed`
   and are unaffected.
-- **Synthetic Decay Generator:** a multi-column IRF file is flattened instead
-  of read as time/counts (`synthetic_decay/core/algorithms.py`, `_load_irf`),
-  which silently corrupts the IRF.
-- **Synthetic Decay Generator:** switching *Mode* rebuilds the form and brings
-  back a *Generate / Save / Fit group* row that duplicates the toolbar
-  ({numref}`fig-synthetic-decay-vvvh`).
 :::
 
 ## See also

@@ -1,5 +1,9 @@
 {
   "_comment": "Blind IRF estimation, drawn by emtk.view_form over the app's form adapter (gui/app.py _Form: the IRFViewModel's fields, the app's actions). The Qt tool's toolbar (Load Decay, Load from Dataset, Save IRF, Transfer to ChiSurf, data label, Guide, ?), its parameter group, the Estimate button and its status bar, in that order. The custom sections datasets and status are drawn by callbacks registered in app.py (FormState.custom); the plot and the results are their own dock windows.",
+  "window": {
+    "width": 1100,
+    "height": 720
+  },
   "sections": [
     {
       "type": "panel",

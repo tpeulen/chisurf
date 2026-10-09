@@ -20,7 +20,7 @@ from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
-from chisurf.plugins.emtk_layout import LabelColumn, labelled, layout_spec
+from chisurf.plugins.emtk_layout import LabelColumn, labelled, layout_spec, window_size
 from ..core.estimation import estimate_irf
 from .view_model import IRFViewModel
 
@@ -156,7 +156,9 @@ class IRFEstimatorApp(ImApp):
         self.error = ""
         self.item_rects = {}
         self.pointer_text = ""
-        self.spec = layout_spec(_spec())
+        spec = _spec()
+        self.window_size = window_size(spec, (1100, 720))
+        self.spec = layout_spec(spec)
         self.labels = LabelColumn()                       # one caption column for the parameter fields
         self.form_model = _Form(self)
         self.form = FormState(on_used=self._used)

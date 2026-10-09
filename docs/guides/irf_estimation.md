@@ -78,6 +78,28 @@ fitted offset comes back at 10 counts against a true 8.
 
 ### In the window
 
+```{figure} figures/irf_estimator_native_window.png
+:name: fig-irf-estimator-native-window
+:width: 100%
+
+The native estimator at its declared first-use size on the independent
+Gaussian/exponential reference. Peak recovery does not imply an unbiased
+lifetime: the displayed estimate is about 3.62 ns for a 4 ns input.
+```
+
+The standalone native estimator declares **1100 × 720** pixels on first use.
+Its parameter, plot and result docks remain available after resizing; scroll the
+parameters when the host is smaller than the declaration. Saved native
+preferences retain geometry and docks, while a reopened analysis starts empty:
+load the decay and estimate again. Check **Time/Channel (ns)** when the input has
+no time metadata; the fallback is 1 ns per channel, not a measured calibration.
+
+The estimated IRF peak and the fitted lifetime are distinct checks. In the
+known 4 ns exponential/Gaussian reference, the peak is near 5.11 ns but the blind
+fit returns about 3.62 ns. Inspect the reconvolved forward curve and residual
+agreement as well as the recovered peak; an estimated IRF alone does not prove
+that a measured decay fits the assumed exponential model.
+
 1. **📂 Load Decay** reads a VV/VH `.dat` file (the VV channel is used; dropping
    the file on the window does the same). **📊 Load from Dataset** lists the
    decay curves already open in ChiSurf. Loading sets **Manual Background** to

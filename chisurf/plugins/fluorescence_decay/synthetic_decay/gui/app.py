@@ -8,13 +8,15 @@ from pathlib import Path
 import numpy as np
 from emtk import im, implot
 from emtk.app import ImApp
+from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
-from emtk.dialog_window import DialogWindow
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.datasets import register_synthetic_fit
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.plugins.emtk_layout import window_size
+
 from .model import SyntheticDecayModel
 
 
@@ -29,6 +31,7 @@ class SyntheticDecayApp(ImApp):
         self.form = FormState()
         self.item_rects = {}
         spec = json.loads(Path(__file__).with_name("synthetic_decay.view.json").read_text())
+        self.window_size = window_size(spec, (1100, 720))
         self.spec = {"sections": [s for s in spec["sections"] if s["type"] not in ("plot", "info") and s["type"] != "button_row"]}
         def configure_panels(sections):
             for section in sections:
@@ -59,6 +62,8 @@ class SyntheticDecayApp(ImApp):
             if section.get("type") == "table" and section.get("update_call"):
                 section["source"] = {"spectrum_source": "spectrum_records", "rotation_source": "rotation_records"}[section["source"]]
                 section["edited_call"] = "edit_cell"
+            if section.get("attr") == "polarization":
+                section["style"] = "radio_list"
             if section.get("attr") == "photon_count":
                 section["decimals"] = 0  # a count: the default float format would draw 1e+06
             SyntheticDecayApp._bind_tables(section.get("sections", []))
