@@ -128,6 +128,7 @@ eigen = "*"
 libboost-headers = "*"
 cereal = "*"
 llvm-openmp = ">=22.1.3,<23"
+rmf = ">=1.7.0,<2"
 
 # PyPI-only runtime deps (no conda package exists). latexify-py backs the LaTeX
 # expression renderer in chisurf/gui/widgets/models/parse/latex.py. This block is
