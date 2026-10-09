@@ -15,7 +15,11 @@ class SyntheticDecayViewModel(SyntheticDecayModel):
             return self.choose_file(mode, title, filename, filters)
         from qtpy import QtWidgets
 
-        chooser = QtWidgets.QFileDialog.getOpenFileName if mode == "open" else QtWidgets.QFileDialog.getSaveFileName
+        chooser = (
+            QtWidgets.QFileDialog.getOpenFileName
+            if mode == "open"
+            else QtWidgets.QFileDialog.getSaveFileName
+        )
         return chooser(None, title, filename, filters)[0]
 
     @staticmethod
@@ -26,4 +30,7 @@ class SyntheticDecayViewModel(SyntheticDecayModel):
 
         model_name = for_family("tcspc_polarized" if polarized else "tcspc_lifetime").name
         core_data.add_dataset(experiment_reader=None, dataset=group, _from_controller=True)
-        cs.core.actions.dispatch(name="fit.add", payload={"dataset_indices": [len(cs.imported_datasets) - 1], "model_name": model_name})
+        cs.core.actions.dispatch(
+            name="fit.add",
+            payload={"dataset_indices": [len(cs.imported_datasets) - 1], "model_name": model_name},
+        )

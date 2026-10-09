@@ -15,11 +15,41 @@ from chisurf.plugins.calculator.hub.gui.app import CalculatorHubApp
 
 #: (plugin id, list label, icon (empty: the plugin's own manifest icon), description, tour alias)
 PANELS = [
-    ("irf_estimator", "1. IRF Estimation", "", "Estimate instrument response functions from fluorescence decays.", "IRF Estimation"),
-    ("maxent_decay", "2. MaxEnt MEM", "", "Run maximum entropy lifetime and FRET-distance analysis.", "MaxEnt MEM"),
-    ("lltf", "3. Lazy Lifetime Analysis", "", "Analyze TCSPC decays with the LLTF workflow.", "Lazy Lifetime"),
-    ("microtime_histogram", "4. Histogram-Microtime", "", "Build TTTR microtime histograms.", "Histogram-Microtime"),
-    ("vv_vh_g_factor", "5. VV/VH G-Factor", "", "Calculate detector G-factors from VV/VH decays.", "G-Factor"),
+    (
+        "irf_estimator",
+        "1. IRF Estimation",
+        "",
+        "Estimate instrument response functions from fluorescence decays.",
+        "IRF Estimation",
+    ),
+    (
+        "maxent_decay",
+        "2. MaxEnt MEM",
+        "",
+        "Run maximum entropy lifetime and FRET-distance analysis.",
+        "MaxEnt MEM",
+    ),
+    (
+        "lltf",
+        "3. Lazy Lifetime Analysis",
+        "",
+        "Analyze TCSPC decays with the LLTF workflow.",
+        "Lazy Lifetime",
+    ),
+    (
+        "microtime_histogram",
+        "4. Histogram-Microtime",
+        "",
+        "Build TTTR microtime histograms.",
+        "Histogram-Microtime",
+    ),
+    (
+        "vv_vh_g_factor",
+        "5. VV/VH G-Factor",
+        "",
+        "Calculate detector G-factors from VV/VH decays.",
+        "G-Factor",
+    ),
     (
         "vv_vh_anisotropy",
         "6. VV/VH Anisotropy",
@@ -58,7 +88,9 @@ class LifetimeAnalysisApp(CalculatorHubApp):
         self.metadata = manifests()
         self.status = "Ready"
         self.help_window = EmTkHelpWindow(
-            title="Lifetime Analysis: Help", resource=Path(__file__).with_name("help.md"), owner=self
+            title="Lifetime Analysis: Help",
+            resource=Path(__file__).with_name("help.md"),
+            owner=self,
         )
         self.tour = EmTkGuidedTour(
             steps=Path(__file__).with_name("guide.json"),
@@ -76,7 +108,9 @@ class LifetimeAnalysisApp(CalculatorHubApp):
         self.error = ""
         if id not in self.children:
             try:
-                child = load_plugin(id, locale=get_locale(), persist=getattr(self, "_native_state_bound", False))
+                child = load_plugin(
+                    id, locale=get_locale(), persist=getattr(self, "_native_state_bound", False)
+                )
                 setter = getattr(child, "set_frame_request_callback", None)
                 if callable(setter):
                     setter(self.request_frame)
@@ -133,7 +167,10 @@ class LifetimeAnalysisApp(CalculatorHubApp):
                 mark = " *" if self.experimental_message(entry.id) else ""
                 if im.selectable(entry.label + mark, selected=self.selected == entry.id, icon=entry.icon):
                     self.select(entry.id)
-                im.set_item_tooltip(entry.description + (" (marked * : experimental, see the banner)" if mark else ""))
+                im.set_item_tooltip(
+                    entry.description
+                    + (" (marked * : experimental, see the banner)" if mark else "")
+                )
                 rect = im.get_item_rect()
                 self.item_rects[entry.alias] = rect
                 first, last = first or rect, rect
@@ -146,14 +183,18 @@ class LifetimeAnalysisApp(CalculatorHubApp):
             if im.button("Back"):
                 self.step(-1)
             im.end_disabled()
-            im.set_item_tooltip("Go to the previous tool in the order the analyses depend on each other.")
+            im.set_item_tooltip(
+                "Go to the previous tool in the order the analyses depend on each other."
+            )
             self.item_rects["back"] = im.get_item_rect()
             im.same_line()
             im.begin_disabled(at == len(ids) - 1)
             if im.button("Next"):
                 self.step(1)
             im.end_disabled()
-            im.set_item_tooltip("Go to the next tool in the order the analyses depend on each other.")
+            im.set_item_tooltip(
+                "Go to the next tool in the order the analyses depend on each other."
+            )
             self.item_rects["next"] = im.get_item_rect()
             if im.button("Help"):
                 self.help_window.show()
@@ -170,11 +211,21 @@ class LifetimeAnalysisApp(CalculatorHubApp):
         entry = next((e for e in self.entries if e.id == self.selected), None)
         wrap = max(width - left - 16.0, 50.0)
         warning = self.experimental_message(entry.id) if entry else ""
-        shown = [entry.label if entry else "", entry.description if entry else "Select a tool on the left.", warning, self.error]
-        header_h = max(60.0, 12.0 + sum(im.calc_text_size(t, wrap_width=wrap)[1] + 4.0 for t in shown if t))
+        shown = [
+            entry.label if entry else "",
+            entry.description if entry else "Select a tool on the left.",
+            warning,
+            self.error,
+        ]
+        header_h = max(
+            60.0, 12.0 + sum(im.calc_text_size(t, wrap_width=wrap)[1] + 4.0 for t in shown if t)
+        )
         im.set_next_window_pos((left, 0), im.Cond.ALWAYS)
         im.set_next_window_size((width - left, header_h), im.Cond.ALWAYS)
-        if im.begin("Lifetime tool description", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE):
+        if im.begin(
+            "Lifetime tool description",
+            flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE,
+        ):
             if entry:
                 im.text_unformatted(entry.label)
                 im.text_wrapped(entry.description)

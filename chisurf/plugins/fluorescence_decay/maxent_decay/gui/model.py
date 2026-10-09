@@ -231,10 +231,10 @@ class MEMModel:
         # what the Qt tool's Refresh did next: the smallest lifetime follows the IRF width, the period the time window
         fwhm = self.irf_fwhm()
         if fwhm:
-            self.settings.tau_min = round(fwhm, 3)       # the Qt spin box shows three decimals
+            self.settings.tau_min = round(fwhm, 3)  # the Qt spin box shows three decimals
         span = float(self.time[-1] - self.time[0])
         if span > 0:
-            self.settings.period = round(span, 2)         # and two for the period
+            self.settings.period = round(span, 2)  # and two for the period
 
     def irf_fwhm(self):
         """Half the width at half maximum of the IRF on the decay axis (the Qt tool's estimate), or None."""

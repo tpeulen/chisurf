@@ -26,8 +26,11 @@ REAL_CHISURF = Path(pwd.getpwuid(os.getuid()).pw_dir) / ".chisurf"
 def snapshot_real():
     if not REAL_CHISURF.is_dir():
         return {}
-    return {str(p): p.stat().st_mtime_ns for p in REAL_CHISURF.rglob("*")
-            if p.is_file() and not {"cache", "logs"} & set(p.parts)}
+    return {
+        str(p): p.stat().st_mtime_ns
+        for p in REAL_CHISURF.rglob("*")
+        if p.is_file() and not {"cache", "logs"} & set(p.parts)
+    }
 
 
 REAL_BEFORE = snapshot_real()
@@ -117,7 +120,7 @@ def test_back_and_next_walk_the_tools_and_grey_out_at_the_ends(ui):
 
 def test_up_and_down_keys_step_the_selection_when_the_tool_takes_no_keys(ui):
     ui.click_name("Lazy Lifetime")
-    ui.app.pointer_move(5, 700)                        # off every field
+    ui.app.pointer_move(5, 700)  # off every field
     ui.app.key(keys.KEY_DOWN, "")
     ui.draw(2)
     assert ui.app.selected == "microtime_histogram"
@@ -156,7 +159,13 @@ def test_a_search_without_match_says_so_and_keeps_the_selected_tool(ui):
 def test_the_search_matches_descriptions_too(ui):
     ui.click(ui.rect("search"))
     ui.type("g-factor")
-    labels = [t[5] for t in ui.draw().texts if t[5][:2] in ("1.", "2.", "3.", "4.", "5.") and t[0] < ui.app.child_box[0] and ": ready" not in t[5]]
+    labels = [
+        t[5]
+        for t in ui.draw().texts
+        if t[5][:2] in ("1.", "2.", "3.", "4.", "5.")
+        and t[0] < ui.app.child_box[0]
+        and ": ready" not in t[5]
+    ]
     assert labels == ["5. VV/VH G-Factor"]
 
 
@@ -255,12 +264,14 @@ def test_the_tour_waits_for_each_real_selection(ui):
         if tour.awaiting:
             waited += 1
             ui.click_text("Next ►")
-            assert tour.awaiting                       # refused until the real control is used
+            assert tour.awaiting  # refused until the real control is used
             key = tour._target_key(step.get("target"))
             assert key in ui.app.item_rects
             ui.click_name(key)
             assert not tour.awaiting
-        ui.click_text("Next ►") if tour.step_idx < len(tour.steps) - 1 else ui.click_text("Close Tour")
+        ui.click_text("Next ►") if tour.step_idx < len(tour.steps) - 1 else ui.click_text(
+            "Close Tour"
+        )
     assert waited >= 3 and not tour.active
 
 
@@ -279,11 +290,14 @@ def test_settings_round_trip_keeps_the_selection_and_the_tools_own_settings(ui):
     ui.click_name("MaxEnt MEM")
     ui.app.child.model.settings.tau_max = 9.0
     saved = json.loads(json.dumps(ui.app.export_settings()))
-    assert saved["selected"] == "maxent_decay" and saved["children"]["maxent_decay"]["settings"]["tau_max"] == 9.0
+    assert (
+        saved["selected"] == "maxent_decay"
+        and saved["children"]["maxent_decay"]["settings"]["tau_max"] == 9.0
+    )
     other = make_app()
     other.restore_settings(saved)
     assert other.selected == "maxent_decay"
-    child = other.select("maxent_decay")                 # built later: the pending settings apply on first use
+    child = other.select("maxent_decay")  # built later: the pending settings apply on first use
     assert child.model.settings.tau_max == 9.0
     other.restore_settings({"selected": "nonsense", "children": {"nonsense": {}, "lltf": "junk"}})
     assert other.selected == "maxent_decay"
@@ -321,8 +335,12 @@ def test_every_hub_control_has_a_tooltip(ui):
     from test.gui.emtk_port_parity import emtk_inventory
 
     inventory = emtk_inventory(ui.app, SIZE)
-    hub = [r for r in inventory["interactive"] if r["id"] in ("##search_tools", "Back", "Next", "Help", "Guide")
-           or r["label"].startswith(("1.", "2.", "3.", "4.", "5."))]
+    hub = [
+        r
+        for r in inventory["interactive"]
+        if r["id"] in ("##search_tools", "Back", "Next", "Help", "Guide")
+        or r["label"].startswith(("1.", "2.", "3.", "4.", "5."))
+    ]
     assert hub and all(r.get("tooltip") for r in hub), [r for r in hub if not r.get("tooltip")]
 
 

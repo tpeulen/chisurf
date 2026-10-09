@@ -15,9 +15,18 @@ import pytest
 REPO = next(p for p in Path(__file__).parents if (p / "pyproject.toml").exists())
 sys.path.insert(0, str(REPO))
 # isort: off
-from test.gui.emtk_layout_checks import SIZES, assert_aligned, assert_disjoint, assert_icons_clear, assert_texts_apart  # noqa: E402
+from test.gui.emtk_layout_checks import (
+    SIZES,
+    assert_aligned,
+    assert_disjoint,
+    assert_icons_clear,
+    assert_texts_apart,
+)  # noqa: E402
 from chisurf.plugins.fluorescence_decay.irf_estimator.test.test_emtk_irf_estimator_clicks import (  # noqa: E402
-    DECAY, IRFEstimatorApp, Ui, hermetic,
+    DECAY,
+    IRFEstimatorApp,
+    Ui,
+    hermetic,
 )  # noqa: F401
 # isort: on
 
@@ -45,13 +54,31 @@ def dock_right(ui):
     return 0.32 * ui.size[0] + 2
 
 
-FIELDS = ["dt", "window_length", "polyorder", "rl_iterations", "regularization", "manual_background", "first_channel",
-          "last_channel"]
+FIELDS = [
+    "dt",
+    "window_length",
+    "polyorder",
+    "rl_iterations",
+    "regularization",
+    "manual_background",
+    "first_channel",
+    "last_channel",
+]
 
 
 def test_every_control_lies_inside_the_parameters_dock_and_the_window(ui):
-    for name in ["request_load", "request_dataset", "request_save", "request_transfer", "request_guide",
-                 "request_help", "request_estimate", "use_range_selection", "auto_update_enabled", *FIELDS]:
+    for name in [
+        "request_load",
+        "request_dataset",
+        "request_save",
+        "request_transfer",
+        "request_guide",
+        "request_help",
+        "request_estimate",
+        "use_range_selection",
+        "auto_update_enabled",
+        *FIELDS,
+    ]:
         x, y, w, h = ui.app.item_rects[name]
         assert x >= 0 and x + w <= dock_right(ui), (name, ui.app.item_rects[name])
         assert y + h <= ui.size[1], (name, "below the window")
@@ -64,8 +91,13 @@ def test_parameter_fields_start_in_one_caption_column_and_are_short(ui):
 
 
 def test_toolbar_buttons_do_not_overlap_and_the_estimate_button_is_in_view(ui):
-    assert_disjoint(ui.app.item_rects, ["request_load", "request_dataset", "request_save", "request_transfer"])
-    assert ui.app.item_rects["request_estimate"][1] + ui.app.item_rects["request_estimate"][3] <= ui.size[1]
+    assert_disjoint(
+        ui.app.item_rects, ["request_load", "request_dataset", "request_save", "request_transfer"]
+    )
+    assert (
+        ui.app.item_rects["request_estimate"][1] + ui.app.item_rects["request_estimate"][3]
+        <= ui.size[1]
+    )
 
 
 def unrotated(painter):
@@ -87,7 +119,12 @@ def test_the_plot_gets_the_space_has_axes_and_the_results_are_complete(ui):
     x, y, w, h = ui.app.item_rects["plot"]
     assert w >= 0.6 * ui.size[0] - 30 and h >= 0.55 * ui.size[1]
     shown = ui.last.strings
-    for text in ("Time (ns)", "Intensity (counts/channel)", "Measured Decay", "Estimated IRF (scaled)"):
+    for text in (
+        "Time (ns)",
+        "Intensity (counts/channel)",
+        "Measured Decay",
+        "Estimated IRF (scaled)",
+    ):
         assert text in shown, text
     for label in ("Lifetime (τ):", "Decay Rate (k):", "Amplitude (A):", "Offset (C):"):
         assert label in shown, label

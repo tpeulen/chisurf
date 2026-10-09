@@ -89,8 +89,12 @@ class AnisotropyViewModel:
             self._load_corrections()
         # spectra (lists of [amplitude, value] pairs)
         self.spk_path = ""
-        self.lifetime_spectrum: list[list[float]] = [list(row) for row in core_spectra.DEFAULT_SPECTRA["lifetime_spectrum"]]
-        self.rotation_spectrum: list[list[float]] = [list(row) for row in core_spectra.DEFAULT_SPECTRA["rotation_spectrum"]]
+        self.lifetime_spectrum: list[list[float]] = [
+            list(row) for row in core_spectra.DEFAULT_SPECTRA["lifetime_spectrum"]
+        ]
+        self.rotation_spectrum: list[list[float]] = [
+            list(row) for row in core_spectra.DEFAULT_SPECTRA["rotation_spectrum"]
+        ]
         if self.persist_preferences:
             self._load_default_spectra()
         self._status_html = ""

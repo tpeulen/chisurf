@@ -25,7 +25,9 @@ from emtk.testing import PixelPainter, RecordingPainter
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 EXAMPLE = HERE.parent / "example"
-DECAY, IRF, CONFIG = (str((EXAMPLE / n).resolve()) for n in ("5-44_D0.dat", "IRF_D0.dat", "config.yml"))
+DECAY, IRF, CONFIG = (
+    str((EXAMPLE / n).resolve()) for n in ("5-44_D0.dat", "IRF_D0.dat", "config.yml")
+)
 SPEC = json.loads((HERE.parent / "gui" / "lltf.view.json").read_text())
 
 from chisurf.plugins.fluorescence_decay.lltf.gui.app import LLTFApp  # noqa: E402
@@ -103,7 +105,7 @@ def qt(tmp_path_factory):
 def _without_config(cmd):
     cmd = list(cmd)
     i = cmd.index("-c")
-    return cmd[:i] + cmd[i + 2:], cmd[i + 1]
+    return cmd[:i] + cmd[i + 2 :], cmd[i + 1]
 
 
 # 1. the same command as the Qt wizard, fixed count and search; the subprocess never shows figures
@@ -114,10 +116,17 @@ def test_the_fit_command_is_the_qt_wizards(qt):
     model.n_lifetimes, model.verbose = 2, False
     ours, config = _without_config(model.build_command("EDITED.yml"))
     theirs, qt_config = _without_config(fixed["cmd"])
-    assert ours[1:] == theirs[1:] and config == "EDITED.yml" and qt_config == CONFIG     # emtk runs the edited buffer
-    model.find_optimal, model.max_lifetimes, model.prob_threshold, model.verbose = True, 3, 0.7, True
+    assert (
+        ours[1:] == theirs[1:] and config == "EDITED.yml" and qt_config == CONFIG
+    )  # emtk runs the edited buffer
+    model.find_optimal, model.max_lifetimes, model.prob_threshold, model.verbose = (
+        True,
+        3,
+        0.7,
+        True,
+    )
     assert _without_config(model.build_command("x"))[0][1:] == _without_config(search["cmd"])[0][1:]
-    assert fixed["mpl"] == search["mpl"] == "Agg"                     # the wizard's subprocess: no screen figures
+    assert fixed["mpl"] == search["mpl"] == "Agg"  # the wizard's subprocess: no screen figures
     assert qt["warned"] == [["Warning", "Please load decay and IRF data first."]]
 
 
@@ -136,15 +145,17 @@ def test_a_fixed_count_fit_returns_that_count_and_follows_the_data(fitted):
     app, out = fitted
     result = app.model.result
     assert app.model.status == "LLTF fit completed."
-    assert result["n_lifetimes"] == 2                                   # -n 2 beats the file's find_optimal: true
+    assert result["n_lifetimes"] == 2  # -n 2 beats the file's find_optimal: true
     assert "optimal_fitting" not in result
     taus = sorted(row["lifetime"] for row in result["lifetimes"])
     assert taus[1] == pytest.approx(3.90, abs=0.03) and 0.6 < taus[0] < 1.0
     assert sum(row["amplitude"] for row in result["lifetimes"]) == pytest.approx(1.0, abs=1e-6)
     assert 1.2 < result["reduced_chi_square"] < 1.6
     assert (out / "5-44_D0_fit.json").is_file() and (out / "5-44_D0_fit.png").is_file()
-    a = app.arrays                                                      # the plotted model is the data's
-    observed = np.genfromtxt(DECAY)[:, 1][result["time_range"]["start_idx"]:result["time_range"]["stop_idx"]]
+    a = app.arrays  # the plotted model is the data's
+    observed = np.genfromtxt(DECAY)[:, 1][
+        result["time_range"]["start_idx"] : result["time_range"]["stop_idx"]
+    ]
     assert len(a["fit"]) == len(observed) and abs(float(np.mean(a["residuals"]))) < 0.2
     assert np.std(a["residuals"]) == pytest.approx(np.sqrt(result["reduced_chi_square"]), rel=0.05)
 
@@ -153,24 +164,55 @@ def test_the_results_panel_is_the_spec_table(fitted, monkeypatch):
     app, _ = fitted
     app.pending_tab = "Results"
     drawn = _draw(app).strings
-    assert {"Component", "Amplitude", "Lifetime (ns)"} <= set(drawn)            # the spec's column headers
+    assert {"Component", "Amplitude", "Lifetime (ns)"} <= set(drawn)  # the spec's column headers
     strings = " ".join(drawn)
     rows = app.model.lifetime_rows()
-    for row, fitted_row in zip(rows, app.model.result["lifetimes"]):     # against the fit result, not itself
-        assert (row["lifetime"], row["amplitude"]) == (fitted_row["lifetime"], fitted_row["amplitude"])
-        assert f"{fitted_row['lifetime']:.3f}" in strings and f"{fitted_row['amplitude']:.3f}" in strings
+    for row, fitted_row in zip(
+        rows, app.model.result["lifetimes"]
+    ):  # against the fit result, not itself
+        assert (row["lifetime"], row["amplitude"]) == (
+            fitted_row["lifetime"],
+            fitted_row["amplitude"],
+        )
+        assert (
+            f"{fitted_row['lifetime']:.3f}" in strings
+            and f"{fitted_row['amplitude']:.3f}" in strings
+        )
     assert len(rows) == len(app.model.result["lifetimes"])
     assert f"Reduced chi-square: {app.model.result['reduced_chi_square']:.3f}" in strings
     assert "Number of lifetimes: 2" in strings
 
 
 def test_the_command_line_shows_no_figures_and_search_still_works(tmp_path):
-    env = {k: v for k, v in os.environ.items() if k != "MPLBACKEND"}      # no Agg: the old CLI waited on plt.show()
+    env = {
+        k: v for k, v in os.environ.items() if k != "MPLBACKEND"
+    }  # no Agg: the old CLI waited on plt.show()
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
     out = tmp_path / "search.json"
-    proc = subprocess.run([sys.executable, "-m", "chisurf.plugins.fluorescence_decay.lltf.core", "fit", DECAY, IRF,
-                           "-sp", str(tmp_path), "-o", str(out), "-c", CONFIG, "-f", "-m", "2"],
-                          capture_output=True, text=True, timeout=180, env=env, cwd=str(REPO))
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "chisurf.plugins.fluorescence_decay.lltf.core",
+            "fit",
+            DECAY,
+            IRF,
+            "-sp",
+            str(tmp_path),
+            "-o",
+            str(out),
+            "-c",
+            CONFIG,
+            "-f",
+            "-m",
+            "2",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=180,
+        env=env,
+        cwd=str(REPO),
+    )
     assert proc.returncode == 0, proc.stdout[-500:] + proc.stderr[-500:]
     result = json.loads(out.read_text())
     assert result["optimal_fitting"]["n_lifetimes_tried"] == [1, 2]
@@ -206,16 +248,26 @@ def test_fit_cannot_be_pressed_without_files():
         _draw(app, size, n=1, painter=PixelPainter)
         app.release()
         _draw(app, size, n=1, painter=PixelPainter)
-        assert app.model.status == before and app.model.process is None      # greyed, as the Qt Fit button was
+        assert (
+            app.model.status == before and app.model.process is None
+        )  # greyed, as the Qt Fit button was
     finally:
         app.close()
 
 
 def test_the_options_grey_as_the_qt_wizard_greys_them(qt):
     m = LLTFModel()
-    assert [m.enabled(n) for n in ("n_lifetimes", "max_lifetimes", "prob_threshold")] == [True, False, False]
+    assert [m.enabled(n) for n in ("n_lifetimes", "max_lifetimes", "prob_threshold")] == [
+        True,
+        False,
+        False,
+    ]
     m.find_optimal = True
-    assert [m.enabled(n) for n in ("n_lifetimes", "max_lifetimes", "prob_threshold")] == qt["greyed"] == [False, True, True]
+    assert (
+        [m.enabled(n) for n in ("n_lifetimes", "max_lifetimes", "prob_threshold")]
+        == qt["greyed"]
+        == [False, True, True]
+    )
 
 
 def test_drops_route_data_config_and_folder(tmp_path):
@@ -223,7 +275,12 @@ def test_drops_route_data_config_and_folder(tmp_path):
     try:
         app.on_paths_dropped([DECAY, IRF, CONFIG, str(tmp_path)])
         m = app.model
-        assert (m.decay_file, m.irf_file, m.config_file, m.output_dir) == (DECAY, IRF, CONFIG, str(tmp_path))
+        assert (m.decay_file, m.irf_file, m.config_file, m.output_dir) == (
+            DECAY,
+            IRF,
+            CONFIG,
+            str(tmp_path),
+        )
     finally:
         app.close()
 
@@ -235,7 +292,9 @@ def test_the_config_editor_opens_on_the_file_and_saves_the_buffer(tmp_path):
         assert app.config_open and "find_optimal: true" in app.model.config_text
         strings = _draw(app).strings
         assert "Save configuration" in strings and "Close editor" in strings
-        app.model.config_text = app.model.config_text.replace("find_optimal: true", "find_optimal: false")
+        app.model.config_text = app.model.config_text.replace(
+            "find_optimal: true", "find_optimal: false"
+        )
         app.model.config_dirty = True
         app.model.save_config(str(tmp_path / "edited.yml"))
         assert "find_optimal: false" in (tmp_path / "edited.yml").read_text()
@@ -268,7 +327,9 @@ def test_the_guide_points_at_real_controls_and_waits(tmp_path):
         _draw(app, size, painter=PixelPainter)
         steps = app.tour.steps
         keys = {app.tour._target_key(s.get("target")) for s in steps} - {""}
-        assert keys == {"Load...", "Edit...", "Find Optimal", "Fit", "Results"} and keys <= set(app.item_rects)
+        assert keys == {"Load...", "Edit...", "Find Optimal", "Fit", "Results"} and keys <= set(
+            app.item_rects
+        )
 
         def press(key):
             x, y, w, h = app.item_rects[key]
@@ -278,7 +339,9 @@ def test_the_guide_points_at_real_controls_and_waits(tmp_path):
             app.release()
             _draw(app, size, n=1, painter=PixelPainter)
 
-        load = next(i for i, s in enumerate(steps) if s.get("target", {}).get("action") == "Load...")
+        load = next(
+            i for i, s in enumerate(steps) if s.get("target", {}).get("action") == "Load..."
+        )
         app.tour.start(load)
         assert app.tour.awaiting and steps[load]["title"] in " ".join(_draw(app, size, n=1).strings)
         _draw(app, size, n=1, painter=PixelPainter)
@@ -308,17 +371,21 @@ def test_draws_empty_and_populated(fitted, size, monkeypatch):
     empty = LLTFApp()
     try:
         strings = _draw(empty, size).strings
-        assert {"Input Files", "Fitting Options", "Decay File", "▶  Fit", "📖  Guide"} <= set(strings)
+        assert {"Input Files", "Fitting Options", "Decay File", "▶  Fit", "📖  Guide"} <= set(
+            strings
+        )
     finally:
         empty.close()
     app, _ = fitted
     _draw(app, size)
-    edge = app.item_rects["Information"][0] - 4.0       # the inputs dock ends where the details dock's tabs begin
+    edge = (
+        app.item_rects["Information"][0] - 4.0
+    )  # the inputs dock ends where the details dock's tabs begin
     for key in ("Load...", "load_irf", "Edit...", "Select...", "Fit"):
         x, y, w, h = app.item_rects[key]
         assert x + w <= edge, (key, x + w, edge)
     x, y, w, h = app.form.rects["find_optimal"]
-    assert x + w <= edge                                                  # the toggle's label is not cut
+    assert x + w <= edge  # the toggle's label is not cut
 
 
 def test_settings_round_trip(tmp_path):
@@ -326,8 +393,13 @@ def test_settings_round_trip(tmp_path):
     other = LLTFApp()
     other.restore_settings(json.loads(json.dumps(app.export_settings())))
     m = other.model
-    assert (m.decay_file, m.irf_file, m.output_dir, m.find_optimal, m.max_lifetimes) == (DECAY, IRF, str(tmp_path),
-                                                                                          True, 3)
+    assert (m.decay_file, m.irf_file, m.output_dir, m.find_optimal, m.max_lifetimes) == (
+        DECAY,
+        IRF,
+        str(tmp_path),
+        True,
+        3,
+    )
     assert m.config_text == app.model.config_text
 
 

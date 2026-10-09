@@ -25,7 +25,9 @@ from chisurf.plugins.fluorescence_decay.irf_estimator.gui.app import IRFEstimato
 
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
-DECAY = str(REPO / "test" / "data" / "tcspc" / "Jordi_FRETsens" / "Donor" / "D0_14_TAC1024_DexDem.dat")
+DECAY = str(
+    REPO / "test" / "data" / "tcspc" / "Jordi_FRETsens" / "Donor" / "D0_14_TAC1024_DexDem.dat"
+)
 ITERATIONS = 100
 
 _QT = r"""
@@ -60,9 +62,13 @@ def tail_file(tmp_path_factory):
     """A VV/VH decay whose last tenth is not empty, so a file's background estimate shows."""
     from chisurf.core.fio import write_vv_vh
 
-    t = np.arange(512.)
-    counts = np.round(2000. * np.exp(-((t - 40.) / 6.) ** 2) + 900. * np.exp(-np.clip(t - 40., 0, None) / 60.)
-                      * (t > 40) + 7. + (t % 3))
+    t = np.arange(512.0)
+    counts = np.round(
+        2000.0 * np.exp(-(((t - 40.0) / 6.0) ** 2))
+        + 900.0 * np.exp(-np.clip(t - 40.0, 0, None) / 60.0) * (t > 40)
+        + 7.0
+        + (t % 3)
+    )
     path = tmp_path_factory.mktemp("tail") / "tail.dat"
     write_vv_vh(str(path), vv=counts, vh=counts)
     return str(path)
@@ -73,14 +79,22 @@ def qt(tail_file):
     pytest.importorskip("qtpy")
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT, DECAY, str(ITERATIONS), tail_file], capture_output=True, text=True,
-                          timeout=300, env=env, cwd=str(REPO))
+    proc = subprocess.run(
+        [sys.executable, "-c", _QT, DECAY, str(ITERATIONS), tail_file],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env=env,
+        cwd=str(REPO),
+    )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and ("No module named" in proc.stderr or "could not connect to display" in proc.stderr):
+    if line is None and (
+        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
+    ):
         pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
     # Any other failure is the Qt widget's own: skipping it hid a broken Qt host.
     assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS"):])
+    return json.loads(line[len("FACTS") :])
 
 
 def _draw(app, size=(1200, 800), n=2, painter=RecordingPainter):
@@ -134,7 +148,7 @@ def test_load_and_estimate_match_the_qt_tool(qt):
         _click(app, "request_load")
         assert app.dialog is not None and app.dialog.mode == "open" and app.file_action == "load"
         app.dialog = None
-        app.file_chosen(DECAY)                                     # what the dialog's result does
+        app.file_chosen(DECAY)  # what the dialog's result does
         assert _states(app) == qt["states"][1]
         assert app.model.manual_background == pytest.approx(qt["background"])
         assert app.model.source_text == qt["label"]
@@ -171,12 +185,27 @@ def test_the_curves_carry_the_qt_pens(monkeypatch):
         app.model.rl_iterations = 20
         app.model.estimate()
         styles = []
-        monkeypatch.setattr(app_module.implot, "set_next_line_style",
-                            lambda colour=None, weight=None, dash=None: styles.append((colour, dash)))
+        monkeypatch.setattr(
+            app_module.implot,
+            "set_next_line_style",
+            lambda colour=None, weight=None, dash=None: styles.append((colour, dash)),
+        )
         _draw(app, n=1)
-        assert styles == [app_module.PENS[name] for name in ("Measured Decay", "BG Corrected", "Estimated IRF (scaled)",
-                                                             "IRF \u2297 Exp (Forward Model)")]
-        assert [dash is not None for _, dash in styles] == [False, True, False, True]   # Qt's dashed pens
+        assert styles == [
+            app_module.PENS[name]
+            for name in (
+                "Measured Decay",
+                "BG Corrected",
+                "Estimated IRF (scaled)",
+                "IRF \u2297 Exp (Forward Model)",
+            )
+        ]
+        assert [dash is not None for _, dash in styles] == [
+            False,
+            True,
+            False,
+            True,
+        ]  # Qt's dashed pens
     finally:
         app.close()
 
@@ -202,7 +231,7 @@ def test_a_file_that_cannot_load_is_reported(tmp_path):
         assert app.model.decay_data_original is None
         strings = _draw(app).strings
         assert any(app.error in s for s in strings)
-        app.files_dropped([DECAY])                                  # a drop loads the first file
+        app.files_dropped([DECAY])  # a drop loads the first file
         assert not app.error and app.model.source_text == DECAY
     finally:
         app.close()
@@ -217,7 +246,9 @@ def test_a_failed_estimate_is_reported(monkeypatch):
     try:
         assert app.start_estimate()
         _wait(app)
-        assert app.error == "tail fit did not converge" and app.model.status == "IRF estimation failed"
+        assert (
+            app.error == "tail fit did not converge" and app.model.status == "IRF estimation failed"
+        )
         assert app.model.result is None and _states(app) == [True, False, False]
     finally:
         app.close()
@@ -245,17 +276,21 @@ def test_auto_update_reestimates_quickly(monkeypatch):
     app = _loaded()
     try:
         app.model.rl_iterations = 20
-        app.form_model.window_length = 15                     # no IRF yet, auto-update off: nothing
+        app.form_model.window_length = 15  # no IRF yet, auto-update off: nothing
         assert app.future is None
         app.start_estimate()
         _wait(app)
         seen = []
         real = app_module.estimate_irf
-        monkeypatch.setattr(app_module, "estimate_irf", lambda *a: seen.append(a[2].rl_iterations) or real(*a))
-        app.form_model.window_length = 17                     # auto-update off: nothing
+        monkeypatch.setattr(
+            app_module, "estimate_irf", lambda *a: seen.append(a[2].rl_iterations) or real(*a)
+        )
+        app.form_model.window_length = 17  # auto-update off: nothing
         assert app.future is None
         _click(app, "auto_update_enabled")
-        assert app.model.auto_update_enabled and app.future is None   # switching it on does not estimate
+        assert (
+            app.model.auto_update_enabled and app.future is None
+        )  # switching it on does not estimate
         app.form_model.manual_background = 1.0
         _wait(app)
         assert seen == [50]
@@ -274,15 +309,19 @@ def test_range_fields_and_plot_series():
         assert app.form_model.bounds("last_channel") == (0, 1023)
         app.form_model.last_channel = 10
         app.form_model.first_channel = 600
-        assert app.model.range_bounds == [10., 600.]
+        assert app.model.range_bounds == [10.0, 600.0]
         app.model.rl_iterations = 20
         app.model.manual_background = 5.0
         app.model.estimate()
         names = [c["name"] for c in app.model.plot_series()]
-        assert names == ["Measured Decay", "BG Corrected (BG=5.0)", "Estimated IRF (scaled)",
-                         "IRF ⊗ Exp (Forward Model)"]
+        assert names == [
+            "Measured Decay",
+            "BG Corrected (BG=5.0)",
+            "Estimated IRF (scaled)",
+            "IRF ⊗ Exp (Forward Model)",
+        ]
         irf = np.asarray(app.model.plot_series()[2]["y"])
-        assert np.nanmin(irf) >= 1.0 and np.isnan(irf).any()       # cut below one count, as the Qt plot
+        assert np.nanmin(irf) >= 1.0 and np.isnan(irf).any()  # cut below one count, as the Qt plot
         assert all(name.split(" (BG=")[0] in app_module.PENS for name in names)
     finally:
         app.close()
@@ -304,9 +343,11 @@ def test_save_writes_the_irf_and_transfer_registers_it(tmp_path):
 
         channels = read_vv_vh(str(tmp_path / "irf.dat"), split=True)
         vv = channels["VV"] if isinstance(channels, dict) else channels[0]
-        np.testing.assert_allclose(vv, app.model.irf_data, rtol=1e-5, atol=1e-6)   # written with 6 decimals
+        np.testing.assert_allclose(
+            vv, app.model.irf_data, rtol=1e-5, atol=1e-6
+        )  # written with 6 decimals
         app.file_chosen(str(tmp_path / "irf.dat" / "inside_a_file.dat"))
-        assert app.error                                          # an unwritable path is reported
+        assert app.error  # an unwritable path is reported
         received = []
         app.dataset_sink = received.append
         _click(app, "request_transfer")
@@ -348,15 +389,19 @@ def test_the_guide_points_at_real_controls_and_waits():
         keys = {app.tour._target_key(s.get("target")) for s in steps} - {""}
         assert keys == {"Load Decay", "irf_background", "irf_rl_iterations", "Estimate IRF"}
         assert keys <= set(app.item_rects)
-        load = next(i for i, s in enumerate(steps) if s.get("target", {}).get("action") == "Load Decay")
+        load = next(
+            i for i, s in enumerate(steps) if s.get("target", {}).get("action") == "Load Decay"
+        )
         app.tour.start(load)
         assert app.tour.awaiting
         _click(app, "request_load")
-        assert app.tour.awaiting                                   # opening the dialog is not loading
+        assert app.tour.awaiting  # opening the dialog is not loading
         app.dialog = None
         app.file_chosen(DECAY)
         assert not app.tour.awaiting
-        estimate = next(i for i, s in enumerate(steps) if s.get("target", {}).get("action") == "Estimate IRF")
+        estimate = next(
+            i for i, s in enumerate(steps) if s.get("target", {}).get("action") == "Estimate IRF"
+        )
         app.tour.start(estimate)
         assert app.tour.awaiting
         app.model.rl_iterations = 20
@@ -374,16 +419,28 @@ def test_draws_inside_the_docks(size):
     app = IRFEstimatorApp()
     try:
         strings = _draw(app, size).strings
-        assert {"📂  Load Decay", "🔮  Estimate IRF", "Time axis: Not available", "N/A"} <= set(strings)
+        assert {"📂  Load Decay", "🔮  Estimate IRF", "Time axis: Not available", "N/A"} <= set(
+            strings
+        )
         app.file_chosen(DECAY)
         app.model.rl_iterations = 20
         app.start_estimate()
         _wait(app)
         _draw(app, size)
         x0, y0, w0, h0 = app.item_rects["controls"]
-        for name in ("request_load", "request_dataset", "request_save", "request_transfer", "request_guide",
-                     "request_help", "dt", "manual_background", "use_range_selection", "auto_update_enabled",
-                     "request_estimate"):
+        for name in (
+            "request_load",
+            "request_dataset",
+            "request_save",
+            "request_transfer",
+            "request_guide",
+            "request_help",
+            "dt",
+            "manual_background",
+            "use_range_selection",
+            "auto_update_enabled",
+            "request_estimate",
+        ):
             x, y, w, h = app.item_rects[name]
             assert x >= x0 - 0.5 and x + w <= x0 + w0 + 0.5 and y + h <= y0 + h0 + 0.5, name
     finally:

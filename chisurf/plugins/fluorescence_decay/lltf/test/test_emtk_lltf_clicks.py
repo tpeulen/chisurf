@@ -136,12 +136,21 @@ def test_no_tour_card_button_is_dead_on_any_step():
     assert dead_tour_buttons(LLTFApp, SIZE) == []
 
 
-@pytest.mark.parametrize("button,title,expected", [("Load...", "Load decay", DECAY), ("load_irf", "Load IRF", IRF)])
-def test_the_load_buttons_open_a_filtered_dialog_and_every_way_out_works(ui, button, title, expected):
+@pytest.mark.parametrize(
+    "button,title,expected", [("Load...", "Load decay", DECAY), ("load_irf", "Load IRF", IRF)]
+)
+def test_the_load_buttons_open_a_filtered_dialog_and_every_way_out_works(
+    ui, button, title, expected
+):
     ui.click(button)
     ui.app.dialog.directory = str(EXAMPLE)
     ui.draw(3)
-    assert ui.dialog_open and ui.shown(title) and ui.shown(expected.name) and not ui.shown("config.yml")
+    assert (
+        ui.dialog_open
+        and ui.shown(title)
+        and ui.shown(expected.name)
+        and not ui.shown("config.yml")
+    )
     ui.press_text("Open")
     assert ui.dialog_open and ui.shown("Select a file first.")
     ui.press_text("Cancel")
@@ -190,7 +199,9 @@ def test_the_path_fields_of_data_files_do_not_take_typing(ready):
 def test_the_configuration_editor_opens_edits_saves_and_closes(ready, tmp_path):
     ready.drop(CONFIG)
     ready.click("Edit...")
-    assert ready.app.config_open and ready.shown("Save configuration") and ready.shown("Close editor")
+    assert (
+        ready.app.config_open and ready.shown("Save configuration") and ready.shown("Close editor")
+    )
     ready.click_at(*[v for v in (ready.size[0] * 0.5, ready.size[1] * 0.4)])
     ready.type_text("\n# edited in the window", replace=False)
     assert "# edited in the window" in ready.app.model.config_text and ready.app.model.config_dirty
@@ -218,11 +229,16 @@ def test_the_find_optimal_toggle_greys_and_ungreys_the_fields(ready):
     m = ready.app.model
     assert m.enabled("n_lifetimes") and not m.enabled("max_lifetimes")
     ready.click("find_optimal")
-    assert m.find_optimal and not m.enabled("n_lifetimes") and m.enabled("max_lifetimes") and m.enabled("prob_threshold")
+    assert (
+        m.find_optimal
+        and not m.enabled("n_lifetimes")
+        and m.enabled("max_lifetimes")
+        and m.enabled("prob_threshold")
+    )
     before = m.n_lifetimes
     ready.click("n_lifetimes", fx=0.3)
     ready.type_text("5")
-    assert m.n_lifetimes == before                       # greyed: the click did not take the keyboard
+    assert m.n_lifetimes == before  # greyed: the click did not take the keyboard
     ready.type_into("max_lifetimes", "5")
     ready.type_into("prob_threshold", "0.9")
     assert m.max_lifetimes == 5 and m.prob_threshold == pytest.approx(0.9)
@@ -262,8 +278,12 @@ def test_verbose_toggle(ready):
 def test_stop_ends_a_running_fit(ready):
     ready.click("Fit")
     ready.draw(3)
-    assert ready.app.model.running and ready.app.enabled if False else ready.app.model.process is not None
-    assert not ready.app.model.enabled("n_lifetimes")           # the options are greyed while it runs
+    assert (
+        ready.app.model.running and ready.app.enabled
+        if False
+        else ready.app.model.process is not None
+    )
+    assert not ready.app.model.enabled("n_lifetimes")  # the options are greyed while it runs
     ready.click("stop")
     ready.settle()
     assert ready.app.model.process is None and ready.app.model.result is None
@@ -282,7 +302,11 @@ def test_the_real_fit_through_the_buttons_gives_the_examples_two_lifetimes(fitte
 
 def test_the_results_tab_shows_the_table_and_the_summary(fitted):
     fitted.press_text("Results")
-    assert fitted.shown("Component") and fitted.shown("Lifetime (ns)") and fitted.shown("Reduced chi-square: ")
+    assert (
+        fitted.shown("Component")
+        and fitted.shown("Lifetime (ns)")
+        and fitted.shown("Reduced chi-square: ")
+    )
     rows = fitted.app.model.lifetime_rows()
     assert fitted.shown(f"{rows[0]['lifetime']:.3f}")
 
@@ -316,7 +340,11 @@ def test_the_plot_tabs_and_the_wheel(fitted):
     fitted.press_text("Weighted residuals")
     assert fitted.shown("Weighted residual")
     fitted.press_text("Decay and fit")
-    x, y, w, h = fitted.app.item_rects["Decay and fit"] if "Decay and fit" in fitted.app.item_rects else (400, 400, 300, 200)
+    x, y, w, h = (
+        fitted.app.item_rects["Decay and fit"]
+        if "Decay and fit" in fitted.app.item_rects
+        else (400, 400, 300, 200)
+    )
     before = [s for s in fitted.last.strings if s.replace(".", "", 1).isdigit()]
     fitted.app.wheel(800, 560, 1)
     fitted.draw(2)

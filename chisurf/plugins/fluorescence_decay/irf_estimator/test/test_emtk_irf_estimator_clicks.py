@@ -60,8 +60,11 @@ class Ui(_Ui):
         self.app.pointer_press(*start, LEFT_BUTTON, 0, 1)
         self.draw(1)
         for i in range(1, steps + 1):
-            self.app.pointer_move(start[0] + (end[0] - start[0]) * i / steps, start[1] + (end[1] - start[1]) * i / steps,
-                                  LEFT_BUTTON)
+            self.app.pointer_move(
+                start[0] + (end[0] - start[0]) * i / steps,
+                start[1] + (end[1] - start[1]) * i / steps,
+                LEFT_BUTTON,
+            )
             self.draw(1)
         self.app.pointer_release(*end, LEFT_BUTTON, 0)
         return self.draw(3)
@@ -101,9 +104,11 @@ def estimated(loaded):
 
 def test_the_idle_window_offers_only_what_can_act(ui):
     form = ui.app.form_model
-    assert [form.enabled(n) for n in ("request_estimate", "request_save", "request_transfer", "dt")] == [False] * 4
+    assert [
+        form.enabled(n) for n in ("request_estimate", "request_save", "request_transfer", "dt")
+    ] == [False] * 4
     ui.click("request_estimate")
-    assert ui.app.future is None and ui.app.model.result is None          # greyed: the press does nothing
+    assert ui.app.future is None and ui.app.model.result is None  # greyed: the press does nothing
     ui.click("request_save")
     ui.click("request_transfer")
     assert not ui.dialog_open
@@ -140,7 +145,11 @@ def test_load_decay_opens_a_filtered_dialog_and_every_way_out_works(ui):
     ui.draw(3)
     assert ui.dialog_open and ui.shown("Load Decay File") and ui.shown(DECAY.name)
     ui.press_text("Open")
-    assert ui.dialog_open and ui.shown("Select a file first.") and ui.app.model.decay_data_original is None
+    assert (
+        ui.dialog_open
+        and ui.shown("Select a file first.")
+        and ui.app.model.decay_data_original is None
+    )
     ui.press_text("Cancel")
     assert not ui.dialog_open
     ui.click("request_load")
@@ -168,13 +177,20 @@ def test_time_per_channel_is_typed_and_rescales_the_axis(loaded):
     assert loaded.app.model.dt == pytest.approx(2.0)
     assert loaded.app.model.channel_axis[1] == pytest.approx(2.0)
     assert loaded.shown("2.0000")
-    loaded.type_into("dt", "99")                           # above the Qt maximum of 10
+    loaded.type_into("dt", "99")  # above the Qt maximum of 10
     assert loaded.app.model.dt <= 10.0
 
 
-@pytest.mark.parametrize("key,typed,expected,low,high", [
-    ("window_length", "21", 21, 5, 500), ("polyorder", "4", 4, 1, 10), ("rl_iterations", "300", 300, 5, 2000),
-    ("regularization", "7", 7, 1, 51), ("manual_background", "12.5", 12.5, 0.0, 100000.0)])
+@pytest.mark.parametrize(
+    "key,typed,expected,low,high",
+    [
+        ("window_length", "21", 21, 5, 500),
+        ("polyorder", "4", 4, 1, 10),
+        ("rl_iterations", "300", 300, 5, 2000),
+        ("regularization", "7", 7, 1, 51),
+        ("manual_background", "12.5", 12.5, 0.0, 100000.0),
+    ],
+)
 def test_each_parameter_is_typed_clamped_to_the_qt_range(loaded, key, typed, expected, low, high):
     loaded.type_into(key, typed)
     assert getattr(loaded.app.model, key) == expected
@@ -184,7 +200,10 @@ def test_each_parameter_is_typed_clamped_to_the_qt_range(loaded, key, typed, exp
     assert getattr(loaded.app.model, key) >= low
 
 
-@pytest.mark.parametrize("key,step", [("window_length", 2), ("polyorder", 1), ("rl_iterations", 10), ("regularization", 2)])
+@pytest.mark.parametrize(
+    "key,step",
+    [("window_length", 2), ("polyorder", 1), ("rl_iterations", 10), ("regularization", 2)],
+)
 def test_the_spin_arrows_step_each_parameter(loaded, key, step):
     start = getattr(loaded.app.model, key)
     loaded.arrow(key, +1)
@@ -205,7 +224,11 @@ def test_the_wheel_steps_a_parameter(loaded):
 def test_range_selection_toggle_shows_and_hides_the_channel_fields(loaded):
     assert not loaded.app.model.use_range_selection and not loaded.shown("First channel")
     loaded.click("use_range_selection")
-    assert loaded.app.model.use_range_selection and loaded.shown("First channel") and loaded.shown("Last channel")
+    assert (
+        loaded.app.model.use_range_selection
+        and loaded.shown("First channel")
+        and loaded.shown("Last channel")
+    )
     loaded.click("use_range_selection")
     assert not loaded.app.model.use_range_selection and not loaded.shown("First channel")
 
@@ -236,18 +259,25 @@ def test_dragging_the_regions_edges_in_the_plot_moves_the_range_and_the_fields(l
     left, right, top, bottom = _ranged(loaded)
     mid = (top + bottom) / 2
     loaded.drag((right + 0.5, mid), (right - 100, mid))
-    assert int(loaded.app.model.range_bounds[1]) < 500 and int(loaded.app.model.range_bounds[0]) == 50
+    assert (
+        int(loaded.app.model.range_bounds[1]) < 500 and int(loaded.app.model.range_bounds[0]) == 50
+    )
     assert loaded.shown(str(int(loaded.app.model.range_bounds[1])))
     left, right, top, bottom = _region(loaded)
     loaded.drag((left + 0.5, mid), (left + 60, mid))
     assert int(loaded.app.model.range_bounds[0]) > 50
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: implot's drag_rect moves only by its edges and corners; the Qt "
-                                       "LinearRegionItem also moves as a whole when its body is dragged")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: implot's drag_rect moves only by its edges and corners; the Qt "
+    "LinearRegionItem also moves as a whole when its body is dragged",
+)
 def test_dragging_the_body_of_the_region_moves_it_as_a_whole(loaded):
     left, right, top, bottom = _ranged(loaded)
-    loaded.drag(((left + right) / 2, (top + bottom) / 2), ((left + right) / 2 + 60, (top + bottom) / 2))
+    loaded.drag(
+        ((left + right) / 2, (top + bottom) / 2), ((left + right) / 2 + 60, (top + bottom) / 2)
+    )
     first, last = (int(v) for v in loaded.app.model.range_bounds)
     assert first > 50 and last > 500 and last - first == 450
 
@@ -256,14 +286,18 @@ def test_estimate_runs_on_the_worker_and_fills_results_plot_and_buttons(loaded):
     loaded.type_into("rl_iterations", "100")
     loaded.click("request_estimate")
     assert loaded.app.future is not None and loaded.shown("Estimating IRF...")
-    assert not loaded.app.form_model.enabled("rl_iterations")             # the parameters are greyed while it runs
+    assert not loaded.app.form_model.enabled(
+        "rl_iterations"
+    )  # the parameters are greyed while it runs
     loaded.settle()
     m = loaded.app.model
     assert m.status == "IRF estimation completed" and m.result is not None
     assert loaded.shown("Estimated IRF (scaled)") and loaded.shown("IRF ⊗ Exp (Forward Model)")
     for label, text in m.result_rows():
         assert loaded.shown(text), label
-    assert loaded.app.form_model.enabled("request_save") and loaded.app.form_model.enabled("request_transfer")
+    assert loaded.app.form_model.enabled("request_save") and loaded.app.form_model.enabled(
+        "request_transfer"
+    )
 
 
 def test_auto_update_re_estimates_when_a_parameter_changes(estimated):
@@ -271,7 +305,9 @@ def test_auto_update_re_estimates_when_a_parameter_changes(estimated):
     assert estimated.app.model.auto_update_enabled
     before = estimated.app.model.irf_data.copy()
     estimated.type_into("regularization", "9")
-    assert estimated.app.future is not None or not np.array_equal(estimated.app.model.irf_data, before)
+    assert estimated.app.future is not None or not np.array_equal(
+        estimated.app.model.irf_data, before
+    )
     estimated.settle()
     assert not np.array_equal(estimated.app.model.irf_data, before)
 
@@ -290,7 +326,11 @@ def test_save_irf_writes_a_vv_vh_file_and_every_way_out_works(estimated, tmp_pat
     estimated.click(estimated.text_rect(estimated.app.dialog.filename), fx=0.3)
     estimated.type_text(str(target))
     estimated.press_text("Save")
-    assert target.exists() and estimated.shown("IRF saved to") or "IRF saved to" in estimated.app.model.status
+    assert (
+        target.exists()
+        and estimated.shown("IRF saved to")
+        or "IRF saved to" in estimated.app.model.status
+    )
     from chisurf.core.fio import read_vv_vh
 
     channels = read_vv_vh(str(target), split=True)
@@ -309,8 +349,10 @@ def test_load_from_dataset_lists_the_open_curves_and_loads_the_chosen_one():
     from chisurf.core.data import DataCurve
 
     t = np.arange(200) * 0.05
-    curves = [DataCurve(x=t, y=np.exp(-t / tau) * 1000 + 3, name=name, load_filename_on_init=False)
-              for tau, name in ((2.0, "donor decay"), (4.0, "acceptor decay"))]
+    curves = [
+        DataCurve(x=t, y=np.exp(-t / tau) * 1000 + 3, name=name, load_filename_on_init=False)
+        for tau, name in ((2.0, "donor decay"), (4.0, "acceptor decay"))
+    ]
     ui = Ui(IRFEstimatorApp(dataset_provider=lambda: curves), SIZE)
     try:
         ui.click("request_dataset")
@@ -329,7 +371,9 @@ def test_the_plot_has_axes_a_crosshair_and_zooms_with_the_wheel(estimated):
     x, y, w, h = estimated.app.item_rects["plot"]
     estimated.app.pointer_move(x + w * 0.4, y + h * 0.5)
     estimated.draw(3)
-    assert estimated.app.pointer_text.startswith("Time: ") and estimated.shown(estimated.app.pointer_text)
+    assert estimated.app.pointer_text.startswith("Time: ") and estimated.shown(
+        estimated.app.pointer_text
+    )
     before = [s for s in estimated.last.strings if s.replace(".", "", 1).isdigit()]
     for _ in range(3):
         estimated.app.wheel(x + w * 0.4, y + h * 0.5, 1)

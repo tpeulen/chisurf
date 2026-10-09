@@ -86,7 +86,9 @@ def test_vm_decay_equals_the_canonical_generator_and_the_analytic_shape(app):
     assert [s["name"] for s in m.decay_series()] == ["decay"]
     r = compute_rt(n_bins=256, bin_width=0.032, rotation_rows=m.rotation_rows)["r"]
     np.testing.assert_allclose(m._r, r)
-    assert m._r[0] == pytest.approx(0.2) and m._r[-1] == pytest.approx(0.2 * np.exp(-255 * 0.032 / 1.0))
+    assert m._r[0] == pytest.approx(0.2) and m._r[-1] == pytest.approx(
+        0.2 * np.exp(-255 * 0.032 / 1.0)
+    )
     assert m.status_text() == "Generated 256 bins (1 components)."
 
 
@@ -96,14 +98,23 @@ def test_vv_vh_pair_equals_the_canonical_generator_and_the_g_ratio(app):
     m.g_factor, m.l1, m.l2 = 1.3, 0.02, 0.05
     m.generate()
     ref = compute_aniso_decay(
-        n_bins=256, bin_width=0.032, lifetimes=[1.2, 4.0], amplitudes=[1.0, 1.0],
-        rotation_rows=m.rotation_rows, g_factor=1.3, l1=0.02, l2=0.05,
+        n_bins=256,
+        bin_width=0.032,
+        lifetimes=[1.2, 4.0],
+        amplitudes=[1.0, 1.0],
+        rotation_rows=m.rotation_rows,
+        g_factor=1.3,
+        l1=0.02,
+        l2=0.05,
     )
     np.testing.assert_allclose(m._vv, ref["vv"])
     np.testing.assert_allclose(m._vh, ref["vh"])
     np.testing.assert_allclose(m._r, ref["r"])
     assert [s["name"] for s in m.decay_series()] == ["VV", "VH"]
-    assert m.status_text() == "Generated VV/VH pair, 256 bins (2 lifetimes, 1 rotations, g=1.3, l1=0.02, l2=0.05)."
+    assert (
+        m.status_text()
+        == "Generated VV/VH pair, 256 bins (2 lifetimes, 1 rotations, g=1.3, l1=0.02, l2=0.05)."
+    )
     # no anisotropy, no mixing: VH is VV divided by g (the detection sensitivity ratio)
     m.rotation_rows, m.l1, m.l2 = [{"b": 0.0, "rho": 1.0}], 0.0, 0.0
     m.generate()
@@ -122,8 +133,15 @@ def test_noise_is_reproducible_by_seed_and_spends_the_photon_budget(app):
     m.seed = 8
     m.generate()
     assert m._y != first
-    ref = compute_decay(n_bins=256, bin_width=0.032, lifetimes=[1.2, 4.0], amplitudes=[1.0, 1.0],
-                        normalize=False, photon_count=200000.0, seed=8)
+    ref = compute_decay(
+        n_bins=256,
+        bin_width=0.032,
+        lifetimes=[1.2, 4.0],
+        amplitudes=[1.0, 1.0],
+        normalize=False,
+        photon_count=200000.0,
+        seed=8,
+    )
     np.testing.assert_allclose(m._y, ref["y"])
 
 
@@ -135,7 +153,9 @@ def test_an_irf_file_smears_the_prompt_and_a_missing_one_is_an_error(app, tmp_pa
     m.irf_path = str(irf)
     m.generate()
     assert int(np.argmax(m._y)) > 25  # the peak moved to the IRF, not bin 0
-    ref = compute_decay(n_bins=256, bin_width=0.032, lifetimes=[1.2, 4.0], amplitudes=[1.0, 1.0], irf=str(irf))
+    ref = compute_decay(
+        n_bins=256, bin_width=0.032, lifetimes=[1.2, 4.0], amplitudes=[1.0, 1.0], irf=str(irf)
+    )
     np.testing.assert_allclose(m._y, ref["y"])
     m.irf_path = str(tmp_path / "missing.txt")
     m.generate()
@@ -177,7 +197,9 @@ def test_the_native_app_and_the_qt_tool_generate_the_same_numbers(qapp, app):
 
 def test_generate_button_generates_and_the_status_says_so(app):
     press_action(app, "generate")
-    assert len(app.model._y) == 256 and app.model.status_text() == "Generated 256 bins (2 components)."
+    assert (
+        len(app.model._y) == 256 and app.model.status_text() == "Generated 256 bins (2 components)."
+    )
     assert any("Generated 256 bins" in s for s in draw(app).strings)
 
 
@@ -200,7 +222,10 @@ def test_a_cell_edit_reaches_the_model_and_the_generated_decay(app):
 def test_add_and_remove_buttons_edit_both_tables(app):
     draw(app)
     click(app, app.form.rects["add_row"])
-    assert len(app.model.spectrum_rows) == 3 and app.model.spectrum_rows[-1] == {"amp": 1.0, "tau": 2.0}
+    assert len(app.model.spectrum_rows) == 3 and app.model.spectrum_rows[-1] == {
+        "amp": 1.0,
+        "tau": 2.0,
+    }
     app.model.selected_row = 2
     click(app, app.form.rects["remove_row"])
     assert len(app.model.spectrum_rows) == 2
@@ -249,7 +274,10 @@ def test_load_and_save_dialogs_do_the_work(app, tmp_path, monkeypatch):
     assert app.dialog is None and not out.exists()  # cancel writes nothing
     monkeypatch.setattr(FileDialog, "draw", lambda self: [str(out)])
     press_action(app, "save")
-    assert np.loadtxt(out).shape == (256, 2) and app.model.status_text() == "Saved 256 bins to decay.csv."
+    assert (
+        np.loadtxt(out).shape == (256, 2)
+        and app.model.status_text() == "Saved 256 bins to decay.csv."
+    )
 
 
 def test_save_formats_and_the_vv_vh_file_round_trip(app, tmp_path):
@@ -304,7 +332,11 @@ def test_load_spectrum_errors_equal_the_qt_tool(qapp, app, tmp_path):
             tool.model.load_spectrum(str(path))
             app.model.load_spectrum(str(path))
             assert app.model.status_text() == tool.model.status_text()
-            assert app.model.spectrum_rows == tool.model.spectrum_rows == [{"amp": 1.0, "tau": 1.2}, {"amp": 1.0, "tau": 4.0}]
+            assert (
+                app.model.spectrum_rows
+                == tool.model.spectrum_rows
+                == [{"amp": 1.0, "tau": 1.2}, {"amp": 1.0, "tau": 4.0}]
+            )
         assert app.model.status_text().startswith("Invalid lifetime spectrum")
     finally:
         tool.deleteLater()
@@ -312,7 +344,11 @@ def test_load_spectrum_errors_equal_the_qt_tool(qapp, app, tmp_path):
 
 def test_fit_group_button_sends_the_generated_group_to_the_sink(tmp_path):
     sent = []
-    app = SyntheticDecayApp(fit_sink=lambda group, polarized: sent.append((len(group), polarized, dict(group.meta_data))))
+    app = SyntheticDecayApp(
+        fit_sink=lambda group, polarized: sent.append(
+            (len(group), polarized, dict(group.meta_data))
+        )
+    )
     app.model.set_polarization("vv/vh")
     app.model.g_factor, app.model.l1, app.model.l2 = 1.5, 0.03, 0.07
     app.model.generate()
@@ -437,11 +473,23 @@ def test_every_control_has_a_tooltip(app):
     populated = emtk_inventory(app)
     assert populated["controls_without_tooltip"] == []
     labels = {row["label"] for row in populated["interactive"]}
-    assert {"Generate", "Save", "Fit group", "Browse IRF", "Help", "Guide", "Add", "Remove", "Load"} <= labels
+    assert {
+        "Generate",
+        "Save",
+        "Fit group",
+        "Browse IRF",
+        "Help",
+        "Guide",
+        "Add",
+        "Remove",
+        "Load",
+    } <= labels
     spec = json.loads((GUI / "synthetic_decay.view.json").read_text())
     for section in _walk(spec["sections"]):
         if section.get("type") in ("value", "choice", "toggle", "plot", "table", "info"):
-            assert section.get("description"), section.get("attr") or section.get("title") or section
+            assert section.get("description"), (
+                section.get("attr") or section.get("title") or section
+            )
         for column in section.get("columns", []):
             assert column.get("description"), column
         for button in section.get("buttons", []):
@@ -461,8 +509,12 @@ def test_guide_steps_point_at_controls_the_app_draws(app):
             continue  # the opening step is an introduction
         name = EmTkGuidedTour._target_key(target)
         assert app.target_rect(name), f"{step['title']}: nothing drawn for {name!r}"
-    assert [s["title"] for s in steps if s.get("await")] == ["Generate, then vary one thing at a time"]
-    assert not any(re.search(r"[\U0001F300-\U0001FAFF]", s["await"]["hint"]) for s in steps if s.get("await"))
+    assert [s["title"] for s in steps if s.get("await")] == [
+        "Generate, then vary one thing at a time"
+    ]
+    assert not any(
+        re.search(r"[\U0001F300-\U0001FAFF]", s["await"]["hint"]) for s in steps if s.get("await")
+    )
 
 
 def test_the_tour_waits_for_the_generate_press(app):
@@ -501,14 +553,29 @@ def test_settings_round_trip_and_invalid_values_are_ignored(app, tmp_path):
     m.set_polarization("vv/vh")
     m.g_factor, m.l1, m.l2 = 1.2, 0.01, 0.02
     saved = json.loads(json.dumps(app.export_settings()))
-    assert saved["spectrum_rows"][0] == {"amp": 1.0, "tau": 0.7} and saved["polarization"] == "vv/vh"
+    assert (
+        saved["spectrum_rows"][0] == {"amp": 1.0, "tau": 0.7} and saved["polarization"] == "vv/vh"
+    )
     other = make_app()
     other.restore_settings(saved)
     assert other.export_settings() == saved
-    other.restore_settings({"n_bins": "lots", "bin_width": float("nan"), "seed": -5, "g_factor": 1e9,
-                            "polarization": "diagonal", "spectrum_rows": [{"amp": 1.0}], "shot_noise": "yes"})
-    assert other.model.n_bins == 128 and other.model.bin_width == 0.05  # unusable values change nothing
-    assert other.model.seed == 0 and other.model.g_factor == 100.0  # out-of-range values are clamped
+    other.restore_settings(
+        {
+            "n_bins": "lots",
+            "bin_width": float("nan"),
+            "seed": -5,
+            "g_factor": 1e9,
+            "polarization": "diagonal",
+            "spectrum_rows": [{"amp": 1.0}],
+            "shot_noise": "yes",
+        }
+    )
+    assert (
+        other.model.n_bins == 128 and other.model.bin_width == 0.05
+    )  # unusable values change nothing
+    assert (
+        other.model.seed == 0 and other.model.g_factor == 100.0
+    )  # out-of-range values are clamped
     assert other.model.polarization == "vv/vh" and len(other.model.spectrum_rows) == 3
     assert other.model.shot_noise is True
     assert draw(other).strings
@@ -523,5 +590,8 @@ def test_port_is_qt_free():
 
 def test_the_manifest_opens_the_native_app():
     manifest = json.loads((HERE.parent / "manifest.json").read_text())
-    assert manifest["entrypoints"]["emtk"] == "chisurf.plugins.fluorescence_decay.synthetic_decay.gui.app:make_app"
+    assert (
+        manifest["entrypoints"]["emtk"]
+        == "chisurf.plugins.fluorescence_decay.synthetic_decay.gui.app:make_app"
+    )
     assert isinstance(make_app(), SyntheticDecayApp)

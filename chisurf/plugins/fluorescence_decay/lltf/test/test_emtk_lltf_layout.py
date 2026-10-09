@@ -15,8 +15,19 @@ import pytest
 REPO = next(p for p in Path(__file__).parents if (p / "pyproject.toml").exists())
 sys.path.insert(0, str(REPO))
 # isort: off
-from test.gui.emtk_layout_checks import SIZES, assert_disjoint, assert_icons_clear, assert_texts_apart  # noqa: E402
-from chisurf.plugins.fluorescence_decay.lltf.test.test_emtk_lltf_clicks import DECAY, IRF, LLTFApp, Ui, hermetic  # noqa: E402,F401
+from test.gui.emtk_layout_checks import (
+    SIZES,
+    assert_disjoint,
+    assert_icons_clear,
+    assert_texts_apart,
+)  # noqa: E402
+from chisurf.plugins.fluorescence_decay.lltf.test.test_emtk_lltf_clicks import (
+    DECAY,
+    IRF,
+    LLTFApp,
+    Ui,
+    hermetic,
+)  # noqa: E402,F401
 # isort: on
 
 
@@ -72,7 +83,11 @@ def test_option_fields_are_short_and_inside_the_dock(ui):
 
 def test_the_results_tab_is_complete_without_scrolling(ui):
     shown = ui.last.strings
-    assert "Export result JSON" in " ".join(shown) and "Component" in shown and "Lifetime (ns)" in shown
+    assert (
+        "Export result JSON" in " ".join(shown)
+        and "Component" in shown
+        and "Lifetime (ns)" in shown
+    )
     assert any(s.startswith("Number of lifetimes") for s in shown), "the summary is cut off"
     x, y, w, h = ui.app.item_rects["export_json"]
     assert y + h <= ui.size[1] * 0.55

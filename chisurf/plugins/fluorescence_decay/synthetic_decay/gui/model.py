@@ -143,8 +143,11 @@ class SyntheticDecayModel:
         :func:`chisurf.core.fluorescence.decay.validate_lifetime_spectrum`.
         """
         import numpy as np
+
         if path is None:
-            path = self._choose_file("open", "Load lifetime spectrum", "", "Data files (*.csv *.txt *.dat)")
+            path = self._choose_file(
+                "open", "Load lifetime spectrum", "", "Data files (*.csv *.txt *.dat)"
+            )
         if not path:
             return
         try:
@@ -287,7 +290,12 @@ class SyntheticDecayModel:
             self._refresh_fields()
             return
         if path is None:
-            path = self._choose_file("save", "Save decay", "synthetic_decay.csv", "CSV (*.csv);;Text (*.txt);;NumPy (*.npy);;JSON (*.json)")
+            path = self._choose_file(
+                "save",
+                "Save decay",
+                "synthetic_decay.csv",
+                "CSV (*.csv);;Text (*.txt);;NumPy (*.npy);;JSON (*.json)",
+            )
         if not path:
             return
         import json
@@ -318,7 +326,9 @@ class SyntheticDecayModel:
             self._refresh_fields()
             return
         if path is None:
-            path = self._choose_file("save", "Save VV/VH decays", "synthetic_aniso.dat", "VV/VH data (*.dat *.txt)")
+            path = self._choose_file(
+                "save", "Save VV/VH decays", "synthetic_aniso.dat", "VV/VH data (*.dat *.txt)"
+            )
         if not path:
             return
         import numpy as np
@@ -338,7 +348,9 @@ class SyntheticDecayModel:
 
     def generated_is_vv_vh(self) -> bool:
         """Detection mode of the last generated curves, rather than edited inputs."""
-        return bool(self._generated_metadata and self._generated_metadata["polarization"] == "vv/vh")
+        return bool(
+            self._generated_metadata and self._generated_metadata["polarization"] == "vv/vh"
+        )
 
     def aniso_metadata(self) -> dict:
         """Keep exported calibration and bin width attached to the generated data."""
@@ -480,7 +492,13 @@ class SyntheticDecayModel:
 
     def export_settings(self) -> dict:
         """The inputs of the generator, as JSON-able values (the curves are not kept)."""
-        keys = [*self._INT_SETTINGS, *self._FLOAT_SETTINGS, "irf_path", "shot_noise", "polarization"]
+        keys = [
+            *self._INT_SETTINGS,
+            *self._FLOAT_SETTINGS,
+            "irf_path",
+            "shot_noise",
+            "polarization",
+        ]
         out = {key: getattr(self, key) for key in keys}
         out["spectrum_rows"] = [dict(row) for row in self.spectrum_rows]
         out["rotation_rows"] = [dict(row) for row in self.rotation_rows]
