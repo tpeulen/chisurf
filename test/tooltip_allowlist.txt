@@ -860,9 +860,6 @@ chisurf/plugins/pch/gui/pch.view.json#/sections/1:section-tooltip
 chisurf/plugins/pch/gui/pch.view.json#/sections/2/sections/1:section-tooltip
 chisurf/plugins/pch/gui/pch.view.json#/sections/2/sections/2:section-tooltip
 chisurf/plugins/pch/gui/pch.view.json#/sections/2:section-tooltip
-chisurf/plugins/spectra_downloader/gui/endpoint_auth.view.json#/sections/0/descriptions/0:radio-tooltip
-chisurf/plugins/spectra_downloader/gui/endpoint_auth.view.json#/sections/0/descriptions/1:radio-tooltip
-chisurf/plugins/spectra_downloader/gui/endpoint_auth.view.json#/sections/4:section-tooltip
 chisurf/plugins/traj/traj_rotate_translate/rotate_translate.view.json#/sections/0/sections/0:section-tooltip
 chisurf/plugins/traj/traj_rotate_translate/rotate_translate.view.json#/sections/0:section-tooltip
 chisurf/plugins/tttr/audifier/gui/audifier.view.json#/sections/0/sections/0/sections/0:section-tooltip

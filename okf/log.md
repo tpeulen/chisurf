@@ -41514,3 +41514,5 @@ side of the line.
 - 2026-10-09 — Publish the verified W6g two-cde frozen candidate with its accepted source/archive and exact owned deltas; FRET HEAD c821ed811, translations and unrelated work preserved. [Acceptance](validation/release-readiness-w6g/two-cde-window-acceptance.json). W6g and the full programme remain incomplete; post-publication freshness checks are required.
 
 - 2026-10-09 — Publish the verified W6g spectra frozen candidate with its accepted source/archive and exact owned deltas; FRET HEAD c821ed811, translations and unrelated work preserved. [Acceptance](validation/release-readiness-w6g/spectra-window-acceptance.json). W6g and the full programme remain incomplete; post-publication freshness checks are required.
+
+- 2026-10-09 — Publish the verified W6g spectra-tooltip frozen candidate with its accepted source/archive and exact owned deltas; FRET HEAD c821ed811, translations and unrelated work preserved. [Acceptance](validation/release-readiness-w6g/spectra-tooltip-acceptance.json). W6g and the full programme remain incomplete; post-publication freshness checks are required.

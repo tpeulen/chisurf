@@ -49462,5 +49462,20 @@ presets) into a single left-navigation tool. Built on the reusable
             <source>FCS channel pairs: a pair of routing-channel lists, optionally gated in raw micro-time channels. A start:end window includes the lower bound and excludes the upper bound; an empty gate list imposes no micro-time restriction. Equal sides make an auto-correlation.</source>
             <translation type="unfinished" />
         </message>
+<message>
+            <location filename="_autogen.py" line="3287" />
+            <source>Import into the local MMFDB SQLite file selected below.</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="_autogen.py" line="3295" />
+            <source>Import through the configured MMFDB ZMQ server using the current session.</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="_autogen.py" line="6362" />
+            <source>Server connection and authentication settings; passwords remain session-only.</source>
+            <translation type="unfinished" />
+        </message>
 </context>
 </TS>

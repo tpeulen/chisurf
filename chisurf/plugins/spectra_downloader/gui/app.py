@@ -44,7 +44,7 @@ def translated(node):
         for key, value in node.items():
             if key in _TEXT_KEYS and isinstance(value, str):
                 out[key] = tr(value) if value else value
-            elif key == "labels" and isinstance(value, list):
+            elif key in ("labels", "descriptions") and isinstance(value, list):
                 out[key] = [tr(v) for v in value]
             else:
                 out[key] = translated(value)

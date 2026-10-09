@@ -266,3 +266,17 @@ wavelength or intensity arrays. This display contract supplies no extinction
 calibration or spectral normalization: those remain prerequisites of the
 overlap integral. The [spectra workflow](../guides/83_spectra_and_r0.md) illustrates
 the native layout with explicitly labelled analytic fixtures.
+
+### Browsing spectra at different window sizes
+
+The native Spectra Downloader declares a 1100 × 720 logical-pixel initial host
+size and restores saved geometry. Its scrollable stacked Browse layout exposes
+the component metadata and spectrum on narrow windows without changing stored
+wavelength or intensity arrays. This display contract supplies no extinction
+calibration or spectral normalization: those remain prerequisites of the
+overlap integral. The [spectra workflow](../guides/83_spectra_and_r0.md) illustrates
+the native layout with explicitly labelled analytic fixtures.
+
+The Spectra endpoint help distinguishes local SQLite import from server import.
+This destination choice does not change the stored spectral samples or the
+normalization assumptions used in the overlap integral.

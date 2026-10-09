@@ -7,6 +7,7 @@
       "options": ["local", "server"],
       "labels": ["Local file", "Server (ZMQ)"],
       "style": "radio",
+      "descriptions": ["Import into the local MMFDB SQLite file selected below.", "Import through the configured MMFDB ZMQ server using the current session."],
       "description": "Where to add the staging components: a local MMFDB file, or a running MMFDB server."
     },
     {
@@ -32,6 +33,7 @@
     {
       "type": "panel",
       "title": "Advanced — connection & authentication",
+      "description": "Server connection and authentication settings; passwords remain session-only.",
       "collapsible": true,
       "collapsed": true,
       "sections": [
