@@ -98,6 +98,14 @@ instrument-specific. $S_\text{raw}$ is the fraction of photons from donor
 excitation: FRET species sit near $S\approx0.5$, donor-only at $S\to1$,
 acceptor-only at $S\to0$.
 
+Background estimation operates on raw per-detector photon arrival intervals,
+with the decoded macro-time resolution supplying the physical time scale.
+Changing a window size cannot change those intervals or the selected tail fit.
+The fitted tail rate is a background estimate; the total count divided by the
+measurement duration also includes bright molecules and is not the same
+quantity. The [background workflow](../guides/15_background_rates.md) shows
+how to inspect the interval distribution and choose the fit window.
+
 ## The four correction factors
 
 - **Leakage $\alpha$** — donor photons detected in the acceptor channel (spectral

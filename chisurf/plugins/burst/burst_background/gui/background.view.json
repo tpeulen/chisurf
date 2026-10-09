@@ -1,4 +1,8 @@
 {
+  "window": {
+    "width": 1100,
+    "height": 720
+  },
   "_comment": "Declarative AutoForm layout for Burst Background Estimation: a persistent dock area with the detector channel-definition page, the TTTR file list + Estimate action, the tail-fit settings (sliders over the fit window, which is the one judgement call in the estimate, coupled to the draggable band on the inter-photon-time plot), the inter-photon-time distribution (points + fitted tail), the per-detector background-rate bars and the results table \u2014 each a draggable chisurf dock. The Channel Definition and Files docks are dropped when a workflow supplies them (BackgroundViewModel.view_spec).",
   "sections": [
     {

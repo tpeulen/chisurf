@@ -2,6 +2,7 @@
 
 import copy
 import json
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Event
@@ -10,6 +11,7 @@ from threading import Event
 class BackgroundController:
     def __init__(self, model):
         self.model = model
+        self.on_show_channels: Callable[[], None] | None = None
         self.detectors = {
             "green": {"chs": [0, 8], "micro_time_ranges": [[0, 32768]]},
             "red": {"chs": [1, 9], "micro_time_ranges": [[0, 32768]]},
@@ -150,7 +152,8 @@ class BackgroundController:
         snapshot.channels_provider = lambda: detectors
         from chisurf.core.setup_channel_definition import ChannelDefinition
 
-        reading = ChannelDefinition(self.channel_definition.model.get_settings())
+        snapshot._input_settings = copy.deepcopy(self.channel_definition.model.get_settings())
+        reading = ChannelDefinition(snapshot._input_settings)
         snapshot.tttr_provider = lambda path: reading.open_tttr(path, cancel_cb=self._cancel.is_set)
         snapshot._observers = []
         snapshot._interphoton = {}
@@ -187,6 +190,8 @@ class BackgroundController:
             "backgrounds",
             "diagnostics",
             "_interphoton",
+            "_interphoton_settings",
+            "_result_settings",
             "fit_from_ms",
             "fit_to_ms",
             "max_dt_ms",

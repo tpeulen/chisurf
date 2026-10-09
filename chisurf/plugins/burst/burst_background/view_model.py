@@ -12,6 +12,7 @@ concerns. Mirrors :class:`~...burst_irf_bg.gui.view_model.IrfBackgroundViewModel
 
 from __future__ import annotations
 
+import copy
 import logging
 import os
 import pathlib
@@ -85,6 +86,10 @@ class BackgroundViewModel:
         #: slider re-fits instead of re-reading the measurement — a 45 MB file
         #: per tick would make the slider unusable.
         self._interphoton: dict[str, dict[str, np.ndarray]] = {}
+        # The definition belongs to the cached intervals, not to whichever
+        # controls happen to be selected when they are later fitted or saved.
+        self._interphoton_settings: dict = {}
+        self._result_settings: dict | None = None
         #: Callable returning the DetectorWizardPage detectors map (set by the GUI).
         self.channels_provider: Callable[[], dict] | None = None
         #: The Qt DetectorWizardPage, exposed so the shell can push channels in.
@@ -147,6 +152,8 @@ class BackgroundViewModel:
         self.backgrounds.clear()
         self.diagnostics.clear()
         self._interphoton.clear()
+        self._interphoton_settings = {}
+        self._result_settings = None
         self.fit_from_ms = self.fit_to_ms = self.max_dt_ms = 0.0
         self.notify("files")
 
@@ -175,7 +182,20 @@ class BackgroundViewModel:
         import chisurf.core.fluorescence.burst as _burst
         from chisurf.core.fio.staging import open_tttr
 
-        detectors = self._channels()
+        detectors = copy.deepcopy(self._channels())
+        input_settings = copy.deepcopy(getattr(self, "_input_settings", None))
+        if input_settings is not None and "channel_luts" in input_settings:
+            # PTO settings are JSON; ndarray's abbreviated string would lose
+            # the actual correction values and collide across LUT revisions.
+            input_settings["channel_luts"] = {
+                str(channel): np.asarray(values).tolist()
+                for channel, values in input_settings["channel_luts"].items()
+            }
+        self._interphoton_settings = {
+            "detectors": detectors,
+            "input_settings": input_settings,
+        }
+        self._result_settings = None
         self._interphoton.clear()
         unreadable = []
         for path in self.files:
@@ -295,6 +315,13 @@ class BackgroundViewModel:
             self.diagnostics[path] = diags
             self.backgrounds[path] = {n: float(d.rate_khz) for n, d in diags.items()}
         window = self.fit_range()
+        self._result_settings = {
+            **copy.deepcopy(self._interphoton_settings),
+            "binsize_ms": float(self.binsize_ms),
+            "min_counts": int(self.min_counts),
+            "tail_fraction": float(self.tail_fraction),
+            "tail_range_ms": None if window is None else list(window),
+        }
         where = (
             f"tail from {self.tail_fraction:.0%}"
             if window is None
@@ -358,18 +385,19 @@ class BackgroundViewModel:
         A failure here must not lose the estimate on screen.
         """
         from chisurf.core.datastore import store_from_arrays
-        from chisurf.core.fio.fluorescence.burst_container import (
-            write_burst_artifact,
-        )
+        from chisurf.core.fio.fluorescence.burst_container import open_measurement, units_for
+
+        if self._result_settings is None:
+            return
+        parameters = copy.deepcopy(self._result_settings)
 
         for path, diags in self.diagnostics.items():
             if not diags:
                 continue
             names = list(diags)
             try:
-                write_burst_artifact(
-                    path,
-                    store_from_arrays(
+                with open_measurement(path) as measurement:
+                    rates = store_from_arrays(
                         {
                             "Detector": np.array(names, dtype=object),
                             "Rate": np.array(
@@ -379,41 +407,46 @@ class BackgroundViewModel:
                                 [float(diags[n].amplitude) for n in names], dtype=float
                             ),
                         }
-                    ),
-                    name="background",
-                    artifact_kind="background_data",
-                    operation_type="background_correction",
-                    row_grain="channel",
-                    parameters=self._channels(),
-                    derived_from=(),
-                    units={"Rate": "kilohertz", "Amplitude": "counts"},
-                )
-                for name in names:
-                    diag = diags[name]
-                    if not len(diag.centers):
-                        continue
-                    write_burst_artifact(
-                        path,
-                        store_from_arrays(
+                    )
+                    background_uid = measurement.put_table(
+                        "background",
+                        rates,
+                        artifact_kind="background_data",
+                        operation_type="background_correction",
+                        row_grain="channel",
+                        parameters=parameters,
+                        derived_from=measurement.instrument_uids or measurement.instrument_uid,
+                        units=units_for(rates, {"Rate": "kilohertz", "Amplitude": "counts"}),
+                    )
+                    for name in names:
+                        diag = diags[name]
+                        if not len(diag.centers):
+                            continue
+                        histogram = store_from_arrays(
                             {
                                 "Interphoton Time": np.asarray(diag.centers, dtype=float),
                                 "Counts": np.asarray(diag.counts, dtype=float),
                                 "Model": np.asarray(diag.model, dtype=float),
                                 "In Tail": np.asarray(diag.tail_mask, dtype=bool),
                             }
-                        ),
-                        name=f"background histogram {name}",
-                        artifact_kind="background_data",
-                        operation_type="background_correction",
-                        row_grain="curve_point",
-                        parameters=self._channels(),
-                        derived_from="background",
-                        units={
-                            "Interphoton Time": "milliseconds",
-                            "Counts": "counts",
-                            "Model": "counts",
-                        },
-                    )
+                        )
+                        measurement.put_table(
+                            f"background histogram {name}",
+                            histogram,
+                            artifact_kind="background_data",
+                            operation_type="background_correction",
+                            row_grain="curve_point",
+                            parameters=parameters,
+                            derived_from=background_uid,
+                            units=units_for(
+                                histogram,
+                                {
+                                    "Interphoton Time": "milliseconds",
+                                    "Counts": "counts",
+                                    "Model": "counts",
+                                },
+                            ),
+                        )
             except Exception:
                 logger.debug("could not write the container for %s", path, exc_info=True)
 

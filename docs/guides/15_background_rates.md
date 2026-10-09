@@ -24,6 +24,25 @@ the background count rate.
 
 ## In ChiSurf
 
+The native standalone host declares **1100 × 720** pixels on first use;
+saved geometry takes precedence. Resize or scroll dock contents to reach the
+fit controls on a smaller host. Window geometry does not change the selected
+photons, detector definition or inter-photon-time fit window.
+
+The estimator reads the raw TTTR measurements. A burst-analysis folder helps
+identify the measurement and its detector setup; its per-burst rows are not
+the observations fitted by this tool. Check the decoded macro-time resolution
+when converting intervals to milliseconds, and distinguish the fitted rate
+from the mean rate of a measurement containing bright bursts.
+
+```{figure} figures/burst_background_native_primary_window.png
+:width: 100%
+
+Native measured-data estimate with three detector definitions: green1.497,
+red0.322 and yellow0.338kHz over the3.824–6.357ms tail window. These are the
+rates for the displayed gates and window, rather than a universal background.
+```
+
 The tool is **Background** in the burst workflow (**Spectroscopy ▸ Burst
 Analysis**, below the numbered steps); it is not on the menu on its own. Inside
 the workflow the measurements and the detector definition come from *1. Data
@@ -86,6 +105,19 @@ additionally recovers a scatter-derived **IRF** from the same non-burst photons
 (the photons the burst search rejects are the built-in scatter/background),
 feeding both the correction factors and the MLE lifetime fit — with no separate
 buffer acquisition. See [Lifetime from photon bursts](21_lifetime_from_bursts.md).
+
+## Stored result context
+
+A stored rate result records the detector definition, actual reader corrections
+when available, bin width, minimum bin count, tail fraction and fitted time
+range. Each interval histogram links to that exact rate result. Repeating a
+configuration updates its run; changing fit or reader settings creates a
+separate result identity. Historical results retain their original provenance.
+
+Moving a fit-window control re-fits cached intervals on screen. It does not
+write a new stored result on every gesture. Run **Estimate Background** to
+publish the computed result with its frozen input and fit context; later edits
+to live controls do not relabel the completed computation.
 
 ## Choosing the fit window
 

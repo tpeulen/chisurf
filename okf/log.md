@@ -41500,3 +41500,5 @@ side of the line.
 - 2026-10-09 — Publish the verified W6g burst-irf-bg frozen candidate with its accepted source/archive and exact owned deltas; FRET HEAD c821ed811, translations and unrelated work preserved. [Acceptance](validation/release-readiness-w6g/burst-irf-bg-window-acceptance.json). W6g and the full programme remain incomplete; post-publication freshness checks are required.
 
 - 2026-10-09 — Publish the verified W6g burst-fcs frozen candidate with its accepted source/archive and exact owned deltas; FRET HEAD c821ed811, translations and unrelated work preserved. [Acceptance](validation/release-readiness-w6g/burst-fcs-window-acceptance.json). W6g and the full programme remain incomplete; post-publication freshness checks are required.
+
+- 2026-10-09 — Publish the verified W6g burst-background frozen candidate with its accepted source/archive and exact owned deltas; FRET HEAD c821ed811, translations and unrelated work preserved. [Acceptance](validation/release-readiness-w6g/burst-background-window-acceptance.json). W6g and the full programme remain incomplete; post-publication freshness checks are required.

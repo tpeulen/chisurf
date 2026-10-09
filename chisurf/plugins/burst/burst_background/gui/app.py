@@ -22,14 +22,20 @@ import json
 import logging
 import math
 from collections.abc import Callable
-from typing import Any
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from emtk import im, implot
 from emtk.app import ImApp
 from emtk.im_core import get_current_context
 
+from chisurf.plugins.emtk_layout import window_size
+
 from ..view_model import BackgroundViewModel
+
+if TYPE_CHECKING:
+    from .controller import BackgroundController
 
 __all__ = ["BurstBackgroundApp", "BurstBackgroundGui", "WINDOW_BG"]
 
@@ -66,6 +72,10 @@ class BurstBackgroundGui:
         on_help: Callable[[], None] | None = None,
     ) -> None:
         self.model = model if model is not None else BackgroundViewModel()
+        self.controller: BackgroundController | None = None
+        self.on_remember: Callable[[str, tuple[float, float, float, float] | None], None] | None = (
+            None
+        )
         self.on_estimate = on_estimate
         self.on_guide = on_guide
         self.on_help = on_help
@@ -115,8 +125,17 @@ class BurstBackgroundGui:
             "channels", "Channel definition", self._draw_channels, dock="controls"
         )
 
+    def remember(self, name: str, rect: tuple[float, float, float, float] | None = None) -> None:
+        """Record a control locally or through the native host's existing callback."""
+        if self.on_remember is not None:
+            self.on_remember(name, rect)
+            return
+        bounds = rect if rect is not None else im.get_item_rect()
+        if bounds is not None:
+            self.item_rects[name] = tuple(bounds)
+
     def _draw_channels(self, box):
-        controller = getattr(self, "controller", None)
+        controller = self.controller
         if controller is not None:
             im.begin_disabled(controller.running)
             controller.channel_definition.draw()
@@ -151,9 +170,9 @@ class BurstBackgroundGui:
 
     def _draw_parameters(self) -> None:
         avail_w = im.get_content_region_avail()[0]
-        if getattr(self, "controller", None) is not None:
+        if self.controller is not None:
             self.controller.draw_inputs(remember=self.remember, track=self.track)
-        im.begin_disabled(bool(getattr(self, "controller", None) and self.controller.running))
+        im.begin_disabled(self.controller is not None and self.controller.running)
         im.text_colored(ACCENT_BLUE, "Fit Settings")
 
         # Fit from / to (ms)
@@ -404,6 +423,8 @@ class BurstBackgroundApp(ImApp):
         on_guide: Callable[[], None] | None = None,
         on_help: Callable[[], None] | None = None,
     ) -> None:
+        spec = json.loads(Path(__file__).with_name("background.view.json").read_text())
+        self.window_size = window_size(spec, (1100, 720))
         self.controller = None
         if on_estimate is None:
             from .controller import BackgroundController
@@ -419,7 +440,7 @@ class BurstBackgroundApp(ImApp):
         )
         self.model = self.bg_gui.model
         self.item_rects = self.bg_gui.item_rects
-        self.bg_gui.remember = self.remember
+        self.bg_gui.on_remember = self.remember
         self.bg_gui.controller = self.controller
         if self.controller is not None:
             self.controller.channel_definition.host_app = self
