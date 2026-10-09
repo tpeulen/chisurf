@@ -2,6 +2,10 @@
 
 ## 2026-10-08
 
+- **2026-10-09 · Verified W6g archive candidates published:**23 focused plain local commits now contain the exact source/docs/evidence from Burst Browser through ebFRET, preserving FRET c821ed811 and every foreign working-tree edit. Shared concepts/locales merged cumulatively; BVA annotation delta preserved. Targeted integration79 cases and tooltip committed-debt/fresh inventory checks pass. ALEX automatic regions/3+ lasers remains current, with generic core46 cases and GUI finishing. [Publication receipt](validation/release-readiness-w6g/publication-receipt.json), [resume](validation/release-readiness-w6g/current-job.md).
+
+- **2026-10-09 · FRET guided entry committed c821ed811:** exact owned candidate, paired docs/46 de-fr stubs/evidence and deliberate ribbon expectation landed locally; foreign typed editor/formatting preserved. ALEX user-reported detection/multi-laser blocker is current: generic core46 targeted checks pass, GUI integration running. Permissions restored; prior verified source publication is next alongside this blocker. [Resume](validation/release-readiness-w6g/current-job.md).
+
 - **2026-10-09 · FRET guided entry verified:** visible menu, first physical pair inputs, declared illustrative demo/await tour and retained expert controls. Independent nondefault physics/atomic donor rejection pass; original curve/control inventory exact. Actual PNGs inspected, 28 targeted cases/static clean and available guards pass with the deliberate ribbon update. Focused publication prepared; ALEX auto-region/multi-laser user blocker next. [Acceptance](validation/release-readiness-w6g/fret-workflow-acceptance.json).
 
 - **2026-10-08 · Exact shared-contract publication checkpoint:** source86a42f2e7/SDK95705e20f and board100644b7c recorded in durablePRD/current-job/state/acceptance;27post-commitchecks pass. Finalsourcearchive andlosslessXMLspaceencoding preserve executableresume/diff hygiene.1143tooltipomissions,imperativewrapping,demo/window contracts remainexplicitlyopen;wholeprogramme active. [Resume](validation/release-readiness-w6g/current-job.md).
