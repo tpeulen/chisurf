@@ -234,7 +234,17 @@ class TestAISettingsWidget:
 
 def test_native_acp_command_is_saved_without_replacing_http_provider():
     from chisurf.core.settings import ai_settings
-    ai_settings.save_api_settings({"provider": "local", "base_url": "http://localhost/v1", "text_model": "test-model"})
-    assert ai_settings.save_api_settings({"provider": "acp", "command": 'agent --stdio "quoted path"', "acp_backend_provider": "local"}, provider="acp")
+
+    ai_settings.save_api_settings(
+        {"provider": "local", "base_url": "http://localhost/v1", "text_model": "test-model"}
+    )
+    assert ai_settings.save_api_settings(
+        {
+            "provider": "acp",
+            "command": 'agent --stdio "quoted path"',
+            "acp_backend_provider": "local",
+        },
+        provider="acp",
+    )
     assert ai_settings.get_api_settings("acp")["command"] == 'agent --stdio "quoted path"'
     assert ai_settings.get_provider() == "local"

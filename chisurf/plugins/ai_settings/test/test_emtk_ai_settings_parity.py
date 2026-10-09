@@ -92,8 +92,11 @@ def hermetic(tmp_path, monkeypatch):
 
     opened: list[str] = []
     monkeypatch.setattr(webbrowser, "open", lambda url, *a, **k: opened.append(url) or True)
-    return type("Env", (), {"folder": folder, "http": stub, "opened": opened,
-                            "file": folder / "ai_api_settings.json"})
+    return type(
+        "Env",
+        (),
+        {"folder": folder, "http": stub, "opened": opened, "file": folder / "ai_api_settings.json"},
+    )
 
 
 @pytest.fixture
@@ -184,15 +187,21 @@ def test_provider_options_and_defaults_equal_the_qt_tool(qapp):
     widget = AISettingsWidget()
     try:
         combo = next(
-            c.combo
-            for c in widget.form.findChildren(ChoiceWidget)
-            if c._section.attr == "provider"
+            c.combo for c in widget.form.findChildren(ChoiceWidget) if c._section.attr == "provider"
         )
         qt_labels = [combo.itemText(i) for i in range(combo.count())]
         app = make_app()
         assert [label for _key, label in app.model.available_providers()] == qt_labels
-        for attr in ("provider", "base_url", "api_key", "text_model", "image_model",
-                     "temperature", "top_p", "max_tokens"):
+        for attr in (
+            "provider",
+            "base_url",
+            "api_key",
+            "text_model",
+            "image_model",
+            "temperature",
+            "top_p",
+            "max_tokens",
+        ):
             assert getattr(app.model, attr) == getattr(widget.model, attr), attr
         assert app.model.provider == "mistral"
         assert app.model.base_url == "https://api.mistral.ai/v1"
@@ -203,8 +212,11 @@ def test_provider_options_and_defaults_equal_the_qt_tool(qapp):
 
 def test_numeric_ranges_equal_the_qt_spec():
     """Temperature, Top-p and Max tokens carry the Qt spinbox ranges, steps and decimals."""
-    qt = {s["attr"]: s for s in walk(json.loads(QT_SPEC_FILE.read_text())["sections"])
-          if s.get("attr") in ("temperature", "top_p", "max_tokens")}
+    qt = {
+        s["attr"]: s
+        for s in walk(json.loads(QT_SPEC_FILE.read_text())["sections"])
+        if s.get("attr") in ("temperature", "top_p", "max_tokens")
+    }
     assert set(qt) == {"temperature", "top_p", "max_tokens"}
     for attr, qt_section in qt.items():
         (mine,) = find_fields(attr)
@@ -262,7 +274,10 @@ def test_changing_the_provider_loads_its_defaults(key):
     qt_like = make_model()
     qt_like.set_provider(key)
     assert (qt_like.base_url, qt_like.text_model, qt_like.image_model) == (
-        app.model.base_url, app.model.text_model, app.model.image_model)
+        app.model.base_url,
+        app.model.text_model,
+        app.model.image_model,
+    )
 
 
 def test_changing_the_provider_drops_fetched_models_and_the_key_is_not_carried_over(env):
@@ -398,12 +413,14 @@ def test_fetch_models_fills_the_pick_lists_through_the_job(env):
     from chisurf.core.settings import ai_settings
 
     reference_text, reference_image = ai_settings.split_models_by_capability(
-        MODELS["data"], provider="mistral")
+        MODELS["data"], provider="mistral"
+    )
     assert model.available_text_models() == reference_text
     assert model.available_image_models() == reference_image
     assert model.status_text == (
         f"Found {len(model.available_text_models())} text and "
-        f"{len(model.available_image_models())} image models.")
+        f"{len(model.available_image_models())} image models."
+    )
     text = _all_text(app)
     assert "Fetched text models" in text and "Fetched image models" in text
     # identical to what the Qt tool's model produces for the same answer
@@ -461,20 +478,34 @@ def test_test_connection_ok_and_failed(env):
 @pytest.mark.parametrize(
     ("label", "behaviour", "expected"),
     [
-        ("server error", lambda url, h: FakeResponse(500, text="upstream down"),
-         "API error 500: upstream down"),
-        ("malformed JSON", lambda url, h: FakeResponse(200, bad_json=True),
-         "Expecting value"),
-        ("timeout", lambda url, h: TimeoutError("timed out"), "timed out: the endpoint did not answer within 15 s"),
-        ("transport timeout text", lambda url, h: OSError("The read operation timed out"),
-         "timed out: the endpoint did not answer within 15 s"),
-        ("refused", lambda url, h: ConnectionRefusedError("[Errno 61] Connection refused"),
-         "Connection refused"),
+        (
+            "server error",
+            lambda url, h: FakeResponse(500, text="upstream down"),
+            "API error 500: upstream down",
+        ),
+        ("malformed JSON", lambda url, h: FakeResponse(200, bad_json=True), "Expecting value"),
+        (
+            "timeout",
+            lambda url, h: TimeoutError("timed out"),
+            "timed out: the endpoint did not answer within 15 s",
+        ),
+        (
+            "transport timeout text",
+            lambda url, h: OSError("The read operation timed out"),
+            "timed out: the endpoint did not answer within 15 s",
+        ),
+        (
+            "refused",
+            lambda url, h: ConnectionRefusedError("[Errno 61] Connection refused"),
+            "Connection refused",
+        ),
         ("empty message", lambda url, h: RuntimeError(), "RuntimeError"),
     ],
 )
 @pytest.mark.parametrize("action", ["fetch_models", "test_connection"])
-def test_network_failures_give_a_readable_status_and_never_raise(env, action, label, behaviour, expected):
+def test_network_failures_give_a_readable_status_and_never_raise(
+    env, action, label, behaviour, expected
+):
     app = make_app()
     app.model.api_key = FAKE_KEY
     env.http.behaviour = behaviour
@@ -483,7 +514,8 @@ def test_network_failures_give_a_readable_status_and_never_raise(env, action, la
     assert not app.job.busy and app.job.error == ""
     assert expected in app.model.status_text, label
     assert app.model.status_text.startswith(
-        "Failed: " if action == "fetch_models" else "Connection failed: ")
+        "Failed: " if action == "fetch_models" else "Connection failed: "
+    )
     assert expected in "\n".join(painter.strings), "the result area shows it"
     assert not app.model.has_text_models
 
@@ -580,7 +612,11 @@ def test_save_persists_to_the_temporary_settings_file_and_a_fresh_model_reads_it
         assert (env.file.stat().st_mode & 0o777) == 0o600
     fresh = make_model()
     assert fresh.provider == "openai"
-    assert (fresh.api_key, fresh.text_model, fresh.image_model) == (FAKE_KEY, "gpt-test", "image-test")
+    assert (fresh.api_key, fresh.text_model, fresh.image_model) == (
+        FAKE_KEY,
+        "gpt-test",
+        "image-test",
+    )
     assert (fresh.temperature, fresh.top_p, fresh.max_tokens) == (1.25, 0.5, 123)
     # and a second app on the same folder shows it, key still masked
     again = make_app()
@@ -643,16 +679,29 @@ def test_sign_in_opens_the_providers_key_page_and_says_when_there_is_none(env):
 def test_the_three_sections_have_the_qt_fold_state(env):
     panels = [s for s in walk(spec()["sections"]) if s.get("collapsible")]
     assert [(p["title"], p["collapsed"]) for p in panels] == [
-        ("API Configuration", False), ("Models", False), ("Generation Settings", True)]
+        ("API Configuration", False),
+        ("Models", False),
+        ("Generation Settings", True),
+    ]
     qt = [s for s in walk(json.loads(QT_SPEC_FILE.read_text())["sections"]) if s.get("collapsible")]
-    assert [(p["title"], p["collapsed"]) for p in qt] == [(p["title"], p["collapsed"]) for p in panels]
+    assert [(p["title"], p["collapsed"]) for p in qt] == [
+        (p["title"], p["collapsed"]) for p in panels
+    ]
 
 
 def test_generation_settings_are_folded_until_opened(env):
     app = make_app()
     text = _all_text(app)
-    for shown in ("API Configuration", "Models", "Generation Settings", "Provider", "Base URL",
-                  "API Key", "Text model", "Image model"):
+    for shown in (
+        "API Configuration",
+        "Models",
+        "Generation Settings",
+        "Provider",
+        "Base URL",
+        "API Key",
+        "Text model",
+        "Image model",
+    ):
         assert shown in text, shown
     for hidden in ("Temperature", "Top-p", "Max tokens"):
         assert hidden not in text, hidden
@@ -683,8 +732,11 @@ def test_labels_sit_beside_their_fields_in_two_columns(env):
     click(app, "Generation Settings.fold")
     frames(app)
     rects = app.form.rects
-    for left, right in (("base_url", "api_key"), ("text_model", "image_model"),
-                        ("temperature", "top_p")):
+    for left, right in (
+        ("base_url", "api_key"),
+        ("text_model", "image_model"),
+        ("temperature", "top_p"),
+    ):
         assert abs(rects[left][1] - rects[right][1]) < 2, (left, right)
         assert rects[left][0] < rects[right][0]
     # a label is left of its field, never at the far edge: the field starts near the label
@@ -746,9 +798,18 @@ def test_the_app_draws_empty_and_populated_at_both_sizes(env, size):
     settle(app, size)
     painter = frames(app, size)
     text = "\n".join(painter.strings)
-    for shown in ("Fetched text models", "Connection successful!", "Temperature", "Save", "Reset",
-                  "Test connection", "Fetch models", "Sign in via browser", "Show key",
-                  "Configure one endpoint per provider"):
+    for shown in (
+        "Fetched text models",
+        "Connection successful!",
+        "Temperature",
+        "Save",
+        "Reset",
+        "Test connection",
+        "Fetch models",
+        "Sign in via browser",
+        "Show key",
+        "Configure one endpoint per provider",
+    ):
         assert shown in text, (size, shown)
     assert FAKE_KEY not in text
     pixels = PixelPainter(*size)
@@ -816,8 +877,12 @@ def test_port_is_qt_free():
 def test_manifest_keeps_both_entrypoints():
     manifest = json.loads((HERE.parent / "manifest.json").read_text())
     assert manifest["entrypoints"]["gui"].endswith("gui.tool:AISettingsWidget")
-    assert manifest["entrypoints"]["emtk"] == "chisurf.plugins.ai_settings.gui.app:make_ai_settings_app"
-    from chisurf.plugins.ai_settings.gui.app import make_ai_settings_app, make_app as alias
+    assert (
+        manifest["entrypoints"]["emtk"]
+        == "chisurf.plugins.ai_settings.gui.app:make_ai_settings_app"
+    )
+    from chisurf.plugins.ai_settings.gui.app import make_ai_settings_app
+    from chisurf.plugins.ai_settings.gui.app import make_app as alias
 
     assert make_ai_settings_app is alias
     app = make_ai_settings_app()
