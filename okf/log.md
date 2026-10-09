@@ -2,6 +2,8 @@
 
 ## 2026-10-08
 
+- **2026-10-09 · Committed native-window coverage remeasured:**90covered/19missing/7hardcoded =26remaining of116 factory records, exactly25 readers gained through owned source publication. Inherited readers and the two FCS manifest aliases are counted correctly. Remaining20core +6game/host belong to W6f; static geometry coverage is distinct from functional acceptance. Portable scripts, prior65 baseline and source revision02b204ad0 are archived in [reader evidence](validation/release-readiness-w6g/remaining-window-map-after-owned-publication.zip).
+
 - **2026-10-09 · ALEX repair committed:** ChiSurf02b204ad0 and TTTRlibc783fe00a, exact source archive and independent numerical/provider/GUI evidence. 1059available guards pass/11skip, generated locale8 and fresh inventory6 pass. Original controls/workflows retained; known-period and neutral-phase qualifications explicit. Next owning defect is SDK gamma report identification; broader programme remains active. [Acceptance](validation/release-readiness-w6g/alex-regions-acceptance.json).
 
 - **2026-10-09 · ALEX multi-phase repair verified, publication in progress:** automatic all-channel regions support three-color excitation, preserve transition candidates and retain conversion controls. Four actual renders inspected. TTTRlib folding/getter committed `c783fe00a`, test and arm64 rebuilt, 33 independent regressions pass; output capacity/header/source checks pass28. Circular bounds and period/CLI/API checks pass; final locale/catalogue/guards and focused ChiSurf commit remain. [Current job](validation/release-readiness-w6g/current-job.md).
