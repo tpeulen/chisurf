@@ -58,6 +58,7 @@ from .gui.client import FilterCalcClient  # noqa: F401
 def __getattr__(name):
     if name == "FcsFilterCalculatorWidget":
         from .gui_parts.main_window import FcsFilterCalculatorWidget
+
         return FcsFilterCalculatorWidget
     raise AttributeError(name)
 

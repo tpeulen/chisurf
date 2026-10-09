@@ -4,6 +4,7 @@ The form is ``fcs_calculator_emtk.view.json`` drawn by :func:`emtk.view_form.dra
 :class:`.model.ConfocalModel`; this app adds the Guide / Help row, the settings-file dialogs and a
 scroll region, so a narrow window keeps every panel reachable.
 """
+
 from __future__ import annotations
 
 import json
@@ -13,9 +14,11 @@ from emtk import im
 from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.plugins.emtk_layout import window_size
 
 from .model import ConfocalModel
 
@@ -30,13 +33,6 @@ TOUR_KEYS = {
     "confocal_dye": "Reference dye (D @ 25 °C, water).fold",
     "confocal_shape": "Molecular shape.fold",
 }
-
-
-
-from emtk.i18n import tr
-
-
-from chisurf.plugins.emtk_layout import window_size
 
 
 class ConfocalApp(ImApp):

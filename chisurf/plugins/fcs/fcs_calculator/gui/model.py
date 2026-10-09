@@ -5,6 +5,7 @@ view spec (``fcs_calculator_emtk.view.json``) reads and writes; every edit recom
 quantities through :func:`..core.algorithms.compute_confocal`, as the Qt widget does through its
 backend client.
 """
+
 from __future__ import annotations
 
 import json
@@ -16,7 +17,18 @@ from ..core import algorithms as physics
 SHAPES = ("Sphere", "Ellipsoid", "Cylinder")
 #: The field each constraint makes the input; the other two are computed.
 CONSTRAINED = {"D": "D_um2_s", "rh": "rh_nm", "V": "veff_fL"}
-NUMBERS = ("tau_us", "D_um2_s", "rh_nm", "S", "veff_fL", "temp_C", "eta_mPa_s", "conc_nM", "num_mols", "invN")
+NUMBERS = (
+    "tau_us",
+    "D_um2_s",
+    "rh_nm",
+    "S",
+    "veff_fL",
+    "temp_C",
+    "eta_mPa_s",
+    "conc_nM",
+    "num_mols",
+    "invN",
+)
 
 
 class ConfocalModel:
@@ -67,10 +79,19 @@ class ConfocalModel:
     def recompute(self, _value=None):
         """Recompute D, rh, Veff, eta and the occupancy from the inputs and the constraint."""
         result = physics.compute_confocal(
-            tau_us=self.tau_us, S=self.S, temp_C=self.temp_C, eta_mPa_s=self.eta_mPa_s,
-            use_water_eta=bool(self.use_water_eta), constraint=self.constraint, D_um2_s=self.D_um2_s,
-            rh_nm=self.rh_nm, veff_fL=self.veff_fL, conc_nM=self.conc_nM, num_mols=self.num_mols,
-            invN=self.invN, last_edited=self.last_edited or "conc",
+            tau_us=self.tau_us,
+            S=self.S,
+            temp_C=self.temp_C,
+            eta_mPa_s=self.eta_mPa_s,
+            use_water_eta=bool(self.use_water_eta),
+            constraint=self.constraint,
+            D_um2_s=self.D_um2_s,
+            rh_nm=self.rh_nm,
+            veff_fL=self.veff_fL,
+            conc_nM=self.conc_nM,
+            num_mols=self.num_mols,
+            invN=self.invN,
+            last_edited=self.last_edited or "conc",
         )
         for key in ("D_um2_s", "rh_nm", "veff_fL", "conc_nM", "num_mols", "invN"):
             setattr(self, key, result[key])
@@ -116,7 +137,9 @@ class ConfocalModel:
         value = None
         if size > 0:
             if self.shape_type == "Sphere":
-                value = physics.m2s_to_um2s(physics.stokes_einstein_D(temperature, eta, physics.nm_to_m(size) / 2.0))
+                value = physics.m2s_to_um2s(
+                    physics.stokes_einstein_D(temperature, eta, physics.nm_to_m(size) / 2.0)
+                )
             elif aspect > 0 and self.shape_type == "Ellipsoid":
                 minor = physics.nm_to_m(size) / 2.0
                 value = physics.diffusion_ellipsoid(temperature, eta, minor * aspect, minor)
@@ -140,9 +163,15 @@ class ConfocalModel:
     def settings(self):
         """The Qt widget's settings dict (``_collect_settings``), the JSON it exports."""
         data = {key: getattr(self, key) for key in NUMBERS}
-        data.update(use_water_eta=bool(self.use_water_eta), fix_mode=self.constraint, dye=self.dye,
-                    scale_dref=bool(self.scale_dref), shape_type=self.shape_type,
-                    shape_size_nm=self.shape_size_nm, shape_aspect=self.shape_aspect)
+        data.update(
+            use_water_eta=bool(self.use_water_eta),
+            fix_mode=self.constraint,
+            dye=self.dye,
+            scale_dref=bool(self.scale_dref),
+            shape_type=self.shape_type,
+            shape_size_nm=self.shape_size_nm,
+            shape_aspect=self.shape_aspect,
+        )
         return data
 
     def apply_settings(self, data):

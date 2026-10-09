@@ -182,15 +182,6 @@ class FilterApp(TourTarget, ImApp):
         im.set_item_tooltip(tip)
         self.item_rects[label] = im.get_item_rect()
 
-    def number(self, label, value, tip, integer=False):
-        changed, value = (
-            im.input_int(label, int(value), step=0)
-            if integer
-            else im.input_float(label, float(value), step=0)
-        )
-        im.set_item_tooltip(tip)
-        return changed, value
-
     def checkbox(self, label, value, tip):
         changed, value = im.checkbox(label, value)
         im.set_item_tooltip(tip)

@@ -43,7 +43,11 @@ def test_the_reconstruction_plot_frames_the_decay_not_the_irf_tail(monkeypatch):
     for _ in range(3):
         app.draw(RecordingPainter(), 0, 0, 1200, 800)
     recon = [r for r in seen if r.x_max == 256.0 and r.y_max > 100]
-    assert recon and recon[-1].y_min >= 0.4 and recon[-1].y_max == pytest.approx(3011.0 * 1.2, rel=0.05)
+    assert (
+        recon
+        and recon[-1].y_min >= 0.4
+        and recon[-1].y_max == pytest.approx(3011.0 * 1.2, rel=0.05)
+    )
 
 
 def test_the_port_is_qt_free():
@@ -68,7 +72,9 @@ def test_native_filters_are_bit_identical_to_the_qt_widgets_for_the_same_inputs(
     shift 0.03 ns), so its scatter/IRF nuisance pattern is the matching one.
     """
     from chisurf.plugins.fcs.fcs_filter_calculator.gui.model import FilterModel
-    from chisurf.plugins.fcs.fcs_filter_calculator.gui_parts.main_window import FcsFilterCalculatorWidget
+    from chisurf.plugins.fcs.fcs_filter_calculator.gui_parts.main_window import (
+        FcsFilterCalculatorWidget,
+    )
 
     widget = FcsFilterCalculatorWidget()
     widget.show()
@@ -79,7 +85,10 @@ def test_native_filters_are_bit_identical_to_the_qt_widgets_for_the_same_inputs(
     ds = widget.detector_selection
     assert (ds.width("default"), ds.skew("default"), ds.shift("default")) == (0.2, 0.0, 0.0)
     native = FilterModel()
-    assert (native.detectors.width("green"), native.detectors.shift("green")) == (0.16, pytest.approx(0.03))
+    assert (native.detectors.width("green"), native.detectors.shift("green")) == (
+        0.16,
+        pytest.approx(0.03),
+    )
     native.detectors.set_width("green", 0.2)
     native.detectors.set_skew("green", 0.0)
     native.detectors.set_shift("green", 0.0)

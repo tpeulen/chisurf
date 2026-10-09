@@ -91,10 +91,13 @@ def _cell(app, row, key):
     control = app.form.tables["curve_rows"].control
     bx, by, bw, bh = control._body_box
     y = by + (row + 0.5) * control._row_h
-    x = next(px for px in np.arange(bx + 1, bx + bw, 2.0)
-             if (column := control.column_at(px)) is not None and column.key == key)
+    x = next(
+        px
+        for px in np.arange(bx + 1, bx + bw, 2.0)
+        if (column := control.column_at(px)) is not None and column.key == key
+    )
     while (column := control.column_at(x + 2)) is not None and column.key == key:
-        x += 2                                          # walk to the column's middle
+        x += 2  # walk to the column's middle
         if control.column_at(x + 12) is None or control.column_at(x + 12).key != key:
             break
     return x - 4, y
@@ -111,21 +114,31 @@ def _loaded(folder, **kwargs):
 def test_rows_merge_and_file_match_the_qt_page(qt, folder, chunks):
     app = _loaded(folder)
     try:
-        rows = [[r["file"], f"{r['cr_a']:.2f}", f"{r['cr_b']:.2f}", f"{r['duration']:.2f}"]
-                for r in app.model.curve_rows()]
+        rows = [
+            [r["file"], f"{r['cr_a']:.2f}", f"{r['cr_b']:.2f}", f"{r['duration']:.2f}"]
+            for r in app.model.curve_rows()
+        ]
         assert rows == qt["rows"]
-        assert [Path(r["path"]).name for r in app.model.curve_rows()] == [Path(t).name for t in qt["tips"]]
+        assert [Path(r["path"]).name for r in app.model.curve_rows()] == [
+            Path(t).name for t in qt["tips"]
+        ]
         assert Path(app.model.output).name == Path(qt["target"]).name == "BH_SPC132.cor"
-        assert Path(app.model.output).parent == folder.parent and Path(qt["target"]).parent == chunks.parent
+        assert (
+            Path(app.model.output).parent == folder.parent
+            and Path(qt["target"]).parent == chunks.parent
+        )
         _draw(app)
         x, y = _cell(app, 2, "use")
-        _press(app, x, y)                                   # the Use check box of chunk 3
+        _press(app, x, y)  # the Use check box of chunk 3
         assert app.model.use == [True, True, False, True, True, True]
         assert app.model.curve_rows()[2]["muted"]
         mean = app.model.mean_correlation
         for key in ("x", "y", "ey"):
             np.testing.assert_allclose(mean[key], qt["mean"][key], rtol=1e-12)
-        assert mean["count_rate"] == pytest.approx(qt["mean"]["count_rate"]) and mean["count_rate"] > 1.0
+        assert (
+            mean["count_rate"] == pytest.approx(qt["mean"]["count_rate"])
+            and mean["count_rate"] > 1.0
+        )
         assert mean["duration"] == qt["mean"]["duration"] == 50.0
         _click(app, "request_save")
         _wait(app)
@@ -163,11 +176,16 @@ def test_curves_carry_the_qt_pens(folder, monkeypatch):
         app.use = [i != 2 for i in range(6)]
         app.selected = 1
         styles = []
-        monkeypatch.setattr(app_module.implot, "set_next_line_style",
-                            lambda colour=None, weight=None, dash=None: styles.append((colour, weight, dash)))
+        monkeypatch.setattr(
+            app_module.implot,
+            "set_next_line_style",
+            lambda colour=None, weight=None, dash=None: styles.append((colour, weight, dash)),
+        )
         _draw(app, n=1)
-        assert [w for _, w, _ in styles] == [1.0, 3.0, 1.0, 1.0, 1.0, 1.0]          # the highlighted one
-        assert styles[2][0] == app_module.UNUSED and styles[2][2] is not None       # unused: grey, dashed
+        assert [w for _, w, _ in styles] == [1.0, 3.0, 1.0, 1.0, 1.0, 1.0]  # the highlighted one
+        assert (
+            styles[2][0] == app_module.UNUSED and styles[2][2] is not None
+        )  # unused: grey, dashed
         assert styles[0][0] == app.palette[0] and styles[0][2] is None
     finally:
         app.close()
@@ -182,7 +200,9 @@ def test_none_ticked_merges_all_and_errors_show(folder, tmp_path):
         assert any("averages all of them" in s for s in _draw(app).strings)
         app.load_folder(tmp_path / "empty")
         _wait(app)
-        assert "Could not read" in app.model.error and len(app.model.correlations) == 6     # the list stays
+        assert (
+            "Could not read" in app.model.error and len(app.model.correlations) == 6
+        )  # the list stays
         assert any("Could not read" in s for s in _draw(app).strings)
         app.model.output = ""
         assert not app.save() and "target" in app.model.error
@@ -194,10 +214,12 @@ def test_buttons_follow_the_state(folder):
     app = MergerApp()
     try:
         _click(app, "request_save")
-        assert not app.job.running                          # nothing loaded: disabled
-        assert not app.form_model.enabled("request_save") and not app.form_model.enabled("request_clear")
+        assert not app.job.running  # nothing loaded: disabled
+        assert not app.form_model.enabled("request_save") and not app.form_model.enabled(
+            "request_clear"
+        )
         _draw(app)
-        assert not app.animating()                          # at rest: no frames
+        assert not app.animating()  # at rest: no frames
         app.files_dropped([str(folder)])
         assert app.job.running and not app.form_model.enabled("request_open")
         assert app.form_model.busy and app.animating()
@@ -205,7 +227,7 @@ def test_buttons_follow_the_state(folder):
         assert not app.animating() and app.form_model.enabled("request_add")
         _click(app, "request_clear")
         assert app.model.correlations == [] and app.model.folder == ""
-        app.files_dropped([str(folder / "chnk-0003.cor")])          # a dropped chunk reads its folder
+        app.files_dropped([str(folder / "chnk-0003.cor")])  # a dropped chunk reads its folder
         _wait(app)
         assert len(app.model.correlations) == 6 and app.model.folder == str(folder)
     finally:
@@ -226,13 +248,15 @@ def test_open_save_as_and_add(folder, tmp_path):
         assert app.dialog_mode == "save"
         app.path_chosen(str(tmp_path / "elsewhere.cor"))
         _wait(app)
-        assert (tmp_path / "elsewhere.cor").exists() and app.model.output == str(tmp_path / "elsewhere.cor")
+        assert (tmp_path / "elsewhere.cor").exists() and app.model.output == str(
+            tmp_path / "elsewhere.cor"
+        )
         _click(app, "request_add")
         _wait(app)
         assert added == [str(tmp_path / "elsewhere.cor")] or added == [tmp_path / "elsewhere.cor"]
         other = MergerApp()
         other.form_model.folder = str(folder)
-        other.form_model.folder_entered(str(folder))        # what Enter in the folder field does
+        other.form_model.folder_entered(str(folder))  # what Enter in the folder field does
         _wait(other)
         assert len(other.model.correlations) == 6
         other.close()
@@ -252,7 +276,7 @@ def test_the_guide_points_at_real_controls_and_waits(folder):
         first = next(i for i, s in enumerate(steps) if s.get("await"))
         app.tour.start(first)
         assert app.tour.awaiting
-        app.form.used("folder")                             # a typed path is not a loaded folder
+        app.form.used("folder")  # a typed path is not a loaded folder
         assert app.tour.awaiting
         app.files_dropped([str(folder)])
         _wait(app)
@@ -281,10 +305,28 @@ def test_draws_inside_the_window(folder, size):
     app = _loaded(folder)
     try:
         strings = _draw(app, size).strings
-        for text in ("📂 Open folder…", "💾 Save", "Use", "File", "CR A", "Duration", "chnk-0000", "FCS", "FCS Merged"):
+        for text in (
+            "📂 Open folder…",
+            "💾 Save",
+            "Use",
+            "File",
+            "CR A",
+            "Duration",
+            "chnk-0000",
+            "FCS",
+            "FCS Merged",
+        ):
             assert text in strings, text
         x0, y0, w0, h0 = app.item_rects["files"]
-        for name in ("request_open", "request_help", "folder", "curve_rows", "output", "request_save", "request_add"):
+        for name in (
+            "request_open",
+            "request_help",
+            "folder",
+            "curve_rows",
+            "output",
+            "request_save",
+            "request_add",
+        ):
             x, y, w, h = app.item_rects[name]
             assert x >= x0 - 0.5 and x + w <= x0 + w0 + 0.5 and y + h <= y0 + h0 + 0.5, name
     finally:

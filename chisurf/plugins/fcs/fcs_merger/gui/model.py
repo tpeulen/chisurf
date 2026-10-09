@@ -5,6 +5,7 @@ target file and the merge. Reading and averaging are the core's
 (:mod:`chisurf.core.fluorescence.fcs.merge`); this model adds the screening table, the
 lag-grid check the average needs, and the target name the Qt page derives.
 """
+
 from __future__ import annotations
 
 import json
@@ -33,8 +34,10 @@ def channel_rates(curve) -> tuple[float, float]:
     try:
         if duration <= 0:
             return 0.0, 0.0
-        return (float(curve["channel_a"]["counts"]) / duration / 1000.0,
-                float(curve["channel_b"]["counts"]) / duration / 1000.0)
+        return (
+            float(curve["channel_a"]["counts"]) / duration / 1000.0,
+            float(curve["channel_b"]["counts"]) / duration / 1000.0,
+        )
     except (KeyError, TypeError):
         half = float(curve.get("count_rate", 0.0)) / 2.0
         return half, half
@@ -73,10 +76,14 @@ def validate(curves):
         x = np.asarray(curve["x"], dtype=float)
         y = np.asarray(curve["y"], dtype=float)
         if x.ndim != 1 or y.ndim != 1 or len(x) != len(y) or len(x) < 2:
-            raise ValueError("Each correlation needs matching one-dimensional lag and correlation arrays.")
+            raise ValueError(
+                "Each correlation needs matching one-dimensional lag and correlation arrays."
+            )
         if not np.all(np.isfinite(x)) or not np.all(np.isfinite(y)):
             raise ValueError("Correlation data must contain finite lag times and values.")
-        if axis is not None and (len(x) != len(axis) or not np.allclose(x, axis, rtol=1e-9, atol=0)):
+        if axis is not None and (
+            len(x) != len(axis) or not np.allclose(x, axis, rtol=1e-9, atol=0)
+        ):
             raise ValueError("Curves must share the same lag grid; resample before averaging.")
         axis = x
 
@@ -100,7 +107,9 @@ class MergerModel:
         """Show *correlations* (all used); a source folder sets the folder and the Qt target."""
         validate(correlations)
         self.correlations = list(correlations)
-        self.paths = list(paths) if paths else [f"chnk-{i:04}" for i in range(len(self.correlations))]
+        self.paths = (
+            list(paths) if paths else [f"chnk-{i:04}" for i in range(len(self.correlations))]
+        )
         self.use = [True] * len(self.correlations)
         self.selected = 0 if self.correlations else -1
         if source_folder:
@@ -132,10 +141,19 @@ class MergerModel:
         rows = []
         for i, (curve, path) in enumerate(zip(self.correlations, self.paths)):
             rate_a, rate_b = channel_rates(curve)
-            rows.append({"index": i, "use": bool(self.use[i]), "file": Path(path).stem,
-                         "cr_a": rate_a, "cr_b": rate_b, "duration": float(curve.get("duration", 0.0)),
-                         "path": str(path), "muted": not self.use[i]})
-        self._rows = rows            # a new list: the table rebinds on its identity
+            rows.append(
+                {
+                    "index": i,
+                    "use": bool(self.use[i]),
+                    "file": Path(path).stem,
+                    "cr_a": rate_a,
+                    "cr_b": rate_b,
+                    "duration": float(curve.get("duration", 0.0)),
+                    "path": str(path),
+                    "muted": not self.use[i],
+                }
+            )
+        self._rows = rows  # a new list: the table rebinds on its identity
 
     def curve_rows(self):
         return self._rows
@@ -181,4 +199,9 @@ class MergerModel:
 
     # -- persisted state ---------------------------------------------------------------
     def export_state(self):
-        return {"folder": self.folder, "output": self.output, "use": list(self.use), "selected": self.selected}
+        return {
+            "folder": self.folder,
+            "output": self.output,
+            "use": list(self.use),
+            "selected": self.selected,
+        }

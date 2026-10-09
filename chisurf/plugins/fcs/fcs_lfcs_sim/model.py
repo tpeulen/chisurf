@@ -74,5 +74,8 @@ class LifetimeFcsSimModel:
     def status(self) -> str:
         """The status line after a run, in the Qt tool's words."""
         n = len(self.datasets)
-        return (f"{n} species correlation(s); filter condition number {self.condition_number:.1f}."
-                if n else "Simulation produced no curves.")
+        return (
+            f"{n} species correlation(s); filter condition number {self.condition_number:.1f}."
+            if n
+            else "Simulation produced no curves."
+        )

@@ -23,15 +23,29 @@ from chisurf.plugins.fcs.fcs_calculator.gui.model import ConfocalModel
 
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
-SPEC = json.loads((HERE.parent / "gui" / "fcs_calculator_emtk.view.json").read_text(encoding="utf-8"))
+SPEC = json.loads(
+    (HERE.parent / "gui" / "fcs_calculator_emtk.view.json").read_text(encoding="utf-8")
+)
 DYE = "ATTO 655 (COOH)"
 # (step, field or action, value); "fix" picks a constraint, "water" toggles the water model.
 STEPS = [
-    ("value", "tau_us", 120.0), ("value", "conc_nM", 2.0), ("value", "num_mols", 5.0), ("value", "invN", 0.5),
-    ("fix", "rh", None), ("value", "rh_nm", 2.0), ("fix", "V", None), ("value", "veff_fL", 1.0),
-    ("value", "S", 4.0), ("water", None, False), ("value", "eta_mPa_s", 1.2), ("value", "temp_C", 30.0),
-    ("dye", True, None), ("dye", False, None),
-    ("shape", "Ellipsoid", (4.0, 3.0)), ("shape", "Cylinder", (4.0, 3.0)), ("shape", "Sphere", (6.0, 3.0)),
+    ("value", "tau_us", 120.0),
+    ("value", "conc_nM", 2.0),
+    ("value", "num_mols", 5.0),
+    ("value", "invN", 0.5),
+    ("fix", "rh", None),
+    ("value", "rh_nm", 2.0),
+    ("fix", "V", None),
+    ("value", "veff_fL", 1.0),
+    ("value", "S", 4.0),
+    ("water", None, False),
+    ("value", "eta_mPa_s", 1.2),
+    ("value", "temp_C", 30.0),
+    ("dye", True, None),
+    ("dye", False, None),
+    ("shape", "Ellipsoid", (4.0, 3.0)),
+    ("shape", "Cylinder", (4.0, 3.0)),
+    ("shape", "Sphere", (6.0, 3.0)),
     ("water", None, True),
 ]
 
@@ -74,14 +88,22 @@ def qt():
     pytest.importorskip("qtpy")
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT, json.dumps(STEPS), DYE], capture_output=True, text=True,
-                          timeout=300, env=env, cwd=str(REPO))
+    proc = subprocess.run(
+        [sys.executable, "-c", _QT, json.dumps(STEPS), DYE],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env=env,
+        cwd=str(REPO),
+    )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and ("No module named" in proc.stderr or "could not connect to display" in proc.stderr):
+    if line is None and (
+        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
+    ):
         pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
     # Any other failure is the Qt widget's own: skipping it hid a broken Qt host.
     assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS"):])
+    return json.loads(line[len("FACTS") :])
 
 
 def _sections(sections=SPEC["sections"]):
@@ -150,7 +172,10 @@ def _replay(model):
 
 
 def _editable(model):
-    return {name: model.enabled(name) for name in ("D_um2_s", "rh_nm", "veff_fL", "eta_mPa_s", "shape_aspect")}
+    return {
+        name: model.enabled(name)
+        for name in ("D_um2_s", "rh_nm", "veff_fL", "eta_mPa_s", "shape_aspect")
+    }
 
 
 # 1. every step of the Qt widget's edit sequence: the same numbers and the same editable fields
@@ -165,7 +190,7 @@ def test_the_edit_sequence_matches_the_qt_widget(qt):
             if kind == "value":
                 _commit(m, a, b)
             elif kind == "fix":
-                _click(app, f"constraint.{['D', 'rh', 'V'].index(a)}")          # the radio itself
+                _click(app, f"constraint.{['D', 'rh', 'V'].index(a)}")  # the radio itself
             elif kind == "water":
                 if m.use_water_eta != b:
                     _click(app, "use_water_eta")
@@ -205,8 +230,15 @@ def test_settings_round_trip_and_tolerant_import(qt, tmp_path):
     # state), so the import is compared after the same history.
     other = ConfocalModel()
     _replay(other)
-    other.apply_settings(dict(qt["steps"][-1]["settings"], fix_mode="rh", dye="Rhodamine 6G (Rh6G)",
-                              shape_type="Hexagon", tau_us=95.0))
+    other.apply_settings(
+        dict(
+            qt["steps"][-1]["settings"],
+            fix_mode="rh",
+            dye="Rhodamine 6G (Rh6G)",
+            shape_type="Hexagon",
+            tau_us=95.0,
+        )
+    )
     _same(other.settings(), qt["imported"])
 
 
@@ -228,7 +260,7 @@ def test_export_and_import_through_the_dialogs(tmp_path):
         app.files_dropped([str(tmp_path / "bad.json")])
         assert "failed" in app.model.error
         assert any("failed" in s for s in _draw(app).strings)
-        assert not app.files_dropped([str(tmp_path / "a.txt")])                 # only settings files
+        assert not app.files_dropped([str(tmp_path / "a.txt")])  # only settings files
     finally:
         app.close()
 
@@ -253,7 +285,7 @@ def test_computed_fields_are_not_editable_in_the_form():
         _draw(app, n=1)
         app.release()
         app.key(0, "9")
-        app.key(257, "")                                                         # Enter
+        app.key(257, "")  # Enter
         _draw(app)
         assert app.model.rh_nm == before
     finally:
@@ -274,7 +306,7 @@ def test_the_guide_points_at_real_controls_and_waits():
         assert app.tour.awaiting
         _commit(app.model, "temp_C", 21.0)
         app.form.used("temp_C")
-        assert app.tour.awaiting                                                 # not tau
+        assert app.tour.awaiting  # not tau
         app.form.used("tau_us")
         assert not app.tour.awaiting
     finally:
@@ -301,11 +333,30 @@ def test_draws_with_every_panel_open(size):
     try:
         app.form.folds.update({"Molecular shape": True, "Settings JSON": True})
         strings = _draw(app, size).strings
-        for text in ("Fix D", "Fix rₕ", "Fix Veff", "Apply Dref", "Apply shape→D", "Export JSON",
-                     "Import JSON", "Apply with Temp/η scaling", "\U0001f4d6 Guide", "❓ Help"):
+        for text in (
+            "Fix D",
+            "Fix rₕ",
+            "Fix Veff",
+            "Apply Dref",
+            "Apply shape→D",
+            "Export JSON",
+            "Import JSON",
+            "Apply with Temp/η scaling",
+            "\U0001f4d6 Guide",
+            "❓ Help",
+        ):
             assert text in strings, text
-        for name in ("guide", "help", "constraint", "tau_us", "S", "conc_nM", "apply_dye", "apply_shape",
-                     "import_json"):
+        for name in (
+            "guide",
+            "help",
+            "constraint",
+            "tau_us",
+            "S",
+            "conc_nM",
+            "apply_dye",
+            "apply_shape",
+            "import_json",
+        ):
             x, y, w, h = app.item_rects[name]
             assert x >= -0.5 and x + w <= size[0] + 0.5 and y + h <= size[1] + 0.5, name
     finally:
@@ -331,4 +382,6 @@ def test_every_control_has_a_tooltip():
     finally:
         app.close()
     buttons = [b for s in _sections() for b in s.get("buttons") or []]
-    assert all(s.get("description") for s in _sections()) and all(b.get("description") for b in buttons)
+    assert all(s.get("description") for s in _sections()) and all(
+        b.get("description") for b in buttons
+    )

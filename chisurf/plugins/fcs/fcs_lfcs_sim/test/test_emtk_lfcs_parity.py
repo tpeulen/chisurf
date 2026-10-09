@@ -22,13 +22,23 @@ HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 
 from chisurf.plugins.fcs.fcs_lfcs_sim.app import (  # noqa: E402
-    CROSS_COLOUR, SPECIES_COLOURS, LifetimeFcsSimApp, make_app,
+    CROSS_COLOUR,
+    SPECIES_COLOURS,
+    LifetimeFcsSimApp,
+    make_app,
 )
 from chisurf.plugins.fcs.fcs_lfcs_sim.model import LifetimeFcsSimModel  # noqa: E402
 
 #: Small enough to run in about a second, with exchange so the cross-correlation is not flat.
-SETTINGS = {"tau1_ns": 1.0, "d1_um2_ms": 2.0, "tau2_ns": 4.0, "d2_um2_ms": 2.0, "exchange_rate_ms": 5.0,
-            "n_photons": 60_000, "seed": 7}
+SETTINGS = {
+    "tau1_ns": 1.0,
+    "d1_um2_ms": 2.0,
+    "tau2_ns": 4.0,
+    "d2_um2_ms": 2.0,
+    "exchange_rate_ms": 5.0,
+    "n_photons": 60_000,
+    "seed": 7,
+}
 
 
 def _app(**settings):
@@ -79,14 +89,22 @@ def qt():
     pytest.importorskip("qtpy")
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT, json.dumps(SETTINGS)], capture_output=True, text=True,
-                          timeout=600, env=env, cwd=str(REPO))
+    proc = subprocess.run(
+        [sys.executable, "-c", _QT, json.dumps(SETTINGS)],
+        capture_output=True,
+        text=True,
+        timeout=600,
+        env=env,
+        cwd=str(REPO),
+    )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and ("No module named" in proc.stderr or "could not connect to display" in proc.stderr):
+    if line is None and (
+        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
+    ):
         pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
     # Any other failure is the Qt widget's own: skipping it hid a broken Qt host.
     assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS"):])
+    return json.loads(line[len("FACTS") :])
 
 
 def _reference():
@@ -96,11 +114,23 @@ def _reference():
     from chisurf.plugins.fcs.fcs_correlator.core import filtered_correlation_datasets
 
     s = SETTINGS
-    sim = simulate_lifetime_fcs(lifetimes_ns=(s["tau1_ns"], s["tau2_ns"]), diffusion_um2_ms=(s["d1_um2_ms"], s["d2_um2_ms"]),
-                                exchange_rate_ms=s["exchange_rate_ms"], n_photons=s["n_photons"], seed=s["seed"])
+    sim = simulate_lifetime_fcs(
+        lifetimes_ns=(s["tau1_ns"], s["tau2_ns"]),
+        diffusion_um2_ms=(s["d1_um2_ms"], s["d2_um2_ms"]),
+        exchange_rate_ms=s["exchange_rate_ms"],
+        n_photons=s["n_photons"],
+        seed=s["seed"],
+    )
     filters, _, _ = calc_ffcs_filters(sim.total_decay, sim.reference_decays)
-    datasets = filtered_correlation_datasets(sim.macro_times, sim.micro_times, filters, sim.macro_time_resolution_s,
-                                             n_bins=8, n_casc=25, labels=[f"τ={s['tau1_ns']:g} ns", f"τ={s['tau2_ns']:g} ns"])
+    datasets = filtered_correlation_datasets(
+        sim.macro_times,
+        sim.micro_times,
+        filters,
+        sim.macro_time_resolution_s,
+        n_bins=8,
+        n_casc=25,
+        labels=[f"τ={s['tau1_ns']:g} ns", f"τ={s['tau2_ns']:g} ns"],
+    )
     return datasets, filter_condition_number(sim.total_decay, sim.reference_decays)
 
 
@@ -138,12 +168,16 @@ def test_curves_carry_the_qt_widgets_colours(qt, monkeypatch):
     from emtk import implot
 
     def rgb(hex_colour):
-        return tuple(int(hex_colour[i:i + 2], 16) for i in (1, 3, 5))
+        return tuple(int(hex_colour[i : i + 2], 16) for i in (1, 3, 5))
 
     assert [rgb(c) for c in qt["pens"]["species"]] == [c[:3] for c in SPECIES_COLOURS]
     assert rgb(qt["pens"]["cross"]) == CROSS_COLOUR[:3]
     styles = []
-    monkeypatch.setattr(implot, "set_next_line_style", lambda colour=None, weight=0, dash=None: styles.append(colour))
+    monkeypatch.setattr(
+        implot,
+        "set_next_line_style",
+        lambda colour=None, weight=0, dash=None: styles.append(colour),
+    )
     app = _app()
     try:
         app.simulate()
@@ -160,8 +194,13 @@ def test_the_lag_axis_is_logarithmic_as_in_the_qt_plot(monkeypatch):
 
     scales = []
     original = implot.setup_axis_scale
-    monkeypatch.setattr(implot, "setup_axis_scale", lambda axis, scale, *a, **k: (scales.append((axis, scale)),
-                                                                                  original(axis, scale, *a, **k))[1])
+    monkeypatch.setattr(
+        implot,
+        "setup_axis_scale",
+        lambda axis, scale, *a, **k: (scales.append((axis, scale)), original(axis, scale, *a, **k))[
+            1
+        ],
+    )
     app = make_app()
     try:
         _draw(app, n=1)
@@ -180,15 +219,15 @@ def test_the_form_is_locked_and_a_second_press_ignored_while_running(monkeypatch
     monkeypatch.setattr(app.model, "run", lambda: (calls.append(1), gate.wait(10), [])[2])
     try:
         app.simulate()
-        app.simulate()                                         # ignored: one submitted
+        app.simulate()  # ignored: one submitted
         time.sleep(0.1)
         assert calls == [1] and app.running
         assert app.message == "Simulating…"
         _draw(app, n=1)
-        assert app.next_frame_in() is not None                 # looks again while the worker runs
+        assert app.next_frame_in() is not None  # looks again while the worker runs
         gate.set()
         _settle(app)
-        time.sleep(0.2)                                        # a queued second job would have run by now
+        time.sleep(0.2)  # a queued second job would have run by now
         assert calls == [1]
     finally:
         gate.set()
@@ -212,9 +251,18 @@ def test_a_failed_simulation_says_why():
 def test_the_spec_binds_the_model_and_its_run_panel():
     app = make_app()
     try:
-        fields = [f for panel in app.spec["sections"] for f in panel["sections"] if f["type"] == "value"]
-        assert {f["attr"] for f in fields} == {"tau1_ns", "d1_um2_ms", "tau2_ns", "d2_um2_ms",
-                                               "exchange_rate_ms", "n_photons", "seed"}
+        fields = [
+            f for panel in app.spec["sections"] for f in panel["sections"] if f["type"] == "value"
+        ]
+        assert {f["attr"] for f in fields} == {
+            "tau1_ns",
+            "d1_um2_ms",
+            "tau2_ns",
+            "d2_um2_ms",
+            "exchange_rate_ms",
+            "n_photons",
+            "seed",
+        }
         assert all(f.get("description") and hasattr(app.model, f["attr"]) for f in fields)
         strings = _draw(app).strings
         assert "Set parameters and simulate." in strings
@@ -234,7 +282,7 @@ def test_draws_empty_and_populated(size):
         _settle(app)
         strings = _draw(app, size).strings
         assert "τ=1 ns × τ=4 ns" in strings
-        assert app.message in " ".join(strings)                 # the status line, wrapped to the pane
+        assert app.message in " ".join(strings)  # the status line, wrapped to the pane
     finally:
         app.close()
 

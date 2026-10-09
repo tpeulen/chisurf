@@ -224,7 +224,8 @@ def test_removing_the_afterpulse_and_scatter_filters_changes_the_number_of_filte
 
 
 @pytest.mark.parametrize("name, text, expected", [("fit_start", "20", (20, 254)), ("fit_stop", "200", (10, 200)), ("fit_start", "9999", (253, 254)),
-                                                  ("fit_stop", "0", (10, 11)), ("fit_start", "abc", (10, 254))])
+                                                  ("fit_stop", "0", (10, 11)), ("fit_start", "abc", (10, 254)),
+                                                  ("fit_start", "-5", (0, 254))])
 def test_the_fit_range_is_typed_clamped_and_recomputes(drv, name, text, expected):
     drv.type_into(name, text)
     assert model(drv)._fit_bounds == expected
