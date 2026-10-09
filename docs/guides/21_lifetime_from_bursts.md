@@ -24,6 +24,74 @@ multi-parameter fluorescence detection.
 Because a burst has few photons, the fit is done by **Poisson maximum
 likelihood** rather than least squares.
 
+## Extracting patterns from non-burst photons
+
+The standalone native host declares **1100 × 720** pixels; saved geometry takes
+precedence. Scroll the parameter and detector panes on a smaller host. Resizing
+keeps the current inputs, extraction settings and computed arrays intact.
+Native preferences restore the window geometry. Reopen the measurement, apply
+its complete detector/reader definition and compute again after a fresh launch;
+this is not automatic analysis-session restoration.
+
+
+```{figure} figures/burst_irf_bg_native_primary_window.png
+:width: 100%
+
+Native extraction on the 130,507-photon known-prompt stream with a clean
+reader definition. The histogram peak is near 2 ns; the **Prompt** column
+reports rising-edge positions of 1.968 and 1.941 ns. Estimated background
+rates near 1.993 kHz do not exactly recover the authored 2.5 kHz input.
+```
+
+The **Burst IRF & Background** tool estimates detector patterns from photons
+outside the burst-search intervals. Inspect the retained count and detector
+selection before sending patterns to Burst MLE: every burst’s first and last
+photon are excluded, including intervals at the end of a measurement. The
+complement is taken after combining overlapping intervals. Retained photons
+are a measured scatter/background sample; they are not automatically a pure,
+independently calibrated instrument response.
+
+Micro-time gates select the background inter-photon intervals. The IRF
+histogram spans the detector’s full laser period so a gate cannot clip the
+prompt. A later MLE-pattern extraction separates a Gaussian prompt from the
+slow fluorescence tail; inspect that choice against a measured IRF where one
+is available. Use the input’s complete detector and reader definition when
+switching files, including LUTs, shifts and timing overrides.
+
+**Micro-time binning** coarsens the exported MLE pattern once. A factor of 2
+changes each 4096-bin polarization half to 2048 bins; the full-period display
+histogram, raw photon micro-times and physical header clock remain unchanged.
+Choose binning through the authoritative reader definition so the synchronized
+analysis settings agree with it.
+
+For a Qt-free extraction, save the following as `irf_background.py` and run
+`pixi run -e test python irf_background.py`:
+
+```python
+import tttrlib
+from chisurf.core.fluorescence.burst.irf_bg import extract_irf_background
+
+stream = tttrlib.TTTR(
+    "chisurf/plugins/burst/burst_selection/tests/data/bh_spc132_sm_dna/m000.spc",
+    "SPC-130",
+)
+detectors = {
+    "green": {"chs": [0, 8], "micro_time_ranges": [[0, 4095]]},
+    "red": {"chs": [1, 9], "micro_time_ranges": [[0, 2048]]},
+}
+results = extract_irf_background(
+    stream, detectors, min_photons=60, photon_window=10, time_window=1e-3,
+)
+for name, result in results.items():
+    print(name, result.background_khz, result.prompt_ns, result.n_background_photons)
+```
+
+This direct example uses the decoded stream without a setup-owned LUT or shift.
+The native reader applies the configured corrections, so compare results only
+under the same complete input definition. **Export patterns** writes the
+computed per-detector MLE arrays as NPZ. **Send to MLE** hands them to the
+workflow’s receiver; standalone use reports when that receiver is unavailable.
+
 ## In ChiSurf
 
 The `burst_mle_analysis` plugin fits the selected registered lifetime model per burst per

@@ -1,5 +1,6 @@
 {
   "_comment": "Declarative AutoForm layout for the Burst IRF & Background tool: a persistent dock area with the detector channel-definition page, the drop file list, burst-search + baseline parameters and the compute/send-to-MLE actions, the per-detector IRF plot and the results table.",
+  "window": {"width": 1100, "height": 720},
   "sections": [
     {
       "type": "dock_area",

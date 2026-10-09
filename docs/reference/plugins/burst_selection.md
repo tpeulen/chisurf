@@ -134,7 +134,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 ## Theory and workflow
 
-- **Workflow** — [Recurrence analysis of single particles (RASP)](/guides/02_recurrence_rasp.md), [Photon burst identification and the burst list](/guides/13_burst_identification.md), [Photon-by-photon hidden Markov models (H2MM)](/guides/19_h2mm_hidden_markov.md), [Binned photon traces (MCS)](/guides/22_binned_photon_traces.md), [2-D peak fitting](/guides/26_2d_peak_fitting.md), [Selecting and comparing FRET populations](/guides/28_selecting_fret_populations.md), [FRET-efficiency histogram fitting](/guides/29_fret_histogram_fitting.md), [Combining measurements / technical repeats](/guides/35_combining_repeats.md)
+- **Workflow** — [Recurrence analysis of single particles (RASP)](/guides/02_recurrence_rasp.md), [Photon burst identification and the burst list](/guides/13_burst_identification.md), [Photon-by-photon hidden Markov models (H2MM)](/guides/19_h2mm_hidden_markov.md), [Fluorescence lifetime from photon bursts](/guides/21_lifetime_from_bursts.md), [Binned photon traces (MCS)](/guides/22_binned_photon_traces.md), [2-D peak fitting](/guides/26_2d_peak_fitting.md), [Selecting and comparing FRET populations](/guides/28_selecting_fret_populations.md), [FRET-efficiency histogram fitting](/guides/29_fret_histogram_fitting.md), [Combining measurements / technical repeats](/guides/35_combining_repeats.md)
 
 ## Source
 

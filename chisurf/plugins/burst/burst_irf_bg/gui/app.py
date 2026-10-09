@@ -19,7 +19,8 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Callable
-from typing import Any
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from emtk import im, implot
@@ -28,9 +29,19 @@ from emtk.im_core import get_current_context
 from emtk.view_form import FormState, draw_sections
 from emtk.widgets.view_spec import load_view_spec
 
-from chisurf.plugins.emtk_layout import LabelColumn, button_row, cap_widths, icon_label, labelled
+from chisurf.plugins.emtk_layout import (
+    LabelColumn,
+    button_row,
+    cap_widths,
+    icon_label,
+    labelled,
+    window_size,
+)
 
 from .view_model import IrfBackgroundViewModel
+
+if TYPE_CHECKING:
+    from .controller import IrfBackgroundController
 
 __all__ = ["BurstIrfBackgroundApp", "BurstIrfBackgroundGui", "WINDOW_BG"]
 
@@ -58,6 +69,9 @@ def _hex_to_rgba(col: Any, alpha: int = 255) -> tuple[int, int, int, int]:
 
 class BurstIrfBackgroundGui:
     """Immediate-mode GUI logic and rendering for Burst IRF & Background."""
+
+    controller: IrfBackgroundController | None
+    remember: Callable[..., None]
 
     def __init__(
         self,
@@ -195,11 +209,12 @@ class BurstIrfBackgroundGui:
                 im.end()
 
     def _draw_parameters(self) -> None:
-        if getattr(self, "controller", None) is not None:
-            self.controller.draw_inputs(remember=self.remember, track=self.track)
+        controller = getattr(self, "controller", None)
+        if controller is not None:
+            controller.draw_inputs(remember=self.remember, track=self.track)
             if "bg_channels" in self.item_rects:  # the guide's name for the channel editor button
                 self.item_rects["irf_bg_channels"] = self.item_rects["bg_channels"]
-        running = bool(getattr(self, "controller", None) and self.controller.running)
+        running = bool(controller is not None and controller.running)
         target = self.model
         if running:
             # ``begin_disabled`` greys the spec's fields but they still take typing; they draw against a throw-away copy
@@ -260,7 +275,7 @@ class BurstIrfBackgroundGui:
             self.track("send_to_mle")
             if callable(self.on_send_to_mle):
                 self.on_send_to_mle()
-        elif pressed == "patterns":
+        elif pressed == "patterns" and controller is not None:
             controller.browse("patterns")
         elif pressed == "guide":
             self.track("guide")
@@ -346,6 +361,8 @@ class BurstIrfBackgroundApp(ImApp):
         on_help: Callable[[], None] | None = None,
         mle_receiver=None,
     ) -> None:
+        primary = json.loads(Path(__file__).with_name("irf_bg.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(primary, (1100, 720))
         self.controller = None
         if on_compute is None:
             from .controller import IrfBackgroundController

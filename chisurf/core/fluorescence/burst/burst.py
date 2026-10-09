@@ -40,6 +40,9 @@ def burst_filter(tttr: tttrlib.TTTR, min_ph: int, ph_window: int, time_window: f
     # Reshape the result into a 2D array of start-stop pairs
     start_stop = np.array(start_stop).reshape((-1, 2))
 
+    # The SDK includes each stop photon; the mask utility uses [start, stop).
+    start_stop[:, 1] += 1
+
     # Create a boolean mask of selected photons
     n = len(tttr)
     mask = create_array_with_ones(start_stop, n)

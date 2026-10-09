@@ -75,6 +75,14 @@ channels.
   single-molecule bursts; the inverse keeps the sparse photons between bursts,
   which is a background or scatter decay taken from the same measurement.
 
+The non-burst selection is the complement of the complete burst intervals.
+The photon engine’s burst-search bounds include both the first and last photon;
+all photons in that inclusive interval must be removed before estimating a
+non-burst IRF or background. Overlapping intervals form one union of rejected
+photon indices. A half-open array slice must therefore end one position after
+the engine’s last index. Timing, routing and micro-time gates are applied to
+the retained photons, without changing the raw source stream.
+
 ### What distorts the histogram
 
 The histogram is not the decay if the electronics could not record every photon
