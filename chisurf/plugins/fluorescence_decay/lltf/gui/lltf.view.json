@@ -1,5 +1,9 @@
 {
   "_comment": "Lazy Lifetime Analysis, drawn by emtk's view_form over the Qt-free LLTFModel (gui/model.py): fields are its attrs, `enabled(name)` greys what the Qt wizard greyed. The file rows (decay, IRF, configuration with its editor, output directory) are the custom `lltf_files` section the app draws; the Results panel is drawn in the Results tab.",
+  "window": {
+    "width": 1100,
+    "height": 720
+  },
   "sections": [
     {
       "type": "panel",

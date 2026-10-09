@@ -116,6 +116,44 @@ the fit, the scaled IRF and the fit range (white lines). The starting values of
 the fit are random, so a second run differs in the third digit.
 ```
 
+The standalone native LLTF window declares **1100 × 720** pixels on first use.
+Saved geometry and input/options take precedence on reopening; **Fit** rebuilds
+the result arrays. Inspect **Information**, **Analysis Output**, **Results**,
+the decay/fit plot and weighted residuals. The YAML editor remains available
+when the main host is narrow.
+
+A finished subprocess can still return an unconverged optimizer result. The
+JSON records `optimizer_status`, `converged`, `optimizer_message` and
+`optimizer_source`; the GUI status and Results summary show an optimizer
+warning when convergence is false. The measured example reaches its evaluation
+limit (status 5, maxfev 1600) and still exports its numerical result. Inspect
+that provenance rather than treating a written file as a convergence claim.
+
+```{figure} figures/lltf_native_optimizer_warning.png
+:name: fig-lltf-native-optimizer-warning
+:width: 100%
+
+The native LLTF Results panel retains the measured fit and exposes the actual
+iteration-limit warning in both its summary and status.
+```
+
+The current fitter uses a local random generator with default seed 0. The
+`randomize_initial_values.seed` configuration is forwarded through fixed-count
+fits and component-count scans; `None` requests a fresh random initialization.
+With the same data, IRF and configuration, an explicit seed makes the starting
+values reproducible; it does not make a mismatched model a good fit.
+
+**Find Optimal** compares nested fits using the decrease in weighted residual
+sum divided by the added degrees of freedom, relative to the larger model’s
+residual variance. The reported confidence is an approximate F statistic for
+exponential mixtures, whose new component lies on a parameter boundary; it is
+not a calibrated posterior probability. Scans preserve the three nuisance
+fixed flags and the selected model’s degrees of freedom. Lifetime-specific
+fixed flags have no defined mapping across changing counts and are rejected.
+Larger fits start from an extension of the previous solution and retain its
+exact embedding if optimization would worsen the residual sum. Inspect the
+returned `chi_squares`, `dofs` and residual plots as well as the selected count.
+
 *Input Files*
 
 - **Decay File / IRF File — Load…** — one file each. Only the first two columns
@@ -420,14 +458,6 @@ default 4 ns component.
 :::{admonition} Known defects
 :class: warning
 
-- **The component-count test is mis-specified.** The probability refers the
-  ratio of reduced $\chi^2$ to $F(2, \nu)$, so it is $\approx 1-e^{-R}$ whatever
-  the photon count (table above; `lltf/core/fitter.py`, `find_optimal_lifetime_spectrum`).
-  The extra-sum-of-squares F, or the ChiSurf F-Test convention
-  (`chisurf.core.math.statistics.f_test_confidence`), would be consistent.
-- **Nested fits can end worse than smaller ones**, and the selection then counts
-  optimizer failures (the 30.2, 2.10 and 4.74 above). Each $n$ starts from fixed
-  lifetimes rather than from the $n-1$ solution.
 - **Two default sets.** The GUI copies `lifetime_settings.yml`; the CLI without
   `-c` uses different defaults inside `fit_lifetime`, and the outcomes differ
   (above). With *Find Optimal* the CLI always overrides the file's
@@ -436,14 +466,6 @@ default 4 ns component.
 - **The config file is created once** in the system temp folder
   (`lltf_config.yml`) and never refreshed, so a changed default in a new ChiSurf
   version does not reach it; delete it to get the current defaults.
-- **Runs are not reproducible** while `randomize_initial_values.enabled` is on
-  (the example config): the starting values are drawn unseeded, so two runs of
-  the same fit differ — on the example by 0.0014 ns in the long lifetime and
-  0.003 ns in the short one.
-- **Reduced $\chi^2$ equals $\chi^2$** when `Decay.fit(find_optimal=True)` is
-  called from Python without `fixed`: the degrees of freedom are set to 0
-  (measured: `dof` 0, `reduced_chi_square` 31671). The CLI and GUI pass `fixed`
-  and are unaffected.
 :::
 
 ## See also

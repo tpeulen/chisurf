@@ -101,6 +101,35 @@ def _log_prob_mem_vectorized(
 ProgressCallback = Optional[Callable[[int, int], bool]]
 
 
+def _amplitude_scale(result: Mapping[str, Any], bins: int) -> float:
+    """Recover the SDK's basis scale from the active fitted observations.
+
+    ``p`` is exported in counts per unscaled basis column. The entropy is
+    evaluated in dimensionless amplitudes, with one common basis scale chosen
+    so a uniform prior carries the fluorescence counts above the additive
+    instrument contribution. The amplitude sum is not that scale.
+    """
+    required = ("Fi", "y", "sigma", "fit_additive")
+    if any(key not in result for key in required):
+        raise RuntimeError("MEM sampling requires Fi/y/sigma/fit_additive to recover fitted units")
+    design = np.asarray(result["Fi"], dtype=float)
+    y = np.asarray(result["y"], dtype=float).ravel()
+    sigma = np.asarray(result["sigma"], dtype=float).ravel()
+    additive = np.asarray(result["fit_additive"], dtype=float).ravel()
+    if (
+        y.size == 0
+        or design.shape != (y.size, bins)
+        or sigma.shape != y.shape
+        or additive.shape != y.shape
+        or any(not np.isfinite(arr).all() for arr in (design, y, sigma, additive))
+        or np.any(sigma <= 0.0)
+    ):
+        raise RuntimeError("MEM sampling requires matching finite fitted observations and weights")
+    counts = float(np.maximum(y - additive, 0.0).sum())
+    column_total = float(np.sum(design * sigma[:, None]))
+    return counts * bins / column_total if counts > 0.0 and column_total > 0.0 else 1.0
+
+
 def sample_mem_distribution_mcmc(
     result: Mapping[str, Any],
     *,
@@ -119,18 +148,20 @@ def sample_mem_distribution_mcmc(
     The log-posterior is defined from the MaxEnt objective ``Q = chi^2 - 0.5 * nu * S``
     (up to an additive constant). The state is the distribution ``p`` over the
     current axis (lifetime or distance) re-parameterised via a log-amplitude
-    vector ``u`` to enforce positivity.
+    vector ``u`` to enforce positivity, keeping the fitted amplitude total.
+    The SDK's dimensionless basis scale is recovered from the fitted design
+    and observations; returned distributions retain the solver's count units.
 
     Parameters
     ----------
     result:
         Result dictionary returned by the MaxEnt solvers. Must contain at least
-        ``p``, ``H``, ``g0`` and either ``tau`` or ``R``. If ``prior`` is
+        ``p``, ``H``, ``g0``, ``Fi``, ``y``, ``sigma``, ``fit_additive`` and
+        either ``tau`` or ``R``. If ``prior`` is
         present it is used for the entropy term; otherwise a uniform prior is
         assumed.
     filename:
-        Optional HDF5 file path. If provided, the sampling summary and samples
-        are written using PyTables.
+        Optional compressed NPZ file path for the sampling summary and samples.
     nwalkers:
         Number of walkers. If ``None``, a heuristic is used based on the
         distribution dimension.
@@ -195,16 +226,26 @@ def sample_mem_distribution_mcmc(
     if H.shape != (p0.size, p0.size) or g0.size != p0.size:
         raise RuntimeError("MEM result lacks H/g0 with matching shape for sampling")
 
-    # Prior m used in the entropy term; fall back to uniform if missing.
+    # The exported amplitudes use the unscaled basis; entropy uses the SDK's
+    # dimensionless amplitudes. This fixed scale changes neither u nor its
+    # random initialization, and contributes only a constant coordinate
+    # Jacobian. Preserve count units for every public sampling output.
+    p_mem = p0
+    amplitude_scale = _amplitude_scale(result, p0.size)
+    p0 = p0 / amplitude_scale
+    H = H * amplitude_scale**2
+    g0 = g0 * amplitude_scale
+
+    # The result already carries the SDK's normalized prior. Reapplying a
+    # positivity floor here would change valid tiny positive weights and the
+    # fitted entropy objective.
     prior_arr = result.get("prior", None)
     if prior_arr is None:
-        m = np.ones_like(p0, dtype=float)
+        m = np.full_like(p0, 1.0 / p0.size, dtype=float)
     else:
         m = np.asarray(prior_arr, dtype=float).ravel()
-    if m.size != p0.size:
-        m = np.ones_like(p0, dtype=float)
-    m = np.clip(m, float(MIN_PROB), np.inf)
-    m /= float(np.sum(m))
+        if m.size != p0.size or not np.isfinite(m).all() or np.any(m <= 0.0):
+            raise RuntimeError("MEM result requires a matching finite positive entropy prior")
 
     nu_val = float(result.get("nu", result.get("nu_input", 0.0)))
 
@@ -223,7 +264,7 @@ def sample_mem_distribution_mcmc(
     steps_total = int(max(1, steps_total))
     thin = int(max(1, thin))
     substeps = int(max(1, min(substeps, steps_total)))
-    large_steps = max(1, steps_total // substeps)
+    large_steps = (steps_total + substeps - 1) // substeps
 
     p0_sum = float(np.sum(p0)) if p0.size else 1.0
 
@@ -235,6 +276,7 @@ def sample_mem_distribution_mcmc(
             cpu_total = mp.cpu_count() or 1
             nprocs_eff = int(max(1, min(int(nprocs), cpu_total)))
             if nprocs_eff > 1:
+                ctx: Any
                 try:
                     ctx = mp.get_context("spawn")
                 except Exception:
@@ -270,7 +312,7 @@ def sample_mem_distribution_mcmc(
             )
 
         scale = 1e-2
-        previous_state = scale * np.random.randn(nwalkers, ndim)
+        previous_state: Any = scale * np.random.randn(nwalkers, ndim)
 
         saved_steps = 0
         for i in range(large_steps):
@@ -334,6 +376,7 @@ def sample_mem_distribution_mcmc(
     p_valid = p_samples[mask]
     s_valid = s_all[mask]
     p_valid = p_valid * (p0_sum / s_valid)
+    p_valid *= amplitude_scale
 
     n_total = int(p_valid.shape[0])
     if n_total > 10:
@@ -346,7 +389,7 @@ def sample_mem_distribution_mcmc(
 
     stats: dict[str, Any] = {
         "axis": dist_axis,
-        "p_mem": p0,
+        "p_mem": p_mem,
         "p_mean": p_mean,
         "p_lo": p_lo,
         "p_med": p_med,
@@ -375,7 +418,7 @@ def sample_mem_distribution_mcmc(
         np.savez_compressed(
             str(filename),
             axis=dist_axis,  # lifetime or distance axis
-            p_mem=p0,  # original MEM distribution
+            p_mem=p_mem,  # original MEM distribution
             p_mean=p_mean,  # posterior mean
             p_lo=p_lo,  # 16th percentile
             p_med=p_med,  # median
@@ -387,7 +430,7 @@ def sample_mem_distribution_mcmc(
             steps_total=int(steps_total),
             thin=int(thin),
             ndim=int(ndim),
-            sum_p=float(p0_sum),
+            sum_p=float(np.sum(p_mem)),
             n_samples=int(p_used.shape[0]),
         )
 

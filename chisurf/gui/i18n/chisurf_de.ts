@@ -49422,5 +49422,40 @@ presets) into a single left-navigation tool. Built on the reusable
             <source>unassigned</source>
             <translation type="unfinished" />
         </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="3520" />
+            <source>LLTF fit completed with an optimizer warning.</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="3521" />
+            <source>LLTF fit completed.</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4671" />
+            <source>Optimization did not converge.</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4672" />
+            <source>Optimizer converged.</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4673" />
+            <source>Optimizer warning: {message}</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="7976" />
+            <source>Unnormalized amplitudes of the decay basis; these coefficients reconstruct the fitted signal.</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8662" />
+            <source>default uniform</source>
+            <translation type="unfinished" />
+        </message>
 </context>
 </TS>

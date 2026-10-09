@@ -313,12 +313,14 @@ def _result(decay, design, amplitudes, prepared, window, value, port, nu_input, 
     entropy = float(port("maxent", "entropy")[0])
     nu = float(port("maxent", "nu")[0])
     lamp_scatter = 0.0
-    prior_vec = (
-        np.full(bins, 1.0 / bins)
-        if prior is None
-        else np.maximum(np.asarray(prior, dtype=float), MIN_PROB)
-        / np.sum(np.maximum(prior, MIN_PROB))
-    )
+    if prior is None:
+        prior_vec = np.full(bins, 1.0 / bins)
+    else:
+        # Match MaxEntSpectrum: tiny positive weights are valid; replace only
+        # nonpositive raw weights before normalizing the entropy prior.
+        prior_vec = np.asarray(prior, dtype=float)
+        prior_vec = np.where(prior_vec > 0.0, prior_vec, MIN_PROB)
+        prior_vec = prior_vec / np.sum(prior_vec)
     return {
         "p": amplitudes,
         "chisq": chisq,

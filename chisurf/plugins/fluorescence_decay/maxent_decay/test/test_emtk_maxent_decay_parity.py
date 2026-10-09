@@ -416,7 +416,7 @@ def test_run_gives_the_solver_result_and_draws_all_four_plots(fitted):
     reference.settings.tau_bins, reference.settings.tau_max = 32, 8.0
     np.testing.assert_allclose(m.result["p"], reference.run()["p"], rtol=1e-6)
     strings = [t[5] for t in ui.draw().texts]
-    for label in ("Time (ns)", "Counts", "Observed", "IRF scaled", "MEM fit", "Lifetime (ns)", "Probability", "MEM",
+    for label in ("Time (ns)", "Counts", "Observed", "IRF scaled", "MEM fit", "Lifetime (ns)", "Amplitude", "MEM",
                   "Residual / sigma", "Residuals", "Chi-square", "Solution norm"):
         assert label in strings or any(label in s for s in strings), label
     assert "Lifetime grid" in strings

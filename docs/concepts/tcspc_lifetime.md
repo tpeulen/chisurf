@@ -288,6 +288,21 @@ spectral channels — not goodness-of-fit alone.
 (concept-tcspc-model-selection)=
 ## How many components?
 
+LLTF’s component-count scan uses the nested extra-sum-of-squares statistic.
+For smaller/larger weighted residual sums $C_s,C_l$ and reported degrees of
+freedom $\nu_s,\nu_l$,
+
+$$
+F = \frac{(C_s-C_l)/(\nu_s-\nu_l)}{C_l/\nu_l}.
+$$
+
+A non-improving larger fit supplies zero improvement confidence. Nuisance fixed
+flags affect the stored degrees of freedom and are carried through the scan.
+The F confidence is approximate for exponential mixtures: an added component
+has zero amplitude under the null and its lifetime is then unidentified. It is
+a model-comparison diagnostic, not calibrated certainty or a posterior. See
+{doc}`/guides/76_decay_analysis_tools` for initialization and configuration.
+
 Models with $n$ and $n+1$ exponentials are **nested**: setting one amplitude to
 zero turns the larger into the smaller, so its minimum $\chi^2$ can only be
 lower. Whether the drop is more than noise is a test, not a reading of

@@ -23,6 +23,14 @@ Press **Guide** in the tool for a five-step walk through the buttons.
 The MaxEnt window after a run on a synthetic two-lobe decay (1.1 and 3.6 ns). **Left**, the actions (Run MEM, L-curve, Sample, Save), the data buttons (Refresh, Load decay, IRF file, Clear IRF, Prior, Donor, JSON) and the settings forms; **right**, the decay with fit, IRF and fit range, the recovered distribution, the weighted residuals and the L-curve. The mouse wheel zooms every plot and a drag on the box in the decay plot moves the fit range.
 ```
 
+```{figure} figures/maxent_native_amplitudes.png
+:name: fig-maxent-native-amplitudes
+:width: 100%
+
+The native solver on the measured donor-only decay and response, with the
+exported unnormalized amplitudes labelled accurately and residuals visible.
+```
+
 ## When to reach for it
 
 Use MEM when you suspect a continuum rather than states: a dye sampling many
@@ -36,6 +44,13 @@ Do not use it to squeeze more components out of a decay. It cannot add
 information, only choose which of the many fitting answers you are shown.
 
 ## Step 1 — decay and IRF
+
+The standalone native window declares **1100 × 720** pixels on first use.
+Resize or scroll the controls to inspect all settings and each plot; stored
+window geometry takes precedence over the declaration. Use the existing data
+loading and solver actions to rebuild a result. A window preference is not
+posterior evidence, and sampled chains are stochastic unless the sampler’s
+interface explicitly supplies a seed.
 
 **Refresh** lists the fits and datasets of the session (choose one and press
 **Fit**: the decay, the fit range, the response, the background and the grid start
@@ -113,6 +128,23 @@ that reference wrong puts the donor's own heterogeneity into your distance
 distribution, which is the most common way a MEM distance result goes wrong.
 
 ## Step 6 — uncertainty and export
+
+The native distribution axis is **Amplitude**, not probability: the exported
+coefficients reconstruct the fitted signal on its unscaled decay basis and
+need not sum to one. Entropy and sampling use the solver’s dimensionless
+coordinates, whose scale depends on the data and active basis; dividing the
+exported amplitudes by their sum would define a different target. The default
+prior is uniform. Positive prior weights are retained even when tiny;
+nonpositive raw weights are replaced by the solver’s small positive floor
+before normalization.
+
+Sampling follows the same $Q$ objective at the selected grid, regularization
+weight and nuisance settings, with a fixed total amplitude. It is conditional
+sampling of that target, not a full posterior over nuisance parameters. Short
+chains can verify execution and units but do not establish convergence or
+reliable uncertainty. Requested steps include the final partial chunk: five
+steps with chunk size two run as two, two and one. Raw samples and exported
+statistics retain the original amplitude units.
 
 **Sample** gives the spread on a derived quantity. The MEM result itself is one
 distribution at one $\nu$, with no error bars on the bins and strong correlation

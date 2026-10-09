@@ -222,7 +222,11 @@ def fit(
         intermediate_results_base_filename=intermediate_base,
     )
 
-    click.echo("Fit completed successfully.")
+    if result.get("converged", False):
+        click.echo("Fit completed successfully.")
+    else:
+        click.echo("Fit completed with optimizer warning.")
+        click.echo(result.get("optimizer_message", "Optimizer convergence was not reported."))
     click.echo(f"Results saved to {output}")
     click.echo(f"Plot saved to {plot}")
 

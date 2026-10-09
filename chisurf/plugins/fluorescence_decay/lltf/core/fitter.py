@@ -12,7 +12,7 @@ import typing
 
 import numpy as np
 
-from chisurf.core.fitting.minimizer import minimize
+from chisurf.core.fitting.minimizer import ier_is_success, minimize
 from chisurf.core.math.special import fdtr
 
 from .convolve import add_pile_up_to_model, convolve_lifetime_spectrum
@@ -118,6 +118,42 @@ def select_number_of_lifetimes(
     return best_idx
 
 
+def _optimizer_provenance(status: int, n_parameters: int) -> dict[str, typing.Any]:
+    """Describe the MINPACK termination without changing its fitted solution.
+
+    Parameters
+    ----------
+    status : int
+        MINPACK information code returned by the shared minimizer.
+    n_parameters : int
+        Length of the vector passed to the optimizer. Its automatic evaluation
+        budget is ``200 * (n_parameters + 1)`` when ``maxfev=0``.
+
+    Returns
+    -------
+    dict
+        Machine-readable status, convergence, message and result source.
+    """
+    messages = {
+        -1: "Optimizer cancelled.",
+        0: "Improper optimizer input parameters.",
+        1: "Relative reduction in the sum of squares is at most ftol.",
+        2: "Relative change between consecutive iterates is at most xtol.",
+        3: "Both ftol and xtol convergence conditions hold.",
+        4: "Residuals are orthogonal to the Jacobian to gtol.",
+        5: f"Maximum objective evaluations reached (maxfev={200 * (n_parameters + 1)}).",
+        6: "ftol is too small for further reduction in the sum of squares.",
+        7: "xtol is too small for further improvement in the solution.",
+        8: "gtol is too small for further improvement in orthogonality.",
+    }
+    return {
+        "optimizer_status": int(status),
+        "converged": bool(ier_is_success(status)),
+        "optimizer_message": messages.get(status, f"Unrecognized MINPACK status {status}."),
+        "optimizer_source": "minpack",
+    }
+
+
 class Decay:
     """
     Class representing a fluorescence decay.
@@ -161,7 +197,7 @@ class Decay:
         self.figures: dict = {}
 
         # Fit results
-        self.fit_result = None
+        self.fit_result: dict[str, typing.Any] | None = None
 
         # Pile-up correction parameters
         self.correct_pile_up = False
@@ -544,6 +580,9 @@ class Decay:
         selection_mode: str = "lower",
         save_intermediate_results: bool = True,
         intermediate_results_base_filename: str = None,
+        fixed: list[bool] | None = None,
+        seed: int | None = 0,
+        amplitude_variation: float = 0.5,
     ) -> dict:
         """
         Find the optimal number of fluorescence lifetimes.
@@ -575,6 +614,14 @@ class Decay:
         intermediate_results_base_filename : str
             Base filename for intermediate results (defaults to output_file without extension if not provided)
 
+        fixed : list of bool, optional
+            Only the final three nuisance flags may be fixed in a count scan;
+            lifetime-specific flags are rejected because their mapping changes.
+        seed : int or None
+            Local randomized-start seed, forwarded to every fitted count.
+        amplitude_variation : float
+            Spread of randomized starting amplitudes for the first model.
+
         Returns
         -------
         dict
@@ -583,30 +630,104 @@ class Decay:
         if self.decay is None or self.irf is None:
             return {}
 
-        # Store original parameters
-        self.lifetime_spectrum.copy()
+        if maximum_number_of_lifetimes < 1:
+            raise ValueError("maximum_number_of_lifetimes must be positive")
+        if fixed is not None:
+            if len(fixed) < 5 or (len(fixed) - 3) % 2:
+                raise ValueError("fixed must contain amplitude/lifetime pairs and three nuisance flags")
+            if any(fixed[:-3]):
+                raise ValueError("Lifetime-specific fixed flags are unsupported in a lifetime-count scan")
+        nuisance_fixed = list(fixed[-3:]) if fixed is not None else [False] * 3
 
         # Initialize arrays to store results
         n_lifetimes_tried = list(range(1, maximum_number_of_lifetimes + 1))
         scores = []
-        best_params = []
+        chi_squares = []
+        dofs = []
+        best_params: list[dict[str, typing.Any]] = []
+        model_results: list[dict[str, typing.Any]] = []
+        optimizer_results = []
 
         # Try different numbers of lifetimes
         for n in n_lifetimes_tried:
             if verbose:
                 print(f"Trying {n} lifetimes...")
 
-            # Fit with n lifetimes
-            self.fit(
+            scan_fixed = [False] * (2 * n) + nuisance_fixed
+            initial_spectrum: np.ndarray | None = None
+            embedded_result = None
+            if best_params:
+                previous = best_params[-1]
+                spectrum = previous["lifetime_spectrum"]
+                # Zero amplitude embeds the preceding model exactly. Optimise
+                # a positive-amplitude perturbation instead: a component on
+                # its bound can have a zero finite-difference derivative.
+                initial_spectrum = np.append(spectrum, [0.0, min_lifetime])
+                embedded_result = dict(model_results[-1])
+                embedded_result.update(
+                    n_lifetimes=n,
+                    lifetime_spectrum=initial_spectrum.tolist(),
+                    dof=(self.stop - self.start) - (2 * n + 3) + sum(nuisance_fixed),
+                )
+                embedded_result["reduced_chi_square"] = (
+                    embedded_result["chi_square"] / max(1, embedded_result["dof"])
+                )
+                largest = int(np.argmax(spectrum[::2]))
+                lifetime = spectrum[2 * largest + 1]
+                initial_spectrum[-1] = (
+                    min_lifetime if lifetime > (min_lifetime + max_lifetime) / 2 else max_lifetime
+                )
+                moved = initial_spectrum[2 * largest] * 0.05
+                initial_spectrum[2 * largest] -= moved
+                initial_spectrum[-2] = moved
+                for name in ("irf_shift", "irf_background", "decay_background"):
+                    setattr(self, name, previous[name])
+
+            current_result = self.fit(
                 n_lifetimes=n,
+                fixed=scan_fixed,
                 verbose=verbose,
                 randomize_initial_values=True,
                 min_lifetime=min_lifetime,
                 max_lifetime=max_lifetime,
+                amplitude_variation=amplitude_variation,
+                seed=seed,
+                initial_lifetime_spectrum=initial_spectrum,
             )
+            if embedded_result is not None and (
+                not np.isfinite(current_result["chi_square"])
+                or current_result["chi_square"] > embedded_result["chi_square"]
+            ):
+                embedded_result.update(
+                    optimizer_status=None,
+                    converged=False,
+                    optimizer_message=(
+                        "Retained exact smaller-model embedding because the optimizer "
+                        "candidate was worse or nonfinite."
+                    ),
+                    optimizer_source="embedded_smaller_model",
+                    optimizer_attempt={
+                        name: current_result.get(name)
+                        for name in ("optimizer_status", "converged", "optimizer_message", "optimizer_source")
+                    },
+                    embedded_from_n_lifetimes=n - 1,
+                )
+                self.lifetime_spectrum = np.asarray(embedded_result["lifetime_spectrum"], dtype=float)
+                for name in ("irf_shift", "irf_background", "decay_background"):
+                    setattr(self, name, previous[name])
+                self.calculate_model_decay()
+                current_result = embedded_result
+                self.fit_result = current_result
 
             # Store results
-            scores.append(self.fit_result["reduced_chi_square"])
+            scores.append(current_result["reduced_chi_square"])
+            chi_squares.append(current_result["chi_square"])
+            dofs.append(current_result["dof"])
+            model_results.append(dict(current_result))
+            optimizer_results.append({
+                name: value for name, value in current_result.items()
+                if name.startswith("optimizer_") or name in ("converged", "embedded_from_n_lifetimes")
+            })
             best_params.append(
                 {
                     "lifetime_spectrum": self.lifetime_spectrum.copy(),
@@ -625,9 +746,9 @@ class Decay:
                     "irf_shift": float(self.irf_shift),
                     "irf_background": float(self.irf_background),
                     "decay_background": float(self.decay_background),
-                    "chi_square": float(self.fit_result["chi_square"]),
-                    "reduced_chi_square": float(self.fit_result["reduced_chi_square"]),
-                    "dof": int(self.fit_result["dof"]),
+                    "chi_square": float(current_result["chi_square"]),
+                    "reduced_chi_square": float(current_result["reduced_chi_square"]),
+                    "dof": int(current_result["dof"]),
                     "time_range": {
                         "start": float(self.time_axis[self.start]),
                         "stop": float(self.time_axis[self.stop - 1]),
@@ -635,6 +756,8 @@ class Decay:
                         "stop_idx": int(self.stop),
                     },
                 }
+
+                temp_fit_result.update(optimizer_results[-1])
 
                 # Extract lifetimes and amplitudes for easier access
                 lifetimes = []
@@ -657,25 +780,27 @@ class Decay:
                 if verbose:
                     print(f"Saved intermediate result to {intermediate_filename}")
 
-        # Using ucfret logic to select the optimal number of lifetimes
-        # Convert scores to probabilities using F-test
-        probs = []
-        # First probability is always 1.0 (for n=1)
-        probs.append(1.0)
-
-        # Calculate probabilities for n > 1
+        # Extra-sum-of-squares F for nested fits of the same weighted data.
+        # Mixture components have boundary/unidentified null parameters, so
+        # these confidences are an approximation, not calibrated probabilities.
+        probs = [1.0]
         for i in range(1, len(scores)):
-            # Calculate degrees of freedom for F-test
-            # df1 = difference in number of parameters between models (2 parameters per lifetime)
-            df1 = 2
-            # df2 = number of data points - number of parameters in the more complex model
-            # For a model with i lifetimes, we have 2*i + 3 parameters
-            # (2 per lifetime + 3 additional: irf_shift, irf_background, decay_background)
-            df2 = (self.stop - self.start) - (2 * n_lifetimes_tried[i] + 3)
-
-            f_value = scores[i - 1] / scores[i]
-            p = float(fdtr(df1, df2, f_value))
-            probs.append(p)
+            improvement = chi_squares[i - 1] - chi_squares[i]
+            extra_parameters = dofs[i - 1] - dofs[i]
+            if (
+                not np.isfinite(improvement)
+                or not np.isfinite(chi_squares[i])
+                or improvement <= 0
+                or extra_parameters <= 0
+                or dofs[i] <= 0
+                or chi_squares[i] < 0
+            ):
+                probs.append(0.0)
+            elif chi_squares[i] == 0:
+                probs.append(1.0)
+            else:
+                f_value = (improvement / extra_parameters) / (chi_squares[i] / dofs[i])
+                probs.append(float(fdtr(extra_parameters, dofs[i], f_value)))
 
         # Find the best number of lifetimes using ucfret's approach
         best_idx = select_number_of_lifetimes(
@@ -743,21 +868,25 @@ class Decay:
                     ax.set_labels(x="Time (ns)")
             self.figures["weighted_residuals"] = figure
 
-        # Draw the selected fit too -- only when figures were asked for
-        if plot_probabilities or plot_weighted_residuals:
-            self.plot_decay_curve(best_n_lifetimes)
-
-        # Restore the best parameters
+        # Restore the selected model before drawing its decay curve.
         self.lifetime_spectrum = best_params[best_idx]["lifetime_spectrum"]
         self.irf_shift = best_params[best_idx]["irf_shift"]
         self.irf_background = best_params[best_idx]["irf_background"]
         self.decay_background = best_params[best_idx]["decay_background"]
+        self.fit_result = model_results[best_idx]
         self.calculate_model_decay()
+
+        # Draw the selected fit too -- only when figures were asked for
+        if plot_probabilities or plot_weighted_residuals:
+            self.plot_decay_curve(best_n_lifetimes)
 
         return {
             "best_number_of_lifetimes": best_n_lifetimes,
             "n_lifetimes": n_lifetimes_tried,
             "scores": scores,
+            "chi_squares": chi_squares,
+            "dofs": dofs,
+            "optimizer_results": optimizer_results,
             "probabilities": probs,
             "best_idx": best_idx,
         }
@@ -780,6 +909,7 @@ class Decay:
         save_intermediate_results: bool = True,
         intermediate_results_base_filename: str = None,
         seed: int | None = 0,
+        initial_lifetime_spectrum: typing.Sequence[float] | np.ndarray | None = None,
     ) -> dict:
         """
         Fit the decay data.
@@ -800,6 +930,9 @@ class Decay:
             Maximum lifetime value in nanoseconds when randomizing
         amplitude_variation : float
             Factor controlling how much the amplitudes can vary from equal distribution (0-1)
+        initial_lifetime_spectrum : sequence of float, optional
+            Explicit amplitude/lifetime pairs for a warm start. If omitted,
+            the established fixed-count initialization remains unchanged.
         seed : int or None
             Seed for the randomized start amplitudes. The default makes a fit
             reproducible; ``None`` draws a fresh start each call.
@@ -846,6 +979,9 @@ class Decay:
                 selection_mode=selection_mode,
                 save_intermediate_results=save_intermediate_results,
                 intermediate_results_base_filename=intermediate_results_base_filename,
+                fixed=fixed,
+                seed=seed,
+                amplitude_variation=amplitude_variation,
             )
 
             # Update n_lifetimes with the best number found
@@ -860,9 +996,8 @@ class Decay:
             )
             weights = 1.0 / np.sqrt(np.maximum(self.decay[self.start : self.stop], 1.0))
             chi_square = np.sum((residuals * weights) ** 2)
-            # Parenthesized: the conditional used to bind the whole expression, so
-            # fixed=None gave dof = 0 and reported chi-square as reduced chi-square.
-            dof = len(residuals) - (2 * n_lifetimes + 3) + (sum(fixed) if fixed else 0)
+            # The selected model owns its actual nuisance-mask parameter count.
+            dof = optimal_result["dofs"][optimal_result["best_idx"]]
             reduced_chi_square = chi_square / max(1, dof)
 
             # Store fit results
@@ -877,10 +1012,17 @@ class Decay:
                 "dof": int(dof),
                 "optimal_fitting": {
                     "scores": optimal_result["scores"],
+                    "chi_squares": optimal_result["chi_squares"],
+                    "dofs": optimal_result["dofs"],
+                    "optimizer_results": optimal_result["optimizer_results"],
                     "probabilities": optimal_result["probabilities"],
                     "n_lifetimes_tried": optimal_result["n_lifetimes"],
                 },
             }
+
+            self.fit_result.update(
+                optimal_result["optimizer_results"][optimal_result["best_idx"]]
+            )
 
             if verbose:
                 print("Fit results:")
@@ -901,7 +1043,20 @@ class Decay:
         # Initialize lifetime spectrum
         self.lifetime_spectrum = np.zeros(2 * n_lifetimes)
 
-        if randomize_initial_values:
+        if initial_lifetime_spectrum is not None:
+            spectrum = np.asarray(initial_lifetime_spectrum, dtype=float)
+            if (
+                spectrum.shape != (2 * n_lifetimes,)
+                or not np.all(np.isfinite(spectrum))
+                or np.any(spectrum[::2] < 0)
+                or np.sum(spectrum[::2]) <= 0
+                or np.any(spectrum[1::2] < 0)
+                or np.any(spectrum[1::2] > 10)
+            ):
+                raise ValueError("initial_lifetime_spectrum must contain valid amplitude/lifetime pairs")
+            self.lifetime_spectrum = spectrum.copy()
+            self.lifetime_spectrum[::2] /= self.lifetime_spectrum[::2].sum()
+        elif randomize_initial_values:
             # Distribute lifetimes systematically from large to small within the specified range
             if n_lifetimes > 1:
                 # Calculate evenly spaced lifetime values from max to min
@@ -1058,6 +1213,8 @@ class Decay:
             "reduced_chi_square": float(reduced_chi_square),
             "dof": int(dof),
         }
+
+        self.fit_result.update(_optimizer_provenance(_ier, len(params)))
 
         if verbose:
             print("Fit results:")
@@ -1541,6 +1698,7 @@ def fit_lifetime(
             fixed=fixed,
             verbose=verbose,
             randomize_initial_values=randomize_params.get("enabled", False),
+            seed=randomize_params.get("seed", 0),
             min_lifetime=randomize_params.get("min_lifetime", 0.5),
             max_lifetime=randomize_params.get("max_lifetime", 5.0),
             amplitude_variation=randomize_params.get("amplitude_variation", 0.5),

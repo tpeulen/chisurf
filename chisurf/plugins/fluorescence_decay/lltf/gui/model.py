@@ -19,6 +19,8 @@ from pathlib import Path
 import numpy as np
 import yaml
 
+from chisurf.core.support.i18n import tr
+
 from ..core.settings import get_default_settings
 
 MODULE = "chisurf.plugins.fluorescence_decay.lltf.core"
@@ -76,6 +78,11 @@ class LLTFModel:
         if not result:
             return "Run an analysis to obtain fit results."
         lines = []
+        if result.get("converged") is True:
+            lines.append(tr("Optimizer converged."))
+        elif result.get("converged") is False:
+            message = result.get("optimizer_message") or tr("Optimization did not converge.")
+            lines.append(tr("Optimizer warning: {message}").format(message=message))
         if "chi_square" in result:
             lines.append(f"Chi-square: {result['chi_square']:.3f}")
         if "reduced_chi_square" in result:
@@ -194,7 +201,11 @@ class LLTFModel:
                 self.output.append(self._queue.get_nowait())
         if self.returncode == 0 and Path(self.output_file).is_file():
             self.load_result(self.output_file)
-            self.status = "LLTF fit completed."
+            self.status = (
+                tr("LLTF fit completed with an optimizer warning.")
+                if self.result.get("converged") is False
+                else tr("LLTF fit completed.")
+            )
         else:
             self.status = f"LLTF analysis failed or was stopped (exit {self.returncode})."
         if self._workspace is not None:

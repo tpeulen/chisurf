@@ -12,10 +12,18 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
-from chisurf.plugins.emtk_layout import LabelColumn, button_row, labelled, layout_spec
+from chisurf.plugins.emtk_layout import (
+    LabelColumn,
+    button_row,
+    group_by_width,
+    labelled,
+    layout_spec,
+    window_size,
+)
 
 from .controller import MEMJobs
 from .model import MEMForm, MEMModel, open_datasets, open_fits
@@ -29,8 +37,14 @@ class MaxentApp(ImApp):
     def __init__(self, model=None):
         self.model = model or MEMModel()
         self.mform = MEMForm(self.model)
-        panels = json.loads((HERE / "maxent_emtk.view.json").read_text())["panels"]
+        spec = json.loads((HERE / "maxent_emtk.view.json").read_text())
+        self.window_size = window_size(spec, (1100, 720))
+        panels = spec["panels"]
         self.panels = {n: layout_spec(copy.deepcopy(p)) for n, p in panels.items()}
+        for name in ("fret", "sampling"):
+            self.panels[name]["sections"] = group_by_width(
+                self.panels[name]["sections"], toggles_join=False
+            )
         self.forms = {n: FormState() for n in panels}
         self.columns = {n: LabelColumn() for n in panels}
         self.jobs = MEMJobs(self.model)
@@ -215,7 +229,7 @@ class MaxentApp(ImApp):
         im.text_wrapped(m.source)
         im.text_wrapped("IRF: " + m.irf_source)
         prior = m.priors[s.mode]
-        im.text_wrapped(("Prior: " + ("loaded" if prior is not None else "default 1/tau")) if not fret
+        im.text_wrapped(("Prior: " + ("loaded" if prior is not None else tr("default uniform"))) if not fret
                         else ("Distance prior: " + ("loaded" if prior is not None else "default flat")))
         if fret:
             im.text_wrapped(f"Donor spectrum: {len(m.donor) // 2} components" if m.donor is not None
@@ -302,10 +316,14 @@ class MaxentApp(ImApp):
                 "Distance (A)"
                 if self.model.result and "R" in self.model.result
                 else "Lifetime (ns)",
-                "Probability",
+                tr("Amplitude"),
             )
             if arrays:
                 implot.plot_line("MEM", arrays["axis"], arrays["p"])
+                if implot.is_legend_entry_hovered("MEM"):
+                    im.set_tooltip(tr(
+                        "Unnormalized amplitudes of the decay basis; these coefficients reconstruct the fitted signal."
+                    ))
             stats = self.model.samples
             if stats is not None:
                 for key, label in (

@@ -21,6 +21,7 @@ from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.plugins.emtk_layout import window_size
 
 from .model import LLTFModel
 
@@ -61,6 +62,7 @@ class LLTFApp(TourTarget, ImApp):
         self.item_rects = {}
         self.arrays = None
         spec = json.loads((Path(__file__).parent / "lltf.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(spec, (1100, 720))
         self.controls_spec = {"sections": [p for p in spec["sections"] if p.get("title") != "Results"]}
         self.results_spec = {"sections": [p["sections"] for p in spec["sections"] if p.get("title") == "Results"][0]}
         self.form = FormState()
