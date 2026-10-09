@@ -54,6 +54,10 @@ opened (an unsaved edit, a selected row, which sections are folded) while you lo
 ChiSurf Settings with the language selector and the typed fields of the settings file.
 ```
 
+The fields scroll below the fixed header (language, buttons, search) with the wheel or the scrollbar. Number fields
+take typed text: Enter, a click elsewhere in the panel or **Save** commits it; a fraction typed into a whole-number
+setting is refused and named in the status line.
+
 ```{figure} figures/97_settings_acquisition.png
 :name: fig-settings-acquisition
 :width: 100%

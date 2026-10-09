@@ -1,8 +1,8 @@
 ---
-type: Reference
+type: Documentation
 title: Licensing
 description: The documentation is CC BY-SA 4.0 and the source code is GPL-3.0-or-later; what that split allows, and how to attribute material reused here or from here.
-tags: [reference, licensing, attribution, copyright]
+tags: [licensing]
 anchor: licensing
 ---
 

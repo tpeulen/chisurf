@@ -2,7 +2,7 @@
 type: Concept
 title: 'Streaming analysis: computing on photons that have not arrived yet'
 description: Why a live display must be incremental rather than a batch analysis re-run, what a streaming consumer keeps instead of the photons, and where the streaming and batch answers are identical.
-tags: [concepts, acquisition, streaming, correlation, tcspc, mcs]
+tags: [concepts, live, streaming, analysis]
 ---
 
 # Streaming analysis: computing on photons that have not arrived yet

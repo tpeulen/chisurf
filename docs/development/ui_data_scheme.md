@@ -1,8 +1,8 @@
 ---
 type: Development Note
-title: "The UI data scheme: view specs and guided tours"
+title: 'The UI data scheme: view specs and guided tours'
 description: The two hand-written UI formats - the view spec that declares a panel and the guide that tours it.
-tags: [development, autoform, view-spec, guided-tour]
+tags: [development, file-formats, data, scheme]
 audience: developer
 ---
 

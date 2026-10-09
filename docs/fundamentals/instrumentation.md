@@ -4,13 +4,7 @@ title: The optical and detection chain
 description: Between the excited state and a recorded photon sit a light source, an optical train, and a detector.
 tags: [fundamentals, photons, instrumentation]
 anchor: fundamentals-instrumentation
-sources:
-  - text: Derived in part from the English Wikipedia article "Two-photon absorption"
-    url: https://en.wikipedia.org/wiki/Two-photon_absorption
-    licence: CC-BY-SA-4.0
-  - text: Derived in part from the English Wikipedia article "Two-photon excitation microscopy"
-    url: https://en.wikipedia.org/wiki/Two-photon_excitation_microscopy
-    licence: CC-BY-SA-4.0
+sources: '[{''text'': ''Derived in part from the English Wikipedia article "Two-photon absorption"'', ''url'': ''https://en.wikipedia.org/wiki/Two-photon_absorption'', ''licence'': ''CC-BY-SA-4.0''}, {''text'': ''Derived in part from the English Wikipedia article "Two-photon excitation microscopy"'', ''url'': ''https://en.wikipedia.org/wiki/Two-photon_excitation_microscopy'', ''licence'': ''CC-BY-SA-4.0''}]'
 ---
 
 (fundamentals-instrumentation)=

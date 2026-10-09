@@ -2,7 +2,7 @@
 type: Development Note
 title: emtk — the in-viewport toolkit
 description: How to write a panel or add a control with emtk, the canvas toolkit ChiMOL draws inside the 3-D viewport.
-tags: [development, chimol, emtk, gui]
+tags: [development, chimol, widget, toolkit]
 audience: developer
 ---
 

@@ -2,7 +2,7 @@
 type: Guide
 title: Reviewing the documentation as a game (Lumis Quest)
 description: A top-down RPG whose map is ChiSurf's own documentation, whose creatures are real animals with real fluorophores fixed into them, and whose expert mode signs pages off through the review gate.
-tags: [guides, documentation, review, games, fluorophores, spectra, bestiary]
+tags: [guides, lumis, quest]
 ---
 
 # Reviewing the documentation as a game (Lumis Quest)

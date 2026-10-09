@@ -2,7 +2,7 @@
 type: Concept
 title: 'Intensity traces: counting photons in time bins'
 description: What a binned photon trace can and cannot show — Poisson counting noise, the bin-width trade-off, blinking and bleaching steps, and when to leave bins for change points.
-tags: [concepts, photons, kinetics, statistics]
+tags: [concepts, photons, intensity, traces]
 anchor: concept-intensity-traces
 ---
 

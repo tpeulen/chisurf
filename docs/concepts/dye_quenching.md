@@ -2,7 +2,7 @@
 type: Concept
 title: 'Dye quenching by amino acids: photoinduced electron transfer at contact'
 description: How aromatic and sulfur-containing residues quench a tethered dye by photoinduced electron transfer, why the process is a contact reaction, what it does to lifetimes, FCS and FRET, and how QuEst simulates it from a structure.
-tags: [concepts, photophysics, structure, fret, fcs]
+tags: [concepts, fret, fcs, structure]
 anchor: concept-dye-quenching
 ---
 

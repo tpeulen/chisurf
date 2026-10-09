@@ -2,7 +2,7 @@
 type: Concept
 title: Super-resolution and localization microscopy
 description: How the diffraction limit is circumvented, what sets localization precision, and why a resolution claim needs labelling density as well as precision.
-tags: [concepts, resolution, localization, imaging, palm, storm, sted]
+tags: [concepts, imaging, super, resolution]
 anchor: concept-super-resolution
 ---
 

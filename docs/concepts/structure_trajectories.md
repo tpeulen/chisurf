@@ -2,7 +2,7 @@
 type: Concept
 title: 'Structure trajectories: superposition, RMSD, clashes and FRET along a trajectory'
 description: What a trajectory tool does to the coordinates — optimal rigid superposition (Kabsch, quaternions), the minimal RMSD, steric clashes as van-der-Waals overlap, and why the FRET efficiency of a moving molecule depends on how the average is taken.
-tags: [concepts, structure, trajectory, fret]
+tags: [concepts, structure, fret]
 anchor: concept-structure-trajectories
 ---
 

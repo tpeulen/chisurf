@@ -8,6 +8,98 @@ audience: developer
 
 # ChiSurf Plugin Architecture & Migration Plan
 
+## Discovery and launch guarantees (October 3, 2026)
+
+`load_manifest()` validates the fields the application consumes before constructing
+metadata. Malformed JSON, invalid field/container types, explicit null values in
+non-nullable fields, and read/encoding failures are diagnosed with their source
+path and do not abort discovery of healthy sibling packages. The startup path uses
+the lightweight validator, not a `jsonschema` import; full payload/schema validation
+is a separate responsibility. Direct `PluginManifest.from_dict()` retains its
+permissive handling of keys for in-process callers.
+
+Both `PluginRegistry.discover()` and `iter_plugins()` scan metadata without
+executing plugin or parent `__init__.py` code. Hidden/template exclusions are
+relative to each search root, so `~/.chisurf/plugins` itself is legitimate.
+Conflicting IDs keep the first discovered ID and log both sources. Importable
+module identity is checked through Python's actual regular/namespace package
+search precedence, including shadowed parent subtrees; an earlier package with
+legacy or missing metadata still affects what Python can import. To contribute
+children across roots, use namespace packages rather than assume children can
+extend an unrelated regular parent package.
+
+Each registry rescan replaces its old manifest/legacy snapshot. Public
+`invalidate_plugin_cache()` clears application metadata and refreshes Python
+import finders; fresh scans refresh those finders too. This makes newly installed
+packages visible even within filesystem timestamp granularity. It does **not**
+reload modules already in `sys.modules`; restart after replacing imported code.
+
+A manifest is GUI-capable when it declares `gui`, `emtk`, or `script` (subject to
+explicit visibility/CLI-only metadata). Native-only tools therefore do not vanish
+from GUI discovery. `PluginRegistry.register_gui()` creates menu actions lazily:
+the current explicit Qt/emtk mode and preview gate are applied when an action is
+triggered, without importing an unavailable alternative during menu construction.
+The registry retains the injected loader and each opened window until Qt destroys
+it, handles refused closes, and contains factory/show failures. This changes the
+infrastructure, not the acceptance status of any plugin UI port.
+
+Reproducible checks and remaining dependency/RPC-ownership debt are in
+`okf/architecture/plugin-system-diagnosis.md`. The architectural migration notes
+below include historical goals; the guarantees above describe the verified runtime.
+
+## Installation and registration guarantees (October 3, 2026)
+
+The plugin manager stages a complete tree in a unique hidden directory on the
+user-plugin filesystem and validates the staged manifest before moving the old
+installation. Copy or validation failures leave the original installation intact;
+a failed promotion or graceful interruption after the old-tree move restores it.
+If restoration itself fails, the original backup
+is retained and its location is reported. This is not a crash-durability or
+race-free directory-swap guarantee. No elevated installation into the shipped
+plugin tree is supported.
+
+A Python package name is not a manifest ID. Folder and importable ZIP package
+names are preserved even when the ID differs. Flat ZIPs use their stable archive
+stem. A non-Python distribution wrapper such as `tool-main` may infer one package
+name from its `chisurf.plugins.<package>` entrypoints, or use a valid manifest ID
+when no such reference exists; conflicting inferred identities are refused.
+Plan/source/overwrite confirmation and user-root containment are checked again
+before installation. Chosen source paths and destination directories must not be
+symlinks. Portable ZIP validation rejects traversal, special files,
+duplicate/aliased members, inconsistently spelled normalized directory prefixes,
+and file/directory identity conflicts in either member order. Classification
+matches actual ZIP extraction even when Unix directory mode bits disagree with
+the filename. Only direct user-plugin directories can be uninstalled; built-in
+tools must be disabled instead.
+
+Dependency cycles are the actual strongly connected components, not every plugin
+blocked behind one. Ordering condenses these components and emits prerequisites
+before their acyclic dependants; members inside a cycle have deterministic order,
+not an impossible guarantee that every cyclic dependency comes first. The
+iterative traversal handles long chains without relying on Python recursion.
+Duplicate IDs retain the first dependency declaration, matching discovery.
+Cycle diagnostics list component members; sorting members does not imply that
+the graph contains a directed path visiting them in that order.
+
+`PluginRegistry.register_cli()` honors `alias=module:command`; without an alias,
+the public name is the kebab-case manifest ID, not the Click object's internal
+name. Existing command owners win and ignored candidates are not imported. The
+production `csc` path remains lazy.
+
+`ServiceDispatcher.registration_transaction(owner)` stages routes in the
+registering thread and publishes the entire set under its lock. Other threads
+continue seeing only committed routes. A registrar failure, duplicate method or
+concurrent collision publishes none of that registrar's routes and cannot replace
+existing core/sibling handlers. A caught collision still aborts the transaction.
+The registrar can read its own staged routes. Nested transactions are rejected;
+direct/core `register()` retains its existing explicit replacement behavior.
+`PluginRegistry.register_services()` uses this optional API and remains compatible
+with legacy duck-typed dispatchers. The transaction covers the routing table,
+**not** arbitrary state changes or other side effects inside plugin code.
+
+Verification evidence and unresolved declaration debt are recorded in
+`okf/architecture/plugin-system-diagnosis.md`.
+
 ## 1. Current State
 
 ### What works well
@@ -18,14 +110,14 @@ audience: developer
 | Burst Selection `gui/tool.py` | Migrated GUI that uses `api/` layer (though still imports it directly) |
 | ZMQ JSON-RPC server | Working transport, `ServiceDispatcher`, session state, event bus |
 | Core "namespace" RPC methods | `dataset.*`, `fit.*`, `parameter.*`, `project.*`, `session.*`, `model.*`, `graph.*` |
-| Plugin discovery | `iter_plugins()` walks `__path__` and parses AST for `name`/`cli_entrypoint` — works well |
+| Plugin discovery | Import-free manifest-first discovery, AST legacy fallback, checked module/parent-package identity and fresh cached snapshots |
 | CLI registration | `chisurf/core/cli.py` (since removed) reads `manifest.json` `entrypoints.cli` first and falls back to the AST `cli_entrypoint`; both are scanned without importing plugin code |
 
 ### What needs to change
 
 | Problem | Detail |
 |---|---|
-| **No manifest schema** | Plugins declare `name`, `cli_entrypoint` in `__init__.py` as bare Python variables, not JSON. RPC methods, event topics, state namespaces, schemas are all implicit or duplicated across files. |
+| **Manifest completeness and ownership** | A manifest schema and safe loading boundary now exist. Cross-plugin dependency declarations and RPC namespace ownership still have audited inconsistencies; legacy AST metadata remains a compatibility fallback. |
 | **Manual RPC registration** | `server/app.py` hardcodes `register_burst_selection_services(dispatcher)`. Every new plugin would need the same treatment. Methods are not auto-discoverable. |
 | **`SessionState` is not JSON-safe** | Stores real Python objects (`datasets`, `fits` lists). `to_dict()` only returns counts/names, not full state. No plugin namespacing. |
 | **GUI imports core directly** | `gui/tool.py` calls `analyze_file()` directly from `api/selection.py`. No client/server boundary. Even with `--no-deps`, this prevents web frontend. |

@@ -2,7 +2,7 @@
 type: Concept
 title: 'The point-spread function: what a focused lens actually makes'
 description: The image of a point source through a microscope objective, from the scalar Airy pattern to the vectorial Richards–Wolf focus, and why the textbook widths are wrong by 10–30 % at the numerical apertures people use.
-tags: [concepts, imaging, optics, resolution]
+tags: [concepts, imaging, point, spread, function]
 anchor: concept-point-spread-function
 ---
 

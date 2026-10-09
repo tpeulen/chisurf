@@ -2,7 +2,7 @@
 type: Concept
 title: 'Hydrodynamics of rigid macromolecules: how fast a structure diffuses and tumbles'
 description: Translational and rotational diffusion of a rigid body in solvent, from the Stokes–Einstein sphere to bead and shell models (HYDROPRO), and how the results connect to FCS diffusion times and anisotropy correlation times.
-tags: [concepts, structure, hydrodynamics, fcs, anisotropy]
+tags: [concepts, structure, diffusion, fcs, anisotropy, correlation]
 anchor: concept-hydrodynamics
 ---
 

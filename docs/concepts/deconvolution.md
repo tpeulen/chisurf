@@ -2,7 +2,7 @@
 type: Concept
 title: Deconvolution
 description: 'Undoing the blur a microscope adds: the point spread function, why inverting it is not a division, and why the iteration count is the regularisation rather than a convergence knob.'
-tags: [concepts, imaging, deconvolution, psf, restoration]
+tags: [concepts, deconvolution]
 anchor: concept-deconvolution
 ---
 

@@ -267,30 +267,6 @@ to inspect its spectrum again. Scraping and MMFDB import remain explicit
 workflow actions. See the [FRET concept](../concepts/fret.md) for the spectral
 normalization and extinction-coefficient assumptions required for R₀.
 
-## Native window and stacked Browse content
-
-The native Spectra Downloader starts at **1100 × 720 logical pixels**; saved
-host geometry takes precedence on reopening. Browse puts the component list
-above the details when there is insufficient width for two columns. Scroll
-the content area over the component fields, or use its right scrollbar, to
-reach the properties and spectrum. Navigation and Back/Next remain fixed.
-
-```{figure} figures/spectra_native_primary_window.png
-:width: 100%
-
-Default and narrow layouts after scrolling to the spectrum. The three local
-components and Gaussian emission curve are analytic fixtures, not measured
-vendor spectra and not evidence for a physical Förster radius.
-```
-
-The host metadata and content scrolling preserve stored spectral samples,
-component IDs and the selected Push set. Existing preferences retain filters,
-panel, endpoint settings and IDs; the password remains session-only. A restored
-Push selection does not itself reconstruct an open detail view: click a row
-to inspect its spectrum again. Scraping and MMFDB import remain explicit
-workflow actions. See the [FRET concept](../concepts/fret.md) for the spectral
-normalization and extinction-coefficient assumptions required for R₀.
-
 The endpoint radio options have separate help: **Local file** imports into the
 SQLite path selected below; **Server (ZMQ)** uses the configured server and
 current session. The Advanced panel explains its connection/authentication

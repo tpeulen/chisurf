@@ -2,7 +2,7 @@
 type: Concept
 title: Density-based clustering
 description: 'Finding populations in a burst or pixel table without being told how many there are: core distances, mutual reachability, the cluster hierarchy, and the stability rule that reads a flat clustering off it.'
-tags: [concepts, clustering, exploration, hdbscan]
+tags: [concepts, bursts, density, clustering]
 anchor: concept-density-clustering
 ---
 

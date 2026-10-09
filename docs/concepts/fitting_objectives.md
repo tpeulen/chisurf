@@ -1,8 +1,8 @@
 ---
 type: Concept
 title: 'Fitting objectives: which statistic a fit minimises'
-description: 'Weighted least squares, the Neyman and Pearson chi-squares and the Poisson likelihood — what each one estimates, where the least-squares forms are biased, and the setting that chooses between them.'
-tags: [concepts, fitting, statistics, tcspc]
+description: Weighted least squares, the Neyman and Pearson chi-squares and the Poisson likelihood — what each one estimates, where the least-squares forms are biased, and the setting that chooses between them.
+tags: [concepts, fitting, objectives]
 anchor: concept-fitting-objectives
 ---
 

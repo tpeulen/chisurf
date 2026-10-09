@@ -71,8 +71,15 @@ TEXT_KEYS = frozenset(
         "text",
         "x_label",
         "y_label",
-        "hint", "tooltip", "units", "caption", "special_text",
-        "descriptions", "labels", "options", "choices",
+        "hint",
+        "tooltip",
+        "units",
+        "caption",
+        "special_text",
+        "descriptions",
+        "labels",
+        "options",
+        "choices",
         "menu",
         # manifest / rpc fields
         "summary",
@@ -87,6 +94,7 @@ EXTRA_LITERALS = ("(required)",)
 
 def _collect_from_json(node: object, out: set[str]) -> None:
     """Collect authored text without translating binding identities or hidden choice values."""
+
     def text(value):
         if isinstance(value, str) and value.strip():
             out.add(value)
@@ -100,10 +108,18 @@ def _collect_from_json(node: object, out: set[str]) -> None:
     if isinstance(node, dict):
         for key, value in node.items():
             if key in {"options", "choices"}:
-                if node.get("type") == "choice" and not node.get("labels") and isinstance(value, list):
+                if (
+                    node.get("type") == "choice"
+                    and not node.get("labels")
+                    and isinstance(value, list)
+                ):
                     for option in value:
                         # The renderer displays a (value, label) pair's second slot.
-                        text(option[1] if isinstance(option, (list, tuple)) and len(option) == 2 else option)
+                        text(
+                            option[1]
+                            if isinstance(option, (list, tuple)) and len(option) == 2
+                            else option
+                        )
             elif key in TEXT_KEYS:
                 text(value)
             _collect_from_json(value, out)
@@ -178,15 +194,19 @@ def _collect_from_python(strings: set[str]) -> None:
 
 def _not_shipped(path: pathlib.Path) -> bool:
     """Exclude tests and the plugin scaffold from the shipped UI text contract."""
-    return any(part in {"test", "tests", "__pycache__"} or "cookiecutter" in part
-               for part in path.parts) or path.name.startswith("test_")
+    return any(
+        part in {"test", "tests", "__pycache__"} or "cookiecutter" in part for part in path.parts
+    ) or path.name.startswith("test_")
 
 
 def collect_strings() -> set[str]:
     """Walk view.json + manifest.json + ``i18n.tr`` calls; return unique strings."""
     strings: set[str] = set(EXTRA_LITERALS)
-    specs = sorted(set(CHISURF.rglob("*view.json")) | set(CHISURF.rglob("manifest.json"))
-                   | set(CHISURF.rglob("*guide*.json")))
+    specs = sorted(
+        set(CHISURF.rglob("*view.json"))
+        | set(CHISURF.rglob("manifest.json"))
+        | set(CHISURF.rglob("*guide*.json"))
+    )
     for path in specs:
         if _not_shipped(path):
             continue
@@ -254,8 +274,13 @@ def preserve_finished_translations(before: str, path: pathlib.Path) -> None:
     for message in ET.fromstring(before).findall(".//message"):
         translation = message.find("translation")
         source = message.findtext("source")
-        if (not source or translation is None or translation.get("type") in {"unfinished", "obsolete", "vanished"}
-                or message.get("numerus") == "yes" or translation.find("numerusform") is not None):
+        if (
+            not source
+            or translation is None
+            or translation.get("type") in {"unfinished", "obsolete", "vanished"}
+            or message.get("numerus") == "yes"
+            or translation.find("numerusform") is not None
+        ):
             continue
         text = "".join(translation.itertext())
         if text:
@@ -267,8 +292,13 @@ def preserve_finished_translations(before: str, path: pathlib.Path) -> None:
         if not source:
             continue
         choices = finished.get(source, set())
-        if (translation is None or translation.get("type") != "unfinished" or len(choices) != 1
-                or message.get("numerus") == "yes" or translation.find("numerusform") is not None):
+        if (
+            translation is None
+            or translation.get("type") != "unfinished"
+            or len(choices) != 1
+            or message.get("numerus") == "yes"
+            or translation.find("numerusform") is not None
+        ):
             continue
         text = "".join(translation.itertext())
         old = next(iter(choices))
@@ -279,7 +309,9 @@ def preserve_finished_translations(before: str, path: pathlib.Path) -> None:
     ET.indent(tree, space="    ")
     content = ET.tostring(tree.getroot(), encoding="unicode")
     content = re.sub(r" +(?=\n)", lambda match: "&#32;" * len(match[0]), content)
-    path.write_text('<?xml version="1.0" encoding="utf-8"?>\n<!DOCTYPE TS>\n' + content + "\n", encoding="utf-8")
+    path.write_text(
+        '<?xml version="1.0" encoding="utf-8"?>\n<!DOCTYPE TS>\n' + content + "\n", encoding="utf-8"
+    )
 
 
 def main() -> int:
@@ -299,8 +331,11 @@ def main() -> int:
     args = parser.parse_args()
 
     I18N_DIR.mkdir(parents=True, exist_ok=True)
-    previous = {code: (I18N_DIR / f"chisurf_{code}.ts").read_text()
-                for code in args.locales if (I18N_DIR / f"chisurf_{code}.ts").is_file()}
+    previous = {
+        code: (I18N_DIR / f"chisurf_{code}.ts").read_text()
+        for code in args.locales
+        if (I18N_DIR / f"chisurf_{code}.ts").is_file()
+    }
 
     print("Collecting strings from view.json + manifest.json + i18n.tr() calls …")
     strings = collect_strings()

@@ -34,8 +34,6 @@ saving_projects
 
 65_live_acquisition
 12_handling_tttr_files
-100_alex_creator
-101_tttr_toolbox
 33_timestamps_and_bursts
 13_burst_identification
 15_background_rates
@@ -43,7 +41,6 @@ saving_projects
 74_intensity_traces_and_file_tools
 73_tttr_decay_and_correlation
 88_microtime_shifter
-94_tttr_audifier
 37_tttr_microtime_lut
 34_exporting_burst_data
 35_combining_repeats
@@ -139,16 +136,11 @@ irf_estimation
 86_image_browser
 87_channel_definition
 88_structure_tools
-95_games
 90_updater
 97_settings_hub
-98_clsm_generator
 91_vv_vh_g_factor
 92_hmm_binned_traces
 93_psf_determination
-96_plugin_check
-98_imaging_tools
-99_img_calibration
 45_scan_precision
 55_pair_correlation
 ```
@@ -279,19 +271,12 @@ irf_estimation
 | [Browsing a folder of scan images](86_image_browser.md) | `tttr_image_browser` (Spectroscopy → Imaging → Image Tools → Browser), `tttr-image-browser`, `core.image` |
 | [Detector setup: channels, PIE windows, timing and LUTs](87_channel_definition.md) | `setup_channel_definition` (Setup → Channel Definition), the shared detector setup editor |
 | [Structure Tools: FPS JSON editor, docking and QuEst](88_structure_tools.md) | `structure_tools` (Structure → Modelling → Structure Tools), the structure-modelling hub |
-| [Games: a break between fits](95_games.md) | `games` hub (Tools → System → Games): Number Quest, Minesweeper, Tetris, Pong, Breakout |
 | [The PSF measured on beads](93_psf_determination.md) | `psf_determination` (Imaging), `psf-determination` CLI, `PsfViewModel`, `psf_determination.fit.run` RPC |
 | [States and rates from a binned trace](92_hmm_binned_traces.md) | `hmm` (Spectroscopy → Kinetics), `csc hmm`, `HmmViewModel`, `hmm.fit` RPC |
 | [The G-factor of a polarised setup](91_vv_vh_g_factor.md) | `vv_vh_g_factor` (Spectroscopy → Fluorescence decay), `csc`/`vv-vh-g-factor`, `GFactorModel` |
-| [IRF and background calibration of an imaging detector](99_img_calibration.md) | `img_calibration` (Imaging → IRF & BG; step 4 of Imaging Tools) |
-| [The imaging workflow in one window](98_imaging_tools.md) | `imaging_tools` (Imaging → Image Tools), the imaging hub |
-| [Checking that every plugin starts](96_plugin_check.md) | `plugin_check` (File → Setup → Settings → Plugin Check), `python -m chisurf.emtk.validation`, `PluginCheckModel` |
 | [The Settings window: one list, every settings panel](97_settings_hub.md) | `setup` (Setup → Settings), the hub that hosts every settings panel |
 | [Updating ChiSurf](90_updater.md) | `updater` (Setup → Settings → Updates), version check, changelog, Update Now |
-| [One window for the TTTR file tools](101_tttr_toolbox.md) | `tttr_toolbox` (Tools → Photon data → TTTR Tools) |
-| [Turning ALEX alternation into micro-time](100_alex_creator.md) | `ptu_alex_creator` (Tools → Converter), `csc alex`, `core.alex_histogram` |
 | [Aligning detectors in micro time](88_microtime_shifter.md) | `microtime_shifter` (Tools → TTTR), `csc microtime-shift`, `core.fio.tttr_shift` |
-| [CLSM Generator: a scan whose answer is known](98_clsm_generator.md) | `clsm_generator` (Spectroscopy → Imaging → Image Tools) |
 
 ## Regenerating the figures
 
@@ -322,5 +307,3 @@ PYTHONPATH=. python docs/guides/make_figures.py
 
 All lengths in the polymer tutorials are in Ångström, FCS lag times in seconds
 (displayed in ms), and diffusion coefficients in µm²/s.
-
-| [Photon streams as sound and a waterfall](94_tttr_audifier.md) | `tttr_audifier` (Tools → Photon data → TTTR Tools) |

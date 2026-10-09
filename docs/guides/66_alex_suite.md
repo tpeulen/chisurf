@@ -2,7 +2,7 @@
 type: Guide
 title: Coming from ALEX-Suite
 description: The ALEX-Suite workflow, step by step, in ChiSurf — where each old window went, what is now measured instead of typed, and what comes out.
-tags: [guides, fret, smfret, alex, titration]
+tags: [guides, alex, suite]
 ---
 
 # Coming from ALEX-Suite

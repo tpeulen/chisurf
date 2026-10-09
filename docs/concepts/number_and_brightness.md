@@ -1,8 +1,8 @@
 ---
 type: Concept
 title: 'Number & Brightness: molecule number and oligomeric state from pixel fluctuations'
-description: 'How the per-pixel mean and variance of an image stack separate how many molecules there are from how bright each one is — for photon-counting and analog detectors, across two channels, and what bleaching, immobile structure and dead time do to it.'
-tags: [concepts, imaging, fluctuation, brightness, oligomerization]
+description: How the per-pixel mean and variance of an image stack separate how many molecules there are from how bright each one is — for photon-counting and analog detectors, across two channels, and what bleaching, immobile structure and dead time do to it.
+tags: [concepts, imaging, photons, structure]
 anchor: concept-number-and-brightness
 ---
 
