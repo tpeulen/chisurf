@@ -8,6 +8,7 @@ from threading import Event
 from emtk import im
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
+from emtk.i18n import tr
 
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 
@@ -209,14 +210,14 @@ class BidToAnalysisApp(ImApp):
                     self.output_types.discard(kind)
             im.same_line()
         im.separator()
-        changed, self.unique_folder = im.checkbox("Unique output folder", self.unique_folder)
-        im.set_item_tooltip("Add a numeric suffix instead of reusing an existing output folder.")
-        changed, self.zip_output = im.checkbox("ZIP output", self.zip_output)
-        im.set_item_tooltip("Archive generated analysis files while keeping the output folder.")
-        im.text("Output folder (empty: beside each measurement):")
+        changed, self.unique_folder = im.checkbox(tr("Unique output folder"), self.unique_folder)
+        im.set_item_tooltip(tr("Add a numeric suffix instead of reusing an existing output folder."))
+        changed, self.zip_output = im.checkbox(tr("ZIP output"), self.zip_output)
+        im.set_item_tooltip(tr("Archive generated analysis files while keeping the output folder."))
+        im.text(tr("Output folder (empty: beside each measurement):"))
         changed, self.analysis_folder = im.input_text("##bid_output", self.analysis_folder)
         im.set_item_tooltip(
-            "Explicit output destination; empty uses the BID stem beside its TTTR measurement."
+            tr("Explicit output destination; empty uses the BID stem beside its TTTR measurement.")
         )
         self.button(
             "Choose output folder",
@@ -239,7 +240,7 @@ class BidToAnalysisApp(ImApp):
                     if key == "output":
                         if im.small_button(f"Remove##bid{index}"):
                             remove = index
-                        im.set_item_tooltip("Remove this selection from the queue.")
+                        im.set_item_tooltip(tr("Remove this selection from the queue."))
                 im.table_next_column()
                 im.text_wrapped(row["status"])
             im.end_table()
@@ -295,7 +296,7 @@ class BidToAnalysisApp(ImApp):
         if self.help_open:
             if im.begin("BID → Analysis help"):
                 im.text_wrapped(
-                    "BID/BST/TXT selections contain two integer columns: start and stop photon indices. The TTTR measurement is inferred by stem in the current folder and three parents. Configure detector channels and PIE windows before Process. PTO retains the original BID bytes and derived-from provenance; BUR appends bursts to existing tables and records MTI duration; SL5 stores a photon mask; HDF5 stores columnar burst summaries. Cancel completes the current file and stops the remaining queue. Raw TTTR and BID inputs are preserved."
+                    tr("BID/BST/TXT selections contain two integer columns: start and stop photon indices. The TTTR measurement is inferred by stem in the current folder and three parents. Configure detector channels and PIE windows before Process. PTO retains the original BID bytes and derived-from provenance; BUR appends bursts to existing tables and records MTI duration; SL5 stores a photon mask; HDF5 stores columnar burst summaries. Cancel completes the current file and stops the remaining queue. Raw TTTR and BID inputs are preserved.")
                 )
                 self.button(
                     "Close help",

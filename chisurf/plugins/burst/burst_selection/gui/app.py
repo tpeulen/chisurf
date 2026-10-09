@@ -36,6 +36,7 @@ import numpy as np
 from emtk import im, implot
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
+from emtk.i18n import tr
 from emtk.im_core import Col
 
 from chisurf.core.datastore import column_names, numeric_column, row_count
@@ -518,7 +519,7 @@ class BurstSelectionGui:
             self._sync_to_tool()
             self.tool.analyze_files()
         im.set_item_tooltip(
-            "Run the selected burst-detection algorithm over all included TTTR files."
+            tr("Run the selected burst-detection algorithm over all included TTTR files.")
         )
         self.remember("run")
         self.remember("toolAction_run")
@@ -529,7 +530,7 @@ class BurstSelectionGui:
             self.track("toolAction_refresh")
             self._sync_to_tool()
             self.tool.analyze_files(force=True)
-        im.set_item_tooltip("Force a fresh burst search, ignoring cached results.")
+        im.set_item_tooltip(tr("Force a fresh burst search, ignoring cached results."))
         self.remember("refresh")
         self.remember("toolAction_refresh")
 
@@ -540,7 +541,7 @@ class BurstSelectionGui:
             )
             if callable(save_fn):
                 save_fn()
-        im.set_item_tooltip("Save the detected bursts to .bur files next to the source data.")
+        im.set_item_tooltip(tr("Save the detected bursts to .bur files next to the source data."))
 
         im.same_line()
         im.text_disabled("|")
@@ -549,13 +550,13 @@ class BurstSelectionGui:
         if im.button("Add Files"):
             self.track("toolAction_add")
             self._on_add_files()
-        im.set_item_tooltip("Open a dialog to add TTTR measurement files.")
+        im.set_item_tooltip(tr("Open a dialog to add TTTR measurement files."))
         self.remember("add")
         self.remember("toolAction_add")
         im.same_line()
         if im.button("Add Folder"):
             self._on_add_folder()
-        im.set_item_tooltip("Open a dialog to add a folder of TTTR files.")
+        im.set_item_tooltip(tr("Open a dialog to add a folder of TTTR files."))
 
         im.same_line()
         im.text_disabled("|")
@@ -565,17 +566,17 @@ class BurstSelectionGui:
         ndx_fn = getattr(self.tool, "_send_current_to_ndxplorer", None)
         if callable(ndx_fn) and im.button("to ndX"):
             ndx_fn()
-        im.set_item_tooltip("Send the current burst selection to ndXplorer.")
+        im.set_item_tooltip(tr("Send the current burst selection to ndXplorer."))
 
         im.same_line()
         if im.button("Guide"):
             self.start_guide()
-        im.set_item_tooltip("Start a step-by-step guided tour of burst selection.")
+        im.set_item_tooltip(tr("Start a step-by-step guided tour of burst selection."))
 
         im.same_line()
         if im.button("Help"):
             self.show_help()
-        im.set_item_tooltip("Open the help window with reference documentation.")
+        im.set_item_tooltip(tr("Open the help window with reference documentation."))
 
         # Status text & active file summary
         files = getattr(self.tool, "_file_paths", [])
@@ -603,11 +604,11 @@ class BurstSelectionGui:
         # File actions row
         if im.button("Add Files##files_btn"):
             self._on_add_files()
-        im.set_item_tooltip("Open a dialog to add TTTR measurement files.")
+        im.set_item_tooltip(tr("Open a dialog to add TTTR measurement files."))
         im.same_line()
         if im.button("Add Folder##files_btn"):
             self._on_add_folder()
-        im.set_item_tooltip("Open a dialog to add a folder of TTTR files.")
+        im.set_item_tooltip(tr("Open a dialog to add a folder of TTTR files."))
         im.same_line()
         if im.button("Remove"):
             if 0 <= self.active_file_idx < len(files):
@@ -618,7 +619,7 @@ class BurstSelectionGui:
                 refresh_fn = getattr(self.tool, "_refresh_file_list", None)
                 if callable(refresh_fn):
                     refresh_fn()
-        im.set_item_tooltip("Remove the active file from the list.")
+        im.set_item_tooltip(tr("Remove the active file from the list."))
         im.same_line()
         if im.button("Clear"):
             clear_fn = getattr(self.tool, "clear", None)
@@ -628,7 +629,7 @@ class BurstSelectionGui:
                 files.clear()
             self.file_inclusion.clear()
             self.active_file_idx = 0
-        im.set_item_tooltip("Remove all files from the list.")
+        im.set_item_tooltip(tr("Remove all files from the list."))
 
         im.separator()
 
@@ -651,7 +652,7 @@ class BurstSelectionGui:
                     im.table_next_row()
                     im.table_set_column_index(0)
                     changed, val = im.checkbox(f"##inc_{i}", self.file_inclusion[i])
-                    im.set_item_tooltip("Include or exclude this file from the burst search.")
+                    im.set_item_tooltip(tr("Include or exclude this file from the burst search."))
                     if changed:
                         self.file_inclusion[i] = val
                     im.table_set_column_index(1)
@@ -667,7 +668,7 @@ class BurstSelectionGui:
                         if callable(load_fn) and settings:
                             load_fn([p], settings)
                     im.set_item_tooltip(
-                        "Click to make this file active; its diagnostics are shown in the plots."
+                        tr("Click to make this file active; its diagnostics are shown in the plots.")
                     )
             else:
                 im.table_next_row()
@@ -694,7 +695,7 @@ class BurstSelectionGui:
         im.set_next_item_width(max(110.0, box[2] - 150.0))
         changed_s, new_s_idx = im.combo("##Setup", setup_idx, setup_names)
         im.set_item_tooltip(
-            "Detector setup (channel routing and PIE windows) applied to the burst search."
+            tr("Detector setup (channel routing and PIE windows) applied to the burst search.")
         )
         if changed_s and 0 <= new_s_idx < len(setup_names):
             name = setup_names[new_s_idx]
@@ -708,7 +709,7 @@ class BurstSelectionGui:
             show_chan_fn = getattr(self.tool, "_show_channel_settings", None)
             if callable(show_chan_fn):
                 show_chan_fn()
-        im.set_item_tooltip("Open the detector/channel setup manager.")
+        im.set_item_tooltip(tr("Open the detector/channel setup manager."))
 
     def _on_add_files(self) -> None:
         try:
@@ -769,7 +770,7 @@ class BurstSelectionGui:
         alg_idx = min(self.filter_algorithm, len(alg_names) - 1)
         changed_alg, new_alg = im.combo("##filter_alg", alg_idx, alg_names)
         im.set_item_tooltip(
-            "Burst-detection algorithm: sliding window, CUSUM/SPRT, Kalman, BOCPD, coincident, max-tree, or Bayesian Blocks."
+            tr("Burst-detection algorithm: sliding window, CUSUM/SPRT, Kalman, BOCPD, coincident, max-tree, or Bayesian Blocks.")
         )
         self.remember("algorithm")
         if changed_alg and 0 <= new_alg < len(alg_names):
@@ -804,7 +805,7 @@ class BurstSelectionGui:
         ch_idx = min(self.channel_idx, len(ch_names) - 1)
         changed_ch, new_ch = im.combo("##ch_sel", ch_idx, ch_names)
         im.set_item_tooltip(
-            "Detector channel (or All) whose photons are used for the burst search."
+            tr("Detector channel (or All) whose photons are used for the burst search.")
         )
         self.remember("detector")
         if changed_ch and 0 <= new_ch < len(ch_names):
@@ -831,7 +832,7 @@ class BurstSelectionGui:
         win_idx = min(self.window_idx, len(win_names) - 1)
         changed_win, new_win = im.combo("##win_sel", win_idx, win_names)
         im.set_item_tooltip(
-            "PIE/micro-time window (or All) whose photons are used for the burst search."
+            tr("PIE/micro-time window (or All) whose photons are used for the burst search.")
         )
         self.remember("window")
         if changed_win and 0 <= new_win < len(win_names):
@@ -865,7 +866,7 @@ class BurstSelectionGui:
             im.same_line(col_x)
             im.set_next_item_width(120)
             _ca, val_a = im.input_float("##cusum_alpha", self.cusum_alpha, 0.01, 0.05, "%.3f")
-            im.set_item_tooltip("False-alarm probability α of the CUSUM/SPRT test.")
+            im.set_item_tooltip(tr("False-alarm probability α of the CUSUM/SPRT test."))
             if _ca:
                 self.cusum_alpha = max(0.0001, min(0.99, val_a))
                 self._sync_to_tool()
@@ -875,7 +876,7 @@ class BurstSelectionGui:
             im.same_line(col_x)
             im.set_next_item_width(120)
             _cb, val_b = im.input_float("##cusum_beta", self.cusum_beta, 0.01, 0.05, "%.3f")
-            im.set_item_tooltip("Missed-detection probability β of the CUSUM/SPRT test.")
+            im.set_item_tooltip(tr("Missed-detection probability β of the CUSUM/SPRT test."))
             if _cb:
                 self.cusum_beta = max(0.0001, min(0.99, val_b))
                 self._sync_to_tool()
@@ -885,7 +886,7 @@ class BurstSelectionGui:
             im.same_line(col_x)
             im.set_next_item_width(120)
             _cr, val_r = im.input_float("##cusum_bg_rate", self.cusum_bg_rate, 100.0, 500.0, "%.0f")
-            im.set_item_tooltip("Expected background count rate in Hz used by the test.")
+            im.set_item_tooltip(tr("Expected background count rate in Hz used by the test."))
             if _cr:
                 self.cusum_bg_rate = max(1.0, val_r)
                 self._sync_to_tool()
@@ -895,7 +896,7 @@ class BurstSelectionGui:
             im.same_line(col_x)
             im.set_next_item_width(120)
             _cs, val_s = im.input_float("##cusum_sb_ratio", self.cusum_sb_ratio, 1.0, 5.0, "%.1f")
-            im.set_item_tooltip("Signal-to-background ratio the test is tuned for.")
+            im.set_item_tooltip(tr("Signal-to-background ratio the test is tuned for."))
             if _cs:
                 self.cusum_sb_ratio = max(1.1, val_s)
                 self._sync_to_tool()
@@ -906,7 +907,7 @@ class BurstSelectionGui:
             im.set_next_item_width(120)
             _cl, val_l = im.input_int("##min_photons", self.min_photons, 1, 10)
             im.set_item_tooltip(
-                "Minimum photons a burst must have; the size cut is applied after the search."
+                tr("Minimum photons a burst must have; the size cut is applied after the search.")
             )
             self.remember("parameters")
             if _cl:
@@ -922,7 +923,7 @@ class BurstSelectionGui:
             im.set_next_item_width(120)
             _cq, val_q = im.input_float("##kalman_q", self.kalman_q, 0.001, 0.01, "%.4f")
             im.set_item_tooltip(
-                "Process noise Q of the Kalman filter: how fast the count rate may change."
+                tr("Process noise Q of the Kalman filter: how fast the count rate may change.")
             )
             if _cq:
                 self.kalman_q = max(1e-6, val_q)
@@ -933,7 +934,7 @@ class BurstSelectionGui:
             im.same_line(col_x)
             im.set_next_item_width(120)
             _cr, val_r = im.input_float("##kalman_r", self.kalman_r_scale, 0.05, 0.2, "%.2f")
-            im.set_item_tooltip("Measurement-noise scale R of the Kalman filter.")
+            im.set_item_tooltip(tr("Measurement-noise scale R of the Kalman filter."))
             if _cr:
                 self.kalman_r_scale = max(0.01, val_r)
                 self._sync_to_tool()
@@ -943,7 +944,7 @@ class BurstSelectionGui:
             im.same_line(col_x)
             im.set_next_item_width(120)
             _cz, val_z = im.input_float("##kalman_z", self.kalman_z_thresh, 0.5, 1.0, "%.1f")
-            im.set_item_tooltip("Z-score threshold on the rate residual that flags a burst.")
+            im.set_item_tooltip(tr("Z-score threshold on the rate residual that flags a burst."))
             if _cz:
                 self.kalman_z_thresh = max(0.5, val_z)
                 self._sync_to_tool()
@@ -953,7 +954,7 @@ class BurstSelectionGui:
             im.same_line(col_x)
             im.set_next_item_width(120)
             _cml, val_ml = im.input_int("##kalman_min_len", self.kalman_min_len, 1, 5)
-            im.set_item_tooltip("Minimum burst length in photons.")
+            im.set_item_tooltip(tr("Minimum burst length in photons."))
             if _cml:
                 self.kalman_min_len = max(1, val_ml)
                 self._sync_to_tool()
@@ -963,7 +964,7 @@ class BurstSelectionGui:
             im.same_line(col_x)
             im.set_next_item_width(120)
             _cmg, val_mg = im.input_int("##kalman_merge_gap", self.kalman_merge_gap, 1, 5)
-            im.set_item_tooltip("Merge bursts separated by fewer than this many photons.")
+            im.set_item_tooltip(tr("Merge bursts separated by fewer than this many photons."))
             if _cmg:
                 self.kalman_merge_gap = max(0, val_mg)
                 self._sync_to_tool()
@@ -983,7 +984,7 @@ class BurstSelectionGui:
                 "##bocpd_prob", self.bocpd_changepoint_prob, 1e-6, 1e-4, "%.6f"
             )
             im.set_item_tooltip(
-                "Prior hazard rate: expected probability of a changepoint per photon."
+                tr("Prior hazard rate: expected probability of a changepoint per photon.")
             )
             if _cp:
                 self.bocpd_changepoint_prob = max(1e-9, min(0.1, val_p))
@@ -996,7 +997,7 @@ class BurstSelectionGui:
             _cpc, val_pc = im.input_float(
                 "##bocpd_prior_count", self.bocpd_prior_count, 0.1, 1.0, "%.2f"
             )
-            im.set_item_tooltip("Prior strength (pseudo count) of the Poisson rate model.")
+            im.set_item_tooltip(tr("Prior strength (pseudo count) of the Poisson rate model."))
             if _cpc:
                 self.bocpd_prior_count = max(0.01, val_pc)
                 self._sync_to_tool()
@@ -1008,7 +1009,7 @@ class BurstSelectionGui:
             _cpd, val_pd = im.input_float(
                 "##bocpd_prior_dur", self.bocpd_prior_duration, 0.05, 0.5, "%.3f"
             )
-            im.set_item_tooltip("Prior expected burst duration in seconds.")
+            im.set_item_tooltip(tr("Prior expected burst duration in seconds."))
             if _cpd:
                 self.bocpd_prior_duration = max(0.001, val_pd)
                 self._sync_to_tool()
@@ -1019,7 +1020,7 @@ class BurstSelectionGui:
             im.set_next_item_width(120)
             _cl, val_l = im.input_int("##min_photons", self.min_photons, 1, 10)
             im.set_item_tooltip(
-                "Minimum photons a burst must have; the size cut is applied after the search."
+                tr("Minimum photons a burst must have; the size cut is applied after the search.")
             )
             self.remember("parameters")
             if _cl:
@@ -1035,7 +1036,7 @@ class BurstSelectionGui:
             im.set_next_item_width(120)
             _cl, val_l = im.input_int("##min_photons", self.min_photons, 1, 10)
             im.set_item_tooltip(
-                "Minimum photons a burst must have; the size cut is applied after the search."
+                tr("Minimum photons a burst must have; the size cut is applied after the search.")
             )
             self.remember("parameters")
             if _cl:
@@ -1048,7 +1049,7 @@ class BurstSelectionGui:
             im.set_next_item_width(120)
             _ca, val_a = im.input_float("##maxtree_alpha", self.maxtree_alpha, 0.01, 0.05, "%.3f")
             im.set_item_tooltip(
-                "Alpha cutoff of the max-tree segmentation; lower values keep more structure."
+                tr("Alpha cutoff of the max-tree segmentation; lower values keep more structure.")
             )
             if _ca:
                 self.maxtree_alpha = max(0.001, min(0.5, val_a))
@@ -1063,7 +1064,7 @@ class BurstSelectionGui:
             im.set_next_item_width(120)
             _cp, val_p = im.input_float("##bblocks_p0", self.bblocks_p0, 0.01, 0.05, "%.3f")
             im.set_item_tooltip(
-                "False-positive probability p0 of the Bayesian-blocks changepoint test."
+                tr("False-positive probability p0 of the Bayesian-blocks changepoint test.")
             )
             if _cp:
                 self.bblocks_p0 = max(0.0001, min(0.5, val_p))
@@ -1074,7 +1075,7 @@ class BurstSelectionGui:
             im.same_line(col_x)
             im.set_next_item_width(120)
             _cl, val_l = im.input_int("##min_photons", self.min_photons, 1, 10)
-            im.set_item_tooltip("Minimum counts a block must contain to count as a burst.")
+            im.set_item_tooltip(tr("Minimum counts a block must contain to count as a burst."))
             self.remember("parameters")
             if _cl:
                 self.min_photons = max(5, val_l)
@@ -1091,7 +1092,7 @@ class BurstSelectionGui:
             im.set_next_item_width(120)
             _cl, val_l = im.input_int("##min_photons", self.min_photons, 1, 10)
             im.set_item_tooltip(
-                "Minimum photons a burst must have; the size cut is applied after the search."
+                tr("Minimum photons a burst must have; the size cut is applied after the search.")
             )
             self.remember("parameters")
             if _cl:
@@ -1105,7 +1106,7 @@ class BurstSelectionGui:
             im.set_next_item_width(120)
             _cm, val_m = im.input_int("##photon_window", self.photon_window, 1, 5)
             im.set_item_tooltip(
-                "Consecutive photons m required inside the time window to call a burst."
+                tr("Consecutive photons m required inside the time window to call a burst.")
             )
             if _cm:
                 self.photon_window = max(2, val_m)
@@ -1117,7 +1118,7 @@ class BurstSelectionGui:
             im.same_line(col_x)
             im.set_next_item_width(120)
             _ct, val_t = im.input_float("##time_window", self.time_window_ms, 0.05, 0.5, "%.4f")
-            im.set_item_tooltip("Sliding window duration T in milliseconds.")
+            im.set_item_tooltip(tr("Sliding window duration T in milliseconds."))
             if _ct:
                 self.time_window_ms = max(0.0001, val_t)
                 self._sync_to_tool()
@@ -1128,7 +1129,7 @@ class BurstSelectionGui:
 
             _c_min, self.dmt_min_enabled = im.checkbox("Use min dMT##chk", self.dmt_min_enabled)
             im.set_item_tooltip(
-                "Reject photon pairs with a macro-time interval Δt below the minimum."
+                tr("Reject photon pairs with a macro-time interval Δt below the minimum.")
             )
             if _c_min:
                 self._sync_to_tool()
@@ -1138,14 +1139,14 @@ class BurstSelectionGui:
                 _c_dmin, val_dmin = im.input_float(
                     "ms##dmin", self.dmt_min_ms, 0.0005, 0.005, "%.4f"
                 )
-                im.set_item_tooltip("Minimum Δt between photons in milliseconds.")
+                im.set_item_tooltip(tr("Minimum Δt between photons in milliseconds."))
                 if _c_dmin:
                     self.dmt_min_ms = max(0.00001, val_dmin)
                     self._sync_to_tool()
 
             _c_max, self.dmt_max_enabled = im.checkbox("Use max dMT##chk", self.dmt_max_enabled)
             im.set_item_tooltip(
-                "Reject photon pairs with a macro-time interval Δt above the maximum."
+                tr("Reject photon pairs with a macro-time interval Δt above the maximum.")
             )
             if _c_max:
                 self._sync_to_tool()
@@ -1153,7 +1154,7 @@ class BurstSelectionGui:
                 im.same_line()
                 im.set_next_item_width(100)
                 _c_dmax, val_dmax = im.input_float("ms##dmax", self.dmt_max_ms, 0.01, 0.05, "%.4f")
-                im.set_item_tooltip("Maximum Δt between photons in milliseconds.")
+                im.set_item_tooltip(tr("Maximum Δt between photons in milliseconds."))
                 if _c_dmax:
                     self.dmt_max_ms = max(0.001, val_dmax)
                     self._sync_to_tool()
@@ -1163,7 +1164,7 @@ class BurstSelectionGui:
             im.same_line(col_x)
             im.set_next_item_width(120)
             _cg, val_g = im.input_int("##merge_gap", self.merge_gap, 1, 5)
-            im.set_item_tooltip("Merge bursts separated by fewer than this many photons.")
+            im.set_item_tooltip(tr("Merge bursts separated by fewer than this many photons."))
             if _cg:
                 self.merge_gap = max(0, val_g)
                 self._sync_to_tool()
@@ -1177,7 +1178,7 @@ class BurstSelectionGui:
         im.same_line(col_x)
         im.set_next_item_width(120)
         _ck, val_k = im.input_float("##threshold_khz", self.threshold_khz, 5.0, 20.0, "%.1f")
-        im.set_item_tooltip("Count-rate cutoff in kHz used to separate bursts from background.")
+        im.set_item_tooltip(tr("Count-rate cutoff in kHz used to separate bursts from background."))
         if _ck:
             self.threshold_khz = max(0.1, val_k)
         if _ck:
@@ -1186,23 +1187,23 @@ class BurstSelectionGui:
             self.threshold_khz = max(0.1, val_k)
 
         _cb, self.subtract_background = im.checkbox("Subtract Background", self.subtract_background)
-        im.set_item_tooltip("Subtract the background count rate from the burst photon counts.")
+        im.set_item_tooltip(tr("Subtract the background count rate from the burst photon counts."))
         if self.subtract_background:
             im.same_line()
             im.set_next_item_width(90)
             _, self.background_rate_khz = im.input_float(
                 "kHz##bg", self.background_rate_khz, 0.5, 2.0, "%.1f"
             )
-            im.set_item_tooltip("Background count rate in kHz subtracted from the bursts.")
+            im.set_item_tooltip(tr("Background count rate in kHz subtracted from the bursts."))
 
         im.spacing()
         im.separator()
         im.text_colored("Display Layers:", (0.4, 0.8, 1.0, 1.0))
         _, self.show_all_photons = im.checkbox("All Photons", self.show_all_photons)
-        im.set_item_tooltip("Show all photons in the diagnostic plots.")
+        im.set_item_tooltip(tr("Show all photons in the diagnostic plots."))
         im.same_line()
         _, self.show_selected_photons = im.checkbox("Selected Bursts", self.show_selected_photons)
-        im.set_item_tooltip("Show only photons inside detected bursts in the diagnostic plots.")
+        im.set_item_tooltip(tr("Show only photons inside detected bursts in the diagnostic plots."))
 
     # ── 3. Count Rate & Timeline (MCS) Content ──────────────────────────────
 
@@ -1211,7 +1212,7 @@ class BurstSelectionGui:
         _cb, self.mcs_bin_width_ms = im.slider_float(
             "Bin (ms)", self.mcs_bin_width_ms, 0.1, 20.0, "%.1f ms"
         )
-        im.set_item_tooltip("Bin width of the macro-time count-rate trace in milliseconds.")
+        im.set_item_tooltip(tr("Bin width of the macro-time count-rate trace in milliseconds."))
         self.remember("diagnostics")
         im.same_line()
         im.text_colored(f"Threshold: {self.threshold_khz:.1f} kHz", (0.9, 0.4, 0.4, 1.0))
@@ -1286,7 +1287,7 @@ class BurstSelectionGui:
 
     def _draw_dt_content(self, box: tuple[float, float, float, float]) -> None:
         _c, self.log_dt = im.checkbox("Log Y Axis", self.log_dt)
-        im.set_item_tooltip("Plot the inter-photon delay histogram with a logarithmic count axis.")
+        im.set_item_tooltip(tr("Plot the inter-photon delay histogram with a logarithmic count axis."))
         im.same_line()
         im.text_colored("Poisson knee separates bursts from background", (0.7, 0.7, 0.7, 1.0))
 
@@ -1344,7 +1345,7 @@ class BurstSelectionGui:
 
     def _draw_decay_content(self, box: tuple[float, float, float, float]) -> None:
         _c, self.log_decay = im.checkbox("Log Counts", self.log_decay)
-        im.set_item_tooltip("Plot the TCSPC decay with a logarithmic count axis.")
+        im.set_item_tooltip(tr("Plot the TCSPC decay with a logarithmic count axis."))
         im.same_line()
         bins_options = [64, 128, 256, 512, 1024]
         bins_str = [str(b) for b in bins_options]
@@ -1353,7 +1354,7 @@ class BurstSelectionGui:
         )
         im.set_next_item_width(100)
         changed_b, new_b_idx = im.combo("Bins", decay_bins_idx, bins_str)
-        im.set_item_tooltip("Number of micro-time histogram bins used for the decay.")
+        im.set_item_tooltip(tr("Number of micro-time histogram bins used for the decay."))
         if changed_b and 0 <= new_b_idx < len(bins_options):
             self.decay_bins = bins_options[new_b_idx]
 
@@ -1428,7 +1429,7 @@ class BurstSelectionGui:
         im.set_next_item_width(140)
         x_idx = min(self.feature_x_idx, len(valid_cols) - 1)
         changed_x, new_x = im.combo("X Feature", x_idx, valid_cols)
-        im.set_item_tooltip("Burst feature plotted on the X axis of the 2D scatter.")
+        im.set_item_tooltip(tr("Burst feature plotted on the X axis of the 2D scatter."))
         if changed_x and 0 <= new_x < len(valid_cols):
             self.feature_x_idx = new_x
 
@@ -1436,13 +1437,13 @@ class BurstSelectionGui:
         im.set_next_item_width(140)
         y_idx = min(self.feature_y_idx, len(valid_cols) - 1)
         changed_y, new_y = im.combo("Y Feature", y_idx, valid_cols)
-        im.set_item_tooltip("Burst feature plotted on the Y axis of the 2D scatter.")
+        im.set_item_tooltip(tr("Burst feature plotted on the Y axis of the 2D scatter."))
         if changed_y and 0 <= new_y < len(valid_cols):
             self.feature_y_idx = new_y
 
         im.same_line()
         _, self.show_static_fret_line = im.checkbox("Static FRET Line", self.show_static_fret_line)
-        im.set_item_tooltip("Overlay the static FRET line at S = 0.5 on the E–S scatter.")
+        im.set_item_tooltip(tr("Overlay the static FRET line at S = 0.5 on the E–S scatter."))
 
         col_x = valid_cols[min(self.feature_x_idx, len(valid_cols) - 1)]
         col_y = valid_cols[min(self.feature_y_idx, len(valid_cols) - 1)]
@@ -1544,17 +1545,17 @@ class BurstSelectionGui:
         im.set_next_item_width(150)
         feat_idx = min(self.hist_feature_idx, len(valid_cols) - 1)
         changed_f, new_f = im.combo("Feature", feat_idx, valid_cols)
-        im.set_item_tooltip("Burst feature shown in this histogram.")
+        im.set_item_tooltip(tr("Burst feature shown in this histogram."))
         if changed_f and 0 <= new_f < len(valid_cols):
             self.hist_feature_idx = new_f
 
         im.same_line()
         im.set_next_item_width(110)
         _, self.hist_bins = im.slider_int("Bins", self.hist_bins, 10, 200)
-        im.set_item_tooltip("Number of histogram bins.")
+        im.set_item_tooltip(tr("Number of histogram bins."))
         im.same_line()
         _, self.hist_log_y = im.checkbox("Log Y", self.hist_log_y)
-        im.set_item_tooltip("Use a logarithmic count axis for the histogram.")
+        im.set_item_tooltip(tr("Use a logarithmic count axis for the histogram."))
 
         selected_feat = valid_cols[min(self.hist_feature_idx, len(valid_cols) - 1)]
         has_bursts = frame is not None and row_count(frame) > 0
@@ -1590,7 +1591,7 @@ class BurstSelectionGui:
     def _draw_burst_length_content(self, box: tuple[float, float, float, float]) -> None:
         im.set_next_item_width(120)
         _, self.burst_bins = im.slider_int("Bins", self.burst_bins, 10, 100)
-        im.set_item_tooltip("Number of histogram bins for the burst durations.")
+        im.set_item_tooltip(tr("Number of histogram bins for the burst durations."))
 
         frame = getattr(self.tool, "_last_frame", None)
         has_bursts = frame is not None and row_count(frame) > 0
@@ -1633,18 +1634,18 @@ class BurstSelectionGui:
         # Pagination & Controls
         if self.table_page > 0 and im.button("◀ Prev"):
             self.table_page -= 1
-        im.set_item_tooltip("Show the previous page of bursts.")
+        im.set_item_tooltip(tr("Show the previous page of bursts."))
         im.same_line()
         im.text(f"Page {self.table_page + 1} of {n_pages} ({n_rows:,} bursts)")
         im.same_line()
         if self.table_page < n_pages - 1 and im.button("Next ▶"):
             self.table_page += 1
-        im.set_item_tooltip("Show the next page of bursts.")
+        im.set_item_tooltip(tr("Show the next page of bursts."))
 
         im.same_line()
         im.set_next_item_width(90)
         _cp, self.page_size = im.slider_int("Per Page", self.page_size, 25, 200)
-        im.set_item_tooltip("Number of burst rows shown per page.")
+        im.set_item_tooltip(tr("Number of burst rows shown per page."))
 
         cols_wanted = [
             "Burst #",
@@ -1708,7 +1709,7 @@ class BurstSelectionGui:
                     is_sel = idx == self.selected_burst_idx
                     if im.selectable(f"#{idx + 1}", is_sel):
                         self.selected_burst_idx = idx
-                    im.set_item_tooltip("Click to select this burst row.")
+                    im.set_item_tooltip(tr("Click to select this burst row."))
                     im.table_set_column_index(1)
                     im.text(f"{starts[idx]:.4f}")
                     im.table_set_column_index(2)
@@ -1783,11 +1784,11 @@ class BurstSelectionGui:
         im.same_line()
         if im.button("Start Guided Tour"):
             self.start_guide()
-        im.set_item_tooltip("Start a step-by-step guided tour of burst selection.")
+        im.set_item_tooltip(tr("Start a step-by-step guided tour of burst selection."))
         im.same_line()
         if im.button("Close Help"):
             self.docks.hide("help")
-        im.set_item_tooltip("Hide this help pane.")
+        im.set_item_tooltip(tr("Hide this help pane."))
 
         im.separator()
 
@@ -1806,7 +1807,7 @@ class BurstSelectionGui:
                 im.push_style_color(Col.BUTTON, ACCENT_GREEN)
             if im.button(cat):
                 self.help_tab_topic = cat
-            im.set_item_tooltip("Show only help on this topic.")
+            im.set_item_tooltip(tr("Show only help on this topic."))
             if is_active:
                 im.pop_style_color()
             im.same_line()
@@ -2094,18 +2095,18 @@ class BurstSelectionGui:
         im.set_cursor_screen_pos((cx + 14.0, btn_y))
         if im.button("Close Tour"):
             self.tour_active = False
-        im.set_item_tooltip("Exit the guided tour.")
+        im.set_item_tooltip(tr("Exit the guided tour."))
 
         im.set_cursor_screen_pos((cx + card_w - 170.0, btn_y))
         if self.tour_step > 0:
             if im.button("◄ Prev"):
                 self.tour_step -= 1
                 self._sync_tour_step()
-            im.set_item_tooltip("Go to the previous tour step.")
+            im.set_item_tooltip(tr("Go to the previous tour step."))
         else:
             im.begin_disabled()
             im.button("◄ Prev")
-            im.set_item_tooltip("This is the first tour step.")
+            im.set_item_tooltip(tr("This is the first tour step."))
             im.end_disabled()
 
         im.same_line()

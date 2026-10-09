@@ -1,5 +1,13 @@
 # Update Log
 
+## 2026-10-10
+
+- Repaired the finite committed UI guard prerequisite:17new tooltip and144new
+  direct literal sites, including true H2MM tuple translation. Source/action
+  parity and exact occurrence proofs shrink allowances to1023tooltip/1148literal;
+  no new/stale candidate debt. About/BID help, MenuSwitch action semantics and
+  concurrent OKF drift remain named fronts; aggregate release gates stay open.
+
 ## 2026-10-09
 
 - Native games now share declared Help/Restart/Guide with three real awaited

@@ -423,14 +423,6 @@ chisurf/plugins/burst/alex_suite/gui/titration.view.json#/sections/0:section-too
 chisurf/plugins/burst/alex_suite/gui/titration.view.json#/sections/1:section-tooltip
 chisurf/plugins/burst/alex_suite/gui/titration.view.json#/sections/2:section-tooltip
 chisurf/plugins/burst/alex_suite/gui/titration.view.json#/sections/3:section-tooltip
-chisurf/plugins/burst/burst_analysis/gui/app.py#BurstAnalysisGui._draw_header/button('? Help')[1]:control-tooltip
-chisurf/plugins/burst/burst_analysis/gui/app.py#BurstAnalysisGui._draw_header/button('Guide')[1]:control-tooltip
-chisurf/plugins/burst/burst_analysis/gui/app.py#BurstAnalysisGui._draw_header/button('Next ▶')[1]:control-tooltip
-chisurf/plugins/burst/burst_analysis/gui/app.py#BurstAnalysisGui._draw_header/button('⏩ Run')[1]:control-tooltip
-chisurf/plugins/burst/burst_analysis/gui/app.py#BurstAnalysisGui._draw_header/button('◀ Back')[1]:control-tooltip
-chisurf/plugins/burst/burst_analysis/gui/app.py#BurstAnalysisGui._draw_sidebar/button('▶##expand')[1]:control-tooltip
-chisurf/plugins/burst/burst_analysis/gui/app.py#BurstAnalysisGui._draw_sidebar/button('◀##collapse')[1]:control-tooltip
-chisurf/plugins/burst/burst_analysis/gui/app.py#BurstAnalysisGui._draw_status_bar/button('Cancel##task_cancel')[1]:control-tooltip
 chisurf/plugins/burst/burst_background/gui/background.view.json#/sections/0/sections/0/sections/0:section-tooltip
 chisurf/plugins/burst/burst_background/gui/background.view.json#/sections/0/sections/0:section-tooltip
 chisurf/plugins/burst/burst_background/gui/background.view.json#/sections/0/sections/1/sections/0:section-tooltip
@@ -536,52 +528,6 @@ chisurf/plugins/burst/burst_mle_analysis/gui/mle_native.view.json#/sections/1:se
 chisurf/plugins/burst/burst_mle_analysis/gui/mle_native.view.json#/sections/2:section-tooltip
 chisurf/plugins/burst/burst_mle_analysis/gui/mle_native.view.json#/sections/5:section-tooltip
 chisurf/plugins/burst/burst_mle_analysis/gui/mle_native.view.json#/sections/6:section-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_1d_histogram_content/checkbox('Log Y')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_1d_histogram_content/combo('Feature')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_1d_histogram_content/slider_int('Bins')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_burst_length_content/slider_int('Bins')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_decay_content/checkbox('Log Counts')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_decay_content/combo('Bins')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_dt_content/checkbox('Log Y Axis')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_files_content/button('Add Files##files_btn')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_files_content/button('Add Folder##files_btn')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_files_content/button('Channels')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_files_content/button('Clear')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_files_content/button('Remove')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_files_content/checkbox(f'##inc_{i}')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_files_content/combo('##Setup')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_files_content/selectable(f'{p.name}##f_{i}')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_help_content/button('Close Help')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_help_content/button('Start Guided Tour')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_help_content/button(cat)[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_scatter_content/checkbox('Static FRET Line')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_scatter_content/combo('X Feature')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_scatter_content/combo('Y Feature')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_settings_content/checkbox('All Photons')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_settings_content/checkbox('Selected Bursts')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_settings_content/checkbox('Subtract Background')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_settings_content/checkbox('Use max dMT##chk')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_settings_content/checkbox('Use min dMT##chk')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_settings_content/combo('##ch_sel')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_settings_content/combo('##filter_alg')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_settings_content/combo('##win_sel')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_table_content/button('Next ▶')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_table_content/button('◀ Prev')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_table_content/selectable(f'#{idx + 1}')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_table_content/slider_int('Per Page')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_timeline_content/slider_float('Bin (ms)')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_top_action_bar/button('Add Files')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_top_action_bar/button('Add Folder')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_top_action_bar/button('Find Bursts')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_top_action_bar/button('Guide')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_top_action_bar/button('Help')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_top_action_bar/button('Recompute')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_top_action_bar/button('Save Bursts')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_top_action_bar/button('to ndX')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_tour_overlay/button('Close Tour')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_tour_overlay/button('◄ Prev')[1]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_tour_overlay/button('◄ Prev')[2]:control-tooltip
-chisurf/plugins/burst/burst_selection/gui/app.py#BurstSelectionGui._draw_tour_overlay/button(next_label)[1]:control-tooltip
 chisurf/plugins/burst/burst_selection/gui/burst_display.view.json#/sections/0:section-tooltip
 chisurf/plugins/burst/mfd_prepare/gui/mfd_prepare.view.json#/sections/1:section-tooltip
 chisurf/plugins/burst/mfd_prepare/gui/mfd_prepare.view.json#/sections/2:section-tooltip

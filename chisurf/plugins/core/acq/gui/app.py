@@ -11,6 +11,7 @@ from typing import Any, Callable
 
 import numpy as np
 from emtk import im
+from emtk.i18n import tr
 from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.file_dialog import FileDialog
@@ -543,16 +544,16 @@ class AcquisitionApp(ImApp):
 
     def _toolbar(self) -> None:
         """Draw the native Help and Guide buttons with useful tooltips."""
-        if im.button("Help"):
+        if im.button(tr("Help")):
             self.help_window.show()
         im.set_item_tooltip(
-            "Explain device initialization, simulator configuration, output, and result tabs."
+            tr("Explain device initialization, simulator configuration, output, and result tabs.")
         )
         self.item_rects["help"] = im.get_item_rect()
         im.same_line()
-        if im.button("Guide"):
+        if im.button(tr("Guide")):
             self.tour.start()
-        im.set_item_tooltip("Guide the operator through physical or simulated acquisition.")
+        im.set_item_tooltip(tr("Guide the operator through physical or simulated acquisition."))
         self.item_rects["guide"] = im.get_item_rect()
         im.separator()
 
@@ -638,6 +639,7 @@ class AcquisitionApp(ImApp):
         flags = int(InputTextFlags.ENTER_RETURNS_TRUE) | int(InputTextFlags.AUTO_SELECT_ALL)
         shown = self.setup_buffers.get(key, text)
         entered, typed = im.input_text(f"##{key}", shown, "", flags)
+        im.set_item_tooltip((tr("Enter a whole-number acquisition setting. Press Enter or click elsewhere to commit; fractional entries are rounded and values are clamped to {minimum}–{maximum}.") if integer else tr("Enter a numeric acquisition setting. Press Enter or click elsewhere to commit; values are clamped to {minimum}–{maximum}.")).format(minimum=minimum, maximum=maximum))
         self.item_rects[key] = im.get_item_rect()
         if typed != shown:
             self.setup_buffers[key] = typed
@@ -669,11 +671,13 @@ class AcquisitionApp(ImApp):
     def _draw_bh_setup(self) -> None:
         """Render all retained BH setup groups using stable native input IDs."""
         setup: BHSetupModel = self.setup_model
-        if im.button("Detect Cards##bh_detect"):
+        if im.button(tr("Detect Cards") + "##bh_detect"):
             setup.detect_cards()
+        im.set_item_tooltip(tr("Discover BH modules through the supplied adapter using the selected simulation mode."))
         self.item_rects["bh_detect"] = im.get_item_rect()
         im.same_line()
-        changed, value = im.checkbox("Simulation mode##bh_simulation", setup.simulation_mode)
+        changed, value = im.checkbox(tr("Simulation mode") + "##bh_simulation", setup.simulation_mode)
+        im.set_item_tooltip(tr("Use simulated BH card detection; turn this off to request physical-card detection."))
         if changed:
             setup.simulation_mode = value
         self.item_rects["bh_simulation"] = im.get_item_rect()
@@ -682,6 +686,7 @@ class AcquisitionApp(ImApp):
             module = int(card["module_number"])
             active = module in setup.active_cards
             changed, selected = im.checkbox(f"Module {module}: {card.get('status', 'Unknown')}##bh_card_{module}", active)
+            im.set_item_tooltip(tr("Include this BH module in the active-card selection written by Apply."))
             if changed:
                 setup.active_cards = [item for item in setup.active_cards if item != module]
                 if selected:
@@ -698,6 +703,7 @@ class AcquisitionApp(ImApp):
                             keys = list(spec.options)
                             old = keys.index(int(value)) if int(value) in keys else 0
                             changed, index = im.combo(f"##bh_{spec.name}", old, list(spec.options.values()))
+                            im.set_item_tooltip(tr("Select {parameter} from the supported hardware values. Apply writes this choice to the selected BH module.").format(parameter=tr(spec.label)))
                             if changed:
                                 setup.values[spec.name] = keys[index]
                         elif spec.integer:
@@ -717,50 +723,56 @@ class AcquisitionApp(ImApp):
                         self.item_rects[f"bh_{spec.name}"] = im.get_item_rect()
                     im.end_tab_item()
             im.end_tab_bar()
-        if im.button("Read values##bh_read"):
+        if im.button(tr("Read values") + "##bh_read"):
             setup.read_parameters()
+        im.set_item_tooltip(tr("Read all retained BH parameter values from the detected module into these editable fields."))
         self.item_rects["bh_read"] = im.get_item_rect()
         im.same_line()
-        if im.button("Save JSON##bh_save"):
+        if im.button(tr("Save JSON") + "##bh_save"):
             self.model._file_request = "bh_save"
+        im.set_item_tooltip(tr("Save editable BH parameter values to JSON without writing them to a device."))
         self.item_rects["bh_save"] = im.get_item_rect()
         im.same_line()
-        if im.button("Load JSON##bh_load"):
+        if im.button(tr("Load JSON") + "##bh_load"):
             self.model._file_request = "bh_load"
+        im.set_item_tooltip(tr("Load BH parameter values from JSON into these fields; press Apply to send them to the device."))
         self.item_rects["bh_load"] = im.get_item_rect()
         im.same_line()
-        if im.button("Apply##setup_apply"):
+        if im.button(tr("Apply") + "##setup_apply"):
             if setup.apply():
                 self.model.bh_simulation_mode = setup.simulation_mode
+        im.set_item_tooltip(tr("Write the active-card selection and validated BH parameters to the selected module."))
         self.item_rects["setup_apply"] = im.get_item_rect()
 
     def _draw_picoquant_setup(self) -> None:
         """Render retained PicoQuant information and the global stop mapping."""
         setup: PicoQuantSetupModel = self.setup_model
-        im.text_wrapped("PicoQuant devices are configured by snAPI, firmware, and INI files. This card does not claim a physical connection.")
+        im.text_wrapped(tr("PicoQuant devices are configured by snAPI, firmware, and INI files. This card does not claim a physical connection."))
         im.text(f"Measurement mode (firmware): {setup.measurement_mode}")
         im.text(f"Reference source (firmware): {setup.reference_source}")
-        im.text("Maximum photons")
+        im.text(tr("Maximum photons"))
         im.same_line()
         committed = self._typed_field("pico_max_photons", str(int(setup.max_photons)),
                                       minimum=0.0, maximum=1_000_000_000.0)
         if committed is not None:
             setup.max_photons = int(committed)
         im.text_wrapped(setup.status)
-        if im.button("Refresh status##pico_status"):
+        if im.button(tr("Refresh status") + "##pico_status"):
             setup.detect_status()
+        im.set_item_tooltip(tr("Query the initialized PicoQuant API for connected devices; an unavailable API does not imply a connection."))
         self.item_rects["pico_status"] = im.get_item_rect()
         im.same_line()
-        if im.button("Apply##setup_apply"):
+        if im.button(tr("Apply") + "##setup_apply"):
             setup.apply(self.model)
+        im.set_item_tooltip(tr("Use the validated maximum-photon count as the acquisition stop limit; firmware settings remain unchanged."))
         self.item_rects["setup_apply"] = im.get_item_rect()
 
     def _draw_brickmic_setup(self) -> None:
         """Render the retained BrickMic configuration fields with stable native IDs."""
         setup: BrickMicSetupModel = self.setup_model
         im.text_wrapped(
-            "BrickMic hardware acquisition and SPC output settings. "
-            "Apply writes these values to the selected BrickMic backend."
+            tr("BrickMic hardware acquisition and SPC output settings. "
+            "Apply writes these values to the selected BrickMic backend.")
         )
         for key, label, minimum, maximum, step in BrickMicSetupModel.FIELDS:
             im.text(label)
@@ -773,20 +785,21 @@ class AcquisitionApp(ImApp):
                 setup.values[key] = int(committed)
         im.text(f"Channels (derived): {int(setup.values['channels'])}")
         im.text_wrapped(setup.status)
-        if im.button("Apply##setup_apply"):
+        if im.button(tr("Apply") + "##setup_apply"):
             setup.apply()
+        im.set_item_tooltip(tr("Write validated hardware acquisition and SPC output settings to the selected BrickMic backend."))
         self.item_rects["setup_apply"] = im.get_item_rect()
 
     def _draw_simulation_setup(self) -> None:
         """Render the complete current simulator dictionary and production validation path."""
         setup: SimulationSetupModel = self.setup_model
-        im.text_wrapped("All current simulation parameters are shown below. Apply validates this exact dictionary with the production simulator engine before use.")
+        im.text_wrapped(tr("All current simulation parameters are shown below. Apply validates this exact dictionary with the production simulator engine before use."))
         changed, text = im.input_text_multiline("##simulation_setup_json", setup.text, (0.0, 350.0))
         if changed:
             setup.text = text
         self.item_rects["simulation_setup_json"] = im.get_item_rect()
         im.text_wrapped(setup.status)
-        if im.button("Apply##setup_apply"):
+        if im.button(tr("Apply") + "##setup_apply"):
             params = setup.apply()
             if params is not None:
                 self.model.advanced_settings_text = setup.text
@@ -795,6 +808,7 @@ class AcquisitionApp(ImApp):
                 target = self.model.device
                 if target is not None and hasattr(target, "simulation_params"):
                     target.simulation_params.update(params)
+        im.set_item_tooltip(tr("Validate the complete configuration with the production simulator, then update acquisition limits and the selected simulator."))
         self.item_rects["setup_apply"] = im.get_item_rect()
 
     def _draw_device_setup(self, box: tuple) -> None:
@@ -810,12 +824,14 @@ class AcquisitionApp(ImApp):
             self._draw_brickmic_setup()
         else:
             self._draw_simulation_setup()
-        if im.button("OK / close##setup_ok"):
+        if im.button(tr("OK / close") + "##setup_ok"):
             self._close_device_setup()
+        im.set_item_tooltip(tr("Close device setup. Only settings already committed with Apply affect the device or acquisition."))
         self.item_rects["setup_ok"] = im.get_item_rect()
         im.same_line()
-        if im.button("Cancel##setup_cancel") or close == "close":
+        if im.button(tr("Cancel") + "##setup_cancel") or close == "close":
             self._close_device_setup()
+        im.set_item_tooltip(tr("Close this card without applying pending device-setting edits; earlier Apply operations remain in effect."))
         self.item_rects["setup_cancel"] = im.get_item_rect()
         self.setup_window.end()
 
@@ -826,28 +842,28 @@ class AcquisitionApp(ImApp):
         im.set_next_window_size((640.0, 520.0), im.Cond.FIRST_USE_EVER)
         if im.begin("Advanced simulation parameters", box):
             im.text_wrapped(
-                "Apply constructs the actual simulator engine to validate this complete JSON dictionary."
+                tr("Apply constructs the actual simulator engine to validate this complete JSON dictionary.")
             )
-            im.set_item_tooltip("Full actual simulator configuration, not a decorative copy.")
+            im.set_item_tooltip(tr("Full actual simulator configuration, not a decorative copy."))
             changed, text = im.input_text_multiline(
                 "##advanced_json", self.model.advanced_settings_text, (0.0, 380.0)
             )
             if changed:
                 self.model.advanced_settings_text = text
             im.set_item_tooltip(
-                "Edit valid JSON only; Apply accepts it only if the simulator engine constructs."
+                tr("Edit valid JSON only; Apply accepts it only if the simulator engine constructs.")
             )
             self.item_rects["advanced_json"] = im.get_item_rect()
-            if im.button("Apply advanced settings"):
+            if im.button(tr("Apply advanced settings")):
                 self.model.apply_advanced_settings()
             im.set_item_tooltip(
-                "Validate the exact dictionary with the production simulator engine."
+                tr("Validate the exact dictionary with the production simulator engine.")
             )
             self.item_rects["apply_advanced_settings"] = im.get_item_rect()
             im.same_line()
-            if im.button("Cancel advanced settings"):
+            if im.button(tr("Cancel advanced settings")):
                 self.model.cancel_advanced_settings()
-            im.set_item_tooltip("Discard un-applied JSON edits.")
+            im.set_item_tooltip(tr("Discard un-applied JSON edits."))
             self.item_rects["cancel_advanced_settings"] = im.get_item_rect()
         im.end()
 
@@ -858,7 +874,7 @@ class AcquisitionApp(ImApp):
         top, snapshot = im.get_cursor_screen_pos(), model.snapshot
         if snapshot is None:
             im.text_wrapped(
-                "No result yet. Initialize a device or run the simulator, then Start acquisition."
+                tr("No result yet. Initialize a device or run the simulator, then Start acquisition.")
             )
             im.set_item_tooltip(str(section["description"]))
             state.rects["pipeline_results"] = (*top, width, 28.0)

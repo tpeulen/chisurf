@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING, Any, Callable
 from emtk import im, implot
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
+from emtk.i18n import tr
 from emtk.im_core import Col
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
@@ -341,10 +342,10 @@ class H2mmGui(TourTarget):
             # ``draw`` re-reads the tool's widgets every frame.
             for attr, label, low, high, tip in (
                 ("restarts", "Restarts", 1, 20,
-                 "Number of random restarts; the fit with the best log-likelihood wins."),
-                ("max_iter", "Max iters", 10, 5000, "Maximum number of EM iterations per fit."),
+                 tr("Number of random restarts; the fit with the best log-likelihood wins.")),
+                ("max_iter", "Max iters", 10, 5000, tr("Maximum number of EM iterations per fit.")),
                 ("min_photons", "Min photons", 2, 1000,
-                 "Bursts shorter than this many photons are excluded from the fit."),
+                 tr("Bursts shorter than this many photons are excluded from the fit.")),
             ):
                 im.set_next_item_width(90)
                 new, _ = typed_number_field(

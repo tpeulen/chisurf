@@ -2,6 +2,7 @@
 from pathlib import Path
 
 from emtk import im
+from emtk.i18n import tr
 from emtk.app import ImApp
 from emtk.texture import Texture
 
@@ -27,20 +28,20 @@ class AboutApp(ImApp):
             im.set_cursor_pos_x(max(8.0, (viewport.size[0] - 64) / 2))
             im.image(self.logo, (64, 64))
         im.push_font_scale(1.6)
-        im.set_cursor_pos_x(max(8.0, (viewport.size[0] - im.calc_text_size("ChiSurf")[0]) / 2))
-        im.text("ChiSurf")
+        im.set_cursor_pos_x(max(8.0, (viewport.size[0] - im.calc_text_size(tr("ChiSurf"))[0]) / 2))
+        im.text(tr("ChiSurf"))
         im.pop_font_scale()
         im.set_cursor_pos_x(8.0)
-        im.text("Fluorescence Data Analysis")
+        im.text(tr("Fluorescence Data Analysis"))
         im.separator()
         im.text(f"Version: {__version__}")
-        im.text("Development: Thomas-Otavio Peulen")
-        im.text("thomas.peulen@tu-dortmund.de")
-        im.text_wrapped("Repository: github.com/fluorescence-tools/chisurf")
+        im.text(tr("Development: Thomas-Otavio Peulen"))
+        im.text(tr("thomas.peulen@tu-dortmund.de"))
+        im.text_wrapped(tr("Repository: github.com/fluorescence-tools/chisurf"))
         im.separator()
-        if im.button("Close"):
+        if im.button(tr("Close")):
             self.request_close()
-        im.set_item_tooltip("Close the About ChiSurf window.")
+        im.set_item_tooltip(tr("Close the About ChiSurf window."))
         im.end()
 
 

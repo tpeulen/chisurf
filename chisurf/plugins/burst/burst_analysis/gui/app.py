@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING, Any, Callable
 
 from emtk import im
 from emtk.app import ImApp
+from emtk.i18n import tr
 from emtk.im_core import Col
 from qtpy import QtCore
 
@@ -179,7 +180,7 @@ class BurstAnalysisGui:
                 im.push_style_color(Col.TEXT, (0.5, 0.5, 0.5, 1.0))
             if im.button("◀ Back") and can_prev:
                 self.tool.goto_prev_step()
-            im.set_item_tooltip("Go back to the previous workflow step.")
+            im.set_item_tooltip(tr("Go back to the previous workflow step."))
             self.remember("back_step")
             if not can_prev:
                 im.pop_style_color(1)
@@ -192,7 +193,7 @@ class BurstAnalysisGui:
                 im.push_style_color(Col.BUTTON, ACCENT_BLUE)
             if im.button("Next ▶") and can_next:
                 self.tool.goto_next_step()
-            im.set_item_tooltip("Advance to the next workflow step.")
+            im.set_item_tooltip(tr("Advance to the next workflow step."))
             self.remember("next_step")
             if not can_next:
                 im.pop_style_color(1)
@@ -207,7 +208,7 @@ class BurstAnalysisGui:
             if im.button("⏩ Run"):
                 self.track("fast_forward")
                 self.tool.fast_forward()
-            im.set_item_tooltip("Fast-forward: run the remaining pipeline steps automatically.")
+            im.set_item_tooltip(tr("Fast-forward: run the remaining pipeline steps automatically."))
             self.remember("fast_forward")
 
             im.same_line()
@@ -217,13 +218,13 @@ class BurstAnalysisGui:
             # In-EMTK Guide & Help
             if im.button("Guide"):
                 self.start_guide()
-            im.set_item_tooltip("Start a step-by-step guided tour of the workflow.")
+            im.set_item_tooltip(tr("Start a step-by-step guided tour of the workflow."))
             self.remember("guide")
 
             im.same_line()
             if im.button("? Help"):
                 self.show_help()
-            im.set_item_tooltip("Open the help window with reference documentation.")
+            im.set_item_tooltip(tr("Open the help window with reference documentation."))
             self.remember("help")
 
             im.end()
@@ -250,7 +251,7 @@ class BurstAnalysisGui:
                 changed, new_text = im.input_text_with_hint(
                     "##nav_search", self.search_filter, "Search steps..."
                 )
-                im.set_item_tooltip("Filter the workflow steps and side tools by name.")
+                im.set_item_tooltip(tr("Filter the workflow steps and side tools by name."))
                 if changed:
                     self.search_filter = new_text
                 im.pop_item_width()
@@ -258,7 +259,7 @@ class BurstAnalysisGui:
                 im.same_line()
                 if im.button("◀##collapse", (26.0, 22.0)):
                     self.sidebar_collapsed = True
-                im.set_item_tooltip("Collapse the navigation rail to icons only.")
+                im.set_item_tooltip(tr("Collapse the navigation rail to icons only."))
                 self.remember("sidebar_toggle")
 
                 im.spacing()
@@ -268,7 +269,7 @@ class BurstAnalysisGui:
                 im.spacing()
                 if im.button("▶##expand", (width - 16.0, 24.0)):
                     self.sidebar_collapsed = False
-                im.set_item_tooltip("Expand the navigation rail to show the step names.")
+                im.set_item_tooltip(tr("Expand the navigation rail to show the step names."))
                 self.remember("sidebar_toggle")
                 im.spacing()
                 im.separator()
@@ -447,13 +448,13 @@ class BurstAnalysisGui:
                 max_val = getattr(self.tool, "_status_progress_maximum", 100)
                 fraction = float(val) / float(max_val) if max_val > 0 else 0.0
                 im.progress_bar(fraction, (180.0, 16.0), f"{int(fraction * 100)}%")
-                im.set_item_tooltip("Progress of the running background task.")
+                im.set_item_tooltip(tr("Progress of the running background task."))
 
                 if getattr(self.tool, "_status_cancel_visible", False):
                     im.same_line()
                     if im.button("Cancel##task_cancel"):
                         active_task.cancel()
-                    im.set_item_tooltip("Cancel the running background task.")
+                    im.set_item_tooltip(tr("Cancel the running background task."))
 
             # Right: summary chips
             ctx = self.tool.workflow_context

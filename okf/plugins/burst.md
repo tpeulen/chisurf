@@ -313,3 +313,14 @@ file20pass and guide1pass. Stale Qt setup fields use the current filetype/model
 contract; Auto guide testing addresses the real Auto step after demo/model steps
 were added. All physical assertions retained. Production code and GUI unchanged.
 [Acceptance](../validation/release-readiness-w6g/ipc-verification-acceptance.json).
+
+## Source-preserving new UI literal repair — 2026-10-10
+
+The native selection, analysis and BID conversion surfaces route 89 newly
+introduced literals through the existing translation seam. Three H2MM tuple
+help values now translate at their real sink. Actual conversion options and
+models remain unchanged: stripping only inserted wrappers/imports reproduces
+original source ASTs exactly. Real UI translation tests and source audits pass.
+This does not close the burst family's older UI omissions or the missing BID
+resource-backed help/tour and production demo. Exact source evidence is in the
+[UI guard integration acceptance](../validation/release-readiness-w6f/ui-guard-integration-acceptance.json).

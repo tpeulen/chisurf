@@ -49791,5 +49791,577 @@ presets) into a single left-navigation tool. Built on the reusable
             <source>Press Restart in the game header and inspect the reset round.</source>
             <translation type="unfinished" />
         </message>
+        <message>
+            <source>Add a numeric suffix instead of reusing an existing output folder.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Advance to the next workflow step.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>All current simulation parameters are shown below. Apply validates this exact dictionary with the production simulator engine before use.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Alpha cutoff of the max-tree segmentation; lower values keep more structure.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Apply advanced settings</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Apply constructs the actual simulator engine to validate this complete JSON dictionary.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Archive generated analysis files while keeping the output folder.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>BID/BST/TXT selections contain two integer columns: start and stop photon indices. The TTTR measurement is inferred by stem in the current folder and three parents. Configure detector channels and PIE windows before Process. PTO retains the original BID bytes and derived-from provenance; BUR appends bursts to existing tables and records MTI duration; SL5 stores a photon mask; HDF5 stores columnar burst summaries. Cancel completes the current file and stops the remaining queue. Raw TTTR and BID inputs are preserved.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Background count rate in kHz subtracted from the bursts.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Bin width of the macro-time count-rate trace in milliseconds.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>BrickMic hardware acquisition and SPC output settings. Apply writes these values to the selected BrickMic backend.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Burst feature plotted on the X axis of the 2D scatter.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Burst feature plotted on the Y axis of the 2D scatter.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Burst feature shown in this histogram.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Burst-detection algorithm: sliding window, CUSUM/SPRT, Kalman, BOCPD, coincident, max-tree, or Bayesian Blocks.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Bursts shorter than this many photons are excluded from the fit.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Cancel advanced settings</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Cancel the running background task.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>ChiSurf</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Click to make this file active; its diagnostics are shown in the plots.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Click to select this burst row.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Close device setup. Only settings already committed with Apply affect the device or acquisition.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Close the About ChiSurf window.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Close this card without applying pending device-setting edits; earlier Apply operations remain in effect.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Collapse the navigation rail to icons only.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Consecutive photons m required inside the time window to call a burst.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Count-rate cutoff in kHz used to separate bursts from background.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Detect Cards</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Detector channel (or All) whose photons are used for the burst search.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Detector setup (channel routing and PIE windows) applied to the burst search.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Development: Thomas-Otavio Peulen</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Discard un-applied JSON edits.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Discover BH modules through the supplied adapter using the selected simulation mode.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Edit valid JSON only; Apply accepts it only if the simulator engine constructs.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Enter a number. Press Enter or click elsewhere to commit.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Enter a numeric acquisition setting. Press Enter or click elsewhere to commit; values are clamped to {minimum}–{maximum}.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Enter a whole number. Press Enter or click elsewhere to commit.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Enter a whole-number acquisition setting. Press Enter or click elsewhere to commit; fractional entries are rounded and values are clamped to {minimum}–{maximum}.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Exit the guided tour.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Expand the navigation rail to show the step names.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Expected background count rate in Hz used by the test.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Explain device initialization, simulator configuration, output, and result tabs.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Explicit output destination; empty uses the BID stem beside its TTTR measurement.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>False-alarm probability α of the CUSUM/SPRT test.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>False-positive probability p0 of the Bayesian-blocks changepoint test.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Fast-forward: run the remaining pipeline steps automatically.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Filter the workflow steps and side tools by name.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Fluorescence Data Analysis</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Force a fresh burst search, ignoring cached results.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Full actual simulator configuration, not a decorative copy.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Go back to the previous workflow step.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Guide the operator through physical or simulated acquisition.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Hide this help pane.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Include or exclude this file from the burst search.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Include this BH module in the active-card selection written by Apply.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Load BH parameter values from JSON into these fields; press Apply to send them to the device.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Maximum number of EM iterations per fit.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Maximum photons</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Maximum Δt between photons in milliseconds.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Measurement-noise scale R of the Kalman filter.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Merge bursts separated by fewer than this many photons.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Minimum burst length in photons.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Minimum counts a block must contain to count as a burst.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Minimum photons a burst must have; the size cut is applied after the search.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Minimum Δt between photons in milliseconds.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Missed-detection probability β of the CUSUM/SPRT test.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>No result yet. Initialize a device or run the simulator, then Start acquisition.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Number of burst rows shown per page.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Number of histogram bins for the burst durations.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Number of micro-time histogram bins used for the decay.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Number of random restarts; the fit with the best log-likelihood wins.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>OK / close</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Open a dialog to add TTTR measurement files.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Open a dialog to add a folder of TTTR files.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Open the detector/channel setup manager.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Open the help window with reference documentation.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Output folder (empty: beside each measurement):</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Overlay the static FRET line at S = 0.5 on the E–S scatter.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>PIE/micro-time window (or All) whose photons are used for the burst search.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>PicoQuant devices are configured by snAPI, firmware, and INI files. This card does not claim a physical connection.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Plot the TCSPC decay with a logarithmic count axis.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Plot the inter-photon delay histogram with a logarithmic count axis.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Prior expected burst duration in seconds.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Prior hazard rate: expected probability of a changepoint per photon.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Prior strength (pseudo count) of the Poisson rate model.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Process noise Q of the Kalman filter: how fast the count rate may change.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Progress of the running background task.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Query the initialized PicoQuant API for connected devices; an unavailable API does not imply a connection.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Read all retained BH parameter values from the detected module into these editable fields.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Read values</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Refresh status</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Reject photon pairs with a macro-time interval Δt above the maximum.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Reject photon pairs with a macro-time interval Δt below the minimum.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Remove all files from the list.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Remove the active file from the list.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Remove this selection from the queue.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Repository: github.com/fluorescence-tools/chisurf</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Run the selected burst-detection algorithm over all included TTTR files.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Save editable BH parameter values to JSON without writing them to a device.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Save the detected bursts to .bur files next to the source data.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Select {parameter} from the supported hardware values. Apply writes this choice to the selected BH module.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Send the current burst selection to ndXplorer.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Show all photons in the diagnostic plots.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Show only help on this topic.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Show only photons inside detected bursts in the diagnostic plots.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Show the next page of bursts.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Show the previous page of bursts.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Signal-to-background ratio the test is tuned for.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Simulation mode</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Sliding window duration T in milliseconds.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Start a step-by-step guided tour of burst selection.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Start a step-by-step guided tour of the workflow.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Subtract the background count rate from the burst photon counts.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Unique output folder</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Use a logarithmic count axis for the histogram.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Use simulated BH card detection; turn this off to request physical-card detection.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Use the validated maximum-photon count as the acquisition stop limit; firmware settings remain unchanged.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Validate the complete configuration with the production simulator, then update acquisition limits and the selected simulator.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Validate the exact dictionary with the production simulator engine.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Values above {maximum} are clamped to {maximum}.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Values are clamped between {minimum} and {maximum}.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Values below {minimum} are clamped to {minimum}.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Write the active-card selection and validated BH parameters to the selected module.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Write validated hardware acquisition and SPC output settings to the selected BrickMic backend.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Z-score threshold on the rate residual that flags a burst.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>ZIP output</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>thomas.peulen@tu-dortmund.de</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Choose a trajectory, its optional topology and an optional FPS JSON defining candidate labeling pairs.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Append a new header tag with a placeholder name.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Header tag name; names must not be empty.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Indexed tag position; -1 means an unindexed tag.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>No result yet: choose a trajectory and press Run selection.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Open a TTTR file (PTU / HT3 / SPC / HDF5) and read its header.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>PTU tag type determines how the value is stored.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Read-only view — saved with the tags into the PTU header.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Reading or saving TTTR data...</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Reads any tttrlib container; edited headers are always written as PTU.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Remove this tag.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>The mean RMSD against the number of pairs chosen: how fast the conformations become distinguishable.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Working...</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Write the edited header to a new PTU file — the source's photon data is copied verbatim.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>💾 Save as PTU</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>📂 Open</source>
+            <translation type="unfinished" />
+        </message>
 </context>
 </TS>

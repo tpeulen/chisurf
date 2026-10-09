@@ -1257,3 +1257,19 @@ Shared tour authored text and navigation pass through translation before card
 measurement; IDs and complete English paint remain unchanged. The game chrome
 acceptance retains exact source and interaction evidence. Concurrent port guard
 drift remains a separate finite prerequisite; no baseline is expanded.
+
+## New committed UI guard reconciliation — 2026-10-10
+
+A finite prerequisite closes 17 new tooltip sites and 144 new direct literals
+introduced by concurrent native ports. The shared typed-number control explains
+its type, commit behavior and allowed bounds; callers can supply domain help.
+Acquisition, About, burst, pair-selection and header-editor metadata retain the
+original scientific logic, options, units, identities and geometry. Source AST
+normalization and actual translated hover/action tests prove this boundary.
+
+The accepted production baseline shrinks from1077 to1023 tooltips and from1151
+to1148 literals.638 literal-key relocations are paired by source scope, argument
+and complete call structure; six hidden-ID changes retain visible labels. Three
+H2MM tuple descriptions are genuinely translated rather than silently dropped
+from measurement. No new or stale candidate findings remain. These are shrinking
+existing allowances, not aggregate UI completion; family owners still owe zero.

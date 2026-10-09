@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Callable
 import emtk.im as im
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
+from emtk.i18n import tr
 from emtk.im_core import Col
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
@@ -129,29 +130,29 @@ class HeaderEditorGui(TourTarget):
     # ── the tags dock ─────────────────────────────────────────────────────
 
     def _draw_tags(self, box: tuple[float, float, float, float]) -> None:
-        if im.button("📂 Open"):
+        if im.button(tr("📂 Open")):
             if callable(self.on_open):
                 self.on_open()
-        im.set_item_tooltip("Open a TTTR file (PTU / HT3 / SPC / HDF5) and read its header.")
+        im.set_item_tooltip(tr("Open a TTTR file (PTU / HT3 / SPC / HDF5) and read its header."))
         self.remember("open")
         im.same_line()
-        if im.button("➕ Add"):
+        if im.button(tr("➕ Add")):
             self._rows.append({"name": "NewTag", "type": "AnsiString", "value": "", "idx": "-1"})
             self._commit()
-        im.set_item_tooltip("Append a new header tag with a placeholder name.")
+        im.set_item_tooltip(tr("Append a new header tag with a placeholder name."))
         self.remember("add")
         im.same_line()
-        if im.button("📖 Guide"):
+        if im.button(tr("📖 Guide")):
             self.start_guide()
-        im.set_item_tooltip("A step-by-step walk through the tool.")
+        im.set_item_tooltip(tr("A step-by-step walk through the tool."))
         self.remember("guide")
         if im.get_line_avail() < 170.0:
             im.new_line()
         else:
             im.same_line()
-        if im.button("❓ Help"):
+        if im.button(tr("❓ Help")):
             self.show_help()
-        im.set_item_tooltip("The short help page.")
+        im.set_item_tooltip(tr("The short help page."))
         self.remember("help")
         if im.get_line_avail() < 170.0:
             im.new_line()
@@ -160,12 +161,12 @@ class HeaderEditorGui(TourTarget):
         im.push_style_color(Col.BUTTON, ACCENT_GREEN)
         im.push_style_color(Col.BUTTON_HOVERED, (56, 180, 77, 255))
         im.push_style_color(Col.BUTTON_ACTIVE, (36, 140, 57, 255))
-        if im.button("💾 Save as PTU"):
+        if im.button(tr("💾 Save as PTU")):
             if callable(self.on_save):
                 self.on_save()
         im.set_item_tooltip(
-            "Write the edited header to a new PTU file — the source's photon "
-            "data is copied verbatim."
+            tr("Write the edited header to a new PTU file — the source's photon "
+            "data is copied verbatim.")
         )
         im.pop_style_color(3)
         self.remember("save")
@@ -176,10 +177,10 @@ class HeaderEditorGui(TourTarget):
         if getattr(self.tool, "message", ""):
             im.text_wrapped(self.tool.message)
         if getattr(getattr(self.tool, "job", None), "running", False):
-            im.text("Reading or saving TTTR data...")
+            im.text(tr("Reading or saving TTTR data..."))
         im.text_disabled(self.model.source_summary)
         im.set_item_tooltip(
-            "Reads any tttrlib container; edited headers are always written as PTU."
+            tr("Reads any tttrlib container; edited headers are always written as PTU.")
         )
 
         type_names = list(self.model.TYPE_MAPPING.values())
@@ -197,14 +198,14 @@ class HeaderEditorGui(TourTarget):
                 im.table_next_row()
                 im.table_set_column_index(0)
                 _, name = im.input_text(f"##name{i}", row["name"])
-                im.set_item_tooltip("Header tag name; names must not be empty.")
+                im.set_item_tooltip(tr("Header tag name; names must not be empty."))
                 if name != row["name"]:
                     row["name"] = name
                     self._commit()
                 im.table_set_column_index(1)
                 current = type_names.index(row["type"]) if row["type"] in type_names else 0
                 changed, new_idx = im.combo(f"##type{i}", current, type_names)
-                im.set_item_tooltip("PTU tag type determines how the value is stored.")
+                im.set_item_tooltip(tr("PTU tag type determines how the value is stored."))
                 if changed and 0 <= new_idx < len(type_names):
                     row["type"] = type_names[new_idx]
                     self._commit()
@@ -224,7 +225,7 @@ class HeaderEditorGui(TourTarget):
                     self._commit()
                 im.table_set_column_index(3)
                 _, idx = im.input_text(f"##idx{i}", row["idx"])
-                im.set_item_tooltip("Indexed tag position; -1 means an unindexed tag.")
+                im.set_item_tooltip(tr("Indexed tag position; -1 means an unindexed tag."))
                 if idx != row["idx"]:
                     row["idx"] = idx
                     self._commit()
@@ -234,14 +235,14 @@ class HeaderEditorGui(TourTarget):
                     self._commit()
                     im.end_table()
                     return
-                im.set_item_tooltip("Remove this tag.")
+                im.set_item_tooltip(tr("Remove this tag."))
             im.end_table()
         self.remember("tag_table")
 
     # ── the JSON dock ─────────────────────────────────────────────────────
 
     def _draw_json(self, box: tuple[float, float, float, float]) -> None:
-        im.text_wrapped("Read-only view — saved with the tags into the PTU header.")
+        im.text_wrapped(tr("Read-only view — saved with the tags into the PTU header."))
         im.separator()
         for line in (self.model.json_text or "").splitlines():
             im.text_wrapped(line)

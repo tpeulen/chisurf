@@ -18,6 +18,7 @@ from pathlib import Path
 import numpy as np
 from emtk import im, implot
 from emtk.docking import DockManager, Region, Split
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.plugins.emtk_layout import LabelColumn, labelled, layout_spec
@@ -302,7 +303,7 @@ class PairSelectionCard(CardShell):
         {None: lambda: None, "run": self.run, "export": self.export, "guide": self.start_guide,
          "help": self.show_help}[pressed]()
         if s.running:
-            im.text_disabled("Working...")
+            im.text_disabled(tr("Working..."))
             self.remember("working")
         self.status_line()
         im.separator()
@@ -315,7 +316,7 @@ class PairSelectionCard(CardShell):
         s = self.session
         self.result_form.rects.clear()
         if not s.rows:
-            im.text_wrapped("No result yet: choose a trajectory and press Run selection.")
+            im.text_wrapped(tr("No result yet: choose a trajectory and press Run selection."))
             self.remember("empty_results")
         draw_form(RESULT_TABLE, self.view, self.result_form)
         self.item_rects.update(self.result_form.rects)
@@ -325,7 +326,7 @@ class PairSelectionCard(CardShell):
             implot.set_next_line_style((31, 119, 180, 255), 2.0)
             implot.plot_line("<<RMSD>>", np.arange(1, len(decay) + 1, dtype=float), decay)
             implot.end_plot()
-            im.set_item_tooltip("The mean RMSD against the number of pairs chosen: how fast the conformations become distinguishable.")
+            im.set_item_tooltip(tr("The mean RMSD against the number of pairs chosen: how fast the conformations become distinguishable."))
             self.remember("decay_plot")
 
     def export_settings(self) -> dict:

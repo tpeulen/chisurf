@@ -5,7 +5,8 @@
       "type": "panel", "title": "Input", "n_col": 1, "collapsible": true,
       "description": "The trajectory to select pairs from and how to read it.",
       "sections": [
-        {"type": "custom", "key": "pair_paths"},
+        {"type": "custom", "key": "pair_paths",
+         "description": "Choose a trajectory, its optional topology and an optional FPS JSON defining candidate labeling pairs."},
         {"type": "value", "attr": "stride", "label": "Stride", "kind": "int", "minimum": 1, "maximum": 1000000,
          "description": "Read every n-th frame of the trajectory (1 = all frames)."}
       ]
