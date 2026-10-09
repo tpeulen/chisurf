@@ -1,0 +1,19 @@
+{
+  "sections": [
+    {
+      "type": "custom",
+      "key": "data_table",
+      "title": "Bursts",
+      "description": "Measured burst records on the current gated page. Select rows for the histogram; scroll to inspect every column.",
+      "source": "burst_table_rows",
+      "columns_source": "burst_table_columns",
+      "selected_call": "toggle_burst_row",
+      "row_key": "_burst_index",
+      "fit_columns": false,
+      "min_column_width": 90,
+      "filter": false,
+      "column_picker": false,
+      "expand": true
+    }
+  ]
+}

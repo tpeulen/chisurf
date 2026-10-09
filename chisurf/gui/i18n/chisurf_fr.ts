@@ -49395,5 +49395,45 @@ presets) into a single left-navigation tool. Built on the reusable
             <source>Your dyes</source>
             <translation type="unfinished" />
         </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="2181" />
+            <source>E Range:</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="3871" />
+            <source>Lower FRET-efficiency gate; bursts below it are hidden.</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="3896" />
+            <source>Lower stoichiometry gate; bursts below it are hidden.</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4045" />
+            <source>Measured burst records on the current gated page. Select rows for the histogram; scroll to inspect every column.</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="5626" />
+            <source>Recorded {column} value for this burst.</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6047" />
+            <source>S Range:</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="7998" />
+            <source>Upper FRET-efficiency gate; bursts above it are hidden.</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8027" />
+            <source>Upper stoichiometry gate; bursts above it are hidden.</source>
+            <translation type="unfinished" />
+        </message>
 </context>
 </TS>

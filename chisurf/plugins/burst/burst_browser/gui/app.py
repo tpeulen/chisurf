@@ -27,10 +27,13 @@ from typing import Any
 import numpy as np
 from emtk import im, implot
 from emtk.app import ImApp
+from emtk.i18n import tr
 from emtk.im_core import get_current_context
+from emtk.widgets.data_table import TableBinding, draw_table
 
 from chisurf.core.datastore import column_names, column_values, is_missing
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.plugins.emtk_layout import window_size
 
 from ..view_model import BurstBrowserViewModel
 
@@ -47,14 +50,6 @@ ACCENT_GRAY = (158, 158, 158, 255)
 ACCENT_RED = (214, 39, 40, 255)
 REGION_FILL = (46, 117, 182, 60)
 REGION_BORDER = (90, 160, 240, 255)
-
-
-def _format_cell(val: Any) -> str:
-    if is_missing(val):
-        return ""
-    if isinstance(val, (float, np.floating)):
-        return f"{val:.4g}"
-    return str(val)
 
 
 class BurstBrowserGui:
@@ -78,6 +73,10 @@ class BurstBrowserGui:
         self.page_size: int = 50
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.on_used: Callable[[str], None] | None = None
+        self.controller: Any | None = None
+        self._burst_table: TableBinding | None = None
+        self._table_token: tuple[Any, ...] | None = None
+        self._table_rows: list[dict[str, Any]] = []
         from pathlib import Path
 
         help_resource = Path(__file__).parent / "help.md"
@@ -137,6 +136,7 @@ class BurstBrowserGui:
         self.help_window.show()
 
     def _on_model_event(self, event: str) -> None:
+        self._table_token = None
         if event in ("data", "gating"):
             self.page = 0
 
@@ -234,15 +234,16 @@ class BurstBrowserGui:
 
         # E Range
         if self.model.have_E:
-            im.text("E Range:")
+            im.text(tr("E Range:"))
+            gate_lo, gate_hi = self._gate_bounds(self.model._col_E, self.model.e_min, self.model.e_max)
             im.set_next_item_width(half_w)
-            ch_lo, new_e_lo = im.slider_float("##e_min", float(self.model.e_min), 0.0, 1.0, "%.3f")
-            im.set_item_tooltip("Lower FRET-efficiency gate; bursts below it are hidden.")
+            ch_lo, new_e_lo = im.slider_float("##e_min", float(self.model.e_min), gate_lo, gate_hi, "%.3f")
+            im.set_item_tooltip(tr("Lower FRET-efficiency gate; bursts below it are hidden."))
             self.remember("e_range")
             im.same_line()
             im.set_next_item_width(half_w)
-            ch_hi, new_e_hi = im.slider_float("##e_max", float(self.model.e_max), 0.0, 1.0, "%.3f")
-            im.set_item_tooltip("Upper FRET-efficiency gate; bursts above it are hidden.")
+            ch_hi, new_e_hi = im.slider_float("##e_max", float(self.model.e_max), gate_lo, gate_hi, "%.3f")
+            im.set_item_tooltip(tr("Upper FRET-efficiency gate; bursts above it are hidden."))
             if ch_lo or ch_hi:
                 self.track("e_range")
                 self.model.e_min = min(new_e_lo, new_e_hi)
@@ -253,14 +254,15 @@ class BurstBrowserGui:
 
         # S Range
         if self.model.have_S:
-            im.text("S Range:")
+            im.text(tr("S Range:"))
+            gate_lo, gate_hi = self._gate_bounds(self.model._col_S, self.model.s_min, self.model.s_max)
             im.set_next_item_width(half_w)
-            ch_lo, new_s_lo = im.slider_float("##s_min", float(self.model.s_min), 0.0, 1.0, "%.3f")
-            im.set_item_tooltip("Lower stoichiometry gate; bursts below it are hidden.")
+            ch_lo, new_s_lo = im.slider_float("##s_min", float(self.model.s_min), gate_lo, gate_hi, "%.3f")
+            im.set_item_tooltip(tr("Lower stoichiometry gate; bursts below it are hidden."))
             im.same_line()
             im.set_next_item_width(half_w)
-            ch_hi, new_s_hi = im.slider_float("##s_max", float(self.model.s_max), 0.0, 1.0, "%.3f")
-            im.set_item_tooltip("Upper stoichiometry gate; bursts above it are hidden.")
+            ch_hi, new_s_hi = im.slider_float("##s_max", float(self.model.s_max), gate_lo, gate_hi, "%.3f")
+            im.set_item_tooltip(tr("Upper stoichiometry gate; bursts above it are hidden."))
             if ch_lo or ch_hi:
                 self.model.s_min = min(new_s_lo, new_s_hi)
                 self.model.s_max = max(new_s_lo, new_s_hi)
@@ -364,59 +366,65 @@ class BurstBrowserGui:
 
         im.spacing()
 
-        # Render table
-        flags = (
-            im.TableFlags.ROW_BG
-            | im.TableFlags.BORDERS
-            | im.TableFlags.SCROLL_Y
-            | im.TableFlags.SCROLL_X
-            | im.TableFlags.RESIZABLE
-        )
-        tbl_h = max(60.0, avail_h - 32.0)
+        if self._burst_table is None:
+            from pathlib import Path
+
+            spec = json.loads(Path(__file__).with_name("burst_table.view.json").read_text())
+            self._burst_table = TableBinding(spec["sections"][0], self)
         tx, ty = im.get_cursor_screen_pos()
-        self.remember("table", (tx, ty, avail_w, tbl_h))
-        if im.begin_table("burst_data_table", len(names), flags, size=(avail_w, tbl_h)):
-            im.table_setup_scroll_freeze(0, 1)
-            # Fixed widths that fit each header: stretched columns of a wide table
-            # were narrower than their names, which then overlapped.
-            for name in names:
-                width = max(im.calc_text_size(name)[0], im.calc_text_size("0.0000")[0]) + 14.0
-                im.table_setup_column(name, im.TableColumnFlags.WIDTH_FIXED, width)
-            im.table_headers_row()
+        table_height = max(60.0, im.get_content_region_avail()[1])
+        self._burst_table.refresh()
+        visible_indices = {row["_burst_index"] for row in self._table_rows}
+        self._burst_table.control.also_selected = set(self.model.selected_indices) & visible_indices
+        draw_table(self._burst_table, width=avail_w, height=table_height, name="burst_data_table")
+        self.remember("table", (tx, ty, avail_w, table_height))
 
-            # Pre-extract column arrays for fast indexed lookup
-            cols_data = [column_values(self.model.table, i) for i in range(len(names))]
-            start_idx = self.page * self.page_size
-            end_idx = min(start_idx + self.page_size, total_rows)
+    def _gate_bounds(self, column, lower: float, upper: float) -> tuple[float, float]:
+        """Include measured and current gate limits without clipping corrected values."""
+        measured_lo, measured_hi = self.model._col_range(column, 0.0, 1.0, as_int=False)
+        return min(0.0, lower, measured_lo), max(1.0, upper, measured_hi)
 
-            for vi in range(start_idx, end_idx):
-                base_row = int(masked_rows[vi])
-                im.table_next_row()
+    def burst_table_rows(self) -> list[dict]:
+        """Return typed values and stable source identities for the current page."""
+        names = column_names(self.model.table)
+        indices = self.model.masked_row_indices()
+        visible = indices[self.page * self.page_size:(self.page + 1) * self.page_size]
+        token = (id(self.model.table), tuple(names), tuple(int(i) for i in visible))
+        if token != self._table_token:
+            columns = [column_values(self.model.table, i) for i in range(len(names))]
+            self._table_rows = [
+                {"_burst_index": int(row), **{
+                    name: None if is_missing(values[int(row)]) else values[int(row)]
+                    for name, values in zip(names, columns)
+                }} for row in visible
+            ]
+            self._table_token = token
+        return self._table_rows
 
-                # First column is selectable
-                im.table_next_column()
-                val_0 = _format_cell(cols_data[0][base_row])
-                is_selected = base_row in self.model.selected_indices
-                clicked = im.selectable(
-                    f"{val_0}##r_{base_row}",
-                    selected=is_selected,
-                )
-                im.set_item_tooltip("Click to select this burst row for the histogram.")
-                if clicked:
-                    self.track("table")
-                    if is_selected:
-                        self.model.selected_indices.remove(base_row)
-                    else:
-                        self.model.selected_indices.append(base_row)
-                    if self.model.use_selection:
-                        self.model.notify("selection")
+    def burst_table_columns(self) -> list[dict]:
+        """Declare readable, described columns from the loaded measurement vocabulary."""
+        return [{
+            "key": name, "label": name,
+            "format": "%.4g" if column_values(self.model.table, i).dtype.kind == "f" else "",
+            "width": max(im.calc_text_size(name)[0], im.calc_text_size("0.0000")[0]) + 14.0,
+            "min_width": max(im.calc_text_size(name)[0], im.calc_text_size("0.0000")[0]) + 14.0,
+            "description": tr("Recorded {column} value for this burst.").format(column=name),
+        } for i, name in enumerate(column_names(self.model.table))]
 
-                # Remaining columns
-                for c in range(1, len(names)):
-                    im.table_next_column()
-                    im.text(_format_cell(cols_data[c][base_row]))
-
-            im.end_table()
+    def toggle_burst_row(self, record) -> None:
+        """Toggle the original burst identity without changing the gated source table."""
+        if record is None:
+            return
+        row = int(record["_burst_index"])
+        self.track("table")
+        if row in self.model.selected_indices:
+            self.model.selected_indices.remove(row)
+        else:
+            self.model.selected_indices.append(row)
+        if self._burst_table is not None:
+            self._burst_table.control.selected_key = None
+        if self.model.use_selection:
+            self.model.notify("selection")
 
     def _draw_histogram_view(self) -> None:
         avail_w, avail_h = im.get_content_region_avail()
@@ -529,6 +537,10 @@ class BurstBrowserApp(ImApp):
         on_guide: Callable[[], None] | None = None,
         on_help: Callable[[], None] | None = None,
     ) -> None:
+        from pathlib import Path
+
+        spec = json.loads(Path(__file__).with_name("burst_browser.view.json").read_text())
+        self.window_size = window_size(spec, (1200, 800))
         self.controller = None
         if on_open_folder is None and on_open_file is None:
             from .controller import BurstBrowserController
@@ -551,7 +563,6 @@ class BurstBrowserApp(ImApp):
         )
         self.model = self.browser_gui.model
         self.item_rects = self.browser_gui.item_rects
-        self.browser_gui.remember = self.remember
         self.browser_gui.controller = self.controller
         super().__init__(gui=self._render)
 

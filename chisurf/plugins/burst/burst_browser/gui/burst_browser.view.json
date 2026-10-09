@@ -1,5 +1,6 @@
 {
   "_comment": "Declarative AutoForm layout for the Burst Browser: a persistent dock area with a Browse & Gate controls panel (open action, detector/column combos, a foldable Gating box) plus the per-burst table and the histogram, each as a draggable chisurf dock.",
+  "window": {"width": 1200, "height": 800},
   "sections": [
     {
       "type": "dock_area",

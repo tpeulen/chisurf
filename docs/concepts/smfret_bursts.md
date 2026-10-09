@@ -22,7 +22,8 @@ instruments.
 This page is the theory. For the step-by-step ChiSurf workflow see the guides
 {doc}`/guides/13_burst_identification`, {doc}`/guides/14_multiparameter_es`,
 {doc}`/guides/15_background_rates`, and the end-to-end
-{doc}`/guides/27_alex_smfret_workflow`.
+{doc}`/guides/27_alex_smfret_workflow`. Population gating and table selection
+are described in {doc}`/guides/28_selecting_fret_populations`.
 
 ## One acquisition definition across the burst workflow
 
@@ -131,6 +132,15 @@ acceptor-only at $S\to0$.
   $$
 
   $\beta$ shifts only $S$; $\gamma$ shifts both.
+
+Background subtraction and corrections can produce finite burst-level
+estimates outside $0\le E,S\le1$, particularly for small photon samples. Such
+values are measured estimates, not physical efficiencies to insert into the
+Förster distance relation. The Burst Browser preserves their values and shows
+gate ranges that include them; displaying a wider range does not apply an
+additional correction. Decide on population gates explicitly rather than
+assuming the table was clipped to the physical interval. See
+{doc}`/guides/28_selecting_fret_populations` for the controls.
 
 *Apply the full expression in one step.* Chaining single-factor corrections
 (γ-only, then leakage-only, …) is **not** equal to the combined formula — it is

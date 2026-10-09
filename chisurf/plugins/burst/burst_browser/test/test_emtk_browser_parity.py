@@ -255,8 +255,9 @@ def test_every_guide_target_is_drawn(root):
 
 # 4. draws, empty and populated, at both sizes; headers fit their columns
 @pytest.mark.parametrize("size", [(1200, 800), (800, 600)])
-def test_draws_empty_and_populated(root, size, monkeypatch):
-    from emtk import im
+def test_draws_empty_and_populated(root, size):
+    """Empty and loaded views retain readable headers at normal and narrow sizes."""
+    from chisurf.core.datastore import column_names
 
     app = create_app()
     try:
@@ -265,18 +266,16 @@ def test_draws_empty_and_populated(root, size, monkeypatch):
         _loaded(app, root)
         app.model.hist_column = "E"
         app.model.refresh()
-        columns = []
-        original = im.table_setup_column
-        monkeypatch.setattr(im, "table_setup_column",
-                            lambda label, flags=0, width=0.0: (columns.append((im.calc_text_size(label)[0], flags, width)),
-                                                               original(label, flags, width))[1])
-        strings = _draw(app, size).strings
+        painter = _draw(app, size)
+        strings = painter.strings
         assert "Page 1 / 6 (300 bursts)" in strings and "Bursts: 300 / 300 selected" in strings
-        assert columns and all(flags & im.TableColumnFlags.WIDTH_FIXED for _l, flags, _w in columns)
-        assert all(width > text_width for text_width, _f, width in columns)
+        table = app.browser_gui._burst_table.control
+        assert [column.key for column in table.columns] == column_names(app.model.table)
+        assert len(table._widths) == len(table.columns)
+        assert all(width > painter.text_width(column.title)
+                   for column, width in zip(table.columns, table._widths))
     finally:
         app.close()
-
 
 # 6/7. no Qt, tooltips
 def test_port_is_qt_free():
