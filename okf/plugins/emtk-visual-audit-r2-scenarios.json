@@ -1,0 +1,297 @@
+{
+  "cases": [
+    {
+      "name": "help-rich-gpu",
+      "source": "/private/tmp/chisurf-native-gpu/help-rich-document.png",
+      "renderer": "GPU offscreen, root supplied",
+      "visual_verdict": {
+        "score": 93,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Native dark monospaced styling differs from Qt while preserving heading hierarchy and all supplied rich content."
+        ],
+        "suggestions": [
+          "Verify address/anchor/citation/search/source/review/hover behavior independently."
+        ],
+        "reasoning": "This independently reviewed raster establishes the visible scenario only; functional, tooltip, scientific and other-backend acceptance remain separate."
+      },
+      "reference_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/help-rich-document/core__help.png"
+      ],
+      "acceptance": {
+        "visible_scenario": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      }
+    },
+    {
+      "name": "channel-setups",
+      "source": "/private/tmp/channel-definition-native/setups.png",
+      "renderer": "CPU PilPainter, owner confirmed",
+      "visual_verdict": {
+        "score": 92,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Structured editor section is represented; this frame is CPU, not GPU."
+        ],
+        "suggestions": [
+          "Obtain current GPU/narrow/hover and matched actual-data workflow evidence."
+        ],
+        "reasoning": "This independently reviewed raster establishes the visible scenario only; functional, tooltip, scientific and other-backend acceptance remain separate."
+      },
+      "reference_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_irf_bg.png"
+      ],
+      "acceptance": {
+        "visible_scenario": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      }
+    },
+    {
+      "name": "channel-reading",
+      "source": "/private/tmp/channel-definition-native/reading.png",
+      "renderer": "CPU PilPainter, owner confirmed",
+      "visual_verdict": {
+        "score": 92,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Structured editor section is represented; this frame is CPU, not GPU."
+        ],
+        "suggestions": [
+          "Obtain current GPU/narrow/hover and matched actual-data workflow evidence."
+        ],
+        "reasoning": "This independently reviewed raster establishes the visible scenario only; functional, tooltip, scientific and other-backend acceptance remain separate."
+      },
+      "reference_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_irf_bg.png"
+      ],
+      "acceptance": {
+        "visible_scenario": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      }
+    },
+    {
+      "name": "channel-detectors",
+      "source": "/private/tmp/channel-definition-native/detectors.png",
+      "renderer": "CPU PilPainter, owner confirmed",
+      "visual_verdict": {
+        "score": 92,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Structured editor section is represented; this frame is CPU, not GPU."
+        ],
+        "suggestions": [
+          "Obtain current GPU/narrow/hover and matched actual-data workflow evidence."
+        ],
+        "reasoning": "This independently reviewed raster establishes the visible scenario only; functional, tooltip, scientific and other-backend acceptance remain separate."
+      },
+      "reference_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_irf_bg.png"
+      ],
+      "acceptance": {
+        "visible_scenario": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      }
+    },
+    {
+      "name": "channel-pie",
+      "source": "/private/tmp/channel-definition-native/pie.png",
+      "renderer": "CPU PilPainter, owner confirmed",
+      "visual_verdict": {
+        "score": 92,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Structured editor section is represented; this frame is CPU, not GPU."
+        ],
+        "suggestions": [
+          "Obtain current GPU/narrow/hover and matched actual-data workflow evidence."
+        ],
+        "reasoning": "This independently reviewed raster establishes the visible scenario only; functional, tooltip, scientific and other-backend acceptance remain separate."
+      },
+      "reference_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_irf_bg.png"
+      ],
+      "acceptance": {
+        "visible_scenario": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      }
+    },
+    {
+      "name": "channel-tac",
+      "source": "/private/tmp/channel-definition-native/tac.png",
+      "renderer": "CPU PilPainter, owner confirmed",
+      "visual_verdict": {
+        "score": 92,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Structured editor section is represented; this frame is CPU, not GPU."
+        ],
+        "suggestions": [
+          "Obtain current GPU/narrow/hover and matched actual-data workflow evidence."
+        ],
+        "reasoning": "This independently reviewed raster establishes the visible scenario only; functional, tooltip, scientific and other-backend acceptance remain separate."
+      },
+      "reference_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_irf_bg.png"
+      ],
+      "acceptance": {
+        "visible_scenario": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      }
+    },
+    {
+      "name": "channel-optical",
+      "source": "/private/tmp/channel-definition-native/optical.png",
+      "renderer": "CPU PilPainter, owner confirmed",
+      "visual_verdict": {
+        "score": 86,
+        "verdict": "revise",
+        "category_match": true,
+        "differences": [
+          "Structured editor section is represented; this frame is CPU, not GPU.",
+          "Optical right-edge captions clip; owner reports newer-source fix awaiting a fresh frame."
+        ],
+        "suggestions": [
+          "Obtain current GPU/narrow/hover and matched actual-data workflow evidence."
+        ],
+        "reasoning": "This independently reviewed raster establishes the visible scenario only; functional, tooltip, scientific and other-backend acceptance remain separate."
+      },
+      "reference_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_irf_bg.png"
+      ],
+      "acceptance": {
+        "visible_scenario": false,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      }
+    },
+    {
+      "name": "tttr_count_rate_analysis-populated-1200x800",
+      "source": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-native/tttr__tttr_count_rate_analysis-1200x800.png",
+      "renderer": "CPU PilPainter with baked atlas, owner confirmed",
+      "visual_verdict": {
+        "score": 91,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Real Leica_SP5.ptu populated state has readable values and controls.",
+          "Structured setup editor supersedes the pre-fix raw-JSON default.",
+          "High-rate marker clips at upper y boundary; owner is adding padding."
+        ],
+        "suggestions": [
+          "Capture the identical populated GPU state and verify hover, output content, cancellation and persistence independently."
+        ],
+        "reasoning": "This independently reviewed raster establishes the visible scenario only; functional, tooltip, scientific and other-backend acceptance remain separate."
+      },
+      "reference_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/tttr__tttr_count_rate_analysis.png"
+      ],
+      "acceptance": {
+        "visible_scenario": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      }
+    },
+    {
+      "name": "tttr_count_rate_analysis-populated-800x550",
+      "source": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-native/tttr__tttr_count_rate_analysis-800x550.png",
+      "renderer": "CPU PilPainter with baked atlas, owner confirmed",
+      "visual_verdict": {
+        "score": 91,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Real Leica_SP5.ptu populated state has readable values and controls.",
+          "Structured setup editor supersedes the pre-fix raw-JSON default.",
+          "High-rate marker clips at upper y boundary; owner is adding padding."
+        ],
+        "suggestions": [
+          "Capture the identical populated GPU state and verify hover, output content, cancellation and persistence independently."
+        ],
+        "reasoning": "This independently reviewed raster establishes the visible scenario only; functional, tooltip, scientific and other-backend acceptance remain separate."
+      },
+      "reference_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/tttr__tttr_count_rate_analysis.png"
+      ],
+      "acceptance": {
+        "visible_scenario": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      }
+    },
+    {
+      "name": "microtime_shifter-populated-1200x800",
+      "source": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-native/tttr__tttr_microtime_shifter-1200x800.png",
+      "renderer": "CPU PilPainter with baked atlas, owner confirmed",
+      "visual_verdict": {
+        "score": 91,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Real Leica_SP5.ptu populated state has readable values and controls.",
+          "Per-channel shifts/trigger/log plot are present; lower controls scroll in narrow view."
+        ],
+        "suggestions": [
+          "Capture the identical populated GPU state and verify hover, output content, cancellation and persistence independently."
+        ],
+        "reasoning": "This independently reviewed raster establishes the visible scenario only; functional, tooltip, scientific and other-backend acceptance remain separate."
+      },
+      "reference_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/tttr__tttr_microtime_shifter.png"
+      ],
+      "acceptance": {
+        "visible_scenario": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      }
+    },
+    {
+      "name": "microtime_shifter-populated-800x550",
+      "source": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-native/tttr__tttr_microtime_shifter-800x550.png",
+      "renderer": "CPU PilPainter with baked atlas, owner confirmed",
+      "visual_verdict": {
+        "score": 91,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Real Leica_SP5.ptu populated state has readable values and controls.",
+          "Per-channel shifts/trigger/log plot are present; lower controls scroll in narrow view."
+        ],
+        "suggestions": [
+          "Capture the identical populated GPU state and verify hover, output content, cancellation and persistence independently."
+        ],
+        "reasoning": "This independently reviewed raster establishes the visible scenario only; functional, tooltip, scientific and other-backend acceptance remain separate."
+      },
+      "reference_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/tttr__tttr_microtime_shifter.png"
+      ],
+      "acceptance": {
+        "visible_scenario": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      }
+    }
+  ]
+}

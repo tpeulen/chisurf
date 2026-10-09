@@ -1,0 +1,1629 @@
+{
+  "scope": "Fresh GPU startup re-audit only; no full functional acceptance",
+  "plugins": [
+    {
+      "plugin": "burst_background",
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/burst_background.png",
+      "native_mtime": 1790524574.7178814,
+      "native_factory": "chisurf.plugins.burst.burst_background.gui.app:create_app",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_background.json",
+      "qt_status": "captured",
+      "qt_source_revision": "4c21a578b58d6ea3644d5e4c099f8bbe53b1e515",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_background.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_background__tabs_0_0.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_background__tabs_0_1.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_background__tabs_0_2.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_background__tabs_0_3.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_background__tabs_0_4.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_background__tabs_0_5.png"
+      ],
+      "qt_control_count": 329,
+      "qt_tooltip_control_count": 53,
+      "source_newer_than_screenshot": [],
+      "visual_verdict": {
+        "score": 91,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "The raw JSON-only detector block has been replaced by a separate structured Channel Definition dock.",
+          "Default fit/rate plots are still empty; the six supplied configuration sections are CPU captures."
+        ],
+        "suggestions": [
+          "Retain the structured setup workflow and capture loaded fit/rate results.",
+          "Finish optical caption padding and verify narrow-window/hover workflows."
+        ],
+        "reasoning": "Fresh GPU startup image independently reviewed; the noted visual changes do not establish loaded workflow, tooltip or full-port acceptance."
+      },
+      "behavioral_evidence_gaps": [
+        "Named setup/calibration/LUT round trips and reader unit overrides.",
+        "Folder add, populated per-file removal, cancellation and populated fit/rate/results views."
+      ],
+      "acceptance": {
+        "default_visual_only": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified",
+      "native_sha256": "a333c651b79b4e3b1d92448510fc7ea6d85dee79b75ad73f17755e014b8e7a11",
+      "renderer": "GPU offscreen (root supplied)"
+    },
+    {
+      "plugin": "burst_irf_bg",
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/burst_irf_bg.png",
+      "native_mtime": 1790524584.1162877,
+      "native_factory": "chisurf.plugins.burst.burst_irf_bg.gui.app:create_app",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_irf_bg.json",
+      "qt_status": "captured",
+      "qt_source_revision": "4c21a578b58d6ea3644d5e4c099f8bbe53b1e515",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_irf_bg.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_irf_bg__tabs_0_0.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_irf_bg__tabs_0_1.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_irf_bg__tabs_0_2.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_irf_bg__tabs_0_3.png"
+      ],
+      "qt_control_count": 318,
+      "qt_tooltip_control_count": 58,
+      "source_newer_than_screenshot": [],
+      "visual_verdict": {
+        "score": 91,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Structured Channel Definition and folder input are now represented.",
+          "IRF, background and MLE output states are not populated in this GPU frame."
+        ],
+        "suggestions": [
+          "Capture matched-photon IRF/baseline/results and MLE handoff.",
+          "Verify the six-section editor with actual GPU and hover/event checks."
+        ],
+        "reasoning": "Fresh GPU startup image independently reviewed; the noted visual changes do not establish loaded workflow, tooltip or full-port acceptance."
+      },
+      "behavioral_evidence_gaps": [
+        "Channel Definition feature parity.",
+        "Non-burst selection, baseline/IRF plotting, MLE handoff/export and cancel."
+      ],
+      "acceptance": {
+        "default_visual_only": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified",
+      "native_sha256": "92f7f4ba1b3acaff37386baf607ef8d19e757a7173b7475a06e6ef917bd43fbb",
+      "renderer": "GPU offscreen (root supplied)"
+    },
+    {
+      "plugin": "burst_bva",
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/burst_bva.png",
+      "native_mtime": 1790524577.4565885,
+      "native_factory": "chisurf.plugins.burst.burst_bva.gui.app:create_app",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_bva.json",
+      "qt_status": "captured",
+      "qt_source_revision": "4c21a578b58d6ea3644d5e4c099f8bbe53b1e515",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_bva.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_bva__tabs_1_0.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_bva__tabs_2_0.png"
+      ],
+      "qt_control_count": 312,
+      "qt_tooltip_control_count": 42,
+      "source_newer_than_screenshot": [],
+      "visual_verdict": {
+        "score": 88,
+        "verdict": "revise",
+        "category_match": true,
+        "differences": [
+          "Channel Definitions is now an explicit tab.",
+          "The Std threshold tag is clipped at the plot's left boundary."
+        ],
+        "suggestions": [
+          "Pad/position the threshold tag within the dock clip.",
+          "Capture detector assignment and loaded BVA output/interaction."
+        ],
+        "reasoning": "Fresh GPU startup image independently reviewed; the noted visual changes do not establish loaded workflow, tooltip or full-port acceptance."
+      },
+      "behavioral_evidence_gaps": [
+        "Detector setup/pair selection.",
+        "Run/restart/stop, save plot/defaults, automatic update and loaded BVA outputs."
+      ],
+      "acceptance": {
+        "default_visual_only": false,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified",
+      "native_sha256": "b9f4ea52a762d886ce5c78adf89d8618f47d2105b7c2dc1d54f62b02b266a192",
+      "renderer": "GPU offscreen (root supplied)"
+    },
+    {
+      "plugin": "burst_fcs_correlator",
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/burst_fcs_correlator.png",
+      "native_mtime": 1790524579.7095525,
+      "native_factory": "chisurf.plugins.burst.burst_fcs_correlator.gui.app:create_app",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_fcs_correlator.json",
+      "qt_status": "captured",
+      "qt_source_revision": "4c21a578b58d6ea3644d5e4c099f8bbe53b1e515",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_fcs_correlator.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_fcs_correlator__tabs_0_0.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_fcs_correlator__tabs_0_1.png"
+      ],
+      "qt_control_count": 127,
+      "qt_tooltip_control_count": 44,
+      "source_newer_than_screenshot": [],
+      "visual_verdict": {
+        "score": 75,
+        "verdict": "revise",
+        "category_match": true,
+        "differences": [
+          "Named channel-pair selection is exposed as raw JSON rather than an editor.",
+          "Qt Select All/None and populated input/curve lists are not demonstrated by the startup capture."
+        ],
+        "suggestions": [
+          "Provide structured channel-pair fields or a clearly scoped advanced JSON editor plus normal editing UI.",
+          "Capture multiple files/pairs and fit modes, proving selection and export rather than only empty plots."
+        ],
+        "reasoning": "The correlation and diffusion panes are present; configuration and populated selection workflows need evidence."
+      },
+      "behavioral_evidence_gaps": [
+        "Pairs/microtime gate editing and round trips.",
+        "All/None/remove, simple/MaxEnt fitting, diffusion distribution and exported curves."
+      ],
+      "acceptance": {
+        "default_visual_only": false,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified",
+      "native_sha256": "cbe4c2dcc42f6b8e68eea73e4ca0b4e53854173231da0527cd9f5fe420002e11",
+      "renderer": "GPU offscreen (root supplied)"
+    },
+    {
+      "plugin": "burst_2cde",
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/burst_2cde.png",
+      "native_mtime": 1790524573.187499,
+      "native_factory": "chisurf.plugins.burst.burst_2cde.gui.app:create_app",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_2cde.json",
+      "qt_status": "captured",
+      "qt_source_revision": "524aad4c36481d0da2b1930c967574b85c28a70d",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_2cde.png"
+      ],
+      "qt_control_count": 25,
+      "qt_tooltip_control_count": 0,
+      "source_newer_than_screenshot": [],
+      "visual_verdict": {
+        "score": 90,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Native layout switches from stacked form/plot to a sidebar and large plot; the documented fields remain visible.",
+          "The startup empty plot cannot demonstrate either FRET-2CDE or ALEX-2CDE computed state."
+        ],
+        "suggestions": [
+          "Retain this readable field hierarchy and verify variant/kernel changes using matched loaded data.",
+          "Add hover screenshots/tests for units, routing channels, file type and run controls."
+        ],
+        "reasoning": "Startup visual controls match the scientific purpose without obvious clipping; no behavioral acceptance follows from this score."
+      },
+      "behavioral_evidence_gaps": [
+        "FRET/ALEX variants, kernels and physical window units.",
+        "Folder selection, run/restart/cancel and populated chart/export behavior."
+      ],
+      "acceptance": {
+        "default_visual_only": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified",
+      "native_sha256": "bdc1c21fde2cd13ab90e2c43b9a066d1e1b70d7000d1bacca96d5ce3fd20b89e",
+      "renderer": "GPU offscreen (root supplied)"
+    },
+    {
+      "plugin": "burst_gs",
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/burst_gs.png",
+      "native_mtime": 1790524582.5783017,
+      "native_factory": "chisurf.plugins.burst.burst_gs.gui.app:create_app",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_gs.json",
+      "qt_status": "captured",
+      "qt_source_revision": "966c5f6c78c4ffb3f8022ec8285a27fb6e37cf0a",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_gs.png"
+      ],
+      "qt_control_count": 258,
+      "qt_tooltip_control_count": 86,
+      "source_newer_than_screenshot": [],
+      "visual_verdict": {
+        "score": 88,
+        "verdict": "revise",
+        "category_match": true,
+        "differences": [
+          "Native startup places many parameters in one dense sidebar; file list and derived state/rate views are not populated.",
+          "Qt separate Rates/States/State populations/Transition time views are not demonstrated by the default native report/plot."
+        ],
+        "suggestions": [
+          "Capture simulation and real-fit results showing rate matrix, populations, state efficiencies and transition profile.",
+          "Group secondary parameters and keep fitting actions visible at smaller sizes."
+        ],
+        "reasoning": "Source contains the additional derived tables, so their absence in the startup image is an evidence gap rather than a claimed missing implementation."
+      },
+      "behavioral_evidence_gaps": [
+        "Simulation and real TTTR/burst fitting.",
+        "Rate/state/population/transition outputs, CSV, cancellation, H2MM cross-check and timing units."
+      ],
+      "acceptance": {
+        "default_visual_only": false,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified",
+      "native_sha256": "f9adb92ae5ce11bf69deb91f7e73fca60bf1bde9a16e09f4a7fa9f7b827559b1",
+      "renderer": "GPU offscreen (root supplied)"
+    },
+    {
+      "plugin": "burst_browser",
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/burst_browser.png",
+      "native_mtime": 1790524576.1095505,
+      "native_factory": "chisurf.plugins.burst.burst_browser.gui.app:create_app",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_browser.json",
+      "qt_status": "captured",
+      "qt_source_revision": "0b379d3c4eb59a247a1e4f75a447d64ab862c323",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_browser.png"
+      ],
+      "qt_control_count": 55,
+      "qt_tooltip_control_count": 1,
+      "source_newer_than_screenshot": [
+        "chisurf/plugins/burst/burst_browser/gui/controller.py",
+        "chisurf/plugins/burst/burst_browser/gui/app.py"
+      ],
+      "visual_verdict": {
+        "score": 91,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Detector and Histogram column labels now identify the empty dropdowns.",
+          "Table/histogram/gates remain unloaded."
+        ],
+        "suggestions": [
+          "Capture loaded selection/gates and export results; retain the clearer labels."
+        ],
+        "reasoning": "Fresh GPU startup image independently reviewed; the noted visual changes do not establish loaded workflow, tooltip or full-port acceptance."
+      },
+      "behavioral_evidence_gaps": [
+        "Loaded table selection, detector-specific gate ranges and histogram updates.",
+        "Gate/selected export, folder/file/database inputs and cancellation."
+      ],
+      "acceptance": {
+        "default_visual_only": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified",
+      "native_sha256": "c6315f9ed4f893ad360620d54b2bc975bab6ae28a6168e1d83722a4281250af0",
+      "renderer": "GPU offscreen (root supplied)"
+    },
+    {
+      "plugin": "burst_fusion",
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/burst_fusion.png",
+      "native_mtime": 1790524581.1790218,
+      "native_factory": "chisurf.plugins.burst.burst_fusion.gui.app:create_app",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_fusion.json",
+      "qt_status": "captured",
+      "qt_source_revision": "3ed1f1f30d9bd0509e6114164fefa2c5028c9d62",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_fusion.png"
+      ],
+      "qt_control_count": 141,
+      "qt_tooltip_control_count": 42,
+      "source_newer_than_screenshot": [
+        "chisurf/plugins/burst/burst_fusion/gui/controller.py",
+        "chisurf/plugins/burst/burst_fusion/gui/app.py"
+      ],
+      "visual_verdict": {
+        "score": 88,
+        "verdict": "revise",
+        "category_match": true,
+        "differences": [
+          "Estimate options and file type are now visible.",
+          "The empty summary still has no visible Unit column; populated quantities must make units explicit."
+        ],
+        "suggestions": [
+          "Capture populated summary/diagnostics and confirm units, then verify export and estimate/fuse choices."
+        ],
+        "reasoning": "Fresh GPU startup image independently reviewed; the noted visual changes do not establish loaded workflow, tooltip or full-port acceptance."
+      },
+      "behavioral_evidence_gaps": [
+        "Fuse versus estimate, settings/load/export and input data handling.",
+        "Summary units, populated five diagnostic plots, selection lineage and cancellation."
+      ],
+      "acceptance": {
+        "default_visual_only": false,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified",
+      "native_sha256": "a82b62594e4d9cda1a1485bb74b3ae235ac59eedfbe058857462a4fbfea8b2ef",
+      "renderer": "GPU offscreen (root supplied)"
+    },
+    {
+      "plugin": "calculators",
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/calculators.png",
+      "native_mtime": 1790524585.7534184,
+      "native_factory": "chisurf.plugins.calculator.hub.gui.app:make_app",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__hub.json",
+      "qt_status": "captured",
+      "qt_source_revision": "fb88d4978b095729a01635529878ddc63e29f2a5",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__hub.png"
+      ],
+      "qt_control_count": 129,
+      "qt_tooltip_control_count": 52,
+      "source_newer_than_screenshot": [],
+      "visual_verdict": {
+        "score": 82,
+        "verdict": "revise",
+        "category_match": true,
+        "differences": [
+          "The embedded FRET form retains a very tall empty parameter pane while plots dominate the right.",
+          "The initial hub image shows only the FRET page, not all calculator pages or nested popup/dock layouts."
+        ],
+        "suggestions": [
+          "Apply shared label-aware forms consistently inside hub content.",
+          "Capture each hub page and verify embedded controls/popups/close lifecycles stay within the hub viewport."
+        ],
+        "reasoning": "The navigation category is preserved; one selected page cannot verify the complete hub."
+      },
+      "behavioral_evidence_gaps": [
+        "Every hub page and nested tooltip/popup/dock behavior.",
+        "Page switching, computation, cancellation and resource cleanup."
+      ],
+      "acceptance": {
+        "default_visual_only": false,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified",
+      "native_sha256": "524673b0262b1493b32bc840f0205f5c63add829d1f5841f55758c85830d8a95",
+      "renderer": "GPU offscreen (root supplied)"
+    },
+    {
+      "plugin": "fret_calculator",
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/fret_calculator.png",
+      "native_mtime": 1790524595.8970175,
+      "native_factory": "chisurf.plugins.calculator.fret_calculator.gui.app:make_app",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__fret_calculator.json",
+      "qt_status": "captured",
+      "qt_source_revision": "9d0f8455d4b996d37309c7481edeaca934bf9d7d",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__fret_calculator.png"
+      ],
+      "qt_control_count": 49,
+      "qt_tooltip_control_count": 0,
+      "source_newer_than_screenshot": [],
+      "visual_verdict": {
+        "score": 90,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Native default HeteroFRET parameters and two distribution plots are visible; HomoFRET is not opened.",
+          "The new layout differs from Qt but does not visibly clip the main parameter units."
+        ],
+        "suggestions": [
+          "Capture HomoFRET and each linked conversion input direction.",
+          "Verify distribution/chi toggles and tooltip explanations against backend golden values."
+        ],
+        "reasoning": "The startup calculator is visually coherent; hidden mode and conversion correctness remain outside the screenshot claim."
+      },
+      "behavioral_evidence_gaps": [
+        "HeteroFRET distance/efficiency/lifetime/rate conversion directions.",
+        "HomoFRET exchange/backmap, both distributions and hover behavior."
+      ],
+      "acceptance": {
+        "default_visual_only": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified",
+      "native_sha256": "f42e03310405c02f950d46b0cf5fde37e36a45889bdb65bb1b4bd8a87289322e",
+      "renderer": "GPU offscreen (root supplied)"
+    },
+    {
+      "plugin": "phasor_calculator",
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/phasor_calculator.png",
+      "native_mtime": 1790524605.5958915,
+      "native_factory": "chisurf.plugins.calculator.phasor_calculator.gui.app:make_app",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__phasor_calculator.json",
+      "qt_status": "captured",
+      "qt_source_revision": "0289fabcc148e021739eddf135b1250668dc23c6",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__phasor_calculator.png"
+      ],
+      "qt_control_count": 104,
+      "qt_tooltip_control_count": 59,
+      "source_newer_than_screenshot": [],
+      "visual_verdict": {
+        "score": 91,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Default geometry and reference-lifetime table remain readable.",
+          "Collapsed two-component/mixing/cursor sections are not compared in this image."
+        ],
+        "suggestions": [
+          "Capture two-component, mixing-region and cursor states with all reference geometry toggles.",
+          "Verify frequency/harmonic/CSV lifetime controls and scientific coordinate readouts."
+        ],
+        "reasoning": "Default semicircle/lifetime geometry is clear and the scientific category matches; interactive geometry remains unverified."
+      },
+      "behavioral_evidence_gaps": [
+        "Frequency/harmonic changes and reference lifetime parsing.",
+        "Polar grid, FRET trajectory, mixture line/region and cursor readouts."
+      ],
+      "acceptance": {
+        "default_visual_only": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified",
+      "native_sha256": "b97e83da662bba27768aa537b3bab2fa7a9926c1c4e0b41ec3991ef79a083a8c",
+      "renderer": "GPU offscreen (root supplied)"
+    },
+    {
+      "plugin": "kappa2_dist",
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/kappa2_dist.png",
+      "native_mtime": 1790524602.4110384,
+      "native_factory": "chisurf.plugins.calculator.kappa2_dist.gui.app:make_app",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__kappa2_dist.json",
+      "qt_status": "captured",
+      "qt_source_revision": "d52ac24af10e3060237693f02aac5ba25d3650f8",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__kappa2_dist.png"
+      ],
+      "qt_control_count": 87,
+      "qt_tooltip_control_count": 33,
+      "source_newer_than_screenshot": [],
+      "visual_verdict": {
+        "score": 90,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Computed statistics are now visible.",
+          "True-kappa tag still overlaps x-axis tick labeling; archived Qt numbers predate scientific fixes."
+        ],
+        "suggestions": [
+          "Offset the annotation and compare current seeded backend/adapter values, not pre-fix archive numbers."
+        ],
+        "reasoning": "Fresh GPU startup image independently reviewed; the noted visual changes do not establish loaded workflow, tooltip or full-port acceptance."
+      },
+      "behavioral_evidence_gaps": [
+        "WIC, diffusion and isotropic modes, angular/bin controls and bounds.",
+        "Result numeric visibility, true-kappa drag/tooltip, delta-known and saved distributions."
+      ],
+      "acceptance": {
+        "default_visual_only": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified",
+      "native_sha256": "4125742e9d13dfa8bfddfd669488e879950064fe7e462d8e921452509dcb1e74",
+      "renderer": "GPU offscreen (root supplied)"
+    },
+    {
+      "plugin": "psf_calculator",
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/psf_calculator.png",
+      "native_mtime": 1790524608.54624,
+      "native_factory": "chisurf.plugins.calculator.psf_calculator.gui.app:make_app",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__psf_calculator.json",
+      "qt_status": "captured",
+      "qt_source_revision": "650b488974fa44cbb80a8c14a590ef3e3f7b1c72",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__psf_calculator.png"
+      ],
+      "qt_control_count": 153,
+      "qt_tooltip_control_count": 49,
+      "source_newer_than_screenshot": [],
+      "visual_verdict": {
+        "score": 90,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Native and Qt startup states both leave the volume view unpopulated.",
+          "Native says Not computed yet and Computing, so this image is an intermediate state rather than completed optical output."
+        ],
+        "suggestions": [
+          "Capture completed volume and each orthogonal slice before accepting rendering parity.",
+          "Verify optical/polarization/display controls, cancellation and NPY/TIFF exports on actual computed data."
+        ],
+        "reasoning": "The initial parameter layout is usable; no volume-rendering or compute correctness claim is supported by this frame."
+      },
+      "behavioral_evidence_gaps": [
+        "Scalar/vector optical modes, polarization, quality and spatial sampling.",
+        "3D volume, XY/XZ/YZ slice interaction, threshold/gamma/colormap and exports."
+      ],
+      "acceptance": {
+        "default_visual_only": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified",
+      "native_sha256": "b20d8f1c8d3e983d476d0bfbca5cf9a38684878aa1e8d9f7470433e352134479",
+      "renderer": "GPU offscreen (root supplied)"
+    },
+    {
+      "plugin": "rics_precision",
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/rics_precision.png",
+      "native_mtime": 1790524610.3633363,
+      "native_factory": "chisurf.plugins.calculator.rics_precision.gui.app:make_app",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__rics_precision.json",
+      "qt_status": "captured",
+      "qt_source_revision": "HEAD",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__rics_precision.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__rics_precision__tabs_0_0.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__rics_precision__tabs_1_0.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__rics_precision__tabs_1_1.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__rics_precision__tabs_2_0.png"
+      ],
+      "qt_control_count": 144,
+      "qt_tooltip_control_count": 50,
+      "source_newer_than_screenshot": [],
+      "visual_verdict": {
+        "score": 91,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Default settings and prediction table/plot categories remain recognizable.",
+          "Estimator settings are collapsed and Predict has not populated numbers or curves."
+        ],
+        "suggestions": [
+          "Capture expanded estimator options and a completed dwell sweep.",
+          "Compare numeric prediction table and CSV with the same Qt/backend settings."
+        ],
+        "reasoning": "Default settings are readable; computed precision and secondary estimator modes remain unverified."
+      },
+      "behavioral_evidence_gaps": [
+        "Sample/optics/scan/estimator choices and physical units.",
+        "Predicted dwell sweep, line/frame times, numeric table and CSV."
+      ],
+      "acceptance": {
+        "default_visual_only": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified",
+      "native_sha256": "3235b7d43569a22111873b98a69b61b724bdfa1313c2788fd762ce0d96b9214e",
+      "renderer": "GPU offscreen (root supplied)"
+    },
+    {
+      "plugin": "fcs_saturation",
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/fcs_saturation.png",
+      "native_mtime": 1790524594.5190673,
+      "native_factory": "chisurf.plugins.calculator.fcs_saturation_calc.gui.app:make_app",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__fcs_saturation_calc.json",
+      "qt_status": "captured",
+      "qt_source_revision": "HEAD",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__fcs_saturation_calc.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__fcs_saturation_calc__tabs_0_0.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__fcs_saturation_calc__tabs_0_1.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__fcs_saturation_calc__tabs_0_2.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__fcs_saturation_calc__tabs_1_0.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__fcs_saturation_calc__tabs_2_0.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__fcs_saturation_calc__tabs_3_0.png"
+      ],
+      "qt_control_count": 390,
+      "qt_tooltip_control_count": 79,
+      "source_newer_than_screenshot": [],
+      "visual_verdict": {
+        "score": 88,
+        "verdict": "revise",
+        "category_match": true,
+        "differences": [
+          "Main field labels are now above controls and fitting-state/bounds editors are represented.",
+          "Some directed-rate captions still sit at the narrow pane edge; only the state-diagram tab is open."
+        ],
+        "suggestions": [
+          "Capture constraint editing and all completed prediction/profile/fit tabs.",
+          "Keep captions readable at narrow widths."
+        ],
+        "reasoning": "Fresh GPU startup image independently reviewed; the noted visual changes do not establish loaded workflow, tooltip or full-port acceptance."
+      },
+      "behavioral_evidence_gaps": [
+        "Arbitrary schemes/state counts, directed rates, brightness and fixed/bounds editing.",
+        "FCS/residual/volume/power/diffusion views, toggles and scheme/session persistence."
+      ],
+      "acceptance": {
+        "default_visual_only": false,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified",
+      "native_sha256": "d650364a224a9ca5ea57b5e560d6fb26cac48143159359ebdf20f75e6c69ab06",
+      "renderer": "GPU offscreen (root supplied)"
+    },
+    {
+      "plugin": "fcs_calculator",
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/fcs_calculator.png",
+      "native_mtime": 1790524590.4678566,
+      "native_factory": "chisurf.plugins.fcs.fcs_calculator.gui.app:make_app",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/fcs__fcs_calculator.json",
+      "qt_status": "captured",
+      "qt_source_revision": "95de1f83447859fecb7588e5f3bdc8046993b31a",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/fcs__fcs_calculator.png"
+      ],
+      "qt_control_count": 53,
+      "qt_tooltip_control_count": 0,
+      "source_newer_than_screenshot": [],
+      "visual_verdict": {
+        "score": 87,
+        "verdict": "revise",
+        "category_match": true,
+        "differences": [
+          "Numeric parameter labels now sit above their fields.",
+          "Some combo labels still hug or clip at the right border."
+        ],
+        "suggestions": [
+          "Use visible above-field labels for constraint/reference/shape choices.",
+          "Verify each physical constraint, reference/shape model and persistence path."
+        ],
+        "reasoning": "Fresh GPU startup image independently reviewed; the noted visual changes do not establish loaded workflow, tooltip or full-port acceptance."
+      },
+      "behavioral_evidence_gaps": [
+        "Fix D/r_h/Veff and coupled occupancy/concentration.",
+        "Water viscosity, reference scaling, sphere/ellipsoid/cylinder and JSON round trips."
+      ],
+      "acceptance": {
+        "default_visual_only": false,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified",
+      "native_sha256": "45c198756b61d93ef04c78aa473e98227a8d48c4dbb684323a20e1feaa1edf31",
+      "renderer": "GPU offscreen (root supplied)"
+    },
+    {
+      "plugin": "fret_line",
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/fret_line.png",
+      "native_mtime": 1790524597.3888006,
+      "native_factory": "chisurf.plugins.fret_line.gui.app:make_app",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/fret_line.json",
+      "qt_status": "captured",
+      "qt_source_revision": "HEAD",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/fret_line.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/fret_line__tabs_1_0.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/fret_line__tabs_1_1.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/fret_line__tabs_2_0.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/fret_line__tabs_3_0.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/fret_line__tabs_3_1.png",
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/fret_line__tabs_3_2.png"
+      ],
+      "qt_control_count": 430,
+      "qt_tooltip_control_count": 39,
+      "source_newer_than_screenshot": [],
+      "visual_verdict": {
+        "score": 91,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Sweep/Add FRET line/CSV/overlay controls are now visible in a dedicated pane.",
+          "Live-model donor-reference caption still clips slightly."
+        ],
+        "suggestions": [
+          "Pad the donor-reference caption and capture multiple computed line/sweep states."
+        ],
+        "reasoning": "Fresh GPU startup image independently reviewed; the noted visual changes do not establish loaded workflow, tooltip or full-port acceptance."
+      },
+      "behavioral_evidence_gaps": [
+        "Component/subcomponent models, canonical values/fixed/bounds, live donor reference and sweep targets.",
+        "Add/remove/show/hide/clear lines, CSV and ndX overlays."
+      ],
+      "acceptance": {
+        "default_visual_only": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified",
+      "native_sha256": "87620581b21305f3cb2f22c07858e9051f8bd4a0d681c7002968fbb1b888c892",
+      "renderer": "GPU offscreen (root supplied)"
+    },
+    {
+      "plugin": "fcs_filter_calculator",
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/fcs_filter_calculator.png",
+      "native_mtime": 1790524591.7346718,
+      "native_factory": "chisurf.plugins.fcs.fcs_filter_calculator.gui.app:create_app",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/fcs__fcs_filter_calculator.json",
+      "qt_status": "captured",
+      "qt_source_revision": "4a57426a5ab01e9c4059e860312f6890b526a2d0",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/fcs__fcs_filter_calculator.png"
+      ],
+      "qt_control_count": 50,
+      "qt_tooltip_control_count": 2,
+      "source_newer_than_screenshot": [
+        "chisurf/plugins/fcs/fcs_filter_calculator/gui/model.py",
+        "chisurf/plugins/fcs/fcs_filter_calculator/gui/scientific.py",
+        "chisurf/plugins/fcs/fcs_filter_calculator/gui/app.py"
+      ],
+      "visual_verdict": {
+        "score": 82,
+        "verdict": "revise",
+        "category_match": true,
+        "differences": [
+          "Fresh GPU shows an empty/disabled startup state instead of the prior populated reconstruction.",
+          "The old 240-decade range issue cannot be assessed from these empty plots."
+        ],
+        "suggestions": [
+          "Capture the completed same synthetic/project state in GPU and Qt.",
+          "Show clear busy/loading status when the controls are disabled."
+        ],
+        "reasoning": "Fresh GPU startup image independently reviewed; the noted visual changes do not establish loaded workflow, tooltip or full-port acceptance."
+      },
+      "behavioral_evidence_gaps": [
+        "Matching loaded-project reconstruction/filter/residual outputs.",
+        "All source types, detector/polarized/global modes, fit range, auto-fit, instrument settings, unmix and persistence."
+      ],
+      "acceptance": {
+        "default_visual_only": false,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified",
+      "native_sha256": "f533ae111fe416cced8782df40dc76ca43db46a57bfea4c5f38e7c84c97c0e4b",
+      "renderer": "GPU offscreen (root supplied)"
+    },
+    {
+      "plugin": "fcs_merger",
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/fcs_merger.png",
+      "native_mtime": 1790524593.046447,
+      "native_factory": "chisurf.plugins.fcs.fcs_merger.gui.app:create_app",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/fcs__fcs_merger.json",
+      "qt_status": "captured",
+      "qt_source_revision": "HEAD",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/fcs__fcs_merger.png"
+      ],
+      "qt_control_count": 69,
+      "qt_tooltip_control_count": 2,
+      "source_newer_than_screenshot": [
+        "chisurf/plugins/fcs/fcs_merger/gui/app.py"
+      ],
+      "visual_verdict": {
+        "score": 92,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Input/output paths now have clear labels and placeholders.",
+          "Curve selection/merged output remains empty."
+        ],
+        "suggestions": [
+          "Capture several loaded curves with use toggles and actual merged/save/host behavior."
+        ],
+        "reasoning": "Fresh GPU startup image independently reviewed; the noted visual changes do not establish loaded workflow, tooltip or full-port acceptance."
+      },
+      "behavioral_evidence_gaps": [
+        "File/folder load errors, curve selection and interpolation/weighting/uncertainty rules.",
+        "Merged outputs, save/save-as/Add to ChiSurf, clear/remove and hover behavior."
+      ],
+      "acceptance": {
+        "default_visual_only": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified",
+      "native_sha256": "590ea777d3118e1671efc9368a86573f2d632a840800a04be7841929dc2a622f",
+      "renderer": "GPU offscreen (root supplied)"
+    },
+    {
+      "plugin": "code_editor",
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/code_editor.png",
+      "native_mtime": 1790524587.1298158,
+      "native_factory": "chisurf.plugins.core.code_editor.gui.editor_app:make_editor_app",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/core__code_editor.json",
+      "qt_status": "captured",
+      "qt_source_revision": "32d691334b1ffd1109bb1df7e24b4101d4b837f9",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/core__code_editor.png"
+      ],
+      "qt_control_count": 46,
+      "qt_tooltip_control_count": 1,
+      "source_newer_than_screenshot": [
+        "chisurf/plugins/core/code_editor/gui/editor_app.py",
+        "chisurf/plugins/core/code_editor/gui/notebook_app.py"
+      ],
+      "visual_verdict": {
+        "score": 84,
+        "verdict": "revise",
+        "category_match": true,
+        "differences": [
+          "Document/dock close icons remain present.",
+          "Python Console sidebar label still clips, and no context/dirty/multiple-document states are shown."
+        ],
+        "suggestions": [
+          "Provide discoverable overflow/full-title access and actual context/close/activation evidence."
+        ],
+        "reasoning": "Fresh GPU startup image independently reviewed; the noted visual changes do not establish loaded workflow, tooltip or full-port acceptance."
+      },
+      "behavioral_evidence_gaps": [
+        "File dock/document tab/dock-header context menus and all close/reopen actions.",
+        "Open/new activation, save-as/cancel, runtime modes/stop, Ruff/LSP/notebook and actual hover tooltips."
+      ],
+      "acceptance": {
+        "default_visual_only": false,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified",
+      "native_sha256": "20479f6cd778e049f24ef3eaf397b4f178d4b3d08b397dfcb4071d98c1a7cb88",
+      "renderer": "GPU offscreen (root supplied)"
+    },
+    {
+      "plugin": "help",
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/help.png",
+      "native_mtime": 1790524599.4188085,
+      "native_factory": "chisurf.plugins.core.help.gui.help_app:make_help_app",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/core__help.json",
+      "qt_status": "captured",
+      "qt_source_revision": "d26edb928123ad482a29e841e9d48ed6fbc4e155",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/core__help.png"
+      ],
+      "qt_control_count": 89,
+      "qt_tooltip_control_count": 17,
+      "source_newer_than_screenshot": [],
+      "visual_verdict": {
+        "score": 93,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Address entry and neutral virtual-page status are restored.",
+          "Rich exact GPU fixture now has correct heading, math, table, figure/note/link rendering."
+        ],
+        "suggestions": [
+          "Verify actual address/anchor/citation/search/source/review/hover/provider interactions separately."
+        ],
+        "reasoning": "Fresh GPU startup image independently reviewed; the noted visual changes do not establish loaded workflow, tooltip or full-port acceptance."
+      },
+      "behavioral_evidence_gaps": [
+        "Rich document layout, address/source/cite links, internal/external anchors and navigation history.",
+        "Search, source save/cancel, review persistence, Ask Docs/provider/error states and tooltips."
+      ],
+      "acceptance": {
+        "default_visual_only": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified",
+      "native_sha256": "5a0c932bbd8ba9334fadf4a5951179a7cdfd5c61cf75d9356a9d192939b82a48",
+      "renderer": "GPU offscreen (root supplied)"
+    },
+    {
+      "plugin": "f_test",
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/f_test.png",
+      "native_mtime": 1790524589.0540807,
+      "native_factory": "chisurf.plugins.core.f_test.gui.app:make_app",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/core__f_test.json",
+      "qt_status": "captured",
+      "qt_source_revision": "d7421cd7c9f1e8cc4c2e6531d4af56d8165e2cfd",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/core__f_test.png"
+      ],
+      "qt_control_count": 55,
+      "qt_tooltip_control_count": 34,
+      "source_newer_than_screenshot": [],
+      "visual_verdict": {
+        "score": 90,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Native two-panel layout preserves both nested-fit and chi-square-limit forms.",
+          "Default screenshot has no live fit to demonstrate the new fit-selection integration."
+        ],
+        "suggestions": [
+          "Retain readable form labels and capture loading each model from live fits.",
+          "Verify valid/invalid inputs, degrees of freedom, linked confidence/output behavior and hover descriptions."
+        ],
+        "reasoning": "Both initial statistical forms are legible; visual pass is limited to this default frame."
+      },
+      "behavioral_evidence_gaps": [
+        "Both statistical calculations and invalid/boundary inputs.",
+        "Live-fit refresh/load and tooltip behavior."
+      ],
+      "acceptance": {
+        "default_visual_only": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified",
+      "native_sha256": "ae850d8b8716d698962dabc0b73c6e77b96eb5155ece6f6bb48f39809d2100eb",
+      "renderer": "GPU offscreen (root supplied)"
+    },
+    {
+      "plugin": "tttr_splitter",
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/tttr_splitter.png",
+      "native_mtime": 1790524614.649352,
+      "native_factory": "chisurf.plugins.tttr.tttr_splitter.gui.controller:create_app",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/tttr__tttr_splitter.json",
+      "qt_status": "captured",
+      "qt_source_revision": "d44520c8ef8e67cb0d3ec493c8649aaad64cdc03",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/tttr__tttr_splitter.png"
+      ],
+      "qt_control_count": 20,
+      "qt_tooltip_control_count": 2,
+      "source_newer_than_screenshot": [],
+      "visual_verdict": {
+        "score": 92,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Main input/output/options/batch controls remain visible and clearly grouped.",
+          "Batch queue, progress, cancellation and output files are absent from the startup image."
+        ],
+        "suggestions": [
+          "Capture a queued batch and actual conversion/split progress with the same Qt options.",
+          "Verify all formats, units, microtime binning/reset/keep-original, folder/database inputs and stop semantics."
+        ],
+        "reasoning": "Default layout improves visibility of batch options; successful conversion is not proven by its presence."
+      },
+      "behavioral_evidence_gaps": [
+        "Single and batch splitting/conversion with real TTTR data.",
+        "Chunk/file cancellation, output location/format/content, queue remove/clear and tooltips."
+      ],
+      "acceptance": {
+        "default_visual_only": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified",
+      "native_sha256": "22db4a18df1c588fe4843150ae9322dc8844db6682c117f2619aca4b95368cca",
+      "renderer": "GPU offscreen (root supplied)"
+    },
+    {
+      "plugin": "tttr_time_windows",
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/tttr_time_windows.png",
+      "native_mtime": 1790524615.9950795,
+      "native_factory": "chisurf.plugins.tttr.tttr_time_windows.gui.controller:create_app",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/tttr__tttr_time_windows.json",
+      "qt_status": "captured",
+      "qt_source_revision": "df0ce04f7df5f58966b99b4c6736129381e110ad",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/tttr__tttr_time_windows.png"
+      ],
+      "qt_control_count": 78,
+      "qt_tooltip_control_count": 13,
+      "source_newer_than_screenshot": [],
+      "visual_verdict": {
+        "score": 91,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Input, settings, intensity preview and log panes are clearly separated.",
+          "Startup has no selected file or populated trace/window boundaries."
+        ],
+        "suggestions": [
+          "Capture a real trace with edited window duration and processed log/output.",
+          "Exercise Files/Folder/Database/Remove, output chooser, progress/cancel and physical time units."
+        ],
+        "reasoning": "Default control hierarchy is coherent; trace and generated-window correctness remain unverified."
+      },
+      "behavioral_evidence_gaps": [
+        "Supported formats/compression, selected-file previews and duration changes.",
+        "Window BID output, per-file counts, cancellation/partial-output semantics and tooltips."
+      ],
+      "acceptance": {
+        "default_visual_only": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified",
+      "native_sha256": "ecbc2c6974f80c64aff33ffea5dfb6a844b159f6fd1d8009e6525527f85ad084",
+      "renderer": "GPU offscreen (root supplied)"
+    },
+    {
+      "plugin": "photon_table",
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/photon_table.png",
+      "native_mtime": 1790524607.0544124,
+      "native_factory": "chisurf.plugins.tttr.photon_table.gui.controller:create_app",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/tttr__photon_table.json",
+      "qt_status": "failed",
+      "qt_source_revision": null,
+      "qt_images": [],
+      "qt_control_count": 0,
+      "qt_tooltip_control_count": 0,
+      "source_newer_than_screenshot": [],
+      "visual_verdict": {
+        "score": 0,
+        "verdict": "fail",
+        "category_match": false,
+        "differences": [
+          "No genuine original Qt reference is available in the captured history, so visual parity cannot be scored.",
+          "Native screenshot is an empty table; paging/channel/copy behavior is not demonstrated."
+        ],
+        "suggestions": [
+          "Establish an original/approved baseline or explicitly document that this plugin began as native.",
+          "Capture populated photons and test time units, channel filtering, paging and copy-visible behavior."
+        ],
+        "reasoning": "Comparison is blocked by unavailable Qt baseline; score 0 is not a judgment of native visual quality."
+      },
+      "behavioral_evidence_gaps": [
+        "Reference availability.",
+        "Real TTTR table contents, paging/filtering/clipboard, asynchronous load cancellation and hover behavior."
+      ],
+      "acceptance": {
+        "default_visual_only": false,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified",
+      "native_sha256": "439ba076fabde55bdfa60fb453ac1830e967e70364c7444b9ebe4d03fbd76c07",
+      "renderer": "GPU offscreen (root supplied)"
+    },
+    {
+      "plugin": "irf_estimator",
+      "visual_verdict": {
+        "score": 91,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Initial IRF settings and output panes are readable; no decay/IRF/result numbers are loaded."
+        ],
+        "suggestions": [
+          "Capture loaded matched workflows and complete controls/hover interactions before acceptance."
+        ],
+        "reasoning": "Fresh GPU default frame compared with its genuine Qt initial reference; empty panes only establish layout and control presence."
+      },
+      "behavioral_evidence_gaps": [
+        "Loaded curve/dataset, background/range/auto-update, fitted parameters, save/host transfer and tooltip interactions."
+      ],
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/irf_estimator.png",
+      "native_sha256": "9de014054073a4e914ebadeccabd94bdcf7fb62c81f524a8e6cf44b9eff2b074",
+      "native_mtime": 1790524600.8108466,
+      "renderer": "GPU offscreen (root supplied)",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/fluorescence_decay__irf_estimator.json",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/fluorescence_decay__irf_estimator.png"
+      ],
+      "acceptance": {
+        "default_visual_only": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified"
+    },
+    {
+      "plugin": "synthetic_decay",
+      "visual_verdict": {
+        "score": 91,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Lifetime/rotation spectra and generator controls are represented; decay/anisotropy outputs are empty."
+        ],
+        "suggestions": [
+          "Capture loaded matched workflows and complete controls/hover interactions before acceptance."
+        ],
+        "reasoning": "Fresh GPU default frame compared with its genuine Qt initial reference; empty panes only establish layout and control presence."
+      },
+      "behavioral_evidence_gaps": [
+        "VM/VV-VH modes and corrections, noise/seed/IRF options, generation, fit-group creation and saved data."
+      ],
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/synthetic_decay.png",
+      "native_sha256": "c83e276d51286813ee23999611c077ebaa7cb8ef9e35adc7731242a09c71900e",
+      "native_mtime": 1790524612.0307288,
+      "renderer": "GPU offscreen (root supplied)",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/fluorescence_decay__synthetic_decay.json",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/fluorescence_decay__synthetic_decay.png"
+      ],
+      "acceptance": {
+        "default_visual_only": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified"
+    },
+    {
+      "plugin": "psf_determination",
+      "visual_verdict": {
+        "score": 90,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Bead image/profile/results panes and optical/ROI/detection controls are present; no stack or fitted bead is shown."
+        ],
+        "suggestions": [
+          "Capture loaded matched workflows and complete controls/hover interactions before acceptance."
+        ],
+        "reasoning": "Fresh GPU default frame compared with its genuine Qt initial reference; empty panes only establish layout and control presence."
+      },
+      "behavioral_evidence_gaps": [
+        "Actual stack loading, detection/selection, image/pixel/ROI interactions, all profile axes, fits/progress and exported physical units."
+      ],
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/psf_determination.png",
+      "native_sha256": "aa0f9d898da991f2cdba5e90f8a31ec860e856e5cb196ccc8078ee24b997e04e",
+      "native_mtime": 1790525680.1405768,
+      "renderer": "GPU offscreen (root supplied)",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/microscopy__psf_determination.json",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/microscopy__psf_determination.png"
+      ],
+      "acceptance": {
+        "default_visual_only": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified"
+    },
+    {
+      "plugin": "spot_finder",
+      "visual_verdict": {
+        "score": 90,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Workflow/detector/picking/region sections are represented; image, regions and run table are empty."
+        ],
+        "suggestions": [
+          "Capture loaded matched workflows and complete controls/hover interactions before acceptance."
+        ],
+        "reasoning": "Fresh GPU default frame compared with its genuine Qt initial reference; empty panes only establish layout and control presence."
+      },
+      "behavioral_evidence_gaps": [
+        "All detector/workflow/filter/pick modes, region shape/combine/save/load, real detection and measurement container outputs."
+      ],
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/spot_finder.png",
+      "native_sha256": "c64b2f7a305ad23c4b6517cbfb94f75e2aa2dd86650cee718d37376f11b586bc",
+      "native_mtime": 1790525681.6025627,
+      "renderer": "GPU offscreen (root supplied)",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/microscopy__spot_finder.json",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/microscopy__spot_finder.png"
+      ],
+      "acceptance": {
+        "default_visual_only": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified"
+    },
+    {
+      "plugin": "microtime_shifter",
+      "visual_verdict": {
+        "score": 91,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "File/shift/batch/database controls are represented; per-channel shifts require loaded photons."
+        ],
+        "suggestions": [
+          "Capture loaded matched workflows and complete controls/hover interactions before acceptance."
+        ],
+        "reasoning": "Fresh GPU default frame compared with its genuine Qt initial reference; empty panes only establish layout and control presence."
+      },
+      "behavioral_evidence_gaps": [
+        "Per-channel/global/wrap/auto-align shifts, trigger/log states, batch/saved TTTR contents and MMFDB registration."
+      ],
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/microtime_shifter.png",
+      "native_sha256": "aec3c608b19d77a53ded7795e77e2c2aa8c2632695e98bdb407402a51820a93b",
+      "native_mtime": 1790524603.7478023,
+      "renderer": "GPU offscreen (root supplied)",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/tttr__tttr_microtime_shifter.json",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/tttr__tttr_microtime_shifter.png"
+      ],
+      "acceptance": {
+        "default_visual_only": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified"
+    },
+    {
+      "plugin": "tttr_count_rate_analysis",
+      "visual_verdict": {
+        "score": 68,
+        "verdict": "revise",
+        "category_match": true,
+        "differences": [
+          "Saved-setup chooser is represented but Edit setup currently opens raw JSON/in-memory setup edits.",
+          "Original Qt complete Channel Definition workflow is not represented by this current count-rate controller."
+        ],
+        "suggestions": [
+          "Capture loaded matched workflows and complete controls/hover interactions before acceptance."
+        ],
+        "reasoning": "Fresh GPU default frame compared with its genuine Qt initial reference; empty panes only establish layout and control presence."
+      },
+      "behavioral_evidence_gaps": [
+        "Structured setup/calibration/reader/PIE/TAC/optical parity and persistence.",
+        "Real per-channel count rates/time units, aggregate/save/dataset/file/folder/cancellation/hover flows."
+      ],
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-gpu-r2/tttr_count_rate_analysis.png",
+      "native_sha256": "99c0889f21fedf067ef2de862f6334e99586d735e0709cedebbbfa6a492c3e6d",
+      "native_mtime": 1790524613.2822614,
+      "renderer": "GPU offscreen (root supplied)",
+      "qt_reference": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/tttr__tttr_count_rate_analysis.json",
+      "qt_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/tttr__tttr_count_rate_analysis.png"
+      ],
+      "acceptance": {
+        "default_visual_only": false,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "scope": "Fresh1200x800 GPU startup frame; loaded workflows and hover unverified"
+    }
+  ],
+  "reviewed_at": "2026-09-27T16:45:12.116881+00:00",
+  "summary": {
+    "plugins": 31,
+    "startup_visual_pass": 20,
+    "all_functionality_verified_by_this_audit": 0
+  },
+  "kappa2_provenance_note": {
+    "archived_qt_revision": "d52ac24af10e3060237693f02aac5ba25d3650f8",
+    "later_fixes": [
+      "09eee6e9a unbiased sampling/moments",
+      "3e4bdab73 weighted known-rAD moments"
+    ],
+    "current_seeded_adapter_native_comparison": "Calculator owner reports exact matching values at np.random.seed(123), mean0.6690078029; old0.7447 is historical, not current golden",
+    "independent_numeric_acceptance": false
+  },
+  "additional_scenarios": [
+    {
+      "name": "help-rich-gpu",
+      "source": "/private/tmp/chisurf-native-gpu/help-rich-document.png",
+      "renderer": "GPU offscreen, root supplied",
+      "visual_verdict": {
+        "score": 93,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Native dark monospaced styling differs from Qt while preserving heading hierarchy and all supplied rich content."
+        ],
+        "suggestions": [
+          "Verify address/anchor/citation/search/source/review/hover behavior independently."
+        ],
+        "reasoning": "This independently reviewed raster establishes the visible scenario only; functional, tooltip, scientific and other-backend acceptance remain separate."
+      },
+      "reference_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/help-rich-document/core__help.png"
+      ],
+      "acceptance": {
+        "visible_scenario": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-r2-scenarios/help-rich-gpu.png",
+      "native_sha256": "2db2d598d481e333b736aead6a8ec2febcbdce3237bdc7c506b2e009610004dc"
+    },
+    {
+      "name": "channel-setups",
+      "source": "/private/tmp/channel-definition-native/setups.png",
+      "renderer": "CPU PilPainter, owner confirmed",
+      "visual_verdict": {
+        "score": 92,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Structured editor section is represented; this frame is CPU, not GPU."
+        ],
+        "suggestions": [
+          "Obtain current GPU/narrow/hover and matched actual-data workflow evidence."
+        ],
+        "reasoning": "This independently reviewed raster establishes the visible scenario only; functional, tooltip, scientific and other-backend acceptance remain separate."
+      },
+      "reference_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_irf_bg.png"
+      ],
+      "acceptance": {
+        "visible_scenario": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-r2-scenarios/channel-setups.png",
+      "native_sha256": "0fd9830da0559833056d6210b304ebf533551c4ffdbcd36d496abb3e29854298"
+    },
+    {
+      "name": "channel-reading",
+      "source": "/private/tmp/channel-definition-native/reading.png",
+      "renderer": "CPU PilPainter, owner confirmed",
+      "visual_verdict": {
+        "score": 92,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Structured editor section is represented; this frame is CPU, not GPU."
+        ],
+        "suggestions": [
+          "Obtain current GPU/narrow/hover and matched actual-data workflow evidence."
+        ],
+        "reasoning": "This independently reviewed raster establishes the visible scenario only; functional, tooltip, scientific and other-backend acceptance remain separate."
+      },
+      "reference_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_irf_bg.png"
+      ],
+      "acceptance": {
+        "visible_scenario": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-r2-scenarios/channel-reading.png",
+      "native_sha256": "c13bad7fb7ec3f11f64675d8b8523dd7024d278d420e3953009145958f50123b"
+    },
+    {
+      "name": "channel-detectors",
+      "source": "/private/tmp/channel-definition-native/detectors.png",
+      "renderer": "CPU PilPainter, owner confirmed",
+      "visual_verdict": {
+        "score": 92,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Structured editor section is represented; this frame is CPU, not GPU."
+        ],
+        "suggestions": [
+          "Obtain current GPU/narrow/hover and matched actual-data workflow evidence."
+        ],
+        "reasoning": "This independently reviewed raster establishes the visible scenario only; functional, tooltip, scientific and other-backend acceptance remain separate."
+      },
+      "reference_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_irf_bg.png"
+      ],
+      "acceptance": {
+        "visible_scenario": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-r2-scenarios/channel-detectors.png",
+      "native_sha256": "315fe3b14c8a16d8b91dda7eed611e1a06700189c3409ed0accdf7cbd5b5f2f4"
+    },
+    {
+      "name": "channel-pie",
+      "source": "/private/tmp/channel-definition-native/pie.png",
+      "renderer": "CPU PilPainter, owner confirmed",
+      "visual_verdict": {
+        "score": 92,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Structured editor section is represented; this frame is CPU, not GPU."
+        ],
+        "suggestions": [
+          "Obtain current GPU/narrow/hover and matched actual-data workflow evidence."
+        ],
+        "reasoning": "This independently reviewed raster establishes the visible scenario only; functional, tooltip, scientific and other-backend acceptance remain separate."
+      },
+      "reference_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_irf_bg.png"
+      ],
+      "acceptance": {
+        "visible_scenario": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-r2-scenarios/channel-pie.png",
+      "native_sha256": "b38d10a66a82c1c9e50bd584885b4e236d289febd54337284f410a7e801c2c7a"
+    },
+    {
+      "name": "channel-tac",
+      "source": "/private/tmp/channel-definition-native/tac.png",
+      "renderer": "CPU PilPainter, owner confirmed",
+      "visual_verdict": {
+        "score": 92,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Structured editor section is represented; this frame is CPU, not GPU."
+        ],
+        "suggestions": [
+          "Obtain current GPU/narrow/hover and matched actual-data workflow evidence."
+        ],
+        "reasoning": "This independently reviewed raster establishes the visible scenario only; functional, tooltip, scientific and other-backend acceptance remain separate."
+      },
+      "reference_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_irf_bg.png"
+      ],
+      "acceptance": {
+        "visible_scenario": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-r2-scenarios/channel-tac.png",
+      "native_sha256": "ab7f376020bc8be70dc55f7d7f73c25fcbbbb41d45eb2c7814b69e23bf3e974b"
+    },
+    {
+      "name": "channel-optical",
+      "source": "/private/tmp/channel-definition-native/optical.png",
+      "renderer": "CPU PilPainter, owner confirmed",
+      "visual_verdict": {
+        "score": 86,
+        "verdict": "revise",
+        "category_match": true,
+        "differences": [
+          "Structured editor section is represented; this frame is CPU, not GPU.",
+          "Optical right-edge captions clip; owner reports newer-source fix awaiting a fresh frame."
+        ],
+        "suggestions": [
+          "Obtain current GPU/narrow/hover and matched actual-data workflow evidence."
+        ],
+        "reasoning": "This independently reviewed raster establishes the visible scenario only; functional, tooltip, scientific and other-backend acceptance remain separate."
+      },
+      "reference_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_irf_bg.png"
+      ],
+      "acceptance": {
+        "visible_scenario": false,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-r2-scenarios/channel-optical.png",
+      "native_sha256": "5be22bcf082d4d6dae4f04af9dc7ea0c2af481a858ad6833a1267aaf56016c42"
+    },
+    {
+      "name": "tttr_count_rate_analysis-populated-1200x800",
+      "source": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-native/tttr__tttr_count_rate_analysis-1200x800.png",
+      "renderer": "CPU PilPainter with baked atlas, owner confirmed",
+      "visual_verdict": {
+        "score": 91,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Real Leica_SP5.ptu populated state has readable values and controls.",
+          "Structured setup editor supersedes the pre-fix raw-JSON default.",
+          "High-rate marker clips at upper y boundary; owner is adding padding."
+        ],
+        "suggestions": [
+          "Capture the identical populated GPU state and verify hover, output content, cancellation and persistence independently."
+        ],
+        "reasoning": "This independently reviewed raster establishes the visible scenario only; functional, tooltip, scientific and other-backend acceptance remain separate."
+      },
+      "reference_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/tttr__tttr_count_rate_analysis.png"
+      ],
+      "acceptance": {
+        "visible_scenario": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-r2-scenarios/tttr_count_rate_analysis-populated-1200x800.png",
+      "native_sha256": "6d6a97ae5c0e563647ed137f6d00f6bea6c9f89650c8661f4709481b260fffa5"
+    },
+    {
+      "name": "tttr_count_rate_analysis-populated-800x550",
+      "source": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-native/tttr__tttr_count_rate_analysis-800x550.png",
+      "renderer": "CPU PilPainter with baked atlas, owner confirmed",
+      "visual_verdict": {
+        "score": 91,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Real Leica_SP5.ptu populated state has readable values and controls.",
+          "Structured setup editor supersedes the pre-fix raw-JSON default.",
+          "High-rate marker clips at upper y boundary; owner is adding padding."
+        ],
+        "suggestions": [
+          "Capture the identical populated GPU state and verify hover, output content, cancellation and persistence independently."
+        ],
+        "reasoning": "This independently reviewed raster establishes the visible scenario only; functional, tooltip, scientific and other-backend acceptance remain separate."
+      },
+      "reference_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/tttr__tttr_count_rate_analysis.png"
+      ],
+      "acceptance": {
+        "visible_scenario": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-r2-scenarios/tttr_count_rate_analysis-populated-800x550.png",
+      "native_sha256": "56f0d41af912c10c169d6a78666e98f8d3a7f2eadd5e374eb5d7f85f134cae58"
+    },
+    {
+      "name": "microtime_shifter-populated-1200x800",
+      "source": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-native/tttr__tttr_microtime_shifter-1200x800.png",
+      "renderer": "CPU PilPainter with baked atlas, owner confirmed",
+      "visual_verdict": {
+        "score": 91,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Real Leica_SP5.ptu populated state has readable values and controls.",
+          "Per-channel shifts/trigger/log plot are present; lower controls scroll in narrow view."
+        ],
+        "suggestions": [
+          "Capture the identical populated GPU state and verify hover, output content, cancellation and persistence independently."
+        ],
+        "reasoning": "This independently reviewed raster establishes the visible scenario only; functional, tooltip, scientific and other-backend acceptance remain separate."
+      },
+      "reference_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/tttr__tttr_microtime_shifter.png"
+      ],
+      "acceptance": {
+        "visible_scenario": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-r2-scenarios/microtime_shifter-populated-1200x800.png",
+      "native_sha256": "fb7e9994080a6e5b0eaa560fcff133000d46bc6832a8faded1f78d656d6329d2"
+    },
+    {
+      "name": "microtime_shifter-populated-800x550",
+      "source": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-native/tttr__tttr_microtime_shifter-800x550.png",
+      "renderer": "CPU PilPainter with baked atlas, owner confirmed",
+      "visual_verdict": {
+        "score": 91,
+        "verdict": "pass",
+        "category_match": true,
+        "differences": [
+          "Real Leica_SP5.ptu populated state has readable values and controls.",
+          "Per-channel shifts/trigger/log plot are present; lower controls scroll in narrow view."
+        ],
+        "suggestions": [
+          "Capture the identical populated GPU state and verify hover, output content, cancellation and persistence independently."
+        ],
+        "reasoning": "This independently reviewed raster establishes the visible scenario only; functional, tooltip, scientific and other-backend acceptance remain separate."
+      },
+      "reference_images": [
+        "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/tttr__tttr_microtime_shifter.png"
+      ],
+      "acceptance": {
+        "visible_scenario": true,
+        "all_functionality": false,
+        "tooltip_interactions": false,
+        "full_port": false
+      },
+      "native_screenshot": "/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-r2-scenarios/microtime_shifter-populated-800x550.png",
+      "native_sha256": "4b1278e10df5ce0359927948214115b79c0b64cbcb0b7325dde834032c849c58"
+    }
+  ],
+  "source_updates_after_capture": {
+    "tttr_count_rate_analysis": "Shared six-section editor replaces raw JSON after default GPU capture; populated CPU images reviewed.",
+    "channel_optical": "Owner reports newer caption fix and topology-preserving form edits; archived CPU image predates fix.",
+    "count_plot": "Owner adding y-padding after populated screenshot review."
+  },
+  "original_optical_scope_correction": "Original ChannelDefinition opens LightPathEasyDialog; arbitrary graph editing is separate advanced/LightPath scope, not a required missing control of the simple dialog alone."
+}

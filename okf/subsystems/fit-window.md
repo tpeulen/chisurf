@@ -33,7 +33,7 @@ Open, in order:
    `.cs.pto` with plot state through `test/gui/restore_probe/session_probe.py`.
 2. **Resolved by the readiness schema work (2026-10-06):** the native
    reader vocabulary now comes from emtk, with current ndX extensions and
-   application layout metadata. All 647 schema cases pass; valid docking keys,
+   application layout metadata. All647 schema cases pass; valid docking keys,
    named native forms and section templates are retained. There is no
    `_EMTK_LAYOUT_KEYS` reader authority to extend. Re-derive with
    `pixi run -e test python -m pytest test/test_ui_schemas.py -q`.
@@ -188,7 +188,7 @@ results, and Main routes fit UID events to the windows presenting those fits.
 Parse equation link menus show only active ports; the full catalogue state
 remains intact. 23 focused completion/display/menu/editor tests pass.
 Actual A488 member/global Info and before/after menu PNGs were inspected.
-The previous global chi2r 1.0000 concern is legitimate rounding of
+The previous global chi2r1.0000 concern is legitimate rounding of
 0.9999763241843488 on the shipped fixture, not an objective defect.
 Continue the open list above; [readiness evidence](../validation/release-readiness-w7.md)
 contains the scientific receipt and explicit interaction-gate limitations.

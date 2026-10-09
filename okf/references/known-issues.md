@@ -11,6 +11,47 @@ clipping. Capture a realistic French baseline before a bounded layout repair,
 retaining both option labels/values and narrow access. Exact measurement:
 [batch help acceptance](../validation/release-readiness-w6g/alex-batch-help-acceptance.json).
 
+## Shared anisotropy convention comments need an owner audit (2026-10-09)
+
+status: queued
+
+core/fluorescence/anisotropy/rt.py computes G*VH, matching its equation and
+G=VV/VH, but its explanatory comments still describe a reciprocal convention
+and G*VV. The current VV/VH calculator's physical regression is repaired in
+its owner; this does not prove all Perrin/integral/host consumers use the same
+convention. Audit those owners with an isotropic non-unit-G reference before
+editing their APIs or comments. Queued under the user's current-deliverable-first
+policy; not a blocker for the verified calculator path.
+
+## Fractional shift tail-window interpolation needs focused follow-up (2026-10-09)
+
+status: queued
+
+The G-factor tail estimator selects nearest shifted region indices and only
+interpolates if selected lengths differ; display anisotropy uses fractional
+interpolation on the full axis. Their fractional-shift behavior needs an
+independent reference comparison, without guessing a discrepancy or changing
+current calibration output. Current unit verifies the existing shifted display
+against an independently interpolated axis. Queue a focused owner test after the
+window/calibration deliverable; preserve physical shift units and sign.
+
+## Micro-time window vocabulary differs across analysis paths (2026-10-09)
+
+status: open
+
+Burst-table detector counts explicitly use half-open windows in
+core/fio/fluorescence/burst.py::_micro_time_mask. Burst FCS now reuses that
+contract. StreamDef assignment in core/fluorescence/burst/photons.py includes
+both endpoints, while legacy full-stream FCS calls the SDK's intentionally
+open-endpoint TTTRMask API. The bounded Burst FCS repair does not prove these
+other paths agree. Cross-analysis comparisons at an exact boundary require
+an explicit convention audit and independent photon-count regressions in their
+owning paths before changing them; do not globally change the SDK mask or
+silently reinterpret stored definitions. This remains part of the programme's
+shared analysis/input-definition work, outside the current pair-correlation
+caller change. [Gate owner acceptance](../validation/release-readiness-w6g/burst-fcs-gate-owner-acceptance.json)
+records the actual215/216-photon discrepancy and unchanged kernel normalization.
+
 ## Workflow and batch OS IPC verification — resolved (2026-10-09)
 
 status: resolved
@@ -25,6 +66,29 @@ worker fake, skip or assertion suppression was added. Production code unchanged;
 all engine/test ASTs matched committed sources before fixture edits.
 [Acceptance](../validation/release-readiness-w6g/ipc-verification-acceptance.json).
 
+## BVA input annotations — resolved source, publication pending (2026-10-09)
+
+status: resolved
+
+Four sequence annotations now describe immutable tuple defaults and list inputs;
+the companion-discovery suffix tuple declares its variable length. Exact default
+values and computation/reader bodies are unchanged. Eight targeted physical and
+row-alignment tests pass, Ruff/format and scoped mypy are clean. Five inherited
+diagnostics are resolved in writable source; canonical publication remains
+pending. [Acceptance](../validation/release-readiness-w6g/bva-type-contract-acceptance.json).
+
+## Background view loader strict typing — inherited, 2026-10-09
+
+With `--check-untyped-defs`, BackgroundViewModel.view_spec accesses sections on
+an emtk Section union without narrowing to its declared dock_area type. Two
+errors reproduce unchanged on frozen HEAD and the provenance candidate;
+standard scoped mypy passes. No runtime or calculation failure is evidenced.
+Retained while repairing exact parent identities and frozen result metadata;
+source and strict baseline outputs are in
+`/private/tmp/prd154-background-provenance-owner-fix/receipt.json`. Narrow the
+actual declared section type in its owner when this method is changed; do not
+widen Any or suppress errors. See [current job](../validation/release-readiness-w6g/current-job.md).
+
 ## TTTR calibration report identification — resolved (2026-10-09)
 
 status: resolved
@@ -36,6 +100,49 @@ fusion. Actual test/arm64 providers rebuilt;31 public report/column/adapter
 checks pass. Measured152 and known2400 payloads retain every numeric field;
 only the data-gamma label changes. ChiSurf provenance adapter was already
 published with the calibration unit. [Acceptance](../validation/release-readiness-w6g/gamma-report-acceptance.json).
+
+## MEM solver strict typing retains two duplicate-name diagnostics (2026-10-09)
+
+status: open
+
+The sampler objective/prior/step-count repair passes66targeted tests and scoped
+sampling typing. The solver has two duplicate-name mypy diagnostics at its
+model-construction helpers; both reproduce against committedHEAD, and no new
+errors are introduced by the owned prior-export hunk. Resolve the owning
+annotations in the programme static gate without reverting scientific contract
+repairs or hiding diagnostics. Exact commands/baseline are in
+[the owner archive](../validation/release-readiness-w6g/mem-sampling-owner-current-job.zip).
+
+## LLTF scientific-owner strict typing remains incomplete (2026-10-09)
+
+status: open
+
+The verified nested-selection repair reduces strict mypy diagnostics in the
+fitter from74to66 with zero new errors. Existing broad annotations/config
+inference still fail; this is not a clean static-analysis claim. Resolve those
+owner declarations during the programme static-cleanup gate while preserving
+the actual physical regressions and cold-fit reference. Exact before/after
+identities and commands are in
+[the scientific-owner archive](../validation/release-readiness-w6g/lltf-selection-owner-current-job.zip).
+
+## Legacy emtk immediate table scroll flags are ignored (2026-10-08)
+
+status: open
+
+Actual Burst Browser37-column before captures show the final S header nearx5917
+outside the x369..804 viewport after horizontal wheel input. emtk.im declares
+TableFlags.SCROLL_X/Y, but its BeginTable/EndTable implementation does not consume
+those flags; vertical dock scrolling moves toolbar and headers. The Browser now
+uses the existing declarative DataTable as required by the GUI architecture,
+with real wheel reachability and fixed-toolbar regression proof. This does not
+repair the legacy SDK API for remaining callers.
+
+Fix/test the flag behavior in the emtk owner if retained after migration; do not
+create per-plugin handwritten scroll emulation. Current managed permissions make
+~/dev/emtk read-only and approval is disabled, so the owner source cannot be
+changed here. Preserve the RED proof in
+[the Burst evidence archive](../validation/release-readiness-w6g/burst-browser-window-current-job.zip)
+(owner-red-proof.json and before/after wheel PNGs); this remains a W5 owner gate.
 
 ## Three generated parameter-context pages need shared-edit reconciliation (2026-10-08)
 
@@ -260,19 +367,6 @@ these shared documentation-migration failures to the recovered ndX functionality
 The new measured-data screenshot and Python example have scoped inventory entries;
 all 14 ndX guide code checks pass. Regenerate the global indexes and assign real
 origins in the documentation lane rather than sweeping its concurrent edits here.
-
-## emtk gaps found while upgrading the swap-candidates (2026-10-01, SWAP4B)
-
-- **The guided tour's Next and Prev buttons never fire, in every emtk port.** `chisurf/emtk/help_guide.py` draws
-  `Close Tour##tour`, `◄ Prev##tour` and `Next ►##tour`; emtk takes only the text after `##` as the id, so the three share one
-  and only the first (Close Tour) receives a click. Repro: `app.tour.start(2)`, draw, press and release on the drawn text
-  `Next ►` (the pointer driver in any `test/pointer.py` of the four plugins): `step_idx` stays 2. Each plugin carries an
-  `xfail(strict=True)` test; fix the labels (`Next ►##tour_next`) and the tests turn green.
-- **`emtk.im.input_float` is a drag field**: no typed number (double click and Ctrl+click do nothing). The shared channel editor
-  (`chisurf/emtk/channel_definition.py`, `_float_input`) uses it; a spec `value` field (`draw_sections`) is typeable.
-- **A `data_table` keeps its selection by row key after the row is removed**: select a row, remove it, add the same key again and the
-  row comes back highlighted while the model has nothing selected (`vv_vh_anisotropy` works around it with `forget_selection`).
-- **The help window prints markdown bold and backticks literally.**
 
 ## Two GUI test failures that predate the vector-parameter commits (test fixes 2026-09-24)
 
@@ -1921,7 +2015,6 @@ QT_QPA_PLATFORM=offscreen python -m pytest -q chisurf/plugins/traj/fret_trajecto
   `<no Python frame>`, 2/2 for the whole file, 0/3 for every subset tried
   (halves, and each 5-test combination by `-k`), and the same on a clean
   worktree at `3b4f8b6db`. Same class: it accumulates, it does not bisect.
-
 
 **Tried and reverted.** The Qt-free view model and the Qt atom-pair section hold
 each other (`section._model` / `model.atom_pair_section`), a strong QWidget↔object
@@ -6271,17 +6364,6 @@ Open, highest value first:
    negative with bounds off; `fida_pch` ignores `profile`/`oversample`.
 5. **Flow demo draws no arrows** — demo PTU reads 29 of 30 frames, all 25
    tiles refused; plugin's own test fails. Guide 55 keeps the intended figure.
-   2026-10-02 (img_flow emtk port): the frame count is not the cause. With
-   tttrlib 0.27.0 the reconstruction puts no photon in any pixel: the stack
-   is all zeros (49 of 50 frames), `CLSMImage.get_line_duration()` is 0.0
-   and a line's record range holds 2-3 records. The same photons with the
-   tag `ImgHdr_Frame` written as 4 instead of 3 reconstruct as ONE 64-line
-   frame with every count, so the PTU marker decoding (tag 3 -> marker 4)
-   or the frame/line pairing of this build is what drops them (the simulator
-   writes `[line stop, frame, line start]` at a frame boundary). Repro:
-   `okf/plugins/emtk-ports/img_flow/scripts/gap_demo_ptu_zero.py` (seconds);
-   both hosts of the tool read through the same loader. The emtk port keeps the demo workflow and pins the "No arrows"
-   outcome plus a strict xfail for the intended one.
 6. **Acquisition**: routing-channel spinboxes never added to the dock (stay
    0–3) while the decay controller defaults to 8/9/10 → no decay at defaults;
    standalone window plot controllers overlap title bars.
@@ -6409,9 +6491,11 @@ Measured while giving `setup_channel_definition` its own tests; evidence and rep
   `TypeError` is swallowed and the combo stays at "Latest". The emtk toolbar lists and applies snapshots.
 * **Qt rename drops the Public flag.** `tttr_detector_setups._setup_row_data` returns `setup_data` without `_is_public` /
   `_owner`, so a renamed public setup is stored private. The emtk toolbar (core `ChannelDefinition`) keeps it.
-* **Shared editor gaps: resolved 2026-10-02** (`okf/plugins/emtk-ports/channel_editor/REPORT.md`). The editor is one page with real `data_table` tables, Qt's range-text rules,
-  all 15 file types, Configure LUTs / Adjust shifts windows, the last used setup written on choice and opened at start, section state restored, and a file that is not photon data refused
-  whatever File Type is chosen. Open: `burst_analysis/gui/setup_selection_app.py` (2178 lines) is a second hand-written detector / PIE editor that should be replaced by the shared one.
+* **Shared editor (`chisurf/emtk/channel_definition.py`, another stream's) gaps**: detectors are stacked blocks, not a
+  table; the Setups tab stacks its buttons full width; the last tab cannot be restored (the editor owns the tab state);
+  microtime ranges reject `20:10`, `5:5` and `;` separators that Qt accepts; with a fixed File Type the reader accepts any
+  bytes and overwrites the timing (`xfail` test); no "Configure LUTs" / visual "Adjust shifts" hand-off; the last-used
+  setup is neither written on selection nor opened at start (`ChannelDefinition.refresh_setups` drops `last_used`).
 
 ## boarding wizard: "Create missing files" never creates `settings_chisurf.yaml` (found 2026-10-01)
 
@@ -6527,49 +6611,6 @@ compare the commands the two hosts build and check one fit with tolerances for t
 `random_seed` setting (default fixed, so a run is repeatable) belongs in the fitter and its settings file, with a
 reproducibility test; guide 76 lists it under Known defects.
 
-## Updater: the changelog of the newest version ignores the installed version (found 2026-10-02)
-
-**Measured** in the updater port: the changelog area is captioned "Changes since your installed version", but
-`UpdaterWidget._update_changelog_for_selected` (kept as `UpdaterModel.update_changelog_for_selected`) uses the *previous listed
-version* as the start for every entry except the oldest, so the newest version shows "26.09.20 -> 26.10.02" and not "installed ->
-26.10.02". The start-up check shows the installed-to-newest text, the manual check the other (recorded in
-`okf/plugins/emtk-ports/updater/qt_values.json`, `initial` vs `checked`). Both hosts share the behaviour for parity. *Not fixed
-here:* decide the intended range (installed -> selected, or previous -> selected with a different caption) and change the model.
-
-## QuEst: the simulation core still imports Python modules IMP.bff moved to C++ (found 2026-10-02)
-
-**Measured** while porting `quenching_estimator`: `from IMP.bff.quenching import pet` raised ModuleNotFoundError (the PET model moved to C++; the
-Python module was deleted), so the tool, `quest template`, the form and the plugin tests failed. *Fixed here* (quest `3e197b9`): `_pet()` builds the
-tables from the top-level `IMP.bff` functions, and the interaction tables are plain mappings (the C++ `ResidueQuenching` objects cannot be deep-copied
-or serialised); guardrail `quest/tests/test_pet_chemistry_source.py`. *Not fixed:* **a simulation still fails** at the accessible volume
-(`No module named 'IMP.bff.av'`), and behind it every other removed entry point of `quest/core/av.py` and `photon.py`: `IMP.bff.av.compute.compute_av`
-(no top-level twin in the installed build), `IMP.bff.av._kernels.{density2points,random_distances}` (`density_to_points`, `random_distances`),
-`IMP.bff.distance_metrics`, `IMP.bff.quenching.{grid_center_index, slow_factor_grid, quenching_rate_grid, av_contact_mask, simulate_dye_diffusion
-(`simulate_probe_diffusion`), sphere_points, solvent_accessible_surface, fret_rate_trace, fret_rate_pair_trace, simulate_photon_trace,
-simulate_quenched_decay}`. Re-derive: `python -c "import quest.core.av as a; a._compute_av"` / run `quest/tests/test_core_api.py` (5 failures import the removed
-helpers). Blocks every numeric check of QuEst here (no baseline run exists on this machine; `okf/plugins/emtk-ports/quenching_estimator/` records the
-failure as the baseline). Porting `quest.core` to the C++ API against a pre-move simulation is the task; the emtk card and the Qt tool both stop at the same place.
-
-## flc_2d global / 2D MEM stop at `maxiter` far from convergence (found 2026-10-06)
-
-**Measured** while routing `minimize` off scipy (A/B, every call through both
-scipy 1.18 and bff): `global_mem.solve_global_mem_2d` (40 parameters,
-`maxiter=800`, `ftol=1e-10`, `gtol=1e-8`) ends every test run with
-`STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT`, and the result is a function of
-rounding, not of the data: scipy's own L-BFGS-B gives f = 567.8 from x0,
-517.1 from x0 + 1 ulp and 439.6 from x0 - 1 ulp. Run to 20000 iterations both
-engines reach ~317-331 (bff 317.2, scipy 330.7) and still stop on the
-evaluation limit. `mem_2d.solve_mem_2d` (576 parameters, `maxiter=500`) also
-stops at the limit, with f differing in the fourth digit between engines in
-either direction. **What it blocks:** nothing crashes, but a reported MEM
-spectrum is one arbitrary point along an unfinished descent -- two runs on
-two machines (or two BLAS builds) need not agree. **Fix belongs to the
-plugin:** a convergence criterion the user sees (report `res.status` /
-`res.message`, raise the limit or warm-start the outer schedule), not a
-different optimiser. Re-derive with the A/B wrapper idea: wrap
-`chisurf.core.math.numerics.minimize` to also call `scipy.optimize.minimize`
-and run `chisurf/plugins/fcs/flc_2d/test/test_2d_fdc.py`.
-
 ## 2026-10-06: defects found while retaking the manual's screenshots
 
 Fixed at once (`1182fe7ea`): the global-fit editor's Add/Remove/Add-global-parameter
@@ -6580,11 +6621,11 @@ reproduction in `okf/validation/manual-screenshots/{fcs,general,anisotropy}.json
 - **Resolved 2026-10-07, global completion/display:** graph write-back now
   publishes exact root/member fit events without reevaluation; Main refreshes
   UID-matched windows. The real three-A488 fixture gives chi2r
-  0.9999763241843488, legitimately formatted as 1.0000; explicit residual
-  arithmetic agrees, so no objective formula was changed. 23 focused cases pass.
+  0.9999763241843488, legitimately formatted as1.0000; explicit residual
+  arithmetic agrees, so no objective formula was changed.23 focused cases pass.
 - **Resolved 2026-10-07, Parse-Model link menu:** additive active-structure
   metadata restricts the menu to the equation's six targets while retaining
-  all 134 scientific catalogue ports and identities. Actual before/after menus
+  all134 scientific catalogue ports and identities. Actual before/after menus
   and native member/global Info pages were rendered and inspected. See
   [verification](../validation/release-readiness-w7.md).
 - **FCS hub:** the Correlator labels lag time in ms, the Merger in s, for the same curves.
@@ -6698,3 +6739,28 @@ ActualNNLS/MEM/correlation anduniformbackground/zero-signalphysics tests pass;
 this is not cleanstaticanalysis. Rootowns a separate boundedtypingcleanup with
 existingbehavior locked; do not alter numericalalgorithms orregolden spectra
 to silence these diagnostics.
+
+## Structure Tools isolated ribbon check depends on an uncommitted loader
+
+Observed 2026-10-09 at HEAD 6bcec3cb5: the committed Structure Tools
+`test_native.py::test_structure_ribbon_entries_resolve_native` imports
+`select_gui_entrypoint`, absent from committed `core/plugin/registry.py`. It fails
+in a private HEAD package, while the exact affected test passes in the live tree
+where a separate stream has implemented that loader. The W6g hub-size candidate
+preserves/excludes those foreign changes; its four owned tests are independent.
+Publication/integration of the plugin-loader lane must precede a clean committed
+ribbon-route acceptance. Do not copy the entire foreign registry diff merely to
+make an isolated geometry test green. Evidence is in the Structure Tools final
+archive under `green-corrected.txt` and `ribbon-live.txt`.
+
+## H2MM settings JSON omits the detector definition promised by toolbar help
+
+Observed2026-10-09 during the native host unit at HEAD6bcec3cb5.
+`burst_h2mm/gui/model.py::settings_dict` exports only SETTING_FIELDS, which do
+not include setup; save_settings serializes that dict and load_settings restores
+only those fields. The native Save settings tooltip promises detector definitions.
+Custom detector routing/micro-time windows therefore need separate retention.
+The host-size candidate preserves this pre-existing behavior, documents it and
+queues a bounded settings-file contract repair with custom-setup round-trip tests.
+Do not claim the current geometry-only native persistence restores a computed
+fit or a custom detector setup. Owner: W6g/W3 settings integration.

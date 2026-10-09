@@ -120,8 +120,11 @@ opens on, called from `ExplorerModel._apply_default_axes` (ndxplorer 7686fd8,
   without lifetimes (smfret-web's simulated µsALEX): the second must open on
   E vs S at default bins.
 - **Open:**
-  - Default *colormap* and *log* per view are not chosen yet. An E-S map
-    with a few hundred bursts might read better with log counts.
+  - Default *colormap* and *log* per view: **decided 2026-10-03
+    (tpeulen) — no change.** The defaults stay as they are; log scale and
+    colormap remain per-user choices in the plot settings. Not picking a
+    "better" default: nothing beat the current behaviour across the
+    datasets looked at.
   - No per-kind weight toggle.
 
 ### Qt GUI deleted (2026-10-02)

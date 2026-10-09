@@ -980,9 +980,9 @@ owner instead of repainting only the active window.
 
 The parameter DTO retains the complete scientific inventory and adds
 `active_in_structure`. Only the link menu filters that flag; legacy DTOs with
-no flag remain visible. Current Parse FCS has 134 ports and 6 active equation
+no flag remain visible. Current Parse FCS has134 ports and6 active equation
 targets. Re-derive with the completion/display/menu/editor focused regression
 files (23 passes), and compare the three shipped A488 curves to explicit
-weighted-residual arithmetic. Their global chi2r 0.9999763241843488 rounds to
+weighted-residual arithmetic. Their global chi2r0.9999763241843488 rounds to
 1.0000 legitimately; no objective formula was changed. See
 [readiness evidence](../validation/release-readiness-w7.md).

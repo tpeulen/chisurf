@@ -138,6 +138,16 @@ the real writer). Note the repo's own `bh_spc132_sm_dna` fixture predates the
 writer's fix and stores *exclusive* stops, so it agrees with a buggy reader —
 a guardrail needs the PARIS folder or a freshly written table.
 
+The live engine’s `burst_search` intervals are inclusive too, independently of
+legacy table conventions. `burst_filter` converts those stops to exclusive
+stops only when calling the generic half-open mask helper. The non-burst IRF/
+background selection is the complement of the union of complete intervals,
+including terminal photons and overlapping bursts. Actual BH174438 photons
+with L60/m10/1ms produce91 intervals and remove88 leaked endpoints after overlaps;
+all raw arrays and clock values remain unchanged. The verified source is
+uncommitted; [owner acceptance](../validation/release-readiness-w6g/burst-mask-owner-acceptance.json)
+records SDK/source hashes, physical masks and the loopback workflow test gate.
+
 # Related
 
 * [/plugins/burst.md](../plugins/burst.md) — the burst workflow and its steps.

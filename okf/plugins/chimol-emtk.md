@@ -73,6 +73,40 @@ the real name then.
 
 ## Where to pick this up
 
+**2026-09-29 — the emtk host (`ChimolHostApp`, `chisurf/plugins/chimol/app.py`)
+resizes and plays now.** Two defects in the embed path only — chimol's own
+hosts were already right:
+
+* **Resize.** `_resize_chimol` told the renderer (`on_resize`) and nothing
+  else; an offscreen rendercanvas canvas only changes size through
+  `set_logical_size`, so the canvas answered 900x620 for the whole session
+  and every frame was the opening picture stretched by the blit. The canvas
+  now grows first (`set_logical_size`), then `on_resize` re-projects.
+  Regression: `test_emtk_host.py::test_native_resize_rerenders_at_the_window_size`.
+* **Playback.** chimol's clock runs inside its frame draw
+  (`Playback.pump` from `canvas.frame()`), and emtk's `ControlHost` only
+  self-animates when `control.animating()` is true — which the adapter never
+  said, so the movie advanced only while the pointer produced frames.
+  `ChimolHostApp.animating()` now reports the viewer's `playback.running`,
+  and a `command.executed` bus subscription wakes the host when a command
+  (mplay, or any other) starts something that needs frames.
+  Regression: `test_emtk_host.py::test_native_playback_advances_without_input`,
+  `test_emtk_host.py::test_native_mplay_from_a_command_wakes_the_host`.
+
+Both reproduced headlessly, fixed, and each test verified to fail against the
+pre-fix adapter. A third piece the e2e on the real Qt host uncovered: the
+animating() chain only *keeps* frames going, it cannot *start* them — and a
+movie started by `mplay` (console, macro, or the panel's ▶ button, which runs
+the same command) runs no input event, while chimol's own wake
+(`update()` → `request_draw`) knocks on the rendercanvas loop that is not
+running inside the embed. The host now subscribes to `viewer.bus`'s
+`command.executed` and calls emtk's `request_frame()`; the resulting paint's
+animating() check takes over from there. Open: the same `animating()` contract
+question applies to any other emtk-hosted app that runs a background clock (a
+streaming readout, a progress ticker) — the fix is per-app, in each app's
+`animating()` plus a wake on whatever starts it. The emtk zip / browser host is
+unaffected (its rAF chain already pumps `Playback.pump`).
+
 **2026-08-13 — the gizmo is removed. Read this before touching anything
 gizmo-related in the entries below.** User, after the chrome-refinement round
 directly below: *"gizmo is ugly as fuck remove. contine with tick."* Removed

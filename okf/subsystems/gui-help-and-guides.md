@@ -348,6 +348,7 @@ clicking it.
 * [Testing workflow](/workflows/testing.md) — why a GUI change is unfinished
   until the PNG has been looked at.
 
+
 ## Shared text and tooltip contract (2026-10-08)
 
 The renderer exports TEXT_KEYS; the extractor now includes bare/named views,

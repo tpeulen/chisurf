@@ -246,6 +246,62 @@ The unused legacy GUI/assets and runtime selector are removed. Public BurstSelec
 
 Parent26 owning runtime cases and968 available guard/import cases pass (16expectedskips), scoped Ruff4/mypy2 clean. Current packaged instructions no longer recommend the deleted selector: four dated originals are archived in [history](../validation/release-readiness-w1/burst-selection-retirement/package-notes-history.zip), current reference paths remain and foreign verification formatting is preserved. Existing paired theory/workflow and one real figure accompany the source; canonical catalogue regeneration is byte-identical for the owned page. [Acceptance](../validation/release-readiness-w1/burst-selection-retirement/acceptance.json). Next is Channel14 and Designerhelpers; modern Qt surface retirement stays with W9.
 
+## Native window and result-provenance checkpoint — 2026-10-09
+
+Fusion and Background native hosts consume authored1100×720 defaults, while
+saved geometry wins and responsive internal panes retain their viewport sizing.
+Actual worker outputs, physical photon arrays/clocks and control inventories
+match before/after; these source units are verified but uncommitted under the
+current managed filesystem. See [Fusion acceptance](../validation/release-readiness-w6g/burst-fusion-window-acceptance.json)
+and [Background acceptance](../validation/release-readiness-w6g/burst-background-window-acceptance.json).
+
+Fusion worker publication refreshes editable detector definitions only when the
+model's authoritative definition changes; unchanged jobs retain unapplied edits.
+Regenerated merged spans contain original fragment photons and photons between
+them. Preview count sums therefore differ correctly from written counts.
+
+Background histograms link to the exact rate-table UID returned in the same
+transaction. Result identity includes frozen detector, actual reader and fit
+settings; complete numeric LUT metadata survives serialization. Cached interval
+refits retain their original detector context, and worker publication does not
+substitute current controls into completed-result provenance. Refit gestures
+update the display; Estimate publishes the result. Historical defective graphs
+remain retained rather than silently rewritten. Exact source/real-container/
+PNG/test receipts are in the acceptance archives and [current job](../validation/release-readiness-w6g/current-job.md).
+
+BVA accepts sequence-valued channel and micro-time-window inputs while retaining
+its immutable tuple defaults. The companion-discovery suffix sequence declares
+variable length. Five inherited annotation diagnostics are resolved; runtime
+computation and reader bodies are unchanged. [Type acceptance](../validation/release-readiness-w6g/bva-type-contract-acceptance.json)
+records physical checks and exact source authority.
+
+The non-burst IRF/background host also consumes its authored1100×720 default.
+Actual inclusive burst intervals are removed completely before detector histograms
+are formed; exported MLE binning is applied once while source clocks and full-period
+display histograms remain unchanged. A known-prompt stream verifies the rendering
+and extraction; its fitted background does not exactly recover the authored rate,
+and the configured measured LUT does not establish good IRF calibration.
+[Acceptance](../validation/release-readiness-w6g/burst-irf-bg-window-acceptance.json)
+records the physical/root/UI evidence and saved-geometry-only persistence.
+
+Burst-wise FCS also reads its authored1100×720 host default. Pair windows use
+BUR's half-open convention through the shared detector mask helper; the SDK's
+open-endpoint API and correlation normalization remain unchanged. An actual
+boundary photon correction is verified against independent event-pair counting.
+The gate description is reachable on the existing heading, and native toolbar
+scrolling exposes the whole status while restoring every action. See
+[acceptance](../validation/release-readiness-w6g/burst-fcs-window-acceptance.json)
+for exact source/real curve/export/translation/PNG evidence.
+
+Photon-by-photon kinetics now consumes the authored1100×720 host default.
+State-population lines use physical efficiency/population axes and remain visible;
+row-sized parameter tables let the existing dock scroll the complete report.
+Selected-photon state exports retain measurement, raw index and original burst-row
+identity, split per source, with exact state-result parent UIDs. Run context records
+colour definitions and the actual macro-time clock. Simulation ordinals persist
+only in a separate non-instrument container. See [acceptance](../validation/release-readiness-w6g/burst-gs-window-acceptance.json)
+for real numerical/GUI/container evidence and finite-sample/persistence limits.
+
 ## Actual workflow and per-burst worker verification — 2026-10-09
 
 The previously denied loopback/SharedMemory paths are verified in the unrestricted
