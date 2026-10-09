@@ -1208,5 +1208,22 @@ Source and installed-provider hover/paint, pointer departure, translation and
 unchanged default/narrow geometry are accepted. No controls/layout or scientific
 algorithms changed; no metadata recapture. Exact source/provider identities and
 accepted evidence are in [section-help acceptance](../validation/release-readiness-w6g/emtk-section-help-acceptance.json).
-The user-authorized A0 policy makes W0a the next prerequisite after explicit resume;
-current job is paused, not programme-complete.
+W0a and the production literal/ownership guards are complete. A0 keeps family
+repairs separate and aggregate release gates open.
+
+
+## Help on suppressed-title hosts — 2026-10-09
+
+The shared imaging host, AI Settings and Photon Table now pass existing outer
+panel descriptions into dock-window tooltip metadata. The toolkit routes this
+help from floating title items as well as docked tabs, through translation and
+normal delay; close/collapse explanations retain priority. No controls or layout
+rows were added. Populated imaging/photon outputs, AI settings, unhovered paint
+and geometry match at default/narrow widths; actual hover/paint/departure prove
+reachability. The fourteen unchanged literal occurrences displaced by insertion
+have paired key-relocation evidence; the 1,155-literal denominator is unchanged.
+
+This closes the bounded shared host-help mechanism. Other hosts must bind their
+own outer description; missing family-authored help remains in the exact owner
+ledger, including four ALEX panels and three calibration tables. Aggregate W6
+still requires those repairs and empty allowances. [Host acceptance](../validation/release-readiness-w6g/host-help-acceptance.json).

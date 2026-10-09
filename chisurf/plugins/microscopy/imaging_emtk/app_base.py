@@ -90,7 +90,8 @@ class ImagingToolApp(ImApp):
             key = str(panel["title"])
             self.windows[key] = panel
             self.docks.add_window(key, key, lambda box, p=panel: self._draw_window(p),
-                                  dock=str(panel.get("dock", "views")), closable=False)
+                                  dock=str(panel.get("dock", "views")), closable=False,
+                                  tooltip=str(panel.get("description", "")))
         super().__init__(self.render, continuous=False)
 
     def prepare_spec(self, spec: dict) -> dict:

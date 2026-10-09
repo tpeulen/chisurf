@@ -72,6 +72,19 @@ optional key-release hooks only when a child implements them. Form callbacks
 receive the committed field value.
 
 
+## Help on host headers
+
+Shared imaging panels, AI Settings and Photon Table expose their existing panel
+explanations when you hover the dock tab or floating window title. The explanation
+uses the active language and normal tooltip delay. Close and collapse buttons
+keep their own help. Panels without a description add no extra control or row.
+
+When a host draws only a panel's children, or suppresses form titles, it must
+pass the panel description to the dock window's `tooltip` field. A description
+in the spec alone does not prove it is reachable. Use real delayed hover and
+paint checks for docked and floating states, then compare unhovered controls and
+geometry at default and narrow sizes. Specific field/table help retains priority.
+
 ## Isolated plugin interaction gate
 
 `test/e2e/test_click_all_plugins.py` discovers native entrypoints and the
