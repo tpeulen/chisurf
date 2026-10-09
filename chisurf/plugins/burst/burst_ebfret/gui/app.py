@@ -33,6 +33,8 @@ from emtk.view_form import FormState, draw_form, draw_sections, find_section
 from emtk.widgets.menus import Menu, MenuBar, MenuItem
 from emtk.widgets.view_spec import load_view_spec
 
+from chisurf.plugins.emtk_layout import window_size
+
 from ..core.session import FILE_TYPES, SESSION, SMD_JSON, SMD_JSON_GZ, SMD_MAT
 from . import dialogs as dlg
 from .controls import MainControls
@@ -453,7 +455,7 @@ class EbfretGui(TourTarget):
         def chosen(paths: list[str], index: int) -> None:
             fmt = "dat" if index == 1 else "mat"
             self.show(
-                dlg.SelectChannelsDialog(
+                dlg.select_channels_dialog(
                     lambda channels: (
                         self._select_analysis(
                             lambda k, g: self.act(
@@ -577,6 +579,7 @@ class App:
 
     def __init__(self, gui: EbfretGui, on_exit: Callable[[], None] | None = None) -> None:
         self.gui = gui
+        self.window_size = window_size(gui.spec, (1100, 720))
         self.on_exit = on_exit
         self.actions_spec = load_view_spec(SPECS / "example_actions.view.json")
         self.tour = EmTkGuidedTour(

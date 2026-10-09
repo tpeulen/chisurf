@@ -145,3 +145,29 @@ evidence against state count, maximal at the true K = 3.
 - `chisurf/plugins/burst/burst_ebfret/`; photon-by-photon HMM: [H2MM](19_h2mm_hidden_markov.md).
 - Binning the photon stream that feeds this: [binned photon traces](22_binned_photon_traces.md).
 - Concept: {ref}`concept-ebfret`.
+
+## Native host dimensions and trace export
+
+The native ebFRET window starts at **1100 × 720 logical pixels**. Saved host
+geometry takes precedence. Default and narrow layouts retain the time-series
+plots, ensemble plots and analysis controls; narrow controls wrap within their
+existing panels. Explicit **File → Save** remains the session-data workflow.
+
+```{figure} figures/ebfret_native_primary_window.png
+:width: 100%
+
+Export Traces reaches the Channels form at both sizes: donor, acceptor, FRET,
+Viterbi state and Viterbi mean. Behind it is the seeded, fitted four-level demo
+at fixed series 24.
+```
+
+**File → Export → Traces** first chooses the output path, then the channels, then
+the state count and group. The repaired callback now opens the existing channel
+form; its output matches the direct backend export byte for byte.
+
+The demo has authored levels 0.10, 0.35, 0.55 and 0.75. A four-state seeded fit
+with precision 0.001 and no extra restarts yields centers 0.0964, 0.3509, 0.5495
+and 0.7504 in this verification. These Gaussian simulated traces are not a
+biological measurement or a general identifiability guarantee. Backend progress
+updates the current series; select a specific series for comparisons. Host
+sizing does not alter the fitted arrays or summary export. See [ebFRET](../concepts/ebfret.md).

@@ -219,3 +219,14 @@ not a guarantee that every fitting configuration recovers them.
   variational HMM this implements; {cite}`bronson2009` is vbFRET, the per-trace
   variational method it builds on; {cite}`blanco2010` on reading
   transition-density plots.
+
+### Native host and export display
+
+The native host declares an initial 1100 × 720 logical-pixel window and restores
+saved geometry. The existing Channels form in the trace-export workflow exposes
+donor, acceptor, FRET and Viterbi outputs. This display contract does not change
+the variational calculation. The [binned-trace workflow](../guides/20_ebfret_binned_hmm.md)
+illustrates the real in-process backend on the authored four-level demo, with
+recovered centers qualified separately from the known simulation values.
+Comparing plotted traces requires a fixed selected series because backend
+progress can change the current index.

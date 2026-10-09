@@ -1,4 +1,5 @@
 {
+  "window": {"width": 1100, "height": 720},
   "_comment": "The control panels of ebFRET's main window (MainWindow.m), declared rather than hand-drawn. Panel titles are the MATLAB uipanel titles; the window frames each panel and draws the plots between them. Tables are ChiSurf additions (the MATLAB window has none): the series list drives Select Series, the state table shows the selected model.",
   "sections": [
     {
