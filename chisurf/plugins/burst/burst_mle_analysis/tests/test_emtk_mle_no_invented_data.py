@@ -42,7 +42,11 @@ class PlotSpy:
     def _wrap(self, name, original):
         def spy(*args, **kwargs):
             label = args[0] if args and isinstance(args[0], str) else ""
-            arrays = [np.asarray(a, dtype=float) for a in list(args) + list(kwargs.values()) if _is_array(a)]
+            arrays = [
+                np.asarray(a, dtype=float)
+                for a in list(args) + list(kwargs.values())
+                if _is_array(a)
+            ]
             self.calls.append((name, label, arrays))
             return original(*args, **kwargs)
 
@@ -58,7 +62,11 @@ class PlotSpy:
 
 
 def _is_array(value) -> bool:
-    return isinstance(value, (np.ndarray, list, tuple)) and len(value) > 0 and not isinstance(value[0], str)
+    return (
+        isinstance(value, (np.ndarray, list, tuple))
+        and len(value) > 0
+        and not isinstance(value[0], str)
+    )
 
 
 def draw(app, size=(1200, 800), frames=2, spy=None):
@@ -110,7 +118,9 @@ def test_the_parameter_table_is_the_wizards_not_a_copy(fresh_wizard):
 # After the real fit
 # ------------------------------------------------------------------------------------------------------------------
 @pytest.mark.parametrize("size", SIZES)
-def test_after_a_fit_the_decay_window_holds_exactly_the_wizards_curves(monkeypatch, fitted_green, size):
+def test_after_a_fit_the_decay_window_holds_exactly_the_wizards_curves(
+    monkeypatch, fitted_green, size
+):
     wiz = fitted_green
     spy = PlotSpy(monkeypatch)
     draw(BurstMleApp(wiz), size, spy=spy)
@@ -119,8 +129,18 @@ def test_after_a_fit_the_decay_window_holds_exactly_the_wizards_curves(monkeypat
     view = wiz._fit_view
     n = len(view.data) // 2
     vv_sb, vv_eb, vh_sb, vh_eb = wiz._get_channel_ranges_bins()
-    data = np.hstack([np.asarray(view.data, float)[0:n][vv_sb:vv_eb], np.asarray(view.data, float)[n : 2 * n][vh_sb:vh_eb]])
-    model = np.hstack([np.asarray(view.model, float)[0:n][vv_sb:vv_eb], np.asarray(view.model, float)[n : 2 * n][vh_sb:vh_eb]])
+    data = np.hstack(
+        [
+            np.asarray(view.data, float)[0:n][vv_sb:vv_eb],
+            np.asarray(view.data, float)[n : 2 * n][vh_sb:vh_eb],
+        ]
+    )
+    model = np.hstack(
+        [
+            np.asarray(view.model, float)[0:n][vv_sb:vv_eb],
+            np.asarray(view.model, float)[n : 2 * n][vh_sb:vh_eb],
+        ]
+    )
 
     _, _, (x, y) = spy.named("Data (VV|VH)")
     np.testing.assert_array_equal(y, data)
@@ -243,7 +263,12 @@ def test_fit_bursts_click_fills_the_lifetime_histogram_from_the_batch_rows(monke
 
 def test_burst_lifetimes_reads_the_columns_of_the_rows_and_nothing_else():
     rows = [
-        {"Tau (green)": 2.0, "Tau S0 (green)": 1.0, "Number of Photons (fit window) (green)": 99, "First File": "a"},
+        {
+            "Tau (green)": 2.0,
+            "Tau S0 (green)": 1.0,
+            "Number of Photons (fit window) (green)": 99,
+            "First File": "a",
+        },
         {"Tau (green)": float("nan"), "Tau S0 (green)": 1.5, "Tau (red)": 3.0},
         {"Tau (green)": 2.5},
     ]
@@ -267,8 +292,14 @@ def test_decay_curves_windows_each_polarisation_and_drops_the_irf_for_a_tail_fit
     ranges = (2, 6, 1, 4)
     curves = fit_display.decay_curves(data, model, irf, bg, ranges)
     np.testing.assert_array_equal(curves.data, np.hstack([data[2:6], data[n + 1 : n + 4]]))
-    assert curves.n_vv == 4 and curves.irf is not None and curves.irf.sum() == pytest.approx(curves.data.sum())
-    np.testing.assert_allclose(curves.residuals, (curves.data - curves.model) / np.sqrt(curves.data))
+    assert (
+        curves.n_vv == 4
+        and curves.irf is not None
+        and curves.irf.sum() == pytest.approx(curves.data.sum())
+    )
+    np.testing.assert_allclose(
+        curves.residuals, (curves.data - curves.model) / np.sqrt(curves.data)
+    )
     assert fit_display.decay_curves(data, model, irf, bg, ranges, tail=True).irf is None
     runaway = fit_display.decay_curves(data, model * 1e6, irf, bg, ranges, diverged=True)
     assert runaway.model.max() <= curves.data.max() * 10.0
@@ -304,12 +335,20 @@ def test_the_app_source_cannot_make_data_up():
     tree = ast.parse((GUI / "app.py").read_text(encoding="utf-8"))
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            assert not {a.name.split(".")[0] for a in node.names} & {"numpy", "random"}, "the app imports numpy/random"
+            assert not {a.name.split(".")[0] for a in node.names} & {"numpy", "random"}, (
+                "the app imports numpy/random"
+            )
         if isinstance(node, ast.ImportFrom) and node.module:
             assert node.module.split(".")[0] not in {"numpy", "random"}
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr.startswith("plot_"):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr.startswith("plot_")
+        ):
             for arg in node.args[1:]:
-                assert not isinstance(arg, (ast.List, ast.Tuple, ast.Constant)), f"literal data in {node.func.attr}"
+                assert not isinstance(arg, (ast.List, ast.Tuple, ast.Constant)), (
+                    f"literal data in {node.func.attr}"
+                )
 
 
 def test_help_and_guide_exist_and_every_target_is_a_drawn_control(fresh_wizard):
@@ -321,14 +360,20 @@ def test_help_and_guide_exist_and_every_target_is_a_drawn_control(fresh_wizard):
         target = step.get("target")
         if target:
             key = app.mle_gui.tour._target_key(target)
-            assert key in app.item_rects, f"guide step {step['title']!r}: {key!r} is not a drawn control"
-    assert any(s.get("await") for s in steps), "the guide never waits for the user to press a control"
+            assert key in app.item_rects, (
+                f"guide step {step['title']!r}: {key!r} is not a drawn control"
+            )
+    assert any(s.get("await") for s in steps), (
+        "the guide never waits for the user to press a control"
+    )
 
 
 def test_the_fit_step_waits_for_the_real_press_of_fit_bursts(monkeypatch, fresh_wizard):
     wiz = fresh_wizard
     calls = []
-    monkeypatch.setattr(wiz, "process_bursts", lambda *a, **k: calls.append(1))  # the press is real; the 10 s batch is not the point
+    monkeypatch.setattr(
+        wiz, "process_bursts", lambda *a, **k: calls.append(1)
+    )  # the press is real; the 10 s batch is not the point
     app = BurstMleApp(wiz)
     drv = Driver(app)
     tour = app.mle_gui.tour

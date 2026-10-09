@@ -6,11 +6,15 @@ three more buttons followed, Stop was live while idle, icons touched their label
 
 import pytest
 
-from test.gui.emtk_layout_checks import (
-    SIZES, assert_disjoint, assert_icons_clear, assert_inside, assert_texts_apart, draw,
-)
-
 from chisurf.plugins.burst.burst_bva.gui.app import create_app
+from test.gui.emtk_layout_checks import (
+    SIZES,
+    assert_disjoint,
+    assert_icons_clear,
+    assert_inside,
+    assert_texts_apart,
+    draw,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -45,5 +49,7 @@ def test_actions_are_two_rows_with_no_orphan(drawn):
 def test_icons_and_texts(drawn):
     app, painter, size = drawn
     assert_icons_clear(painter)
-    assert_inside(app.item_rects, size, names=["run", "restart", "stop", "folder", "clear", "guide", "help"])
+    assert_inside(
+        app.item_rects, size, names=["run", "restart", "stop", "folder", "clear", "guide", "help"]
+    )
     assert_texts_apart(painter, region=(0.0, 0.0, 330.0, size[1]))

@@ -52,7 +52,9 @@ class MleNativeApp(TourTarget, ImApp):
         self.window_size = window_size(primary, (1100, 720))
         spec = load_view_spec(str(HERE / "mle_native.view.json"))
         sections = spec["sections"]
-        self.sections = [s for s in sections if s.get("title") not in ("Burst", "Burst lifetimes", "IRF")]
+        self.sections = [
+            s for s in sections if s.get("title") not in ("Burst", "Burst lifetimes", "IRF")
+        ]
         self.irf_sections = [s for s in sections if s.get("title") == "IRF"]
         for s in self.irf_sections:
             s["collapsed"] = False
@@ -75,19 +77,30 @@ class MleNativeApp(TourTarget, ImApp):
             host_app=self,
         )
         self.help_window = EmTkHelpWindow(
-            title="Burst Lifetime MLE - Help & Reference", resource=HERE / "help.md", owner=self.model,
-            on_start_guide=self.start_guide, size=(700.0, 520.0),
+            title="Burst Lifetime MLE - Help & Reference",
+            resource=HERE / "help.md",
+            owner=self.model,
+            on_start_guide=self.start_guide,
+            size=(700.0, 520.0),
         )
         self.tour = EmTkGuidedTour(
             steps=HERE / "guide.json",
-            on_step_change=self._tour_step, get_target_rect=lambda k: self.item_rects.get(k) or self.form.rects.get(k),
-            owner=self.model, wait_for_controls=True,
+            on_step_change=self._tour_step,
+            get_target_rect=lambda k: self.item_rects.get(k) or self.form.rects.get(k),
+            owner=self.model,
+            wait_for_controls=True,
         )
         self.form.on_used = self.tour.notify_used
         self.on_used = self.tour.notify_used
         self.editor.on_used = self.tour.notify_used
         self.docks = DockManager(
-            Split("h", 0.40, Region("controls"), Split("v", 0.62, Region("plots_a"), Region("plots_b"))), name="burst_mle"
+            Split(
+                "h",
+                0.40,
+                Region("controls"),
+                Split("v", 0.62, Region("plots_a"), Region("plots_b")),
+            ),
+            name="burst_mle",
         )
         add = self.docks.add_window
         add("controls", "Burst MLE", self._controls, dock="controls", closable=False)
@@ -125,7 +138,9 @@ class MleNativeApp(TourTarget, ImApp):
             return
         ready, _n = self.model.input_status()
         if not ready:
-            self.model.status_text = "No IRF and background for the current detector yet: press Auto IRF/background."
+            self.model.status_text = (
+                "No IRF and background for the current detector yet: press Auto IRF/background."
+            )
             return
         self.model.status_text = "Fitting bursts ..."
         self.job.start("run_batch")
@@ -143,7 +158,9 @@ class MleNativeApp(TourTarget, ImApp):
         if files:
             options["directory"] = str(files[0].parent)
         filename = "burst_mle_settings.json" if action == "save_settings" else ""
-        self.dialog = FileDialog(title, mode=mode, filename=filename, multiselect=action == "add_files", **options)
+        self.dialog = FileDialog(
+            title, mode=mode, filename=filename, multiselect=action == "add_files", **options
+        )
         self.dialog_action = action
         self._dialog_window = DialogWindow(title, size=(640.0, 460.0), key="burst-mle-file")
         self._dialog_window.show()
@@ -159,7 +176,11 @@ class MleNativeApp(TourTarget, ImApp):
             elif action == "load_settings":
                 self.model.load_settings(result[0])
                 self.editor.model.data = copy.deepcopy(
-                    {"detectors": self.model.session.detectors, "windows": {}, "tttr_reading": {"file_type": self.model.session.file_type}}
+                    {
+                        "detectors": self.model.session.detectors,
+                        "windows": {},
+                        "tttr_reading": {"file_type": self.model.session.file_type},
+                    }
                 )
                 self.model.status_text = f"Settings loaded from {result[0]}"
         except Exception as exc:
@@ -181,29 +202,88 @@ class MleNativeApp(TourTarget, ImApp):
         ready, _n = self.model.input_status()
         pressed = button_row(
             [
-                {"label": "Add files", "key": "add_files", "enabled": not running,
-                 "tip": "Choose burst (.bur) tables; the analysis folder they belong to is read whole."},
-                {"label": "Add folder", "key": "add_folder", "enabled": not running,
-                 "tip": "Add every burst table below a folder."},
-                {"label": "Clear", "key": "clear_files", "enabled": has_data and not running,
-                 "tip": "Remove all burst files and the results." if has_data else "No burst files to remove."},
-                {"label": "Auto IRF/background", "key": "auto", "enabled": has_data and not running,
-                 "tip": "Pick the binning and fit window and estimate a Gaussian IRF and the background from the photons "
-                        "outside the bursts, then fit. A measured IRF and background give better lifetimes."
-                 if has_data else "Add burst files first."},
-                {"label": "Refit", "key": "toolAction_restart", "enabled": ready and not running,
-                 "tip": "Fit the current decay again with the current settings." if ready else "Needs an IRF and a background."},
-                {"label": "Fit bursts", "key": "toolAction_run", "enabled": has_data and ready and not running,
-                 "tip": "Fit every burst of every file and detector by maximum likelihood (worker processes)."
-                 if ready else "Needs burst files and an IRF and a background: press Auto IRF/background first."},
-                {"label": "Stop", "key": "Stop", "enabled": running,
-                 "tip": "Stop the running fit." if running else "Nothing is running; a fit in progress can be stopped here."},
-                {"label": "Save results", "key": "save_results", "enabled": has_results and not running,
-                 "tip": "Write the per-burst fits as b?4 tables beside the burst folders." if has_results else "Fit the bursts first."},
-                {"label": "Save settings", "key": "save_settings", "tip": "Write the settings and the detector definition to a JSON file."},
-                {"label": "Load settings", "key": "load_settings", "enabled": not running, "tip": "Read settings and detectors from a JSON file."},
-                {"label": "Guide", "key": "guide", "tip": "Start a step-by-step guided tour of this tool."},
-                {"label": "Help", "key": "help", "tip": "Open the help window with reference documentation."},
+                {
+                    "label": "Add files",
+                    "key": "add_files",
+                    "enabled": not running,
+                    "tip": "Choose burst (.bur) tables; the analysis folder they belong to is read whole.",
+                },
+                {
+                    "label": "Add folder",
+                    "key": "add_folder",
+                    "enabled": not running,
+                    "tip": "Add every burst table below a folder.",
+                },
+                {
+                    "label": "Clear",
+                    "key": "clear_files",
+                    "enabled": has_data and not running,
+                    "tip": "Remove all burst files and the results."
+                    if has_data
+                    else "No burst files to remove.",
+                },
+                {
+                    "label": "Auto IRF/background",
+                    "key": "auto",
+                    "enabled": has_data and not running,
+                    "tip": "Pick the binning and fit window and estimate a Gaussian IRF and the background from the photons "
+                    "outside the bursts, then fit. A measured IRF and background give better lifetimes."
+                    if has_data
+                    else "Add burst files first.",
+                },
+                {
+                    "label": "Refit",
+                    "key": "toolAction_restart",
+                    "enabled": ready and not running,
+                    "tip": "Fit the current decay again with the current settings."
+                    if ready
+                    else "Needs an IRF and a background.",
+                },
+                {
+                    "label": "Fit bursts",
+                    "key": "toolAction_run",
+                    "enabled": has_data and ready and not running,
+                    "tip": "Fit every burst of every file and detector by maximum likelihood (worker processes)."
+                    if ready
+                    else "Needs burst files and an IRF and a background: press Auto IRF/background first.",
+                },
+                {
+                    "label": "Stop",
+                    "key": "Stop",
+                    "enabled": running,
+                    "tip": "Stop the running fit."
+                    if running
+                    else "Nothing is running; a fit in progress can be stopped here.",
+                },
+                {
+                    "label": "Save results",
+                    "key": "save_results",
+                    "enabled": has_results and not running,
+                    "tip": "Write the per-burst fits as b?4 tables beside the burst folders."
+                    if has_results
+                    else "Fit the bursts first.",
+                },
+                {
+                    "label": "Save settings",
+                    "key": "save_settings",
+                    "tip": "Write the settings and the detector definition to a JSON file.",
+                },
+                {
+                    "label": "Load settings",
+                    "key": "load_settings",
+                    "enabled": not running,
+                    "tip": "Read settings and detectors from a JSON file.",
+                },
+                {
+                    "label": "Guide",
+                    "key": "guide",
+                    "tip": "Start a step-by-step guided tour of this tool.",
+                },
+                {
+                    "label": "Help",
+                    "key": "help",
+                    "tip": "Open the help window with reference documentation.",
+                },
             ],
             remember=self.remember,
         )
@@ -254,7 +334,9 @@ class MleNativeApp(TourTarget, ImApp):
             im.pop_style_color()
         self.remember("input_status")
         im.separator()
-        target = self.model.values_snapshot() if running else self.model  # edits during a run go to a throw-away copy
+        target = (
+            self.model.values_snapshot() if running else self.model
+        )  # edits during a run go to a throw-away copy
         im.begin_disabled(running)
         draw_sections(self._fields(), target, self.form)
         im.end_disabled()
@@ -269,7 +351,9 @@ class MleNativeApp(TourTarget, ImApp):
 
     def _irf(self, box=None) -> None:
         self.remember("irf", box)
-        im.text_wrapped("IRF and background as the fit sees them: the estimated or loaded patterns after shift, window and threshold.")
+        im.text_wrapped(
+            "IRF and background as the fit sees them: the estimated or loaded patterns after shift, window and threshold."
+        )
         draw_sections(self.irf_sections, self.model, self.form)
 
     def _detectors(self, box=None) -> None:
@@ -283,7 +367,9 @@ class MleNativeApp(TourTarget, ImApp):
         self.remember("decay", box)
         curves = self.model.fit_curves
         if curves is None:
-            im.text_wrapped("No fit yet. Add burst files and press Auto IRF/background: the decay, the model, the IRF and the background of the current file appear here.")
+            im.text_wrapped(
+                "No fit yet. Add burst files and press Auto IRF/background: the decay, the model, the IRF and the background of the current file appear here."
+            )
             return
         if implot.begin_plot("Decay histogram and fit", (-1, -1)):
             implot.setup_axes("Micro-time window (channels, VV then VH)", "Photons")
@@ -298,7 +384,9 @@ class MleNativeApp(TourTarget, ImApp):
     def _inspect(self, box=None) -> None:
         bursts = self.model.n_bursts
         if not bursts:
-            im.text_wrapped("No bursts loaded: add burst files to inspect one burst's decay per detector.")
+            im.text_wrapped(
+                "No bursts loaded: add burst files to inspect one burst's decay per detector."
+            )
             return
         draw_sections(self.burst_sections, self.model, self.form)
         data = self.model.inspected_burst()
@@ -314,11 +402,17 @@ class MleNativeApp(TourTarget, ImApp):
 
     def _lifetimes(self, box=None) -> None:
         self.remember("distribution", box)
-        histograms = fit_view.lifetime_histograms(fit_view.burst_lifetimes(self.model.burst_results))
+        histograms = fit_view.lifetime_histograms(
+            fit_view.burst_lifetimes(self.model.burst_results)
+        )
         if not histograms:
-            im.text_wrapped("No burst lifetimes yet: press Fit bursts. The histogram of the fitted lifetimes appears here.")
+            im.text_wrapped(
+                "No burst lifetimes yet: press Fit bursts. The histogram of the fitted lifetimes appears here."
+            )
             return
-        everything = [v for h in fit_view.burst_lifetimes(self.model.burst_results).values() for v in h]
+        everything = [
+            v for h in fit_view.burst_lifetimes(self.model.burst_results).values() for v in h
+        ]
         if self.gate_min is None or self.gate_max is None:
             self.gate_min, self.gate_max = float(min(everything)), float(max(everything))
         peak = max(float(counts.max()) for _, _, counts, _ in histograms)
@@ -326,7 +420,9 @@ class MleNativeApp(TourTarget, ImApp):
             implot.setup_axes("Lifetime tau (ns)", "Bursts")
             for label, centres, counts, width in histograms:
                 implot.plot_bars(label, centres, counts, bar_size=width * 0.9)
-            rect = implot.drag_rect(502, self.gate_min, 0.0, self.gate_max, max(peak, 1.0), REGION_FILL)
+            rect = implot.drag_rect(
+                502, self.gate_min, 0.0, self.gate_max, max(peak, 1.0), REGION_FILL
+            )
             if rect.modified:
                 self.gate_min, self.gate_max = rect.x_min, max(rect.x_min, rect.x_max)
             implot.end_plot()

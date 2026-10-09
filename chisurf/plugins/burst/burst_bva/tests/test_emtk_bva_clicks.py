@@ -36,7 +36,7 @@ def hermetic(tmp_path, monkeypatch):
 
 @pytest.fixture
 def measurement(tmp_path):
-    return build(tmp_path / "measurement")      # <tmp>/measurement/burstwise
+    return build(tmp_path / "measurement")  # <tmp>/measurement/burstwise
 
 
 @pytest.fixture
@@ -134,7 +134,9 @@ def tab(app, name, size=SIZE):
 # -- the action row --------------------------------------------------------------------------------------------- #
 
 
-def test_run_click_computes_bva_as_the_qt_tool_did_and_writes_the_companions(app, measurement, tmp_path):
+def test_run_click_computes_bva_as_the_qt_tool_did_and_writes_the_companions(
+    app, measurement, tmp_path
+):
     """Folder typed into its field, Run clicked: the per-burst Std equals the Qt tool's on the same folder."""
     qt = _qt_facts(build(tmp_path / "qt_a"), build(tmp_path / "qt_b", seed=9))
     type_into(app, "folder_path", str(measurement), enter=False)
@@ -158,7 +160,9 @@ def test_a_second_run_is_unchanged_and_points_at_restart_whose_click_recomputes(
     run_and_wait(app, measurement)
     first = app.model.df
     press(app, "run")
-    assert "Unchanged — kept the previous BVA result" in " ".join(draw(app).strings)   # the status wraps
+    assert "Unchanged — kept the previous BVA result" in " ".join(
+        draw(app).strings
+    )  # the status wraps
     assert app.model.restart_attention and app.model.df is first and not app.controller.running
     press(app, "restart")
     assert app.model.is_running
@@ -167,7 +171,9 @@ def test_a_second_run_is_unchanged_and_points_at_restart_whose_click_recomputes(
     assert app.model.status_text.startswith("Done – 60 bursts")
 
 
-def test_stop_click_cancels_the_running_computation_and_run_then_computes(app, measurement, monkeypatch):
+def test_stop_click_cancels_the_running_computation_and_run_then_computes(
+    app, measurement, monkeypatch
+):
     gate = threading.Event()
     original = core.compute_bva
     monkeypatch.setattr(core, "compute_bva", lambda *a, **k: (gate.wait(20), original(*a, **k))[1])
@@ -175,7 +181,7 @@ def test_stop_click_cancels_the_running_computation_and_run_then_computes(app, m
     press(app, "run")
     draw(app, frames=1)
     assert app.controller.running
-    assert app.next_frame_in() is not None                    # frames keep coming while it runs
+    assert app.next_frame_in() is not None  # frames keep coming while it runs
     press(app, "stop")
     assert app.model.status_text == "Stopping the BVA analysis …"
     gate.set()
@@ -187,8 +193,10 @@ def test_stop_click_cancels_the_running_computation_and_run_then_computes(app, m
     assert app.model.df is not None
 
 
-def test_stop_does_nothing_when_idle_and_run_and_restart_do_nothing_while_running(app, measurement, monkeypatch):
-    press(app, "stop")                                       # idle: no computation to stop
+def test_stop_does_nothing_when_idle_and_run_and_restart_do_nothing_while_running(
+    app, measurement, monkeypatch
+):
+    press(app, "stop")  # idle: no computation to stop
     assert app.model.status_text == "Ready" and not app.controller.running
     gate = threading.Event()
     original = core.compute_bva
@@ -197,7 +205,7 @@ def test_stop_does_nothing_when_idle_and_run_and_restart_do_nothing_while_runnin
     press(app, "run")
     draw(app, frames=1)
     future = app.controller._future
-    press(app, "restart")                                    # running: ignored
+    press(app, "restart")  # running: ignored
     press(app, "run")
     assert app.controller._future is future
     gate.set()
@@ -209,7 +217,9 @@ def test_a_failed_run_shows_its_error_in_the_window(app, tmp_path, monkeypatch):
     empty = tmp_path / "empty"
     empty.mkdir()
     app.model.set_folder(empty)
-    monkeypatch.setattr(core, "read_burst_analysis", lambda *a, **k: (_ for _ in ()).throw(ValueError("no bursts")))
+    monkeypatch.setattr(
+        core, "read_burst_analysis", lambda *a, **k: (_ for _ in ()).throw(ValueError("no bursts"))
+    )
     press(app, "run")
     settle(app)
     assert "BVA failed: no bursts" in draw(app).strings
@@ -222,7 +232,7 @@ def test_clear_click_removes_the_result_and_the_scatter(app, measurement):
     assert app.model.df is None and app.model.status_text == "Plot cleared"
     strings = draw(app).strings
     assert "Plot cleared" in strings and "Bursts" not in strings and "Static line" in strings
-    press(app, "run")                                        # the cache was invalidated: a Run recomputes
+    press(app, "run")  # the cache was invalidated: a Run recomputes
     settle(app)
     assert app.model.df is not None
 
@@ -250,22 +260,24 @@ def test_the_folder_field_takes_typed_text_and_backspace_clears_it(app):
     type_into(app, "folder_path", "/some/where", enter=False)
     assert str(app.model.analysis_folder) == "/some/where"
     assert "/some/where" in draw(app).strings
-    type_into(app, "folder_path", "", enter=False)           # Ctrl+A, nothing typed
+    type_into(app, "folder_path", "", enter=False)  # Ctrl+A, nothing typed
     app.key(keys.KEY_BACKSPACE, "")
     draw(app)
     assert app.model.analysis_folder is None
 
 
-def test_folder_click_opens_the_dialog_and_choosing_a_folder_by_clicks_sets_it(app, measurement, monkeypatch):
+def test_folder_click_opens_the_dialog_and_choosing_a_folder_by_clicks_sets_it(
+    app, measurement, monkeypatch
+):
     monkeypatch.chdir(measurement.parent)
     press(app, "folder")
     strings = draw(app).strings
     assert "Select Data Folder" in strings and "Cancel" in strings and "Choose" in strings
-    assert str(measurement.parent) in draw(app).strings              # the dialog lists the working folder
-    click(app, text_rect(draw(app), "[burstwise]"))                   # a click selects the folder
+    assert str(measurement.parent) in draw(app).strings  # the dialog lists the working folder
+    click(app, text_rect(draw(app), "[burstwise]"))  # a click selects the folder
     click(app, text_rect(draw(app), "Choose"))
     assert app.model.analysis_folder == measurement
-    assert "Choose" not in draw(app).strings                 # the dialog closed
+    assert "Choose" not in draw(app).strings  # the dialog closed
     assert app.model.status_text == f"Data folder: {measurement}"
 
 
@@ -287,8 +299,11 @@ def test_a_dropped_folder_is_taken_and_a_stray_file_is_reported(app, measurement
     assert app.model.analysis_folder is None
     assert app.files_dropped([str(measurement)])
     assert app.model.analysis_folder == measurement
-    assert "Data folder:" in " ".join(draw(app).strings) and app.model.status_text == f"Data folder: {measurement}"
-    press(app, "run")                                        # the dropped folder is what runs
+    assert (
+        "Data folder:" in " ".join(draw(app).strings)
+        and app.model.status_text == f"Data folder: {measurement}"
+    )
+    press(app, "run")  # the dropped folder is what runs
     settle(app)
     assert app.model.df is not None
 
@@ -301,7 +316,9 @@ def test_an_empty_drop_is_not_taken(app):
 # -- save plot ---------------------------------------------------------------------------------------------------- #
 
 
-def test_save_plot_click_opens_the_dialog_and_a_typed_name_writes_a_png_of_the_window(app, measurement, tmp_path, monkeypatch):
+def test_save_plot_click_opens_the_dialog_and_a_typed_name_writes_a_png_of_the_window(
+    app, measurement, tmp_path, monkeypatch
+):
     out = tmp_path / "out"
     out.mkdir()
     monkeypatch.chdir(out)
@@ -315,7 +332,7 @@ def test_save_plot_click_opens_the_dialog_and_a_typed_name_writes_a_png_of_the_w
         app.key(ord(ch), ch)
         draw(app, frames=1)
     click(app, text_rect(draw(app), "Save"))
-    draw(app, frames=3)                                      # the picture is written on the next frame
+    draw(app, frames=3)  # the picture is written on the next frame
     written = out / "my_bva.png"
     assert written.is_file(), list(out.iterdir())
     assert written.read_bytes().startswith(b"\x89PNG")
@@ -336,7 +353,12 @@ def test_save_plot_dialog_cancel_writes_nothing(app, tmp_path, monkeypatch):
 
 @pytest.mark.parametrize(
     "name,start,dx",
-    [("window_length", 0.01, 60), ("photons_per_slice", 10, 40), ("bins_x", 51, 40), ("bins_y", 51, 40)],
+    [
+        ("window_length", 0.01, 60),
+        ("photons_per_slice", 10, 40),
+        ("bins_x", 51, 40),
+        ("bins_y", 51, 40),
+    ],
 )
 def test_each_drag_field_changes_its_value_and_the_drawn_text(app, name, start, dx):
     assert getattr(app.model, name) == pytest.approx(start)
@@ -347,12 +369,17 @@ def test_each_drag_field_changes_its_value_and_the_drawn_text(app, name, start, 
     assert getattr(app.model, name) < after
     value = getattr(app.model, name)
     shown = f"{value:.4f} s" if name == "window_length" else f"{value:.0f}"
-    assert shown in draw(app).strings                        # the field shows the new value
+    assert shown in draw(app).strings  # the field shows the new value
 
 
 @pytest.mark.parametrize(
     "name,low,high",
-    [("window_length", 0.0001, 10.0), ("photons_per_slice", 1, 500), ("bins_x", 10, 500), ("bins_y", 10, 500)],
+    [
+        ("window_length", 0.0001, 10.0),
+        ("photons_per_slice", 1, 500),
+        ("bins_x", 10, 500),
+        ("bins_y", 10, 500),
+    ],
 )
 def test_a_drag_stops_at_the_range_limits_of_the_qt_tool(app, name, low, high):
     drag_field(app, name, -3000, steps=30)
@@ -367,7 +394,11 @@ def test_a_bins_drag_redraws_the_profile_without_a_recompute(app, measurement):
     result = app.model.df
     drag_field(app, "bins_x", -20)
     after = app.model.get_plot_data()
-    assert app.model.bins_x < 51 and after["profile_x"].tolist() != before["profile_x"].tolist() and app.model.df is result
+    assert (
+        app.model.bins_x < 51
+        and after["profile_x"].tolist() != before["profile_x"].tolist()
+        and app.model.df is result
+    )
     assert not app.controller.running
 
 
@@ -382,19 +413,21 @@ def test_show_static_line_checkbox_toggles_the_line_in_the_plot(app):
 def test_auto_update_checkbox_and_a_parameter_drag_recompute_without_writing(app, measurement):
     press(app, "auto_update")
     assert app.model.auto_update is True
-    app.model.set_folder(measurement)                        # auto update computes on a new folder
+    app.model.set_folder(measurement)  # auto update computes on a new folder
     settle(app)
     first = app.model.df
     assert first is not None and not (measurement / "bv4").exists()
     drag_field(app, "photons_per_slice", 30)
     settle(app)
-    assert app.model.df is not first and not (measurement / "bv4").exists()   # recomputed, nothing written
+    assert (
+        app.model.df is not first and not (measurement / "bv4").exists()
+    )  # recomputed, nothing written
     assert app.model.photons_per_slice > 10
     press(app, "auto_update")
     assert app.model.auto_update is False
     result = app.model.df
     drag_field(app, "photons_per_slice", -20)
-    assert not app.controller.running and app.model.df is result              # off: the drag recomputes nothing
+    assert not app.controller.running and app.model.df is result  # off: the drag recomputes nothing
 
 
 # -- the channel definitions tab ------------------------------------------------------------------------------------ #
@@ -408,7 +441,10 @@ def test_the_tabs_are_clickable_and_each_shows_its_own_controls(app):
     assert "Detector Routing" in strings and "Analysis Parameters" not in strings
     assert app.bva_gui.selected_settings_tab == "Channel Definitions"
     tab(app, "BVA Settings")
-    assert "Analysis Parameters" in draw(app).strings and app.bva_gui.selected_settings_tab == "BVA Settings"
+    assert (
+        "Analysis Parameters" in draw(app).strings
+        and app.bva_gui.selected_settings_tab == "BVA Settings"
+    )
 
 
 def test_donor_and_acceptor_channels_are_typed_and_reach_the_analysis_settings(app):
@@ -424,7 +460,9 @@ def test_microtime_gates_are_typed_and_a_bad_range_is_refused_with_a_message(app
     tab(app, "Channel Definitions")
     type_into(app, "donor_microtime", "10:20, 30:40", enter=False)
     assert app.model.bva_settings()["donor_micro_time_ranges"] == [(10, 20), (30, 40)]
-    assert "Invalid microtime range" not in " ".join(draw(app).strings)   # typing "1", "10", "10:" was invalid on the way
+    assert "Invalid microtime range" not in " ".join(
+        draw(app).strings
+    )  # typing "1", "10", "10:" was invalid on the way
     assert "10:20, 30:40" in draw(app).strings
     type_into(app, "acceptor_microtime", "100:50", enter=False)
     assert app.model.acceptor_micro_time_ranges == [(0, 32768)]
@@ -461,7 +499,7 @@ def test_the_region_rectangle_is_dragged_by_its_edge(app):
     draw(app)
     x, y, w, h = app.item_rects["bva_plot"]
     start = list(app.bva_gui.region_rect)
-    left = text_rect(draw(app), "E: 0.20")                   # the tag sits at the left edge of the region
+    left = text_rect(draw(app), "E: 0.20")  # the tag sits at the left edge of the region
     px, py = left[0] + left[2] / 2, y + h / 2
     app.pointer_move(px, py)
     draw(app, frames=2)
@@ -480,7 +518,7 @@ def test_a_drag_in_the_plot_pans_it(app):
     draw(app)
     before = tick_labels(draw(app))
     x, y, w, h = app.item_rects["bva_plot"]
-    cx, cy = x + w * 0.7, y + h * 0.2                        # away from the region rectangle
+    cx, cy = x + w * 0.7, y + h * 0.2  # away from the region rectangle
     app.pointer_move(cx, cy)
     draw(app, frames=2)
     app.press(cx, cy)
@@ -521,7 +559,9 @@ def test_guide_click_starts_the_tour_whose_buttons_work(app):
     assert not tour.active
 
 
-def test_the_tour_waits_for_the_folder_and_run_buttons_and_is_walked_to_the_end(app, measurement, monkeypatch):
+def test_the_tour_waits_for_the_folder_and_run_buttons_and_is_walked_to_the_end(
+    app, measurement, monkeypatch
+):
     monkeypatch.chdir(measurement.parent)
     tour = app.bva_gui.tour
     press(app, "guide")
@@ -533,7 +573,7 @@ def test_the_tour_waits_for_the_folder_and_run_buttons_and_is_walked_to_the_end(
         key = tour._target_key(tour.steps[tour.step_idx].get("target"))
         if tour.awaiting:
             waited.append(key)
-            click(app, app.item_rects[key])                  # the user operates the highlighted control
+            click(app, app.item_rects[key])  # the user operates the highlighted control
             assert not tour.awaiting, f"pressing {key} did not release the step"
             if key == "folder":
                 click(app, text_rect(draw(app), "Cancel"))
@@ -542,7 +582,7 @@ def test_the_tour_waits_for_the_folder_and_run_buttons_and_is_walked_to_the_end(
                 settle(app)
         draw(app)
         if tour.step_idx == len(tour.steps) - 1:
-            tour.next()                                      # the last step closes the tour
+            tour.next()  # the last step closes the tour
         else:
             click(app, text_rect(draw(app), "Next ►"))
     assert waited == ["folder", "run"] and not tour.active
@@ -551,10 +591,10 @@ def test_the_tour_waits_for_the_folder_and_run_buttons_and_is_walked_to_the_end(
 def test_the_tour_next_button_is_disabled_until_the_awaited_control_is_used(app):
     tour = app.bva_gui.tour
     press(app, "guide")
-    click(app, text_rect(draw(app), "Next ►"))               # step 1 awaits the Folder button
+    click(app, text_rect(draw(app), "Next ►"))  # step 1 awaits the Folder button
     assert tour.step_idx == 1 and tour.awaiting
     click(app, text_rect(draw(app), "Next ►"))
-    assert tour.step_idx == 1                                # greyed: the click moved nothing
+    assert tour.step_idx == 1  # greyed: the click moved nothing
 
 
 def test_help_click_opens_the_window_whose_buttons_and_escape_close_it(app):
@@ -583,7 +623,10 @@ def test_the_flow_works_in_the_small_window_too(app, measurement):
     app.model.set_folder(measurement)
     click(app, app.item_rects["run"], SMALL)
     settle(app, SMALL)
-    assert app.model.df is not None and "Done – 60 bursts with Std > 0 on 60 total" in draw(app, SMALL).strings
+    assert (
+        app.model.df is not None
+        and "Done – 60 bursts with Std > 0 on 60 total" in draw(app, SMALL).strings
+    )
     drag_field(app, "bins_x", 30, SMALL)
     assert app.model.bins_x > 51
     click(app, app.item_rects["clear"], SMALL)

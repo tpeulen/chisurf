@@ -67,13 +67,16 @@ def bh_spc_data():
     """Load BH SPC132 test data once."""
     ...
 
+
 def test_burstfilter_mask_parity(bh_spc_data):
     """Photon selection mask matches between API and BurstFilter."""
     ...
 
+
 def test_burstfilter_start_stop_parity(bh_spc_data):
     """Burst start/stop indices match."""
     ...
+
 
 def test_burstfilter_dataframe_parity(bh_spc_data):
     """Burst summary DataFrame matches."""
@@ -86,6 +89,7 @@ In `api/selection.py`, add:
 
 ```python
 _BURST_ENGINE: str = "chisurf"  # or "tttrlib"
+
 
 def set_burst_engine(engine: str) -> None:
     """Switch between 'chisurf' (default) and 'tttrlib' burst engines."""

@@ -1,0 +1,17 @@
+{
+  "reference": "/private/tmp/bid-qt-reference",
+  "reference_type": "genuine historical Qt capture with Setup and Files tab pages",
+  "native_screenshot": "/private/tmp/bid_populated_native.png",
+  "renderer": "CPU PilPainter",
+  "score": 93,
+  "verdict": "pass",
+  "category_match": true,
+  "differences": ["Native split docks keep detector setup, file queue and conversion log visible together instead of Qt tabs", "Native includes optional output formats and destination controls already supported by the original conversion API"],
+  "suggestions": [],
+  "reasoning": "Readable queue and log show a genuine completed SPC/BID conversion. Shared native detector editor replaces the unavailable detector widget shown in the captured historical Qt Setup tab. Functional layout validation, not pixel equality or GPU evidence.",
+  "threshold": 90,
+  "passed": true,
+  "next_actions": [],
+  "verification": "10 tests pass: original container/BUR regressions, native all-format conversion, immutable raw inputs, original BID bytes and provenance, dialogs/help/preferences/hover tooltip, output destinations/batch, cancel-before-next-file, Qt-blocked populated workflow at 1200x800 and 800x600",
+  "limitations": ["Cancellation completes the current file before stopping the queue", "Scientific PTO writing retains its original warning behavior; the native queue verifies the burst table and original BID blob before marking a file Done"]
+}

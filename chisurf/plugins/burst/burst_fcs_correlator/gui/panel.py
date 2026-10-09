@@ -61,7 +61,9 @@ class BurstFcsPanel:
         if c.running:
             return False
         if name == "run":
-            return bool(c.checked_files()) and any(p["pair_name"] in c.enabled_pairs for p in c._pair_presets)
+            return bool(c.checked_files()) and any(
+                p["pair_name"] in c.enabled_pairs for p in c._pair_presets
+            )
         if name == "remove_files":
             return self.app.selected_file is not None
         if name == "remove_pair":
@@ -81,14 +83,37 @@ class BurstFcsPanel:
     # -- tables ------------------------------------------------------------------------------------------ #
     def file_columns(self):
         return [
-            {"key": "use", "label": "Use", "width": 40, "description": "Correlate this input. Click to tick or untick."},
-            {"key": "name", "label": "Burst file", "editable": False, "description": "The BUR or BST burst table, or the analysis folder."},
-            {"key": "where", "label": "Folder", "editable": False, "description": "Where the input is."},
+            {
+                "key": "use",
+                "label": "Use",
+                "width": 40,
+                "description": "Correlate this input. Click to tick or untick.",
+            },
+            {
+                "key": "name",
+                "label": "Burst file",
+                "editable": False,
+                "description": "The BUR or BST burst table, or the analysis folder.",
+            },
+            {
+                "key": "where",
+                "label": "Folder",
+                "editable": False,
+                "description": "Where the input is.",
+            },
         ]
 
     def file_rows(self):
         c = self.c
-        return [{"use": p not in c.unchecked, "name": Path(p).name or p, "where": str(Path(p).parent), "_path": p} for p in c.files]
+        return [
+            {
+                "use": p not in c.unchecked,
+                "name": Path(p).name or p,
+                "where": str(Path(p).parent),
+                "_path": p,
+            }
+            for p in c.files
+        ]
 
     def edit_file(self, record, key, value):
         if key == "use" and not self.c.running:
@@ -102,19 +127,58 @@ class BurstFcsPanel:
 
     def pair_columns(self):
         return [
-            {"key": "use", "label": "Use", "width": 40, "description": "Correlate this channel pair in every burst."},
-            {"key": "name", "label": "Pair", "width": 76, "description": "Name of the pair, shown in the curve list. Double click, type and press Enter to rename it."},
-            {"key": "chs_a", "label": "Ch A", "width": 52, "description": "Routing channels of the first signal, separated by commas (0, 8)."},
-            {"key": "chs_b", "label": "Ch B", "width": 52, "description": "Routing channels of the second signal; the same as A makes an auto-correlation."},
-            {"key": "micro_a", "label": "Micro A", "width": 78, "description": "Micro-time gates of the first signal as start:end in raw TAC channels; several with , or ; (0:10;20:30). Empty uses every photon."},
-            {"key": "micro_b", "label": "Micro B", "width": 78, "description": "Micro-time gates of the second signal, as for A."},
+            {
+                "key": "use",
+                "label": "Use",
+                "width": 40,
+                "description": "Correlate this channel pair in every burst.",
+            },
+            {
+                "key": "name",
+                "label": "Pair",
+                "width": 76,
+                "description": "Name of the pair, shown in the curve list. Double click, type and press Enter to rename it.",
+            },
+            {
+                "key": "chs_a",
+                "label": "Ch A",
+                "width": 52,
+                "description": "Routing channels of the first signal, separated by commas (0, 8).",
+            },
+            {
+                "key": "chs_b",
+                "label": "Ch B",
+                "width": 52,
+                "description": "Routing channels of the second signal; the same as A makes an auto-correlation.",
+            },
+            {
+                "key": "micro_a",
+                "label": "Micro A",
+                "width": 78,
+                "description": "Micro-time gates of the first signal as start:end in raw TAC channels; several with , or ; (0:10;20:30). Empty uses every photon.",
+            },
+            {
+                "key": "micro_b",
+                "label": "Micro B",
+                "width": 78,
+                "description": "Micro-time gates of the second signal, as for A.",
+            },
         ]
 
     def pair_rows(self):
         c = self.c
-        return [{"use": p["pair_name"] in c.enabled_pairs, "name": p["pair_name"], "chs_a": channels_text(p["chs_a"]), "chs_b": channels_text(p["chs_b"]),
-                 "micro_a": format_ranges(p.get("micro_a") or []), "micro_b": format_ranges(p.get("micro_b") or []), "_name": p["pair_name"]}
-                for p in c._pair_presets]
+        return [
+            {
+                "use": p["pair_name"] in c.enabled_pairs,
+                "name": p["pair_name"],
+                "chs_a": channels_text(p["chs_a"]),
+                "chs_b": channels_text(p["chs_b"]),
+                "micro_a": format_ranges(p.get("micro_a") or []),
+                "micro_b": format_ranges(p.get("micro_b") or []),
+                "_name": p["pair_name"],
+            }
+            for p in c._pair_presets
+        ]
 
     def edit_pair(self, record, key, value):
         c = self.c
@@ -154,15 +218,52 @@ class BurstFcsPanel:
 
     def curve_columns(self):
         many = len({c.get("file", "") for c in self.c._curves}) > 1
-        return ([{"key": "file", "label": "File", "editable": False, "description": "Measurement the burst comes from."}] if many else []) + [
-            {"key": "burst", "label": "Burst", "width": 46, "editable": False, "description": "Index of the burst in the burst table."},
-            {"key": "pair", "label": "Pair", "width": 84, "editable": False, "description": "Channel pair of the curve."},
-            {"key": "td", "label": "tau_D (ms)", "format": "%.4g", "editable": False, "description": "Diffusion time of the fit (the mean of the distribution for MaxEnt)."},
+        return (
+            [
+                {
+                    "key": "file",
+                    "label": "File",
+                    "editable": False,
+                    "description": "Measurement the burst comes from.",
+                }
+            ]
+            if many
+            else []
+        ) + [
+            {
+                "key": "burst",
+                "label": "Burst",
+                "width": 46,
+                "editable": False,
+                "description": "Index of the burst in the burst table.",
+            },
+            {
+                "key": "pair",
+                "label": "Pair",
+                "width": 84,
+                "editable": False,
+                "description": "Channel pair of the curve.",
+            },
+            {
+                "key": "td",
+                "label": "tau_D (ms)",
+                "format": "%.4g",
+                "editable": False,
+                "description": "Diffusion time of the fit (the mean of the distribution for MaxEnt).",
+            },
         ]
 
     def curve_rows(self):
-        return [{"file": c.get("file", ""), "burst": int(c.get("burst_index", 0)), "pair": c.get("pair_name", ""), "td": float(c.get("td_mean", float("nan")) or float("nan")),
-                 "_index": i} for i, c in enumerate(self.c._curves)]
+        return [
+            {
+                "file": c.get("file", ""),
+                "burst": int(c.get("burst_index", 0)),
+                "pair": c.get("pair_name", ""),
+                "td": float(c.get("td_mean", float("nan")) or float("nan")),
+                "_index": i,
+            }
+            for i, c in enumerate(self.c._curves)
+        ]
 
     def select_curve(self, record):
         self.c._model._selected = None if record is None else self.c._curves[record["_index"]]
@@ -230,7 +331,9 @@ class BurstFcsPanel:
         n = 1
         while f"pair_{n}" in {p["pair_name"] for p in c._pair_presets}:
             n += 1
-        c._pair_presets.append({"pair_name": f"pair_{n}", "chs_a": [0], "chs_b": [0], "micro_a": [], "micro_b": []})
+        c._pair_presets.append(
+            {"pair_name": f"pair_{n}", "chs_a": [0], "chs_b": [0], "micro_a": [], "micro_b": []}
+        )
         c.enabled_pairs.add(f"pair_{n}")
 
     def remove_pair(self):

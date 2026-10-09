@@ -43,7 +43,9 @@ def burst_photon_indices(df_bursts: Any, current_filename: str) -> list[int]:
         return []
     if "stem" not in column_names(df_bursts):
         first_file_vals = np.asarray(df_bursts["First File"], dtype=object)
-        df_bursts["stem"] = [re.split(r"[\\/]", str(v))[-1].rsplit(".", 1)[0] for v in first_file_vals]
+        df_bursts["stem"] = [
+            re.split(r"[\\/]", str(v))[-1].rsplit(".", 1)[0] for v in first_file_vals
+        ]
     curr_stem = Path(current_filename).stem
     mask = np.asarray(df_bursts["stem"], dtype=object) == curr_stem
     if not mask.any():
@@ -51,7 +53,9 @@ def burst_photon_indices(df_bursts: Any, current_filename: str) -> list[int]:
     starts = numeric_column(df_bursts, "First Photon")[mask].astype(np.int32)
     stops = numeric_column(df_bursts, "Last Photon")[mask].astype(np.int32)
     idxs = np.concatenate([starts, stops + 1])
-    weights = np.concatenate([np.ones_like(starts, dtype=np.int32), -np.ones_like(stops + 1, dtype=np.int32)])
+    weights = np.concatenate(
+        [np.ones_like(starts, dtype=np.int32), -np.ones_like(stops + 1, dtype=np.int32)]
+    )
     events = np.bincount(idxs, weights, minlength=idxs.max() + 1)
     coverage = np.cumsum(events)[:-1] > 0
     return np.nonzero(coverage)[0].tolist()
@@ -156,7 +160,9 @@ def vv_vh_histogram(
         if cs_hist.sum() > 0:
             cs_hist = cs_hist / cs_hist.sum()
     elif normalize_counts == 3:
-        acquisition_time = (tttr.macro_times[-1] - tttr.macro_times[0]) * tttr.header.macro_time_resolution
+        acquisition_time = (
+            tttr.macro_times[-1] - tttr.macro_times[0]
+        ) * tttr.header.macro_time_resolution
         if acquisition_time > 0:
             cs_hist /= acquisition_time
             cp /= acquisition_time
@@ -282,7 +288,9 @@ def select_binning(
     burst_idx = np.asarray(burst_idx, dtype=int)
     if tttr is None or not chs or burst_idx.size == 0:
         return None
-    counts = int(np.isin(np.asarray(tttr.routing_channels)[burst_idx], np.asarray(chs, dtype=int)).sum())
+    counts = int(
+        np.isin(np.asarray(tttr.routing_channels)[burst_idx], np.asarray(chs, dtype=int)).sum()
+    )
     try:
         n_full = int(tttr.header.number_of_micro_time_channels)
     except Exception:
@@ -372,7 +380,9 @@ def coerce_float(value) -> float:
         return float("nan")
 
 
-def write_b4_tables(results, files_by_stem, det_meta, channel_settings, *, on_new_folder=None, tick=None):
+def write_b4_tables(
+    results, files_by_stem, det_meta, channel_settings, *, on_new_folder=None, tick=None
+):
     """Write the ``b?4`` burst-fit tables (zero-interleaved, one per measurement and detector).
 
     Parameters
@@ -420,7 +430,9 @@ def write_b4_tables(results, files_by_stem, det_meta, channel_settings, *, on_ne
         out_dir.mkdir(parents=True, exist_ok=True)
         written_dirs.add(out_dir.name)
         arr = np.array([[coerce_float(row.get(c)) for c in cols] for row in rows_g], dtype=float)
-        by_stem.setdefault(stem, {})[det] = store_from_arrays({c: arr[:, i] for i, c in enumerate(cols)})
+        by_stem.setdefault(stem, {})[det] = store_from_arrays(
+            {c: arr[:, i] for i, c in enumerate(cols)}
+        )
         out = np.zeros((arr.shape[0] * 2 + 1, arr.shape[1]), dtype=float)
         out[1::2] = arr
         out_file = out_dir / f"{Path(file_path).stem}.b{letter}4"
@@ -449,13 +461,23 @@ class NumpyEncoder(__import__("json").JSONEncoder):
         return super().default(obj)
 
 
-def burst_histogram(burst: Any, chs: list[int], micro_time_range: tuple[int, int], binning: int) -> np.ndarray:
+def burst_histogram(
+    burst: Any, chs: list[int], micro_time_range: tuple[int, int], binning: int
+) -> np.ndarray:
     """VV | VH micro-time histogram of one burst, zeroed outside the window (what the inspected-burst plot shows)."""
     pchs = chs[::2]
     schs = chs[1::2] if len(chs) > 1 else chs
     sb, eb = micro_time_range
-    cp = burst[np.where(np.isin(burst.routing_channels, pchs))[0]].get_microtime_histogram(binning)[0].astype(np.float64, copy=False)
-    cs_hist = burst[np.where(np.isin(burst.routing_channels, schs))[0]].get_microtime_histogram(binning)[0].astype(np.float64, copy=False)
+    cp = (
+        burst[np.where(np.isin(burst.routing_channels, pchs))[0]]
+        .get_microtime_histogram(binning)[0]
+        .astype(np.float64, copy=False)
+    )
+    cs_hist = (
+        burst[np.where(np.isin(burst.routing_channels, schs))[0]]
+        .get_microtime_histogram(binning)[0]
+        .astype(np.float64, copy=False)
+    )
     if sb > 0:
         cp[:sb] = 0
         cs_hist[:sb] = 0
@@ -469,7 +491,9 @@ def burst_histogram(burst: Any, chs: list[int], micro_time_range: tuple[int, int
 BINNING_CHOICES = [1, 2, 4, 8, 16, 32, 64, 128, 256]
 
 
-def read_burst_analysis(paris_path: Path, pattern: str = "**/*.bur") -> tuple[Any, dict[str, Path], dict | None]:
+def read_burst_analysis(
+    paris_path: Path, pattern: str = "**/*.bur"
+) -> tuple[Any, dict[str, Path], dict | None]:
     """Read every ``.bur`` under *paris_path* into one burst table (the wizard's ``read_burst_analysis``).
 
     Returns the table (tagged with ``burst_file``), the raw-file stem -> path map (raw files sit beside the analysis
@@ -903,16 +927,29 @@ class MleSession:
     def irf(self) -> np.ndarray:
         s = self.settings
         return process_irf(
-            self.irf_np.get(self.current_detector), micro_time_range=self.micro_time_range, binning=s.micro_time_binning,
-            shift=s.shift, shift_sp=s.shift_sp, shift_ss=s.shift_ss, irf_start=s.irf_start, irf_stop=s.irf_stop,
-            threshold_vv=s.irf_threshold_vv, threshold_vh=s.irf_threshold_vh,
+            self.irf_np.get(self.current_detector),
+            micro_time_range=self.micro_time_range,
+            binning=s.micro_time_binning,
+            shift=s.shift,
+            shift_sp=s.shift_sp,
+            shift_ss=s.shift_ss,
+            irf_start=s.irf_start,
+            irf_stop=s.irf_stop,
+            threshold_vv=s.irf_threshold_vv,
+            threshold_vh=s.irf_threshold_vh,
         )
 
     def background(self) -> np.ndarray:
-        return process_background(self.bg_np.get(self.current_detector), self.settings.shift, self.irf())
+        return process_background(
+            self.bg_np.get(self.current_detector), self.settings.shift, self.irf()
+        )
 
     def window_ranges(self) -> tuple[int, int, int, int]:
-        return window_bins(self.detector.get("micro_time_ranges"), self.micro_time_range, self.settings.micro_time_binning)
+        return window_bins(
+            self.detector.get("micro_time_ranges"),
+            self.micro_time_range,
+            self.settings.micro_time_binning,
+        )
 
     # -- decay ------------------------------------------------------------------------------------------------- #
     def build_decay(self) -> np.ndarray | None:
@@ -923,8 +960,13 @@ class MleSession:
         if tttr is None or not chs or idx.size == 0:
             return None
         rows = vv_vh_histogram(
-            tttr[idx], chs, self.micro_time_range, self.settings.micro_time_binning,
-            detector_ranges=self.detector.get("micro_time_ranges"), shift=self.settings.shift, normalize_counts=-1,
+            tttr[idx],
+            chs,
+            self.micro_time_range,
+            self.settings.micro_time_binning,
+            detector_ranges=self.detector.get("micro_time_ranges"),
+            shift=self.settings.shift,
+            normalize_counts=-1,
         )
         self.decay = np.asarray(rows)
         return self.decay
@@ -932,7 +974,12 @@ class MleSession:
     # -- IRF / background -------------------------------------------------------------------------------------- #
     def auto_binning(self) -> int | None:
         tttr = self.current_tttr()
-        return select_binning(tttr, self.detector.get("chs", []), np.asarray(self.burst_indices(), dtype=int), BINNING_CHOICES)
+        return select_binning(
+            tttr,
+            self.detector.get("chs", []),
+            np.asarray(self.burst_indices(), dtype=int),
+            BINNING_CHOICES,
+        )
 
     def extract_irf_background(self) -> int:
         """IRF and background from the photons outside the bursts, at the current binning; returns the detectors done."""
@@ -943,8 +990,12 @@ class MleSession:
         in_burst = np.zeros(len(tttr), dtype=bool)
         in_burst[idx] = True
         patterns = extract_mle_irf_background(
-            tttr, self.detectors, micro_time_binning=self.settings.micro_time_binning, mask=~in_burst,
-            min_photons=max(2, int(self.settings.min_photons)), irf_model=self.settings.irf_model,
+            tttr,
+            self.detectors,
+            micro_time_binning=self.settings.micro_time_binning,
+            mask=~in_burst,
+            min_photons=max(2, int(self.settings.min_photons)),
+            irf_model=self.settings.irf_model,
         )
         n = 0
         for det, pat in patterns.items():
@@ -997,8 +1048,15 @@ class MleSession:
         if total > 0.0:
             bg = bg / total
         settings = Fit2xSettings(
-            dt=dt, period=period, irf=irf, background=bg, g_factor=gf, l1=l1, l2=l2,
-            p2s_twoIstar=self.settings.p2s_twoIstar, soft_bifl_scatter=self.settings.BIFL_scatter,
+            dt=dt,
+            period=period,
+            irf=irf,
+            background=bg,
+            g_factor=gf,
+            l1=l1,
+            l2=l2,
+            p2s_twoIstar=self.settings.p2s_twoIstar,
+            soft_bifl_scatter=self.settings.BIFL_scatter,
         )
         return Fit2x(settings, model=Fit2xModel(self.settings.model))
 
@@ -1028,15 +1086,32 @@ class MleSession:
             return None
         fit = self.create_fit()
         res = fit.fit(data=d, initial_values=x0, fixed=fixed, include_model=True)
-        model = np.asarray(res.model_curve, dtype=float) if res.model_curve is not None else np.zeros_like(d)
+        model = (
+            np.asarray(res.model_curve, dtype=float)
+            if res.model_curve is not None
+            else np.zeros_like(d)
+        )
         diverged = float(res.twoIstar) < 0 or not np.isfinite(float(res.twoIstar))
-        curves = decay_curves(d, model, self.irf(), self.background(), self.window_ranges(),
-                              tail=self.settings.model == "tail", diverged=diverged)
-        self.outcome = FitOutcome(np.asarray(res.x, dtype=float), float(res.twoIstar), list(fit.parameter_names), curves,
-                                  model, d, res)
+        curves = decay_curves(
+            d,
+            model,
+            self.irf(),
+            self.background(),
+            self.window_ranges(),
+            tail=self.settings.model == "tail",
+            diverged=diverged,
+        )
+        self.outcome = FitOutcome(
+            np.asarray(res.x, dtype=float),
+            float(res.twoIstar),
+            list(fit.parameter_names),
+            curves,
+            model,
+            d,
+            res,
+        )
         self.status = "" if not diverged else "Fit diverged: invalid fit quality (2I* < 0)"
         return self.outcome
-
 
     # -- batch ------------------------------------------------------------------------------------------------- #
     def batch_config(self, det: str) -> dict:
@@ -1049,11 +1124,22 @@ class MleSession:
         sb, eb = st.micro_time_start, st.micro_time_stop
         if eb <= sb:
             sb, eb = self.micro_time_range
-        irf = process_irf(
-            self.irf_np.get(det), micro_time_range=(sb, eb), binning=st.micro_time_binning, shift=st.shift,
-            shift_sp=st.shift_sp, shift_ss=st.shift_ss, irf_start=st.irf_start, irf_stop=st.irf_stop,
-            threshold_vv=st.irf_threshold_vv, threshold_vh=st.irf_threshold_vh,
-        ) if np.asarray(self.irf_np.get(det, [])).size else np.asarray(self.irf_np.get(det, np.array([])), dtype=float)
+        irf = (
+            process_irf(
+                self.irf_np.get(det),
+                micro_time_range=(sb, eb),
+                binning=st.micro_time_binning,
+                shift=st.shift,
+                shift_sp=st.shift_sp,
+                shift_ss=st.shift_ss,
+                irf_start=st.irf_start,
+                irf_stop=st.irf_stop,
+                threshold_vv=st.irf_threshold_vv,
+                threshold_vh=st.irf_threshold_vh,
+            )
+            if np.asarray(self.irf_np.get(det, [])).size
+            else np.asarray(self.irf_np.get(det, np.array([])), dtype=float)
+        )
         raw_bg = np.asarray(self.bg_np.get(det, np.array([])), dtype=float)
         bg = process_background(raw_bg, st.shift, irf) if raw_bg.size else raw_bg
         names, x0, fixed = st.parameter_state()
@@ -1077,7 +1163,9 @@ class MleSession:
             "param_names": names,
         }
 
-    def run_batch(self, progress=None, max_workers: int | None = None, should_stop=None) -> list[dict]:
+    def run_batch(
+        self, progress=None, max_workers: int | None = None, should_stop=None
+    ) -> list[dict]:
         """Fit every burst of every loaded file and detector in worker processes (the wizard's ``process_bursts``).
 
         The photon channels and micro times of each raw file go to the workers through shared memory; each worker
@@ -1123,11 +1211,30 @@ class MleSession:
             for fname, bursts in groups.items():
                 tttr = self.tttrs.get(fname if identity_column == "_measurement_path" else Path(fname).stem)
                 if tttr is None:
-                    jobs.append((fname, bursts, None, None, None, None, None, None, det_order, {}, int(self.settings.shift or 0), None))
+                    jobs.append(
+                        (
+                            fname,
+                            bursts,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            det_order,
+                            {},
+                            int(self.settings.shift or 0),
+                            None,
+                        )
+                    )
                     continue
                 rc_full = np.asarray(tttr.routing_channels)
                 mt_full = np.asarray(tttr.micro_times)
-                mt_bins = (mt_full // binning).astype(np.int32, copy=False) if binning > 1 else mt_full.astype(np.int32, copy=True)
+                mt_bins = (
+                    (mt_full // binning).astype(np.int32, copy=False)
+                    if binning > 1
+                    else mt_full.astype(np.int32, copy=True)
+                )
                 if rc_full.dtype != np.uint16 and int(rc_full.max(initial=0)) <= 65535:
                     rc_full = rc_full.astype(np.uint16, copy=False)
                 if mt_bins.dtype != np.uint16 and int(mt_bins.max(initial=0)) <= 65535:
@@ -1208,7 +1315,9 @@ class MleSession:
                         raise InterruptedError("The burst fit was stopped.")
                     try:
                         out, n = fut.result()
-                    except Exception as exc:  # a whole file failed: name it rather than export a short table
+                    except (
+                        Exception
+                    ) as exc:  # a whole file failed: name it rather than export a short table
                         self.status = f"{futures[fut]} failed: {exc}"
                         out, n = [], 0
                     results.extend(out)
@@ -1226,7 +1335,6 @@ class MleSession:
         self.batch_settings_snapshot = copy.deepcopy(self.channel_settings())
         self.batch_files_snapshot = self.measurement_files()
         return results
-
 
     # -- export and settings ----------------------------------------------------------------------------------- #
     def channel_settings(self) -> dict:
@@ -1289,7 +1397,6 @@ class MleSession:
         if payload.get("micro_time_binning"):
             self.set_binning(int(payload["micro_time_binning"]))
 
-
     # -- inspected burst --------------------------------------------------------------------------------------- #
     def inspect_burst(self, idx: int) -> dict[str, np.ndarray]:
         """Per detector, the VV | VH histogram of burst *idx* of the table (``Last Photon`` is inclusive)."""
@@ -1308,6 +1415,8 @@ class MleSession:
         last = int(numeric_column(self.df_bursts, "Last Photon")[idx])
         burst = tttr[first : last + 1]
         return {
-            det: burst_histogram(burst, info.get("chs", []), self.micro_time_range, self.settings.micro_time_binning)
+            det: burst_histogram(
+                burst, info.get("chs", []), self.micro_time_range, self.settings.micro_time_binning
+            )
             for det, info in self.detectors.items()
         }

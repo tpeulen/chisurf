@@ -12,8 +12,16 @@ import pathlib
 
 import numpy as np
 
-COLUMNS = ["First Photon", "Last Photon", "Duration (ms)", "Number of Photons",
-           "Number of Photons (green)", "Number of Photons (red)", "E", "S"]
+COLUMNS = [
+    "First Photon",
+    "Last Photon",
+    "Duration (ms)",
+    "Number of Photons",
+    "Number of Photons (green)",
+    "Number of Photons (red)",
+    "E",
+    "S",
+]
 #: (E, S) centre of each population, and its share out of 5.
 POPULATIONS = (((0.25, 0.5), 2), ((0.75, 0.5), 2), ((0.02, 0.95), 1))
 

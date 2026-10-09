@@ -76,9 +76,16 @@ class MfdPrepareModel:
             self.error = str(exc)
             self.result = {}
         self.prepared_folder = self.folder if self.result else ""
-        self.status_text = self.report.splitlines()[0] if self.error else (
-            f"Prepared {Path(self.folder).name}: {self.result.get('n_bursts', 0)} bursts, "
-            f"{self.verdict_text()}" if self.result else "Done.")
+        self.status_text = (
+            self.report.splitlines()[0]
+            if self.error
+            else (
+                f"Prepared {Path(self.folder).name}: {self.result.get('n_bursts', 0)} bursts, "
+                f"{self.verdict_text()}"
+                if self.result
+                else "Done."
+            )
+        )
 
     # -- what the window shows ------------------------------------------------------------------------- #
     @property
@@ -114,14 +121,20 @@ class MfdPrepareModel:
         for name in self.detector_names():
             definition = streams.get(name) or {}
             windows = definition.get("micro_time_ranges") or []
-            rows.append({
-                "detector": name,
-                "channels": ", ".join(str(c) for c in definition.get("channels", [])) or f"({origin})",
-                "window": ", ".join(f"{int(a)}-{int(b)}" for a, b in windows) or ("all" if definition else ""),
-                "empty": int(empty.get(name, 0)),
-                "agreement": float(agreement.get(name, float("nan"))),
-                "verdict": "UNVERIFIED" if name in bad else ("ok" if agreement.get(name, 0.0) >= AGREEMENT_REQUIRED else "check"),
-            })
+            rows.append(
+                {
+                    "detector": name,
+                    "channels": ", ".join(str(c) for c in definition.get("channels", []))
+                    or f"({origin})",
+                    "window": ", ".join(f"{int(a)}-{int(b)}" for a, b in windows)
+                    or ("all" if definition else ""),
+                    "empty": int(empty.get(name, 0)),
+                    "agreement": float(agreement.get(name, float("nan"))),
+                    "verdict": "UNVERIFIED"
+                    if name in bad
+                    else ("ok" if agreement.get(name, 0.0) >= AGREEMENT_REQUIRED else "check"),
+                }
+            )
         return rows
 
     def source_rows(self) -> list[dict]:
@@ -135,8 +148,15 @@ class MfdPrepareModel:
             if " -> " in line and line.startswith("  "):
                 name, _, rest = line.strip().partition(" -> ")
                 paths[name] = rest.rsplit(" [", 1)[0]
-        return [{"file": str(name), "path": paths.get(str(name), ""), "origin": str(origins.get(name, "")),
-                 "photons": int(photons.get(name, 0))} for name in sorted(set(origins) | set(photons))]
+        return [
+            {
+                "file": str(name),
+                "path": paths.get(str(name), ""),
+                "origin": str(origins.get(name, "")),
+                "photons": int(photons.get(name, 0)),
+            }
+            for name in sorted(set(origins) | set(photons))
+        ]
 
     def summary_rows(self) -> list[dict]:
         """The report's header facts and the totals the result carries, as quantity / value rows."""
@@ -149,8 +169,18 @@ class MfdPrepareModel:
             key, sep, value = line.partition(": ")
             if sep and key != "burst folder":
                 rows.append({"quantity": key, "value": value})
-        rows.append({"quantity": "duration (s)", "value": f"{float(self.result.get('duration_s', 0.0)):.6g}"})
-        rows.append({"quantity": "photons in the bursts", "value": str(int(self.result.get("total_photons", 0)))})
+        rows.append(
+            {
+                "quantity": "duration (s)",
+                "value": f"{float(self.result.get('duration_s', 0.0)):.6g}",
+            }
+        )
+        rows.append(
+            {
+                "quantity": "photons in the bursts",
+                "value": str(int(self.result.get("total_photons", 0))),
+            }
+        )
         return rows
 
     @property

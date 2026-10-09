@@ -52,11 +52,16 @@ def build(root: pathlib.Path, seed: int = 4) -> pathlib.Path:
     t = np.concatenate(times)
     order = np.argsort(t, kind="stable")
     ticks = np.round(t[order] / TICK).astype(np.uint64)
-    keep = np.concatenate([[True], np.diff(ticks) > 0])            # one photon per macro tick
+    keep = np.concatenate([[True], np.diff(ticks) > 0])  # one photon per macro tick
     data = tttrlib.TTTR()
-    data.append_events(ticks[keep], np.concatenate(micro)[order][keep].astype(np.uint16),
-                       np.concatenate(channels)[order][keep].astype(np.int8),
-                       np.zeros(int(keep.sum()), np.int8), False, 0)
+    data.append_events(
+        ticks[keep],
+        np.concatenate(micro)[order][keep].astype(np.uint16),
+        np.concatenate(channels)[order][keep].astype(np.int8),
+        np.zeros(int(keep.sum()), np.int8),
+        False,
+        0,
+    )
     data.header.set_macro_time_resolution(TICK)
     data.header.set_micro_time_resolution(TICK / CHANNELS)
     root.mkdir(parents=True, exist_ok=True)

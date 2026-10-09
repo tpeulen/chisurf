@@ -85,16 +85,34 @@ class BurstFcsController:
         for pair in saved:
             a, b = str(pair.get("channel_a", "")), str(pair.get("channel_b", ""))
             da, db = detectors.get(a, {}), detectors.get(b, {}) or detectors.get(a, {})
-            chs_a, chs_b = list(da.get("chs", []) or []), list(db.get("chs", []) or da.get("chs", []) or [])
+            chs_a, chs_b = (
+                list(da.get("chs", []) or []),
+                list(db.get("chs", []) or da.get("chs", []) or []),
+            )
             if not chs_a or not chs_b:
                 continue
             name = str(pair.get("name", "")) or (f"{a}x{b}" if a != b else f"{a}_ACF")
-            pairs.append({"pair_name": name, "chs_a": chs_a, "chs_b": chs_b, "micro_a": list(da.get("micro_time_ranges", []) or []),
-                          "micro_b": list(db.get("micro_time_ranges", []) or [])})
+            pairs.append(
+                {
+                    "pair_name": name,
+                    "chs_a": chs_a,
+                    "chs_b": chs_b,
+                    "micro_a": list(da.get("micro_time_ranges", []) or []),
+                    "micro_b": list(db.get("micro_time_ranges", []) or []),
+                }
+            )
         if not pairs:
-            pairs = [{"pair_name": f"{n}_ACF", "chs_a": list(d.get("chs", [])), "chs_b": list(d.get("chs", [])),
-                      "micro_a": list(d.get("micro_time_ranges", []) or []), "micro_b": list(d.get("micro_time_ranges", []) or [])}
-                     for n, d in detectors.items() if d.get("chs")]
+            pairs = [
+                {
+                    "pair_name": f"{n}_ACF",
+                    "chs_a": list(d.get("chs", [])),
+                    "chs_b": list(d.get("chs", [])),
+                    "micro_a": list(d.get("micro_time_ranges", []) or []),
+                    "micro_b": list(d.get("micro_time_ranges", []) or []),
+                }
+                for n, d in detectors.items()
+                if d.get("chs")
+            ]
         return pairs
 
     def adopt_setup(self, setup_name, detectors):

@@ -24,7 +24,9 @@ class BurstDriver(SatDriver):
         """Draw until the correlation has finished and its curves are shown."""
         end = time.monotonic() + timeout
         self.draw(1)
-        while (self.app.controller.running or self.app.controller._future is not None) and time.monotonic() < end:
+        while (
+            self.app.controller.running or self.app.controller._future is not None
+        ) and time.monotonic() < end:
             time.sleep(0.02)
             self.draw(1)
         assert not self.app.controller.running, "the correlation did not finish"

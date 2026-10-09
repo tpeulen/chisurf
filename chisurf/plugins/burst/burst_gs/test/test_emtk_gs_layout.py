@@ -6,11 +6,15 @@ the report cut off at the window's bottom with no scrollbar, short fields as wid
 
 import pytest
 
-from test.gui.emtk_layout_checks import (
-    SIZES, assert_disjoint, assert_icons_clear, assert_inside, assert_texts_apart, draw,
-)
-
 from chisurf.plugins.burst.burst_gs.gui.app import create_app
+from test.gui.emtk_layout_checks import (
+    SIZES,
+    assert_disjoint,
+    assert_icons_clear,
+    assert_inside,
+    assert_texts_apart,
+    draw,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -38,7 +42,9 @@ def test_actions_are_wrapped_rows_not_a_stack(drawn):
     rects = app.item_rects
     assert_disjoint(rects, ["bur_files", *ACTIONS])
     ys = {round(rects[n][1]) for n in ACTIONS}
-    assert len(ys) <= (1 if size[0] >= 1200 else 3), f"the action buttons stack in {len(ys)} rows: {sorted(ys)}"
+    assert len(ys) <= (1 if size[0] >= 1200 else 3), (
+        f"the action buttons stack in {len(ys)} rows: {sorted(ys)}"
+    )
 
 
 def test_the_report_scrolls_inside_the_window_and_short_fields_are_short(drawn):

@@ -33,6 +33,7 @@ from emtk.widgets.data_table import TableBinding, draw_table
 
 from chisurf.core.datastore import column_names, column_values, is_missing
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.emtk.typed_field import typed_number_field
 from chisurf.plugins.emtk_layout import window_size
 
 from ..view_model import BurstBrowserViewModel
@@ -72,6 +73,7 @@ class BurstBrowserGui:
         self.page: int = 0
         self.page_size: int = 50
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
+        self._number_buffers: dict[str, str] = {}
         self.on_used: Callable[[str], None] | None = None
         self.controller: Any | None = None
         self._burst_table: TableBinding | None = None
@@ -276,15 +278,23 @@ class BurstBrowserGui:
             im.set_next_item_width(half_w)
             # No -/+ buttons: at half the pane they left too little room and a
             # 3-digit photon count showed as its first two digits.
-            ch_lo, new_sz_lo = im.input_int("##sz_min", int(self.model.size_min), step=0, step_fast=0)
+            size_lo, size_hi = int(self.model.size_min), int(self.model.size_max)
+            typed_lo, _ = typed_number_field(
+                "sz_min", size_lo, self._number_buffers, minimum=0, maximum=10_000_000
+            )
+            self.remember("sz_min")
             im.set_item_tooltip("Minimum number of photons per burst.")
             im.same_line()
             im.set_next_item_width(half_w)
-            ch_hi, new_sz_hi = im.input_int("##sz_max", int(self.model.size_max), step=0, step_fast=0)
+            typed_hi, _ = typed_number_field(
+                "sz_max", size_hi, self._number_buffers, minimum=0, maximum=10_000_000
+            )
+            self.remember("sz_max")
             im.set_item_tooltip("Maximum number of photons per burst.")
-            if ch_lo or ch_hi:
-                self.model.size_min = max(0, min(new_sz_lo, new_sz_hi))
-                self.model.size_max = max(0, max(new_sz_lo, new_sz_hi))
+            if typed_lo is not None or typed_hi is not None:
+                lo = size_lo if typed_lo is None else typed_lo
+                hi = size_hi if typed_hi is None else typed_hi
+                self.model.size_min, self.model.size_max = min(lo, hi), max(lo, hi)
                 self.model.refresh()
         else:
             im.text_disabled("Size Range (not available)")

@@ -91,6 +91,7 @@ After analysis:
 3. **Expected:** `.bur` file created, readable with the API:
    ```python
    from chisurf.plugins.burst.burst_selection.api.io import read_bur
+
    df = read_bur("/path/to/saved.bur")
    print(df.head())
    ```

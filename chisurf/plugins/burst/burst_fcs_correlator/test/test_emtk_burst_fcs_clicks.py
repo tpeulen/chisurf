@@ -19,9 +19,9 @@ import numpy as np
 from emtk import keys
 
 from chisurf.plugins.burst.burst_fcs_correlator import demo
-from chisurf.plugins.emtk_test_input import assert_tour_card_clear
 from chisurf.plugins.burst.burst_fcs_correlator.core import algorithms as core
 from chisurf.plugins.burst.burst_fcs_correlator.gui.app import create_app
+from chisurf.plugins.emtk_test_input import assert_tour_card_clear
 
 from .driving import BIG, SMALL, BurstDriver, hermetic_env
 
@@ -111,7 +111,10 @@ def test_example_adds_the_demonstration_data_and_the_pairs(drv):
 def test_run_correlates_every_burst_with_every_pair(drv):
     example_run(drv)
     c = ctrl(drv)
-    assert c.status == f"Computed {demo.N_BURSTS * 3} burst correlation curves." and len(c._curves) == demo.N_BURSTS * 3
+    assert (
+        c.status == f"Computed {demo.N_BURSTS * 3} burst correlation curves."
+        and len(c._curves) == demo.N_BURSTS * 3
+    )
     assert c._model._selected is c._curves[0]
     assert c.status in drv.draw(2).strings
 
@@ -129,7 +132,9 @@ def test_stop_cancels_a_running_correlation_and_keeps_the_previous_results(drv, 
     monkeypatch.setattr(core, "correlate_burst_file", slow)
     drv.click("run")
     assert ctrl(drv).running
-    assert ctrl(drv).status == "Computing burst FCS …" and "0 %" in drv.draw(2).strings  # the progress bar replaces the status line
+    assert (
+        ctrl(drv).status == "Computing burst FCS …" and "0 %" in drv.draw(2).strings
+    )  # the progress bar replaces the status line
     drv.click("stop")
     drv.settle()
     assert ctrl(drv).status == "Burst FCS cancelled." and ctrl(drv)._curves is previous
@@ -264,7 +269,10 @@ def test_files_dialog_lists_the_picked_table_and_cancel_adds_nothing(drv, data, 
     drv.draw(4)
     drv.click_text("picked.spc.bst")
     drv.click_text("Open", last=True)
-    assert ctrl(drv).files == [str(tmp_path / "picked.spc.bst")] and ctrl(drv).status == "1 input(s) listed."
+    assert (
+        ctrl(drv).files == [str(tmp_path / "picked.spc.bst")]
+        and ctrl(drv).status == "1 input(s) listed."
+    )
 
 
 def test_folder_dialog_and_a_dropped_folder_list_the_folder(drv, data, tmp_path):
@@ -276,7 +284,9 @@ def test_folder_dialog_and_a_dropped_folder_list_the_folder(drv, data, tmp_path)
     assert str(folder) in ctrl(drv).files
 
 
-def test_a_dropped_burst_table_a_settings_file_and_a_pairs_file_are_each_taken_in(drv, data, tmp_path):
+def test_a_dropped_burst_table_a_settings_file_and_a_pairs_file_are_each_taken_in(
+    drv, data, tmp_path
+):
     settings = tmp_path / "s.json"
     settings.write_text(json.dumps({"n_bins": 7, "n_casc": 11, "fit_mode": "none"}))
     pairs = tmp_path / "p.json"
@@ -421,8 +431,19 @@ def test_a_pairs_file_with_a_detector_setup_is_accepted(drv, tmp_path):
 # -- the settings ------------------------------------------------------------------------------------------------------ #
 
 
-@pytest.mark.parametrize("name, text, expected", [("n_bins", "5", 5), ("n_bins", "0", 1), ("n_bins", "999999", 65535), ("n_casc", "30", 30), ("n_casc", "99", 64),
-                                                  ("padding_ms", "12.5", 12.5), ("padding_ms", "-4", 0.0), ("n_bins", "abc", 3)])
+@pytest.mark.parametrize(
+    "name, text, expected",
+    [
+        ("n_bins", "5", 5),
+        ("n_bins", "0", 1),
+        ("n_bins", "999999", 65535),
+        ("n_casc", "30", 30),
+        ("n_casc", "99", 64),
+        ("padding_ms", "12.5", 12.5),
+        ("padding_ms", "-4", 0.0),
+        ("n_bins", "abc", 3),
+    ],
+)
 def test_the_correlator_fields_are_typed_and_clamped(drv, name, text, expected):
     drv.tab("Settings")
     drv.type_into(name, text)
@@ -472,7 +493,11 @@ def test_the_mode_radio_picks_each_fit_and_the_maxent_fields_follow_it(drv):
     drv.type_into("maxent_td_max", "5")
     drv.type_into("maxent_td_min", "0.01")
     drv.type_into("maxent_log10_reg", "-3")
-    assert (model(drv).maxent_td_max, model(drv).maxent_td_min, model(drv).maxent_log10_reg) == (5.0, 0.01, -3.0)
+    assert (model(drv).maxent_td_max, model(drv).maxent_td_min, model(drv).maxent_log10_reg) == (
+        5.0,
+        0.01,
+        -3.0,
+    )
     drv.type_into("maxent_log10_reg", "99")
     assert model(drv).maxent_log10_reg == 12.0
     drv.click("fit_mode.0")
@@ -512,13 +537,21 @@ def test_save_and_load_settings_dialogs_round_trip(drv, tmp_path):
     drv.click_text("burst_fcs_settings.json")
     drv.click_text("Save", last=True)
     data = json.loads((tmp_path / "burst_fcs_settings.json").read_text())
-    assert data["n_bins"] == 6 and data["fit_mode"] == "maxent" and data["maxent_reg"] == pytest.approx(0.01)
+    assert (
+        data["n_bins"] == 6
+        and data["fit_mode"] == "maxent"
+        and data["maxent_reg"] == pytest.approx(0.01)
+    )
     drv.type_into("n_bins", "9")
     drv.click("load_settings")
     drv.draw(4)
     drv.click_text("burst_fcs_settings.json")
     drv.click_text("Open", last=True)
-    assert model(drv).n_bins == 6 and model(drv).fit_mode == "maxent" and model(drv).maxent_log10_reg == pytest.approx(-2.0)
+    assert (
+        model(drv).n_bins == 6
+        and model(drv).fit_mode == "maxent"
+        and model(drv).maxent_log10_reg == pytest.approx(-2.0)
+    )
     assert ctrl(drv).status == "Settings loaded."
 
 
@@ -623,7 +656,9 @@ def test_a_wheel_zoom_on_the_distribution_plot(drv):
 
 def test_the_detector_setup_tab_embeds_the_shared_editor_and_adds_detectors(drv):
     painter = drv.tab("Detector setup")
-    assert "Use setup for pairs" in painter.strings and any(s.endswith("TTTR Reading routine") for s in painter.strings)
+    assert "Use setup for pairs" in painter.strings and any(
+        s.endswith("TTTR Reading routine") for s in painter.strings
+    )
     drv.click_text("Add")
     drv.draw(3)
     assert len(drv.app.setup.model.get_settings().get("detectors", {})) >= 1

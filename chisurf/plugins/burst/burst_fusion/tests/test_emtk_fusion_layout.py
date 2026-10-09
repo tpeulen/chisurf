@@ -6,11 +6,15 @@ wide as the panel, icons touching labels, the summary table cut after eight rows
 
 import pytest
 
-from test.gui.emtk_layout_checks import (
-    SIZES, assert_disjoint, assert_icons_clear, assert_inside, assert_texts_apart, draw,
-)
-
 from chisurf.plugins.burst.burst_fusion.gui.app import create_app
+from test.gui.emtk_layout_checks import (
+    SIZES,
+    assert_disjoint,
+    assert_icons_clear,
+    assert_inside,
+    assert_texts_apart,
+    draw,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -33,7 +37,10 @@ def drawn(request):
 def test_actions_are_wrapped_rows(drawn):
     app, _p, size = drawn
     rects = app.item_rects
-    assert_disjoint(rects, ["toolAction_run", "toolAction_refresh", "Stop", "load", "save", "export", "guide", "help"])
+    assert_disjoint(
+        rects,
+        ["toolAction_run", "toolAction_refresh", "Stop", "load", "save", "export", "guide", "help"],
+    )
     run_row = {round(rects[n][1]) for n in ("toolAction_run", "toolAction_refresh", "Stop")}
     assert len(run_row) <= 2
 

@@ -23,7 +23,11 @@ from ..api.models import H2mmSettings, StreamSettings
 ALGORITHM_VERSION = 1
 
 #: Engines and decoders offered (same lists, same order as the Qt tool's combos).
-ENGINES = [("Fast EM (float32)", "em-float32"), ("Exact EM (float64)", "em"), ("Neural surrogate", "neural")]
+ENGINES = [
+    ("Fast EM (float32)", "em-float32"),
+    ("Exact EM (float64)", "em"),
+    ("Neural surrogate", "neural"),
+]
 DECODERS = [("Viterbi", "viterbi"), ("Jitter", "jitter"), ("FFBS", "ffbs")]
 CRITERIA = ["bic", "icl"]
 #: The "no third stream" entry of the acceptor-excitation choice (the Qt combo's wording).
@@ -31,9 +35,27 @@ NO_AEX = "(none)"
 
 #: Fields saved to and loaded from a settings file.
 SETTING_FIELDS = (
-    "donor", "acceptor", "aex", "min_states", "max_states", "criterion",
-    "patience", "engine", "restarts", "seed", "photon_hdf5", "photon_csv", "max_iter", "min_photons", "time_scale",
-    "divisors", "decoder", "decoder_seed", "write_state_tttr", "state_tttr_ptu", "state_tttr_sidecar",
+    "donor",
+    "acceptor",
+    "aex",
+    "min_states",
+    "max_states",
+    "criterion",
+    "patience",
+    "engine",
+    "restarts",
+    "seed",
+    "photon_hdf5",
+    "photon_csv",
+    "max_iter",
+    "min_photons",
+    "time_scale",
+    "divisors",
+    "decoder",
+    "decoder_seed",
+    "write_state_tttr",
+    "state_tttr_ptu",
+    "state_tttr_sidecar",
 )
 
 
@@ -59,12 +81,28 @@ class H2mmViewModel:
         # detectors is the donor, acceptor and (optional) acceptor-excitation stream.
         self.setup: dict = {
             "detectors": {
-                "green": {"chs": [0, 8], "micro_time_ranges": [], "g_factor": 1.0, "l1": 0.0, "l2": 0.0},
-                "red": {"chs": [1, 9], "micro_time_ranges": [], "g_factor": 1.0, "l1": 0.0, "l2": 0.0},
+                "green": {
+                    "chs": [0, 8],
+                    "micro_time_ranges": [],
+                    "g_factor": 1.0,
+                    "l1": 0.0,
+                    "l2": 0.0,
+                },
+                "red": {
+                    "chs": [1, 9],
+                    "micro_time_ranges": [],
+                    "g_factor": 1.0,
+                    "l1": 0.0,
+                    "l2": 0.0,
+                },
             },
             "windows": {},
-            "tttr_reading": {"file_type": "SPC-130", "macro_time_resolution": 0.0, "micro_time_resolution": 0.0,
-                             "micro_time_binning": 1},
+            "tttr_reading": {
+                "file_type": "SPC-130",
+                "macro_time_resolution": 0.0,
+                "micro_time_resolution": 0.0,
+                "micro_time_binning": 1,
+            },
         }
         self.donor: str = "green"
         self.acceptor: str = "red"
@@ -140,7 +178,11 @@ class H2mmViewModel:
     def _stream(self, name: str) -> StreamSettings:
         info = (self.setup.get("detectors") or {}).get(name, {})
         ranges = [(int(a), int(b)) for a, b in info.get("micro_time_ranges", [])]
-        return StreamSettings(name=name or "stream", channels=[int(c) for c in info.get("chs", [])], micro_time_ranges=ranges)
+        return StreamSettings(
+            name=name or "stream",
+            channels=[int(c) for c in info.get("chs", [])],
+            micro_time_ranges=ranges,
+        )
 
     def streams(self) -> list[StreamSettings]:
         """Donor, acceptor and optional acceptor-excitation stream (the Qt tool's ``_detector_streams``)."""
@@ -201,7 +243,9 @@ class H2mmViewModel:
                 if i != j:
                     k = float(rates[i, j])
                     wait = (1e3 / k) if np.isfinite(k) and k > 0 else float("nan")
-                    rows.append({"transition": f"S{i} -> S{j}", "rate": f"{k:.1f}", "time": f"{wait:.3g}"})
+                    rows.append(
+                        {"transition": f"S{i} -> S{j}", "rate": f"{k:.1f}", "time": f"{wait:.3g}"}
+                    )
         return rows
 
     def state_rows(self) -> list[dict]:
@@ -269,7 +313,9 @@ class H2mmViewModel:
             self.status_text = f"Fitting ... {int(done)}/{total} state counts done"
             self.notify("progress")
 
-        result, bundle = run_analysis(settings, analysis_folder=str(self.data_folder), progress=progress)
+        result, bundle = run_analysis(
+            settings, analysis_folder=str(self.data_folder), progress=progress
+        )
         if getattr(settings, "write_photons", True):
             try:
                 write_result_tables(result, bundle, pathlib.Path(self.data_folder) / "h2mm")
@@ -284,7 +330,9 @@ class H2mmViewModel:
             f"{result.n_photons} photons" + (f" (seed {seed})" if seed is not None else "")
         )
         if result.posterior_populations:
-            self.status_text += " - occupancy " + ", ".join(f"{x:.3f}" for x in result.posterior_populations)
+            self.status_text += " - occupancy " + ", ".join(
+                f"{x:.3f}" for x in result.posterior_populations
+            )
         self.notify("result")
 
     def restart(self) -> None:
@@ -306,9 +354,15 @@ class H2mmViewModel:
             self.notify("progress")
 
         unc = bootstrap_uncertainty(
-            data, int(ana.best.n_states), n_boot=n_boot, engine=getattr(settings, "engine", "em"), n_restarts=1,
-            max_iter=300, donor_streams=getattr(ana, "donor_streams", (0,)),
-            acceptor_streams=getattr(ana, "acceptor_streams", (1,)), aex_streams=getattr(ana, "aex_streams", None),
+            data,
+            int(ana.best.n_states),
+            n_boot=n_boot,
+            engine=getattr(settings, "engine", "em"),
+            n_restarts=1,
+            max_iter=300,
+            donor_streams=getattr(ana, "donor_streams", (0,)),
+            acceptor_streams=getattr(ana, "acceptor_streams", (1,)),
+            aex_streams=getattr(ana, "aex_streams", None),
             progress=progress,
         )
         self.uncertainty = unc
@@ -330,13 +384,20 @@ class H2mmViewModel:
             self.notify("progress")
 
         scans = profile_likelihood(
-            data, ana.best.model, donor_streams=getattr(ana, "donor_streams", (0,)),
-            acceptor_streams=getattr(ana, "acceptor_streams", (1,)), aex_streams=getattr(ana, "aex_streams", None),
-            n_points=n_points, progress=progress,
+            data,
+            ana.best.model,
+            donor_streams=getattr(ana, "donor_streams", (0,)),
+            acceptor_streams=getattr(ana, "acceptor_streams", (1,)),
+            aex_streams=getattr(ana, "aex_streams", None),
+            n_points=n_points,
+            progress=progress,
         )
         self.scans = list(scans or [])
-        self.status_text = (f"Likelihood scan: {len(self.scans)} parameter profiles" if self.scans
-                            else "Likelihood scan: nothing to profile")
+        self.status_text = (
+            f"Likelihood scan: {len(self.scans)} parameter profiles"
+            if self.scans
+            else "Likelihood scan: nothing to profile"
+        )
         self.notify("scans")
 
     def dwell_table(self):
@@ -350,8 +411,14 @@ class H2mmViewModel:
 
         ana = bundle.analysis
         micro_ns = getattr(bundle, "micro_time_ns", None)
-        return build_dwell_table(bundle.data, meta, ana.dwells, ana.base_time_s,
-                                 stream_groups=colour_groups(ana, bundle.settings), micro_time_ns=(micro_ns or None))
+        return build_dwell_table(
+            bundle.data,
+            meta,
+            ana.dwells,
+            ana.base_time_s,
+            stream_groups=colour_groups(ana, bundle.settings),
+            micro_time_ns=(micro_ns or None),
+        )
 
     def export_dwells(self, path: str | pathlib.Path) -> int:
         """Write the dwell table as CSV; returns the number of dwells."""

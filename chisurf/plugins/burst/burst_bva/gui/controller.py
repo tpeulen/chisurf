@@ -33,7 +33,9 @@ class BvaController:
         self.settings_path = Path(settings_path)
         self._restore_settings()
         self._dialog_kind = "folder"
-        self._dialog_window = DialogWindow("Select Data Folder", size=(640.0, 460.0), key="bva-file")
+        self._dialog_window = DialogWindow(
+            "Select Data Folder", size=(640.0, 460.0), key="bva-file"
+        )
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="bva")
         self._future = None
         self._fingerprint = None
@@ -72,20 +74,26 @@ class BvaController:
         folder = Path(folder)
         settings = self.model.bva_settings()
         self._fingerprint = self.model.analysis_fingerprint(settings)
-        outputs_current = analysis_cache.is_current(folder / "bv4" / "bva.stamp.json", self._fingerprint)
+        outputs_current = analysis_cache.is_current(
+            folder / "bv4" / "bva.stamp.json", self._fingerprint
+        )
         if (
             not force
             and self.model.df is not None
             and self._cache.matches(self._fingerprint)
             and (not write_output or outputs_current)
         ):
-            self.model.status_text = "Unchanged — kept the previous BVA result (Restart recomputes it)"
+            self.model.status_text = (
+                "Unchanged — kept the previous BVA result (Restart recomputes it)"
+            )
             self.model.restart_attention = True
             return
         self.model.restart_attention = False
         self._cancel.clear()
         self.model.is_running = True
-        self.model.status_text = "Reading burst data …" if self.model.burst_df is None else "Computing BVA …"
+        self.model.status_text = (
+            "Reading burst data …" if self.model.burst_df is None else "Computing BVA …"
+        )
         self._future = self._executor.submit(
             self._compute,
             folder,
@@ -107,10 +115,14 @@ class BvaController:
         if self._cancel.is_set():
             raise InterruptedError("BVA cancelled")
 
-    def _compute(self, folder, settings, write_output, fingerprint, inputs, params, burst_df, tttrs):
+    def _compute(
+        self, folder, settings, write_output, fingerprint, inputs, params, burst_df, tttrs
+    ):
         saved_settings = dict(settings)
         file_type = settings.pop("file_type")
-        if burst_df is None or tttrs is None:  # read once; reused until the folder or file type changes
+        if (
+            burst_df is None or tttrs is None
+        ):  # read once; reused until the folder or file type changes
             burst_df, tttrs = core.read_burst_analysis(folder, file_type, pattern="bi4_bur")
         self.set_value(0)
         result = core.compute_bva(burst_df, tttrs, **settings, progress_window=self)
@@ -234,11 +246,16 @@ class BvaController:
 
         self._dialog_kind = kind
         if kind == "save":
-            self.dialog = FileDialog("Save Plot", mode="save", filename="bva_plot.png", filters=[("PNG", ["*.png"])])
+            self.dialog = FileDialog(
+                "Save Plot", mode="save", filename="bva_plot.png", filters=[("PNG", ["*.png"])]
+            )
             title = "Save Plot"
         else:
-            self.dialog = FileDialog("Select Data Folder", mode="folder",
-                                     directory=str(self.model.analysis_folder or "") or None)
+            self.dialog = FileDialog(
+                "Select Data Folder",
+                mode="folder",
+                directory=str(self.model.analysis_folder or "") or None,
+            )
             title = "Select Data Folder"
         self._dialog_window = DialogWindow(title, size=(640.0, 460.0), key="bva-file")
         self._dialog_window.show()
@@ -276,7 +293,9 @@ class BvaController:
             if self.set_folder(path):
                 return
         if paths:
-            self.model.status_text = f"BVA reads a burst-analysis folder; {Path(paths[0]).name} is not one."
+            self.model.status_text = (
+                f"BVA reads a burst-analysis folder; {Path(paths[0]).name} is not one."
+            )
 
     def close(self):
         """Stop and release the worker."""

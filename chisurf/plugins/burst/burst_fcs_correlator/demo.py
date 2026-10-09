@@ -9,6 +9,10 @@ random between two detectors with a 4 ns fluorescence decay. Nothing here is a m
 
 from __future__ import annotations
 
+import hashlib
+import json
+import os
+import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -25,25 +29,8 @@ STREAM_NAME = "burst_fcs_demo.spc"
 TABLE_NAME = "burst_fcs_demo.spc.bst"
 
 
-
-import hashlib
-
-
-import json
-
-
-import os
-
-
-import tempfile
-
-
 SPC_FILENAME = STREAM_NAME
-
-
 MEMBERS = (SPC_FILENAME, TABLE_NAME)
-
-
 DEMO = {
     "seed": SEED, "n_bursts": N_BURSTS, "photons_per_burst": PHOTONS_PER_BURST,
     "macro_resolution_s": MACRO_RES, "micro_resolution_s": MICRO_RES,
@@ -53,26 +40,6 @@ DEMO = {
     "burst_span_ticks": 740000, "gap_ticks": 3700000,
     "routing_channels": 2, "format": "SPC-130",
 }
-
-
-def demo_folder() -> Path:
-    """Return this tool's generated-data directory in the settings tree."""
-    from chisurf.core.settings import get_path
-
-    return get_path("settings") / "demos" / "burst_fcs_correlator"
-
-
-def _cache_is_good(folder: Path, config: dict) -> bool:
-    """Reuse only a complete artifact set with matching parameters and byte hashes."""
-    try:
-        record = json.loads((folder / "demo.json").read_text(encoding="utf-8"))
-        return record["parameters"] == config and set(record["sha256"]) == set(MEMBERS) and all(
-            (folder / name).is_file()
-            and hashlib.sha256((folder / name).read_bytes()).hexdigest() == record["sha256"][name]
-            for name in MEMBERS
-        )
-    except (OSError, ValueError, KeyError, TypeError):
-        return False
 
 
 def photon_stream(seed: int = SEED, n_bursts: int = N_BURSTS, *, config: dict | None = None):
@@ -103,6 +70,26 @@ def photon_stream(seed: int = SEED, n_bursts: int = N_BURSTS, *, config: dict | 
         index += n
         t0 += values["burst_span_ticks"] + values["gap_ticks"]  # 50 ms of nothing between bursts
     return (np.concatenate(macro), np.concatenate(micro), np.concatenate(routing), ranges)
+
+
+def demo_folder() -> Path:
+    """Return this tool's generated-data directory in the settings tree."""
+    from chisurf.core.settings import get_path
+
+    return get_path("settings") / "demos" / "burst_fcs_correlator"
+
+
+def _cache_is_good(folder: Path, config: dict) -> bool:
+    """Reuse only a complete artifact set with matching parameters and byte hashes."""
+    try:
+        record = json.loads((folder / "demo.json").read_text(encoding="utf-8"))
+        return record["parameters"] == config and set(record["sha256"]) == set(MEMBERS) and all(
+            (folder / name).is_file()
+            and hashlib.sha256((folder / name).read_bytes()).hexdigest() == record["sha256"][name]
+            for name in MEMBERS
+        )
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
 
 
 def make_demo(folder: str | Path | None = None, *, overwrite: bool = False) -> Path:

@@ -23,6 +23,7 @@ from emtk.docking import DockManager, Region, Split
 from emtk.im_core import Col
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.emtk.typed_field import typed_number_field
 
 if TYPE_CHECKING:
     from .alternation import AlexAlternationPanel
@@ -66,6 +67,15 @@ def _make_tour(widget: Any, item_rects: dict) -> EmTkGuidedTour:
 # ═══════════════════════════════════════════════════════════════════════
 # Legacy export — the five CSV files the old ALEX-Suite wrote
 # ═══════════════════════════════════════════════════════════════════════
+
+
+def _typed_number(gui: Any, key: str, label: str, value, minimum, maximum, integer: bool = True):
+    """A typed number field of *gui* (rect remembered as *key*); the committed number, else *value*."""
+    committed, _ = typed_number_field(
+        key, value, gui._number_buffers, integer=integer, minimum=minimum, maximum=maximum, label=label
+    )
+    gui.remember(key)
+    return value if committed is None else committed
 
 
 class LegacyExportGui(TourTarget):
@@ -254,6 +264,7 @@ class TitrationGui(TourTarget):
         # Editable mirrors of the table cells, keyed by (row, key); committed
         # to the model on every edit so the two never drift apart.
         self._cell_edits: dict[tuple[int, str], str] = {}
+        self._number_buffers: dict[str, str] = {}
 
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.on_used: Callable[[str], None] | None = None
@@ -368,9 +379,8 @@ class TitrationGui(TourTarget):
         im.spacing()
         if im.collapsing_header("Fit", im.TreeNodeFlags.DEFAULT_OPEN):
             im.set_item_tooltip("Configure fit model and parameters.")
-            _, model.n_populations = im.input_int("Populations", model.n_populations, step=1)
+            model.n_populations = _typed_number(self, "n_populations", "Populations", model.n_populations, 1, 6)
             im.set_item_tooltip("Number of FRET populations fitted in each histogram.")
-            model.n_populations = max(1, min(6, int(model.n_populations)))
             options = model.binding_model_options()
             idx = options.index(model.binding_model) if model.binding_model in options else 0
             changed, new_idx = im.combo("Isotherm", idx, options)
@@ -390,19 +400,18 @@ class TitrationGui(TourTarget):
         filters_open = im.collapsing_header("Burst filters", 0)
         im.set_item_tooltip("Configure photon and stoichiometry filters.")
         if filters_open:
-            _, v = im.input_int("Min. photons", model.min_photons, step=10)
+            # Ranges of the Qt form (titration.view.json).
+            model.min_photons = _typed_number(self, "min_photons", "Min. photons", model.min_photons, 0, 100000)
             im.set_item_tooltip("Minimum photons per burst included in the histograms.")
-            model.min_photons = max(0, v)
-            _, v = im.input_int("E bins", model.bins, step=10)
+            model.bins = _typed_number(self, "bins", "E bins", model.bins, 11, 501)
             im.set_item_tooltip("Number of bins of the FRET efficiency histograms.")
-            model.bins = max(11, v)
-            _, model.s_low = im.input_float("S gate from", model.s_low, step=0.05)
+            model.s_low = _typed_number(self, "s_low", "S gate from", model.s_low, -1.0, 2.0, integer=False)
             im.set_item_tooltip("Lower stoichiometry gate applied before fitting.")
-            _, model.s_high = im.input_float("S gate to", model.s_high, step=0.05)
+            model.s_high = _typed_number(self, "s_high", "S gate to", model.s_high, -1.0, 2.0, integer=False)
             im.set_item_tooltip("Upper stoichiometry gate applied before fitting.")
-            _, model.gamma = im.input_float("gamma", model.gamma, step=0.05)
+            model.gamma = _typed_number(self, "gamma", "gamma", model.gamma, 0.0, 100.0, integer=False)
             im.set_item_tooltip("Gamma detection-efficiency correction used by the fit.")
-            _, model.beta = im.input_float("beta", model.beta, step=0.05)
+            model.beta = _typed_number(self, "beta", "beta", model.beta, 0.0, 100.0, integer=False)
             im.set_item_tooltip("Beta direct-excitation correction used by the fit.")
 
         im.spacing()
@@ -503,6 +512,7 @@ class AlexAlternationGui(TourTarget):
         self.panel = panel
         self.on_guide = on_guide
         self.on_help = on_help
+        self._number_buffers: dict[str, str] = {}
 
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.on_used: Callable[[str], None] | None = None
@@ -610,22 +620,25 @@ class AlexAlternationGui(TourTarget):
         im.spacing()
         enabled = panel.period > 0
         if enabled:
-            _, panel.period = im.input_int("Period (units)", panel.period, step=100)
+            # Ranges of the Qt spin boxes: the period up to 1e8, each gate edge inside the period.
+            panel.period = _typed_number(self, "period", "Period (units)", panel.period, 0, 100_000_000)
             im.set_item_tooltip(
                 "ALEX alternation period in macro-time units; leave 0 to measure it from the data."
             )
-            panel.period = max(0, panel.period)
-            self.remember("period")
             windows = panel.windows or {}
             for name, label in (("green", "Donor excitation"), ("red", "Acceptor excitation")):
                 bounds = windows.get(name, [0, 0])
-                changed_lo, lo = im.input_int(f"{label} from##{name}", int(bounds[0]), step=10)
+                old_lo, old_hi = int(bounds[0]), int(bounds[1])
+                # A full-row first field would push the "to" field off the dock's right edge.
+                im.set_next_item_width(120)
+                lo = _typed_number(self, f"{name}_from", f"{label} from", old_lo, 0, panel.period)
                 im.set_item_tooltip(f"Start of the {label.lower()} gate in macro-time units.")
                 im.same_line()
-                changed_hi, hi = im.input_int(f"to##{name}", int(bounds[1]), step=10)
+                im.set_next_item_width(120)
+                hi = _typed_number(self, f"{name}_to", "to", old_hi, 0, panel.period)
                 im.set_item_tooltip(f"End of the {label.lower()} gate in macro-time units.")
-                if changed_lo or changed_hi:
-                    panel.set_gate(name, int(lo), int(hi))
+                if (lo, hi) != (old_lo, old_hi):
+                    panel.set_gate(name, lo, hi)
             self.remember("gates")
         else:
             im.text_disabled("Period: auto — measured from the data on arrival.")

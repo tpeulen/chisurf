@@ -50,7 +50,9 @@ def parameter_rows(wizard: Any) -> list[ParameterRow]:
     try:
         return [
             ParameterRow("tau", float(wizard.tau), bool(wizard.fix_tau), float(wizard.tau_result)),
-            ParameterRow("gamma", float(wizard.gamma), bool(wizard.fix_gamma), float(wizard.gamma_result)),
+            ParameterRow(
+                "gamma", float(wizard.gamma), bool(wizard.fix_gamma), float(wizard.gamma_result)
+            ),
             ParameterRow("r0", float(wizard.r0), bool(wizard.fix_r0), float(wizard.r0_result)),
             ParameterRow("rho", float(wizard.rho), bool(wizard.fix_rho), float(wizard.rho_result)),
         ]
@@ -76,7 +78,11 @@ def burst_lifetimes(rows: list[dict] | None) -> dict[str, np.ndarray]:
                 continue
             if not np.isfinite(number):
                 continue
-            key = match["colour"] if match["state"] is None else f"S{match['state']} {match['colour']}"
+            key = (
+                match["colour"]
+                if match["state"] is None
+                else f"S{match['state']} {match['colour']}"
+            )
             series.setdefault(key, []).append(number)
     # Sorted by series: the batch rows arrive in worker order; the plot must not depend on it.
     return {
@@ -97,7 +103,10 @@ def lifetime_histograms(
     edges = np.linspace(lo, hi, bins + 1)
     centres = (edges[:-1] + edges[1:]) / 2.0
     width = float(edges[1] - edges[0])
-    return [(key, centres, np.histogram(values, bins=edges)[0].astype(np.float64), width) for key, values in lifetimes.items()]
+    return [
+        (key, centres, np.histogram(values, bins=edges)[0].astype(np.float64), width)
+        for key, values in lifetimes.items()
+    ]
 
 
 def state_lifetime_rows(wizard: Any) -> list[dict]:
@@ -120,4 +129,10 @@ def irf_background_ready(wizard: Any) -> bool:
     """Whether the current detector has both an IRF and a background loaded."""
     det = getattr(wizard, "current_detector", "")
     irf, bg = getattr(wizard, "irf_np", {}), getattr(wizard, "bg_np", {})
-    return bool(det) and det in irf and det in bg and np.asarray(irf[det]).size > 0 and np.asarray(bg[det]).size > 0
+    return (
+        bool(det)
+        and det in irf
+        and det in bg
+        and np.asarray(irf[det]).size > 0
+        and np.asarray(bg[det]).size > 0
+    )

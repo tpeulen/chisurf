@@ -30,11 +30,15 @@ SIZES = [(1200, 800), (800, 600)]
 GUI = Path(__file__).parents[1] / "gui"
 
 
-def generated_fit(seed: int, trans=((0.99, 0.01), (0.02, 0.98)), obs=((0.85, 0.15), (0.20, 0.80)), states=(1, 2)):
+def generated_fit(
+    seed: int, trans=((0.99, 0.01), (0.02, 0.98)), obs=((0.85, 0.15), (0.20, 0.80)), states=(1, 2)
+):
     """A fit of GENERATED photons: a two-state model simulates the bursts, ``analyze`` fits them. Returns ``(analysis, data)``."""
     truth = h2mm.H2mmModel(np.array([0.5, 0.5]), np.array(trans), np.array(obs))
     rng = np.random.default_rng(seed)
-    times = [np.concatenate([[0], np.cumsum(rng.poisson(4, 59) + 1)]).astype(np.int64) for _ in range(80)]
+    times = [
+        np.concatenate([[0], np.cumsum(rng.poisson(4, 59) + 1)]).astype(np.int64) for _ in range(80)
+    ]
     data = h2mm.prepare_bursts(times, h2mm.simulate_bursts(truth, times, seed=seed + 1), 2)
     return analyze(data, state_counts=states, n_restarts=1, max_iter=100), data
 
@@ -50,7 +54,9 @@ def ana():
 
 @pytest.fixture(scope="module")
 def other_ana():
-    return generated_analysis(7, trans=((0.95, 0.05), (0.10, 0.90)), obs=((0.95, 0.05), (0.10, 0.90)))
+    return generated_analysis(
+        7, trans=((0.95, 0.05), (0.10, 0.90)), obs=((0.95, 0.05), (0.10, 0.90))
+    )
 
 
 class PlotSpy:
@@ -65,7 +71,11 @@ class PlotSpy:
     def _wrap(self, name, original):
         def spy(*args, **kwargs):
             label = args[0] if args and isinstance(args[0], str) else ""
-            arrays = [np.asarray(a, dtype=float) for a in list(args) + list(kwargs.values()) if _is_array(a)]
+            arrays = [
+                np.asarray(a, dtype=float)
+                for a in list(args) + list(kwargs.values())
+                if _is_array(a)
+            ]
             self.calls.append((name, label, arrays))
             return original(*args, **kwargs)
 
@@ -76,18 +86,27 @@ class PlotSpy:
 
 
 def _is_array(value) -> bool:
-    return isinstance(value, (np.ndarray, list, tuple)) and len(value) > 0 and not isinstance(value[0], str)
+    return (
+        isinstance(value, (np.ndarray, list, tuple))
+        and len(value) > 0
+        and not isinstance(value[0], str)
+    )
 
 
 def hold(tool, ana):
     """Give *tool* what a finished fit leaves on ``H2mmTool``: the summary ``_result`` and the ``_bundle`` with the analysis."""
     from chisurf.plugins.burst.burst_h2mm.api.models import H2mmSettings, StreamSettings
-    from chisurf.plugins.burst.burst_h2mm.backend.services import H2mmAnalysisBundle, _result_from_analysis
+    from chisurf.plugins.burst.burst_h2mm.backend.services import (
+        H2mmAnalysisBundle,
+        _result_from_analysis,
+    )
 
     if ana is None:
         tool._result, tool._bundle = None, None
     else:
-        settings = H2mmSettings(streams=[StreamSettings("donor", [0]), StreamSettings("acceptor", [1])])
+        settings = H2mmSettings(
+            streams=[StreamSettings("donor", [0]), StreamSettings("acceptor", [1])]
+        )
         tool._result = _result_from_analysis(ana, settings)
         tool._bundle = H2mmAnalysisBundle(ana, None, settings)
     return tool
@@ -139,7 +158,9 @@ def test_after_a_fit_the_plots_hold_exactly_the_analysis(monkeypatch, ana, size)
     after = np.array([t.e_to for t in ana.transitions])
     good = np.isfinite(before) & np.isfinite(after)
     assert good.sum() > 0
-    expected, _, _ = np.histogram2d(before[good], after[good], bins=(41, 41), range=[[0, 1], [0, 1]])
+    expected, _, _ = np.histogram2d(
+        before[good], after[good], bins=(41, 41), range=[[0, 1], [0, 1]]
+    )
     np.testing.assert_array_equal(heat[0][2][0], np.ascontiguousarray(expected.T[::-1]))
     assert heat[0][2][0].sum() == good.sum(), "every transition is counted once"
 
@@ -163,7 +184,10 @@ def test_after_a_fit_the_plots_hold_exactly_the_analysis(monkeypatch, ana, size)
         for j in range(rates.shape[0]):
             if i != j:
                 assert f"{rates[i, j]:.1f}" in shown
-    assert f"Best model: {ana.best.n_states} states ({ana.n_bursts} bursts, {ana.n_photons} photons)" in shown
+    assert (
+        f"Best model: {ana.best.n_states} states ({ana.n_bursts} bursts, {ana.n_photons} photons)"
+        in shown
+    )
     assert "No H2MM fit yet" not in " ".join(shown)
 
 
@@ -179,7 +203,9 @@ def test_a_different_fit_gives_different_plots(monkeypatch, ana, other_ana):
     second = spy.calls
     assert first and second
     differs = len(first) != len(second) or any(
-        a[1] != b[1] or len(a[2]) != len(b[2]) or any(x.shape != y.shape or not np.array_equal(x, y) for x, y in zip(a[2], b[2]))
+        a[1] != b[1]
+        or len(a[2]) != len(b[2])
+        or any(x.shape != y.shape or not np.array_equal(x, y) for x, y in zip(a[2], b[2]))
         for a, b in zip(first, second)
     )
     assert differs, "two different fits drew the same plots"
@@ -221,12 +247,20 @@ def test_the_app_source_cannot_make_data_up():
     tree = ast.parse((GUI / "app.py").read_text(encoding="utf-8"))
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            assert not {a.name.split(".")[0] for a in node.names} & {"numpy", "random"}, "the app imports numpy/random"
+            assert not {a.name.split(".")[0] for a in node.names} & {"numpy", "random"}, (
+                "the app imports numpy/random"
+            )
         if isinstance(node, ast.ImportFrom) and node.module:
             assert node.module.split(".")[0] not in {"numpy", "random"}
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr.startswith("plot_"):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr.startswith("plot_")
+        ):
             for arg in node.args[1:]:
-                assert not isinstance(arg, (ast.List, ast.Tuple, ast.Constant)), f"literal data in {node.func.attr}"
+                assert not isinstance(arg, (ast.List, ast.Tuple, ast.Constant)), (
+                    f"literal data in {node.func.attr}"
+                )
 
 
 @pytest.fixture(scope="module")
@@ -262,12 +296,23 @@ class TestAgainstTheRealTool:
         app = H2mmApp(tool)
         draw(app)
         gui = app.h2mm_gui
-        gui.restarts, gui.max_iter, gui.min_photons, gui.min_states, gui.max_states = 6, 321, 8, 2, 4
+        gui.restarts, gui.max_iter, gui.min_photons, gui.min_states, gui.max_states = (
+            6,
+            321,
+            8,
+            2,
+            4,
+        )
         gui.criterion, gui.engine = "icl", "em"
         gui._sync_to_tool()
         settings = tool._gather_settings()
         assert (settings.n_restarts, settings.max_iter, settings.min_photons) == (6, 321, 8)
-        assert (settings.min_states, settings.max_states, settings.criterion, settings.engine) == (2, 4, "icl", "em")
+        assert (settings.min_states, settings.max_states, settings.criterion, settings.engine) == (
+            2,
+            4,
+            "icl",
+            "em",
+        )
 
     def test_a_result_the_tool_holds_is_drawn(self, tool, monkeypatch, ana):
         spy = PlotSpy(monkeypatch)
@@ -282,7 +327,10 @@ def test_a_fit_run_through_the_tool_is_what_the_app_draws(qapp, tmp_path, monkey
     """Run the real tool (its worker, ``_on_fit_result``, the bundle) and compare the app with the analysis it produced."""
     import time
 
-    from chisurf.plugins.burst.burst_h2mm.backend.services import H2mmAnalysisBundle, _result_from_analysis
+    from chisurf.plugins.burst.burst_h2mm.backend.services import (
+        H2mmAnalysisBundle,
+        _result_from_analysis,
+    )
     from chisurf.plugins.burst.burst_h2mm.gui import tool as tool_mod
 
     produced = {}
@@ -308,7 +356,10 @@ def test_a_fit_run_through_the_tool_is_what_the_app_draws(qapp, tmp_path, monkey
         painter = draw(app, spy=spy)
         ana = produced["ana"]
         assert f"{np.asarray(ana.trans_rates)[0, 1]:.1f}" in texts(painter)
-        np.testing.assert_array_equal(spy.named("Transitions")[2][0], np.ascontiguousarray(result_view.tdp_histogram(ana).T[::-1]))
+        np.testing.assert_array_equal(
+            spy.named("Transitions")[2][0],
+            np.ascontiguousarray(result_view.tdp_histogram(ana).T[::-1]),
+        )
     finally:
         tool.close()
 

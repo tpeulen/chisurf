@@ -24,6 +24,7 @@ from emtk.docking import DockManager, Region, Split
 from emtk.im_core import Col
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.emtk.typed_field import typed_number_field
 
 from . import result_view
 from .plots import REGION_FILL, ResultPlots
@@ -67,6 +68,7 @@ class H2mmGui(TourTarget):
 
         self.plots = ResultPlots()
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
+        self._number_buffers: dict[str, str] = {}
         self.on_used: Callable[[str], None] | None = None
 
         from pathlib import Path
@@ -335,25 +337,24 @@ class H2mmGui(TourTarget):
 
             # A narrow field plus a short label: the dock window is ~200 px of
             # content, and "field + long label" clipped the label mid-word.
-            im.set_next_item_width(90)
-            ch_res, new_res = im.input_int("Restarts", self.restarts, step=1)
-            im.set_item_tooltip(
-                "Number of random restarts; the fit with the best log-likelihood wins."
-            )
-            if ch_res and new_res > 0:
-                self.restarts = new_res
-
-            im.set_next_item_width(90)
-            ch_it, new_it = im.input_int("Max iters", self.max_iter, step=100)
-            im.set_item_tooltip("Maximum number of EM iterations per fit.")
-            if ch_it and new_it > 0:
-                self.max_iter = new_it
-
-            im.set_next_item_width(90)
-            ch_ph, new_ph = im.input_int("Min photons", self.min_photons, step=1)
-            im.set_item_tooltip("Bursts shorter than this many photons are excluded from the fit.")
-            if ch_ph and new_ph > 0:
-                self.min_photons = new_ph
+            # Typed fields with the Qt spin boxes' ranges; a commit is written to the tool at once, because
+            # ``draw`` re-reads the tool's widgets every frame.
+            for attr, label, low, high, tip in (
+                ("restarts", "Restarts", 1, 20,
+                 "Number of random restarts; the fit with the best log-likelihood wins."),
+                ("max_iter", "Max iters", 10, 5000, "Maximum number of EM iterations per fit."),
+                ("min_photons", "Min photons", 2, 1000,
+                 "Bursts shorter than this many photons are excluded from the fit."),
+            ):
+                im.set_next_item_width(90)
+                new, _ = typed_number_field(
+                    attr, getattr(self, attr), self._number_buffers, minimum=low, maximum=high, label=label
+                )
+                self.item_rects[attr] = im.get_item_rect()
+                im.set_item_tooltip(tip)
+                if new is not None:
+                    setattr(self, attr, new)
+                    self._sync_to_tool()
 
         im.separator()
 

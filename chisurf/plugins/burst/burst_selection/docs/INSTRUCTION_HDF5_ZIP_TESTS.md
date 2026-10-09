@@ -54,13 +54,12 @@ following test functions:
 - Read the HDF5 back using the legacy decode pattern:
   ```python
   import json
-  with pd.HDFStore(path, mode='r') as store:
-      df_read = store['results']
-      cat_map = json.loads(store.get_storer('results').attrs.category_map)
+
+  with pd.HDFStore(path, mode="r") as store:
+      df_read = store["results"]
+      cat_map = json.loads(store.get_storer("results").attrs.category_map)
   for col, categories in cat_map.items():
-      df_read[col] = pd.Categorical.from_codes(
-          df_read[col].where(df_read[col] >= 0, -1), categories
-      )
+      df_read[col] = pd.Categorical.from_codes(df_read[col].where(df_read[col] >= 0, -1), categories)
   ```
 - Verify that `df_read` columns match the original DataFrame columns
 - Verify that the category_map round-trips correctly (no data loss)

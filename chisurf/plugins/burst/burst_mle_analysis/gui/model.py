@@ -86,8 +86,20 @@ class MleViewModel:
         if not self.session.detectors:
             self.session.set_detectors(
                 {
-                    "green": {"chs": [0, 1], "micro_time_ranges": [], "g_factor": 1.0, "l1": 0.0, "l2": 0.0},
-                    "red": {"chs": [8, 9], "micro_time_ranges": [], "g_factor": 1.0, "l1": 0.0, "l2": 0.0},
+                    "green": {
+                        "chs": [0, 1],
+                        "micro_time_ranges": [],
+                        "g_factor": 1.0,
+                        "l1": 0.0,
+                        "l2": 0.0,
+                    },
+                    "red": {
+                        "chs": [8, 9],
+                        "micro_time_ranges": [],
+                        "g_factor": 1.0,
+                        "l1": 0.0,
+                        "l2": 0.0,
+                    },
                 },
                 "auto",
             )
@@ -209,11 +221,18 @@ class MleViewModel:
 
     # -- files ----------------------------------------------------------------------------------------------- #
     def file_rows(self) -> list[dict]:
-        return [{"file": p.name, "folder": str(p.parent), "path": str(p)} for p in self.session.bur_files]
+        return [
+            {"file": p.name, "folder": str(p.parent), "path": str(p)}
+            for p in self.session.bur_files
+        ]
 
     @property
     def n_bursts(self) -> int:
-        return int(engine.row_count(self.session.df_bursts)) if self.session.df_bursts is not None else 0
+        return (
+            int(engine.row_count(self.session.df_bursts))
+            if self.session.df_bursts is not None
+            else 0
+        )
 
     def add_files(self, paths) -> int:
         """Add ``.bur`` tables (a folder adds the tables under it); returns how many were new."""
@@ -444,13 +463,24 @@ class MleViewModel:
         """One row per detector series of the last batch: bursts fitted, median and mean lifetime."""
         rows = []
         for label, values in sorted(fit_view.burst_lifetimes(self.burst_results).items()):
-            rows.append({"series": label, "n": str(values.size), "median": f"{np.median(values):.3f}", "mean": f"{values.mean():.3f}"})
+            rows.append(
+                {
+                    "series": label,
+                    "n": str(values.size),
+                    "median": f"{np.median(values):.3f}",
+                    "mean": f"{values.mean():.3f}",
+                }
+            )
         return rows
 
     def input_status(self) -> tuple[bool, int]:
         """Whether the current detector has an IRF and a background, and how many burst files are loaded."""
         det = self.session.current_detector
-        ready = det in self.session.irf_np and det in self.session.bg_np and np.asarray(self.session.irf_np[det]).size > 0
+        ready = (
+            det in self.session.irf_np
+            and det in self.session.bg_np
+            and np.asarray(self.session.irf_np[det]).size > 0
+        )
         return bool(ready), len(self.session.bur_files)
 
     # -- actions --------------------------------------------------------------------------------------------- #
@@ -467,7 +497,10 @@ class MleViewModel:
         if outcome is None and self.session.status:
             self.status_text = self.session.status
         elif outcome is not None:
-            self.status_text = self.session.status or f"tau = {self.tau_result:.3f} ns (2I* = {self.two_istar:.3f})"
+            self.status_text = (
+                self.session.status
+                or f"tau = {self.tau_result:.3f} ns (2I* = {self.two_istar:.3f})"
+            )
         self.notify("fit")
 
     def auto_extract(self) -> None:
@@ -525,8 +558,12 @@ class MleViewModel:
 
     # -- settings file --------------------------------------------------------------------------------------- #
     def save_settings(self, path: str | Path) -> None:
-        payload = dict(self.session.settings_payload(), kind=SETTINGS_KIND, auto_patterns=self.auto_patterns)
-        Path(path).write_text(json.dumps(payload, indent=2, cls=engine.NumpyEncoder), encoding="utf-8")
+        payload = dict(
+            self.session.settings_payload(), kind=SETTINGS_KIND, auto_patterns=self.auto_patterns
+        )
+        Path(path).write_text(
+            json.dumps(payload, indent=2, cls=engine.NumpyEncoder), encoding="utf-8"
+        )
 
     def load_settings(self, path: str | Path) -> None:
         """Restore all detectors and per-model parameter edits from a settings file."""

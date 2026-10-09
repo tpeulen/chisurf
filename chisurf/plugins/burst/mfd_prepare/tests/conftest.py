@@ -16,7 +16,7 @@ def _snapshot() -> dict:
     if REAL_CHISURF.exists():
         for path in REAL_CHISURF.rglob("*"):
             if {"logs", "cache"} & set(path.relative_to(REAL_CHISURF).parts):
-                continue                      # logs, and the bytecode cache concurrent sessions write
+                continue  # logs, and the bytecode cache concurrent sessions write
             try:
                 st = path.stat()
             except OSError:

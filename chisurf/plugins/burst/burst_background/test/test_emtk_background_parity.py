@@ -21,12 +21,14 @@ import pytest
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 sys.path.insert(0, str(REPO))
-from test.gui.emtk_port_parity import build_emtk_app, emtk_inventory, qt_free  # noqa: E402
-
 from emtk.testing import PixelPainter, RecordingPainter  # noqa: E402
 
 from chisurf.plugins.burst.burst_background.gui.app import create_app  # noqa: E402
-from chisurf.plugins.burst.burst_background.test.demo_data import BACKGROUND_KHZ, build  # noqa: E402
+from chisurf.plugins.burst.burst_background.test.demo_data import (  # noqa: E402
+    BACKGROUND_KHZ,
+    build,
+)
+from test.gui.emtk_port_parity import build_emtk_app, emtk_inventory, qt_free  # noqa: E402
 
 
 @pytest.fixture(scope="module")
@@ -77,17 +79,30 @@ def qt(measurement, tmp_path_factory):
     pytest.importorskip("qtpy")
     # The Qt widget opens the last used detector setup of the user's settings; the reference must not see it.
     private = tmp_path_factory.mktemp("qt_settings")
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen", CHISURF_SETTINGS_DIR=str(private / "s"),
-               MMFDB_SETTINGS_DIR=str(private / "m"), MMFDB_DATABASE_PATH=str(private / "m" / "db.sqlite"))
+    env = dict(
+        os.environ,
+        QT_QPA_PLATFORM="offscreen",
+        CHISURF_SETTINGS_DIR=str(private / "s"),
+        MMFDB_SETTINGS_DIR=str(private / "m"),
+        MMFDB_DATABASE_PATH=str(private / "m" / "db.sqlite"),
+    )
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT, str(measurement)], capture_output=True, text=True,
-                          timeout=300, env=env, cwd=str(REPO))
+    proc = subprocess.run(
+        [sys.executable, "-c", _QT, str(measurement)],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env=env,
+        cwd=str(REPO),
+    )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and ("No module named" in proc.stderr or "could not connect to display" in proc.stderr):
+    if line is None and (
+        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
+    ):
         pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
     # Any other failure is the Qt widget's own: skipping it hid a broken Qt host.
     assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS"):])
+    return json.loads(line[len("FACTS") :])
 
 
 # 1. the Qt widget's rates, and the background the measurement was made with
@@ -119,7 +134,7 @@ def test_open_files_and_estimate_by_presses_and_frames(measurement):
             app.release()
             _draw(app, size, n=1, painter=PixelPainter)
 
-        press("files")                                          # the drawn Open TTTR files button
+        press("files")  # the drawn Open TTTR files button
         assert app.controller.dialog.title == "Select TTTR files"
         app.controller.dialog.draw = lambda: [str(measurement)]  # the user picks the measurement
         _frames_until(app, lambda: app.controller.dialog is None, size=size)
@@ -129,7 +144,7 @@ def test_open_files_and_estimate_by_presses_and_frames(measurement):
         _draw(app, size, n=1, painter=PixelPainter)
         step = next(i for i, st in enumerate(app.bg_gui.tour.steps) if st.get("await"))
         app.bg_gui.tour.start(step)
-        assert app.bg_gui.tour.awaiting                          # "Run it" waits for Estimate
+        assert app.bg_gui.tour.awaiting  # "Run it" waits for Estimate
         press("bg_run")
         assert not app.bg_gui.tour.awaiting
         _frames_until(app, lambda: not app.controller.running and app.model.backgrounds, size=size)
@@ -139,7 +154,7 @@ def test_open_files_and_estimate_by_presses_and_frames(measurement):
 
 
 def test_a_dropped_folder_adds_its_measurements_not_their_containers(measurement):
-    measurement.with_suffix(".pto").write_bytes(b"")      # what an estimate writes beside the photons
+    measurement.with_suffix(".pto").write_bytes(b"")  # what an estimate writes beside the photons
     app = create_app()
     try:
         app.on_paths_dropped([str(measurement.parent)])
@@ -155,8 +170,11 @@ def test_frames_are_requested_while_estimating(measurement, monkeypatch):
 
     gate = threading.Event()
     original = view_model.BackgroundViewModel.estimate
-    monkeypatch.setattr(view_model.BackgroundViewModel, "estimate",
-                        lambda self, cancel_check=None: (gate.wait(10), original(self, cancel_check))[1])
+    monkeypatch.setattr(
+        view_model.BackgroundViewModel,
+        "estimate",
+        lambda self, cancel_check=None: (gate.wait(10), original(self, cancel_check))[1],
+    )
     app = create_app()
     try:
         app.controller.add_files([measurement])
@@ -174,11 +192,16 @@ def test_frames_are_requested_while_estimating(measurement, monkeypatch):
 def test_each_action_opens_its_own_dialog():
     app = create_app()
     try:
-        for action, (title, mode) in {"files": ("Select TTTR files", "open"), "folder": ("Add TTTR folder", "folder"),
-                                      "load_setup": ("Load detector setup", "open"),
-                                      "save_setup": ("Save detector setup", "save")}.items():
+        for action, (title, mode) in {
+            "files": ("Select TTTR files", "open"),
+            "folder": ("Add TTTR folder", "folder"),
+            "load_setup": ("Load detector setup", "open"),
+            "save_setup": ("Save detector setup", "save"),
+        }.items():
             app.controller.browse(action)
-            assert (app.controller.dialog.title, app.controller.dialog.mode) == (title, mode), action
+            assert (app.controller.dialog.title, app.controller.dialog.mode) == (title, mode), (
+                action
+            )
     finally:
         app.close()
 
@@ -241,13 +264,18 @@ def test_draws_empty_and_populated(measurement, size, monkeypatch):
         _estimated(app, measurement)
         ticks = []
         original = implot.setup_axis_ticks
-        monkeypatch.setattr(implot, "setup_axis_ticks",
-                            lambda axis, values, n_ticks=None, labels=None, *a, **k: (ticks.append(labels),
-                                                                                       original(axis, values, n_ticks, labels, *a, **k))[1])
+        monkeypatch.setattr(
+            implot,
+            "setup_axis_ticks",
+            lambda axis, values, n_ticks=None, labels=None, *a, **k: (
+                ticks.append(labels),
+                original(axis, values, n_ticks, labels, *a, **k),
+            )[1],
+        )
         strings = _draw(app, size).strings
-        assert "Series" not in strings                           # a fitted tail is not a legend entry
+        assert "Series" not in strings  # a fitted tail is not a legend entry
         assert [s for s in strings if s.startswith("Fit ") and "–" in s] == ["Fit 1.96–3.31 ms"]
-        assert ["green", "red"] in ticks                         # the bars are named
+        assert ["green", "red"] in ticks  # the bars are named
         status = app.model.status
         assert " ".join(strings).count(status.split(";")[0]) == 1  # the status once, not twice
     finally:

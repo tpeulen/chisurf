@@ -332,7 +332,9 @@ class BurstMleGui(TourTarget):
                     im.text(f"{int(row['Photons']):,}")
                 im.end_table()
         elif self.split_by_state:
-            im.text_wrapped("No pooled state lifetimes yet: press Fit Bursts to fit every H2MM state.")
+            im.text_wrapped(
+                "No pooled state lifetimes yet: press Fit Bursts to fit every H2MM state."
+            )
         else:
             im.text_wrapped(
                 "Pooled state lifetimes exist only for the segment-level analysis (split by H2MM state)."

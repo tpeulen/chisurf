@@ -1,0 +1,134 @@
+{
+  "n_states": 2,
+  "criterion": "bic",
+  "scan": [
+    {
+      "n_states": 2,
+      "loglik": -158176.27429214277,
+      "bic": 316414.24149561714,
+      "icl": 369318.6487094233,
+      "converged": true,
+      "n_iter": 147
+    },
+    {
+      "n_states": 3,
+      "loglik": -158176.17835298716,
+      "bic": 316488.0811109039,
+      "icl": 405581.5146690794,
+      "converged": true,
+      "n_iter": 39
+    },
+    {
+      "n_states": 4,
+      "loglik": -158176.3372964633,
+      "bic": 316587.10765598674,
+      "icl": 450471.0352300734,
+      "converged": true,
+      "n_iter": 39
+    }
+  ],
+  "prior": [
+    0.3049078800526715,
+    0.6950921199473286
+  ],
+  "trans": [
+    [
+      0.9998863242804861,
+      0.00011367571951398856
+    ],
+    [
+      0.0001042109709901316,
+      0.9998957890290099
+    ]
+  ],
+  "obs": [
+    [
+      0.5190371826978902,
+      0.48096281730210966
+    ],
+    [
+      0.45629073593179936,
+      0.5437092640682005
+    ]
+  ],
+  "trans_rates": [
+    [
+      0.0,
+      8420.423667702857
+    ],
+    [
+      7719.331184454192,
+      0.0
+    ]
+  ],
+  "fret": [
+    0.4809628173021097,
+    0.5437092640682006
+  ],
+  "stoichiometry": [],
+  "has_alex": false,
+  "populations": [
+    0.14380873967539348,
+    0.8561912603246065
+  ],
+  "posterior_populations": [
+    0.47249382734298706,
+    0.5275108814239502
+  ],
+  "decoder": "viterbi",
+  "decoder_seed": 0,
+  "n_underflow": 0,
+  "dwell_decoder": "viterbi",
+  "dwell_mean_s": [
+    0.0010933562266187051,
+    0.001143909757338552
+  ],
+  "n_transitions": 503,
+  "n_bursts": 2980,
+  "n_photons": 228338,
+  "base_time_s": 1.35e-08,
+  "output_paths": {},
+  "settings_applied": {
+    "streams": [
+      {
+        "name": "green",
+        "channels": [
+          0,
+          1
+        ],
+        "micro_time_ranges": []
+      },
+      {
+        "name": "red",
+        "channels": [
+          8,
+          9
+        ],
+        "micro_time_ranges": []
+      }
+    ],
+    "min_states": 2,
+    "max_states": 4,
+    "criterion": "bic",
+    "n_restarts": 5,
+    "max_iter": 500,
+    "tol": 1e-07,
+    "divisors": 1,
+    "time_scale": 1,
+    "min_photons": 5,
+    "file_type": "SPC-130",
+    "seed": 0,
+    "engine": "em-float32",
+    "refine_iters": 20,
+    "patience": 1,
+    "surrogate_path": "",
+    "decoder": "viterbi",
+    "decoder_seed": 0,
+    "write_state_tttr": false,
+    "state_tttr_ptu": true,
+    "state_tttr_sidecar": true,
+    "write_photons": true,
+    "photon_hdf5": true,
+    "photon_csv": true
+  }
+}

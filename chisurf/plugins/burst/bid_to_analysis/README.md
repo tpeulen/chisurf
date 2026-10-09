@@ -27,7 +27,7 @@ from chisurf.plugins.burst.bid_to_analysis import convert_bid_file, convert_many
 bur_path = convert_bid_file(r"C:\data\dataset.bst")
 
 # Convert multiple BID files
-bur_paths = convert_many([r"C:\data\a.bst", r"C:\data\b.bst"]) 
+bur_paths = convert_many([r"C:\data\a.bst", r"C:\data\b.bst"])
 ```
 
 Notes:
