@@ -1,6 +1,6 @@
 {
   "window": {"width": 1100, "height": 720},
-  "_comment": "The emtk layout of the ALEX Creator: the same controls as alex.view.json (file, formats, period/shift, batch) drawn by emtk.view_form with the app as the model. Number fields are spin fields (typed value or arrows or wheel); the batch queue is a data_table.",
+  "_comment": "Native ALEX Creator: existing file, formats, period/shift and batch controls, plus configured-period excitation candidates in the right preview pane. Both queues and editable phase candidates use declarative data_table sections.",
   "sections": [
     {
       "type": "panel",
@@ -58,7 +58,7 @@
           "kind": "int",
           "style": "spin",
           "minimum": 1,
-          "maximum": 1000000,
+          "maximum": 65536,
           "step": 100,
           "description": "ALEX alternation period (macro-time units) mapped onto micro-time."
         },
@@ -137,6 +137,85 @@
             {"label": "Browse…", "action": "choose_output", "description": "Choose the output folder."},
             {"label": "Run batch", "action": "run_batch", "description": "Convert each file or merge the queue using the current period, shift and formats."}
           ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "name": "excitation_regions",
+      "title": "Excitation regions",
+      "n_col": 1,
+      "description": "Neutral phase candidates detected at the configured Period and Shift; review and edit them without filtering exported photons.",
+      "sections": [
+        {
+          "type": "value",
+          "attr": "detector_groups",
+          "width": 260,
+          "kind": "str",
+          "label": "Detectors",
+          "description": "Blank uses every routing channel separately. Combine polarization channels as 0,8;1,9;2,10. Every observed channel must belong to one group."
+        },
+        {
+          "type": "button_row",
+          "buttons": [
+            {
+              "label": "Re-detect",
+              "action": "redetect_regions",
+              "description": "Infer every excitation phase again at the configured Period and Shift. This replaces edited candidate regions; photon conversion stays unchanged."
+            }
+          ]
+        },
+        {
+          "type": "custom",
+          "key": "data_table",
+          "hidden_when": {"attr": "no_regions", "equals": true},
+          "description": "Double-click Start or End to edit a candidate. Start greater than End wraps across phase zero. Review marks your confirmation; it never filters the exported photon stream.",
+          "options": {
+            "source": "region_rows",
+            "row_key": "name",
+            "edited_call": "edit_region",
+            "editable": false,
+            "height": 140,
+            "fit_columns": false,
+            "min_column_width": 48,
+            "columns": [
+              {
+                "key": "label",
+                "title": "Phase",
+                "width": 60,
+                "tooltip": "Neutral candidate phase; its identity is not an inferred wavelength."
+              },
+              {
+                "key": "start",
+                "title": "Start",
+                "width": 70,
+                "editable": true,
+                "format": "%.1f",
+                "tooltip": "Inclusive phase start in macro-time units. Double-click to edit."
+              },
+              {
+                "key": "stop",
+                "title": "End",
+                "width": 70,
+                "editable": true,
+                "format": "%.1f",
+                "tooltip": "Exclusive phase end in macro-time units. Start greater than End represents a wrapped region."
+              },
+              {
+                "key": "status",
+                "title": "Evidence",
+                "width": 130,
+                "tooltip": "Candidate, Edited, or Review transition: a nonconstant emission phase may be switching or heterogeneity rather than another laser."
+              },
+              {
+                "key": "confirmed",
+                "title": "Review",
+                "width": 60,
+                "editable": true,
+                "tooltip": "Mark after reviewing this candidate. Confirmation does not assert its wavelength or change photon exports."
+              }
+            ]
+          }
         }
       ]
     }

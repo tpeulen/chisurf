@@ -1,27 +1,27 @@
 ---
 type: Guide
 title: Turning ALEX alternation into micro-time (ALEX Creator)
-description: How the ALEX Creator folds the alternation of two lasers into the micro-time axis of a TTTR file, how to choose period and shift from the live histogram, and how to convert one file, many files or a merged stream, in the window, from the command line and from Python.
+description: How the ALEX Creator folds the alternation of multiple lasers into the micro-time axis of a TTTR file, how to choose period and shift from the live histogram, and how to convert one file, many files or a merged stream, in the window, from the command line and from Python.
 tags: [guides, tttr, alex, converter, tools]
 ---
 
 # Turning ALEX alternation into micro-time (ALEX Creator)
 
-**What you get:** a TTTR file whose micro-time is the phase of the laser alternation, so that the two excitation
+**What you get:** a TTTR file whose micro-time is the phase of the laser alternation, so that the excitation
 windows of a microsecond-ALEX measurement (see {ref}`concept-us-alex`) can be gated like PIE data with the ordinary
 micro-time tools.
 
 ## Theory in one paragraph
 
-In µs-ALEX the donor and the acceptor laser are switched on and off out of phase with a fixed period $T$ (in macro-time
-units). A photon with macro time $t$ therefore sits at the phase $\varphi=(t+s)\bmod T$, where $s$ is a **shift** that
-moves the border between the two windows. The converter writes $\varphi$ as the photon's micro time and leaves the
-macro time, the routing channel and the header alone. A histogram of $\varphi$ shows the two excitation windows as two
+In µs-ALEX excitation lasers are switched on and off at different phases with a fixed period $T$ (in macro-time
+units). A photon with macro time $t$ therefore sits at the phase $\varphi=(t-s)\bmod T$, where $s$ is a **shift** that
+moves the border between excitation windows. The converter writes $\varphi$ as the photon's micro time and leaves the
+macro time, the routing channel and the header alone. A histogram of $\varphi$ shows the excitation windows as
 plateaus; choosing $T$ and $s$ well means the border between them contains no photons.
 
 ## 1. Load a file
 
-Open **Tools → Converter → ALEX Creator**. Press **Open…** and choose a TTTR file (`.sm`, `.ptu`, `.ht3`, ...), or
+Open **Tools → Photon data → TTTR Tools**, then select **ALEX Creator**. Press **Open…** and choose a TTTR file (`.sm`, `.ptu`, `.ht3`, ...), or
 type or paste its path into **File** and press Enter, or drop the file on the window. The photon count appears under
 the modulation fields and the folded histogram on the right.
 
@@ -82,3 +82,63 @@ not change the live phase histogram or the photons and header written by the
 conversion. Reload the input to regenerate its preview after reopening.
 
 ![Native ALEX Creator after converting real TTTR events](figures/alex_creator_native_window.png)
+
+## Automatic excitation regions and multiple lasers
+
+Loading a file now detects excitation-phase candidates automatically using
+**every routing channel**, at the configured Period and Shift. **Re-detect**
+repeats inference after changes. There is no two-region cap: a three-color
+measurement can retain all three phases, and higher phase counts are supported.
+
+The names Phase 1, Phase 2, … identify measured emission phases, not wavelength
+assignments. Review the candidates before naming lasers. A real two-color
+calibration can contain extra switching/heterogeneity phases; these remain
+visible as **Review transition** rather than being silently discarded or called
+extra lasers. Invalid detector grouping or inconclusive detection does not
+disable the histogram or conversion/export controls.
+
+**Detectors** optionally combines polarized channels into physical bands, for
+example `0,8;1,9`. All observed channels must be covered exactly once. Start and
+End cells are editable by double-clicking and typing; crossing phase zero is
+represented by two increasing ranges. Editing resets Review confirmation.
+The table and overlays are inspection aids; they do not filter photons.
+
+```{figure} figures/alex_regions.png
+:width: 100%
+
+Default real calibration and narrow three-phase example. The calibration's four
+measured candidates include explicit transition warnings; the three-phase input
+retains all three regions and all 90,000 photons.
+```
+
+Period remains an instrument setting in macro-time ticks. Generic region
+inference does not infer an unknown period; an incorrect period smears the
+phases. Single-file, convert-each and merge exports retain their original
+folding behavior, photon arrays, routing/event types and clock/header contract.
+The input file is unchanged. The full user-operated Guide remains available.
+
+```python
+from chisurf.plugins.tttr.ptu_alex_creator import core
+
+tttr = core.load("measurement.ptu", "PTU")
+period, shift = 8000, 0  # the measured instrument setting, in macro-time ticks
+phase = core.apply_alex(tttr, period, shift).micro_times
+result = core.auto_excitation_regions(phase, tttr.routing_channels,
+                                      alex_period=period)
+for region in result["regions"]:
+    print(region["ranges"], region["ambiguous"])
+```
+
+See [µs-ALEX](../concepts/us_alex.md) for the phase/clock interpretation.
+
+## Export capacity
+
+Folding uses `(macro_time - shift) % period` with exact integer arithmetic.
+The in-memory period is limited to 1–65536 ticks. Output records may have a
+narrower phase field: HydraHarp/Generic T3 supports phases 0–32767, PicoHarp T3
+and most SPC formats 0–4095, SPC-600_256 0–255. Photon-HDF5 stores full uint16
+phases. T2, SM and CZ store no microtime field. Both single and merge workflows
+reject an output that would truncate or discard a nonzero phase; choose an
+appropriate T3 or Photon-HDF5 output. A failed writer is reported as an error.
+
+Source: `chisurf/plugins/tttr/ptu_alex_creator/`

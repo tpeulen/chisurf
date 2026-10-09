@@ -38,7 +38,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Period | `alex_period` | int |  | 1 … 1000000 (step 100) | ALEX alternation period (macro-time units) mapped onto micro-time. |
+| Period | `alex_period` | int |  | 1 … 65536 (step 100) | ALEX alternation period (macro-time units) mapped onto micro-time. |
 | Shift | `period_shift` | int |  | -1000000 … 1000000 (step 1) | Phase shift of the ALEX period before the macro→micro mapping. |
 
 ### Batch
@@ -55,6 +55,12 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | --- | --- | --- | --- | --- | --- |
 | File | `input_file` | file |  |  | Path of the TTTR file to convert. Press Enter (or click elsewhere) to load it; a file dropped on the window loads too. |
 
+### Excitation regions
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Detectors | `detector_groups` | str |  |  | Blank uses every routing channel separately. Combine polarization channels as 0,8;1,9;2,10. Every observed channel must belong to one group. |
+
 ## JSON-RPC methods
 
 | Method | Long-running | Summary |
@@ -66,7 +72,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 ## Theory and workflow
 
-- **Workflow** — [Handling TTTR files (and Photon-HDF5)](/guides/12_handling_tttr_files.md)
+- **Theory** — [µs-ALEX — alternating excitation, and the titration it enables](/concepts/us_alex.md)
+- **Workflow** — [Turning ALEX alternation into micro-time (ALEX Creator)](/guides/100_alex_creator.md), [Handling TTTR files (and Photon-HDF5)](/guides/12_handling_tttr_files.md)
 
 ## Source
 

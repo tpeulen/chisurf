@@ -72,9 +72,26 @@ def load(path: str, filetype: str | None = None) -> tttrlib.TTTR:
     return tttrlib.TTTR(path, filetype) if filetype else tttrlib.TTTR(path)
 
 
+def validate_alex_period(value) -> int:
+    """Return a finite integer period representable by the uint16 micro-time domain."""
+    try:
+        period = float(value)
+    except (ValueError, TypeError, OverflowError):
+        raise ValueError("ALEX period must be a finite integer between 1 and 65536.") from None
+    if (
+        isinstance(value, (bool, np.bool_))
+        or not np.isfinite(period)
+        or not period.is_integer()
+        or not 1 <= period <= 65536
+    ):
+        raise ValueError("ALEX period must be a finite integer between 1 and 65536.")
+    return int(period)
+
+
 def apply_alex(tttr: tttrlib.TTTR, alex_period: int, period_shift: int) -> tttrlib.TTTR:
     """Map ALEX macro-time alternation into micro-time, in place, and return it."""
-    tttr.alex_to_microtime(int(alex_period), int(period_shift))
+    period = validate_alex_period(alex_period)
+    tttr.alex_to_microtime(period, int(period_shift))
     return tttr
 
 
@@ -121,6 +138,221 @@ def _run_length(run: tuple[int, int], n: int) -> int:
     """Length of a (possibly wrapping) run of bins."""
     start, stop = run
     return (stop - start + 1) if start <= stop else (n - start + stop + 1)
+
+
+def _composition_score(counts: np.ndarray) -> np.ndarray:
+    """Return twice the multinomial log likelihood at the measured composition."""
+    totals = counts.sum(axis=-1, keepdims=True)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        terms = np.where(counts > 0, counts * np.log(counts / np.maximum(totals, 1)), 0)
+    return 2 * terms.sum(axis=-1)
+
+
+def _phase_segments(hist: np.ndarray, minimum: int, penalty: float) -> list[tuple[int, int]]:
+    """Fit constant detector compositions with penalized, bounded change points."""
+    cumulative = np.vstack((np.zeros(hist.shape[1]), np.cumsum(hist, axis=0)))
+    length = hist.shape[0]
+    scores = np.full(length + 1, -np.inf)
+    scores[0] = penalty
+    previous = np.zeros(length + 1, dtype=int)
+    for stop in range(minimum, length + 1):
+        starts = np.arange(stop - minimum + 1)
+        segment = cumulative[stop] - cumulative[starts]
+        candidate = scores[starts] + _composition_score(segment) - penalty
+        best = int(np.argmax(candidate))
+        scores[stop], previous[stop] = candidate[best], starts[best]
+    if not np.isfinite(scores[-1]):
+        raise ValueError("an occupied phase region is too narrow to resolve; reduce the bin width")
+    segments = []
+    stop = length
+    while stop:
+        start = int(previous[stop])
+        segments.append((start, stop))
+        stop = start
+    return segments[::-1]
+
+
+def auto_excitation_regions(
+    micro_times,
+    routing_channels,
+    *,
+    alex_period: int,
+    channel_groups=None,
+    n_bins: int = 200,
+    guard: float = 0.06,
+    min_region_bins: int = 3,
+) -> dict:
+    """Infer every resolved periodic excitation phase without assigning laser colours.
+
+    Dark gaps separate occupied regions. Within an occupied region, changes of
+    detector composition locate excitation boundaries even when total intensity
+    stays constant. A multinomial change-point fit uses every detector group and
+    penalizes each extra region by six times its model dimension times log photon
+    count. Intensity variation within a phase is therefore not mistaken for a
+    new laser. Regions describe measured emission phases; wavelength identities
+    and indistinguishable lasers cannot be inferred from photon arrival alone.
+
+    Parameters
+    ----------
+    micro_times, routing_channels : array_like
+        Folded phases and corresponding photon routing channels; never modified.
+    alex_period : int
+        Phase period in macro-time units, already known or measured separately.
+    channel_groups : sequence of sequence of int, optional
+        Physical detection bands, optionally combining polarization channels.
+        Every observed channel must occur in exactly one group. By default each
+        observed channel is used separately; none is selected by popularity.
+    n_bins : int
+        Equal-width phase histogram bins. This sets boundary resolution.
+    guard : float
+        Fraction trimmed from each edge of each region, in the circular phase.
+    min_region_bins : int
+        Smallest resolvable region width. Narrow occupied regions cause an error.
+
+    Returns
+    -------
+    dict
+        ``regions`` contains phase-ordered dictionaries with ``name``, ``start``,
+        ``stop``, ``wraps``, increasing half-open ``ranges``, ``photon_count`` and
+        per-group ``detector_counts``. A wrapped region has start greater than
+        stop and two ranges; it is never returned as an inverted selection.
+        ``phase_hist``, ``phase_edges``, ``detector_hist`` (groups by bins) and
+        ``detector_channels`` retain the complete measured histogram. Each region
+        carries a ``composition_deviance`` and ``composition_dof`` testing its
+        constant detector composition. ``ambiguous`` marks a rejected constant
+        composition at a conservative six-standard-deviation threshold. These
+        transition/heterogeneity candidates remain in ``regions`` and are also
+        named in ``warnings``; they are never silently called additional lasers.
+
+    Raises
+    ------
+    ValueError
+        Invalid phases/grouping, insufficient photons, or no resolved alternation.
+    """
+    phase, rc = np.asarray(micro_times), np.asarray(routing_channels)
+    period, bins, minimum = validate_alex_period(alex_period), int(n_bins), int(min_region_bins)
+    if period < 1 or bins < 6 or minimum < 1 or 2 * minimum > bins:
+        raise ValueError(
+            "period, bin count and minimum region width must be positive and resolvable"
+        )
+    if not 0 <= guard < 0.5:
+        raise ValueError("the guard must lie between zero and one half")
+    if phase.ndim != 1 or rc.ndim != 1 or phase.shape != rc.shape:
+        raise ValueError(
+            "phase and routing channel arrays must be equally sized one-dimensional arrays"
+        )
+    if phase.size < 100 or not np.isfinite(phase).all() or np.any((phase < 0) | (phase >= period)):
+        raise ValueError("too few photons or invalid folded phases to resolve excitation regions")
+    present = sorted(int(channel) for channel in np.unique(rc))
+    groups = (
+        [[channel] for channel in present]
+        if channel_groups is None
+        else [[int(channel) for channel in group] for group in channel_groups]
+    )
+    flat = [channel for group in groups for channel in group]
+    if not groups or any(not group for group in groups) or len(set(flat)) != len(flat):
+        raise ValueError("detector channel groups must be nonempty and cannot overlap")
+    if not set(present).issubset(flat):
+        raise ValueError("detector channel groups must include every observed routing channel")
+    edges = np.linspace(0, period, bins + 1)
+    histogram = np.array(
+        [np.histogram(phase[np.isin(rc, group)], bins=edges)[0] for group in groups]
+    )
+    counts = histogram.sum(axis=0)
+    penalty = 6.0 * max(len(groups), 1) * np.log(phase.size)
+    runs = _contiguous_runs(counts > 0)
+    if (counts > 0).all():
+        # Cut the circle at the strongest composition change, then merge the
+        # endpoints again if the arbitrary cut divided a single measured phase.
+        across = []
+        for boundary in range(bins):
+            left = histogram[:, (np.arange(boundary - minimum, boundary) % bins)].sum(axis=1)
+            right = histogram[:, (np.arange(boundary, boundary + minimum) % bins)].sum(axis=1)
+            across.append(
+                float(
+                    _composition_score(left)
+                    + _composition_score(right)
+                    - _composition_score(left + right)
+                )
+            )
+        offset = int(np.argmax(across))
+        rotated = np.roll(histogram, -offset, axis=1).T
+        segments = _phase_segments(rotated, minimum, penalty)
+        if len(segments) > 1:
+            first, last = segments[0], segments[-1]
+            a, b = rotated[slice(*first)].sum(axis=0), rotated[slice(*last)].sum(axis=0)
+            contrast = float(
+                _composition_score(a) + _composition_score(b) - _composition_score(a + b)
+            )
+            if contrast < penalty:
+                segments = segments[1:-1] + [(last[0], bins + first[1])]
+        runs = [((start + offset) % bins, (stop - 1 + offset) % bins) for start, stop in segments]
+    else:
+        split = []
+        for start, stop in runs:
+            indices: np.ndarray = (start + np.arange(_run_length((start, stop), bins))) % bins
+            for a, b in _phase_segments(histogram[:, indices].T, minimum, penalty):
+                split.append(((start + a) % bins, (start + b - 1) % bins))
+        runs = split
+    if len(runs) < 2:
+        raise ValueError("no statistically resolved excitation alternation; use manual regions")
+    regions: list[dict] = []
+    warnings: list[str] = []
+    for start_bin, stop_bin in sorted(runs):
+        indices = (start_bin + np.arange(_run_length((start_bin, stop_bin), bins))) % bins
+        profile = histogram[:, indices].T
+        deviance = max(
+            0.0, float(_composition_score(profile).sum() - _composition_score(profile.sum(axis=0)))
+        )
+        dof = max(0, (len(indices) - 1) * (len(groups) - 1))
+        ambiguous = dof > 0 and deviance > dof + 6 * np.sqrt(2 * dof)
+        width = _run_length((start_bin, stop_bin), bins) * period / bins
+        phase_start = (start_bin * period / bins + guard * width) % period
+        # Normalize the trimmed start before adding the remaining circular span:
+        # trimming may move both endpoints past zero and remove the wrap entirely.
+        normalized_stop = phase_start + (1 - 2 * guard) * width
+        wraps = normalized_stop > period
+        phase_stop = normalized_stop % period if wraps else normalized_stop
+        ranges = (
+            [[phase_start, float(period)], [0.0, phase_stop]]
+            if wraps
+            else [[phase_start, phase_stop]]
+        )
+        selected = np.zeros(phase.size, dtype=bool)
+        for lo, hi in ranges:
+            selected |= (phase >= lo) & (phase < hi)
+        detector_counts = [int(np.count_nonzero(selected & np.isin(rc, group))) for group in groups]
+        if sum(detector_counts) < 30:
+            raise ValueError(
+                "an excitation region has too few photons to resolve; use manual regions"
+            )
+        regions.append(
+            {
+                "name": f"excitation_{len(regions) + 1}",
+                "start": float(phase_start),
+                "stop": float(phase_stop),
+                "wraps": bool(wraps),
+                "ranges": ranges,
+                "photon_count": sum(detector_counts),
+                "detector_counts": detector_counts,
+                "composition_deviance": deviance,
+                "composition_dof": dof,
+                "ambiguous": bool(ambiguous),
+            }
+        )
+        if ambiguous:
+            warnings.append(
+                f"{regions[-1]['name']} is not a constant detector-composition plateau; "
+                "it may be a switching transition or heterogeneous phase, not a laser"
+            )
+    return {
+        "regions": regions,
+        "phase_hist": counts,
+        "phase_edges": edges,
+        "detector_hist": histogram,
+        "detector_channels": groups,
+        "warnings": warnings,
+    }
 
 
 def auto_alex_windows(
@@ -454,6 +686,7 @@ def detect_alex_channels(
     *,
     alex_period: int,
     channels=None,
+    channel_groups=None,
     n_bins: int = 200,
 ) -> dict:
     """Work out which detector is the donor and which the acceptor.
@@ -481,8 +714,12 @@ def detect_alex_channels(
     alex_period : int
         The alternation period the stream was folded on.
     channels : sequence of int, optional
-        The two routing channels to consider. Defaults to the two most populated
-        channels in the stream.
+        The two routing channels to consider. Defaults to all observed channels,
+        and rejects more than two instead of silently dropping populated channels.
+    channel_groups : sequence of two sequences of int, optional
+        Two physical detector bands, each optionally including polarization
+        channels. Mutually exclusive with ``channels``; every observed channel
+        must occur in exactly one group.
     n_bins : int
         Phase bins used for the split.
 
@@ -501,18 +738,36 @@ def detect_alex_channels(
     """
     phase = np.asarray(micro_times)
     rc = np.asarray(routing_channels)
-    if channels is None:
-        present, counts_per_channel = np.unique(rc, return_counts=True)
+    if channel_groups is not None:
+        if channels is not None or len(channel_groups) != 2:
+            raise ValueError("give either two channels or two detector channel groups")
+        groups = [[int(channel) for channel in group] for group in channel_groups]
+        flat = [channel for group in groups for channel in group]
+        if any(not group for group in groups) or len(flat) != len(set(flat)):
+            raise ValueError("detector channel groups must be nonempty and cannot overlap")
+        if not set(np.unique(rc)).issubset(flat):
+            raise ValueError("detector channel groups must include every observed routing channel")
+    elif channels is None:
+        present = np.unique(rc)
         if present.size < 2:
             raise ValueError(f"only channel {present.tolist()} carries photons; ALEX needs two")
-        order = np.argsort(counts_per_channel)[::-1][:2]
-        channels = sorted(int(present[i]) for i in order)
-    a, b = (int(c) for c in channels)
+        if present.size > 2:
+            raise ValueError(
+                "binary channel assignment needs exactly two detectors; "
+                "use auto_excitation_regions with channel_groups for multicolor data"
+            )
+        channels = sorted(int(channel) for channel in present)
+        groups = [[channel] for channel in channels]
+    else:
+        if len(channels) != 2:
+            raise ValueError("binary channel assignment needs exactly two detector channels")
+        groups = [[int(channel)] for channel in channels]
+    a, b = 0, 1
 
     period = int(alex_period)
     edges = np.linspace(0, period, n_bins + 1)
-    hist_a, _ = np.histogram(phase[rc == a], bins=edges)
-    hist_b, _ = np.histogram(phase[rc == b], bins=edges)
+    hist_a, _ = np.histogram(phase[np.isin(rc, groups[a])], bins=edges)
+    hist_b, _ = np.histogram(phase[np.isin(rc, groups[b])], bins=edges)
     total = hist_a + hist_b
     lit = total > 0.35 * np.percentile(total[total > 0], 75) if (total > 0).any() else total > 0
     if lit.sum() < 4:
@@ -549,10 +804,12 @@ def detect_alex_channels(
         contrast = dark / bright if bright > 0 else np.inf
         if contrast < best_contrast:
             best, best_contrast = (donor, acceptor), contrast
+    if best is None:
+        raise ValueError("no populated detector group to assign as donor or acceptor")
     donor, acceptor = best
     return {
-        "donor": [donor],
-        "acceptor": [acceptor],
+        "donor": groups[donor],
+        "acceptor": groups[acceptor],
         "contrast": float(best_contrast),
     }
 
@@ -597,8 +854,10 @@ def _prepare_output_header(tttr: tttrlib.TTTR, output_format: str, input_format:
     """
     if output_format == input_format or output_format == "Auto":
         return None
-    ext, rec, cont = CONTAINER_INFO.get(output_format, ("ptu", 4, 0))
-    header = tttr.header
+    if output_format not in CONTAINER_INFO:
+        raise ValueError(f"Unsupported ALEX output format: {output_format}")
+    ext, rec, cont = CONTAINER_INFO[output_format]
+    header = tttrlib.TTTRHeader(tttr.header)
     header.tttr_container_type = cont
     header.tttr_record_type = rec
     if output_format == "PTU":
@@ -620,12 +879,56 @@ def _ensure_parent(out_path: str) -> None:
 
 
 def _write(tttr: tttrlib.TTTR, out_path: str, output_format: str, input_format: str) -> None:
-    _ensure_parent(out_path)
+    """Write only when the target records preserve every excitation phase."""
     header = _prepare_output_header(tttr, output_format, input_format)
+    _validate_output_microtimes(tttr, header if header is not None else tttr.header)
+    _ensure_parent(out_path)
     if header is not None:
-        tttr.write(out_path, header)
+        written = tttr.write(out_path, header)
     else:
-        tttr.write(out_path)
+        written = tttr.write(out_path)
+    if written is False:
+        raise OSError(f"Could not write ALEX output: {out_path}")
+
+
+def _validate_output_microtimes(tttr: tttrlib.TTTR, header) -> None:
+    """Refuse phase truncation or loss in the effective output record type.
+
+    Photon-HDF5 stores decoded uint16 arrays. Fixed-width photon records use
+    the widths declared in tttrlib's TTTRRecordTypes.h; T2, SM and CZ have no
+    microtime payload. Validate before opening or creating any output file.
+    """
+    phase = np.asarray(tttr.micro_times)
+    if not phase.size or int(header.tttr_container_type) == 5:
+        return
+    limits = {
+        3: 32767,
+        4: 32767,
+        5: 4095,
+        7: 4095,
+        8: 255,
+        9: 4095,
+        12: 32767,
+        14: 32767,
+        15: 4095,
+        16: 4095,
+        1: 0,
+        2: 0,
+        6: 0,
+        10: 0,
+        11: 0,
+        13: 0,
+    }
+    record = int(header.tttr_record_type)
+    limit = limits.get(record)
+    if limit is None:
+        raise ValueError(f"Cannot verify ALEX phase capacity for record type {record}.")
+    largest = int(phase.max())
+    if largest > limit:
+        raise ValueError(
+            f"Output record type {record} cannot preserve microtime phase {largest} "
+            f"(maximum {limit}); choose a sufficiently wide T3 or Photon-HDF5 output."
+        )
 
 
 def convert_file(
@@ -677,14 +980,16 @@ def merge_files(
             mt, tttr.micro_times, tttr.routing_channels, tttr.event_types, True, offset
         )
         running = int(mt[-1]) + offset + 1
+    assert first_header_src is not None  # Every nonempty input list loads a first header.
     apply_alex(merged, alex_period, period_shift)
-    _ensure_parent(out_path)
     # Carry the first file's header (transcoded if the output container differs).
     header = _prepare_output_header(first_header_src, output_format, input_format)
-    if header is not None:
-        merged.write(out_path, header)
-    else:
-        merged.write(out_path, first_header_src.header)
+    if header is None:
+        header = first_header_src.header
+    _validate_output_microtimes(merged, header)
+    _ensure_parent(out_path)
+    if merged.write(out_path, header) is False:
+        raise OSError(f"Could not write ALEX output: {out_path}")
     return out_path
 
 
@@ -697,8 +1002,10 @@ __all__ = [
     "default_output_name",
     "load",
     "apply_alex",
+    "validate_alex_period",
     "alex_histogram",
     "auto_alex_windows",
+    "auto_excitation_regions",
     "detect_alex_period",
     "detect_alex_channels",
     "alex_stream_masks",

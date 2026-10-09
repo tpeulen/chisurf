@@ -186,3 +186,22 @@ parameters. A stored size does not change the selected period or phase shift,
 and the same input produces the same converted event arrays and header.
 The [ALEX Creator workflow](../guides/100_alex_creator.md) documents saved
 settings and distinguishes state restoration from recomputing the preview.
+
+## Multiple excitation phases in the converter
+
+Folding $\varphi=(t-s)\bmod T$ is independent of the number of excitation
+lasers. Creator detects all resolved emission-phase candidates at the known
+period from the full multichannel phase histogram. Dark gaps separate occupied
+regions; changes in detector composition can locate boundaries when total
+intensity stays constant. Guard bands trim the edges of each candidate, while
+the complete histogram and source photon/header arrays remain unchanged.
+
+A phase is not proof of a laser identity: instrument switching and sample
+heterogeneity can yield additional statistical phases. Those candidates remain
+explicit and flagged for review. Indistinguishable excitation phases cannot be
+resolved from photon arrivals alone. Wrapped phases retain two increasing
+half-open ranges. The [Creator workflow](../guides/100_alex_creator.md) documents
+multiple phases, polarization grouping and manual inspection without changing
+the converter's original single/batch/merge contract.
+
+Source: `chisurf/plugins/tttr/ptu_alex_creator/`

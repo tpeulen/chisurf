@@ -161,7 +161,7 @@ def test_the_number_fields_have_the_qt_tools_range_and_step(ui):
         return found
 
     qt = fields(json.loads((PLUGIN / "gui" / "alex.view.json").read_text()))
-    assert fields(ui.app.spec_source) == qt == {"alex_period": (1, 1000000, 100, "int"), "period_shift": (-1000000, 1000000, 1, "int")}
+    assert fields(ui.app.spec_source) == qt == {"alex_period": (1, 65536, 100, "int"), "period_shift": (-1000000, 1000000, 1, "int")}
     ui.draw()
     spin = [s for s in _walk(ui.app.spec) if s.get("attr") in ("alex_period", "period_shift")]
     assert spin and all(s["style"] == "spin" for s in spin)  # typed value, arrows and wheel: not a drag field
@@ -320,9 +320,9 @@ def test_typed_values_are_clamped_and_garbage_is_ignored(ui):
     ui.type_into_name("alex_period", "0")
     assert ui.app.model.alex_period == 1
     ui.type_into_name("alex_period", "99999999")
-    assert ui.app.model.alex_period == 1000000
+    assert ui.app.model.alex_period == 65536
     ui.type_into_name("alex_period", "abc")
-    assert ui.app.model.alex_period == 1000000
+    assert ui.app.model.alex_period == 65536
     ui.type_into_name("period_shift", "-99999999")
     assert ui.app.model.period_shift == -1000000
 

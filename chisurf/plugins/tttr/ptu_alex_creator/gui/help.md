@@ -17,3 +17,17 @@ files adds them to the batch queue.
 
 Format, timing, file paths and batch options are restored at the
 next launch. Loading a remembered file remains an explicit action.
+
+## Excitation regions
+
+Load automatically detects all measured phase candidates at the configured
+Period/Shift; Re-detect repeats the inference. Multiple laser phases and all
+routing channels are supported. Optional detector groups use comma-separated
+channels and semicolons between physical bands. No phase is assigned a wavelength
+automatically. Review transition/heterogeneity warnings, edit bounds if needed
+and confirm Review. Wrapped bounds are explicit; regions do not filter photons
+or alter single/batch/merge conversion. An inconclusive detection leaves the
+histogram and export workflow usable.
+
+[Automatic-region workflow](docs/guides/100_alex_creator.md) ·
+[µs-ALEX theory](docs/concepts/us_alex.md)

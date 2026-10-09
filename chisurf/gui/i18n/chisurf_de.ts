@@ -49477,5 +49477,125 @@ presets) into a single left-navigation tool. Built on the reusable
             <source>Server connection and authentication settings; passwords remain session-only.</source>
             <translation type="unfinished" />
         </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="212" />
+            <source>&lt;b&gt;Period&lt;/b&gt; is the alternation period in macro-time units (not seconds) and &lt;b&gt;Shift&lt;/b&gt; moves the phase. Type a value and press Enter, or use the arrows or the mouse wheel over a field: the histogram on the right folds again at once. Set them to the known instrument period and phase. Re-detect updates all excitation-region candidates; inspect Start/End, transition warnings and detector groups before confirming Review. Regions are overlays and do not filter photons.</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="421" />
+            <source>ALEX alternates excitation lasers within the macro-time. Loading detects measured phase candidates automatically at the configured Period and Shift; review them before assigning laser identities. Press &lt;b&gt;Open…&lt;/b&gt; and choose a TTTR file (a .sm, .ptu, .ht3 ...), or drop one on the window. Its folded ALEX phase appears as a histogram.</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="818" />
+            <source>Automatic detection unavailable:</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="969" />
+            <source>Blank uses every routing channel separately. Combine polarization channels as 0,8;1,9;2,10. Every observed channel must belong to one group.</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1137" />
+            <source>Candidate</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1138" />
+            <source>Candidate phases at the configured Period and Shift; review before assigning lasers.</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1139" />
+            <source>Candidate, Edited, or Review transition: a nonconstant emission phase may be switching or heterogeneity rather than another laser.</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="2102" />
+            <source>Double-click Start or End to edit a candidate. Start greater than End wraps across phase zero. Review marks your confirmation; it never filters the exported photon stream.</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="2250" />
+            <source>Edited</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="2271" />
+            <source>End</source>
+            <translation type="unfinished">Ende</translation>
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="2407" />
+            <source>Evidence</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="2422" />
+            <source>Excitation regions</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="2435" />
+            <source>Exclusive phase end in macro-time units. Start greater than End represents a wrapped region.</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="3339" />
+            <source>Inclusive phase start in macro-time units. Double-click to edit.</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="3347" />
+            <source>Infer every excitation phase again at the configured Period and Shift. This replaces edited candidate regions; photon conversion stays unchanged.</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="3988" />
+            <source>Mark after reviewing this candidate. Confirmation does not assert its wavelength or change photon exports.</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4313" />
+            <source>Neutral candidate phase; its identity is not an inferred wavelength.</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4314" />
+            <source>Neutral phase candidates detected at the configured Period and Shift; review and edit them without filtering exported photons.</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4946" />
+            <source>Phase</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="5594" />
+            <source>Re-detect</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="5998" />
+            <source>Review</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6000" />
+            <source>Review transition</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6001" />
+            <source>Review transition candidates: distinct emission phases may reflect switching or heterogeneity.</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6235" />
+            <source>Saved period was invalid; reset to 8000. Configure Period before loading.</source>
+            <translation type="unfinished" />
+        </message>
 </context>
 </TS>

@@ -34,7 +34,7 @@ def request_from_payload(payload: dict[str, Any]) -> AlexRequest:
     payload = payload or {}
     return AlexRequest(
         files=[str(f) for f in (payload.get("files") or [])],
-        alex_period=int(payload.get("alex_period", 8000)),
+        alex_period=core.validate_alex_period(payload.get("alex_period", 8000)),
         period_shift=int(payload.get("period_shift", 0)),
         output_format=str(payload.get("output_format", "PTU")),
         input_format=str(payload.get("input_format", "Auto")),

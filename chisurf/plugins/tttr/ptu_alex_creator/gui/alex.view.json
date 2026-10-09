@@ -46,7 +46,7 @@
                   "label": "Period",
                   "kind": "int",
                   "minimum": 1,
-                  "maximum": 1000000,
+                  "maximum": 65536,
                   "step": 100,
                   "description": "ALEX alternation period (macro-time units) mapped onto micro-time."
                 },

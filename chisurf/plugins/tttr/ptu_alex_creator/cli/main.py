@@ -24,7 +24,13 @@ def cli(ctx: click.Context, version: bool) -> None:
 
 
 def _common_options(fn):
-    fn = click.option("--period", "alex_period", default=8000, type=int, help="ALEX period.")(fn)
+    fn = click.option(
+        "--period",
+        "alex_period",
+        default=8000,
+        type=click.IntRange(1, 65536),
+        help="ALEX period in macro-time units (1..65536).",
+    )(fn)
     fn = click.option("--shift", "period_shift", default=0, type=int, help="Period shift.")(fn)
     fn = click.option("--output-format", default="PTU", help="Output container (PTU, HT3, SM, …).")(
         fn

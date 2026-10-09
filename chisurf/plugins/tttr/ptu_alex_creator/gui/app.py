@@ -2,7 +2,9 @@
 
 The left window is the Qt tool's controls as a spec form (``alex_emtk.view.json``, drawn by ``emtk.view_form`` with
 this app as the model): the file row, the input / output formats, the Period and Shift spin fields, and the batch
-queue (a ``data_table``) with its output folder. The right window is the live ALEX micro-time histogram. Loading,
+queue (a ``data_table``) with its output folder. The right window shows the live histogram and editable neutral
+excitation-phase candidates at the configured period, including transition warnings and wrapped range overlays.
+Candidates never filter the converted photon stream. Loading,
 the preview, saving and the batch run are workers (one at a time) published on the UI thread; the conversion itself
 is the plugin's Qt-free :mod:`core` / :mod:`api`, shared with the Qt tool, the CLI and the RPC backend.
 """
@@ -13,6 +15,7 @@ import json
 from copy import deepcopy
 from pathlib import Path
 
+import numpy as np
 from emtk import im, implot
 from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
@@ -41,12 +44,13 @@ FIELDS = (
     "output_format",
     "alex_period",
     "period_shift",
+    "detector_groups",
     "input_file",
     "batch_files",
     "batch_mode",
     "batch_output_folder",
 )
-PERIOD_LIMITS = (1, 1000000)
+PERIOD_LIMITS = (1, 65536)
 SHIFT_LIMITS = (-1000000, 1000000)
 ERROR_COLOUR = (235, 100, 90, 255)
 #: The histogram's line (data colour; the Qt plot drew the same blue).
@@ -130,6 +134,7 @@ class AlexApp(TourTarget, ImApp):
     output_format = _model_field("output_format")
     alex_period = _model_field("alex_period")
     period_shift = _model_field("period_shift")
+    detector_groups = _model_field("detector_groups")
     batch_mode = _model_field("batch_mode")
     batch_output_folder = _model_field("batch_output_folder")
 
@@ -147,6 +152,8 @@ class AlexApp(TourTarget, ImApp):
             return bool(str(self.model.input_file).strip())
         if name == "choose_save":
             return self.model.has_data
+        if name == "redetect_regions":
+            return self.model.has_data and not self.preview_job.running
         if name == "remove_selected":
             return self.selected_path in self.model.batch_files
         if name == "clear_queue":
@@ -169,10 +176,18 @@ class AlexApp(TourTarget, ImApp):
                 setattr(self.model, key, values[key])
         m = self.model
         try:
-            m.alex_period = max(PERIOD_LIMITS[0], min(PERIOD_LIMITS[1], int(m.alex_period)))
+            m.alex_period = core.validate_alex_period(m.alex_period)
+        except ValueError:
+            m.alex_period = 8000
+            self.error(
+                ValueError(
+                    tr("Saved period was invalid; reset to 8000. Configure Period before loading.")
+                )
+            )
+        try:
             m.period_shift = max(SHIFT_LIMITS[0], min(SHIFT_LIMITS[1], int(m.period_shift)))
-        except (TypeError, ValueError):
-            m.alex_period, m.period_shift = 8000, 0
+        except (TypeError, ValueError, OverflowError):
+            m.period_shift = 0
         if m.input_format not in m.input_format_options():
             m.input_format = "Auto"
         if m.output_format not in m.output_format_options():
@@ -181,6 +196,7 @@ class AlexApp(TourTarget, ImApp):
             m.batch_mode = "convert"
         m.input_file = str(m.input_file or "")
         m.batch_output_folder = str(m.batch_output_folder or "")
+        m.detector_groups = str(m.detector_groups or "")
         m.batch_files = [str(p) for p in m.batch_files] if isinstance(m.batch_files, list) else []
 
     restore_settings = set_state
@@ -213,7 +229,36 @@ class AlexApp(TourTarget, ImApp):
     # -- the work ----------------------------------------------------------------------------------------------- #
     def signature(self):
         m = self.model
-        return (m.input_file, m.input_format, int(m.alex_period), int(m.period_shift))
+        return (
+            m.input_file,
+            m.input_format,
+            int(m.alex_period),
+            int(m.period_shift),
+            m.detector_groups,
+        )
+
+    def phase_preview(self, path, kind, period, shift, groups):
+        """Fold a separate stream and infer neutral phases at the configured period."""
+        folded = core.apply_alex(core.load(path, kind), period, shift)
+        histogram = np.bincount(folded.micro_times, minlength=period)[:period]
+        try:
+            detection = core.auto_excitation_regions(
+                folded.micro_times,
+                folded.routing_channels,
+                alex_period=period,
+                channel_groups=groups,
+            )
+        except ValueError as exc:
+            return histogram, None, str(exc)
+        return histogram, detection, ""
+
+    def publish_preview(self, data, signature):
+        """Publish only a preview that still matches all current input settings."""
+        if signature != self.signature():
+            return
+        self.histogram = data[0]
+        self.model.set_regions(data[1], data[2], signature)
+        self.preview_signature = signature
 
     def load(self, path):
         if self.job.running:
@@ -225,16 +270,25 @@ class AlexApp(TourTarget, ImApp):
         m = self.model
         kind = core.resolve_filetype(m.input_format, path)
         period, shift = int(m.alex_period), int(m.period_shift)
-        signature = (path, m.input_format, period, shift)
+        signature = (path, m.input_format, period, shift, m.detector_groups)
+        try:
+            groups = m.channel_groups()
+        except ValueError as exc:
+            groups = None
+            grouping_error = str(exc)
+        else:
+            grouping_error = ""
 
         def work():
-            return core.load(path, kind), core.alex_histogram(path, period, shift, kind)
+            preview = self.phase_preview(path, kind, period, shift, groups)
+            if grouping_error:
+                preview = preview[0], None, grouping_error
+            return core.load(path, kind), preview
 
         def publish(data):
             self.model.set_tttr(data[0], path)
             self.loaded_path = path
-            self.histogram = data[1]
-            self.preview_signature = signature
+            self.publish_preview(data[1], signature)
             self.notice(tr("Loaded") + ": " + Path(path).name)
 
         self.notice(tr("Loading…"))
@@ -245,20 +299,61 @@ class AlexApp(TourTarget, ImApp):
         if not self.model.has_data or self.preview_job.running:
             return False
         signature = self.signature()
-        path, fmt, period, shift = signature
+        path, fmt, period, shift, _ = signature
+        try:
+            groups = self.model.channel_groups()
+        except ValueError as exc:
+            groups, grouping_error = None, str(exc)
+        else:
+            grouping_error = ""
+
+        def work():
+            data = self.phase_preview(path, core.resolve_filetype(fmt, path), period, shift, groups)
+            return (data[0], None, grouping_error) if grouping_error else data
 
         def publish(hist):
-            if path == self.loaded_path:  # the file may have been replaced while this was folding
-                self.histogram = hist
-                self.preview_signature = signature
+            if path == self.loaded_path:
+                self.publish_preview(hist, signature)
 
         # Mark a failed signature too, avoiding a failing read on every frame.
         self.preview_signature = signature
         return self.preview_job.start(
-            lambda: core.alex_histogram(path, period, shift, core.resolve_filetype(fmt, path)),
+            work,
             publish,
             self.error,
         )
+
+    def redetect_regions(self):
+        """Re-detect all phases at the configured period, replacing previous region edits."""
+        if self.job.running or self.preview_job.running:
+            return False
+        return self.preview()
+
+    def region_rows(self):
+        """Supply the editable AutoForm table with every detected phase, including ambiguities."""
+        current = self.model.region_signature == self.signature()
+        if not current:
+            return []
+        for region in self.model.regions:
+            region["label"] = tr("Phase") + " " + region["name"].rsplit("_", 1)[-1]
+            region["status"] = (
+                tr("Edited")
+                if region.get("edited")
+                else (tr("Review transition") if region["ambiguous"] else tr("Candidate"))
+            )
+        return self.model.regions
+
+    @property
+    def no_regions(self):
+        """Hide an empty candidate table so nonalternating files retain their preview space."""
+        return not self.region_rows()
+
+    def edit_region(self, record, key, value):
+        """Apply a table edit and expose validation failures without changing the photon stream."""
+        try:
+            self.model.edit_region(record, key, value)
+        except ValueError as exc:
+            self.error(exc)
 
     @property
     def running(self):
@@ -436,7 +531,8 @@ class AlexApp(TourTarget, ImApp):
         self.form.custom["events"] = self.draw_events
         self.form.rects.clear()
         im.begin_disabled(self.job.running)
-        draw_form(self.spec, self, self.form, titles=True)
+        controls = [s for s in self.spec["sections"] if s.get("name") != "excitation_regions"]
+        draw_form({"sections": controls}, self, self.form, titles=True)
         im.end_disabled()
         self.item_rects.update(self.form.rects)
         if "queue_rows" in self.form.rects:
@@ -448,6 +544,27 @@ class AlexApp(TourTarget, ImApp):
             self.item_rects["timing"] = (x0, y0, x1 - x0, y1 - y0)
 
     def draw_plot(self, box):
+        if self.spec:
+            sections = [s for s in self.spec["sections"] if s.get("name") == "excitation_regions"]
+            im.begin_disabled(self.running)
+            draw_form({"sections": sections}, self, self.form, titles=True)
+            im.end_disabled()
+            self.item_rects.update(self.form.rects)
+        im.text_wrapped(
+            tr(
+                "Candidate phases at the configured Period and Shift; review before assigning lasers."
+            )
+        )
+        if self.model.region_error:
+            im.text_wrapped(
+                tr("Automatic detection unavailable:") + " " + tr(self.model.region_error)
+            )
+        elif any(region["ambiguous"] for region in self.model.regions):
+            im.text_wrapped(
+                tr(
+                    "Review transition candidates: distinct emission phases may reflect switching or heterogeneity."
+                )
+            )
         if self.message:
             if self.message_is_error:
                 im.push_style_color(im.Col.TEXT, ERROR_COLOUR)
@@ -463,6 +580,19 @@ class AlexApp(TourTarget, ImApp):
         if implot.begin_plot("##alex-phase", (-1, -1)):
             implot.setup_axes(tr("Micro-time bin"), tr("Counts"))
             if len(self.histogram):
+                maximum = float(np.max(self.histogram))
+                for index, region in enumerate(self.region_rows()):
+                    colour = (
+                        (80, 160, 220, 255),
+                        (210, 140, 75, 255),
+                        (155, 115, 220, 255),
+                        (70, 190, 140, 255),
+                    )[index % 4]
+                    for part, (lo, hi) in enumerate(region["ranges"]):
+                        implot.set_next_fill_style(colour, 0.16)
+                        implot.plot_shaded(
+                            region["label"] + f"##range{part}", [lo, hi], [maximum, maximum], yref=0
+                        )
                 implot.plot_line(tr("ALEX phase"), list(range(len(self.histogram))), self.histogram)
             implot.end_plot()
 
@@ -491,16 +621,9 @@ class AlexApp(TourTarget, ImApp):
             self.draw_plot((left + 8.0, 4.0, width - left - 12.0, height - 8.0))
         im.end()
         if self.guide.active:
-            if self.guide.awaiting:
-                self.guide.draw(width, height)  # the highlighted control must stay clickable
-            else:
-                # A window of its own over the others, so the card's buttons are hovered (a button answers only when no
-                # other window is under the pointer).
-                flags = (im.WindowFlags.NO_DECORATION | im.WindowFlags.NO_BACKGROUND | im.WindowFlags.NO_SAVED_SETTINGS
-                         | im.WindowFlags.NO_MOVE | im.WindowFlags.NO_NAV)
-                im.begin("##alex_tour", (0.0, 0.0, width, height), flags)
-                self.guide.draw(width, height)
-                im.end()
+            # The shared tour owns a bounded foreground window. A second full-
+            # viewport window can intercept its Next button after an await ends.
+            self.guide.draw(width, height)
         if self.dialog:
             closed = self.file_window.begin((0, 0, width, height)) == "close"
             result = self.dialog.draw()

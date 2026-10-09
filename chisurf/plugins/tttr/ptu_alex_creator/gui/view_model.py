@@ -36,6 +36,12 @@ class AlexViewModel:
         self.output_format = "PTU"
         self.alex_period = 8000
         self.period_shift = 0
+        self.detector_groups = ""
+        self.regions: list[dict] = []
+        self.region_warnings: list[str] = []
+        self.region_error = ""
+        self.region_detection = None
+        self.region_signature = None
 
         # ── single-file preview state ───────────────────────────────────
         self.input_file = ""
@@ -92,6 +98,67 @@ class AlexViewModel:
         self.input_file = str(path)
         self._tttr = tttr
         self.notify("loaded")
+
+    def channel_groups(self):
+        """Parse physical detector bands; empty text keeps every routing channel separate."""
+        if not self.detector_groups.strip():
+            return None
+        try:
+            groups = [
+                [int(channel.strip()) for channel in group.split(",")]
+                for group in self.detector_groups.split(";")
+            ]
+        except ValueError:
+            raise ValueError(
+                "Use comma-separated channels and semicolons between detector groups."
+            ) from None
+        return groups
+
+    def set_regions(self, result, error: str, signature) -> None:
+        """Publish a detection without changing the original TTTR or conversion parameters."""
+        self.region_detection = result
+        self.region_signature = signature
+        self.region_error = error
+        self.region_warnings = list(result["warnings"]) if result else []
+        self.regions = []
+        for region in result["regions"] if result else []:
+            row = dict(region)
+            row.update(confirmed=False, _valid_start=row["start"], _valid_stop=row["stop"])
+            self.regions.append(row)
+
+    def edit_region(self, record: dict, key: str, value) -> None:
+        """Validate edited bounds and rebuild half-open wrapped ranges without filtering photons."""
+        if key == "confirmed":
+            record[key] = bool(value)
+            return
+        if key not in {"start", "stop"}:
+            raise ValueError("Only region boundaries and review confirmations are editable.")
+        try:
+            number = float(value)
+            other = float(record["_valid_stop" if key == "start" else "_valid_start"])
+            start = number if key == "start" else other
+            stop = number if key == "stop" else other
+            period = int(self.alex_period)
+            if not 0 <= number <= period or number == other or (start == period and stop == 0):
+                raise ValueError(
+                    "Region boundaries must lie within the period and span a nonempty range."
+                )
+        except (ValueError, TypeError):
+            record[key] = record["_valid_" + key]
+            raise ValueError(
+                "Region boundaries must lie within the period and span a nonempty range."
+            ) from None
+        if key == "start" and number == period:
+            number = 0.0
+        record[key] = record["_valid_" + key] = number
+        start, stop = float(record["start"]), float(record["stop"])
+        record["wraps"] = start > stop
+        ranges = (
+            [[start, float(self.alex_period)], [0.0, stop]] if start > stop else [[start, stop]]
+        )
+        record["ranges"] = [[lo, hi] for lo, hi in ranges if lo < hi]
+        record["confirmed"] = False
+        record["edited"] = True
 
     def histogram_series(self) -> list[dict]:
         """Return the ALEX micro-time histogram for the ``plot`` section."""
