@@ -4,7 +4,7 @@ from pathlib import Path
 
 from emtk import im
 
-GLYPHS = json.loads(Path(__file__).with_name("glyphs.json").read_text())
+GLYPHS = json.loads((Path(__file__).parent.parent / "glyphs.json").read_text())
 
 def pixel_text(draw, text, pos, height, colour, align="left"):
     """Draw the original proportional pixel face, with Unicode fallback."""

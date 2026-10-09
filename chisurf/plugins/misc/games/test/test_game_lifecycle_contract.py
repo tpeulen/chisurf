@@ -21,7 +21,7 @@ APPS = {
     "pong": ("pong.app", "PongApp"),
     "breakout": ("breakout.app", "BreakoutApp"),
     "tetris": ("tetris.app", "TetrisApp"),
-    "number": ("number_quest.app", "NumberQuestApp"),
+    "number": ("number_quest.gui.app", "NumberQuestApp"),
     "mines": ("minesweeper.gui.app", "MinesweeperApp"),
 }
 

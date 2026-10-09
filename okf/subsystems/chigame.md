@@ -9,8 +9,8 @@ timestamp: '2026-08-10T00:00:00Z'
 
 # Where to pick this up
 
-1. Open: shared lifecycle is extracted; remaining P-F9 work is binding/state
-   declarations, chrome/help/restart and NumberQuest consolidation. Defaults and
+1. Open: shared lifecycle and NumberQuest consolidation are complete; remaining
+   P-F9 work is binding/state declarations and chrome/help/restart. Defaults and
    all116window-reader records are closed; do not re-audit those inventories.
 2. Measure: run the two game-window declaration tests and empty-persistence test
    under `test/native_emtk/`. They prove exact existing defaults, authored size
@@ -630,3 +630,29 @@ cleanup, closed pointer immutability and no post-close effect/toggle. All five f
 numeric state/paint/window snapshots are exactly equal. No audio backend or
 playback activation, new chrome or shared blind field restoration was introduced.
 [Acceptance](../validation/release-readiness-w6f/game-lifecycle-acceptance.json).
+
+
+# Number Quest canonical GUI consolidation — 2026-10-09
+
+The richer committed native app/drawing now live under number_quest/gui/. Core,
+translation and root resource paths retain the same actual implementation, locale
+context,560×420default, control inventory, round/state and optional audio lifecycle.
+Exact full default commands/state and six-locale/input/saved-size checks match;
+root inspected before/default/narrow PNGs and numeric-caption instrumentation.
+The obsolete alternate target=constructor/A-D-repeat test now tests the retained
+richer contract; no compatibility alias or new gameplay was added.
+
+Foreign ownership handoff: dirty root app.py/drawing.py remain byte-identical on
+disk after index-only retirement; they become untracked local owner files, not
+shipped aliases. Root key enhancements are transferred into working gui/app.py
+as unstaged differences. Registry descriptions remain unstaged. Exact original
+GUI formatting bytes/patches and migrated working-only deltas are preserved at
+`/private/tmp/prd154-number-move/owner/{before,foreign,worktree-only.patch}`.
+Do not clean/remove those originals or stage their semantic changes without the
+foreign owner's instruction. [Acceptance](../validation/release-readiness-w6f/number-move-acceptance.json).
+
+Queued existing nonblocking help mismatch: the retained canonical tooltip still
+mentionsA/D although actual direction bindings are Left/Right only; README now
+states the real binding. OwnerW6fsemantic-help sweep must correct/localize that
+help without importing foreign Up/Down/Escape/M changes. Canonical migration
+keeps existing text/paint parity; this does not waive aggregate help correctness.

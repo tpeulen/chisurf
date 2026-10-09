@@ -13,8 +13,8 @@ from emtk.app import as_surface
 from emtk.keys import KEY_LEFT, KEY_RETURN, KEY_RIGHT
 from emtk.testing import RecordingPainter
 
-from ..app import NumberQuestApp, make_app
 from ..core.game import GuessStatus
+from ..gui.app import NumberQuestApp, make_app
 from ..translations import LOCALES, STRINGS, install_translations
 
 
@@ -34,7 +34,7 @@ class BlockQt(MetaPathFinder):
             raise AssertionError('Qt import: '+fullname)
 sys.meta_path.insert(0, BlockQt())
 from emtk.app import load_app
-app=load_app('chisurf.plugins.misc.games.number_quest.app:make_app')
+app=load_app('chisurf.plugins.misc.games.number_quest.gui.app:make_app')
 assert app.estimate == 50
 app.close()
 assert not any(name.startswith(('qtpy','PyQt','PySide')) for name in sys.modules)
@@ -68,6 +68,8 @@ def test_focus_and_surface_key_release_stop_repeat(app):
     surface = as_surface(app)
     assert surface.on_key_press(KEY_RIGHT, '', 0)
     assert surface.on_key_release(KEY_RIGHT, '', 0)
+    assert not app.game_running()
+    app.draw(RecordingPainter(), 0, 0, *app.window_size)
     assert not app.animating()
     app.key(KEY_LEFT)
     app.focus_lost()
@@ -189,4 +191,4 @@ def test_six_locales_tooltips_and_responsive_board():
 
 def test_manifest_factory():
     manifest = json.loads((Path(__file__).parents[1] / 'manifest.json').read_text())
-    assert manifest['entrypoints']['emtk'] == 'chisurf.plugins.misc.games.number_quest.app:make_app'
+    assert manifest['entrypoints']['emtk'] == 'chisurf.plugins.misc.games.number_quest.gui.app:make_app'

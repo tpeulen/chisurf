@@ -16,7 +16,7 @@ from chisurf.emtk.state import attach_native_state
 CASES = [
     ("gui.app", (1200, 800)),
     ("minesweeper.gui.app", (560, 620)),
-    ("number_quest.app", (560, 420)),
+    ("number_quest.gui.app", (560, 420)),
 ]
 
 
@@ -38,9 +38,17 @@ def module_for(name):
     return importlib.import_module(f"chisurf.plugins.misc.games.{name}")
 
 
+def declaration_path(module):
+    """Resolve the game-owned declaration after the canonical GUI move."""
+    parent = Path(module.__file__).parent
+    if module.__name__.endswith("number_quest.gui.app"):
+        parent = parent.parent
+    return parent / "app.view.json"
+
+
 def override_declaration(monkeypatch, module, size):
     """Change only the spec read by the real constructor, retaining its structure."""
-    path = Path(module.__file__).with_name("app.view.json")
+    path = declaration_path(module)
     original = Path.read_text
     spec = json.loads(path.read_text())
     spec["window"] = dict(zip(("width", "height"), size, strict=True))
@@ -56,7 +64,7 @@ def override_declaration(monkeypatch, module, size):
 def test_real_constructor_reads_declared_default(name, expected):
     """Fresh native hosts use their true existing dimensions with valid specs."""
     module = module_for(name)
-    spec = json.loads(Path(module.__file__).with_name("app.view.json").read_text())
+    spec = json.loads(declaration_path(module).read_text())
     assert not validate_view_spec(spec)
     assert spec["window"] == dict(zip(("width", "height"), expected, strict=True))
     app = attach_native_state(f"declarations-b-{name}", module.make_app())

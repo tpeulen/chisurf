@@ -5,7 +5,7 @@ import numpy as np
 from emtk.native import NativeHost
 from PIL import Image
 
-from ..app import make_app
+from ..gui.app import make_app
 
 
 def main():

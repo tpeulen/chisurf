@@ -18,7 +18,7 @@ import pytest
 from emtk.keys import KEY_ENTER, KEY_LEFT, KEY_RIGHT
 from emtk.testing import RecordingPainter
 
-from chisurf.plugins.misc.games.number_quest.app import NumberQuestApp, make_app
+from chisurf.plugins.misc.games.number_quest.gui.app import NumberQuestApp, make_app
 
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())

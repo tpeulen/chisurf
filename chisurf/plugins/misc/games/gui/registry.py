@@ -3,7 +3,7 @@
 GAME_PANELS = [
     {"name": "Number Quest", "icon": "🔢", "description": "Guess the hidden number in seven tries.",
      "class_path": "chisurf.plugins.misc.games.number_quest.gui.tool", "class_name": "NumberQuestWidget",
-     "emtk": "chisurf.plugins.misc.games.number_quest.app:make_app",
+     "emtk": "chisurf.plugins.misc.games.number_quest.gui.app:make_app",
      "keys": "Left/Right dial · Q/E steps of ten · Enter submit · R new round"},
     {"name": "Minesweeper", "icon": "💣", "description": "Clear a minefield without triggering a mine; board size is configurable.",
      "class_path": "chisurf.plugins.misc.games.minesweeper.gui.tool", "class_name": "MinesweeperWidget",

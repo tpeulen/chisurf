@@ -11,7 +11,6 @@ FACTORIES = [
     "chisurf.plugins.misc.games.tetris.app",
     "chisurf.plugins.misc.games.breakout.app",
     "chisurf.plugins.misc.games.minesweeper.gui.app",
-    "chisurf.plugins.misc.games.number_quest.app",
     "chisurf.plugins.misc.games.number_quest.gui.app",
 ]
 

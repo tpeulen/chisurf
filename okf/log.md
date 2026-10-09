@@ -2,6 +2,8 @@
 
 ## 2026-10-09
 
+- NumberQuest now has one canonical richer GUI implementation; exactstate/commands/6locale/control/resize/audio parity and before/default/narrow visuals pass. Dirtyroot originals remain on disk after index-only retirement; foreign semantics stay unstaged. P-F9bindings/state/chrome still open. [Acceptance](validation/release-readiness-w6f/number-move-acceptance.json).
+
 - Shared GameApp removes duplicated lifecycle/audio boundaries;41independent cases and69exact neighbor tests pass, with all five full state/render snapshots equal. Fixes idle redraw, closed input, pending second-player input and repeated/post-close audio; remaining P-F9 work stays open. [Acceptance](validation/release-readiness-w6f/game-lifecycle-acceptance.json).
 
 - The20core host records now consume numeric declarations with unchanged defaults, saved geometry and preferences; exact60cases plus25existing regressions pass. All116reader records covered, while otherW6f/scientific/service gates stay open;281unchanged literal keys relocated. [Acceptance](validation/release-readiness-w6f/core-window-acceptance.json).

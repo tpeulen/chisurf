@@ -54,3 +54,22 @@ The games are tested with real key and pointer events through the Qt window that
 (`chisurf/plugins/misc/games/test/test_games_real_input.py`): the paddle, piece, cursor and dial must actually move.
 See also the generated reference pages for [Games](../reference/plugins/games.md) and
 [Breakout](../reference/plugins/breakout.md).
+
+## 4. Native Python entrypoint
+
+The canonical Number Quest native app now lives in its GUI package:
+
+```python
+from chisurf.plugins.misc.games.number_quest.gui.app import make_app
+
+app = make_app()
+app.game.reset(target=53)
+app.estimate = 50
+app.submit()
+print(app.tau, app.game.attempts_remaining)
+app.close()
+```
+
+The standalone launcher is `pixi run -e test python -m chisurf.emtk --plugin number_quest`.
+The richer app's controls, held/released keys, saved round and window dimensions
+are retained; the former alternate native implementation is retired.
