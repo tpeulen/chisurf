@@ -185,3 +185,20 @@ true infinite-time asymptote. Resizing preserves the selected photons and values
 The direct host expresses its axis and shifts in channel bins. Keep that scale
 with exported traces; do not interpret the bin axis as nanoseconds without the
 measurement's time calibration.
+
+## Native anisotropy wizard host
+
+The six-step native wizard declares **1100 × 720** pixels, with saved geometry
+in preference to the default. Lifetime and rotation component panels sit side
+by side when space permits and stack on a narrow host. Window preferences
+retain inputs, settings and step selection; reload data after changing reader
+settings before creating fits. The wizard creates linked VV, VH and global
+fit groups. Creation verifies their configuration, not optimization quality.
+
+```{figure} figures/anis_wizard_native_primary_window.png
+:width: 100%
+
+The native component step after configured data and normalized IRFs have been
+loaded. Lifetime and rotation spectra retain their values when the host narrows.
+Use the final step to create the linked fit groups, then assess the actual fit.
+```

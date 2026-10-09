@@ -279,6 +279,13 @@ bug made the time-domain simulation helper `vm_rt_to_vv_vh` use only the first
 $(\beta,\rho)$ pair; it is fixed, and the fitting path was never affected.)
 :::
 
+The native wizard configures shared lifetime, rotational and correction
+parameters for its VV, VH and global fit groups. Separate normalized IRFs remain
+associated with their polarization channels. Creating a linked group does not
+establish convergence or agreement with the data; those require fitting and
+residual inspection. Host dimensions change component layout, not the spectra
+or normalization.
+
 ## Coupling to the intensity decay (VV/VH combined fit)
 
 The anisotropy cannot be observed on its own — it rides on the intensity decay.

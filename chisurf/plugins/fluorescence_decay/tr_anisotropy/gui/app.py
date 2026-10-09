@@ -15,7 +15,7 @@ from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, _clean_html_text
-from chisurf.plugins.emtk_layout import LabelColumn, button_row, labelled, layout_spec
+from chisurf.plugins.emtk_layout import LabelColumn, button_row, labelled, layout_spec, window_size
 
 from .model import NativeAnisotropyModel
 
@@ -36,6 +36,8 @@ TARGET_STEP = {"data_vv_path": 1, "load_data": 2, "g_factor": 3, "lifetime.add":
 
 class AnisotropyApp(ImApp):
     def __init__(self, model=None):
+        primary = json.loads((HERE / "anisotropy_emtk.view.json").read_text())
+        self.window_size = window_size(primary, (1100, 720))
         self.model = model or NativeAnisotropyModel()
         self.steps = json.loads((HERE.parent / "anisotropy.view.json").read_text())["sections"][0]["steps"]
         for step in self.steps:
@@ -45,7 +47,7 @@ class AnisotropyApp(ImApp):
         self.step_index = 0
         self.plot_info = {}
         self.item_rects = {}
-        panels = json.loads((HERE / "anisotropy_emtk.view.json").read_text())["panels"]
+        panels = primary["panels"]
         self.panels = {name: layout_spec(copy.deepcopy(spec)) for name, spec in panels.items()}
         self.forms = {name: FormState() for name in panels}
         self.labels = {name: LabelColumn() for name in panels}
