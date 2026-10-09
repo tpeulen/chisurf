@@ -157,7 +157,9 @@ def test_all_locales_and_control_tooltips(tmp_path, monkeypatch):
             assert app.help.sections
             app.help.hide()
             app.start_guide()
-            assert app.guide.steps[0]["title"] == tr("Load a photon file")  # from guide.json, through the translation table
+            assert app.guide.steps[0]["title"] == tr(
+                "Load a photon file"
+            )  # from guide.json, through the translation table
             app.guide.active = False
             if locale != "en":
                 assert tr("Run batch") != "Run batch"

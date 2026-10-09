@@ -1,0 +1,5 @@
+[
+  {"title":"Open a source","text":"Open a supported TTTR file or drop it onto the editor.","target":"open"},
+  {"title":"Inspect and edit tags","text":"Edit a name, type, native-unit value or index. Invalid edits block saving.","target":"tag_table"},
+  {"title":"Save a copy","text":"Save the edited header and original photon events to a new PTU file.","target":"save"}
+]

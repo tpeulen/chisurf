@@ -32,17 +32,14 @@ def test_view_spec_loads():
 
 
 def test_tool_builds_with_autoform(qapp, qtbot):
-    from chisurf.gui.autoform import AutoForm
     from chisurf.plugins.tttr.tttr_splitter.gui.tool import PTUSplitter
 
     w = PTUSplitter()
     qtbot.addWidget(w)
-    assert isinstance(w.auto_form, AutoForm)
-    # the custom sections must be registered (imported by gui.tool)
-    from chisurf.gui.autoform.sections.registry import get_section_factory
-
-    for key in ("splitter_io", "splitter_run", "splitter_batch_run", "path_list"):
-        assert get_section_factory(key) is not None
+    # The UI is the EMTK app; the AutoForm-era attribute is a repaint shim.
+    assert hasattr(w.auto_form, "sync_fields")
+    assert w.app is w.host.control
+    assert w._model is not None
 
 
 @pytest.mark.skipif(not _PTU.exists(), reason="sample PTU not available")

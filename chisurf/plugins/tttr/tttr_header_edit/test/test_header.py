@@ -31,13 +31,14 @@ def test_view_spec_loads():
 
 
 def test_tool_builds_with_autoform(qapp, qtbot):
-    from chisurf.gui.autoform import AutoForm
     from chisurf.gui.autoform.sections.registry import get_section_factory
     from chisurf.plugins.tttr.tttr_header_edit.gui.tool import TagsEditor
 
     w = TagsEditor()
     qtbot.addWidget(w)
-    assert isinstance(w.auto_form, AutoForm)
+    # The UI is the EMTK app; the AutoForm-era attribute is a repaint shim.
+    assert hasattr(w.auto_form, "sync_fields")
+    assert w.app is w.host.control
     assert get_section_factory("header_table") is not None
 
 

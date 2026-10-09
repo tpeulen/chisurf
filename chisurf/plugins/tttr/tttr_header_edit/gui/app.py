@@ -1,0 +1,284 @@
+"""EMTK immediate-mode UI for the TTTR Header Editor.
+
+Left: the header tags as an editable table — one row per tag, the type chosen
+from the tag-type combo, plus Open / Add / Remove / Save-as-PTU actions and the
+source summary. Right: the read-only JSON view of the edited header. The widget
+(:class:`~.tool.TagsEditor`) keeps the Qt-free
+:class:`~..view_model.HeaderEditorViewModel`, the file dialogs and the OS drop;
+this app renders its state. The string editors are the source of truth for the
+table and are committed to the model on every edit, the way the Qt table's
+``itemChanged`` was.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import TYPE_CHECKING, Callable
+
+import emtk.im as im
+from emtk.app import ImApp
+from emtk.docking import DockManager, Region, Split
+from emtk.im_core import Col
+
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+
+if TYPE_CHECKING:
+    from .tool import TagsEditor
+
+WINDOW_BG = (30, 32, 38, 255)
+ACCENT_GREEN = (46, 160, 67, 255)
+
+_TABLE_FLAGS = im.TableFlags.BORDERS | im.TableFlags.ROW_BG | im.TableFlags.RESIZABLE
+
+
+class HeaderEditorGui(TourTarget):
+    """EMTK GUI for the TTTR header editor."""
+
+    def __init__(
+        self,
+        tool: TagsEditor,
+        on_open: Callable[[], None] | None = None,
+        on_save: Callable[[], None] | None = None,
+        on_guide: Callable[[], None] | None = None,
+        on_help: Callable[[], None] | None = None,
+    ) -> None:
+        self.tool = tool
+        self.on_open = on_open
+        self.on_save = on_save
+        self.on_guide = on_guide
+        self.on_help = on_help
+
+        #: The string editors of the tag table — the source of truth for the
+        #: cells, committed to the model on every edit and rebuilt on load.
+        self._rows: list[dict] = []
+        self.item_rects: dict[str, tuple[float, float, float, float]] = {}
+
+        layout = Split("h", 0.62, Region("tags"), Region("json"))
+        self.docks = DockManager(layout)
+        self.docks.add_window("tags", "Header tags", self._draw_tags, dock="tags")
+        self.docks.add_window("json", "Header JSON", self._draw_json, dock="json")
+
+        self.help_window = EmTkHelpWindow(
+            title="TTTR Header Editor — Help & Reference",
+            resource=Path(__file__).parent / "help.md",
+            owner=tool,
+            on_start_guide=self.start_guide,
+            size=(700.0, 520.0),
+        )
+        self.tour = EmTkGuidedTour(
+            steps=Path(__file__).parent / "guide.json",
+            get_target_rect=lambda k: self.item_rects.get(k),
+            owner=tool,
+        )
+        self.rebuild_rows()
+
+    # ── plumbing ──────────────────────────────────────────────────────────
+
+    @property
+    def model(self):
+        return self.tool.model
+
+    def start_guide(self) -> None:
+        self.tour.start()
+
+    def show_help(self) -> None:
+        self.help_window.show()
+
+
+    def draw(self, w: float = 0.0, h: float = 0.0) -> None:
+        vp = im.get_main_viewport()
+        width = float(w or vp.size[0] or 860.0)
+        height = float(h or vp.size[1] or 560.0)
+        self.docks.draw((0.0, 0.0, width, height))
+        if self.help_window.open:
+            self.help_window.draw((0.0, 0.0, width, height))
+        if self.tour.active:
+            self.tour.draw(width, height)
+
+    # ── the string editors ↔ the model ────────────────────────────────────
+
+    def rebuild_rows(self) -> None:
+        """Rebuild the string editors from the model's tags (a load happened)."""
+        type_names = list(self.model.TYPE_MAPPING.values())
+        self._rows = []
+        for tag in self.model.tags:
+            self._rows.append(
+                {
+                    "name": str(tag.get("name", "")),
+                    "type": self.model.TYPE_MAPPING.get(tag.get("type"), type_names[0])
+                    if tag.get("type") in self.model.TYPE_MAPPING
+                    else f"Unknown 0x{tag.get('type', 0):08X}",
+                    "raw_type": tag.get("type"),
+                    "raw_value": tag.get("value"),
+                    "value": json.dumps(tag.get("value"))
+                    if isinstance(tag.get("value"), list)
+                    else str(tag.get("value", "")),
+                    "idx": str(tag.get("idx", -1)),
+                }
+            )
+
+    def _commit(self) -> None:
+        """Commit the editors to the model (which refreshes the JSON view)."""
+        try:
+            self.model.set_tags([dict(r) for r in self._rows])
+            self.tool.validation_error = ""
+        except ValueError as exc:
+            self.tool.validation_error = str(exc)
+
+    # ── the tags dock ─────────────────────────────────────────────────────
+
+    def _draw_tags(self, box: tuple[float, float, float, float]) -> None:
+        if im.button("📂 Open"):
+            if callable(self.on_open):
+                self.on_open()
+        im.set_item_tooltip("Open a TTTR file (PTU / HT3 / SPC / HDF5) and read its header.")
+        self.remember("open")
+        im.same_line()
+        if im.button("➕ Add"):
+            self._rows.append({"name": "NewTag", "type": "AnsiString", "value": "", "idx": "-1"})
+            self._commit()
+        im.set_item_tooltip("Append a new header tag with a placeholder name.")
+        self.remember("add")
+        im.same_line()
+        if im.button("📖 Guide"):
+            self.start_guide()
+        im.set_item_tooltip("A step-by-step walk through the tool.")
+        self.remember("guide")
+        if im.get_line_avail() < 170.0:
+            im.new_line()
+        else:
+            im.same_line()
+        if im.button("❓ Help"):
+            self.show_help()
+        im.set_item_tooltip("The short help page.")
+        self.remember("help")
+        if im.get_line_avail() < 170.0:
+            im.new_line()
+        else:
+            im.same_line()
+        im.push_style_color(Col.BUTTON, ACCENT_GREEN)
+        im.push_style_color(Col.BUTTON_HOVERED, (56, 180, 77, 255))
+        im.push_style_color(Col.BUTTON_ACTIVE, (36, 140, 57, 255))
+        if im.button("💾 Save as PTU"):
+            if callable(self.on_save):
+                self.on_save()
+        im.set_item_tooltip(
+            "Write the edited header to a new PTU file — the source's photon "
+            "data is copied verbatim."
+        )
+        im.pop_style_color(3)
+        self.remember("save")
+
+        im.separator()
+        if getattr(self.tool, "validation_error", ""):
+            im.text_wrapped(self.tool.validation_error)
+        if getattr(self.tool, "message", ""):
+            im.text_wrapped(self.tool.message)
+        if getattr(getattr(self.tool, "job", None), "running", False):
+            im.text("Reading or saving TTTR data...")
+        im.text_disabled(self.model.source_summary)
+        im.set_item_tooltip(
+            "Reads any tttrlib container; edited headers are always written as PTU."
+        )
+
+        type_names = list(self.model.TYPE_MAPPING.values())
+        type_names.extend(row["type"] for row in self._rows if row["type"] not in type_names)
+        rows = self._rows
+        table_h = max(float(box[3]) - 92.0, 120.0)
+        if im.begin_table("header_tags", 5, _TABLE_FLAGS, (0, table_h)):
+            im.table_setup_column("Name", im.TableColumnFlags.WIDTH_FIXED, 170.0)
+            im.table_setup_column("Type", im.TableColumnFlags.WIDTH_FIXED, 120.0)
+            im.table_setup_column("Value", im.TableColumnFlags.WIDTH_STRETCH)
+            im.table_setup_column("Idx", im.TableColumnFlags.WIDTH_FIXED, 60.0)
+            im.table_setup_column("", im.TableColumnFlags.WIDTH_FIXED, 30.0)
+            im.table_headers_row()
+            for i, row in enumerate(rows):
+                im.table_next_row()
+                im.table_set_column_index(0)
+                _, name = im.input_text(f"##name{i}", row["name"])
+                im.set_item_tooltip("Header tag name; names must not be empty.")
+                if name != row["name"]:
+                    row["name"] = name
+                    self._commit()
+                im.table_set_column_index(1)
+                current = type_names.index(row["type"]) if row["type"] in type_names else 0
+                changed, new_idx = im.combo(f"##type{i}", current, type_names)
+                im.set_item_tooltip("PTU tag type determines how the value is stored.")
+                if changed and 0 <= new_idx < len(type_names):
+                    row["type"] = type_names[new_idx]
+                    self._commit()
+                im.table_set_column_index(2)
+                unknown_type = row["type"] not in self.model.REVERSE_TYPE_MAPPING
+                im.begin_disabled(unknown_type)
+                _, value = im.input_text(f"##value{i}", row["value"])
+                im.end_disabled()
+                im.set_item_tooltip(
+                    "Unsupported tag value is preserved unchanged. " + row["value"]
+                    if unknown_type
+                    else "Native PTU value; timing in seconds, DateTime in PTU days, arrays in JSON. "
+                    + row["value"]
+                )
+                if value != row["value"]:
+                    row["value"] = value
+                    self._commit()
+                im.table_set_column_index(3)
+                _, idx = im.input_text(f"##idx{i}", row["idx"])
+                im.set_item_tooltip("Indexed tag position; -1 means an unindexed tag.")
+                if idx != row["idx"]:
+                    row["idx"] = idx
+                    self._commit()
+                im.table_set_column_index(4)
+                if im.small_button(f"✕##remove{i}"):
+                    del self._rows[i]
+                    self._commit()
+                    im.end_table()
+                    return
+                im.set_item_tooltip("Remove this tag.")
+            im.end_table()
+        self.remember("tag_table")
+
+    # ── the JSON dock ─────────────────────────────────────────────────────
+
+    def _draw_json(self, box: tuple[float, float, float, float]) -> None:
+        im.text_wrapped("Read-only view — saved with the tags into the PTU header.")
+        im.separator()
+        for line in (self.model.json_text or "").splitlines():
+            im.text_wrapped(line)
+        self.remember("json")
+
+
+class HeaderEditorApp(ImApp):
+    """The EMTK ImApp for the TTTR header editor."""
+
+    def __init__(
+        self,
+        tool: TagsEditor,
+        on_open: Callable[[], None] | None = None,
+        on_save: Callable[[], None] | None = None,
+    ) -> None:
+        self.tool = tool
+        self.header_gui = HeaderEditorGui(
+            tool,
+            on_open=on_open,
+            on_save=on_save,
+            on_guide=self.start_guide,
+            on_help=self.show_help,
+        )
+        super().__init__(gui=self._render, continuous=False)
+
+    @property
+    def item_rects(self) -> dict[str, tuple[float, float, float, float]]:
+        return self.header_gui.item_rects
+
+    def start_guide(self) -> None:
+        self.header_gui.start_guide()
+
+    def show_help(self) -> None:
+        self.header_gui.show_help()
+
+    def _render(self) -> None:
+        self.header_gui.draw()
+
+
+__all__ = ["HeaderEditorApp", "WINDOW_BG"]

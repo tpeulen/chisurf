@@ -42,7 +42,11 @@ class AlexPTUCreator(QtWidgets.QWidget):
         help_row.addStretch(1)
         layout.addLayout(help_row)
         attach_help_and_guide(
-            self, help_row, guide_resource="no_qt_guide.json", title="ALEX Creator", model=self.model
+            self,
+            help_row,
+            guide_resource="no_qt_guide.json",
+            title="ALEX Creator",
+            model=self.model,
         )
         self.auto_form = AutoForm(self.model)
         layout.addWidget(self.auto_form)

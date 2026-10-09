@@ -45,8 +45,13 @@ def emtk_model(info):
     model = HistogramModel()
     model.auto_save = False
     model.set_setup(info["full_setup"])
-    model.filetype = "SPC-130"      # the wizard reads with its (disabled) format box: SPC-130
-    model.binning, model.vv_shift, model.vh_shift, model.g_factor = info["binning"], info["vv"], info["vh"], info["g"]
+    model.filetype = "SPC-130"  # the wizard reads with its (disabled) format box: SPC-130
+    model.binning, model.vv_shift, model.vh_shift, model.g_factor = (
+        info["binning"],
+        info["vv"],
+        info["vh"],
+        info["g"],
+    )
     model.add_paths([PHOTONS])
     model.compute()
     return model
@@ -56,11 +61,16 @@ def emtk_model(info):
 def test_the_export_equals_preserved_legacy_counts_for_the_same_photons(legacy, name):
     info, arrays = legacy
     model = emtk_model(info[name])
-    assert model.parallel == info[name]["parallel"] and model.perpendicular == info[name]["perpendicular"]
+    assert (
+        model.parallel == info[name]["parallel"]
+        and model.perpendicular == info[name]["perpendicular"]
+    )
     assert model.g_factor == info[name]["g"]
     np.testing.assert_array_equal(model.cumulative_ps, arrays[name])
-    qt_channels = float(info[name]["fwhm_text"].split("(")[1].split()[0])      # "5.65 ns (113.0 channels)"
-    assert model.fwhm_bins == qt_channels                                       # same crossing rule, same width
+    qt_channels = float(
+        info[name]["fwhm_text"].split("(")[1].split()[0]
+    )  # "5.65 ns (113.0 channels)"
+    assert model.fwhm_bins == qt_channels  # same crossing rule, same width
 
 
 def test_the_preserved_reference_is_not_empty(legacy):

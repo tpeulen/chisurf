@@ -18,13 +18,18 @@ HERE = Path(__file__).parent
 GUI = HERE.parent / "gui"
 ENTRY = "chisurf.plugins.tttr.trace_browser.gui.app:make_app"
 
+
 @pytest.fixture
 def setups_file(tmp_path):
     """A setups JSON with two saved setups, ``last_used`` = ALEX Suite (auto)."""
     path = tmp_path / "detector_setups.json"
     path.write_text(
-        json.dumps({"setups": {"ALEX Suite (auto)": ALEX, "Overlap": OVERLAP},
-                    "last_used": "ALEX Suite (auto)"})
+        json.dumps(
+            {
+                "setups": {"ALEX Suite (auto)": ALEX, "Overlap": OVERLAP},
+                "last_used": "ALEX Suite (auto)",
+            }
+        )
     )
     return path
 
@@ -87,7 +92,13 @@ def test_model_has_every_key_the_app_uses():
     model = TraceBrowserModel()
     for name in ("page", "setup_settings", "setup_filetype", "selected_channels"):
         assert hasattr(model, name), name
-    for name in ("accept_setup", "back_to_setup", "apply_setup", "filetype_of", "build_channel_labels"):
+    for name in (
+        "accept_setup",
+        "back_to_setup",
+        "apply_setup",
+        "filetype_of",
+        "build_channel_labels",
+    ):
         assert callable(getattr(model, name)), name
     assert model.page == "setup"
 
@@ -99,8 +110,13 @@ def test_setup_page_draws_empty_and_with_a_setup(size, setups_file, tmp_path):
     try:
         text = " | ".join(frames(empty, size))
         assert empty.model.page == "setup"
-        assert "Continue" in text and "Setup definition" in text and "Setup:" in text and "TTTR Reading routine" in text
-        assert "ALEX Suite (auto)" not in text      # nothing invented when none is saved
+        assert (
+            "Continue" in text
+            and "Setup definition" in text
+            and "Setup:" in text
+            and "TTTR Reading routine" in text
+        )
+        assert "ALEX Suite (auto)" not in text  # nothing invented when none is saved
         assert empty.editor.model.get_settings()["detectors"] == {}
     finally:
         empty.close()
@@ -109,7 +125,7 @@ def test_setup_page_draws_empty_and_with_a_setup(size, setups_file, tmp_path):
         text = " | ".join(frames(app, size))
         # the last used saved setup is selected, as in the Qt setup page
         assert app.editor.model.current_name == "ALEX Suite (auto)"
-        assert text.count("ALEX Suite (auto)") >= 1          # the Setup drop-down shows it
+        assert text.count("ALEX Suite (auto)") >= 1  # the Setup drop-down shows it
         assert "Continue" in text
         assert app.editor.model.get_settings()["detectors"]["green"]["chs"] == [1]
     finally:
@@ -131,15 +147,17 @@ def test_continue_applies_the_setup_and_back_returns(setups_file, monkeypatch):
         assert model.setup_settings["detectors"]["red"]["chs"] == [0]
         assert model.setup_settings["setup_name"] == "ALEX Suite (auto)"
         browser = " | ".join(frames(app))
-        assert "Select a file to write an annotation" in browser and "Files" in browser   # the Browser page (card T2)
-        assert "Continue" not in browser            # the setup page is not drawn
+        assert (
+            "Select a file to write an annotation" in browser and "Files" in browser
+        )  # the Browser page (card T2)
+        assert "Continue" not in browser  # the setup page is not drawn
         accepted = model.setup_settings
         with pressing(monkeypatch, "← Select setup"):
             frames(app, n=1)
         assert model.page == "setup"
-        assert model.setup_settings is accepted      # Back keeps the accepted setup
+        assert model.setup_settings is accepted  # Back keeps the accepted setup
         assert "Continue" in " | ".join(frames(app))
-        assert app.editor.model.current_name == "ALEX Suite (auto)"   # editor keeps its state
+        assert app.editor.model.current_name == "ALEX Suite (auto)"  # editor keeps its state
     finally:
         app.close()
 
@@ -149,7 +167,7 @@ def test_continue_without_a_setup_auto_detects_channels(tmp_path):
     try:
         app.continue_to_browser()
         assert app.model.page == "browser"
-        assert app.model.selected_channels is None     # the model then reads them from the files
+        assert app.model.selected_channels is None  # the model then reads them from the files
         assert app.model.setup_filetype is None
         text = " | ".join(frames(app))
         assert "Select a file to write an annotation" in text and "No folder selected" in text
@@ -169,8 +187,9 @@ def test_qt_widget_and_emtk_app_derive_the_same_channels(qapp, qtbot, setup, exp
     widget._on_continue()
 
     path = tmp_path / "setups.json"
-    path.write_text(json.dumps({"setups": {setup["setup_name"]: setup},
-                                "last_used": setup["setup_name"]}))
+    path.write_text(
+        json.dumps({"setups": {setup["setup_name"]: setup}, "last_used": setup["setup_name"]})
+    )
     app = make(path)
     try:
         assert app.editor.model.current_name == setup["setup_name"]
@@ -180,7 +199,7 @@ def test_qt_widget_and_emtk_app_derive_the_same_channels(qapp, qtbot, setup, exp
         assert app.model.setup_filetype == widget._setup_filetype()
         every = sorted({c for d in setup["detectors"].values() for c in d["chs"]}) + [5]
         assert app.model.build_channel_labels(every) == widget._build_channel_labels(every)
-        assert widget._build_channel_labels(every)[-1] == "5"      # an unnamed channel
+        assert widget._build_channel_labels(every)[-1] == "5"  # an unnamed channel
     finally:
         app.close()
 
@@ -233,14 +252,14 @@ def test_settings_round_trip(setups_file, tmp_path):
     app = make(setups_file)
     try:
         app.editor.select_setup("Overlap")
-        app.editor.model.data["detectors"]["red"]["chs"] = [9, 1]     # an edit of the working setup
+        app.editor.model.data["detectors"]["red"]["chs"] = [9, 1]  # an edit of the working setup
         saved = app.export_settings()
     finally:
         app.close()
-    saved = json.loads(json.dumps(saved))                      # it must survive JSON
+    saved = json.loads(json.dumps(saved))  # it must survive JSON
     assert saved["setup_name"] == "Overlap" and saved["setups_file"] == str(setups_file)
 
-    other = make(None)                                          # a fresh app, no setups file
+    other = make(None)  # a fresh app, no setups file
     try:
         assert other.editor.model.get_settings()["detectors"] == {}
         other.restore_settings(saved)
@@ -259,7 +278,7 @@ def test_settings_round_trip(setups_file, tmp_path):
     try:
         third.restore_settings({"setups_file": str(setups_file)})
         assert third.editor.model.current_name == "ALEX Suite (auto)"
-        third.restore_settings({})                              # nothing remembered: empty, no error
+        third.restore_settings({})  # nothing remembered: empty, no error
         assert third.editor.model.get_settings()["detectors"] == {}
     finally:
         third.close()

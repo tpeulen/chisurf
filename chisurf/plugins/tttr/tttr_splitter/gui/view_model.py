@@ -268,6 +268,7 @@ class SplitterViewModel:
         files = list(self.batch_files)
         count = len(files)
         keep_folder = self.output_folder
+        processed = 0
         for i, path_str in enumerate(files):
             if file_progress_cb is not None:
                 file_progress_cb(i, count, path_str)
@@ -284,11 +285,12 @@ class SplitterViewModel:
                 else:
                     self.output_folder = keep_folder
                 self.do_split()
+                processed += 1
             except Exception:
                 logger.exception("Batch: failed processing %s", path_str)
                 continue
         self.output_folder = keep_folder
-        return count
+        return processed
 
 
 __all__ = ["SplitterViewModel"]

@@ -1,0 +1,22 @@
+[
+  {
+    "target": "input",
+    "title": "Load input",
+    "text": "Open a TTTR file using the path field or browse button."
+  },
+  {
+    "target": "formats",
+    "title": "Choose formats",
+    "text": "Select the input container and desired output container."
+  },
+  {
+    "target": "split",
+    "title": "Set split options",
+    "text": "Choose the chunk size and binning. Disable Split into files for a single output. Keep original protects the source."
+  },
+  {
+    "target": "run",
+    "title": "Convert or split",
+    "text": "Choose an output folder, then run. Batch uses the same settings."
+  }
+]

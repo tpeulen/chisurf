@@ -11,7 +11,8 @@
     "Editor"
   ],
   "entrypoints": {
-    "script": "__init__.py"
+    "script": "__init__.py",
+    "emtk": "chisurf.plugins.tttr.tttr_splitter.gui.controller:create_app"
   },
   "menu_hidden": true
 }

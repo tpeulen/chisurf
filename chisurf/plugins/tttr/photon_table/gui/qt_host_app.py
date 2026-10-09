@@ -18,6 +18,7 @@ from emtk.docking import DockManager, Region, Split
 from emtk.im_core import Col
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.emtk.typed_field import typed_number_field
 
 if TYPE_CHECKING:
     from .tool import PhotonTableTool
@@ -46,6 +47,7 @@ class PhotonTableGui(TourTarget):
         self.on_help = on_help
 
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
+        self._number_buffers: dict[str, str] = {}
 
         layout = Split("h", 0.34, Region("file"), Region("table"))
         self.docks = DockManager(layout)
@@ -189,21 +191,25 @@ class PhotonTableGui(TourTarget):
         im.text("First photon:")
         im.same_line()
         im.set_next_item_width(-1.0)
-        _, v = im.input_int("##first_photon", tool.first_index, step=0)
+        v, _ = typed_number_field("first_photon", tool.first_index, self._number_buffers, minimum=0)
+        self.remember("first_photon")
         im.set_item_tooltip("Index of the first photon shown (within the filtered selection).")
-        if v != tool.first_index:
+        if v is not None:
             tool.first_index = m.clamp_first(v, tool.rows_per_page, tool.channel_filter)
 
         im.text("Rows:")
         im.same_line()
         im.set_next_item_width(-1.0)
-        _, r = im.input_int("##rows_per_page", tool.rows_per_page, step=0)
+        r, _ = typed_number_field(
+            "rows_per_page", tool.rows_per_page, self._number_buffers, minimum=1, maximum=20_000
+        )
+        self.remember("rows_per_page")
         im.set_item_tooltip(
             "Rows shown at once (1–20000). Large pages are fine; the table only "
             "draws what fits the window."
         )
-        if r != tool.rows_per_page:
-            tool.rows_per_page = max(1, min(int(r), 20_000))
+        if r is not None:
+            tool.rows_per_page = r
             tool.first_index = m.clamp_first(
                 tool.first_index, tool.rows_per_page, tool.channel_filter
             )

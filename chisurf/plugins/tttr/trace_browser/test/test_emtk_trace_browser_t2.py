@@ -45,7 +45,15 @@ def data_dir(tmp_path):
 def fake_dir(tmp_path):
     """A temp folder of unreadable stand-in files (listed as non-image) plus metadata."""
     folder = tmp_path / "fake"
-    for rel in ["a.ptu", "b.PTU", "c.spc", "d.txt", "sub/e.ht3", "sub/.trash/f.ptu", ".trash/g.ptu"]:
+    for rel in [
+        "a.ptu",
+        "b.PTU",
+        "c.spc",
+        "d.txt",
+        "sub/e.ht3",
+        "sub/.trash/f.ptu",
+        ".trash/g.ptu",
+    ]:
         path = folder / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"not a real tttr file")
@@ -68,7 +76,7 @@ def make_app(setups_file=None):
 
     app = TraceBrowserApp(setups_file=setups_file)
     app.continue_to_browser()
-    app.model.precompute_after_scan = False         # the T2 tests are about the page, not the precompute
+    app.model.precompute_after_scan = False  # the T2 tests are about the page, not the precompute
     return app
 
 
@@ -85,7 +93,9 @@ def settle(app, size=(1200, 800), timeout=30.0):
     """Draw frames until the app's worker and its queue are idle; return the last frame's strings."""
     deadline = time.time() + timeout
     strings = frames(app, size, 1)
-    while (app.job.busy or app._queue or app.load_job.busy or app.pre_job.busy) and time.time() < deadline:
+    while (
+        app.job.busy or app._queue or app.load_job.busy or app.pre_job.busy
+    ) and time.time() < deadline:
         time.sleep(0.02)
         strings = frames(app, size, 1)
     assert not app.job.busy and not app._queue, "the worker did not finish"
@@ -182,7 +192,9 @@ def test_every_spec_key_exists_on_the_model():
             for call in ("selected_call", "edited_call"):
                 assert callable(getattr(model, options[call])), options[call]
             seen["table"] += 1
-    assert seen == {"attr": 8, "call": 3, "action": 14, "table": 1}, seen   # T3b: Precompute, Stop, the toggle; T4: eight export, delete and hand-off buttons
+    assert seen == {"attr": 8, "call": 3, "action": 14, "table": 1}, (
+        seen
+    )  # T3b: Precompute, Stop, the toggle; T4: eight export, delete and hand-off buttons
     assert callable(model.enabled) and model.enabled("clear") is True
     model.busy = True
     assert model.enabled("clear") is False
@@ -195,17 +207,26 @@ def test_browser_page_draws_empty_and_populated(size, data_dir):
     try:
         text = " | ".join(frames(app, size))
         assert app.model.page == "browser"
-        for label in ("Select setup", "Open", "Clear caches", "Include subfolders", "Bin window [ms]",
-                      "Y min", "Y max", "No folder selected", "Select a file to write an annotation"):
+        for label in (
+            "Select setup",
+            "Open",
+            "Clear caches",
+            "Include subfolders",
+            "Bin window [ms]",
+            "Y min",
+            "Y max",
+            "No folder selected",
+            "Select a file to write an annotation",
+        ):
             assert label in text, label
         for header in ("File", "Rating", "Size (MB)", "Notes"):
             assert header in text, header
-        assert "m000.spc" not in text and not app.model.rows       # an empty state, nothing invented
+        assert "m000.spc" not in text and not app.model.rows  # an empty state, nothing invented
         app.model.request("open_folder", data_dir)
         text = " | ".join(settle(app, size))
         assert "m000.spc" in text and "m001.spc" in text
-        assert "1.144" in text                                     # the real size in MB
-        assert "sub/m002.spc" not in text                          # subfolders are off
+        assert "1.144" in text  # the real size in MB
+        assert "sub/m002.spc" not in text  # subfolders are off
         assert str(data_dir) in text or data_dir.name in text
     finally:
         app.close()
@@ -216,12 +237,12 @@ def test_open_folder_lists_the_real_spc_files(data_dir):
     from chisurf.plugins.tttr.trace_browser.gui.model import TraceBrowserModel
 
     model = TraceBrowserModel()
-    assert model.image_probe is None                               # the default probe, not a stand-in
+    assert model.image_probe is None  # the default probe, not a stand-in
     assert model.open_folder(data_dir)
     assert [r["name"] for r in model.rows] == ["m000.spc", "m001.spc"]
     assert model.rows[0]["size"] == BH132.stat().st_size
     assert model.folder_text == str(data_dir) and model.status_text.startswith("2 of 2")
-    assert model.open_folder(data_dir / "m000.spc") is False       # a file is not a folder
+    assert model.open_folder(data_dir / "m000.spc") is False  # a file is not a folder
     assert "Not a folder" in model.error_text and model.status_line == model.error_text
 
 
@@ -236,7 +257,7 @@ def test_the_open_button_opens_a_folder_dialog_that_opens_the_folder(data_dir, m
         assert app.dialog is not None and app.dialog.mode == "folder"
         assert app.dialog.title == "Select folder with PTU/TTTR files"
         shown = " | ".join(frames(app, n=1))
-        assert "Choose" in shown and "Cancel" in shown and "[..]" in shown   # the folder chooser
+        assert "Choose" in shown and "Cancel" in shown and "[..]" in shown  # the folder chooser
         app.dialog.directory = str(data_dir)
         app.dialog.selection = []
         with pressing(monkeypatch, "Choose"):
@@ -270,11 +291,16 @@ def test_rating_and_notes_edits_persist_and_show_after_a_rescan(data_dir):
         assert saved["m000.spc"]["rating"] == 1
         assert app.model.get_rating(data_dir / "m001.spc") == 2
         assert names(app.model.rows) == [("m000.spc", 1), ("m001.spc", 2)]
-        assert {r["name"]: r["notes"] for r in app.model.rows}["m001.spc"] == "good burst, dim acceptor"
+        assert {r["name"]: r["notes"] for r in app.model.rows}[
+            "m001.spc"
+        ] == "good burst, dim acceptor"
         # a rescan of the same folder (the toggle) and a brand-new app read it back from the disk
         app.model.request("scan")
         text = " | ".join(settle(app))
-        assert "good burst, dim acceptor" in text and names(app.model.rows) == [("m000.spc", 1), ("m001.spc", 2)]
+        assert "good burst, dim acceptor" in text and names(app.model.rows) == [
+            ("m000.spc", 1),
+            ("m001.spc", 2),
+        ]
     finally:
         app.close()
     other = make_app()
@@ -293,14 +319,14 @@ def test_an_invalid_rating_is_refused_and_the_stored_value_stays(data_dir):
         app.model.request("open_folder", data_dir)
         settle(app)
         edit_cell(app, "m000.spc", "rating", "3")
-        edit_cell(app, "m000.spc", "rating", "4")                  # above the maximum
-        edit_cell(app, "m000.spc", "rating", "9")                  # above the maximum
+        edit_cell(app, "m000.spc", "rating", "4")  # above the maximum
+        edit_cell(app, "m000.spc", "rating", "9")  # above the maximum
         assert app.model.get_rating(data_dir / "m000.spc") == 3
         assert next(r for r in app.model.rows if r["name"] == "m000.spc")["rating"] == 3
         assert "whole number from 0 to 3" in app.model.error_text
-        edit_cell(app, "m000.spc", "rating", "2.5")                # not a whole number
+        edit_cell(app, "m000.spc", "rating", "2.5")  # not a whole number
         assert app.model.get_rating(data_dir / "m000.spc") == 3
-        edit_cell(app, "m000.spc", "rating", "abc")                # a typo: the table keeps the cell
+        edit_cell(app, "m000.spc", "rating", "abc")  # a typo: the table keeps the cell
         assert app.model.get_rating(data_dir / "m000.spc") == 3
         edit_cell(app, "m000.spc", "rating", "0")
         assert app.model.get_rating(data_dir / "m000.spc") == 0 and app.model.error_text == ""
@@ -315,7 +341,7 @@ def test_edits_are_refused_while_a_scan_runs(fake_dir):
     model = TraceBrowserModel()
     model.open_folder(fake_dir)
     row = next(r for r in model.rows if r["name"] == "a.ptu")
-    row["rating"] = 1                                              # what the table does first
+    row["rating"] = 1  # what the table does first
     model.busy = True
     model.edit_cell(row, "rating", 1)
     assert row["rating"] == 3 and model.get_rating(row["path"]) == 3
@@ -341,12 +367,14 @@ def test_rating_filter_through_the_spec_choice(fake_dir):
             FILTER_LABELS[4]: [("c.spc", 0)],
         }
         for label, rows in expected.items():
-            commit(app, "rating_filter", label)                    # setattr, then set_rating_filter
+            commit(app, "rating_filter", label)  # setattr, then set_rating_filter
             text = " | ".join(frames(app))
             assert names(app.model.rows) == rows, label
             assert all(name in text for name, _ in rows)
-            assert all(name not in text for name in {"a.ptu", "b.PTU", "c.spc"} - {n for n, _ in rows}), label
-            assert label in text                                    # the drop-down shows the filter
+            assert all(
+                name not in text for name in {"a.ptu", "b.PTU", "c.spc"} - {n for n, _ in rows}
+            ), label
+            assert label in text  # the drop-down shows the filter
         # the filter acts on the ratings as they are edited
         commit(app, "rating_filter", FILTER_LABELS[4])
         frames(app)
@@ -362,7 +390,7 @@ def test_rating_filter_through_the_spec_choice(fake_dir):
 def test_include_subfolders_really_rescans(data_dir):
     app = make_app()
     try:
-        commit(app, "include_subfolders", True)                    # no folder yet: nothing to scan, no error
+        commit(app, "include_subfolders", True)  # no folder yet: nothing to scan, no error
         assert app.model.include_subfolders is True and app.model.error_text == ""
         commit(app, "include_subfolders", False)
         app.model.request("open_folder", data_dir)
@@ -387,10 +415,12 @@ def test_selecting_a_row_sets_selection_and_current_file(data_dir):
         settle(app)
         control = table(app)
         model = app.model
-        assert model.current_file == data_dir / "m000.spc"           # card T3b: a scan selects the first row
-        control._select_position(1)                                # the table reports it: selected_call
+        assert model.current_file == data_dir / "m000.spc"  # card T3b: a scan selects the first row
+        control._select_position(1)  # the table reports it: selected_call
         assert model.selected_files == [str(data_dir / "m001.spc")]
-        assert model.current_file == data_dir / "m001.spc" and model.trace is None   # no trace until loaded
+        assert (
+            model.current_file == data_dir / "m001.spc" and model.trace is None
+        )  # no trace until loaded
         text = " | ".join(frames(app))
         assert "m001.spc" in text
         control._select_position(0)
@@ -413,18 +443,22 @@ def test_clear_and_clear_caches_buttons(data_dir, monkeypatch):
         app.model.request("open_folder", data_dir)
         settle(app)
         cache = data_dir / ".tttr_trace_cache"
-        cache.mkdir(exist_ok=True)      # selecting the first row has loaded its trace (card T3b)
+        cache.mkdir(exist_ok=True)  # selecting the first row has loaded its trace (card T3b)
         (cache / "x.npz").write_bytes(b"cached")
         edit_cell(app, "m000.spc", "rating", "2")
         table(app)._select_position(0)
         with pressing(monkeypatch, "Clear caches"):
             frames(app, n=1)
         assert not cache.exists() and "caches cleared" in app.model.status_text
-        assert app.model.rows                                        # the list is untouched
+        assert app.model.rows  # the list is untouched
         with pressing(monkeypatch, "Clear"):
             frames(app, n=1)
         text = " | ".join(frames(app))
-        assert app.model.rows == [] and app.model.selected_files == [] and app.model.current_file is None
+        assert (
+            app.model.rows == []
+            and app.model.selected_files == []
+            and app.model.current_file is None
+        )
         assert "m000.spc" not in text
         # files and metadata are untouched: scanning again lists the rating
         assert (data_dir / "m000.spc").exists()
@@ -440,11 +474,13 @@ def test_drop_of_a_folder_opens_it_and_a_file_is_ignored(data_dir, fake_dir):
     app = make_app()
     try:
         frames(app)
-        assert app.files_dropped([str(data_dir / "m000.spc")]) is False        # a file: ignored, as in Qt
+        assert app.files_dropped([str(data_dir / "m000.spc")]) is False  # a file: ignored, as in Qt
         assert app.model.current_folder is None and "Drop a folder" in app.model.status_text
         assert app.files_dropped([str(data_dir / "nothing_here")]) is False
         assert app.files_dropped([]) is False
-        assert app.files_dropped([str(data_dir / "m000.spc"), str(data_dir)]) is True   # first folder wins
+        assert (
+            app.files_dropped([str(data_dir / "m000.spc"), str(data_dir)]) is True
+        )  # first folder wins
         text = " | ".join(settle(app))
         assert app.model.current_folder == data_dir and "m001.spc" in text
         app.on_paths_dropped([str(fake_dir)])
@@ -475,7 +511,7 @@ def test_back_and_setup_round_trip_keeps_the_folder(data_dir, monkeypatch):
         assert app.model.page == "browser" and app.model.current_folder == data_dir
         assert "m000.spc" in text and "kept" in text
         assert app.model.selected_files == [str(data_dir / "m000.spc")]
-        assert not app._queue                                       # an unchanged setup: no rescan
+        assert not app._queue  # an unchanged setup: no rescan
     finally:
         app.close()
 
@@ -483,20 +519,23 @@ def test_back_and_setup_round_trip_keeps_the_folder(data_dir, monkeypatch):
 def test_a_changed_setup_rescans_the_open_folder(data_dir, tmp_path):
     from chisurf.plugins.tttr.trace_browser.test.conftest import OVERLAP
 
-    ptu_only = dict(ALEX, setup_name="PTU only", tttr_reading={"file_type": "PTU", "micro_time_binning": 1})
+    ptu_only = dict(
+        ALEX, setup_name="PTU only", tttr_reading={"file_type": "PTU", "micro_time_binning": 1}
+    )
     setups = tmp_path / "setups.json"
-    setups.write_text(json.dumps({"setups": {"PTU only": ptu_only, "Overlap": OVERLAP},
-                                  "last_used": "PTU only"}))
+    setups.write_text(
+        json.dumps({"setups": {"PTU only": ptu_only, "Overlap": OVERLAP}, "last_used": "PTU only"})
+    )
     app = make_app(setups)
     try:
-        assert app.model.setup_filetype == "PTU"                    # the saved setup was accepted
+        assert app.model.setup_filetype == "PTU"  # the saved setup was accepted
         app.model.request("open_folder", data_dir)
         settle(app)
-        assert app.model.rows == []                                  # a PTU setup: no .spc file is listed
+        assert app.model.rows == []  # a PTU setup: no .spc file is listed
         app.back_to_setup()
-        app.editor.select_setup("Overlap")                           # file type Auto: every extension
+        app.editor.select_setup("Overlap")  # file type Auto: every extension
         app.continue_to_browser()
-        assert app._queue                                            # the folder is scanned again
+        assert app._queue  # the folder is scanned again
         settle(app)
         assert [r["name"] for r in app.model.rows] == ["m000.spc", "m001.spc"]
     finally:
@@ -514,10 +553,12 @@ def test_the_app_opens_on_the_browser_page_when_a_setup_is_available(tmp_path):
     finally:
         nothing.close()
     setups = tmp_path / "setups.json"
-    setups.write_text(json.dumps({"setups": {"ALEX Suite (auto)": ALEX}, "last_used": "ALEX Suite (auto)"}))
+    setups.write_text(
+        json.dumps({"setups": {"ALEX Suite (auto)": ALEX}, "last_used": "ALEX Suite (auto)"})
+    )
     app = TraceBrowserApp(setups_file=setups)
     try:
-        assert app.model.page == "browser"                           # _on_continue() at start-up
+        assert app.model.page == "browser"  # _on_continue() at start-up
         assert app.model.selected_channels == [0, 1] and app.model.setup_filetype == "PTO"
         assert "Select a file to write an annotation" in " | ".join(frames(app))
     finally:
@@ -538,7 +579,7 @@ def test_settings_round_trip(data_dir, tmp_path):
         commit(app, "window_ms", 2.5)
         commit(app, "y_min", 5.0)
         commit(app, "y_max", 750.0)
-        saved = json.loads(json.dumps(app.export_settings()))        # it must survive JSON
+        saved = json.loads(json.dumps(app.export_settings()))  # it must survive JSON
     finally:
         app.close()
     assert saved["folder"] == str(data_dir) and saved["include_subfolders"] is True
@@ -548,13 +589,13 @@ def test_settings_round_trip(data_dir, tmp_path):
     other = make_app()
     try:
         other.restore_settings(saved)
-        assert other.model.page == "browser"                         # a remembered setup: the Browser page
+        assert other.model.page == "browser"  # a remembered setup: the Browser page
         settle(other)
         model = other.model
         assert model.current_folder == data_dir and model.include_subfolders is True
         assert model.rating_filter == FILTER_LABELS[2] and model.window_ms == 2.5
         assert (model.y_min, model.y_max) == (5.0, 750.0)
-        assert model.files and model.rows == []                       # >= 2 stars: nothing rated yet
+        assert model.files and model.rows == []  # >= 2 stars: nothing rated yet
         assert [r["name"] for r in model.files] == ["m000.spc", "m001.spc", "sub/m002.spc"]
         assert other.export_settings()["folder"] == str(data_dir)
         # a folder that has gone, and entries that are not valid, are ignored without an error
@@ -565,7 +606,7 @@ def test_settings_round_trip(data_dir, tmp_path):
         settle(other)
         assert other.model.error_text == ""
         assert other.model.rating_filter == FILTER_LABELS[2] and other.model.window_ms == 2.5
-        other.restore_settings({})                                    # nothing remembered: no error
+        other.restore_settings({})  # nothing remembered: no error
         assert other.model.page == "setup"
     finally:
         other.close()
@@ -598,7 +639,9 @@ def test_every_control_has_a_tooltip(data_dir):
             assert column.get("description"), column
             count += 1
         count += 1
-    assert count == 18, count     # 1 form + 12 sections, 1 table + 4 columns (T3b: a button row, a toggle; T4: two button rows)
+    assert count == 18, (
+        count
+    )  # 1 form + 12 sections, 1 table + 4 columns (T3b: a button row, a toggle; T4: two button rows)
 
 
 # 14. no Qt, no chisurf.gui
@@ -612,7 +655,9 @@ def test_port_is_qt_free():
 # 15. the Qt widget and the emtk app list the same rows for the same folder
 @pytest.mark.parametrize("recursive", [False, True])
 @pytest.mark.parametrize("idx", range(5))
-def test_qt_widget_and_emtk_app_agree_on_the_rows(qapp, qtbot, fake_dir, recursive, idx, monkeypatch):
+def test_qt_widget_and_emtk_app_agree_on_the_rows(
+    qapp, qtbot, fake_dir, recursive, idx, monkeypatch
+):
     pytest.importorskip("pyqtgraph")
     from chisurf.plugins.tttr.trace_browser import TraceBrowser
     from chisurf.plugins.tttr.trace_browser.gui.model import FILTER_LABELS

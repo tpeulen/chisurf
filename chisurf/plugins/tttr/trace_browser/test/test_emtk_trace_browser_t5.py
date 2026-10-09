@@ -97,7 +97,9 @@ def close(window, qapp, host):
 def test_hmm_opens_an_intensity_trace_window_set_up_as_the_qt_tool_does(qapp, host, work):
     from chisurf.plugins.tttr.intensity_trace import IntensityTrace
 
-    window = host.default_request_handler()("open_intensity_trace", payload(work / "m001.spc", 10.0))
+    window = host.default_request_handler()(
+        "open_intensity_trace", payload(work / "m001.spc", 10.0)
+    )
     assert type(window) is IntensityTrace
     assert window.windowTitle() == "Intensity Trace Analysis - m001.spc"
     assert window.file_path_edit.text() == str(work / "m001.spc")
@@ -114,7 +116,9 @@ def test_hmm_opens_an_intensity_trace_window_set_up_as_the_qt_tool_does(qapp, ho
 def test_hmm_follows_the_bin_window_of_the_browser(qapp, host, work):
     window = host.default_request_handler()("open_intensity_trace", payload(work / "m000.spc", 1.0))
     assert window.window_spin.value() == 1.0
-    assert window.current_data["window_ms"] == 1.0 and window.current_data["padded"].shape[0] > 60000
+    assert (
+        window.current_data["window_ms"] == 1.0 and window.current_data["padded"].shape[0] > 60000
+    )
 
 
 def test_tw_opens_the_time_window_tool_holding_the_file_and_the_bin_window(qapp, host, work):
@@ -144,7 +148,7 @@ def test_ndx_opens_the_ndx_window_on_the_folder_the_model_wrote(qapp, host, work
     assert type(window) is NdxWindow
     assert window.windowTitle()
     assert window.isVisible() and window in host.WINDOWS
-    assert window.app is not None and window.host is not None            # the emtk app, hosted
+    assert window.app is not None and window.host is not None  # the emtk app, hosted
 
 
 def test_ndx_is_built_on_exactly_the_prepared_folder(qapp, host, work, monkeypatch):
@@ -158,10 +162,14 @@ def test_ndx_is_built_on_exactly_the_prepared_folder(qapp, host, work, monkeypat
 
     import chisurf.plugins.ndxplorer.window as ndx_window
 
-    monkeypatch.setattr(ndx_window, "build_ndxplorer_window", lambda folder, **kw: received.append(folder) or Stub())
+    monkeypatch.setattr(
+        ndx_window, "build_ndxplorer_window", lambda folder, **kw: received.append(folder) or Stub()
+    )
     folder = work / "m000_TW_10ms"
     folder.mkdir()
-    window = host.default_request_handler()("open_ndxplorer", {"folder": str(folder), "file": "x", "window_ms": 10.0})
+    window = host.default_request_handler()(
+        "open_ndxplorer", {"folder": str(folder), "file": "x", "window_ms": 10.0}
+    )
     assert received == [folder] and type(window) is Stub and window in host.WINDOWS
 
 
@@ -173,7 +181,7 @@ def test_the_windows_are_kept_alive_and_closing_them_drops_the_reference(qapp, h
     del window
     gc.collect()
     qapp.processEvents()
-    assert reference() is not None and reference() in host.WINDOWS      # only the module list holds it
+    assert reference() is not None and reference() in host.WINDOWS  # only the module list holds it
     kept = reference()
     close(kept, qapp, host)
     del kept
@@ -211,7 +219,7 @@ def test_a_failing_hand_off_shows_an_error_status_and_the_app_keeps_drawing(qapp
     try:
         open_folder(app, work)
         app.model.set_selection([str(work / "m000.spc")])
-        (work / "m000.spc").unlink()                                   # the file vanishes after it was listed
+        (work / "m000.spc").unlink()  # the file vanishes after it was listed
         app.model.open_intensity_trace()
         frames(app, n=3)
         assert "could not open open_intensity_trace" in app.model.error_text
@@ -223,14 +231,18 @@ def test_a_failing_hand_off_shows_an_error_status_and_the_app_keeps_drawing(qapp
 
 
 # ---- the wiring: make_app() finds the adapter only with a Qt application --------------------------------------
-def test_make_app_with_a_qt_application_wires_the_default_handler_and_enables_the_buttons(qapp, host, work):
+def test_make_app_with_a_qt_application_wires_the_default_handler_and_enables_the_buttons(
+    qapp, host, work
+):
     app = make_hosted_app(qapp)
     try:
         assert app.on_request is not None and app.model.host_connected is True
         open_folder(app, work)
         select(app, "m001.spc")
         states = button_states(app)
-        assert states["HMM"] is False and states["TW"] is False and states["NDX"] is False   # all enabled
+        assert (
+            states["HMM"] is False and states["TW"] is False and states["NDX"] is False
+        )  # all enabled
     finally:
         app.close()
 
@@ -258,7 +270,9 @@ def test_pressing_hmm_and_tw_in_the_app_opens_the_windows(qapp, host, work, monk
         app.close()
 
 
-def test_pressing_ndx_in_the_app_writes_the_burst_table_and_opens_the_ndx_window(qapp, host, work, monkeypatch):
+def test_pressing_ndx_in_the_app_writes_the_burst_table_and_opens_the_ndx_window(
+    qapp, host, work, monkeypatch
+):
     from chisurf.plugins.ndxplorer.window import NdxWindow
 
     app = make_hosted_app(qapp)
@@ -310,7 +324,10 @@ def test_without_a_qt_application_the_buttons_stay_greyed(qapp, work, monkeypatc
         select(app, "m000.spc")
         states = button_states(app)
         assert states["HMM"] is True and states["TW"] is True and states["NDX"] is True
-        assert all(app.model.enabled(a) is False for a in ("open_intensity_trace", "open_time_window", "open_ndxplorer"))
+        assert all(
+            app.model.enabled(a) is False
+            for a in ("open_intensity_trace", "open_time_window", "open_ndxplorer")
+        )
     finally:
         app.close()
 
@@ -333,8 +350,11 @@ assert not any(m == 'chisurf.gui' or m.startswith('chisurf.gui.') for m in sys.m
 print('OK')
 """
     done = subprocess.run(
-        [sys.executable, "-c", script], cwd=REPO, env=dict(os.environ, PYTHONPATH=os.pathsep.join(sys.path)),
-        capture_output=True, text=True,
+        [sys.executable, "-c", script],
+        cwd=REPO,
+        env=dict(os.environ, PYTHONPATH=os.pathsep.join(sys.path)),
+        capture_output=True,
+        text=True,
     )
     assert done.returncode == 0 and "OK" in done.stdout, done.stdout + done.stderr
 
@@ -351,9 +371,11 @@ assert 'chisurf.plugins.tttr.trace_browser.gui.host' not in sys.modules
 print('OK')
 """
     done = subprocess.run(
-        [sys.executable, "-c", script], cwd=REPO,
+        [sys.executable, "-c", script],
+        cwd=REPO,
         env=dict(os.environ, PYTHONPATH=os.pathsep.join(sys.path), QT_QPA_PLATFORM="offscreen"),
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     assert done.returncode == 0 and "OK" in done.stdout, done.stdout + done.stderr
 
@@ -374,6 +396,9 @@ def test_the_host_module_is_imported_lazily_and_the_sources_name_no_qt():
     for name in ("app.py", "model.py", "host_lookup.py"):
         for line in (gui / name).read_text().splitlines():
             if line.startswith(("import ", "from ")):
-                assert not line.startswith("from .host import") and "gui.host " not in line, (name, line)
-    assert "from .host import" in (gui / "host_lookup.py").read_text()      # inside the function only
-    assert "qtpy" in (gui / "host.py").read_text()                         # the adapter is where Qt may live
+                assert not line.startswith("from .host import") and "gui.host " not in line, (
+                    name,
+                    line,
+                )
+    assert "from .host import" in (gui / "host_lookup.py").read_text()  # inside the function only
+    assert "qtpy" in (gui / "host.py").read_text()  # the adapter is where Qt may live

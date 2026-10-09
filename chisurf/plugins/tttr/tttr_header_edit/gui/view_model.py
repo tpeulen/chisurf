@@ -18,7 +18,10 @@ from __future__ import annotations
 
 import json
 import logging
+import math
+import os
 import pathlib
+import tempfile
 
 import tttrlib
 
@@ -120,14 +123,26 @@ class HeaderEditorViewModel:
     def convert_value_by_type(self, value_str: str, type_str: str):
         """Convert *value_str* to the Python type implied by the tag *type_str*."""
         try:
-            if type_str in ("Int8", "BitSet64"):
-                return int(value_str)
-            if type_str in ("Float8", "Float8Array", "DateTime"):
-                return float(value_str)
+            if type_str in ("Int8", "BitSet64", "Color8"):
+                return int(value_str, 0) if value_str.lower().startswith("0x") else int(value_str)
+            if type_str in ("Float8", "DateTime"):
+                value = float(value_str)
+                if not math.isfinite(value):
+                    raise ValueError("Nonfinite numeric value")
+                return value
+            if type_str == "Float8Array":
+                values = json.loads(value_str)
+                if not isinstance(values, list) or not all(
+                    isinstance(value, (int, float)) and math.isfinite(value) for value in values
+                ):
+                    raise ValueError("Expected a JSON array of finite numbers")
+                return values
             if type_str == "Bool":
-                return value_str.lower() == "true"
+                if value_str.lower() not in ("true", "false", "1", "0"):
+                    raise ValueError("Expected true, false, 1 or 0")
+                return value_str.lower() in ("true", "1")
         except ValueError:
-            logger.warning("Cannot convert %r as %s", value_str, type_str)
+            raise ValueError(f"Invalid {type_str} value: {value_str}") from None
         return value_str
 
     # ── tags ───────────────────────────────────────────────────────────
@@ -138,7 +153,10 @@ class HeaderEditorViewModel:
 
     def load_json(self, json_str: str) -> None:
         """Parse a header JSON string and refresh the table/JSON view."""
-        self._parsed = json.loads(json_str)
+        parsed = json.loads(json_str)
+        if not isinstance(parsed, dict) or not isinstance(parsed.get("tags", []), list):
+            raise ValueError("Expected a header object with a tags list.")
+        self._parsed = parsed
         self._parsed.setdefault("tags", [])
         self._refresh_json_text()
         self.notify("loaded")
@@ -180,15 +198,25 @@ class HeaderEditorViewModel:
             type_str = row.get("type", "")
             type_code = self.REVERSE_TYPE_MAPPING.get(type_str)
             if type_code is None:
-                continue
+                type_code = row.get("raw_type")
+                if type_code is None:
+                    raise ValueError(f"Unknown tag type: {type_str}")
+            if not str(row.get("name", "")).strip():
+                raise ValueError("Tag name must not be empty.")
+            try:
+                idx = int(row.get("idx", -1))
+            except (TypeError, ValueError):
+                raise ValueError("Tag index must be an integer.") from None
+            if idx < -1:
+                raise ValueError("Tag index must be -1 or nonnegative.")
             tags.append(
                 {
                     "name": row.get("name", ""),
                     "type": type_code,
-                    "value": self.convert_value_by_type(str(row.get("value", "")), type_str),
-                    "idx": int(row.get("idx", -1))
-                    if str(row.get("idx", "-1")).lstrip("-").isdigit()
-                    else -1,
+                    "value": row.get("raw_value", row.get("value", ""))
+                    if type_str not in self.REVERSE_TYPE_MAPPING
+                    else self.convert_value_by_type(str(row.get("value", "")), type_str),
+                    "idx": idx,
                 }
             )
         self._parsed["tags"] = tags
@@ -215,8 +243,11 @@ class HeaderEditorViewModel:
         """
         if not self.opened_path:
             raise ValueError("No source TTTR file is open.")
-        if not path.endswith(".ptu"):
+        path = str(path)
+        if not path.lower().endswith(".ptu"):
             path += ".ptu"
+        if pathlib.Path(path).resolve() == pathlib.Path(self.opened_path).resolve():
+            raise ValueError("Choose a new file; saving over the source is not allowed.")
         src = tttrlib.TTTR(self.opened_path)
         out = tttrlib.TTTR()
         header_dict = json.loads(src.header.json)
@@ -228,7 +259,16 @@ class HeaderEditorViewModel:
             routing_channels=src.routing_channels,
             event_types=src.event_types,
         )
-        out.write(path)
+        destination = pathlib.Path(path)
+        fd, temporary = tempfile.mkstemp(prefix=".header-", suffix=".ptu", dir=destination.parent)
+        os.close(fd)
+        try:
+            result = out.write(temporary)
+            if result is False or pathlib.Path(temporary).stat().st_size == 0:
+                raise OSError("TTTR writer did not produce a PTU file.")
+            os.replace(temporary, destination)
+        finally:
+            pathlib.Path(temporary).unlink(missing_ok=True)
 
 
 __all__ = ["HeaderEditorViewModel"]

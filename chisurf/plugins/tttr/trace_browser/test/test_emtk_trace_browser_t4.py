@@ -117,9 +117,11 @@ def select(app, *names):
     """Select the rows *names* the way the table keeps a multi-row selection (``also_selected``)."""
     control = table(app)
     paths = [str(app.model.current_folder / n) for n in names]
-    position = next(i for i, index in enumerate(control.order()) if control.key_of(index) == paths[0])
-    control._select_position(position)                       # a click: the model's selection follows
-    control.also_selected = set(paths[1:])                   # the other rows, as Select all leaves them
+    position = next(
+        i for i, index in enumerate(control.order()) if control.key_of(index) == paths[0]
+    )
+    control._select_position(position)  # a click: the model's selection follows
+    control.also_selected = set(paths[1:])  # the other rows, as Select all leaves them
     frames(app, n=2)
 
 
@@ -164,8 +166,16 @@ class FakeDocx:
             self.ops.append(("paragraph", text))
 
         def add_picture(self, path, width=None):
-            data = pathlib.Path(path).read_bytes()          # the picture must exist while it is added
-            self.ops.append(("picture", pathlib.Path(path).name, data[:8] == b"\x89PNG\r\n\x1a\n", len(data), width))
+            data = pathlib.Path(path).read_bytes()  # the picture must exist while it is added
+            self.ops.append(
+                (
+                    "picture",
+                    pathlib.Path(path).name,
+                    data[:8] == b"\x89PNG\r\n\x1a\n",
+                    len(data),
+                    width,
+                )
+            )
 
         def save(self, path):
             pathlib.Path(path).write_text(json.dumps(self.ops, default=str))
@@ -199,7 +209,7 @@ def test_select_all_selects_every_row_in_the_real_table_state(work, monkeypatch)
     try:
         open_folder(app, work, subfolders=True)
         control = table(app)
-        assert control.selected_indices() == [0]                    # the first row, selected by the scan
+        assert control.selected_indices() == [0]  # the first row, selected by the scan
         assert [p.name for p in app.model.selection_paths()] == ["m000.spc"]
         press(app, monkeypatch, "Select all")
         assert len(control.selected_indices()) == 3 and len(control.also_selected) == 3
@@ -229,7 +239,7 @@ def test_a_subset_in_the_table_state_is_the_selection(work):
 def test_the_new_buttons_are_in_the_spec_in_order():
     spec = json.loads(SPEC.read_text())
     labels = [b["label"] for s in all_sections(spec) for b in s.get("buttons", [])]
-    assert labels[4:12] == BUTTONS                                   # after the first row of four
+    assert labels[4:12] == BUTTONS  # after the first row of four
     from chisurf.plugins.tttr.trace_browser.gui.model import TraceBrowserModel
 
     model = TraceBrowserModel()
@@ -257,7 +267,7 @@ def test_export_copies_exactly_the_selected_files_with_equal_bytes(work, tmp_pat
         assert (dest / "m000.spc").read_bytes() == (work / "m000.spc").read_bytes()
         assert (dest / "m002.spc").read_bytes() == (work / "sub" / "m002.spc").read_bytes()
         assert "Exported 2/2 file(s)" in app.model.status_text and app.model.actions_done == 1
-        for rel, data in before.items():                          # no source file changed or disappeared
+        for rel, data in before.items():  # no source file changed or disappeared
             assert (work.parent / rel).read_bytes() == data
     finally:
         app.close()
@@ -280,7 +290,7 @@ def test_a_cancelled_export_dialog_copies_nothing(work, tmp_path, monkeypatch):
 
 
 def test_export_never_overwrites_one_selected_file_with_another_of_the_same_name(work, tmp_path):
-    shutil.copy(BH132, work / "sub" / "m000.spc")             # same name in a sub-folder, other bytes below
+    shutil.copy(BH132, work / "sub" / "m000.spc")  # same name in a sub-folder, other bytes below
     (work / "sub" / "m000.spc").write_bytes(b"x" + (work / "sub" / "m000.spc").read_bytes())
     from chisurf.plugins.tttr.trace_browser.gui.model import TraceBrowserModel
 
@@ -309,13 +319,15 @@ def test_exporting_a_file_onto_itself_changes_nothing(work):
 def test_the_buttons_are_greyed_without_a_selection_or_a_host(work):
     app = make_app()
     try:
-        states = button_states(app)                                   # no folder: nothing to act on
+        states = button_states(app)  # no folder: nothing to act on
         assert [states[label] for label in BUTTONS[:5]] == [True] * 5
         open_folder(app, work)
         states = button_states(app)
-        assert states["Select all"] is False and states["Export"] is False and states["CSV"] is False
+        assert (
+            states["Select all"] is False and states["Export"] is False and states["CSV"] is False
+        )
         assert states["Delete"] is False
-        assert states["HMM"] is True and states["TW"] is True and states["NDX"] is True   # no host
+        assert states["HMM"] is True and states["TW"] is True and states["NDX"] is True  # no host
         app.model.set_selection([])
         app.model.multi_selection = []
         states = button_states(app)
@@ -338,7 +350,7 @@ def test_csv_has_the_header_the_bins_and_the_series_columns(work, tmp_path, monk
         files = sorted(p.name for p in dest.glob("*.csv"))
         assert files == ["m001_trace.csv"]
         rows = rows_of(dest / files[0])
-        assert rows[0] == ["time_ms"] + LABELS                       # the RPC export's header (see below)
+        assert rows[0] == ["time_ms"] + LABELS  # the RPC export's header (see below)
         assert len(rows) - 1 == BINS_10MS
         columns = list(zip(*[[float(v) for v in row] for row in rows[1:]]))
         assert [int(sum(c)) for c in columns[1:]] == SUMS
@@ -379,7 +391,9 @@ def test_csv_falls_back_to_the_local_export_when_the_rpc_gives_nothing(work, tmp
     assert [int(sum(float(r[i]) for r in rows[1:])) for i in (1, 2, 3)] == SUMS
 
 
-def test_the_qt_widget_and_the_emtk_app_export_the_same_csv(qapp, qtbot, work, tmp_path, monkeypatch):
+def test_the_qt_widget_and_the_emtk_app_export_the_same_csv(
+    qapp, qtbot, work, tmp_path, monkeypatch
+):
     """The Qt tool's *CSV* handler and the app write the same bytes for the same file."""
     pytest.importorskip("pyqtgraph")
     from qtpy.QtWidgets import QFileDialog
@@ -418,7 +432,9 @@ def test_the_qt_widget_and_the_emtk_app_export_the_same_csv(qapp, qtbot, work, t
 
 
 # ---- DOCX -----------------------------------------------------------------------------------------
-def test_docx_report_holds_every_selected_file_with_rating_note_and_picture(work, with_docx, monkeypatch):
+def test_docx_report_holds_every_selected_file_with_rating_note_and_picture(
+    work, with_docx, monkeypatch
+):
     app = make_app()
     try:
         open_folder(app, work)
@@ -426,7 +442,7 @@ def test_docx_report_holds_every_selected_file_with_rating_note_and_picture(work
         app.model.set_notes(work / "m000.spc", "good burst")
         select(app, "m000.spc", "m001.spc")
         states = button_states(app)
-        assert states["DOCX"] is False                                  # python-docx "installed"
+        assert states["DOCX"] is False  # python-docx "installed"
         press(app, monkeypatch, "DOCX")
         settle_all(app)
         saved = work / "data.docx"
@@ -437,30 +453,37 @@ def test_docx_report_holds_every_selected_file_with_rating_note_and_picture(work
         assert headings == ["m000.spc", "m001.spc"]
         texts = [o[1] for o in ops if o[0] == "paragraph"]
         assert f"Folder: {work}" in texts and "Rating: 3" in texts and "Rating: 0" in texts
-        assert "Annotation: good burst" in texts and sum(t.startswith("Annotation") for t in texts) == 1
+        assert (
+            "Annotation: good burst" in texts
+            and sum(t.startswith("Annotation") for t in texts) == 1
+        )
         pictures = [o for o in ops if o[0] == "picture"]
         assert [p[1] for p in pictures] == ["m000.png", "m001.png"]
-        assert all(p[2] is True for p in pictures)                      # a PNG header
-        assert all(p[3] > 1000 for p in pictures)                       # a real picture, not an empty file
-        assert all(p[4] == ["inches", 6] for p in pictures)             # six inches wide, as in Qt
+        assert all(p[2] is True for p in pictures)  # a PNG header
+        assert all(p[3] > 1000 for p in pictures)  # a real picture, not an empty file
+        assert all(p[4] == ["inches", 6] for p in pictures)  # six inches wide, as in Qt
     finally:
         app.close()
 
 
-def test_docx_is_disabled_with_a_reason_when_python_docx_is_missing(work, without_docx, monkeypatch):
+def test_docx_is_disabled_with_a_reason_when_python_docx_is_missing(
+    work, without_docx, monkeypatch
+):
     app = make_app()
     try:
         open_folder(app, work)
         select(app, "m000.spc")
         assert app.model.docx_available is False
-        assert button_states(app)["DOCX"] is True                       # greyed
+        assert button_states(app)["DOCX"] is True  # greyed
         assert app.model.enabled("export_docx") is False
         description = next(
-            b["description"] for s in all_sections(json.loads(SPEC.read_text())) for b in s.get("buttons", [])
+            b["description"]
+            for s in all_sections(json.loads(SPEC.read_text()))
+            for b in s.get("buttons", [])
             if b["label"] == "DOCX"
         )
-        assert "python-docx" in description and "greyed" in description   # the tooltip says why
-        app.model.export_docx()                                         # called anyway (a script): no crash
+        assert "python-docx" in description and "greyed" in description  # the tooltip says why
+        app.model.export_docx()  # called anyway (a script): no crash
         assert "python-docx is not installed" in app.model.error_text
         assert not list(work.glob("*.docx")) and app.model.actions_done == 0
         assert app.model.write_docx() is None
@@ -495,8 +518,8 @@ def test_delete_asks_first_then_moves_the_files_and_their_companions_to_trash(wo
         text = " | ".join(frames(app, n=2))
         assert "Move to .trash?" in text and "Move to .trash" in text and "Cancel" in text
         assert "m000.set" in confirm["message"] and "m000.spc" in confirm["message"]
-        assert (work / "m000.spc").exists()                         # nothing moved before the answer
-        assert button_states(app)["Export"] is True                   # the window is modal: others greyed
+        assert (work / "m000.spc").exists()  # nothing moved before the answer
+        assert button_states(app)["Export"] is True  # the window is modal: others greyed
         with pressing(monkeypatch, "Move to .trash"):
             frames(app, n=1)
         settle_all(app)
@@ -505,13 +528,13 @@ def test_delete_asks_first_then_moves_the_files_and_their_companions_to_trash(wo
         assert (trash / "m000.spc").read_bytes() == before["data/m000.spc"]
         assert not (work / "m000.spc").exists() and not (work / "m000.set").exists()
         assert [r["name"] for r in app.model.rows] == ["m001.spc"]
-        assert "m000.spc" not in " | ".join(frames(app, n=2))      # the table dropped it
+        assert "m000.spc" not in " | ".join(frames(app, n=2))  # the table dropped it
         assert app.model.confirm is None and "Moved 2 file(s)" in app.model.status_text
         # untouched: the other measurements, the unlisted file, the file outside the folder
         for rel in ("data/m001.spc", "data/sub/m002.spc", "data/notes.txt", "outside/keep.spc"):
             assert (work.parent / rel).read_bytes() == before[rel], rel
         meta = json.loads((work / META).read_text())
-        assert "m000.spc" not in meta                                 # its rating and note went with it
+        assert "m000.spc" not in meta  # its rating and note went with it
         # the selection moved to the row nearest the removed one
         assert app.model.current_file == work / "m001.spc"
     finally:
@@ -561,13 +584,13 @@ def test_delete_moves_a_whole_selection_keeps_subfolders_and_never_overwrites(wo
     model.image_probe = lambda path: False
     model.open_folder(work)
     (work / ".trash").mkdir()
-    (work / ".trash" / "m001.spc").write_bytes(b"older copy")      # the name is taken in .trash
+    (work / ".trash" / "m001.spc").write_bytes(b"older copy")  # the name is taken in .trash
     targets = [work / "m001.spc", work / "sub" / "m002.spc"]
     assert model.delete_files([str(p) for p in targets]) == 2
     assert (work / ".trash" / "m001.spc").read_bytes() == b"older copy"
     stamped = [p.name for p in (work / ".trash").iterdir() if p.name.startswith("m001__")]
     assert len(stamped) == 1 and stamped[0].endswith(".spc")
-    assert (work / ".trash" / "sub" / "m002.spc").exists()          # the sub-folder is kept
+    assert (work / ".trash" / "sub" / "m002.spc").exists()  # the sub-folder is kept
     assert [r["name"] for r in model.rows] == ["m000.spc"]
 
 
@@ -623,7 +646,10 @@ def test_each_hand_off_reaches_the_host_with_its_payload(work, monkeypatch):
             "selected_channels": [0, 1],
         }
         assert tw == {"files": [str(work / "m001.spc")], "window_ms": 10.0}
-        assert [r["name"] for r in app.model.requests] == ["open_intensity_trace", "open_time_window"]
+        assert [r["name"] for r in app.model.requests] == [
+            "open_intensity_trace",
+            "open_time_window",
+        ]
         assert app.model.requests[0]["payload"] == hmm
 
         press(app, monkeypatch, "NDX", n=1)
@@ -639,7 +665,7 @@ def test_each_hand_off_reaches_the_host_with_its_payload(work, monkeypatch):
         assert (folder / "Info" / "m001.mti").exists()
         assert len(received) == 3 and len(app.model.requests) == 3
         frames(app, n=5)
-        assert len(received) == 3                                  # each request is delivered once
+        assert len(received) == 3  # each request is delivered once
         assert app.model.actions_done == 3
     finally:
         app.close()
@@ -652,7 +678,9 @@ def test_the_hand_offs_work_on_the_first_file_of_a_multi_selection(work, monkeyp
         open_folder(app, work)
         press(app, monkeypatch, "Select all")
         press(app, monkeypatch, "TW")
-        assert received == [("open_time_window", {"files": [str(work / "m000.spc")], "window_ms": 10.0})]
+        assert received == [
+            ("open_time_window", {"files": [str(work / "m000.spc")], "window_ms": 10.0})
+        ]
     finally:
         app.close()
 
@@ -754,9 +782,12 @@ def test_every_guide_target_resolves_to_a_rectangle(work):
                 continue
             key = app.tour._target_key(target)
             rect = resolve(key)
-            if rect is None and key == "setup_accepted":              # the setup page's Continue button
+            if rect is None and key == "setup_accepted":  # the setup page's Continue button
                 rect = setup_rects.get("continue")
-            assert rect is not None and len(rect) == 4 and rect[2] > 0 and rect[3] > 0, (step["title"], key)
+            assert rect is not None and len(rect) == 4 and rect[2] > 0 and rect[3] > 0, (
+                step["title"],
+                key,
+            )
         # the spec-checked targets are attributes and actions of the spec
         spec = json.loads(SPEC.read_text())
         attrs = {s.get("attr") for s in all_sections(spec)}
@@ -773,7 +804,12 @@ def test_the_awaiting_steps_are_released_by_their_outcome(work, tmp_path, monkey
     steps = _guide_steps()
     awaiting = [i for i, s in enumerate(steps) if s.get("await")]
     names = {i: steps[i]["target"]["name"] for i in awaiting}
-    assert set(names.values()) == {"setup_accepted", "folder_opened", "several_selected", "exported"}
+    assert set(names.values()) == {
+        "setup_accepted",
+        "folder_opened",
+        "several_selected",
+        "exported",
+    }
     app = make_app()
     try:
         # setup_accepted: pressing Continue on the setup page releases it
@@ -824,7 +860,7 @@ def test_the_guide_and_help_buttons_start_the_tour_and_the_help(work, monkeypatc
         app.tour.stop()
         app.model.back_to_setup()
         frames(app, n=3)
-        assert "help" in app.item_rects and "guide" in app.item_rects      # both pages have the buttons
+        assert "help" in app.item_rects and "guide" in app.item_rects  # both pages have the buttons
     finally:
         app.close()
 
@@ -860,14 +896,16 @@ def test_every_control_has_a_tooltip_with_the_new_controls(work, tmp_path):
         assert inv["controls_without_tooltip"] == []
         labels = {row["label"] for row in inv["interactive"]}
         assert set(BUTTONS) | {"Help", "Guide"} <= labels
-        app.model.delete_selected()                                   # the confirmation window's buttons
+        app.model.delete_selected()  # the confirmation window's buttons
         inv = emtk_inventory(app)
         assert inv["controls_without_tooltip"] == []
         assert {"Move to .trash", "Cancel"} <= {row["label"] for row in inv["interactive"]}
         app.model.confirm_no()
         app.model.back_to_setup()
-        inv = emtk_inventory(app)                                      # Help and Guide on the setup page too
-        assert inv["controls_without_tooltip"] == [] and {"Help", "Guide"} <= {r["label"] for r in inv["interactive"]}
+        inv = emtk_inventory(app)  # Help and Guide on the setup page too
+        assert inv["controls_without_tooltip"] == [] and {"Help", "Guide"} <= {
+            r["label"] for r in inv["interactive"]
+        }
     finally:
         app.close()
     for section in all_sections(json.loads(SPEC.read_text())):
@@ -881,7 +919,7 @@ def test_settings_round_trip_has_no_selection_or_request_state(work):
         open_folder(app, work)
         app.model.select_all_files()
         app.model.hand_off("open_time_window", {"files": [], "window_ms": 1.0})
-        saved = json.loads(json.dumps(app.export_settings()))          # JSON-safe
+        saved = json.loads(json.dumps(app.export_settings()))  # JSON-safe
         assert saved["folder"] == str(work)
         assert not {"requests", "multi_selection", "confirm", "selected_files"} & set(saved)
     finally:
@@ -891,7 +929,9 @@ def test_settings_round_trip_has_no_selection_or_request_state(work):
         other.restore_settings(saved)
         settle_all(other)
         assert other.model.current_folder == work and other.model.requests == []
-        assert [p.name for p in other.model.selection_paths()] == ["m000.spc"]   # the first row, as after a scan
+        assert [p.name for p in other.model.selection_paths()] == [
+            "m000.spc"
+        ]  # the first row, as after a scan
     finally:
         other.close()
 
@@ -900,7 +940,10 @@ def test_settings_round_trip_has_no_selection_or_request_state(work):
 def test_the_manifest_declares_the_emtk_entry_and_keeps_the_qt_one():
     manifest = json.loads((GUI.parent / "manifest.json").read_text())
     assert manifest["entrypoints"]["emtk"] == ENTRY
-    assert manifest["entrypoints"]["gui"] == "chisurf.plugins.tttr.trace_browser.gui.tool:TraceBrowserTool"
+    assert (
+        manifest["entrypoints"]["gui"]
+        == "chisurf.plugins.tttr.trace_browser.gui.tool:TraceBrowserTool"
+    )
     module, attribute = manifest["entrypoints"]["emtk"].split(":")
     import importlib
 
@@ -912,7 +955,7 @@ def test_port_is_qt_free_by_the_entry_and_by_the_manifest():
 
     first = qt_free("trace_browser", ENTRY)
     assert first["ok"], first["output"]
-    second = qt_free("trace_browser")                                  # the manifest's entrypoints.emtk
+    second = qt_free("trace_browser")  # the manifest's entrypoints.emtk
     assert second["ok"], second["output"]
 
 
@@ -933,7 +976,9 @@ def test_the_model_methods_run_headless_without_a_host(work, tmp_path):
     model.set_selection([str(work / "m000.spc")])
     assert model.export_selected() is None and model.dialog == "export"
     assert model.export_files(tmp_path / "e") == 1
-    assert [pathlib.Path(p).name for p in model.export_csv_files(tmp_path / "c")] == ["m000_trace.csv"]
+    assert [pathlib.Path(p).name for p in model.export_csv_files(tmp_path / "c")] == [
+        "m000_trace.csv"
+    ]
     model.delete_selected()
     assert model.confirm is not None
     model.confirm_yes()
