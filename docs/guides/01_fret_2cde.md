@@ -35,6 +35,27 @@ bursts below 4–10.
 
 ## In ChiSurf
 
+The standalone native window declares **1100 × 720** pixels on first use;
+saved geometry takes precedence. Scroll the control pane on a smaller host.
+Resizing does not change the variant, kernel, time constant or routing-channel
+selection for the calculation already displayed. Reopen the input folder and
+choose the analysis settings again after a fresh launch; geometry preferences
+are not a saved analysis result.
+
+Legacy folder input shares BVA’s canonical table discovery, so binary PTO cache
+sidecars beside a BUR table remain on disk without being decoded as text.
+Companion files retain positional burst alignment. A burst skipped because its
+measurement is unavailable keeps its output row and missing-value sentinel;
+legacy numeric companions encode missing results as zero.
+
+```{figure} figures/burst_2cde_native_primary_window.png
+:width: 90%
+
+Native measured-data FRET-2CDE view: 138 of152 bursts have a finite score with
+a50µs Laplace kernel and the displayed routing channels. The horizontal10
+line is a reference, not an inferred kinetic rate or a universal cutoff.
+```
+
 The computation is the `tttrlib.TwoCDE` burst feature (a bit-exact port of the
 FRETBursts reference, parallel over bursts). It is wrapped by the `burst_2cde`
 plugin, exposed as a `2cde compute` CLI, the `burst_2cde.jobs.compute` RPC

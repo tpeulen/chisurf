@@ -13,6 +13,7 @@ in a desktop window (:mod:`emtk.native`), or in a WebGPU browser page (:mod:`emt
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any, Callable
 
 from emtk import im, implot
@@ -20,6 +21,7 @@ from emtk.app import ImApp
 from emtk.im_core import Col, get_current_context
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.plugins.emtk_layout import window_size
 
 from .view_model import TwoCdeViewModel
 
@@ -48,6 +50,9 @@ class BurstTwoCdeGui:
         on_help: Callable[[], None] | None = None,
     ) -> None:
         self.model = model if model is not None else TwoCdeViewModel()
+        self.on_remember: Callable[[str, tuple[float, float, float, float] | None], None] | None = (
+            None
+        )
         self.on_run = on_run
         self.on_restart = on_restart
         self.on_stop = on_stop
@@ -75,6 +80,9 @@ class BurstTwoCdeGui:
         self.model.add_observer(self._on_model_event)
 
     def remember(self, name: str, rect: tuple[float, float, float, float] | None = None) -> None:
+        if self.on_remember is not None:
+            self.on_remember(name, rect)
+            return
         r = rect if rect is not None else im.get_item_rect()
         if r is not None:
             self.item_rects[name] = tuple(r)
@@ -399,6 +407,8 @@ class BurstTwoCdeApp(ImApp):
         on_guide: Callable[[], None] | None = None,
         on_help: Callable[[], None] | None = None,
     ) -> None:
+        spec = json.loads(Path(__file__).with_name("window.view.json").read_text())
+        self.window_size = window_size(spec, (1100, 720))
         self.controller = None
         if all(callback is None for callback in (on_run, on_restart, on_stop, on_browse)):
             from .controller import TwoCdeController
@@ -418,7 +428,7 @@ class BurstTwoCdeApp(ImApp):
         )
         self.model = self.two_cde_gui.model
         self.item_rects = self.two_cde_gui.item_rects
-        self.two_cde_gui.remember = self.remember
+        self.two_cde_gui.on_remember = self.remember
         self._shown = False
         super().__init__(gui=self._render)
 

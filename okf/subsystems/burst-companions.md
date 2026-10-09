@@ -99,6 +99,22 @@ header of nothing. `is_sentinel_file_reference` in
 place that recognises those cells, and `load_tttrs_for_dataframe` skips them, so
 the mapping it returns holds real measurements only (RF-563).
 
+# Table discovery and missing results
+
+The shared BVA/2CDE legacy reader selects canonical `.bur` files and companions
+whose filenames match the complete directory ending, including namespaced
+`s0_bg4` and dotted `custom.4`. Binary PTO cache sidecars remain on disk and are
+not decoded as tab-separated text. Table discovery does not alter deinterleaving,
+row order, photon boundaries or clocks.
+
+A skipped 2CDE score remains NaN in memory. The canonical all-numeric companion
+writer serializes nonfinite values as numeric zero while retaining every
+positional row; consumers must distinguish that export sentinel from a computed
+zero. Actual 152-burst measurements and a missing-source fixture verify the
+reader/writer behavior. Current source is verified but uncommitted; see the
+[shared reader acceptance](../validation/release-readiness-w6g/bva-sidecar-owner-acceptance.json)
+and [2CDE acceptance](../validation/release-readiness-w6g/two-cde-window-acceptance.json).
+
 # `Last Photon` is inclusive
 
 The other convention a reader has to get right, and the one that fails most

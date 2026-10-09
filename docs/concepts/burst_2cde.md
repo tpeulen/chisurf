@@ -23,6 +23,13 @@ photon arrival times, with no kinetic model and no binning.
 For the step-by-step workflow in ChiSurf, see the guide
 {doc}`/guides/01_fret_2cde`.
 
+The native window’s geometry is separate from the photon-level definition.
+Macro-time calibration, inclusive burst boundaries, routing selections,
+optional micro-time gates, kernel and its time constant determine the score.
+The current native form declares routing channels, variant and kernel; it has
+no editable micro-time-gate control. A separately gated core/API calculation
+is not evidence that the native window exposes those gates.
+
 ## The two-channel kernel-density estimate
 
 2CDE works on the raw photon stream. For each detection channel the local photon
