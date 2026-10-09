@@ -16,6 +16,7 @@ in a desktop window (:mod:`emtk.native`), or in a WebGPU browser page (:mod:`emt
 
 from __future__ import annotations
 
+import json
 import pathlib
 from typing import Any, Callable
 
@@ -28,7 +29,13 @@ from emtk.view_form import FormState, draw_sections, find_section
 from emtk.widgets.view_spec import load_view_spec
 
 from chisurf.plugins.emtk_layout import (
-    LabelColumn, button_row, cap_widths, group_by_width, icon_label, labelled,
+    LabelColumn,
+    button_row,
+    cap_widths,
+    group_by_width,
+    icon_label,
+    labelled,
+    window_size,
 )
 
 from .view_model import FusionViewModel
@@ -236,7 +243,7 @@ class BurstFusionGui(TourTarget):
                     controller.run() if controller else self.model.fuse()
                 elif pressed == "toolAction_refresh":
                     controller.estimate() if controller else self.model.analyze()
-                else:
+                elif callable(self.on_demo):
                     self.on_demo()
             except Exception:
                 pass
@@ -392,6 +399,8 @@ class BurstFusionApp(ImApp):
         on_guide: Callable[[], None] | None = None,
         on_help: Callable[[], None] | None = None,
     ) -> None:
+        primary = json.loads((pathlib.Path(__file__).parent / "fusion.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(primary, (1100, 720))
         from .controller import FusionController
 
         model = model if model is not None else FusionViewModel()

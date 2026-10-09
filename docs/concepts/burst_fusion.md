@@ -132,6 +132,17 @@ Fusion is diagnosable, and it is worth checking rather than trusting:
 * **Duration** rises, because bridged gaps are inside the bursts now. A rise of
   orders of magnitude means the gap ceiling is too generous.
 
+## Checking the written result
+
+Window geometry does not define the fusion calculation. Compare the burst
+indices, arrival-time calibration, probability curve, threshold and effective
+gap ceiling when checking a preview against a written result. Keep raw source
+files unchanged. A regenerated fused span retains the fragments’ photons and
+includes photons between them, so equal total photon counts before and after
+fusion would be the wrong conservation test. The `fu4` companion records the
+gained gap photons; group-index outputs preserve the mapping from original
+bursts to fused spans.
+
 ## Where it sits in the pipeline
 
 Fusion changes *what a burst is*, so it belongs before everything that measures

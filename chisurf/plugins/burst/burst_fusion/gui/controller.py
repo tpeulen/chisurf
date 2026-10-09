@@ -103,8 +103,16 @@ class FusionController:
             if self._cancel.is_set() and not (self._action == "fuse" and snapshot._written):
                 raise CancelledError()
             observers, handoff = self.model._observers, self.model.folder_written
+            previous_definition = copy.deepcopy(
+                {"detectors": self.model.detectors, "windows": self.model.windows}
+            )
             self.model.__dict__.update(snapshot.__dict__)
             self.model._observers, self.model.folder_written = observers, handoff
+            definition = {"detectors": self.model.detectors, "windows": self.model.windows}
+            if definition != previous_definition:
+                # A new authoritative definition replaces the old editor draft.
+                # Unchanged result delivery preserves deliberate unapplied edits.
+                self.channel_text = json.dumps(definition, indent=2)
             if self._action == "fuse" and snapshot._written and callable(handoff):
                 handoff(snapshot._written)
             self.model.notify(

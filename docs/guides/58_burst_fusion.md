@@ -61,6 +61,21 @@ folder written by the current burst selection records this in
 — the workflow's channel page does, and the CLI takes `--detectors` or
 `--setup`.
 
+The standalone native window declares **1100 × 720** pixels on first use;
+saved geometry takes precedence. On a smaller host, scroll the controls and
+visit the individual plot tabs. Resizing keeps the input, threshold, gap ceiling,
+fragment cap and displayed computation unchanged. Reopen the input and run
+Estimate or Fusion to rebuild results after a fresh launch; window preferences
+are not an analysis archive.
+
+```{figure} figures/burst_fusion_native_primary_window.png
+:width: 100%
+
+Native written demo result:428 searched bursts become303 at threshold0.7,
+against300 simulated molecules. The effective window is2.182ms; the curves
+compare selected bursts with regenerated spans including gap photons.
+```
+
 ## 2. Look at the curve before choosing a threshold
 
 Press **🔄 Estimate** (beside the green Run). Nothing is written; the burst
@@ -147,6 +162,13 @@ noise — and putting the fragments back together removes a measurable part of i
 which is what the narrower blue curve is. On real data with several populations
 the same narrowing happens *within* each peak, where it is easier to miss and
 just as valuable.
+
+For an older burst folder, check the units of stored rate columns before
+comparing the **Rate (kHz)** row. The original side reads the input table,
+while the written fused side is regenerated from raw counts and calibrated
+durations. A legacy rate-unit error can therefore appear as a large rate jump
+without representing a physical change. Verify counts divided by duration
+rather than treating that jump as evidence of successful fusion.
 
 The **Photons per burst** plot shows the same thing as a distribution: fusion
 takes weight out of the short-burst tail, because the tail *was* the fragments.

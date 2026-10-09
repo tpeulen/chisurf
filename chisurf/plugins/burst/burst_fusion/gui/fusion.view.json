@@ -1,5 +1,9 @@
 {
   "_comment": "Declarative AutoForm layout for the Burst Fusion step: the source folder and the same-molecule threshold on the left, the P_same curve that the threshold is read off, and the before/after comparison plots and summary table that show what fusing does to the bursts.",
+  "window": {
+    "width": 1100,
+    "height": 720
+  },
   "sections": [
     {
       "type": "dock_area",
