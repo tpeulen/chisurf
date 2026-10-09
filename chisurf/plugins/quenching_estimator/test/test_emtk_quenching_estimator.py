@@ -59,9 +59,8 @@ def test_it_is_qt_free():
 
 
 def test_every_control_has_a_tooltip():
-    from test.gui.emtk_port_parity import emtk_inventory
-
     from chisurf.plugins.quenching_estimator.gui.app import make_app
+    from test.gui.emtk_port_parity import emtk_inventory
 
     application = make_app()
     inventory = emtk_inventory(application)
@@ -102,4 +101,6 @@ def test_simulate_without_a_structure_says_why_and_with_one_ends_in_a_readable_m
     ui.draw(3)
     assert not app.session.running
     state = app.session.model.status
-    assert state.startswith(("Failed", "QY")), state          # a result where IMP.bff serves the core, else a readable failure
+    assert state.startswith(("Failed", "QY")), (
+        state
+    )  # a result where IMP.bff serves the core, else a readable failure
