@@ -20,6 +20,7 @@ from emtk.i18n import tr
 from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.emtk.typed_field import typed_number_field
 from chisurf.plugins.emtk_layout import cap_widths, window_size
 
 from .model import FretLineModel, hex_rgba
@@ -45,6 +46,7 @@ class FRETLineApp(ImApp):
         self.dialog_form = FormState()
         self.item_rects: dict[str, tuple] = {}
         self.error = ""
+        self._number_buffers: dict[str, str] = {}
         self.reference_index = 0
         self.input_selection: dict = {}
         self.loaded_curves: list = []
@@ -326,9 +328,15 @@ class FRETLineApp(ImApp):
                 value = model.get_scalar(name)
                 if value is None:
                     continue
-                changed, new = im.input_float(name, float(value), step=1.0)
+                new, problem = typed_number_field(
+                    f"scalar.{m.component_index}.{name}", float(value), self._number_buffers, integer=False, label=name
+                )
+                self.item_rects[f"scalar.{name}"] = im.get_item_rect()
                 im.set_item_tooltip(tr("{name}: scalar configuration of the model.").format(name=name))
-                if changed:
+                if problem:
+                    self.error = f"{name}: {problem}"
+                if new is not None:
+                    self.error = ""
                     model.set_scalar(name, new)
         if self.error:
             im.text_wrapped(self.error)
