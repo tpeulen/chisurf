@@ -28,10 +28,10 @@ def test_computation_shift_flip_background_region(tmp_path):
     model.g_factor = 1.2
     model.bg_vv = 8
     model.bg_vh = 4
-    model.shift = .5
+    model.shift = 0.5
     model.region_bounds = [10, 20]
     model.compute()
-    shifted = model.shifted(vh - 4, .5)
+    shifted = model.shifted(vh - 4, 0.5)
     expected = (vv - 8 - 1.2 * shifted) / (vv - 8 + 2.4 * shifted)
     assert model.r_t[1:] == pytest.approx(expected[1:])
     assert np.isnan(model.r_t[0])
@@ -79,8 +79,9 @@ builtins.__import__ = guarded
 from chisurf.plugins.vv_vh_anisotropy.gui.app import create_app
 assert create_app().model.__class__.__name__ == 'AnisotropyModel'
 """
-    result = subprocess.run([sys.executable, "-c", script], capture_output=True,
-                            text=True, check=False)
+    result = subprocess.run(
+        [sys.executable, "-c", script], capture_output=True, text=True, check=False
+    )
     assert result.returncode == 0, result.stderr
 
 

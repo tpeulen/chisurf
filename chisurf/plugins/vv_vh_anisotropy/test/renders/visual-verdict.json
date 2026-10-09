@@ -1,0 +1,13 @@
+{
+  "score": 90,
+  "verdict": "pass",
+  "category_match": true,
+  "differences": [
+    "Native EMTK uses dark chrome and a smaller bitmap font than Qt.",
+    "The selected r∞ region is shown by two green boundaries instead of a translucent band."
+  ],
+  "suggestions": [
+    "Keep toolkit-wide theme consistency while preserving editable region bounds."
+  ],
+  "reasoning": "Controls and paired populated plots match the Qt layout and scientific values; remaining variation is presentation style."
+}

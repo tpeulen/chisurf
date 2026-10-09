@@ -43,8 +43,10 @@ Intensity|Intensität|Intensité|Intensidad|Intensidade|Интенсивност
 Drag the green lines to choose the r∞ region.|Grüne Linien ziehen, um den r∞-Bereich zu wählen.|Déplacer les lignes vertes pour choisir la région r∞.|Arrastrar líneas verdes para elegir la región r∞.|Arrastar linhas verdes para escolher a região r∞.|Перетащите зелёные линии для выбора области r∞.
 Background-corrected VV and shifted VH on a logarithmic intensity scale.|Untergrundkorrigiertes VV und verschobenes VH auf logarithmischer Intensitätsskala.|VV corrigé du fond et VH décalé sur une échelle logarithmique.|VV corregido de fondo y VH desplazado en escala logarítmica.|VV corrigido do fundo e VH deslocado em escala logarítmica.|VV с вычетом фона и сдвинутый VH в логарифмической шкале.
 """
-TRANSLATIONS = {row[0]: dict(zip(LANGUAGES, row)) for row in
-                (line.split("|") for line in _ROWS.strip().splitlines())}
+TRANSLATIONS = {
+    row[0]: dict(zip(LANGUAGES, row))
+    for row in (line.split("|") for line in _ROWS.strip().splitlines())
+}
 
 
 def tr(source):

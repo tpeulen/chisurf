@@ -110,14 +110,17 @@ def test_trace_rinf_and_files_equal_the_qt_tool(qt_tool, files, tmp_path, monkey
     # the files: the anisotropy trace and the metadata are byte-identical
     qt_out, emtk_out = tmp_path / "qt" / "r.txt", tmp_path / "emtk" / "r.txt"
     qt_out.parent.mkdir(), emtk_out.parent.mkdir()
-    monkeypatch.setattr(QtWidgets.QFileDialog, "getSaveFileName",
-                        staticmethod(lambda *a_, **k: (str(qt_out), "")))
+    monkeypatch.setattr(
+        QtWidgets.QFileDialog, "getSaveFileName", staticmethod(lambda *a_, **k: (str(qt_out), ""))
+    )
     qt_tool.save_outputs()
     model.save(emtk_out)
     # the Qt tool wrote two of the three files (see the next test): the two it wrote are the ones compared
     assert sorted(p.name for p in qt_out.parent.iterdir()) == ["r_anisotropy.txt", "r_rinf.csv"]
     for suffix in ("_anisotropy.txt", "_rinf.csv"):
-        assert (emtk_out.parent / f"r{suffix}").read_bytes() == (qt_out.parent / f"r{suffix}").read_bytes()
+        assert (emtk_out.parent / f"r{suffix}").read_bytes() == (
+            qt_out.parent / f"r{suffix}"
+        ).read_bytes()
 
 
 # 2. the Qt tool never wrote _shifted.dat (write_vv_vh got its arguments in the wrong order inside
@@ -146,9 +149,16 @@ def test_shifted_decays_are_written_and_read_back(files, tmp_path):
 def test_batch_rows_equal_the_qt_batch_window(qapp, files, settings):
     from chisurf.plugins.vv_vh_anisotropy.qt_tool import VvVhAnisotropyBatchWindow
 
-    snap_in = {"apply_bg": settings["apply_bg"], "bg_vv": settings["bg"][0], "bg_vh": settings["bg"][1],
-               "g": settings["g"], "shift": settings["shift"], "flip": settings["flip"],
-               "region_min": 150.0, "region_max": 400.0}      # past the last channel: clamped in both tools
+    snap_in = {
+        "apply_bg": settings["apply_bg"],
+        "bg_vv": settings["bg"][0],
+        "bg_vh": settings["bg"][1],
+        "g": settings["g"],
+        "shift": settings["shift"],
+        "flip": settings["flip"],
+        "region_min": 150.0,
+        "region_max": 400.0,
+    }  # past the last channel: clamped in both tools
     window = VvVhAnisotropyBatchWindow(dict(snap_in))
     model = AnisotropyModel()
     model.batch_snapshot = dict(snap_in)
@@ -171,7 +181,7 @@ def test_batch_uses_the_snapshot_taken_when_the_window_opens(files):
     model.g_factor = 1.05
     model.compute()
     model.open_batch()
-    model.g_factor = 3.0                                            # edited after the window opened
+    model.g_factor = 3.0  # edited after the window opened
     model.compute()
     model.batch_files = [str(a)]
     (row,) = model.run_batch()
@@ -181,7 +191,7 @@ def test_batch_uses_the_snapshot_taken_when_the_window_opens(files):
     reference.g_factor = 1.05
     reference.compute()
     assert row[1] == pytest.approx(reference.r_infty)
-    assert model.loaded_file == str(a) and model.g_factor == 3.0     # the main state is untouched
+    assert model.loaded_file == str(a) and model.g_factor == 3.0  # the main state is untouched
 
 
 # 5. load: errors keep the loaded data and say why (the Qt slot raised IndexError)
@@ -198,14 +208,14 @@ def test_load_errors_are_reported_and_keep_the_data(app, files, tmp_path):
         assert app.model.message.startswith(f"Could not load {bad.name}"), app.model.message
         assert app.model.loaded_file == str(a)
         np.testing.assert_array_equal(app.model.r_t, before)
-    assert any("Could not load missing.dat" in s for s in _draw(app).strings)    # on the status line
+    assert any("Could not load missing.dat" in s for s in _draw(app).strings)  # on the status line
 
 
 # 6. Save: refused until data is loaded; the three files; an unwritable target is an error line
 def test_save_outputs_and_its_error_path(app, files, tmp_path):
     a, _ = files
     assert not app.model.enabled("request_save")
-    app.model.request_save()                                          # e.g. a stale request
+    app.model.request_save()  # e.g. a stale request
     _draw(app)
     assert app.dialog is None and app.model.message == "Load a VV/VH file before saving outputs."
     app.load_file(a)
@@ -227,7 +237,9 @@ def test_save_outputs_and_its_error_path(app, files, tmp_path):
     _draw(app)
     app.dialog.draw = lambda: [str(a / "x.txt")]
     _draw(app, times=1)
-    assert app.dialog is None and app.model.message.startswith(("NotADirectoryError", "FileExistsError", "OSError"))
+    assert app.dialog is None and app.model.message.startswith(
+        ("NotADirectoryError", "FileExistsError", "OSError")
+    )
     assert app.model.has_data
     assert any(app.model.message in s for s in _draw(app).strings)
 
@@ -267,17 +279,29 @@ def test_fields_clamp_and_the_region_is_ordered_for_the_average(app, files):
             if s.get("attr"):
                 fields[s["attr"]] = s
             walk(s.get("sections", []))
+
     walk(spec["sections"])
-    assert (fields["g_factor"]["minimum"], fields["g_factor"]["maximum"], fields["g_factor"]["decimals"]) == (0.0, 10.0, 5)
+    assert (
+        fields["g_factor"]["minimum"],
+        fields["g_factor"]["maximum"],
+        fields["g_factor"]["decimals"],
+    ) == (0.0, 10.0, 5)
     assert (fields["shift"]["minimum"], fields["shift"]["maximum"]) == (-150.0, 150.0)
-    assert (fields["bg_vv"]["decimals"], fields["bg_vh"]["decimals"], fields["shift"]["decimals"]) == (3, 3, 3)
+    assert (
+        fields["bg_vv"]["decimals"],
+        fields["bg_vh"]["decimals"],
+        fields["shift"]["decimals"],
+    ) == (3, 3, 3)
     assert fields["apply_bg"]["type"] == "toggle" and model.apply_bg is True and model.flip is False
     model.region_start, model.region_end = 100.0, 140.0
     model.compute()
     forward = model.r_infty
-    model.region_start, model.region_end = 140.0, 100.0             # lines dragged past each other
+    model.region_start, model.region_end = 140.0, 100.0  # lines dragged past each other
     model.compute()
-    assert model.r_infty == pytest.approx(forward) and (model.region_min, model.region_max) == (100.0, 140.0)
+    assert model.r_infty == pytest.approx(forward) and (model.region_min, model.region_max) == (
+        100.0,
+        140.0,
+    )
     model.recompute(1.0)
     assert model.r_infty_text == f"{forward:.5f}"
     model.vv_raw = model.vh_raw = None
@@ -305,20 +329,23 @@ def test_a_dropped_file_is_loaded_or_queued(app, files, tmp_path):
     assert sorted(Path(p).name for p in app.model.batch_files) == ["c.dat", "d.txt"]
     assert app.files_dropped([str(folder / "notes.md")]) is False
     assert app.model.message.startswith("Nothing to queue")
-    assert app.files_dropped([str(folder / "c.dat")]) is False      # already queued
+    assert app.files_dropped([str(folder / "c.dat")]) is False  # already queued
 
 
 # 10. the batch window: queue, select, remove, clear, run, save, every error path
 def test_batch_queue_remove_clear_run_and_save(app, files, tmp_path):
     a, b = files
     model = app.model
-    assert not any(model.enabled(x) for x in ("run_batch", "clear_batch", "remove_selected", "request_save_batch"))
+    assert not any(
+        model.enabled(x)
+        for x in ("run_batch", "clear_batch", "remove_selected", "request_save_batch")
+    )
     model.run_batch()
     assert model.message == "No files to process." and model.batch_results == []
     with pytest.raises(ValueError, match="Run batch before saving CSV"):
         model.save_batch(tmp_path / "x.csv")
     app.model.open_batch()
-    assert model.add_batch_paths([str(a), str(b), str(a)]) == 2        # the duplicate is not queued twice
+    assert model.add_batch_paths([str(a), str(b), str(a)]) == 2  # the duplicate is not queued twice
     model.select_batch_file({"path": str(a)})
     assert model.enabled("remove_selected")
     model.remove_selected()
@@ -329,14 +356,17 @@ def test_batch_queue_remove_clear_run_and_save(app, files, tmp_path):
     model.select_batch_file({"path": str(b)})
     model.remove_selected()
     model.select_batch_file({"path": str(a)})
-    model.remove_selected()                                            # the queue is empty: results go too
+    model.remove_selected()  # the queue is empty: results go too
     assert model.batch_results == [] and model.batch_files == []
     model.add_batch_paths([str(a), str(b)])
     model.run_batch()
     out = tmp_path / "batch.csv"
     model.save_batch(out)
     lines = out.read_text().splitlines()
-    assert lines[0] == "filename,r_inf,region_min,region_max,bg_vv,bg_vh,g_factor,error" and len(lines) == 3
+    assert (
+        lines[0] == "filename,r_inf,region_min,region_max,bg_vv,bg_vh,g_factor,error"
+        and len(lines) == 3
+    )
     model.clear_batch()
     assert model.batch_files == [] and model.batch_results == [] and not model.enabled("run_batch")
 
@@ -347,7 +377,7 @@ def test_a_bad_file_in_the_batch_is_a_row_with_its_error(app, files, tmp_path):
     bad.write_text("not numbers\n")
     model = app.model
     model.add_batch_paths([str(a), str(bad), str(tmp_path / "gone.dat")])
-    assert model.batch_files == [str(a), str(bad)]                     # gone.dat is not a file: not queued
+    assert model.batch_files == [str(a), str(bad)]  # gone.dat is not a file: not queued
     model.batch_files.append(str(tmp_path / "gone.dat"))
     rows = model.run_batch()
     assert np.isfinite(rows[0][1]) and rows[0][-1] == ""
@@ -390,7 +420,7 @@ def test_batch_buttons_reach_the_dialogs_and_the_picker(app, files, tmp_path, mo
     assert (tmp_path / "t.csv").exists() and model.message == "Saved t.csv"
     # the picker hands its paths to the queue
     app.picker.on_paths([folder / "z.dat"])
-    assert model.message.startswith("Nothing to queue")                # already queued
+    assert model.message.startswith("Nothing to queue")  # already queued
 
 
 # 11. persistence
@@ -407,11 +437,17 @@ def test_settings_round_trip(app, files, tmp_path):
     try:
         other.restore_settings(saved)
         o = other.model
-        assert (o.g_factor, o.bg_vv, o.shift, o.flip, o.region_bounds) == (1.07, 5.0, 2.0, True, [20.0, 60.0])
+        assert (o.g_factor, o.bg_vv, o.shift, o.flip, o.region_bounds) == (
+            1.07,
+            5.0,
+            2.0,
+            True,
+            [20.0, 60.0],
+        )
         assert o.loaded_file == str(a) and o.batch_files == [str(b)]
         assert o.r_infty == pytest.approx(m.r_infty)
         other.restore_settings({"loaded_file": str(tmp_path / "gone.dat"), "g_factor": 2.0})
-        assert o.g_factor == 2.0                                      # a missing file does not stop the rest
+        assert o.g_factor == 2.0  # a missing file does not stop the rest
     finally:
         other.close()
 
@@ -421,7 +457,9 @@ def test_settings_round_trip(app, files, tmp_path):
 def test_draws_empty_and_populated(app, files, size):
     a, b = files
     painter = _draw(app, size)
-    assert "Load a VV/VH file" in painter.strings or any("Load a VV/VH file" in s for s in painter.strings)
+    assert "Load a VV/VH file" in painter.strings or any(
+        "Load a VV/VH file" in s for s in painter.strings
+    )
     app.model.load(a)
     app.model.add_batch_paths([str(a), str(b)])
     painter = _draw(app, size)
@@ -430,7 +468,9 @@ def test_draws_empty_and_populated(app, files, size):
     rows = app.model.run_batch()
     painter = _draw(app, size)
     assert "Run Batch" in painter.strings and "r_inf" in painter.strings
-    assert f"{rows[0][1]:.5f}" in painter.strings and f"{rows[1][1]:.5f}" in painter.strings    # the table cells, Qt's five decimals
+    assert (
+        f"{rows[0][1]:.5f}" in painter.strings and f"{rows[1][1]:.5f}" in painter.strings
+    )  # the table cells, Qt's five decimals
     app.model.request_save_batch()
     _draw(app, size)
     assert app.dialog is not None
@@ -443,7 +483,7 @@ def test_labels_have_no_pictograms(app, files):
     app.model.load(files[0])
     app.model.open_batch()
     painter = _draw(app)
-    assert [s for s in painter.strings if re.search("[\U0001F000-\U0001FFFF☀-➿⛔️]", s)] == []
+    assert [s for s in painter.strings if re.search("[\U0001f000-\U0001ffff☀-➿⛔️]", s)] == []
 
 
 # 14. no Qt
@@ -508,7 +548,9 @@ def test_the_spec_names_exist_on_the_model():
 # 17. help, guide: the tour waits for the controls it names
 def test_guide_waits_for_the_user_and_points_at_drawn_controls(app, files):
     tour = app.tour
-    assert tour.wait_for_controls and len(tour.steps) >= 3 and any(s.get("await") for s in tour.steps)
+    assert (
+        tour.wait_for_controls and len(tour.steps) >= 3 and any(s.get("await") for s in tour.steps)
+    )
     assert (GUI / "help.md").stat().st_size > 400
     app.model.load(files[0])
     _draw(app)
@@ -517,10 +559,10 @@ def test_guide_waits_for_the_user_and_points_at_drawn_controls(app, files):
         assert key in app.item_rects or key in app.form.rects, step["title"]
     tour.start(0)
     assert tour.awaiting and tour.steps[0]["target"] == {"action": "request_load"}
-    tour.notify_used("request_save")                                   # another control: still waiting
+    tour.notify_used("request_save")  # another control: still waiting
     assert tour.awaiting
     app.model.request_load()
-    app.form.on_used("request_load")                                   # what the form reports on a press
+    app.form.on_used("request_load")  # what the form reports on a press
     assert not tour.awaiting
     tour.next()
     app.model.g_factor = 1.2
