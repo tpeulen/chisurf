@@ -1,3 +1,15 @@
+## TTTR calibration report identification — resolved (2026-10-09)
+
+status: resolved
+
+Owning TTTRlib formatter3023f892f uses explicit estimated.gamma: identified
+estimate, unidentified retained value, or unknown legacy identification. It no
+longer infers adoption from a finite data candidate, including after prior
+fusion. Actual test/arm64 providers rebuilt;31 public report/column/adapter
+checks pass. Measured152 and known2400 payloads retain every numeric field;
+only the data-gamma label changes. ChiSurf provenance adapter was already
+published with the calibration unit. [Acceptance](../validation/release-readiness-w6g/gamma-report-acceptance.json).
+
 ## Three generated parameter-context pages need shared-edit reconciliation (2026-10-08)
 
 status: open

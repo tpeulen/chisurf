@@ -526,3 +526,20 @@ them; fit the quantum yields and efficiencies they are made of.
 ## See also
 
 - Tool: **Accurate FRET** (`chisurf/plugins/burst/accurate_fret/`).
+
+## Read the gamma report without mistaking a fallback for a measurement
+
+After calibration, inspect **Report** alongside the factor table. A data gamma
+line carries one of three statuses: **identified estimate**, **not identified;
+retained value**, or **identification unknown**. The last status supports older
+results that carry no explicit estimator flag. Finiteness, convergence and a
+value of 1 do not establish identification. Follow the warnings and supply the
+missing reference populations or an appropriate prior when the data do not
+identify gamma.
+
+An identified data candidate may differ from the adopted posterior after optics
+prior fusion. Read the separate light-path prior and posterior entries instead
+of treating the data candidate as the final factor. The correction values and
+exported numeric columns are unchanged by these status labels.
+[Identification and assumptions](../concepts/accurate_fret.md) explain the
+distinction. The formatter is shared by the TTTRlib consumers.

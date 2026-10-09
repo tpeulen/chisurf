@@ -465,3 +465,19 @@ errors and the species model — are tttrlib's (`tttrlib.auto_calibrate`,
 - {cite}`kalinin2010` — photon distribution analysis combined with lifetime, and what each adds.
 - {cite}`barth2022` — I. Theory of FRET-lines.* J Chem Phys 156:141501.
 - {cite}`kalinin2010b` — excess E-distribution width from acceptor photophysics, not dynamics.
+
+## Identification is distinct from a retained numerical factor
+
+A finite correction factor does not establish that the measurement identified
+it. In the report, the data gamma candidate is labeled **identified estimate**
+only when the estimator explicitly declares `estimated.gamma = true`. A false
+flag means **not identified; retained value**; absent legacy metadata means
+**identification unknown**. A retained gamma of 1 is a usable numerical input,
+not experimental evidence for gamma = 1.
+
+An identified data candidate is also distinct from the final posterior when
+optics priors are combined with data. The report lists the data, light-path
+prior and posterior separately and does not call the data candidate adopted.
+This changes provenance text only: factors, uncertainties, populations and
+corrected numeric exports retain their values. See the
+[Accurate FRET workflow](../guides/41_accurate_fret.md).

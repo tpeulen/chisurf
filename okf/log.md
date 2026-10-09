@@ -2,6 +2,8 @@
 
 ## 2026-10-08
 
+- **2026-10-09 · Accurate FRET report provenance repaired in its SDK:** TTTRlib3023f892f separates explicit identified estimates, unidentified retained values and unknown legacy status, without claiming data-candidate posterior adoption. Actual test/arm64 providers rebuilt,31 public cases and1009available guards/11skip pass. Measured152/known2400 numeric payloads unchanged; paired docs and one archive accompany integration. No GUI recapture for metadata-only text. Next: permitted real workflow/MLE batch IPC verification. [Acceptance](validation/release-readiness-w6g/gamma-report-acceptance.json).
+
 - **2026-10-09 · Committed native-window coverage remeasured:**90covered/19missing/7hardcoded =26remaining of116 factory records, exactly25 readers gained through owned source publication. Inherited readers and the two FCS manifest aliases are counted correctly. Remaining20core +6game/host belong to W6f; static geometry coverage is distinct from functional acceptance. Portable scripts, prior65 baseline and source revision02b204ad0 are archived in [reader evidence](validation/release-readiness-w6g/remaining-window-map-after-owned-publication.zip).
 
 - **2026-10-09 · ALEX repair committed:** ChiSurf02b204ad0 and TTTRlibc783fe00a, exact source archive and independent numerical/provider/GUI evidence. 1059available guards pass/11skip, generated locale8 and fresh inventory6 pass. Original controls/workflows retained; known-period and neutral-phase qualifications explicit. Next owning defect is SDK gamma report identification; broader programme remains active. [Acceptance](validation/release-readiness-w6g/alex-regions-acceptance.json).
