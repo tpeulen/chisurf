@@ -45,3 +45,4 @@ This plugin's window is an EMTK app: its controls and tables are described in th
 
 - Plugin package: `chisurf/plugins/burst/burst_bva/`
 - Manifest: {src}`chisurf/plugins/burst/burst_bva/manifest.json`
+- UI spec: {src}`chisurf/plugins/burst/burst_bva/gui/window.view.json`

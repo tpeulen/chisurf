@@ -94,12 +94,18 @@ def read_burst_analysis(
 
     data_path = paris_path.parent
     table = new_store()
+    from chisurf.core.fio.fluorescence.burst_companion import is_companion_dir
+
     for path in sorted(paris_path.glob(pattern)):
         parts = []
+        suffixes = (".bur",)
+        if is_companion_dir(path.name):
+            suffixes += ("." + path.name.lower(),)
         for fn in sorted(path.glob("*")):
-            # Skip non-burst sidecars (e.g. a ``bva_settings.json`` written into
-            # ``bv4/``) — reading them as a tab table corrupts the merged table.
-            if not fn.is_file() or fn.suffix.lower() in {".json", ".yaml", ".yml"}:
+            # Legacy tables are BUR files or <ending>/<stem>.<ending>
+            # companions. Binary PTO caches and metadata beside them are not
+            # text tables, even when the containing directory matches pattern.
+            if not fn.is_file() or not fn.name.lower().endswith(suffixes):
                 continue
             parts.append(_read_strided(fn, row_stride))
         if not parts:

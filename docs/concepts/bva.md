@@ -22,6 +22,13 @@ variance on top of that shot-noise floor. BVA makes that excess visible
 For the step-by-step workflow in ChiSurf, see the guide
 {doc}`/guides/08_burst_variance_analysis`.
 
+The native host dimensions and dock/control layout do not enter the BVA
+statistic. Photon routing, micro-time gates, inclusive burst boundaries and
+the slicing settings do. A format-discovery fix must preserve those arrays
+and the one-row-per-burst output contract; skipping a binary cache file is not
+permission to discard a genuine zero-valued or nonfinite burst. The workflow
+is in {doc}`/guides/08_burst_variance_analysis`.
+
 ## The idea: split each burst and measure the scatter
 
 A burst is a stream of photons collected while one molecule is in the focus.

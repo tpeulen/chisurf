@@ -20,7 +20,7 @@ from emtk.im_core import Col, ItemFlags, get_current_context
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 
-from chisurf.plugins.emtk_layout import button_row, icon_label
+from chisurf.plugins.emtk_layout import button_row, icon_label, window_size
 
 from .view_model import BvaViewModel
 
@@ -235,8 +235,9 @@ class BurstBvaGui:
              "tip": "Save the current analysis and display settings as defaults."},
         ], remember=self.remember)
         actions = {"clear": self.on_clear, "save_plot": self.on_save, "save_defaults": self.on_save_settings}
-        if pressed in actions and callable(actions[pressed]):
-            actions[pressed]()
+        action = actions.get(pressed)
+        if callable(action):
+            action()
         pressed = button_row([
             {"label": icon_label("📖", "Guide"), "key": "guide", "tip": "Start a step-by-step guided tour of this tool."},
             {"label": icon_label("❓", "Help"), "key": "help", "tip": "Open the help window with reference documentation."},
@@ -362,7 +363,7 @@ class BurstBvaGui:
             return None
         if not parsed or any(len(p) != 2 or p[0] < 0 or p[1] <= p[0] for p in parsed):
             return None
-        return parsed
+        return [(pair[0], pair[1]) for pair in parsed]
 
     def _draw_channel_definitions(self) -> None:
         """Draw detector channel controls."""
@@ -521,6 +522,8 @@ class BurstBvaApp(ImApp):
         on_guide: Callable[[], None] | None = None,
         on_help: Callable[[], None] | None = None,
     ) -> None:
+        primary = json.loads(Path(__file__).with_name("window.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(primary, (1100, 720))
         self.controller = None
         if all(callback is None for callback in (on_run, on_restart, on_stop, on_browse, on_clear)):
             from .controller import BvaController
@@ -545,7 +548,6 @@ class BurstBvaApp(ImApp):
         )
         self.model = self.bva_gui.model
         self.item_rects = self.bva_gui.item_rects
-        self.bva_gui.remember = self.remember
         self._size = (1200, 800)
         super().__init__(gui=self._render)
 
@@ -565,11 +567,12 @@ class BurstBvaApp(ImApp):
     def draw(self, painter, x, y, w, h) -> None:
         super().draw(painter, x, y, w, h)
         self._size = (max(1, int(w)), max(1, int(h)))
-        path = self.controller.pending_export if self.controller is not None else None
-        if path is not None:
+        controller = self.controller
+        if controller is not None and controller.pending_export is not None:
             # Outside the frame: the picture of the window, as the Qt tool's host grab.
-            self.controller.pending_export = None
-            self.controller.write_window_png(self, path, self._size)
+            path = controller.pending_export
+            controller.pending_export = None
+            controller.write_window_png(self, path, self._size)
 
     def files_dropped(self, paths) -> bool:
         """A dropped burst folder or container becomes the input; anything else is reported."""

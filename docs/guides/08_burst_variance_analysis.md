@@ -29,6 +29,19 @@ line.
 
 ## In ChiSurf
 
+The standalone native window declares **1100 × 720** pixels on first use.
+Saved geometry takes precedence. Its controls and plot remain available at
+smaller sizes; scroll the controls or detector table to inspect all settings.
+The declaration sets the host size without changing the variance calculation
+or replacing the existing control renderer.
+
+Legacy input discovery reads `.bur` tables and the matching files in companion
+directories whose names end in `4`, including namespaced and dotted endings.
+A binary PTO cache beside a BUR file is not decoded as a text table. The cache
+stays on disk; a PTO container supplied as the input still uses its separate
+container-reader route. Positional companion alignment and genuine skipped
+burst rows remain intact.
+
 The engine is the `tttrlib.BVA` burst feature (parallel over bursts); the
 `burst_bva` plugin wraps it. Open it as step **4. Burst BVA** of
 **Spectroscopy → Single-Molecule → Burst Analysis** — the burst folder and detector setup of step
@@ -50,6 +63,15 @@ one slice; 10 photons per slice). Red: the static (shot-noise) line; cyan: the
 mean slice standard deviation per proximity-ratio column. The donor-only spot
 near 0 sits on the line; the FRET population around 0.3–0.7 lies above it.
 Rendered with `CHISURF_PLOT_BACKEND=pyqtgraph` — see *Known defects*.
+```
+
+```{figure} figures/bva_native_primary_window.png
+:name: fig-bva-native-primary-window
+:width: 100%
+
+The native BVA worker on the measured 152-burst folder at its declared host
+size: 135 bursts have positive slice standard deviation. The static line and
+profile use the same channel and slicing definition as the burst points.
 ```
 
 | Control | Default | Meaning |
