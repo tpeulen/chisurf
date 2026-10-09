@@ -30,6 +30,8 @@ def test_compact_default_reset_and_later_resize_keep_full_width_editor(app):
     assert app.docks.region_of("editor") == "controls"
     assert app.docks.region_of("efficiency") == "efficiency"
     assert app.docks.region_of("lifetime") == "lifetime"
+    app.show_advanced("editor")
+    driver.draw(3)
     driver.click("Live model editor")
     assert app.docks.region_boxes["controls"][2] > 600
     assert "RDA0" in driver.painter.strings
@@ -84,6 +86,8 @@ def test_tour_callback_reveals_targets_and_hidden_rectangles_disappear(app):
     driver = Driver(app, (640, 480))
     driver.draw(3)
     for index, step in enumerate(app.tour.steps):
+        if step["target"].get("name") == "show_components":
+            app.form.folds["Advanced"] = True
         app.tour.on_step_change(index, step)
         driver.draw(3)
         target = step["target"]
@@ -103,6 +107,8 @@ def test_enter_commits_an_emptied_sweep_filter(app):
     """A real clear-and-Enter edit reaches the AutoForm model callback."""
     driver = Driver(app, (640, 480))
     driver.draw(3)
+    app.show_advanced("sweep")
+    driver.draw(3)
     driver.click("Sweep")
     driver.click("sweep_filter")
     driver.type("fraction")
@@ -118,6 +124,8 @@ def test_enter_commits_an_emptied_sweep_filter(app):
 def test_compact_parameter_editor_select_all_commits_value(app):
     """Double-clicking a compact table cell supports Ctrl+A and typed values."""
     driver = Driver(app, (640, 480))
+    driver.draw(3)
+    app.show_advanced("editor")
     driver.draw(3)
     driver.click("Live model editor")
     _, row_y, _, row_h = driver.rect("RDA0")

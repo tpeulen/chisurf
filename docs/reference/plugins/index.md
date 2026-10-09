@@ -108,7 +108,7 @@ Of the **130 plugins**, **90** build their interface from declarative AutoForm s
 | Plugin | Summary |
 | --- | --- |
 | [Accurate FRET](accurate_fret.md) *(hidden)* | Accurate FRET (Hellenkamp): automatic alpha/beta/gamma/delta from the burst populations, the optics prior of a saved light path and the static FRET line, with E-S and E-lifetime views. |
-| [FRET Line Generator](fret_line.md) *(hidden)* | Compute static, dynamic, WLC, and mixture FRET lines for parameter ranges. Results are suitable for overlaying on smFRET 2D histograms in ndX. |
+| [FRET Line Generator](fret_line.md) | Compute static, dynamic, WLC, and mixture FRET lines for parameter ranges. Results are suitable for overlaying on smFRET 2D histograms in ndX. |
 
 ## Spectroscopy → Imaging
 

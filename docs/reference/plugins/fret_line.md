@@ -28,6 +28,14 @@ Compute static, dynamic, WLC, and mixture FRET lines for parameter ranges. Resul
 
 Editable parameters exposed by the plugin's declarative (AutoForm) interface, grouped by panel.
 
+### Your dyes
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Dye pair | `dye_pair` | choice |  | choices: `dye_pair_options` | Custom uses your measured inputs. Illustrative is a generic example, not a vendor calibration. |
+| Donor lifetime (ns) | `pair_tau` | float |  | 0.001 … 1000 | Single-exponential donor-only lifetime; Apply also updates the FRET rate reference and efficiency normalization. |
+| Förster radius (Å) | `pair_r0` | float |  | 0.001 … 1000 | Radius of your donor-acceptor pair under the orientation assumptions of the model. No dye properties are inferred. |
+
 ### Components
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |

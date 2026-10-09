@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 import numpy as np
+from emtk.i18n import tr
 
 from chisurf.core.registry.parameter_groups import (
     get_registered_parameter_group,
@@ -73,6 +74,11 @@ class FretLineModel:
         self.n_points = 100
         self.log_scale = False
         self.tau_d0 = 4.0
+        self.dye_pair = "custom"
+        self.pair_tau = 4.0
+        self.pair_r0 = 52.0
+        self.example_path = ""
+        self.on_open_advanced: Callable[[str], None] | None = None
         self.lines: list[dict] = []
         self.line_index = -1
         self._line_seq = 0
@@ -83,9 +89,89 @@ class FretLineModel:
         self.request = ""
         self._registered: set[str] = set()
         self._sweep_signature: list = []
-        self._sweep_key = None
+        self._sweep_key: tuple[str | None, int | None, str | None] | None = None
         self.add_component()
         self._select_default_sweep()
+
+
+    def dye_pair_options(self) -> list[str]:
+        """Offer custom measured inputs and an explicitly illustrative preset."""
+        return ["custom", "illustrative"]
+
+    def dye_pair_changed(self, _value=None) -> None:
+        """Populate illustrative input fields without editing the mixture."""
+        if self.dye_pair == "illustrative":
+            from ..demo import pair_inputs
+            self.pair_tau, self.pair_r0 = pair_inputs()
+
+    def apply_dye_pair(self) -> None:
+        """Apply finite positive pair inputs atomically to simple FRET donors.
+
+        Multiexponential or linked donor spectra require the expert editor.
+        Existing lines, distances, weights and lifetime-only components stay intact.
+        """
+        from chisurf.core.fluorescence.fret.fret_line import find_parameter
+        if not all(np.isfinite(v) and v > 0 for v in (self.pair_tau, self.pair_r0)):
+            raise ValueError(tr("Donor lifetime and Förster radius must be finite and positive."))
+        changes = []
+        for component in self.components:
+            model = component["model"]
+            available = {p.canonical_id: p for p in model.parameters_all}
+            if "fret.forster_radius" not in available:
+                continue
+            active = set(model.structure_parameter_ids())
+            donor = [key for key in active if key.startswith("donor.tau.")]
+            if donor != ["donor.tau.0"]:
+                raise ValueError(tr("Use Advanced for multiexponential donor spectra."))
+            for key, value in (("donor.tau.0", self.pair_tau),
+                               ("fret.tau0", self.pair_tau),
+                               ("fret.forster_radius", self.pair_r0)):
+                parameter = find_parameter(model, key)
+                if parameter.link is not None:
+                    raise ValueError(tr("Use Advanced for linked donor or FRET parameters."))
+                changes.append((parameter, float(value)))
+        if not changes:
+            raise ValueError(tr("The pair starter needs a FRET component."))
+        for parameter, value in changes:
+            parameter.value = value
+        self.tau_d0 = float(self.pair_tau)
+        self.message = tr("Dye pair applied; existing lines retain their recorded inputs.")
+
+    def apply_pair(self) -> None:
+        """Apply the GUI inputs and display validation through the existing notice."""
+        try:
+            self.apply_dye_pair()
+        except ValueError as exc:
+            self.message = str(exc)
+            self.notice(tr("Dye pair"), str(exc))
+
+    def load_example(self) -> None:
+        """Load the declared illustrative pair without pressing Compute for the user."""
+        from ..demo import configure_example, make_demo
+        self.example_path = str(make_demo())
+        configure_example(self)
+        self.message = tr("Illustrative pair loaded. Press Add FRET line to compute.")
+
+    def _open_advanced(self, key: str) -> None:
+        """Ask the host to reveal an existing expert view."""
+        if self.on_open_advanced is not None:
+            self.on_open_advanced(key)
+
+    def show_components(self) -> None:
+        """Reveal the retained mixture controls."""
+        self._open_advanced("components")
+
+    def show_sweep(self) -> None:
+        """Reveal the retained sweep controls."""
+        self._open_advanced("sweep")
+
+    def show_lines(self) -> None:
+        """Reveal the retained computed-line table."""
+        self._open_advanced("lines")
+
+    def show_editor(self) -> None:
+        """Reveal the retained live model editor."""
+        self._open_advanced("editor")
 
     # -- the mixture ----------------------------------------------------------- #
     def add_component(self) -> None:
@@ -182,7 +268,8 @@ class FretLineModel:
                                            [c["model_name"] for c in self.components],
                                            relevant_only=not self.show_all_parameters)
         signature = [(t.get("kind"), t.get("component"), t.get("name")) for t in targets]
-        if signature != self._sweep_signature and self._sweep_key in signature:
+        if (signature != self._sweep_signature and self._sweep_key is not None
+                and self._sweep_key in signature):
             self.sweep_index = signature.index(self._sweep_key)
         self.sweep_index = min(self.sweep_index, max(0, len(signature) - 1))
         self._sweep_signature = signature
@@ -444,7 +531,10 @@ class FretLineModel:
     # -- settings --------------------------------------------------------------------------------- #
     def export_state(self) -> dict:
         return {"minimum": self.minimum, "maximum": self.maximum, "n_points": self.n_points, "log_scale": self.log_scale,
-                "tau_d0": self.tau_d0, "show_all_parameters": self.show_all_parameters}
+                "tau_d0": self.tau_d0,
+            "dye_pair": self.dye_pair,
+            "pair_tau": self.pair_tau,
+            "pair_r0": self.pair_r0, "show_all_parameters": self.show_all_parameters}
 
     def restore_state(self, settings: dict) -> None:
         for key, kind in (("minimum", float), ("maximum", float), ("tau_d0", float), ("n_points", int)):
@@ -460,4 +550,13 @@ class FretLineModel:
         for key in ("log_scale", "show_all_parameters"):
             if isinstance(settings.get(key), bool):
                 setattr(self, key, settings[key])
+        if settings.get("dye_pair") in self.dye_pair_options():
+            self.dye_pair = settings["dye_pair"]
+        for key in ("pair_tau", "pair_r0"):
+            try:
+                value = float(settings[key])
+            except (KeyError, TypeError, ValueError):
+                continue
+            if np.isfinite(value) and value > 0:
+                setattr(self, key, value)
         self.sweep_targets()

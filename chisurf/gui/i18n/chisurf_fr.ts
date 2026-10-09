@@ -49210,5 +49210,190 @@ presets) into a single left-navigation tool. Built on the reusable
             <source>Stop between chunks or files; retain output already written.</source>
             <translation type="unfinished" />
         </message>
-    </context>
+    <message>
+            <location filename="_autogen.py" line="723" />
+            <source>Apply dye pair</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="1308" />
+            <source>Choose the physical inputs for the lifetime-efficiency line of your dye pair.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="1544" />
+            <source>Compute the static line</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="1786" />
+            <source>Custom pair</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="1787" />
+            <source>Custom uses your measured inputs. Illustrative is a generic example, not a vendor calibration.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="2071" />
+            <source>Donor lifetime (ns)</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="2072" />
+            <source>Donor lifetime and Förster radius must be finite and positive.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="2175" />
+            <source>Dye pair</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="2176" />
+            <source>Dye pair applied; existing lines retain their recorded inputs.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="2226" />
+            <source>Edit full parameter spectra, bounds and measured inputs.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="2937" />
+            <source>Förster radius (Å)</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="3264" />
+            <source>Illustrative pair</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="3265" />
+            <source>Illustrative pair loaded. Press Add FRET line to compute.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="3364" />
+            <source>Inspect the mixture</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="3367" />
+            <source>Inspect, hide or remove the computed lines.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="3508" />
+            <source>Keep the line</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="3796" />
+            <source>Load known example inputs or apply your physical pair explicitly.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="4182" />
+            <source>Model editor</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="4604" />
+            <source>Open an original expert view without changing its values.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="4641" />
+            <source>Open the expert controls</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="4648" />
+            <source>Open the original mixture controls.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="4649" />
+            <source>Open the original parameter or fraction sweep.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="5303" />
+            <source>Press Add FRET line to compute from the loaded pair and declared distance sweep.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="5304" />
+            <source>Press Add FRET line yourself.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="5307" />
+            <source>Press Advanced to reveal the existing mixture, sweep and model-editor actions.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="5308" />
+            <source>Press Advanced yourself.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="5309" />
+            <source>Press Components to open the retained mixture table. Sweep and Model editor remain available from Advanced.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="5310" />
+            <source>Press Components yourself.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="5325" />
+            <source>Press Load example yourself.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="5326" />
+            <source>Press Load example. It resets the mixture to a generic 4 ns, 52 Å Gaussian example; it is not a vendor calibration.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="5332" />
+            <source>Press Save CSV when ready.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="5518" />
+            <source>Radius of your donor-acceptor pair under the orientation assumptions of the model. No dye properties are inferred.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="5828" />
+            <source>Replace the mixture and clear lines for the illustrative 4 ns, 52 Å Gaussian pair. Compute remains a separate action.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="6103" />
+            <source>Save CSV writes the computed quantities. Push to ndX overlays them when an ndX window is open.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="6588" />
+            <source>Single-exponential donor-only lifetime; Apply also updates the FRET rate reference and efficiency normalization.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="6740" />
+            <source>Start with the donor-only lifetime and the radius under your model assumptions.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="6741" />
+            <source>Start with the illustrative pair</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="7437" />
+            <source>The original mixture, sweep, computed-line table and full model editor remain available.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="7445" />
+            <source>The pair starter needs a FRET component.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="8015" />
+            <source>Update simple FRET components and the donor reference. Linked or multiexponential donors require Advanced; existing lines remain.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="8050" />
+            <source>Use Advanced for linked donor or FRET parameters.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="8051" />
+            <source>Use Advanced for multiexponential donor spectra.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="8069" />
+            <source>Use measured donor-only lifetime and Förster radius, or walk the illustrative pair. Expert mixtures and spectra remain under Advanced.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="8437" />
+            <source>Which lifetime-efficiency line fits your dyes?</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="8438" />
+            <source>Which lifetime-efficiency line should your dyes follow? Enter measured donor-only lifetime and Förster radius, or load the illustrative pair.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="8604" />
+            <source>Your dyes</source>
+            <translation type="unfinished" />
+        </message>
+</context>
 </TS>

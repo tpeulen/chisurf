@@ -1,8 +1,111 @@
 {
   "_comment": "FRET line generator, native emtk window. Drawn by emtk.view_form over FretLineModel (gui/model.py): 'components', 'sweep' and 'lines' are the three tabs of the left window (the Qt tool's Components / Sweep / FRET lines pages), 'actions' the bar under everything (Add FRET line, Save CSV, Push to ndX), 'dialog' the in-app notice the Qt tool showed as message boxes. The model editor and the plots are drawn by gui/app.py (a spec cannot draw them).",
   "title": "FRET lines",
-  "window": {"width": 640, "height": 480},
+  "window": {
+    "width": 640,
+    "height": 480
+  },
   "sections": [
+    {
+      "type": "panel",
+      "name": "your_dyes",
+      "title": "Your dyes",
+      "description": "Choose the physical inputs for the lifetime-efficiency line of your dye pair.",
+      "sections": [
+        {
+          "type": "panel",
+          "title": "",
+          "sections": [
+            {
+              "type": "info",
+              "text": "Which lifetime-efficiency line should your dyes follow? Enter measured donor-only lifetime and Förster radius, or load the illustrative pair.",
+              "description": "Start with the donor-only lifetime and the radius under your model assumptions."
+            }
+          ]
+        },
+        {
+          "type": "choice",
+          "attr": "dye_pair",
+          "label": "Dye pair",
+          "options_source": "dye_pair_options",
+          "labels": [
+            "Custom pair",
+            "Illustrative pair"
+          ],
+          "call": "dye_pair_changed",
+          "description": "Custom uses your measured inputs. Illustrative is a generic example, not a vendor calibration."
+        },
+        {
+          "type": "value",
+          "attr": "pair_tau",
+          "label": "Donor lifetime (ns)",
+          "kind": "float",
+          "minimum": 0.001,
+          "maximum": 1000,
+          "description": "Single-exponential donor-only lifetime; Apply also updates the FRET rate reference and efficiency normalization."
+        },
+        {
+          "type": "value",
+          "attr": "pair_r0",
+          "label": "Förster radius (Å)",
+          "kind": "float",
+          "minimum": 0.001,
+          "maximum": 1000,
+          "description": "Radius of your donor-acceptor pair under the orientation assumptions of the model. No dye properties are inferred."
+        },
+        {
+          "type": "button_row",
+          "description": "Load known example inputs or apply your physical pair explicitly.",
+          "buttons": [
+            {
+              "action": "load_example",
+              "label": "Load example",
+              "description": "Replace the mixture and clear lines for the illustrative 4 ns, 52 Å Gaussian pair. Compute remains a separate action."
+            },
+            {
+              "action": "apply_pair",
+              "label": "Apply dye pair",
+              "description": "Update simple FRET components and the donor reference. Linked or multiexponential donors require Advanced; existing lines remain."
+            }
+          ]
+        },
+        {
+          "type": "panel",
+          "title": "Advanced",
+          "collapsible": true,
+          "collapsed": true,
+          "description": "The original mixture, sweep, computed-line table and full model editor remain available.",
+          "sections": [
+            {
+              "type": "button_row",
+              "description": "Open an original expert view without changing its values.",
+              "buttons": [
+                {
+                  "action": "show_components",
+                  "label": "Components",
+                  "description": "Open the original mixture controls."
+                },
+                {
+                  "action": "show_sweep",
+                  "label": "Sweep",
+                  "description": "Open the original parameter or fraction sweep."
+                },
+                {
+                  "action": "show_lines",
+                  "label": "FRET lines",
+                  "description": "Inspect, hide or remove the computed lines."
+                },
+                {
+                  "action": "show_editor",
+                  "label": "Model editor",
+                  "description": "Edit full parameter spectra, bounds and measured inputs."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
     {
       "type": "panel",
       "title": "Components",
@@ -21,9 +124,24 @@
             "editable": false,
             "height": 130,
             "columns": [
-              {"key": "name", "title": "Name", "width": 60, "tooltip": "C0, C1, ...: the number the sweep targets refer to."},
-              {"key": "model", "title": "Model", "width": 190, "tooltip": "The model family of the component."},
-              {"key": "weight", "title": "Weight", "width": 70, "tooltip": "The initial mixing weight; the sweep normalises all weights."}
+              {
+                "key": "name",
+                "title": "Name",
+                "width": 60,
+                "tooltip": "C0, C1, ...: the number the sweep targets refer to."
+              },
+              {
+                "key": "model",
+                "title": "Model",
+                "width": 190,
+                "tooltip": "The model family of the component."
+              },
+              {
+                "key": "weight",
+                "title": "Weight",
+                "width": 70,
+                "tooltip": "The initial mixing weight; the sweep normalises all weights."
+              }
             ]
           }
         },
@@ -31,8 +149,16 @@
           "type": "button_row",
           "description": "Add a component to the mixture or remove the selected one.",
           "buttons": [
-            {"action": "add_component", "label": "Add", "description": "Append a component with the model of the selected one; it can then be edited independently."},
-            {"action": "remove_component", "label": "Remove", "description": "Remove the selected component. One component always stays."}
+            {
+              "action": "add_component",
+              "label": "Add",
+              "description": "Append a component with the model of the selected one; it can then be edited independently."
+            },
+            {
+              "action": "remove_component",
+              "label": "Remove",
+              "description": "Remove the selected component. One component always stays."
+            }
           ]
         },
         {
@@ -156,10 +282,31 @@
             "editable": false,
             "height": 150,
             "columns": [
-              {"key": "visible", "title": "Show", "width": 50, "tooltip": "Tick to show the line on the plots, untick to hide it.", "editable": true},
-              {"key": "name", "title": "Line", "width": 70, "tooltip": "Line 1, Line 2, ... in the order they were added."},
-              {"key": "sweep_label", "title": "Varied", "width": 210, "tooltip": "What this line varied."},
-              {"key": "colour_text", "title": "Colour", "width": 70, "tooltip": "The colour of the line on the plots."}
+              {
+                "key": "visible",
+                "title": "Show",
+                "width": 50,
+                "tooltip": "Tick to show the line on the plots, untick to hide it.",
+                "editable": true
+              },
+              {
+                "key": "name",
+                "title": "Line",
+                "width": 70,
+                "tooltip": "Line 1, Line 2, ... in the order they were added."
+              },
+              {
+                "key": "sweep_label",
+                "title": "Varied",
+                "width": 210,
+                "tooltip": "What this line varied."
+              },
+              {
+                "key": "colour_text",
+                "title": "Colour",
+                "width": 70,
+                "tooltip": "The colour of the line on the plots."
+              }
             ]
           }
         },
@@ -167,10 +314,26 @@
           "type": "button_row",
           "description": "Show, hide, remove or clear the computed lines.",
           "buttons": [
-            {"action": "show_all", "label": "Show all", "description": "Make every line visible."},
-            {"action": "hide_all", "label": "Hide all", "description": "Hide every line (they stay in the list)."},
-            {"action": "remove_line", "label": "Remove", "description": "Remove the selected line (the last one when none is selected)."},
-            {"action": "clear_lines", "label": "Clear all", "description": "Remove all computed lines."}
+            {
+              "action": "show_all",
+              "label": "Show all",
+              "description": "Make every line visible."
+            },
+            {
+              "action": "hide_all",
+              "label": "Hide all",
+              "description": "Hide every line (they stay in the list)."
+            },
+            {
+              "action": "remove_line",
+              "label": "Remove",
+              "description": "Remove the selected line (the last one when none is selected)."
+            },
+            {
+              "action": "clear_lines",
+              "label": "Clear all",
+              "description": "Remove all computed lines."
+            }
           ]
         }
       ]
@@ -196,13 +359,51 @@
             "fit_columns": true,
             "min_column_width": 56,
             "columns": [
-              {"key": "name", "title": "Name", "width": 90, "editable": false, "tooltip": "The parameter's name in the model."},
-              {"key": "value", "title": "Value", "width": 90, "tooltip": "The parameter's value; the sweep restores it after every line."},
-              {"key": "fixed", "title": "Fixed", "width": 50, "tooltip": "Hold the parameter constant in a fit (it does not change a FRET line)."},
-              {"key": "bounds_on", "title": "Bounds", "width": 56, "tooltip": "Apply the lower and upper limit."},
-              {"key": "lower", "title": "Lower", "width": 80, "tooltip": "Lower limit (-inf: none)."},
-              {"key": "upper", "title": "Upper", "width": 80, "tooltip": "Upper limit (inf: none)."},
-              {"key": "id", "title": "Id", "width": 110, "editable": false, "visible": false, "tooltip": "The canonical parameter id used by the sweep targets and the headless API."}
+              {
+                "key": "name",
+                "title": "Name",
+                "width": 90,
+                "editable": false,
+                "tooltip": "The parameter's name in the model."
+              },
+              {
+                "key": "value",
+                "title": "Value",
+                "width": 90,
+                "tooltip": "The parameter's value; the sweep restores it after every line."
+              },
+              {
+                "key": "fixed",
+                "title": "Fixed",
+                "width": 50,
+                "tooltip": "Hold the parameter constant in a fit (it does not change a FRET line)."
+              },
+              {
+                "key": "bounds_on",
+                "title": "Bounds",
+                "width": 56,
+                "tooltip": "Apply the lower and upper limit."
+              },
+              {
+                "key": "lower",
+                "title": "Lower",
+                "width": 80,
+                "tooltip": "Lower limit (-inf: none)."
+              },
+              {
+                "key": "upper",
+                "title": "Upper",
+                "width": 80,
+                "tooltip": "Upper limit (inf: none)."
+              },
+              {
+                "key": "id",
+                "title": "Id",
+                "width": 110,
+                "editable": false,
+                "visible": false,
+                "tooltip": "The canonical parameter id used by the sweep targets and the headless API."
+              }
             ]
           }
         }
@@ -218,9 +419,21 @@
           "type": "button_row",
           "description": "Compute the current sweep, save all lines, or push them to ndX.",
           "buttons": [
-            {"action": "add_line", "label": "Add FRET line", "description": "Compute the current mixture and sweep and add it as a new line. Press repeatedly to overlay several lines."},
-            {"action": "save_csv", "label": "Save CSV", "description": "Save all computed lines to one CSV file (line, sweep, parameter, τ_F, τ_X, E per point)."},
-            {"action": "push", "label": "Push to ndX", "description": "Overlay all computed lines (E vs τ_F) on every open ndX window, as data curves of its Overlays tab; with no ndX window open a notice says so."}
+            {
+              "action": "add_line",
+              "label": "Add FRET line",
+              "description": "Compute the current mixture and sweep and add it as a new line. Press repeatedly to overlay several lines."
+            },
+            {
+              "action": "save_csv",
+              "label": "Save CSV",
+              "description": "Save all computed lines to one CSV file (line, sweep, parameter, τ_F, τ_X, E per point)."
+            },
+            {
+              "action": "push",
+              "label": "Push to ndX",
+              "description": "Overlay all computed lines (E vs τ_F) on every open ndX window, as data curves of its Overlays tab; with no ndX window open a notice says so."
+            }
           ]
         },
         {
@@ -236,11 +449,21 @@
       "name": "dialog",
       "description": "Reports a computed or saved result or a problem.",
       "sections": [
-        {"type": "info", "source": "dialog_text", "description": "What happened."},
+        {
+          "type": "info",
+          "source": "dialog_text",
+          "description": "What happened."
+        },
         {
           "type": "button_row",
           "description": "Close the notice.",
-          "buttons": [{"action": "dialog_ok", "label": "OK", "description": "Close this notice."}]
+          "buttons": [
+            {
+              "action": "dialog_ok",
+              "label": "OK",
+              "description": "Close this notice."
+            }
+          ]
         }
       ]
     }

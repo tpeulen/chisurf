@@ -240,3 +240,19 @@ with the flexible dye-linker cloud handled by accessible volumes
   {cite}`clegg1995` a compact review of it; {cite}`lakowicz2006` the textbook
   treatment, FRET chapters.
 - Tools in ChiSurf: the **FRET-Calculator** (`chisurf/plugins/calculator/fret_calculator/`) converts between $E$, $R$ and $R_0$; the **Spectra Downloader** (`chisurf/plugins/spectra_downloader/`) fetches the spectra the overlap integral needs, and {doc}`/guides/83_spectra_and_r0` computes $J$ and $R_0$ from them and checks the result against tabulated values.
+
+### Pair inputs in the FRET-line workflow
+
+The guided entry uses donor-only lifetime and Förster radius as explicit physical
+inputs. For a single distance and a single donor lifetime,
+$\tau_{DA}=\tau_{D0}/[1+(R_0/R)^6]$ and
+$E=1-\tau_{DA}/\tau_{D0}$. The starter updates both the model's donor lifetime
+and FRET-rate reference together with the line's normalization lifetime; changing
+only the visible reference would give a different efficiency. The nondefault
+3 ns/60 Å regression verifies this relation independently of the GUI.
+
+Multiexponential donor spectra and linked parameters remain expert inputs. A
+scalar starter refuses those before writing; it does not collapse a spectrum or
+break a link silently. Its generic 4 ns/52 Å example supplies no named-dye
+calibration. The [FRET-line guide](../guides/82_fret_lines.md) shows the guided
+entry and retained advanced views.

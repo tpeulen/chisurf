@@ -36,6 +36,7 @@ class FRETLineApp(ImApp):
     def __init__(self, push_callback=None, model: FretLineModel | None = None) -> None:
         self.window_title = tr("ChiSurf FRET Line Generator")
         self.model = model or FretLineModel(push_callback)
+        self.model.on_open_advanced = self.show_advanced
         spec = json.loads((HERE / "fret_line_emtk.view.json").read_text(encoding="utf-8"))
         self.window_size = window_size(spec, (640, 480))
         cap_widths(spec["sections"])
@@ -62,6 +63,7 @@ class FRETLineApp(ImApp):
         self._initial_layout_selected = False
         self.docks = DockManager(Split("v", 0.9, Split("v", 0.58, Split("h", 0.4, Region("controls"), Region("editor")),
                                                        Split("h", 0.5, Region("efficiency"), Region("lifetime"))), Region("actions")))
+        self.docks.add_window("your_dyes", tr("Your dyes"), self.draw_your_dyes, dock="controls", closable=False)
         for key, title, draw in (("components", tr("Components"), self.draw_components), ("sweep", tr("Sweep"), self.draw_sweep),
                                  ("lines", tr("FRET lines"), self.draw_lines)):
             self.docks.add_window(key, title, draw, dock="controls", closable=False)
@@ -69,13 +71,18 @@ class FRETLineApp(ImApp):
         self.docks.add_window("efficiency", tr("FRET line"), lambda box: self.plot("e_fret", "E_FRET"), dock="efficiency", closable=False)
         self.docks.add_window("lifetime", tr("τ_X(τ_F)"), lambda box: self.plot("tau_x", tr("τ_X (ns)")), dock="lifetime", closable=False)
         self.docks.add_window("actions", tr("Actions"), self.draw_actions, dock="actions", closable=False)
+        for key in ("components", "sweep", "lines", "editor"):
+            self.docks.windows[key].visible = False
         super().__init__(self.render)
 
     def _tour_step(self, index: int, step: dict) -> None:
         """Reveal the tab owning a tour target before its rectangle is measured."""
         target = step.get("target", {})
         key = target.get("name") or target.get("attr")
-        for panel_name in ("components", "sweep", "lines", "editor"):
+        if key == "Advanced.fold":
+            self.docks.focus("your_dyes")
+            return
+        for panel_name in ("your_dyes", "components", "sweep", "lines", "editor"):
             pending = list(self._sections(panel_name))
             while pending:
                 section = pending.pop()
@@ -120,9 +127,9 @@ class FRETLineApp(ImApp):
                 binding.control.select_key(wanted)
         binding = self.form.tables.get(LINES_TABLE)
         if binding is not None and self.model.lines:
-            wanted = self.model.lines[self.model.line_index]["name"] if 0 <= self.model.line_index < len(self.model.lines) else None
-            if binding.control.selected_key != wanted:
-                binding.control.select_key(wanted)
+            wanted_line = self.model.lines[self.model.line_index]["name"] if 0 <= self.model.line_index < len(self.model.lines) else None
+            if binding.control.selected_key != wanted_line:
+                binding.control.select_key(wanted_line)
         for name in (COMPONENTS_TABLE, LINES_TABLE):
             if name in self.form.rects:
                 self.item_rects[name] = self.form.rects[name]
@@ -130,6 +137,18 @@ class FRETLineApp(ImApp):
     # -- the spec windows -------------------------------------------------------------------------- #
     def _sections(self, name: str) -> list:
         return self.panels[name]["sections"]
+
+
+    def draw_your_dyes(self, box: Any) -> None:
+        """Draw the declared pair starter and folded expert navigation."""
+        draw_sections(self._sections("your_dyes"), self.model, self.form, titles=False)
+
+    def show_advanced(self, key: str) -> None:
+        """Reveal the original expert panel without changing its scientific state."""
+        if key not in ("components", "sweep", "lines", "editor"):
+            raise ValueError(key)
+        self.docks.focus(key)
+        self.request_frame()
 
     def draw_components(self, box: Any) -> None:
         draw_sections(self._sections("components"), self.model, self.form, titles=False)

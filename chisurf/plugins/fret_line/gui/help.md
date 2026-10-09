@@ -48,3 +48,16 @@ closed-form lines are in `chisurf.core.fluorescence.fret.lines`
 - {cite}`barth2022` — theory of FRET lines
 - {cite}`sisamakis2010` — E–τ diagrams in multiparameter detection
 - {cite}`kalinin2010b` — excess width from acceptor photophysics, not dynamics
+
+## Start with Your dyes
+
+Use your measured single-exponential donor lifetime and Förster radius, or press
+Load example for an explicitly illustrative pair. Apply dye pair updates donor,
+rate-reference and efficiency-normalization lifetimes together. Linked or
+multiexponential donors require Advanced; validation is shown before any change.
+
+Advanced reveals the original Components, Sweep, FRET lines and full model editor.
+Load example resets the mixture and clears lines; Add FRET line is a separate
+user action. The example is not a vendor calibration. See the
+[FRET-line workflow](docs/guides/82_fret_lines.md) and
+[FRET theory](docs/concepts/fret.md).

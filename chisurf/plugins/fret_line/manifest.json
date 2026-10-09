@@ -30,6 +30,6 @@
   "rpc_methods": [],
   "events": [],
   "dependencies": {},
-  "menu_hidden": true,
+  "menu_hidden": false,
   "deprecated": false
 }
