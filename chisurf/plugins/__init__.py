@@ -204,7 +204,7 @@ def _read_manifest_metadata(plugin_dir: pathlib.Path):
 
     return {
         "plugin_name": manifest.display_name or manifest.id,
-        "description": manifest.description or legacy_description or "No description available.",
+        "description": (manifest.entrypoints.action.description if manifest.entrypoints.action else manifest.description or legacy_description or "No description available."),
         "cli_entrypoint": cli_entrypoint,
         # A tool is CLI-only when it offers no way in from a menu. That is *not*
         # the same as having no ``gui`` entrypoint: the older tools are entered by
@@ -212,7 +212,7 @@ def _read_manifest_metadata(plugin_dir: pathlib.Path):
         # names. Deriving this from ``gui`` alone dropped every script-launched
         # tool out of the menus the moment it gained a manifest.
         "cli_only": not (
-            manifest.entrypoints.gui or manifest.entrypoints.emtk or manifest.entrypoints.script
+            manifest.entrypoints.gui or manifest.entrypoints.emtk or manifest.entrypoints.script or manifest.entrypoints.action
         ),
         "menu_hidden": bool(manifest.menu_hidden),
         "manifest_id": manifest.id,

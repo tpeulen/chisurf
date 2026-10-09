@@ -70,6 +70,7 @@ A fresh process on the live checkout reported:
 - Discovery added **no plugin submodules** to `sys.modules` and did not import `jsonschema`.
 - Native-only IDs: `about`, `bid_to_analysis`, `menu_switch`, `tttr_header_edit`, `tttr_splitter`.
 - The real `menu_switch` action opened `MenuSwitchApp` in a marked native ControlHost, rendered a readable offscreen window, and released registry ownership after close/destruction. The PNG was viewed, not merely generated.
+- *Superseded 2026-10-10:* Menu Switch is now an `action` entrypoint that toggles its host window and opens no window; `MenuSwitchApp` and the legacy Qt widget were deleted. See `docs/development/plugin_architecture.md` and `test/gui/test_menu_switch_main_window.py`.
 - Observed medians on this loaded host: registry discovery **317.30 ms**, cold menu discovery **216.15 ms**, cached menu access **0.00079 ms**. These are snapshot observations, not a cross-machine performance guarantee.
 
 Evidence was produced under `/Users/tpeulen/.hermes/cache/scratch/plugin-system/`: `core-final.xml`, `integration-final.xml`, `combined-final.xml`, `dependencies-final.xml`, `smoke_plugin_system.py`, `smoke-results.json`, and `native-menu-launch.png`. Scratch files may expire; the commands below reproduce the durable checks. The screenshot is launch/lifetime evidence, **not** acceptance of every control or every plugin port.

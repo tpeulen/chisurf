@@ -2,6 +2,16 @@
 
 ## 2026-10-10
 
+- Menu Switch is a typed host `action` entrypoint (`target`, `description`,
+  explicit `requires_main_window`; exclusive of gui/emtk/script) dispatched by
+  `execute_plugin_action` from menu, ribbon and registry; the disconnected
+  native window and legacy Qt widget are deleted. Real main-window test proves
+  menu↔ribbon toggle, saved preference and no window. Literal allowances
+  1148→1144. A log relay deleted with its app no longer raises from logging.
+  A0 amended: i18n/catalogue work is deferred to one queued Haiku job.
+  TTTR awaits/BID/remaining W6f stay open.
+  [Docs](../docs/development/plugin_architecture.md).
+
 - About now declares Help/Copydetails/Guide/Close, conditional feedback and its
   unchanged default geometry. Actual three-step awaits, clipboard failure/retry,
   terminalClose, six locales and inspected98/pass before/after retainidentity.

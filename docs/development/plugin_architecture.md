@@ -34,9 +34,20 @@ import finders; fresh scans refresh those finders too. This makes newly installe
 packages visible even within filesystem timestamp granularity. It does **not**
 reload modules already in `sys.modules`; restart after replacing imported code.
 
-A manifest is GUI-capable when it declares `gui`, `emtk`, or `script` (subject to
-explicit visibility/CLI-only metadata). Native-only tools therefore do not vanish
-from GUI discovery. `PluginRegistry.register_gui()` creates menu actions lazily:
+A manifest is GUI-capable when it declares `gui`, `emtk`, `script` or `action`
+(subject to explicit visibility/CLI-only metadata). Native-only tools therefore do
+not vanish from GUI discovery.
+
+An `action` entrypoint is a contextual operation on the host, not a window. It
+declares `target` (`module:callable`), a `description` (the menu tooltip) and an
+explicit `requires_main_window` boolean, and may not be combined with `gui`,
+`emtk` or `script`. The callable receives the caller's `PluginContext` and
+returns a dict with a boolean `ok`; `execute_plugin_action()` runs it through
+the non-replayable action dispatcher, refuses before importing the target when a
+required main window is absent (`available: False`), and turns a raised handler
+into a reported failure. Menu, ribbon and registry entries all reach it, and none
+falls back to executing `__init__.py`. Menu Switch is the shipped example: it
+toggles the owning window between menu bar and ribbon and saves the preference. `PluginRegistry.register_gui()` creates menu actions lazily:
 the current explicit Qt/emtk mode and preview gate are applied when an action is
 triggered, without importing an unavailable alternative during menu construction.
 The registry retains the injected loader and each opened window until Qt destroys

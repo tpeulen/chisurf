@@ -282,7 +282,7 @@ class PluginRegistry:
                     entrypoint,
                 )
 
-    def register_gui(self, menu: Any) -> None:
+    def register_gui(self, menu: Any, context: Any = None) -> None:
         """Attach lazy plugin GUI actions without importing plugin code.
 
         The selected Qt/emtk factory is resolved only when an action is triggered,
@@ -295,15 +295,26 @@ class PluginRegistry:
 
         """
         for manifest in self._manifests.values():
-            if not (manifest.entrypoints.gui or manifest.entrypoints.emtk) or manifest.menu_hidden:
+            if not (manifest.entrypoints.gui or manifest.entrypoints.emtk or manifest.entrypoints.action) or manifest.menu_hidden:
                 continue
             try:
                 action = menu.addAction(manifest.display_name or manifest.id)
-                action.triggered.connect(
-                    lambda checked=False, manifest=manifest: _show_plugin(
-                        None, manifest, loader=self._loader, windows=self._gui_windows,
+                if manifest.entrypoints.action is not None:
+                    declaration = manifest.entrypoints.action
+                    available = not declaration.requires_main_window or getattr(context, "main_window", None) is not None
+                    action.setToolTip(declaration.description if available else declaration.description + " " + _action_unavailable())
+                    action.setEnabled(available)
+                    action.triggered.connect(
+                        lambda checked=False, manifest=manifest: execute_plugin_action(
+                            manifest, context, loader=self._loader,
+                        )
                     )
-                )
+                else:
+                    action.triggered.connect(
+                        lambda checked=False, manifest=manifest: _show_plugin(
+                            None, manifest, loader=self._loader, windows=self._gui_windows,
+                        )
+                    )
                 _log.info("Registered GUI for plugin %r", manifest.id)
             except Exception:
                 _log.exception("Failed to register GUI for plugin %r", manifest.id)
@@ -340,6 +351,49 @@ def _read_legacy_metadata(plugin_dir: pathlib.Path) -> dict[str, Any] | None:
         }
     except Exception:
         return None
+
+
+def _action_unavailable() -> str:
+    """Explain why a contextual action cannot run in a standalone invocation."""
+    from chisurf.core.support.i18n import tr
+
+    return tr("This action requires an open ChiSurf main window.")
+
+
+def execute_plugin_action(manifest: PluginManifest, context: Any = None, *, loader: _EntrypointLoader | None = None) -> dict[str, Any]:
+    """Invoke one declared action through the existing non-replayable action dispatcher."""
+    from chisurf.core.api.context import PluginContext
+
+    declaration = manifest.entrypoints.action
+    if declaration is None:
+        raise ValueError(f"Plugin {manifest.id!r} has no action entrypoint")
+    if context is None:
+        context = PluginContext()
+    if not isinstance(context, PluginContext):
+        return {"ok": False, "available": False, "error": "Plugin actions require PluginContext."}
+    if declaration.requires_main_window and context.main_window is None:
+        return {"ok": False, "available": False, "error": _action_unavailable()}
+    from chisurf.core.actions import ActionDispatcher, ActionRegistry, ActionSpec
+
+    action_registry = ActionRegistry()
+    name = "plugin." + manifest.id
+    try:
+        target = (loader or _DefaultLoader()).load(declaration.target)
+        if not callable(target):
+            raise TypeError(f"Plugin action {declaration.target!r} is not callable")
+        action_registry.register(ActionSpec(
+            name=name, schema={"context": PluginContext}, replayable=False,
+            side_effect_class="ui", handler=target,
+        ))
+        result = ActionDispatcher(action_registry, history_provider=lambda: None).execute(
+            name, payload={"context": context}, summary=declaration.description,
+        )
+        if not isinstance(result, dict) or type(result.get("ok")) is not bool:
+            raise TypeError("Plugin actions must return a result dictionary with boolean 'ok'")
+        return result
+    except Exception as error:
+        _log.exception("Plugin action %r failed", manifest.id)
+        return {"ok": False, "available": True, "error": f"Plugin action {manifest.id!r} failed: {error}"}
 
 
 def select_gui_entrypoint(manifest: PluginManifest, mode: str = "auto") -> tuple[str, str] | None:

@@ -377,10 +377,35 @@ def _show_manifest_gui(main_window, plugin_dir) -> bool:
         entry point", and the legacy macro path takes over.
     """
     from chisurf.core.plugin.manifest import load_manifest
-    from chisurf.core.plugin.registry import apply_manifest_statefulness, build_plugin_widget
+    from chisurf.core.plugin.registry import (
+        apply_manifest_statefulness,
+        build_plugin_widget,
+        execute_plugin_action,
+    )
 
     manifest = load_manifest(pathlib.Path(plugin_dir) / "manifest.json")
     entrypoints = getattr(manifest, "entrypoints", None)
+    if manifest is not None and getattr(entrypoints, "action", None) is not None:
+        from chisurf.core.api.context import PluginContext
+
+        context = getattr(main_window, "plugin_context", None)
+        if not isinstance(context, PluginContext) or context.main_window is not main_window:
+            context = PluginContext(
+                api=getattr(context, "api", getattr(main_window, "api", None)),
+                client=getattr(context, "client", None), main_window=main_window,
+            )
+        try:
+            result = execute_plugin_action(manifest, context)
+            if not result["ok"]:
+                message = str(result.get("error", "Plugin action did not complete."))
+                cs.logging.warning(message)
+                status_bar = getattr(main_window, "statusBar", None)
+                if callable(status_bar):
+                    status_bar().showMessage(message, 5000)
+        except Exception:
+            cs.logging.exception("Could not execute plugin action %r", manifest.id)
+        # Recognized actions never fall through to legacy script execution.
+        return True
     if not manifest or not (getattr(entrypoints, "gui", None) or getattr(entrypoints, "emtk", None)):
         return False
 

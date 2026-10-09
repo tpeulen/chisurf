@@ -268,7 +268,12 @@ class QTextEditLogger(logging.Handler):
             wake = not self._wake_pending
             self._wake_pending = True
         if wake:
-            self._relay.wake.emit()
+            try:
+                self._relay.wake.emit()
+            except RuntimeError:
+                # The relay died with its QApplication/widget; a logging call
+                # must never raise, so later records are simply not mirrored.
+                pass
 
     def _on_wake(self):
         """Runs on the GUI thread (queued from :meth:`emit`)."""

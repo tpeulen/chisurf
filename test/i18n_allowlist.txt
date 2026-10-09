@@ -699,10 +699,6 @@ chisurf/plugins/core/lightpath_simulator/gui/emtk_view.py#call@360:8/arg0:untran
 chisurf/plugins/core/lightpath_simulator/gui/emtk_view.py#call@365:8/arg0:untranslated-literal
 chisurf/plugins/core/lightpath_simulator/gui/emtk_view.py#call@403:25/arg0:untranslated-literal
 chisurf/plugins/core/lightpath_simulator/gui/emtk_view.py#call@404:8/arg0:untranslated-literal
-chisurf/plugins/core/menu_switch/app.py#call@24:8/arg0:untranslated-literal
-chisurf/plugins/core/menu_switch/app.py#call@25:11/arg0:untranslated-literal
-chisurf/plugins/core/menu_switch/app.py#call@26:12/arg0:untranslated-literal
-chisurf/plugins/core/menu_switch/app.py#call@36:12/arg0:untranslated-literal
 chisurf/plugins/core/mmfdb_admin/gui/app.py#call@208:16/arg0:untranslated-literal
 chisurf/plugins/core/mmfdb_admin/gui/app.py#call@213:16/arg0:untranslated-literal
 chisurf/plugins/core/mmfdb_admin/gui/app.py#call@218:16/arg0:untranslated-literal

@@ -1,7 +1,7 @@
 ---
 type: Plugin Reference
 title: Menu Switch
-description: 'Menu Switch This plugin provides a simple toggle to switch between the traditional menu bar and the modern ribbon interface in ChiSurf. Features: - One-click switching between menu and ribbon interfaces - Automatic state detection and switching - Persistent preference saving - Seamless transition without requiring restart The Menu Switch plugin allows users to easily toggle between the traditional menu bar interface and the modern ribbon interface based on their preference or workflow requirements. The current interface state is automatically saved and restored on application startup. This plugin is particularly useful for users who want to quickly switch between interfaces for different tasks or for those who are evaluating which interface works best for their workflow.'
+description: Menu Switch Switches the open ChiSurf main window between the traditional menu bar and the ribbon, without a restart. The choice is saved and restored at the next start. Menu Switch opens no window of its own.
 resource: chisurf/plugins/core/menu_switch/
 tags: [reference, plugins, menu-switch, setup]
 anchor: plugin-menu_switch
@@ -11,7 +11,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-menu_switch)=
 # Menu Switch
 
-Menu Switch  This plugin provides a simple toggle to switch between the traditional menu bar  and the modern ribbon interface in ChiSurf.  Features: - One-click switching between menu and ribbon interfaces - Automatic state detection and switching - Persistent preference saving - Seamless transition without requiring restart  The Menu Switch plugin allows users to easily toggle between the traditional menu bar interface and the modern ribbon interface based on their preference or workflow requirements. The current interface state is automatically saved and restored on application startup.  This plugin is particularly useful for users who want to quickly switch between interfaces for different tasks or for those who are evaluating which interface works best for their workflow.
+Menu Switch  Switches the open ChiSurf main window between the traditional menu bar and the ribbon, without a restart. The choice is saved and restored at the next start. Menu Switch opens no window of its own.
 
 ## Identity
 
@@ -21,11 +21,11 @@ Menu Switch  This plugin provides a simple toggle to switch between the traditio
 | Menu path | Setup → **Menu Switch** |
 | Categories | Setup |
 | Version | 1.0.0 |
-| Surfaces | emtk, script |
+| Surfaces | action |
 
 ## Parameters
 
-This plugin's window is an EMTK app: its controls and tables are described in the plugin's guide, and the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+This plugin opens no window and has no parameters: it is an action on the ChiSurf host. Switch the current ChiSurf window between the menu bar and ribbon, and save the interface preference. It is only available from an open ChiSurf main window.
 
 ## Source
 

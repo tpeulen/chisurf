@@ -63,7 +63,7 @@ Of the **130 plugins**, **90** build their interface from declarative AutoForm s
 | --- | --- |
 | [Channel Definition](setup_channel_definition.md) *(hidden)* | Detector Channel and PIE-window definition wizard |
 | [FCS Definitions](fcs_channel_preset.md) *(hidden)* | FCS channel definition plugin per detector setup |
-| [Menu Switch](menu_switch.md) | Menu Switch  This plugin provides a simple toggle to switch between the traditional menu bar  and the modern ribbon interface in ChiSurf.  Features: - One-click switching between menu and ribbon interfaces - Automatic state detection and switching - Persistent preference saving - Seamless transition without requiring restart  The Menu Switch plugin allows users to easily toggle between the traditional menu bar interface and the modern ribbon interface based on their preference or workflow requirements. The current interface state is automatically saved and restored on application startup.  This plugin is particularly useful for users who want to quickly switch between interfaces for different tasks or for those who are evaluating which interface works best for their workflow. |
+| [Menu Switch](menu_switch.md) | Menu Switch  Switches the open ChiSurf main window between the traditional menu bar and the ribbon, without a restart. The choice is saved and restored at the next start. Menu Switch opens no window of its own. |
 | [Models](model_manager.md) *(hidden)* | Model Manager for ChiSurf |
 | [Plots](plot_settings.md) *(hidden)* | Configure plot appearance, colors, and rendering backend |
 | [Plugins](plugin_manager.md) *(hidden)* | Plugin Manager for ChiSurf |

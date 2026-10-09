@@ -33,6 +33,15 @@ class RPCMethodSpec:
 
 
 @dataclass
+class PluginActionEntrypoint:
+    """A contextual host action, distinct from a factory that creates a window."""
+
+    target: str
+    description: str
+    requires_main_window: bool
+
+
+@dataclass
 class PluginEntrypoints:
     """Plugin entrypoint strings.
 
@@ -51,6 +60,8 @@ class PluginEntrypoints:
     script: str | None = None
     #: Qt-free factory returning an EMTK control or surface for native/web hosts.
     emtk: str | None = None
+    #: Contextual operation receiving PluginContext; never constructs a plugin window.
+    action: PluginActionEntrypoint | None = None
 
 
 @dataclass
@@ -186,12 +197,18 @@ class PluginManifest:
 
         """
         entrypoints_data = data.get("entrypoints") or {}
+        action_data = entrypoints_data.get("action")
         entrypoints = PluginEntrypoints(
             gui=entrypoints_data.get("gui"),
             cli=entrypoints_data.get("cli"),
             services=entrypoints_data.get("services"),
             script=entrypoints_data.get("script"),
             emtk=entrypoints_data.get("emtk"),
+            action=PluginActionEntrypoint(
+                target=action_data["target"],
+                description=tr(action_data["description"]),
+                requires_main_window=action_data["requires_main_window"],
+            ) if action_data is not None else None,
         )
 
         methods = [
@@ -271,6 +288,7 @@ class PluginManifest:
                 "services": self.entrypoints.services,
                 "script": self.entrypoints.script,
                 "emtk": self.entrypoints.emtk,
+                "action": dataclasses.asdict(self.entrypoints.action) if self.entrypoints.action else None,
             },
             "rpc_methods": [
                 {
@@ -398,6 +416,23 @@ def build_manifest_schema() -> dict:
         "properties": _props(PluginEntrypoints),
         "additionalProperties": False,
     }
+    action_def = {
+        "type": "object",
+        "properties": {
+            **_props(PluginActionEntrypoint),
+            "target": {"type": "string", "pattern": r"^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*:[A-Za-z_]\w*$"},
+            "description": {"type": "string", "pattern": r"\S"},
+        },
+        "required": ["target", "description", "requires_main_window"],
+        "additionalProperties": False,
+    }
+    entrypoints_def["properties"]["action"] = {
+        "anyOf": [{"$ref": "#/$defs/action"}, {"type": "null"}]
+    }
+    entrypoints_def["allOf"] = [{
+        "if": {"required": ["action"], "properties": {"action": {"type": "object"}}},
+        "then": {"properties": {kind: {"enum": [None, ""]} for kind in ("gui", "emtk", "script")}},
+    }]
     window_state_def = {
         "type": "object",
         "properties": _props(PluginWindowState),
@@ -474,6 +509,7 @@ def build_manifest_schema() -> dict:
         "additionalProperties": False,
         "$defs": {
             "entrypoints": entrypoints_def,
+            "action": action_def,
             "window_state": window_state_def,
             "rpc_method": rpc_method_def,
         },
@@ -766,8 +802,28 @@ def _validate_entrypoints(data: dict[str, Any]) -> list[str]:
     errors.extend(
         f"entrypoints field {key!r} must be a string or null"
         for key, value in entrypoints.items()
-        if key in allowed and value is not None and not isinstance(value, str)
+        if key in allowed and key != "action" and value is not None and not isinstance(value, str)
     )
+    action = entrypoints.get("action")
+    if action is not None:
+        import re
+
+        if not isinstance(action, dict):
+            errors.append("entrypoints.action must be an object or null")
+        else:
+            fields = {field.name for field in dataclasses.fields(PluginActionEntrypoint)}
+            if set(action) != fields:
+                errors.append("entrypoints.action requires only target, description and requires_main_window")
+            target = action.get("target")
+            if not isinstance(target, str) or not re.fullmatch(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*:[A-Za-z_]\w*", target):
+                errors.append("entrypoints.action.target must be module:callable")
+            description = action.get("description")
+            if not isinstance(description, str) or not description.strip():
+                errors.append("entrypoints.action.description must explain the operation")
+            if type(action.get("requires_main_window")) is not bool:
+                errors.append("entrypoints.action.requires_main_window must be an explicit boolean")
+        if any(entrypoints.get(kind) for kind in ("gui", "emtk", "script")):
+            errors.append("entrypoints.action cannot also declare a GUI factory or legacy script")
     return errors
 
 

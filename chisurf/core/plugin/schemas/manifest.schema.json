@@ -166,8 +166,76 @@
             "string",
             "null"
           ]
+        },
+        "action": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/action"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "action"
+            ],
+            "properties": {
+              "action": {
+                "type": "object"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "gui": {
+                "enum": [
+                  null,
+                  ""
+                ]
+              },
+              "emtk": {
+                "enum": [
+                  null,
+                  ""
+                ]
+              },
+              "script": {
+                "enum": [
+                  null,
+                  ""
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "action": {
+      "type": "object",
+      "properties": {
+        "target": {
+          "type": "string",
+          "pattern": "^[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)*:[A-Za-z_]\\w*$"
+        },
+        "description": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "requires_main_window": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "target",
+        "description",
+        "requires_main_window"
+      ],
       "additionalProperties": false
     },
     "window_state": {

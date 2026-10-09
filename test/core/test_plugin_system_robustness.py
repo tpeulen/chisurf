@@ -419,7 +419,7 @@ def test_registry_gui_mode_is_resolved_at_click_time(tmp_path, qapp, monkeypatch
     from qtpy import QtCore, QtWidgets
 
     from chisurf.core import settings
-    from chisurf.plugins.core.menu_switch.app import make_app
+    from chisurf.plugins.core.about.gui.app import make_app
 
     class Loader:
         def __init__(self):
@@ -461,7 +461,7 @@ def test_registry_native_action_opens_real_host(tmp_path, qapp, monkeypatch):
 
     monkeypatch.setitem(settings.cs_settings, "plugins", {"gui_mode": "auto"})
     _plugin(tmp_path, "native", "native", entrypoints={
-        "emtk": "chisurf.plugins.core.menu_switch.app:make_app",
+        "emtk": "chisurf.plugins.core.about.gui.app:make_app",
     })
     registry = PluginRegistry()
     registry.discover([tmp_path])

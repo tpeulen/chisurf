@@ -420,6 +420,12 @@ def _plugin_page(manifest: dict, plugin_dir: pathlib.Path, registry_params: dict
                     "| --- | --- | --- | --- | --- | --- |"]
             out += ["| " + " | ".join(c) + " |" for c in cells_list]
             out.append("")
+    elif (manifest.get("entrypoints") or {}).get("action"):
+        action = manifest["entrypoints"]["action"]
+        host = " It is only available from an open ChiSurf main window." if action.get(
+            "requires_main_window") else ""
+        out += ["This plugin opens no window and has no parameters: it is an action on the "
+                f"ChiSurf host. {_md(action.get('description', ''))}{host}", ""]
     elif (manifest.get("entrypoints") or {}).get("emtk"):
         out += ["This plugin's window is an EMTK app: its controls and tables are described in the "
                 "plugin's guide, and the fit/model parameters it edits are defined in the "
