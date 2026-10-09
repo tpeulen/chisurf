@@ -243,3 +243,13 @@ Host layout is independent of accessible-volume computation. The native FPS
 card preserves the calculated point clouds, mean positions and grid spacing
 when its host window changes. The [workflow](../guides/23_accessible_volume.md)
 distinguishes loaded input from actual AV computation.
+
+### Structure Tools host geometry
+
+The Structure Tools native hub declares an initial 1100 × 720 logical-pixel
+window, with saved user geometry taking precedence. This host metadata does
+not alter accessible-volume calculations, structure coordinates or FPS
+restraints. Each child retains its own controls and scientific state while
+selected. The [Structure Tools workflow](../guides/88_structure_tools.md) shows
+a populated native workspace and explains the distinction between host
+preferences and computed results.

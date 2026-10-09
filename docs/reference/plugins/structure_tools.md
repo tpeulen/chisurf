@@ -104,3 +104,4 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 - UI spec: {src}`chisurf/plugins/modelling/structure_tools/cards/views/fps_distances.view.json`
 - UI spec: {src}`chisurf/plugins/modelling/structure_tools/cards/views/fps_flexfit.view.json`
 - UI spec: {src}`chisurf/plugins/modelling/structure_tools/cards/views/fps_positions.view.json`
+- UI spec: {src}`chisurf/plugins/modelling/structure_tools/gui/window.view.json`

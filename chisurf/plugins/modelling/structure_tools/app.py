@@ -10,11 +10,14 @@ editor, docking and QuEst are the cards in ``cards/``.
 from __future__ import annotations
 
 import importlib
+import json
+from pathlib import Path
 
 from emtk import i18n, im
 from emtk.app import ImApp
 
 from chisurf.emtk.plugin_icons import entry_icon
+from chisurf.plugins.emtk_layout import window_size
 
 from .registry import STRUCTURE_TOOL_PANELS
 from .strings import install_translations
@@ -30,6 +33,8 @@ class StructureToolsHubApp(ImApp):
     """Keep each structure tool alive while the user works in another."""
 
     def __init__(self) -> None:
+        primary = json.loads((Path(__file__).parent / "gui/window.view.json").read_text())
+        self.window_size = window_size(primary, (1100, 720))
         self.entries = STRUCTURE_TOOL_PANELS
         self.selected = self.entries[0]["name"]
         self.children: dict[str, ImApp] = {}

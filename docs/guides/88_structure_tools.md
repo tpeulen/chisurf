@@ -1,9 +1,8 @@
 # Structure Tools: FPS JSON editor, docking and QuEst
 
-**Tool:** *Structure -> Structure Tools*. A list of structure-modelling tools on the left (with a search box and
+**Tool:** *Structure → Modelling → Structure Tools*. A list of structure-modelling tools on the left (with a search box and
 **Back** / **Next**), the selected tool on the right. This page covers the three tools that are cards of the hub:
-the **FPS JSON Editor**, **Docking & Screening** and **QuEst**. The other three (Kappa2 Distribution, HydroPro,
-Trajectory Tools) have their own guides: [kappa2](61_kappa2_distribution.md), [HydroPro](79_hydropro.md),
+the **FPS JSON Editor**, **Docking & Screening** and **QuEst**. The other two (HydroPro and Trajectory Tools) have their own guides: [HydroPro](79_hydropro.md),
 [trajectory tools](81_trajectory_tools.md). Press **Guide** in any card for a step-by-step tour and **Help** for the
 reference.
 
@@ -70,3 +69,24 @@ Simulates a tethered dye diffusing over a protein with PET quenching (and FRET):
 the dye, the simulation and quenching settings, **Simulate**; the plots, a 3D trace with the attachment sites, the
 **Quenching Chemistry** table and the **Project JSON** are tabs. It needs the IMP.bff quenching tables; without them the
 card says so and offers **Retry**. See also the [QuEst guide](80_quenching_estimator.md).
+
+## Native workspace dimensions
+
+The native hub starts at **1100 × 720 logical pixels**. A saved host size takes
+precedence on reopening. The five tools share the navigation rail; changing
+tools keeps their existing child instances alive. Search, Back and Next remain
+available when the window is narrow.
+
+```{figure} figures/structure_hub_native_primary_window.png
+:width: 100%
+
+The native hub with the shipped HIV reverse-transcriptase FPS document loaded:
+20 distance restraints and the selected restraint's settings. The coordinate
+plot is the existing fallback when the molecular renderer is unavailable.
+```
+
+The host declaration changes neither the FPS document nor its coordinates.
+Tables scroll when columns or rows exceed the available space. Geometry and
+the selected tool use the native preference mechanism; computed AVs, docking
+results and simulations still require their own workflow and are not a saved
+scene snapshot. See [accessible volumes](../concepts/accessible_volume.md).
