@@ -1,3 +1,11 @@
+---
+type: Report
+title: Native fluorescence lifetime workflow audit
+description: Audit of native lifetime-analysis tools, their retained scientific workflows,
+  interaction and numerical evidence, visual references, and remaining acceptance
+  qualifications.
+---
+
 # Native fluorescence lifetime workflow audit
 
 These are native EMTK factories registered in the existing manifests. The original Qt entrypoints remain available as lazy compatibility adapters. Declared native entrypoints alone are not treated as proof of parity.

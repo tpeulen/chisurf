@@ -1,3 +1,10 @@
+---
+type: Plan
+title: Production plugin CLI consistency — Implementation Plan
+description: Plan and scoped verification record for import-free CLI discovery, Python
+  package identity, manifest ownership, and faithful Click command forwarding.
+---
+
 # Production plugin CLI consistency — Implementation Plan
 
 **Status:** Complete within scoped acceptance; parsing cleanup/hot-reload/alias-order limitations remain in the owning concept.

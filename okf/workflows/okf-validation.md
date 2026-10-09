@@ -83,3 +83,17 @@ heading, so later design sections are not misclassified as pickup work.
 The game-host batch subsequently closes the15historical PICKUP findings in
 `subsystems/chigame.md` by separating its real resume from preserved history.
 The current baseline has2,405findings; no new allowance was added.
+
+## Concurrent knowledge integration — 2026-10-10
+
+A finite no-new prerequisite repairs88 newly committed findings without hiding
+older W0b debt. Frontmatter and bounded resumes preserve all old history. Known
+issue status/dates follow real source/commit evidence; unverified outcomes stay
+open.52 ignored historical images and adjacent provenance are published in one
+archive with explicit member names, not broken image links or new acceptance
+claims. Exact source-backed comparison removes67 genuinely stale records:
+the baseline shrinks2405→2338 with zero new or stale candidate findings.
+[Acceptance](../validation/release-readiness-w0a/concurrent-okf-acceptance.json).
+The production UI checks also pass on committed0b7e5e48e; their genuinely
+post-publication log is retained in the same integration evidence. W0b must
+still reach zero; this is not its full cleanup or programme completion.

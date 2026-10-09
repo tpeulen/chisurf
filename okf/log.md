@@ -2,6 +2,12 @@
 
 ## 2026-10-10
 
+- Repaired88 new committed OKF findings with preserved history/issue payloads
+  and truthful status evidence; archived52 historical ignored images plus their
+  provenance. Exact shrinking baseline2405→2338 has no new/stale candidate debt.
+  UI no-new production checks pass on0b7e5e48e. About/action/BID and remaining
+  W6f/W0b/programme gates remain active.
+
 - Repaired the finite committed UI guard prerequisite:17new tooltip and144new
   direct literal sites, including true H2MM tuple translation. Source/action
   parity and exact occurrence proofs shrink allowances to1023tooltip/1148literal;

@@ -1,3 +1,10 @@
+---
+type: Plan
+title: Plugin System Hardening Implementation Plan
+description: Hardening plan for manifest validation, deterministic plugin discovery,
+  native entrypoint reachability, and registry regression checks.
+---
+
 # Plugin System Hardening Implementation Plan
 
 > **For Hermes:** Use subagent-driven-development for independent implementation/review tasks; preserve the shared working tree and do not commit or push.

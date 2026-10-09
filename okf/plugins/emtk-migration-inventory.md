@@ -1,8 +1,24 @@
+---
+type: Report
+title: EMTK plugin migration inventory
+description: Dated inventory of plugin GUI entrypoints, native and legacy source boundaries,
+  test coverage indicators, migration lanes, and required parity evidence.
+---
+
 # EMTK plugin migration inventory
 
 Snapshot: 2026-09-27. This is a source inventory, not evidence that any plugin has passed its migration acceptance checks. Existing uncommitted work is included.
 
 ## Where to pick this up
+
+1. Measure: Re-derive native launch and embedding behavior through `app.draw(PixelPainter, ...)` and `ControlHost(factory())`, as in the recorded audit. Calling `app.gui()` alone bypasses hub child selection and can produce a false pending page.
+2. Open: Use the recorded hand-drawn-form findings to scope the shared tool scaffold and spec conversion; handwritten label columns and tooltip bookkeeping were the identified source of panel drift.
+3. Measure: Check exact numeric entry and slider discoverability against the recorded calculator behavior before changing deliberately selected slider defaults.
+4. Measure: Revalidate `test_the_demo_is_a_readable_ptu_whose_flow_comes_back` and inspect the recorded `ChiSurf_DemoFrames` header change first; the historical `n_escaped == 25` result is not a new run.
+5. Open: Remove the recorded unused palette constants when their owning files are next touched, preserving the actual Run/Stop accent colors.
+6. Tried and reverted: Contact-sheet labels and crops produced three false clipping/overlap findings. Judge the original full-size PNGs; the audit chronology and measurements are retained below.
+
+## Recorded history and follow-up details
 
 Audit of 2026-09-30 (headless render of every `entrypoints.emtk` factory, then the same route ChiSurf uses: `ControlHost(factory())`). Re-derive with a loop over manifests calling `app.draw(PixelPainter, ...)` -- **not** `app.gui()`: hub apps (`filetools`, `games`, `imaging_tools`) pick their child inside `ImApp.draw`, so `gui()` shows a false "panel pending" page.
 

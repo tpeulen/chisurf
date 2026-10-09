@@ -13,7 +13,7 @@ retaining both option labels/values and narrow access. Exact measurement:
 
 ## Shared anisotropy convention comments need an owner audit (2026-10-09)
 
-status: queued
+status: open — queued convention audit; the calculator-specific fix does not establish all consumer conventions.
 
 core/fluorescence/anisotropy/rt.py computes G*VH, matching its equation and
 G=VV/VH, but its explanatory comments still describe a reciprocal convention
@@ -25,7 +25,7 @@ policy; not a blocker for the verified calculator path.
 
 ## Fractional shift tail-window interpolation needs focused follow-up (2026-10-09)
 
-status: queued
+status: open — independent fractional-shift comparison remains pending.
 
 The G-factor tail estimator selects nearest shifted region indices and only
 interpolates if selected lengths differ; display anisotropy uses fractional
@@ -68,7 +68,7 @@ all engine/test ASTs matched committed sources before fixture edits.
 
 ## BVA input annotations — resolved source, publication pending (2026-10-09)
 
-status: resolved
+status: resolved 2026-10-09 — scoped source and acceptance were published in 0de37f883536; pending-publication wording below is historical.
 
 Four sequence annotations now describe immutable tuple defaults and list inputs;
 the companion-discovery suffix tuple declares its variable length. Exact default
@@ -78,6 +78,8 @@ diagnostics are resolved in writable source; canonical publication remains
 pending. [Acceptance](../validation/release-readiness-w6g/bva-type-contract-acceptance.json).
 
 ## Background view loader strict typing — inherited, 2026-10-09
+
+status: open — the recorded strict typing failure is not a claimed runtime failure.
 
 With `--check-untyped-defs`, BackgroundViewModel.view_spec accesses sections on
 an emtk Section union without narrowing to its declared dock_area type. Two
@@ -125,6 +127,34 @@ the actual physical regressions and cold-fit reference. Exact before/after
 identities and commands are in
 [the scientific-owner archive](../validation/release-readiness-w6g/lltf-selection-owner-current-job.zip).
 
+## Structure Tools isolated ribbon check depends on an uncommitted loader
+
+status: open — loader publication is now recorded in 1abd5eff19c7; isolated ribbon acceptance remains to be verified.
+
+Observed 2026-10-09 at HEAD 6bcec3cb5: the committed Structure Tools
+`test_native.py::test_structure_ribbon_entries_resolve_native` imports
+`select_gui_entrypoint`, absent from committed `core/plugin/registry.py`. It fails
+in a private HEAD package, while the exact affected test passes in the live tree
+where a separate stream has implemented that loader. The W6g hub-size candidate
+preserves/excludes those foreign changes; its four owned tests are independent.
+Publication/integration of the plugin-loader lane must precede a clean committed
+ribbon-route acceptance. Do not copy the entire foreign registry diff merely to
+make an isolated geometry test green. Evidence is in the Structure Tools final
+archive under `green-corrected.txt` and `ribbon-live.txt`.
+
+## H2MM settings JSON omits the detector definition promised by toolbar help
+
+status: open — the recorded custom detector setup round-trip is not covered by geometry acceptance.
+
+Observed2026-10-09 during the native host unit at HEAD6bcec3cb5.
+`burst_h2mm/gui/model.py::settings_dict` exports only SETTING_FIELDS, which do
+not include setup; save_settings serializes that dict and load_settings restores
+only those fields. The native Save settings tooltip promises detector definitions.
+Custom detector routing/micro-time windows therefore need separate retention.
+The host-size candidate preserves this pre-existing behavior, documents it and
+queues a bounded settings-file contract repair with custom-setup round-trip tests.
+Do not claim the current geometry-only native persistence restores a computed
+fit or a custom detector setup. Owner: W6g/W3 settings integration.
 ## Legacy emtk immediate table scroll flags are ignored (2026-10-08)
 
 status: open
@@ -267,6 +297,35 @@ was asked not to change: the rail has a fixed width (26 % of the window, at most
 800 px `7. Burst segmentation (H2MM)` is clipped (its tooltip carries the description); and the header shows the rail
 name, so the step badge (`2. Burst Selection (2)`) appears there too. Both want an additive ToolHubApp option
 (a collapsible rail, a separate display name for the header).
+
+## 2026-10-06: defects found while retaking the manual's screenshots
+
+status: open — only the explicitly dated subitems below are resolved; remaining issues stay open.
+
+Fixed at once (`1182fe7ea`): the global-fit editor's Add/Remove/Add-global-parameter
+actions, its always-empty Local fits table, the silent `append_global_parameter`
+macro, unnamed background / Lin. table copies. Still open -- details and
+reproduction in `okf/validation/manual-screenshots/{fcs,general,anisotropy}.json`:
+
+- **Resolved 2026-10-07, global completion/display:** graph write-back now
+  publishes exact root/member fit events without reevaluation; Main refreshes
+  UID-matched windows. The real three-A488 fixture gives chi2r
+  0.9999763241843488, legitimately formatted as1.0000; explicit residual
+  arithmetic agrees, so no objective formula was changed.23 focused cases pass.
+- **Resolved 2026-10-07, Parse-Model link menu:** additive active-structure
+  metadata restricts the menu to the equation's six targets while retaining
+  all134 scientific catalogue ports and identities. Actual before/after menus
+  and native member/global Info pages were rendered and inspected. See
+  [verification](../validation/release-readiness-w7.md).
+- **FCS hub:** the Correlator labels lag time in ms, the Merger in s, for the same curves.
+- **Confocor3 reader** loads every file as AC1/AC2/CC12/CC21 together; no single-channel option.
+- **Global View Load** needs the fitting server: on fits it does not know it reports
+  "the fitting server did not answer" and restores no links.
+- **Saving a fit in the `arm64` env** stops at the report step: python-docx is
+  declared (pixi, pyproject) but missing from that env; `.fit.json`, CSV and info
+  files are written before it.
+- **Guide 10** names "Spectroscopy -> Fluorescence decay -> Anisotropy-Wizard"; the
+  plugin is `menu_hidden`, reached via Tools -> Calculators -> Wizards -> Anisotropy.
 
 ## Burst Selection Qt tool records wrong values beside a correct search (2026-10-05)
 
@@ -6611,33 +6670,6 @@ compare the commands the two hosts build and check one fit with tolerances for t
 `random_seed` setting (default fixed, so a run is repeatable) belongs in the fitter and its settings file, with a
 reproducibility test; guide 76 lists it under Known defects.
 
-## 2026-10-06: defects found while retaking the manual's screenshots
-
-Fixed at once (`1182fe7ea`): the global-fit editor's Add/Remove/Add-global-parameter
-actions, its always-empty Local fits table, the silent `append_global_parameter`
-macro, unnamed background / Lin. table copies. Still open -- details and
-reproduction in `okf/validation/manual-screenshots/{fcs,general,anisotropy}.json`:
-
-- **Resolved 2026-10-07, global completion/display:** graph write-back now
-  publishes exact root/member fit events without reevaluation; Main refreshes
-  UID-matched windows. The real three-A488 fixture gives chi2r
-  0.9999763241843488, legitimately formatted as1.0000; explicit residual
-  arithmetic agrees, so no objective formula was changed.23 focused cases pass.
-- **Resolved 2026-10-07, Parse-Model link menu:** additive active-structure
-  metadata restricts the menu to the equation's six targets while retaining
-  all134 scientific catalogue ports and identities. Actual before/after menus
-  and native member/global Info pages were rendered and inspected. See
-  [verification](../validation/release-readiness-w7.md).
-- **FCS hub:** the Correlator labels lag time in ms, the Merger in s, for the same curves.
-- **Confocor3 reader** loads every file as AC1/AC2/CC12/CC21 together; no single-channel option.
-- **Global View Load** needs the fitting server: on fits it does not know it reports
-  "the fitting server did not answer" and restores no links.
-- **Saving a fit in the `arm64` env** stops at the report step: python-docx is
-  declared (pixi, pyproject) but missing from that env; `.fit.json`, CSV and info
-  files are written before it.
-- **Guide 10** names "Spectroscopy -> Fluorescence decay -> Anisotropy-Wizard"; the
-  plugin is `menu_hidden`, reached via Tools -> Calculators -> Wizards -> Anisotropy.
-
 ## 2026-10-07: QuEst legacy surface clips controls and imports retired ChiMOL paths
 
 **Open, owner W6d/W9 plugin migration.** A scratch offscreen construction of
@@ -6739,28 +6771,3 @@ ActualNNLS/MEM/correlation anduniformbackground/zero-signalphysics tests pass;
 this is not cleanstaticanalysis. Rootowns a separate boundedtypingcleanup with
 existingbehavior locked; do not alter numericalalgorithms orregolden spectra
 to silence these diagnostics.
-
-## Structure Tools isolated ribbon check depends on an uncommitted loader
-
-Observed 2026-10-09 at HEAD 6bcec3cb5: the committed Structure Tools
-`test_native.py::test_structure_ribbon_entries_resolve_native` imports
-`select_gui_entrypoint`, absent from committed `core/plugin/registry.py`. It fails
-in a private HEAD package, while the exact affected test passes in the live tree
-where a separate stream has implemented that loader. The W6g hub-size candidate
-preserves/excludes those foreign changes; its four owned tests are independent.
-Publication/integration of the plugin-loader lane must precede a clean committed
-ribbon-route acceptance. Do not copy the entire foreign registry diff merely to
-make an isolated geometry test green. Evidence is in the Structure Tools final
-archive under `green-corrected.txt` and `ribbon-live.txt`.
-
-## H2MM settings JSON omits the detector definition promised by toolbar help
-
-Observed2026-10-09 during the native host unit at HEAD6bcec3cb5.
-`burst_h2mm/gui/model.py::settings_dict` exports only SETTING_FIELDS, which do
-not include setup; save_settings serializes that dict and load_settings restores
-only those fields. The native Save settings tooltip promises detector definitions.
-Custom detector routing/micro-time windows therefore need separate retention.
-The host-size candidate preserves this pre-existing behavior, documents it and
-queues a bounded settings-file contract repair with custom-setup round-trip tests.
-Do not claim the current geometry-only native persistence restores a computed
-fit or a custom detector setup. Owner: W6g/W3 settings integration.

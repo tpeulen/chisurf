@@ -9,6 +9,16 @@ timestamp: '2026-07-05T00:00:00Z'
 
 # Where to pick this up
 
+1. Measure: Re-run the dependency/namespace guard and use [the hardening diagnosis](plugin-system-diagnosis.md) for exact reproductions; historical import failures and recorded passing totals are not current full-system acceptance.
+2. Open: Resolve the sibling RPC ownership recorded in `test/plugin_dependency_allowlist.txt`, including `ndxplorer.load_burst_product` and `ndxplorer.record_analysis`, then remove the corresponding allowances.
+3. Measure: Add dependency version bounds only against an actual required sibling version. Before considering consolidation of the other Kahn sorts, measure the recorded import-cost and resolver-contract differences.
+4. Open: Address the recorded settings schema, obsolete-key discovery and whole-tree writer gaps; `update_settings_section` is the existing writer route identified below.
+5. Open: Resolve duplicate password-dialog/backend ownership and the settings-versus-token identity mismatch using the concrete call sites in the recorded follow-up details.
+6. Open: Complete the plugin-manager concept/guide coverage and review duplicate `read_module_docstring` implementations while preserving other owners' source edits.
+7. Measure: When re-deriving dependency edges, retain `collect_edges()` exclusions for `test`/`tests` and resolve manifest IDs rather than inferring them from directory names; otherwise the recorded test-only edge becomes a false runtime cycle.
+
+# Recorded history and follow-up details
+
 **Latest infrastructure checkpoint (2026-10-03):** read
 [the hardening diagnosis](plugin-system-diagnosis.md) for reproductions, exact
 commands and verification scope. The expanded plugin/core/native-manager/schema

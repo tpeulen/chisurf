@@ -1,4 +1,57 @@
+---
+type: Plugin Note
+title: Independent native plugin visual audit
+description: Historical native and Qt startup visual verdicts, their archived local evidence, and the limits on functional or release acceptance.
+tags: [plugins, emtk, visual-audit, historical-evidence]
+timestamp: '2026-10-10T00:00:00Z'
+---
+
 # Independent native plugin visual audit
+
+## Historical evidence availability
+
+The 52 image references in this page originally pointed to local, Git-ignored
+files. All 52 were present when preserved; none was tracked as a published image.
+Their unchanged bytes, adjacent capture metadata, the rich-document fixture and
+copies of the structured audit records are now members of the
+[concurrent OKF source evidence archive](../validation/release-readiness-w0a/concurrent-okf-source-evidence.zip).
+Member names below are code references inside that archive, not image URLs.
+`visual-audit/asset-manifest.json` records each original local path, ignore status,
+size and SHA256. Extract the archive to inspect the referenced members.
+
+These are historical captures. Packaging them does not rerun a plugin, revise a
+score, establish a currently loaded workflow or renew any release acceptance.
+The original scores, dates, scope restrictions and outstanding checks below are
+retained unchanged. The structured JSON files also retain their original local
+paths as provenance; the archive manifest maps those paths to preserved members.
+
+### Re-derive evidence when its owner resumes the audit
+
+`visual-audit/reproduction.json` lists current native factories from tracked
+manifests and per-plugin commands, including their source revision. These
+commands were read from the tracked tools, not executed for this repair.
+Use disposable settings/database directories and a new output directory.
+
+- For a current **CPU startup** capture, use the tracked
+  [native factory checker](../../build_tools/dev_utils/emtk_migration/check_native.py)
+  with `--factory MODULE:CALLABLE --screenshots /private/tmp/plugin-current-cpu.png`.
+  Its renderer is `PilPainter`; it does not reproduce historical GPU evidence.
+- For a genuine historical **Qt reference**, use the tracked
+  [Qt reference capture tool](../../build_tools/dev_utils/emtk_migration/capture_qt_references.py)
+  with `--plugins PLUGIN_ID --jobs 1 --tab-pages --output /private/tmp/plugin-qt-reference`
+  under `QT_QPA_PLATFORM=offscreen pixi run -e test python`. The output records
+  the selected source revision; it need not match the revision originally scored.
+- The help fixture is preserved at archive member
+  `visual-audit/assets/help-rich-document/fixture/feature_reference.md`.
+  The Qt tool accepts it through `--document` with `--width 1280 --height 900`.
+  The tracked [populated help capture](emtk-ports/help/scripts/capture_populated.py)
+  uses a different page and viewport; it is a starting point, not an equivalent
+  reproduction of the archived CPU v3/v4 images.
+
+The original GPU driver command/environment and exact CPU v3/v4 capture driver
+were not preserved in this record. A matched replacement requires a separately
+reviewed capture using the archived fixture and state. No GPU or current
+functional result is inferred from the available CPU/Qt recipes.
 
 ## Latest GPU re-audit (version2)
 
@@ -78,7 +131,7 @@ The structured record is [emtk-visual-audit.json](emtk-visual-audit.json). Per-p
 
 ## burst_background
 
-Native: [GPU frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-startup-gpu/burst_background.png). Qt reference: [initial frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_background.png). The JSON record lists all captured Qt tab pages and source/control inventories.
+Native: GPU frame (historical archive member `visual-audit/assets/native-audit-startup-gpu/burst_background.png`). Qt reference: initial frame (historical archive member `visual-audit/assets/burst__burst_background.png`). The JSON record lists all captured Qt tab pages and source/control inventories.
 
 High-priority Channel Definition coverage gap confirmed in shared controller source.
 
@@ -98,7 +151,7 @@ Still unverified:
 
 ## burst_irf_bg
 
-Native: [GPU frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-startup-gpu/burst_irf_bg.png). Qt reference: [initial frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_irf_bg.png). The JSON record lists all captured Qt tab pages and source/control inventories.
+Native: GPU frame (historical archive member `visual-audit/assets/native-audit-startup-gpu/burst_irf_bg.png`). Qt reference: initial frame (historical archive member `visual-audit/assets/burst__burst_irf_bg.png`). The JSON record lists all captured Qt tab pages and source/control inventories.
 
 Initial controls retain burst-search parameters, but full measurement setup parity is not established.
 
@@ -118,7 +171,7 @@ Still unverified:
 
 ## burst_bva
 
-Native: [GPU frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-startup-gpu/burst_bva.png). Qt reference: [initial frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_bva.png). The JSON record lists all captured Qt tab pages and source/control inventories.
+Native: GPU frame (historical archive member `visual-audit/assets/native-audit-startup-gpu/burst_bva.png`). Qt reference: initial frame (historical archive member `visual-audit/assets/burst__burst_bva.png`). The JSON record lists all captured Qt tab pages and source/control inventories.
 
 Core BVA inputs and plot category remain recognizable; setup and data-driven interactions remain unverified.
 
@@ -138,7 +191,7 @@ Still unverified:
 
 ## burst_fcs_correlator
 
-Native: [GPU frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-startup-gpu/burst_fcs_correlator.png). Qt reference: [initial frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_fcs_correlator.png). The JSON record lists all captured Qt tab pages and source/control inventories.
+Native: GPU frame (historical archive member `visual-audit/assets/native-audit-startup-gpu/burst_fcs_correlator.png`). Qt reference: initial frame (historical archive member `visual-audit/assets/burst__burst_fcs_correlator.png`). The JSON record lists all captured Qt tab pages and source/control inventories.
 
 The correlation and diffusion panes are present; configuration and populated selection workflows need evidence.
 
@@ -158,7 +211,7 @@ Still unverified:
 
 ## burst_2cde
 
-Native: [GPU frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-startup-gpu/burst_2cde.png). Qt reference: [initial frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_2cde.png). The JSON record lists all captured Qt tab pages and source/control inventories.
+Native: GPU frame (historical archive member `visual-audit/assets/native-audit-startup-gpu/burst_2cde.png`). Qt reference: initial frame (historical archive member `visual-audit/assets/burst__burst_2cde.png`). The JSON record lists all captured Qt tab pages and source/control inventories.
 
 Startup visual controls match the scientific purpose without obvious clipping; no behavioral acceptance follows from this score.
 
@@ -178,7 +231,7 @@ Still unverified:
 
 ## burst_gs
 
-Native: [GPU frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-startup-gpu/burst_gs.png). Qt reference: [initial frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_gs.png). The JSON record lists all captured Qt tab pages and source/control inventories.
+Native: GPU frame (historical archive member `visual-audit/assets/native-audit-startup-gpu/burst_gs.png`). Qt reference: initial frame (historical archive member `visual-audit/assets/burst__burst_gs.png`). The JSON record lists all captured Qt tab pages and source/control inventories.
 
 Source contains the additional derived tables, so their absence in the startup image is an evidence gap rather than a claimed missing implementation.
 
@@ -198,7 +251,7 @@ Still unverified:
 
 ## burst_browser
 
-Native: [GPU frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-startup-gpu/burst_browser.png). Qt reference: [initial frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_browser.png). The JSON record lists all captured Qt tab pages and source/control inventories.
+Native: GPU frame (historical archive member `visual-audit/assets/native-audit-startup-gpu/burst_browser.png`). Qt reference: initial frame (historical archive member `visual-audit/assets/burst__burst_browser.png`). The JSON record lists all captured Qt tab pages and source/control inventories.
 
 The richer layout is recognizable but empty selection widgets need clearer meaning; source is newer than the screenshot.
 
@@ -218,7 +271,7 @@ Still unverified:
 
 ## burst_fusion
 
-Native: [GPU frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-startup-gpu/burst_fusion.png). Qt reference: [initial frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/burst__burst_fusion.png). The JSON record lists all captured Qt tab pages and source/control inventories.
+Native: GPU frame (historical archive member `visual-audit/assets/native-audit-startup-gpu/burst_fusion.png`). Qt reference: initial frame (historical archive member `visual-audit/assets/burst__burst_fusion.png`). The JSON record lists all captured Qt tab pages and source/control inventories.
 
 The plot suite is represented; source changed after capture and populated results still need comparison.
 
@@ -238,7 +291,7 @@ Still unverified:
 
 ## calculators
 
-Native: [GPU frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-startup-gpu/calculators.png). Qt reference: [initial frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__hub.png). The JSON record lists all captured Qt tab pages and source/control inventories.
+Native: GPU frame (historical archive member `visual-audit/assets/native-audit-startup-gpu/calculators.png`). Qt reference: initial frame (historical archive member `visual-audit/assets/calculator__hub.png`). The JSON record lists all captured Qt tab pages and source/control inventories.
 
 The navigation category is preserved; one selected page cannot verify the complete hub.
 
@@ -258,7 +311,7 @@ Still unverified:
 
 ## fret_calculator
 
-Native: [GPU frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-startup-gpu/fret_calculator.png). Qt reference: [initial frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__fret_calculator.png). The JSON record lists all captured Qt tab pages and source/control inventories.
+Native: GPU frame (historical archive member `visual-audit/assets/native-audit-startup-gpu/fret_calculator.png`). Qt reference: initial frame (historical archive member `visual-audit/assets/calculator__fret_calculator.png`). The JSON record lists all captured Qt tab pages and source/control inventories.
 
 The startup calculator is visually coherent; hidden mode and conversion correctness remain outside the screenshot claim.
 
@@ -278,7 +331,7 @@ Still unverified:
 
 ## phasor_calculator
 
-Native: [GPU frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-startup-gpu/phasor_calculator.png). Qt reference: [initial frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__phasor_calculator.png). The JSON record lists all captured Qt tab pages and source/control inventories.
+Native: GPU frame (historical archive member `visual-audit/assets/native-audit-startup-gpu/phasor_calculator.png`). Qt reference: initial frame (historical archive member `visual-audit/assets/calculator__phasor_calculator.png`). The JSON record lists all captured Qt tab pages and source/control inventories.
 
 Default semicircle/lifetime geometry is clear and the scientific category matches; interactive geometry remains unverified.
 
@@ -298,7 +351,7 @@ Still unverified:
 
 ## kappa2_dist
 
-Native: [GPU frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-startup-gpu/kappa2_dist.png). Qt reference: [initial frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__kappa2_dist.png). The JSON record lists all captured Qt tab pages and source/control inventories.
+Native: GPU frame (historical archive member `visual-audit/assets/native-audit-startup-gpu/kappa2_dist.png`). Qt reference: initial frame (historical archive member `visual-audit/assets/calculator__kappa2_dist.png`). The JSON record lists all captured Qt tab pages and source/control inventories.
 
 A plot is visible but its numerical summary is unreadable; owner diagnosed toolkit normalized-alpha rendering, not missing calculation data.
 
@@ -318,7 +371,7 @@ Still unverified:
 
 ## psf_calculator
 
-Native: [GPU frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-startup-gpu/psf_calculator.png). Qt reference: [initial frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__psf_calculator.png). The JSON record lists all captured Qt tab pages and source/control inventories.
+Native: GPU frame (historical archive member `visual-audit/assets/native-audit-startup-gpu/psf_calculator.png`). Qt reference: initial frame (historical archive member `visual-audit/assets/calculator__psf_calculator.png`). The JSON record lists all captured Qt tab pages and source/control inventories.
 
 The initial parameter layout is usable; no volume-rendering or compute correctness claim is supported by this frame.
 
@@ -338,7 +391,7 @@ Still unverified:
 
 ## rics_precision
 
-Native: [GPU frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-startup-gpu/rics_precision.png). Qt reference: [initial frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__rics_precision.png). The JSON record lists all captured Qt tab pages and source/control inventories.
+Native: GPU frame (historical archive member `visual-audit/assets/native-audit-startup-gpu/rics_precision.png`). Qt reference: initial frame (historical archive member `visual-audit/assets/calculator__rics_precision.png`). The JSON record lists all captured Qt tab pages and source/control inventories.
 
 Default settings are readable; computed precision and secondary estimator modes remain unverified.
 
@@ -358,7 +411,7 @@ Still unverified:
 
 ## fcs_saturation
 
-Native: [GPU frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-startup-gpu/fcs_saturation.png). Qt reference: [initial frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/calculator__fcs_saturation_calc.png). The JSON record lists all captured Qt tab pages and source/control inventories.
+Native: GPU frame (historical archive member `visual-audit/assets/native-audit-startup-gpu/fcs_saturation.png`). Qt reference: initial frame (historical archive member `visual-audit/assets/calculator__fcs_saturation_calc.png`). The JSON record lists all captured Qt tab pages and source/control inventories.
 
 Parameter constraints and labels need correction; owner reports source fixes, but this GPU frame predates them.
 
@@ -379,7 +432,7 @@ Still unverified:
 
 ## fcs_calculator
 
-Native: [GPU frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-startup-gpu/fcs_calculator.png). Qt reference: [initial frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/fcs__fcs_calculator.png). The JSON record lists all captured Qt tab pages and source/control inventories.
+Native: GPU frame (historical archive member `visual-audit/assets/native-audit-startup-gpu/fcs_calculator.png`). Qt reference: initial frame (historical archive member `visual-audit/assets/fcs__fcs_calculator.png`). The JSON record lists all captured Qt tab pages and source/control inventories.
 
 Core scientific values are present but label layout and reference/default handling need clearer evidence.
 
@@ -399,7 +452,7 @@ Still unverified:
 
 ## fret_line
 
-Native: [GPU frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-startup-gpu/fret_line.png). Qt reference: [initial frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/fret_line.png). The JSON record lists all captured Qt tab pages and source/control inventories.
+Native: GPU frame (historical archive member `visual-audit/assets/native-audit-startup-gpu/fret_line.png`). Qt reference: initial frame (historical archive member `visual-audit/assets/fret_line.png`). The JSON record lists all captured Qt tab pages and source/control inventories.
 
 The initial layout hides the tool's primary action; owner reports a separate editor dock and compact constraint details in newer source.
 
@@ -419,7 +472,7 @@ Still unverified:
 
 ## fcs_filter_calculator
 
-Native: [GPU frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-startup-gpu/fcs_filter_calculator.png). Qt reference: [initial frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/fcs__fcs_filter_calculator.png). The JSON record lists all captured Qt tab pages and source/control inventories.
+Native: GPU frame (historical archive member `visual-audit/assets/native-audit-startup-gpu/fcs_filter_calculator.png`). Qt reference: initial frame (historical archive member `visual-audit/assets/fcs__fcs_filter_calculator.png`). The JSON record lists all captured Qt tab pages and source/control inventories.
 
 Observed range is unusable in the old GPU frame; source/CPU fix is reported but a fresh GPU/matched-data comparison is needed.
 
@@ -439,7 +492,7 @@ Still unverified:
 
 ## fcs_merger
 
-Native: [GPU frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-startup-gpu/fcs_merger.png). Qt reference: [initial frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/fcs__fcs_merger.png). The JSON record lists all captured Qt tab pages and source/control inventories.
+Native: GPU frame (historical archive member `visual-audit/assets/native-audit-startup-gpu/fcs_merger.png`). Qt reference: initial frame (historical archive member `visual-audit/assets/fcs__fcs_merger.png`). The JSON record lists all captured Qt tab pages and source/control inventories.
 
 Empty plotting hierarchy is clear; field labels and loaded selection/results need renewed evidence after newer source changes.
 
@@ -459,7 +512,7 @@ Still unverified:
 
 ## code_editor
 
-Native: [GPU frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-startup-gpu/code_editor.png). Qt reference: [initial frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/core__code_editor.png). The JSON record lists all captured Qt tab pages and source/control inventories.
+Native: GPU frame (historical archive member `visual-audit/assets/native-audit-startup-gpu/code_editor.png`). Qt reference: initial frame (historical archive member `visual-audit/assets/core__code_editor.png`). The JSON record lists all captured Qt tab pages and source/control inventories.
 
 The basic editor is visually usable and close icons exist; the specific earlier regressions require interaction evidence.
 
@@ -479,7 +532,7 @@ Still unverified:
 
 ## help
 
-Native: [GPU frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-startup-gpu/help.png). Qt reference: [initial frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/core__help.png). The JSON record lists all captured Qt tab pages and source/control inventories.
+Native: GPU frame (historical archive member `visual-audit/assets/native-audit-startup-gpu/help.png`). Qt reference: initial frame (historical archive member `visual-audit/assets/core__help.png`). The JSON record lists all captured Qt tab pages and source/control inventories.
 
 Default page comparison exposes missing navigation/provenance affordances; core owner is implementing fixes and a rich fixture is pending.
 
@@ -500,7 +553,7 @@ Still unverified:
 
 ## f_test
 
-Native: [GPU frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-startup-gpu/f_test.png). Qt reference: [initial frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/core__f_test.png). The JSON record lists all captured Qt tab pages and source/control inventories.
+Native: GPU frame (historical archive member `visual-audit/assets/native-audit-startup-gpu/f_test.png`). Qt reference: initial frame (historical archive member `visual-audit/assets/core__f_test.png`). The JSON record lists all captured Qt tab pages and source/control inventories.
 
 Both initial statistical forms are legible; visual pass is limited to this default frame.
 
@@ -520,7 +573,7 @@ Still unverified:
 
 ## tttr_splitter
 
-Native: [GPU frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-startup-gpu/tttr_splitter.png). Qt reference: [initial frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/tttr__tttr_splitter.png). The JSON record lists all captured Qt tab pages and source/control inventories.
+Native: GPU frame (historical archive member `visual-audit/assets/native-audit-startup-gpu/tttr_splitter.png`). Qt reference: initial frame (historical archive member `visual-audit/assets/tttr__tttr_splitter.png`). The JSON record lists all captured Qt tab pages and source/control inventories.
 
 Default layout improves visibility of batch options; successful conversion is not proven by its presence.
 
@@ -540,7 +593,7 @@ Still unverified:
 
 ## tttr_time_windows
 
-Native: [GPU frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-startup-gpu/tttr_time_windows.png). Qt reference: [initial frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/tttr__tttr_time_windows.png). The JSON record lists all captured Qt tab pages and source/control inventories.
+Native: GPU frame (historical archive member `visual-audit/assets/native-audit-startup-gpu/tttr_time_windows.png`). Qt reference: initial frame (historical archive member `visual-audit/assets/tttr__tttr_time_windows.png`). The JSON record lists all captured Qt tab pages and source/control inventories.
 
 Default control hierarchy is coherent; trace and generated-window correctness remain unverified.
 
@@ -560,7 +613,7 @@ Still unverified:
 
 ## photon_table
 
-Native: [GPU frame](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/native-audit-startup-gpu/photon_table.png). Qt reference: unavailable. The JSON record lists all captured Qt tab pages and source/control inventories.
+Native: GPU frame (historical archive member `visual-audit/assets/native-audit-startup-gpu/photon_table.png`). Qt reference: unavailable. The JSON record lists all captured Qt tab pages and source/control inventories.
 
 Comparison is blocked by unavailable Qt baseline; score 0 is not a judgment of native visual quality.
 
@@ -580,10 +633,10 @@ Still unverified:
 
 ## Help matched rich-document scenario
 
-A deterministic 1280 × 900 fixture compares display/inline math, table, figure, note and anchor-link content. [Qt reference](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/help-rich-document/core__help.png) and [native CPU v3](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/help-rich-document/native-review-v3.png) use the same source and top/read state. The native renderer is `emtk.testing.PixelPainter`, not GPU.
+A deterministic 1280 × 900 fixture compares display/inline math, table, figure, note and anchor-link content. Qt reference (historical archive member `visual-audit/assets/help-rich-document/core__help.png`) and native CPU v3 (historical archive member `visual-audit/assets/help-rich-document/native-review-v3.png`) use the same source and top/read state. The native renderer is `emtk.testing.PixelPainter`, not GPU.
 
 Score **88 / revise**: content renders correctly, but H1/H2 typography remains body-sized. The owner confirmed PixelPainter glyph size/advance omit `_font_scale`; GPU behavior is not inferred. Address entry and neutral review display were restored in this version. Recapture CPU after the toolkit fix and obtain a matched GPU frame. Links, tooltips, review persistence, source editing and all other rich directives remain unverified.
 
 ### Rich-document CPU correction verified
 
-[Native CPU v4](/Users/tpeulen/dev/chisurf/okf/plugins/emtk-references/help-rich-document/native-review-v4.png) independently scores **92 / pass for this fixture only**. The PixelPainter correction restores distinct H1/H2/body hierarchy without disturbing fraction/exponent, table, figure, note or link. The older88/revise record remains as before/after evidence. Matching GPU capture and functional/hover/review tests remain unverified.
+Native CPU v4 (historical archive member `visual-audit/assets/help-rich-document/native-review-v4.png`) independently scores **92 / pass for this fixture only**. The PixelPainter correction restores distinct H1/H2/body hierarchy without disturbing fraction/exponent, table, figure, note or link. The older88/revise record remains as before/after evidence. Matching GPU capture and functional/hover/review tests remain unverified.

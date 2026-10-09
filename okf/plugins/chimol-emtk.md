@@ -1,4 +1,6 @@
 ---
+type: Plugin Note
+description: Historical toolkit and molecular-viewer integration record covering native host resize and playback, plotting primitives, and the navigation gizmo experiments that were removed.
 title: emtk — Embeddable iMmediate-mode ToolKit (formerly cmtk)
 status: in-progress
 group: plugins
@@ -72,6 +74,13 @@ rewritten — they describe what was true when written, and `renderer/ui/` was
 the real name then.
 
 ## Where to pick this up
+
+1. Measure: Use the recorded `test_emtk_host.py` resize and playback regressions to check the real embedded host: `test_native_resize_rerenders_at_the_window_size`, `test_native_playback_advances_without_input`, and `test_native_mplay_from_a_command_wakes_the_host`.
+2. Open: For another embedded app with a background clock, check both `animating()` and the wake event that starts frame delivery. The recorded movie fix separates those obligations; pointer-generated frames alone do not prove playback scheduling.
+3. Tried and reverted: The navigation gizmo was explicitly removed after the recorded visual iterations. Do not restore it from the earlier design notes; recover the separately reusable orientation math from history only if a new consumer needs it.
+4. Measure: Reproduce the recorded camera-framing recursion and chrome/wheel baseline discrepancies before treating them as current failures. The historical test names, commands, qualification and rejected approaches remain intact below.
+
+## Recorded history and follow-up details
 
 **2026-09-29 — the emtk host (`ChimolHostApp`, `chisurf/plugins/chimol/app.py`)
 resizes and plays now.** Two defects in the embed path only — chimol's own

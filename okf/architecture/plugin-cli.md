@@ -11,6 +11,13 @@ timestamp: '2026-10-04T00:00:00Z'
 
 ## Where to pick this up
 
+1. Open: Define ownership-aware command refresh if in-process installation, disabling or removal must update `csc`; remove only its proxies and preserve central commands. Finder-cache invalidation is not module unloading.
+2. Open: Reconcile dependency-ordered registry ownership with root/package-ordered CLI metadata for duplicate command aliases, using metadata-only registration tests before claiming whole-system parity.
+3. Blocked: Click eager parsing can register cleanup before a later parse failure. The recorded reproduction does not establish cleanup in that case; acquire resources during invocation or explicitly scope context-before-parse handling.
+4. Measure: Re-run `test/test_plugin_dependencies.py` with the active plugin/project owners, retain exact failed identities, and do not widen allowlists. The scoped CLI closeout and prior installer findings remain recorded below.
+
+## Recorded history and follow-up details
+
 1. Production lazy CLI identity/manifest/forwarding hardening is complete within the verified scope below. Do not reopen superseded installer review findings. The previous installation/dependency/RPC scope is recorded in [plugin-system diagnosis](plugin-system-diagnosis.md).
 2. `csc` still owns a process-global registration snapshot. If in-process installation/disable/removal must refresh commands, add an explicit ownership-aware refresh that removes only its own proxies and preserves central commands; do not confuse finder-cache invalidation with unloading imported code.
 3. Registry registration uses dependency order; production CLI metadata uses root/package order. Distinct valid IDs declaring the same command alias can choose different first owners. Unify this deliberately with metadata-only registration tests before claiming whole-system ownership parity.

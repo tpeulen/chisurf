@@ -1,3 +1,10 @@
+---
+type: Plan
+title: Plugin installation and registration integrity — Implementation Plan
+description: Plan for transactional plugin installation, dependency-cycle diagnostics,
+  CLI ownership, and atomic RPC registration while preserving concurrent work.
+---
+
 # Plugin installation and registration integrity — Implementation Plan
 
 **Goal:** Remove confirmed data-loss/import-identity/registration flaws while preserving concurrent plugin-port and project-lifecycle work.

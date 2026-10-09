@@ -11,6 +11,13 @@ timestamp: '2026-10-03T00:00:00Z'
 
 ## Where to pick this up
 
+1. Measure: Re-run `test/test_plugin_dependencies.py` to distinguish the recorded four dependency/namespace failures from current results; retain exact identities and coordinate declaration edits with active plugin/project owners.
+2. Open: Reconcile hard and optional cross-plugin imports with source, then check resolver cycles; the recorded stale declarations are `ndxplorer.optional_requires['mmfdb_admin']`, `traj_energy.requires['traj_energy_calculator']`, and `tttr_time_windows.optional_requires['intensity_trace']`.
+3. Open: Resolve ownership of `mmfdb_admin` declarations for `project_browser.list`, `project_browser.save`, and `project_browser.restore`; the sibling namespace must not be silently claimed or allowlisted.
+4. Measure: Preserve the recorded external-viewer source-tree and optional-extension qualifications when interpreting integration results; the exact checkpoint and parent settings/identity follow-ups are retained below.
+
+## Recorded history and follow-up details
+
 The infrastructure fixes below have passing regression and integration checks. The whole plugin system is **not** declared clean: the dependency/namespace metadata guard still fails four tests in the shared checkout. Re-run `test/test_plugin_dependencies.py` and repair declarations with the owners of the active plugin ports/project-storage work; do not expand its allowlist. In particular:
 
 1. Reconcile hard and optional cross-plugin edges with current source. The failing check reports new top-level imports into toolkit-free GUI models and lazy references missing from manifests. Check the resolver for cycles after changing an edge's classification; bulk declaration changes are not a safe substitute for analyzing imports.
