@@ -1,8 +1,17 @@
 """User-visible imperative literals are measured without importing plugin code."""
 
+from pathlib import Path
+
 import pytest
 
-from build_tools.dev_utils.ui_contract_audit import audit_translation_python
+from build_tools.dev_utils.ui_contract_audit import (
+    audit_translation_python,
+    audit_tree,
+    baseline_delta,
+)
+
+ROOT = Path(__file__).resolve().parents[1]
+BASELINE = ROOT / "test/i18n_allowlist.txt"
 
 
 @pytest.mark.parametrize(
@@ -71,3 +80,42 @@ def test_import_aliases_and_direct_widget_imports_do_not_hide_literals():
         "Module",
         "Direct",
     ]
+
+
+def test_literal_allowances_reject_new_and_stale_occurrences():
+    """Identical labels remain separate debt and both directions of drift fail."""
+    findings = audit_translation_python('im.text("Run"); im.text("Run")', "probe.py")
+    first, second = (finding.key for finding in findings)
+    assert first != second
+    report = {"findings": [{"key": first}, {"key": second}]}
+    assert baseline_delta(report, {first, "obsolete"}) == ({second}, {"obsolete"})
+    assert baseline_delta(report, {first, second}) == (set(), set())
+
+
+def test_shipped_literal_contract_has_no_new_or_stale_debt():
+    """Enforce the accepted production debt against committed source bytes."""
+    assert BASELINE.is_file(), "Publish the accepted literal debt before enabling its guard."
+    allowed = {
+        line.strip()
+        for line in BASELINE.read_text().splitlines()
+        if line.strip() and not line.startswith("#")
+    }
+    report = audit_tree(ROOT, revision="HEAD", contract="translation")
+    # The accepted measurement covered 1751 production Python sources.
+    assert report["files"].get("python", 0) >= 1700
+    new, stale = baseline_delta(report, allowed)
+    assert not new, "New untranslated literals:\n" + "\n".join(sorted(new))
+    assert not stale, "Remove obsolete literal allowances:\n" + "\n".join(sorted(stale))
+
+
+def test_literal_line_relocation_requires_explicit_baseline_review():
+    """Accepted literal keys include offsets, so a relocation is new and stale debt."""
+    original = audit_translation_python('im.text("Run")', "probe.py")
+    moved = audit_translation_python('\n\nim.text("Run")', "probe.py")
+    assert len(original) == len(moved) == 1
+    assert original[0].detail == moved[0].detail
+    report = {"findings": [{"key": moved[0].key}]}
+    assert baseline_delta(report, {original[0].key}) == (
+        {moved[0].key},
+        {original[0].key},
+    )

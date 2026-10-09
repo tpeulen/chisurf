@@ -2,6 +2,8 @@
 
 ## 2026-10-09
 
+- W6g now enforces the accepted 1,155 literal keys and assigns all 2,232 remaining UI findings to finite family owners and real checks; 32 targeted cases pass. Shared host-help evidence and aggregate debt remain open. [Ownership](validation/release-readiness-w6g/ui-debt-owners.json).
+
 - W0a publication check now reads committed source and the board provider HEAD: 2,420 exact findings, with dirty/untracked isolation and new-commit detection tested. This corrects the initial shared-tree bootstrap without adopting foreign content. [Contract](workflows/okf-validation.md).
 
 - W0a adds nine-rule knowledge validation, safe fixture-proven repairs and an exact shrinking debt guard. W0b retains all enumerated debt and four docs-header failures; W6g handoff is next. [Contract](workflows/okf-validation.md).
