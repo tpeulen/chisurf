@@ -69,7 +69,7 @@ keeps the docs release gate open and is not a validator implementation failure.
 
 ## Initial W0a verification
 
-The corrected committed-source baseline contains 2,420 findings: FM222, LINK41,
+At the W0a freeze, the corrected committed-source baseline contained 2,420 findings: FM222, LINK41,
 WIKI11, PRD26, KI217, BOARD126, LOG117, NAMES958 and PICKUP702. The first live-tree
 snapshot was unsuitable for publication because it included foreign untracked
 and modified pages; it has been replaced, not retained as extra allowances.
@@ -79,3 +79,7 @@ conservation and one-time board moves. Resume inspection stops at the next
 heading, so later design sections are not misclassified as pickup work.
 [Acceptance](../validation/release-readiness-w0a/acceptance.json) binds the single
 [source archive](../validation/release-readiness-w0a/source-evidence.zip) to file hashes.
+
+The game-host batch subsequently closes the15historical PICKUP findings in
+`subsystems/chigame.md` by separating its real resume from preserved history.
+The current baseline has2,405findings; no new allowance was added.

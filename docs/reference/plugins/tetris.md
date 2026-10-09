@@ -32,3 +32,4 @@ This plugin's window is an EMTK app: its controls and tables are described in th
 
 - Plugin package: `chisurf/plugins/misc/games/tetris/`
 - Manifest: {src}`chisurf/plugins/misc/games/tetris/manifest.json`
+- UI spec: {src}`chisurf/plugins/misc/games/tetris/app.view.json`

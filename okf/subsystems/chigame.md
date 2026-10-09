@@ -9,6 +9,16 @@ timestamp: '2026-08-10T00:00:00Z'
 
 # Where to pick this up
 
+1. Open: W6f has20remaining core host declarations after the six game/launcher
+   records. Use the recorded reader ledger; do not repeat unchanged inventories.
+2. Measure: run the two game-window declaration tests and empty-persistence test
+   under `test/native_emtk/`. They prove exact existing defaults, authored size
+   consumption, saved resize/round restore and fresh persisted launch.
+3. Blocked: the window batch does not close W6f game-base/input/audio obligations
+   or aggregate UI debt. Invalid nonempty saved rounds still fail validation.
+
+# Historical engine work
+
 **Ninja Adventure and the top-down port left for Lumis Quest (2026-09-17).**
 The game, `actors`/`behavior`/`tilemap`/`camera`/`fx`/`atlas`/`pack`, the
 `assets/pixel` pack, the four `ninja_*` music tracks and the map/art importers
@@ -584,3 +594,21 @@ proves the *scene*, not the swapchain or presentation.
   ([chimol in the browser](../plugins/chimol-web.md)) shares this stack, and the
   reason to put chigame in `chisurf/gui/` rather than inside a plugin is so the
   tree does not grow two independent WebGPU layers.
+
+
+# Declarative game host sizes — 2026-10-09
+
+Six app-adjacent host-only specs now supply dimensions through the shared native
+window reader. Breakout820×690, Pong820×640, Tetris520×620, Minesweeper560×620,
+Number Quest560×420 and launcher1200×800 preserve actual earlier defaults; the
+launcher size is the real persisted/native fallback, not the inventory's generic
+1100×720 hint. Rendering, controls and game algorithms are unchanged. A0 metadata
+checks prove size consumption and real input/state/paint parity without recapture.
+
+Fresh persisted launch previously passed an absent-settings empty object into
+strict round restorers, raising KeyError for all five games. The shared native
+persistence boundary now restores only nonempty preferences. Complete saved rounds
+and dimensions still return, and invalid nonempty payloads still fail. The resume
+section separates actionable work from preserved historical notes; its obsolete
+PICKUP allowances are removed, without broad bundle cleanup.
+[Acceptance](../validation/release-readiness-w6f/game-window-acceptance.json).

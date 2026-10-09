@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 import importlib
+import json
+from pathlib import Path
 
 from emtk import i18n, im
 from emtk.app import ImApp
+
+from chisurf.plugins.emtk_layout import window_size
 
 from .registry import GAME_PANELS
 from .translations import install_translations
@@ -21,6 +25,8 @@ class GamesHubApp(ImApp):
     """Keep each game alive while the player visits another panel."""
 
     def __init__(self) -> None:
+        spec = json.loads(Path(__file__).with_name("app.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(spec, (1200, 800))
         self.entries = GAME_PANELS
         self.selected = self.entries[0]["name"]
         self.children: dict[str, ImApp] = {}

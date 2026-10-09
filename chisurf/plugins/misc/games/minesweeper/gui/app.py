@@ -13,6 +13,7 @@ from emtk import i18n, im
 from emtk.app import ImApp
 from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_LEFT, KEY_RETURN, KEY_RIGHT, KEY_UP
 
+from chisurf.plugins.emtk_layout import window_size
 from chisurf.plugins.misc.games.gui.keys import blocked
 
 from ..core.game import DIFFICULTIES, GameStatus, MinesweeperGame
@@ -69,9 +70,9 @@ def pixel_text(draw, text, pos, height, colour, align="left", max_width=None):
 
 
 class MinesweeperApp(ImApp):
-    window_size = (560, 620)
-
     def __init__(self, game=None, audio_callback=None, clock=time.monotonic):
+        spec = json.loads(Path(__file__).with_name("app.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(spec, (560, 620))
         self.game = game or MinesweeperGame()
         #: Held directions and their repeat timers (seconds; negative = initial delay).
         self.held: dict[tuple[int, int], float] = {}

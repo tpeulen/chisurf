@@ -31,3 +31,4 @@ This plugin's window is an EMTK app: its controls and tables are described in th
 
 - Plugin package: `chisurf/plugins/misc/games/number_quest/`
 - Manifest: {src}`chisurf/plugins/misc/games/number_quest/manifest.json`
+- UI spec: {src}`chisurf/plugins/misc/games/number_quest/app.view.json`

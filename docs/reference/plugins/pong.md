@@ -32,3 +32,4 @@ This plugin's window is an EMTK app: its controls and tables are described in th
 
 - Plugin package: `chisurf/plugins/misc/games/pong/`
 - Manifest: {src}`chisurf/plugins/misc/games/pong/manifest.json`
+- UI spec: {src}`chisurf/plugins/misc/games/pong/app.view.json`

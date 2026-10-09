@@ -79,7 +79,9 @@ def attach_native_state(plugin_id: str, app):
             seen.add(id(docks))
     restore = getattr(app, "restore_settings", None)
     if callable(restore):
-        restore(load_settings(plugin_id))
+        settings = load_settings(plugin_id)
+        if settings:
+            restore(settings)
     size = window.get("size")
     if isinstance(size, list) and len(size) == 2 and all(
         isinstance(value, (int, float)) and 120 <= value <= 8192 for value in size

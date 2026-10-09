@@ -35,3 +35,9 @@ This plugin's window is an EMTK app: its controls and tables are described in th
 
 - Plugin package: `chisurf/plugins/misc/games/`
 - Manifest: {src}`chisurf/plugins/misc/games/manifest.json`
+- UI spec: {src}`chisurf/plugins/misc/games/breakout/app.view.json`
+- UI spec: {src}`chisurf/plugins/misc/games/gui/app.view.json`
+- UI spec: {src}`chisurf/plugins/misc/games/minesweeper/gui/app.view.json`
+- UI spec: {src}`chisurf/plugins/misc/games/number_quest/app.view.json`
+- UI spec: {src}`chisurf/plugins/misc/games/pong/app.view.json`
+- UI spec: {src}`chisurf/plugins/misc/games/tetris/app.view.json`

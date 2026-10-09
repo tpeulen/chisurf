@@ -25,6 +25,11 @@ The list on the left selects the game (its description is the tooltip). The head
 keys. Every game is built the first time it is selected and kept alive while you visit another, so a round survives
 a look at the list. Click into the game area before typing: the keys go to the game that is shown, press and release.
 
+Standalone defaults remain Breakout820×690, Pong820×640, Tetris520×620,
+Minesweeper560×620 and Number Quest560×420; the launcher starts at1200×800.
+Resizing a standalone window keeps that size when it reopens. A first launch
+starts with the game defaults; an existing saved round is restored when available.
+
 ## 2. Keys and pointer
 
 | Game | Keys | Pointer |

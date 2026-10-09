@@ -31,3 +31,4 @@ This plugin's window is an EMTK app: its controls and tables are described in th
 
 - Plugin package: `chisurf/plugins/misc/games/minesweeper/`
 - Manifest: {src}`chisurf/plugins/misc/games/minesweeper/manifest.json`
+- UI spec: {src}`chisurf/plugins/misc/games/minesweeper/gui/app.view.json`

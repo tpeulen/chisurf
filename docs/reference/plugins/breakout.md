@@ -32,3 +32,4 @@ This plugin's window is an EMTK app: its controls and tables are described in th
 
 - Plugin package: `chisurf/plugins/misc/games/breakout/`
 - Manifest: {src}`chisurf/plugins/misc/games/breakout/manifest.json`
+- UI spec: {src}`chisurf/plugins/misc/games/breakout/app.view.json`

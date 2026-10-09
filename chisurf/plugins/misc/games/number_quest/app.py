@@ -1,13 +1,16 @@
 """Standalone EMTK lifetime estimation game, with the unchanged pure rules."""
 from __future__ import annotations
 
+import json
 import math
 import time
+from pathlib import Path
 
 from emtk import i18n, im
 from emtk.app import ImApp
 from emtk.keys import KEY_ENTER, KEY_LEFT, KEY_RETURN, KEY_RIGHT
 
+from chisurf.plugins.emtk_layout import window_size
 from chisurf.plugins.misc.games.gui.keys import blocked
 
 from .core.game import GuessStatus, NumberQuestGame
@@ -30,9 +33,9 @@ def tr(source):
 
 
 class NumberQuestApp(ImApp):
-    window_size = (560, 420)
-
     def __init__(self, audio=None, clock=time.monotonic):
+        spec = json.loads(Path(__file__).with_name("app.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(spec, (560, 420))
         self.game = NumberQuestGame()
         self.estimate = 50
         self.history = []

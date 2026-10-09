@@ -1,14 +1,17 @@
 """Standalone EMTK Breakout with the original spectral wall and physics."""
 from __future__ import annotations
 
+import json
 import math
 import time
+from pathlib import Path
 from types import SimpleNamespace
 
 from emtk import i18n, im
 from emtk.app import ImApp
 from emtk.keys import KEY_ENTER, KEY_LEFT, KEY_RETURN, KEY_RIGHT
 
+from chisurf.plugins.emtk_layout import window_size
 from chisurf.plugins.misc.games.gui.keys import blocked
 
 from .drawing import pixel_text, text_width
@@ -54,6 +57,8 @@ class BreakoutApp(ImApp):
     window_size = (820, 690)
 
     def __init__(self, clock=time.monotonic):
+        spec = json.loads(Path(__file__).with_name("app.view.json").read_text())
+        self.window_size = window_size(spec, self.window_size)
         self.keys = Inputs()
         self.clock = clock
         self.last_frame = None
