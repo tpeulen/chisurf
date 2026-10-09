@@ -9,11 +9,26 @@ timestamp: '2026-07-05T00:00:00Z'
 
 # Where to pick this up
 
-1. **The two pre-existing failures this change did not touch.** `fps_json_editor`
-   and `fret_docking` entrypoints fail to import with `No module named
-   'IMP.bff.fret'` -- an environment/migration gap, not a manifest one. Re-derive
-   with `pytest "test/plugins/test_all_plugins.py::test_plugin_entrypoints_import[fret]"`.
-   They are listed in [known issues](/references/known-issues.md).
+**Latest infrastructure checkpoint (2026-10-03):** read
+[the hardening diagnosis](plugin-system-diagnosis.md) for reproductions, exact
+commands and verification scope. The expanded plugin/core/native-manager/schema
+union now passes **1258 tests, with 2 existing skips**; the 63 new installation,
+dependency and registration cases are included. Copy/rollback safety, package
+identity, SCC ordering, CLI ownership and atomic routing registration are covered.
+The dependency/namespace guard remains red (282 passed, 4 failed): reconcile current
+hard/optional/stale declarations and `mmfdb_admin`'s `project_browser.*` ownership
+with active plugin/project owners. Additional server checks expose two existing
+subprocess-startup timing failures, reproduced with unchanged HEAD helpers/tests.
+Do not widen the RPC allowlist or claim full-server/full-repository acceptance.
+Final independent re-review is pending; the first review's ZIP prefix/source-link
+findings were repaired and parent-tested.
+
+
+1. **Historical IMP environment/migration failures are not current evidence.**
+   Earlier `fps_json_editor`/`fret_docking` imports failed on `IMP.bff.fret`, but
+   the current arm64 real-import suite resolves them. If the error returns,
+   verify interpreter and checkout import origins before reviving the older
+   [known-issue entries](/references/known-issues.md).
 2. **The RPC-namespace allow-list is the worklist.** `mmfdb_admin` declares
    `ndxplorer.load_burst_product` and `ndxplorer.record_analysis` -- methods that
    read as `ndxplorer`'s API and would collide the moment `ndxplorer` registers
@@ -70,6 +85,55 @@ timestamp: '2026-07-05T00:00:00Z'
    top-level import). Also note nine plugins have a directory name that differs
    from their id, so never infer an id from a path.
 
+# Hardened discovery and GUI lifetime
+
+Manifest loading rejects malformed consumed field types at the file boundary,
+logs the source path, and leaves healthy siblings discoverable without importing
+jsonschema. Both scans are import-free, filter only relative hidden/template
+components, select consistent IDs, and use `core/plugin/discovery.py`'s shared
+PathFinder-based resolver for exact and nested regular/namespace package identity.
+This includes legacy and unnamed packages, plus namespace portions shadowed by a
+regular package. Fresh scans replace legacy state and refresh Python import finders;
+metadata cache invalidation is not hot reload of `sys.modules`.
+
+Native-only entrypoints are GUI-capable. Registry menu creation is lazy; host mode,
+preview gating and the retained loader are consulted on trigger. Opened windows
+stay owned until Qt destruction, not merely until a local variable disappears;
+a refused close keeps ownership, explicit deletion releases it, and a broken
+factory/show/cleanup is isolated. Native ControlHost objects retain their marker.
+No preview/acceptance gate or plugin port was changed by these fixes.
+
+The static entrypoint guard now checks native factories and literal guarded lazy
+exports without pretending any `__getattr__` guarantees any symbol. Real imports
+remain a separate gate. Contract-test collection no longer mutates global sys.path
+in a way that shadows the editable emtk installation.
+
+# Installation and registration integrity checkpoint
+
+Plugin installation now validates the complete hidden staged tree before moving
+an existing package. Promotion failures and graceful interruption after the
+old-tree move restore it; failed restoration retains and reports the backup.
+Mutable plans, overwrite confirmation, source/destination authority, ZIP
+prefix/file/directory aliases and actual extraction semantics are checked.
+Already importable package names remain distinct from manifest IDs.
+
+Dependency sorting uses iterative SCC condensation, retains first declarations
+and reports component members without inventing directed paths. Registry CLI
+registration honors manifest aliases and existing owners. Plugin service routing
+is staged per thread and committed atomically by ServiceDispatcher, with caught
+and concurrent collisions aborting the registrar's routes. It is not a sandbox
+or rollback of arbitrary registrar state changes.
+
+Final affected union: **1267 passed / 2 existing skips**; focused boundaries:
+**190 passed**, including **72** new robustness cases. Independent spec/quality
+review and a fresh confirmation of the co-edited registry methods passed.
+Real scratch install/Click/RPC/uninstall and 133-record native launch/lifetime
+smokes passed. The declaration guard remains **282 passed / 4 failed**; extra
+server verification retained two baseline-reproduced startup timing failures.
+No active plugin manifests, allowlists, project lifecycle or plugin ports were
+changed to manufacture acceptance. See
+[the diagnosis and reproducible evidence](/architecture/plugin-system-diagnosis.md).
+
 # Discovery
 
 Plugins live under `chisurf/plugins/` and are discovered via `manifest.json`
@@ -79,7 +143,7 @@ reaching for [runtime globals](/architecture/runtime-globals.md).
 
 # Scale
 
-The tree ships ~86 plugin manifests, grouped by domain — e.g. `burst/`
+The verified checkout has 133 valid plugin manifests, grouped by domain — e.g. `burst/`
 (smFRET burst analysis), `fcs/` (correlation), `fluorescence_decay/`
 (TCSPC lifetime), `modelling/` (FRET/HydroPro/FPS), and `core/`
 (infrastructure tools like `mmfdb_admin`, `setup`, `plugin_manager`,
