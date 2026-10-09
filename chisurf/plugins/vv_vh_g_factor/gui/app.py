@@ -18,7 +18,13 @@ from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
-from chisurf.plugins.emtk_layout import LabelColumn, button_row, labelled, layout_spec
+from chisurf.plugins.emtk_layout import (
+    LabelColumn,
+    button_row,
+    labelled,
+    layout_spec,
+    window_size,
+)
 from chisurf.plugins.microscopy.imaging_emtk.path_list import PathListView
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 
@@ -31,13 +37,15 @@ DISPLAY = ("show_fast", "show_slow", "show_raw", "show_corrected", "log_y")
 
 class GFactorApp(ImApp):
     def __init__(self, client=None, on_close=None, dataset_client=None):
+        primary = json.loads((HERE / "gfactor_emtk.view.json").read_text())
+        self.window_size = window_size(primary, (1100, 720))
         self.on_close = on_close
         self._closed = False
         self.window_title = tr("VV/VH G-Factor Calculator")
         self.model = GFactorModel()
         self.client = client or VvVhGFactorClient()
         self.item_rects: dict[str, tuple[float, float, float, float] | None] = {}
-        panels = json.loads((HERE / "gfactor_emtk.view.json").read_text())["panels"]
+        panels = primary["panels"]
         self.panels = {n: layout_spec(copy.deepcopy(p)) for n, p in panels.items()}
         self.forms = {n: FormState() for n in panels}
         self.dataset_picker = DatasetPicker(client=dataset_client, on_paths=self.add_batch)

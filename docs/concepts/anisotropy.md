@@ -73,6 +73,12 @@ I_{\parallel,\mathrm{m}} = (1-l_1)\,I_\parallel + l_1\,I_\perp, \qquad
 I_{\perp,\mathrm{m}}     = l_2\,I_\parallel + (1-l_2)\,I_\perp .
 $$
 
+Tail-matched G = VV/VH must multiply the perpendicular signal in both the
+anisotropy and linked-mixing equations. An isotropic reference with VV = 2 VH
+therefore gives G = 2 and r = 0. Applying that same ratio to VV instead creates
+spurious anisotropy. Background subtraction can leave bins with a zero total
+signal; their anisotropy is undefined, rather than a measured zero.
+
 The [native G-factor workflow](../guides/91_vv_vh_g_factor.md) reports both
 the tail-matched ratio and its standard deviation, with separate channel
 backgrounds when correction is enabled. A slow reference can estimate a

@@ -35,11 +35,7 @@ def test_solve_linked_l():
     sp = 1000.0
     ss = 600.0
     g = 1.5
-    # g*sp - ss = 1.5*1000 - 600 = 900
-    # g*sp + 2*ss = 1500 + 1200 = 2700
-    # g*sp + ss = 2100
-    # target r = 0.3
-    # 3*l = (2700 - 900/0.3) / 2100 = (2700 - 3000) / 2100 = -300 / 2100 = -1/7
-    # l = -1/21
+    # G=VV/VH corrects VH; solve r=(sp-G*ss)/(sp+2G*ss-3l(sp+G*ss)).
+    expected = (sp + 2 * g * ss - (sp - g * ss) / 0.3) / (3 * (sp + g * ss))
     val = solve_linked_l_from_steady_state(sp=sp, ss=ss, g_factor=g, r_target=0.3)
-    assert np.allclose(val, -1.0 / 21.0)
+    assert np.allclose(val, expected)

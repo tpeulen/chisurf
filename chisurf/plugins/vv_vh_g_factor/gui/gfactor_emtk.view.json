@@ -1,4 +1,5 @@
 {
+ "window": {"width": 1100, "height": 720},
  "_comment": "The emtk forms of the G-factor calculator, drawn by emtk.view_form.draw_form over GFactorModel. This is the shared native calculator used by standalone and hosted callers.",
  "panels": {
   "tail": {
@@ -296,6 +297,9 @@
      "key": "data_table",
      "options": {
       "source": "batch_rows",
+      "min_column_width": 80,
+      "fit_columns": true,
+      "tooltip_key": "path",
       "delete_call": "remove_batch",
       "expand": true,
       "reserve": 40,
@@ -303,6 +307,7 @@
       "columns": [
        {
         "key": "file",
+        "min_width": 160,
         "title": "File",
         "tooltip": "Queued VV/VH decay; select and press Delete to remove it from the queue."
        },

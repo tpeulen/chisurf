@@ -48,7 +48,7 @@ def compute_rt(
     perp : array-like
         Perpendicular (VH) intensities.
     g_factor : float
-        G-factor.
+        Tail ratio VV/VH; multiplies the perpendicular signal.
     l1 : float, optional
         L1 correction factor.
     l2 : float, optional
@@ -64,8 +64,10 @@ def compute_rt(
         return np.full_like(np.asarray(par, dtype=float), np.nan, dtype=float)
     p = np.asarray(par, dtype=float)
     s = np.asarray(perp, dtype=float)
-    num = g * p - s
-    den = (1.0 - 3.0 * float(l2)) * g * p + (2.0 - 3.0 * float(l1)) * s
+    # Tail matching returns G = VV/VH, so G corrects the VH signal.
+    corrected_perp = g * s
+    num = p - corrected_perp
+    den = (1.0 - 3.0 * float(l2)) * p + (2.0 - 3.0 * float(l1)) * corrected_perp
     with np.errstate(divide="ignore", invalid="ignore"):
         return np.divide(
             num, den, out=np.full_like(num, np.nan), where=(np.isfinite(den) & (den != 0.0))
@@ -299,6 +301,7 @@ def calculate_g_factor_core(
         )
 
     # Determine final g-factor
+    g_factor: float | None
     if use_bg and g_factor_corrected is not None:
         g_factor = g_factor_corrected
     else:
@@ -382,7 +385,7 @@ def solve_linked_l_from_steady_state(
     ss : float
         Sum of perpendicular channel counts (background corrected).
     g_factor : float
-        Detector G-factor.
+        Detector tail ratio VV/VH.
     r_target : float
         Target steady-state anisotropy (e.g. from Perrin).
 
@@ -398,13 +401,13 @@ def solve_linked_l_from_steady_state(
     if not np.isfinite(sp) or not np.isfinite(ss) or not np.isfinite(g) or not np.isfinite(r):
         return np.nan
     if abs(r) < 1e-15:
-        if abs(g * sp - ss) < 1e-15:
+        if abs(sp - g * ss) < 1e-15:
             return 0.0
         return np.nan
-    den_ss = g * sp + ss
+    den_ss = sp + g * ss
     if abs(den_ss) < 1e-15:
         return np.nan
-    d = g * sp + 2.0 * ss
-    num_val = g * sp - ss
+    d = sp + 2.0 * g * ss
+    num_val = sp - g * ss
     val = d - num_val / r
     return float(val / (3.0 * den_ss))

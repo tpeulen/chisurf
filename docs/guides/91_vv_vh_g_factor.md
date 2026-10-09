@@ -23,6 +23,21 @@ numerical aperture additionally mixes the polarisations geometrically; one stead
 (a slow, long-lived reference with a known Perrin anisotropy) fixes only the single linked value
 $l_1 = l_2$, and an estimate outside 0 to 0.5 is shown but not applied. See {ref}`concept-anisotropy`.
 
+The standalone native window starts at **1100 × 720** pixels unless saved
+geometry takes precedence. Narrow batch tables keep readable column widths
+and scroll horizontally; hover a row for its file path. Native preferences
+restore the selected reference files and settings, reload existing files and
+recompute their results. The stored window state does not contain decay arrays.
+
+```{figure} figures/gfactor_native_primary_window.png
+:width: 100%
+
+Known references: tail matching gives G = 2. The calibrated fast reference has
+zero anisotropy; the slow-reference mixing estimate is l1 = l2 = 0.1, and its
+corrected anisotropy is 0.304. The example uses a manual 4 ns lifetime rather
+than treating the finite-window first moment as the exact input lifetime.
+```
+
 ## 1. Open the tool and load the fast reference
 
 *Spectroscopy → Decay → VV/VH G-Factor Calculator*. Press **Fast reference...** and choose the
