@@ -71,6 +71,7 @@ class HeaderEditorGui(TourTarget):
             steps=Path(__file__).parent / "guide.json",
             get_target_rect=lambda k: self.item_rects.get(k),
             owner=tool,
+            wait_for_controls=True,
         )
         self.rebuild_rows()
 
@@ -133,12 +134,14 @@ class HeaderEditorGui(TourTarget):
         if im.button(tr("📂 Open")):
             if callable(self.on_open):
                 self.on_open()
+                self.tour.notify_used("open")
         im.set_item_tooltip(tr("Open a TTTR file (PTU / HT3 / SPC / HDF5) and read its header."))
         self.remember("open")
         im.same_line()
         if im.button(tr("➕ Add")):
             self._rows.append({"name": "NewTag", "type": "AnsiString", "value": "", "idx": "-1"})
             self._commit()
+            self.tour.notify_used("add")
         im.set_item_tooltip(tr("Append a new header tag with a placeholder name."))
         self.remember("add")
         im.same_line()
@@ -164,6 +167,7 @@ class HeaderEditorGui(TourTarget):
         if im.button(tr("💾 Save as PTU")):
             if callable(self.on_save):
                 self.on_save()
+                self.tour.notify_used("save")
         im.set_item_tooltip(
             tr("Write the edited header to a new PTU file — the source's photon "
             "data is copied verbatim.")

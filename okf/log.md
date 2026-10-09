@@ -2,6 +2,9 @@
 
 ## 2026-10-10
 
+- TTTR Header and Splitter tours wait for real Open/Add/Save and browse/Convert presses; four stale test painters accept emtk's `width=`; template help
+  link repaired. The queued i18n job landed as 35ef70d90 (143 de/fr sources).
+
 - Menu Switch is a typed host `action` entrypoint (`target`, `description`,
   explicit `requires_main_window`; exclusive of gui/emtk/script) dispatched by
   `execute_plugin_action` from menu, ribbon and registry; the disconnected

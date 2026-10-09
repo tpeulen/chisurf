@@ -134,7 +134,7 @@ class RecordingPainter:
     def fill_rect(self, *a) -> None:
         self._op()
 
-    def stroke_rect(self, *a) -> None:
+    def stroke_rect(self, *a, width=1.0) -> None:
         self._op()
 
     def gradient_rect(self, *a) -> None:

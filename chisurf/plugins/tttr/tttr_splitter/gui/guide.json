@@ -1,22 +1,31 @@
 [
   {
+    "title": "Choose the input",
+    "text": "Press the browse button beside Input file and choose a TTTR measurement. The guide does not choose a file for you.",
     "target": "input",
-    "title": "Load input",
-    "text": "Open a TTTR file using the path field or browse button."
+    "await": {
+      "hint": "Press the browse button beside Input file."
+    }
   },
   {
-    "target": "formats",
-    "title": "Choose formats",
-    "text": "Select the input container and desired output container."
+    "title": "Choose the output",
+    "text": "Press the browse button beside Output folder and select a destination.",
+    "target": "output",
+    "await": {
+      "hint": "Press the browse button beside Output folder."
+    }
   },
   {
-    "target": "split",
-    "title": "Set split options",
-    "text": "Choose the chunk size and binning. Disable Split into files for a single output. Keep original protects the source."
+    "title": "Set formats and split options",
+    "text": "Choose the input container and the output container, then the chunk size and binning. Disable Split into files for a single output. Keep original protects the source.",
+    "target": "split"
   },
   {
-    "target": "run",
     "title": "Convert or split",
-    "text": "Choose an output folder, then run. Batch uses the same settings."
+    "text": "Press Convert / Split when the input and options are ready. The guide waits for this action; progress and status report whether the operation completes successfully.",
+    "target": "run",
+    "await": {
+      "hint": "Press Convert / Split in the Input / Output panel."
+    }
   }
 ]

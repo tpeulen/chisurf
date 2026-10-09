@@ -78,6 +78,7 @@ class SplitterGui(TourTarget):
             steps=Path(__file__).parent / "guide.json",
             get_target_rect=lambda k: self.item_rects.get(k),
             owner=tool,
+            wait_for_controls=True,
         )
 
     # ── plumbing ──────────────────────────────────────────────────────────
@@ -104,7 +105,7 @@ class SplitterGui(TourTarget):
 
     # ── one picker row: caption + field + browse button ───────────────────
 
-    def _picker_row(self, caption: str, value: str, hint: str, on_browse: Callable) -> str:
+    def _picker_row(self, caption: str, value: str, hint: str, on_browse: Callable, target: str) -> str:
         im.text(f"{caption}:")
         im.same_line()
         browse_w = im.calc_text_size("…")[0] + 28.0
@@ -116,9 +117,10 @@ class SplitterGui(TourTarget):
             f"{caption} — type a path, or drop it on the window, or press … to browse."
         )
         im.same_line()
-        if im.button("…"):
+        if im.button(f"…##{target}"):
             if callable(on_browse):
                 on_browse()
+                self.tour.notify_used(target)
         im.set_item_tooltip(f"Browse for the {caption.lower()}.")
         return text
 
@@ -134,6 +136,7 @@ class SplitterGui(TourTarget):
         if im.button("✂ Convert / Split"):
             if callable(self.on_run):
                 self.on_run()
+                self.tour.notify_used("run")
         im.set_item_tooltip(
             "Split the loaded TTTR file into the output folder, one file per "
             "photon chunk, converting the container format when it differs."
@@ -160,13 +163,14 @@ class SplitterGui(TourTarget):
             m.input_file,
             "Drop a TTTR file here or browse…",
             self.on_browse_input,
+            "input",
         )
         if new_input != m.input_file and new_input.strip():
             tool.load_input(new_input.strip())
         self.remember("input")
 
         new_out = self._picker_row(
-            "Output folder", m.output_folder, "Output folder", self.on_browse_output
+            "Output folder", m.output_folder, "Output folder", self.on_browse_output, "output"
         )
         if new_out != m.output_folder:
             m.output_folder = new_out

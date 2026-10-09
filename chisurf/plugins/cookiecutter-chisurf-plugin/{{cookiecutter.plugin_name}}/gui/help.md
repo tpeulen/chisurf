@@ -31,4 +31,4 @@ that shares no code with the first.
 Write links, not paths, so the modal can follow them: a documentation page opens
 in the ChiSurf documentation browser, a URL or DOI in the system browser.
 
-- [Some concept](docs/concepts/index.rst)
+- [Some concept](docs/concepts/index.md)

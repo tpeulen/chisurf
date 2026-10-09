@@ -1,5 +1,26 @@
 [
-  {"title":"Open a source","text":"Open a supported TTTR file or drop it onto the editor.","target":"open"},
-  {"title":"Inspect and edit tags","text":"Edit a name, type, native-unit value or index. Invalid edits block saving.","target":"tag_table"},
-  {"title":"Save a copy","text":"Save the edited header and original photon events to a new PTU file.","target":"save"}
+  {
+    "title": "Open a source",
+    "text": "Press Open to choose a supported TTTR file, then select your source. The guide waits for your Open click; it does not choose or load a file for you.",
+    "target": "open",
+    "await": {
+      "hint": "Press Open, then choose a TTTR file."
+    }
+  },
+  {
+    "title": "Add a tag",
+    "text": "Press Add to append a tag, then edit its name, type, value and index in the table. Invalid edits block saving.",
+    "target": "add",
+    "await": {
+      "hint": "Press Add in the header tags panel."
+    }
+  },
+  {
+    "title": "Save a copy",
+    "text": "Press Save as PTU to choose a destination after loading a source and checking the tags. The saved copy retains the original photon events; inspect the status for completion or errors.",
+    "target": "save",
+    "await": {
+      "hint": "Press Save as PTU, then choose a new output file."
+    }
+  }
 ]

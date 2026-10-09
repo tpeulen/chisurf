@@ -25,56 +25,7 @@ def _ensure_app():
     _APP[:] = [QtWidgets.QApplication.instance() or QtWidgets.QApplication([])]
 
 
-class RecordingPainter:
-    """Counts operations and keeps the strings, instead of drawing."""
-
-    def __init__(self) -> None:
-        self.strings: list[str] = []
-        self.bars: list[tuple] = []
-        self.ops = 0
-
-    def _op(self) -> None:
-        self.ops += 1
-
-    def fill_rect(self, *a) -> None:
-        self._op()
-
-    def stroke_rect(self, *a) -> None:
-        self._op()
-
-    def gradient_rect(self, *a) -> None:
-        self._op()
-
-    def fill_triangle(self, *a) -> None:
-        self._op()
-
-    def text(self, x, y, w, h, align, string, colour, bold=False) -> None:
-        self.strings.append(string)
-        self._op()
-
-    def text_rotated(self, *a) -> None:
-        self._op()
-
-    def image(self, *a) -> None:
-        self._op()
-
-    def push_clip(self, *a) -> None:
-        pass
-
-    def pop_clip(self) -> None:
-        pass
-
-    def text_width(self, string) -> float:
-        return len(str(string)) * 7.0
-
-    def line_height(self) -> float:
-        return 12.0
-
-    def set_font(self, font) -> None:
-        pass
-
-    def set_font_scale(self, scale) -> None:
-        pass
+from emtk.testing import RecordingPainter  # noqa: E402
 
 
 @pytest.fixture
@@ -101,7 +52,7 @@ def test_a_frame_draws_all_three_docks(tool):
     painter = RecordingPainter()
     tool.app.draw(painter, 0.0, 0.0, 900.0, 620.0)
 
-    assert painter.ops > 60
+    assert len(painter.calls) > 60
     # Input/Output dock (captions + the run button)…
     assert "Input file:" in painter.strings
     assert "✂ Convert / Split" in painter.strings
