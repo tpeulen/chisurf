@@ -293,3 +293,13 @@ $\mathbf{A}$.
   burstH2MM, whose plots this plugin follows; {cite}`schrimpf2018` a comparable
   framework with its own implementation; {cite}`gopich2009` the photon-by-photon
   theory underneath all three.
+
+### Native H2MM display contract
+
+The native host declares 1100 × 720 logical-pixel initial dimensions and restores
+saved geometry. Its narrow controls place output checkboxes on separate rows;
+scrolling the results dock exposes all fitted state rows. This display contract
+changes neither model selection nor the measured photon stream and rates. The
+[H2MM workflow](../guides/19_h2mm_hidden_markov.md) shows a measured constrained
+fit with its seed, iteration cap and time scale explicit, without inferring
+physical-state identities from the display.

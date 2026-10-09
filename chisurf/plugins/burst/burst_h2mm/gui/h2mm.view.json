@@ -1,4 +1,5 @@
 {
+  "window": {"width": 1100, "height": 720},
   "_comment": "Settings of the emtk H2MM app: AutoForm over H2mmViewModel. Same controls as the Qt tool's Settings tab (model selection, optimisation, decoder) plus the detector streams of its Channels tab as routing-channel lists.",
   "sections": [
     {

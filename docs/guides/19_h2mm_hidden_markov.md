@@ -275,3 +275,28 @@ H2MM state path and dwell E histogram.
 
 - `chisurf/plugins/burst/burst_h2mm/`; the binned-trace complement below.
 - HMM of binned traces: [ebFRET](20_ebfret_binned_hmm.md).
+
+## Native host dimensions and narrow controls
+
+The native H2MM host starts at **1100 × 720 logical pixels**, with saved host
+geometry taking precedence. Scroll the Rates and states dock to inspect all
+state rows, and the settings dock to reach the lower output controls on a
+narrow window. Narrow checkbox rows start at the left so their complete labels
+remain readable. The wide layout retains its existing field alignment.
+
+```{figure} figures/h2mm_native_primary_window.png
+:width: 100%
+
+Measured BH input after scrolling: both fitted state rows and all lower output
+controls are visible. This constrained two-state, seeded 40-iteration fit at
+macro-time scale 20 is display evidence, not a physical-state identification
+or a convergence/optimum claim.
+```
+
+The comparison uses 152 bursts and 17,282 photons with the production default
+donor/acceptor detector routing. Fitted arrays, clock scale, dwell export and
+settings values are unchanged by host sizing. Native geometry/dock layout
+restores; a computed fit still requires data loading and running the workflow.
+The current settings JSON stores analysis options rather than the complete
+detector definition; retain the detector setup separately until that contract
+is extended. See [H2MM](../concepts/h2mm.md).

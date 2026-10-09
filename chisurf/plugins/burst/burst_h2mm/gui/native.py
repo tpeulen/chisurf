@@ -13,6 +13,7 @@ from pathlib import Path
 
 from emtk import im
 from emtk.app import ImApp
+from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.im_core import get_current_context
 from emtk.view_form import FormState, draw_sections
@@ -21,7 +22,7 @@ from emtk.widgets.view_spec import load_view_spec
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.jobs import SnapshotJob
-from chisurf.plugins.emtk_layout import LabelColumn, button_row, cap_widths, group_by_width, labelled
+from chisurf.plugins.emtk_layout import LabelColumn, button_row, cap_widths, group_by_width, labelled, window_size
 
 from .model import H2mmViewModel
 from .plots import ResultPlots
@@ -48,6 +49,7 @@ class H2mmNativeApp(TourTarget, ImApp):
         self.plots = ResultPlots()
         self.form = FormState()
         spec = load_view_spec(str(HERE / "h2mm.view.json"))
+        self.window_size = window_size(spec, (1100, 720))
         sections = spec["sections"]
         self.settings_sections = [s for s in sections if s.get("type") == "panel" and s.get("title") != "Burst"]
         self.burst_sections = [s for s in sections if s.get("type") == "panel" and s.get("title") == "Burst"]
@@ -59,7 +61,7 @@ class H2mmNativeApp(TourTarget, ImApp):
         self._measured = False
         self.dialog = None
         self.dialog_action = ""
-        self._dialog_window = None
+        self._dialog_window: DialogWindow | None = None
         self.nano_colours: set[str] | None = None
         self.nano_states: set[int] | None = None
         self.editor = ChannelDefinitionWidget(self.model.setup, on_changed=self.model.set_setup, host_app=self)
@@ -159,20 +161,19 @@ class H2mmNativeApp(TourTarget, ImApp):
 
     def browse(self, action: str) -> None:
         """Open the file dialog for *action*."""
-        from emtk.dialog_window import DialogWindow
         from emtk.file_dialog import FileDialog
 
         title, mode, filters = self.DIALOGS[action]
-        options = {"filters": filters} if filters else {}
+        directory = str(self.model.data_folder) if self.model.data_folder else None
         filename = {"save_settings": "h2mm_settings.json", "export_dwells": "h2mm_dwells.csv", "save_plot": "h2mm.png"}.get(action, "")
-        if mode == "folder" and self.model.data_folder:
-            options["directory"] = str(self.model.data_folder)
-        elif self.model.data_folder and mode != "folder":
-            options["directory"] = str(self.model.data_folder)
-        self.dialog = FileDialog(title, mode=mode, filename=filename, **options)
+        self.dialog = FileDialog(
+            title, mode=mode, filename=filename, directory=directory,
+            filters=filters or [("All files", ["*"])],
+        )
         self.dialog_action = action
-        self._dialog_window = DialogWindow(title, size=(640.0, 460.0), key="burst-h2mm-file")
-        self._dialog_window.show()
+        dialog_window = DialogWindow(title, size=(640.0, 460.0), key="burst-h2mm-file")
+        self._dialog_window = dialog_window
+        dialog_window.show()
 
     def _dialog_done(self, result: list[str]) -> None:
         action, path = self.dialog_action, result[0]
@@ -208,8 +209,9 @@ class H2mmNativeApp(TourTarget, ImApp):
         fig = Figure(2, 2, size=(1200, 960))
         ax = fig.ax(0, 0)
         info = result_view.dwell_fret(ana)
-        for state, counts in info.counts.items():
-            ax.line(info.centers, counts, label=f"S{state}")
+        if info is not None:
+            for state, counts in info.counts.items():
+                ax.line(info.centers, counts, label=f"S{state}")
         ax.set_labels(x="Apparent FRET E", y="Dwells").set_title("Dwell FRET states").legend()
         ax = fig.ax(0, 1)
         points = result_view.transition_points(ana)
@@ -317,7 +319,10 @@ class H2mmNativeApp(TourTarget, ImApp):
             target = copy.copy(self.model)
             target._observers = []
         im.begin_disabled(running)
-        draw_sections(self._fields(), target, self.form)
+        fields = self._fields()
+        if im.get_content_region_avail()[0] < 340:
+            fields = group_by_width(fields, toggles_join=False)
+        draw_sections(fields, target, self.form)
         im.end_disabled()
         if "data_folder" in self.form.rects:
             self.item_rects["folder_field"] = tuple(self.form.rects["data_folder"])
