@@ -67,8 +67,10 @@ def test_push_draws_the_lines_in_an_open_window_and_none_after_it_closes(qapp):
         assert tool.message == "Sent 2 line(s) to ndX" and not tool.dialog_text
         overlays = next(f for f in app.features if f.name == "overlays")
         curves = overlays.overlays.curves
-        assert [c.title for c in curves] == ["FRET line — Line 1 · " + tool.lines[0]["sweep_label"],
-                                             "FRET line — Line 2 · " + tool.lines[1]["sweep_label"]]
+        assert [c.title for c in curves] == [
+            "FRET line — Line 1 · " + tool.lines[0]["sweep_label"],
+            "FRET line — Line 2 · " + tool.lines[1]["sweep_label"],
+        ]
         assert [c.kind for c in curves] == ["data", "data"]
         assert curves[0].color == tool.lines[0]["color"]
         np.testing.assert_allclose(curves[0].function()[1], tool.lines[0]["result"]["e_fret"])
@@ -106,8 +108,9 @@ def test_an_open_window_with_incompatible_axes_reports_rejection_not_absence(qap
 
     tool = _two_lines()
     window = build_ndxplorer_window(
-        data_source=DataSource.from_columns({"x": [1., 2.], "y": [3., 4.]}),
-        session_autosave=False, layout_store=None,
+        data_source=DataSource.from_columns({"x": [1.0, 2.0], "y": [3.0, 4.0]}),
+        session_autosave=False,
+        layout_store=None,
     )
     try:
         tool.push_callback = push_to_ndx

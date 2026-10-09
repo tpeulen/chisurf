@@ -51,8 +51,12 @@ from chisurf.plugins.ndxplorer.global_view_slot import (  # noqa: E402
     GLOBAL_VIEW_OWNER,
     published_group,
 )
-from chisurf.plugins.ndxplorer.global_view_slot import constants_group as _constants_group  # noqa: E402
-from chisurf.plugins.ndxplorer.global_view_slot import withdraw_constants as _withdraw_constants  # noqa: E402
+from chisurf.plugins.ndxplorer.global_view_slot import (
+    constants_group as _constants_group,  # noqa: E402
+)
+from chisurf.plugins.ndxplorer.global_view_slot import (
+    withdraw_constants as _withdraw_constants,  # noqa: E402
+)
 
 #: The window's first size, in logical pixels: the parity captures' size.
 WINDOW_SIZE = (1400, 900)
@@ -207,8 +211,11 @@ class NdxWindow(ChisurfDockTool):
 
             client = picker.inprocess_client()
         if client is None:
-            self._say(title, "The in-process MMFDB client could not be started "
-                             "(MMFDB missing or its database not initialised).")
+            self._say(
+                title,
+                "The in-process MMFDB client could not be started "
+                "(MMFDB missing or its database not initialised).",
+            )
             return None
         try:
             client.status()
@@ -222,8 +229,9 @@ class NdxWindow(ChisurfDockTool):
         return path
 
     # -- provenance -----------------------------------------------------------
-    def record_burst_ids_in_mmfdb(self, processed_data_id: str, experiment_id: str | None = None,
-                                  client: Any = None) -> None:
+    def record_burst_ids_in_mmfdb(
+        self, processed_data_id: str, experiment_id: str | None = None, client: Any = None
+    ) -> None:
         """Record what Save > Burst IDs saves against the MMFDB product shown here.
 
         What the MMFDB admin's *Open in ndX* sets: the window shows a processed
@@ -243,8 +251,11 @@ class NdxWindow(ChisurfDockTool):
             An MMFDB client with ``call(method, params)``; ChiSurf's shared
             in-process client when omitted.
         """
-        self._mmfdb_product = {"processed_data_id": str(processed_data_id),
-                               "experiment_id": experiment_id, "client": client}
+        self._mmfdb_product = {
+            "processed_data_id": str(processed_data_id),
+            "experiment_id": experiment_id,
+            "client": client,
+        }
         self.app.burst_ids_recorder = self._record_burst_ids
 
     def _record_burst_ids(self, record: dict) -> str:
@@ -257,20 +268,35 @@ class NdxWindow(ChisurfDockTool):
             client = picker.inprocess_client()
         if client is None:
             raise RuntimeError("the in-process MMFDB client could not be started")
-        reply = client.call("ndxplorer.record_analysis", {
-            "experiment_id": product.get("experiment_id") or "exp_1",
-            "input_processed_data_ids": [product["processed_data_id"]],
-            "analysis_type": "selection",
-            "settings": {"gate": record["gate"], "folder": record["folder"],
-                         "files": record["files"], "n_rows": record["n_rows"],
-                         "n_selected": record["n_selected"]},
-            "products": [{"product_type": "selection_mask", "storage_mode": "embedded_json",
-                          "data": {"mask": record["mask"]}, "validation_status": "valid"}],
-            "software_version": _ndx_version(),
-        })
+        reply = client.call(
+            "ndxplorer.record_analysis",
+            {
+                "experiment_id": product.get("experiment_id") or "exp_1",
+                "input_processed_data_ids": [product["processed_data_id"]],
+                "analysis_type": "selection",
+                "settings": {
+                    "gate": record["gate"],
+                    "folder": record["folder"],
+                    "files": record["files"],
+                    "n_rows": record["n_rows"],
+                    "n_selected": record["n_selected"],
+                },
+                "products": [
+                    {
+                        "product_type": "selection_mask",
+                        "storage_mode": "embedded_json",
+                        "data": {"mask": record["mask"]},
+                        "validation_status": "valid",
+                    }
+                ],
+                "software_version": _ndx_version(),
+            },
+        )
         run = (reply or {}).get("processing_run") or {}
-        return (f"Recorded the selection ({record['n_selected']} of {record['n_rows']} bursts) "
-                f"in MMFDB as {run.get('processing_id', 'a processing run')}")
+        return (
+            f"Recorded the selection ({record['n_selected']} of {record['n_rows']} bursts) "
+            f"in MMFDB as {run.get('processing_id', 'a processing run')}"
+        )
 
     def _say(self, title: str, text: str) -> None:
         """A message box in the app (and the log): the reason a thing did not happen."""

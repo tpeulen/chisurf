@@ -4,6 +4,7 @@ The ndX app registers its constants group under :data:`GLOBAL_VIEW_OWNER`; the
 window that hosts it -- the Qt ``NdxWindow`` or the emtk app -- withdraws it when
 it closes, unless a later window has taken the slot.
 """
+
 from __future__ import annotations
 
 import logging
@@ -27,8 +28,7 @@ def withdraw_constants(app) -> None:
         if group is not None and held.get(GLOBAL_VIEW_OWNER) is group:
             parameters.unregister_group(GLOBAL_VIEW_OWNER)  # ndX's registry and ChiSurf's
     except Exception:
-        logger.warning("Could not withdraw the ndX constants from the Global View",
-                       exc_info=True)
+        logger.warning("Could not withdraw the ndX constants from the Global View", exc_info=True)
 
 
 def constants_group(app):
@@ -49,4 +49,3 @@ def published_group():
         if owner_id == GLOBAL_VIEW_OWNER:
             return group
     return None
-

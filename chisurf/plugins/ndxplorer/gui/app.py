@@ -1,4 +1,5 @@
 """Bind ndX's shared EMTK explorer to ChiSurf's plugin and FRET bridges."""
+
 from __future__ import annotations
 
 import sys
@@ -70,27 +71,42 @@ def _add_mmfdb_integration(app):
             return True if action == "open_from_mmfdb" else None
 
         def menu_entries(self):
-            return [(("File", "Import"), {"label": "From MMFDB…",
-                    "action": "open_from_mmfdb",
-                    "description": "Browse authenticated MMFDB burst selections and open one in ndX."})]
+            return [
+                (
+                    ("File", "Import"),
+                    {
+                        "label": "From MMFDB…",
+                        "action": "open_from_mmfdb",
+                        "description": "Browse authenticated MMFDB burst selections and open one in ndX.",
+                    },
+                )
+            ]
 
         def open_from_mmfdb(self):
             self.picker = DatasetPicker(
-                client=session_client(), kinds=BURST_KINDS, formats=BURST_FORMATS,
-                scope="all", on_paths=self.open_paths, on_selected=self.open_selection,
+                client=session_client(),
+                kinds=BURST_KINDS,
+                formats=BURST_FORMATS,
+                scope="all",
+                on_paths=self.open_paths,
+                on_selected=self.open_selection,
             )
             self.picker.open()
 
         def open_paths(self, paths):
             if not paths or not self.app.open_path(str(paths[0])):
-                raise ValueError(self.app.model.error or "The selected burst table could not be opened")
+                raise ValueError(
+                    self.app.model.error or "The selected burst table could not be opened"
+                )
             self.app.show_status(f"Opened burst selection: {Path(paths[0]).name}")
 
         def open_selection(self, selection):
             from chisurf.plugins.ndxplorer.selection_provenance import record_artifact_selection
 
             client, artifact_id = self.picker.client, selection.artifact_id
-            self.app.burst_ids_recorder = lambda record: record_artifact_selection(client, artifact_id, record)
+            self.app.burst_ids_recorder = lambda record: record_artifact_selection(
+                client, artifact_id, record
+            )
 
         def on_data_changed(self):
             # A replacement/merge must not inherit another artifact's provenance.
@@ -110,16 +126,19 @@ def _add_mmfdb_integration(app):
     fret = next((item for item in app.features if item.name == "accurate_fret"), None)
     if fret is not None:
         old_available = fret.available
-        fret.available = lambda action: (None if action == "open_from_mmfdb"
-                                         else old_available(action))
+        fret.available = lambda action: (
+            None if action == "open_from_mmfdb" else old_available(action)
+        )
         fret.menu_entries = lambda: [
-            (path, entry) for path, entry in fret.__class__.menu_entries(fret)
+            (path, entry)
+            for path, entry in fret.__class__.menu_entries(fret)
             if entry is None or entry.get("action") != "open_from_mmfdb"
         ]
     app.features.append(feature)
     app.panel.actions["open_from_mmfdb"] = feature.open_from_mmfdb
-    app.menubar = build_menu_bar(app.panel.available, app._checked,
-                                 extra=app._feature_menu_entries())
+    app.menubar = build_menu_bar(
+        app.panel.available, app._checked, extra=app._feature_menu_entries()
+    )
     return feature
 
 
@@ -147,6 +166,7 @@ def make_app(session_autosave: bool = True, chisurf_rpc=None):
         when omitted.
     """
     from chisurf.emtk.session_sources import register_source, unregister_source
+
     NdxApp = _load_ndx_app_factory()
     from chisurf.emtk.i18n import install as install_translations
 

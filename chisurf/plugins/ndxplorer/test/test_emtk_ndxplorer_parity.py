@@ -34,8 +34,12 @@ def _scratch_ndx_settings(tmp_path, monkeypatch):
 def _columns():
     rng = np.random.default_rng(7)
     n = 2000
-    return {"I_DD": rng.poisson(60, n).astype(float), "I_DA": rng.poisson(40, n).astype(float),
-            "I_AA": rng.poisson(50, n).astype(float), "Tau": rng.normal(2.5, 0.3, n)}
+    return {
+        "I_DD": rng.poisson(60, n).astype(float),
+        "I_DA": rng.poisson(40, n).astype(float),
+        "I_AA": rng.poisson(50, n).astype(float),
+        "Tau": rng.normal(2.5, 0.3, n),
+    }
 
 
 def _flat(entries, prefix=""):
@@ -45,7 +49,9 @@ def _flat(entries, prefix=""):
         label = getattr(entry, "label", "")
         if label:
             out.append(prefix + label)
-        out.extend(_flat(getattr(entry, "entries", ()) or (), prefix + label + "/" if label else prefix))
+        out.extend(
+            _flat(getattr(entry, "entries", ()) or (), prefix + label + "/" if label else prefix)
+        )
     return out
 
 
@@ -117,12 +123,18 @@ def test_same_controls_as_the_qt_window_on_the_same_table():
     columns = _columns()
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT, json.dumps({k: v.tolist() for k, v in columns.items()})],
-                          capture_output=True, text=True, timeout=300, env=env, cwd=str(REPO))
+    proc = subprocess.run(
+        [sys.executable, "-c", _QT, json.dumps({k: v.tolist() for k, v in columns.items()})],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env=env,
+        cwd=str(REPO),
+    )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
     if line is None:
         pytest.skip(f"NdxWindow could not be built here: {proc.stderr[-800:]}")
-    qt = json.loads(line[len("FACTS"):])
+    qt = json.loads(line[len("FACTS") :])
     app = _make(session_autosave=False)
     try:
         app.model.set_source(DataSource.from_columns(columns))
@@ -130,12 +142,16 @@ def test_same_controls_as_the_qt_window_on_the_same_table():
         inv = emtk_inventory(app)
         ours = {"controls": inv["controls"], "menus": _flat(app.menubar.menus)}
         assert ours["menus"] == qt["menus"]
+
         # Every control of the Qt-hosted app is drawn by the factory's app too -- in full,
         # or clipped: the factory gives Plot controls a wider column (split 0.44), so the
         # path field's hint shows as "Drop folder her…".
         def present(text):
             return text in ours["controls"] or any(
-                c.rstrip("…") and text.startswith(c.rstrip("…")) for c in ours["controls"] if len(c) > 6)
+                c.rstrip("…") and text.startswith(c.rstrip("…"))
+                for c in ours["controls"]
+                if len(c) > 6
+            )
 
         assert [c for c in qt["controls"] if not present(c)] == []
     finally:
@@ -148,10 +164,10 @@ def test_closing_the_host_closes_the_app_once(monkeypatch):
     closes = []
     original = type(app).close
     monkeypatch.setattr(type(app), "close", lambda self: (closes.append(1), original(self)))
-    app.set_frame_request_callback(lambda: None)        # a host attached
-    app.set_frame_request_callback(None)                # its window closed
+    app.set_frame_request_callback(lambda: None)  # a host attached
+    app.set_frame_request_callback(None)  # its window closed
     assert app._chisurf_closed
-    app.close()                                         # and a second close is harmless
+    app.close()  # and a second close is harmless
     from chisurf.plugins.ndxplorer.global_view_slot import published_group
 
     assert published_group() is None

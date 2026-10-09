@@ -27,8 +27,12 @@ def test_native_ndx_factory_draws_without_qt_and_registers_session_source(tmp_pa
             elif entry is not None:
                 yield entry
 
-    mmfdb = next(item for menu in app.menubar.menus for item in menu_items(menu.entries)
-                 if getattr(item, "action", None) == "open_from_mmfdb")
+    mmfdb = next(
+        item
+        for menu in app.menubar.menus
+        for item in menu_items(menu.entries)
+        if getattr(item, "action", None) == "open_from_mmfdb"
+    )
     assert "authenticated MMFDB" in mmfdb.tooltip
     app.close()
     assert adapter not in sources("ndx")
@@ -43,7 +47,9 @@ def test_native_ndx_source_shares_columns_and_accurate_fret_updates(tmp_path, mo
     from chisurf.plugins.ndxplorer.gui.app import make_app
 
     app = make_app()
-    app.model.set_source(DataSource.from_columns({"I_DD": [10, 20], "I_DA": [4, 8], "I_AA": [7, 9]}))
+    app.model.set_source(
+        DataSource.from_columns({"I_DD": [10, 20], "I_DA": [4, 8], "I_AA": [7, 9]})
+    )
     source = app._chisurf_native_source
     columns = source.get_burst_columns()
     np.testing.assert_array_equal(columns["I_DD"], [10, 20])
