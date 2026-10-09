@@ -207,7 +207,11 @@ routing channel, full micro-time range), add files in *Files* and press
 or a stem the BID name starts with (so `<stem>_state_1.bst` finds `<stem>.spc`)
 — in the file's folder or up to three folders above. The burst table and the
 BID file are written into the measurement's `.pto`; an info folder
-`<bid stem>/` is created beside the TTTR file.
+`<bid stem>/` is created beside the TTTR file. **Load example** queues a
+simulated stream with six known bursts and its BID file (from
+`chisurf.plugins.burst.bid_to_analysis.demo.make_demo()`): converted, it gives
+six bursts whose photon numbers are `last − first + 1` of each BID row.
+**Guide** walks through it and waits for your Load example and Process presses.
 
 ## Headless
 

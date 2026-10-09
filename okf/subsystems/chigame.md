@@ -26,7 +26,7 @@ timestamp: '2026-08-10T00:00:00Z'
 4. Blocked: aggregate W6f/W6 and programme gates are not closed. Three newly
    declared GUI entries needed a real surface/action contract: About is closed
    (declared help/actions), menu_switch is now a typed host `action` with no
-   window (2026-10-10); bid_to_analysis still lacks real conversion/help/tour/demo. Default sound and remaining family semantics still
+   window (2026-10-10); bid_to_analysis has help, an awaited tour and a known-answer demo (2026-10-10). Default sound and remaining family semantics still
    require their owning batches.
 
 # Historical engine work

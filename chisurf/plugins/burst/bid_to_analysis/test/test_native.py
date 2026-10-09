@@ -169,3 +169,45 @@ def test_real_populated_native_conversion_without_qt(tmp_path):
         ),
     )
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def _click(app, key, width=1200, height=800):
+    """Show a frame, then press and release the real control registered under ``key``."""
+    app.draw(RecordingPainter(), 0, 0, width, height)
+    x, y, w, h = app.item_rects[key]
+    app.press(x + w / 2, y + h / 2)
+    app.draw(RecordingPainter(), 0, 0, width, height)
+    app.release()
+    app.draw(RecordingPainter(), 0, 0, width, height)
+
+
+def test_tour_waits_for_real_example_and_process(tmp_path, monkeypatch):
+    """The guide advances only when the user presses Load example, then Process."""
+    from .. import demo
+
+    monkeypatch.setattr(demo, "demo_folder", lambda: tmp_path / "demo")
+    app = create_app()
+    try:
+        app.io.wall_clock = False
+        app.io.delta_time = 0.01
+        app.draw(RecordingPainter(), 0, 0, 1200, 800)
+        app.start_guide()
+        app.tour.next()
+        app.draw(RecordingPainter(), 0, 0, 1200, 800)
+        assert app.tour.awaiting and app.tour.step_idx == 1
+        app.tour.next()
+        assert app.tour.step_idx == 1, "Next must not skip an awaited step"
+        _click(app, "load_example")
+        assert [row["status"] for row in app.rows] == ["Ready"]
+        assert not app.tour.awaiting
+        app.tour.next()
+        app.tour.next()
+        assert app.tour.awaiting and app.tour.step_idx == 3
+        _click(app, "process")
+        if app.future is not None:
+            app.future.result(timeout=60)
+        app.draw(RecordingPainter(), 0, 0, 1200, 800)
+        assert app.rows[0]["status"] == "Done" and not app.tour.awaiting
+        assert "1/1" in app.status
+    finally:
+        app.close()

@@ -2,6 +2,10 @@
 
 ## 2026-10-10
 
+- BID → Analysis ships a known-answer demo (six bursts; photon numbers =
+  last − first + 1 per BID row), a Load example button, shared help and a tour
+  that waits for real Load example / Process presses.
+
 - TTTR Header and Splitter tours wait for real Open/Add/Save and browse/Convert presses; four stale test painters accept emtk's `width=`; template help
   link repaired. The queued i18n job landed as 35ef70d90 (143 de/fr sources).
 

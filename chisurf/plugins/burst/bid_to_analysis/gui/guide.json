@@ -1,0 +1,32 @@
+[
+  {
+    "title": "BID → Analysis",
+    "text": "This tool turns burst selections (BID files: first and last photon index of each burst) into burst tables, using the TTTR file with the same stem. The next step loads a ready example so you can watch one conversion end to end."
+  },
+  {
+    "title": "Load the example",
+    "text": "Press Load example. It writes a simulated photon stream with six known bursts and its BID selection, and queues the BID file. Your own files go in with Add files or Folder.",
+    "target": "load_example",
+    "await": {
+      "hint": "Press Load example."
+    }
+  },
+  {
+    "title": "Choose outputs",
+    "text": "PTO stores the burst table and the original BID inside the measurement container. BUR, SL5 and HDF5 write the legacy table, a photon mask and a columnar table. The detector setup on the left decides the per-detector columns.",
+    "target": "formats"
+  },
+  {
+    "title": "Convert",
+    "text": "Press Process. Each queued selection is converted with its TTTR file and the current detector setup.",
+    "target": "process",
+    "await": {
+      "hint": "Press Process."
+    }
+  },
+  {
+    "title": "Read the result",
+    "text": "The status line counts converted files and the table shows each output folder. The example gives six bursts, each with last minus first plus one photons from its BID row.",
+    "target": "status"
+  }
+]

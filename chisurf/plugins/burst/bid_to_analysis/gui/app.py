@@ -11,17 +11,19 @@ from emtk.docking import DockManager, Region, Split
 from emtk.i18n import tr
 
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 
 from .. import _find_tttr_by_stem, convert_bid_file
 
 
-class BidToAnalysisApp(ImApp):
+class BidToAnalysisApp(ImApp, TourTarget):
     def __init__(self, setup_model=None):
+        self.item_rects = {}
         super().__init__(self._draw_ui, continuous=True)
         self.rows = []
         self.messages = []
         self.running = False
-        self.status = "Add BID files or drop them here."
+        self.status = tr("Add BID files or drop them here, or press Load example.")
         self.output_types = {"pto"}
         self.unique_folder = False
         self.zip_output = False
@@ -38,11 +40,39 @@ class BidToAnalysisApp(ImApp):
             name="bid_to_analysis",
         )
         self.docks.add_window(
-            "setup", "Detector setup", lambda box: self.setup.draw(), dock="setup"
+            "setup", tr("Detector setup"), lambda box: self.setup.draw(), dock="setup"
         )
-        self.docks.add_window("files", "BID files and conversion", self.draw_files, dock="files")
-        self.docks.add_window("log", "Conversion log", self.draw_log, dock="log")
-        self.help_open = False
+        self.docks.add_window(
+            "files", tr("BID files and conversion"), self.draw_files, dock="files"
+        )
+        self.docks.add_window("log", tr("Conversion log"), self.draw_log, dock="log")
+        gui = Path(__file__).parent
+        self.help_window = EmTkHelpWindow(
+            title=tr("BID → Analysis help"),
+            resource=gui / "help.md",
+            owner=self,
+            on_start_guide=self.start_guide,
+            size=(700.0, 520.0),
+        )
+        self.tour = EmTkGuidedTour(
+            steps=gui / "guide.json",
+            get_target_rect=lambda key: self.item_rects.get(key),
+            owner=self,
+            wait_for_controls=True,
+        )
+
+    def start_guide(self):
+        self.help_window.hide()
+        self.tour.start()
+
+    def load_example(self):
+        """Queue the shipped simulated stream with its known BID selection."""
+        if self.running:
+            return
+        from ..demo import make_demo
+
+        self.add_files([make_demo()])
+        self.status = tr("Example queued: six simulated bursts. Press Process.")
 
     def add_files(self, paths):
         if self.running:
@@ -73,7 +103,7 @@ class BidToAnalysisApp(ImApp):
                 )
             )
             existing.add(str(path))
-        self.status = f"{len(self.rows)} BID file(s) queued."
+        self.status = tr("{n} BID file(s) queued.").format(n=len(self.rows))
 
     def on_paths_dropped(self, paths):
         self.add_files(paths)
@@ -82,13 +112,13 @@ class BidToAnalysisApp(ImApp):
         if not self.running:
             self.rows.clear()
             self.messages.clear()
-            self.status = "Queue cleared."
+            self.status = tr("Queue cleared.")
 
     def process(self):
         if self.running or not self.rows:
             return
         if not self.output_types:
-            self.status = "Choose at least one output format."
+            self.status = tr("Choose at least one output format.")
             return
         self.running = True
         self.cancel.clear()
@@ -104,7 +134,7 @@ class BidToAnalysisApp(ImApp):
         )
         folder = self.analysis_folder or None
         self.future = self.executor.submit(self._convert, copy.deepcopy(self.rows), options, folder)
-        self.status = "Converting; current file finishes before cancellation."
+        self.status = tr("Converting; current file finishes before cancellation.")
 
     def _convert(self, rows, options, folder):
         messages = []
@@ -147,7 +177,9 @@ class BidToAnalysisApp(ImApp):
                 self.rows, messages = self.future.result()
                 self.messages.extend(messages)
                 count = sum(row["status"] == "Done" for row in self.rows)
-                self.status = f"Finished: {count}/{len(self.rows)} files converted."
+                self.status = tr("Finished: {done}/{total} files converted.").format(
+                    done=count, total=len(self.rows)
+                )
             except Exception as error:
                 self.status = f"Error: {error}"
             self.messages.append(self.status)
@@ -159,50 +191,72 @@ class BidToAnalysisApp(ImApp):
 
         self.dialog_mode = mode
         self.dialog = FileDialog(
-            "BID conversion paths",
+            tr("BID conversion paths"),
             mode="folder" if mode in {"folder", "output"} else "open",
-            filters=[("BID selections", ["*.bid", "*.bst", "*.txt"])],
+            filters=[(tr("BID selections"), ["*.bid", "*.bst", "*.txt"])],
             multiselect=mode == "files",
         )
 
-    @staticmethod
-    def button(label, tip, callback):
+    def button(self, label, tip, callback, key=None):
+        """Draw one action; a keyed action is a tour target and reports its use."""
         if im.button(label):
             callback()
+            if key:
+                self.tour.notify_used(key)
         im.set_item_tooltip(tip)
+        if key:
+            self.remember(key)
 
     def draw_files(self, box):
         im.begin_disabled(self.running)
-        for label, tip, action in [
+        if im.button(tr("Load example")):
+            self.load_example()
+            self.tour.notify_used("load_example")
+        im.set_item_tooltip(
+            tr("Queue a simulated photon stream with six known bursts and its BID selection.")
+        )
+        self.remember("load_example")
+        im.same_line()
+        for label, tip, action, key in [
             (
-                "Add files",
-                "Choose BID, BST or TXT photon-index selections.",
+                tr("Add files"),
+                tr("Choose BID, BST or TXT photon-index selections."),
                 lambda: self.browse("files"),
+                "add_files",
             ),
             (
-                "Folder",
-                "Add matching selection files from one folder.",
+                tr("Folder"),
+                tr("Add matching selection files from one folder."),
                 lambda: self.browse("folder"),
+                "folder",
             ),
-            ("Clear", "Remove all queued selections and log entries.", self.clear),
+            (tr("Clear"), tr("Remove all queued selections and log entries."), self.clear, "clear"),
         ]:
-            self.button(label, tip, action)
+            self.button(label, tip, action, key)
             im.same_line()
         self.button(
-            "Process",
-            "Convert each selection with its inferred TTTR and current detector setup; preserve BID provenance.",
+            tr("Process"),
+            tr(
+                "Convert each selection with its inferred TTTR and current detector setup; "
+                "preserve BID provenance."
+            ),
             self.process,
+            "process",
         )
         for kind in ("pto", "bur", "sl5", "hdf5"):
             changed, enabled = im.checkbox(kind.upper(), kind in self.output_types)
             im.set_item_tooltip(
                 {
-                    "pto": "Measurement container with embedded original BID and derived burst table.",
-                    "bur": "Legacy BUR burst table and MTI measurement summary.",
-                    "sl5": "Compressed photon-selection mask.",
-                    "hdf5": "Columnar burst table with source file provenance.",
+                    "pto": tr(
+                        "Measurement container with embedded original BID and derived burst table."
+                    ),
+                    "bur": tr("Legacy BUR burst table and MTI measurement summary."),
+                    "sl5": tr("Compressed photon-selection mask."),
+                    "hdf5": tr("Columnar burst table with source file provenance."),
                 }[kind]
             )
+            if kind == "pto":
+                self.remember("formats")
             if changed:
                 if enabled:
                     self.output_types.add(kind)
@@ -220,14 +274,14 @@ class BidToAnalysisApp(ImApp):
             tr("Explicit output destination; empty uses the BID stem beside its TTTR measurement.")
         )
         self.button(
-            "Choose output folder",
-            "Select a destination for generated analysis files.",
+            tr("Choose output folder"),
+            tr("Select a destination for generated analysis files."),
             lambda: self.browse("output"),
         )
         if im.begin_table(
             "bid_queue", 4, im.TableFlags.BORDERS | im.TableFlags.ROW_BG | im.TableFlags.SCROLL_X
         ):
-            for title in ("BID file", "TTTR file", "Output / remove", "Status"):
+            for title in (tr("BID file"), tr("TTTR file"), tr("Output / remove"), tr("Status")):
                 im.table_setup_column(title)
             im.table_headers_row()
             remove = None
@@ -235,10 +289,10 @@ class BidToAnalysisApp(ImApp):
                 im.table_next_row()
                 for key in ("bid", "tttr", "output"):
                     im.table_next_column()
-                    im.text_wrapped(row[key] or ("TTTR not found" if key == "tttr" else ""))
-                    im.set_item_tooltip(row[key] or "Not yet generated.")
+                    im.text_wrapped(row[key] or (tr("TTTR not found") if key == "tttr" else ""))
+                    im.set_item_tooltip(row[key] or tr("Not yet generated."))
                     if key == "output":
-                        if im.small_button(f"Remove##bid{index}"):
+                        if im.small_button(tr("Remove") + f"##bid{index}"):
                             remove = index
                         im.set_item_tooltip(tr("Remove this selection from the queue."))
                 im.table_next_column()
@@ -248,17 +302,20 @@ class BidToAnalysisApp(ImApp):
                 self.rows.pop(remove)
         im.end_disabled()
         self.button(
-            "Cancel",
-            "Stop before the next file; let the current conversion finish consistently.",
+            tr("Cancel"),
+            tr("Stop before the next file; let the current conversion finish consistently."),
             self.cancel.set,
         )
         im.same_line()
+        self.button(tr("Guide"), tr("A step-by-step walk through a conversion."), self.start_guide)
+        im.same_line()
         self.button(
-            "Help",
-            "Explain input indices, detector setup, outputs and provenance.",
-            lambda: setattr(self, "help_open", True),
+            tr("Help"),
+            tr("Explain input indices, detector setup, outputs and provenance."),
+            self.help_window.show,
         )
         im.text_wrapped(self.status)
+        self.remember("status")
 
     def draw_log(self, box):
         for message in self.messages:
@@ -272,16 +329,16 @@ class BidToAnalysisApp(ImApp):
         im.end_disabled()
         # Keep cancellation available while the queue/setup controls are locked.
         if self.running:
-            if im.begin("Conversion running"):
+            if im.begin(tr("Conversion running")):
                 im.text_wrapped(self.status)
                 self.button(
-                    "Cancel after current file",
-                    "Preserve completed output and stop the remaining queue.",
+                    tr("Cancel after current file"),
+                    tr("Preserve completed output and stop the remaining queue."),
                     self.cancel.set,
                 )
             im.end()
         if self.dialog is not None:
-            if im.begin("Choose conversion paths"):
+            if im.begin(tr("Choose conversion paths")):
                 result = self.dialog.draw()
                 if result:
                     if self.dialog_mode == "output":
@@ -293,17 +350,10 @@ class BidToAnalysisApp(ImApp):
                     self.dialog = None
             im.end()
         self.setup.draw_dialogs((0.0, 0.0, float(width), float(height)))
-        if self.help_open:
-            if im.begin("BID → Analysis help"):
-                im.text_wrapped(
-                    tr("BID/BST/TXT selections contain two integer columns: start and stop photon indices. The TTTR measurement is inferred by stem in the current folder and three parents. Configure detector channels and PIE windows before Process. PTO retains the original BID bytes and derived-from provenance; BUR appends bursts to existing tables and records MTI duration; SL5 stores a photon mask; HDF5 stores columnar burst summaries. Cancel completes the current file and stops the remaining queue. Raw TTTR and BID inputs are preserved.")
-                )
-                self.button(
-                    "Close help",
-                    "Close this workflow reference.",
-                    lambda: setattr(self, "help_open", False),
-                )
-            im.end()
+        if self.help_window.open:
+            self.help_window.draw((0.0, 0.0, float(width), float(height)))
+        if self.tour.active:
+            self.tour.draw(float(width), float(height))
 
     def export_settings(self):
         return dict(
