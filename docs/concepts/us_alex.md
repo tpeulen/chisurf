@@ -205,3 +205,12 @@ multiple phases, polarization grouping and manual inspection without changing
 the converter's original single/batch/merge contract.
 
 Source: `chisurf/plugins/tttr/ptu_alex_creator/`
+
+### Batch phase references
+
+Per-file conversion folds the original macro-time axis of each input. Merging
+first concatenates events into a contiguous macro-time axis and then folds
+that axis once; its time origin and therefore its phase reference can differ
+from independent conversions. A shared Period/Shift assumes compatible input
+clock settings. The [Creator batch workflow](../guides/100_alex_creator.md)
+explains this choice and the two operation-specific hover notes.

@@ -1,3 +1,16 @@
+## ALEX French batch label exceeds its pane (2026-10-09)
+
+status: queued
+
+Actual en/de/fr radio-help tests found an existing French Merge label rectangle
+(327,260,185,20) ending at x512 beyond the control pane x400(default)/384(narrow).
+Its center x419.5 misses the pane; the real radio indicator (337,270) remains
+reachable and selects merge. Descriptions absent/present have identical control
+rectangles; the current help-metadata unit neither introduces nor worsens this
+clipping. Capture a realistic French baseline before a bounded layout repair,
+retaining both option labels/values and narrow access. Exact measurement:
+[batch help acceptance](../validation/release-readiness-w6g/alex-batch-help-acceptance.json).
+
 ## Workflow and batch OS IPC verification — resolved (2026-10-09)
 
 status: resolved

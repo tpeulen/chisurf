@@ -2,6 +2,8 @@
 
 ## 2026-10-08
 
+- **2026-10-09 · ALEX batch help verified:** two operation-specific notes localize across five languages; actual en/de/fr hover and both selections preserve IDs/settings and default/narrow rectangles (15pass). Paired docs/catalogue/global2strings and two exact allowance removals prepared. Available guards1021pass/11skip; expected old-HEAD guard mismatch is disproved by exact candidate audit1077/no newstale. Postpublication affected guard only. Metadata-only: no captures. Existing French label clipping queued separately. [Acceptance](validation/release-readiness-w6g/alex-batch-help-acceptance.json).
+
 - **2026-10-09 · UI debt measured from committed source:**1079tooltip findings exactly match current allowances;1155imperative bare literals, with no production literal baseline guard yet. First actual-help unit is2ALEXbatch option notes plus list localization. Seven panel/table envelope omissions remain genuine metadata/renderer gaps, not silently discarded as false positives. Owning emtk routing is queued after the current bounded deliverable. [Measurement](validation/release-readiness-w6g/ui-debt-measurement.md).
 
 - **2026-10-09 · Verified IPC and report work committed:** IPC fixture/evidence7b95c99ae and report documentation d77f710c5/SDK3023f892f have exact publication receipts in their singular archives. Current W6g job is committed-source tooltip/literal classification, with no new GUI edits or captures.

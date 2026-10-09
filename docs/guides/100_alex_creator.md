@@ -142,3 +142,15 @@ reject an output that would truncate or discard a nonzero phase; choose an
 appropriate T3 or Photon-HDF5 output. A failed writer is reported as an error.
 
 Source: `chisurf/plugins/tttr/ptu_alex_creator/`
+
+### Choosing a batch mode
+
+Hover over **Convert each** or **Merge into one** for operation-specific help,
+including localized explanations. Convert each folds each file independently
+and writes one output per input. Merge joins the streams with a continuing
+macro-time axis and folds the joined stream once, writing one output.
+
+The merged stream uses a new contiguous time origin and the first input's
+header. Use recordings with compatible clock settings and apply the intended
+Period/Shift to that joined axis. Choose Convert each when each recording
+should retain its own original phase reference.

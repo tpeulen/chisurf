@@ -87,6 +87,10 @@
           "label": "Mode",
           "options": ["convert", "merge"],
           "labels": ["Convert each", "Merge into one"],
+          "descriptions": [
+            "Fold each input file independently and write one converted output per input file.",
+            "Concatenate the input files with continuing macro-time, then fold once and write one merged output."
+          ],
           "style": "radio",
           "description": "Convert every file to its own ALEX output, or merge them all into one."
         },

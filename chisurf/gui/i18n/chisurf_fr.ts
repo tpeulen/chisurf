@@ -49665,5 +49665,15 @@ presets) into a single left-navigation tool. Built on the reusable
             <source>Saved period was invalid; reset to 8000. Configure Period before loading.</source>
             <translation type="unfinished" />
         </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1562" />
+            <source>Concatenate the input files with continuing macro-time, then fold once and write one merged output.</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="2834" />
+            <source>Fold each input file independently and write one converted output per input file.</source>
+            <translation type="unfinished" />
+        </message>
 </context>
 </TS>
