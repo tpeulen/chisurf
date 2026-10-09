@@ -2,6 +2,8 @@
 
 ## 2026-10-08
 
+- **2026-10-09 · Verified IPC and report work committed:** IPC fixture/evidence7b95c99ae and report documentation d77f710c5/SDK3023f892f have exact publication receipts in their singular archives. Current W6g job is committed-source tooltip/literal classification, with no new GUI edits or captures.
+
 - **2026-10-09 · Real Burst workflow and MLE batch IPC verified:** loopback/SharedMemory execute without substitute/fake/skip. Original58 cases covered (41initial pass; affected fixtures20pass; guide1pass), preserving physical/time/polarization/IRF/state/companion assertions. Two stale test contracts repaired; production unchanged, foreign formats preserved.1009available guards pass/11skip; one final archive. Next W6g tooltip/i18n classification. [Acceptance](validation/release-readiness-w6g/ipc-verification-acceptance.json).
 
 - **2026-10-09 · Accurate FRET report provenance repaired in its SDK:** TTTRlib3023f892f separates explicit identified estimates, unidentified retained values and unknown legacy status, without claiming data-candidate posterior adoption. Actual test/arm64 providers rebuilt,31 public cases and1009available guards/11skip pass. Measured152/known2400 numeric payloads unchanged; paired docs and one archive accompany integration. No GUI recapture for metadata-only text. Next: permitted real workflow/MLE batch IPC verification. [Acceptance](validation/release-readiness-w6g/gamma-report-acceptance.json).
