@@ -190,50 +190,50 @@
         {
           "type": "object",
           "properties": {
-            "label": {},
-            "editable": {},
-            "width": {},
-            "activated_call": {},
+            "tree_key": {},
+            "key": {},
+            "sort": {},
+            "target": {},
+            "colour_source": {},
+            "activated_cell_call": {},
+            "edited_call": {},
+            "fit_columns": {},
+            "column_picker": {},
+            "expand": {},
             "columns_source": {},
             "hidden_when": {},
-            "expand": {},
-            "selected_call": {},
-            "target": {},
-            "_comment": {},
-            "edited_call": {},
-            "source": {},
-            "status": {},
-            "height": {},
-            "title": {},
-            "key": {},
-            "description": {},
-            "delete_call": {},
-            "column_picker": {},
-            "sort": {},
-            "expanded_attr": {},
-            "elide": {},
-            "attr": {},
-            "wrap_indent": {},
             "columns": {},
-            "reserve": {},
-            "visible": {},
-            "muted_key": {},
-            "activated_cell_call": {},
-            "tree_key": {},
-            "colour_source": {},
-            "row_key": {},
             "selected_attr": {},
-            "weight": {},
-            "editable_call": {},
-            "min_width": {},
-            "fit_columns": {},
-            "tooltip_key": {},
+            "muted_key": {},
+            "row_key": {},
             "context_call": {},
-            "min_column_width": {},
-            "filter": {},
-            "wrap_before": {},
+            "description": {},
+            "label": {},
+            "wrap_indent": {},
+            "min_width": {},
+            "editable_call": {},
+            "width": {},
+            "source": {},
+            "selected_call": {},
+            "type": {},
             "min_chars": {},
-            "type": {}
+            "tooltip_key": {},
+            "attr": {},
+            "expanded_attr": {},
+            "wrap_before": {},
+            "filter": {},
+            "title": {},
+            "status": {},
+            "weight": {},
+            "reserve": {},
+            "_comment": {},
+            "min_column_width": {},
+            "height": {},
+            "elide": {},
+            "editable": {},
+            "delete_call": {},
+            "activated_call": {},
+            "visible": {}
           },
           "required": [
             "source"
@@ -336,16 +336,16 @@
               "function": {
                 "type": "boolean"
               },
-              "points": {
-                "type": "boolean"
-              },
-              "parametric": {
+              "equation": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
-              "equation": {
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
                 "type": "boolean"
               }
             },
@@ -468,16 +468,16 @@
               "function": {
                 "type": "boolean"
               },
-              "points": {
-                "type": "boolean"
-              },
-              "parametric": {
+              "equation": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
-              "equation": {
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
                 "type": "boolean"
               }
             },
@@ -648,16 +648,16 @@
               "function": {
                 "type": "boolean"
               },
-              "points": {
-                "type": "boolean"
-              },
-              "parametric": {
+              "equation": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
-              "equation": {
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
                 "type": "boolean"
               }
             },
@@ -717,16 +717,16 @@
               "function": {
                 "type": "boolean"
               },
-              "points": {
-                "type": "boolean"
-              },
-              "parametric": {
+              "equation": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
-              "equation": {
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
                 "type": "boolean"
               }
             },
@@ -866,16 +866,16 @@
               "function": {
                 "type": "boolean"
               },
-              "points": {
-                "type": "boolean"
-              },
-              "parametric": {
+              "equation": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
-              "equation": {
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
                 "type": "boolean"
               }
             },
@@ -1003,47 +1003,47 @@
               "function": {
                 "type": "boolean"
               },
+              "equation": {
+                "type": "boolean"
+              },
+              "data": {
+                "type": "boolean"
+              },
               "points": {
                 "type": "boolean"
               },
               "parametric": {
                 "type": "boolean"
               },
-              "data": {
-                "type": "boolean"
-              },
-              "equation": {
-                "type": "boolean"
-              },
               "y_label": {},
-              "editable": {},
-              "columns": {},
-              "reserve": {},
-              "activated_call": {},
+              "tree_key": {},
+              "editable_call": {},
+              "sort": {},
+              "colour_source": {},
+              "activated_cell_call": {},
+              "selected_call": {},
+              "edited_call": {},
+              "fit_columns": {},
+              "column_picker": {},
+              "x_label": {},
+              "expand": {},
+              "tooltip_key": {},
               "columns_source": {
                 "type": "string"
               },
-              "muted_key": {},
-              "activated_cell_call": {},
-              "tree_key": {},
-              "colour_source": {},
+              "expanded_attr": {},
               "log_x": {},
-              "row_key": {},
-              "expand": {},
+              "columns": {},
               "selected_attr": {},
-              "editable_call": {},
-              "edited_call": {},
               "status": {},
-              "fit_columns": {},
-              "tooltip_key": {},
+              "muted_key": {},
+              "reserve": {},
+              "row_key": {},
               "context_call": {},
               "min_column_width": {},
-              "x_label": {},
+              "editable": {},
               "delete_call": {},
-              "column_picker": {},
-              "sort": {},
-              "expanded_attr": {},
-              "selected_call": {}
+              "activated_call": {}
             },
             "additionalProperties": false,
             "allOf": [
@@ -1419,16 +1419,16 @@
               "function": {
                 "type": "boolean"
               },
-              "points": {
-                "type": "boolean"
-              },
-              "parametric": {
+              "equation": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
-              "equation": {
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
                 "type": "boolean"
               }
             },
@@ -1599,16 +1599,16 @@
               "function": {
                 "type": "boolean"
               },
-              "points": {
-                "type": "boolean"
-              },
-              "parametric": {
+              "equation": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
-              "equation": {
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
                 "type": "boolean"
               }
             },
@@ -1668,16 +1668,16 @@
               "function": {
                 "type": "boolean"
               },
-              "points": {
-                "type": "boolean"
-              },
-              "parametric": {
+              "equation": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
-              "equation": {
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
                 "type": "boolean"
               }
             },
@@ -1813,16 +1813,16 @@
               "function": {
                 "type": "boolean"
               },
-              "points": {
-                "type": "boolean"
-              },
-              "parametric": {
+              "equation": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
-              "equation": {
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
                 "type": "boolean"
               }
             },
@@ -1960,16 +1960,16 @@
               "function": {
                 "type": "boolean"
               },
-              "points": {
-                "type": "boolean"
-              },
-              "parametric": {
+              "equation": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
-              "equation": {
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
                 "type": "boolean"
               },
               "include": {
@@ -2113,16 +2113,16 @@
               "function": {
                 "type": "boolean"
               },
-              "points": {
-                "type": "boolean"
-              },
-              "parametric": {
+              "equation": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
-              "equation": {
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
                 "type": "boolean"
               }
             },
@@ -2278,16 +2278,16 @@
               "function": {
                 "type": "boolean"
               },
-              "points": {
-                "type": "boolean"
-              },
-              "parametric": {
+              "equation": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
-              "equation": {
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
                 "type": "boolean"
               }
             },
@@ -2542,16 +2542,16 @@
               "function": {
                 "type": "boolean"
               },
-              "points": {
-                "type": "boolean"
-              },
-              "parametric": {
+              "equation": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
-              "equation": {
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
                 "type": "boolean"
               }
             },
@@ -2603,16 +2603,16 @@
               "function": {
                 "type": "boolean"
               },
-              "points": {
-                "type": "boolean"
-              },
-              "parametric": {
+              "equation": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
-              "equation": {
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
                 "type": "boolean"
               }
             },
@@ -2672,16 +2672,16 @@
               "function": {
                 "type": "boolean"
               },
-              "points": {
-                "type": "boolean"
-              },
-              "parametric": {
+              "equation": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
-              "equation": {
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
                 "type": "boolean"
               }
             },
@@ -2741,16 +2741,16 @@
               "function": {
                 "type": "boolean"
               },
-              "points": {
-                "type": "boolean"
-              },
-              "parametric": {
+              "equation": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
-              "equation": {
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
                 "type": "boolean"
               }
             },
@@ -2917,16 +2917,16 @@
               "function": {
                 "type": "boolean"
               },
-              "points": {
-                "type": "boolean"
-              },
-              "parametric": {
+              "equation": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
-              "equation": {
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
                 "type": "boolean"
               }
             },
@@ -2986,16 +2986,16 @@
               "function": {
                 "type": "boolean"
               },
-              "points": {
-                "type": "boolean"
-              },
-              "parametric": {
+              "equation": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
-              "equation": {
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
                 "type": "boolean"
               }
             },
@@ -3131,16 +3131,16 @@
               "function": {
                 "type": "boolean"
               },
-              "points": {
-                "type": "boolean"
-              },
-              "parametric": {
+              "equation": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
-              "equation": {
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
                 "type": "boolean"
               }
             },
@@ -3260,16 +3260,16 @@
               "function": {
                 "type": "boolean"
               },
-              "points": {
-                "type": "boolean"
-              },
-              "parametric": {
+              "equation": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
-              "equation": {
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
                 "type": "boolean"
               }
             },
@@ -3463,16 +3463,16 @@
               "function": {
                 "type": "boolean"
               },
-              "points": {
-                "type": "boolean"
-              },
-              "parametric": {
+              "equation": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
-              "equation": {
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
                 "type": "boolean"
               }
             },
@@ -3604,16 +3604,16 @@
               "function": {
                 "type": "boolean"
               },
-              "points": {
-                "type": "boolean"
-              },
-              "parametric": {
+              "equation": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
-              "equation": {
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
                 "type": "boolean"
               }
             },
@@ -3748,16 +3748,16 @@
               "function": {
                 "type": "boolean"
               },
-              "points": {
-                "type": "boolean"
-              },
-              "parametric": {
+              "equation": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
-              "equation": {
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
                 "type": "boolean"
               }
             },
@@ -3859,16 +3859,16 @@
               "function": {
                 "type": "boolean"
               },
-              "points": {
-                "type": "boolean"
-              },
-              "parametric": {
+              "equation": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
-              "equation": {
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
                 "type": "boolean"
               },
               "dock_group": {
@@ -3973,45 +3973,45 @@
               "y_label": {
                 "type": "string"
               },
-              "columns": {
-                "type": "array"
-              },
-              "reserve": {},
-              "activated_call": {
+              "tree_key": {},
+              "editable_call": {},
+              "sort": {},
+              "colour_source": {},
+              "activated_cell_call": {},
+              "selected_call": {
                 "type": "string"
               },
+              "edited_call": {},
+              "fit_columns": {},
+              "column_picker": {},
+              "x_label": {
+                "type": "string"
+              },
+              "expand": {
+                "type": "boolean"
+              },
+              "tooltip_key": {},
               "columns_source": {
                 "type": "string"
               },
-              "muted_key": {},
-              "activated_cell_call": {},
-              "tree_key": {},
-              "colour_source": {},
+              "expanded_attr": {},
               "log_x": {
                 "type": "boolean"
               },
-              "row_key": {},
-              "expand": {
-                "type": "boolean"
+              "columns": {
+                "type": "array"
               },
               "selected_attr": {
                 "type": "string"
               },
-              "editable_call": {},
-              "edited_call": {},
               "status": {},
-              "fit_columns": {},
-              "tooltip_key": {},
+              "muted_key": {},
+              "reserve": {},
+              "row_key": {},
               "context_call": {},
               "min_column_width": {},
-              "x_label": {
-                "type": "string"
-              },
               "delete_call": {},
-              "column_picker": {},
-              "sort": {},
-              "expanded_attr": {},
-              "selected_call": {
+              "activated_call": {
                 "type": "string"
               },
               "split": {

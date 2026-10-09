@@ -174,6 +174,18 @@ gui:
     show_data_grid: true
     show_legend: true
     show_residual_grid: true
+    # Node graphs (Global View, the light path, provenance, the node editor).
+    # The grid is a background there, not a workspace: half a pixel keeps it
+    # a hairline on HiDPI screens, where the emtk default of one doubles to
+    # two device pixels and out-weighs the edges drawn on top of it.
+    node_graph:
+      show_grid: true
+      grid_line_width: 0.5
+      # Minor-line opacity, 0-1; primary lines draw 1.7x this.
+      grid_opacity: 0.06
+      grid_spacing: 24.0
+      # The disc radius a new Global View starts its node-size control at.
+      node_size: 13.0
   dock_tab_colors:
     "Read data": "#3b4a67"
     "Datasets": "#3b674a"

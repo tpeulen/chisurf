@@ -145,8 +145,9 @@ SEED_QUANTILES = ((0.90, 0.999), (0.75, 0.9999), (0.50, 1.0))
 MIN_TAIL_BINS = 3
 
 
-def seed_tail_window(arrays, binsize_ms: float = 0.1, min_counts: int = 1,
-                     min_tail_bins: int = MIN_TAIL_BINS):
+def seed_tail_window(
+    arrays, binsize_ms: float = 0.1, min_counts: int = 1, min_tail_bins: int = MIN_TAIL_BINS
+):
     """A fit window ``(low, high)`` in ms that every inter-photon-time stream can be fitted in.
 
     The seed is a pair of quantiles, not a fraction of the longest gap: that gap is one
@@ -176,14 +177,20 @@ def seed_tail_window(arrays, binsize_ms: float = 0.1, min_counts: int = 1,
     binsize = max(float(binsize_ms), 1e-9)
     for q_low, q_high in SEED_QUANTILES:
         low = max(float(np.quantile(a, q_low)) for a in arrays)
-        high = (min(float(np.max(a)) for a in arrays) if q_high >= 1.0
-                else min(float(np.quantile(a, q_high)) for a in arrays))
+        high = (
+            min(float(np.max(a)) for a in arrays)
+            if q_high >= 1.0
+            else min(float(np.quantile(a, q_high)) for a in arrays)
+        )
         if high <= low:
             continue
         edges = np.arange(low, high + binsize, binsize)
         if edges.size < min_tail_bins + 1:
             continue
-        if all(int((np.histogram(a, bins=edges)[0] >= int(min_counts)).sum()) >= min_tail_bins for a in arrays):
+        if all(
+            int((np.histogram(a, bins=edges)[0] >= int(min_counts)).sum()) >= min_tail_bins
+            for a in arrays
+        ):
             return low, high
     return None
 

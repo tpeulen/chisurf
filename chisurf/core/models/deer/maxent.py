@@ -207,10 +207,8 @@ def maxent_distance_distribution(
 
     # masses (sum=1) -> density, area-normalised on r with the trapezoidal rule
     # (consistent with the Tikhonov path).
-    from scipy.integrate import trapezoid
-
     density = p / dr
-    area = float(trapezoid(density, r))
+    area = float(np.trapezoid(density, r))
     if area > 0:
         density = density / area
     if return_lcurve:

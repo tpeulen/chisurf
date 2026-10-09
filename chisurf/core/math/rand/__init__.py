@@ -6,7 +6,6 @@ from math import sqrt
 
 import numpy as np
 import tttrlib
-from scipy.stats import norm
 
 
 def weighted_choice(weights, n=1):
@@ -83,7 +82,7 @@ def brownian(x0: np.ndarray, n: int, dt: float, delta: float, out=None):
 
     # For each element of x0, generate a sample of n numbers from a
     # normal distribution.
-    r = norm.rvs(size=x0.shape + (n,), scale=delta * sqrt(dt))
+    r = np.random.normal(size=x0.shape + (n,), scale=delta * sqrt(dt))
 
     # If `out` was not given, create an output array.
     if out is None:

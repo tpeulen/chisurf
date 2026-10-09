@@ -112,7 +112,6 @@ from collections.abc import Callable, Iterator, Sequence
 from concurrent.futures import CancelledError
 
 import numpy as np
-from scipy import linalg
 
 __all__ = ["COVARIANCE_TYPES", "ConvergenceMonitor", "GaussianHMM"]
 
@@ -824,7 +823,7 @@ class GaussianHMM:
                 try:
                     log_prob_2, theta_3 = self._em_map(candidate, X, lengths)
                     n_maps += 1
-                except (ValueError, np.linalg.LinAlgError, linalg.LinAlgError):
+                except (ValueError, np.linalg.LinAlgError):
                     # An extrapolation that left the feasible set is simply not
                     # taken; the plain-EM point below is always available.
                     log_prob_2 = -np.inf
@@ -1033,7 +1032,7 @@ class GaussianHMM:
             The normalised left eigenvector of the transition matrix belonging
             to eigenvalue one, shape ``(n_components, )``.
         """
-        eigvals, eigvecs = linalg.eig(self.transmat_.T)
+        eigvals, eigvecs = np.linalg.eig(self.transmat_.T)
         eigvec = np.real_if_close(eigvecs[:, np.argmax(eigvals)])
         return eigvec / eigvec.sum()
 

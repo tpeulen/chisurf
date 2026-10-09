@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import pathlib
+import sys
 
 from chisurf.core.settings.path_utils import get_path
 
@@ -36,6 +37,7 @@ PROVIDERS: dict[str, tuple[str, str, str, str]] = {
         "https://openrouter.ai/keys",
         "OPENROUTER_API_KEY",
     ),
+    "ACP Agent (stdio)": ("acp", "", "", ""),
     "Custom (OpenAI-compatible)": ("custom", "", "", ""),
 }
 
@@ -96,6 +98,18 @@ DEFAULT_PROVIDER_SETTINGS = {
         "base_url": "",
         "text_model": "",
         "model": "",
+        "image_model": "",
+        "api_key": "",
+        "temperature": 0.3,
+        "top_p": 0.9,
+        "max_tokens": 4096,
+    },
+    "acp": {
+        "base_url": "",
+        "command": f"{sys.executable} -m chisurf.core.agent.acp_server",
+        "acp_backend_provider": "",
+        "text_model": "acp-agent",
+        "model": "acp-agent",
         "image_model": "",
         "api_key": "",
         "temperature": 0.3,
@@ -166,8 +180,12 @@ def get_api_settings(provider: str | None = None) -> dict:
 
     # Determine which provider to get settings for
     if provider is None:
-        # Get the selected provider, or the shipped default (EU-hosted).
+        # ACP is a transport, not an HTTP endpoint. Keep default HTTP callers
+        # (including documentation Q&A) on the selected delegate.
         provider = all_settings.get("selected_provider", DEFAULT_PROVIDER)
+        if normalize_provider_key(provider) == "acp":
+            delegate = all_settings.get("acp", {}).get("acp_backend_provider")
+            provider = delegate if delegate in DEFAULT_PROVIDER_SETTINGS and delegate != "acp" else DEFAULT_PROVIDER
     provider = normalize_provider_key(provider)
 
     # Get settings for the specified provider, falling back to defaults
@@ -253,11 +271,17 @@ def save_api_settings(settings: dict, provider: str | None = None) -> bool:
             "temperature",
             "top_p",
             "max_tokens",
+            "command",
+            "acp_backend_provider",
         ]
     }
 
     # Update selected provider
-    all_settings["selected_provider"] = provider
+    if provider != "acp":
+        all_settings["selected_provider"] = provider
+    elif normalize_provider_key(all_settings.get("selected_provider")) == "acp":
+        delegate = settings.get("acp_backend_provider")
+        all_settings["selected_provider"] = delegate if delegate in DEFAULT_PROVIDER_SETTINGS and delegate != "acp" else DEFAULT_PROVIDER
 
     return _write_settings_file(settings_path, all_settings)
 

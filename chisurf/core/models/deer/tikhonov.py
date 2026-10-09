@@ -21,7 +21,6 @@ selection and the distance-axis bookkeeping.
 from __future__ import annotations
 
 import numpy as np
-from scipy.integrate import trapezoid
 
 from chisurf.core.fitting.inversion import (
     SmoothnessWeight,
@@ -191,7 +190,7 @@ def tikhonov_distance_distribution(
             else select_alpha(A, b, L)
         )
     p = solve_tikhonov(A, b, alpha, L)
-    area = trapezoid(p, r)
+    area = np.trapezoid(p, r)
     if area > 0:
         p = p / area
     return p, float(alpha)

@@ -1,6 +1,24 @@
 {
   "services": [
     {
+      "id": "bind_history_science",
+      "entrypoint": "chisurf.startup.gui_services:bind_history_science",
+      "surface": "gui",
+      "phase": "post_gui_show",
+      "label": "Preparing history",
+      "progress": 5,
+      "order": 5
+    },
+    {
+      "id": "register_experiment_models",
+      "entrypoint": "chisurf.startup.gui_services:register_experiment_models",
+      "surface": "gui",
+      "phase": "post_gui_show",
+      "label": "Registering models",
+      "progress": 8,
+      "order": 6
+    },
+    {
       "id": "deferred_gui_imports",
       "entrypoint": "chisurf.startup.gui_services:deferred_gui_imports",
       "surface": "gui",

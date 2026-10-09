@@ -246,6 +246,13 @@ def __getattr__(name: str):
         value = mod.invoke_action
         globals()["action_execute"] = value
         return value
+    if name == "plugins":
+        # Historically bound as a package attribute only by the eager GUI
+        # experiments imports; ``load_toolbar_plugins`` reads
+        # ``cs.plugins.__file__`` and must work without them.
+        mod = importlib.import_module("chisurf.plugins")
+        globals()["plugins"] = mod
+        return mod
     if name == "current_setup":
         _cs_instance = globals().get("cs")
         if _cs_instance is None:

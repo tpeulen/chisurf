@@ -122,9 +122,24 @@ def spearman(a, b) -> float:
     x, y = _pair(a, b)
     if x.size < 2:
         return float("nan")
-    from scipy.stats import rankdata
 
-    return pearson(rankdata(x), rankdata(y))
+    def _rankdata(v):
+        # scipy.stats.rankdata 'average' for ties: ordinal ranks by stable
+        # argsort, then every group of equal values gets its members' mean
+        # ordinal rank. Vectorised: unique-group boundaries in sorted space,
+        # mean rank per group, scattered back through the inverse permutation.
+        order = np.argsort(v, kind="stable")
+        sorted_v = v[order]
+        boundary = np.r_[True, sorted_v[1:] != sorted_v[:-1]]
+        ends = np.r_[np.flatnonzero(boundary), v.size]
+        # group k covers sorted positions ends[k]..ends[k+1]-1, i.e. 1-based
+        # ranks ends[k]+1..ends[k+1]; its mean rank is their average.
+        mean_rank = (ends[:-1] + 1 + ends[1:]) / 2.0
+        dense_sorted = np.cumsum(boundary)
+        dense = dense_sorted[np.argsort(order, kind="stable")]
+        return mean_rank[dense - 1]
+
+    return pearson(_rankdata(x), _rankdata(y))
 
 
 def manders_overlap(a, b) -> float:

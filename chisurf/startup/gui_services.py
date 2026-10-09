@@ -51,7 +51,9 @@ def _get_window(context):
     The splash phase receives the window as the ``startup_interface``
     dependency. The ``post_gui_show`` runner only passes the dependencies a
     service declares, and none of those services declared it -- so
-    ``populate_plugins`` got ``None`` and returned without doing anything. The window
+    ``populate_plugins``, ``register_experiment_models`` and
+    ``bind_history_science`` each got ``None`` and returned without doing
+    anything (an empty model list for every non-global dataset). The window
     exists by then: the runner passes it as ``context.main_window``, and
     ``chisurf.cs`` is the last resort. A missing window is logged rather than
     silently skipped.
@@ -164,6 +166,35 @@ def setup_style(context) -> None:
             setup_gui(app=qt_app, stage="setup_style")
         except Exception:
             pass
+
+
+def register_experiment_models(context) -> None:
+    """Resolve deferred experiment model classes on the main window.
+
+    ``_setup_experiment`` defers model-class resolution (heavy catalogue
+    imports: pda3c → scipy.stats, fcs/stopped-flow parsers) off the splash
+    critical path; this service drains the pending list right after the
+    window is shown, before plugins can load a dataset that needs them.
+    """
+    window = _get_window(context)
+    if window is not None:
+        window.register_experiment_models()
+
+
+def bind_history_science(context) -> None:
+    """Bind history science capture/publish on the main window.
+
+    Moved out of ``_init_history_browser`` (splash critical path): the baseline
+    capture in :meth:`HistoryMixin._init_history_browser` imports
+    ``chisurf.core.fitting`` and costs over a second of cold-start. Must run
+    before any scientific edit is possible, hence before ``populate_plugins``
+    in this phase.
+    """
+    window = _get_window(context)
+    if window is not None:
+        cs.history.configure_science(
+            window._capture_history_science, window._publish_history_science
+        )
 
 
 def deferred_gui_imports(context) -> None:

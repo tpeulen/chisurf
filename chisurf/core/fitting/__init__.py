@@ -172,6 +172,10 @@ def deviance_residuals(
 #:
 #: Resolved once at import. The residual is too central to fitting to make
 #: bff a hard dependency of it, so the numpy path below stays as the fallback.
+#: Deliberately eager: ``test_bff_is_the_backend`` and ``test_error_estimates``
+#: pin that the kernel is bff's and that the numpy fallback stays reachable by
+#: monkeypatching this global — a lazy resolver would silently bypass the
+#: monkeypatch and void the fallback test's meaning.
 try:
     from IMP.bff import fit_weighted_residuals as _bff_weighted_residuals
 except Exception:  # pragma: no cover - depends on the build

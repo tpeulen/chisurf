@@ -19,6 +19,7 @@ from typing import Any
 
 import numpy as np
 
+from .intensity import clsm_intensity_counts
 from .number_brightness import nb_pipeline
 
 
@@ -288,7 +289,7 @@ def _window_worker(payload):
     filename, chs, ch_p, ch_s, mtr, kind, params, irf_files, bg = payload
     clsm = cached_clsm(filename, chs, mtr)
     if kind == "nb":
-        stack = np.asarray(clsm.get_intensity(), dtype=float)
+        stack = clsm_intensity_counts(clsm)
         nb = nb_pipeline(stack, params)
         return {
             "intensity": stack.sum(axis=0),
@@ -302,7 +303,7 @@ def _window_worker(payload):
         }
     if kind == "mean_micro_time":
         tttr = get_tttr(filename)
-        stack = np.asarray(clsm.get_intensity(), dtype=float)
+        stack = clsm_intensity_counts(clsm)
         # Resolve the micro-time resolution (s → ns) so the map is in nanoseconds;
         # -1 keeps tttrlib's default (units of the micro-time channel).
         res_ns = float(params.get("microtime_resolution", -1.0) or -1.0)
@@ -316,17 +317,19 @@ def _window_worker(payload):
             mt = mt[0]
         # Unstacked (per-frame) stack for the movie dock — computed here in the
         # worker so the movie never rebuilds a CLSM on the UI/pipeline thread.
-        mt_frames = np.nan_to_num(
+        mt_frames = np.maximum(np.nan_to_num(
             np.asarray(clsm.get_mean_micro_time(tttr, res_ns, n_ph, False), dtype=float)
-        )
+        ), 0.0)
         return {
             "intensity": stack.sum(axis=0),
-            "mean_micro_time": np.nan_to_num(mt),
+            # tttrlib uses -1 for below-threshold pixels; imaging tools have
+            # always represented those discriminated pixels as zero.
+            "mean_micro_time": np.maximum(np.nan_to_num(mt), 0.0),
             "frames": stack,
             "mt_frames": mt_frames,
         }
     if kind == "phasor":
-        stack = np.asarray(clsm.get_intensity(), dtype=float)
+        stack = clsm_intensity_counts(clsm)
         # Per-detector IRF list (from the calibration step) takes precedence.
         irf_file = (irf_files[0] if irf_files else None) or params.get("irf")
         irf = get_tttr(irf_file) if irf_file else None
@@ -347,11 +350,9 @@ def _window_worker(payload):
     if kind == "intensity":
         base_chs = ch_p or chs
         base = cached_clsm(filename, base_chs, mtr)
-        n_par = np.asarray(base.get_intensity(), dtype=float).sum(axis=0)
+        n_par = clsm_intensity_counts(base).sum(axis=0)
         if ch_s and ch_s != base_chs:
-            n_perp = np.asarray(cached_clsm(filename, ch_s, mtr).get_intensity(), dtype=float).sum(
-                axis=0
-            )
+            n_perp = clsm_intensity_counts(cached_clsm(filename, ch_s, mtr)).sum(axis=0)
         else:
             n_perp = np.zeros_like(n_par)
         durations, n_pixel = total_line_durations(base)
@@ -361,7 +362,7 @@ def _window_worker(payload):
             "durations": durations,
             "n_pixel": n_pixel,
             "bg": float(bg),
-            "frames": np.asarray(clsm.get_intensity(), dtype=float),
+            "frames": clsm_intensity_counts(clsm),
         }
     raise ValueError(f"unknown window kind {kind!r}")
 
@@ -645,7 +646,7 @@ def phasor_maps(
         ph = ph[0]
     g = np.nan_to_num(ph[..., 0])
     s = np.nan_to_num(ph[..., 1])
-    intensity = np.asarray(clsm.get_intensity(), dtype=float)
+    intensity = clsm_intensity_counts(clsm)
     n_photons = intensity.sum(axis=0) if intensity.ndim == 3 else intensity
     return {"g": g, "s": s, "n_photons": n_photons}
 

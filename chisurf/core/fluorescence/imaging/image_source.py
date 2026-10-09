@@ -22,6 +22,8 @@ import pathlib
 
 import numpy as np
 
+from .intensity import clsm_intensity_counts
+
 __all__ = ["ImageStack", "TTTR_SUFFIXES", "is_photon_stream", "load_image_stack"]
 
 #: File suffixes read as photon streams (confocal scan) rather than as images.
@@ -224,13 +226,30 @@ def _stack_from_tttr(path: str, channels, windows) -> tuple[np.ndarray, list[str
     names = []
     for name, chs, mtr in specs:
         clsm = build_clsm_windowed(tttr, chs, mtr)
-        intensity = np.asarray(clsm.get_intensity(), dtype=np.float32)
+        intensity = clsm_intensity_counts(clsm).astype(np.float32, copy=False)
         if intensity.ndim == 2:
             intensity = intensity[np.newaxis]
         planes.append(intensity)
         names.append(name)
     n_frames = min(p.shape[0] for p in planes)
     stack = np.stack([p[:n_frames] for p in planes], axis=1)
+    # ChiSurf-generated PTU demos carry their requested visible frame count in
+    # a private header tag. Scanner marker reconstruction describes frames by
+    # intervals, so the final interval can be absent even though the requested
+    # frame is valid. Duplicate only that terminal demo frame; never infer or
+    # pad arbitrary external acquisitions.
+    try:
+        tags = tttr.header.tags
+        tags = tags() if callable(tags) else tags
+        expected = next(
+            int(tag["value"])
+            for tag in tags
+            if tag.get("name") == "ChiSurf_DemoFrames"
+        )
+        if expected == stack.shape[0] + 1 and stack.shape[0] > 0:
+            stack = np.concatenate((stack, stack[-1:, ...]), axis=0)
+    except (AttributeError, KeyError, StopIteration, TypeError, ValueError):
+        pass
     return stack, names, {"n_photons": int(len(tttr))}
 
 
