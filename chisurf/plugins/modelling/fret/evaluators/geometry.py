@@ -78,10 +78,13 @@ class MinDistanceEvaluator(Evaluator):
         if bodies is None or self.body_a_id >= len(bodies) or self.body_b_id >= len(bodies):
             return EvaluatorResult(self.name, 0.0, "Å")
 
-        from scipy.spatial.distance import cdist
-
+        # scipy.spatial.distance.cdist is |a - b| over all pairs; for a
+        # min-distance the broadcasting form is equivalent and allocation-bound
+        # only on very large bodies.
         coords_a = bodies[self.body_a_id].global_coords()
         coords_b = bodies[self.body_b_id].global_coords()
-        dists = cdist(coords_a, coords_b)
+        a = np.asarray(coords_a)[:, None, :]
+        b = np.asarray(coords_b)[None, :, :]
+        dists = np.sqrt(((a - b) ** 2).sum(axis=-1))
         val = dists.min()
         return EvaluatorResult(self.name, float(val), "Å")

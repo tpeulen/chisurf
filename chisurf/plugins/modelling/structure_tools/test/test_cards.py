@@ -188,6 +188,37 @@ def test_docking_request_equals_the_qt_models(inputs, tmp_path):
     assert s.build_params() == q.build_params()
 
 
+@pytest.mark.parametrize(
+    ("attribute", "value"),
+    [
+        ("n_frames", 77),
+        ("mc_steps", 8),
+        ("n_best", 4),
+        ("n_repeats", 3),
+        ("refine_av_cycles", 1),
+        ("fixed_body", 1),
+        ("sigma_da", 4.5),
+        ("simulated_annealing", True),
+        ("ev_weight", 2.5),
+        ("save_distributions", True),
+        ("av_backend", "imp-bff"),
+        ("save_trajectory", True),
+    ],
+)
+def test_docking_project_round_trip_preserves_control_settings(inputs, tmp_path, attribute, value):
+    session = DockingSession()
+    session.add_pdbs([str(tmp_path / "protein_1R0A.pdb"), str(tmp_path / "dna.pdb")])
+    session.fps_json = str(inputs)
+    session.output_dir = str(tmp_path / "out")
+    setattr(session, attribute, value)
+    project = tmp_path / "docking-project.json"
+    assert session.save_project(str(project))
+
+    restored = DockingSession()
+    assert restored.load_project(str(project))
+    assert getattr(restored, attribute) == value
+
+
 def test_docking_runs_and_lists_the_result(inputs, tmp_path):
     app = make_dock()
     s = app.session

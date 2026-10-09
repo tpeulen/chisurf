@@ -8,7 +8,6 @@ from qtpy import QtCore, QtWidgets
 
 import chisurf as cs
 import chisurf.gui.widgets
-from chisurf.core.structure import trajectory_data as md
 from chisurf.gui import chiplot as cp
 from chisurf.gui import dialogs
 from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
@@ -21,19 +20,7 @@ except ImportError:
         return lambda c: c
 
 
-from ..core.olga_greedy import select_informative_pairs
-from ..core.trajectory import (
-    build_atom_pairs,
-    build_sites,
-    candidate_pairs_from_fps_json,
-    compute_efficiencies,
-    compute_efficiencies_from_fps_av,
-    compute_efficiencies_per_pair_r0,
-    load_fps_json,
-    parse_residue_ranges,
-    positions_from_fps_json,
-    rmsd_matrix,
-)
+from ..core.pair_run import PairParams, PairResult, run_pair_selection
 
 
 @persist_plugin_state("fret_pair_selection")
@@ -176,19 +163,16 @@ class FRETPairSelectionWindow(ChisurfDockTool):
         if files:
             self.fps_edit.setText(str(files[0]))
 
-    def _load_traj(self) -> md.Trajectory:
-        traj_path = Path(self.traj_edit.text().strip())
-        if not traj_path.exists():
-            raise ValueError("Trajectory file does not exist")
-
-        top_text = self.top_edit.text().strip()
-        top_path = Path(top_text) if top_text else None
-
-        stride = int(self.stride_spin.value())
-
-        if top_path and top_path.exists():
-            return md.load(str(traj_path), top=str(top_path), stride=stride)
-        return md.load(str(traj_path), stride=stride)
+    def _params(self) -> PairParams:
+        return PairParams(
+            trajectory=self.traj_edit.text(), topology=self.top_edit.text(), fps_json=self.fps_edit.text(),
+            use_av=self.use_av_checkbox.isChecked(), av_samples=int(self.av_samples_spin.value()),
+            av_max_points=int(self.av_max_points_spin.value()), chain=self.chain_edit.text(),
+            residues=self.residues_edit.text(), atom=str(self.atom_edit.currentText()),
+            r0=float(self.r0_spin.value()), err=float(self.err_spin.value()),
+            max_pairs=int(self.max_pairs_spin.value()), unique_only=bool(self.unique_only.isChecked()),
+            stride=int(self.stride_spin.value()), rmsd_selection=self.rmsd_sel_edit.text(),
+        )
 
     def _run(self):
         try:
@@ -198,95 +182,13 @@ class FRETPairSelectionWindow(ChisurfDockTool):
             self.table.setRowCount(0)
             self.plot.clear()
 
-            traj = self._load_traj()
-
-            fps_path_text = self.fps_edit.text().strip()
-            if fps_path_text:
-                fps_path = Path(fps_path_text)
-            else:
-                fps_path = None
-
-            default_r0 = float(self.r0_spin.value())
-            if fps_path is not None and fps_path.exists():
-                fps = load_fps_json(fps_path)
-                positions = positions_from_fps_json(traj, fps)
-                if len(positions) < 2:
-                    raise ValueError("fps.json did not yield at least 2 valid labeling positions")
-
-                atom_pairs, pair_names, r0s, pair_position_names = candidate_pairs_from_fps_json(
-                    positions=positions,
-                    fps=fps,
-                    default_r0_angstrom=default_r0,
-                )
-
-                if atom_pairs.shape[0] == 0:
-                    raise ValueError("No candidate pairs found in fps.json")
-
-                if self.use_av_checkbox.isChecked():
-                    try:
-                        effs = compute_efficiencies_from_fps_av(
-                            traj=traj,
-                            fps=fps,
-                            pair_position_names=pair_position_names,
-                            r0s_angstrom=r0s,
-                            n_samples=int(self.av_samples_spin.value()),
-                            max_points_per_av=int(self.av_max_points_spin.value()),
-                        )
-                    except Exception as av_exc:
-                        dialogs.warning(
-                            self,
-                            "AV backend unavailable",
-                            f"Failed to compute AV-based efficiencies (falling back to attachment-atom distances).\n\n{av_exc}",
-                        )
-                        effs = compute_efficiencies_per_pair_r0(traj, atom_pairs, r0s)
-                else:
-                    effs = compute_efficiencies_per_pair_r0(traj, atom_pairs, r0s)
-
-            else:
-                chain = self.chain_edit.text().strip()
-                residue_numbers = parse_residue_ranges(self.residues_edit.text())
-                if not residue_numbers:
-                    raise ValueError("No residues specified")
-
-                atom_name = str(self.atom_edit.currentText())
-                fallback = "CA" if atom_name == "CB" else None
-
-                sites = build_sites(
-                    traj,
-                    chain_spec=chain,
-                    residue_numbers=residue_numbers,
-                    atom_name=atom_name,
-                    fallback_atom_name=fallback,
-                )
-                if len(sites) < 2:
-                    raise ValueError("Need at least 2 valid residues with an attachment atom")
-
-                atom_pairs, pair_names = build_atom_pairs(sites)
-
-                effs = compute_efficiencies(traj, atom_pairs, r0_angstrom=default_r0)
-
-            rmsd_sel = self.rmsd_sel_edit.text().strip() or None
-            rmsds = rmsd_matrix(traj, atom_selection=rmsd_sel)
-
-            max_pairs = int(self.max_pairs_spin.value())
-            err = float(self.err_spin.value())
-            unique_only = bool(self.unique_only.isChecked())
-
-            selected, decay = select_informative_pairs(
-                effs=effs,
-                rmsds=rmsds,
-                err=err,
-                max_pairs=max_pairs,
-                unique_only=unique_only,
-            )
-
-            self._last_pair_names = pair_names
-            self._last_selected = selected
-            self._last_decay = decay
-
-            self._populate_results(pair_names, selected, decay)
+            result = run_pair_selection(
+                self._params(), warn=lambda title, text: dialogs.warning(self, title, text))
+            self._last_pair_names = result.pair_names
+            self._last_selected = result.selected
+            self._last_decay = result.decay
+            self._populate_results(result.pair_names, result.selected, result.decay)
             self.export_btn.setEnabled(True)
-
         except Exception as exc:
             dialogs.error(self, "FRET pair selection failed", str(exc))
         finally:
@@ -314,14 +216,7 @@ class FRETPairSelectionWindow(ChisurfDockTool):
         if not out:
             return
 
-        path = Path(out)
-        lines = ["#\tPair_added\t<<RMSD>>/A\n"]
-        for i in range(int(self._last_selected.shape[0])):
-            idx = int(self._last_selected[i])
-            pair = self._last_pair_names[idx]
-            lines.append(f"{i + 1}\t{pair}\t{float(self._last_decay[i]):.2f}\n")
-
-        path.write_text("".join(lines), encoding="utf-8")
+        PairResult(self._last_pair_names, self._last_selected, self._last_decay).export(out)
 
 
 if __name__ == "plugin":

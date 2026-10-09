@@ -24,10 +24,19 @@ PROJECT_VERSION = 2
 _PARAM_KEYS = (
     "n_frames",
     "mc_steps",
+    "mc_temperature",
+    "max_translation",
+    "max_rotation",
     "n_best",
+    "ev_weight",
+    "shuffle_max_translation",
+    "refine_av_cycles",
     "fixed_body",
     "sigma_da",
     "simulated_annealing",
+    "save_distributions",
+    "av_backend",
+    "save_trajectory",
     "score_set",
 )
 

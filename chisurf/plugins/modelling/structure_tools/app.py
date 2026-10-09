@@ -30,12 +30,23 @@ def tr(text: str) -> str:
 
 
 class StructureToolsHubApp(ImApp):
-    """Keep each structure tool alive while the user works in another."""
+    """Keep each structure tool alive while the user works in another.
+
+    A plugin that hosts a few of the tools (or tools of its own) in the same window subclasses this and sets
+    :attr:`ENTRIES` (``name``, ``group``, ``description``, ``emtk`` factory ``"module:attr"`` per tool), :attr:`TITLE`
+    and, for a short list, :attr:`COMPACT` (no search box, no Back / Next).
+    """
+
+    ENTRIES = STRUCTURE_TOOL_PANELS
+    TITLE = "Structure Tools"
+    COMPACT = False
+    #: The width of the list in a compact hub (the names are short, the tool gets the room).
+    NAV_WIDTH = 150.0
 
     def __init__(self) -> None:
         primary = json.loads((Path(__file__).parent / "gui/window.view.json").read_text())
         self.window_size = window_size(primary, (1100, 720))
-        self.entries = STRUCTURE_TOOL_PANELS
+        self.entries = self.ENTRIES
         self.selected = self.entries[0]["name"]
         self.children: dict[str, ImApp] = {}
         self._pending_state: dict[str, dict] = {}
@@ -116,18 +127,19 @@ class StructureToolsHubApp(ImApp):
         width, height = im.get_main_viewport().size
         # Wide enough that the longest entry plus its "soon" marker stays
         # inside the sidebar at narrow host widths.
-        nav_width = min(200.0, max(190.0, width * 0.26))
+        nav_width = self.NAV_WIDTH if self.COMPACT else min(200.0, max(190.0, width * 0.26))
         entry = next(item for item in self.entries if item["name"] == self.selected)
         im.set_next_window_pos((0, 0), im.Cond.ALWAYS)
         im.set_next_window_size((nav_width, height), im.Cond.ALWAYS)
-        if im.begin(tr("Structure Tools"), flags=im.WindowFlags.NO_RESIZE):
-            im.set_next_item_width(-1)
-            changed, value = im.input_text("##toolsearch", self.search, hint=tr("Search..."))
-            if changed:
-                self.search = value
-            self.remember("tool_search")
-            im.set_item_tooltip(tr("Type to list only the tools whose name or description matches."))
-            im.separator()
+        if im.begin(tr(self.TITLE), flags=im.WindowFlags.NO_RESIZE):
+            if not self.COMPACT:
+                im.set_next_item_width(-1)
+                changed, value = im.input_text("##toolsearch", self.search, hint=tr("Search..."))
+                if changed:
+                    self.search = value
+                self.remember("tool_search")
+                im.set_item_tooltip(tr("Type to list only the tools whose name or description matches."))
+                im.separator()
             shown = self.visible_entries()
             last_group = None
             for panel in shown:
@@ -144,16 +156,17 @@ class StructureToolsHubApp(ImApp):
                 im.set_item_tooltip(tr(panel["description"]))
             if not shown:
                 im.text_disabled(tr("No tool matches."))
-            im.separator()
-            if im.button(tr("Back")):
-                self.step(-1)
-            im.set_item_tooltip(tr("Go to the previous tool of the list."))
-            self.remember("back")
-            im.same_line()
-            if im.button(tr("Next")):
-                self.step(1)
-            im.set_item_tooltip(tr("Go to the next tool of the list."))
-            self.remember("next")
+            if not self.COMPACT:
+                im.separator()
+                if im.button(tr("Back")):
+                    self.step(-1)
+                im.set_item_tooltip(tr("Go to the previous tool of the list."))
+                self.remember("back")
+                im.same_line()
+                if im.button(tr("Next")):
+                    self.step(1)
+                im.set_item_tooltip(tr("Go to the next tool of the list."))
+                self.remember("next")
         im.end()
 
         im.set_next_window_pos((nav_width, 0), im.Cond.ALWAYS)

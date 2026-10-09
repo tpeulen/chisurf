@@ -194,9 +194,15 @@ class DockingSession:
         self.n_frames = int(p.get("n_frames", self.n_frames))
         self.mc_steps = int(p.get("mc_steps", self.mc_steps))
         self.n_best = int(p.get("n_best", self.n_best))
+        self.n_repeats = int(p.get("n_repeats", self.n_repeats))
+        self.refine_av_cycles = int(p.get("refine_av_cycles", self.refine_av_cycles))
         self.fixed_body = int(p.get("fixed_body", self.fixed_body))
         self.sigma_da = float(p.get("sigma_da", self.sigma_da))
+        self.ev_weight = float(p.get("ev_weight", self.ev_weight))
         self.simulated_annealing = bool(p.get("simulated_annealing", self.simulated_annealing))
+        self.save_distributions = bool(p.get("save_distributions", self.save_distributions))
+        self.av_backend = str(p.get("av_backend", self.av_backend))
+        self.save_trajectory = bool(p.get("save_trajectory", self.save_trajectory))
         self.poses = list(proj.poses or [])
         self.pose_score = (proj.pose_meta or {}).get("score")
         self.continue_from_poses = bool(self.poses)
@@ -212,8 +218,12 @@ class DockingSession:
                 path, pdb_paths=self.pdb_list(), fps_json=self.fps_json, output_dir=self.output_dir,
                 operation=self.operation, method=self.method, score_set=self.score_set,
                 params={"n_frames": self.n_frames, "mc_steps": self.mc_steps, "n_best": self.n_best,
+                        "n_repeats": self.n_repeats,
+                        "refine_av_cycles": self.refine_av_cycles,
                         "fixed_body": self.fixed_body, "sigma_da": self.sigma_da,
-                        "simulated_annealing": self.simulated_annealing},
+                        "ev_weight": self.ev_weight, "simulated_annealing": self.simulated_annealing,
+                        "save_distributions": self.save_distributions, "av_backend": self.av_backend,
+                        "save_trajectory": self.save_trajectory},
                 poses=self.poses or None, pose_score=self.pose_score, pose_method=self.method,
             )
         except Exception as exc:  # noqa: BLE001

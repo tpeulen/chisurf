@@ -33,26 +33,77 @@ RES = HERE / "resources" / "quest"
 TABS = ("Plots & Dynamics", "3D Structure", "Quenching Chemistry", "Project JSON")
 STRUCTURE_FILTER = "Structures (*.pdb *.ent *.cif *.pdb.gz);;All files (*)"
 PROJECT_FILTER = "QuEst project (*.json);;All files (*)"
-COLOURS = {"donor": (31, 119, 180, 255), "fret": (214, 39, 40, 255), "traj": (44, 160, 44, 255), "acf": (148, 103, 189, 255)}
+COLOURS = {
+    "donor": (31, 119, 180, 255),
+    "fret": (214, 39, 40, 255),
+    "traj": (44, 160, 44, 255),
+    "acf": (148, 103, 189, 255),
+}
 
 QUENCHER_COLUMNS = [
-    {"key": "residue", "title": "Residue", "width": 80, "description": "Three-letter amino-acid code."},
-    {"key": "kQ", "title": "kQ (1/ns)", "width": 100, "editable": True,
-     "description": "Rate at which this residue type quenches the dye while the two are in contact; overlapping contact spheres add up."},
-    {"key": "quench_radius", "title": "Radius (A)", "width": 100, "editable": True,
-     "description": "Distance from the dye centre to the residue's quenching centre within which quenching occurs; empty inherits the project-wide fallback contact radius."},
-    {"key": "quench_atoms", "title": "Atoms", "editable": True,
-     "description": "Atom names whose centroid defines the residue's quenching centre (the redox-active moiety, not CB)."},
-    {"key": "slow_factor", "title": "Slow factor", "width": 90, "editable": True,
-     "description": "Factor between 0 and 1 scaling the dye's diffusion near this residue type (unspecific stickiness); overlapping residues multiply."},
+    {
+        "key": "residue",
+        "title": "Residue",
+        "width": 80,
+        "description": "Three-letter amino-acid code.",
+    },
+    {
+        "key": "kQ",
+        "title": "kQ (1/ns)",
+        "width": 100,
+        "editable": True,
+        "description": "Rate at which this residue type quenches the dye while the two are in contact; overlapping contact spheres add up.",
+    },
+    {
+        "key": "quench_radius",
+        "title": "Radius (A)",
+        "width": 100,
+        "editable": True,
+        "description": "Distance from the dye centre to the residue's quenching centre within which quenching occurs; empty inherits the project-wide fallback contact radius.",
+    },
+    {
+        "key": "quench_atoms",
+        "title": "Atoms",
+        "editable": True,
+        "description": "Atom names whose centroid defines the residue's quenching centre (the redox-active moiety, not CB).",
+    },
+    {
+        "key": "slow_factor",
+        "title": "Slow factor",
+        "width": 90,
+        "editable": True,
+        "description": "Factor between 0 and 1 scaling the dye's diffusion near this residue type (unspecific stickiness); overlapping residues multiply.",
+    },
 ]
-QUENCH_TABLE = {"sections": [{
-    "type": "custom", "key": "data_table",
-    "description": "The PET quenching chemistry of every amino acid. Double-click a cell of kQ, Radius, Atoms or Slow factor to edit.",
-    "options": {"source": "quencher_rows", "editable": True, "expand": True, "reserve": 4, "row_key": "residue",
-                "edited_call": "edit_quencher", "status": True, "columns": QUENCHER_COLUMNS}}]}
-JSON_VIEW = {"sections": [{"type": "custom", "key": "code_editor", "target": "json_text",
-                           "options": {"language": "JSON", "read_only": True, "expand": True, "height": 200}}]}
+QUENCH_TABLE = {
+    "sections": [
+        {
+            "type": "custom",
+            "key": "data_table",
+            "description": "The PET quenching chemistry of every amino acid. Double-click a cell of kQ, Radius, Atoms or Slow factor to edit.",
+            "options": {
+                "source": "quencher_rows",
+                "editable": True,
+                "expand": True,
+                "reserve": 4,
+                "row_key": "residue",
+                "edited_call": "edit_quencher",
+                "status": True,
+                "columns": QUENCHER_COLUMNS,
+            },
+        }
+    ]
+}
+JSON_VIEW = {
+    "sections": [
+        {
+            "type": "custom",
+            "key": "code_editor",
+            "target": "json_text",
+            "options": {"language": "JSON", "read_only": True, "expand": True, "height": 200},
+        }
+    ]
+}
 
 
 def quest_spec() -> dict:
@@ -61,8 +112,13 @@ def quest_spec() -> dict:
 
     path = gvs.view_spec_path()
     full = json.loads(Path(path).read_text(encoding="utf-8"))
-    project = next(s for d in full["sections"] if d.get("type") == "dock_area" for s in d["sections"]
-                   if s.get("title") == "Project")
+    project = next(
+        s
+        for d in full["sections"]
+        if d.get("type") == "dock_area"
+        for s in d["sections"]
+        if s.get("title") == "Project"
+    )
     panels = []
     for panel in copy.deepcopy(project["sections"]):
         panel["sections"] = [s for s in panel["sections"] if s.get("type") != "table"]
@@ -71,7 +127,11 @@ def quest_spec() -> dict:
             if sec.get("attr") == "pdb":
                 sec["kind"] = "str"
                 sec["elide"] = "start"
-            if sec.get("type") == "value" and sec.get("kind") in ("int", "float") and not sec.get("read_only"):
+            if (
+                sec.get("type") == "value"
+                and sec.get("kind") in ("int", "float")
+                and not sec.get("read_only")
+            ):
                 sec["style"] = "spin"
         panels.append(panel)
     return layout_spec({"sections": panels})
@@ -176,7 +236,9 @@ class QuestSession:
         self.running = False
         self.model.poll_simulation()
         self.message = self.model.status
-        self.status_error = self.message.lower().startswith(("failed", "error", "simulation failed"))
+        self.status_error = self.message.lower().startswith(
+            ("failed", "error", "simulation failed")
+        )
         return True
 
     def wait(self, timeout: float = 120.0) -> bool:
@@ -192,8 +254,17 @@ class QuestSession:
 
     def quencher_rows(self) -> Rows:
         rows = Rows(self.model.quencher_rows()) if self.ready else Rows()
-        rows.revision = hash(json.dumps(self.model.project.get("amino_acid_interactions", {}), sort_keys=True,
-                                        default=str)) if self.ready else 0
+        rows.revision = (
+            hash(
+                json.dumps(
+                    self.model.project.get("amino_acid_interactions", {}),
+                    sort_keys=True,
+                    default=str,
+                )
+            )
+            if self.ready
+            else 0
+        )
         return rows
 
     def edit_quencher(self, record, key: str, value) -> None:
@@ -210,7 +281,9 @@ class QuestSession:
     def reset_quencher_defaults(self) -> None:
         from quest.project import template_project
 
-        self.model.project["amino_acid_interactions"] = template_project().get("amino_acid_interactions", {})
+        self.model.project["amino_acid_interactions"] = template_project().get(
+            "amino_acid_interactions", {}
+        )
         self.model._notify()
         self.say("Quenching chemistry reset to the defaults.")
 
@@ -221,8 +294,11 @@ class QuestSession:
     def series(self) -> dict[str, list[dict]]:
         if not self.ready:
             return {"decay": [], "trajectory": [], "acf": []}
-        return {"decay": self.model.decay_series(), "trajectory": self.model.trajectory_series(),
-                "acf": self.model.autocorrelation_series()}
+        return {
+            "decay": self.model.decay_series(),
+            "trajectory": self.model.trajectory_series(),
+            "acf": self.model.autocorrelation_series(),
+        }
 
     def backbone(self):
         """The CA trace of the loaded structure and the attachment sites ``(donor, acceptor)``, or None."""
@@ -243,15 +319,22 @@ class QuestSession:
 
         def site(chain, residue, atom):
             try:
-                mask = (atoms["chain"] == str(chain)) & (atoms["res_id"] == int(residue)) & (atoms["atom_name"] == str(atom))
+                mask = (
+                    (atoms["chain"] == str(chain))
+                    & (atoms["res_id"] == int(residue))
+                    & (atoms["atom_name"] == str(atom))
+                )
                 hit = np.asarray(atoms["xyz"])[mask]
                 return hit[0] if len(hit) else None
             except (TypeError, ValueError):
                 return None
 
         project = self.model.project
-        donor = site(project.get("attachment", {}).get("chain"), project.get("attachment", {}).get("residue"),
-                     project.get("attachment", {}).get("atom"))
+        donor = site(
+            project.get("attachment", {}).get("chain"),
+            project.get("attachment", {}).get("residue"),
+            project.get("attachment", {}).get("atom"),
+        )
         acceptor = None
         dyes = project.get("fret", {}).get("dyes", [])
         if project.get("fret", {}).get("enabled") and len(dyes) > 1:
@@ -293,13 +376,19 @@ class QuestCard(CardShell):
     # ── actions ───────────────────────────────────────────────────────────
 
     def sync(self) -> None:
-        self.status = self.session.message or (self.session.model.status if self.session.ready else "")
+        self.status = self.session.message or (
+            self.session.model.status if self.session.ready else ""
+        )
         self.status_error = self.session.status_error
         self.request_frame()
 
     def load_structure(self) -> None:
-        self.open_file("Open a structure", STRUCTURE_FILTER, self._load_structure,
-                       current=str(self.session.model.project.get("pdb") or "") if self.session.ready else "")
+        self.open_file(
+            "Open a structure",
+            STRUCTURE_FILTER,
+            self._load_structure,
+            current=str(self.session.model.project.get("pdb") or "") if self.session.ready else "",
+        )
 
     def _load_structure(self, path: str) -> None:
         if self.session.load_structure(path):
@@ -365,17 +454,50 @@ class QuestCard(CardShell):
             self._draw_unavailable()
             return
         running = s.running
-        pressed = self.toolbar([
-            {"label": "Simulate", "key": "simulate", "enabled": not running, "tip": "Run the simulation: dye diffusion, PET quenching and (with FRET on) the donor decay."},
-            {"label": "Cancel", "key": "cancel", "enabled": running, "tip": "Ask the run to stop; its result is discarded."},
-            {"label": "Load PDB...", "key": "load_pdb", "enabled": not running, "tip": "Choose a structure; a valid attachment site is picked from it."},
-            {"label": "Load project...", "key": "load_project", "enabled": not running, "tip": "Read a QuEst project JSON written by any surface."},
-            {"label": "Save project...", "key": "save_project", "tip": "Write the form as project JSON, the file the CLI and the web UI read."},
-            *self.help_buttons(),
-        ])
-        {None: lambda: None, "simulate": self.simulate, "cancel": lambda: (s.cancel(), self.sync()),
-         "load_pdb": self.load_structure, "load_project": self.load_project, "save_project": self.save_project,
-         "guide": self.start_guide, "help": self.show_help}[pressed]()
+        pressed = self.toolbar(
+            [
+                {
+                    "label": "Simulate",
+                    "key": "simulate",
+                    "enabled": not running,
+                    "tip": "Run the simulation: dye diffusion, PET quenching and (with FRET on) the donor decay.",
+                },
+                {
+                    "label": "Cancel",
+                    "key": "cancel",
+                    "enabled": running,
+                    "tip": "Ask the run to stop; its result is discarded.",
+                },
+                {
+                    "label": "Load PDB...",
+                    "key": "load_pdb",
+                    "enabled": not running,
+                    "tip": "Choose a structure; a valid attachment site is picked from it.",
+                },
+                {
+                    "label": "Load project...",
+                    "key": "load_project",
+                    "enabled": not running,
+                    "tip": "Read a QuEst project JSON written by any surface.",
+                },
+                {
+                    "label": "Save project...",
+                    "key": "save_project",
+                    "tip": "Write the form as project JSON, the file the CLI and the web UI read.",
+                },
+                *self.help_buttons(),
+            ]
+        )
+        {
+            None: lambda: None,
+            "simulate": self.simulate,
+            "cancel": lambda: (s.cancel(), self.sync()),
+            "load_pdb": self.load_structure,
+            "load_project": self.load_project,
+            "save_project": self.save_project,
+            "guide": self.start_guide,
+            "help": self.show_help,
+        }[pressed]()
         im.text_wrapped(f"State: {s.model.status}")
         self.remember("state")
         im.separator()
@@ -388,8 +510,10 @@ class QuestCard(CardShell):
     def _draw_unavailable(self) -> None:
         im.text("QuEst cannot start here")
         im.separator()
-        im.text_wrapped("QuEst needs the IMP.bff quenching tables (IMP.bff.quenching), which this Python environment "
-                        "does not provide. The reason it reported:")
+        im.text_wrapped(
+            "QuEst needs the IMP.bff quenching tables (IMP.bff.quenching), which this Python environment "
+            "does not provide. The reason it reported:"
+        )
         im.text_wrapped(self.session.error)
         self.remember("unavailable")
         if im.button("Retry"):
@@ -397,7 +521,9 @@ class QuestCard(CardShell):
             if self.session.ready:
                 self.spec = quest_spec()
             self.sync()
-        im.set_item_tooltip("Try to load QuEst again (after installing the IMP.bff quenching module).")
+        im.set_item_tooltip(
+            "Try to load QuEst again (after installing the IMP.bff quenching module)."
+        )
         self.remember("retry")
         im.same_line()
         pressed = self.toolbar(self.help_buttons())
@@ -422,16 +548,22 @@ class QuestCard(CardShell):
                 self.tab = tab
             if selected:
                 im.pop_style_color(1)
-            im.set_item_tooltip({
-                "Plots & Dynamics": "The fluorescence decay, the dye trajectory and the position autocorrelation of the last run.",
-                "3D Structure": "The structure with the donor and acceptor attachment sites.",
-                "Quenching Chemistry": "The quenching parameters of every amino acid.",
-                "Project JSON": "The project as the CLI and the web UI read it (read only).",
-            }[tab])
+            im.set_item_tooltip(
+                {
+                    "Plots & Dynamics": "The fluorescence decay, the dye trajectory and the position autocorrelation of the last run.",
+                    "3D Structure": "The structure with the donor and acceptor attachment sites.",
+                    "Quenching Chemistry": "The quenching parameters of every amino acid.",
+                    "Project JSON": "The project as the CLI and the web UI read it (read only).",
+                }[tab]
+            )
             self.remember(f"tab_{tab}")
         im.separator()
-        {"Plots & Dynamics": self._draw_plots, "3D Structure": self._draw_structure,
-         "Quenching Chemistry": self._draw_quenching, "Project JSON": self._draw_json}[self.tab]()
+        {
+            "Plots & Dynamics": self._draw_plots,
+            "3D Structure": self._draw_structure,
+            "Quenching Chemistry": self._draw_quenching,
+            "Project JSON": self._draw_json,
+        }[self.tab]()
 
     def _draw_plots(self) -> None:
         series = self.session.series()
@@ -440,9 +572,19 @@ class QuestCard(CardShell):
             self.remember("empty_plots")
             return
         height = max(90.0, (im.get_content_region_avail()[1] - 16.0) / 3.0)
-        plots = (("##decay", "Time (ns)", "Counts", "decay", "Fluorescence decay (donor and FRET)", True, False),
-                 ("##traj", "Time (ns)", "|r - <r>| (A)", "trajectory", "Dye trajectory", False, False),
-                 ("##acf", "Lag (ns)", "ACF", "acf", "Position autocorrelation", False, True))
+        plots = (
+            (
+                "##decay",
+                "Time (ns)",
+                "Counts",
+                "decay",
+                "Fluorescence decay (donor and FRET)",
+                True,
+                False,
+            ),
+            ("##traj", "Time (ns)", "|r - <r>| (A)", "trajectory", "Dye trajectory", False, False),
+            ("##acf", "Lag (ns)", "ACF", "acf", "Position autocorrelation", False, True),
+        )
         for pid, xl, yl, key, tip, log_y, log_x in plots:
             if implot.begin_plot(pid, (-1, height)):
                 implot.setup_axes(xl, yl)
@@ -452,8 +594,13 @@ class QuestCard(CardShell):
                     implot.setup_axis_scale(implot.AXIS_X1, implot.SCALE_LOG10)
                 implot.setup_legend(implot.LOCATION_NORTH_EAST)
                 for j, line in enumerate(series[key]):
-                    colour = COLOURS[("donor" if j == 0 else "fret") if key == "decay" else
-                                     "traj" if key == "trajectory" else "acf"]
+                    colour = COLOURS[
+                        ("donor" if j == 0 else "fret")
+                        if key == "decay"
+                        else "traj"
+                        if key == "trajectory"
+                        else "acf"
+                    ]
                     x = np.asarray(line["x"], dtype=float)
                     y = np.asarray(line["y"], dtype=float)
                     if log_y:
@@ -467,7 +614,9 @@ class QuestCard(CardShell):
     def _draw_structure(self) -> None:
         data = self.session.backbone()
         if data is None:
-            im.text_wrapped("No structure loaded: press Load PDB... (or drop a .pdb file on the window).")
+            im.text_wrapped(
+                "No structure loaded: press Load PDB... (or drop a .pdb file on the window)."
+            )
             self.remember("empty_structure")
             return
         trace, donor, acceptor = data
@@ -475,13 +624,25 @@ class QuestCard(CardShell):
             implot3d.setup_axes("x [A]", "y [A]", "z [A]")
             implot3d.plot_line("backbone", trace[:, 0], trace[:, 1], trace[:, 2])
             if donor is not None:
-                implot3d.plot_scatter("donor", [float(donor[0])], [float(donor[1])], [float(donor[2])],
-                                      spec=implot3d.Spec(marker_size=7, marker_fill_color=(0.12, 0.47, 0.71, 1.0)))
+                implot3d.plot_scatter(
+                    "donor",
+                    [float(donor[0])],
+                    [float(donor[1])],
+                    [float(donor[2])],
+                    spec=implot3d.Spec(marker_size=7, marker_fill_color=(0.12, 0.47, 0.71, 1.0)),
+                )
             if acceptor is not None:
-                implot3d.plot_scatter("acceptor", [float(acceptor[0])], [float(acceptor[1])], [float(acceptor[2])],
-                                      spec=implot3d.Spec(marker_size=7, marker_fill_color=(0.84, 0.15, 0.16, 1.0)))
+                implot3d.plot_scatter(
+                    "acceptor",
+                    [float(acceptor[0])],
+                    [float(acceptor[1])],
+                    [float(acceptor[2])],
+                    spec=implot3d.Spec(marker_size=7, marker_fill_color=(0.84, 0.15, 0.16, 1.0)),
+                )
             implot3d.end_plot()
-            im.set_item_tooltip("The CA / P trace of the structure with the donor (blue) and acceptor (red) attachment sites.")
+            im.set_item_tooltip(
+                "The CA / P trace of the structure with the donor (blue) and acceptor (red) attachment sites."
+            )
             self.remember("structure_plot")
 
     def _draw_quenching(self) -> None:

@@ -76,6 +76,63 @@ def test_save_round_trip_keeps_paths_relative(tmp_path):
     assert loaded.params["n_frames"] == 7
 
 
+def test_project_request_keeps_refine_av_cycles(tmp_path):
+    """A saved AV-refinement setting reaches the reconstructed request."""
+    pdb = tmp_path / "a.pdb"
+    fps = tmp_path / "x.fps.json"
+    for p in (pdb, fps):
+        p.write_text("")
+    dst = tmp_path / "proj.json"
+    _project.save_docking_project(
+        str(dst),
+        pdb_paths=[str(pdb)],
+        fps_json=str(fps),
+        output_dir=str(tmp_path / "out"),
+        operation="dock",
+        params={"n_frames": 7, "refine_av_cycles": 1},
+    )
+
+    req = _project.load_docking_project(str(dst)).to_dock_request()
+    assert req["refine_av_cycles"] == 1
+
+
+def test_project_request_keeps_all_dock_request_params(tmp_path):
+    """Every supported sampling and backend setting survives project transport."""
+    pdb = tmp_path / "a.pdb"
+    fps = tmp_path / "x.fps.json"
+    for path in (pdb, fps):
+        path.write_text("")
+    dst = tmp_path / "project.json"
+    params = {
+        "n_frames": 17,
+        "mc_steps": 7,
+        "mc_temperature": 0.75,
+        "max_translation": 2.5,
+        "max_rotation": 0.15,
+        "simulated_annealing": True,
+        "n_best": 5,
+        "ev_weight": 2.0,
+        "shuffle_max_translation": 6.5,
+        "sigma_da": 4.0,
+        "fixed_body": 1,
+        "refine_av_cycles": 2,
+        "save_distributions": True,
+        "av_backend": "labellib",
+        "save_trajectory": True,
+    }
+    _project.save_docking_project(
+        str(dst),
+        pdb_paths=[str(pdb)],
+        fps_json=str(fps),
+        output_dir=str(tmp_path / "out"),
+        operation="dock",
+        params=params,
+    )
+
+    request = _project.load_docking_project(str(dst)).to_dock_request()
+    assert {key: request[key] for key in params} == params
+
+
 _POSES = [
     {"body_id": 0, "t": [0.0, 0.0, 0.0], "q": [1.0, 0.0, 0.0, 0.0]},
     {"body_id": 1, "t": [12.5, -3.25, 7.0], "q": [0.5, 0.5, 0.5, 0.5]},
@@ -200,12 +257,15 @@ def test_capture_reapply_reconstructs_pose(tmp_path):
         assert abs(dot - 1.0) < 1e-4  # same rotation (quaternion sign-agnostic)
 
 
-def test_continue_from_poses_does_not_restart(tmp_path):
-    """Resuming from saved poses continues (score no worse than the docked state)."""
+def test_dock_project_passes_saved_poses_and_av_refinement_to_engine(tmp_path, monkeypatch):
+    """Saved poses and AV-refinement settings reach the real docking engine."""
     from chisurf.plugins.modelling.fret.api import operations as ops
+    from math import isfinite
 
     pdbs, fps = _pdbs_and_fps()
-    params = imp_engine.DockingParameters(n_frames=20, shuffle_max_translation=0.0)
+    params = imp_engine.DockingParameters(
+        n_frames=20, refine_av_cycles=1, shuffle_max_translation=0.0
+    )
     first = imp_engine.dock_minimize(pdbs, fps, str(tmp_path / "a"), params)
 
     dst = tmp_path / "docked.json"
@@ -215,11 +275,24 @@ def test_continue_from_poses_does_not_restart(tmp_path):
         fps_json=fps,
         output_dir=str(tmp_path / "b"),
         method="minimize",
+        params={"n_frames": 20, "refine_av_cycles": 1},
         poses=first.poses,
         pose_score=first.score,
     )
 
-    res = ops.dock_project(str(dst), {"output_dir": str(tmp_path / "b"), "n_frames": 20})
+    captured = {}
+    original_dock_minimize = ops.imp_engine.dock_minimize
+
+    def capture_dock_minimize(*args, **kwargs):
+        captured["initial_poses"] = kwargs["initial_poses"]
+        captured["params"] = args[3]
+        return original_dock_minimize(*args, **kwargs)
+
+    monkeypatch.setattr(ops.imp_engine, "dock_minimize", capture_dock_minimize)
+    res = ops.dock_project(str(dst))
+
     assert res["status"] == "ok"
-    # Continuing further minimisation never worsens the score of the docked state.
-    assert res["data"]["score"] <= first.score + 1e-6
+    assert captured["initial_poses"] == first.poses
+    assert captured["params"].refine_av_cycles == 1
+    assert isfinite(res["data"]["score"])
+    assert len(res["data"]["poses"]) == len(first.poses)

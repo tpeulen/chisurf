@@ -1,0 +1,55 @@
+{
+  "_comment": "View scheme of the native pair selection window: the fields of the Qt FRETPairSelectionWindow (same labels, ranges and defaults). The three file rows are a custom section drawn by the window.",
+  "sections": [
+    {
+      "type": "panel", "title": "Input", "n_col": 1, "collapsible": true,
+      "description": "The trajectory to select pairs from and how to read it.",
+      "sections": [
+        {"type": "custom", "key": "pair_paths"},
+        {"type": "value", "attr": "stride", "label": "Stride", "kind": "int", "minimum": 1, "maximum": 1000000,
+         "description": "Read every n-th frame of the trajectory (1 = all frames)."}
+      ]
+    },
+    {
+      "type": "panel", "title": "Candidate sites from residues", "n_col": 1, "collapsible": true,
+      "description": "Used when no FPS JSON is given: every pair of the listed residues is a candidate.",
+      "sections": [
+        {"type": "value", "attr": "chain", "label": "Chain", "kind": "str",
+         "description": "Chain of the residues: its identifier, or its index (empty = the first chain)."},
+        {"type": "value", "attr": "residues", "label": "Residues (PDB resSeq)", "kind": "str",
+         "description": "Residue numbers as written in the PDB file: single numbers and ranges, e.g. 35-50,85-95,115-120."},
+        {"type": "choice", "attr": "atom", "label": "Attachment atom", "options": ["CB", "CA"], "style": "combo",
+         "description": "The atom the dye is attached at (CB falls back to CA where a residue has none, e.g. glycine)."}
+      ]
+    },
+    {
+      "type": "panel", "title": "Efficiency", "n_col": 1, "collapsible": true,
+      "description": "How the FRET efficiency of a candidate pair is computed in every frame.",
+      "sections": [
+        {"type": "value", "attr": "r0", "label": "R0 (Å)", "kind": "float", "decimals": 2, "minimum": 1.0, "maximum": 200.0,
+         "description": "Forster radius of the dye pair, in Angstrom (a pair the FPS JSON gives its own R0 keeps it)."},
+        {"type": "toggle", "attr": "use_av", "label": "Use AV backend",
+         "description": "With an FPS JSON: compute the efficiency from the accessible volumes of the dyes instead of the attachment-atom distance (falls back to the distance, with a message, when the AV cannot be computed)."},
+        {"type": "value", "attr": "av_samples", "label": "AV samples", "kind": "int", "minimum": 100, "maximum": 1000000,
+         "description": "Distance samples drawn between the two accessible volumes of a pair, per frame."},
+        {"type": "value", "attr": "av_max_points", "label": "Max AV points", "kind": "int", "minimum": 1000, "maximum": 500000,
+         "description": "Largest number of points kept of an accessible volume."}
+      ]
+    },
+    {
+      "type": "panel", "title": "Selection", "n_col": 1, "collapsible": true,
+      "description": "How the informative pairs are chosen.",
+      "sections": [
+        {"type": "value", "attr": "max_pairs", "label": "Max pairs", "kind": "int", "minimum": 1, "maximum": 999,
+         "description": "How many pairs to choose."},
+        {"type": "value", "attr": "err", "label": "Expected E error", "kind": "float", "decimals": 4, "minimum": 0.0001,
+         "maximum": 1.0, "step": 0.01,
+         "description": "The experimental uncertainty of a FRET efficiency; a pair is informative to the extent the conformations differ by more than this."},
+        {"type": "toggle", "attr": "unique_only", "label": "Unique pairs only",
+         "description": "Choose every pair at most once."},
+        {"type": "value", "attr": "rmsd_selection", "label": "RMSD atom selection", "kind": "str",
+         "description": "The atoms the conformations are compared on (an MDTraj-style selection, e.g. name CA); empty = all atoms."}
+      ]
+    }
+  ]
+}

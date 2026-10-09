@@ -1,0 +1,37 @@
+{
+  "_comment": "Guided tour of the pair selection window. Steps point at real controls; the ones with an await wait until the user presses the control.",
+  "steps": [
+    {
+      "title": "What this tool does",
+      "text": "Given a trajectory of a molecule that moves, which pairs of labelling sites should you measure by FRET to tell its conformations apart? The tool computes the FRET efficiency of every candidate pair in every frame and adds pairs greedily: each new pair is the one that most reduces the mean RMSD between conformations the chosen pairs cannot yet distinguish.<br/><br/>Six steps; you press the buttons, the tour only points at them.",
+      "target": {}
+    },
+    {
+      "title": "The trajectory",
+      "text": "<b>Trajectory</b> takes the conformations (a DCD, XTC or similar; dropping the file on the window works too). A DCD stores coordinates only, so give the <b>Topology</b> PDB that names the atoms.",
+      "target": {"key": "trajectory_browse"},
+      "await": {"hint": "Press <b>...</b> next to Trajectory and choose the file, or drop it on the window."}
+    },
+    {
+      "title": "Where the sites come from",
+      "text": "Either list the residues of one chain (the <b>Candidate sites from residues</b> group: every pair of them is a candidate), or give an <b>FPS JSON</b> whose labelling positions and distances are the candidates. With an FPS JSON the residue fields are not used.",
+      "target": {"key": "fps_json_browse"}
+    },
+    {
+      "title": "How efficiency is computed",
+      "text": "<b>R0</b> is the Forster radius of the dye pair. With an FPS JSON, <b>Use AV backend</b> computes the efficiency from the dyes' accessible volumes instead of the attachment-atom distance.",
+      "target": {"key": "r0"}
+    },
+    {
+      "title": "Run it",
+      "text": "<b>Max pairs</b> says how many pairs to choose and <b>Expected E error</b> how precisely you can measure an efficiency. Press <b>Run selection</b>.",
+      "target": {"key": "run"},
+      "await": {"hint": "Press <b>Run selection</b>."}
+    },
+    {
+      "title": "Read and save the result",
+      "text": "The table lists the pairs in the order they were added with the mean RMSD after each; the plot shows how fast it falls. <b>Export</b> writes the table to a text file.",
+      "target": {"key": "export"}
+    }
+  ]
+}

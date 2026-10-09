@@ -23,6 +23,7 @@
   },
   "entrypoints": {
     "gui": "chisurf.plugins.modelling.fret.gui.dock_tool:FretDockingTool",
+    "emtk": "chisurf.plugins.modelling.fret.gui.app:make_app",
     "cli": "fret=chisurf.plugins.modelling.fret.cli.main:main",
     "services": "chisurf.plugins.modelling.fret.backend.services:register_services"
   },

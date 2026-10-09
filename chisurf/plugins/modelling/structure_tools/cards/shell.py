@@ -50,6 +50,8 @@ class CardShell(TourTarget, ImApp):
         #: The open question / message / prompt, or None: ``{"kind", "title", "text", ...}``.
         self.modal: dict | None = None
         self.modal_window = DialogWindow("Question", size=(460.0, 190.0), key=f"{key}-modal")
+        #: Database pickers (:class:`chisurf.emtk.dataset_picker.DatasetPicker`) the card opened; drawn over it.
+        self.pickers: list = []
         self.docks = self.build_docks()
         self.native_layouts = {"main": self.docks}
         self.help_window = EmTkHelpWindow(
@@ -129,10 +131,24 @@ class CardShell(TourTarget, ImApp):
         self.modal_window.show()
         self.request_frame()
 
+    def open_database(self, kinds: Sequence[str], on_paths: Callable[[list[Path]], Any], client: Any = None) -> Any:
+        """Open the MMFDB dataset picker over the card, filtered to *kinds*; ``on_paths`` gets the local files.
+
+        *client* is the database client (the session's own when None); a tool that hosts the card in a test passes a stub.
+        """
+        from chisurf.emtk.dataset_picker import DatasetPicker
+
+        picker = DatasetPicker(client=client, kinds=list(kinds), on_paths=on_paths)
+        self.pickers = [picker]
+        picker.open()
+        self.request_frame()
+        return picker
+
     @property
     def blocked(self) -> bool:
         """Whether a dialog is over the card (the card behind it takes no input)."""
-        return self.dialog is not None or self.modal is not None
+        return (self.dialog is not None or self.modal is not None
+                or any(p.is_open for p in self.pickers))
 
     # ── host ──────────────────────────────────────────────────────────────
 
@@ -170,6 +186,9 @@ class CardShell(TourTarget, ImApp):
             self._draw_file_dialog(box)
         if self.modal is not None:
             self._draw_modal(box)
+        for picker in self.pickers:
+            picker.render(box)
+        self.pickers = [p for p in self.pickers if p.is_open]
         self.help_window.draw(box)
         self.tour.draw(*vp.size)
 

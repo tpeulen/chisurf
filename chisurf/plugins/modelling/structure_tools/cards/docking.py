@@ -50,10 +50,10 @@ RESULT_TABLE = {"sections": [{
                    "select a row to show that structure.",
     "options": {"source": "result_rows", "expand": True, "reserve": 4, "row_key": "key", "selected_call": "select_result",
                 "sort": {"key": "score", "descending": False}, "status": True,
-                "columns": [{"key": "trial", "title": "Trial", "width": 60, "description": "Trial number of a repeated run."},
-                            {"key": "type", "title": "Type", "width": 70, "description": "dock, mc or refine."},
-                            {"key": "score", "title": "Score", "width": 90, "format": "%.2f", "description": "The restraint score; lower is better."},
-                            {"key": "distances", "title": "Distances", "width": 80, "description": "Number of distance restraints scored."},
+                "columns": [{"key": "trial", "title": "Trial", "width": 48, "description": "Trial number of a repeated run."},
+                            {"key": "type", "title": "Type", "width": 52, "description": "dock, mc or refine."},
+                            {"key": "score", "title": "Score", "width": 66, "format": "%.2f", "description": "The restraint score; lower is better."},
+                            {"key": "distances", "title": "Distances", "width": 76, "description": "Number of distance restraints scored."},
                             {"key": "best_pdb", "title": "Best PDB", "description": "The docked structure of the result."}]}}]}
 
 
@@ -103,8 +103,9 @@ class DockingView:
 class DockingCard(CardShell):
     """The docking window."""
 
-    def __init__(self, session: DockingSession | None = None) -> None:
+    def __init__(self, session: DockingSession | None = None, mmfdb_client=None) -> None:
         self.session = session or DockingSession()
+        self.mmfdb_client = mmfdb_client
         self.tab = TABS[0]
         spec = json.loads(FRET_SPEC.read_text(encoding="utf-8"))
         _spin(spec["sections"])
@@ -177,6 +178,13 @@ class DockingCard(CardShell):
         self.used("pdb")
         self.sync()
 
+    def add_from_database(self) -> None:
+        """The Database button: pick a structure of the MMFDB database as the next rigid body (as the Qt list's does)."""
+        self.open_database(["structure"], self._database_paths, client=self.mmfdb_client)
+
+    def _database_paths(self, paths) -> None:
+        self._add_pdb([str(p) for p in paths])
+
     def take_drop(self, paths: list[str]) -> bool:
         """Dropped files: a ``.pdb`` becomes the next rigid body, a ``.json`` / ``.txt`` the fps file (a docking
         project .json that has ``pdb_paths`` is loaded as a project)."""
@@ -245,11 +253,15 @@ class DockingCard(CardShell):
         im.text("PDB rigid bodies (one per body)")
         pressed = self.toolbar([
             {"label": "Add Files", "key": "add_pdb", "enabled": not running, "tip": "Add a structure file as the next rigid body (a dropped .pdb does the same)."},
+            {"label": "Database", "key": "database_pdb", "enabled": not running,
+             "tip": "Add a structure from the MMFDB database as the next rigid body."},
             {"label": "Remove", "key": "remove_pdb", "enabled": self.view.pdb_selected >= 0 and not running, "tip": "Remove the selected rigid body."},
             {"label": "Clear List", "key": "clear_pdb", "enabled": bool(s.pdb_files) and not running, "tip": "Remove every rigid body."},
         ])
         if pressed == "add_pdb":
             self.add_pdbs()
+        elif pressed == "database_pdb":
+            self.add_from_database()
         elif pressed == "remove_pdb":
             self.view.delete_pdb({"body": self.view.pdb_selected})
             self.sync()
@@ -392,12 +404,12 @@ def _is_project(path: str) -> bool:
     return isinstance(data, dict) and "pdb_paths" in data
 
 
-def make_app(session: DockingSession | None = None) -> DockingCard:
-    """The docking card."""
+def make_app(session: DockingSession | None = None, mmfdb_client=None) -> DockingCard:
+    """The docking card (``mmfdb_client`` is the database client of the Database button; the session's own when None)."""
     from chisurf.emtk.i18n import install
 
     install()
-    return DockingCard(session)
+    return DockingCard(session, mmfdb_client)
 
 
 __all__ = ["DockingCard", "make_app"]
