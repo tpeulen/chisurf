@@ -236,6 +236,12 @@ shape, which is the honest thing to do: the decay constrains the correlation
 times, and mapping those onto an axial ratio needs a model the data cannot
 supply on its own.
 
+The direct VV/VH host reports an average over its selected finite channel
+region as r-infinity. Record the region and channel-time calibration when
+comparing that readout with a physical long-time anisotropy. Its native window
+geometry affects the display, while file reload and settings restore recompute
+the same channel arrays.
+
 ## Practical notes and pitfalls
 
 **Calibration first.** The $G$ factor is not optional. It corrects the unequal

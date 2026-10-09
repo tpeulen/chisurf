@@ -22,6 +22,7 @@ from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.plugins.emtk_layout import window_size
 
 from .model import AnisotropyModel
 from .strings import tr
@@ -54,8 +55,10 @@ class AnisotropyApp(ImApp):
     """VV/VH anisotropy decay r(t), r-infinity and a batch of files."""
 
     def __init__(self, model: AnisotropyModel | None = None) -> None:
+        primary = json.loads((HERE / "vv_vh_emtk.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(primary, (1100, 720))
         self.model = model or AnisotropyModel()
-        spec = _translated(json.loads((HERE / "vv_vh_emtk.view.json").read_text(encoding="utf-8")))
+        spec = _translated(primary)
         self.panels = {panel["name"]: panel for panel in spec["sections"]}
         self.form = FormState()
         self.item_rects: dict[str, tuple] = {}
@@ -64,8 +67,8 @@ class AnisotropyApp(ImApp):
         self.file_window = DialogWindow(tr("Choose files"), size=(760.0, 520.0), key="vv-vh-file")
         self.batch_window = DialogWindow(tr("VV/VH Anisotropy Batch Processor"),
                                          size=(880.0, 560.0), key="vv-vh-batch")
-        self.picker = DatasetPicker(formats=None, on_paths=self.add_batch_paths)
-        self._plot_signature = None
+        self.picker = DatasetPicker(formats=None, on_paths=self._dataset_paths)
+        self._plot_signature: int | None = None
         self.help_window = EmTkHelpWindow(
             title="VV/VH Anisotropy Decay — Help", resource=HERE / "help.md", owner=self,
             size=(700.0, 560.0))
@@ -96,6 +99,10 @@ class AnisotropyApp(ImApp):
 
     def load_file(self, path) -> bool:
         return self.action(lambda: self.model.load(path))
+
+    def _dataset_paths(self, paths: list[Path]) -> None:
+        """Queue picker paths through its result-free callback contract."""
+        self.add_batch_paths(paths)
 
     def add_batch_paths(self, paths) -> int:
         return self.model.add_batch_paths([str(p) for p in paths or []])

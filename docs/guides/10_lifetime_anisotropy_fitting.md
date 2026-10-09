@@ -165,3 +165,23 @@ Fluorescence lifetime and anisotropy decays.
   ns-ALEX/PIE lifetimes: {doc}`32_nsalex_lifetime`.
 - Distance-distribution FRET models: [Polymer distance distributions](03_polymer_distance_distributions.md).
 - Tool: the **Anisotropy Wizard** (`chisurf/plugins/fluorescence_decay/tr_anisotropy/`), **VV/VH Anisotropy Decay** (`chisurf/plugins/vv_vh_anisotropy/`) and the **VV/VH G-Factor Calculator** (`chisurf/plugins/vv_vh_g_factor/`).
+
+## Direct VV/VH anisotropy host
+
+The existing **VV/VH Anisotropy Decay** host remains callable and displays its
+deprecation notice; the G-factor and reader-integrated workflows are the
+preferred entry points. Its native window declares **1100 × 720** pixels,
+with saved geometry taking precedence. Preferences reload the existing input,
+settings and selected region and recompute the arrays.
+
+```{figure} figures/vv_vh_native_primary_window.png
+:width: 100%
+
+Known G = 2 rotational-anisotropy example. The shaded region selects bins for
+the reported mean r-infinity; that finite-window average is not proof of the
+true infinite-time asymptote. Resizing preserves the selected photons and values.
+```
+
+The direct host expresses its axis and shifts in channel bins. Keep that scale
+with exported traces; do not interpret the bin axis as nanoseconds without the
+measurement's time calibration.
