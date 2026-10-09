@@ -239,7 +239,25 @@ class Chinsole(QtWidgets.QWidget):
         instructions, so the tour matters here more than on a form: `?` explains
         what something *means*, and the tour is the only thing that says what to
         type first.
+
+        The bar is built once startup has finished rather than in the
+        constructor: ``attach_help_and_guide`` transitively imports
+        ``chisurf.gui.autoform`` (parameter widgets → the whole experiments
+        package), which costs seconds of cold-start. A plain ``singleShot(0)``
+        would fire at the next ``processEvents()`` — still inside the splash
+        critical path — so the callback polls ``cs.__startup_in_progress__``
+        (cleared right after ``window.show()``) and retries until the window is
+        up, keeping the console interactive immediately.
         """
+        QtCore.QTimer.singleShot(0, self._deferred_add_help_buttons)
+
+    def _deferred_add_help_buttons(self) -> None:
+        import chisurf as cs
+
+        if getattr(cs, "__startup_in_progress__", False):
+            # Startup still owns the GUI thread; retry after the window is up.
+            QtCore.QTimer.singleShot(50, self._deferred_add_help_buttons)
+            return
         try:
             from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
         except Exception:

@@ -105,19 +105,18 @@ def build_system_info_text() -> str:
 
     ram_str = _compute_ram_string()
 
-    def _safe_version(mod_name: str) -> str | None:
+    # Version lookups use ``importlib.metadata`` instead of importing the
+    # package: importing tttrlib here costs seconds of cold-start
+    # (native extension init) for two strings in a watermark. The distribution
+    # name usually matches the module name; on a mismatch the line is simply
+    # omitted, exactly like an uninstalled dependency.
+    from importlib import metadata as _importlib_metadata
+
+    def _safe_version(distribution_name: str) -> str | None:
         try:
-            mod = __import__(mod_name)
+            return _importlib_metadata.version(distribution_name)
         except Exception:
             return None
-        for attr in ("__version__", "version", "VERSION"):
-            try:
-                v = getattr(mod, attr, None)
-            except Exception:
-                v = None
-            if v:
-                return str(v)
-        return "?"
 
     numpy_ver = _safe_version("numpy")
     tttrlib_ver = _safe_version("tttrlib")

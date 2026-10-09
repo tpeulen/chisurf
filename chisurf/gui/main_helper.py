@@ -681,9 +681,16 @@ class SetupMixin:
         Set up an experiment based on its configuration.
 
         Args:
-            exp_type (str): The experiment type key in cs.core.experiments.types
+            exp_type (str): Experiment type key in cs.core.experiments.types
             config (dict): Configuration for the experiment with readers and models
+
+        Returns:
+            list of tuple
+                ``(exp_type, experiment)`` pairs whose model paths still need
+                resolving by :meth:`register_experiment_models`; model-class
+                resolution is deferred off the splash critical path.
         """
+        pending: list = []
         try:
             # Get the base experiment from registry or create a new one
             experiment = cs.core.experiments.types.get(exp_type)
@@ -707,16 +714,20 @@ class SetupMixin:
                     # Register the controller lazily: only the reader the user
                     # actually selects ever gets its widget shown, so building
                     # every controller here would construct ~18 widgets to
-                    # display one.
+                    # display one. The *class resolution* is deferred too:
+                    # importing every controller module (tcspc, pda2c, the
+                    # wizard stack) on the splash critical path costs seconds
+                    # of cold-start, and the factory is not called until the
+                    # reader's controller is first accessed anyway.
                     controller_class_name = reader_cfg.get("controller_class")
                     if controller_class_name:
-                        controller_class = self._resolve_class(controller_class_name)
-                        if controller_class:
-                            controller_params = dict(reader_cfg.get("controller_params", {}))
-                            controller_params["experiment_reader"] = reader
-                            reader.set_controller_factory(
-                                functools.partial(controller_class, **controller_params)
+                        controller_params = dict(reader_cfg.get("controller_params", {}))
+                        controller_params["experiment_reader"] = reader
+                        reader.set_controller_factory(
+                            functools.partial(
+                                self._make_controller, controller_class_name, controller_params
                             )
+                        )
 
                     experiment.add_reader(reader)
                 except Exception as e:
@@ -724,18 +735,96 @@ class SetupMixin:
                         f"Failed to setup reader {reader_cfg.get('reader_class')} in {exp_type}: {e}"
                     )
 
-            # Add models
-            for model_path in config.get("models", []):
-                try:
-                    model_class = self._resolve_class(model_path)
-                    if model_class:
-                        experiment.add_model_class(model_class)
-                except Exception as e:
-                    cs.logging.error(f"Failed to setup model {model_path} in {exp_type}: {e}")
+            # Add models. Deferred to ``register_experiment_models`` (post-show
+            # startup service): resolving ~40 model classes imports the heavy
+            # catalogue modules (pda3c → scipy.stats, fcs/stopped-flow parsers →
+            # the fitting/parameter stack) and cost seconds of splash time.
+            # Nothing on the splash critical path reads model classes —
+            # ``onCurrentDatasetChanged`` does, and it cannot run before the
+            # user loads a dataset. The paths are stashed on the experiment and
+            # resolved by the service immediately after the window is visible.
+            model_paths = list(config.get("models", []))
+            if model_paths:
+                experiment._pending_model_paths = model_paths
 
             cs.experiment[experiment.name] = experiment
+            pending.append((exp_type, experiment))
         except Exception as e:
             cs.logging.error(f"Failed to setup experiment {exp_type}: {e}")
+        return pending
+
+    def _make_controller(self: Main, class_path, controller_params):
+        """Resolve a controller class on first use and build the controller.
+
+        Split out of :meth:`_setup_experiment` so that deferring the factory
+        does not lose the old behavior when resolution fails: the error is
+        logged once here instead of being silently swallowed at setup time,
+        and the factory still raises (as ``functools.partial(controller_class,
+        ...)`` would have) when the class cannot be resolved at all.
+        """
+        controller_class = self._resolve_class(class_path)
+        if controller_class is None:
+            raise ValueError(f"Cannot resolve controller class {class_path!r}")
+        return controller_class(**controller_params)
+
+    def register_experiment_models(self: Main) -> int:
+        """Resolve the model classes deferred by :meth:`_setup_experiment`.
+
+        Runs as the ``register_experiment_models`` post-show startup service
+        (before ``populate_plugins``). A dataset *can* already be selected by
+        then -- the start-up sample is -- so the model list may have been
+        filled while the classes were still pending: ``onCurrentDatasetChanged``
+        resolves its own experiment through :meth:`_ensure_experiment_models`,
+        and the list is refreshed here once everything is registered.
+        Idempotent -- the pending list is drained -- and safe to call again
+        after a config reload.
+
+        Returns
+        -------
+        int
+            Number of model classes registered.
+        """
+        registered = 0
+        pending, self._pending_experiment_models = self._pending_experiment_models, []
+        for _exp_type, experiment in pending:
+            registered += self._ensure_experiment_models(experiment)
+        if registered:
+            try:
+                self.onCurrentDatasetChanged()
+            except Exception as e:
+                cs.logging.error(f"Could not refresh the model list: {e}")
+        return registered
+
+    def _ensure_experiment_models(self: Main, experiment) -> int:
+        """Resolve one experiment's deferred model classes, if any are pending.
+
+        Parameters
+        ----------
+        experiment : Experiment
+            The experiment whose ``_pending_model_paths`` are resolved.
+
+        Returns
+        -------
+        int
+            Number of model classes registered.
+        """
+        registered = 0
+        for model_path in list(getattr(experiment, "_pending_model_paths", None) or []):
+            try:
+                model_class = self._resolve_class(model_path)
+                if model_class:
+                    experiment.add_model_class(model_class)
+                    registered += 1
+            except Exception as e:
+                cs.logging.error(
+                    f"Failed to setup model {model_path} in {getattr(experiment, 'name', '?')}: {e}"
+                )
+            finally:
+                try:
+                    experiment._pending_model_paths.remove(model_path)
+                except (AttributeError, ValueError):
+                    pass
+        return registered
 
     def _resolve_class(self: Main, class_path):
         """
@@ -785,6 +874,11 @@ class SetupMixin:
         Initialize experiment setups based on configuration from YAML file.
         """
         import chisurf.core.experiments
+
+        # Model-class resolution deferred by _setup_experiment lands here and
+        # is drained by register_experiment_models (post-show service).
+        if not hasattr(self, "_pending_experiment_models"):
+            self._pending_experiment_models = []
 
         # One loader, one merger: the settings file is also read by the headless
         # bootstrap and by ``load_experiment_types``, and a private copy here
@@ -970,7 +1064,9 @@ class SetupMixin:
             for exp_type, config in experiment_configs.items():
                 if exp_type == "global" or exp_type == "experiment_types":
                     continue
-                self._setup_experiment(exp_type, config)
+                pending_models = self._setup_experiment(exp_type, config)
+                if pending_models:
+                    self._pending_experiment_models.extend(pending_models)
         else:
             cs.logging.warning("Using default experiment configurations")
             for exp_type, experiment in cs.core.experiments.types.items():
@@ -1263,9 +1359,14 @@ class HistoryMixin:
                 browser.cursorChanged.connect(self._on_history_cursor_changed)
             except Exception:
                 pass
-            cs.history.configure_science(
-                self._capture_history_science, self._publish_history_science
-            )
+            # The science capture/publish binding (cs.history.configure_science)
+            # used to run here, in the splash critical path. Its baseline capture
+            # imports chisurf.core.fitting (and scipy.stats) and round-trips the
+            # session layer — well over a second of cold-start. The binding only
+            # has to happen before the first *scientific edit*, which requires
+            # loaded plugins; the post_gui_show phase binds it in the
+            # ``bind_history_science`` service, before ``populate_plugins`` can
+            # load anything the user could edit.
             parent_layout.insertWidget(insert_index, browser, 1)
 
             self.historyBrowser = browser

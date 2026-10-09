@@ -62,8 +62,6 @@ def warmup_imports():
         from chisurf.gui import chiplot as _cp  # noqa: F401
 
         _cp.get_backend()  # warms the plotting backend (pyqtgraph today)
-        import scipy.linalg as _sl  # noqa: F401
-        import scipy.stats as _sstats  # noqa: F401
 
         import chisurf.gui.widgets.fitting as _fitwidgets  # noqa: F401
 
@@ -356,7 +354,7 @@ def run_macro(
 
 
 def _show_manifest_gui(main_window, plugin_dir) -> bool:
-    """Open a plugin through its manifest's ``entrypoints.gui``, if it has one.
+    """Open a plugin through its manifest, honouring the EMTK/Qt selection.
 
     The manifest is the declared way a plugin says what its window *is*, and the
     launcher used to ignore it entirely: it executed ``wizard.py`` or the
@@ -366,6 +364,12 @@ def _show_manifest_gui(main_window, plugin_dir) -> bool:
     executing it did exactly nothing and the menu entry was dead. Silently: the
     whole launcher is wrapped in ``except``, so there was not even a log line.
 
+    It also used to instantiate the Qt ``gui`` entrypoint directly, so a plugin
+    with a native EMTK factory opened Qt from this path even though the
+    registry menus opened EMTK. Dispatch now goes through
+    :func:`chisurf.core.plugin.registry.build_plugin_widget`, the same
+    runtime-selection helper every other launch path uses.
+
     Returns
     -------
     bool
@@ -373,24 +377,20 @@ def _show_manifest_gui(main_window, plugin_dir) -> bool:
         entry point", and the legacy macro path takes over.
     """
     from chisurf.core.plugin.manifest import load_manifest
+    from chisurf.core.plugin.registry import apply_manifest_statefulness, build_plugin_widget
 
     manifest = load_manifest(pathlib.Path(plugin_dir) / "manifest.json")
-    entry = getattr(getattr(manifest, "entrypoints", None), "gui", None) if manifest else None
-    if not entry:
+    entrypoints = getattr(manifest, "entrypoints", None)
+    if not manifest or not (getattr(entrypoints, "gui", None) or getattr(entrypoints, "emtk", None)):
         return False
 
-    module_path, _, attr = entry.partition(":")
     try:
-        module = importlib.import_module(module_path)
-        factory = getattr(module, attr) if attr else module
-        widget = factory()
+        widget = build_plugin_widget(manifest)
     except Exception as exc:
-        cs.logging.error(f"Could not open the GUI entry point {entry!r}: {exc}")
+        cs.logging.error(f"Could not open the GUI entry point of {manifest.id!r}: {exc}")
         return False
 
     try:
-        from chisurf.core.plugin.registry import apply_manifest_statefulness
-
         apply_manifest_statefulness(widget, manifest)
     except Exception as exc:
         cs.logging.warning(f"Statefulness for {manifest.id} could not be applied: {exc}")

@@ -255,19 +255,13 @@ class CategoryMethodsMixin:
                     if is_broken and hide_disabled_plugins and experimental_mode:
                         continue
 
-                    # Determine script file
-                    plugin_dir = package_dir
-                    wizard_file = plugin_dir / "wizard.py"
-                    script_file = (
-                        wizard_file if wizard_file.is_file() else (plugin_dir / "__init__.py")
-                    )
-
-                    # Build callback
+                    # Launch through the manifest dispatch (EMTK/Qt runtime
+                    # selection), not by executing the plugin file as a macro:
+                    # the __init__ "plugin" block instantiates the Qt widget
+                    # directly and would bypass a native factory.
                     callback = functools.partial(
-                        self.main_window.onRunMacro,
-                        str(script_file),
-                        executor="exec",
-                        globals={"__name__": "plugin"},
+                        self.main_window.load_and_show_plugin,
+                        module_path,
                     )
 
                     icon = _plugin_icon_from_metadata(
@@ -490,19 +484,13 @@ class CategoryMethodsMixin:
                     if is_broken and hide_disabled_plugins and experimental_mode:
                         continue
 
-                    # Determine script file
-                    plugin_dir = package_dir
-                    wizard_file = plugin_dir / "wizard.py"
-                    script_file = (
-                        wizard_file if wizard_file.is_file() else (plugin_dir / "__init__.py")
-                    )
-
-                    # Build callback
+                    # Launch through the manifest dispatch (EMTK/Qt runtime
+                    # selection), not by executing the plugin file as a macro:
+                    # the __init__ "plugin" block instantiates the Qt widget
+                    # directly and would bypass a native factory.
                     callback = functools.partial(
-                        self.main_window.onRunMacro,
-                        str(script_file),
-                        executor="exec",
-                        globals={"__name__": "plugin"},
+                        self.main_window.load_and_show_plugin,
+                        module_path,
                     )
 
                     icon = _plugin_icon_from_metadata(

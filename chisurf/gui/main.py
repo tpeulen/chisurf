@@ -351,7 +351,17 @@ class Main(
         state = settings.value("state")
         if state is None or saved_version != self._LAYOUT_VERSION:
             return False
-        return bool(self.restoreState(state))
+        restored = bool(self.restoreState(state))
+        if restored and self._ribbon_integration is not None:
+            # ``restoreState`` also restores toolbar visibility from the blob.
+            # A state saved in a pre-ribbon session (or in menu mode) would
+            # re-show the toolbars the ribbon setup just hid, resurrecting
+            # the duplicate interface. Re-assert the ribbon's tool state.
+            for attr in ("toolBar", "plugins_toolbar"):
+                tb = getattr(self, attr, None)
+                if tb is not None:
+                    tb.hide()
+        return restored
 
     def _dock_tab_bar(self, dock: QtWidgets.QDockWidget) -> QtWidgets.QTabBar:
         """Return the tab bar of the stack ``dock`` is tabbed into, if any.
@@ -576,6 +586,10 @@ class Main(
         ds = self.current_dataset
         if cs.imported_datasets and ds is not None:
             experiment = self._experiment_for_dataset(ds)
+            if experiment is not None:
+                # Model classes are resolved after the window is shown; a
+                # dataset selected before that must not see an empty list.
+                self._ensure_experiment_models(experiment)
             # Filtered by the selected dataset: one experiment can hold data of
             # more than one shape (PDA reads two-colour histograms and
             # three-colour burst tables), and a model that cannot fit the
@@ -764,8 +778,14 @@ class Main(
             except Exception:
                 help_plugin = importlib.import_module("chisurf.plugins.core.help")
             window = getattr(self, "_help_window", None)
-            if window is None or not isinstance(window, help_plugin.HelpWidget):
-                window = help_plugin.HelpWidget()
+            help_cls = getattr(
+                help_plugin, "HelpEmtkTool", getattr(help_plugin, "HelpWidget", None)
+            )
+            if window is None or not isinstance(
+                window,
+                (getattr(help_plugin, "HelpEmtkTool", ()), getattr(help_plugin, "HelpWidget", ())),
+            ):
+                window = help_cls()
                 try:
                     window.destroyed.connect(lambda _=None: setattr(self, "_help_window", None))
                 except Exception:

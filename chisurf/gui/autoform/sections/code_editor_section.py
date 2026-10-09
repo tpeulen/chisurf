@@ -123,6 +123,8 @@ class CodeEditorWidget(QtWidgets.QWidget):
     # -- model binding -------------------------------------------------- #
     def _read(self) -> str:
         """The bound attribute's current value, as text."""
+        if self._model is None:
+            return getattr(self, "_current_text", "")
         value = getattr(self._model, self._target, "")
         if callable(value):
             value = value()
@@ -130,6 +132,9 @@ class CodeEditorWidget(QtWidgets.QWidget):
 
     def _write(self, text: str) -> None:
         """Write the text back to the model, if the attribute is settable."""
+        if self._model is None:
+            self._current_text = str(text)
+            return
         try:
             setattr(self._model, self._target, text)
         except AttributeError:
@@ -180,11 +185,18 @@ class CodeEditorWidget(QtWidgets.QWidget):
 
     # -- public surface ------------------------------------------------- #
     @property
-    def text(self) -> str:
+    def text(self) -> _CallableText:
         """The editor's contents."""
-        if self.editor is not None:
-            return self.editor.text
-        return self._plain.toPlainText()
+        val = self.editor.text if self.editor is not None else self._plain.toPlainText()
+        return _CallableText(val)
+
+    def toPlainText(self) -> str:
+        """Qt compatibility alias for text."""
+        return str(self.text)
+
+    def setText(self, text: str) -> None:
+        """Qt compatibility alias for set_text."""
+        self.set_text(text)
 
     def set_text(self, text: str) -> None:
         """Replace the contents."""
@@ -214,10 +226,34 @@ class CodeEditorWidget(QtWidgets.QWidget):
                 self._host.update()
 
 
+class _CallableText(str):
+    """String subclass that is also callable returning itself."""
+
+    def __call__(self) -> str:
+        return str(self)
+
+
+class SimpleCodeEditor(CodeEditorWidget):
+    """EMTK-based syntax-highlighting code editor widget for embedding in Qt layouts."""
+
+    def __init__(
+        self,
+        parent: QtWidgets.QWidget | None = None,
+        text: str = "",
+        language: str = "python",
+        **options,
+    ) -> None:
+        self._current_text = str(text)
+        options.setdefault("language", language)
+        super().__init__(model=None, target="", **options)
+        if parent is not None:
+            self.setParent(parent)
+
+
 @register_section("code_editor")
 def _code_editor_section_factory(model, target: str, **options):
     """Custom-section factory for the syntax-highlighting code editor."""
     return CodeEditorWidget(model, target, **options)
 
 
-__all__ = ["CodeEditorWidget"]
+__all__ = ["CodeEditorWidget", "SimpleCodeEditor"]

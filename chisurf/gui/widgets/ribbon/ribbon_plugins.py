@@ -391,19 +391,13 @@ class PluginMethodsMixin:
                         f"Processing plugin '{plugin_name}' (module='{module_name}', source='{source}', is_dev={is_dev}, is_broken={is_broken}, is_cli_only={is_cli_only})"
                     )
 
-                    # Determine script file
                     plugin_dir = package_dir
-                    wizard_file = plugin_dir / "wizard.py"
-                    script_file = (
-                        wizard_file if wizard_file.is_file() else (plugin_dir / "__init__.py")
-                    )
 
-                    # Build callback
+                    # Launch through the manifest dispatch (EMTK/Qt runtime
+                    # selection), not by executing the plugin file as a macro.
                     callback = functools.partial(
-                        self.main_window.onRunMacro,
-                        str(script_file),
-                        executor="exec",
-                        globals={"__name__": "plugin"},
+                        self.main_window.load_and_show_plugin,
+                        module_path,
                     )
 
                     # Get icon using enhanced icon system. The module is passed
