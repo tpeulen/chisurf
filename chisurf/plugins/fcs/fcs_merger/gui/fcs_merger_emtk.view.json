@@ -1,5 +1,9 @@
 {
   "_comment": "FCS curve merger, drawn by emtk.view_form over the app's form adapter (gui/app.py _Form: MergerModel's fields and table, the app's actions). The Qt page's folder field (drops), the Use / File / CR A / CR B / Duration table (a click on Use or a double click toggles a curve), the Target field and save, Guide and ?. The custom section status is drawn by gui/app.py; the two plots are dock windows.",
+  "window": {
+    "width": 1100,
+    "height": 720
+  },
   "sections": [
     {
       "type": "panel",

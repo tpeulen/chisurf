@@ -492,3 +492,9 @@ click before correlation; these simulations check a workflow, not a sample.
 - Model catalogue: {src}`chisurf/core/models/fcs/models.yaml`; correlator plugin
   `chisurf/plugins/fcs/fcs_correlator/`.
 - Tools in ChiSurf: the **Diffusion/Volume Calculator** (`chisurf/plugins/fcs/fcs_calculator/`) converts between $\tau_D$, $D$, $r_h$ and a concentration; **FCS-Merger** (`chisurf/plugins/fcs/fcs_merger/`) averages repeats; **Burst-wise FCS** (`chisurf/plugins/burst/burst_fcs_correlator/`) correlates inside bursts.
+
+The native merger separates presentation preferences from an analysis: stored
+window/dock geometry does not identify the repeated measurements or their
+screening choices. Reload and screen those curves explicitly, as described in
+{doc}`/guides/75_fcs_toolbox`; changing the window size leaves the mean,
+uncertainty and duration-weighted count rate unchanged.

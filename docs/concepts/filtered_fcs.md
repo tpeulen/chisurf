@@ -29,6 +29,12 @@ lifetime–lifetime extension.
 For the step-by-step workflow in ChiSurf, see the guide
 {doc}`/guides/17_filtered_fcs`.
 
+In the native Filter Calculator, window geometry and docking are presentation
+settings. The mixed decay, reference components, instrument response, fit range
+and weighting determine the filters; resizing the window does not recompute a
+different physical model. Save the analysis through the calculator’s project
+actions when the same configuration is needed later.
+
 ## The idea: correlate weighted photons, not raw intensity
 
 Suppose the sample contains $s = 1\dots K$ components, each with a known,

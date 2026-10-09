@@ -54,6 +54,24 @@ loop for validation.
 
 ### The Filter Calculator
 
+The standalone native calculator starts at **1100 × 720** pixels. Its five
+control tabs and the filter, reconstruction and residual plots remain available
+when the window is resized. Native preferences retain the window and dock
+layout; use **Save project...** and **Load project...** to preserve and rebuild
+the analysis configuration across restarts. Window preferences alone do not
+restore a fitted analysis.
+At small sizes, scroll the controls panel to reach its final component actions.
+Compact legend labels keep the plot readable; hover a label to read its full
+detector/component or rejected-nuisance name.
+
+```{figure} figures/fcs_filter_primary_window.png
+:name: fig-filter-calculator-primary-window
+:width: 100%
+
+The native calculator at its declared tool size, computing the built-in
+convolved lifetime example with filter, reconstruction and residual plots.
+```
+
 **Spectroscopy ▸ Correlation ▸ FCS Filter Calculator**
 opens with a built-in example (two lifetimes,
 scatter and afterpulsing) so the panel is never empty; **Mixed...** replaces

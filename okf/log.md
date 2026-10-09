@@ -41488,3 +41488,5 @@ side of the line.
 - 2026-10-08 — RootclaimedBurstBrowserexact3 app/primary/newtest viewer1200×800paths, originalsWT/HEAD frozen,no production editsyet. Foreign15/5typedgatechangesSEMANTIC retained/excluded; actualHEADisolatedBEFORE/owncandidateAFTER withproperrelativeimports/model/specandrealburst/photondata requiredbeforegeometry. Scope/resume/state/PRD/log persistmidwaycontinuation; wholeprogrammecontinues.
 
 - 2026-10-09 — Publish the verified W6g burst-browser frozen candidate with its accepted source/archive and exact owned deltas; FRET HEAD c821ed811, translations and unrelated work preserved. [Acceptance](validation/release-readiness-w6g/burst-browser-window-acceptance.json). W6g and the full programme remain incomplete; post-publication freshness checks are required.
+
+- 2026-10-09 — Publish the verified W6g fcs-pair frozen candidate with its accepted source/archive and exact owned deltas; FRET HEAD c821ed811, translations and unrelated work preserved. [Acceptance](validation/release-readiness-w6g/fcs-pair-window-acceptance.json). W6g and the full programme remain incomplete; post-publication freshness checks are required.

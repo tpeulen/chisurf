@@ -9,13 +9,14 @@ from pathlib import Path
 import numpy as np
 from emtk import im, implot
 from emtk.app import ImApp
-from emtk.docking import DockManager, Region, Split
 from emtk.dialog_window import DialogWindow
+from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.plugins.emtk_layout import window_size
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 
 from .model import FilterModel
@@ -38,6 +39,7 @@ MIN_CONTROLS = 420.0
 
 class FilterApp(TourTarget, ImApp):
     def __init__(self, workflow_context=None, parameter_linker=None):
+        self.window_size = window_size(SPEC, (1100, 720))
         self.model = FilterModel()
         self.workflow_context = workflow_context
         self.parameter_linker = parameter_linker
@@ -487,6 +489,19 @@ class FilterApp(TourTarget, ImApp):
         ]
         return palette[int(hashlib.sha1(label.encode()).hexdigest()[:8], 16) % len(palette)]
 
+    @staticmethod
+    def plot_line(label, x, y, **kwargs):
+        """Keep legend captions bounded and expose the complete curve identity on hover."""
+        caption = label
+        while caption and im.calc_text_size(caption + "…")[0] > 160:
+            caption = caption[:-1]
+        # A fixed display budget keeps this identifier stable when the window resizes.
+        # The toolkit keeps the complete string as its ID; ## only hides its suffix.
+        plot_label = label if caption == label else caption + "…##" + label
+        implot.plot_line(plot_label, x, y, **kwargs)
+        if implot.is_legend_entry_hovered(plot_label):
+            im.set_tooltip(label)
+
     def draw_filters(self, box):
         if implot.begin_plot("##lifetime_filters", im.get_content_region_avail()):
             implot.setup_axes("TAC bin", "Filter value")
@@ -504,7 +519,7 @@ class FilterApp(TourTarget, ImApp):
                             if rejected and i - result.n_species < len(result.nuisance_labels or [])
                             else (names[i] if i < len(names) else f"filter {i}")
                         )
-                        implot.plot_line(
+                        self.plot_line(
                             f"{entry['detector']} {role} {label}"
                             + (" [rejected]" if rejected else ""),
                             np.arange(len(weights)),
@@ -548,13 +563,13 @@ class FilterApp(TourTarget, ImApp):
                     x = np.arange(len(total))
                     label = f"{entry['detector']} {role}"
                     implot.set_next_line_style((255, 255, 255, 255), 1.5)
-                    implot.plot_line(label + " measured", x, np.clip(total, FLOOR, None))
+                    self.plot_line(label + " measured", x, np.clip(total, FLOOR, None))
                     implot.set_next_line_style((230, 40, 40, 255), 1.5)
-                    implot.plot_line(label + " reconstruction", x, np.clip(recon, FLOOR, None))
+                    self.plot_line(label + " reconstruction", x, np.clip(recon, FLOOR, None))
                     irf = self.model._irf_by_detector.get(entry["detector"])
                     if irf is not None and np.max(irf) > 0:
                         implot.set_next_line_style((0, 200, 230, 255), 1.5)
-                        implot.plot_line(
+                        self.plot_line(
                             label + " IRF", np.arange(len(irf)), np.clip(irf / np.max(irf) * np.max(total), FLOOR, None)
                         )
             lo, hi = self.model._fit_bounds
@@ -576,7 +591,7 @@ class FilterApp(TourTarget, ImApp):
                         entry["result"], "weighted_residuals" + (f"_{role}" if role else ""), None
                     )
                     if values is not None:
-                        implot.plot_line(
+                        self.plot_line(
                             f"{entry['detector']} {role}", np.arange(len(values)), values
                         )
             implot.end_plot()

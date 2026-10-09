@@ -234,6 +234,20 @@ click on a row includes or excludes a curve, and **Delete** removes it from the
 list (not from disk). **Target** is the file **💾 Save** writes, `<folder>.cor`
 beside the folder by default; **Save as…** writes elsewhere.
 
+On first use, the standalone native merger opens at **1100 × 720** pixels;
+saved window and dock geometry takes precedence on reopening. Reopen the curve
+folder and check the **Use** selections before saving a merge. Native window
+preferences are not a saved analysis session. Resizing does not change the
+screened curves, the averaging calculation or the exported lag-time units.
+
+```{figure} figures/fcs_merger_primary_window.png
+:name: fig-fcs-merger-primary-window
+:width: 100%
+
+The standalone native merger at its declared first-use size: six measured
+BH132 repeats, with the third excluded and the remaining five averaged.
+```
+
 Averaging assumes every ticked curve measures the same thing: the same
 concentration (the mean of $1/N$ is not $1/\bar N$), the same focus (a drifting
 $\tau_D$ broadens the mean) and no bleaching trend (a slow component every chunk

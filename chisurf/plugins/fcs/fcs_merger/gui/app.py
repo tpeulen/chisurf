@@ -21,6 +21,7 @@ from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.plugins.emtk_layout import window_size
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 
 from .model import MergerModel, read_folder
@@ -112,6 +113,7 @@ class MergerApp(ImApp):
         self.item_rects = {}
         self.palette = _palette()
         self.spec = json.loads((HERE / "fcs_merger_emtk.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(self.spec, (1100, 720))
         self.form_model = _Form(self)
         self.form = FormState(on_used=self._used)
         self.form.custom["status"] = self.draw_status
