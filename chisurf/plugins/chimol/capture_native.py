@@ -5,6 +5,7 @@ working viewer session.
 
 Usage: ``python -m chisurf.plugins.chimol.capture_native normal|narrow``
 """
+
 import sys
 from pathlib import Path
 
@@ -23,7 +24,13 @@ def main():
     out = Path(__file__).parent / "test" / "renders"
     out.mkdir(exist_ok=True)
     app = make_app()
-    app.draw(__import__("emtk.testing", fromlist=["RecordingPainter"]).RecordingPainter(), 0, 0, width, height)
+    app.draw(
+        __import__("emtk.testing", fromlist=["RecordingPainter"]).RecordingPainter(),
+        0,
+        0,
+        width,
+        height,
+    )
     if app._chimol_error:
         raise SystemExit(f"chimol unavailable: {app._chimol_error}")
     demo = Path(__import__("chimol").__file__).parent / "data" / "demos" / "148l.pdb"

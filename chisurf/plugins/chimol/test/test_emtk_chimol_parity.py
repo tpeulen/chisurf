@@ -108,12 +108,16 @@ def qt_facts():
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
     proc = subprocess.run(
         [sys.executable, "-c", _QT_FACTS, str(_demo_pdb())],
-        capture_output=True, text=True, timeout=300, env=env, cwd=str(REPO),
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env=env,
+        cwd=str(REPO),
     )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
     if line is None:
         pytest.skip(f"Qt window could not be built here: {proc.stderr[-800:]}")
-    return json.loads(line[len("FACTS"):])
+    return json.loads(line[len("FACTS") :])
 
 
 # 1. the same data gives the same viewer state as in the Qt window
@@ -144,15 +148,16 @@ def test_help_and_guide_open_and_a_bad_load_reports(app):
     assert app.tour.active and app.tour.step_idx == 0
     app.tour.stop()
     before = app._object_count()
-    app._chimol.cmd.do("load /no/such/file.pdb")   # reported at the prompt, not raised
+    app._chimol.cmd.do("load /no/such/file.pdb")  # reported at the prompt, not raised
     _draw(app)
     assert app._object_count() == before
 
 
 def test_a_click_on_help_does_not_reach_chimol(app, monkeypatch):
     calls = []
-    monkeypatch.setattr(app._chimol.renderer, "on_pointer_press",
-                        lambda *a, **k: calls.append(("press", a)))
+    monkeypatch.setattr(
+        app._chimol.renderer, "on_pointer_press", lambda *a, **k: calls.append(("press", a))
+    )
     _draw(app)
     hx, hy, hw, hh = app.item_rects["help"]
     app.pointer_move(hx + hw / 2, hy + hh / 2, 0)
@@ -189,7 +194,9 @@ def test_app_draws_empty_and_populated(size):
             pytest.skip(app._chimol_error)
         empty = app._object_count()
         assert any(f"{empty} object(s)" in s for s in painter.strings)
-        assert any("Help" == s for s in painter.strings) and any("Guide" == s for s in painter.strings)
+        assert any("Help" == s for s in painter.strings) and any(
+            "Guide" == s for s in painter.strings
+        )
         app._chimol.cmd.do(f"load {_demo_pdb()}")
         painter = _draw(app, size)
         assert any(f"{empty + 1} object(s)" in s for s in painter.strings)
@@ -201,11 +208,11 @@ def test_app_draws_empty_and_populated(size):
 # 5. the workflow the guide walks, through the host's own event path
 def test_the_tour_waits_for_load_drag_and_command(app):
     app.tour.start(1)
-    assert app.tour.awaiting                       # Open a structure
+    assert app.tour.awaiting  # Open a structure
     app._chimol.cmd.do(f"load {_demo_pdb()}")
     _draw(app)
     assert not app.tour.awaiting
-    app.tour.next()                                # Turn it
+    app.tour.next()  # Turn it
     assert app.tour.awaiting
     vx, vy, vw, vh = app.item_rects["viewport"]
     cx, cy = vx + vw / 2, vy + vh / 2
@@ -215,7 +222,7 @@ def test_the_tour_waits_for_load_drag_and_command(app):
     app.pointer_move(cx + 40, cy + 10, 1)
     app.pointer_release(cx + 40, cy + 10, 0)
     assert not app.tour.awaiting
-    app.tour.next()                                # Say it instead
+    app.tour.next()  # Say it instead
     assert app.tour.awaiting
     app._chimol.cmd.do("show sticks")
     assert not app.tour.awaiting
@@ -239,7 +246,7 @@ def test_every_control_has_a_tooltip():
 
     inv = emtk_inventory(build_emtk_app("chimol"))
     assert inv["controls_without_tooltip"] == []
-    assert {"help", "guide"} <= set(inv["controls"])   # normalised labels
+    assert {"help", "guide"} <= set(inv["controls"])  # normalised labels
 
 
 # 8. persistence: the Qt window remembered nothing of its own (settings_key null)
