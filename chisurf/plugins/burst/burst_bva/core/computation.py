@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pathlib
+from collections.abc import Sequence
 from typing import Any
 
 import numpy as np
@@ -98,7 +99,7 @@ def read_burst_analysis(
 
     for path in sorted(paris_path.glob(pattern)):
         parts = []
-        suffixes = (".bur",)
+        suffixes: tuple[str, ...] = (".bur",)
         if is_companion_dir(path.name):
             suffixes += ("." + path.name.lower(),)
         for fn in sorted(path.glob("*")):
@@ -232,10 +233,10 @@ def _compute_bva_tttrlib(
 def compute_bva(
     df: Any,
     tttrs: dict[str, tttrlib.TTTR],
-    donor_channels: list[int] = (0, 8),
-    donor_micro_time_ranges: list[tuple[int, int]] = ((0, 4096),),
-    acceptor_channels: list[int] = (1, 9),
-    acceptor_micro_time_ranges: list[tuple[int, int]] = ((0, 4096),),
+    donor_channels: Sequence[int] = (0, 8),
+    donor_micro_time_ranges: Sequence[tuple[int, int]] = ((0, 4096),),
+    acceptor_channels: Sequence[int] = (1, 9),
+    acceptor_micro_time_ranges: Sequence[tuple[int, int]] = ((0, 4096),),
     minimum_window_length: float = 0.01,
     number_of_photons_per_slice: int = -1,
     progress_window=None,

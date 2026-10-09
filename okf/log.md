@@ -41508,3 +41508,5 @@ side of the line.
 - 2026-10-09 — Publish the verified W6g burst-gs frozen candidate with its accepted source/archive and exact owned deltas; FRET HEAD c821ed811, translations and unrelated work preserved. [Acceptance](validation/release-readiness-w6g/burst-gs-window-acceptance.json). W6g and the full programme remain incomplete; post-publication freshness checks are required.
 
 - 2026-10-09 — Publish the verified W6g bva frozen candidate with its accepted source/archive and exact owned deltas; FRET HEAD c821ed811, translations and unrelated work preserved. [Acceptance](validation/release-readiness-w6g/bva-window-acceptance.json). W6g and the full programme remain incomplete; post-publication freshness checks are required.
+
+- 2026-10-09 — Publish the verified W6g bva-type-contract frozen candidate with its accepted source/archive and exact owned deltas; FRET HEAD c821ed811, translations and unrelated work preserved. [Acceptance](validation/release-readiness-w6g/bva-type-contract-acceptance.json). W6g and the full programme remain incomplete; post-publication freshness checks are required.
