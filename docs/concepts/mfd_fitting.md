@@ -399,3 +399,13 @@ lost, are recorded in the project's design notes.
   the photon-distribution treatment this model borrows its nuisance measure
   from; {cite}`kalinin2010` exchange during a burst; {cite}`kalinin2012` the
   linker-broadened distance distribution and its use in structural modelling.
+
+### Preparation display and window geometry
+
+The native preparation tool declares a 1100 × 720 logical-pixel host size and
+restores saved geometry. Tables and the scrolling report display the local
+preparation API's diagnostics without changing burst counts, detector stream
+definitions or verification thresholds. The [preparation guide](../guides/85_mfd_prepare.md)
+shows measured BH fixture results and distinguishes this validation step from
+fitting an MFD model. The report region uses available viewport space rather
+than extending a forced minimum height below a narrow window.

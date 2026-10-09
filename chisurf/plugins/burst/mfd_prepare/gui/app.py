@@ -19,7 +19,7 @@ from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.jobs import SnapshotJob
-from chisurf.plugins.emtk_layout import button_row, layout_spec
+from chisurf.plugins.emtk_layout import button_row, layout_spec, window_size
 
 from .model import MfdPrepareModel
 
@@ -115,7 +115,10 @@ class MfdPreparePanel:
 class MfdPrepareApp(TourTarget, ImApp):
     """The window."""
 
+    tour: EmTkGuidedTour
+
     def __init__(self, model: MfdPrepareModel | None = None) -> None:
+        self.window_size = window_size(SPEC, (1100, 720))
         self.model = model or MfdPrepareModel()
         self.job = SnapshotJob(self.model)
         self.panel = MfdPreparePanel(self)
@@ -175,7 +178,7 @@ class MfdPrepareApp(TourTarget, ImApp):
         """The report text in a scrolling region that takes the room left (the mouse wheel scrolls it)."""
         im.text_unformatted("Report")
         avail = im.get_content_region_avail()
-        box_h = max(avail[1] - 4.0, 60.0)
+        box_h = max(avail[1] - 4.0, 1.0)
         x, y = im.get_cursor_screen_pos()
         im.begin_child("##mfd_report", (0.0, box_h))
         for line in (self.model.report or REPORT_HINT).splitlines():

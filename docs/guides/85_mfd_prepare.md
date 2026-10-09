@@ -179,3 +179,23 @@ consumes; `prep.summary` holds the diagnostics.
 - {doc}`57_mfd_fitting` — the fit this prepares for.
 - {ref}`concept-mfd-fitting` — why ⟨t⟩, the spans and raw observable space.
 - {ref}`concept-smfret-bursts` — bursts, detectors and PIE.
+
+## Native window and preparation report
+
+MFD Prepare starts at **1100 × 720 logical pixels** and restores saved host
+geometry. The detector, photon-source and summary tables show the actual local
+preparation result. Scroll the Report region to read its final detector checks
+when the window is narrow; its height stays within the remaining viewport.
+
+```{figure} figures/mfd_prepare_native_primary_window.png
+:width: 100%
+
+Measured BH SPC-132 fixture: 152 logical bursts, 17,282 burst photons, three
+detectors with count agreement 1.0000 and a 174,438-photon source file. These
+are preparation diagnostics, not MFD fit results.
+```
+
+Geometry is a native host preference. The selected burst folder and prepared
+results are rebuilt by selecting the folder and pressing Prepare after reopening.
+This display change preserves the preparation's photon-index convention, stream
+definitions and count-agreement threshold. See [MFD fitting](../concepts/mfd_fitting.md).
