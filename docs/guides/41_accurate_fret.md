@@ -42,12 +42,56 @@ The tool after *Calibrate*: channel mapping and photophysics on the left, the
 factors with their uncertainties and how each was determined on the right.
 ```
 
+
+```{figure} figures/accurate_fret_native_identification.png
+:name: fig-accurate-fret-native-identification
+:width: 100%
+
+The measured logical-burst table retains unassigned rows and reports factors
+not identified by these data as retained values, rather than reference estimates.
+```
+
 ## Workflow
+
+The standalone native calibration window declares **1100 × 720** pixels on
+first use; saved geometry takes precedence. Its parameter, table and plot
+panels remain available after resizing. Window presentation does not change
+the photon ratios, correction factors or calibration calculation.
 
 ### 1. Load the bursts
 
-Use the **Burst table** row (or drop a file on the window): any delimited text
-file — `.csv`, `.tsv`, `.txt`, `.bur` — or an `.npz` archive, one row per burst.
+A legacy `.bur` file is read as logical bursts, using the same reader as Burst
+Browser. Its companion columns join by physical position before the format’s
+padding rows are removed. Genuine zero-valued or nonfinite burst records remain
+in their original order; they are not discarded to make calibration look
+cleaner. Generic CSV/NPZ and container-run inputs keep their own reader contracts.
+
+Removing format padding changes which observations enter calibration, so the
+factors and population thresholds are re-estimated. A corrected population
+count cannot be obtained by simply subtracting padding from an earlier count.
+Check the channel mapping and the calibration assumptions for the measurement.
+
+Exported population labels preserve every burst: `-3` means unassigned or
+invalid, `-2` acceptor-only, `-1` donor-only, and nonnegative values identify
+FRET subpopulations. Reference labels come from the actual classifier masks;
+a burst outside the assigned masks is not silently called donor-only. The
+scatter legend names finite unassigned points explicitly, and the FRET
+histogram uses the nonnegative FRET classes. CSV and container exports retain
+the same row order and integer sentinels.
+
+The **Origin** column reports the backend’s declared identification and prior
+context: **data estimate**, **optics prior**, their combination, **not identified;
+retained value**, or **source not reported** when a source was not declared.
+A retained numeric value is not evidence that the measurement identified it.
+Use the identification flags and Origin table for that decision; a finite
+data estimate listed in the report alone does not establish identification.
+Beta may explicitly report the **1:1 labelling** stoichiometry assumption.
+These labels do not infer which reference class an earlier iteration used
+from the final population masks.
+
+Use the **Burst table** row (or drop a file on the window): a generic delimited
+`.csv`, `.tsv` or `.txt`, a legacy `.bur`, or an `.npz` archive. The loaded
+table has one logical row per burst.
 Alternatively press **📥 From ndX** to take the columns of an open
 ndX window, so the calibration runs on exactly the bursts currently
 selected there.

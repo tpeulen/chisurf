@@ -9,7 +9,9 @@ Auto IRF/background and the batch over every burst run on a snapshot through ``S
 from __future__ import annotations
 
 import copy
+import json
 from pathlib import Path
+from typing import Any
 
 from emtk import im, implot
 from emtk.app import ImApp
@@ -22,7 +24,7 @@ from chisurf.core.support.i18n import tr
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.jobs import SnapshotJob
-from chisurf.plugins.emtk_layout import LabelColumn, button_row, cap_widths, labelled
+from chisurf.plugins.emtk_layout import LabelColumn, button_row, cap_widths, labelled, window_size
 
 from . import fit_view
 from .model import MleViewModel
@@ -46,6 +48,8 @@ class MleNativeApp(TourTarget, ImApp):
         self.job = SnapshotJob(self.model)
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.form = FormState()
+        primary = json.loads((HERE / "mle_native.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(primary, (1100, 720))
         spec = load_view_spec(str(HERE / "mle_native.view.json"))
         sections = spec["sections"]
         self.sections = [s for s in sections if s.get("title") not in ("Burst", "Burst lifetimes", "IRF")]
@@ -61,7 +65,7 @@ class MleNativeApp(TourTarget, ImApp):
         self._measured = False
         self.dialog = None
         self.dialog_action = ""
-        self._dialog_window = None
+        self._dialog_window: Any = None
         self.gate_min: float | None = None
         self.gate_max: float | None = None
         self._editor_read_only_before_job: bool | None = None
@@ -134,7 +138,7 @@ class MleNativeApp(TourTarget, ImApp):
         from emtk.file_dialog import FileDialog
 
         title, mode, filters = self.DIALOGS[action]
-        options = {"filters": filters} if filters else {}
+        options: dict[str, Any] = {"filters": filters} if filters else {}
         files = self.model.session.bur_files
         if files:
             options["directory"] = str(files[0].parent)
@@ -230,14 +234,24 @@ class MleNativeApp(TourTarget, ImApp):
         if running or self.job.progress:
             im.text_wrapped(self.job.progress or self.model.status_text)
         elif self.job.error:
-            im.text_colored(self.job.error, (0.9, 0.4, 0.4, 1.0))
+            im.push_style_color(im.Col.TEXT, (0.9, 0.4, 0.4, 1.0))
+            im.text_wrapped(self.job.error)
+            im.pop_style_color()
         else:
             im.text_wrapped(self.model.status_text)
         ok, n_files = self.model.input_status()
         if ok:
-            im.text_colored(f"IRF and background loaded for {self.model.current_detector}; {n_files} burst file(s)", (0.3, 0.85, 0.4, 1.0))
+            im.push_style_color(im.Col.TEXT, (0.3, 0.85, 0.4, 1.0))
+            message = str(tr("IRF and background loaded for {detector}; {count} burst file(s)"))
+            im.text_wrapped(message.format(detector=self.model.current_detector, count=n_files))
+            im.pop_style_color()
         else:
-            im.text_colored(f"No IRF and background for {self.model.current_detector or 'the detector'} yet; {n_files} burst file(s)", (0.8, 0.8, 0.4, 1.0))
+            im.push_style_color(im.Col.TEXT, (0.8, 0.8, 0.4, 1.0))
+            message = str(tr("No IRF and background for {detector} yet; {count} burst file(s)"))
+            im.text_wrapped(message.format(
+                detector=self.model.current_detector or str(tr("the detector")), count=n_files,
+            ))
+            im.pop_style_color()
         self.remember("input_status")
         im.separator()
         target = self.model.values_snapshot() if running else self.model  # edits during a run go to a throw-away copy

@@ -73,6 +73,21 @@ input files, detector, fit window and editable parameter table; **IRF** holds
 pattern settings and **Detector setup** the shared channel editor. The existing
 wizard also exposes the same model selector in its embedded emtk panel.
 
+The standalone native window declares **1100 × 720** pixels on first use;
+stored geometry takes precedence on reopening. Resizing keeps the model choice,
+parameter values and detector/fit settings intact. Use **Save settings** and
+**Load settings** to carry the selected model and its per-model edits into
+another analysis. The layout does not change the selected tttrlib estimator.
+
+
+```{figure} figures/burst_mle_native_pooled_window.png
+:name: fig-burst-mle-native-pooled-window
+:width: 100%
+
+The native Burst MLE model selector and actual pooled Fit23 on the shipped
+16-burst photon demo. This pooled calculation does not prove batch execution.
+```
+
 Select **Fit model** before running the preview or batch:
 
 | Model | Inputs in parameter order | Interpretation |

@@ -49367,5 +49367,60 @@ presets) into a single left-navigation tool. Built on the reusable
             <source>Upper stoichiometry gate; bursts above it are hidden.</source>
             <translation type="unfinished" />
         </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="3223" />
+            <source>IRF and background loaded for {detector}; {count} burst file(s)</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4293" />
+            <source>No IRF and background for {detector} yet; {count} burst file(s)</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8654" />
+            <source>data + optics prior</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8655" />
+            <source>data estimate</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8744" />
+            <source>given</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8844" />
+            <source>not identified; retained value</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8855" />
+            <source>optics prior</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8946" />
+            <source>source not reported</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8959" />
+            <source>stoichiometry assumption (1:1 labelling)</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8986" />
+            <source>the detector</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="9001" />
+            <source>unassigned</source>
+            <translation type="unfinished" />
+        </message>
 </context>
 </TS>

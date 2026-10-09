@@ -32,9 +32,11 @@ __all__ = [
 def read_burst_table(path: str | pathlib.Path) -> dict[str, np.ndarray]:
     """Read a burst table into ``{column: array}``.
 
-    Any delimited text file (``.csv``, ``.tsv``, ``.txt``, ``.bur``) is read with
-    an auto-detected separator; ``.npz`` archives are read directly. Non-numeric
-    columns are dropped.
+    Generic delimited text files (``.csv``, ``.tsv``, ``.txt``) use an
+    auto-detected separator; ``.npz`` archives are read directly. Legacy ``.bur``
+    files use the shared burst reader: companions join by physical row position
+    before padding is removed, yielding one row per burst. Non-numeric columns
+    are dropped; genuine zero-valued and nonfinite burst rows remain.
 
     A **container run** is also a burst table. A burst search over a `.pto` keeps
     its results inside the measurement and writes no ``.bur`` at all, so "the
@@ -133,8 +135,9 @@ def _sniff_delimiter(path: pathlib.Path) -> str | None:
 def _read_delimited(path: pathlib.Path) -> dict[str, np.ndarray]:
     """Read a delimited burst table into ``{column: float array}``.
 
-    The threaded reader, which handles a plain delimited file with its header on
-    the first line. Anything else — a comment preamble, a decimal comma,
+    Legacy ``.bur`` files use the canonical companion merge and deinterleave.
+    Other files use the threaded reader, which handles a plain delimited file
+    with its header on the first line. Anything else — a comment preamble, a decimal comma,
     whitespace alignment — reads as **no columns**, and the caller raises. There
     is deliberately no second reader behind this one: a fallback that needs an
     optional package is a path that works on a developer's machine and fails on
@@ -157,30 +160,37 @@ def _read_delimited(path: pathlib.Path) -> dict[str, np.ndarray]:
         read_csv_table,
     )
 
-    delimiter = _sniff_delimiter(path)
-    if delimiter is not None:
-        store = read_csv_table(path, delimiter=delimiter)
-        if store is not None:
-            columns = {}
-            for index in range(store.n_columns()):
-                column = store[index]
-                # A burst table carries text columns -- "First File", "Last
-                # File" -- and this returns numeric ones. The reader has already
-                # typed them, so a text column is skipped by its dtype rather
-                # than by trying to cast it and catching the failure.
-                if column.dtype in (STRING_DTYPE, BOOL_DTYPE):
-                    continue
-                # np.array, not np.asarray: the view keeps the WHOLE store
-                # alive, text columns and all, and this returns the numeric ones
-                # out of a wide burst table. Copying is what lets the rest go.
-                # (Until 2026-08-07 it was also a use-after-free: the array did
-                # not hold the store at all, and 84 of 154 rows of "First
-                # Photon" read back as 3.3e-319.)
-                values = np.array(column_values(store, index), dtype=float).ravel()
-                if values.size and np.any(np.isfinite(values)):
-                    columns[str(column.name())] = values
-            if columns:
-                return columns
+    legacy_bur = path.suffix.lower() == ".bur"
+    if legacy_bur:
+        from chisurf.core.fio.fluorescence.burst import read_bur_with_companions
+        from chisurf.core.fio.fluorescence.burst_container import deinterleave_bursts
+
+        # Merge first: companions share the physical grid, including padding.
+        store = deinterleave_bursts(read_bur_with_companions(path))
+    else:
+        delimiter = _sniff_delimiter(path)
+        store = read_csv_table(path, delimiter=delimiter) if delimiter is not None else None
+    if store is not None:
+        columns = {}
+        for index in range(store.n_columns()):
+            column = store[index]
+            # A burst table carries text columns -- "First File", "Last
+            # File" -- and this returns numeric ones. The reader has already
+            # typed them, so a text column is skipped by its dtype rather
+            # than by trying to cast it and catching the failure.
+            if column.dtype in (STRING_DTYPE, BOOL_DTYPE):
+                continue
+            # np.array, not np.asarray: the view keeps the WHOLE store
+            # alive, text columns and all, and this returns the numeric ones
+            # out of a wide burst table. Copying is what lets the rest go.
+            # (Until 2026-08-07 it was also a use-after-free: the array did
+            # not hold the store at all, and 84 of 154 rows of "First
+            # Photon" read back as 3.3e-319.)
+            values = np.array(column_values(store, index), dtype=float).ravel()
+            if values.size and (legacy_bur or np.any(np.isfinite(values))):
+                columns[str(column.name())] = values
+        if columns:
+            return columns
 
     return {}
 
@@ -274,7 +284,7 @@ def maps_fret_channels(path, extra_hints: dict | None = None) -> bool:
         stat_target = stat_target.parent
     try:
         info = stat_target.stat()
-        key = (str(resolved), info.st_mtime_ns, info.st_size)
+        key: tuple = (str(resolved), info.st_mtime_ns, info.st_size)
     except OSError:
         key = (str(resolved), 0, 0)
     if extra_hints:

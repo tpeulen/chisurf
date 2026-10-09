@@ -25,6 +25,11 @@ This page is the theory. For the step-by-step ChiSurf workflow see the guides
 {doc}`/guides/27_alex_smfret_workflow`. Population gating and table selection
 are described in {doc}`/guides/28_selecting_fret_populations`.
 
+Burst MLE’s model selector remains an analysis choice across window resizes:
+Fit23, Fit24 and Fit25 use their own parameter declarations. Host geometry does
+not substitute another estimator or reinterpret its outputs; see
+{doc}`/guides/21_lifetime_from_bursts` for the actual model choices and settings.
+
 ## One acquisition definition across the burst workflow
 
 Detector routing, polarization, PIE windows, calibration and TAC corrections

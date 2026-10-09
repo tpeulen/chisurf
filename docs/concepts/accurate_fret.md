@@ -9,6 +9,12 @@ anchor: concept-accurate-fret
 (concept-accurate-fret)=
 # Accurate FRET: correction factors, FRET lines, and where they come from
 
+The native calibration tool’s window and dock layout are presentation settings.
+Its detector mapping, measured burst observables and calibration assumptions
+determine the correction factors. Reproduce those inputs when comparing
+results; changing the host size alone must preserve the factors and corrected
+observables. The workflow is in {doc}`/guides/41_accurate_fret`.
+
 A single-molecule FRET histogram is a histogram of *photon ratios*. Turning it
 into a number another laboratory can reproduce — an **accurate** efficiency, and
 from it a distance — requires four correction factors. The multi-laboratory
@@ -94,6 +100,18 @@ environment, filter tolerances, detector curves). It is therefore used as a
 **Gaussian prior**, not as truth.
 
 ### 2. The reference populations (the data)
+
+Legacy burst-table padding is a storage convention, not an observation or an
+acceptor-only reference. It must be removed by the canonical format reader
+before calibration. Invalid or unassigned genuine bursts remain part of the
+measurement’s row identity; retaining them does not assert a valid population
+classification. The reader and analysis masks are separate responsibilities.
+
+A donor-only reference requires the donor-only mask. Invalid, unassigned and
+cluster-noise observations receive an explicit unassigned label, rather than
+being fabricated as a reference class. Retaining their measurement identity
+allows later analyses to account for skipped bursts without mistaking them for
+valid calibration evidence.
 
 A measurement usually contains its own references. A donor-only molecule emits
 nothing under acceptor excitation, so it sits at $S \approx 1$; an acceptor-only

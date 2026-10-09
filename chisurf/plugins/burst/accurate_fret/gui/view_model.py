@@ -14,6 +14,7 @@ from concurrent.futures import CancelledError
 
 import numpy as np
 import tttrlib
+from emtk.i18n import tr
 
 from .. import core as _core
 
@@ -23,6 +24,7 @@ _VIEW_JSON = pathlib.Path(__file__).parent / "accurate_fret.view.json"
 
 #: Colour per burst class in the E-S / E-tau scatter plots.
 _CLASS_STYLE = {
+    -3: ("unassigned", "#999999"),
     -2: ("acceptor-only", "#ff9040"),
     -1: ("donor-only", "#40c060"),
     0: ("FRET 0", "#4488ff"),
@@ -578,6 +580,8 @@ class AccurateFretViewModel:
         series = []
         for value in np.unique(labels):
             name, colour = _CLASS_STYLE.get(int(value), (f"population {value}", "#999999"))
+            if value == -3:
+                name = tr("unassigned")
             m = (labels == value) & np.isfinite(x) & np.isfinite(y)
             if not np.any(m):
                 continue

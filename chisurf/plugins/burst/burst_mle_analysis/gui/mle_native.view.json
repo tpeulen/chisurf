@@ -1,5 +1,9 @@
 {
   "_comment": "Burst-MLE lifetime analysis, emtk app: AutoForm over MleViewModel (the Qt-free engine's session). Files and the fit-parameter table are data_table sections; every field has a description.",
+  "window": {
+    "width": 1100,
+    "height": 720
+  },
   "sections": [
     {
       "type": "panel",

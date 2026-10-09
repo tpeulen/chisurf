@@ -55,8 +55,8 @@ class CalibrationResult:
     tau_f : numpy.ndarray or None
         Per-burst donor lifetime, when a lifetime column was mapped.
     labels : numpy.ndarray
-        Population label per burst (``-2`` acceptor-only, ``-1`` donor-only,
-        ``0…`` FRET sub-populations).
+        Population label per burst (``-3`` unassigned or invalid, ``-2``
+        acceptor-only, ``-1`` donor-only, ``0…`` FRET sub-populations).
     line, dynamic_line : FretLine or None
         Static and dynamic FRET lines matching the calibration.
     distance : numpy.ndarray
@@ -80,22 +80,22 @@ class CalibrationResult:
 
     def factor_rows(self) -> list[dict]:
         """Table rows: one per factor with value, uncertainty and its origin."""
-        origin = {
-            "alpha": "donor-only bursts",
-            "delta": "acceptor-only bursts",
-            "gamma": "E-S fit / FRET line",
-            "beta": "E-S fit",
-            "bg_dd": "given",
-            "bg_da": "given",
-            "bg_aa": "given",
-            "r0": "given",
+        from chisurf.core.support.i18n import tr
+
+        source_labels = {
+            "data": tr("data estimate"),
+            "not_identified": tr("not identified; retained value"),
+            "unknown": tr("source not reported"),
+            "optics_prior": tr("optics prior"),
+            "data_and_optics_prior": tr("data + optics prior"),
+            "stoichiometry_assumption": tr("stoichiometry assumption (1:1 labelling)"),
         }
-        for message in self.calibration.messages:
-            for key in ("alpha", "delta", "gamma"):
-                if message.startswith(f"{key} not identifiable"):
-                    origin[key] = "light path (optics prior)"
-                elif message.startswith(f"{key}: data"):
-                    origin[key] = "data × light-path prior"
+        provenance = self.calibration.factor_provenance
+        origin = {
+            key: source_labels.get(provenance.get(key, "unknown"), source_labels["unknown"])
+            for key in ("alpha", "beta", "gamma", "delta")
+        }
+        origin["r0"] = tr("given")
         # A table cell renders one flat string, so the symbols come from
         # Unicode rather than markup. ``r0`` is spelled ``R_0`` only to be
         # typeset; the row keys stay the plain factor names.
@@ -341,9 +341,13 @@ def calibrate(
     )
 
     split = result.split
-    labels = np.zeros(np.asarray(i_dd).shape, dtype=int)
+    labels = np.full(np.asarray(i_dd).shape, -3, dtype=int)
     if split is not None:
-        labels = np.where(split.fret, split.fret_labels, -1)
+        labels = np.where(split.donor_only, -1, labels)
+        fret_labels = np.asarray(split.fret_labels, dtype=int)
+        labels = np.where(
+            np.asarray(split.fret, dtype=bool) & (fret_labels >= 0), fret_labels, labels
+        )
         labels = np.where(split.acceptor_only, -2, labels)
 
     final = tttrlib.accurate_fret(
@@ -463,8 +467,8 @@ def write_container(
     columns: dict[str, np.ndarray] = {
         "Burst Index": np.arange(len(result.efficiency), dtype=np.int64),
         "E": np.asarray(result.efficiency, dtype=float),
-        # -2 acceptor-only, -1 donor-only, 0… a FRET sub-population. An integer
-        # column, so the sentinels stay exact.
+        # -3 unassigned/invalid, -2 acceptor-only, -1 donor-only, 0… FRET.
+        # An integer column keeps the sentinels exact.
         "Population": np.asarray(result.labels, dtype=np.int32),
     }
     units = {

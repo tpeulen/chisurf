@@ -63,6 +63,13 @@ class AutoCalibration:
         choice (``tttrlib.auto_calibrate``'s ``"species"``).
     tau_d0 : float
         Donor-only lifetime the lifetime route used (``NaN`` without lifetimes).
+    estimated : dict or None
+        The SDK's declared data-identification flags; ``None`` for a legacy
+        result whose source was not reported. These describe the final pass,
+        not the history of populations or factor estimates.
+    factor_provenance : dict
+        Conservative source codes from identification flags and the actual
+        prior-use context. Missing method metadata stays ``"unknown"``.
     """
 
     calibration: CalibrationParameters
@@ -76,6 +83,8 @@ class AutoCalibration:
     messages: list = field(default_factory=list)
     species: dict | None = None
     tau_d0: float = float("nan")
+    estimated: dict[str, bool] | None = None
+    factor_provenance: dict[str, str] = field(default_factory=dict)
 
     def report(self) -> str:
         """Human-readable summary of the calibration (``tttrlib.calibration_report``)."""
@@ -85,6 +94,8 @@ class AutoCalibration:
                 "uncertainties": self.uncertainties,
                 "split": None if self.split is None else vars(self.split),
                 "gamma_estimates": self.gamma_estimates,
+                "estimated": self.estimated,
+                "factor_provenance": self.factor_provenance,
                 "species": self.species,
                 "populations": self.populations,
                 "messages": self.messages,
@@ -203,7 +214,31 @@ def auto_calibrate(
     options = dict(options, line=line)
     options.setdefault("bootstrap_indices", lambda size: rng.integers(0, size, size))
     data = dict(columns or {}, i_dd=i_dd, i_da=i_da, i_aa=i_aa, tau_f=tau)
-    result = tttrlib.auto_calibrate(data, calibration_constants(calib), options, progress)
+    constants = calibration_constants(calib)
+    result = tttrlib.auto_calibrate(data, constants, options, progress)
+    estimated = result.get("estimated")
+    estimated = None if estimated is None else dict(estimated)
+    provenance = {name: "unknown" for name in _FACTORS}
+    use_priors = options.get("use_priors")
+    use_priors = True if use_priors is None else bool(use_priors)
+    for name in _FACTORS:
+        if estimated is None or name not in estimated:
+            continue
+        identified = estimated[name]
+        provenance[name] = "data" if identified else "not_identified"
+        prior = constants["priors"].get(name)
+        # These are the SDK's declared finish conditions. A configured prior
+        # alone proves nothing when its use is disabled or its width is invalid.
+        if use_priors and prior is not None:
+            mu, sigma = prior
+            if np.isfinite(mu) and np.isfinite(sigma) and sigma >= 0:
+                provenance[name] = "data_and_optics_prior" if identified else "optics_prior"
+    beta_assumption = (
+        "only one FRET population: beta defined by centring it at S = 0.5 "
+        "(1:1 labelling assumed)"
+    )
+    if beta_assumption in result["messages"]:
+        provenance["beta"] = "stoichiometry_assumption"
     for name in _FACTORS:
         setattr(calib, name, result["factors"][name])
     split = result["split"]
@@ -219,4 +254,6 @@ def auto_calibrate(
         messages=messages + list(result["messages"]),
         species=result.get("species"),
         tau_d0=float(result.get("tau_d0", float("nan"))),
+        estimated=estimated,
+        factor_provenance=provenance,
     )

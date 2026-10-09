@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import json
 from pathlib import Path
 from typing import Callable
 
@@ -14,6 +15,7 @@ from emtk.view_form import FormState, draw_form, draw_sections
 from emtk.widgets.view_spec import load_view_spec
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.plugins.emtk_layout import window_size
 
 from .controller import AccurateFretController
 from .view_model import AccurateFretViewModel
@@ -455,6 +457,10 @@ class AccurateFretApp(ImApp):
         setup_model=None,
         db_path=None,
     ):
+        specification = json.loads(
+            Path(__file__).with_name("accurate_fret.view.json").read_text()
+        )
+        self.window_size = window_size(specification, (1100, 720))
         self.model = model or AccurateFretViewModel()
         self.controller = AccurateFretController(
             self.model, ndx_source=ndx_source, setup_model=setup_model, db_path=db_path

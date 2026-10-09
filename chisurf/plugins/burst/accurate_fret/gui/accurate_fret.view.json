@@ -1,4 +1,5 @@
 {
+  "window": {"width": 1100, "height": 720},
   "_comment": "Accurate FRET (Hellenkamp) calibration tool. AutoForm over AccurateFretViewModel. Left: a single Settings column in workflow order — where the bursts come from, which column is which channel, the photophysics anchoring the FRET lines, the optics prior, and the procedure knobs. Right: tabbed views (factor table, population table, E-S plot with the automatically found classes, E vs donor-lifetime plot with the static and dynamic FRET lines, accurate-E histogram). Calibrate / register / push / export live in the host toolbar; long help sits behind the ? button. The setting panels start folded except Channels — the column mapping is the one thing that has to be checked on every table; the rest have defaults that are usually right. The long pickers (dyes, columns, light paths) are editable, so typing filters them.",
   "sections": [
     {
