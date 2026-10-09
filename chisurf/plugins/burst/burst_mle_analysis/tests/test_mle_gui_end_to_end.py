@@ -82,7 +82,7 @@ def fitted_wizard(qapp, data_copy):
     QtWidgets.QApplication.processEvents()
 
     w.channel_definer.load_data_into_tables(CHANNEL_SETTINGS)
-    w.channel_definer.file_type_combo.setCurrentText("SPC-130")
+    w.channel_definer.filetype = "SPC-130"
     w._init_channels_from_wizard()
     w.burst_files_list.add_file(str(data_copy / BUR.relative_to(REPO_DATA)))
     w.load_burst_data()
@@ -418,8 +418,11 @@ def test_fit_dt_and_period_come_from_the_file_header():
     # Exercise the real method without building the (Qt-heavy) wizard.
     class _Stub:
         def __init__(self, t, binning):
+            from chisurf.core.setup_channel_definition import ChannelDefinition
+
             self._t = t
             self.micro_time_binning = binning
+            self.channel_definer = ChannelDefinition(CHANNEL_SETTINGS)
 
         def _current_tttr(self):
             return self._t
@@ -576,7 +579,7 @@ def test_fit_page_displays_per_detector_g_factor_l1_l2(qapp):
     w = MLELifetimeAnalysisWizard()
     QtWidgets.QApplication.processEvents()
     w.channel_definer.load_data_into_tables(channels)
-    w.channel_definer.file_type_combo.setCurrentText("SPC-130")
+    w.channel_definer.filetype = "SPC-130"
     w._init_channels_from_wizard()
     QtWidgets.QApplication.processEvents()
 

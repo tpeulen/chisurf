@@ -810,7 +810,7 @@ rather than adding another `Structure(...)` call site; a new call site violates 
 | [W1](/prds/prd-154.md) | Tree/GUI inputs | Legacy forms/helpers, environment paths and missing Burst MLE model selection blocked release | ✅ SOURCE FIXED — [model acceptance](/validation/release-readiness-w1/mle-model-selection/acceptance.json); bundle-wide guard remains W0 |
 | [W5](/prds/prd-154.md) | emtk/GUI | Input navigation, overflowing graph zoom, frames, grids, host lifecycle and geometry lacked shared root contracts | ✅ FIXED — [evidence](/validation/release-readiness-w5.md) |
 
-| [W6g](/prds/prd-154.md) | Plugin uniformity | Shared setup, guided workflows and accessible controls with scientific parity | 🚧 ACTIVE — FRET/ALEX and23 prior units committed;90/116 window readers covered,26core/game records remain (W6f). Tooltip1079, i18n/tour and SDK report3023f892f verified; real IPC gates now runnable. [Current job](/validation/release-readiness-w6g/current-job.md) |
+| [W6g](/prds/prd-154.md) | Plugin uniformity | Shared setup, guided workflows and accessible controls with scientific parity | 🚧 ACTIVE — FRET/ALEX and23 prior units committed;90/116 window readers covered,26core/game records remain (W6f). Tooltip1079, i18n/tour and SDK report3023f892f verified; real IPC gates verified; tooltip/i18n closure next. [Current job](/validation/release-readiness-w6g/current-job.md) |
 
 W7's programme-wide integration gates and W0's missing bundle guard remain open;
 the completed source rows do not mark the entire programme done.

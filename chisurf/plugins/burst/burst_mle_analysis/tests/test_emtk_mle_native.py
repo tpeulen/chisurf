@@ -290,9 +290,12 @@ def test_guide_targets_are_drawn_and_the_awaited_steps_are_released_by_presses(a
         key = app.tour._target_key(step.get("target"))
         if key and key not in ("decay", "distribution"):  # those two are in the plot tabs
             assert key in app.item_rects or key in app.form.rects, key
-    awaited = [i for i, s in enumerate(steps) if s.get("await")]
+    auto_step = next(
+        i for i, step in enumerate(steps)
+        if step.get("await") and step.get("target", {}).get("name") == "auto"
+    )
     app.start_guide()
-    app.tour.step_idx = awaited[0]
+    app.tour.step_idx = auto_step
     drv.draw(2)
     assert app.tour.awaiting
     drv.click_name("auto")

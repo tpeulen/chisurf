@@ -245,3 +245,15 @@ embedded widget now re-syncs on the model's own notification.
 The unused legacy GUI/assets and runtime selector are removed. Public BurstSelectionTool/wizard retain the implemented modern Qt tool; the production Burst Analysis hub still uses the existing native factory. Native model/backend/search and output contracts are unchanged. Frozen real m000/m001 runs retain198 bursts (71/127),353909 photons/45868 selected, active71×10 table, ten numeric-column hashes, settings and72 control IDs. All10 after scenes were inspected against preserved before evidence; the loaded legacy143-row BUR diagnostic is not a legacy search rerun. Prior shared JSON/Preview controls are added by their earlier unit; existing header elision/read-clock0 are qualified rather than claimed as new corrections.
 
 Parent26 owning runtime cases and968 available guard/import cases pass (16expectedskips), scoped Ruff4/mypy2 clean. Current packaged instructions no longer recommend the deleted selector: four dated originals are archived in [history](../validation/release-readiness-w1/burst-selection-retirement/package-notes-history.zip), current reference paths remain and foreign verification formatting is preserved. Existing paired theory/workflow and one real figure accompany the source; canonical catalogue regeneration is byte-identical for the owned page. [Acceptance](../validation/release-readiness-w1/burst-selection-retirement/acceptance.json). Next is Channel14 and Designerhelpers; modern Qt surface retirement stays with W9.
+
+## Actual workflow and per-burst worker verification — 2026-10-09
+
+The previously denied loopback/SharedMemory paths are verified in the unrestricted
+runtime. The workflow IRF/background service starts and returns normalized IRFs;
+MLE worker paths fit real burst rows, expose lifetime histogram/table values and
+write numeric companions. Photon slices/state splitting and non-Fit23 models
+execute.58 targeted cases are covered by the initial41pass plus affected fixture
+file20pass and guide1pass. Stale Qt setup fields use the current filetype/model
+contract; Auto guide testing addresses the real Auto step after demo/model steps
+were added. All physical assertions retained. Production code and GUI unchanged.
+[Acceptance](../validation/release-readiness-w6g/ipc-verification-acceptance.json).

@@ -1,3 +1,17 @@
+## Workflow and batch OS IPC verification — resolved (2026-10-09)
+
+status: resolved
+
+With unrestricted runtime permissions, the actual BurstWorkflow.demo loopback
+service and Burst MLE SharedMemory workers execute. The original targeted group
+has58 cases:41 passed initially; obsolete legacy fixture and guide assumptions
+were repaired with unchanged scientific assertions (affected file20pass, guide1pass).
+Native batch rows, lifetime histograms, numeric companion export, photon slices,
+state splits and non-Fit23 worker models are verified. No transport substitute,
+worker fake, skip or assertion suppression was added. Production code unchanged;
+all engine/test ASTs matched committed sources before fixture edits.
+[Acceptance](../validation/release-readiness-w6g/ipc-verification-acceptance.json).
+
 ## TTTR calibration report identification — resolved (2026-10-09)
 
 status: resolved
