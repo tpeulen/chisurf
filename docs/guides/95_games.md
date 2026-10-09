@@ -41,8 +41,12 @@ starts with the game defaults; an existing saved round is restored when availabl
 | Breakout | Left/Right or A/D paddle (hold), Space or Enter launch, P pause, M mute, R reset | drag in the field to move the paddle; a stuck ball goes with it |
 
 A key that is released stops its action; losing the window focus releases every held key, so a paddle never keeps
-running after you switch windows. Sound is a switch only (the native window plays no audio); it is greyed where there
-is no audio output.
+running after you switch windows. Pending second-player input is cleared too.
+Closing a game stops further key and pointer changes; a queued redraw remains
+serviceable while a game is paused. Sound is a switch only (the native window
+plays no audio); it is greyed where there is no audio output. If an audio output
+is supplied through Python, losing focus silences it without changing the saved
+sound preference, and closing releases it once.
 
 ## 3. Application
 

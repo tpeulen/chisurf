@@ -2,6 +2,8 @@
 
 ## 2026-10-09
 
+- Shared GameApp removes duplicated lifecycle/audio boundaries;41independent cases and69exact neighbor tests pass, with all five full state/render snapshots equal. Fixes idle redraw, closed input, pending second-player input and repeated/post-close audio; remaining P-F9 work stays open. [Acceptance](validation/release-readiness-w6f/game-lifecycle-acceptance.json).
+
 - The20core host records now consume numeric declarations with unchanged defaults, saved geometry and preferences; exact60cases plus25existing regressions pass. All116reader records covered, while otherW6f/scientific/service gates stay open;281unchanged literal keys relocated. [Acceptance](validation/release-readiness-w6f/core-window-acceptance.json).
 
 - Six game/launcher host declarations preserve actual sizes and saved geometry; exact31cases plus22native neighbors and1024guards/11skip pass. Shared empty-state persistence fixes all five fresh-launch crashes. Twenty core records remain;15obsolete resume allowances removed. [Acceptance](validation/release-readiness-w6f/game-window-acceptance.json).

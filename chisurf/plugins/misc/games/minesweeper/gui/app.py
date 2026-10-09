@@ -10,10 +10,10 @@ import time
 from pathlib import Path
 
 from emtk import i18n, im
-from emtk.app import ImApp
 from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_LEFT, KEY_RETURN, KEY_RIGHT, KEY_UP
 
 from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.misc.games._base import GameApp
 from chisurf.plugins.misc.games.gui.keys import blocked
 
 from ..core.game import DIFFICULTIES, GameStatus, MinesweeperGame
@@ -69,7 +69,7 @@ def pixel_text(draw, text, pos, height, colour, align="left", max_width=None):
         x += (width + 1) * unit
 
 
-class MinesweeperApp(ImApp):
+class MinesweeperApp(GameApp):
     def __init__(self, game=None, audio_callback=None, clock=time.monotonic):
         spec = json.loads(Path(__file__).with_name("app.view.json").read_text(encoding="utf-8"))
         self.window_size = window_size(spec, (560, 620))
@@ -80,6 +80,7 @@ class MinesweeperApp(ImApp):
         self.difficulty_index = 0
         self.cursor_row, self.cursor_col = self.game.rows // 2, self.game.columns // 2
         self.message = ""
+        self.closed = False
         self.sound_enabled = False
         self.audio_callback = audio_callback
         super().__init__(self.render)
@@ -121,7 +122,7 @@ class MinesweeperApp(ImApp):
             self.audio_callback(name, frequency)
 
     def key(self, key, text="", modifiers=0):
-        if blocked(modifiers):
+        if blocked(modifiers) or self.closed:
             return False
         # Arrows only, per the owner's direction-key rule (no WASD).
         direction = {KEY_UP: (-1, 0), KEY_DOWN: (1, 0), KEY_LEFT: (0, -1), KEY_RIGHT: (0, 1)}
@@ -161,12 +162,13 @@ class MinesweeperApp(ImApp):
                 self.held[step] -= REPEAT_RATE
                 self.move(*step)
 
-    def animating(self):
-        return bool(self.held) or super().animating()
+    def game_running(self) -> bool:
+        """Return the existing game-specific animation predicate."""
+        return bool(self.held) or self.continuous
 
-    def focus_lost(self):
+    def _clear_inputs(self) -> None:
+        """Release this game's held controls and repeat state."""
         self.held.clear()
-        self.last_frame = None
 
     def export_settings(self):
         return {"rows": self.game.rows, "columns": self.game.columns, "mines": self.game.mines,

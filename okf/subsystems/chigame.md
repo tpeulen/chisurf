@@ -9,8 +9,9 @@ timestamp: '2026-08-10T00:00:00Z'
 
 # Where to pick this up
 
-1. Open: W6f has20remaining core host declarations after the six game/launcher
-   records. Use the recorded reader ledger; do not repeat unchanged inventories.
+1. Open: shared lifecycle is extracted; remaining P-F9 work is binding/state
+   declarations, chrome/help/restart and NumberQuest consolidation. Defaults and
+   all116window-reader records are closed; do not re-audit those inventories.
 2. Measure: run the two game-window declaration tests and empty-persistence test
    under `test/native_emtk/`. They prove exact existing defaults, authored size
    consumption, saved resize/round restore and fresh persisted launch.
@@ -612,3 +613,20 @@ and dimensions still return, and invalid nonempty payloads still fail. The resum
 section separates actionable work from preserved historical notes; its obsolete
 PICKUP allowances are removed, without broad bundle cleanup.
 [Acceptance](../validation/release-readiness-w6f/game-window-acceptance.json).
+
+
+# Shared native game lifecycle — 2026-10-09
+
+The required GameApp base owns frame demand, focus/shutdown and optional object-
+audio cleanup for all five native apps. Running/input-clear hooks preserve each
+actual representation; bindings, numerical stepping, renderers and atomic state
+validators remain local and unchanged. Modifier policy still permits Shift/keypad
+while reserving Ctrl/Alt/Meta; do not revive the old blanket modifier recipe.
+
+The committed before baseline locks20preservation cases. Eight initial boundary
+failures plus six closed-audio cases now pass: pending redraw demand, Minesweeper
+shutdown/key rejection, idempotent audio release, Pong second-player pending-edge
+cleanup, closed pointer immutability and no post-close effect/toggle. All five full
+numeric state/paint/window snapshots are exactly equal. No audio backend or
+playback activation, new chrome or shared blind field restoration was introduced.
+[Acceptance](../validation/release-readiness-w6f/game-lifecycle-acceptance.json).

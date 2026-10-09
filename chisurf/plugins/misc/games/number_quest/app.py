@@ -7,10 +7,10 @@ import time
 from pathlib import Path
 
 from emtk import i18n, im
-from emtk.app import ImApp
 from emtk.keys import KEY_ENTER, KEY_LEFT, KEY_RETURN, KEY_RIGHT
 
 from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.misc.games._base import GameApp
 from chisurf.plugins.misc.games.gui.keys import blocked
 
 from .core.game import GuessStatus, NumberQuestGame
@@ -32,7 +32,7 @@ def tr(source):
     return i18n.tr(source, context="NumberQuest")
 
 
-class NumberQuestApp(ImApp):
+class NumberQuestApp(GameApp):
     def __init__(self, audio=None, clock=time.monotonic):
         spec = json.loads(Path(__file__).with_name("app.view.json").read_text(encoding="utf-8"))
         self.window_size = window_size(spec, (560, 420))
@@ -130,28 +130,14 @@ class NumberQuestApp(ImApp):
                 self.repeat[action] -= REPEAT_RATE
                 self._nudge(STEPS[action])
 
-    def animating(self):
-        return not self.closed and bool(self.held & STEPS.keys())
+    def game_running(self) -> bool:
+        """Return the existing game-specific animation predicate."""
+        return bool(self.held & STEPS.keys())
 
-    def focus_lost(self):
+    def _clear_inputs(self) -> None:
+        """Release this game's held controls and repeat state."""
         self.held.clear()
         self.repeat.clear()
-        self.last_frame = None
-        if self.audio is not None:
-            self.audio.set_enabled(False)
-
-    def close(self):
-        self.focus_lost()
-        self.closed = True
-        if self.audio is not None:
-            self.audio.close()
-
-    def set_sound(self):
-        if self.audio is None:
-            return
-        self.sound_enabled = not self.sound_enabled
-        if self.audio is not None:
-            self.audio.set_enabled(self.sound_enabled)
 
     def _decay_point(self, index, tau):
         t = self.game.maximum * NS_PER_UNIT * index / (CURVE_POINTS - 1)

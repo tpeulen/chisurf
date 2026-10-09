@@ -8,10 +8,10 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from emtk import i18n, im
-from emtk.app import ImApp
 from emtk.keys import KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_UP
 
 from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.misc.games._base import GameApp
 from chisurf.plugins.misc.games.gui.keys import blocked
 
 from .drawing import pixel_text, text_width
@@ -38,7 +38,7 @@ class Inputs:
         self.pressed.clear()
 
 
-class TetrisApp(ImApp):
+class TetrisApp(GameApp):
     window_size = (520, 620)
 
     def __init__(self, audio=None, clock=time.monotonic):
@@ -59,18 +59,9 @@ class TetrisApp(ImApp):
     def window_title(self):
         return tr("Tetris")
 
-    def sfx(self, name, frequency):
-        if self.audio is not None and self.sound_enabled:
-            self.audio.sfx(name, frequency)
-
-    def set_sound(self):
-        if self.audio is None:
-            return
-        self.sound_enabled = not self.sound_enabled
-        self.audio.set_enabled(self.sound_enabled)
-
-    def animating(self):
-        return not self.closed and (self.wants_frame or (not self.game.paused and not self.game.over))
+    def game_running(self) -> bool:
+        """Return the existing game-specific animation predicate."""
+        return not self.game.paused and not self.game.over
 
     def advance(self, dt):
         if self.closed:
@@ -103,20 +94,12 @@ class TetrisApp(ImApp):
         action = self.keys.held.pop(key, None)
         return action is not None or self.binding(key, text) is not None
 
-    def focus_lost(self):
+    def _clear_inputs(self) -> None:
+        """Release this game's held controls and repeat state."""
         self.keys.held.clear()
         self.keys.end_frame()
         self.game._repeat_action = None
         self.game._repeat_timer = 0
-        self.last_frame = None
-        if self.audio is not None:
-            self.audio.set_enabled(False)
-
-    def close(self):
-        self.focus_lost()
-        self.closed = True
-        if self.audio is not None:
-            self.audio.close()
 
     def control(self, action):
         if self.closed:

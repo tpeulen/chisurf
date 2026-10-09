@@ -8,10 +8,10 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from emtk import i18n, im
-from emtk.app import ImApp
 from emtk.keys import KEY_ENTER, KEY_LEFT, KEY_RETURN, KEY_RIGHT
 
 from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.misc.games._base import GameApp
 from chisurf.plugins.misc.games.gui.keys import blocked
 
 from .drawing import pixel_text, text_width
@@ -53,7 +53,7 @@ class Inputs:
         self.pressed.clear()
 
 
-class BreakoutApp(ImApp):
+class BreakoutApp(GameApp):
     window_size = (820, 690)
 
     def __init__(self, clock=time.monotonic):
@@ -75,8 +75,9 @@ class BreakoutApp(ImApp):
     def sfx(self, name, frequency):
         """EMTK has no audio backend; preserve mute state without pretending playback."""
 
-    def animating(self):
-        return not self.closed and (self.wants_frame or (not self.game.paused and self.game.message is None and (not self.game.stuck or bool(self.keys.held) or bool(self.game.particles))))
+    def game_running(self) -> bool:
+        """Return the existing game-specific animation predicate."""
+        return not self.game.paused and self.game.message is None and (not self.game.stuck or bool(self.keys.held) or bool(self.game.particles))
 
     def advance(self, dt):
         remaining = min(max(float(dt), 0), .1)
@@ -120,14 +121,10 @@ class BreakoutApp(ImApp):
         action = self.keys.held.pop(key, None)
         return action is not None or self.binding(key, text) is not None
 
-    def focus_lost(self):
+    def _clear_inputs(self) -> None:
+        """Release this game's held controls and repeat state."""
         self.keys.held.clear()
         self.keys.end_frame()
-        self.last_frame = None
-
-    def close(self):
-        self.focus_lost()
-        self.closed = True
 
     def pointer_move(self, x, y, buttons=0, modifiers=0):
         super().pointer_move(x, y, buttons, modifiers)

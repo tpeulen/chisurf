@@ -8,10 +8,10 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from emtk import i18n, im
-from emtk.app import ImApp
 from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_RETURN, KEY_UP
 
 from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.misc.games._base import GameApp
 from chisurf.plugins.misc.games.gui.keys import blocked
 
 from .drawing import pixel_text, text_width
@@ -46,7 +46,7 @@ class Inputs:
         self.pressed.clear()
 
 
-class PongApp(ImApp):
+class PongApp(GameApp):
     window_size = (820, 640)
 
     def __init__(self, audio=None, clock=time.monotonic):
@@ -67,19 +67,9 @@ class PongApp(ImApp):
     def window_title(self):
         return tr("Pong")
 
-    def sfx(self, name, frequency):
-        if self.audio is not None and self.sound_enabled:
-            self.audio.sfx(name, frequency)
-
-    def set_sound(self):
-        if self.audio is None:
-            return
-        self.sound_enabled = not self.sound_enabled
-        if self.audio is not None:
-            self.audio.set_enabled(self.sound_enabled)
-
-    def animating(self):
-        return not self.closed and not self.game.paused and self.game.winner is None
+    def game_running(self) -> bool:
+        """Return the existing game-specific animation predicate."""
+        return not self.game.paused and self.game.winner is None
 
     def advance(self, dt):
         """Use small simulation steps to prevent tunnelling across paddles."""
@@ -125,21 +115,16 @@ class PongApp(ImApp):
         (self.p2 if second else self.keys).held.discard(action)
         return action is not None
 
-    def focus_lost(self):
+    def _clear_inputs(self) -> None:
+        """Release this game's held controls and repeat state."""
         self.keys.held.clear()
         self.p2.held.clear()
         self.keys.end_frame()
-        self.last_frame = None
-        if self.audio is not None:
-            self.audio.set_enabled(False)
-
-    def close(self):
-        self.focus_lost()
-        self.closed = True
-        if self.audio is not None:
-            self.audio.close()
+        self.p2.end_frame()
 
     def pointer_move(self, x, y, buttons=0, modifiers=0):
+        if self.closed:
+            return
         super().pointer_move(x, y, buttons, modifiers)
         if buttons & 1 and not self.game.paused and self.game.winner is None:
             ox, oy, scale = self.board
