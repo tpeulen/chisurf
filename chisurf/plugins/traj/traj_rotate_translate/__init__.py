@@ -21,6 +21,7 @@ def __getattr__(attribute):
         from chisurf.plugins.traj.traj_rotate_translate.widget import (
             RotateTranslateTrajectoryWidget,
         )
+
         return RotateTranslateTrajectoryWidget
     raise AttributeError(attribute)
 

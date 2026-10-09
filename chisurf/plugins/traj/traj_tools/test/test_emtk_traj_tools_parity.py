@@ -7,7 +7,11 @@ from pathlib import Path
 
 import pytest
 
-from chisurf.plugins.core.project_browser.test.driving import clipped_texts, draw_clip, layout_problems
+from chisurf.plugins.core.project_browser.test.driving import (
+    clipped_texts,
+    draw_clip,
+    layout_problems,
+)
 from chisurf.plugins.emtk_hermetic import hermetic, real_chisurf_untouched  # noqa: F401
 
 from ..app import TrajectoryToolsHubApp
@@ -24,14 +28,20 @@ def qt_tool(qapp, tmp_path_factory):
     """The Qt workspace, built once under a temporary HOME / settings folder (it writes its geometry on close)."""
     root = tmp_path_factory.mktemp("qt_home")
     patch = pytest.MonkeyPatch()
-    for name, value in (("HOME", root / "home"), ("CHISURF_SETTINGS_DIR", root / "s"), ("MMFDB_SETTINGS_DIR", root / "m"),
-                        ("MMFDB_DATABASE_PATH", root / "m.sqlite")):
+    for name, value in (
+        ("HOME", root / "home"),
+        ("CHISURF_SETTINGS_DIR", root / "s"),
+        ("MMFDB_SETTINGS_DIR", root / "m"),
+        ("MMFDB_DATABASE_PATH", root / "m.sqlite"),
+    ):
         patch.setenv(name, str(value))
     (root / "home").mkdir()
     from ..gui.tool import TrajectoryToolsTool
 
     tool = TrajectoryToolsTool()
-    _KEEP.append(tool)  # destroying the dock workspace while the process is alive bus-errors (Qt/pyqtgraph teardown)
+    _KEEP.append(
+        tool
+    )  # destroying the dock workspace while the process is alive bus-errors (Qt/pyqtgraph teardown)
     yield tool
     patch.undo()
 
@@ -39,7 +49,9 @@ def qt_tool(qapp, tmp_path_factory):
 def test_the_list_is_the_qt_tabs_in_the_same_order(qt_tool):
     assert list(qt_tool._tools) == [p["name"] for p in TOOL_PANELS]
     app = TrajectoryToolsHubApp()
-    assert [e.id for e in app.entries] == list(qt_tool._tools) and app.selected == qt_tool._active_tool == "Align"
+    assert [e.id for e in app.entries] == list(
+        qt_tool._tools
+    ) and app.selected == qt_tool._active_tool == "Align"
     assert all(p["description"] and p["emtk"] for p in TOOL_PANELS)
 
 

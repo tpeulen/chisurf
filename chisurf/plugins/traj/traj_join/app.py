@@ -10,7 +10,13 @@ from __future__ import annotations
 
 import pathlib
 
-from chisurf.plugins.traj.emtk_tool import SaveAction, TrajToolApp, icon_label, topology_field, trajectory_field
+from chisurf.plugins.traj.emtk_tool import (
+    SaveAction,
+    TrajToolApp,
+    icon_label,
+    topology_field,
+    trajectory_field,
+)
 
 from .view_model import JoinTrajectoriesViewModel
 
@@ -23,21 +29,36 @@ SAVE = SaveAction(
     dialog_title="Save trajectory",
     filters=[("DCD trajectory", ["*.dcd"])],
     run=lambda model, path: model.save_joined(path),
-    missing=lambda model: (None if model.trajectory_filename_1 and model.trajectory_filename_2
-                           else "Open two trajectories first."),
+    missing=lambda model: (
+        None
+        if model.trajectory_filename_1 and model.trajectory_filename_2
+        else "Open two trajectories first."
+    ),
     suggest=lambda model: pathlib.Path(model.trajectory_filename_1).stem + "_joined.dcd",
     failure="Join failed",
     cancelled="Join cancelled",
 )
 
 PATHS = [
-    trajectory_field(key="trajectory_1", label="Trajectory 1", attr="trajectory_filename_1",
-                     setter="set_trajectory_1", dialog_title="Open trajectory 1",
-                     tooltip="The first trajectory: its frames come first (time) or its atoms first (atoms)."),
-    trajectory_field(key="trajectory_2", label="Trajectory 2", attr="trajectory_filename_2",
-                     setter="set_trajectory_2", dialog_title="Open trajectory 2",
-                     tooltip="The second trajectory: appended after the first (time) or beside it (atoms)."),
-    topology_field(tooltip="The structure that names the atoms of both trajectories; a DCD stores coordinates only."),
+    trajectory_field(
+        key="trajectory_1",
+        label="Trajectory 1",
+        attr="trajectory_filename_1",
+        setter="set_trajectory_1",
+        dialog_title="Open trajectory 1",
+        tooltip="The first trajectory: its frames come first (time) or its atoms first (atoms).",
+    ),
+    trajectory_field(
+        key="trajectory_2",
+        label="Trajectory 2",
+        attr="trajectory_filename_2",
+        setter="set_trajectory_2",
+        dialog_title="Open trajectory 2",
+        tooltip="The second trajectory: appended after the first (time) or beside it (atoms).",
+    ),
+    topology_field(
+        tooltip="The structure that names the atoms of both trajectories; a DCD stores coordinates only."
+    ),
 ]
 
 
@@ -45,8 +66,15 @@ class JoinTrajectoriesApp(TrajToolApp):
     """The Join-Trajectories window."""
 
     def __init__(self, model: JoinTrajectoriesViewModel | None = None) -> None:
-        super().__init__(model or JoinTrajectoriesViewModel(), HERE, "join_trajectories.view.json",
-                         "traj_join_io", "Join trajectories", PATHS, SAVE)
+        super().__init__(
+            model or JoinTrajectoriesViewModel(),
+            HERE,
+            "join_trajectories.view.json",
+            "traj_join_io",
+            "Join trajectories",
+            PATHS,
+            SAVE,
+        )
 
 
 def make_app(**kwargs) -> JoinTrajectoriesApp:

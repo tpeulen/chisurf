@@ -1,0 +1,42 @@
+{
+  "plugin": "traj_fret",
+  "date": "2026-09-28",
+  "score": 95,
+  "verdict": "pass",
+  "threshold": 90,
+  "threshold_pass": true,
+  "per_screenshot": [
+    {
+      "image": "native-normal.png",
+      "size": [760, 680],
+      "score": 96,
+      "verdict": "pass"
+    },
+    {
+      "image": "native-narrow.png",
+      "size": [440, 680],
+      "score": 95,
+      "verdict": "pass"
+    }
+  ],
+  "reference_images": ["qt/core__traj_fret.png"],
+  "generated_screenshots": ["native-normal.png", "native-narrow.png"],
+  "differences": [
+    "Native dark EMTK styling and vertical flow differ from the light Qt AutoForm panels.",
+    "Labels render true subscripts (R₀ [Å], tau₀ [ns]) via the new emtk inline script markup."
+  ],
+  "suggestions": [
+    "The donor/acceptor pair row splits the post-label width evenly; keep that measurement from the label column, not the full row."
+  ],
+  "reasoning": "Both populated captures show the complete workflow — trajectory/topology/stride, four populated atom-pair combos with reachable dropdown chevrons at both widths, R₀/tau₀/t-step parameters, dipole toggle, output CSV, Process, wrapped hint caption and a live log — with no clipping, overlap or unreachable controls at 760 px and 440 px.",
+  "visual_gate": "documents:visual-judge",
+  "first_pass": {
+    "native-normal": 78,
+    "native-narrow": 70,
+    "failures": [
+      "second Donor/Acceptor combo overflowed the window edge; dropdown unreachable",
+      "hint caption hard-clipped mid-sentence at 440 px"
+    ],
+    "fix": "pair width measured from the label column; caption wrapped via the new wrap-aware text_disabled (push_text_wrap_pos)"
+  }
+}

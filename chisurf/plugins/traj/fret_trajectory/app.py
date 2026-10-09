@@ -15,7 +15,13 @@ import pathlib
 import numpy as np
 from emtk import im
 
-from chisurf.plugins.traj.emtk_tool import SaveAction, icon_label, TrajToolApp, topology_field, trajectory_field
+from chisurf.plugins.traj.emtk_tool import (
+    SaveAction,
+    TrajToolApp,
+    icon_label,
+    topology_field,
+    trajectory_field,
+)
 
 from .view_model import FretTrajectoryViewModel
 
@@ -28,7 +34,9 @@ PROCESS = SaveAction(
     dialog_title="Output-file",
     filters=[("CSV", ["*.csv"]), ("All files", ["*"])],
     run=lambda model, path: model.calc(output_file=path),
-    missing=lambda model: None if (model.filenames or model.trajectory_file) else "Open a trajectory first.",
+    missing=lambda model: (
+        None if (model.filenames or model.trajectory_file) else "Open a trajectory first."
+    ),
     suggest=lambda model: pathlib.Path(model.trajectory_file).stem + "_fret.csv",
     failure="Processing failed",
     cancelled="Process cancelled",
@@ -36,9 +44,13 @@ PROCESS = SaveAction(
 )
 
 PATHS = [
-    trajectory_field(attr="trajectory_file", tooltip="The trajectory to analyse. Drop a .dcd here or press … to "
-                                                     "pick one."),
-    topology_field(tooltip="The structure that names the atoms of the DCD; the atom pickers list its atoms."),
+    trajectory_field(
+        attr="trajectory_file",
+        tooltip="The trajectory to analyse. Drop a .dcd here or press … to pick one.",
+    ),
+    topology_field(
+        tooltip="The structure that names the atoms of the DCD; the atom pickers list its atoms."
+    ),
 ]
 
 
@@ -48,7 +60,9 @@ class AtomIndex:
     def __init__(self, pdb: np.ndarray) -> None:
         self.pdb = pdb
         self.chains = sorted({str(c) for c in pdb["chain"]})
-        self.residues = {c: sorted({int(r) for r in pdb["res_id"][pdb["chain"] == c]}) for c in self.chains}
+        self.residues = {
+            c: sorted({int(r) for r in pdb["res_id"][pdb["chain"] == c]}) for c in self.chains
+        }
         self._atoms: dict[tuple[str, int], list[int]] = {}
         for index, (chain, residue) in enumerate(zip(pdb["chain"], pdb["res_id"])):
             self._atoms.setdefault((str(chain), int(residue)), []).append(index)
@@ -73,8 +87,16 @@ class FretTrajectoryApp(TrajToolApp):
     """The Trajectory→FRET window."""
 
     def __init__(self, model: FretTrajectoryViewModel | None = None) -> None:
-        super().__init__(model or FretTrajectoryViewModel(), HERE, "structure2transfer.view.json",
-                         "fret_traj_io", "Trajectory to FRET", PATHS, PROCESS, action_key="fret_run")
+        super().__init__(
+            model or FretTrajectoryViewModel(),
+            HERE,
+            "structure2transfer.view.json",
+            "fret_traj_io",
+            "Trajectory to FRET",
+            PATHS,
+            PROCESS,
+            action_key="fret_run",
+        )
         self.form.custom["fret_atom_pairs"] = self.draw_atom_pairs
         self._atom_cache: AtomIndex | None = None
 
@@ -102,9 +124,11 @@ class FretTrajectoryApp(TrajToolApp):
             im.begin_group()
             im.text(role)
             third = (column - 2 * im.get_style().item_spacing[0]) / 3.0
-            for j, caption in enumerate(("Chain", "Residue", "Atom")):          # the Qt selectors' captions
+            for j, caption in enumerate(("Chain", "Residue", "Atom")):  # the Qt selectors' captions
                 if j:
-                    im.same_line(j * (third + im.get_style().item_spacing[0]))   # from the group's start
+                    im.same_line(
+                        j * (third + im.get_style().item_spacing[0])
+                    )  # from the group's start
                 im.text_disabled(caption)
             pair = list(getattr(model, attr))
             for slot in range(2):
@@ -135,7 +159,9 @@ class FretTrajectoryApp(TrajToolApp):
         im.same_line()
         residues = index.residues[chain]
         im.set_next_item_width(third)
-        changed, r = im.combo(f"##{key}.residue", residues.index(residue), [str(v) for v in residues])
+        changed, r = im.combo(
+            f"##{key}.residue", residues.index(residue), [str(v) for v in residues]
+        )
         im.set_item_tooltip(tip)
         if changed:
             return index.atoms(chain, residues[r])[0]

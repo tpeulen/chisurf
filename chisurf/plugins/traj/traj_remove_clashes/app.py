@@ -10,7 +10,13 @@ from __future__ import annotations
 
 import pathlib
 
-from chisurf.plugins.traj.emtk_tool import SaveAction, TrajToolApp, icon_label, topology_field, trajectory_field
+from chisurf.plugins.traj.emtk_tool import (
+    SaveAction,
+    TrajToolApp,
+    icon_label,
+    topology_field,
+    trajectory_field,
+)
 
 from .view_model import RemoveClashesViewModel
 
@@ -31,9 +37,15 @@ class RemoveClashesApp(TrajToolApp):
     """The Remove-Clashed-Frames window."""
 
     def __init__(self, model: RemoveClashesViewModel | None = None) -> None:
-        super().__init__(model or RemoveClashesViewModel(), HERE, "remove_clashes.view.json",
-                         "traj_remove_clashes_io", "Remove clashed frames",
-                         [trajectory_field(), topology_field()], SAVE)
+        super().__init__(
+            model or RemoveClashesViewModel(),
+            HERE,
+            "remove_clashes.view.json",
+            "traj_remove_clashes_io",
+            "Remove clashed frames",
+            [trajectory_field(), topology_field()],
+            SAVE,
+        )
 
 
 def make_app(**kwargs) -> RemoveClashesApp:

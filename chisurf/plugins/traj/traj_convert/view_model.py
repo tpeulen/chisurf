@@ -189,17 +189,23 @@ class MDConverterViewModel:
         if len(inputs) > 1:
             self.append_log(f"Read {len(inputs)} files as {whole.n_frames} frames")
         frames = list(self.frame_selection(whole.n_frames))
-        self.append_log(f"Input frames: {self.first_frame}..{self.last_frame} stride={self.stride} "
-                        f"({len(frames)} of {whole.n_frames})")
+        self.append_log(
+            f"Input frames: {self.first_frame}..{self.last_frame} stride={self.stride} "
+            f"({len(frames)} of {whole.n_frames})"
+        )
         if not frames:
             raise ValueError("The frame range selects no frames.")
         selected = whole[frames]
         if self.split:
             for frame, single in zip(frames, (selected[i] for i in range(len(frames)))):
-                fn = os.path.join(self.target_directory, f"{self.filename}_{frame:08d}{self.ending}")
+                fn = os.path.join(
+                    self.target_directory, f"{self.filename}_{frame:08d}{self.ending}"
+                )
                 single.save(fn)
-            self.append_log(f"Wrote {len(frames)} files of {whole.n_atoms} atoms: "
-                            f"{self.filename}_{frames[0]:08d}{self.ending} … {self.filename}_{frames[-1]:08d}{self.ending}")
+            self.append_log(
+                f"Wrote {len(frames)} files of {whole.n_atoms} atoms: "
+                f"{self.filename}_{frames[0]:08d}{self.ending} … {self.filename}_{frames[-1]:08d}{self.ending}"
+            )
         else:
             output = os.path.join(self.target_directory, self.filename + self.ending)
             self.append_log(f"Output: {output}")

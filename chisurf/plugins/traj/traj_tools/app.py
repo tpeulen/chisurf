@@ -54,10 +54,20 @@ class TrajectoryToolsHubApp(CalculatorHubApp):
         ]
         super().__init__(entries=entries)
         self.status = "Ready"
-        self.help_window = EmTkHelpWindow(title="Trajectory tools - Help", resource=HERE / "gui/help.md", owner=self,
-                                          on_start_guide=self.start_guide, size=(700.0, 480.0))
-        self.tour = EmTkGuidedTour(steps=HERE / "gui/guide.json", get_target_rect=lambda name: self.item_rects.get(name),
-                                   owner=self, wait_for_controls=True, on_step_change=self._tour_step)
+        self.help_window = EmTkHelpWindow(
+            title="Trajectory tools - Help",
+            resource=HERE / "gui/help.md",
+            owner=self,
+            on_start_guide=self.start_guide,
+            size=(700.0, 480.0),
+        )
+        self.tour = EmTkGuidedTour(
+            steps=HERE / "gui/guide.json",
+            get_target_rect=lambda name: self.item_rects.get(name),
+            owner=self,
+            wait_for_controls=True,
+            on_step_change=self._tour_step,
+        )
 
     # -- selection ---------------------------------------------------------------------------------------------------- #
     @property
@@ -115,7 +125,12 @@ class TrajectoryToolsHubApp(CalculatorHubApp):
                 first, last = first or rect, rect
                 self.item_rects["entry:" + entry.id] = rect
             if first is not None:
-                self.item_rects["tool_list"] = (first[0], first[1], first[2], last[1] + last[3] - first[1])
+                self.item_rects["tool_list"] = (
+                    first[0],
+                    first[1],
+                    first[2],
+                    last[1] + last[3] - first[1],
+                )
             im.separator()
             if im.button(tr("Guide")):
                 self.start_guide()
@@ -130,10 +145,14 @@ class TrajectoryToolsHubApp(CalculatorHubApp):
         entry = self.entries_by_name[self.selected]
         wrap = max(width - left - 16.0, 50.0)
         shown = [tr(entry.label), tr(entry.description)]
-        header_h = max(_HEADER_H - 20.0, 10.0 + sum(im.calc_text_size(t, wrap_width=wrap)[1] for t in shown))
+        header_h = max(
+            _HEADER_H - 20.0, 10.0 + sum(im.calc_text_size(t, wrap_width=wrap)[1] for t in shown)
+        )
         im.set_next_window_pos((left, 0), im.Cond.ALWAYS)
         im.set_next_window_size((width - left, header_h), im.Cond.ALWAYS)
-        if im.begin("Tool description", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE):
+        if im.begin(
+            "Tool description", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE
+        ):
             im.text_unformatted(tr(entry.label))
             im.text_wrapped(tr(entry.description))
             self.item_rects["description"] = im.get_item_rect()
@@ -144,8 +163,12 @@ class TrajectoryToolsHubApp(CalculatorHubApp):
             self.draw_child(self._painter, self.child, *self.child_box, local_coordinates=True)
         else:
             im.set_next_window_pos((left + 16, header_h + 8), im.Cond.ALWAYS)
-            im.set_next_window_size((max(1.0, width - left - 32), max(1.0, body_h - 16)), im.Cond.ALWAYS)
-            if im.begin("Tool status", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE):
+            im.set_next_window_size(
+                (max(1.0, width - left - 32), max(1.0, body_h - 16)), im.Cond.ALWAYS
+            )
+            if im.begin(
+                "Tool status", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE
+            ):
                 im.heading(tr("Tool unavailable"), level=2)
                 im.text_wrapped(self.error)
             im.end()
@@ -175,8 +198,11 @@ class TrajectoryToolsHubApp(CalculatorHubApp):
                 if callable(handler):
                     took = bool(handler(paths))
                     break
-        self.status = (f"{self.selected}: {Path(paths[0]).name}" if took else
-                       f"{self.selected} takes no dropped file like this: drop onto one of its fields")
+        self.status = (
+            f"{self.selected}: {Path(paths[0]).name}"
+            if took
+            else f"{self.selected} takes no dropped file like this: drop onto one of its fields"
+        )
         self.request_frame()
         return True
 

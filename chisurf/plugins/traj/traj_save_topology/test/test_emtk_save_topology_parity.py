@@ -90,14 +90,22 @@ def qt(tmp_path_factory):
     target = tmp_path_factory.mktemp("qt") / "frame0.pdb"
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT, TRAJ, TOP, str(target)], capture_output=True, text=True,
-                          timeout=300, env=env, cwd=str(REPO))
+    proc = subprocess.run(
+        [sys.executable, "-c", _QT, TRAJ, TOP, str(target)],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env=env,
+        cwd=str(REPO),
+    )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and ("No module named" in proc.stderr or "could not connect to display" in proc.stderr):
+    if line is None and (
+        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
+    ):
         pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
     # Any other failure is the Qt widget's own: skipping it hid a broken Qt host.
     assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    facts = json.loads(line[len("FACTS"):])
+    facts = json.loads(line[len("FACTS") :])
     facts["target"] = target
     return facts
 
@@ -119,7 +127,9 @@ def test_a_save_writes_what_the_qt_widget_writes(qt, tmp_path):
         frame0 = md.load(TRAJ, top=TOP)[0]
         assert ours.n_atoms == theirs.n_atoms == frame0.n_atoms == 5235
         assert np.asarray(ours.xyz) == pytest.approx(np.asarray(theirs.xyz))
-        assert np.abs(np.asarray(ours.xyz) - np.asarray(frame0.xyz)).max() < 1e-3   # PDB keeps 3 decimals
+        assert (
+            np.abs(np.asarray(ours.xyz) - np.asarray(frame0.xyz)).max() < 1e-3
+        )  # PDB keeps 3 decimals
         mine = _messages(app.model.log_text())
         assert mine[-1] == "Topology saved" and _messages(qt["log"])[-1] == "Topology saved"
         assert mine[-3:-1] == [f"Loading first frame: {TRAJ}", f"Saving topology to: {target}"]
@@ -140,7 +150,9 @@ def test_nothing_chosen_and_a_cancelled_dialog_answer_as_the_qt_widget_does(qt):
         app.dialog.draw = lambda: False
         _draw(app, n=1)
         assert app.dialog is None
-        assert "Save cancelled" in _messages(app.model.log_text()) and "Save cancelled" in _messages(qt["log"])
+        assert "Save cancelled" in _messages(
+            app.model.log_text()
+        ) and "Save cancelled" in _messages(qt["log"])
         assert qt["fields"] == [TRAJ, TOP]
     finally:
         app.close()
@@ -175,15 +187,17 @@ def test_the_rows_take_existing_files_from_their_dialogs_and_from_drops(tmp_path
     try:
         trajectory, topology = app.paths
         app.browse(trajectory)
-        assert app.dialog.title == "Open trajectory" and app.dialog.filters == [("Trajectories", ["*.dcd"])]
+        assert app.dialog.title == "Open trajectory" and app.dialog.filters == [
+            ("Trajectories", ["*.dcd"])
+        ]
         _pick(app, TRAJ)
         assert app.model.trajectory_filename == TRAJ
         app.browse(topology)
         assert app.dialog.title == "Open topology"
         assert app.dialog.filters == [("Structures", ["*.pdb", "*.cif", "*.ent"])]
-        _pick(app, tmp_path / "gone.pdb")                       # not a file: the row keeps its value
+        _pick(app, tmp_path / "gone.pdb")  # not a file: the row keeps its value
         assert app.model.topology_filename == ""
-        app.on_paths_dropped([TOP])                           # a structure goes to Topology
+        app.on_paths_dropped([TOP])  # a structure goes to Topology
         assert app.model.topology_filename == TOP
         stray = tmp_path / "notes.txt"
         stray.write_text("x")
@@ -200,14 +214,17 @@ def test_frames_are_requested_and_the_form_disabled_while_saving(monkeypatch, tm
 
     gate = threading.Event()
     original = view_model.SaveTopologyViewModel.save_topology
-    monkeypatch.setattr(view_model.SaveTopologyViewModel, "save_topology",
-                        lambda self, target: (gate.wait(10), original(self, target))[1])
+    monkeypatch.setattr(
+        view_model.SaveTopologyViewModel,
+        "save_topology",
+        lambda self, target: (gate.wait(10), original(self, target))[1],
+    )
     app = _loaded()
     try:
         app.save(str(tmp_path / "frame0.pdb"))
         assert app.running and app.animating()
         assert "Working…" in _draw(app).strings
-        app.save(str(tmp_path / "second.pdb"))                # a second press while busy is ignored
+        app.save(str(tmp_path / "second.pdb"))  # a second press while busy is ignored
         gate.set()
         _settle(app)
         assert not app.animating() and (tmp_path / "frame0.pdb").exists()
@@ -236,15 +253,19 @@ def test_the_guide_points_at_real_controls_and_waits():
 
         steps = app.tour.steps
         for target, button in (("trajectory", "trajectory_browse"), ("save", "save")):
-            index = next(i for i, s in enumerate(steps) if s.get("target", {}).get("name") == target)
+            index = next(
+                i for i, s in enumerate(steps) if s.get("target", {}).get("name") == target
+            )
             app.tour.start(index)
             assert app.tour.awaiting
-            assert steps[index]["title"] in " ".join(_draw(app, size, n=1).strings)   # the card is drawn
+            assert steps[index]["title"] in " ".join(
+                _draw(app, size, n=1).strings
+            )  # the card is drawn
             _draw(app, size, n=1, painter=PixelPainter)
             press(button)
             assert not app.tour.awaiting, target
             app.dialog = None
-        assert app.status == "Open a trajectory first."      # the save press reached the action
+        assert app.status == "Open a trajectory first."  # the save press reached the action
     finally:
         app.close()
 
@@ -255,7 +276,9 @@ def test_draws_empty_and_populated(size, tmp_path):
     app = SaveTopologyApp()
     try:
         strings = _draw(app, size).strings
-        assert {"Trajectory", "Topology", "💾  Save topology…", "Log", "📖  Guide", "❓  Help"} <= {s.strip() for s in strings}
+        assert {"Trajectory", "Topology", "💾  Save topology…", "Log", "📖  Guide", "❓  Help"} <= {
+            s.strip() for s in strings
+        }
         app.model.set_trajectory(TRAJ)
         app.model.set_topology(TOP)
         app.save(str(tmp_path / "frame0.pdb"))
@@ -263,7 +286,9 @@ def test_draws_empty_and_populated(size, tmp_path):
         strings = " ".join(_draw(app, size).strings)
         assert "Topology saved" in strings
         log = app.item_rects["log"]
-        assert log[1] + log[3] <= size[1] + 1 and log[3] > 100        # the log fills the window, inside it
+        assert (
+            log[1] + log[3] <= size[1] + 1 and log[3] > 100
+        )  # the log fills the window, inside it
     finally:
         app.close()
 
@@ -275,7 +300,7 @@ def test_settings_round_trip():
     assert (other.model.trajectory_filename, other.model.topology_filename) == (TRAJ, TOP)
     stale = SaveTopologyApp()
     stale.restore_settings({"trajectory_filename": "/no/such/file.dcd"})
-    assert stale.model.trajectory_filename == ""                # a moved file is not restored
+    assert stale.model.trajectory_filename == ""  # a moved file is not restored
 
 
 def test_help_opens_with_its_page():

@@ -69,7 +69,7 @@ def test_pointer_and_typing_reach_the_open_tool_in_its_own_coordinates(drv):
 def test_a_trajectory_dropped_on_the_window_fills_the_open_tools_field(drv):
     assert drv.drop(str(HG / "hgbp1_transition.dcd")) is True
     assert drv.app.children["Align"].model.trajectory_filename == str(HG / "hgbp1_transition.dcd")
-    assert f"Align: hgbp1_transition.dcd" in drv.draw(2).strings
+    assert "Align: hgbp1_transition.dcd" in drv.draw(2).strings
 
 
 def test_a_drop_nothing_takes_says_so_on_the_status_line(drv, tmp_path):
@@ -107,7 +107,16 @@ def test_help_button_opens_the_help_window_whose_buttons_work(drv):
 
 def test_the_help_text_names_the_tools_and_its_links_exist():
     text = (Path(__file__).parent.parent / "gui/help.md").read_text()
-    for word in ("Align", "Convert", "Energy Calc", "FRET", "Join", "Remove Clashed", "Rot Translate", "Save Topol"):
+    for word in (
+        "Align",
+        "Convert",
+        "Energy Calc",
+        "FRET",
+        "Join",
+        "Remove Clashed",
+        "Rot Translate",
+        "Save Topol",
+    ):
         assert word in text
     import re
 

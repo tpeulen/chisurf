@@ -60,7 +60,11 @@ def _loaded():
     app = RemoveClashesApp()
     app.model.set_trajectory(TRAJ)
     app.model.set_topology(TOP)
-    app.model.atom_selection, app.model.stride, app.model.min_distance = SELECTION, STRIDE, MIN_DISTANCE
+    app.model.atom_selection, app.model.stride, app.model.min_distance = (
+        SELECTION,
+        STRIDE,
+        MIN_DISTANCE,
+    )
     return app
 
 
@@ -97,14 +101,32 @@ def qt(tmp_path_factory):
     target = tmp_path_factory.mktemp("qt") / "clash_free.dcd"
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT, TRAJ, TOP, str(target), SELECTION, str(STRIDE),
-                           str(MIN_DISTANCE)], capture_output=True, text=True, timeout=300, env=env, cwd=str(REPO))
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            _QT,
+            TRAJ,
+            TOP,
+            str(target),
+            SELECTION,
+            str(STRIDE),
+            str(MIN_DISTANCE),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env=env,
+        cwd=str(REPO),
+    )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and ("No module named" in proc.stderr or "could not connect to display" in proc.stderr):
+    if line is None and (
+        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
+    ):
         pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
     # Any other failure is the Qt widget's own: skipping it hid a broken Qt host.
     assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    facts = json.loads(line[len("FACTS"):])
+    facts = json.loads(line[len("FACTS") :])
     facts["target"] = target
     return facts
 
@@ -118,7 +140,9 @@ def reference():
 
     source = md.load(TRAJ, top=TOP, stride=STRIDE)
     atoms = source.top.select(SELECTION)
-    keep = np.array([pdist(np.asarray(frame, dtype=float)[atoms]).min() >= MIN_DISTANCE for frame in source.xyz])
+    keep = np.array(
+        [pdist(np.asarray(frame, dtype=float)[atoms]).min() >= MIN_DISTANCE for frame in source.xyz]
+    )
     return source, keep
 
 
@@ -137,7 +161,10 @@ def test_a_save_keeps_what_the_qt_widget_keeps(qt, reference, tmp_path):
         app.begin_save()
         assert app.dialog.title == "Save clash-free trajectory"
         assert app.dialog.filters == [("DCD trajectory", ["*.dcd"])]
-        assert qt["asked"][-1] == ["Save clash-free trajectory", "DCD trajectory (*.dcd)"]   # the Qt dialog, fixed
+        assert qt["asked"][-1] == [
+            "Save clash-free trajectory",
+            "DCD trajectory (*.dcd)",
+        ]  # the Qt dialog, fixed
         assert app.dialog.filename == "hgbp1_transition_clash_free.dcd"
         target = tmp_path / "clash_free.dcd"
         _pick(app, target)
@@ -146,10 +173,15 @@ def test_a_save_keeps_what_the_qt_widget_keeps(qt, reference, tmp_path):
         assert keep.sum() == ours.n_frames == theirs.n_frames == 42 and len(keep) == 116
         assert np.asarray(ours.xyz) == pytest.approx(np.asarray(source.xyz)[keep], abs=1e-3)
         assert np.asarray(ours.xyz) == pytest.approx(np.asarray(theirs.xyz), abs=1e-4)
-        assert np.asarray(our_times) == pytest.approx(np.asarray(source.time)[keep])   # the gaps stay visible
+        assert np.asarray(our_times) == pytest.approx(
+            np.asarray(source.time)[keep]
+        )  # the gaps stay visible
         assert np.asarray(our_times) == pytest.approx(np.asarray(their_times))
         mine = _messages(app.model.log_text())
-        assert mine[-2:] == ["Kept 42 of 116 frames (min distance 3.5 Å)", f"Clash-free trajectory saved: {target}"]
+        assert mine[-2:] == [
+            "Kept 42 of 116 frames (min distance 3.5 Å)",
+            f"Clash-free trajectory saved: {target}",
+        ]
         assert "Kept 42 of 116 frames (min distance 3.5 Å)" in _messages(qt["log"])
     finally:
         app.close()
@@ -191,10 +223,17 @@ def test_every_spec_field_is_drawn_with_its_description(monkeypatch):
     app = RemoveClashesApp()
     try:
         _draw(app)
-        assert {f["attr"] for f in fields} == {"atom_selection", "stride", "min_distance"} <= set(app.form.rects)
+        assert (
+            {f["attr"] for f in fields}
+            == {"atom_selection", "stride", "min_distance"}
+            <= set(app.form.rects)
+        )
         assert all(f["description"] in tips for f in fields)
         _commit(app.model, next(f for f in fields if f["attr"] == "min_distance"), 3.2, app.form)
-        assert app.model.min_distance == pytest.approx(3.2) and app.export_settings()["min_distance"] == 3.2
+        assert (
+            app.model.min_distance == pytest.approx(3.2)
+            and app.export_settings()["min_distance"] == 3.2
+        )
     finally:
         app.close()
 
@@ -206,8 +245,11 @@ def test_frames_are_requested_and_the_form_disabled_while_filtering(monkeypatch,
 
     gate = threading.Event()
     original = view_model.RemoveClashesViewModel.save_clash_free
-    monkeypatch.setattr(view_model.RemoveClashesViewModel, "save_clash_free",
-                        lambda self, target: (gate.wait(10), original(self, target))[1])
+    monkeypatch.setattr(
+        view_model.RemoveClashesViewModel,
+        "save_clash_free",
+        lambda self, target: (gate.wait(10), original(self, target))[1],
+    )
     app = _loaded()
     try:
         app.save(str(tmp_path / "clash_free.dcd"))
@@ -228,7 +270,15 @@ def test_the_guide_points_at_real_controls_and_waits():
     try:
         _draw(app, size, painter=PixelPainter)
         keys = {app.tour._target_key(s.get("target")) for s in app.tour.steps} - {""}
-        assert keys == {"trajectory", "topology", "atom_selection", "stride", "min_distance", "save", "log"}
+        assert keys == {
+            "trajectory",
+            "topology",
+            "atom_selection",
+            "stride",
+            "min_distance",
+            "save",
+            "log",
+        }
         assert keys <= set(app.item_rects)
 
         def press(key):
@@ -241,9 +291,13 @@ def test_the_guide_points_at_real_controls_and_waits():
 
         steps = app.tour.steps
         for target, button in (("trajectory", "trajectory_browse"), ("save", "save")):
-            index = next(i for i, s in enumerate(steps) if s.get("target", {}).get("name") == target)
+            index = next(
+                i for i, s in enumerate(steps) if s.get("target", {}).get("name") == target
+            )
             app.tour.start(index)
-            assert app.tour.awaiting and steps[index]["title"] in " ".join(_draw(app, size, n=1).strings)
+            assert app.tour.awaiting and steps[index]["title"] in " ".join(
+                _draw(app, size, n=1).strings
+            )
             _draw(app, size, n=1, painter=PixelPainter)
             press(button)
             assert not app.tour.awaiting, target
@@ -259,7 +313,9 @@ def test_draws_empty_and_populated(size, tmp_path):
     app = RemoveClashesApp()
     try:
         strings = _draw(app, size).strings
-        assert {"💾  Save clash-free…", "Atom selection", "Stride", "Min distance", "Log"} <= {s.strip() for s in strings}
+        assert {"💾  Save clash-free…", "Atom selection", "Stride", "Min distance", "Log"} <= {
+            s.strip() for s in strings
+        }
         app = _loaded()
         app.save(str(tmp_path / "clash_free.dcd"))
         _settle(app)
@@ -275,8 +331,13 @@ def test_settings_round_trip():
     other = RemoveClashesApp()
     other.restore_settings(json.loads(json.dumps(app.export_settings())))
     m = other.model
-    assert (m.trajectory_filename, m.topology_filename, m.atom_selection, m.stride, m.min_distance) == (
-        TRAJ, TOP, SELECTION, STRIDE, MIN_DISTANCE)
+    assert (
+        m.trajectory_filename,
+        m.topology_filename,
+        m.atom_selection,
+        m.stride,
+        m.min_distance,
+    ) == (TRAJ, TOP, SELECTION, STRIDE, MIN_DISTANCE)
 
 
 def test_help_opens_with_its_page():

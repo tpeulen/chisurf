@@ -22,7 +22,7 @@ from emtk.testing import RecordingPainter
 REPO = next(p for p in Path(__file__).parents if (p / "pyproject.toml").exists())
 DATA = REPO / "test" / "data" / "atomic_coordinates" / "trajectory" / "hgbp1"
 SIZE = (800, 600)
-CTRL_A = 0x04000000      # the select-all modifier the drawn fields answer to (as the other click suites use it)
+CTRL_A = 0x04000000  # the select-all modifier the drawn fields answer to (as the other click suites use it)
 N_FRAMES = 8
 
 
@@ -46,7 +46,7 @@ def small_trajectory(tmp_path_factory):
     folder = tmp_path_factory.mktemp("traj_inputs")
     full = md.load(str(DATA / "hgbp1_transition.dcd"), top=str(DATA / "topol.pdb"))
     full[:N_FRAMES].save_dcd(str(folder / "small.dcd"))
-    full[N_FRAMES:2 * N_FRAMES].save_dcd(str(folder / "other.dcd"))
+    full[N_FRAMES : 2 * N_FRAMES].save_dcd(str(folder / "other.dcd"))
     shutil.copy(DATA / "topol.pdb", folder / "topol.pdb")
     (folder / "notes.txt").write_text("not a trajectory")
     (folder / "sub").mkdir()
@@ -99,7 +99,7 @@ class Ui:
         self.app.press(x, y, clicks=clicks)
         self.draw(1)
         self.app.release()
-        return self.draw(2)          # the frame that sees the release, then the one that shows its effect
+        return self.draw(2)  # the frame that sees the release, then the one that shows its effect
 
     def click(self, key_or_rect, fx=0.5, fy=0.5, clicks=1):
         """Press and release at a control's drawn rectangle (``item_rects`` key) or at an ``(x, y, w, h)``."""
@@ -175,7 +175,7 @@ class Ui:
     def save_dialog_type_name(self, name):
         """Type into the save dialog's name field (the field is the one showing the suggested file name)."""
         self.draw(2)
-        suggested = self.app.dialog.filename or "file name"          # the empty field shows its hint
+        suggested = self.app.dialog.filename or "file name"  # the empty field shows its hint
         self.click(self.text_rect(suggested), fx=0.3)
         assert self.app.io.want_capture_keyboard
         self.type_text(name)
@@ -202,7 +202,11 @@ def check_guide_and_help_buttons(make_app, size=SIZE, prev_step=3, close_step=3)
         ui.click("guide")
         assert ui.app.tour.active and ui.shown(f"Step 1 of {steps}")
         ui.press_text("Next ►")
-        assert ui.app.tour.step_idx == 1 and ui.shown(f"Step 2 of {steps}") and not ui.shown(f"Step 1 of {steps}")
+        assert (
+            ui.app.tour.step_idx == 1
+            and ui.shown(f"Step 2 of {steps}")
+            and not ui.shown(f"Step 1 of {steps}")
+        )
         ui.app.tour.start(prev_step)
         ui.draw(2)
         ui.press_text("◄ Prev")
@@ -244,7 +248,9 @@ def dead_tour_buttons(make_app, size=SIZE):
     return dead
 
 
-def check_browse_row(make_app, row, pick, other, folder, title, wrong=("notes.txt",), model_attr=None, size=SIZE):
+def check_browse_row(
+    make_app, row, pick, other, folder, title, wrong=("notes.txt",), model_attr=None, size=SIZE
+):
     """A row's ``…``: the dialog opens in *folder* (the working directory, set by the caller), lists only matching files, and every way out is clicked.
 
     ``pick`` is the file the row must take, ``other`` a file of the other kind (filtered out), ``title`` the dialog's
@@ -258,8 +264,10 @@ def check_browse_row(make_app, row, pick, other, folder, title, wrong=("notes.tx
         assert not ui.dialog_open
         ui.click(f"{row}_browse")
         assert ui.dialog_open and ui.shown(title) and ui.shown("Cancel")
-        assert ui.shown(pick.name) and not ui.shown(other.name) and not any(ui.shown(w) for w in wrong)
-        assert ui.shown("sub")                                       # folders are listed
+        assert (
+            ui.shown(pick.name) and not ui.shown(other.name) and not any(ui.shown(w) for w in wrong)
+        )
+        assert ui.shown("sub")  # folders are listed
         # Open with nothing selected: the dialog stays and says so
         ui.press_text("Open")
         assert ui.dialog_open and ui.shown("Select a file first.") and not getattr(app.model, attr)
@@ -305,8 +313,19 @@ def check_row_is_read_only(make_app, row, folder, size=SIZE):
         ui.app.close()
 
 
-def check_action_flow(make_app, folder, tmp_path, load, suggested, title, precondition, cancelled, verify,
-                      log_names_target=True, size=SIZE):
+def check_action_flow(
+    make_app,
+    folder,
+    tmp_path,
+    load,
+    suggested,
+    title,
+    precondition,
+    cancelled,
+    verify,
+    log_names_target=True,
+    size=SIZE,
+):
     """The action button, from an empty window to a written file, every dialog button clicked.
 
     ``load(ui)`` puts the inputs in with real input (drops or dialogs); ``verify(path)`` checks the written file.
@@ -338,7 +357,9 @@ def check_action_flow(make_app, folder, tmp_path, load, suggested, title, precon
         assert target.exists(), app.status
         verify(target)
         if log_names_target:
-            assert ui.shown(target.name) or any(target.name in line for line in app.model.log_text())
+            assert ui.shown(target.name) or any(
+                target.name in line for line in app.model.log_text()
+            )
         # a second save onto the same file asks first
         stamp = target.stat().st_mtime_ns
         ui.click(key)
@@ -363,6 +384,7 @@ def check_action_flow(make_app, folder, tmp_path, load, suggested, title, precon
 
 def spec_description(app, attr):
     """The ``description`` the app's spec declares for field *attr* (what its tooltip must say)."""
+
     def walk(sections):
         for section in sections:
             if section.get("attr") == attr:
@@ -373,7 +395,9 @@ def spec_description(app, attr):
         return None
 
     extra = [getattr(app, name) for name in ("_weight_spec", "_choice_spec") if hasattr(app, name)]
-    extra += list(getattr(app, "_specs", {}).values())               # a tool with an editor built from a registry
+    extra += list(
+        getattr(app, "_specs", {}).values()
+    )  # a tool with an editor built from a registry
     for spec in [app.spec, *extra]:
         found = walk(spec["sections"])
         if found:
@@ -389,7 +413,9 @@ def hover_tooltip(ui, key_or_rect, text, wait=0.15, frames=8):
     text = text[:24]
     rect = ui.app.item_rects[key_or_rect] if isinstance(key_or_rect, str) else key_or_rect
     x, y, w, h = rect
-    ui.app.pointer_move(1, 1)                  # a pointer that already rests on the item (after a popup) shows nothing
+    ui.app.pointer_move(
+        1, 1
+    )  # a pointer that already rests on the item (after a popup) shows nothing
     ui.draw(2)
     ui.app.pointer_move(x + w / 2, y + h / 2)
     for _ in range(frames):
@@ -416,8 +442,19 @@ def clear_field(ui, key, enter=False):
         ui.click("log", fy=0.9)
 
 
-def check_number_field(make_app, key, start, typed, minimum, maximum, step, as_type=float, size=SIZE, model_of=None,
-                       prepare=None):
+def check_number_field(
+    make_app,
+    key,
+    start,
+    typed,
+    minimum,
+    maximum,
+    step,
+    as_type=float,
+    size=SIZE,
+    model_of=None,
+    prepare=None,
+):
     """One spin field: typed value + Enter, click-away commit, rejected text, both limits, arrows, the tooltip.
 
     The Qt spin boxes clamp to the spec's range and step by ``step``; the arrows stop at the limits.
@@ -432,13 +469,15 @@ def check_number_field(make_app, key, start, typed, minimum, maximum, step, as_t
         assert hover_tooltip(ui, key, spec_description(ui.app, key))
         ui.type_into(key, str(typed))
         assert getattr(model, attr) == as_type(typed) and ui.shown(str(typed))
-        ui.type_into(key, "not a number")                   # text that is no number leaves the value
+        ui.type_into(key, "not a number")  # text that is no number leaves the value
         assert getattr(model, attr) == as_type(typed)
-        ui.type_into(key, str(maximum * 10 + 1))            # above the range: the maximum, as the Qt box clamps
+        ui.type_into(
+            key, str(maximum * 10 + 1)
+        )  # above the range: the maximum, as the Qt box clamps
         assert getattr(model, attr) == maximum
-        ui.type_into(key, str(minimum - 5))                 # below it: the minimum
+        ui.type_into(key, str(minimum - 5))  # below it: the minimum
         assert getattr(model, attr) == minimum
-        ui.arrow(key, -1)                                   # an arrow at the limit stays
+        ui.arrow(key, -1)  # an arrow at the limit stays
         assert getattr(model, attr) == minimum
         ui.arrow(key, +1)
         assert getattr(model, attr) == pytest.approx(minimum + step)
@@ -504,7 +543,9 @@ def check_log_scrolls_with_the_wheel(make_app, size=SIZE):
     ui = Ui(make_app(), size)
     try:
         for index in range(60):
-            ui.app.model.append_log(f"line {index}")             # the log's content is data, the scrolling is input
+            ui.app.model.append_log(
+                f"line {index}"
+            )  # the log's content is data, the scrolling is input
         ui.draw(3)
 
         def first():
@@ -514,10 +555,10 @@ def check_log_scrolls_with_the_wheel(make_app, size=SIZE):
         x, y, w, h = ui.app.item_rects["log"]
         ui.app.pointer_move(x + w / 2, y + h / 2)
         ui.draw(1)
-        ui.app.wheel(x + w / 2, y + h / 2, -5)                    # a turn down: later lines come into view
+        ui.app.wheel(x + w / 2, y + h / 2, -5)  # a turn down: later lines come into view
         ui.draw(3)
         scrolled_down = first()
-        ui.app.wheel(x + w / 2, y + h / 2, 3)                     # and back
+        ui.app.wheel(x + w / 2, y + h / 2, 3)  # and back
         ui.draw(3)
         return at_start, scrolled_down, first()
     finally:

@@ -89,7 +89,9 @@ class EditorModel:
             app.status = f"{type(exc).__name__}: {exc}"
             return
         app.status = ""
-        app._editor_values.pop(name, None)       # the added editor belongs to the universe: a fresh one, as in Qt
+        app._editor_values.pop(
+            name, None
+        )  # the added editor belongs to the universe: a fresh one, as in Qt
 
 
 def editor_spec(name: str) -> dict:
@@ -97,11 +99,17 @@ def editor_spec(name: str) -> dict:
     spec = get_spec(name)
     sections: list[dict] = []
     toggles: list[dict] = []
-    for param in (spec.params if spec else ()):
+    for param in spec.params if spec else ():
         tip = param.tip or param.label
         if param.kind in ("float", "int"):
-            section = {"type": "value", "attr": param.attr, "label": param.label, "kind": param.kind,
-                       "style": "spin", "description": tip}
+            section = {
+                "type": "value",
+                "attr": param.attr,
+                "label": param.label,
+                "kind": param.kind,
+                "style": "spin",
+                "description": tip,
+            }
             if param.minimum is not None:
                 section["minimum"] = param.minimum
             if param.maximum is not None:
@@ -112,10 +120,18 @@ def editor_spec(name: str) -> dict:
                 section["decimals"] = 3 if (param.step or 1.0) < 0.1 else 2
             sections.append(section)
         elif param.kind == "bool":
-            toggles.append({"type": "toggle", "attr": param.attr, "label": param.label, "description": tip})
+            toggles.append(
+                {"type": "toggle", "attr": param.attr, "label": param.label, "description": tip}
+            )
         else:
-            sections.append({"type": "custom", "key": f"file:{param.attr}", "label": param.label,
-                             "description": tip})
+            sections.append(
+                {
+                    "type": "custom",
+                    "key": f"file:{param.attr}",
+                    "label": param.label,
+                    "description": tip,
+                }
+            )
     if toggles:
         sections.append({"type": "panel", "title": "", "n_col": len(toggles), "sections": toggles})
     return {"sections": sections}
@@ -144,30 +160,57 @@ class PotentialEnergyApp(TrajToolApp):
             done=lambda count: f"Processed {count} frame(s).",
         )
         super().__init__(
-            model or PotentialEnergyViewModel(), HERE, "calculate_potential.view.json", "potential_energy_setup",
+            model or PotentialEnergyViewModel(),
+            HERE,
+            "calculate_potential.view.json",
+            "potential_energy_setup",
             "Potential energy",
-            [trajectory_field(attr="trajectory_file"),
-             topology_field()],
-            process, action_key="potential_energy_run",
+            [trajectory_field(attr="trajectory_file"), topology_field()],
+            process,
+            action_key="potential_energy_run",
         )
         self.editor_form.on_used = self.tour.notify_used
         for section in self.spec["sections"]:
-            if section.get("type") == "table":      # a double click removes a row (Qt); so does Delete
+            if section.get("type") == "table":  # a double click removes a row (Qt); so does Delete
                 section.setdefault("delete_call", "remove_potential_activated")
-        self._weight_spec = {"sections": [{
-            "type": "value", "attr": "potential_weight", "label": "Weight", "kind": "float", "style": "spin",
-            "minimum": -1e6, "maximum": 1e6, "step": 1.0, "decimals": 3,
-            "description": "Scaling factor applied to the next potential added.",
-        }]}
-        self._choice_spec = {"sections": [{
-            "type": "choice", "attr": "potential_type", "label": "Potential", "options": potential_names(),
-            "description": "Type of potential to configure and add.",
-        }, {
-            "type": "button_row", "weight": 0, "buttons": [{
-                "action": "add", "label": "Add",
-                "description": "Add the configured potential to the list of used potentials.",
-            }],
-        }]}
+        self._weight_spec = {
+            "sections": [
+                {
+                    "type": "value",
+                    "attr": "potential_weight",
+                    "label": "Weight",
+                    "kind": "float",
+                    "style": "spin",
+                    "minimum": -1e6,
+                    "maximum": 1e6,
+                    "step": 1.0,
+                    "decimals": 3,
+                    "description": "Scaling factor applied to the next potential added.",
+                }
+            ]
+        }
+        self._choice_spec = {
+            "sections": [
+                {
+                    "type": "choice",
+                    "attr": "potential_type",
+                    "label": "Potential",
+                    "options": potential_names(),
+                    "description": "Type of potential to configure and add.",
+                },
+                {
+                    "type": "button_row",
+                    "weight": 0,
+                    "buttons": [
+                        {
+                            "action": "add",
+                            "label": "Add",
+                            "description": "Add the configured potential to the list of used potentials.",
+                        }
+                    ],
+                },
+            ]
+        }
         self.layout_spec(self._weight_spec)
         self.layout_spec(self._choice_spec)
         self._editors_padded = False
@@ -211,9 +254,11 @@ class PotentialEnergyApp(TrajToolApp):
         if spec is None:
             spec = self._specs[name] = self.layout_spec(editor_spec(name))
             self.pad_labels(spec["sections"])
-            self.editor_form.custom = {f"file:{p.attr}": self._draw_file_param(p)
-                                       for p in (get_spec(name).params if get_spec(name) else ())
-                                       if p.kind == "file"}
+            self.editor_form.custom = {
+                f"file:{p.attr}": self._draw_file_param(p)
+                for p in (get_spec(name).params if get_spec(name) else ())
+                if p.kind == "file"
+            }
         draw_form(self._choice_spec, self.editor, self.editor_form)
         if spec["sections"]:
             draw_form(spec, self.editor, self.editor_form)
@@ -225,6 +270,7 @@ class PotentialEnergyApp(TrajToolApp):
 
     def _draw_file_param(self, param):
         """A potential file row: the path (typed or chosen) and its ``…``."""
+
         def draw(section, model, state, width) -> None:
             values = self._editor_values.setdefault(self.editor.potential_type, {})
             label_w = self.label_column()
@@ -232,8 +278,9 @@ class PotentialEnergyApp(TrajToolApp):
             im.text(param.label)
             im.same_line(label_w)
             im.set_next_item_width(max(80.0, width - label_w - button_w - 8.0))
-            changed, text = im.input_text(f"##{param.attr}", str(values.get(param.attr, param.default)),
-                                          elide_start=True)
+            changed, text = im.input_text(
+                f"##{param.attr}", str(values.get(param.attr, param.default)), elide_start=True
+            )
             im.set_item_tooltip(param.tip or param.label)
             self.remember(param.attr)
             if changed:
@@ -243,22 +290,34 @@ class PotentialEnergyApp(TrajToolApp):
                 current = str(values.get(param.attr, param.default) or "")
                 from emtk.file_dialog import FileDialog
 
-                self._open_dialog(FileDialog(f"Open {param.label}", mode="open", filters=FILE_FILTERS,
-                                             directory=os.path.dirname(current) or None),
-                                  lambda path, attr=param.attr: self._editor_values.setdefault(
-                                      self.editor.potential_type, {}).__setitem__(attr, path))
+                self._open_dialog(
+                    FileDialog(
+                        f"Open {param.label}",
+                        mode="open",
+                        filters=FILE_FILTERS,
+                        directory=os.path.dirname(current) or None,
+                    ),
+                    lambda path, attr=param.attr: self._editor_values.setdefault(
+                        self.editor.potential_type, {}
+                    ).__setitem__(attr, path),
+                )
             im.set_item_tooltip(f"Choose the {param.label.lower()} file.")
             self.remember(f"{param.attr}_browse")
+
         return draw
 
     # -- persistence ------------------------------------------------------------------------------------- #
     def export_settings(self) -> dict:
         settings = super().export_settings()
-        settings.update({
-            "potential_weight": float(self.model.potential_weight),
-            "selected_potential_index": int(self.selected_potential_index),
-            "editor_values": {name: dict(values) for name, values in self._editor_values.items()},
-        })
+        settings.update(
+            {
+                "potential_weight": float(self.model.potential_weight),
+                "selected_potential_index": int(self.selected_potential_index),
+                "editor_values": {
+                    name: dict(values) for name, values in self._editor_values.items()
+                },
+            }
+        )
         return settings
 
     def restore_settings(self, settings: dict) -> None:

@@ -21,8 +21,10 @@ __all__ = ["AlignTrajectoryWidget"]
 def __getattr__(attribute):
     if attribute == "AlignTrajectoryWidget":
         from chisurf.plugins.traj.traj_align.widget import AlignTrajectoryWidget
+
         return AlignTrajectoryWidget
     raise AttributeError(attribute)
+
 
 if __name__ == "plugin":
     window = __getattr__("AlignTrajectoryWidget")()

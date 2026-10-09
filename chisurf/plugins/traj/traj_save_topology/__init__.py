@@ -24,6 +24,7 @@ name = "Structure:Trajectory:Save Topol"
 def __getattr__(attribute):
     if attribute == "SaveTopology":
         from chisurf.plugins.traj.traj_save_topology.widget import SaveTopology
+
         return SaveTopology
     raise AttributeError(attribute)
 

@@ -23,6 +23,7 @@ name = "Structure:Trajectory:Join"
 def __getattr__(attribute):
     if attribute == "JoinTrajectoriesWidget":
         from chisurf.plugins.traj.traj_join.widget import JoinTrajectoriesWidget
+
         return JoinTrajectoriesWidget
     raise AttributeError(attribute)
 

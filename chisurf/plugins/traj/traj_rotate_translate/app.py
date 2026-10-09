@@ -20,10 +20,12 @@ from .view_model import RotateTranslateViewModel
 
 HERE = pathlib.Path(__file__).parent
 WARNING = (1.0, 0.75, 0.3, 1.0)
-CELL_WIDTH = NUMBER_WIDTH     # one matrix / translation cell lines up with the stride field below it
+CELL_WIDTH = NUMBER_WIDTH  # one matrix / translation cell lines up with the stride field below it
 
-MATRIX_TIP = ("The 3x3 rotation matrix. The coordinates of every frame are multiplied by this matrix; "
-              "the user must ensure it is a valid rotation matrix.")
+MATRIX_TIP = (
+    "The 3x3 rotation matrix. The coordinates of every frame are multiplied by this matrix; "
+    "the user must ensure it is a valid rotation matrix."
+)
 TRANSLATION_TIP = "Added to every coordinate after the rotation, in Ångström."
 
 SAVE = SaveAction(
@@ -51,10 +53,16 @@ class RotateTranslateApp(TrajToolApp):
     """The Rotate/Translate-Trajectory window."""
 
     def __init__(self, model: RotateTranslateViewModel | None = None) -> None:
-        self._typed: dict[str, str] = {}                  # what a cell shows while it is being typed
-        super().__init__(model or RotateTranslateViewModel(), HERE, "rotate_translate.view.json",
-                         "traj_rotate_translate_io", "Rotate / translate trajectory",
-                         [trajectory_field(), topology_field()], SAVE)
+        self._typed: dict[str, str] = {}  # what a cell shows while it is being typed
+        super().__init__(
+            model or RotateTranslateViewModel(),
+            HERE,
+            "rotate_translate.view.json",
+            "traj_rotate_translate_io",
+            "Rotate / translate trajectory",
+            [trajectory_field(), topology_field()],
+            SAVE,
+        )
 
     def _cell(self, name: str, value: float, width: float, tooltip: str) -> float | None:
         """One typed number cell; the new value on Enter or when the click goes elsewhere, else ``None``.
@@ -64,8 +72,12 @@ class RotateTranslateApp(TrajToolApp):
         """
         shown = self._typed.get(name, f"{value:.6g}")
         im.set_next_item_width(width)
-        entered, text = im.input_text(f"##{name}", shown, "",
-                                      im.InputTextFlags.ENTER_RETURNS_TRUE | im.InputTextFlags.AUTO_SELECT_ALL)
+        entered, text = im.input_text(
+            f"##{name}",
+            shown,
+            "",
+            im.InputTextFlags.ENTER_RETURNS_TRUE | im.InputTextFlags.AUTO_SELECT_ALL,
+        )
         im.set_item_tooltip(tooltip)
         if text != shown:
             self._typed[name] = text
@@ -103,8 +115,10 @@ class RotateTranslateApp(TrajToolApp):
                     matrix[i, j] = value
                     self.model.rotation_matrix = matrix
                     self.tour.notify_used("rotation_matrix")
-        self.remember("rotation_matrix", (top[0], top[1], 3 * cell + 2 * spacing,
-                                          im.get_cursor_screen_pos()[1] - top[1]))
+        self.remember(
+            "rotation_matrix",
+            (top[0], top[1], 3 * cell + 2 * spacing, im.get_cursor_screen_pos()[1] - top[1]),
+        )
         im.text("Translation [Ang.]")
         im.same_line(label_w)
         top = im.get_cursor_screen_pos()
@@ -117,7 +131,9 @@ class RotateTranslateApp(TrajToolApp):
                 vector[k] = value
                 self.model.translation_vector = vector
                 self.tour.notify_used("translation")
-        self.remember("translation", (top[0], top[1], 3 * cell + 2 * spacing, im.get_frame_height()))
+        self.remember(
+            "translation", (top[0], top[1], 3 * cell + 2 * spacing, im.get_frame_height())
+        )
         problem = rotation_problem(self.model.rotation_matrix)
         if problem:
             im.text_colored(WARNING, problem)
@@ -125,7 +141,9 @@ class RotateTranslateApp(TrajToolApp):
     def export_settings(self) -> dict:
         settings = super().export_settings()
         settings["rotation_matrix"] = np.asarray(self.model.rotation_matrix, dtype=float).tolist()
-        settings["translation_vector"] = np.asarray(self.model.translation_vector, dtype=float).tolist()
+        settings["translation_vector"] = np.asarray(
+            self.model.translation_vector, dtype=float
+        ).tolist()
         return settings
 
     def restore_settings(self, settings: dict) -> None:
@@ -133,7 +151,9 @@ class RotateTranslateApp(TrajToolApp):
         if np.shape(settings.get("rotation_matrix")) == (3, 3):
             self.model.rotation_matrix = np.asarray(settings["rotation_matrix"], dtype=np.float32)
         if np.shape(settings.get("translation_vector")) == (3,):
-            self.model.translation_vector = np.asarray(settings["translation_vector"], dtype=np.float32)
+            self.model.translation_vector = np.asarray(
+                settings["translation_vector"], dtype=np.float32
+            )
 
 
 def make_app(**kwargs) -> RotateTranslateApp:

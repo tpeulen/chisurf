@@ -110,14 +110,22 @@ def qt(tmp_path_factory):
     target = tmp_path_factory.mktemp("qt")
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT, TRAJ, TOP, str(target)], capture_output=True, text=True,
-                          timeout=300, env=env, cwd=str(REPO))
+    proc = subprocess.run(
+        [sys.executable, "-c", _QT, TRAJ, TOP, str(target)],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env=env,
+        cwd=str(REPO),
+    )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and ("No module named" in proc.stderr or "could not connect to display" in proc.stderr):
+    if line is None and (
+        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
+    ):
         pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
     # Any other failure is the Qt widget's own: skipping it hid a broken Qt host.
     assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    facts = json.loads(line[len("FACTS"):])
+    facts = json.loads(line[len("FACTS") :])
     facts["target"] = target
     return facts
 
@@ -127,7 +135,7 @@ def test_a_range_converts_as_the_qt_widget_does_and_keeps_its_last_frame(qt, sou
     app = _run(_loaded(tmp_path))
     try:
         ours, theirs = _read(tmp_path / "frames.dcd"), _read(qt["target"] / "frames.dcd")
-        np.testing.assert_allclose(ours, source[[10, 20, 30, 40, 50]], atol=1e-3)   # 50 included now
+        np.testing.assert_allclose(ours, source[[10, 20, 30, 40, 50]], atol=1e-3)  # 50 included now
         np.testing.assert_allclose(ours, theirs, atol=1e-4)
         assert app.notice == "Conversion done!" == qt["told"][-1][1]
         assert "Wrote 5 frames of 5235 atoms" in _messages(app.model.log_text())
@@ -148,9 +156,13 @@ def test_split_writes_one_pdb_per_selected_frame_named_by_its_source_frame(sourc
     app = _run(_loaded(tmp_path, first=0, last=-1, stride=100, split=True, ending=".pdb"))
     try:
         names = sorted(p.name for p in tmp_path.glob("frames_*.pdb"))
-        assert names == [f"frames_{i:08d}.pdb" for i in (0, 100, 200, 300, 400)]   # the stride is honoured
+        assert names == [
+            f"frames_{i:08d}.pdb" for i in (0, 100, 200, 300, 400)
+        ]  # the stride is honoured
         for i in (0, 400):
-            np.testing.assert_allclose(_read(tmp_path / f"frames_{i:08d}.pdb", top=None)[0], source[i], atol=1e-3)
+            np.testing.assert_allclose(
+                _read(tmp_path / f"frames_{i:08d}.pdb", top=None)[0], source[i], atol=1e-3
+            )
         assert app.notice == "Conversion done!"
     finally:
         app.close()
@@ -164,9 +176,16 @@ def test_a_multi_frame_pdb_holds_one_model_per_frame(source, tmp_path):
         assert len(models) == 3
         # Read here from the fixed PDB columns: trajectory_data.load takes a structure file as one frame
         # (known issue), so it cannot be the reference for a multi-model file.
-        xyz = np.array([[[float(line[30:38]), float(line[38:46]), float(line[46:54])]
-                         for line in block.splitlines() if line.startswith(("ATOM", "HETATM"))]
-                        for block in models])
+        xyz = np.array(
+            [
+                [
+                    [float(line[30:38]), float(line[38:46]), float(line[46:54])]
+                    for line in block.splitlines()
+                    if line.startswith(("ATOM", "HETATM"))
+                ]
+                for block in models
+            ]
+        )
         np.testing.assert_allclose(xyz, source[[0, 10, 20]], atol=1e-3)
     finally:
         app.close()
@@ -187,7 +206,7 @@ def test_a_folder_of_pdbs_is_read_as_consecutive_frames(source, tmp_path):
         app.model.use_folder = True
         trajectory_row = next(p for p in app.paths if p.key == "trajectory")
         app.browse(trajectory_row)
-        assert app.dialog.mode == "folder"                       # the row follows the toggle
+        assert app.dialog.mode == "folder"  # the row follows the toggle
         app.dialog.draw = lambda: [str(folder)]
         _draw(app, n=1)
         assert app.model.trajectory == str(folder)
@@ -208,13 +227,15 @@ def test_nothing_chosen_and_a_failure_answer_as_the_qt_widget_does(qt, tmp_path)
         assert [app.status] == [qt["told"][0][1]] == ["Choose a trajectory first."]
         app.model.set_trajectory(TRAJ)
         app.begin_save()
-        assert app.status == "Choose a target folder first." and not app.running   # never into the cwd
+        assert (
+            app.status == "Choose a target folder first." and not app.running
+        )  # never into the cwd
         app = _loaded(tmp_path, first=100, last=50)
         _run(app)
         [(title, text)] = qt["errors"]
         assert title == "Conversion failed" and app.status == f"Conversion failed: {text}"
         assert app.status == "Conversion failed: The frame range selects no frames."
-        assert _draw(app).strings.count(app.status) == 1                       # shown, and once
+        assert _draw(app).strings.count(app.status) == 1  # shown, and once
     finally:
         app.close()
 
@@ -235,7 +256,7 @@ def test_every_spec_field_is_drawn_with_its_description(monkeypatch):
         names = {"use_folder", "first_frame", "last_frame", "stride", "filename", "ending", "split"}
         assert {f["attr"] for f in fields} == names and names <= set(app.form.rects)
         assert all(f["description"] in tips for f in fields)
-        assert {"Input.fold", "Output.fold"} <= set(app.form.rects)                # the panels fold, as in Qt
+        assert {"Input.fold", "Output.fold"} <= set(app.form.rects)  # the panels fold, as in Qt
         _commit(app.model, next(f for f in fields if f["attr"] == "ending"), ".pdb", app.form)
         assert app.model.ending == ".pdb" and app.export_settings()["ending"] == ".pdb"
     finally:
@@ -250,16 +271,19 @@ def test_frames_are_requested_and_the_form_disabled_while_converting(monkeypatch
     gate = threading.Event()
     runs = []
     original = view_model.MDConverterViewModel.convert
-    monkeypatch.setattr(view_model.MDConverterViewModel, "convert",
-                        lambda self: (runs.append(1), gate.wait(10), original(self))[2])
+    monkeypatch.setattr(
+        view_model.MDConverterViewModel,
+        "convert",
+        lambda self: (runs.append(1), gate.wait(10), original(self))[2],
+    )
     app = _loaded(tmp_path)
     try:
         app.begin_save()
         assert app.running and app.animating() and "Working…" in _draw(app).strings
-        app.begin_save()                                       # a second press while busy is ignored
+        app.begin_save()  # a second press while busy is ignored
         gate.set()
         _settle(app)
-        time.sleep(0.3)                                        # a queued second run would have started by now
+        time.sleep(0.3)  # a queued second run would have started by now
         assert app.notice == "Conversion done!" and not app.animating() and len(runs) == 1
     finally:
         gate.set()
@@ -283,7 +307,16 @@ def test_the_guide_points_at_real_controls_and_waits():
     try:
         _draw(app, size, painter=PixelPainter)
         keys = {app.tour._target_key(s.get("target")) for s in app.tour.steps} - {""}
-        assert keys == {"topology", "trajectory", "use_folder", "target", "first_frame", "split", "convert", "log"}
+        assert keys == {
+            "topology",
+            "trajectory",
+            "use_folder",
+            "target",
+            "first_frame",
+            "split",
+            "convert",
+            "log",
+        }
         assert keys <= set(app.item_rects)
 
         def press(key):
@@ -296,9 +329,13 @@ def test_the_guide_points_at_real_controls_and_waits():
 
         steps = app.tour.steps
         for target, button in (("target", "target_browse"), ("convert", "convert")):
-            index = next(i for i, s in enumerate(steps) if s.get("target", {}).get("name") == target)
+            index = next(
+                i for i, s in enumerate(steps) if s.get("target", {}).get("name") == target
+            )
             app.tour.start(index)
-            assert app.tour.awaiting and steps[index]["title"] in " ".join(_draw(app, size, n=1).strings)
+            assert app.tour.awaiting and steps[index]["title"] in " ".join(
+                _draw(app, size, n=1).strings
+            )
             _draw(app, size, n=1, painter=PixelPainter)
             press(button)
             assert not app.tour.awaiting, target
@@ -314,11 +351,21 @@ def test_draws_empty_and_populated(size, tmp_path):
     app = MDConverterApp()
     try:
         strings = _draw(app, size).strings
-        assert {"Topology", "Trajectory", "Target folder", "▶ Convert", "Log", "Input", "Output"} <= {s.strip() for s in strings}
+        assert {
+            "Topology",
+            "Trajectory",
+            "Target folder",
+            "▶ Convert",
+            "Log",
+            "Input",
+            "Output",
+        } <= {s.strip() for s in strings}
         app = _run(_loaded(tmp_path))
         strings = _draw(app, size).strings
         assert "Conversion done!" in strings
-        assert any(line.endswith("Wrote 5 frames of 5235 atoms") for line in strings)     # the log is drawn
+        assert any(
+            line.endswith("Wrote 5 frames of 5235 atoms") for line in strings
+        )  # the log is drawn
         log = app.item_rects["log"]
         assert log[1] + log[3] <= size[1] + 1 and log[3] > 80
     finally:
@@ -330,8 +377,16 @@ def test_settings_round_trip(tmp_path):
     other = MDConverterApp()
     other.restore_settings(json.loads(json.dumps(app.export_settings())))
     m = other.model
-    assert (m.trajectory, m.topology_path, m.target_directory, m.first_frame, m.last_frame, m.stride, m.split,
-            m.ending) == (TRAJ, TOP, str(tmp_path), 10, 50, 10, True, ".pdb")
+    assert (
+        m.trajectory,
+        m.topology_path,
+        m.target_directory,
+        m.first_frame,
+        m.last_frame,
+        m.stride,
+        m.split,
+        m.ending,
+    ) == (TRAJ, TOP, str(tmp_path), 10, 50, 10, True, ".pdb")
 
 
 def test_help_opens_with_its_page():

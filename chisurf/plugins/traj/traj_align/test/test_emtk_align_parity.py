@@ -104,14 +104,22 @@ def qt(tmp_path_factory):
     target = tmp_path_factory.mktemp("qt") / "aligned.dcd"
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT, TRAJ, TOP, str(target), FIT, str(STRIDE)], capture_output=True,
-                          text=True, timeout=300, env=env, cwd=str(REPO))
+    proc = subprocess.run(
+        [sys.executable, "-c", _QT, TRAJ, TOP, str(target), FIT, str(STRIDE)],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env=env,
+        cwd=str(REPO),
+    )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and ("No module named" in proc.stderr or "could not connect to display" in proc.stderr):
+    if line is None and (
+        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
+    ):
         pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
     # Any other failure is the Qt widget's own: skipping it hid a broken Qt host.
     assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    facts = json.loads(line[len("FACTS"):])
+    facts = json.loads(line[len("FACTS") :])
     facts["target"] = target
     return facts
 
@@ -123,7 +131,7 @@ def reference():
 
     source = md.load(TRAJ, top=TOP, stride=STRIDE)
     frame0 = md.load_frame(TRAJ, 0, top=TOP)
-    aligned = md.load(TRAJ, top=TOP, stride=STRIDE)          # superpose works in place
+    aligned = md.load(TRAJ, top=TOP, stride=STRIDE)  # superpose works in place
     return source, aligned.superpose(frame0, frame=0, atom_indices=np.array([0, 1, 2, 3], np.int32))
 
 
@@ -140,11 +148,11 @@ def test_a_save_writes_what_the_qt_widget_writes(qt, reference, tmp_path):
         _settle(app)
         ours, theirs = _read(target), _read(qt["target"])
         source, aligned = reference
-        assert ours.n_frames == theirs.n_frames == source.n_frames == 116      # 464 frames at stride 4
+        assert ours.n_frames == theirs.n_frames == source.n_frames == 116  # 464 frames at stride 4
         assert np.asarray(ours.xyz) == pytest.approx(np.asarray(theirs.xyz), abs=1e-4)
         assert np.asarray(ours.xyz) == pytest.approx(np.asarray(aligned.xyz), abs=1e-3)
         moved = np.abs(np.asarray(source.xyz) - np.asarray(aligned.xyz)).max()
-        assert moved > 1.0                                    # the alignment did move the frames
+        assert moved > 1.0  # the alignment did move the frames
         assert _messages(app.model.log_text())[-1] == f"Aligned trajectory saved: {target}"
         assert _messages(qt["log"]).count(f"Aligning {TRAJ} (stride={STRIDE})") >= 1
     finally:
@@ -218,13 +226,16 @@ def test_frames_are_requested_and_the_form_disabled_while_aligning(monkeypatch, 
 
     gate = threading.Event()
     original = view_model.AlignTrajectoryViewModel.save_aligned
-    monkeypatch.setattr(view_model.AlignTrajectoryViewModel, "save_aligned",
-                        lambda self, target: (gate.wait(10), original(self, target))[1])
+    monkeypatch.setattr(
+        view_model.AlignTrajectoryViewModel,
+        "save_aligned",
+        lambda self, target: (gate.wait(10), original(self, target))[1],
+    )
     app = _loaded()
     try:
         app.save(str(tmp_path / "aligned.dcd"))
         assert app.running and app.animating() and "Working…" in _draw(app).strings
-        app.save(str(tmp_path / "second.dcd"))                # a second press while busy is ignored
+        app.save(str(tmp_path / "second.dcd"))  # a second press while busy is ignored
         gate.set()
         _settle(app)
         assert (tmp_path / "aligned.dcd").exists() and not app.animating()
@@ -254,7 +265,9 @@ def test_the_guide_points_at_real_controls_and_waits():
 
         steps = app.tour.steps
         for target, button in (("topology", "topology_browse"), ("save", "save")):
-            index = next(i for i, s in enumerate(steps) if s.get("target", {}).get("name") == target)
+            index = next(
+                i for i, s in enumerate(steps) if s.get("target", {}).get("name") == target
+            )
             app.tour.start(index)
             assert app.tour.awaiting
             assert steps[index]["title"] in " ".join(_draw(app, size, n=1).strings)
@@ -272,7 +285,14 @@ def test_draws_empty_and_populated(size, tmp_path):
     app = AlignTrajectoryApp()
     try:
         strings = _draw(app, size).strings
-        assert {"Trajectory", "Topology", "💾  Save aligned…", "Atom selection", "Stride", "Log"} <= {s.strip() for s in strings}
+        assert {
+            "Trajectory",
+            "Topology",
+            "💾  Save aligned…",
+            "Atom selection",
+            "Stride",
+            "Log",
+        } <= {s.strip() for s in strings}
         app = _loaded()
         app.save(str(tmp_path / "aligned.dcd"))
         _settle(app)
@@ -288,7 +308,12 @@ def test_settings_round_trip():
     other = AlignTrajectoryApp()
     other.restore_settings(json.loads(json.dumps(app.export_settings())))
     m = other.model
-    assert (m.trajectory_filename, m.topology_filename, m.atom_selection, m.stride) == (TRAJ, TOP, FIT, STRIDE)
+    assert (m.trajectory_filename, m.topology_filename, m.atom_selection, m.stride) == (
+        TRAJ,
+        TOP,
+        FIT,
+        STRIDE,
+    )
 
 
 def test_help_opens_with_its_page():
