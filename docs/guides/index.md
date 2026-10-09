@@ -307,3 +307,11 @@ PYTHONPATH=. python docs/guides/make_figures.py
 
 All lengths in the polymer tutorials are in Ångström, FCS lag times in seconds
 (displayed in ms), and diffusion coefficients in µm²/s.
+
+## Application information
+
+```{toctree}
+:maxdepth: 1
+
+103_application_identity
+```

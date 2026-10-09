@@ -1,0 +1,43 @@
+{
+  "window": {
+    "width": 380,
+    "height": 420
+  },
+  "sections": [
+    {
+      "type": "button_row",
+      "description": "Application information, clipboard details, guided help and window closure.",
+      "buttons": [
+        {
+          "label": "Help",
+          "action": "open_help",
+          "description": "Explain the version, developer and contact details shown here."
+        },
+        {
+          "label": "Copy details",
+          "action": "copy_details",
+          "description": "Copy the displayed application details to the system clipboard."
+        },
+        {
+          "label": "Guide",
+          "action": "start_guide",
+          "description": "Follow the real Help, Copy details and Close controls."
+        },
+        {
+          "label": "Close",
+          "action": "close_about",
+          "description": "Close the About ChiSurf window."
+        }
+      ]
+    },
+    {
+      "type": "info",
+      "source": "copy_status_text",
+      "hidden_when": {
+        "attr": "copy_status",
+        "equals": ""
+      },
+      "description": "Result of the most recent attempt to copy application details."
+    }
+  ]
+}

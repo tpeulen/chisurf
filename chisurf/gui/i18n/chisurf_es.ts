@@ -18240,5 +18240,69 @@ Guardar un archivo LUT o un settings.tttr.json (pestaña ②) es opcional: solo 
             <source>📖 Guide</source>
             <translation type="unfinished" />
         </message>
+        <message>
+            <source>About ChiSurf</source>
+            <translation>Acerca de ChiSurf</translation>
+        </message>
+        <message>
+            <source>About ChiSurf — Help</source>
+            <translation>Acerca de ChiSurf — Ayuda</translation>
+        </message>
+        <message>
+            <source>Application details copied.</source>
+            <translation>Información copiada.</translation>
+        </message>
+        <message>
+            <source>Application information, clipboard details, guided help and window closure.</source>
+            <translation>Información, copia, guía y cierre de la ventana.</translation>
+        </message>
+        <message>
+            <source>Clipboard unavailable. Try another host or copy the displayed details.</source>
+            <translation>Portapapeles no disponible. Pruebe otro host o copie los datos mostrados.</translation>
+        </message>
+        <message>
+            <source>Close About</source>
+            <translation>Cerrar Acerca de</translation>
+        </message>
+        <message>
+            <source>Close the About window when you have the information you need.</source>
+            <translation>Cierre Acerca de cuando tenga la información necesaria.</translation>
+        </message>
+        <message>
+            <source>Copy details</source>
+            <translation>Copiar datos</translation>
+        </message>
+        <message>
+            <source>Copy the application details for a support request. No analysis data is included.</source>
+            <translation>Copie los datos del programa para pedir ayuda. No incluye datos de análisis.</translation>
+        </message>
+        <message>
+            <source>Copy the displayed application details to the system clipboard.</source>
+            <translation>Copiar la información mostrada al portapapeles del sistema.</translation>
+        </message>
+        <message>
+            <source>Explain the version, developer and contact details shown here.</source>
+            <translation>Explicar la versión, el desarrollador y los datos de contacto.</translation>
+        </message>
+        <message>
+            <source>Follow the real Help, Copy details and Close controls.</source>
+            <translation>Seguir los botones reales Ayuda, Copiar datos y Cerrar.</translation>
+        </message>
+        <message>
+            <source>Open Help, then close it to return to this guide.</source>
+            <translation>Abra y cierre Ayuda para volver a esta guía.</translation>
+        </message>
+        <message>
+            <source>Read help</source>
+            <translation>Leer ayuda</translation>
+        </message>
+        <message>
+            <source>Result of the most recent attempt to copy application details.</source>
+            <translation>Resultado del último intento de copia.</translation>
+        </message>
+        <message>
+            <source>Version: {version}</source>
+            <translation>Versión: {version}</translation>
+        </message>
 </context>
 </TS>

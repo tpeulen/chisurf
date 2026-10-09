@@ -50431,5 +50431,69 @@ presets) into a single left-navigation tool. Built on the reusable
             <source>📂 Open</source>
             <translation type="unfinished" />
         </message>
+        <message>
+            <source>About ChiSurf</source>
+            <translation>À propos de ChiSurf</translation>
+        </message>
+        <message>
+            <source>About ChiSurf — Help</source>
+            <translation>À propos de ChiSurf — Aide</translation>
+        </message>
+        <message>
+            <source>Application details copied.</source>
+            <translation>Informations copiées.</translation>
+        </message>
+        <message>
+            <source>Application information, clipboard details, guided help and window closure.</source>
+            <translation>Informations, copie, visite guidée et fermeture de la fenêtre.</translation>
+        </message>
+        <message>
+            <source>Clipboard unavailable. Try another host or copy the displayed details.</source>
+            <translation>Presse-papiers indisponible. Essayez un autre hôte ou copiez les informations affichées.</translation>
+        </message>
+        <message>
+            <source>Close About</source>
+            <translation>Fermer À propos</translation>
+        </message>
+        <message>
+            <source>Close the About window when you have the information you need.</source>
+            <translation>Fermez À propos lorsque vous avez les informations nécessaires.</translation>
+        </message>
+        <message>
+            <source>Copy details</source>
+            <translation>Copier infos</translation>
+        </message>
+        <message>
+            <source>Copy the application details for a support request. No analysis data is included.</source>
+            <translation>Copiez les informations pour une demande d’aide, sans données d’analyse.</translation>
+        </message>
+        <message>
+            <source>Copy the displayed application details to the system clipboard.</source>
+            <translation>Copier les informations affichées dans le presse-papiers système.</translation>
+        </message>
+        <message>
+            <source>Explain the version, developer and contact details shown here.</source>
+            <translation>Expliquer la version, le développeur et les coordonnées affichés.</translation>
+        </message>
+        <message>
+            <source>Follow the real Help, Copy details and Close controls.</source>
+            <translation>Utiliser les vrais boutons Aide, Copier infos et Fermer.</translation>
+        </message>
+        <message>
+            <source>Open Help, then close it to return to this guide.</source>
+            <translation>Ouvrez puis fermez l’aide pour revenir à cette visite.</translation>
+        </message>
+        <message>
+            <source>Read help</source>
+            <translation>Lire l’aide</translation>
+        </message>
+        <message>
+            <source>Result of the most recent attempt to copy application details.</source>
+            <translation>Résultat de la dernière tentative de copie.</translation>
+        </message>
+        <message>
+            <source>Version: {version}</source>
+            <translation>Version : {version}</translation>
+        </message>
 </context>
 </TS>

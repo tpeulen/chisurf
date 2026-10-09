@@ -18040,5 +18040,69 @@ Saving a LUT file or a settings.tttr.json (tab ②) is optional — only for sha
             <source>📖 Guide</source>
             <translation type="unfinished" />
         </message>
+        <message>
+            <source>About ChiSurf</source>
+            <translation>О ChiSurf</translation>
+        </message>
+        <message>
+            <source>About ChiSurf — Help</source>
+            <translation>О ChiSurf — Справка</translation>
+        </message>
+        <message>
+            <source>Application details copied.</source>
+            <translation>Сведения скопированы.</translation>
+        </message>
+        <message>
+            <source>Application information, clipboard details, guided help and window closure.</source>
+            <translation>Сведения, копирование, обзор и закрытие окна.</translation>
+        </message>
+        <message>
+            <source>Clipboard unavailable. Try another host or copy the displayed details.</source>
+            <translation>Буфер обмена недоступен. Используйте другой хост или скопируйте показанные данные.</translation>
+        </message>
+        <message>
+            <source>Close About</source>
+            <translation>Закрыть сведения</translation>
+        </message>
+        <message>
+            <source>Close the About window when you have the information you need.</source>
+            <translation>Закройте окно сведений, когда получите нужную информацию.</translation>
+        </message>
+        <message>
+            <source>Copy details</source>
+            <translation>Копировать</translation>
+        </message>
+        <message>
+            <source>Copy the application details for a support request. No analysis data is included.</source>
+            <translation>Скопируйте сведения для обращения в поддержку. Данные анализа не включены.</translation>
+        </message>
+        <message>
+            <source>Copy the displayed application details to the system clipboard.</source>
+            <translation>Скопировать показанные сведения в системный буфер обмена.</translation>
+        </message>
+        <message>
+            <source>Explain the version, developer and contact details shown here.</source>
+            <translation>Объяснить версию, сведения о разработчике и контакты.</translation>
+        </message>
+        <message>
+            <source>Follow the real Help, Copy details and Close controls.</source>
+            <translation>Пройти по настоящим кнопкам Помощь, Копировать и Закрыть.</translation>
+        </message>
+        <message>
+            <source>Open Help, then close it to return to this guide.</source>
+            <translation>Откройте и закройте справку, чтобы вернуться к обзору.</translation>
+        </message>
+        <message>
+            <source>Read help</source>
+            <translation>Прочитать справку</translation>
+        </message>
+        <message>
+            <source>Result of the most recent attempt to copy application details.</source>
+            <translation>Результат последней попытки копирования.</translation>
+        </message>
+        <message>
+            <source>Version: {version}</source>
+            <translation>Версия: {version}</translation>
+        </message>
 </context>
 </TS>

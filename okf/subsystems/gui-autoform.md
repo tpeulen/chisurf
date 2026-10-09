@@ -1273,3 +1273,16 @@ and complete call structure; six hidden-ID changes retain visible labels. Three
 H2MM tuple descriptions are genuinely translated rather than silently dropped
 from measurement. No new or stale candidate findings remain. These are shrinking
 existing allowances, not aggregate UI completion; family owners still owe zero.
+
+## About identity and deliberate clipboard action — 2026-10-10
+
+The native About window preserves its real logo, identity text, Close and380×420
+default while consuming a primary view declaration. Its AutoForm row provides
+Help, Copy details, Guide and Close; conditional status is a declared info
+section. The tour awaits Help→successfulCopy→Close. A failed clipboard write
+remains pending and visible; the terminal Close acknowledges and stops the tour
+before requesting host closure. No clipboard operation occurs on opening.
+Host-aware clipboard calls are intercepted in tests, preserving user contents.
+Six locales, two widths, actual modal/closed boundaries and Qt-free construction
+pass. Root inspected all before/default/narrow images;98/pass retains geometry
+and old Close. [Acceptance](../validation/release-readiness-w6f/about-help-acceptance.json).

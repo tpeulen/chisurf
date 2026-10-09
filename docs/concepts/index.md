@@ -154,3 +154,11 @@ biofilm_growth
 
 games
 ```
+
+## Application information
+
+```{toctree}
+:maxdepth: 1
+
+application_identity
+```

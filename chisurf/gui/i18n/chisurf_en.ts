@@ -16337,5 +16337,69 @@ The GUI talks to the TTTR Image Browser backend through RPC for file listing, me
             <source>📖 Guide</source>
             <translation type="unfinished" />
         </message>
+        <message>
+            <source>About ChiSurf</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>About ChiSurf — Help</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Application details copied.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Application information, clipboard details, guided help and window closure.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Clipboard unavailable. Try another host or copy the displayed details.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Close About</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Close the About window when you have the information you need.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Copy details</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Copy the application details for a support request. No analysis data is included.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Copy the displayed application details to the system clipboard.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Explain the version, developer and contact details shown here.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Follow the real Help, Copy details and Close controls.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Open Help, then close it to return to this guide.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Read help</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Result of the most recent attempt to copy application details.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Version: {version}</source>
+            <translation type="unfinished" />
+        </message>
 </context>
 </TS>

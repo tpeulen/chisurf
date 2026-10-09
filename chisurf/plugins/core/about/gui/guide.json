@@ -1,0 +1,28 @@
+{
+  "steps": [
+    {
+      "title": "Read help",
+      "text": "Open Help, then close it to return to this guide.",
+      "target": {
+        "name": "open_help"
+      },
+      "await": true
+    },
+    {
+      "title": "Copy details",
+      "text": "Copy the application details for a support request. No analysis data is included.",
+      "target": {
+        "name": "copy_details"
+      },
+      "await": true
+    },
+    {
+      "title": "Close About",
+      "text": "Close the About window when you have the information you need.",
+      "target": {
+        "name": "close_about"
+      },
+      "await": true
+    }
+  ]
+}

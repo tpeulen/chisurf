@@ -50363,5 +50363,69 @@ presets) into a single left-navigation tool. Built on the reusable
             <source>📂 Open</source>
             <translation type="unfinished" />
         </message>
+        <message>
+            <source>About ChiSurf</source>
+            <translation>Über ChiSurf</translation>
+        </message>
+        <message>
+            <source>About ChiSurf — Help</source>
+            <translation>Über ChiSurf — Hilfe</translation>
+        </message>
+        <message>
+            <source>Application details copied.</source>
+            <translation>Programminformationen kopiert.</translation>
+        </message>
+        <message>
+            <source>Application information, clipboard details, guided help and window closure.</source>
+            <translation>Programminformationen, Zwischenablage, Anleitung und Schließen.</translation>
+        </message>
+        <message>
+            <source>Clipboard unavailable. Try another host or copy the displayed details.</source>
+            <translation>Zwischenablage nicht verfügbar. Anderen Host nutzen oder Angaben selbst kopieren.</translation>
+        </message>
+        <message>
+            <source>Close About</source>
+            <translation>Info schließen</translation>
+        </message>
+        <message>
+            <source>Close the About window when you have the information you need.</source>
+            <translation>Das Infofenster schließen, wenn Sie alle Angaben haben.</translation>
+        </message>
+        <message>
+            <source>Copy details</source>
+            <translation>Infos kopieren</translation>
+        </message>
+        <message>
+            <source>Copy the application details for a support request. No analysis data is included.</source>
+            <translation>Programminformationen für eine Supportanfrage kopieren. Keine Analysedaten.</translation>
+        </message>
+        <message>
+            <source>Copy the displayed application details to the system clipboard.</source>
+            <translation>Die angezeigten Programminformationen in die Zwischenablage kopieren.</translation>
+        </message>
+        <message>
+            <source>Explain the version, developer and contact details shown here.</source>
+            <translation>Version, Entwicklung und Kontaktdaten erläutern.</translation>
+        </message>
+        <message>
+            <source>Follow the real Help, Copy details and Close controls.</source>
+            <translation>Die echten Schaltflächen Hilfe, Infos kopieren und Schließen kennenlernen.</translation>
+        </message>
+        <message>
+            <source>Open Help, then close it to return to this guide.</source>
+            <translation>Hilfe öffnen und schließen, um zur Tour zurückzukehren.</translation>
+        </message>
+        <message>
+            <source>Read help</source>
+            <translation>Hilfe lesen</translation>
+        </message>
+        <message>
+            <source>Result of the most recent attempt to copy application details.</source>
+            <translation>Ergebnis des letzten Kopierversuchs.</translation>
+        </message>
+        <message>
+            <source>Version: {version}</source>
+            <translation>Version: {version}</translation>
+        </message>
 </context>
 </TS>

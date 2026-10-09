@@ -2,6 +2,12 @@
 
 ## 2026-10-10
 
+- About now declares Help/Copydetails/Guide/Close, conditional feedback and its
+  unchanged default geometry. Actual three-step awaits, clipboard failure/retry,
+  terminalClose, six locales and inspected98/pass before/after retainidentity.
+  Source/docs/evidence stay together; typedMenuSwitch/TTTRawait/BID and remaining
+  W6f/programme fronts remain active.
+
 - Repaired88 new committed OKF findings with preserved history/issue payloads
   and truthful status evidence; archived52 historical ignored images plus their
   provenance. Exact shrinking baseline2405→2338 has no new/stale candidate debt.
