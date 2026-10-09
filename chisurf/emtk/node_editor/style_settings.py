@@ -79,8 +79,12 @@ def node_graph_settings() -> dict:
         try:
             out[key] = type(default)(stored[key])
         except (TypeError, ValueError):
-            logger.warning("node graph setting %s=%r is not a %s; using the default",
-                           key, stored[key], type(default).__name__)
+            logger.warning(
+                "node graph setting %s=%r is not a %s; using the default",
+                key,
+                stored[key],
+                type(default).__name__,
+            )
     return out
 
 

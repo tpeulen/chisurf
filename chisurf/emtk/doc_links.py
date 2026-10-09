@@ -28,6 +28,7 @@ import pathlib
 import sys
 import webbrowser
 
+
 def _loaded_qt_core():
     """Find an existing Qt module without loading a GUI backend."""
     for name in ("qtpy.QtCore", "PySide6.QtCore", "PyQt6.QtCore", "PySide2.QtCore", "PyQt5.QtCore"):
@@ -147,6 +148,7 @@ def _open_document(path: pathlib.Path, anchor: str = "") -> bool:
         if _is_qt_active():
             try:
                 from qtpy import QtWidgets
+
                 from chisurf.plugins.core.help.gui.tool import HelpEmtkTool, HelpWidget
 
                 for candidate in QtWidgets.QApplication.topLevelWidgets():
@@ -164,7 +166,15 @@ def _open_document(path: pathlib.Path, anchor: str = "") -> bool:
         try:
             import subprocess
 
-            command = [sys.executable, "-m", "chisurf.emtk", "--plugin", "help", "--path", str(path)]
+            command = [
+                sys.executable,
+                "-m",
+                "chisurf.emtk",
+                "--plugin",
+                "help",
+                "--path",
+                str(path),
+            ]
             if anchor:
                 command.extend(["--anchor", anchor])
             subprocess.Popen(command)
@@ -181,6 +191,7 @@ def _open_document(path: pathlib.Path, anchor: str = "") -> bool:
         if _is_qt_active():
             try:
                 from qtpy import QtWidgets
+
                 from chisurf.plugins.core.help.gui.tool import HelpWidget
 
                 for candidate in QtWidgets.QApplication.topLevelWidgets():

@@ -3,6 +3,7 @@
 Factories stay deterministic. The native launcher binds persistence after
 construction; callers can disable it when loading isolated test controls.
 """
+
 from __future__ import annotations
 
 import math
@@ -83,8 +84,10 @@ def attach_native_state(plugin_id: str, app):
         if settings:
             restore(settings)
     size = window.get("size")
-    if isinstance(size, list) and len(size) == 2 and all(
-        isinstance(value, (int, float)) and 120 <= value <= 8192 for value in size
+    if (
+        isinstance(size, list)
+        and len(size) == 2
+        and all(isinstance(value, (int, float)) and 120 <= value <= 8192 for value in size)
     ):
         app.window_size = tuple(int(value) for value in size)
     elif getattr(app, "window_size", None) is None:

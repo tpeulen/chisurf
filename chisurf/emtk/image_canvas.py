@@ -151,9 +151,7 @@ class ImageCanvas:
             "##Colormap", maps.index(self.colormap) if self.colormap in maps else 0, maps
         )
         self.colormap = maps[index]
-        im.set_item_tooltip(
-            "Color scale of the image; pixel values and fits remain unchanged."
-        )
+        im.set_item_tooltip("Color scale of the image; pixel values and fits remain unchanged.")
         im.text_unformatted("Display gamma")
         _, self.gamma = bounded_float(
             "##Display gamma", self.gamma, minimum=0.1, maximum=5.0, step=0.1
@@ -202,7 +200,12 @@ class ImageCanvas:
                 # An inverted y axis swaps PlotImage's vertical corners. Invert UVs
                 # explicitly so row zero is still the top, matching click coordinates.
                 implot.plot_image(
-                    legend_label, texture, (-0.5, -0.5), (nx - 0.5, ny - 0.5), uv0=(0, 1), uv1=(1, 0)
+                    legend_label,
+                    texture,
+                    (-0.5, -0.5),
+                    (nx - 0.5, ny - 0.5),
+                    uv0=(0, 1),
+                    uv1=(1, 0),
                 )
                 if selection is not None:
                     mask = np.asarray(selection) > 0
@@ -215,7 +218,7 @@ class ImageCanvas:
                         )
                         self._selection_key = key
                     implot.plot_image(
-                    tr("Selection"),
+                        tr("Selection"),
                         self._selection_texture,
                         (-0.5, -0.5),
                         (nx - 0.5, ny - 0.5),
@@ -271,7 +274,9 @@ class ImageCanvas:
                         points = self.outline(roi)
                         if points is not None:
                             implot.set_next_line_style((90, 180, 255, 255), 2.0)
-                            implot.plot_line(f"{tr('Analysis')} {entry.name}", points[:, 0], points[:, 1])
+                            implot.plot_line(
+                                f"{tr('Analysis')} {entry.name}", points[:, 0], points[:, 1]
+                            )
                         if not analysis_editable:
                             continue
                         if isinstance(roi, RectangleROI):

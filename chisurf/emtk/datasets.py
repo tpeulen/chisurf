@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-import typing
 import json
 import logging
+import typing
+
 import numpy as np
+
 
 def _iter_group_members(group):
     if isinstance(group, (list, tuple)):
@@ -25,7 +27,7 @@ def _coerce_finite_float(value: typing.Any) -> typing.Optional[float]:
 
 
 def _resolve_dataset_anisotropy_calibration(data_group):
-    calibration: typing.Dict[str, typing.Optional[float]] = {
+    calibration: dict[str, typing.Optional[float]] = {
         "g_factor": None,
         "l1": None,
         "l2": None,
@@ -76,7 +78,7 @@ def _apply_g_factor_to_fit(fit_group, g_factor: float) -> None:
 
 
 def _apply_anisotropy_calibration_to_fit(
-    fit_group, calibration: typing.Dict[str, typing.Any]
+    fit_group, calibration: dict[str, typing.Any]
 ) -> None:
     if not isinstance(calibration, dict):
         return
@@ -126,8 +128,8 @@ def _apply_anisotropy_calibration_to_fit(
         _set_anisotropy(getattr(member.model, "anisotropy", None))
 
 
-def _collect_group_nuisance_parameter_names(model: typing.Any) -> typing.Set[str]:
-    names: typing.Set[str] = set()
+def _collect_group_nuisance_parameter_names(model: typing.Any) -> set[str]:
+    names: set[str] = set()
     if model is None:
         return names
     # A model that knows which of its parameters are the instrument's says so
@@ -162,7 +164,7 @@ def _collect_group_nuisance_parameter_names(model: typing.Any) -> typing.Set[str
     return names
 
 
-def _auto_link_non_nuisance_group_parameters(fit_group) -> typing.Tuple[int, int]:
+def _auto_link_non_nuisance_group_parameters(fit_group) -> tuple[int, int]:
     grouped_fits = list(getattr(fit_group, "grouped_fits", []) or [])
     if len(grouped_fits) <= 1:
         return 0, 0
@@ -217,7 +219,6 @@ def _auto_link_non_nuisance_group_parameters(fit_group) -> typing.Tuple[int, int
     return linked_master_parameters, linked_followers
 
 
-
 _BULK_PDA_KEYS = frozenset(
     {
         "s1s2",
@@ -234,7 +235,7 @@ def _flatten_metadata(
     *,
     skip_keys: typing.Collection[str] = (),
     prefix: str = "",
-) -> typing.Dict[str, str]:
+) -> dict[str, str]:
     """Flatten a nested metadata dict into ``{key: str(value)}`` pairs.
 
     Parameters
@@ -246,7 +247,7 @@ def _flatten_metadata(
     prefix : str
         Optional prefix for output keys.
     """
-    result: typing.Dict[str, str] = {}
+    result: dict[str, str] = {}
     for k, v in src.items():
         if k in skip_keys:
             continue
@@ -282,7 +283,7 @@ def _attach_tttr_header(fit_group, data_group):
     if not hasattr(fit_group, "flr_metadata") or fit_group.flr_metadata is None:
         fit_group.flr_metadata = {}
 
-    entries: typing.Dict[str, str] = {}
+    entries: dict[str, str] = {}
 
     # 1) Parse TTTR header JSON tags
     hdr = meta.get("tttr_header_json")
@@ -359,7 +360,9 @@ def _record_history(action_type, summary, payload=None, source_uid=""):
     from chisurf.core.actions._infra import record_action
 
     try:
-        record_action(action_type=action_type, summary=summary, payload=payload, source_uid=source_uid)
+        record_action(
+            action_type=action_type, summary=summary, payload=payload, source_uid=source_uid
+        )
     except Exception:
         logging.getLogger(__name__).exception("Could not record dataset/fit history")
 
@@ -383,11 +386,18 @@ def register_dataset(dataset):
     uid = str(getattr(dataset, "unique_identifier", ""))
     cs.imported_datasets.append(dataset)
     index = len(cs.imported_datasets) - 1
-    _record_history("dataset_add", f"add dataset(s): {name}", {
-        "filename": getattr(dataset, "filename", None), "reader": None,
-        "loaded_names": [name], "loaded_uids": [uid], "loaded_count": 1,
-        "is_experiment_group": hasattr(dataset, "__iter__"),
-    })
+    _record_history(
+        "dataset_add",
+        f"add dataset(s): {name}",
+        {
+            "filename": getattr(dataset, "filename", None),
+            "reader": None,
+            "loaded_names": [name],
+            "loaded_uids": [uid],
+            "loaded_count": 1,
+            "is_experiment_group": hasattr(dataset, "__iter__"),
+        },
+    )
     _publish("dataset.added", {"dataset_index": index, "dataset_name": name})
     return index
 
@@ -416,16 +426,31 @@ def publish_fit_group(group, dataset, model_name):
     cs.fits.append(group)
     name = str(getattr(group, "name", ""))
     uid = str(getattr(group, "unique_identifier", ""))
-    _record_history("fit_add", f"add fit group '{name}' for dataset '{getattr(dataset, 'name', '')}' with model '{model_name}'", {
-        "fit_group_name": name, "dataset_name": getattr(dataset, "name", ""),
-        "model_name": model_name,
-        "dataset_indices": [i for i, item in enumerate(cs.imported_datasets) if item is dataset],
-    }, source_uid=uid)
+    _record_history(
+        "fit_add",
+        f"add fit group '{name}' for dataset '{getattr(dataset, 'name', '')}' with model '{model_name}'",
+        {
+            "fit_group_name": name,
+            "dataset_name": getattr(dataset, "name", ""),
+            "model_name": model_name,
+            "dataset_indices": [
+                i for i, item in enumerate(cs.imported_datasets) if item is dataset
+            ],
+        },
+        source_uid=uid,
+    )
     if followers:
-        _record_history("fit_group_auto_link", f"auto-link non-nuisance parameters for fit group '{name}'", {
-            "fit_group_name": name, "linked_master_parameters": masters,
-            "linked_followers": followers, "policy": "non_nuisance_default_link",
-        }, source_uid=uid)
+        _record_history(
+            "fit_group_auto_link",
+            f"auto-link non-nuisance parameters for fit group '{name}'",
+            {
+                "fit_group_name": name,
+                "linked_master_parameters": masters,
+                "linked_followers": followers,
+                "policy": "non_nuisance_default_link",
+            },
+            source_uid=uid,
+        )
     _publish("fit.added", {"fit_uid": uid, "fit_index": len(cs.fits) - 1, "fit_name": name})
     return group
 

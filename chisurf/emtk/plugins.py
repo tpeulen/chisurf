@@ -1,4 +1,5 @@
 """Native plugin discovery that does not import the Qt application or plugins."""
+
 from __future__ import annotations
 
 import importlib
@@ -34,8 +35,13 @@ def native_factory(plugin_id: str, root: str | Path | None = None) -> str:
     return spec
 
 
-def load_plugin(plugin_id: str, *, locale: str | None = None, root: str | Path | None = None,
-                persist: bool = True):
+def load_plugin(
+    plugin_id: str,
+    *,
+    locale: str | None = None,
+    root: str | Path | None = None,
+    persist: bool = True,
+):
     """Construct a declared EMTK control, preserving source identities in translation."""
     from .i18n import install
 
@@ -50,8 +56,9 @@ def load_plugin(plugin_id: str, *, locale: str | None = None, root: str | Path |
     return app
 
 
-def configure_launch(plugin_id: str, locale: str | None = None,
-                     path: str | None = None, anchor: str | None = None) -> None:
+def configure_launch(
+    plugin_id: str, locale: str | None = None, path: str | None = None, anchor: str | None = None
+) -> None:
     _launch_options.update(plugin_id=plugin_id, locale=locale, path=path, anchor=anchor)
 
 

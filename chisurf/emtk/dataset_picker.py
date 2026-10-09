@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
-import json
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
@@ -29,9 +29,9 @@ def session_client() -> Any:
     global _SESSION_CLIENT
     if _SESSION_CLIENT is not None:
         return _SESSION_CLIENT
+    from chisurf.core.settings import cs_settings
     from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient, client_config
     from chisurf.plugins.core.mmfdb_admin.gui.session import cached_token
-    from chisurf.core.settings import cs_settings
 
     config = client_config(cs_settings.get("mmfdb", {}))
     client = MMFDBClient(inprocess=config["mode"] == "embedded")
@@ -215,23 +215,23 @@ class DatasetPicker:
         if self._pending is not None:
             self._request_completion_frame()
             im.text_wrapped("Loading datasets…" if self._pending_kind == "browse" else "Opening dataset…")
-            if im.button("Cancel##dataset_pending") or pressed == "close":
+            if im.button("Cancel##dataset_pending_cancel") or pressed == "close":
                 self.close()
             im.set_item_tooltip("Close the picker; the database operation can finish in the background.")
             self._dialog.end()
             return
         for label, scope in (("Mine", "own"), ("Public", "public"), ("All", "all")):
-            if im.button(f"{label}##dataset_scope_{id(self)}"):
+            if im.button(f"{label}##dataset_scope_{scope}"):
                 self.scope, self.page = scope, 0
                 self._request_refresh()
             im.set_item_tooltip(f"Browse {label.lower()} datasets; current scope is {self.scope}.")
             im.same_line()
         im.new_line()
-        changed, self.query = im.input_text("Search##dataset", self.query)
+        changed, self.query = im.input_text("Search##dataset_search", self.query)
         im.set_item_tooltip("Search dataset names and metadata; press Refresh to apply.")
         if changed:
             self.page = 0
-        if im.button("Refresh##dataset"):
+        if im.button("Refresh##dataset_refresh"):
             self._request_refresh()
         im.set_item_tooltip("Reload datasets with the current scope, search, kind and format filters.")
         im.text_wrapped("Kinds: " + ", ".join(self.kinds) + " | Formats: " + ", ".join(self.formats or ["all"]))
@@ -250,14 +250,14 @@ class DatasetPicker:
             im.text_wrapped("No datasets match these filters.")
         im.end_child()
         im.begin_disabled(self.page == 0)
-        if im.button("Previous##dataset"):
+        if im.button("Previous##dataset_previous"):
             self.page -= 1
             self._request_refresh()
         im.set_item_tooltip("Show the previous page of datasets.")
         im.end_disabled()
         im.same_line()
         im.begin_disabled((self.page + 1) * self.page_size >= self.total)
-        if im.button("Next##dataset"):
+        if im.button("Next##dataset_next"):
             self.page += 1
             self._request_refresh()
         im.set_item_tooltip("Show the next page of datasets.")
@@ -265,7 +265,7 @@ class DatasetPicker:
         im.same_line()
         im.text(f"{self.total} datasets")
         im.begin_disabled(self.selection is None)
-        if im.button("Open selected##dataset"):
+        if im.button("Open selected##dataset_open_selected"):
             if self.on_paths is None:
                 self.accept()
             else:
@@ -276,7 +276,7 @@ class DatasetPicker:
         im.set_item_tooltip("Open the selected dataset in this tool; remote objects are downloaded by MMFDB.")
         im.end_disabled()
         im.same_line()
-        if im.button("Cancel##dataset"):
+        if im.button("Cancel##dataset_cancel"):
             self.close()
         im.set_item_tooltip("Close the picker without opening a dataset.")
         self._dialog.end()

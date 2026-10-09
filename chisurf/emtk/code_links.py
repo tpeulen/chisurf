@@ -42,7 +42,12 @@ def _is_qt_active() -> bool:
     try:
         widgets = sys.modules.get("qtpy.QtWidgets")
         if widgets is None:
-            for name in ("PySide6.QtWidgets", "PyQt6.QtWidgets", "PySide2.QtWidgets", "PyQt5.QtWidgets"):
+            for name in (
+                "PySide6.QtWidgets",
+                "PyQt6.QtWidgets",
+                "PySide2.QtWidgets",
+                "PyQt5.QtWidgets",
+            ):
                 widgets = sys.modules.get(name)
                 if widgets is not None:
                     break
@@ -106,7 +111,15 @@ def open_source(
             import subprocess
             import sys
 
-            cmd = [sys.executable, "-m", "chisurf.emtk", "--plugin", "code_editor", "--path", str(resolved.path)]
+            cmd = [
+                sys.executable,
+                "-m",
+                "chisurf.emtk",
+                "--plugin",
+                "code_editor",
+                "--path",
+                str(resolved.path),
+            ]
             if line_num:
                 cmd.extend(["--anchor", str(line_num)])
             subprocess.Popen(cmd)
@@ -118,6 +131,7 @@ def open_source(
     # 2. Qt Environment: route to full Qt code editor
     try:
         from qtpy import QtWidgets
+
         from chisurf.plugins.core.code_editor.editor import CodeEditor
         from chisurf.plugins.core.code_editor.gui.tool import CodeEditorEmtkTool
 
