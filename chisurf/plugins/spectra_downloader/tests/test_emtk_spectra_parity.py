@@ -39,7 +39,9 @@ def _tree(root: Path) -> dict:
         rel = path.relative_to(root)
         if rel.parts[:1] in (("logs",), ("cache",)):
             continue
-        if not any(token in str(rel).lower() for token in ("spectra", "fluorophore", "mmfdb", "staging")):
+        if not any(
+            token in str(rel).lower() for token in ("spectra", "fluorophore", "mmfdb", "staging")
+        ):
             continue  # other tools (other agents, the user) write their own settings here concurrently
         try:
             st = path.stat()
@@ -87,7 +89,10 @@ def db(tmp_path):
         ("SPAD 650", "thorlabs", "apd", 650),
     ):
         database.register_component(
-            name=name, source=prov, kind=kind, properties={"em_max": c, "description": "Reference fixture"},
+            name=name,
+            source=prov,
+            kind=kind,
+            properties={"em_max": c, "description": "Reference fixture"},
             spectra={"emission": (x, np.exp(-0.5 * ((x - c) / 22.0) ** 2))},
         )
     yield database
@@ -124,7 +129,16 @@ def test_overview_counts_equal_the_qt_panel(ui, db, qapp, qtbot):
     qt = OverviewPanel(db)
     qtbot.addWidget(qt)
     qt_model = qt._form._model
-    for attr in ("db_path", "total", "with_spectra", "fluorophores", "filters", "dichroics", "detectors", "light_sources"):
+    for attr in (
+        "db_path",
+        "total",
+        "with_spectra",
+        "fluorophores",
+        "filters",
+        "dichroics",
+        "detectors",
+        "light_sources",
+    ):
         assert getattr(ui.app.overview, attr) == getattr(qt_model, attr), attr
     assert json.loads(qt._json.toPlainText())["by_category"] == ui.app.overview_data["by_category"]
 
@@ -135,14 +149,26 @@ def test_browse_rows_filters_detail_and_push_equal_the_qt_browser(ui, db, qapp, 
     qt = SpectraBrowserWidget(db)
     qtbot.addWidget(qt)
     assert [r["probe_id"] for r in qt._rows] == [r["probe_id"] for r in ui.app.model.rows]
-    for search, category, source in (("", "", ""), ("a", "", ""), ("", "filter", ""), ("", "", "thorlabs"), ("spad", "detector", "thorlabs")):
+    for search, category, source in (
+        ("", "", ""),
+        ("a", "", ""),
+        ("", "filter", ""),
+        ("", "", "thorlabs"),
+        ("spad", "detector", "thorlabs"),
+    ):
         qt._search.setText(search)
         qt._category.setCurrentText(category or "All")
         qt._source.setCurrentText(source or "All")
         ui.app.model.search, ui.app.model.category, ui.app.model.source = search, category, source
-        assert [r["probe_id"] for r in qt._filtered()] == [r["probe_id"] for r in ui.app.model.filtered()]
-    assert ui.app.category_options()[1:] == [qt._category.itemText(i) for i in range(1, qt._category.count())]
-    assert ui.app.source_options()[1:] == [qt._source.itemText(i) for i in range(1, qt._source.count())]
+        assert [r["probe_id"] for r in qt._filtered()] == [
+            r["probe_id"] for r in ui.app.model.filtered()
+        ]
+    assert ui.app.category_options()[1:] == [
+        qt._category.itemText(i) for i in range(1, qt._category.count())
+    ]
+    assert ui.app.source_options()[1:] == [
+        qt._source.itemText(i) for i in range(1, qt._source.count())
+    ]
     pid = ui.app.model.rows[1]["probe_id"]
     ui.app.model.show(pid)
     expected = qt._load_probe(pid)
@@ -151,8 +177,12 @@ def test_browse_rows_filters_detail_and_push_equal_the_qt_browser(ui, db, qapp, 
     for a, b in zip(ui.app.model.detail["spectra"], expected["spectra"]):
         np.testing.assert_allclose(a["intensity"], b["intensity"])
     calls = []
-    monkeypatch.setattr("chisurf.plugins.spectra_downloader.download.merge.push_staging_to_mmfdb",
-                        lambda path, probe_ids=None: calls.append((path, probe_ids)) or {"merged": 1, "consolidated": 0})
+    monkeypatch.setattr(
+        "chisurf.plugins.spectra_downloader.download.merge.push_staging_to_mmfdb",
+        lambda path, probe_ids=None: (
+            calls.append((path, probe_ids)) or {"merged": 1, "consolidated": 0}
+        ),
+    )
     ui.app.model.pick(pid)
     ui.app.model.push(True)
     assert calls == [(str(db.db_path), [pid])]
@@ -165,7 +195,8 @@ def test_the_scraper_list_and_endpoint_defaults_equal_the_qt_panels(ui, qapp, qt
     assert ui.app.scraper_labels() == sorted(s.label for s in SCRAPERS)
     qt = json.loads((HERE / "gui" / "endpoint_auth.view.json").read_text())
     fields = {s["attr"]: s for s in qt["sections"][:4] if "attr" in s} | {
-        s["attr"]: s for p in qt["sections"] if p.get("type") == "panel" for s in p["sections"]}
+        s["attr"]: s for p in qt["sections"] if p.get("type") == "panel" for s in p["sections"]
+    }
     ui.draw(2)
     spec = ui.app.specs["endpoint"]
 
@@ -177,7 +208,11 @@ def test_the_scraper_list_and_endpoint_defaults_equal_the_qt_panels(ui, qapp, qt
     ours = {s["attr"]: s for s in walk(spec["sections"]) if s.get("attr")}
     assert set(ours) == set(fields)
     for name in ("cmd_port", "pub_port"):
-        assert (ours[name]["minimum"], ours[name]["maximum"], ours[name]["style"]) == (1, 65535, "spin")  # typed, arrows, wheel
+        assert (ours[name]["minimum"], ours[name]["maximum"], ours[name]["style"]) == (
+            1,
+            65535,
+            "spin",
+        )  # typed, arrows, wheel
     assert ui.app.model.endpoint.cmd_port == 8765 and ui.app.model.endpoint.pub_port == 8766
 
 
@@ -187,8 +222,16 @@ def test_the_scraper_list_and_endpoint_defaults_equal_the_qt_panels(ui, qapp, qt
 def test_clicking_each_navigation_row_shows_its_panel(ui):
     for panel in PANELS:
         goto(ui, panel)
-        assert ui.drawn(tr({"Overview": "Staging database overview", "Browse": "Push selected", "Download": "Run selected script",
-                            "Add to MMFDB": "Add staging components to the MMFDB"}[panel]))
+        assert ui.drawn(
+            tr(
+                {
+                    "Overview": "Staging database overview",
+                    "Browse": "Push selected",
+                    "Download": "Run selected script",
+                    "Add to MMFDB": "Add staging components to the MMFDB",
+                }[panel]
+            )
+        )
 
 
 def test_the_navigation_filter_is_typed_into(ui):
@@ -246,7 +289,10 @@ def test_the_filter_field_is_typed_and_narrows_the_table(ui):
     assert ui.drawn("EGFP") and ui.drawn("5 / 5")
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: Enter in an emptied str field does not commit the empty text (a click away does); see REPORT.md")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: Enter in an emptied str field does not commit the empty text (a click away does); see REPORT.md",
+)
 def test_enter_commits_an_emptied_filter_field(ui):
     goto(ui, "Browse")
     ui.type_into_name("search", "alexa")
@@ -291,7 +337,9 @@ def test_the_tabs_switch_between_properties_and_metadata(ui):
     ui.click_text("EGFP")
     assert ui.drawn("Reference fixture")
     ui.click_name("tab.metadata")
-    assert '"optical_properties"' in ui.app.metadata_json and any('"probe"' in s for s in ui.draw(3).strings)
+    assert '"optical_properties"' in ui.app.metadata_json and any(
+        '"probe"' in s for s in ui.draw(3).strings
+    )
     ui.click_name("tab.properties")
     assert ui.drawn("em_max")
 
@@ -299,8 +347,12 @@ def test_the_tabs_switch_between_properties_and_metadata(ui):
 def test_ticking_rows_picks_them_and_push_selected_asks_first(ui, monkeypatch):
     goto(ui, "Browse")
     calls = []
-    monkeypatch.setattr("chisurf.plugins.spectra_downloader.download.merge.push_staging_to_mmfdb",
-                        lambda path, probe_ids=None: calls.append(probe_ids) or {"merged": len(probe_ids or []), "consolidated": 0})
+    monkeypatch.setattr(
+        "chisurf.plugins.spectra_downloader.download.merge.push_staging_to_mmfdb",
+        lambda path, probe_ids=None: (
+            calls.append(probe_ids) or {"merged": len(probe_ids or []), "consolidated": 0}
+        ),
+    )
     ui.click_name("push_selected")  # nothing ticked: a notice, no push
     assert ui.app.dialog and "No components" in ui.app.dialog["text"]
     ui.click_name("dialog.OK")
@@ -329,7 +381,9 @@ def test_push_all_asks_first_and_reports_a_failure(ui, monkeypatch):
         calls.append(probe_ids)
         raise RuntimeError("MMFDB is read-only")
 
-    monkeypatch.setattr("chisurf.plugins.spectra_downloader.download.merge.push_staging_to_mmfdb", fail)
+    monkeypatch.setattr(
+        "chisurf.plugins.spectra_downloader.download.merge.push_staging_to_mmfdb", fail
+    )
     ui.click_name("push_all")
     assert "all 5" in ui.app.dialog["text"]
     ui.click_name("dialog.Yes")
@@ -376,7 +430,9 @@ def fake_popen(monkeypatch, lines="downloaded 2 spectra\n", code=0):
         def wait(self, timeout=None):
             return code
 
-    monkeypatch.setattr(native.subprocess, "Popen", lambda command, **kw: calls.append((command, kw)) or Process())
+    monkeypatch.setattr(
+        native.subprocess, "Popen", lambda command, **kw: calls.append((command, kw)) or Process()
+    )
     return calls
 
 
@@ -384,14 +440,24 @@ def test_the_scraper_choice_is_clicked_and_run_streams_the_log_without_network(u
     calls = fake_popen(monkeypatch)
     goto(ui, "Download")
     choose(ui, "scraper_label", "Chroma")
-    assert ui.app.model.module == "chroma" and ui.drawn("Already scraped (chroma): none yet") is False or True
+    assert (
+        ui.app.model.module == "chroma"
+        and ui.drawn("Already scraped (chroma): none yet") is False
+        or True
+    )
     ui.click_name("run_script")
     end = time.monotonic() + 5
     while ui.app.model.process is not None and time.monotonic() < end:
         time.sleep(0.01)
         ui.draw(1)
     ui.draw(3)
-    assert calls[0][0] == [sys.executable, "-m", "chisurf.plugins.spectra_downloader.download.chroma", "--db", str(ui.app.model.db.db_path)]
+    assert calls[0][0] == [
+        sys.executable,
+        "-m",
+        "chisurf.plugins.spectra_downloader.download.chroma",
+        "--db",
+        str(ui.app.model.db.db_path),
+    ]
     assert "downloaded 2 spectra" in ui.app.model.log and "Finished (0)" in ui.app.model.log
     assert "downloaded 2 spectra" in ui.app.forms["download"].editors["log"].text
 
@@ -399,8 +465,15 @@ def test_the_scraper_choice_is_clicked_and_run_streams_the_log_without_network(u
 def test_run_is_greyed_while_a_scraper_runs(ui, monkeypatch):
     calls = fake_popen(monkeypatch)
     goto(ui, "Download")
-    ui.app.model.process = type("P", (), {"terminate": lambda self: None, "wait": lambda self, timeout=None: 0,
-                                          "stdout": io.StringIO()})()  # a run is in flight
+    ui.app.model.process = type(
+        "P",
+        (),
+        {
+            "terminate": lambda self: None,
+            "wait": lambda self, timeout=None: 0,
+            "stdout": io.StringIO(),
+        },
+    )()  # a run is in flight
     ui.click_name("run_script")
     assert calls == []
     ui.app.model.process = None
@@ -422,8 +495,9 @@ def test_check_session_and_the_local_import_logs_what_it_did(ui, tmp_path):
     live.connect()
     live.close()
     goto(ui, "Add to MMFDB")
-    assert ui.drawn("Session user user is an administrator (bootstrap (no admin yet)) — no login needed.") or any(
-        "administrator" in s for s in ui.draw(2).strings)
+    assert ui.drawn(
+        "Session user user is an administrator (bootstrap (no admin yet)) — no login needed."
+    ) or any("administrator" in s for s in ui.draw(2).strings)
     ui.type_into_name("db_path", str(target))
     ui.click_name("replace")
     ui.click_name("mark_verified")
@@ -456,10 +530,16 @@ def test_a_server_import_uses_the_stubbed_client_and_a_non_admin_is_refused(ui, 
     ui.click_name("mode.1")
     assert ui.app.model.endpoint.mode == "server"
     ui.click_name("add_all")
-    assert calls[-1][0] == "fluorophores.import_reference_set" and "Done: {'probes': 5}" in ui.app.model.mmfdb_log
+    assert (
+        calls[-1][0] == "fluorophores.import_reference_set"
+        and "Done: {'probes': 5}" in ui.app.model.mmfdb_log
+    )
     monkeypatch.setattr(native, "client_is_admin", lambda *a: False)
     ui.click_name("add_all")
-    assert "not an MMFDB administrator" in ui.app.model.mmfdb_log and "Cannot add" in ui.app.model.mmfdb_log
+    assert (
+        "not an MMFDB administrator" in ui.app.model.mmfdb_log
+        and "Cannot add" in ui.app.model.mmfdb_log
+    )
     ui.click_name("mode.0")
 
 
@@ -467,7 +547,7 @@ def test_the_advanced_fields_are_typed_ports_are_spin_fields_and_the_password_is
     goto(ui, "Add to MMFDB")
     ui.click_text(tr("Advanced — connection & authentication"))
     for name in ("host", "user", "password", "cmd_port", "pub_port"):
-        assert name in ui.draw(3) .strings or name in ui.app.item_rects, name
+        assert name in ui.draw(3).strings or name in ui.app.item_rects, name
     ui.type_into_name("host", "10.0.0.5")
     ui.type_into_name("cmd_port", "9001")
     assert ui.app.model.endpoint.host == "10.0.0.5" and ui.app.model.endpoint.cmd_port == 9001
@@ -517,12 +597,17 @@ def test_the_tour_is_walked_selecting_each_awaited_panel_with_the_card_clear(ui)
             ui.click_name("nav." + panel)
             assert not tour.awaiting
         ui.click_text("Finish ✓" if tour.step_idx == len(tour.steps) - 1 else "Next ►")
-        if tour.active and tour.step_idx == index:  # the card's button lies over a table or editor (emtk gap)
+        if (
+            tour.active and tour.step_idx == index
+        ):  # the card's button lies over a table or editor (emtk gap)
             tour.next()
     assert not tour.active and seen == ["Overview", "Browse", "Download", "Add to MMFDB"]
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: a tour card button lying over a data_table never answers a press (as in plugin_check); see REPORT.md")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: a tour card button lying over a data_table never answers a press (as in plugin_check); see REPORT.md",
+)
 def test_the_tour_next_button_over_the_component_table_answers(ui):
     ui.click_name("guide")
     ui.app.tour.start(2)
@@ -554,9 +639,20 @@ def test_layout(ui, size, panel):
         ui.click_text("EGFP")
     painter = ui.draw(3)
     lay.assert_texts_apart(painter, region=(0, 0, 150, size[1]))
-    rects = {k: v for k, v in ui.app.item_rects.items() if not k.endswith(".stepper") and k not in ("plot", "component_rows")}
+    rects = {
+        k: v
+        for k, v in ui.app.item_rects.items()
+        if not k.endswith(".stepper") and k not in ("plot", "component_rows")
+    }
     visible = {k: v for k, v in rects.items() if v[1] + v[3] <= size[1] + 1}
-    lay.assert_inside({k: v for k, v in visible.items() if k.startswith(("nav.", "back", "next", "guide", "help", "language", "search"))}, size)
+    lay.assert_inside(
+        {
+            k: v
+            for k, v in visible.items()
+            if k.startswith(("nav.", "back", "next", "guide", "help", "language", "search"))
+        },
+        size,
+    )
     assert ui.app.item_rects["nav." + panel][2] > 60
 
 
@@ -580,7 +676,11 @@ def test_every_spec_and_dialog_text_is_translated_in_all_locales(ui):
     def collect(node):
         if isinstance(node, dict):
             for key, value in node.items():
-                if key in ("title", "label", "description", "tooltip", "hint", "placeholder") and isinstance(value, str) and value:
+                if (
+                    key in ("title", "label", "description", "tooltip", "hint", "placeholder")
+                    and isinstance(value, str)
+                    and value
+                ):
                     spec_texts.add(value)
                 elif key == "labels":
                     spec_texts.update(value)
@@ -595,9 +695,24 @@ def test_every_spec_and_dialog_text_is_translated_in_all_locales(ui):
     from chisurf.plugins.spectra_downloader.gui.translations import _ROWS
 
     known = {row[0] for row in _ROWS}
-    extra = {"Ready", "Back", "Next", "OK", "Yes", "No", "Push selected", "Push to MMFDB", "Push failed", "Push complete",
-             "No components selected.", "none yet", "Already scraped", "Add staging components to the MMFDB",
-             "Go to the previous panel.", "Go to the next panel."}
+    extra = {
+        "Ready",
+        "Back",
+        "Next",
+        "OK",
+        "Yes",
+        "No",
+        "Push selected",
+        "Push to MMFDB",
+        "Push failed",
+        "Push complete",
+        "No components selected.",
+        "none yet",
+        "Already scraped",
+        "Add staging components to the MMFDB",
+        "Go to the previous panel.",
+        "Go to the next panel.",
+    }
     # the mmfdb-admin component detail fields (Probe ID, Name, ...) are the Qt spec's own captions
     from chisurf.plugins.spectra_downloader.gui.app import _optical_view
 

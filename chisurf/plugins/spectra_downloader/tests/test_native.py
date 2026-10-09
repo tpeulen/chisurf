@@ -173,7 +173,14 @@ def test_all_panels_and_controls_have_translations_and_render(app, locale):
         painter = RecordingPainter()
         app.draw(painter, 0, 0, 640, 700)
         assert painter.strings
-    assert {"nav.Overview", "nav.Browse", "nav.Download", "nav.Add to MMFDB", "language", "help"} <= app.item_rects.keys()
+    assert {
+        "nav.Overview",
+        "nav.Browse",
+        "nav.Download",
+        "nav.Add to MMFDB",
+        "language",
+        "help",
+    } <= app.item_rects.keys()
 
 
 def test_native_factory_rejects_any_qt_import(tmp_path):

@@ -323,7 +323,11 @@ class SpectraState:
         """:meth:`add_all` worded into :attr:`mmfdb_log` as the Qt panel's log was; ``None`` when it did not add."""
         m = self.endpoint
         user = m.user or active_user_id()
-        where = f"server {m.host}:{m.cmd_port}" if m.mode == "server" else f"local MMFDB {m.db_path or self.resolved()}"
+        where = (
+            f"server {m.host}:{m.cmd_port}"
+            if m.mode == "server"
+            else f"local MMFDB {m.db_path or self.resolved()}"
+        )
         self.echo(f"Adding to {where} as '{user}' (replace={m.replace}) ...")
         try:
             result = self.add_all()
@@ -336,7 +340,8 @@ class SpectraState:
         if isinstance(result, dict) and "probes" in result and "spectra" in result:
             self.echo(
                 f"Done: probes={result['probes']} spectra={result['spectra']} props={result.get('optical_properties')} "
-                f"consolidated={result.get('consolidated')}" + (f" purged={result['purged']}" if result.get("purged") else "")
+                f"consolidated={result.get('consolidated')}"
+                + (f" purged={result['purged']}" if result.get("purged") else "")
             )
         else:
             self.echo(f"Done: {result}")
