@@ -1988,6 +1988,582 @@ p, li { white-space: pre-wrap; }
     <context>
         <name>chisurf</name>
         <message>
+            <source>&lt;b&gt;Max pairs&lt;/b&gt; says how many pairs to choose and &lt;b&gt;Expected E error&lt;/b&gt; how precisely you can measure an efficiency. Press &lt;b&gt;Run selection&lt;/b&gt;.</source>
+            <translation>&lt;b&gt;Max. Paare&lt;/b&gt; legt fest, wie viele Paare gewählt werden, und &lt;b&gt;Erwarteter E-Fehler&lt;/b&gt;, wie genau sich eine Effizienz messen lässt. Drücken Sie &lt;b&gt;Auswahl ausführen&lt;/b&gt;.</translation>
+        </message>
+        <message>
+            <source>&lt;b&gt;R0&lt;/b&gt; is the Forster radius of the dye pair. With an FPS JSON, &lt;b&gt;Use AV backend&lt;/b&gt; computes the efficiency from the dyes' accessible volumes instead of the attachment-atom distance.</source>
+            <translation>&lt;b&gt;R0&lt;/b&gt; ist der Förster-Radius des Farbstoffpaars. Mit einer FPS-JSON berechnet &lt;b&gt;AV-Backend verwenden&lt;/b&gt; die Effizienz aus den zugänglichen Volumina der Farbstoffe statt aus dem Abstand der Anheftungsatome.</translation>
+        </message>
+        <message>
+            <source>&lt;b&gt;Trajectory&lt;/b&gt; takes the conformations (a DCD, XTC or similar; dropping the file on the window works too). A DCD stores coordinates only, so give the &lt;b&gt;Topology&lt;/b&gt; PDB that names the atoms.</source>
+            <translation>&lt;b&gt;Trajektorie&lt;/b&gt; liefert die Konformationen (eine DCD-, XTC- oder ähnliche Datei; Ablegen der Datei im Fenster funktioniert ebenfalls). Eine DCD speichert nur Koordinaten, daher geben Sie die &lt;b&gt;Topologie&lt;/b&gt;-PDB an, die die Atome benennt.</translation>
+        </message>
+        <message>
+            <source>AV samples</source>
+            <translation>AV-Stichproben</translation>
+        </message>
+        <message>
+            <source>Advanced simulation parameters</source>
+            <translation>Erweiterte Simulationsparameter</translation>
+        </message>
+        <message>
+            <source>Attachment atom</source>
+            <translation>Anheftungsatom</translation>
+        </message>
+        <message>
+            <source>Basic controls and a complete validated simulator dictionary for the encoded simulation path.</source>
+            <translation>Grundlegende Bedienelemente und ein vollständiges, validiertes Simulator-Wörterbuch für den kodierten Simulationspfad.</translation>
+        </message>
+        <message>
+            <source>Becker-Hickl</source>
+            <translation>Becker-Hickl</translation>
+        </message>
+        <message>
+            <source>Bound the run</source>
+            <translation>Lauf begrenzen</translation>
+        </message>
+        <message>
+            <source>BrickMic</source>
+            <translation>BrickMic</translation>
+        </message>
+        <message>
+            <source>Browse output</source>
+            <translation>Ausgabe durchsuchen</translation>
+        </message>
+        <message>
+            <source>CA</source>
+            <translation>CA</translation>
+        </message>
+        <message>
+            <source>CB</source>
+            <translation>CB</translation>
+        </message>
+        <message>
+            <source>Candidate sites from residues</source>
+            <translation>Kandidatenstellen aus Resten</translation>
+        </message>
+        <message>
+            <source>Chain of the residues: its identifier, or its index (empty = the first chain).</source>
+            <translation>Kette der Reste: ihre Kennung oder ihr Index (leer = erste Kette).</translation>
+        </message>
+        <message>
+            <source>Choose Simulation, Becker-Hickl, PicoQuant, or BrickMic. Selecting hardware does not scan or contact it.</source>
+            <translation>Wählen Sie Simulation, Becker-Hickl, PicoQuant oder BrickMic. Die Auswahl der Hardware durchsucht oder kontaktiert sie nicht.</translation>
+        </message>
+        <message>
+            <source>Choose a TCSPC source, explicitly initialize it, then start or stop a bounded acquisition.</source>
+            <translation>Wählen Sie eine TCSPC-Quelle, initialisieren Sie sie ausdrücklich und starten oder stoppen Sie dann eine begrenzte Aufnahme.</translation>
+        </message>
+        <message>
+            <source>Choose an output folder, then run. Batch uses the same settings.</source>
+            <translation>Wählen Sie einen Ausgabeordner und starten Sie dann. Die Stapelverarbeitung verwendet dieselben Einstellungen.</translation>
+        </message>
+        <message>
+            <source>Choose an output path or save/load portable acquisition settings.</source>
+            <translation>Wählen Sie einen Ausgabepfad oder speichern/laden Sie portable Aufnahmeeinstellungen.</translation>
+        </message>
+        <message>
+            <source>Choose every pair at most once.</source>
+            <translation>Wählen Sie jedes Paar höchstens einmal.</translation>
+        </message>
+        <message>
+            <source>Choose formats</source>
+            <translation>Formate wählen</translation>
+        </message>
+        <message>
+            <source>Choose the chunk size and binning. Disable Split into files for a single output. Keep original protects the source.</source>
+            <translation>Wählen Sie Blockgröße und Binning. Deaktivieren Sie „In Dateien aufteilen“ für eine einzelne Ausgabe. „Original behalten“ schützt die Quelle.</translation>
+        </message>
+        <message>
+            <source>Choose the source you intend to use.</source>
+            <translation>Wählen Sie die Quelle, die Sie verwenden möchten.</translation>
+        </message>
+        <message>
+            <source>Clear displayed pipeline results without changing device selection.</source>
+            <translation>Angezeigte Pipeline-Ergebnisse löschen, ohne die Geräteauswahl zu ändern.</translation>
+        </message>
+        <message>
+            <source>Clear result data or restore native defaults.</source>
+            <translation>Ergebnisdaten löschen oder native Standardwerte wiederherstellen.</translation>
+        </message>
+        <message>
+            <source>Configure four legacy pipeline routing windows and an optional compatible-backend output folder.</source>
+            <translation>Konfigurieren Sie vier Routing-Fenster der älteren Pipeline und optional einen Ausgabeordner für kompatible Backends.</translation>
+        </message>
+        <message>
+            <source>Configure simulation</source>
+            <translation>Simulation konfigurieren</translation>
+        </message>
+        <message>
+            <source>Construct and initialize the selected device only after this click. Missing drivers are reported safely.</source>
+            <translation>Das ausgewählte Gerät wird erst nach diesem Klick erstellt und initialisiert. Fehlende Treiber werden sicher gemeldet.</translation>
+        </message>
+        <message>
+            <source>Convert or split</source>
+            <translation>Konvertieren oder aufteilen</translation>
+        </message>
+        <message>
+            <source>Correlation / quality tab</source>
+            <translation>Registerkarte Korrelation / Qualität</translation>
+        </message>
+        <message>
+            <source>Decay / intensity tab</source>
+            <translation>Registerkarte Zerfall / Intensität</translation>
+        </message>
+        <message>
+            <source>Decoded-photon stop condition. Set zero only when a positive time limit is configured.</source>
+            <translation>Stoppbedingung für dekodierte Photonen. Nur auf null setzen, wenn ein positives Zeitlimit konfiguriert ist.</translation>
+        </message>
+        <message>
+            <source>Deterministic seed</source>
+            <translation>Deterministischer Startwert</translation>
+        </message>
+        <message>
+            <source>Device Setup…</source>
+            <translation>Gerätekonfiguration…</translation>
+        </message>
+        <message>
+            <source>Device routing channel for pipeline decay window 1.</source>
+            <translation>Geräte-Routing-Kanal für Zerfallsfenster 1 der Pipeline.</translation>
+        </message>
+        <message>
+            <source>Device routing channel for pipeline decay window 2.</source>
+            <translation>Geräte-Routing-Kanal für Zerfallsfenster 2 der Pipeline.</translation>
+        </message>
+        <message>
+            <source>Device routing channel for pipeline decay window 3.</source>
+            <translation>Geräte-Routing-Kanal für Zerfallsfenster 3 der Pipeline.</translation>
+        </message>
+        <message>
+            <source>Device routing channel for pipeline decay window 4.</source>
+            <translation>Geräte-Routing-Kanal für Zerfallsfenster 4 der Pipeline.</translation>
+        </message>
+        <message>
+            <source>Device session</source>
+            <translation>Gerätesitzung</translation>
+        </message>
+        <message>
+            <source>Device type</source>
+            <translation>Gerätetyp</translation>
+        </message>
+        <message>
+            <source>Distance samples drawn between the two accessible volumes of a pair, per frame.</source>
+            <translation>Pro Bild gezogene Abstandsstichproben zwischen den beiden zugänglichen Volumina eines Paars.</translation>
+        </message>
+        <message>
+            <source>Edit a name, type, native-unit value or index. Invalid edits block saving.</source>
+            <translation>Bearbeiten Sie einen Namen, Typ, Wert in nativen Einheiten oder Index. Ungültige Änderungen verhindern das Speichern.</translation>
+        </message>
+        <message>
+            <source>Edit the full actual simulator parameter dictionary; Apply validates it by constructing the simulator engine.</source>
+            <translation>Bearbeiten Sie das vollständige aktuelle Parameter-Wörterbuch des Simulators; „Anwenden“ validiert es, indem die Simulator-Engine erstellt wird.</translation>
+        </message>
+        <message>
+            <source>Either list the residues of one chain (the &lt;b&gt;Candidate sites from residues&lt;/b&gt; group: every pair of them is a candidate), or give an &lt;b&gt;FPS JSON&lt;/b&gt; whose labelling positions and distances are the candidates. With an FPS JSON the residue fields are not used.</source>
+            <translation>Entweder listen Sie die Reste einer Kette auf (die Gruppe &lt;b&gt;Kandidatenstellen aus Resten&lt;/b&gt;: jedes Paar daraus ist ein Kandidat) oder geben Sie eine &lt;b&gt;FPS-JSON&lt;/b&gt; an, deren Markierungspositionen und Abstände die Kandidaten sind. Mit einer FPS-JSON werden die Restfelder nicht verwendet.</translation>
+        </message>
+        <message>
+            <source>Expected E error</source>
+            <translation>Erwarteter E-Fehler</translation>
+        </message>
+        <message>
+            <source>Explicit device lifecycle actions.</source>
+            <translation>Explizite Aktionen für den Gerätelebenszyklus.</translation>
+        </message>
+        <message>
+            <source>For Simulation, Advanced simulation parameters exposes the full actual dictionary and validates it with the simulator engine before applying it.</source>
+            <translation>Bei Simulation zeigen die erweiterten Simulationsparameter das vollständige aktuelle Wörterbuch an und validieren es mit der Simulator-Engine, bevor es übernommen wird.</translation>
+        </message>
+        <message>
+            <source>Forster radius of the dye pair, in Angstrom (a pair the FPS JSON gives its own R0 keeps it).</source>
+            <translation>Förster-Radius des Farbstoffpaars in Ångström (ein Paar, dem die FPS-JSON einen eigenen R0 gibt, behält diesen).</translation>
+        </message>
+        <message>
+            <source>Given a trajectory of a molecule that moves, which pairs of labelling sites should you measure by FRET to tell its conformations apart? The tool computes the FRET efficiency of every candidate pair in every frame and adds pairs greedily: each new pair is the one that most reduces the mean RMSD between conformations the chosen pairs cannot yet distinguish.&lt;br/&gt;&lt;br/&gt;Six steps; you press the buttons, the tour only points at them.</source>
+            <translation>Welche Paare von Markierungsstellen sollten Sie per FRET messen, um die Konformationen eines sich bewegenden Moleküls anhand einer Trajektorie voneinander zu unterscheiden? Das Werkzeug berechnet die FRET-Effizienz jedes Kandidatenpaars in jedem Bild und fügt Paare schrittweise hinzu: Jedes neue Paar ist dasjenige, das den mittleren RMSD zwischen Konformationen, die die gewählten Paare noch nicht unterscheiden können, am stärksten senkt.&lt;br/&gt;&lt;br/&gt;Sechs Schritte; Sie drücken die Schaltflächen, die Führung zeigt nur darauf.</translation>
+        </message>
+        <message>
+            <source>How efficiency is computed</source>
+            <translation>Berechnung der Effizienz</translation>
+        </message>
+        <message>
+            <source>How many pairs to choose.</source>
+            <translation>Wie viele Paare gewählt werden sollen.</translation>
+        </message>
+        <message>
+            <source>How the FRET efficiency of a candidate pair is computed in every frame.</source>
+            <translation>Wie die FRET-Effizienz eines Kandidatenpaars in jedem Bild berechnet wird.</translation>
+        </message>
+        <message>
+            <source>How the informative pairs are chosen.</source>
+            <translation>Wie die aussagekräftigen Paare gewählt werden.</translation>
+        </message>
+        <message>
+            <source>Initialize device</source>
+            <translation>Gerät initialisieren</translation>
+        </message>
+        <message>
+            <source>Initialize explicitly</source>
+            <translation>Ausdrücklich initialisieren</translation>
+        </message>
+        <message>
+            <source>Inspect and edit tags</source>
+            <translation>Tags prüfen und bearbeiten</translation>
+        </message>
+        <message>
+            <source>Inspect results</source>
+            <translation>Ergebnisse prüfen</translation>
+        </message>
+        <message>
+            <source>Keep at least one positive stop condition. Time is wall-clock; photon count is decoded by the live pipeline.</source>
+            <translation>Behalten Sie mindestens eine positive Stoppbedingung bei. Die Zeit ist Wandzeit; die Photonenzahl wird von der Live-Pipeline dekodiert.</translation>
+        </message>
+        <message>
+            <source>Largest number of points kept of an accessible volume.</source>
+            <translation>Größte Anzahl beibehaltener Punkte eines zugänglichen Volumens.</translation>
+        </message>
+        <message>
+            <source>Load and validate a JSON configuration without automatically contacting hardware.</source>
+            <translation>Eine JSON-Konfiguration laden und validieren, ohne Hardware automatisch zu kontaktieren.</translation>
+        </message>
+        <message>
+            <source>Load input</source>
+            <translation>Eingabe laden</translation>
+        </message>
+        <message>
+            <source>Load settings</source>
+            <translation>Einstellungen laden</translation>
+        </message>
+        <message>
+            <source>MCS trace tab</source>
+            <translation>Registerkarte MCS-Spur</translation>
+        </message>
+        <message>
+            <source>Macrotime tab</source>
+            <translation>Registerkarte Makrozeit</translation>
+        </message>
+        <message>
+            <source>Map routing channels</source>
+            <translation>Routing-Kanäle zuordnen</translation>
+        </message>
+        <message>
+            <source>Max AV points</source>
+            <translation>Max. AV-Punkte</translation>
+        </message>
+        <message>
+            <source>Max pairs</source>
+            <translation>Max. Paare</translation>
+        </message>
+        <message>
+            <source>Menu Switch
+
+Switches the open ChiSurf main window between the traditional menu bar and the ribbon, without a restart. The choice is saved and restored at the next start. Menu Switch opens no window of its own.</source>
+            <translation>Menüwechsel
+
+Wechselt das geöffnete ChiSurf-Hauptfenster zwischen der klassischen Menüleiste und dem Ribbon, ohne Neustart. Die Wahl wird gespeichert und beim nächsten Start wiederhergestellt. Menüwechsel öffnet kein eigenes Fenster.</translation>
+        </message>
+        <message>
+            <source>Native tabs for real pipeline-derived overview, decay, correlation, macrotime, and MCS state.</source>
+            <translation>Native Registerkarten für die aus der Pipeline abgeleiteten Zustände Übersicht, Zerfall, Korrelation, Makrozeit und MCS.</translation>
+        </message>
+        <message>
+            <source>Open Menu Switch from a ChiSurf main window to change its interface.</source>
+            <translation>Öffnen Sie Menüwechsel aus einem ChiSurf-Hauptfenster, um dessen Oberfläche zu ändern.</translation>
+        </message>
+        <message>
+            <source>Open a TTTR file using the path field or browse button.</source>
+            <translation>Öffnen Sie eine TTTR-Datei über das Pfadfeld oder die Schaltfläche Durchsuchen.</translation>
+        </message>
+        <message>
+            <source>Open a native folder chooser without creating or writing to the folder.</source>
+            <translation>Öffnet einen nativen Ordnerauswahldialog, ohne den Ordner anzulegen oder darin zu schreiben.</translation>
+        </message>
+        <message>
+            <source>Open a source</source>
+            <translation>Quelle öffnen</translation>
+        </message>
+        <message>
+            <source>Open a supported TTTR file or drop it onto the editor.</source>
+            <translation>Öffnen Sie eine unterstützte TTTR-Datei oder ziehen Sie sie in den Editor.</translation>
+        </message>
+        <message>
+            <source>Open and review the advanced simulation parameters.</source>
+            <translation>Erweiterte Simulationsparameter öffnen und prüfen.</translation>
+        </message>
+        <message>
+            <source>Open the selected device's native configuration card. Hardware settings remain locked while acquisition runs.</source>
+            <translation>Öffnet die native Konfigurationskarte des ausgewählten Geräts. Hardwareeinstellungen bleiben während der Aufnahme gesperrt.</translation>
+        </message>
+        <message>
+            <source>Optional path passed only to compatible simulation or BrickMic backends; this UI never claims every device writes raw files.</source>
+            <translation>Optionaler Pfad, der nur an kompatible Simulations- oder BrickMic-Backends übergeben wird; diese Oberfläche behauptet nie, dass jedes Gerät Rohdateien schreibt.</translation>
+        </message>
+        <message>
+            <source>Overview tab</source>
+            <translation>Registerkarte Übersicht</translation>
+        </message>
+        <message>
+            <source>Peak brightness</source>
+            <translation>Spitzenhelligkeit</translation>
+        </message>
+        <message>
+            <source>Photon limit</source>
+            <translation>Photonengrenze</translation>
+        </message>
+        <message>
+            <source>PicoQuant</source>
+            <translation>PicoQuant</translation>
+        </message>
+        <message>
+            <source>Pipeline results</source>
+            <translation>Pipeline-Ergebnisse</translation>
+        </message>
+        <message>
+            <source>Press &lt;b&gt;...&lt;/b&gt; next to Trajectory and choose the file, or drop it on the window.</source>
+            <translation>Drücken Sie neben Trajektorie auf &lt;b&gt;...&lt;/b&gt; und wählen Sie die Datei, oder ziehen Sie sie in das Fenster.</translation>
+        </message>
+        <message>
+            <source>Press &lt;b&gt;Run selection&lt;/b&gt;.</source>
+            <translation>Drücken Sie &lt;b&gt;Auswahl ausführen&lt;/b&gt;.</translation>
+        </message>
+        <message>
+            <source>Press Initialize device before Start. A missing driver or unavailable card is reported here rather than silently falling back to simulation.</source>
+            <translation>Drücken Sie vor Start die Schaltfläche Gerät initialisieren. Ein fehlender Treiber oder eine nicht verfügbare Karte wird hier gemeldet, statt stillschweigend auf die Simulation zurückzufallen.</translation>
+        </message>
+        <message>
+            <source>Press Initialize device.</source>
+            <translation>Drücken Sie Gerät initialisieren.</translation>
+        </message>
+        <message>
+            <source>Press Start when the source is initialized.</source>
+            <translation>Drücken Sie Start, sobald die Quelle initialisiert ist.</translation>
+        </message>
+        <message>
+            <source>R0 (Å)</source>
+            <translation>R0 (Å)</translation>
+        </message>
+        <message>
+            <source>RMSD atom selection</source>
+            <translation>RMSD-Atomauswahl</translation>
+        </message>
+        <message>
+            <source>Read and save the result</source>
+            <translation>Ergebnis lesen und speichern</translation>
+        </message>
+        <message>
+            <source>Read every n-th frame of the trajectory (1 = all frames).</source>
+            <translation>Jedes n-te Bild der Trajektorie lesen (1 = alle Bilder).</translation>
+        </message>
+        <message>
+            <source>Request a safe stop, interrupt an active FIFO, and flush pipeline state.</source>
+            <translation>Einen sicheren Stopp anfordern, einen aktiven FIFO unterbrechen und den Pipeline-Zustand leeren.</translation>
+        </message>
+        <message>
+            <source>Residue numbers as written in the PDB file: single numbers and ranges, e.g. 35-50,85-95,115-120.</source>
+            <translation>Restnummern wie in der PDB-Datei angegeben: einzelne Zahlen und Bereiche, z. B. 35-50,85-95,115-120.</translation>
+        </message>
+        <message>
+            <source>Residues (PDB resSeq)</source>
+            <translation>Reste (PDB resSeq)</translation>
+        </message>
+        <message>
+            <source>Restore native defaults without constructing or contacting a device.</source>
+            <translation>Native Standardwerte wiederherstellen, ohne ein Gerät zu erstellen oder zu kontaktieren.</translation>
+        </message>
+        <message>
+            <source>Result tabs contain values calculated by AcquisitionPipeline from actual device FIFO or simulator records.</source>
+            <translation>Ergebnis-Registerkarten enthalten Werte, die von AcquisitionPipeline aus tatsächlichen FIFO-Daten des Geräts oder Simulator-Datensätzen berechnet wurden.</translation>
+        </message>
+        <message>
+            <source>Result visibility</source>
+            <translation>Sichtbarkeit der Ergebnisse</translation>
+        </message>
+        <message>
+            <source>Review the four routing mappings.</source>
+            <translation>Prüfen Sie die vier Routing-Zuordnungen.</translation>
+        </message>
+        <message>
+            <source>Routing and output</source>
+            <translation>Routing und Ausgabe</translation>
+        </message>
+        <message>
+            <source>Routing channel 1</source>
+            <translation>Routing-Kanal 1</translation>
+        </message>
+        <message>
+            <source>Routing channel 2</source>
+            <translation>Routing-Kanal 2</translation>
+        </message>
+        <message>
+            <source>Routing channel 3</source>
+            <translation>Routing-Kanal 3</translation>
+        </message>
+        <message>
+            <source>Routing channel 4</source>
+            <translation>Routing-Kanal 4</translation>
+        </message>
+        <message>
+            <source>Save a copy</source>
+            <translation>Kopie speichern</translation>
+        </message>
+        <message>
+            <source>Save device selection, limits, routing, output, result visibility, and simulator JSON to a chosen JSON file.</source>
+            <translation>Gerätauswahl, Grenzen, Routing, Ausgabe, Sichtbarkeit der Ergebnisse und Simulator-JSON in einer gewählten JSON-Datei speichern.</translation>
+        </message>
+        <message>
+            <source>Save settings</source>
+            <translation>Einstellungen speichern</translation>
+        </message>
+        <message>
+            <source>Save the edited header and original photon events to a new PTU file.</source>
+            <translation>Den bearbeiteten Header und die ursprünglichen Photonenereignisse in einer neuen PTU-Datei speichern.</translation>
+        </message>
+        <message>
+            <source>Select source</source>
+            <translation>Quelle auswählen</translation>
+        </message>
+        <message>
+            <source>Select the input container and desired output container.</source>
+            <translation>Wählen Sie den Eingabecontainer und den gewünschten Ausgabecontainer.</translation>
+        </message>
+        <message>
+            <source>Selection alone never loads, scans, or contacts a physical device.</source>
+            <translation>Die Auswahl allein lädt, durchsucht oder kontaktiert niemals ein physisches Gerät.</translation>
+        </message>
+        <message>
+            <source>Set a time and/or photon limit.</source>
+            <translation>Eine Zeit- und/oder Photonengrenze festlegen.</translation>
+        </message>
+        <message>
+            <source>Set split options</source>
+            <translation>Aufteilungsoptionen festlegen</translation>
+        </message>
+        <message>
+            <source>Show actual pipeline result tabs in this native window.</source>
+            <translation>Tatsächliche Pipeline-Ergebnis-Registerkarten in diesem nativen Fenster anzeigen.</translation>
+        </message>
+        <message>
+            <source>Show decoded count, elapsed time, rate, and progress.</source>
+            <translation>Dekodierte Anzahl, verstrichene Zeit, Rate und Fortschritt anzeigen.</translation>
+        </message>
+        <message>
+            <source>Show the bounded macrotime interval count from the pipeline.</source>
+            <translation>Die begrenzte Anzahl der Makrozeitintervalle aus der Pipeline anzeigen.</translation>
+        </message>
+        <message>
+            <source>Show the pipeline MCS trace sample count.</source>
+            <translation>Die Anzahl der MCS-Spurproben der Pipeline anzeigen.</translation>
+        </message>
+        <message>
+            <source>Show the pipeline-derived correlation, burst, and phasor tab.</source>
+            <translation>Die aus der Pipeline abgeleitete Registerkarte für Korrelation, Burst und Phasor anzeigen.</translation>
+        </message>
+        <message>
+            <source>Show the pipeline-derived decay and intensity tab.</source>
+            <translation>Die aus der Pipeline abgeleitete Registerkarte für Zerfall und Intensität anzeigen.</translation>
+        </message>
+        <message>
+            <source>Simulator brightness used to build encoded records; never a hardware detector setting.</source>
+            <translation>Simulator-Helligkeit zum Erzeugen kodierter Datensätze; niemals eine Detektoreinstellung der Hardware.</translation>
+        </message>
+        <message>
+            <source>Simulator configuration</source>
+            <translation>Simulator-Konfiguration</translation>
+        </message>
+        <message>
+            <source>Simulator random seed for reproducible encoded records.</source>
+            <translation>Zufalls-Startwert des Simulators für reproduzierbare kodierte Datensätze.</translation>
+        </message>
+        <message>
+            <source>Start and stop</source>
+            <translation>Starten und Stoppen</translation>
+        </message>
+        <message>
+            <source>Start streams FIFO or encoded simulator records through AcquisitionPipeline. Stop interrupts the active source and flushes its result state.</source>
+            <translation>Start streamt FIFO- oder kodierte Simulator-Datensätze über AcquisitionPipeline. Stopp unterbricht die aktive Quelle und leert deren Ergebniszustand.</translation>
+        </message>
+        <message>
+            <source>Start the initialized device FIFO or encoded simulator stream through AcquisitionPipeline.</source>
+            <translation>Das initialisierte FIFO des Geräts oder den kodierten Simulator-Datenstrom über AcquisitionPipeline starten.</translation>
+        </message>
+        <message>
+            <source>Switch the current ChiSurf window between the menu bar and ribbon, and save the interface preference.</source>
+            <translation>Wechselt das aktuelle ChiSurf-Fenster zwischen Menüleiste und Ribbon und speichert die Oberflächeneinstellung.</translation>
+        </message>
+        <message>
+            <source>The ChiSurf interface did not change. Check the host log for details.</source>
+            <translation>Die ChiSurf-Oberfläche hat sich nicht geändert. Details finden Sie im Host-Protokoll.</translation>
+        </message>
+        <message>
+            <source>The atom the dye is attached at (CB falls back to CA where a residue has none, e.g. glycine).</source>
+            <translation>Das Atom, an dem der Farbstoff angeheftet ist (CB weicht auf CA aus, wo ein Rest keines hat, z. B. Glycin).</translation>
+        </message>
+        <message>
+            <source>The atoms the conformations are compared on (an MDTraj-style selection, e.g. name CA); empty = all atoms.</source>
+            <translation>Die Atome, auf denen die Konformationen verglichen werden (eine MDTraj-artige Auswahl, z. B. name CA); leer = alle Atome.</translation>
+        </message>
+        <message>
+            <source>The experimental uncertainty of a FRET efficiency; a pair is informative to the extent the conformations differ by more than this.</source>
+            <translation>Die experimentelle Unsicherheit einer FRET-Effizienz; ein Paar ist insoweit aussagekräftig, wie sich die Konformationen um mehr als diesen Wert unterscheiden.</translation>
+        </message>
+        <message>
+            <source>The table lists the pairs in the order they were added with the mean RMSD after each; the plot shows how fast it falls. &lt;b&gt;Export&lt;/b&gt; writes the table to a text file.</source>
+            <translation>Die Tabelle listet die Paare in der Reihenfolge ihres Hinzufügens mit dem danach mittleren RMSD auf; das Diagramm zeigt, wie schnell er fällt. &lt;b&gt;Exportieren&lt;/b&gt; schreibt die Tabelle in eine Textdatei.</translation>
+        </message>
+        <message>
+            <source>The trajectory to select pairs from and how to read it.</source>
+            <translation>Die Trajektorie, aus der Paare gewählt werden, und wie sie gelesen wird.</translation>
+        </message>
+        <message>
+            <source>These four controls are the pipeline decay-window routing order. Match them to your instrument's channels before starting.</source>
+            <translation>Diese vier Bedienelemente bestimmen die Routing-Reihenfolge der Zerfallsfenster der Pipeline. Stimmen Sie sie vor dem Start auf die Kanäle Ihres Geräts ab.</translation>
+        </message>
+        <message>
+            <source>This action requires an open ChiSurf main window.</source>
+            <translation>Diese Aktion erfordert ein geöffnetes ChiSurf-Hauptfenster.</translation>
+        </message>
+        <message>
+            <source>Time limit (s)</source>
+            <translation>Zeitgrenze (s)</translation>
+        </message>
+        <message>
+            <source>Truthful initialization, streaming, stop, driver, and pipeline status.</source>
+            <translation>Wahrheitsgetreuer Status von Initialisierung, Streaming, Stopp, Treiber und Pipeline.</translation>
+        </message>
+        <message>
+            <source>Unique pairs only</source>
+            <translation>Nur eindeutige Paare</translation>
+        </message>
+        <message>
+            <source>Use AV backend</source>
+            <translation>AV-Backend verwenden</translation>
+        </message>
+        <message>
+            <source>Use the real pipeline result tabs and their visibility controls. Clear removes displayed state; Reset does not contact a device.</source>
+            <translation>Verwenden Sie die echten Pipeline-Ergebnis-Registerkarten und ihre Sichtbarkeitsbedienelemente. Leeren entfernt den angezeigten Zustand; Zurücksetzen kontaktiert kein Gerät.</translation>
+        </message>
+        <message>
+            <source>Used when no FPS JSON is given: every pair of the listed residues is a candidate.</source>
+            <translation>Wird verwendet, wenn keine FPS-JSON angegeben ist: jedes Paar der aufgelisteten Reste ist ein Kandidat.</translation>
+        </message>
+        <message>
+            <source>Wall-clock stop condition. Set zero to disable it; retain a positive photon limit.</source>
+            <translation>Stoppbedingung nach Wanduhrzeit. Null setzen, um sie zu deaktivieren; eine positive Photonengrenze beibehalten.</translation>
+        </message>
+        <message>
+            <source>Where the sites come from</source>
+            <translation>Herkunft der Stellen</translation>
+        </message>
+        <message>
+            <source>With an FPS JSON: compute the efficiency from the accessible volumes of the dyes instead of the attachment-atom distance (falls back to the distance, with a message, when the AV cannot be computed).</source>
+            <translation>Mit einer FPS-JSON: die Effizienz aus den zugänglichen Volumina der Farbstoffe statt aus dem Abstand der Anheftungsatome berechnen (fällt mit einer Meldung auf den Abstand zurück, wenn das AV nicht berechnet werden kann).</translation>
+        </message>
+        <message>
+            <source>Open a complete JSON editor for all simulator parameters.</source>
+            <translation>Öffnen Sie einen vollständigen JSON-Editor für alle Simulatorparameter.</translation>
+        </message>
+        <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="9" />
             <source> A</source>
             <translation type="unfinished" />
