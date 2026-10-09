@@ -51,10 +51,6 @@ chisurf/emtk/help_guide.py#call@217:11/arg0:untranslated-literal
 chisurf/emtk/help_guide.py#call@219:8/arg0:untranslated-literal
 chisurf/emtk/help_guide.py#call@266:11/arg0:untranslated-literal
 chisurf/emtk/help_guide.py#call@268:8/arg0:untranslated-literal
-chisurf/emtk/help_guide.py#call@565:11/arg0:untranslated-literal
-chisurf/emtk/help_guide.py#call@567:8/arg0:untranslated-literal
-chisurf/emtk/help_guide.py#call@571:15/arg0:untranslated-literal
-chisurf/emtk/help_guide.py#call@575:12/arg0:untranslated-literal
 chisurf/emtk/image_canvas.py#call@145:12/arg0:untranslated-literal
 chisurf/emtk/image_canvas.py#call@154:8/arg0:untranslated-literal
 chisurf/emtk/image_canvas.py#call@161:8/arg0:untranslated-literal

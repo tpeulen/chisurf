@@ -1,0 +1,26 @@
+{
+  "title": "Game help",
+  "sections": [
+    {
+      "type": "button_row",
+      "description": "Help, restart and a guided tour of the current game.",
+      "buttons": [
+        {
+          "label": "Help",
+          "action": "open_help",
+          "description": "Explain the rules, controls and sound support for this game."
+        },
+        {
+          "label": "Restart",
+          "action": "restart_game",
+          "description": "Start a new round of the current game."
+        },
+        {
+          "label": "Guide",
+          "action": "start_guide",
+          "description": "Walk through the real Restart and Help buttons without changing the round automatically."
+        }
+      ]
+    }
+  ]
+}

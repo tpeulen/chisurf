@@ -1,0 +1,34 @@
+{
+  "steps": [
+    {
+      "title": "Start a new round",
+      "text": "Guess the hidden number using the lifetime dial. The curve is generated from your estimate; it is not fitted to measured data. Press Restart when you are ready to replace the current round.",
+      "target": {
+        "name": "restart_game"
+      },
+      "await": {
+        "hint": "Press Restart in the game header."
+      }
+    },
+    {
+      "title": "Read the controls",
+      "text": "Left/Right changes the estimate, Q/E changes it by ten and Enter or Space submits. You can also click the plot and lower footer. Help explains the turns, hints and sound.",
+      "target": {
+        "name": "open_help"
+      },
+      "await": {
+        "hint": "Press Help in the game header."
+      }
+    },
+    {
+      "title": "Check the fresh round",
+      "text": "Close Help, then press Restart once more. Check that the guess history is empty and the dial is back at 50 with a newly generated hidden target. The guide waits for your click; it never presses a control for you.",
+      "target": {
+        "name": "restart_game"
+      },
+      "await": {
+        "hint": "Press Restart in the game header and inspect the reset round."
+      }
+    }
+  ]
+}

@@ -47,6 +47,8 @@ class Inputs:
 
 
 class PongApp(GameApp):
+    HELP_DIR = Path(__file__).parent / "gui"
+
     BINDINGS = (
         (KEY_UP, ('up', False)),
         (KEY_DOWN, ('down', False)),
@@ -100,6 +102,8 @@ class PongApp(GameApp):
 
 
     def key(self, key, text="", modifiers=0):
+        if self.overlay_active:
+            return self.overlay_key(key, text, modifiers)
         if blocked(modifiers) or self.closed:
             return False
         action, second = self.binding(key, text)
@@ -117,6 +121,8 @@ class PongApp(GameApp):
         return True
 
     def key_release(self, key, text="", modifiers=0):
+        if self.overlay_active:
+            return True
         action, second = self.binding(key, text)
         (self.p2 if second else self.keys).held.discard(action)
         return action is not None
@@ -132,6 +138,8 @@ class PongApp(GameApp):
         if self.closed:
             return
         super().pointer_move(x, y, buttons, modifiers)
+        if self.overlay_active:
+            return
         if buttons & 1 and not self.game.paused and self.game.winner is None:
             ox, oy, scale = self.board
             if ox <= x <= ox + FIELD_W * scale and oy <= y <= oy + FIELD_H * scale:
@@ -242,11 +250,11 @@ class PongApp(GameApp):
             im.set_cursor_screen_pos(at(180, 240))
             if im.invisible_button("##winner", (440*scale, 120*scale)):
                 g.restart()
-            im.set_item_tooltip(tr("Start a new round (Enter/Space or R)."))
+            im.set_item_tooltip(tr("Start a new round with R. After a round ends, Enter/Space also restarts."))
         # Separate clickable captions preserve the legacy footer and remain usable narrow.
         controls = ((100, "Up/Down optic", "Drag the left paddle or hold Up/Down. In two-player mode hold W/S for the right paddle.", None),
                     (280, "Menu hold", "Pause or resume (P).", "menu"),
-                    (445, "Cancel reset", "Start a new round (Enter/Space or R).", "cancel"),
+                    (445, "Cancel reset", "Start a new round with R. After a round ends, Enter/Space also restarts.", "cancel"),
                     (595, "L mode", "Switch CPU and two-player mode (M).", "shoulder_l"),
                     (715, "R sound", "Mute or unmute effects (N).", "shoulder_r"))
         labels = [tr(label) for xx, label, tip, action in controls]

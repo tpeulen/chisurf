@@ -1,0 +1,34 @@
+{
+  "steps": [
+    {
+      "title": "Start a new round",
+      "text": "Return the ball and compare the scores. This is a generated game round, not an analysis of a photon stream. Press Restart when you are ready to replace the current round.",
+      "target": {
+        "name": "restart_game"
+      },
+      "await": {
+        "hint": "Press Restart in the game header."
+      }
+    },
+    {
+      "title": "Read the controls",
+      "text": "Up/Down moves your paddle; M changes the opponent mode and W/S controls the second player. P pauses. Open Help for the complete controls and sound behavior.",
+      "target": {
+        "name": "open_help"
+      },
+      "await": {
+        "hint": "Press Help in the game header."
+      }
+    },
+    {
+      "title": "Check the fresh round",
+      "text": "Close Help, then press Restart once more. Check that both scores have reset and a fresh serve begins. The guide waits for your click; it never presses a control for you.",
+      "target": {
+        "name": "restart_game"
+      },
+      "await": {
+        "hint": "Press Restart in the game header and inspect the reset round."
+      }
+    }
+  ]
+}

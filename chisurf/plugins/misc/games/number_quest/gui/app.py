@@ -33,6 +33,8 @@ def tr(source):
 
 
 class NumberQuestApp(GameApp):
+    HELP_DIR = Path(__file__).parent
+
     BINDINGS = (
         (KEY_LEFT, 'left'),
         (KEY_RIGHT, 'right'),
@@ -98,6 +100,8 @@ class NumberQuestApp(GameApp):
 
 
     def key(self, key, text="", modifiers=0):
+        if self.overlay_active:
+            return self.overlay_key(key, text, modifiers)
         if blocked(modifiers) or self.closed:
             return False
         action = self.binding(key, text)
@@ -116,6 +120,8 @@ class NumberQuestApp(GameApp):
         return True
 
     def key_release(self, key, text="", modifiers=0):
+        if self.overlay_active:
+            return True
         action = self.binding(key, text)
         self.held.discard(action)
         self.repeat.pop(action, None)
@@ -173,6 +179,10 @@ class NumberQuestApp(GameApp):
         self.sound_enabled = enabled
         self.focus_lost()
         self.request_frame()
+
+    def _restart_round(self) -> None:
+        """Reuse the existing round reset including its app-owned state."""
+        self.new_round()
 
     def render(self):
         now = self.clock()
@@ -235,7 +245,7 @@ class NumberQuestApp(GameApp):
                 previous = coverage
         text(f"{self.tau:.1f} ns", 242, 26, (89,217,204,255))
         text(self.message, 272, 12)
-        controls = ((306, "Left/Right  dial      L/R  coarse", "Hold Left/Right or A/D for fine steps; Q/E for steps of ten.", None), (324, "Confirm  submit      Cancel  new round", "Submit with Enter/Space. Start a new round with R.", "submit"))
+        controls = ((306, "Left/Right  dial      L/R  coarse", "Hold Left/Right for fine steps; Q/E for steps of ten.", None), (324, "Confirm  submit      Cancel  new round", "Submit with Enter/Space. Start a new round with R.", "submit"))
         for yy, label, tip, action in controls:
             text(tr(label), yy, 11, (112,122,140,255))
             im.set_cursor_screen_pos(at(10, yy-9))

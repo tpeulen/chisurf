@@ -1,0 +1,34 @@
+{
+  "steps": [
+    {
+      "title": "Start a new round",
+      "text": "Reveal safe cells and use adjacent counts to avoid mines. This generated board is a game, not a detector-data analysis. Press Restart when you are ready to replace the current round.",
+      "target": {
+        "name": "restart_game"
+      },
+      "await": {
+        "hint": "Press Restart in the game header."
+      }
+    },
+    {
+      "title": "Read the controls",
+      "text": "Move with the arrow keys, reveal with Enter or Space, and flag with F. Mouse buttons reveal or flag cells. Help explains difficulty changes and the board rules.",
+      "target": {
+        "name": "open_help"
+      },
+      "await": {
+        "hint": "Press Help in the game header."
+      }
+    },
+    {
+      "title": "Check the fresh round",
+      "text": "Close Help, then press Restart once more. Check that the board is covered and the flags are cleared at the current difficulty. The guide waits for your click; it never presses a control for you.",
+      "target": {
+        "name": "restart_game"
+      },
+      "await": {
+        "hint": "Press Restart in the game header and inspect the reset round."
+      }
+    }
+  ]
+}

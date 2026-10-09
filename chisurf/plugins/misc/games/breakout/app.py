@@ -54,6 +54,8 @@ class Inputs:
 
 
 class BreakoutApp(GameApp):
+    HELP_DIR = Path(__file__).parent / "gui"
+
     BINDINGS = (
         (KEY_LEFT, 'left'),
         (KEY_RIGHT, 'right'),
@@ -105,6 +107,8 @@ class BreakoutApp(GameApp):
 
 
     def key(self, key, text="", modifiers=0):
+        if self.overlay_active:
+            return self.overlay_key(key, text, modifiers)
         if blocked(modifiers) or self.closed:
             return False
         action = self.binding(key, text)
@@ -119,6 +123,8 @@ class BreakoutApp(GameApp):
         return True
 
     def key_release(self, key, text="", modifiers=0):
+        if self.overlay_active:
+            return True
         action = self.keys.held.pop(key, None)
         return action is not None or self.binding(key, text) is not None
 
@@ -129,6 +135,8 @@ class BreakoutApp(GameApp):
 
     def pointer_move(self, x, y, buttons=0, modifiers=0):
         super().pointer_move(x, y, buttons, modifiers)
+        if self.overlay_active:
+            return
         ox, oy, scale = self.board
         if buttons & 1 and not self.closed and not self.game.paused and self.game.message is None and ox <= x <= ox + W * scale and oy <= y <= oy + H * scale:
             self.game.paddle_x = min(max((x - ox) / scale, PADDLE_W / 2), W - PADDLE_W / 2)
@@ -259,11 +267,11 @@ class BreakoutApp(GameApp):
             im.set_cursor_screen_pos(at(190, H/2-55))
             if im.invisible_button("##gameover", (420*scale,110*scale)):
                 self.control("confirm")
-            im.set_item_tooltip(tr("Start a fresh sample (Enter/Space or R)."))
-        controls = (("Left/Right detector", "Drag the detector or hold Left/Right or A/D.", None),
+            im.set_item_tooltip(tr("Start a fresh sample with R. After the sample ends, Enter/Space also restarts."))
+        controls = (("Left/Right detector", "Drag the detector or hold Left/Right.", None),
                     ("Confirm fire", "Launch the photon (Enter/Space).", "confirm"),
                     ("Menu hold", "Pause or resume (P).", "menu"),
-                    ("Cancel reset", "Start a fresh sample (Enter/Space or R).", "cancel"),
+                    ("Cancel reset", "Start a fresh sample with R. After the sample ends, Enter/Space also restarts.", "cancel"),
                     ("R sound", "Toggle mute state (M); EMTK audio is unavailable.", "shoulder_r"))
         labels = [tr(label) for label, tip, action in controls]
         caption = "   ".join(labels)+(tr("   [muted]") if g.muted else "")
@@ -285,7 +293,7 @@ class BreakoutApp(GameApp):
         # Board drag target is behind the caption controls.
         im.set_cursor_screen_pos(at(0,40))
         im.invisible_button("##field", (W*scale,(H-80)*scale))
-        im.set_item_tooltip(tr("Drag the detector or hold Left/Right or A/D."))
+        im.set_item_tooltip(tr("Drag the detector or hold Left/Right."))
         im.end()
 
 

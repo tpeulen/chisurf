@@ -13,8 +13,6 @@ chisurf/plugins/core/help/gui
 chisurf/plugins/fcs/fcs_channel_preset/gui
 chisurf/plugins/misc/games/breakout
 chisurf/plugins/misc/games/gui
-chisurf/plugins/misc/games/minesweeper/gui
-chisurf/plugins/misc/games/number_quest/gui
 chisurf/plugins/misc/games/pong
 chisurf/plugins/misc/games/tetris
 chisurf/plugins/modelling/fps_json_editor/gui

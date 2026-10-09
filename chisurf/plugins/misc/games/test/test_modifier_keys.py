@@ -4,7 +4,7 @@ import importlib
 
 import pytest
 from emtk.events import ALT_MODIFIER, CONTROL_MODIFIER, META_MODIFIER, SHIFT_MODIFIER
-from emtk.keys import KEY_RIGHT
+from emtk.keys import KEY_RIGHT, KEY_UP
 
 FACTORIES = [
     "chisurf.plugins.misc.games.pong.app",
@@ -19,12 +19,13 @@ FACTORIES = [
 def test_shift_and_keypad_are_not_application_shortcuts(module):
     app = importlib.import_module(module).make_app()
     try:
-        assert app.key(KEY_RIGHT, "", SHIFT_MODIFIER)
-        app.key_release(KEY_RIGHT)
-        assert app.key(KEY_RIGHT, "", 0x20000000)
-        app.key_release(KEY_RIGHT)
+        key = KEY_UP if module.endswith("pong.app") else KEY_RIGHT
+        assert app.key(key, "", SHIFT_MODIFIER)
+        app.key_release(key)
+        assert app.key(key, "", 0x20000000)
+        app.key_release(key)
         for modifier in (CONTROL_MODIFIER, ALT_MODIFIER, META_MODIFIER):
-            assert not app.key(KEY_RIGHT, "", modifier)
+            assert not app.key(key, "", modifier)
     finally:
         close = getattr(app, "close", None)
         if close is not None:
@@ -49,9 +50,11 @@ def test_keypad_arrows_reach_games_through_qt_host(module):
     app.key = record
     host = ControlHost(app)
     try:
+        key = KEY_UP if module.endswith("pong.app") else KEY_RIGHT
+        qt_key = QtCore.Qt.Key_Up if key == KEY_UP else QtCore.Qt.Key_Right
         mods = QtCore.Qt.KeypadModifier | QtCore.Qt.ShiftModifier
-        qapp.sendEvent(host, QtGui.QKeyEvent(QtCore.QEvent.KeyPress, QtCore.Qt.Key_Right, mods))
-        qapp.sendEvent(host, QtGui.QKeyEvent(QtCore.QEvent.KeyRelease, QtCore.Qt.Key_Right, mods))
-        assert seen == [(KEY_RIGHT, SHIFT_MODIFIER, True)]
+        qapp.sendEvent(host, QtGui.QKeyEvent(QtCore.QEvent.KeyPress, qt_key, mods))
+        qapp.sendEvent(host, QtGui.QKeyEvent(QtCore.QEvent.KeyRelease, qt_key, mods))
+        assert seen == [(key, SHIFT_MODIFIER, True)]
     finally:
         host.close()

@@ -146,3 +146,11 @@ point_spread_function
 photophysics_simulation
 biofilm_growth
 ```
+
+## Recreational tools
+
+```{toctree}
+:maxdepth: 1
+
+games
+```

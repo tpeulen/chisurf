@@ -2,6 +2,13 @@
 
 ## 2026-10-09
 
+- Native games now share declared Help/Restart/Guide with three real awaited
+  steps, unchanged captured rounds/canvases and translated control help. Fixed
+  toolkit nested disablement in `3416806a` and shared tour translation routing;
+  exact source/visual/provider evidence is in game-chrome acceptance. Concurrent
+  committed UI guard drift is measured and assigned to a bounded prerequisite;
+  aggregate release gates remain open.
+
 - Game bindings and scalar/atomic state contracts now share real resolver/export work;29independent+111exactneighbors+1036guards/9skip pass, with12880/300/full5traces exact. Nestedvalidators/coercions preserved;2custombool partialcommit defects fixed. Commonchrome andotherW6f debts remain. [Acceptance](validation/release-readiness-w6f/game-binding-state-acceptance.json).
 
 - NumberQuest now has one canonical richer GUI implementation; exactstate/commands/6locale/control/resize/audio parity and before/default/narrow visuals pass. Dirtyroot originals remain on disk after index-only retirement; foreign semantics stay unstaged. P-F9bindings/state/chrome still open. [Acceptance](validation/release-readiness-w6f/number-move-acceptance.json).

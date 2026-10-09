@@ -1,0 +1,34 @@
+{
+  "steps": [
+    {
+      "title": "Start a new round",
+      "text": "Clear bricks while keeping the ball above the paddle. The game creates its own round; it does not need a measurement file. Press Restart when you are ready to replace the current round.",
+      "target": {
+        "name": "restart_game"
+      },
+      "await": {
+        "hint": "Press Restart in the game header."
+      }
+    },
+    {
+      "title": "Read the controls",
+      "text": "Hold Left/Right to move, then use Space or Enter to launch. P pauses; R restarts. The Help panel explains lives, colours and the remaining controls.",
+      "target": {
+        "name": "open_help"
+      },
+      "await": {
+        "hint": "Press Help in the game header."
+      }
+    },
+    {
+      "title": "Check the fresh round",
+      "text": "Close Help, then press Restart once more. Check that the score and lives have reset and the ball is waiting on the paddle before you launch it. The guide waits for your click; it never presses a control for you.",
+      "target": {
+        "name": "restart_game"
+      },
+      "await": {
+        "hint": "Press Restart in the game header and inspect the reset round."
+      }
+    }
+  ]
+}

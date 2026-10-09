@@ -394,7 +394,7 @@ def test_help_is_substantive_and_links_live(plugin: GuiPlugin):
 _DRAWS_HELP = re.compile(
     r"\b(ensure_help_toolbar|add_toolbar_help|attach_help_and_guide"
     r"|NavigationPanelTool|BurstAnalysisTool|AutoFormMleTool|TrajToolApp|ImagingToolApp|PixelToolApp"
-    r"|EmTkHelpWindow|EmTkGuidedTour|ToolHubApp|FcsHubApp)\b"
+    r"|EmTkHelpWindow|EmTkGuidedTour|ToolHubApp|FcsHubApp|GameApp)\b"
 )
 
 #: Tools that ship help files but do not draw them yet. **Shrinking**; never

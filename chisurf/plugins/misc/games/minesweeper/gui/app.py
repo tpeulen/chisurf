@@ -70,6 +70,8 @@ def pixel_text(draw, text, pos, height, colour, align="left", max_width=None):
 
 
 class MinesweeperApp(GameApp):
+    HELP_DIR = Path(__file__).parent
+
     BINDINGS = (
         (KEY_UP, (-1, 0)),
         (KEY_DOWN, (1, 0)),
@@ -137,6 +139,8 @@ class MinesweeperApp(GameApp):
             self.audio_callback(name, frequency)
 
     def key(self, key, text="", modifiers=0):
+        if self.overlay_active:
+            return self.overlay_key(key, text, modifiers)
         if blocked(modifiers) or self.closed:
             return False
         # Arrows only, per the owner's direction-key rule (no WASD).
@@ -163,6 +167,8 @@ class MinesweeperApp(GameApp):
 
     def key_release(self, key, text="", modifiers=0):
         # Arrows only, per the owner's direction-key rule (no WASD).
+        if self.overlay_active:
+            return True
         action = self.binding(key, "")
         step = action if isinstance(action, tuple) else None
         return self.held.pop(step, None) is not None if step is not None else False
@@ -225,6 +231,10 @@ class MinesweeperApp(GameApp):
         self.difficulty_index = difficulty_index
         self.message = message
         self.sound_enabled = enabled
+
+    def _restart_round(self) -> None:
+        """Reuse the existing round reset including its app-owned state."""
+        self.restart()
 
     def render(self):
         now = self.clock()

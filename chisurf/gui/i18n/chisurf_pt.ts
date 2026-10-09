@@ -17444,5 +17444,193 @@ Guardar um ficheiro LUT ou um settings.tttr.json (separador ②) é opcional: s�
         <source>🧽 Clear ROI</source>
         <translation>🧽 Limpar ROI</translation>
     </message>
+        <message>
+            <source>Clear bricks while keeping the ball above the paddle. The game creates its own round; it does not need a measurement file. Press Restart when you are ready to replace the current round.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Close Tour</source>
+            <translation>Fechar guia</translation>
+        </message>
+        <message>
+            <source>Close the guided tour and return to the tool.</source>
+            <translation>Fechar a visita guiada e voltar à ferramenta.</translation>
+        </message>
+        <message>
+            <source>Complete rows with falling pieces. The board and pieces are generated locally; their colours are game cues rather than measurements. Press Restart when you are ready to replace the current round.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Drag the detector or hold Left/Right.</source>
+            <translation>Arraste o detector ou segure Esquerda/Direita.</translation>
+        </message>
+        <message>
+            <source>Explain the rules, controls and sound support for this game.</source>
+            <translation>Explicar as regras, os controles e o som deste jogo.</translation>
+        </message>
+        <message>
+            <source>Finish the guided tour.</source>
+            <translation>Concluir a visita guiada.</translation>
+        </message>
+        <message>
+            <source>Finish ✓</source>
+            <translation>Concluir ✓</translation>
+        </message>
+        <message>
+            <source>Game help</source>
+            <translation>Ajuda do jogo</translation>
+        </message>
+        <message>
+            <source>Go to the next tour step.</source>
+            <translation>Ir à próxima etapa da visita.</translation>
+        </message>
+        <message>
+            <source>Go to the previous tour step.</source>
+            <translation>Ir à etapa anterior da visita.</translation>
+        </message>
+        <message>
+            <source>Guess the hidden number using the lifetime dial. The curve is generated from your estimate; it is not fitted to measured data. Press Restart when you are ready to replace the current round.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Guide</source>
+            <translation>Guia</translation>
+        </message>
+        <message>
+            <source>Guided Tour</source>
+            <translation>Visita guiada</translation>
+        </message>
+        <message>
+            <source>Help, restart and a guided tour of the current game.</source>
+            <translation>Ajuda, reinício e uma visita guiada do jogo atual.</translation>
+        </message>
+        <message>
+            <source>Hold Left/Right to move, then use Space or Enter to launch. P pauses; R restarts. The Help panel explains lives, colours and the remaining controls.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Left/Right changes the estimate, Q/E changes it by ten and Enter or Space submits. You can also click the plot and lower footer. Help explains the turns, hints and sound.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Left/Right: move. Up: rotate. Down: soft drop. Space: hard drop.</source>
+            <translation>Esquerda/Direita: mover. Cima: girar. Baixo: queda suave. Espaço: queda rápida.</translation>
+        </message>
+        <message>
+            <source>Move with the arrow keys, reveal with Enter or Space, and flag with F. Mouse buttons reveal or flag cells. Help explains difficulty changes and the board rules.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Next ►</source>
+            <translation>Próximo ►</translation>
+        </message>
+        <message>
+            <source>Press Help in the game header.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Press Restart in the game header.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Read the controls</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Restart</source>
+            <translation>Reiniciar</translation>
+        </message>
+        <message>
+            <source>Restart after game over (Up or R).</source>
+            <translation>Reiniciar ao terminar (Cima ou R).</translation>
+        </message>
+        <message>
+            <source>Return the ball and compare the scores. This is a generated game round, not an analysis of a photon stream. Press Restart when you are ready to replace the current round.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Reveal safe cells and use adjacent counts to avoid mines. This generated board is a game, not a detector-data analysis. Press Restart when you are ready to replace the current round.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Start a fresh sample with R. After the sample ends, Enter/Space also restarts.</source>
+            <translation>Inicie uma nova amostra com R. Quando a amostra terminar, Enter/Espaço também reinicia.</translation>
+        </message>
+        <message>
+            <source>Start a new round</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Start a new round of the current game.</source>
+            <translation>Iniciar uma nova rodada do jogo atual.</translation>
+        </message>
+        <message>
+            <source>Start a new round with R. After a round ends, Enter/Space also restarts.</source>
+            <translation>Inicie uma nova rodada com R. Quando a rodada terminar, Enter/Espaço também reinicia.</translation>
+        </message>
+        <message>
+            <source>Step {step} of {total}: {title}</source>
+            <translation>Etapa {step} de {total}: {title}</translation>
+        </message>
+        <message>
+            <source>This is the first tour step.</source>
+            <translation>Esta é a primeira etapa da visita.</translation>
+        </message>
+        <message>
+            <source>Up/Down moves your paddle; M changes the opponent mode and W/S controls the second player. P pauses. Open Help for the complete controls and sound behavior.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Use Left/Right to move, Down to descend faster, Up to rotate and Space to drop. P pauses. Help describes the saved round, score and optional sound.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Use the highlighted control to continue.</source>
+            <translation>Usar o controle destacado para continuar.</translation>
+        </message>
+        <message>
+            <source>Walk through the real Restart and Help buttons without changing the round automatically.</source>
+            <translation>Conhecer os botões Reiniciar e Ajuda sem alterar a rodada automaticamente.</translation>
+        </message>
+        <message>
+            <source>drag here to move</source>
+            <translation>Arrastar aqui</translation>
+        </message>
+        <message>
+            <source>◄ Prev</source>
+            <translation>◄ Anterior</translation>
+        </message>
+        <message>
+            <source>💡 {hint}</source>
+            <translation>💡 {hint}</translation>
+        </message>
+        <message>
+            <source>Check the fresh round</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Close Help, then press Restart once more. Check that both scores have reset and a fresh serve begins. The guide waits for your click; it never presses a control for you.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Close Help, then press Restart once more. Check that the board is covered and the flags are cleared at the current difficulty. The guide waits for your click; it never presses a control for you.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Close Help, then press Restart once more. Check that the guess history is empty and the dial is back at 50 with a newly generated hidden target. The guide waits for your click; it never presses a control for you.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Close Help, then press Restart once more. Check that the score and lives have reset and the ball is waiting on the paddle before you launch it. The guide waits for your click; it never presses a control for you.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Close Help, then press Restart once more. Check that the well is empty, the score is reset and a new piece is ready. The guide waits for your click; it never presses a control for you.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Press Restart in the game header and inspect the reset round.</source>
+            <translation type="unfinished" />
+        </message>
 </context>
 </TS>

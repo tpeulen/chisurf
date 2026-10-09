@@ -39,6 +39,8 @@ class Inputs:
 
 
 class TetrisApp(GameApp):
+    HELP_DIR = Path(__file__).parent / "gui"
+
     BINDINGS = (
         (KEY_LEFT, 'left'),
         (KEY_RIGHT, 'right'),
@@ -82,6 +84,8 @@ class TetrisApp(GameApp):
 
 
     def key(self, key, text="", modifiers=0):
+        if self.overlay_active:
+            return self.overlay_key(key, text, modifiers)
         if blocked(modifiers) or self.closed:
             return False
         action = self.binding(key, text)
@@ -95,6 +99,8 @@ class TetrisApp(GameApp):
         return True
 
     def key_release(self, key, text="", modifiers=0):
+        if self.overlay_active:
+            return True
         action = self.keys.held.pop(key, None)
         return action is not None or self.binding(key, text) is not None
 
@@ -231,9 +237,9 @@ class TetrisApp(GameApp):
             im.set_cursor_screen_pos(at(38,224))
             if im.invisible_button("##restart-overlay",(224*scale,96*scale)):
                 self.control("confirm")
-            im.set_item_tooltip(tr("Restart after game over (Up/W or R)."))
+            im.set_item_tooltip(tr("Restart after game over (Up or R)."))
         controls = (
-            (528,"Move  Confirm rotate  Down soft  R drop","Left/Right or A/D: move. Up/W: rotate. Down/S: soft drop. Space: hard drop."),
+            (528,"Move  Confirm rotate  Down soft  R drop","Left/Right: move. Up: rotate. Down: soft drop. Space: hard drop."),
             (544,"Menu hold  Cancel reset","P: pause/resume. R: restart."),
         )
         for yy,label,tip in controls:
@@ -243,7 +249,7 @@ class TetrisApp(GameApp):
             im.set_item_tooltip(tr(tip))
         im.set_cursor_screen_pos(at(37,27))
         im.invisible_button("##well",(226*scale,490*scale))
-        im.set_item_tooltip(tr("Left/Right or A/D: move. Up/W: rotate. Down/S: soft drop. Space: hard drop."))
+        im.set_item_tooltip(tr("Left/Right: move. Up: rotate. Down: soft drop. Space: hard drop."))
         im.end()
 
 

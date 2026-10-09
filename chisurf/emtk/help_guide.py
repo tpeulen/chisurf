@@ -469,13 +469,16 @@ class EmTkGuidedTour:
         card_w = min(480.0, width - 40.0)
         # Height follows the text, so the card covers as little of the tool as it can.
         per_line = max(20.0, (card_w - 28.0) / 7.4)
-        body = _clean_html_text(str(step.get("text", "")))
+        body = _clean_html_text(tr(str(step.get("text", ""))))
         lines = sum(max(1, int(len(part) / per_line) + 1) for part in body.split("\n"))
         hint = step.get("hint") or (
             step.get("await", {}).get("hint") if isinstance(step.get("await"), dict) else None
         )
+        hint = tr(str(hint)) if hint else None
         lines += (int(len(str(hint)) / per_line) + 2) if hint else 0
-        title_text = f"Step {self.step_idx + 1} of {len(self.steps)}: {step.get('title', '')}"
+        title_text = tr("Step {step} of {total}: {title}").format(
+            step=self.step_idx + 1, total=len(self.steps), title=tr(str(step.get("title", "")))
+        )
         title_lines = max(1, int(len(title_text) / per_line) + 1)
         header_height = 26.0
         card_h = header_height + 16.0 * (title_lines - 1) + max(
@@ -513,7 +516,7 @@ class EmTkGuidedTour:
         # The tour is rendered after its owner, so it needs its own window to
         # be topmost for both painting and hit testing.  A bounded window
         # keeps the highlighted control outside this rectangle interactive.
-        im.begin("Guided Tour##tour_card", (cx, cy, card_w, card_h))
+        im.begin(tr("Guided Tour") + "##tour_card", (cx, cy, card_w, card_h))
         ctx.draw.add_rect_filled(
             (cx, cy),
             (cx + card_w, cy + card_h),
@@ -532,7 +535,7 @@ class EmTkGuidedTour:
             (cx + 1.0, cy + 1.0), (cx + card_w - 1.0, cy + 7.0), (60, 90, 160, 200), rounding=3.0
         )
         ctx.draw.add_text(
-            (cx + card_w - 128.0, cy + 8.0), (120, 130, 150, 255), "drag here to move"
+            (cx + card_w - 128.0, cy + 8.0), (120, 130, 150, 255), tr("drag here to move")
         )
 
         # 4. Content Area with Native Word Wrapping
@@ -546,49 +549,44 @@ class EmTkGuidedTour:
         im.text_wrapped(title_text)
         im.pop_style_color()
         im.spacing()
-        raw_text = str(step.get("text", ""))
-        clean_text = _clean_html_text(raw_text)
-        im.text_wrapped(clean_text)
+        im.text_wrapped(body)
 
-        hint = step.get("hint") or (
-            step.get("await", {}).get("hint") if isinstance(step.get("await"), dict) else None
-        )
         if hint:
             im.spacing()
             clean_hint = _clean_html_text(str(hint))
-            im.text_colored(f"💡 {clean_hint}", (0.5, 0.9, 0.5, 1.0))
+            im.text_colored(tr("💡 {hint}").format(hint=clean_hint), (0.5, 0.9, 0.5, 1.0))
         im.end_child()
 
         # 5. Tour Controls at Bottom of Card
         btn_y = cy + card_h - 34.0
         im.set_cursor_screen_pos((cx + 14.0, btn_y))
-        if im.button("Close Tour##tour_close"):
+        if im.button(tr("Close Tour") + "##tour_close"):
             self.stop()
-        im.set_item_tooltip("Close the guided tour and return to the tool.")
+        im.set_item_tooltip(tr("Close the guided tour and return to the tool."))
 
         im.set_cursor_screen_pos((cx + card_w - 170.0, btn_y))
         if self.step_idx > 0:
-            if im.button("◄ Prev##tour_prev"):
+            if im.button(tr("◄ Prev") + "##tour_prev"):
                 self.prev()
         else:
             im.begin_disabled()
-            im.button("◄ Prev##tour_prev")
+            im.button(tr("◄ Prev") + "##tour_prev")
             im.end_disabled()
         im.set_item_tooltip(
-            "Go to the previous tour step." if self.step_idx > 0 else "This is the first tour step."
+            tr("Go to the previous tour step.") if self.step_idx > 0 else tr("This is the first tour step.")
         )
 
         im.same_line()
         is_last = self.step_idx == len(self.steps) - 1
-        next_label = "Finish ✓##tour_next" if is_last else "Next ►##tour_next"
+        next_label = (tr("Finish ✓") if is_last else tr("Next ►")) + "##tour_next"
         im.push_style_color(Col.BUTTON, ACCENT_GREEN)
         im.begin_disabled(self.awaiting)
         if im.button(next_label):
             self.next()
         im.set_item_tooltip(
-            "Use the highlighted control to continue."
+            tr("Use the highlighted control to continue.")
             if self.awaiting
-            else ("Finish the guided tour." if is_last else "Go to the next tour step.")
+            else (tr("Finish the guided tour.") if is_last else tr("Go to the next tour step."))
         )
         im.end_disabled()
         im.pop_style_color()

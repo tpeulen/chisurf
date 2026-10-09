@@ -1245,3 +1245,15 @@ no allowance or family denominator grows. All116declared/shared window readers
 are covered, but that is not whole-plugin scientific/account/service acceptance.
 Other W6f and aggregate release obligations remain open.
 [Acceptance](../validation/release-readiness-w6f/core-window-acceptance.json).
+
+## Nested disabled input and native tour text — 2026-10-09
+
+Native Help exposed a toolkit defect: a nested enabled control cleared a
+parent disabled scope. The toolkit now inherits parent disablement while retaining
+its low-level flag semantics, delayed tooltips and scope restoration. Fifty
+producer tests and real game default-window regressions verify the installed
+`3416806a` provider. The game action row uses AutoForm, not hand-drawn buttons.
+Shared tour authored text and navigation pass through translation before card
+measurement; IDs and complete English paint remain unchanged. The game chrome
+acceptance retains exact source and interaction evidence. Concurrent port guard
+drift remains a separate finite prerequisite; no baseline is expanded.

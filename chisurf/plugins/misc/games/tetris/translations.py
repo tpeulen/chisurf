@@ -16,10 +16,10 @@ STRINGS = {
     "Menu hold  Cancel reset": ("Menü Pause  Abbruch Neustart", "Menu pause  Annuler rejouer", "Menú pausa  Cancelar reiniciar", "Menu pausa  Cancelar reiniciar", "Меню пауза  Отмена сначала"),
     "Music and sound effects (off by default). EMTK audio is unavailable.": (
         "Musik und Effekte (standardmäßig aus). EMTK unterstützt kein Audio.", "Musique et effets (désactivés par défaut). EMTK ne prend pas en charge l'audio.", "Música y efectos (desactivados inicialmente). EMTK no admite audio.", "Música e efeitos (desativados inicialmente). EMTK não suporta áudio.", "Музыка и эффекты (по умолчанию выключены). В EMTK нет аудио."),
-    "Restart after game over (Up/W or R).": (
-        "Nach Spielende neu starten (Auf/W oder R).", "Rejouer après la fin (Haut/W ou R).", "Reiniciar al terminar (Arriba/W o R).", "Reiniciar ao terminar (Cima/W ou R).", "Начать после конца игры (Вверх/W или R)."),
-    "Left/Right or A/D: move. Up/W: rotate. Down/S: soft drop. Space: hard drop.": (
-        "Links/Rechts oder A/D: bewegen. Auf/W: drehen. Ab/S: sanft fallen. Leertaste: sofort fallen.", "Gauche/Droite ou A/D : bouger. Haut/W : tourner. Bas/S : descente douce. Espace : chute immédiate.", "Izquierda/Derecha o A/D: mover. Arriba/W: girar. Abajo/S: caída suave. Espacio: caída rápida.", "Esquerda/Direita ou A/D: mover. Cima/W: girar. Baixo/S: queda suave. Espaço: queda rápida.", "Влево/Вправо или A/D: движение. Вверх/W: поворот. Вниз/S: плавный спуск. Пробел: быстрый сброс."),
+    "Restart after game over (Up or R).": (
+        "Nach Spielende neu starten (Auf oder R).", "Rejouer après la fin (Haut ou R).", "Reiniciar al terminar (Arriba o R).", "Reiniciar ao terminar (Cima ou R).", "Начать заново после конца игры (Вверх или R)."),
+    "Left/Right: move. Up: rotate. Down: soft drop. Space: hard drop.": (
+        "Links/Rechts: bewegen. Auf: drehen. Ab: sanft fallen. Leertaste: sofort fallen.", "Gauche/Droite : bouger. Haut : tourner. Bas : descente douce. Espace : chute immédiate.", "Izquierda/Derecha: mover. Arriba: girar. Abajo: caída suave. Espacio: caída rápida.", "Esquerda/Direita: mover. Cima: girar. Baixo: queda suave. Espaço: queda rápida.", "Влево/Вправо: движение. Вверх: поворот. Вниз: плавный спуск. Пробел: быстрый сброс."),
     "P: pause/resume. R: restart.": (
         "P: Pause/fortsetzen. R: Neustart.", "P : pause/reprise. R : rejouer.", "P: pausa/continuar. R: reiniciar.", "P: pausa/continuar. R: reiniciar.", "P: пауза/продолжение. R: сначала."),
 }

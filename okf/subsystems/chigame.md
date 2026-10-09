@@ -9,14 +9,25 @@ timestamp: '2026-08-10T00:00:00Z'
 
 # Where to pick this up
 
-1. Open: shared lifecycle and NumberQuest consolidation are complete; remaining
-   P-F9 work is common chrome/help/restart andremainingaudio/metadata work. Defaults and
-   all116window-reader records are closed; do not re-audit those inventories.
-2. Measure: run the two game-window declaration tests and empty-persistence test
-   under `test/native_emtk/`. They prove exact existing defaults, authored size
-   consumption, saved resize/round restore and fresh persisted launch.
-3. Blocked: the window batch does not close W6f game-base/input/audio obligations
-   or aggregate UI debt. Invalid nonempty saved rounds still fail validation.
+1. Open: shared lifecycle, canonical Number Quest, bindings/state and declared
+   Help/Restart/Guide are implemented and verified as finite units. Remaining
+   W6f audio, core/acquisition/setup/wizard and exact family metadata work stays
+   open. All 116 window-reader records are closed; do not repeat that inventory.
+2. Measure: game chrome acceptance and source archive are under
+   [release-readiness-w6f](../validation/release-readiness-w6f/). Real driver
+   tests cover modal input, three awaited steps, six locales, embedded hub and
+   all minefield difficulties. Ten before/after round states and complete old
+   canvas command prefixes match; default/narrow contact sheets were inspected.
+3. Open: the next prerequisite repairs new UI guard failures introduced by
+   concurrent committed ports. Re-derive from accepted `e65f163fd` and the
+   captured current revision using the exact source/AST worklist retained in
+   the game chrome archive; do not grow allowances. Typed-field help, acquisition
+   metadata, new burst/About literals and mechanically relocated keys are scoped.
+4. Blocked: aggregate W6f/W6 and programme gates are not closed. Three newly
+   declared GUI entries (About, menu_switch and bid_to_analysis) lack appropriate
+   help/tours. Determine their real surface/action contract; do not add fake
+   resources or exclusions. Default sound and remaining family semantics still
+   require their owning batches.
 
 # Historical engine work
 
@@ -672,3 +683,21 @@ without omitting board/adjacency fields. Independent29tests and111existing exact
 cases pass. Two custombool exceptions now occur before model replacement in Pong/
 Mines, a separately tested atomicity repair; ordinaryJSON coercions remain unchanged.
 [Acceptance](../validation/release-readiness-w6f/game-binding-state-acceptance.json).
+
+## Shared native game chrome — 2026-10-09
+
+The five native games share a declared AutoForm Help/Restart/Guide row in their
+existing free top strips. Sound and specialized canvases/status/pause stay in
+place. Tours await Restart, Help and another Restart to check the generated
+fresh round; no automatic play/reset or external demo serialization is added.
+Restart uses existing adapters and releases held input. The shared toolkit now
+retains parent disablement across nested controls, preventing clicks outside a
+Help dialog from reaching Sound or Restart. Shared tour text/navigation translate
+before layout measurement; fixed IDs and English paint remain unchanged.
+
+Root inspected all before/default/narrow contact sheets. Original state and paint
+commands are preserved, with the intentional row appended. Exact provider,
+source, metadata translations, schema repair and foreign-edit preservation are
+recorded in the [acceptance](../validation/release-readiness-w6f/game-chrome-acceptance.json).
+The finite UI unit does not claim aggregate guard closure: concurrent commits
+introduced separately measured new findings, retained for the next prerequisite.
