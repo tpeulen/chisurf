@@ -31,3 +31,4 @@ This plugin's window is an EMTK app: its controls and tables are described in th
 
 - Plugin package: `chisurf/plugins/core/style_manager/`
 - Manifest: {src}`chisurf/plugins/core/style_manager/manifest.json`
+- UI spec: {src}`chisurf/plugins/core/style_manager/gui/app.view.json`

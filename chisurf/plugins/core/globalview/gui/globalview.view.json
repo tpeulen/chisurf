@@ -1,4 +1,5 @@
 {
+  "window": {"width": 1200, "height": 800},
   "title": "Global View",
   "description": "The parameter network of every open fit and registered parameter group, and the links that make a fit global.",
   "sections": [

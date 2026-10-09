@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import json
+
 from pathlib import Path
 
 from emtk import im
 from emtk.app import ImApp
+
+from chisurf.plugins.emtk_layout import window_size
 from emtk.dialog_window import DialogWindow
 from emtk.file_dialog import FileDialog
 from emtk.keys import KEY_ENTER, KEY_RETURN
@@ -361,6 +365,8 @@ class UnifiedSettingsApp(ImApp):
     """The Settings hub: a searchable list of destinations hosting each one's dedicated native panel."""
 
     def __init__(self, settings_dir=None, panels=None):
+        spec = json.loads((HERE / "app.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(spec, (1200, 800))
         if settings_dir is None:
             from chisurf.core.settings.path_utils import get_path
 

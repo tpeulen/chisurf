@@ -1,4 +1,5 @@
 {
+  "window": {"width": 1200, "height": 800},
   "_comment": "Light Path Simulator, drawn by emtk.view_form over LightPathPanel (gui/panel.py). The graph itself, the connection form and the Easy Mode setup are drawn by gui/app.py (a canvas and a shared widget a spec cannot express).",
   "toolbar": {
     "title": "Toolbar",

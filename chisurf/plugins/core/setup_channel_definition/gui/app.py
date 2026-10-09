@@ -10,11 +10,14 @@ adds the plugin's Help window and guided tour. Nothing here imports Qt.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
 from emtk import im
 from emtk.app import ImApp
+
+from chisurf.plugins.emtk_layout import window_size
 from emtk.docking import DockManager, Region
 
 from chisurf.core.setup_channel_definition import ChannelDefinition
@@ -43,6 +46,8 @@ class SetupChannelDefinitionApp(ImApp):
         visibility: dict | None = None,
         on_definition_saved: Any = None,
     ) -> None:
+        spec = json.loads((HERE / "app.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(spec, (1200, 800))
         fresh = settings is None and model is None
         if model is None:
             model = ChannelDefinition(

@@ -18,6 +18,8 @@ from typing import Any
 
 from emtk import im
 from emtk.app import ImApp
+
+from chisurf.plugins.emtk_layout import window_size
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
@@ -47,6 +49,7 @@ class UserEditorApp(ImApp):
         #: Fetch the accounts on the first frame, as the Qt tool does when first shown.
         self.autoload = autoload
         spec = json.loads((HERE / "users_emtk.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(spec, (1200, 800))
         self.panels = {p["name"]: p for p in spec["sections"]}
         self.form = FormState()
         self.form.custom["account_details"] = self._draw_details

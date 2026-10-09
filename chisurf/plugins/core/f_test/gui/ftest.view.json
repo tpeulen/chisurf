@@ -1,4 +1,5 @@
 {
+  "window": {"width": 1200, "height": 800},
   "_comment": "F-test calculator. AutoForm over _FTestModel: an F-test panel comparing two nested models (confidence <-> chi2 threshold) and a chi2-max panel giving the upper chi2 limit of a single fit at a confidence level. Values load from open fits via the tool's 'From fit' toolbar button.",
   "sections": [
     {"type": "panel", "title": "F-test — compare two nested models", "collapsed": false,

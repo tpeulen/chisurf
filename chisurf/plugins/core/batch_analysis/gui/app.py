@@ -23,7 +23,7 @@ from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
-from chisurf.plugins.emtk_layout import button_row
+from chisurf.plugins.emtk_layout import button_row, window_size
 from chisurf.plugins.emtk_wizard import draw_steps
 
 from .model import BatchModel
@@ -51,6 +51,7 @@ class BatchAnalysisApp(ImApp):
     def __init__(self, model: BatchModel | None = None) -> None:
         self.model = model or BatchModel()
         spec = json.loads((HERE / "batch_emtk.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(spec, (1200, 800))
         self.panels = {p["name"]: p for p in spec["sections"]}
         self.form = FormState()
         self.form.custom["markdown"] = self._draw_markdown

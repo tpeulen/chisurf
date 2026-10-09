@@ -1,12 +1,15 @@
 """Qt-free style-file editor and QSS palette migration."""
 from __future__ import annotations
 
+import json
 import pathlib
 import re
 import shutil
 
 from emtk import im
 from emtk.app import ImApp
+
+from chisurf.plugins.emtk_layout import window_size
 from emtk.file_dialog import FileDialog
 from emtk.im_core import Style
 from emtk.widgets.text_editor import Language, TextEditor
@@ -222,6 +225,8 @@ class StyleManagerModel:
 
 class StyleManagerApp(ImApp):
     def __init__(self, model=None):
+        spec = json.loads((pathlib.Path(__file__).with_name("app.view.json")).read_text(encoding="utf-8"))
+        self.window_size = window_size(spec, (1200, 800))
         self.model = model or StyleManagerModel()
         self.file_dialog = None
         self.dialog_operation = ""

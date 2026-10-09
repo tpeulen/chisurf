@@ -28,11 +28,25 @@ Apply one pre-optimised template fit to many datasets or files in one pass and e
 
 Editable parameters exposed by the plugin's declarative (AutoForm) interface, grouped by panel.
 
+### General
+
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | files | `files` | path_list |  |  | Drag-drop files (or add a folder) to fit with the template. |
 | Template fit | `selected_fit_name` | choice |  | choices: `fit_names` | The pre-optimised fit whose parameters seed every run. |
 | Results CSV | `save_path` | file |  |  | Destination CSV. A DOCX report and a ZIP of per-run exports are written alongside. |
+
+### Files & fit
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Template fit | `selected_fit_name` | choice |  | choices: `fit_names` | The pre-optimised fit whose parameters seed every run. |
+
+### Run
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Results CSV | `save_path` | str |  |  | Destination CSV. A DOCX report and a ZIP of per-run exports are written alongside. |
 
 ## Theory and workflow
 

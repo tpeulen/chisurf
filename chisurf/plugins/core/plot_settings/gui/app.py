@@ -16,6 +16,8 @@ from typing import Any
 
 from emtk import im, implot
 from emtk.app import ImApp
+
+from chisurf.plugins.emtk_layout import window_size
 from emtk.docking import DockManager, Region, Split
 from emtk.view_form import FormState, draw_sections
 
@@ -39,6 +41,7 @@ class PlotSettingsApp(ImApp):
     def __init__(self, model: PlotSettingsModel | None = None) -> None:
         self.model = model or PlotSettingsModel()
         spec = json.loads((HERE / "plot_settings_emtk.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(spec, (1200, 800))
         self.panels = {p["name"]: p for p in spec["sections"]}
         self.form = FormState()
         self.form.custom["preview_plot"] = self._draw_preview

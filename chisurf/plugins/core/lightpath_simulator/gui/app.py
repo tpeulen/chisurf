@@ -18,6 +18,7 @@ from chisurf.emtk.node_editor.control import GraphControl
 from chisurf.emtk.optical_configuration import OpticalConfigurationWidget
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.plugins.emtk_layout import window_size
 from emtk.view_form import FormState, draw_form
 
 from .controller import LightPathController
@@ -289,6 +290,7 @@ class LightPathApp(TourTarget, ImApp):
     """The light-path simulator window: graph, components, Easy Mode and the simulation results, docked."""
 
     def __init__(self, db_path=None, client=None, state_path=None, owner_id="lightpath"):
+        self.window_size = window_size(SPEC, (1200, 800))
         self.item_rects: dict = {}
         self.controller = LightPathController(db_path, client, state_path, owner_id)
         self.content = BeampathContent()

@@ -16,7 +16,7 @@ from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.jobs import SnapshotJob
-from chisurf.plugins.emtk_layout import LabelColumn, button_row, labelled, layout_spec
+from chisurf.plugins.emtk_layout import LabelColumn, button_row, labelled, layout_spec, window_size
 
 from .strings import install_translations, tr
 from .view_model import HmmViewModel
@@ -34,7 +34,9 @@ class HmmApp(ImApp):
     def __init__(self, model=None):
         self.model = model or HmmViewModel()
         self.job = SnapshotJob(self.model)
-        panels = json.loads((HERE / "hmm_emtk.view.json").read_text())["panels"]
+        spec = json.loads((HERE / "hmm_emtk.view.json").read_text())
+        self.window_size = window_size(spec, (1200, 800))
+        panels = spec["panels"]
         self.panels = {n: layout_spec(copy.deepcopy(p)) for n, p in panels.items()}
         self.forms = {n: FormState() for n in panels}
         self.columns = {n: LabelColumn() for n in panels}

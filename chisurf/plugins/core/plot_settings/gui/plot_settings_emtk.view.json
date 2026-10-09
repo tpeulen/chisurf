@@ -1,4 +1,5 @@
 {
+  "window": {"width": 1200, "height": 800},
   "_comment": "Plot settings, native emtk window. 'settings' is the scrolling form (one collapsible panel per section of the Qt tool), 'actions' the Apply / Save / Reset bar, 'preview' the sample plot docked beside it (drawn by gui/app.py: a plot is not something a spec can express). Drawn by emtk.view_form over PlotSettingsModel (gui/model.py).",
   "title": "Plot Settings",
   "sections": [

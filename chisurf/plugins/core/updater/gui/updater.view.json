@@ -1,4 +1,5 @@
 {
+  "window": {"width": 1200, "height": 800},
   "_comment": "ChiSurf updater, native emtk window. Drawn by emtk.view_form over UpdaterModel (gui/model.py): 'updater' is the window (version, status, startup switches, available versions, the three actions, the changelog), 'dialog' the in-app confirm / notice the Qt tool asked with message boxes, 'updating' the progress window the Qt tool showed while it prepared the update. The changelog is Markdown drawn by gui/app.py (a spec cannot draw it).",
   "title": "ChiSurf Updater",
   "sections": [

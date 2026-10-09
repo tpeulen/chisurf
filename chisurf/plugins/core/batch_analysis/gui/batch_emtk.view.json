@@ -1,4 +1,5 @@
 {
+  "window": {"width": 1200, "height": 800},
   "_comment": "Batch Analysis, native emtk window. One panel per wizard step, drawn by emtk.view_form over BatchModel (gui/model.py); 'navigation' is the Back / Next / Finish bar. Same steps, titles and fields as the Qt wizard (../batch.view.json).",
   "title": "Batch Analysis",
   "sections": [

@@ -2,6 +2,8 @@
 
 ## 2026-10-09
 
+- The20core host records now consume numeric declarations with unchanged defaults, saved geometry and preferences; exact60cases plus25existing regressions pass. All116reader records covered, while otherW6f/scientific/service gates stay open;281unchanged literal keys relocated. [Acceptance](validation/release-readiness-w6f/core-window-acceptance.json).
+
 - Six game/launcher host declarations preserve actual sizes and saved geometry; exact31cases plus22native neighbors and1024guards/11skip pass. Shared empty-state persistence fixes all five fresh-launch crashes. Twenty core records remain;15obsolete resume allowances removed. [Acceptance](validation/release-readiness-w6f/game-window-acceptance.json).
 
 - Shared host headers now deliver existing translated help docked or floating; SDK71 and installed exact-consumer6 checks plus1009guards/11skip pass. W6g handoff closes with family debt retained; W6f is next. [Acceptance](validation/release-readiness-w6g/host-help-acceptance.json).

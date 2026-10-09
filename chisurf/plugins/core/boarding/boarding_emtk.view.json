@@ -1,4 +1,5 @@
 {
+  "window": {"width": 1200, "height": 800},
   "_comment": "Onboarding wizard, native emtk window. Drawn by emtk.view_form over BoardingModel (model.py). 'navigation' is the Back / Next / Finish bar, 'confirm' the question Restore defaults asks, and one panel per step of the Qt wizard (named by the step id). The step texts are Markdown drawn by the 'markdown' custom section, the repair outcome by 'repair_status', and the detector and FCS steps embed the shared channel-definition and FCS-preset editors through the 'detector_editor' and 'fcs_editor' custom sections, drawn by app.py.",
   "title": "Welcome to ChiSurf",
   "sections": [

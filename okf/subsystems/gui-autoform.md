@@ -1227,3 +1227,21 @@ This closes the bounded shared host-help mechanism. Other hosts must bind their
 own outer description; missing family-authored help remains in the exact owner
 ledger, including four ALEX panels and three calibration tables. Aggregate W6
 still requires those repairs and empty allowances. [Host acceptance](../validation/release-readiness-w6g/host-help-acceptance.json).
+
+
+## Core host declaration completion — 2026-10-09
+
+The20retained core records now read primary numeric host metadata. Actual defaults
+remain1200×800 exceptHelp800×600; the inventory's1100×720 estimates are not actual
+host defaults. Existing root loaders are reused, GlobalView binds in its surface,
+HMM retains root metadata before panels, and MMFDB keeps its shell/root distinct
+from entity includes. Saved dimensions and preferences retain priority.
+
+Exact owned-source/primary-JSON factory tests verify default and altered metadata,
+fresh binding and saved resize. Geometry and model/control workflow code are
+unchanged; A0 requires metadata checks without recapture. The281unchanged literal
+occurrences shifted by insertion have paired source/text key-relocation receipts;
+no allowance or family denominator grows. All116declared/shared window readers
+are covered, but that is not whole-plugin scientific/account/service acceptance.
+Other W6f and aggregate release obligations remain open.
+[Acceptance](../validation/release-readiness-w6f/core-window-acceptance.json).

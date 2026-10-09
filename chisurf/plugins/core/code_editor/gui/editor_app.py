@@ -10,6 +10,7 @@ Features:
 
 from __future__ import annotations
 
+import json
 import os
 import pathlib
 import queue
@@ -35,6 +36,7 @@ from chisurf.plugins.core.code_editor.gui.notebook_app import SHELL_EXECUTION_LO
 from chisurf.plugins.core.code_editor.gui.process_tools import CancellableRuffRunner
 from chisurf.plugins.core.code_editor.ruff_runner import RuffRunner
 from chisurf.plugins.core.code_editor.symbols import extract_python_symbols
+from chisurf.plugins.emtk_layout import window_size
 
 from .editor_preferences import (
     COLOR_SCHEMES,
@@ -1934,6 +1936,8 @@ class CodeEditorApp(ImApp):
     """EMTK Application for the complete Code Editor."""
 
     def __init__(self, project_root: str | pathlib.Path | None = None) -> None:
+        spec = json.loads(pathlib.Path(__file__).with_suffix(".view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(spec, (1200, 800))
         self.model = EditorModel(project_root=project_root)
         self.editor_gui = CodeEditorGui(model=self.model)
         super().__init__(gui=self._render, continuous=False)

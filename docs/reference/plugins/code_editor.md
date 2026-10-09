@@ -47,3 +47,4 @@ This plugin's window is an EMTK app: its controls and tables are described in th
 
 - Plugin package: `chisurf/plugins/core/code_editor/`
 - Manifest: {src}`chisurf/plugins/core/code_editor/manifest.json`
+- UI spec: {src}`chisurf/plugins/core/code_editor/gui/editor_app.view.json`

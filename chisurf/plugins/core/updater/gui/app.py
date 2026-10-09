@@ -24,7 +24,7 @@ from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.jobs import SnapshotJob
-from chisurf.plugins.emtk_layout import layout_spec
+from chisurf.plugins.emtk_layout import layout_spec, window_size
 
 from .model import UpdaterModel
 from .package_app import PackagePanel
@@ -59,6 +59,7 @@ class UpdaterApp(ImApp):
         #: Called (from a frame) when the update script took the process over; ChiSurf has to end.
         self.exit_hook = exit_hook or (lambda: sys.exit(0))
         spec = json.loads((HERE / "updater.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(spec, (1200, 800))
         self.panels = {p["name"]: layout_spec(p) if p["name"] == _UPDATER else p for p in spec["sections"]}
         self.form = FormState()
         self.form.custom["changelog"] = self._draw_changelog

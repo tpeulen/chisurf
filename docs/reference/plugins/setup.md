@@ -94,3 +94,4 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 - Plugin package: `chisurf/plugins/core/setup/`
 - Manifest: {src}`chisurf/plugins/core/setup/manifest.json`
 - UI spec: {src}`chisurf/plugins/core/setup/gui/acq_settings_emtk.view.json`
+- UI spec: {src}`chisurf/plugins/core/setup/gui/app.view.json`

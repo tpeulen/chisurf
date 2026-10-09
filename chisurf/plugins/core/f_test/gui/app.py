@@ -12,6 +12,7 @@ from emtk.docking import DockManager, Region, Split
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.plugins.emtk_layout import window_size
 from .model import FTestModel, _CONF_ATTRS, _CHI2_2_ATTRS, _CHI2_MAX_ATTRS
 
 #: The Qt tool's "From fit" menu: three load targets per open fit.
@@ -43,6 +44,7 @@ class FTestApp(ImApp):
         self.status = ""
         self.item_rects = {}
         self.spec = json.loads(Path(__file__).with_name("ftest.view.json").read_text())
+        self.window_size = window_size(self.spec, (1200, 800))
         for panel in self.spec["sections"]:
             panel["n_col"] = 2
             panel["collapsible"] = True

@@ -28,6 +28,7 @@ from emtk.docking import DockManager, Region, Split
 from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.plugins.emtk_layout import window_size
 
 from .model import STEPS, BoardingModel
 from .strings import install_translations, tr
@@ -82,6 +83,7 @@ class BoardingApp(ImApp):
         self.detector: Any = None
         self.fcs: Any = None
         spec = json.loads((HERE / "boarding_emtk.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(spec, (1200, 800))
         self.panels = {p["name"]: p for p in spec["sections"]}
         self.form = FormState()
         self.form.custom["markdown"] = self._draw_markdown

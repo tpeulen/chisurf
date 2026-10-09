@@ -18,7 +18,7 @@ from emtk.view_form import FormState, draw_sections
 from emtk.widgets.text_editor import TextEditor
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
-from chisurf.plugins.emtk_layout import cap_widths
+from chisurf.plugins.emtk_layout import cap_widths, window_size
 
 from .model import PluginCheckModel
 
@@ -41,7 +41,9 @@ class PluginCheckApp(ImApp):
 
     def __init__(self, model: PluginCheckModel | None = None) -> None:
         self.model = model or PluginCheckModel()
-        self.panels = {p["name"]: p for p in _load_spec()["sections"]}
+        spec = _load_spec()
+        self.window_size = window_size(spec, (1200, 800))
+        self.panels = {p["name"]: p for p in spec["sections"]}
         self.form = FormState()
         self.form.custom["plugin_details"] = self._draw_details
         self.form.custom["error_text"] = self._draw_error

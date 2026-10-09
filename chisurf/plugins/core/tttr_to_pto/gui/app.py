@@ -14,6 +14,8 @@ from typing import Any
 
 from emtk import im
 from emtk.app import ImApp
+
+from chisurf.plugins.emtk_layout import window_size
 from emtk.docking import DockManager, Region
 from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_sections
@@ -32,6 +34,7 @@ class TttrToPtoApp(ImApp):
     def __init__(self, converter=None, extractor=None) -> None:
         self.model = TttrToPtoModel(converter, extractor)
         spec = json.loads((HERE / "tttr_to_pto_emtk.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(spec, (1200, 800))
         self.sections = spec["sections"]
         self.form = FormState()
         self.dialog: FileDialog | None = None

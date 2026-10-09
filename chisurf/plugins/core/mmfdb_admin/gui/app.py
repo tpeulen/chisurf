@@ -31,6 +31,7 @@ from emtk.view_form import FormState, draw_sections
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.node_editor.control import GraphControl, NodeContentRenderer
 from chisurf.emtk.node_editor.document import GraphDocument
+from chisurf.plugins.emtk_layout import window_size
 
 from .native.model import AdminModel
 from .native.runner import Runner
@@ -44,9 +45,10 @@ BAR_H = 30.0
 DASHES = {"solid": None, "dash": (8.0, 5.0), "dot": (2.0, 4.0), "dashdot": (8.0, 4.0)}
 
 
-def load_specs() -> tuple[dict, dict, dict]:
+def load_specs(shell: dict | None = None) -> tuple[dict, dict, dict]:
     """``(shell panels by name, other panels by name, entity actions)`` of the two view specs."""
-    shell = json.loads((HERE / "admin.view.json").read_text(encoding="utf-8"))
+    if shell is None:
+        shell = json.loads((HERE / "admin.view.json").read_text(encoding="utf-8"))
     panels = json.loads((HERE / "admin_panels.view.json").read_text(encoding="utf-8"))
     by_name = {}
     for section in shell["sections"]:
@@ -93,8 +95,6 @@ class MMFDBAdminApp(ImApp):
     """The MMFDB Admin window."""
 
     window_title = "MMFDB Admin"
-    window_size = (1200, 800)
-
     def __init__(
         self,
         model: AdminModel | None = None,
@@ -104,7 +104,9 @@ class MMFDBAdminApp(ImApp):
         autoconnect: bool = True,
     ) -> None:
         self.model = model or AdminModel(client=client, runner=runner)
-        self.shell, self.panel_specs, self.entity_actions = load_specs()
+        spec = json.loads((HERE / "admin.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(spec, (1200, 800))
+        self.shell, self.panel_specs, self.entity_actions = load_specs(spec)
         self.autoconnect = autoconnect
         self.forms: dict[str, FormState] = {}
         self.item_rects: dict[str, tuple] = {}

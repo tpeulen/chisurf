@@ -31,3 +31,4 @@ This plugin's window is an EMTK app: its controls and tables are described in th
 
 - Plugin package: `chisurf/plugins/core/setup_channel_definition/`
 - Manifest: {src}`chisurf/plugins/core/setup_channel_definition/manifest.json`
+- UI spec: {src}`chisurf/plugins/core/setup_channel_definition/gui/app.view.json`

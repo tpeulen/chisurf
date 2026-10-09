@@ -23,6 +23,7 @@ from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.jobs import SnapshotJob
+from chisurf.plugins.emtk_layout import window_size
 
 from .model import ModelManagerModel
 
@@ -43,6 +44,7 @@ class ModelManagerApp(ImApp):
         self.model.runner = self.start_job
         self.model.displayed_provider = self.displayed
         spec = json.loads((HERE / "models_emtk.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(spec, (1200, 800))
         self.panels = {p["name"]: p for p in spec["sections"]}
         self.form = FormState()
         self.form.custom["model_details"] = self._draw_details

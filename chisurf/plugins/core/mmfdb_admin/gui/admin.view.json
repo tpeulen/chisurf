@@ -1,4 +1,5 @@
 {
+  "window": {"width": 1200, "height": 800},
   "_comment": "MMFDB Admin, native emtk window: the shell and the dialogs, drawn by emtk.view_form over gui/native/model.py (AdminModel) and gui/native/dialogs.py. 'toolbar' is the strip under the menu bar; 'entity' is the panel of every one of the 21 registry entities (its form sections are generated from the entity's dictionary fields, its extra actions are 'entity_actions'); the other panels are dialogs. The login dialog's fields are connection_auth.view.json, the spec the Qt login dialog renders. Everything a spec cannot draw (menu bar, rail, status bar, the plots and the provenance graph) is in gui/app.py.",
   "title": "MMFDB Admin",
   "entity_actions": {

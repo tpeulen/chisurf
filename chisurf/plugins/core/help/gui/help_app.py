@@ -8,6 +8,7 @@ dependencies.
 from __future__ import annotations
 
 import getpass
+import json
 import logging
 import pathlib
 import re
@@ -30,6 +31,7 @@ from chisurf.plugins.core.help.api import review as help_review
 from chisurf.plugins.core.help.api import toc as help_toc
 from chisurf.plugins.core.help.api.mathtext import _unicode_fallback, html_math, normalise_latex
 from chisurf.plugins.core.help.api.xref import document_reference, resolve_document, resolve_ref
+from chisurf.plugins.emtk_layout import window_size
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -1897,9 +1899,9 @@ class HelpGui:
 class HelpApp(ImApp):
     """Standalone pure EMTK Application for the ChiSurf Help Browser."""
 
-    window_size = (800, 600)
-
     def __init__(self) -> None:
+        spec = json.loads(pathlib.Path(__file__).with_suffix(".view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(spec, (800, 600))
         self.model = HelpModel()
         self.help_gui = HelpGui(model=self.model)
         super().__init__(gui=self._render, continuous=False)

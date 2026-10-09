@@ -72,6 +72,17 @@ optional key-release hooks only when a child implements them. Form callbacks
 receive the committed field value.
 
 
+## Declared initial dimensions
+
+All standalone core tools now read initial dimensions from their primary
+specification. Defaults remain1200×800, with Help800×600. A saved resize takes
+precedence. These numeric declarations preserve existing controls and layout.
+
+Read `window_size(spec, default)` after the existing root loader. Retain the root
+before extracting its panels; do not read the same file twice merely to obtain
+host metadata. Auxiliary panels, included entity forms and dialogs retain their
+own geometry contracts.
+
 ## Help on host headers
 
 Shared imaging panels, AI Settings and Photon Table expose their existing panel

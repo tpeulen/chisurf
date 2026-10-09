@@ -27,6 +27,7 @@ from emtk.view_form import FormState, draw_form, find_section
 from emtk.widgets.view_spec import load_view_spec
 
 from chisurf.plugins.core.globalview.gui.emtk_view import draw_legend
+from chisurf.plugins.emtk_layout import window_size
 
 __all__ = ["DOCKS", "GlobalViewSurface", "SPEC_PATH"]
 
@@ -71,6 +72,7 @@ class GlobalViewSurface(ImApp):
         super().__init__(self._gui)
         self.model = model
         self.spec = load_view_spec(SPEC_PATH)
+        self.window_size = window_size(self.spec, (1200, 800))
         self.panels = {
             title: find_section(self.spec, title)
             for title in ("Toolbar", "View", "Selection", "Parameters")
