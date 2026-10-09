@@ -1196,3 +1196,17 @@ Audifier andMicrotimeShifter read1100×720 beforeprocessingrawprimaryspecs. Shif
 ALEXCreator andmanualFileTools hostread1100×720 primarydeclarations withsavedgeometryretained. Splitterprogress/status staysinsideexistingIOdock; InspectorDatausesdeclared130pxminimum/horizontalnavigation forwideburstschemas. [Pairacceptance](../validation/release-readiness-w6g/alex-filetools-window-acceptance.json) recordsactual7childscientificoutputs,propertyfactorytypingrepair,realnativePNG/readability, exactownedsource andMFDpersistencequalification. Foreignconcept/modelportnotes remainunadopted.
 
 PTOInspector andChiMOLhost read1200×800 primarydeclarations andretainstoredviewer geometry. PTOcontainer/data/curve/provenance readback isbyte/numerically unchanged; Chimolcoordinates/atom/secondary/state andactualrenderedframes remainexact. [Vieweracceptance](../validation/release-readiness-w6g/pto-chimol-window-acceptance.json) recordsrealstandalonebeforeafter/nativecontrol/tab/hash/test evidence andlazytyping/persistence/provider qualifications, withforeignhunks excluded.
+
+## Reachable section help — 2026-10-09
+
+emtk e73a68973 routes descriptions from existing panel/tab/custom-table captions.
+A table uses translated section help only when no specific header, row or elided
+cell help applies, with a stable owner. Untitled or titles=False panels have no
+caption and remain host-header work. Authored metadata is not proof of reachable
+help: attach to the actual submitted item and preserve more specific explanations.
+Source and installed-provider hover/paint, pointer departure, translation and
+unchanged default/narrow geometry are accepted. No controls/layout or scientific
+algorithms changed; no metadata recapture. Exact source/provider identities and
+accepted evidence are in [section-help acceptance](../validation/release-readiness-w6g/emtk-section-help-acceptance.json).
+The user-authorized A0 policy makes W0a the next prerequisite after explicit resume;
+current job is paused, not programme-complete.
