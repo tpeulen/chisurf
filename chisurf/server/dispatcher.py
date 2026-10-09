@@ -3,7 +3,8 @@ from __future__ import annotations
 import logging
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from importlib import import_module
 from typing import Any
 
@@ -73,6 +74,7 @@ class ServiceDispatcher:
         """
         self._state = state
         self._lock = threading.RLock()
+        self._registration = threading.local()
         self._handlers: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {}
         self._event_bus = event_bus
         self._log_rpc_calls = log_rpc_calls
@@ -88,8 +90,42 @@ class ServiceDispatcher:
             Handler accepting ``(params: dict) -> dict``.
 
         """
+        pending = getattr(self._registration, "pending", None)
         with self._lock:
-            self._handlers[name] = handler
+            if pending is not None:
+                if name in pending or name in self._handlers:
+                    self._registration.rejected.add(name)
+                    raise ValueError(f"RPC method {name!r} is already registered")
+                pending[name] = handler
+            else:
+                self._handlers[name] = handler
+
+    @contextmanager
+    def registration_transaction(self, owner: str) -> Iterator[None]:
+        """Stage a plugin's routing table and commit it atomically.
+
+        Other threads continue dispatching the previously committed handlers.
+        Failure or collision publishes none of the new methods; existing core or
+        sibling handlers cannot be replaced through this API. Only routing is
+        transactional, not arbitrary side effects inside a registrar.
+        """
+        if getattr(self._registration, "pending", None) is not None:
+            raise RuntimeError("Nested service registration transactions are not supported")
+        pending: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {}
+        self._registration.pending = pending
+        self._registration.rejected = set()
+        try:
+            yield
+            with self._lock:
+                collisions = sorted(
+                    (pending.keys() & self._handlers.keys()) | self._registration.rejected
+                )
+                if collisions:
+                    raise ValueError(f"Plugin {owner!r} RPC methods already registered: {collisions}")
+                self._handlers.update(pending)
+        finally:
+            del self._registration.pending
+            del self._registration.rejected
 
     def has_method(self, name: str) -> bool:
         """Return ``True`` if *name* is a registered method.
@@ -101,12 +137,14 @@ class ServiceDispatcher:
 
         """
         with self._lock:
-            return name in self._handlers
+            pending = getattr(self._registration, "pending", {})
+            return name in pending or name in self._handlers
 
     def list_methods(self) -> list[str]:
         """Return sorted list of all registered method names."""
         with self._lock:
-            return sorted(self._handlers.keys())
+            pending = getattr(self._registration, "pending", {})
+            return sorted(self._handlers.keys() | pending.keys())
 
     def dispatch(self, method: str, params: dict[str, Any] | None = None) -> ServiceResult:
         """Look up and invoke a registered RPC handler.
@@ -126,7 +164,8 @@ class ServiceDispatcher:
         """
         params = params or {}
         with self._lock:
-            handler = self._handlers.get(method)
+            pending = getattr(self._registration, "pending", {})
+            handler = pending.get(method, self._handlers.get(method))
         if handler is None:
             err_result = service_error(
                 f"method '{method}' not found",

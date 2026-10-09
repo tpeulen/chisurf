@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import logging
 import pathlib
 from dataclasses import dataclass, field
 from typing import Any
 
 from chisurf.core.support.i18n import tr
+
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
@@ -46,6 +49,8 @@ class PluginEntrypoints:
     cli: str | None = None
     services: str | None = None
     script: str | None = None
+    #: Qt-free factory returning an EMTK control or surface for native/web hosts.
+    emtk: str | None = None
 
 
 @dataclass
@@ -180,12 +185,13 @@ class PluginManifest:
             The parsed manifest, with translatable text passed through ``tr()``.
 
         """
-        entrypoints_data = data.get("entrypoints", {})
+        entrypoints_data = data.get("entrypoints") or {}
         entrypoints = PluginEntrypoints(
             gui=entrypoints_data.get("gui"),
             cli=entrypoints_data.get("cli"),
             services=entrypoints_data.get("services"),
             script=entrypoints_data.get("script"),
+            emtk=entrypoints_data.get("emtk"),
         )
 
         methods = [
@@ -264,6 +270,7 @@ class PluginManifest:
                 "cli": self.entrypoints.cli,
                 "services": self.entrypoints.services,
                 "script": self.entrypoints.script,
+                "emtk": self.entrypoints.emtk,
             },
             "rpc_methods": [
                 {
@@ -325,14 +332,25 @@ def load_manifest(path: pathlib.Path | str) -> PluginManifest | None:
 
     """
     path = pathlib.Path(path)
-    if not path.exists():
-        return None
     try:
         text = path.read_text(encoding="utf-8")
-        data = json.loads(text)
-        return PluginManifest.from_dict(data)
-    except (json.JSONDecodeError, KeyError, TypeError):
+    except FileNotFoundError:
         return None
+    except (OSError, UnicodeError) as error:
+        _LOGGER.warning("Unable to load manifest %s: %s", path, error)
+        return None
+
+    try:
+        data = json.loads(text)
+    except (json.JSONDecodeError, UnicodeError) as error:
+        _LOGGER.warning("Unable to load manifest %s: %s", path, error)
+        return None
+
+    errors = validate_manifest(data)
+    if errors:
+        _LOGGER.warning("Invalid manifest %s: %s", path, "; ".join(errors))
+        return None
+    return PluginManifest.from_dict(data)
 
 
 #: Where the written manifest schema file lives.
@@ -516,6 +534,12 @@ def _validate_statefulness(data: dict[str, Any]) -> list[str]:
     if not isinstance(statefulness, dict):
         return ["field 'statefulness' must be a boolean or object"]
 
+    errors.extend(
+        f"unknown statefulness field: {key!r}"
+        for key in statefulness
+        if key not in {"enabled", "window"}
+    )
+
     if "enabled" in statefulness and not isinstance(statefulness["enabled"], bool):
         errors.append("field 'statefulness.enabled' must be a boolean")
 
@@ -525,6 +549,11 @@ def _validate_statefulness(data: dict[str, Any]) -> list[str]:
     if not isinstance(window, dict):
         errors.append("field 'statefulness.window' must be a boolean or object")
         return errors
+    errors.extend(
+        f"unknown statefulness.window field: {key!r}"
+        for key in window
+        if key not in {"enabled", "settings_key"}
+    )
     if "enabled" in window and not isinstance(window["enabled"], bool):
         errors.append("field 'statefulness.window.enabled' must be a boolean")
     if "settings_key" in window:
@@ -708,6 +737,125 @@ def _validate_known_keys(data: dict[str, Any]) -> list[str]:
     return [f"unknown manifest field: {key!r}" for key in data if key not in known]
 
 
+def _validate_string_list(data: dict[str, Any], key: str) -> list[str]:
+    """Validate a manifest field containing an array of strings."""
+    value = data.get(key)
+    if value is None:
+        return []
+    if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
+        return [f"field {key!r} must be an array of strings"]
+    return []
+
+
+def _validate_entrypoints(data: dict[str, Any]) -> list[str]:
+    """Validate the closed, nullable-string entrypoint object."""
+    if "entrypoints" not in data:
+        return []
+    entrypoints = data.get("entrypoints")
+    if entrypoints is None:
+        return []
+    if not isinstance(entrypoints, dict):
+        return ["field 'entrypoints' must be an object"]
+
+    allowed = {field.name for field in dataclasses.fields(PluginEntrypoints)}
+    errors = [
+        f"unknown entrypoints field: {key!r}"
+        for key in entrypoints
+        if key not in allowed
+    ]
+    errors.extend(
+        f"entrypoints field {key!r} must be a string or null"
+        for key, value in entrypoints.items()
+        if key in allowed and value is not None and not isinstance(value, str)
+    )
+    return errors
+
+
+def _validate_rpc_methods(data: dict[str, Any]) -> list[str]:
+    """Validate RPC method objects before ``from_dict`` indexes them."""
+    if "rpc_methods" not in data:
+        return []
+    methods = data.get("rpc_methods")
+    if methods is None:
+        return ["field 'rpc_methods' must be an array"]
+    if not isinstance(methods, list):
+        return ["field 'rpc_methods' must be an array"]
+
+    allowed = {field.name for field in dataclasses.fields(RPCMethodSpec)}
+    errors: list[str] = []
+    for index, method in enumerate(methods):
+        prefix = f"rpc_methods[{index}]"
+        if not isinstance(method, dict):
+            errors.append(f"{prefix} must be an object")
+            continue
+        errors.extend(
+            f"{prefix}: unknown field {key!r}"
+            for key in method
+            if key not in allowed
+        )
+        name = method.get("name")
+        if not isinstance(name, str) or not name:
+            errors.append(f"{prefix} must have a non-empty 'name'")
+        for key in ("summary", "description"):
+            if key in method and not isinstance(method[key], str):
+                errors.append(f"{prefix}.{key} must be a string")
+        for key in ("params_schema", "result_schema"):
+            if key in method and method[key] is not None and not isinstance(
+                method[key], (dict, str)
+            ):
+                errors.append(f"{prefix}.{key} must be an object, string, or null")
+        for key in ("long_running", "cancelable"):
+            if key in method and not isinstance(method[key], bool):
+                errors.append(f"{prefix}.{key} must be a boolean")
+        if "events" in method:
+            events = method["events"]
+            if not isinstance(events, list) or any(not isinstance(event, str) for event in events):
+                errors.append(f"{prefix}.events must be an array of strings")
+    return errors
+
+
+def _validate_field_shapes(data: dict[str, Any]) -> list[str]:
+    """Validate scalar and collection shapes consumed by ``from_dict``."""
+    nullable_fields = {"icon", "state_namespace", "state_schema"}
+    errors: list[str] = [
+        f"field {key!r} must not be null"
+        for key, value in data.items()
+        if value is None and key not in nullable_fields
+    ]
+    for key in ("display_name", "description", "state_namespace", "experimental_message",
+                "deprecation_message"):
+        value = data.get(key)
+        if value is not None and not isinstance(value, str):
+            errors.append(f"field {key!r} must be a string or null")
+    if data.get("icon") is not None and not isinstance(data["icon"], str):
+        errors.append("field 'icon' must be a string or null")
+    for key in ("authors", "categories", "operation_types"):
+        errors.extend(_validate_string_list(data, key))
+    for key in ("events",):
+        value = data.get(key)
+        if value is not None and (
+            not isinstance(value, list) or any(not isinstance(item, dict) for item in value)
+        ):
+            errors.append(f"field {key!r} must be an array of objects")
+    if data.get("state_schema") is not None and not isinstance(data["state_schema"], dict):
+        errors.append("field 'state_schema' must be an object or null")
+    for key in ("dependencies",):
+        value = data.get(key)
+        if value is not None and (
+            not isinstance(value, dict)
+            or any(not isinstance(name, str) or not isinstance(spec, str)
+                   for name, spec in value.items())
+        ):
+            errors.append(f"field {key!r} must be an object mapping names to strings")
+    for key in ("library", "experimental", "menu_hidden", "deprecated", "demo"):
+        value = data.get(key)
+        if value is not None and not isinstance(value, bool):
+            errors.append(f"field {key!r} must be a boolean")
+    errors.extend(_validate_entrypoints(data))
+    errors.extend(_validate_rpc_methods(data))
+    return errors
+
+
 def validate_manifest(data: dict[str, Any]) -> list[str]:
     """Validate manifest data against the standard schema.
 
@@ -733,17 +881,8 @@ def validate_manifest(data: dict[str, Any]) -> list[str]:
         elif not isinstance(data[required], str) or not data[required]:
             errors.append(f"field {required!r} must be a non-empty string")
 
-    for method in data.get("rpc_methods", []):
-        if not isinstance(method, dict):
-            errors.append("each rpc_methods entry must be an object")
-            continue
-        if "name" not in method or not isinstance(method["name"], str) or not method["name"]:
-            errors.append("each rpc_methods entry must have a non-empty 'name'")
-        for text_field in ("summary", "description"):
-            if text_field in method and not isinstance(method[text_field], str):
-                errors.append(f"rpc_methods field {text_field!r} must be a string")
-
     errors.extend(_validate_known_keys(data))
+    errors.extend(_validate_field_shapes(data))
     errors.extend(_validate_categories(data))
     errors.extend(_validate_statefulness(data))
     errors.extend(_validate_dependencies(data))

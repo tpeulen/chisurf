@@ -83,6 +83,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Do not create an off-screen Qt application (fewer readers and models).",
     )
+    parser.add_argument(
+        "--acp",
+        action="store_true",
+        help="Run as an Agent Client Protocol (ACP) server over stdio.",
+    )
     return parser
 
 
@@ -204,6 +209,18 @@ def main(argv: list[str] | None = None) -> int:
 
         print(describe_examples())
         return 0
+
+    if arguments.acp:
+        from chisurf.core.agent.acp_server import run_acp_server
+
+        return run_acp_server(
+            provider=arguments.provider,
+            model=arguments.model,
+            cwd=arguments.directory,
+            safety=arguments.safety,
+            verbose=arguments.verbose,
+            no_qt=arguments.no_qt,
+        )
 
     request = " ".join(arguments.request).strip()
     if arguments.example:

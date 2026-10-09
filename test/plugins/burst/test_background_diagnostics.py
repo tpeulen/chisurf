@@ -100,5 +100,5 @@ def test_a_window_far_out_in_the_tail_recovers_the_rate():
         assert abs(diag.rate_khz - rate) / rate < 0.1, (rate, diag.rate_khz)
         window = diag.tail_mask
         model = diag.amplitude * np.exp(-diag.rate_khz * diag.centers[window])
-        assert np.allclose(model, diag.model[window])                   # amplitude still means A·exp(-λ·dt)
+        assert np.allclose(model, diag.model[window])  # amplitude still means A·exp(-λ·dt)
         assert abs(model.sum() - diag.counts[window].sum()) / diag.counts[window].sum() < 0.05

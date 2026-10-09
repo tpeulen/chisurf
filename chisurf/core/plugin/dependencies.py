@@ -73,7 +73,7 @@ class DependencyReport:
             for note in notes:
                 lines.append(f"{plugin_id}: {note}")
         for cycle in self.cycles:
-            lines.append("dependency cycle: " + " -> ".join(cycle + [cycle[0]]))
+            lines.append("dependency cycle involving: " + ", ".join(cycle))
         for plugin_id, targets in sorted(self.unknown.items()):
             for target in targets:
                 lines.append(f"{plugin_id}: optionally requires {target!r}, which is not installed")
@@ -114,7 +114,7 @@ def resolve(manifests: Iterable[Any]) -> DependencyReport:
     for manifest in manifests:
         plugin_id, _ = _identity(manifest)
         if plugin_id:
-            by_id[plugin_id] = manifest
+            by_id.setdefault(plugin_id, manifest)
 
     report = DependencyReport()
     hard: dict[str, set[str]] = {}
@@ -157,24 +157,73 @@ def _kahn(hard: dict[str, set[str]], report: DependencyReport) -> list[str]:
     filesystem order is what this replaces, so inheriting any of it would defeat
     the point.
     """
+    # Iterative Kosaraju traversal avoids Python's recursion limit on long chains.
+    dependants: dict[str, set[str]] = {plugin_id: set() for plugin_id in hard}
+    for plugin_id, targets in hard.items():
+        for target in targets:
+            dependants[target].add(plugin_id)
+
+    visited: set[str] = set()
+    finished: list[str] = []
+    for root in sorted(hard):
+        if root in visited:
+            continue
+        visited.add(root)
+        stack = [(root, iter(sorted(hard[root])))]
+        while stack:
+            plugin_id, targets = stack[-1]
+            target = next(targets, None)
+            if target is None:
+                finished.append(plugin_id)
+                stack.pop()
+            elif target not in visited:
+                visited.add(target)
+                stack.append((target, iter(sorted(hard[target]))))
+
+    components: list[list[str]] = []
+    component_of: dict[str, int] = {}
+    for root in reversed(finished):
+        if root in component_of:
+            continue
+        index = len(components)
+        members: list[str] = []
+        pending = [root]
+        component_of[root] = index
+        while pending:
+            plugin_id = pending.pop()
+            members.append(plugin_id)
+            for target in dependants[plugin_id]:
+                if target not in component_of:
+                    component_of[target] = index
+                    pending.append(target)
+        components.append(sorted(members))
+
+    report.cycles = sorted(
+        members for members in components
+        if len(members) > 1 or members[0] in hard[members[0]]
+    )
+    prerequisites = [set() for _ in components]
+    followers = [set() for _ in components]
+    for plugin_id, targets in hard.items():
+        index = component_of[plugin_id]
+        for target in targets:
+            dependency = component_of[target]
+            if dependency != index:
+                prerequisites[index].add(dependency)
+                followers[dependency].add(index)
+
+    # Process complete ready waves, preserving the historical healthy-graph order.
+    ready = [index for index, targets in enumerate(prerequisites) if not targets]
     ordered: list[str] = []
-    remaining = set(hard)
-    completed: set[str] = set()
-
-    while remaining:
-        ready = sorted(plugin_id for plugin_id in remaining if hard[plugin_id] <= completed)
-        if not ready:
-            # Everything left is in, or behind, a cycle. Record the strongly
-            # blocked set and release it in id order so boot still finishes.
-            blocked = sorted(remaining)
-            report.cycles.append(blocked)
-            ordered.extend(blocked)
-            break
-        for plugin_id in ready:
-            ordered.append(plugin_id)
-            completed.add(plugin_id)
-            remaining.discard(plugin_id)
-
+    while ready:
+        next_ready: list[int] = []
+        for index in sorted(ready, key=lambda index: components[index]):
+            ordered.extend(components[index])
+            for follower in followers[index]:
+                prerequisites[follower].remove(index)
+                if not prerequisites[follower]:
+                    next_ready.append(follower)
+        ready = next_ready
     return ordered
 
 
@@ -196,9 +245,8 @@ def ordered_manifests(manifests: Iterable[Any]) -> tuple[list[Any], DependencyRe
     Returns
     -------
     tuple
-        ``(sorted manifests, report)``. Manifests whose id is empty or duplicated
-        keep their relative input order at the end, so nothing is ever dropped by
-        sorting.
+        ``(sorted manifests, report)``. Duplicate ids share their resolved rank and keep their relative input
+        order; empty ids stay at the end. Nothing is ever dropped by sorting.
 
     """
     items = list(manifests)

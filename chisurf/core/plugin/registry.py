@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 import logging
 import pathlib
+from contextlib import nullcontext
 from typing import Any, Protocol
 
 from chisurf.core.plugin.dependencies import (
@@ -10,6 +11,7 @@ from chisurf.core.plugin.dependencies import (
     log_problems,
     ordered_manifests,
 )
+from chisurf.core.plugin.discovery import PackageResolver
 from chisurf.core.plugin.manifest import (
     PluginManifest,
     load_manifest,
@@ -49,6 +51,7 @@ class PluginRegistry:
         self._manifests: dict[str, PluginManifest] = {}
         self._legacy_plugins: list[dict[str, Any]] = []
         self._dependency_report: DependencyReport | None = None
+        self._gui_windows: dict[int, Any] = {}
 
     # ── discovery ──────────────────────────────────────────────────
 
@@ -73,8 +76,13 @@ class PluginRegistry:
         if search_paths is None:
             search_paths = self._default_search_paths()
 
+        importlib.invalidate_caches()
+        packages = PackageResolver(search_paths)
         manifests: list[PluginManifest] = []
+        legacy_plugins: list[dict[str, Any]] = []
         seen_dirs: set[pathlib.Path] = set()
+        seen_ids: dict[str, pathlib.Path] = {}
+        seen_modules: dict[tuple[str, ...], pathlib.Path] = {}
 
         for base_path in search_paths:
             if not base_path.exists():
@@ -83,7 +91,7 @@ class PluginRegistry:
                 plugin_dir = init_py_path.parent
                 if any(
                     part.startswith(".") or part == "__pycache__" or "{{" in part
-                    for part in plugin_dir.parts
+                    for part in plugin_dir.relative_to(base_path).parts
                 ):
                     continue
                 resolved = plugin_dir.resolve()
@@ -91,13 +99,40 @@ class PluginRegistry:
                     continue
                 seen_dirs.add(resolved)
 
+                # Import identity exists even when metadata is absent or legacy.
+                module_parts = plugin_dir.relative_to(base_path).parts
+                if module_parts:
+                    preferred = packages.preferred_directory(module_parts)
+                    if preferred != resolved:
+                        _log.warning(
+                            "Shadowed plugin module %r at %s ignored; Python selects %s",
+                            ".".join(module_parts), plugin_dir,
+                            preferred or packages.parent_locations(module_parts),
+                        )
+                        continue
+                if module_parts in seen_modules:
+                    _log.warning(
+                        "Duplicate plugin module %r at %s ignored; using %s",
+                        ".".join(module_parts), plugin_dir, seen_modules[module_parts],
+                    )
+                    continue
+                seen_modules[module_parts] = plugin_dir
+
                 # Prefer manifest.json over legacy metadata
                 manifest_path = plugin_dir / "manifest.json"
                 manifest = load_manifest(manifest_path)
 
                 if manifest is not None:
+                    if manifest.id in seen_ids:
+                        _log.warning(
+                            "Duplicate plugin id %r at %s ignored; using %s",
+                            manifest.id,
+                            plugin_dir,
+                            seen_ids[manifest.id],
+                        )
+                        continue
+                    seen_ids[manifest.id] = plugin_dir
                     manifests.append(manifest)
-                    self._manifests[manifest.id] = manifest
                 else:
                     if manifest_path.exists():
                         try:
@@ -119,7 +154,7 @@ class PluginRegistry:
                     # Legacy fallback: parse __init__.py AST
                     legacy = _read_legacy_metadata(plugin_dir)
                     if legacy is not None:
-                        self._legacy_plugins.append(legacy)
+                        legacy_plugins.append(legacy)
 
         # Ordering happens once, here: ``_manifests`` is what register_services,
         # register_cli, register_gui and the operation index all iterate, so
@@ -129,6 +164,7 @@ class PluginRegistry:
         log_problems(report)
         self._dependency_report = report
         self._manifests = {m.id: m for m in manifests}
+        self._legacy_plugins = legacy_plugins
         return manifests
 
     @property
@@ -176,7 +212,10 @@ class PluginRegistry:
                 continue
             try:
                 register_fn = self._loader.load(entrypoint)
-                register_fn(dispatcher)
+                transaction = getattr(dispatcher, "registration_transaction", None)
+                context = transaction(manifest.id) if callable(transaction) else nullcontext()
+                with context:
+                    register_fn(dispatcher)
                 _log.info("Registered services for plugin %r", manifest.id)
             except ModuleNotFoundError as exc:
                 # A plugin whose third-party dependency is not installed is
@@ -219,15 +258,21 @@ class PluginRegistry:
             if not entrypoint:
                 continue
             try:
-                # entrypoint format: "cmd=module:attr"
-                cmd_part, _, module_part = entrypoint.partition("=")
-                cmd_name = cmd_part.strip()
-                if module_part:
-                    cli_obj = self._loader.load(module_part.strip())
-                else:
-                    cli_obj = self._loader.load(entrypoint)
-                if hasattr(cli_obj, "name"):
-                    cmd_name = cli_obj.name
+                # The manifest owns the public name, not the Click object's
+                # implementation name. Match the production lazy CLI path.
+                alias, separator, target = entrypoint.partition("=")
+                cmd_name = alias.strip() if separator else manifest.id.replace("_", "-")
+                target = target.strip() if separator else entrypoint.strip()
+                if not cmd_name or not target:
+                    raise ValueError("CLI command alias and entrypoint must not be empty")
+                commands = getattr(main_group, "commands", {})
+                if isinstance(commands, dict) and cmd_name in commands:
+                    _log.warning(
+                        "Plugin %r CLI %r ignored; command is already registered",
+                        manifest.id, cmd_name,
+                    )
+                    continue
+                cli_obj = self._loader.load(target)
                 main_group.add_command(cli_obj, name=cmd_name)
                 _log.info("Registered CLI for plugin %r as %r", manifest.id, cmd_name)
             except Exception:
@@ -238,13 +283,10 @@ class PluginRegistry:
                 )
 
     def register_gui(self, menu: Any) -> None:
-        """Register plugin GUI entrypoints (placeholder for Qt menu).
+        """Attach lazy plugin GUI actions without importing plugin code.
 
-        .. note::
-           Like :meth:`register_cli`, this imports each plugin to resolve its
-           widget class. The application's plugin menu is built from manifest
-           metadata *without* importing plugin code (see
-           :mod:`chisurf.gui`), which is what keeps GUI startup fast.
+        The selected Qt/emtk factory is resolved only when an action is triggered,
+        so a missing legacy Qt dependency cannot hide a working native factory.
 
         Parameters
         ----------
@@ -253,22 +295,18 @@ class PluginRegistry:
 
         """
         for manifest in self._manifests.values():
-            entrypoint = manifest.entrypoints.gui
-            if not entrypoint or manifest.menu_hidden:
+            if not (manifest.entrypoints.gui or manifest.entrypoints.emtk) or manifest.menu_hidden:
                 continue
             try:
-                widget_class = self._loader.load(entrypoint)
                 action = menu.addAction(manifest.display_name or manifest.id)
                 action.triggered.connect(
-                    lambda checked, wc=widget_class, manifest=manifest: _show_plugin(wc, manifest)
+                    lambda checked=False, manifest=manifest: _show_plugin(
+                        None, manifest, loader=self._loader, windows=self._gui_windows,
+                    )
                 )
                 _log.info("Registered GUI for plugin %r", manifest.id)
             except Exception:
-                _log.exception(
-                    "Failed to register GUI for plugin %r (%s)",
-                    manifest.id,
-                    entrypoint,
-                )
+                _log.exception("Failed to register GUI for plugin %r", manifest.id)
 
     # ── internals ──────────────────────────────────────────────────
 
@@ -304,16 +342,99 @@ def _read_legacy_metadata(plugin_dir: pathlib.Path) -> dict[str, Any] | None:
         return None
 
 
-def _show_plugin(widget_class: Any, manifest: PluginManifest) -> None:
-    """Show a plugin widget and apply manifest statefulness if enabled."""
+def select_gui_entrypoint(manifest: PluginManifest, mode: str = "auto") -> tuple[str, str] | None:
+    """Choose ``("emtk", spec)`` or ``("qt", spec)`` for a plugin launch."""
+    mode = str(mode or "auto").lower()
+    native = getattr(manifest.entrypoints, "emtk", None)
+    legacy = getattr(manifest.entrypoints, "gui", None)
+    if mode == "emtk":
+        return ("emtk", native) if native else (("qt", legacy) if legacy else None)
+    if mode == "qt":
+        return ("qt", legacy) if legacy else (("emtk", native) if native else None)
+    # Auto: a plugin whose emtk port is still a preview keeps its Qt tool (see emtk_readiness).
+    if native and legacy:
+        from chisurf.core.plugin.emtk_readiness import is_preview
+
+        if is_preview(getattr(manifest, "id", "")):
+            return ("qt", legacy)
+    return ("emtk", native) if native else (("qt", legacy) if legacy else None)
+
+
+def build_plugin_widget(
+    manifest: PluginManifest,
+    widget_class: Any = None,
+    *,
+    loader: _EntrypointLoader | None = None,
+) -> Any:
+    """Build a plugin's window, honouring the EMTK/Qt runtime selection.
+
+    Every launch path — the registry menus, the ribbon, the macro launcher —
+    goes through here so a plugin with a native factory opens as one no matter
+    which entry opened it. EMTK apps are wrapped in a ``ControlHost``; Qt
+    widgets come from *widget_class* (imported from the ``gui`` entrypoint when
+    not given).
+    """
+    mode = "auto"
     try:
-        widget = widget_class()
+        import chisurf as cs
+        mode = str(cs.core.settings.cs_settings.get("plugins", {}).get("gui_mode", "auto")).lower()
+    except Exception:
+        pass
+    selected = select_gui_entrypoint(manifest, mode)
+    if selected is None:
+        raise ValueError(f"Plugin {manifest.id!r} has no GUI entrypoint")
+    kind, spec = selected
+    entrypoint_loader = loader or _DefaultLoader()
+    if kind == "emtk":
+        factory = entrypoint_loader.load(spec)
+        from emtk.qt_host import ControlHost
+        widget = ControlHost(factory())
+        widget.is_emtk_native_host = True
+        widget.setWindowTitle(manifest.display_name or manifest.id)
+        return widget
+    if widget_class is None:
+        widget_class = entrypoint_loader.load(spec)
+    return widget_class()
+
+
+def _show_plugin(
+    widget_class: Any,
+    manifest: PluginManifest,
+    *,
+    loader: _EntrypointLoader | None = None,
+    windows: dict[int, Any] | None = None,
+) -> Any | None:
+    """Open a plugin and retain its window until an accepted close destroys it."""
+    widget = None
+    key = None
+    try:
+        widget = build_plugin_widget(manifest, widget_class, loader=loader)
         apply_manifest_statefulness(widget, manifest)
+        if windows is not None:
+            from qtpy.QtCore import Qt
+
+            widget.setAttribute(Qt.WA_DeleteOnClose)
+            key = id(widget)
+            windows[key] = widget
+            widget.destroyed.connect(
+                lambda _object=None, key=key: windows.pop(key, None)
+            )
         widget.show()
         widget.raise_()
         widget.activateWindow()
+        if hasattr(widget, "setFocus"):
+            widget.setFocus()
+        return widget
     except Exception:
-        _log.exception("Failed to show plugin widget %s", widget_class)
+        if windows is not None and key is not None:
+            windows.pop(key, None)
+        if widget is not None:
+            try:
+                widget.deleteLater()
+            except Exception:
+                _log.debug("Failed to dispose plugin %r after launch failure", manifest.id, exc_info=True)
+        _log.exception("Failed to show plugin %r", manifest.id)
+        return None
 
 
 def resolve_plugin_statefulness(

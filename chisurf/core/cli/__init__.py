@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import ast
 import importlib
-import json
 import logging
 import pathlib
 import sys
@@ -105,17 +104,18 @@ def _forward_plugin_cli(
     if not argv:
         argv = ["--help"]
 
+    if isinstance(target, click.Command):
+        # Replace the lazy proxy, not its parent: this preserves shared context,
+        # defaults and full command paths without duplicating the public alias.
+        # invoke propagates explicit Exit separately from callback return values.
+        with target.make_context(ctx.info_name, argv, parent=ctx.parent) as plugin_ctx:
+            target.invoke(plugin_ctx)
+        return
+
     runner = getattr(target, "main", None)
     if callable(runner):
         prog = command_name or (friendly_name or module_path).split(".")[-1]
-        try:
-            runner(args=argv, prog_name=prog, standalone_mode=True)
-        except SystemExit as exc:  # pragma: no cover - normal Click exit path
-            code = int(exc.code or 0)
-            if code != 0:
-                raise click.ClickException(
-                    f"{friendly_name or module_path} exited with status {code}"
-                )
+        runner(args=argv, prog_name=prog, standalone_mode=True)
         return
 
     # Fall back to calling the object directly if it behaves like a callable CLI.
@@ -180,24 +180,16 @@ def _read_manifest_cli(plugin_dir: pathlib.Path) -> tuple[str | None, str | None
     convention kept as a fallback for plugins that ship no manifest. Reading the
     manifest is a plain filesystem read — no plugin package is imported.
     """
-    manifest_path = plugin_dir / "manifest.json"
-    if not manifest_path.exists():
+    from chisurf.core.plugin.manifest import load_manifest
+
+    manifest = load_manifest(plugin_dir / "manifest.json")
+    if manifest is None:
         return None, None, None
-    try:
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except Exception:
-        _LOG.warning("Plugin manifest is not readable JSON: %s", manifest_path)
-        return None, None, None
-    if not isinstance(manifest, dict):
-        return None, None, None
-    entrypoints = manifest.get("entrypoints") or {}
-    entry = entrypoints.get("cli") if isinstance(entrypoints, dict) else None
-    plugin_id = manifest.get("id")
-    display_name = manifest.get("display_name")
+    entry = manifest.entrypoints.cli
     return (
-        entry.strip() if isinstance(entry, str) and entry.strip() else None,
-        str(plugin_id) if plugin_id else None,
-        str(display_name) if display_name else None,
+        entry.strip() if entry and entry.strip() else None,
+        manifest.id,
+        manifest.display_name or None,
     )
 
 
@@ -218,7 +210,12 @@ def _discover_plugin_metadata() -> Iterable[dict[str, object]]:
         ("user", user_root),
     ]
 
-    seen = set()
+    from chisurf.core.plugin.discovery import PackageResolver
+
+    importlib.invalidate_caches()
+    packages = PackageResolver([root for _, root in search_roots])
+    seen: set[pathlib.Path] = set()
+    seen_ids: dict[str, pathlib.Path] = {}
 
     for source, root in search_roots:
         if not root.exists():
@@ -258,13 +255,30 @@ def _discover_plugin_metadata() -> Iterable[dict[str, object]]:
             module_name = ".".join(parts)
             module_path = f"chisurf.plugins.{module_name}"
 
-            key = (module_path, str(init_py.parent))
-            if key in seen:
+            resolved = init_py.parent.resolve()
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            preferred = packages.preferred_directory(parts)
+            if preferred != resolved:
+                _LOG.warning(
+                    "Shadowed plugin module %r at %s ignored; Python selects %s",
+                    module_name, init_py.parent,
+                    preferred or packages.parent_locations(parts),
+                )
                 continue
 
             plugin_name, description, cli_entrypoint = _read_plugin_metadata(init_py)
             manifest_cli, plugin_id, display_name = _read_manifest_cli(init_py.parent)
-            if manifest_cli:
+            if plugin_id:
+                if plugin_id in seen_ids:
+                    _LOG.warning(
+                        "Duplicate plugin id %r at %s ignored; using %s",
+                        plugin_id, init_py.parent, seen_ids[plugin_id],
+                    )
+                    continue
+                seen_ids[plugin_id] = init_py.parent
+            if plugin_id:
                 if cli_entrypoint and cli_entrypoint != manifest_cli:
                     _LOG.warning(
                         "Plugin '%s' declares two different CLI entry points "
@@ -288,8 +302,6 @@ def _discover_plugin_metadata() -> Iterable[dict[str, object]]:
             # entirely so they are never touched during CLI startup.
             if not plugin_name and not cli_entrypoint:
                 continue
-
-            seen.add(key)
 
             yield {
                 "module_path": module_path,

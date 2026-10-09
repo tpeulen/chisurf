@@ -24,7 +24,52 @@ import pytest
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 PLUGIN_ROOT = REPO_ROOT / "chisurf" / "plugins"
-ENTRYPOINT_KINDS = ("gui", "cli", "services")
+ENTRYPOINT_KINDS = ("gui", "cli", "services", "emtk")
+
+
+@pytest.mark.parametrize(
+    "source,expected",
+    [
+        ('def __getattr__(name):\n    if name == "Tool":\n        from example import Tool\n        return Tool\n    raise AttributeError(name)\n', True),
+        ('def __getattr__(name):\n    if name == "Tool":\n        class Tool: pass\n        return Tool\n    raise AttributeError(name)\n', True),
+        ('def __getattr__(name):\n    if name == "Other":\n        from example import Tool\n        return Tool\n    raise AttributeError(name)\n', False),
+        ('def __getattr__(name):\n    if name == "Tool":\n        return Missing\n    raise AttributeError(name)\n', False),
+        ('def local():\n    from example import Tool\n    return Tool\n', False),
+    ],
+    ids=["lazy-import", "lazy-class", "wrong-guard", "unbound-return", "unrelated-function"],
+)
+def test_export_scan_recognizes_guarded_lazy_exports(tmp_path, source, expected):
+    """Qt-free packages may export a widget lazily, but not any arbitrary name."""
+    module = tmp_path / "__init__.py"
+    module.write_text(source)
+    assert _binds_name(module, "Tool") is expected
+
+
+def test_export_scan_resolves_lazy_forwarding(tmp_path):
+    """A forwarding __getattr__ must resolve a real exported name, not any name."""
+    (tmp_path / "delegate.py").write_text("class Tool: pass\n")
+    module = tmp_path / "__init__.py"
+    module.write_text(
+        'import importlib\ndef __getattr__(name):\n'
+        '    module = importlib.import_module(".delegate", __name__)\n'
+        '    return getattr(module, name)\n'
+    )
+    assert _binds_name(module, "Tool")
+    assert not _binds_name(module, "Missing")
+    module.write_text(
+        'def __getattr__(name):\n'
+        '    if name in {"Tool"}:\n'
+        '        from . import delegate\n'
+        '        return getattr(delegate, name)\n'
+        '    raise AttributeError(name)\n'
+    )
+    assert _binds_name(module, "Tool")
+    assert not _binds_name(module, "Missing")
+
+
+def test_scan_includes_native_entrypoints():
+    """Native factories need the same source-contract coverage as legacy Qt."""
+    assert any(kind == "emtk" for _, kind, _ in _manifest_entrypoints())
 
 
 def _manifest_entrypoints() -> list[tuple[str, str, str]]:
@@ -69,13 +114,17 @@ def _module_file(module_path: str) -> pathlib.Path | None:
     return module_py if module_py.exists() else None
 
 
-def _binds_name(path: pathlib.Path, name: str) -> bool:
+def _binds_name(
+    path: pathlib.Path, name: str, visited: set[pathlib.Path] | None = None,
+) -> bool:
     """Return whether a module file binds *name* at module level.
 
     Counts definitions (``def``/``class``), assignments and imports, including
     those nested in a top-level ``if``/``try`` block, plus star imports (which
     may bind anything).
     """
+    visited = set(visited or ())
+    visited.add(path)
     tree = ast.parse(path.read_text(encoding="utf-8"))
 
     def binds(node: ast.AST) -> bool:
@@ -92,8 +141,98 @@ def _binds_name(path: pathlib.Path, name: str) -> bool:
             )
         return False
 
+    def lazy_binds(node: ast.AST) -> bool:
+        if not isinstance(node, ast.FunctionDef) or node.name != "__getattr__":
+            return False
+        args = node.args.posonlyargs + node.args.args
+        if not args:
+            return False
+        arg = args[0].arg
+
+        def reachable(statements):
+            for stmt in statements:
+                yield stmt
+                if isinstance(stmt, ast.If):
+                    test = stmt.test
+                    if not (
+                        isinstance(test, ast.Compare)
+                        and len(test.ops) == 1
+                        and isinstance(test.left, ast.Name)
+                        and test.left.id == arg
+                    ):
+                        continue
+                    value = test.comparators[0]
+                    if isinstance(test.ops[0], ast.Eq) and isinstance(value, ast.Constant):
+                        matches = value.value == name
+                    elif isinstance(test.ops[0], ast.In) and isinstance(value, (ast.Set, ast.Tuple, ast.List)):
+                        if not all(isinstance(item, ast.Constant) for item in value.elts):
+                            continue
+                        matches = name in {item.value for item in value.elts}
+                    else:
+                        continue
+                    yield from reachable(stmt.body if matches else stmt.orelse)
+                elif isinstance(stmt, ast.Try):
+                    yield from reachable(stmt.body)
+
+        statements = list(reachable(node.body))
+        if any(
+            isinstance(stmt, ast.Return)
+            and isinstance(stmt.value, ast.Name)
+            and stmt.value.id == name
+            for stmt in statements
+        ) and any(binds(stmt) for stmt in statements):
+            return True
+
+        def source_file(spec):
+            if not spec.startswith("."):
+                return _module_file(spec)
+            level = len(spec) - len(spec.lstrip("."))
+            parent = path.parent
+            for _ in range(level - 1):
+                parent = parent.parent
+            module = parent.joinpath(*spec.lstrip(".").split("."))
+            package = module / "__init__.py"
+            return package if package.exists() else module.with_suffix(".py")
+
+        delegates = {}
+        for stmt in statements:
+            if isinstance(stmt, ast.ImportFrom) and stmt.module is None and stmt.level:
+                for alias in stmt.names:
+                    delegates[alias.asname or alias.name] = source_file("." * stmt.level + alias.name)
+            elif isinstance(stmt, ast.Assign) and isinstance(stmt.value, ast.Call):
+                call = stmt.value
+                if (
+                    isinstance(call.func, ast.Attribute)
+                    and isinstance(call.func.value, ast.Name)
+                    and call.func.value.id == "importlib"
+                    and call.func.attr == "import_module"
+                    and call.args
+                    and isinstance(call.args[0], ast.Constant)
+                    and isinstance(call.args[0].value, str)
+                ):
+                    for target in stmt.targets:
+                        if isinstance(target, ast.Name):
+                            delegates[target.id] = source_file(call.args[0].value)
+        for stmt in statements:
+            if not isinstance(stmt, ast.Return) or not isinstance(stmt.value, ast.Call):
+                continue
+            call = stmt.value
+            if (
+                isinstance(call.func, ast.Name)
+                and call.func.id == "getattr"
+                and len(call.args) == 2
+                and isinstance(call.args[0], ast.Name)
+                and isinstance(call.args[1], ast.Name)
+                and call.args[1].id == arg
+            ):
+                delegate = delegates.get(call.args[0].id)
+                if delegate is not None and delegate.exists() and delegate not in visited:
+                    if _binds_name(delegate, name, visited):
+                        return True
+        return False
+
     for node in tree.body:
-        if binds(node):
+        if binds(node) or lazy_binds(node):
             return True
         if isinstance(node, (ast.If, ast.Try)) and any(binds(sub) for sub in ast.walk(node)):
             return True

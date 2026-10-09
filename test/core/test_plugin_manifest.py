@@ -334,7 +334,11 @@ class TestManifestKeySchema:
 
     def test_declared_keys_are_accepted(self):
         """A manifest using only declared keys validates clean."""
-        data = dict.fromkeys(_MANIFEST_SCHEMA["properties"])
+        # Use legal typed defaults: explicit null collections/flags are invalid,
+        # even when their keys belong to the schema.
+        data = PluginManifest(id="test", version="1.0.0").to_dict()
+        data.update({"$schema": _MANIFEST_SCHEMA["$schema"], "_comment": "test fixture"})
+        assert set(data) == set(_MANIFEST_SCHEMA["properties"])
         data.update(
             {
                 "id": "test",

@@ -211,13 +211,9 @@ This script:
 
 import os
 import pprint
-import sys
 import tempfile
 
 import yaml
-
-# Add the project root to the Python path
-sys.path.insert(0, os.path.abspath(".."))
 
 
 # Import our custom YAML utilities

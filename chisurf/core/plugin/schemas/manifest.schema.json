@@ -160,6 +160,12 @@
             "string",
             "null"
           ]
+        },
+        "emtk": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
       "additionalProperties": false

@@ -1,10 +1,15 @@
 import ast
 import ctypes
+import importlib
+import logging
 import os
 import pathlib
 import sys
 
+from chisurf.core.plugin.discovery import PackageResolver
 from chisurf.core.plugin.manifest import load_manifest
+
+_log = logging.getLogger(__name__)
 
 # Helper to set hidden attribute on Windows
 
@@ -206,7 +211,9 @@ def _read_manifest_metadata(plugin_dir: pathlib.Path):
         # executing ``wizard.py``/``__init__.py``, which ``entrypoints.script``
         # names. Deriving this from ``gui`` alone dropped every script-launched
         # tool out of the menus the moment it gained a manifest.
-        "cli_only": not (manifest.entrypoints.gui or manifest.entrypoints.script),
+        "cli_only": not (
+            manifest.entrypoints.gui or manifest.entrypoints.emtk or manifest.entrypoints.script
+        ),
         "menu_hidden": bool(manifest.menu_hidden),
         "manifest_id": manifest.id,
         "manifest_version": manifest.version,
@@ -262,9 +269,10 @@ _PLUGIN_CACHE: list[dict] | None = None
 
 
 def invalidate_plugin_cache() -> None:
-    """Drop the cached plugin discovery result so the tree is re-scanned."""
+    """Refresh discovery and import finders after plugin installation/removal."""
     global _PLUGIN_CACHE
     _PLUGIN_CACHE = None
+    importlib.invalidate_caches()
 
 
 def iter_plugins():
@@ -322,7 +330,11 @@ def _iter_plugins_uncached():
     except Exception:
         user_root = user_plugins_dir
     seen = set()
+    seen_ids: dict[str, pathlib.Path] = {}
+    seen_modules: dict[str, pathlib.Path] = {}
     search_paths = list(__path__)
+    importlib.invalidate_caches()
+    packages = PackageResolver(search_paths)
     for path_entry in search_paths:
         try:
             base_path = pathlib.Path(path_entry)
@@ -339,6 +351,11 @@ def _iter_plugins_uncached():
             continue
 
         for root, dirs, files in os.walk(str(base_path)):
+            dirs[:] = sorted(
+                directory for directory in dirs
+                if not directory.startswith(".") and directory != "__pycache__"
+                and "{{" not in directory
+            )
             try:
                 if "__init__.py" not in files:
                     continue
@@ -361,6 +378,26 @@ def _iter_plugins_uncached():
                 init_py = package_dir.joinpath("__init__.py")
                 if not init_py.exists():
                     continue
+                module_path = base_prefix + ".".join(parts)
+                key = (module_path, str(package_dir))
+                if key in seen:
+                    continue
+                seen.add(key)
+                preferred = packages.preferred_directory(parts)
+                if preferred != package_dir.resolve():
+                    _log.warning(
+                        "Shadowed plugin module %r at %s ignored; Python selects %s",
+                        module_path, package_dir, preferred or packages.parent_locations(parts),
+                    )
+                    continue
+                if module_path in seen_modules:
+                    _log.warning(
+                        "Duplicate plugin module %r at %s ignored; using %s",
+                        module_path, package_dir, seen_modules[module_path],
+                    )
+                    continue
+                # A real Python package shadows later roots even without metadata.
+                seen_modules[module_path] = package_dir
                 manifest_metadata = _read_manifest_metadata(package_dir)
                 maturity = dict(_MATURITY_DEFAULTS)
                 demo = False
@@ -397,11 +434,14 @@ def _iter_plugins_uncached():
                     library = False
                 if not plugin_name:
                     continue
-                module_path = base_prefix + ".".join(parts)
-                key = (module_path, str(package_dir))
-                if key in seen:
+                if manifest_id and manifest_id in seen_ids:
+                    _log.warning(
+                        "Duplicate plugin id %r at %s ignored; using %s",
+                        manifest_id, package_dir, seen_ids[manifest_id],
+                    )
                     continue
-                seen.add(key)
+                if manifest_id:
+                    seen_ids[manifest_id] = package_dir
                 try:
                     if hasattr(package_dir, "is_relative_to"):
                         is_user = package_dir.is_relative_to(user_root)
