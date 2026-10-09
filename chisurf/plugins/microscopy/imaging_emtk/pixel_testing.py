@@ -4,9 +4,11 @@
 intensity gradient, an optional second detector and the scanner markers a reader needs. Everything is simulated from a seed,
 so the numbers a Qt capture and an emtk test see are the same.
 """
+
 from __future__ import annotations
 
 import pathlib
+
 import numpy as np
 
 TY_INT8 = 0x10000008
@@ -26,8 +28,11 @@ def counts(n_channels: int = 1, seed: int = SEED) -> np.ndarray:
     rng = np.random.default_rng(seed)
     y, x = np.mgrid[0:LINES, 0:PIX]
     base = 1.0 + 3.0 * (y / (LINES - 1))
-    base = base + 4.0 * np.exp(-(((x - PIX * 0.5) ** 2 + (y - LINES * 0.5) ** 2) / (2 * 5.0 ** 2)))
-    out = [rng.poisson(base * (1.0 if c == 0 else 0.7 + 0.01 * x), size=(FRAMES, LINES, PIX)) for c in range(n_channels)]
+    base = base + 4.0 * np.exp(-(((x - PIX * 0.5) ** 2 + (y - LINES * 0.5) ** 2) / (2 * 5.0**2)))
+    out = [
+        rng.poisson(base * (1.0 if c == 0 else 0.7 + 0.01 * x), size=(FRAMES, LINES, PIX))
+        for c in range(n_channels)
+    ]
     return np.asarray(out)
 
 
@@ -42,7 +47,11 @@ def flim_ptu(path, n_channels: int = 1, seed: int = SEED) -> str:
     bases = np.arange(frames * lines, dtype=np.uint64) * period
     line_starts = bases + np.uint64(1)
     frame_starts = bases[::lines]
-    pixel_ticks = (line_starts[:, None] + np.uint64(1) + np.uint64(2) * np.arange(pixels, dtype=np.uint64)[None, :]).reshape(-1)
+    pixel_ticks = (
+        line_starts[:, None]
+        + np.uint64(1)
+        + np.uint64(2) * np.arange(pixels, dtype=np.uint64)[None, :]
+    ).reshape(-1)
     macros, micros, chans = [], [], []
     xs = np.tile(np.arange(pixels), frames * lines)
     for k in range(ch):
@@ -52,10 +61,18 @@ def flim_ptu(path, n_channels: int = 1, seed: int = SEED) -> str:
         tau = np.where(x < pixels // 2, TAU_LEFT_NS, TAU_RIGHT_NS) * 1e-9
         t = rng.exponential(tau)
         bins = np.minimum((t / MICRO_RES).astype(np.int64) + 20, 255).astype(np.uint16)
-        macros.append(macro); micros.append(bins); chans.append(np.full(macro.size, k, np.int8))
+        macros.append(macro)
+        micros.append(bins)
+        chans.append(np.full(macro.size, k, np.int8))
     n_ph = sum(m.size for m in macros)
     marker_macro = np.concatenate([line_starts, line_starts + np.uint64(2 * pixels), frame_starts])
-    marker_chan = np.concatenate([np.full(line_starts.size, 1, np.int8), np.full(line_starts.size, 2, np.int8), np.full(frame_starts.size, 4, np.int8)])
+    marker_chan = np.concatenate(
+        [
+            np.full(line_starts.size, 1, np.int8),
+            np.full(line_starts.size, 2, np.int8),
+            np.full(frame_starts.size, 4, np.int8),
+        ]
+    )
     kk = np.uint64(K_TICKS)
     macro = np.concatenate([m * kk for m in macros] + [marker_macro * kk])
     micro = np.concatenate(micros + [np.zeros(marker_macro.size, np.uint16)])
@@ -68,7 +85,14 @@ def flim_ptu(path, n_channels: int = 1, seed: int = SEED) -> str:
     h.set_macro_time_resolution(LASER_PERIOD)
     h.set_micro_time_resolution(MICRO_RES)
     h.set_number_of_micro_time_channels(256)
-    for name, value in (("ImgHdr_LineStart", 1), ("ImgHdr_LineStop", 2), ("ImgHdr_Frame", 3), ("ImgHdr_PixX", pixels), ("ImgHdr_PixY", lines), ("ImgHdr_BiDirect", 0)):
+    for name, value in (
+        ("ImgHdr_LineStart", 1),
+        ("ImgHdr_LineStop", 2),
+        ("ImgHdr_Frame", 3),
+        ("ImgHdr_PixX", pixels),
+        ("ImgHdr_PixY", lines),
+        ("ImgHdr_BiDirect", 0),
+    ):
         h.set_tag(name, int(value), TY_INT8)
     path = pathlib.Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -102,8 +126,16 @@ def tiff_pair(path, seed: int = SEED):
 
     rng = np.random.default_rng(seed)
     y, x = np.mgrid[0:64, 0:64]
-    a = 20 + 80 * np.exp(-(((x - 24) ** 2 + (y - 28) ** 2) / (2 * 6.0 ** 2))) + 60 * np.exp(-(((x - 46) ** 2 + (y - 16) ** 2) / (2 * 4.0 ** 2)))
-    b = 15 + 90 * np.exp(-(((x - 27) ** 2 + (y - 30) ** 2) / (2 * 6.0 ** 2))) + 50 * np.exp(-(((x - 12) ** 2 + (y - 50) ** 2) / (2 * 4.0 ** 2)))
+    a = (
+        20
+        + 80 * np.exp(-(((x - 24) ** 2 + (y - 28) ** 2) / (2 * 6.0**2)))
+        + 60 * np.exp(-(((x - 46) ** 2 + (y - 16) ** 2) / (2 * 4.0**2)))
+    )
+    b = (
+        15
+        + 90 * np.exp(-(((x - 27) ** 2 + (y - 30) ** 2) / (2 * 6.0**2)))
+        + 50 * np.exp(-(((x - 12) ** 2 + (y - 50) ** 2) / (2 * 4.0**2)))
+    )
     stack = np.stack([rng.poisson(a), rng.poisson(b)]).astype(np.float32)
     imwrite(path, stack)
     return str(path)

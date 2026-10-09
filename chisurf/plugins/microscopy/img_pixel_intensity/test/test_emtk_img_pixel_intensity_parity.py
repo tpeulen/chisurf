@@ -13,14 +13,21 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from test.gui.emtk_layout_checks import SIZES, assert_disjoint, assert_icons_clear, assert_inside, assert_short, assert_texts_apart, draw
-
-from chisurf.plugins.microscopy.img_pixel_intensity.gui.app import IntensityApp, make_app
-from chisurf.plugins.microscopy.img_pixel_intensity.gui.model import IntensityModel
-from chisurf.plugins.microscopy.img_pixel_intensity.gui.view_model import IntensityViewModel
 from chisurf.plugins.microscopy.imaging_emtk import pixel_checks as C
 from chisurf.plugins.microscopy.imaging_emtk import pixel_testing as data
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver, hermetic_env, walk
+from chisurf.plugins.microscopy.img_pixel_intensity.gui.app import IntensityApp, make_app
+from chisurf.plugins.microscopy.img_pixel_intensity.gui.model import IntensityModel
+from chisurf.plugins.microscopy.img_pixel_intensity.gui.view_model import IntensityViewModel
+from test.gui.emtk_layout_checks import (
+    SIZES,
+    assert_disjoint,
+    assert_icons_clear,
+    assert_inside,
+    assert_short,
+    assert_texts_apart,
+    draw,
+)
 
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
@@ -31,8 +38,17 @@ EMTK_SPEC = json.loads((PLUGIN / "gui" / "intensity_emtk.view.json").read_text(e
 QT_SPEC = json.loads((PLUGIN / "gui" / "intensity.view.json").read_text(encoding="utf-8"))
 BIG = (1200, 800)
 
-TOOL = C.Tool(make_app=make_app, tabs=("Intensity", "Count rate (kHz)", "Frames (movie)"), role="pixel_intensity", hdf5_label="Create imaging HDF5",
-              maps={"Intensity": "intensity_map", "Count rate (kHz)": "count_rate_map", "Frames (movie)": "frame_stack"})
+TOOL = C.Tool(
+    make_app=make_app,
+    tabs=("Intensity", "Count rate (kHz)", "Frames (movie)"),
+    role="pixel_intensity",
+    hdf5_label="Create imaging HDF5",
+    maps={
+        "Intensity": "intensity_map",
+        "Count rate (kHz)": "count_rate_map",
+        "Frames (movie)": "frame_stack",
+    },
+)
 
 
 _REAL_BEFORE = data.real_settings_state()
@@ -90,7 +106,9 @@ def test_the_maps_are_the_photon_counts_written_into_the_stream_and_the_qt_numbe
     assert m.intensity_map().sum() == qt["sum"] == QT_VALUES["truth_intensity_sum"] == truth.sum()
     assert [qt["min"], qt["max"]] == [m.intensity_map().min(), m.intensity_map().max()]
     assert m.results_text == QT_VALUES["results_text"] == "flim.ptu: 32x32 px.\nWindows: ch0."
-    assert float(m.count_rate_map().sum()) == pytest.approx(QT_VALUES["count_rate_map"]["sum"], rel=1e-12)
+    assert float(m.count_rate_map().sum()) == pytest.approx(
+        QT_VALUES["count_rate_map"]["sum"], rel=1e-12
+    )
 
 
 def test_the_live_qt_view_model_gives_the_same_maps_on_the_same_file(app, drv, flim):
@@ -100,7 +118,14 @@ def test_the_live_qt_view_model_gives_the_same_maps_on_the_same_file(app, drv, f
     assert qt.compute()
     for name in ("intensity_map", "count_rate_map"):
         np.testing.assert_array_equal(getattr(m, name)(), getattr(qt, name)())
-    assert set(m._columns) == set(qt._columns) == {"Nc-p-all", "Nc-s-all", "Nc-all", "ch0 Count Rate (KHz)", "S prompt ch0 (kHz)", "Number of Photons"} or set(m._columns) == set(qt._columns)
+    assert set(m._columns) == set(qt._columns) == {
+        "Nc-p-all",
+        "Nc-s-all",
+        "Nc-all",
+        "ch0 Count Rate (KHz)",
+        "S prompt ch0 (kHz)",
+        "Number of Photons",
+    } or set(m._columns) == set(qt._columns)
     for name in qt._columns:
         np.testing.assert_array_equal(m._columns[name], qt._columns[name])
     assert qt.results_text == m.results_text
@@ -114,10 +139,14 @@ def test_an_independent_clsm_image_counts_the_same_photons(app, drv, flim):
     np.testing.assert_array_equal(m.intensity_map(), clsm.get_intensity_u32().sum(axis=0))
 
 
-def test_two_detector_windows_give_two_map_sets_and_a_polarised_window_splits_parallel_and_perpendicular(app, drv, flim2):
-    app.model.detectors = {"green": {"chs": [0], "ch_p": [0], "ch_s": [], "micro_time_ranges": []},
-                           "red": {"chs": [1], "ch_p": [1], "ch_s": [], "micro_time_ranges": []},
-                           "pol": {"chs": [0, 1], "ch_p": [0], "ch_s": [1], "micro_time_ranges": []}}
+def test_two_detector_windows_give_two_map_sets_and_a_polarised_window_splits_parallel_and_perpendicular(
+    app, drv, flim2
+):
+    app.model.detectors = {
+        "green": {"chs": [0], "ch_p": [0], "ch_s": [], "micro_time_ranges": []},
+        "red": {"chs": [1], "ch_p": [1], "ch_s": [], "micro_time_ranges": []},
+        "pol": {"chs": [0, 1], "ch_p": [0], "ch_s": [1], "micro_time_ranges": []},
+    }
     m = C.computed(app, drv, flim2)
     truth = data.counts(2)
     assert list(m._by_window) == ["green", "red", "pol"]
@@ -130,7 +159,9 @@ def test_two_detector_windows_give_two_map_sets_and_a_polarised_window_splits_pa
 
 
 def test_the_detector_background_is_subtracted_from_the_rate_and_clipped_at_zero(app, drv, flim):
-    app.model.detectors = {"ch0": {"chs": [0], "ch_p": [], "ch_s": [], "micro_time_ranges": [], "bg": 0.1}}
+    app.model.detectors = {
+        "ch0": {"chs": [0], "ch_p": [], "ch_s": [], "micro_time_ranges": [], "bg": 0.1}
+    }
     m = C.computed(app, drv, flim)
     plain = IntensityViewModel()
     plain.filename = str(flim)
@@ -149,7 +180,11 @@ def test_the_real_leica_scan_counts_what_an_independent_reader_counts(app, drv, 
     target = tmp_path / source.name
     target.write_bytes(source.read_bytes())
     m = C.computed(app, drv, target)
-    expected = tttrlib.CLSMImage(tttrlib.TTTR(str(target)), channels=[0], fill=True).get_intensity_u32().sum(axis=0)
+    expected = (
+        tttrlib.CLSMImage(tttrlib.TTTR(str(target)), channels=[0], fill=True)
+        .get_intensity_u32()
+        .sum(axis=0)
+    )
     np.testing.assert_array_equal(m.intensity_map(), expected)
 
 
@@ -176,8 +211,11 @@ def test_the_database_button_picks_a_dataset(app, drv, flim):
     C.database_button_picks_a_dataset(app, drv, flim)
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the dataset picker's buttons share one id and its Open selected / Cancel never fire; "
-                   "see okf/plugins/emtk-ports/img_drift/REPORT.md")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: the dataset picker's buttons share one id and its Open selected / Cancel never fire; "
+    "see okf/plugins/emtk-ports/img_drift/REPORT.md",
+)
 def test_the_open_selected_button_of_the_database_picker_can_be_pressed(app, drv, flim):
     C.open_selected_button_of_the_database_picker_can_be_pressed(app, drv, flim)
 
@@ -197,12 +235,18 @@ def test_the_qt_host_delivers_a_dropped_file_to_the_app(app, flim):
 # ── 3. running ──────────────────────────────────────────────────────────────────────────────────────────────── #
 
 
-def test_run_without_a_file_does_nothing_with_one_it_computes_and_a_second_run_says_it_is_up_to_date(app, drv, flim):
-    C.run_without_a_file_does_nothing_and_with_one_computes_and_a_second_run_says_it_is_up_to_date(app, drv, flim)
+def test_run_without_a_file_does_nothing_with_one_it_computes_and_a_second_run_says_it_is_up_to_date(
+    app, drv, flim
+):
+    C.run_without_a_file_does_nothing_and_with_one_computes_and_a_second_run_says_it_is_up_to_date(
+        app, drv, flim
+    )
 
 
 def test_cancel_stops_a_running_calculation(app, drv, flim, monkeypatch):
-    C.cancel_stops_a_running_calculation_and_keeps_the_previous_state(app, drv, flim, TOOL, monkeypatch)
+    C.cancel_stops_a_running_calculation_and_keeps_the_previous_state(
+        app, drv, flim, TOOL, monkeypatch
+    )
 
 
 def test_cancel_is_idle_when_nothing_runs(app, drv):
@@ -238,12 +282,19 @@ def test_a_window_added_in_the_editor_is_computed_by_the_next_run(app, drv, flim
 # ── 5. the outputs ──────────────────────────────────────────────────────────────────────────────────────────── #
 
 
-def test_hdf5_is_greyed_without_a_result_asks_for_a_file_writes_the_table_and_the_next_press_writes_to_the_remembered_one(app, drv, stream, tmp_path):
-    target = C.hdf5_is_greyed_without_a_result_asks_for_a_file_writes_the_table_and_the_next_press_writes_to_the_remembered_one(app, drv, stream, tmp_path)
+def test_hdf5_is_greyed_without_a_result_asks_for_a_file_writes_the_table_and_the_next_press_writes_to_the_remembered_one(
+    app, drv, stream, tmp_path
+):
+    target = C.hdf5_is_greyed_without_a_result_asks_for_a_file_writes_the_table_and_the_next_press_writes_to_the_remembered_one(
+        app, drv, stream, tmp_path
+    )
     from chisurf.core.datastore import numeric_column
     from chisurf.core.fluorescence.imaging import read_imaging_table
 
-    np.testing.assert_array_equal(numeric_column(read_imaging_table(str(target)), "Number of Photons"), data.counts(1)[0].sum(axis=0).ravel())
+    np.testing.assert_array_equal(
+        numeric_column(read_imaging_table(str(target)), "Number of Photons"),
+        data.counts(1)[0].sum(axis=0).ravel(),
+    )
 
 
 def test_the_hdf5_dialog_cancel_writes_nothing(app, drv, stream, tmp_path):
@@ -255,7 +306,9 @@ def test_an_unwritable_hdf5_place_is_reported(app, drv, stream, tmp_path):
 
 
 def test_the_container_button_writes_the_artifact_beside_the_source(app, drv, stream):
-    C.container_is_greyed_without_a_result_and_writes_the_artifact_beside_the_source(app, drv, stream, "intensity")
+    C.container_is_greyed_without_a_result_and_writes_the_artifact_beside_the_source(
+        app, drv, stream, "intensity"
+    )
 
 
 def test_ndx_opens_over_the_maps_and_back_returns(app, drv, stream):
@@ -275,7 +328,9 @@ def test_closing_a_computed_session_flushes_the_hdf5_and_the_container(app, drv,
 # ── 6. the maps ─────────────────────────────────────────────────────────────────────────────────────────────── #
 
 
-def test_every_tab_draws_empty_with_a_message_and_populated_with_a_picture_with_axes(app, drv, flim):
+def test_every_tab_draws_empty_with_a_message_and_populated_with_a_picture_with_axes(
+    app, drv, flim
+):
     C.every_tab_draws_empty_with_a_message_and_populated_with_a_picture(app, drv, flim, TOOL)
 
 
@@ -314,7 +369,9 @@ def test_guide_button_starts_the_tour_and_close_tour_ends_it(app):
     C.guide_button_starts_the_tour_and_close_tour_ends_it(app)
 
 
-def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(app, drv, stream, tmp_path):
+def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(
+    app, drv, stream, tmp_path
+):
     out = tmp_path / "walk"
     out.mkdir()
 
@@ -330,7 +387,8 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_
         C.save_in_dialog(drv, "walk.imaging.h5")
 
     C.tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(
-        app, drv, stream, {"file": choose, "run": lambda: drv.click("run_maps"), "saved": hdf5})
+        app, drv, stream, {"file": choose, "run": lambda: drv.click("run_maps"), "saved": hdf5}
+    )
     assert (out / "walk.imaging.h5").exists() and app.model._columns
 
 
@@ -343,7 +401,16 @@ def test_settings_round_trip_and_invalid_values_are_ignored(app, drv):
 
 
 def test_the_imaging_hub_drives_the_tool(app, drv, flim):
-    C.hub_contract(TOOL, flim, drv, {"green": {"chs": [0], "micro_time_ranges": []}, "red": {"chs": [1], "micro_time_ranges": [(0, 100)]}}, {})
+    C.hub_contract(
+        TOOL,
+        flim,
+        drv,
+        {
+            "green": {"chs": [0], "micro_time_ranges": []},
+            "red": {"chs": [1], "micro_time_ranges": [(0, 100)]},
+        },
+        {},
+    )
 
 
 def test_the_hub_starts_the_run_through_start(app, drv, flim):
@@ -367,10 +434,16 @@ def test_the_hub_calibration_background_reaches_the_rate(app, drv, flim):
 def test_every_qt_control_has_an_emtk_equivalent():
     qt_labels = {s.get("label") for s in walk(QT_SPEC["sections"]) if s.get("label")}
     assert qt_labels == {"TTTR file"}
-    emtk = {s.get("label") for s in walk(EMTK_SPEC["sections"]) if s.get("label")} | {b["label"] for s in walk(EMTK_SPEC["sections"]) for b in s.get("buttons", [])}
+    emtk = {s.get("label") for s in walk(EMTK_SPEC["sections"]) if s.get("label")} | {
+        b["label"] for s in walk(EMTK_SPEC["sections"]) for b in s.get("buttons", [])
+    }
     assert {"TTTR file", "Run", "Create imaging HDF5", "ndX", "Next", "Detector window"} <= emtk
     qt_tabs = [s["title"] for s in walk(QT_SPEC["sections"]) if s.get("type") == "custom"]
-    assert qt_tabs == ["Intensity", "Count rate (kHz)", "Frames (movie)"] == [p["title"] for p in EMTK_SPEC["sections"][1:]]
+    assert (
+        qt_tabs
+        == ["Intensity", "Count rate (kHz)", "Frames (movie)"]
+        == [p["title"] for p in EMTK_SPEC["sections"][1:]]
+    )
 
 
 def test_every_spec_attribute_and_action_exists_on_the_model():
@@ -385,8 +458,17 @@ def test_every_spec_attribute_and_action_exists_on_the_model():
                 assert hasattr(model, section[key]), (key, section)
         if section.get("type") == "custom":
             assert callable(getattr(model, section["options"]["source"])), section
-    assert not [s for s in walk(EMTK_SPEC["sections"]) if s.get("type") not in ("custom", "panel") and not s.get("description")]
-    assert not [b for s in walk(EMTK_SPEC["sections"]) for b in s.get("buttons", []) if not b.get("description")]
+    assert not [
+        s
+        for s in walk(EMTK_SPEC["sections"])
+        if s.get("type") not in ("custom", "panel") and not s.get("description")
+    ]
+    assert not [
+        b
+        for s in walk(EMTK_SPEC["sections"])
+        for b in s.get("buttons", [])
+        if not b.get("description")
+    ]
 
 
 def test_the_port_is_qt_free():
@@ -412,10 +494,29 @@ def test_layout_empty_and_populated_has_no_clipped_or_overlapping_text(app, flim
         app.docks.focus(tab)
         painter = draw(app, size)
         C.texts_apart(painter, ignore=(str(flim),))
-    app.docks.focus("Detectors")  # the shared editor draws its row buttons over their cells: only the frame is checked
+    app.docks.focus(
+        "Detectors"
+    )  # the shared editor draws its row buttons over their cells: only the frame is checked
     painter = draw(app, size)
-    assert_inside({k: v for k, v in app.item_rects.items() if k in ("detectors.add_detector", "detectors.section_detectors")}, size)
-    names = ("run_maps", "request_hdf5", "save_container", "open_ndx", "next_step", "filename", "open_file", "open_database", "display_window")
+    assert_inside(
+        {
+            k: v
+            for k, v in app.item_rects.items()
+            if k in ("detectors.add_detector", "detectors.section_detectors")
+        },
+        size,
+    )
+    names = (
+        "run_maps",
+        "request_hdf5",
+        "save_container",
+        "open_ndx",
+        "next_step",
+        "filename",
+        "open_file",
+        "open_database",
+        "display_window",
+    )
     rects = {k: app.form.rects[k] for k in names}
     rects.update({k: app.item_rects[k] for k in ("help", "guide", "cancel")})
     assert_inside(rects, size)

@@ -15,13 +15,23 @@ from .. import core as _core
 from .view_model import FrcViewModel
 
 #: Files the Browse dialogs list (the Qt data-source field's filter).
-IMAGE_FILE_FILTER = "Images and photon streams (*.pto *.tif *.tiff *.png *.ptu *.ht3 *.spc);;All files (*)"
+IMAGE_FILE_FILTER = (
+    "Images and photon streams (*.pto *.tif *.tiff *.png *.ptu *.ht3 *.spc);;All files (*)"
+)
 
 
 class FrcModel(EmtkModelMixin, FrcViewModel):
     """The FRC measurement plus the state of its emtk window."""
 
-    SETTINGS = ("split", "criterion", "pixel_size_nm", "bin_width", "smooth", "axis_order", "colormap")
+    SETTINGS = (
+        "split",
+        "criterion",
+        "pixel_size_nm",
+        "bin_width",
+        "smooth",
+        "axis_order",
+        "colormap",
+    )
 
     def __init__(self, client=None) -> None:
         FrcViewModel.__init__(self, client)
@@ -111,7 +121,9 @@ class FrcModel(EmtkModelMixin, FrcViewModel):
             return False
         if self.split == "two_files" and (self.filename or len(paths) > 1):
             if not self.filename:
-                self.open_second_path(paths[1])  # before the worker starts: it hands its snapshot back over the model
+                self.open_second_path(
+                    paths[1]
+                )  # before the worker starts: it hands its snapshot back over the model
                 self.open_path(paths[0])
             else:
                 self.open_second_path(paths[0])
@@ -163,9 +175,15 @@ class FrcModel(EmtkModelMixin, FrcViewModel):
             return []
         rows = []
         for i, frequency in enumerate(np.asarray(result.frequency, dtype=float)):
-            rows.append({"frequency": float(frequency), "period": float(1.0 / frequency) if frequency else float("inf"),
-                         "correlation": float(result.correlation[i]), "threshold": float(result.threshold[i]),
-                         "pixels": int(result.counts[i])})
+            rows.append(
+                {
+                    "frequency": float(frequency),
+                    "period": float(1.0 / frequency) if frequency else float("inf"),
+                    "correlation": float(result.correlation[i]),
+                    "threshold": float(result.threshold[i]),
+                    "pixels": int(result.counts[i]),
+                }
+            )
         return rows
 
     @property

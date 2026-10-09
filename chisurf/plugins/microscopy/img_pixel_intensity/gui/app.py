@@ -27,7 +27,9 @@ class IntensityApp(PixelToolApp):
     ROLE = "pixel_intensity"
     LAYOUT = Split("h", 0.30, Region("settings"), Region("views"))
 
-    def __init__(self, model: IntensityModel | None = None, coordinator=None, ndx_callback=None, **binding) -> None:
+    def __init__(
+        self, model: IntensityModel | None = None, coordinator=None, ndx_callback=None, **binding
+    ) -> None:
         super().__init__(model or IntensityModel(), coordinator, ndx_callback, **binding)
 
 

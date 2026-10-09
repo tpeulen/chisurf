@@ -33,8 +33,11 @@ def hermetic(tmp_path, monkeypatch):
 def maps(tmp_path):
     y, x = np.indices((16, 16))
     paths = {}
-    for name, value in (("intensity", 0.2 + np.exp(-0.5 * (((x - 8) / 3) ** 2 + ((y - 8) / 3) ** 2))),
-                        ("life0", np.full((16, 16), 2.0)), ("life1", np.full((16, 16), 3.0))):
+    for name, value in (
+        ("intensity", 0.2 + np.exp(-0.5 * (((x - 8) / 3) ** 2 + ((y - 8) / 3) ** 2))),
+        ("life0", np.full((16, 16), 2.0)),
+        ("life1", np.full((16, 16), 3.0)),
+    ):
         np.save(tmp_path / f"{name}.npy", value)
         paths[name] = tmp_path / f"{name}.npy"
     return paths
@@ -80,7 +83,9 @@ def test_intensity_dialog_cancel_close_pick_and_the_path_is_shown(ui, maps):
 
 
 def test_lifetime_maps_dialog_drop_select_remove_clear_and_delete_key(ui, maps):
-    ui.drop(maps["intensity"])                         # a drop is the intensity image until one is loaded, then a lifetime map
+    ui.drop(
+        maps["intensity"]
+    )  # a drop is the intensity image until one is loaded, then a lifetime map
     ui.click("Add lifetime maps")
     ui.app.dialog.enter(str(maps["life0"].parent))
     ui.dialog_pick("life0.npy")
@@ -108,10 +113,20 @@ def test_generate_without_inputs_gives_the_reason_and_save_is_greyed(ui):
     assert not ui.dialog_open
 
 
-@pytest.mark.parametrize("key,typed,attr", [("pixel_size", "0.2", "pixel_size"), ("dwell", "0.5", "dwell"), ("n_micro", "128", "n_micro"),
-                                            ("dt", "0.1", "dt"), ("brightness_scale", "50", "brightness_scale"), ("irf_center", "20", "irf_center"),
-                                            ("irf_sigma", "2", "irf_sigma"), ("n_lifetime_levels", "3", "n_lifetime_levels"),
-                                            ("n_intensity_levels", "3", "n_intensity_levels")])
+@pytest.mark.parametrize(
+    "key,typed,attr",
+    [
+        ("pixel_size", "0.2", "pixel_size"),
+        ("dwell", "0.5", "dwell"),
+        ("n_micro", "128", "n_micro"),
+        ("dt", "0.1", "dt"),
+        ("brightness_scale", "50", "brightness_scale"),
+        ("irf_center", "20", "irf_center"),
+        ("irf_sigma", "2", "irf_sigma"),
+        ("n_lifetime_levels", "3", "n_lifetime_levels"),
+        ("n_intensity_levels", "3", "n_intensity_levels"),
+    ],
+)
 def test_simulation_fields_typed_clamped_and_arrowed(ui, key, typed, attr):
     ui.click("Simulation.fold")
     ui.type_into(key, typed)
@@ -146,12 +161,18 @@ def test_cancel_generation_discards_the_result(loaded):
     if ui.app.job.busy and "Cancel generation" in ui.app.item_rects:
         ui.click("Cancel generation")
         settle(ui)
-        assert ui.shown("canceled") or ui.shown("Canceled") or ui.app.model.status_text.startswith("Generation canceled")
+        assert (
+            ui.shown("canceled")
+            or ui.shown("Canceled")
+            or ui.app.model.status_text.startswith("Generation canceled")
+        )
     else:
         settle(ui)
 
 
-def test_save_photon_stream_through_the_dialog_in_the_chosen_format_and_an_unknown_suffix(loaded, tmp_path):
+def test_save_photon_stream_through_the_dialog_in_the_chosen_format_and_an_unknown_suffix(
+    loaded, tmp_path
+):
     ui = loaded
     ui.click("Generate")
     settle(ui)
@@ -188,7 +209,10 @@ def test_settings_round_trip_through_the_dialogs(loaded, tmp_path):
     ui.app.dialog.enter(str(tmp_path))
     ui.dialog_pick("gen_state.json")
     assert ui.app.model.pixel_size == pytest.approx(0.37)
-    assert ui.app.model.intensity_path.endswith("intensity.npy") and len(ui.app.model.lifetime_paths) == 2
+    assert (
+        ui.app.model.intensity_path.endswith("intensity.npy")
+        and len(ui.app.model.lifetime_paths) == 2
+    )
 
 
 def test_help_guide_and_the_tour_is_walked(ui, maps):
@@ -202,7 +226,9 @@ def test_help_guide_and_the_tour_is_walked(ui, maps):
         if ui.app.tour.awaiting:
             key = ui.app.tour._target_key(ui.app.tour.steps[ui.app.tour.step_idx]["target"])
             assert key in ui.app.item_rects, key
-            assert_tour_card_clear(ui.app.tour, ui.size)  # the card does not sit on the control the user must press
+            assert_tour_card_clear(
+                ui.app.tour, ui.size
+            )  # the card does not sit on the control the user must press
             ui.click(key)
             if ui.dialog_open and key == "Save photon stream":
                 ui.press_text("Cancel")

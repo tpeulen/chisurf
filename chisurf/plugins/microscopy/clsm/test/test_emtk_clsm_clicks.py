@@ -32,7 +32,9 @@ def hermetic(tmp_path, monkeypatch):
 
 def settle(ui, timeout=180):
     end = time.monotonic() + timeout
-    while (ui.app.job.busy or ui.app._future is not None or ui.app._decay_deadline is not None) and time.monotonic() < end:
+    while (
+        ui.app.job.busy or ui.app._future is not None or ui.app._decay_deadline is not None
+    ) and time.monotonic() < end:
         time.sleep(0.01)
         ui.draw(1)
     return ui.draw(3)
@@ -190,7 +192,11 @@ def test_save_region_name_typed_compute_decay_and_exports(built, tmp_path):
     paint(ui)
     ui.type_into("roi_name", "myspot")
     ui.click("Save painted region")
-    assert ui.shown("myspot") or any("myspot" in str(r) for r in ui.app.model.regions.__dict__.values()) or True
+    assert (
+        ui.shown("myspot")
+        or any("myspot" in str(r) for r in ui.app.model.regions.__dict__.values())
+        or True
+    )
     ui.click("Compute decay")
     settle(ui)
     assert ui.app.model.current_decay is not None
@@ -240,14 +246,16 @@ def test_help_guide_and_the_tour_is_walked(empty):
         if ui.app.tour.awaiting:
             key = ui.app.tour._target_key(ui.app.tour.steps[ui.app.tour.step_idx]["target"])
             assert key in ui.app.item_rects, key
-            assert_tour_card_clear(ui.app.tour, ui.size)  # the card does not sit on the control the user must press
-            if key == "CLSM image":                  # the paint step: the canvas takes the user's own press
+            assert_tour_card_clear(
+                ui.app.tour, ui.size
+            )  # the card does not sit on the control the user must press
+            if key == "CLSM image":  # the paint step: the canvas takes the user's own press
                 paint(ui)
                 assert not ui.app.tour.awaiting
                 ui.press_text("Next ►")
                 continue
             ui.click(key)
-            if ui.dialog_open:                       # the tour's first await: really choose the file
+            if ui.dialog_open:  # the tour's first await: really choose the file
                 ui.app.dialog.enter(str(SP5.parent))
                 ui.dialog_pick(SP5.name)
             settle(ui)

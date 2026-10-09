@@ -48,8 +48,17 @@ class FakeClient:
 
     def call(self, method: str, params: Any = None) -> dict:
         if method == "mmfdb.datasets.browse":
-            return {"datasets": [{"artifact_id": "a1", "artifact_kind": "raw_data", "data_format": self.fmt, "original_filename": f"stored.{self.fmt}"}],
-                    "total": 1}
+            return {
+                "datasets": [
+                    {
+                        "artifact_id": "a1",
+                        "artifact_kind": "raw_data",
+                        "data_format": self.fmt,
+                        "original_filename": f"stored.{self.fmt}",
+                    }
+                ],
+                "total": 1,
+            }
         if method == "mmfdb.datasets.open":
             return {"local_path": self.path}
         raise AssertionError(method)
@@ -113,7 +122,10 @@ def cursor_free(app: Any) -> None:
 def typed_path_is_taken_on_enter(app: Any, drv: Driver, path: Any) -> None:
     loaded(app, drv, path)
     assert Path(app.model.filename) == Path(path) and app.model._columns == {}
-    assert app.model.status_line == "File selected. Press Run to compute the maps." and not app.job.busy
+    assert (
+        app.model.status_line == "File selected. Press Run to compute the maps."
+        and not app.job.busy
+    )
 
 
 def typed_path_is_taken_on_click_away_but_not_before(app: Any, drv: Driver, path: Any) -> None:
@@ -123,7 +135,9 @@ def typed_path_is_taken_on_click_away_but_not_before(app: Any, drv: Driver, path
     assert Path(app.model.filename) == Path(path)
 
 
-def browse_opens_the_dialog_and_a_chosen_file_is_selected(app: Any, drv: Driver, path: Any, title: str = "Open photon image") -> None:
+def browse_opens_the_dialog_and_a_chosen_file_is_selected(
+    app: Any, drv: Driver, path: Any, title: str = "Open photon image"
+) -> None:
     path = Path(path)
     app.model.folder = str(path.parent)
     drv.click("open_file")
@@ -131,11 +145,17 @@ def browse_opens_the_dialog_and_a_chosen_file_is_selected(app: Any, drv: Driver,
     drv.click_text(path.name)
     drv.click_text("Open", last=True)
     drv.draw(3)
-    assert Path(app.model.filename) == path and app.model.folder == str(path.parent) and not dialog_open(drv)
+    assert (
+        Path(app.model.filename) == path
+        and app.model.folder == str(path.parent)
+        and not dialog_open(drv)
+    )
     assert not app.job.busy, "Browse only selects: the maps are computed when Run is pressed"
 
 
-def browse_cancel_the_window_close_button_and_escape_change_nothing(app: Any, drv: Driver, path: Any) -> None:
+def browse_cancel_the_window_close_button_and_escape_change_nothing(
+    app: Any, drv: Driver, path: Any
+) -> None:
     app.model.folder = str(Path(path).parent)
     drv.click("open_file")
     drv.click_text("Cancel", last=True)
@@ -156,7 +176,9 @@ def database_button_picks_a_dataset(app: Any, drv: Driver, path: Any) -> None:
     assert Path(app.model.filename) == Path(path)
 
 
-def open_selected_button_of_the_database_picker_can_be_pressed(app: Any, drv: Driver, path: Any) -> None:
+def open_selected_button_of_the_database_picker_can_be_pressed(
+    app: Any, drv: Driver, path: Any
+) -> None:
     open_picker(app, drv, path)
     drv.click_text("Open selected")
     end = time.monotonic() + 5
@@ -172,7 +194,9 @@ def database_picker_window_close_button_closes_it(app: Any, drv: Driver, path: A
     assert not app.picker.is_open and app.model.filename == ""
 
 
-def drop_loads_and_runs_the_file_and_a_drop_while_a_worker_runs_is_refused(app: Any, drv: Driver, path: Any) -> None:
+def drop_loads_and_runs_the_file_and_a_drop_while_a_worker_runs_is_refused(
+    app: Any, drv: Driver, path: Any
+) -> None:
     assert drv.drop(path) is True
     assert Path(app.model.filename) == Path(path) and app.job.busy
     assert app.files_dropped([str(path)]) is False
@@ -189,10 +213,24 @@ def qt_host_delivers_a_dropped_file_to_the_app(app: Any, path: Any) -> None:
     host.resize(900, 600)
     mime = QtCore.QMimeData()
     mime.setUrls([QtCore.QUrl.fromLocalFile(str(path))])
-    enter = QtGui.QDragEnterEvent(QtCore.QPoint(10, 10), QtCore.Qt.CopyAction, mime, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier)
+    enter = QtGui.QDragEnterEvent(
+        QtCore.QPoint(10, 10),
+        QtCore.Qt.CopyAction,
+        mime,
+        QtCore.Qt.LeftButton,
+        QtCore.Qt.NoModifier,
+    )
     host.dragEnterEvent(enter)
     assert enter.isAccepted()
-    host.dropEvent(QtGui.QDropEvent(QtCore.QPointF(10, 10), QtCore.Qt.CopyAction, mime, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier))
+    host.dropEvent(
+        QtGui.QDropEvent(
+            QtCore.QPointF(10, 10),
+            QtCore.Qt.CopyAction,
+            mime,
+            QtCore.Qt.LeftButton,
+            QtCore.Qt.NoModifier,
+        )
+    )
     assert Path(app.model.filename) == Path(path) and qapp is not None
     host.close()
 
@@ -200,7 +238,9 @@ def qt_host_delivers_a_dropped_file_to_the_app(app: Any, path: Any) -> None:
 # -- running -------------------------------------------------------------------------------------------------- #
 
 
-def run_without_a_file_does_nothing_and_with_one_computes_and_a_second_run_says_it_is_up_to_date(app: Any, drv: Driver, path: Any) -> None:
+def run_without_a_file_does_nothing_and_with_one_computes_and_a_second_run_says_it_is_up_to_date(
+    app: Any, drv: Driver, path: Any
+) -> None:
     assert not app.model.enabled("run_maps")
     drv.click("run_maps")
     assert not app.job.busy and app.model._columns == {}
@@ -211,10 +251,15 @@ def run_without_a_file_does_nothing_and_with_one_computes_and_a_second_run_says_
     drv.settle()
     assert app.model._columns and app.model.status_line == "" and not app.job.error
     drv.click("run_maps")
-    assert not app.job.busy and app.model.status_line == "Nothing changed since the last run; the maps are up to date."
+    assert (
+        not app.job.busy
+        and app.model.status_line == "Nothing changed since the last run; the maps are up to date."
+    )
 
 
-def cancel_stops_a_running_calculation_and_keeps_the_previous_state(app: Any, drv: Driver, path: Any, tool: Tool, monkeypatch: Any) -> None:
+def cancel_stops_a_running_calculation_and_keeps_the_previous_state(
+    app: Any, drv: Driver, path: Any, tool: Tool, monkeypatch: Any
+) -> None:
     import importlib
 
     module = importlib.import_module(tool.compute_hook[0])
@@ -235,7 +280,11 @@ def cancel_stops_a_running_calculation_and_keeps_the_previous_state(app: Any, dr
     drv.click("cancel")
     drv.settle(timeout=20)
     assert not app.job.busy and app.model._columns == {}
-    assert "cancelled" in app.model.status_line and not app.model.enabled("cancel") or "cancelled" in app.model.status_line
+    assert (
+        "cancelled" in app.model.status_line
+        and not app.model.enabled("cancel")
+        or "cancelled" in app.model.status_line
+    )
 
 
 def cancel_is_idle_when_nothing_runs(app: Any, drv: Driver) -> None:
@@ -243,7 +292,9 @@ def cancel_is_idle_when_nothing_runs(app: Any, drv: Driver) -> None:
     assert not app.job.busy and app.model.status_line == ""
 
 
-def failed_run_is_reported_and_leaves_the_model_unchanged(app: Any, drv: Driver, tmp_path: Path) -> None:
+def failed_run_is_reported_and_leaves_the_model_unchanged(
+    app: Any, drv: Driver, tmp_path: Path
+) -> None:
     bad = tmp_path / "bad.ptu"
     bad.write_bytes(b"not a photon stream")
     loaded(app, drv, bad)
@@ -254,8 +305,13 @@ def failed_run_is_reported_and_leaves_the_model_unchanged(app: Any, drv: Driver,
 # -- the window ---------------------------------------------------------------------------------------------- #
 
 
-def detector_window_list_switches_the_displayed_window(app: Any, drv: Driver, path: Any, tool: Tool) -> None:
-    app.model.detectors = {"first": {"chs": [0], "micro_time_ranges": []}, "second": {"chs": [1], "micro_time_ranges": []}}
+def detector_window_list_switches_the_displayed_window(
+    app: Any, drv: Driver, path: Any, tool: Tool
+) -> None:
+    app.model.detectors = {
+        "first": {"chs": [0], "micro_time_ranges": []},
+        "second": {"chs": [1], "micro_time_ranges": []},
+    }
     computed(app, drv, path)
     assert list(app.model._by_window) == ["first", "second"] and app.model.display_window == "first"
     accessor = getattr(app.model, next(iter(tool.maps.values())))
@@ -268,7 +324,9 @@ def detector_window_list_switches_the_displayed_window(app: Any, drv: Driver, pa
     drv.escape()
 
 
-def detectors_window_shows_the_computed_windows_and_adding_one_updates_the_model(app: Any, drv: Driver) -> None:
+def detectors_window_shows_the_computed_windows_and_adding_one_updates_the_model(
+    app: Any, drv: Driver
+) -> None:
     app.docks.focus("Detectors")
     drv.draw(3)
     assert "ch0" in drv.draw(2).strings and list(app.model._windows()) == ["ch0"]
@@ -295,7 +353,8 @@ def save_in_dialog(drv: Driver, name: str) -> None:
 
 
 def hdf5_is_greyed_without_a_result_asks_for_a_file_writes_the_table_and_the_next_press_writes_to_the_remembered_one(
-        app: Any, drv: Driver, path: Any, tmp_path: Path, source_ref: bool = True) -> Path:
+    app: Any, drv: Driver, path: Any, tmp_path: Path, source_ref: bool = True
+) -> Path:
     from chisurf.core.datastore import column_names, numeric_column, row_count
     from chisurf.core.fluorescence.imaging import read_imaging_source, read_imaging_table
 
@@ -321,7 +380,9 @@ def hdf5_is_greyed_without_a_result_asks_for_a_file_writes_the_table_and_the_nex
     assert names and set(app.model._columns) <= set(names)
     for name, values in app.model._columns.items():
         assert row_count(table) == np.asarray(values).size
-        np.testing.assert_allclose(numeric_column(table, name), np.asarray(values, dtype=float).ravel())
+        np.testing.assert_allclose(
+            numeric_column(table, name), np.asarray(values, dtype=float).ravel()
+        )
     # the pipeline remembers the file: the next press writes there without asking
     target.unlink()
     drv.click("request_hdf5")
@@ -335,7 +396,9 @@ def hdf5_dialog_cancel_writes_nothing(app: Any, drv: Driver, path: Any, tmp_path
     app.model.folder = str(tmp_path)
     drv.click("request_hdf5")
     drv.click_text("Cancel", last=True)
-    assert not dialog_open(drv) and not list(tmp_path.glob("*.h5")) and app.model.pipeline_hdf5 == ""
+    assert (
+        not dialog_open(drv) and not list(tmp_path.glob("*.h5")) and app.model.pipeline_hdf5 == ""
+    )
 
 
 def hdf5_unwritable_place_is_reported(app: Any, drv: Driver, path: Any, tmp_path: Path) -> None:
@@ -347,7 +410,9 @@ def hdf5_unwritable_place_is_reported(app: Any, drv: Driver, path: Any, tmp_path
     assert app.model.status_line.startswith("Failed:") and app.model.pipeline_hdf5 == ""
 
 
-def container_is_greyed_without_a_result_and_writes_the_artifact_beside_the_source(app: Any, drv: Driver, path: Any, artifact: str) -> None:
+def container_is_greyed_without_a_result_and_writes_the_artifact_beside_the_source(
+    app: Any, drv: Driver, path: Any, artifact: str
+) -> None:
     from chisurf.core.datastore import numeric_column, row_count
     from chisurf.core.fio.pto import Measurement
 
@@ -358,14 +423,19 @@ def container_is_greyed_without_a_result_and_writes_the_artifact_beside_the_sour
     drv.click("save_container")
     drv.settle()
     container = Path(path).with_suffix(".pto")
-    assert container.exists() and app.model.status_line.startswith("Saved container"), (app.model.status_line, app.job.error)
+    assert container.exists() and app.model.status_line.startswith("Saved container"), (
+        app.model.status_line,
+        app.job.error,
+    )
     with Measurement.open(container) as m:
         store = m.get_store(artifact)
         first = next(iter(app.model._columns.values()))
         assert row_count(store) == np.asarray(first).size
 
 
-def ndx_is_greyed_without_a_result_opens_over_the_maps_and_back_returns(app: Any, drv: Driver, path: Any) -> None:
+def ndx_is_greyed_without_a_result_opens_over_the_maps_and_back_returns(
+    app: Any, drv: Driver, path: Any
+) -> None:
     assert not app.model.enabled("open_ndx")
     drv.click("open_ndx")
     assert not app.view_ndx
@@ -379,7 +449,9 @@ def ndx_is_greyed_without_a_result_opens_over_the_maps_and_back_returns(app: Any
     assert "Back to the maps" not in drv.draw(2).strings
 
 
-def next_is_greyed_outside_the_pipeline_and_advances_inside_it(tool: Tool, drv: Driver, path: Any) -> None:
+def next_is_greyed_outside_the_pipeline_and_advances_inside_it(
+    tool: Tool, drv: Driver, path: Any
+) -> None:
     app = drv.app
     assert not app.model.enabled("next_step")
     drv.click("next_step")
@@ -396,7 +468,9 @@ def next_is_greyed_outside_the_pipeline_and_advances_inside_it(tool: Tool, drv: 
 # -- the maps ------------------------------------------------------------------------------------------------ #
 
 
-def every_tab_draws_empty_with_a_message_and_populated_with_a_picture(app: Any, drv: Driver, path: Any, tool: Tool) -> None:
+def every_tab_draws_empty_with_a_message_and_populated_with_a_picture(
+    app: Any, drv: Driver, path: Any, tool: Tool
+) -> None:
     for tab in tool.tabs:
         app.docks.focus(tab)
         strings = drv.draw(3).strings
@@ -411,10 +485,14 @@ def every_tab_draws_empty_with_a_message_and_populated_with_a_picture(app: Any, 
         rect = app.item_rects.get(tab)
         assert rect and rect[2] > 100 and rect[3] > 100, (tab, rect)
         xl, yl = tool.axes.get(tab, ("x [px]", "y [px]"))
-        assert xl in drv.draw(1).strings and yl in drv.draw(1).strings, f"{tab}: the image has no axes"
+        assert xl in drv.draw(1).strings and yl in drv.draw(1).strings, (
+            f"{tab}: the image has no axes"
+        )
 
 
-def colormap_list_offers_four_maps_and_a_click_changes_the_model(app: Any, drv: Driver, path: Any, tab: str) -> None:
+def colormap_list_offers_four_maps_and_a_click_changes_the_model(
+    app: Any, drv: Driver, path: Any, tab: str
+) -> None:
     computed(app, drv, path)
     app.docks.focus(tab)
     drv.draw(3)
@@ -440,7 +518,11 @@ def wheel_zooms_and_a_drag_pans_the_image(app: Any, drv: Driver, path: Any, tab:
     zoomed = numeric_ticks(drv.draw(2))
     assert zoomed != original
     panned = False
-    for end in ((0.3, 0.4), (0.7, 0.6), (0.4, 0.7)):  # a zoom that already shows the whole range may not move one way
+    for end in (
+        (0.3, 0.4),
+        (0.7, 0.6),
+        (0.4, 0.7),
+    ):  # a zoom that already shows the whole range may not move one way
         drv.drag((x + w * 0.5, y + h * 0.5), (x + w * end[0], y + h * end[1]))
         if numeric_ticks(drv.draw(2)) != zoomed:
             panned = True
@@ -452,8 +534,15 @@ def movie_play_loop_stop_and_speed(app: Any, drv: Driver, path: Any, tab: str) -
     computed(app, drv, path)
     app.docks.focus(tab)
     drv.draw(3)
-    panel = next(p for p in app.panels.values() if p.movie and p.rects.get("play") is not None and p.rects["play"][2] > 0 and p.canvas.rect is not None
-                 and p.key == app.windows[tab]["sections"][0]["options"]["name"])
+    panel = next(
+        p
+        for p in app.panels.values()
+        if p.movie
+        and p.rects.get("play") is not None
+        and p.rects["play"][2] > 0
+        and p.canvas.rect is not None
+        and p.key == app.windows[tab]["sections"][0]["options"]["name"]
+    )
     now = [0.0]
     panel.clock = lambda: now[0]
     drv.click(panel.rects["play"])
@@ -519,7 +608,11 @@ def press_tour_button(drv: Driver, label: str) -> None:
         title = app.tour.steps[step]["title"]
         pieces = [t for t in drv.draw(1).texts if t[5].startswith("Step ")]
         assert pieces, f"the title of the card is not drawn: {title!r}"
-        drv.drag((pieces[-1][0] + 4, pieces[-1][1] + 4), (drv.size[0] * corner[0], drv.size[1] * corner[1]), steps=6)
+        drv.drag(
+            (pieces[-1][0] + 4, pieces[-1][1] + 4),
+            (drv.size[0] * corner[0], drv.size[1] * corner[1]),
+            steps=6,
+        )
     assert not app.tour.active or app.tour.step_idx != step, f"{label} could not be pressed"
 
 
@@ -531,8 +624,9 @@ def guide_button_starts_the_tour_and_close_tour_ends_it(app: Any) -> None:
     assert not app.tour.active
 
 
-def tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(app: Any, drv: Driver, path: Any, do: dict[str, Callable[[], None]],
-                                                                                 card_buttons: bool = True) -> None:
+def tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(
+    app: Any, drv: Driver, path: Any, do: dict[str, Callable[[], None]], card_buttons: bool = True
+) -> None:
     """*do* maps a step's target name to what a person does there (a click, a typed path, a dropped file)."""
     drv.click("guide")
     guard = 0
@@ -547,9 +641,14 @@ def tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(a
             action()
             drv.settle()
             drv.draw(2)
-            assert not app.tour.awaiting, f"{step['title']}: operating the control did not release the step"
+            assert not app.tour.awaiting, (
+                f"{step['title']}: operating the control did not release the step"
+            )
         if card_buttons:
-            press_tour_button(drv, "Finish \u2713" if app.tour.step_idx == len(app.tour.steps) - 1 else "Next \u25ba")
+            press_tour_button(
+                drv,
+                "Finish \u2713" if app.tour.step_idx == len(app.tour.steps) - 1 else "Next \u25ba",
+            )
         else:  # the card lies over a data table that swallows the pointer (emtk gap): the tour is advanced through its own method
             app.tour.next()
     assert not app.tour.active and guard < 40
@@ -572,7 +671,9 @@ def every_guide_target_is_a_drawn_control_or_window(app: Any, drv: Driver, path:
     assert seen
 
 
-def settings_round_trip_and_invalid_values_are_ignored(app: Any, drv: Driver, changes: dict, wrong: dict) -> None:
+def settings_round_trip_and_invalid_values_are_ignored(
+    app: Any, drv: Driver, changes: dict, wrong: dict
+) -> None:
     for name, value in changes.items():
         setattr(app.model, name, value)
     app.model.colormap = "gray"
@@ -586,7 +687,9 @@ def settings_round_trip_and_invalid_values_are_ignored(app: Any, drv: Driver, ch
     fresh.restore_settings({"model": None, **{k: v for k, v in wrong.items()}})
     assert fresh.export_settings()["colormap"] == before["colormap"]
     for name in wrong:
-        assert getattr(fresh.model, name, None) == before.get(name, getattr(fresh.model, name, None))
+        assert getattr(fresh.model, name, None) == before.get(
+            name, getattr(fresh.model, name, None)
+        )
     fresh.restore_settings("garbage")
 
 
@@ -601,10 +704,16 @@ def hub_contract(tool: Tool, path: Any, drv: Driver, windows: dict, calibration:
     d.draw(3)
     app.docks.focus("Detectors")
     strings = d.draw(3).strings
-    assert all(name in strings for name in windows), "the detector editor shows the windows the hub handed over"
+    assert all(name in strings for name in windows), (
+        "the detector editor shows the windows the hub handed over"
+    )
     app.apply_pipeline_context({"source": str(path), "hdf5": "later.h5"})
-    assert app.model.filename == str(path) and app.model.pipeline_hdf5 == "later.h5" and app.job.busy, "a new source is run by the tool"
-    app.apply_setup_settings({"detectors": {"late": {"chs": [0], "micro_time_ranges": []}}})  # arrives while the worker runs
+    assert (
+        app.model.filename == str(path) and app.model.pipeline_hdf5 == "later.h5" and app.job.busy
+    ), "a new source is run by the tool"
+    app.apply_setup_settings(
+        {"detectors": {"late": {"chs": [0], "micro_time_ranges": []}}}
+    )  # arrives while the worker runs
     assert list(app.model.detectors) == list(windows)
     d.settle()
     d.draw(3)
@@ -643,13 +752,17 @@ def every_control_has_a_tooltip(app: Any, drv: Driver, path: Any, tool: Tool) ->
 
 
 def texts_apart(painter: Any, ignore: tuple = ()) -> None:
-    ignore = (*ignore, "x [px]", "y [px]")  # a rotated axis label is recorded as a horizontal box over the tick labels
+    ignore = (
+        *ignore,
+        "x [px]",
+        "y [px]",
+    )  # a rotated axis label is recorded as a horizontal box over the tick labels
     """No two drawn strings overlap (a path in a file field is clipped by its field, so it is left out)."""
     from test.gui.emtk_layout_checks import _overlap, boxes
 
     found = [b for b in boxes(painter) if b[4] not in ignore]
     for i, a in enumerate(found):
-        for b in found[i + 1:]:
+        for b in found[i + 1 :]:
             if a[4] == b[4] and a[:4] == b[:4]:
                 continue  # the same string drawn twice in one place (a cell and its button): nothing to read wrongly
             assert _overlap(a[:4], b[:4]) <= 1.0, f"text {a[4]!r} overlaps {b[4]!r}"

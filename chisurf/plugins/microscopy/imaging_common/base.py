@@ -17,8 +17,6 @@ from collections.abc import Callable
 
 import numpy as np
 
-from chisurf.gui.glyphs import Glyphs
-
 logger = logging.getLogger(__name__)
 
 #: Worker-result keys that are display-only (movie stacks / raw intensity) and
@@ -37,7 +35,7 @@ class ImagingMapViewModel:
 
     RESULT_KEYS: tuple[str, ...] = ()
     #: Label of the HDF5 toolbar action (Intensity overrides to "Create").
-    HDF5_ACTION_LABEL: str = f"{Glyphs.ADD} Add to HDF5"
+    HDF5_ACTION_LABEL: str = "➕ Add to HDF5"
 
     def __init__(self, view_json: pathlib.Path) -> None:
         self._view_json = pathlib.Path(view_json)
@@ -236,10 +234,10 @@ class ImagingMapViewModel:
         sig = (self.filename, self.display_window, tuple(chs), tuple(tuple(r) for r in mtr))
 
         def build():
-            from chisurf.core.fluorescence.imaging import cached_clsm
+            from chisurf.core.fluorescence.imaging import cached_clsm, clsm_intensity_counts
 
             clsm = cached_clsm(self.filename, chs, mtr)
-            return np.asarray(clsm.get_intensity(), dtype=float)
+            return clsm_intensity_counts(clsm)
 
         return self._cached_stack("frame_stack", sig, build)
 

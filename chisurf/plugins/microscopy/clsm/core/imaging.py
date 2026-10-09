@@ -169,12 +169,22 @@ def representation(
         3-D ``float64`` image stack.
     """
     if image_type == "Intensity":
-        return np.asarray(clsm_image.get_intensity_u32() if hasattr(clsm_image, "get_intensity_u32") else clsm_image.intensity, dtype=np.float64)
+        return np.asarray(
+            clsm_image.get_intensity_u32()
+            if hasattr(clsm_image, "get_intensity_u32")
+            else clsm_image.intensity,
+            dtype=np.float64,
+        )
     mmt = mean_micro_time(clsm_image, tttr, n_ph_min)
     if image_type == "Mean micro time":
         return mmt
     # default: intensity-weighted mean micro time
-    return mmt * np.asarray(clsm_image.get_intensity_u32() if hasattr(clsm_image, "get_intensity_u32") else clsm_image.intensity, dtype=np.float64)
+    return mmt * np.asarray(
+        clsm_image.get_intensity_u32()
+        if hasattr(clsm_image, "get_intensity_u32")
+        else clsm_image.intensity,
+        dtype=np.float64,
+    )
 
 
 def reduce_frames(

@@ -77,7 +77,9 @@ def test_clsm_and_browser_real_scan_workflows(tmp_path):
     import json
 
     from chisurf.plugins.microscopy.clsm.gui.view_model import ClsmViewModel
-    from chisurf.plugins.tttr.tttr_image_browser.gui.model import ImageBrowserModel as NativeBrowserModel
+    from chisurf.plugins.tttr.tttr_image_browser.gui.model import (
+        ImageBrowserModel as NativeBrowserModel,
+    )
 
     sim = simulate_molecule_mixture([{"ix": 2, "iy": 2, "tau": 2.5}], n_pixel=4, seed=3)
     path = tmp_path / "sample.ptu"
@@ -102,7 +104,7 @@ def test_clsm_and_browser_real_scan_workflows(tmp_path):
     browser = NativeBrowserModel()
     browser.open_folder(str(tmp_path))
     browser.select_file(str(path))
-    browser.load_current()          # the app loads on a worker; headless use loads now
+    browser.load_current()  # the app loads on a worker; headless use loads now
     assert browser.current_image().shape == (4, 4)
     browser.set_rating(str(path), 3)
     browser.set_note(str(path), "calibration bead")

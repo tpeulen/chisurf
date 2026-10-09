@@ -22,7 +22,9 @@ class MicroTimeApp(PixelToolApp):
     ROLE = "pixel_micro_time"
     LAYOUT = Split("h", 0.30, Region("settings"), Region("views"))
 
-    def __init__(self, model: MicroTimeModel | None = None, coordinator=None, ndx_callback=None, **binding) -> None:
+    def __init__(
+        self, model: MicroTimeModel | None = None, coordinator=None, ndx_callback=None, **binding
+    ) -> None:
         super().__init__(model or MicroTimeModel(), coordinator, ndx_callback, **binding)
 
 

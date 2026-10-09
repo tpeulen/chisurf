@@ -28,7 +28,9 @@ class PhasorModel(PixelModelMixin, PhasorImgViewModel):
 
     @property
     def irf_path(self) -> str:
-        window = self.irf_window if self.irf_window in self._windows() else next(iter(self._windows()))
+        window = (
+            self.irf_window if self.irf_window in self._windows() else next(iter(self._windows()))
+        )
         files = self._windows()[window].get("irf") or []
         return str(files[0]) if files else ""
 
@@ -39,7 +41,9 @@ class PhasorModel(PixelModelMixin, PhasorImgViewModel):
     def commit_irf(self, value: str) -> None:
         """Use the file *value* as the reference of the chosen window (empty: none); the next Run applies it."""
         value = str(value or "").strip()
-        window = self.irf_window if self.irf_window in self._windows() else next(iter(self._windows()))
+        window = (
+            self.irf_window if self.irf_window in self._windows() else next(iter(self._windows()))
+        )
         if not self.detectors:
             self.detectors = {window: {"chs": [0], "micro_time_ranges": []}}
         self.detectors[window]["irf"] = [value] if value else []

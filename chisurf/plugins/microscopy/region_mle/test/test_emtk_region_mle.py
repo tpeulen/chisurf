@@ -252,9 +252,7 @@ def test_app_draws_empty_and_populated(workdir, size):
 
 # 5. the workflow through the UI path
 def test_main_action_end_to_end(workdir, tmp_path):
-    from chisurf.plugins.microscopy.region_mle.gui.app import make_app
-
-    from chisurf.plugins.microscopy.region_mle.gui.app import RegionMleApp
+    from chisurf.plugins.microscopy.region_mle.gui.app import RegionMleApp, make_app
 
     app = RegionMleApp(model=loaded_model(workdir))
     # Preview first: measured, not fitted

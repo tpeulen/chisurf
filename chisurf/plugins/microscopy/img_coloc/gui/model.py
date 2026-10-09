@@ -18,16 +18,47 @@ from chisurf.core.roi import RegionCollection
 from ...imaging_emtk.model_base import EmtkModelMixin
 from .view_model import ColocViewModel
 
-IMAGE_FILE_FILTER = "Images and photon streams (*.pto *.tif *.tiff *.png *.ptu *.ht3 *.spc);;All files (*)"
+IMAGE_FILE_FILTER = (
+    "Images and photon streams (*.pto *.tif *.tiff *.png *.ptu *.ht3 *.spc);;All files (*)"
+)
 
 
 class ColocModel(EmtkModelMixin, ColocViewModel):
     """Two-channel colocalization plus the state of the emtk window."""
 
-    SETTINGS = ("channel_a", "channel_b", "frame", "channel_axis_mode", "auto_background", "background_quantile", "background_a", "background_b",
-                "auto_threshold", "threshold_a", "threshold_b", "gate_enabled", "gate_a_min", "gate_a_max", "gate_b_min", "gate_b_max", "bins",
-                "log_histogram", "costes_test", "costes_block", "costes_randomizations", "costes_seed", "ccf_max_shift", "profile_bins", "object_analysis",
-                "object_min_size", "object_smoothing", "object_split", "object_distance", "brush_size", "colormap")
+    SETTINGS = (
+        "channel_a",
+        "channel_b",
+        "frame",
+        "channel_axis_mode",
+        "auto_background",
+        "background_quantile",
+        "background_a",
+        "background_b",
+        "auto_threshold",
+        "threshold_a",
+        "threshold_b",
+        "gate_enabled",
+        "gate_a_min",
+        "gate_a_max",
+        "gate_b_min",
+        "gate_b_max",
+        "bins",
+        "log_histogram",
+        "costes_test",
+        "costes_block",
+        "costes_randomizations",
+        "costes_seed",
+        "ccf_max_shift",
+        "profile_bins",
+        "object_analysis",
+        "object_min_size",
+        "object_smoothing",
+        "object_split",
+        "object_distance",
+        "brush_size",
+        "colormap",
+    )
 
     def __init__(self) -> None:
         ColocViewModel.__init__(self)
@@ -190,7 +221,9 @@ class ColocModel(EmtkModelMixin, ColocViewModel):
         if mask is None:
             return
         half = max(int(self.brush_size), 1) // 2
-        mask[max(0, y - half):y + half + 1, max(0, x - half):x + half + 1] = 0 if self.erase else 1
+        mask[max(0, y - half) : y + half + 1, max(0, x - half) : x + half + 1] = (
+            0 if self.erase else 1
+        )
         self.mask_version += 1
         self.dirty_roi |= target == "roi_mask"
         self.dirty_gate |= target == "gate_paint"
@@ -211,7 +244,11 @@ class ColocModel(EmtkModelMixin, ColocViewModel):
     def dialog_filename(self, kind: str) -> str:
         if kind == "save_regions":
             return "regions.json"
-        return pathlib.Path(self.filename).with_suffix(".coloc.csv").name if self.filename else "colocalization.csv"
+        return (
+            pathlib.Path(self.filename).with_suffix(".coloc.csv").name
+            if self.filename
+            else "colocalization.csv"
+        )
 
     def write_export(self, path: str) -> None:
         try:
@@ -235,7 +272,11 @@ class ColocModel(EmtkModelMixin, ColocViewModel):
 
     def export_settings(self) -> dict[str, Any]:
         state = super().export_settings()
-        state.update(gates=self.gates.to_dict(), detectors=copy.deepcopy(self.detectors), setup_name=self.setup_name)
+        state.update(
+            gates=self.gates.to_dict(),
+            detectors=copy.deepcopy(self.detectors),
+            setup_name=self.setup_name,
+        )
         return state
 
     def restore_settings(self, state: dict) -> None:

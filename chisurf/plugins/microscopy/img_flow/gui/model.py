@@ -15,14 +15,28 @@ from .. import core as _core
 from .view_model import FlowViewModel
 
 #: Files the Browse dialog lists (the Qt data-source field's filter).
-IMAGE_FILE_FILTER = "Images and photon streams (*.pto *.tif *.tiff *.png *.ptu *.ht3 *.spc);;All files (*)"
+IMAGE_FILE_FILTER = (
+    "Images and photon streams (*.pto *.tif *.tiff *.png *.ptu *.ht3 *.spc);;All files (*)"
+)
 
 
 class FlowModel(EmtkModelMixin, FlowViewModel):
     """The flow-map measurement plus the state of its emtk window."""
 
-    SETTINGS = ("method", "tile", "step", "n_lags", "distance", "subtract_average", "min_quality", "arrow_scale", "pixel_duration_us",
-                "line_duration_ms", "frame_duration_ms", "pixel_size_nm")
+    SETTINGS = (
+        "method",
+        "tile",
+        "step",
+        "n_lags",
+        "distance",
+        "subtract_average",
+        "min_quality",
+        "arrow_scale",
+        "pixel_duration_us",
+        "line_duration_ms",
+        "frame_duration_ms",
+        "pixel_size_nm",
+    )
 
     def __init__(self, client=None) -> None:
         FlowViewModel.__init__(self, client)
@@ -133,7 +147,12 @@ class FlowModel(EmtkModelMixin, FlowViewModel):
             return []
         rows = []
         for row in _core.to_rows(self._result, 0.0):
-            rows.append({k: (float(v) if isinstance(v, (float, np.floating)) else v) for k, v in row.items()})
+            rows.append(
+                {
+                    k: (float(v) if isinstance(v, (float, np.floating)) else v)
+                    for k, v in row.items()
+                }
+            )
         return rows
 
     @property

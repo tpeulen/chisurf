@@ -48,16 +48,35 @@ class ColocApp(DetectorEditorMixin, PlaneMixin, ImagingToolApp):
         self.form.custom["channels"] = lambda section, mm, st, w: self._draw_channels(section)
         self.form.custom["plane"] = lambda section, mm, st, w: self._draw_plane(section)
         self.form.custom["region_list"] = lambda section, mm, st, w: self._draw_region_list(section)
-        panel = PlanePanel("coloc_scatter", collection=lambda: m.gates, image=m.histogram_image, extent=m.gate_extent,
-                           x_label="Channel A intensity", y_label="Channel B intensity", on_change=m.gates_edited, transpose=True,
-                           empty="No scatter yet. Choose an image and press Run.", tooltip="Joint histogram: A horizontal, B vertical. Drag the blue region handles; right-drag pans while painting.",
-                           paint=lambda ia, ib: m.paint("gate_paint", ib, ia) if False else self._paint_gate(ia, ib), painting=lambda: bool(m.paint_gate) and not m.busy)
-        regions = PlaneRegions(lambda: m.gates, m.gate_extent, lambda kind: m.request_dialog(kind), m.gates_edited)
+        panel = PlanePanel(
+            "coloc_scatter",
+            collection=lambda: m.gates,
+            image=m.histogram_image,
+            extent=m.gate_extent,
+            x_label="Channel A intensity",
+            y_label="Channel B intensity",
+            on_change=m.gates_edited,
+            transpose=True,
+            empty="No scatter yet. Choose an image and press Run.",
+            tooltip="Joint histogram: A horizontal, B vertical. Drag the blue region handles; right-drag pans while painting.",
+            paint=lambda ia, ib: (
+                m.paint("gate_paint", ib, ia) if False else self._paint_gate(ia, ib)
+            ),
+            painting=lambda: bool(m.paint_gate) and not m.busy,
+        )
+        regions = PlaneRegions(
+            lambda: m.gates, m.gate_extent, lambda kind: m.request_dialog(kind), m.gates_edited
+        )
         self.add_plane("gates", panel, regions)
         self.channel_a_panel = ImagePanel("coloc_a")
         self.channel_b_panel = ImagePanel("coloc_b")
-        self.panels["Channel A"], self.panels["Channel B"] = self.channel_a_panel, self.channel_b_panel
-        m.tab_titles_list = tuple(t for t, w in self.windows.items() if w.get("dock") == "views") + ("Detectors",)
+        self.panels["Channel A"], self.panels["Channel B"] = (
+            self.channel_a_panel,
+            self.channel_b_panel,
+        )
+        m.tab_titles_list = tuple(
+            t for t, w in self.windows.items() if w.get("dock") == "views"
+        ) + ("Detectors",)
         m.view_tab = m.tab_titles_list[0]
         self._make_editor()
         m.tab_titles_list = tuple(t for t, w in self.windows.items() if w.get("dock") == "views")
@@ -72,8 +91,15 @@ class ColocApp(DetectorEditorMixin, PlaneMixin, ImagingToolApp):
         width = max(100.0, im.get_content_region_avail()[0] / 2.0 - 8.0)
         x, y = im.get_cursor_screen_pos()
         height = max(120.0, im.get_content_region_avail()[1] - 4.0)
-        for i, (panel, title, array) in enumerate(((self.channel_a_panel, "Channel A", m.image_a()), (self.channel_b_panel, "Channel B", m.image_b()))):
-            im.begin_child((x + i * (width + 8.0), y, width, height), clip=True, child_id=f"coloc_ch{i}")
+        for i, (panel, title, array) in enumerate(
+            (
+                (self.channel_a_panel, "Channel A", m.image_a()),
+                (self.channel_b_panel, "Channel B", m.image_b()),
+            )
+        ):
+            im.begin_child(
+                (x + i * (width + 8.0), y, width, height), clip=True, child_id=f"coloc_ch{i}"
+            )
             im.text(title)
             panel.canvas.image_label = title
             if array is None:
@@ -81,10 +107,24 @@ class ColocApp(DetectorEditorMixin, PlaneMixin, ImagingToolApp):
 
                 muted("No image yet. Choose an image and press Run.")
             else:
-                brush = (lambda p: m.paint("roi_mask", int(p[1]), int(p[2])) if not m.busy else None) if (i == 0 and m.paint_roi) else None
-                panel.canvas.colormap = m.colormap if m.colormap in ("magma", "inferno", "viridis", "gray") else panel.canvas.colormap
-                panel.canvas.draw(array, pick_enabled=brush is not None, analysis_editable=False, selection=(m.roi_mask if i == 0 else None), selection_version=m.mask_version,
-                                  on_brush=brush)
+                brush = (
+                    (lambda p: m.paint("roi_mask", int(p[1]), int(p[2])) if not m.busy else None)
+                    if (i == 0 and m.paint_roi)
+                    else None
+                )
+                panel.canvas.colormap = (
+                    m.colormap
+                    if m.colormap in ("magma", "inferno", "viridis", "gray")
+                    else panel.canvas.colormap
+                )
+                panel.canvas.draw(
+                    array,
+                    pick_enabled=brush is not None,
+                    analysis_editable=False,
+                    selection=(m.roi_mask if i == 0 else None),
+                    selection_version=m.mask_version,
+                    on_brush=brush,
+                )
                 m.colormap = panel.canvas.colormap
                 self.item_rects[title] = tuple(panel.canvas.rect or (0, 0, 0, 0))
             im.end_child()

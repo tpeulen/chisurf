@@ -80,11 +80,19 @@ class EmtkModelMixin:
                     if not isinstance(value, bool):
                         continue
                 elif isinstance(current, int):
-                    if isinstance(value, bool) or not isinstance(value, (int, float)) or int(value) != value:
+                    if (
+                        isinstance(value, bool)
+                        or not isinstance(value, (int, float))
+                        or int(value) != value
+                    ):
                         continue
                     value = int(value)
                 elif isinstance(current, float):
-                    if isinstance(value, bool) or not isinstance(value, (int, float)) or value != value:
+                    if (
+                        isinstance(value, bool)
+                        or not isinstance(value, (int, float))
+                        or value != value
+                    ):
                         continue
                     value = float(value)
                 elif isinstance(current, str):

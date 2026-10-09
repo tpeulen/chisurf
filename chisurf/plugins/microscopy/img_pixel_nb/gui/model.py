@@ -10,8 +10,28 @@ class NBModel(PixelModelMixin, NBViewModel):
     """Number & Brightness maps plus the state of the emtk window."""
 
     TOOL_NAME = "N&B"
-    SETTINGS = ("subtract", "add", "box_pixels", "box_frames", "background", "detrend_segments", "dead_time_ns", "pixel_dwell_us", "gain", "offset",
-                "read_variance", "smoothing", "radius", "median", "gamma", "plane_x", "plane_y", "plane_bins", "log_histogram", "cross_window")
+    SETTINGS = (
+        "subtract",
+        "add",
+        "box_pixels",
+        "box_frames",
+        "background",
+        "detrend_segments",
+        "dead_time_ns",
+        "pixel_dwell_us",
+        "gain",
+        "offset",
+        "read_variance",
+        "smoothing",
+        "radius",
+        "median",
+        "gamma",
+        "plane_x",
+        "plane_y",
+        "plane_bins",
+        "log_histogram",
+        "cross_window",
+    )
     REGIONS_ATTR = "gates"
     COPIED = ("gates",)
 

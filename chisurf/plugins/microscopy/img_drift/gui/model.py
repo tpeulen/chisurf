@@ -14,7 +14,9 @@ from ...imaging_emtk.model_base import EmtkModelMixin
 from .view_model import DriftViewModel
 
 #: Files the Open dialog lists (the Qt data-source field's filter).
-IMAGE_FILE_FILTER = "Images and photon streams (*.pto *.tif *.tiff *.png *.ptu *.ht3 *.spc);;All files (*)"
+IMAGE_FILE_FILTER = (
+    "Images and photon streams (*.pto *.tif *.tiff *.png *.ptu *.ht3 *.spc);;All files (*)"
+)
 
 REFERENCES = ("first", "previous", "mean")
 MODES = ("wrap", "constant")
@@ -153,8 +155,12 @@ class DriftModel(EmtkModelMixin, DriftViewModel):
             return []
         shifts = np.asarray(self._result.shifts, dtype=float)
         return [
-            {"frame": int(i), "dx": float(shifts[i, 1]), "dy": float(shifts[i, 0]),
-             "magnitude": float(np.hypot(shifts[i, 0], shifts[i, 1]))}
+            {
+                "frame": int(i),
+                "dx": float(shifts[i, 1]),
+                "dy": float(shifts[i, 0]),
+                "magnitude": float(np.hypot(shifts[i, 0], shifts[i, 1])),
+            }
             for i in range(len(shifts))
         ]
 

@@ -6,6 +6,7 @@ def test_native_factory_defaults():
     assert isinstance(app, ImgFrcApp)
     assert app.model.split == "even_odd"
 
+
 def test_empty_model_reports_no_image():
     app = ImgFrcApp()
     assert app.model.compute() is False
