@@ -17,6 +17,7 @@ from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.plugins.emtk_layout import window_size
 
 from .controller import BurstFcsController
 from .panel import BurstFcsPanel
@@ -43,6 +44,7 @@ class BurstFcsApp(TourTarget, ImApp):
     """The window: controls (Inputs, Settings, Detector setup) left; correlation, distribution and curve list right."""
 
     def __init__(self, controller: BurstFcsController | None = None):
+        self.window_size = window_size(SPEC, (1100, 720))
         self.controller = controller or BurstFcsController()
         self.panel = BurstFcsPanel(self)
         self.selected_file = None
@@ -170,7 +172,9 @@ class BurstFcsApp(TourTarget, ImApp):
     def draw_inputs(self, box):
         im.text_unformatted("Burst folders or BUR/BST files")
         self.form("files")
-        im.text_unformatted("FCS channel pairs")
+        im.text_unformatted(tr("FCS channel pairs"))
+        im.set_item_tooltip(tr(SPEC["pairs"]["sections"][0]["description"]))
+        self.remember("pair_heading")
         self.form("pairs")
         self.remember("inputs", tuple(box))
 

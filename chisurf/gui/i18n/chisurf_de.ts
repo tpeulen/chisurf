@@ -49457,5 +49457,10 @@ presets) into a single left-navigation tool. Built on the reusable
             <source>default uniform</source>
             <translation type="unfinished" />
         </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="2522" />
+            <source>FCS channel pairs: a pair of routing-channel lists, optionally gated in raw micro-time channels. A start:end window includes the lower bound and excludes the upper bound; an empty gate list imposes no micro-time restriction. Equal sides make an auto-correlation.</source>
+            <translation type="unfinished" />
+        </message>
 </context>
 </TS>

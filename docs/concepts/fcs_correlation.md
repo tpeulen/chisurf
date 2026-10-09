@@ -62,6 +62,15 @@ Two practical consequences follow from $G$ being a *statistical* quantity:
   photodynamics, and a slow drift mimics a slow diffusing component.
 
 (concept-fcs-photon-correlation)=
+Burst-wise correlations use selected photon intervals and declared channel
+pairs. This tool’s micro-time windows include the start channel and exclude
+the stop channel, matching BUR detector counts; an empty list is ungated.
+Adjacent windows therefore share no boundary photon. The decoded clock,
+reader corrections, padding and coarse or fine lag grid determine which
+photons contribute and the curve’s physical lag scale. Window resizing changes
+the display. See the [burst-wise workflow](../guides/16_fret_fcs.md) for the
+inputs and exports.
+
 ## Correlating photon time tags
 
 A TTTR file holds no intensity trace to correlate, only arrival times

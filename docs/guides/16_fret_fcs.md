@@ -63,6 +63,14 @@ from the burst or full photon streams.
 
 ### Burst-wise FCS
 
+The native host declares **1100 × 720** pixels on first use; saved geometry
+takes precedence. Resizing or visiting tabs does not change the photons,
+channel pairs, padding or correlator settings that produced a displayed curve.
+A command-line `--size` explicitly requests another host size. Use the tool’s
+settings and curve exports for analysis records; window geometry alone is not
+a saved correlation result.
+
+
 **Spectroscopy ▸ Correlation ▸ Burst-wise FCS** (also
 the *Burst FCS* tool of **Spectroscopy ▸ Burst Analysis**, and *Burst-wise FCS*
 in the [FCS hub](75_fcs_toolbox.md)) correlates each burst
@@ -91,6 +99,22 @@ headless calculations use the core API below, without launching a window:
 - **Detector setup** — the shared detector editor; **Use setup for pairs** turns
   the setup (its stored FCS pairs, else one auto-correlation per detector) into
   channel pairs.
+
+Burst FCS pair gates use **half-open micro-time windows**: include the start
+channel and exclude the stop channel, matching the detector windows used for
+BUR counts. An empty list leaves a side ungated. Adjacent windows share no
+boundary photon; overlapping windows accept each photon once. Check the complete
+reader definition too, because LUTs and channel shifts can move a photon across
+a gate boundary before the correlation is calculated.
+
+```{figure} figures/burst_fcs_native_primary_window.png
+:width: 100%
+
+The native demo produces 24 correlations from eight bursts and three pairs.
+Simple mode shows one fitted-time marker; it is not a probability distribution.
+The simulated burst envelope illustrates the workflow rather than proving a
+physical diffusion constant or kinetic rate.
+```
 
 **Run FCS** correlates every ticked file × pair × burst, with a progress bar.
 The right side shows the correlation of the selected curve with its fit, the

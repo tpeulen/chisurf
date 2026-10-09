@@ -1,4 +1,8 @@
 {
+ "window": {
+  "width": 1100,
+  "height": 720
+ },
  "toolbar": {
   "sections": [
    {
@@ -257,7 +261,7 @@
     "height": 110,
     "fit_columns": false,
     "selected_call": "select_pair",
-    "description": "FCS channel pairs: a pair of routing-channel lists, optionally gated in micro time. Equal sides make an auto-correlation."
+    "description": "FCS channel pairs: a pair of routing-channel lists, optionally gated in raw micro-time channels. A start:end window includes the lower bound and excludes the upper bound; an empty gate list imposes no micro-time restriction. Equal sides make an auto-correlation."
    },
    {
     "type": "button_row",

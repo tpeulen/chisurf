@@ -17,6 +17,7 @@ from typing import Any
 import numpy as np
 import tttrlib
 
+from chisurf.core.fio.fluorescence.burst import _micro_time_mask
 from chisurf.core.models.fcs.maxent import fcs_maxent
 
 # ----------------------------------------------------------------------
@@ -223,7 +224,9 @@ def correlate_single_burst(
     """Compute a single FCS correlation curve for one burst.
 
     Returns ``(tau_ms, G(tau))`` or ``(None, None)`` if the burst does not
-    contain enough photons in either channel.
+    contain enough photons in either channel. Microtime windows are half-open
+    (lower bound included, upper bound excluded), matching the detector windows
+    used to produce the input burst table. An empty window list is ungated.
     """
     try:
         t = tttr.macro_times
@@ -240,15 +243,9 @@ def correlate_single_burst(
     m_b = mask_b.mask.astype(bool)
 
     if micro_a:
-        mask_mt_a = tttrlib.TTTRMask()
-        mask_mt_a.select_microtime_ranges(tttr, micro_a)
-        mask_mt_a.flip()
-        m_a = np.logical_and(m_a, mask_mt_a.mask.astype(bool))
+        m_a = np.logical_and(m_a, _micro_time_mask(tttr.micro_times, micro_a))
     if micro_b:
-        mask_mt_b = tttrlib.TTTRMask()
-        mask_mt_b.select_microtime_ranges(tttr, micro_b)
-        mask_mt_b.flip()
-        m_b = np.logical_and(m_b, mask_mt_b.mask.astype(bool))
+        m_b = np.logical_and(m_b, _micro_time_mask(tttr.micro_times, micro_b))
 
     w1 = np.array(m_a, dtype=np.float64)
     w2 = np.array(m_b, dtype=np.float64)
