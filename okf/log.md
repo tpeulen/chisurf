@@ -2,6 +2,8 @@
 
 ## 2026-10-08
 
+- **2026-10-09 · ALEX batch help committed30409aea4:**15runtime help/localization/selection/geometry cases pass and affected committed-source guard1pass confirms1077remaining findings/no newstale. Two notes and5locales retain controls/settings; no captures for metadata-only help. Current source unit is actual emtk caption/table help routing with specific-tooltip precedence, source/Driver owner active and root integration pending. [Acceptance](validation/release-readiness-w6g/alex-batch-help-acceptance.json).
+
 - **2026-10-09 · ALEX batch help verified:** two operation-specific notes localize across five languages; actual en/de/fr hover and both selections preserve IDs/settings and default/narrow rectangles (15pass). Paired docs/catalogue/global2strings and two exact allowance removals prepared. Available guards1021pass/11skip; expected old-HEAD guard mismatch is disproved by exact candidate audit1077/no newstale. Postpublication affected guard only. Metadata-only: no captures. Existing French label clipping queued separately. [Acceptance](validation/release-readiness-w6g/alex-batch-help-acceptance.json).
 
 - **2026-10-09 · UI debt measured from committed source:**1079tooltip findings exactly match current allowances;1155imperative bare literals, with no production literal baseline guard yet. First actual-help unit is2ALEXbatch option notes plus list localization. Seven panel/table envelope omissions remain genuine metadata/renderer gaps, not silently discarded as false positives. Owning emtk routing is queued after the current bounded deliverable. [Measurement](validation/release-readiness-w6g/ui-debt-measurement.md).
