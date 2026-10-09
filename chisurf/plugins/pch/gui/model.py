@@ -24,9 +24,7 @@ logger = logging.getLogger(__name__)
 TTTR_SUFFIXES = (".ptu", ".ht3", ".t2r", ".t3r", ".pto", ".spc")
 
 #: Qt-style file-dialog filter built from :data:`TTTR_SUFFIXES`.
-TTTR_FILE_FILTER = (
-    "TTTR (" + " ".join(f"*{s}" for s in TTTR_SUFFIXES) + ");;All files (*)"
-)
+TTTR_FILE_FILTER = "TTTR (" + " ".join(f"*{s}" for s in TTTR_SUFFIXES) + ");;All files (*)"
 
 #: Points kept per plotted trace; a trace of a million bins is reduced to the
 #: minimum and maximum of each chunk so a spike survives.
@@ -39,7 +37,9 @@ class SpeciesRows(list):
     revision = 0
 
 
-def decimate_minmax(x: Any, y: Any, n_points: int = TRACE_DISPLAY_POINTS) -> tuple[np.ndarray, np.ndarray]:
+def decimate_minmax(
+    x: Any, y: Any, n_points: int = TRACE_DISPLAY_POINTS
+) -> tuple[np.ndarray, np.ndarray]:
     """Reduce a trace to about *n_points* points keeping each chunk's extremes.
 
     Parameters
@@ -287,7 +287,9 @@ class PchModel:
         try:
             channels = self.parse_channels()
         except ValueError as exc:
-            self._fail(f"Computing the histogram failed: channel list {self.channels.strip()!r}: {exc}")
+            self._fail(
+                f"Computing the histogram failed: channel list {self.channels.strip()!r}: {exc}"
+            )
             return
         self.status_text = "Binning photons…"
         self.notify("progress")
@@ -420,9 +422,7 @@ class PchModel:
         """Write ``<base>.npz`` / ``.csv`` / ``.txt`` (the data outputs of the Qt tool)."""
         if self.result is None:
             raise RuntimeError("Compute the histogram first.")
-        p_fit_arr = (
-            np.array(self.fit_result.p_fit) if self.fit_result is not None else np.array([])
-        )
+        p_fit_arr = np.array(self.fit_result.p_fit) if self.fit_result is not None else np.array([])
         np.savez(
             f"{base}.npz",
             t_centers=self.result.trace_t,
