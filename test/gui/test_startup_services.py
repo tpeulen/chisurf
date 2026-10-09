@@ -148,7 +148,9 @@ def test_post_show_services_reach_the_window_without_declaring_it(monkeypatch):
 
     The post-show runner passes only declared dependencies, and no post-show
     service declares ``startup_interface``. ``_get_window`` used to read only
-    that, so post-show services received ``None`` and silently did nothing.
+    that, so ``register_experiment_models`` (and ``populate_plugins``,
+    ``bind_history_science``) received ``None`` and silently did nothing --
+    every TCSPC/FCS dataset then showed an empty model list.
     """
     import chisurf as cs
     from chisurf.startup import gui_services
@@ -157,21 +159,39 @@ def test_post_show_services_reach_the_window_without_declaring_it(monkeypatch):
     calls = []
 
     class _Window:
-        def populate(self):
+        def register_experiment_models(self):
             calls.append("registered")
             return 0
 
     window = _Window()
-
-    def _svc(context):
-        w = gui_services._get_window(context)
-        if w is not None:
-            w.populate()
-
-    _svc(AppStartupContext(main_window=window))
+    gui_services.register_experiment_models(AppStartupContext(main_window=window))
     assert calls == ["registered"]
 
     monkeypatch.setattr(cs, "cs", window, raising=False)
-    _svc(AppStartupContext())
+    gui_services.register_experiment_models(AppStartupContext())
     assert calls == ["registered", "registered"]
 
+
+def test_selecting_a_dataset_resolves_its_pending_models():
+    """The model list is filled even before the post-show service has run."""
+    from chisurf.gui.main_helper import SetupMixin
+
+    class _Experiment:
+        name = "TCSPC"
+
+        def __init__(self):
+            self._pending_model_paths = ["a.B", "c.D"]
+            self.models = []
+
+        def add_model_class(self, cls):
+            self.models.append(cls)
+
+    class _Window:
+        _resolve_class = staticmethod(lambda path: path.upper())
+
+    experiment = _Experiment()
+    n = SetupMixin._ensure_experiment_models(_Window(), experiment)
+    assert n == 2
+    assert experiment.models == ["A.B", "C.D"]
+    assert experiment._pending_model_paths == []
+    assert SetupMixin._ensure_experiment_models(_Window(), experiment) == 0

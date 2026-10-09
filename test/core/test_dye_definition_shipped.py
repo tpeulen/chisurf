@@ -12,7 +12,9 @@ def test_dye_definition_json_is_shipped_and_loaded():
     data = json.loads(path.read_text())
     assert {"D3-Alexa488", "D1-Alexa488"} <= set(data)
     for preset in data.values():
-        assert {"diffusion_coefficient", "av_length", "av_radius1", "av_linker_width"} <= set(preset)
+        assert {"diffusion_coefficient", "av_length", "av_radius1", "av_linker_width"} <= set(
+            preset
+        )
 
     import chisurf.core.structure.av as av
 

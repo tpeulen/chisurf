@@ -22,6 +22,50 @@ _HT3 = next(
 _needs_data = pytest.mark.skipif(_HT3 is None, reason="TTTR imaging test data not present")
 
 
+def test_clsm_intensity_prefers_full_width_counts():
+    """The u16 compatibility accessor wraps bright pixels; prefer the u32 API."""
+    from chisurf.core.fluorescence.imaging import clsm_intensity_counts
+
+    class Image:
+        def get_intensity(self):
+            return np.asarray([[4464]], dtype=np.uint16)  # 70,000 wrapped to 16 bits
+
+        def get_intensity_u32(self):
+            return np.asarray([[70000]], dtype=np.uint32)
+
+    result = clsm_intensity_counts(Image())
+    assert result.dtype == np.float64
+    assert result.item() == 70000
+
+
+def test_mean_micro_time_replaces_below_threshold_sentinels(monkeypatch):
+    """tttrlib's -1 no-data sentinel is the imaging contract's zero pixel."""
+    from types import SimpleNamespace
+
+    from chisurf.core.fluorescence.imaging import pixel_maps
+
+    class CLSM:
+        def get_intensity(self):
+            return np.asarray([[[3, 1]]], dtype=np.uint16)
+
+        def get_mean_micro_time(self, _tttr, _resolution, _minimum, stack_frames):
+            if stack_frames:
+                return np.asarray([[[2.5, -1.0]]])
+            return np.asarray([[[2.5, -1.0]], [[1.5, -1.0]]])
+
+    monkeypatch.setattr(pixel_maps, "cached_clsm", lambda *_args: CLSM())
+    monkeypatch.setattr(
+        pixel_maps,
+        "get_tttr",
+        lambda _path: SimpleNamespace(header=SimpleNamespace(micro_time_resolution=1e-9)),
+    )
+    result = pixel_maps._window_worker(
+        ("sample.ptu", [0], [], [], [], "mean_micro_time", {"n_ph_min": 2}, [], None)
+    )
+    np.testing.assert_array_equal(result["mean_micro_time"], [[2.5, 0.0]])
+    np.testing.assert_array_equal(result["mt_frames"][:, 0, 1], [0.0, 0.0])
+
+
 # --- core N&B math (no data) ----------------------------------------------
 def test_nb_maps_poisson_recovers_unit_brightness():
     """Pure-Poisson frames have apparent brightness B≈1 (epsilon≈0), N≈mean²/var."""

@@ -65,11 +65,29 @@ SIZES = ((1200, 800), (800, 600))
 #: emtk widget functions that are a control a user can operate. The recorder wraps
 #: these so that a following ``set_item_tooltip`` can be attributed to the control.
 _CONTROL_FUNCS = (
-    "button", "small_button", "checkbox", "radio_button", "selectable", "combo",
-    "input_text", "input_text_multiline", "input_float", "input_int", "input_double",
-    "slider_float", "slider_int", "drag_float", "drag_int", "color_edit3",
-    "color_edit4", "menu_item", "collapsing_header", "tree_node", "begin_tab_item",
-    "list_box", "input_scalar",
+    "button",
+    "small_button",
+    "checkbox",
+    "radio_button",
+    "selectable",
+    "combo",
+    "input_text",
+    "input_text_multiline",
+    "input_float",
+    "input_int",
+    "input_double",
+    "slider_float",
+    "slider_int",
+    "drag_float",
+    "drag_int",
+    "color_edit3",
+    "color_edit4",
+    "menu_item",
+    "collapsing_header",
+    "tree_node",
+    "begin_tab_item",
+    "list_box",
+    "input_scalar",
 )
 
 
@@ -266,7 +284,7 @@ def emtk_inventory(app: typing.Any, size: tuple[int, int] = SIZES[0]) -> dict:
         "controls": sorted(controls),
         "interactive": rows,
         "controls_without_tooltip": sorted(
-            {f'{r["kind"]}: {r["label"]}' for r in rows if not r["tooltip"]}
+            {f"{r['kind']}: {r['label']}" for r in rows if not r["tooltip"]}
         ),
     }
 
@@ -400,9 +418,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("phase", choices=("before", "after", "compare"))
     parser.add_argument("plugin_id")
     parser.add_argument("--out", required=True, help="evidence directory (created)")
-    parser.add_argument("--entry", default=None,
-                        help="module:factory of the emtk app, for a card of a multi-card port "
-                             "whose manifest has no entrypoints.emtk yet (after only)")
+    parser.add_argument(
+        "--entry",
+        default=None,
+        help="module:factory of the emtk app, for a card of a multi-card port "
+        "whose manifest has no entrypoints.emtk yet (after only)",
+    )
     args = parser.parse_args(argv)
     out = pathlib.Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
