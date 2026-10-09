@@ -38,6 +38,22 @@ with the fitted parameters, the states and the transition-time scan on tabs
 below.
 ```
 
+The native standalone host declares **1100 × 720** pixels on first use;
+saved geometry takes precedence. Scroll the controls on a smaller host and
+visit the result tabs. Resizing keeps the photons, kinetic scheme and fitted
+result intact. Window geometry is separate from the time scale and state
+probabilities that determine the likelihood.
+
+```{figure} figures/burst_gs_native_primary_window.png
+:width: 100%
+
+Current seeded simulation: 40,000 photons give rates near 2,879 and 1,017 s⁻¹
+against inputs of 3,000 and 1,000 s⁻¹. The visible state lines show efficiencies
+near 0.237 and 0.749 with populations 0.261 and 0.739. Scroll the report for
+its transition-time and H2MM cross-check details; finite data do not recover
+the simulated parameters exactly.
+```
+
 ## Load the photons
 
 1. Drop the `.bur` burst tables into the file list, or use **+ Files**.
@@ -152,6 +168,30 @@ result.
 Use it to look at examples of what the fitted model implies. Do not use it to
 count transitions: it assigns a definite state to every photon, including in
 bursts that contain no evidence for any transition, and it carries no error bar.
+
+## Keeping decoded photons attached to their source
+
+The decoded path follows the selected fit photons, which can be a subset of
+one measurement or span several files. Its row zero is not necessarily raw
+photon zero. Stored measured results carry **Photon** (the file-local raw
+index), **Source**, **First File**, and **Burst Row** (the original row position
+in the stacked physical input tables), beside **State**. Overlapping bursts
+retain their separate burst-row context. Each measurement gets its own selected
+rows and the shared joint-fit settings; colour definitions and the actual
+macro-time clock are recorded with those settings.
+
+Use **Export CSV** for the fitted parameters and transition-time scan. Measured
+fits are also recorded beside their photons in PTO containers, with separate
+state, rate-pair and selected-photon tables. A simulated fit does not acquire a
+relationship to an unrelated measurement. Scripted simulation storage can use
+an empty standalone PTO container; its photon indices are explicitly simulation
+ordinals, rather than raw-measurement indices.
+
+Saved native preferences restore geometry. Reopen the input and model settings
+and run the fit again after a fresh launch; geometry is not an analysis archive.
+If separate input folders contain competing files with the same relative name,
+use absolute **First File** references to disambiguate them. Tables may still
+share a single declared raw-data directory.
 
 ## Headless
 

@@ -1,5 +1,6 @@
 {
   "_comment": "Gopich-Szabo photon-by-photon kinetics. AutoForm over BurstGsViewModel. Left: where the photons come from and what scheme to fit. Right: the report, the fitted parameters, the transition-time scan and the states on the efficiency axis. Fit lives in the host toolbar; long help sits behind the ? button.",
+  "window": {"width": 1100, "height": 720},
   "sections": [
     {
       "type": "dock_area",

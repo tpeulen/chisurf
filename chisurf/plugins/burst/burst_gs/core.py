@@ -21,6 +21,7 @@ from chisurf.core.fluorescence.burst import gopich_szabo as gs
 from chisurf.core.fluorescence.burst.photons import (
     StreamDef,
     extract_burst_photons,
+    is_sentinel_file_reference,
     load_bur_dataframe,
     load_tttrs_for_dataframe,
     streams_from_dicts,
@@ -100,7 +101,24 @@ def load_photons(
         streams = default_stream_dicts()
     stream_defs = [s if isinstance(s, StreamDef) else streams_from_dicts([s])[0] for s in streams]
 
-    table = load_bur_dataframe([pathlib.Path(p) for p in bur_paths])
+    paths = [pathlib.Path(p) for p in bur_paths]
+    if len(paths) > 1:
+        relative_sources: dict[str, pathlib.Path] = {}
+        for path in paths:
+            frame = load_bur_dataframe([path])
+            for key in np.asarray(frame["First File"]).tolist():
+                if is_sentinel_file_reference(key) or pathlib.Path(str(key)).is_absolute():
+                    continue
+                declared = (pathlib.Path(data_dir) / str(key)).resolve()
+                local = (path.parent / str(key)).resolve()
+                resolved = local if local.is_file() else declared
+                if str(key) in relative_sources and relative_sources[str(key)] != resolved:
+                    raise ValueError(
+                        f"ambiguous relative source {key!r} across burst folders; "
+                        "use absolute First File references"
+                    )
+                relative_sources[str(key)] = resolved
+    table = load_bur_dataframe(paths)
     tttrs = load_tttrs_for_dataframe(table, data_dir, file_type=file_type)
     if not tttrs:
         raise ValueError("none of the TTTR files referenced by the burst table could be loaded")
@@ -121,28 +139,54 @@ def load_photons(
             "every fitted rate is proportional to it"
         )
 
-    times, stream_idx = extract_burst_photons(
-        table, tttrs, stream_defs, min_photons=int(min_photons)
+    times, stream_idx, _micro, _channel, indices, rows = extract_burst_photons(
+        table, tttrs, stream_defs, min_photons=int(min_photons), with_meta=True, with_rows=True
     )
     if max_bursts and len(times) > int(max_bursts):
         times = times[: int(max_bursts)]
         stream_idx = stream_idx[: int(max_bursts)]
+        indices = indices[: int(max_bursts)]
+        rows = rows[: int(max_bursts)]
 
     seconds = [t.astype(np.float64) * macro_time_resolution for t in times]
     bursts = gs.PhotonBursts.from_lists(
         seconds, stream_idx, n_colors=len(stream_defs), min_photons=int(min_photons)
     )
     counts = np.bincount(bursts.colors, minlength=len(stream_defs))
+    # PhotonBursts also rejects singletons, even when the requested minimum
+    # is one. Mirror that final retention in metadata without changing fit data.
+    retained = [i for i, t in enumerate(times) if len(t) >= max(int(min_photons), 2)]
+    files = np.asarray(table["First File"])
+    lengths = [len(times[i]) for i in retained]
+    keys = [str(files[rows[i]]) for i in retained]
+    sources = [str((pathlib.Path(data_dir) / key).resolve()) for key in keys]
+    identity = {
+        "Photon": np.concatenate([indices[i] for i in retained]).tolist(),
+        "Burst Row": np.repeat(rows[retained], lengths).tolist(),
+        "First File": np.repeat(keys, lengths).tolist(),
+        "Source": np.repeat(sources, lengths).tolist(),
+    }
     info = {
         "n_bursts": len(bursts),
         "n_photons": bursts.n_photons,
         "macro_time_resolution": macro_time_resolution,
         "stream_names": [s.name for s in stream_defs],
+        "stream_definitions": [
+            {
+                "name": stream.name,
+                "channels": list(stream.channels),
+                "micro_time_ranges": [list(window) for window in stream.micro_time_ranges],
+            }
+            for stream in stream_defs
+        ],
         "photons_per_stream": counts.tolist(),
         # The measurements themselves, not the `.bur` tables that point at
         # them: a result belongs beside the photons it was fitted to, and a
         # `.bur` lives one directory down in `bi4_bur/`.
-        "tttr_files": [str(getattr(tttr, "filename", "")) for tttr in tttrs.values()],
+        "tttr_files": list(dict.fromkeys(sources)),
+        "photon_identity": identity,
+        "input_burst_tables": [str(path.resolve()) for path in paths],
+        "burst_row_convention": "zero-based position in stacked physical input BUR tables",
     }
     return bursts, info
 
@@ -182,7 +226,7 @@ def simulate_two_state(
     PhotonBursts
     """
     rng = np.random.default_rng(int(seed))
-    efficiencies = np.asarray(efficiencies, dtype=float)
+    efficiency_array = np.asarray(efficiencies, dtype=float)
     p_first = k_backward / (k_forward + k_backward)
     times: list[np.ndarray] = []
     colors: list[np.ndarray] = []
@@ -199,7 +243,7 @@ def simulate_two_state(
                 state = 1 - state
                 nxt = clock + rng.exponential(1.0 / (k_forward if state == 0 else k_backward))
             states[i] = state
-        colors.append((rng.random(n) < efficiencies[states]).astype(np.int32))
+        colors.append((rng.random(n) < efficiency_array[states]).astype(np.int32))
         times.append(arrival)
     return gs.PhotonBursts.from_lists(times, colors, 2)
 
@@ -648,77 +692,122 @@ def write_container(
         Path of the container written.
     """
     from chisurf.core.datastore import store_from_arrays
-    from chisurf.core.fio.fluorescence.burst_container import write_burst_artifact
+    from chisurf.core.fio.fluorescence.burst_container import container_for, open_measurement
+    from chisurf.core.fio.pto import Measurement
 
     fit = analysis.fit
+    path = np.asarray(analysis.state_path)
+    simulated = analysis.info.get("source") == "simulation"
+    identity = analysis.info.get("photon_identity")
+    photon_columns = {}
+    targets = [str(source)]
+    if simulated:
+        # A simulated trajectory is legitimate in its own empty container,
+        # never as a decoded subset of an unrelated real instrument.
+        standalone = pathlib.Path(source)
+        if standalone.suffix.lower() != ".pto" or not standalone.is_file():
+            raise ValueError("simulation export requires an existing standalone noninstrument PTO")
+        with Measurement.open(standalone) as measurement:
+            if measurement.instrument_uids:
+                raise ValueError("simulation cannot be attached to a real instrument measurement")
+        if path.size:
+            photon_columns = {"Photon": np.arange(path.size, dtype=np.int64)}
+    elif path.size or identity is not None:
+        required = ("Photon", "Burst Row", "First File", "Source")
+        if not isinstance(identity, dict) or any(key not in identity for key in required):
+            raise ValueError("decoded measured photons require complete raw photon identity")
+        photon_columns = {key: np.asarray(identity[key]) for key in required}
+        if any(values.shape != (fit.n_photons,) for values in photon_columns.values()):
+            raise ValueError("photon identity must match the exact fitted photon order")
+        for key in ("Photon", "Burst Row"):
+            values = photon_columns[key]
+            if values.dtype.kind not in "iu" or np.any(values < 0):
+                raise ValueError("photon identity indices must be nonnegative integers")
+        if any(is_sentinel_file_reference(key) for key in photon_columns["First File"]):
+            raise ValueError("photon identity cannot name sentinel measurements")
+        targets = list(dict.fromkeys(photon_columns["Source"].astype(str).tolist()))
+        if not targets or any(not pathlib.Path(target).is_file() for target in targets):
+            raise ValueError("photon identity sources must name existing measurements")
+        acceptable = {str(pathlib.Path(target).resolve()) for target in targets}
+        acceptable.update(str(container_for(target, out_dir).resolve()) for target in targets)
+        if str(pathlib.Path(source).resolve()) not in acceptable:
+            raise ValueError("export source does not match measured photon identity")
+    if path.size and (path.ndim != 1 or path.size != fit.n_photons):
+        raise ValueError("state path must match the exact fitted photon identity")
+
+    settings = dict(parameters or {})
+    settings.update(
+        gs_sources=targets if not simulated else [],
+        gs_input_burst_tables=analysis.info.get("input_burst_tables", []),
+        gs_burst_row_convention=analysis.info.get("burst_row_convention", ""),
+        gs_photon_index_scope="simulation" if simulated else "raw measurement",
+        gs_fit_photons=int(fit.n_photons),
+        gs_fit_bursts=int(fit.n_bursts),
+        gs_stream_definitions=analysis.info.get("stream_definitions", []),
+        gs_macro_time_resolution=analysis.info.get("macro_time_resolution"),
+    )
     efficiencies = np.atleast_1d(np.asarray(fit.efficiencies, dtype=float))
     n = int(fit.rate_matrix.shape[0])
-
-    # The goodness-of-fit numbers describe the whole model, so they repeat down
-    # the state table rather than living in a header nothing can query.
     states = {
         "State": np.arange(n, dtype=np.int32),
-        "E": (efficiencies if efficiencies.size == n else np.full(n, float("nan"))),
+        "E": efficiencies if efficiencies.size == n else np.full(n, float("nan")),
         "log_likelihood": np.full(n, float(fit.log_likelihood)),
         "bic": np.full(n, float(fit.bic)),
         "aic": np.full(n, float(fit.aic)),
     }
-    written = write_burst_artifact(
-        source,
-        store_from_arrays(states),
-        name="gs states",
-        artifact_kind="fit_result",
-        operation_type="model_fitting",
-        row_grain="state",
-        parameters=parameters,
-        derived_from="bursts",
-        units={
-            "State": "dimensionless",
-            "E": "dimensionless",
-            "log_likelihood": "dimensionless",
-            "bic": "dimensionless",
-            "aic": "dimensionless",
-        },
-        out_dir=out_dir,
-    )
-
-    # K[target, source] -- the column convention the kinetics module uses, and
-    # the one worth naming here because the transpose is silently plausible.
+    # K[target, source], unchanged from the kinetic engine's convention.
     pairs = [(s, t) for s in range(n) for t in range(n) if s != t]
-    if pairs:
-        write_burst_artifact(
-            source,
-            store_from_arrays(
-                {
-                    "From": np.array([s for s, _ in pairs], dtype=np.int32),
-                    "To": np.array([t for _, t in pairs], dtype=np.int32),
-                    "k": np.array([float(fit.rate_matrix[t, s]) for s, t in pairs], dtype=float),
-                }
-            ),
-            name="gs rates",
-            artifact_kind="parameter_table",
-            operation_type="model_fitting",
-            row_grain="pair",
-            parameters=parameters,
-            derived_from="gs states",
-            source_row_column="State",
-            target_row_column="From",
-            units={"From": "dimensionless", "To": "dimensionless", "k": "hertz"},
-            out_dir=out_dir,
-        )
-
-    path = np.asarray(analysis.state_path)
-    if path.size:
-        write_burst_artifact(
-            source,
-            store_from_arrays({"State": path.astype(np.int32)}),
-            name="gs state path",
-            artifact_kind="state_trajectory",
-            operation_type="model_fitting",
-            row_grain="photon",
-            parameters=parameters,
-            derived_from="gs states",
-            units={"State": "dimensionless"},
-            out_dir=out_dir,
-        )
-    return written
+    written = []
+    for target in targets:
+        with open_measurement(target, out_dir) as measurement:
+            state_uid = measurement.put_table(
+                "gs states",
+                store_from_arrays(states),
+                artifact_kind="fit_result",
+                operation_type="model_fitting",
+                row_grain="state",
+                parameters=settings,
+                derived_from=measurement.instrument_uids,
+                units={key: "dimensionless" for key in states},
+            )
+            if pairs:
+                measurement.put_table(
+                    "gs rates",
+                    store_from_arrays(
+                        {
+                            "From": np.array([s for s, _ in pairs], dtype=np.int32),
+                            "To": np.array([t for _, t in pairs], dtype=np.int32),
+                            "k": np.array([float(fit.rate_matrix[t, s]) for s, t in pairs]),
+                        }
+                    ),
+                    artifact_kind="parameter_table",
+                    operation_type="model_fitting",
+                    row_grain="pair",
+                    parameters=settings,
+                    derived_from=state_uid,
+                    source_row_column="State",
+                    target_row_column="From",
+                    units={"From": "dimensionless", "To": "dimensionless", "k": "hertz"},
+                )
+            if path.size:
+                selected = (
+                    np.ones(path.size, dtype=bool)
+                    if simulated
+                    else photon_columns["Source"] == target
+                )
+                columns = {key: values[selected] for key, values in photon_columns.items()}
+                columns["State"] = path[selected].astype(np.int32)
+                measurement.put_table(
+                    "gs state path",
+                    store_from_arrays(columns),
+                    artifact_kind="state_trajectory",
+                    operation_type="model_fitting",
+                    row_grain="photon",
+                    parameters=settings,
+                    derived_from=state_uid,
+                    source_row_column="State",
+                    target_row_column="State",
+                    units={key: "dimensionless" for key in columns},
+                )
+            written.append(str(measurement.path))
+    return written[0]

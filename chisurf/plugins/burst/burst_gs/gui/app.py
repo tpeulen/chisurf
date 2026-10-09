@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
 
 import emtk.im as im
@@ -9,6 +11,7 @@ import emtk.implot as implot
 import numpy as np
 
 if TYPE_CHECKING:
+    from .controller import BurstGsController
     from .view_model import BurstGsViewModel
 
 from emtk.app import ImApp
@@ -17,7 +20,15 @@ from emtk.view_form import FormState, draw_sections, find_section
 from emtk.widgets.view_spec import load_view_spec
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
-from chisurf.plugins.emtk_layout import LabelColumn, button_row, cap_widths, group_by_width, icon_label, labelled
+from chisurf.plugins.emtk_layout import (
+    LabelColumn,
+    button_row,
+    cap_widths,
+    group_by_width,
+    icon_label,
+    labelled,
+    window_size,
+)
 
 WINDOW_BG = (30, 32, 38, 255)
 
@@ -30,6 +41,8 @@ def _hex_to_rgba(colour: str) -> tuple[int, int, int, int]:
 
 class BurstGsGui:
     """EMTK GUI for photon-by-photon kinetics with dockable, draggable windows."""
+
+    controller: BurstGsController | None
 
     def __init__(
         self,
@@ -242,18 +255,20 @@ class BurstGsGui:
         ana = self.model.analysis
         if ana is not None:
             # The spec's own table sections (``rate_rows``, ``state_rows``): sortable, selectable, tooltips per column.
+            for section, rows, limit in zip(
+                self.tables, (self.model.rate_rows(), self.model.state_rows()), (150, 110)
+            ):
+                section["height"] = min(
+                    limit, (len(rows) + 1) * im.get_text_line_height_with_spacing() + 12
+                )
             draw_sections(self.tables, self.model, self.form_state)
             self.item_rects["Rates"] = self.form_state.rects.get("rate_rows", self.item_rects.get("Rates", (0, 0, 0, 0)))
             im.separator()
 
         im.text_colored("Fit Summary & Console:", (0.8, 0.8, 0.8, 1.0))
-        # The report scrolls in the room the tables leave: a long one was cut off at the window's bottom edge.
-        avail_w, avail_h = im.get_content_region_avail()
-        x, y = im.get_cursor_screen_pos()
-        im.begin_child("##gs_report", (float(avail_w), max(60.0, float(avail_h))))
+        # The results dock scrolls the complete report together with its tables.
         im.text_wrapped(self.model.results_text)
-        im.end_child()
-        self.remember("report", (float(x), float(y), float(avail_w), max(60.0, float(avail_h))))
+        self.remember("report")
 
     def rate_bars(self) -> tuple[list[str], np.ndarray, np.ndarray | None]:
         """Fitted rate per transition, its label "k(i→j)", and the simulated rate where known.
@@ -307,6 +322,8 @@ class BurstGsGui:
     def _render_efficiency_window(self, box=None):
         if implot.begin_plot("FRET efficiency & fitted states", (-1, -1)):
             implot.setup_axes("FRET efficiency", "Population / photon density")
+            implot.setup_axis_limits(implot.AXIS_X1, 0.0, 1.0, implot.COND_ONCE)
+            implot.setup_axis_limits(implot.AXIS_Y1, 0.0, 1.0, implot.COND_ONCE)
             for series in self.model.efficiency_series():
                 x, y = series.get("x", []), series.get("y", [])
                 if len(x) and len(x) == len(y):
@@ -325,6 +342,8 @@ class BurstGsApp(ImApp):
         on_guide: Callable[[], None] | None = None,
         on_help: Callable[[], None] | None = None,
     ) -> None:
+        primary = json.loads(Path(__file__).with_name("burst_gs.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(primary, (1100, 720))
         if model is None:
             from .view_model import BurstGsViewModel
 
@@ -333,9 +352,10 @@ class BurstGsApp(ImApp):
         if on_fit is None:
             from .controller import BurstGsController
 
-            self.controller = BurstGsController(model)
-            on_fit = self.controller.run
-            on_export = on_export or (lambda: self.controller.browse("export"))
+            controller = BurstGsController(model)
+            self.controller = controller
+            on_fit = controller.run
+            on_export = on_export or (lambda: controller.browse("export"))
         self.gs_gui = BurstGsGui(
             model=model,
             on_fit=on_fit,
@@ -345,7 +365,6 @@ class BurstGsApp(ImApp):
         )
         self.model = self.gs_gui.model
         self.item_rects = self.gs_gui.item_rects
-        self.gs_gui.remember = self.remember
         self.gs_gui.controller = self.controller
         super().__init__(gui=self._render)
 
