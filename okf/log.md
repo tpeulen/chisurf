@@ -2,6 +2,8 @@
 
 ## 2026-10-08
 
+- **2026-10-09 · UI debt measured from committed source:**1079tooltip findings exactly match current allowances;1155imperative bare literals, with no production literal baseline guard yet. First actual-help unit is2ALEXbatch option notes plus list localization. Seven panel/table envelope omissions remain genuine metadata/renderer gaps, not silently discarded as false positives. Owning emtk routing is queued after the current bounded deliverable. [Measurement](validation/release-readiness-w6g/ui-debt-measurement.md).
+
 - **2026-10-09 · Verified IPC and report work committed:** IPC fixture/evidence7b95c99ae and report documentation d77f710c5/SDK3023f892f have exact publication receipts in their singular archives. Current W6g job is committed-source tooltip/literal classification, with no new GUI edits or captures.
 
 - **2026-10-09 · Real Burst workflow and MLE batch IPC verified:** loopback/SharedMemory execute without substitute/fake/skip. Original58 cases covered (41initial pass; affected fixtures20pass; guide1pass), preserving physical/time/polarization/IRF/state/companion assertions. Two stale test contracts repaired; production unchanged, foreign formats preserved.1009available guards pass/11skip; one final archive. Next W6g tooltip/i18n classification. [Acceptance](validation/release-readiness-w6g/ipc-verification-acceptance.json).
