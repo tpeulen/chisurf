@@ -54,6 +54,18 @@ class Inputs:
 
 
 class BreakoutApp(GameApp):
+    BINDINGS = (
+        (KEY_LEFT, 'left'),
+        (KEY_RIGHT, 'right'),
+        (KEY_ENTER, 'confirm'),
+        (KEY_RETURN, 'confirm'),
+        (' ', 'confirm'),
+        ('p', 'menu'),
+        ('r', 'cancel'),
+        ('m', 'shoulder_r'),
+    )
+    FIELDS = ('score', 'level', 'lives', 'paused', 'muted', 'message', 'paddle_x', 'stuck', 'ball_x', 'ball_y', 'ball_vx', 'ball_vy', 'ball_nm')
+
     window_size = (820, 690)
 
     def __init__(self, clock=time.monotonic):
@@ -91,17 +103,6 @@ class BreakoutApp(GameApp):
             remaining -= step
         self.keys.end_frame()
 
-    @staticmethod
-    def binding(key, text):
-        letter = (text or (chr(key) if 32 <= key < 127 else "")).lower()
-        if key == KEY_LEFT:
-            return "left"
-        if key == KEY_RIGHT:
-            return "right"
-        if key in {KEY_ENTER, KEY_RETURN}:
-            return "confirm"
-        # Arrows only for movement, per the owner's direction-key rule (no WASD).
-        return {" ": "confirm", "p": "menu", "r": "cancel", "m": "shoulder_r"}.get(letter)
 
     def key(self, key, text="", modifiers=0):
         if blocked(modifiers) or self.closed:
@@ -141,13 +142,12 @@ class BreakoutApp(GameApp):
         self.request_frame()
 
     def export_settings(self):
-        fields = ("score", "level", "lives", "paused", "muted", "message", "paddle_x", "stuck", "ball_x", "ball_y", "ball_vx", "ball_vy", "ball_nm")
-        return {"game": {name: getattr(self.game, name) for name in fields}, "bricks": [b.hp for b in self.game.bricks], "particles": [vars(p).copy() for p in self.game.particles], "sound_enabled": self.sound_enabled}
+        return {"game": self.export_fields(), "bricks": [b.hp for b in self.game.bricks], "particles": [vars(p).copy() for p in self.game.particles], "sound_enabled": self.sound_enabled}
 
-    def restore_settings(self, state):
-        """Validate the entire saved round before replacing live state."""
+    def validate_state(self, state):
+        """Prepare a validated round without replacing live game state."""
         candidate = BreakoutModel(SimpleNamespace(audio=self))
-        for name in self.export_settings()["game"]:
+        for name in self.FIELDS:
             value = state["game"][name]
             if name in {"paused", "muted", "stuck"}:
                 if not isinstance(value, bool):
@@ -182,6 +182,11 @@ class BreakoutApp(GameApp):
         enabled = state.get("sound_enabled", False)
         if not isinstance(enabled, bool):
             raise ValueError("invalid sound flag")
+        return candidate, enabled
+
+    def restore_settings(self, state):
+        """Commit a prepared round with this game's existing restore policy."""
+        candidate, enabled = self.validate_state(state)
         self.game = candidate
         self.sound_enabled = enabled
         self.focus_lost()

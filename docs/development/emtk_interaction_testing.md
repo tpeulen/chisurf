@@ -308,3 +308,16 @@ layout. The installed toolkit applies nested scissoring to both textures and
 real-font glyphs. Regression examples are
 `test/gui/test_native_help_scrolling.py` and
 `test/gui/test_help_window_markdown.py`.
+
+## Native game input and state contracts
+
+GameApp resolves ordered binding declarations without changing each game's
+physical-key/text precedence or result shape. Keep application-shortcut filtering
+outside lookup; never inject common Enter/Escape shortcuts that a game does not
+have. Scalar model fields are declared for shared export where applicable, while
+nested round preparation and atomic commit remain explicit in each game.
+
+Test late validation failure against live model identity, pending input, frame
+demand and audio calls. Export equality alone can hide a partially replaced model.
+For board-generating input fixtures, seed the actual RNG per case rather than
+removing random board/adjacency fields from a comparison.

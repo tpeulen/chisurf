@@ -70,6 +70,21 @@ def pixel_text(draw, text, pos, height, colour, align="left", max_width=None):
 
 
 class MinesweeperApp(GameApp):
+    BINDINGS = (
+        (KEY_UP, (-1, 0)),
+        (KEY_DOWN, (1, 0)),
+        (KEY_LEFT, (0, -1)),
+        (KEY_RIGHT, (0, 1)),
+        (KEY_ENTER, 'reveal'),
+        (KEY_RETURN, 'reveal'),
+        (32, 'reveal'),
+        (' ', 'reveal'),
+        ('f', 'flag'),
+        ('r', 'restart'),
+        ('q', 'previous_difficulty'),
+        ('e', 'next_difficulty'),
+    )
+
     def __init__(self, game=None, audio_callback=None, clock=time.monotonic):
         spec = json.loads(Path(__file__).with_name("app.view.json").read_text(encoding="utf-8"))
         self.window_size = window_size(spec, (560, 620))
@@ -125,23 +140,22 @@ class MinesweeperApp(GameApp):
         if blocked(modifiers) or self.closed:
             return False
         # Arrows only, per the owner's direction-key rule (no WASD).
-        direction = {KEY_UP: (-1, 0), KEY_DOWN: (1, 0), KEY_LEFT: (0, -1), KEY_RIGHT: (0, 1)}
-        letter = (text or (chr(key) if 32 <= key < 127 else "")).lower()
-        step = direction.get(key)
+        action = self.binding(key, text)
+        step = action if isinstance(action, tuple) else None
         if step is not None:
             # One step on the press; while held, the repeat timer steps (auto-
             # repeated presses from the host are ignored, as chigame ignores them).
             if step not in self.held:
                 self.move(*step)
                 self.held[step] = -REPEAT_DELAY
-        elif key in {KEY_ENTER, KEY_RETURN, 32} or letter == " ":
+        elif action == "reveal":
             self.reveal()
-        elif letter == "f":
+        elif action == "flag":
             self.flag()
-        elif letter == "r":
+        elif action == "restart":
             self.restart()
-        elif letter in {"q", "e"}:
-            self.change_difficulty(1 if letter == "e" else -1)
+        elif action in {"previous_difficulty", "next_difficulty"}:
+            self.change_difficulty(1 if action == "next_difficulty" else -1)
         else:
             return False
         self.request_frame()
@@ -149,8 +163,8 @@ class MinesweeperApp(GameApp):
 
     def key_release(self, key, text="", modifiers=0):
         # Arrows only, per the owner's direction-key rule (no WASD).
-        direction = {KEY_UP: (-1, 0), KEY_DOWN: (1, 0), KEY_LEFT: (0, -1), KEY_RIGHT: (0, 1)}
-        step = direction.get(key)
+        action = self.binding(key, "")
+        step = action if isinstance(action, tuple) else None
         return self.held.pop(step, None) is not None if step is not None else False
 
     def advance(self, dt):
@@ -178,8 +192,8 @@ class MinesweeperApp(GameApp):
                 "board": [[{"mine": c.mine, "revealed": c.revealed, "flagged": c.flagged,
                             "adjacent_mines": c.adjacent_mines} for c in row] for row in self.game.board]}
 
-    def restore_settings(self, state):
-        """Restore a round atomically; malformed input leaves the current game intact."""
+    def validate_state(self, state):
+        """Prepare a validated round without replacing live game state."""
         rows, columns, mines = (int(state[name]) for name in ("rows", "columns", "mines"))
         board = state["board"]
         if len(board) != rows or any(len(row) != columns for row in board):
@@ -200,11 +214,17 @@ class MinesweeperApp(GameApp):
         game.status = status
         # A restarted random round must not repeat its previous mine layout.
         game._fixed_mine_positions = None
+        enabled = bool(state.get("sound_enabled", False))
+        return game, cursor, difficulty_index, message, enabled
+
+    def restore_settings(self, state):
+        """Commit a prepared round with this game's existing restore policy."""
+        game, cursor, difficulty_index, message, enabled = self.validate_state(state)
         self.game = game
         self.cursor_row, self.cursor_col = cursor
         self.difficulty_index = difficulty_index
         self.message = message
-        self.sound_enabled = bool(state.get("sound_enabled", False))
+        self.sound_enabled = enabled
 
     def render(self):
         now = self.clock()

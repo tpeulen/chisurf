@@ -33,6 +33,17 @@ def tr(source):
 
 
 class NumberQuestApp(GameApp):
+    BINDINGS = (
+        (KEY_LEFT, 'left'),
+        (KEY_RIGHT, 'right'),
+        (KEY_ENTER, 'confirm'),
+        (KEY_RETURN, 'confirm'),
+        ('q', 'coarse_left'),
+        ('e', 'coarse_right'),
+        ('r', 'restart'),
+        (' ', 'confirm'),
+    )
+
     def __init__(self, audio=None, clock=time.monotonic):
         spec = json.loads((Path(__file__).parent.parent / "app.view.json").read_text(encoding="utf-8"))
         self.window_size = window_size(spec, (560, 420))
@@ -85,16 +96,6 @@ class NumberQuestApp(GameApp):
             self.audio.sfx("guess", 880 if self.game.status is GuessStatus.WON else 520)
         self.request_frame()
 
-    @staticmethod
-    def binding(key, text):
-        letter = (text or (chr(key) if 32 <= key < 127 else "")).lower()
-        if key == KEY_LEFT:
-            return "left"
-        if key == KEY_RIGHT:
-            return "right"
-        if key in {KEY_ENTER, KEY_RETURN}:
-            return "confirm"
-        return {"q": "coarse_left", "e": "coarse_right", "r": "restart", " ": "confirm"}.get(letter)
 
     def key(self, key, text="", modifiers=0):
         if blocked(modifiers) or self.closed:
@@ -146,7 +147,8 @@ class NumberQuestApp(GameApp):
     def export_settings(self):
         return {"target": self.game.target, "history": self.history[:], "estimate": self.estimate, "sound_enabled": self.sound_enabled}
 
-    def restore_settings(self, state):
+    def validate_state(self, state):
+        """Prepare a validated round without replacing live game state."""
         target, estimate, history = state["target"], state["estimate"], state["history"]
         if not isinstance(history, list):
             raise ValueError("invalid number quest history")
@@ -161,8 +163,14 @@ class NumberQuestApp(GameApp):
                 raise ValueError("history continues after round end")
             candidate.guess(value)
             hint = candidate.status.value if candidate.status is not GuessStatus.ACTIVE else "higher" if value < target else "lower"
+        enabled = state.get("sound_enabled", False)
+        return candidate, estimate, history, hint, enabled
+
+    def restore_settings(self, state):
+        """Commit a prepared round with this game's existing restore policy."""
+        candidate, estimate, history, hint, enabled = self.validate_state(state)
         self.game, self.estimate, self.history, self.hint = candidate, estimate, history[:], hint
-        self.sound_enabled = state.get("sound_enabled", False)
+        self.sound_enabled = enabled
         self.focus_lost()
         self.request_frame()
 

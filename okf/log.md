@@ -2,6 +2,8 @@
 
 ## 2026-10-09
 
+- Game bindings and scalar/atomic state contracts now share real resolver/export work;29independent+111exactneighbors+1036guards/9skip pass, with12880/300/full5traces exact. Nestedvalidators/coercions preserved;2custombool partialcommit defects fixed. Commonchrome andotherW6f debts remain. [Acceptance](validation/release-readiness-w6f/game-binding-state-acceptance.json).
+
 - NumberQuest now has one canonical richer GUI implementation; exactstate/commands/6locale/control/resize/audio parity and before/default/narrow visuals pass. Dirtyroot originals remain on disk after index-only retirement; foreign semantics stay unstaged. P-F9bindings/state/chrome still open. [Acceptance](validation/release-readiness-w6f/number-move-acceptance.json).
 
 - Shared GameApp removes duplicated lifecycle/audio boundaries;41independent cases and69exact neighbor tests pass, with all five full state/render snapshots equal. Fixes idle redraw, closed input, pending second-player input and repeated/post-close audio; remaining P-F9 work stays open. [Acceptance](validation/release-readiness-w6f/game-lifecycle-acceptance.json).

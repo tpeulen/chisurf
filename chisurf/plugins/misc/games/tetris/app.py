@@ -39,6 +39,17 @@ class Inputs:
 
 
 class TetrisApp(GameApp):
+    BINDINGS = (
+        (KEY_LEFT, 'left'),
+        (KEY_RIGHT, 'right'),
+        (KEY_DOWN, 'down'),
+        (KEY_UP, 'confirm'),
+        ('p', 'menu'),
+        ('r', 'cancel'),
+        (' ', 'shoulder_r'),
+    )
+    FIELDS = ('shape', 'x', 'y', 'score', 'lines', 'level', 'paused', 'muted', 'over', '_fall_timer')
+
     window_size = (520, 620)
 
     def __init__(self, audio=None, clock=time.monotonic):
@@ -69,13 +80,6 @@ class TetrisApp(GameApp):
         self.game.update(min(max(float(dt), 0), .1), self.keys)
         self.keys.end_frame()
 
-    @staticmethod
-    def binding(key, text):
-        letter = (text or (chr(key) if 32 <= key < 127 else "")).lower()
-        # Arrows only, per the owner's direction-key rule (no WASD).
-        return {KEY_LEFT: "left", KEY_RIGHT: "right", KEY_DOWN: "down", KEY_UP: "confirm"}.get(key) or {
-            "p": "menu", "r": "cancel", " ": "shoulder_r",
-        }.get(letter)
 
     def key(self, key, text="", modifiers=0):
         if blocked(modifiers) or self.closed:
@@ -109,16 +113,15 @@ class TetrisApp(GameApp):
         self.request_frame()
 
     def export_settings(self):
-        fields = ("shape", "x", "y", "score", "lines", "level", "paused", "muted", "over", "_fall_timer")
-        return {"game": {name: getattr(self.game, name) for name in fields},
+        return {"game": self.export_fields(),
                 "well": [list(row) for row in self.game.well], "coords": [list(c) for c in self.game.coords],
                 "sound_enabled": self.sound_enabled}
 
-    def restore_settings(self, state):
-        """Validate the whole round before replacing any live state."""
+    def validate_state(self, state):
+        """Prepare a validated round without replacing live game state."""
         candidate = TetrisModel()
         values = state["game"]
-        for name in self.export_settings()["game"]:
+        for name in self.FIELDS:
             value = values[name]
             if name in {"paused", "muted", "over"}:
                 if not isinstance(value, bool):
@@ -153,6 +156,11 @@ class TetrisApp(GameApp):
         enabled = state.get("sound_enabled", False)
         if not isinstance(enabled, bool):
             raise ValueError("invalid sound flag")
+        return candidate, enabled
+
+    def restore_settings(self, state):
+        """Commit a prepared round with this game's existing restore policy."""
+        candidate, enabled = self.validate_state(state)
         self.game = candidate
         self.sound_enabled = enabled
         self.focus_lost()

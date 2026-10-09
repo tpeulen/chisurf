@@ -10,7 +10,7 @@ timestamp: '2026-08-10T00:00:00Z'
 # Where to pick this up
 
 1. Open: shared lifecycle and NumberQuest consolidation are complete; remaining
-   P-F9 work is binding/state declarations and chrome/help/restart. Defaults and
+   P-F9 work is common chrome/help/restart andremainingaudio/metadata work. Defaults and
    all116window-reader records are closed; do not re-audit those inventories.
 2. Measure: run the two game-window declaration tests and empty-persistence test
    under `test/native_emtk/`. They prove exact existing defaults, authored size
@@ -656,3 +656,19 @@ mentionsA/D although actual direction bindings are Left/Right only; README now
 states the real binding. OwnerW6fsemantic-help sweep must correct/localize that
 help without importing foreign Up/Down/Escape/M changes. Canonical migration
 keeps existing text/paint parity; this does not waive aggregate help correctness.
+
+
+# Shared binding and atomic state contracts — 2026-10-09
+
+Ordered plain BINDINGS and one GameApp resolver preserve physical/text precedence,
+return shape, unknown keys and the separate application-shortcut policy. Scalar
+FIELDS export is shared by the three existing scalar models. All five leaf
+validators prepare complete candidates then explicitly commit with their original
+focus/frame/audio policy; no blind field copy or forwarding framework was added.
+
+12880binding results,300actualMines input transitions andallfivefullnumeric/state/
+control/render traces are exactly equal. The fixture now seeds actualRNG percase
+without omitting board/adjacency fields. Independent29tests and111existing exact
+cases pass. Two custombool exceptions now occur before model replacement in Pong/
+Mines, a separately tested atomicity repair; ordinaryJSON coercions remain unchanged.
+[Acceptance](../validation/release-readiness-w6f/game-binding-state-acceptance.json).

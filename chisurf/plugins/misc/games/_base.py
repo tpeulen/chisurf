@@ -1,10 +1,29 @@
 """Shared lifecycle for native games; rules, input mappings and drawing stay local."""
 
+from typing import Any
+
 from emtk.app import ImApp
 
 
 class GameApp(ImApp):
     """Keep frame demand and optional object-audio cleanup consistent."""
+
+    BINDINGS: tuple[tuple[int | str, Any], ...] = ()
+    UNBOUND: Any = None
+    FIELDS: tuple[str, ...]
+
+    @classmethod
+    def binding(cls, key, text):
+        """Resolve physical keys and normalized text in the declared precedence."""
+        letter = (text or (chr(key) if 32 <= key < 127 else "")).lower()
+        for token, action in cls.BINDINGS:
+            if token == (key if isinstance(token, int) else letter):
+                return action
+        return cls.UNBOUND
+
+    def export_fields(self) -> dict[str, Any]:
+        """Copy the explicitly declared scalar fields of this game's model."""
+        return {name: getattr(self.game, name) for name in self.FIELDS}
 
     closed: bool
     sound_enabled: bool

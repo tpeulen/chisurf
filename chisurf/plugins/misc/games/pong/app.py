@@ -47,6 +47,22 @@ class Inputs:
 
 
 class PongApp(GameApp):
+    BINDINGS = (
+        (KEY_UP, ('up', False)),
+        (KEY_DOWN, ('down', False)),
+        ('w', ('up', True)),
+        ('s', ('down', True)),
+        ('p', ('menu', False)),
+        ('r', ('cancel', False)),
+        ('m', ('shoulder_l', False)),
+        ('n', ('shoulder_r', False)),
+        (' ', ('confirm', False)),
+        (KEY_ENTER, ('confirm', False)),
+        (KEY_RETURN, ('confirm', False)),
+    )
+    UNBOUND = (None, False)
+    FIELDS = ('player_score', 'cpu_score', 'rally', 'paddle_y', 'cpu_y', 'ball_nm', 'ball_x', 'ball_y', 'ball_vx', 'ball_vy', 'serve_timer', 'paused', 'vs_computer', 'muted', 'winner')
+
     window_size = (820, 640)
 
     def __init__(self, audio=None, clock=time.monotonic):
@@ -82,16 +98,6 @@ class PongApp(GameApp):
         self.keys.end_frame()
         self.p2.end_frame()
 
-    @staticmethod
-    def binding(key, text):
-        letter = (text or (chr(key) if 32 <= key < 127 else "")).lower()
-        if key == KEY_UP:
-            return "up", False
-        if key == KEY_DOWN:
-            return "down", False
-        if letter in {"w", "s"}:
-            return ("up" if letter == "w" else "down"), True
-        return {"p": "menu", "r": "cancel", "m": "shoulder_l", "n": "shoulder_r", " ": "confirm"}.get(letter, "confirm" if key in {KEY_ENTER, KEY_RETURN} else None), False
 
     def key(self, key, text="", modifiers=0):
         if blocked(modifiers) or self.closed:
@@ -137,13 +143,13 @@ class PongApp(GameApp):
                     self.game.cpu_y = paddle
 
     def export_settings(self):
-        fields = ("player_score", "cpu_score", "rally", "paddle_y", "cpu_y", "ball_nm", "ball_x", "ball_y", "ball_vx", "ball_vy", "serve_timer", "paused", "vs_computer", "muted", "winner")
-        return {"game": {name: getattr(self.game, name) for name in fields}, "sound_enabled": self.sound_enabled}
+        return {"game": self.export_fields(), "sound_enabled": self.sound_enabled}
 
-    def restore_settings(self, state):
+    def validate_state(self, state):
+        """Prepare a validated round without replacing live game state."""
         saved = state["game"]
         candidate = PongModel(SimpleNamespace(audio=self))
-        for name in self.export_settings()["game"]:
+        for name in self.FIELDS:
             value = saved[name]
             if name == "winner":
                 if value not in {None, "Donor", "Acceptor", "Optic 2"}:
@@ -162,8 +168,14 @@ class PongApp(GameApp):
         if candidate.ball_nm not in {DONOR_NM, ACCEPTOR_NM} or candidate.serve_timer < 0:
             raise ValueError("invalid serve state")
         candidate.p2 = self.p2
+        enabled = bool(state.get("sound_enabled", False))
+        return candidate, enabled
+
+    def restore_settings(self, state):
+        """Commit a prepared round with this game's existing restore policy."""
+        candidate, enabled = self.validate_state(state)
         self.game = candidate
-        self.sound_enabled = bool(state.get("sound_enabled", False))
+        self.sound_enabled = enabled
         self.focus_lost()
 
     def render(self):
