@@ -228,3 +228,24 @@ viscous than water.
   **Structure Tools**. Press **Guide** on its toolbar for a walk-through.
 - Program: HYDROPRO 10 {cite}`ortega2011`; the method
   {cite}`garciadelatorre2000`.
+
+## Native host dimensions
+
+The native HydroPro window starts at **1100 × 720 logical pixels** and restores
+a saved host size on reopening. Parameters, results and output remain docks;
+narrow windows wrap the parameter fields and retain the file, run and export
+controls. The declaration is in the native primary spec, while the existing
+parameter spec remains the shared source of settings and units.
+
+```{figure} figures/hydro_native_primary_window.png
+:width: 100%
+
+The native host with an actual 148L structure path and an explicitly labelled
+parser-format fixture. This stand-in report is NOT a HYDROPRO calculation.
+```
+
+Window geometry and model settings are preferences. Results and console output
+are rebuilt by the workflow rather than restored as a computed session. The
+host-size verification covers unchanged parser behavior and CSV formatting; it
+does not establish diffusion accuracy or the availability of an external
+HYDROPRO executable. See [hydrodynamics](../concepts/hydrodynamics.md).

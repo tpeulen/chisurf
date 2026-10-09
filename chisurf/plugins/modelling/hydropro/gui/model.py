@@ -16,6 +16,7 @@ import csv
 import queue
 import threading
 from pathlib import Path
+from typing import Callable
 
 from ..core import HydroProSettings, HydroResult, run_hydro
 
@@ -81,7 +82,7 @@ class HydroProModel:
         self.exe_prompt = False
         self.prompt_path: Path | None = None
         self.opened_urls: list[str] = []
-        self.open_url = None  # set by the window: callable(url)
+        self.open_url: Callable[[str], None] | None = None  # set by the host window
 
     # -- conversions (the Qt model's) ------------------------------------------------------------------------ #
     def struct_list(self) -> list[Path]:

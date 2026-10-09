@@ -12,7 +12,7 @@ from __future__ import annotations
 import copy
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from emtk import im
 from emtk.app import ImApp
@@ -23,7 +23,7 @@ from emtk.view_form import FormState, draw_sections
 from emtk.widgets.text_editor import TextEditor
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
-from chisurf.plugins.emtk_layout import cap_widths
+from chisurf.plugins.emtk_layout import cap_widths, window_size
 
 from .gui.model import (
     CSV_FILTER,
@@ -46,10 +46,11 @@ ACTION_TO_ALIAS = {action: alias for alias, action in ALIASES.items()}
 PARAMS_MIN = 360.0
 
 
-def build_spec() -> dict:
+def build_spec(extra: dict | None = None) -> dict:
     """The native spec: the Qt parameter panels (spin arrows, folds) plus the native-only sections."""
     qt = json.loads((GUI / "hydropro.view.json").read_text(encoding="utf-8"))
-    extra = json.loads((GUI / "hydropro_emtk.view.json").read_text(encoding="utf-8"))
+    if extra is None:
+        extra = json.loads((GUI / "hydropro_emtk.view.json").read_text(encoding="utf-8"))
     panels = []
     for panel in qt["sections"]:
         if panel.get("title") == "Results":  # its Status field moves to the results window
@@ -124,9 +125,11 @@ class HydroProApp(ImApp):
     window_title = "HYDRO++ / HYDROPRO Diffusion Coefficient Calculator"
 
     def __init__(self, model: HydroProModel | None = None) -> None:
+        primary = json.loads((GUI / "hydropro_emtk.view.json").read_text())
+        self.window_size = window_size(primary, (1100, 720))
         self.model = model or HydroProModel()
         self.model.open_url = self._open_url
-        spec = build_spec()
+        spec = build_spec(primary)
         self.panels = spec["params"]
         self.results_sections = spec["results"]
         self.output_sections = spec["output"]
@@ -139,7 +142,7 @@ class HydroProApp(ImApp):
         self._log_seen = ""
         self._sized: tuple | None = None
         self.dialog: FileDialog | None = None
-        self.dialog_callback = None
+        self.dialog_callback: Callable[[list[str]], object] | None = None
         self.file_window = DialogWindow("Choose files", size=(640.0, 460.0), key="hydropro_files")
         self.prompt_window = DialogWindow("HYDRO executable required", size=(540.0, 250.0), key="hydropro_prompt",
                                           fit_height=True)
@@ -221,7 +224,8 @@ class HydroProApp(ImApp):
                 self.dialog_callback = None
             elif result:
                 callback, self.dialog, self.dialog_callback = self.dialog_callback, None, None
-                callback(result)
+                if callback is not None:
+                    callback(result)
 
     def _open_chooser(self, kind: str) -> None:
         home = str(Path.home())

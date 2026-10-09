@@ -1,4 +1,5 @@
 {
+  "window": {"width": 1100, "height": 720},
   "_comment": "HydroPro, native emtk window. The parameter panels are read from hydropro.view.json (the Qt AutoForm spec: one source for labels, limits, steps and descriptions) and only given spin arrows and a fold; this file holds what the Qt tool built by hand around them: the file and run buttons, the results table, the output pane. Drawn by emtk.view_form over gui/model.py.",
   "input_buttons": {
     "type": "button_row",
