@@ -18,7 +18,13 @@ POWER_CEILING_MW = 100.0
 #: Names of the plot tabs, in the order of the Qt tool's dock tabs after the state diagram.
 TABS = ("State diagram", "FCS curve", "Info", "Volume profile", "Volume(P)", "Diffusion time")
 #: Short row names of the Optics table, the symbols the Qt table shows.
-SYMBOLS = {"power": "P", "wavelength": "\u03bb_exc", "extinction": "\u03b5", "tau_R1": "\u03c4_R1", "tau_R2": "\u03c4_R2"}
+SYMBOLS = {
+    "power": "P",
+    "wavelength": "\u03bb_exc",
+    "extinction": "\u03b5",
+    "tau_R1": "\u03c4_R1",
+    "tau_R2": "\u03c4_R2",
+}
 #: Plain rows of the Optics & measurement table that are results of the scheme, not inputs.
 OUTPUT_ROWS = ("tau_R1", "tau_R2")
 
@@ -108,11 +114,23 @@ class SaturationPanel:
 
     def matrix_columns(self) -> list:
         labels = self.app.model.saturation.state_labels
-        cols = [{"key": "state", "label": "from / to", "editable": False,
-                 "description": "The state a transition starts from (row); the columns are the states it ends in."}]
-        cols += [{"key": f"c{j}", "label": str(label), "format": "%.6g",
-                  "description": f"Rate of the transition into {label}. Double click to type a value; zero removes the transition."}
-                 for j, label in enumerate(labels)]
+        cols = [
+            {
+                "key": "state",
+                "label": "from / to",
+                "editable": False,
+                "description": "The state a transition starts from (row); the columns are the states it ends in.",
+            }
+        ]
+        cols += [
+            {
+                "key": f"c{j}",
+                "label": str(label),
+                "format": "%.6g",
+                "description": f"Rate of the transition into {label}. Double click to type a value; zero removes the transition.",
+            }
+            for j, label in enumerate(labels)
+        ]
         return cols
 
     def _rows(self, which: str) -> list[dict]:
@@ -159,7 +177,9 @@ class SaturationPanel:
         if parameter is None:
             return
         ceiling = 1e9 if which == "dark" else 1.0
-        parameter.value = min(max(number, 0.0), ceiling)  # a rate is never negative; a cross-section is at most the peak
+        parameter.value = min(
+            max(number, 0.0), ceiling
+        )  # a rate is never negative; a cross-section is at most the peak
         self.edited()
         self.app.tour.notify_used("k_dark" if which == "dark" else "k_exc")
 
@@ -175,25 +195,29 @@ class SaturationPanel:
         for i, p in enumerate(parameters):
             output = p.name in OUTPUT_ROWS
             lo, hi = p.bounds
-            rows.append({
-                "name": labels[i] if labels else SYMBOLS.get(str(p.name), str(p.name)),
-                "value": float(p.value),
-                "fixed": None if output else bool(p.fixed),
-                "lo": None if output or lo is None else float(lo),
-                "hi": None if output or hi is None else float(hi),
-                "bounds": None if output else bool(p.bounds_on),
-                "error": None,
-                "description": str(getattr(p, "description", "") or ""),
-                "_parameter": p,
-                "_table": table,
-                "_output": output,
-            })
+            rows.append(
+                {
+                    "name": labels[i] if labels else SYMBOLS.get(str(p.name), str(p.name)),
+                    "value": float(p.value),
+                    "fixed": None if output else bool(p.fixed),
+                    "lo": None if output or lo is None else float(lo),
+                    "hi": None if output or hi is None else float(hi),
+                    "bounds": None if output else bool(p.bounds_on),
+                    "error": None,
+                    "description": str(getattr(p, "description", "") or ""),
+                    "_parameter": p,
+                    "_table": table,
+                    "_output": output,
+                }
+            )
         return rows
 
     def brightness_rows(self) -> list[dict]:
         sat = self.app.model.saturation
         params = list(sat.brightness._brightness)
-        return self._parameter_rows(params, [f"Q({label})" for label in sat.state_labels], "brightness")
+        return self._parameter_rows(
+            params, [f"Q({label})" for label in sat.state_labels], "brightness"
+        )
 
     def optics_rows(self) -> list[dict]:
         sat = self.app.model.saturation
@@ -208,20 +232,53 @@ class SaturationPanel:
 
     def parameter_columns(self) -> list:
         return [
-            {"key": "name", "label": "Name", "width": 50, "editable": False,
-             "description": "The parameter's name; hover a row for what it means."},
-            {"key": "value", "label": "Value", "width": 62, "format": "%.4g",
-             "description": "The value the calculation uses. Double click to type one (clamped to the limits while they are on)."},
-            {"key": "fixed", "label": "Fixed", "width": 42,
-             "description": "Hold this parameter constant when it is fitted elsewhere. It does not change this calculator's curves."},
-            {"key": "lo", "label": "Lo", "width": 44, "format": "%.6g",
-             "description": "Lower limit, used while Bounds is ticked."},
-            {"key": "hi", "label": "Hi", "width": 48, "format": "%.6g",
-             "description": "Upper limit, used while Bounds is ticked."},
-            {"key": "bounds", "label": "Bounds", "width": 50,
-             "description": "Apply the lower and upper limit to this parameter."},
-            {"key": "error", "label": "Error", "width": 42, "editable": False,
-             "description": "Uncertainty of a fitted value; empty here because nothing is fitted."},
+            {
+                "key": "name",
+                "label": "Name",
+                "width": 50,
+                "editable": False,
+                "description": "The parameter's name; hover a row for what it means.",
+            },
+            {
+                "key": "value",
+                "label": "Value",
+                "width": 62,
+                "format": "%.4g",
+                "description": "The value the calculation uses. Double click to type one (clamped to the limits while they are on).",
+            },
+            {
+                "key": "fixed",
+                "label": "Fixed",
+                "width": 42,
+                "description": "Hold this parameter constant when it is fitted elsewhere. It does not change this calculator's curves.",
+            },
+            {
+                "key": "lo",
+                "label": "Lo",
+                "width": 44,
+                "format": "%.6g",
+                "description": "Lower limit, used while Bounds is ticked.",
+            },
+            {
+                "key": "hi",
+                "label": "Hi",
+                "width": 48,
+                "format": "%.6g",
+                "description": "Upper limit, used while Bounds is ticked.",
+            },
+            {
+                "key": "bounds",
+                "label": "Bounds",
+                "width": 50,
+                "description": "Apply the lower and upper limit to this parameter.",
+            },
+            {
+                "key": "error",
+                "label": "Error",
+                "width": 42,
+                "editable": False,
+                "description": "Uncertainty of a fitted value; empty here because nothing is fitted.",
+            },
         ]
 
     def parameter_editable(self, record, key) -> bool:
@@ -292,12 +349,17 @@ class SaturationPanel:
         """The directed transitions of the diagram as (from, to, group, rate)."""
         sat = model.saturation
         edges = []
-        for group_name, group, prefix in (("dark", sat.dark, "k"), ("excitation", sat.exc, "sigma")):
+        for group_name, group, prefix in (
+            ("dark", sat.dark, "k"),
+            ("excitation", sat.exc, "sigma"),
+        ):
             for name, parameter in group.rates_by_name().items():
                 match = re.fullmatch(rf"{prefix}(\d+)_(\d+)", name)
                 value = float(parameter.value)
                 if match and value != 0.0 and match.group(1) != match.group(2):
-                    edges.append((int(match.group(1)) - 1, int(match.group(2)) - 1, group_name, value))
+                    edges.append(
+                        (int(match.group(1)) - 1, int(match.group(2)) - 1, group_name, value)
+                    )
         return edges
 
 

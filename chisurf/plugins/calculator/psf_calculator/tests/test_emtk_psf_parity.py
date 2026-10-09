@@ -14,10 +14,13 @@ import time
 import numpy as np
 import pytest
 
-from .driving import BIG, SMALL, PSFDriver, clipped_texts, draw_clip, hermetic_env, layout_problems
-from chisurf.plugins.calculator.psf_calculator.gui.app import PSFApp, SETTINGS, SPEC, make_app
+from chisurf.plugins.calculator.psf_calculator.gui.app import SETTINGS, SPEC, PSFApp, make_app
 
-QT_SPEC = json.loads((__import__("pathlib").Path(__file__).parents[1] / "psf_calculator.view.json").read_text())
+from .driving import BIG, SMALL, PSFDriver, clipped_texts, draw_clip, hermetic_env, layout_problems
+
+QT_SPEC = json.loads(
+    (__import__("pathlib").Path(__file__).parents[1] / "psf_calculator.view.json").read_text()
+)
 
 
 @pytest.fixture(autouse=True)
@@ -76,7 +79,9 @@ _QAPP = []
 @pytest.fixture
 def qt_tool():
     QtWidgets = pytest.importorskip("qtpy.QtWidgets")
-    _QAPP[:] = [QtWidgets.QApplication.instance() or QtWidgets.QApplication([])]  # kept: a collected application aborts the process
+    _QAPP[:] = [
+        QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    ]  # kept: a collected application aborts the process
     import chisurf.gui.chiplot as cp
     from chisurf.plugins.calculator.psf_calculator.gui.tool import PSFCalculator
 
@@ -105,18 +110,35 @@ SCENARIOS = [
     {"nxy": 24, "nz": 7, "model": "airy", "polarization": "linear", "angle_deg": 45.0},
     {"nxy": 24, "nz": 7, "model": "gaussian"},
     {"nxy": 24, "nz": 7, "polarization": "radial"},
-    {"nxy": 16, "nz": 5, "na": 1.2, "n_immersion": 1.333, "wavelength_nm": 640.0, "polarization": "x", "show_polarization": False},
+    {
+        "nxy": 16,
+        "nz": 5,
+        "na": 1.2,
+        "n_immersion": 1.333,
+        "wavelength_nm": 640.0,
+        "polarization": "x",
+        "show_polarization": False,
+    },
 ]
 
 
-@pytest.mark.parametrize("params", SCENARIOS, ids=lambda p: "-".join(f"{k}={v}" for k, v in p.items() if k not in ("nxy", "nz"))[:60] or "defaults")
+@pytest.mark.parametrize(
+    "params",
+    SCENARIOS,
+    ids=lambda p: (
+        "-".join(f"{k}={v}" for k, v in p.items() if k not in ("nxy", "nz"))[:60] or "defaults"
+    ),
+)
 def test_the_volume_the_summary_and_what_the_renderer_gets_equal_the_qt_tools(app, qt_tool, params):
     run_qt(qt_tool, **params)
     for k, v in params.items():
         setattr(app.model, k, v)
     app.model.compute()
     assert np.array_equal(app.model.volume, qt_tool.model.volume)
-    qt_lines = [re.sub(r"^- ", "", line).replace("**", "") for line in qt_tool.model.summary_text().splitlines()]
+    qt_lines = [
+        re.sub(r"^- ", "", line).replace("**", "")
+        for line in qt_tool.model.summary_text().splitlines()
+    ]
     assert app.panel.summary_lines().splitlines() == qt_lines
     volume_call = next(c for c in qt_tool.view.calls if c[0] == "volume")
     vectors_call = next(c for c in qt_tool.view.calls if c[0] == "vectors")
@@ -141,21 +163,39 @@ def test_every_field_of_the_qt_spec_is_in_the_emtk_spec_with_the_same_range_step
         for key in ("kind", "minimum", "maximum", "step", "decimals", "options", "labels", "label"):
             assert theirs.get(key) == qt[name].get(key), (name, key)
         if name == "quality":
-            assert theirs.get("style") is None and qt[name].get("style") == "radio"  # deliberate: the inline radios were cut at 800 px
+            assert (
+                theirs.get("style") is None and qt[name].get("style") == "radio"
+            )  # deliberate: the inline radios were cut at 800 px
         else:
-            assert theirs.get("style") in (qt[name].get("style"), "spin")  # the number fields gain the Qt spin arrows
+            assert theirs.get("style") in (
+                qt[name].get("style"),
+                "spin",
+            )  # the number fields gain the Qt spin arrows
 
 
 def test_the_choice_lists_equal_the_qt_combo_labels(qt_tool):
     from chisurf.gui.autoform.sections.builtin import ChoiceWidget
 
-    qt = {cw._section.attr: ([cw.combo.itemText(i) for i in range(cw.combo.count())] if cw.combo is not None
-                             else [b.text() for b in cw._radios]) for cw in qt_tool.auto_form.findChildren(ChoiceWidget)}
-    ours = {s["attr"]: s.get("labels") or s["options"] for p in SPEC["parameters"]["sections"] for s in p["sections"] if s.get("type") == "choice"}
+    qt = {
+        cw._section.attr: (
+            [cw.combo.itemText(i) for i in range(cw.combo.count())]
+            if cw.combo is not None
+            else [b.text() for b in cw._radios]
+        )
+        for cw in qt_tool.auto_form.findChildren(ChoiceWidget)
+    }
+    ours = {
+        s["attr"]: s.get("labels") or s["options"]
+        for p in SPEC["parameters"]["sections"]
+        for s in p["sections"]
+        if s.get("type") == "choice"
+    }
     assert qt == ours
 
 
-def test_the_toolbar_offers_the_qt_export_formats_and_both_files_equal_the_qt_exports(app, qt_tool, tmp_path, monkeypatch):
+def test_the_toolbar_offers_the_qt_export_formats_and_both_files_equal_the_qt_exports(
+    app, qt_tool, tmp_path, monkeypatch
+):
     run_qt(qt_tool, nxy=16, nz=5)
     import chisurf.gui.widgets.general as G
 
@@ -169,7 +209,9 @@ def test_the_toolbar_offers_the_qt_export_formats_and_both_files_equal_the_qt_ex
     app.model.compute()
     assert app.model.save(tmp_path / "ours.npy").read_bytes() == qt_files[".npy"].read_bytes()
     ours_tif = app.model.save(tmp_path / "ours.tif")
-    assert np.array_equal(__import__("tifffile").imread(ours_tif), __import__("tifffile").imread(qt_files[".tif"]))
+    assert np.array_equal(
+        __import__("tifffile").imread(ours_tif), __import__("tifffile").imread(qt_files[".tif"])
+    )
 
 
 # -- spec, tooltips, Qt-free --------------------------------------------------------------------------------- #
@@ -188,7 +230,11 @@ def walk(node):
 def test_every_section_button_and_column_of_the_spec_has_a_description():
     missing = []
     for node in walk(SPEC):
-        if node.get("type") in ("button_row", "toggle", "value", "choice", "info", "panel") and node.get("type") != "panel" and not node.get("description"):
+        if (
+            node.get("type") in ("button_row", "toggle", "value", "choice", "info", "panel")
+            and node.get("type") != "panel"
+            and not node.get("description")
+        ):
             missing.append((node.get("type"), node.get("attr")))
         if node.get("type") == "panel" and node.get("title") and not node.get("description"):
             missing.append(("panel", node["title"]))
@@ -219,11 +265,17 @@ def test_the_port_is_qt_free():
 
 def test_controls_that_mean_nothing_in_this_state_are_greyed(app):
     p = app.panel
-    assert p.enabled("polarization") and not p.enabled("angle_deg") and p.enabled("show_polarization")  # vectorial, circular
+    assert (
+        p.enabled("polarization") and not p.enabled("angle_deg") and p.enabled("show_polarization")
+    )  # vectorial, circular
     app.model.polarization = "linear"
     assert p.enabled("angle_deg")
     app.model.model = "airy"
-    assert not p.enabled("polarization") and not p.enabled("angle_deg") and not p.enabled("show_polarization")
+    assert (
+        not p.enabled("polarization")
+        and not p.enabled("angle_deg")
+        and not p.enabled("show_polarization")
+    )
     assert not p.enabled("export_npy") and not p.enabled("export_tif")  # nothing computed yet
 
 
@@ -234,16 +286,26 @@ def test_draws_and_the_layout_is_clean(app, size, state):
         small(app)
         settle(app, size)
     painter = draw_clip(app, size)
-    assert {"Parameters", "3-D PSF", "Orthogonal Slice", "NA", "Export .npy"} <= set(painter.strings)
+    assert {"Parameters", "3-D PSF", "Orthogonal Slice", "NA", "Export .npy"} <= set(
+        painter.strings
+    )
     plots = [app.item_rects[k] for k in ("volume", "slice") if k in app.item_rects]
     problems = layout_problems(painter, size, ignore=plots) + clipped_texts(painter, ignore=plots)
     assert not problems, problems[:6]
     # a choice shows its whole label (emtk shortens one that does not fit)
-    assert {"Vectorial (Richards-Wolf)", "Circular", "magma", "Preview (fast)", "XY"} <= set(painter.strings)
+    assert {"Vectorial (Richards-Wolf)", "Circular", "magma", "Preview (fast)", "XY"} <= set(
+        painter.strings
+    )
 
 
 def test_settings_round_trip_clamp_and_ignore_garbage(app):
-    app.model.na, app.model.model, app.model.nxy, app.model.show_polarization, app.model.colormap = 1.2, "airy", 32, False, "gray"
+    (
+        app.model.na,
+        app.model.model,
+        app.model.nxy,
+        app.model.show_polarization,
+        app.model.colormap,
+    ) = 1.2, "airy", 32, False, "gray"
     app.slice_plane = "XZ"
     saved = json.loads(json.dumps(app.export_settings()))
     assert set(saved) == set(SETTINGS) | {"slice_plane"}
@@ -251,9 +313,32 @@ def test_settings_round_trip_clamp_and_ignore_garbage(app):
     try:
         other.restore_settings(saved)
         m = other.model
-        assert (m.na, m.model, m.nxy, m.show_polarization, m.colormap, other.slice_plane) == (1.2, "airy", 32, False, "gray", "XZ")
-        other.restore_settings({"na": 99, "nxy": -4, "model": "bogus", "colormap": 5, "show_polarization": "yes", "slice_plane": "AB"})
-        assert m.na == 1.7 and m.nxy == 16 and m.model == "airy" and m.colormap == "gray" and m.show_polarization is False and other.slice_plane == "XZ"
+        assert (m.na, m.model, m.nxy, m.show_polarization, m.colormap, other.slice_plane) == (
+            1.2,
+            "airy",
+            32,
+            False,
+            "gray",
+            "XZ",
+        )
+        other.restore_settings(
+            {
+                "na": 99,
+                "nxy": -4,
+                "model": "bogus",
+                "colormap": 5,
+                "show_polarization": "yes",
+                "slice_plane": "AB",
+            }
+        )
+        assert (
+            m.na == 1.7
+            and m.nxy == 16
+            and m.model == "airy"
+            and m.colormap == "gray"
+            and m.show_polarization is False
+            and other.slice_plane == "XZ"
+        )
         other.restore_settings("garbage")  # does not raise
     finally:
         other.close()

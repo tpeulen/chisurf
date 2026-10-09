@@ -41,7 +41,9 @@ class PSFPanel:
         if name in ("polarization", "show_polarization"):
             return vectorial  # the scalar and Gaussian models ignore the polarization
         if name == "angle_deg":
-            return vectorial and model.polarization == "linear"  # only a linear state at an angle has one
+            return (
+                vectorial and model.polarization == "linear"
+            )  # only a linear state at an angle has one
         return True
 
     def summary_lines(self) -> str:

@@ -21,10 +21,12 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.jobs import SnapshotJob
+from chisurf.plugins.emtk_layout import window_size
 
 from .view_model import PrecisionViewModel
 
@@ -33,13 +35,6 @@ HERE = Path(__file__).parent
 CURVE_COLOUR = (76, 155, 232, 255)
 YOURS_COLOUR = (232, 115, 76, 255)
 EXPORT_NAME = "rics_precision.csv"
-
-
-
-from emtk.i18n import tr
-
-
-from chisurf.plugins.emtk_layout import window_size
 
 
 def finite_runs(x: np.ndarray, y: np.ndarray) -> list[tuple[np.ndarray, np.ndarray]]:

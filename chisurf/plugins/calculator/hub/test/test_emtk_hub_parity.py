@@ -29,6 +29,7 @@ SIZE = (1200, 800)
 SMALL = (800, 600)
 IDS = [entry.id for entry in default_calculators()]
 
+
 @pytest.fixture(autouse=True)
 def hermetic(tmp_path, monkeypatch):
     monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path / "settings"))
@@ -137,8 +138,15 @@ def test_the_list_header_and_selection_equal_the_qt_hub_entry_by_entry(app, qt_h
 def test_a_calculator_that_cannot_be_built_says_why_like_the_qt_hub(qt_hub, monkeypatch):
     from chisurf.plugins.calculator.hub.gui.tool import CalculatorHub
 
-    entries = [CalculatorEntry(id="broken", label="Broken one", description="Cannot be built.", widget="chisurf.nowhere:Nothing"),
-               *default_calculators()[:2]]
+    entries = [
+        CalculatorEntry(
+            id="broken",
+            label="Broken one",
+            description="Cannot be built.",
+            widget="chisurf.nowhere:Nothing",
+        ),
+        *default_calculators()[:2],
+    ]
     monkeypatch.setitem(FACTORIES, "broken", "chisurf.nowhere:Nothing")
     qt = CalculatorHub(entries=entries)
     page = qt._stack.currentWidget()
@@ -155,10 +163,16 @@ def test_no_entries_shows_the_prompt_and_no_child(qt_hub):
     from chisurf.plugins.calculator.hub.gui.tool import CalculatorHub
 
     qt = CalculatorHub(entries=[])
-    assert qt._subtitle.text() == "Select a calculator on the left to get started." and qt._stack.currentWidget().text() == "No calculator selected."
+    assert (
+        qt._subtitle.text() == "Select a calculator on the left to get started."
+        and qt._stack.currentWidget().text() == "No calculator selected."
+    )
     qt.close()
     hub = CalculatorHubApp(entries=[])
-    assert hub.selected is None and "Select a calculator on the left to get started." in draw(hub).strings
+    assert (
+        hub.selected is None
+        and "Select a calculator on the left to get started." in draw(hub).strings
+    )
     hub.close()
 
 
@@ -186,7 +200,9 @@ def test_children_are_built_lazily_kept_and_every_one_builds_and_draws_at_both_s
 
 
 @pytest.mark.parametrize("size", [SIZE, SMALL, (520, 480)])
-def test_a_long_description_or_error_is_never_clipped_by_the_embedded_calculator(app, size, monkeypatch):
+def test_a_long_description_or_error_is_never_clipped_by_the_embedded_calculator(
+    app, size, monkeypatch
+):
     click_entry(app, "rics_precision", size)
     painter = draw(app, size)
     left = min(240.0, size[0] * 0.25)
@@ -228,7 +244,9 @@ def test_clicking_each_list_entry_selects_it_and_shows_its_calculator(app, entry
     assert entry.description in " ".join(draw(app).strings)
 
 
-def test_the_embedded_calculator_gets_the_pointer_and_the_keys_and_keeps_its_state_when_another_is_shown(app):
+def test_the_embedded_calculator_gets_the_pointer_and_the_keys_and_keeps_its_state_when_another_is_shown(
+    app,
+):
     draw(app)
     fret = app.child
     rect = fret.active.form.rects["R"]
@@ -241,14 +259,23 @@ def test_the_embedded_calculator_gets_the_pointer_and_the_keys_and_keeps_its_sta
     assert app.child is fret and fret.model.hetero.R == 58.0  # the calculator kept its input
 
 
-def test_a_click_in_the_list_area_does_not_reach_the_calculator_and_one_outside_the_header_does(app):
+def test_a_click_in_the_list_area_does_not_reach_the_calculator_and_one_outside_the_header_does(
+    app,
+):
     draw(app)
     fret = app.child
     before = fret.export_settings()
     click(app, app.item_rects["entry:fret_calculator"])  # the list, left of the child box
     assert fret.export_settings() == before
-    click(app, child_rect(app, fret.item_rects["tab_homofret"]) if "tab_homofret" in fret.item_rects else child_rect(app, fret.item_rects["help"]))
-    assert fret.active_tab == 1 or fret.help_window.open  # a click in the child box reached the calculator
+    click(
+        app,
+        child_rect(app, fret.item_rects["tab_homofret"])
+        if "tab_homofret" in fret.item_rects
+        else child_rect(app, fret.item_rects["help"]),
+    )
+    assert (
+        fret.active_tab == 1 or fret.help_window.open
+    )  # a click in the child box reached the calculator
 
 
 def test_up_and_down_move_the_selection_unless_a_field_is_being_edited(app):
@@ -266,7 +293,9 @@ def test_up_and_down_move_the_selection_unless_a_field_is_being_edited(app):
         draw(app, frames=1)
     assert app.selected == IDS[-1]  # and the last one the last
     click_entry(app, "fret_calculator")
-    click(app, child_rect(app, app.child.active.form.rects["R"]), fx=0.3)  # a text field takes the keyboard
+    click(
+        app, child_rect(app, app.child.active.form.rects["R"]), fx=0.3
+    )  # a text field takes the keyboard
     app.key(keys.KEY_DOWN, "")
     draw(app, frames=2)
     assert app.selected == "fret_calculator"
@@ -371,20 +400,39 @@ def test_a_file_dropped_on_the_host_goes_to_the_embedded_calculator(app):
     mime.setUrls([QtCore.QUrl.fromLocalFile("/tmp/run.ptu")])
 
     def drop():
-        enter = QtGui.QDragEnterEvent(QtCore.QPoint(300, 300), QtCore.Qt.CopyAction, mime, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier)
+        enter = QtGui.QDragEnterEvent(
+            QtCore.QPoint(300, 300),
+            QtCore.Qt.CopyAction,
+            mime,
+            QtCore.Qt.LeftButton,
+            QtCore.Qt.NoModifier,
+        )
         host.dragEnterEvent(enter)
-        event = QtGui.QDropEvent(QtCore.QPointF(300, 300), QtCore.Qt.CopyAction, mime, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier)
+        event = QtGui.QDropEvent(
+            QtCore.QPointF(300, 300),
+            QtCore.Qt.CopyAction,
+            mime,
+            QtCore.Qt.LeftButton,
+            QtCore.Qt.NoModifier,
+        )
         host.dropEvent(event)
         qapp.processEvents()
         return enter.isAccepted(), event.isAccepted()
 
     assert drop() == (True, True)
-    assert app.child.model.hetero.status == "The FRET Calculator takes no dropped files."  # the FRET calculator's own answer
-    assert app.files_dropped(["/tmp/run.ptu"]) is True and app.on_paths_dropped(["/tmp/run.ptu"]) is True  # taken by the child
+    assert (
+        app.child.model.hetero.status == "The FRET Calculator takes no dropped files."
+    )  # the FRET calculator's own answer
+    assert (
+        app.files_dropped(["/tmp/run.ptu"]) is True
+        and app.on_paths_dropped(["/tmp/run.ptu"]) is True
+    )  # taken by the child
     assert "takes no dropped files" in " ".join(draw(app).strings)
     click_entry(app, "kappa2_dist")
     drop()  # the host accepts a drop on any control that has a drop hook ...
-    assert app.files_dropped(["/tmp/run.ptu"]) is False  # ... the hub answers False: the kappa2 calculator takes none
+    assert (
+        app.files_dropped(["/tmp/run.ptu"]) is False
+    )  # ... the hub answers False: the kappa2 calculator takes none
     assert app.child.export_settings()["model_type"] == "cone"  # and nothing changed
     host.close()
 
@@ -394,14 +442,25 @@ def test_settings_round_trip_restores_the_selection_and_the_calculators_inputs(a
     type_into_child(app, app.child.active.form.rects["R"], "58")
     click_entry(app, "kappa2_dist")
     saved = json.loads(json.dumps(app.export_settings()))
-    assert saved["selected"] == "kappa2_dist" and saved["children"]["fret_calculator"]["hetero"]["R"] == 58.0
+    assert (
+        saved["selected"] == "kappa2_dist"
+        and saved["children"]["fret_calculator"]["hetero"]["R"] == 58.0
+    )
     assert set(saved["children"]) == {"fret_calculator", "kappa2_dist"}  # only what was opened
     other = make_app()
     other.restore_settings(saved)
-    assert other.selected == "kappa2_dist" and other.export_settings()["children"]["kappa2_dist"] == saved["children"]["kappa2_dist"]
+    assert (
+        other.selected == "kappa2_dist"
+        and other.export_settings()["children"]["kappa2_dist"] == saved["children"]["kappa2_dist"]
+    )
     other.select("fret_calculator")  # built later: the saved inputs are applied at that moment
     assert other.children["fret_calculator"].model.hetero.R == 58.0
-    other.restore_settings({"selected": "no_such", "children": {"bogus": {}, "fret_calculator": "x", "kappa2_dist": ["x"]}})
+    other.restore_settings(
+        {
+            "selected": "no_such",
+            "children": {"bogus": {}, "fret_calculator": "x", "kappa2_dist": ["x"]},
+        }
+    )
     other.restore_settings("garbage")
     assert other.selected == "fret_calculator" and draw(other).strings
     other.close()
@@ -413,9 +472,14 @@ def test_close_closes_every_built_calculator(app):
     closed = []
     for id, child in app.children.items():
         original = getattr(child, "close", None)
-        child.close = lambda original=original, id=id: (closed.append(id), original() if original else None)[1]
+        child.close = lambda original=original, id=id: (
+            closed.append(id),
+            original() if original else None,
+        )[1]
     app.close()
-    assert sorted(closed) == ["fret_calculator", "kappa2_dist", "psf_calculator"] and not app.children
+    assert (
+        sorted(closed) == ["fret_calculator", "kappa2_dist", "psf_calculator"] and not app.children
+    )
 
 
 # ── 4. spec, tooltips, no Qt ---------------------------------------------------------------------------------- #
@@ -427,7 +491,10 @@ def test_every_control_has_a_tooltip_and_the_port_is_qt_free():
     inventory = emtk_inventory(build_emtk_app("calculators"))
     assert inventory["controls_without_tooltip"] == []
     labels = {row["label"] for row in inventory["interactive"]}
-    assert {entry.label for entry in default_calculators()} <= labels and {"Guide", "Help"} <= labels
+    assert {entry.label for entry in default_calculators()} <= labels and {
+        "Guide",
+        "Help",
+    } <= labels
     result = qt_free("calculators")
     assert result["ok"], result["output"]
 
@@ -436,4 +503,6 @@ def test_the_manifest_opens_the_native_app_and_the_qt_hub_is_untouched():
     manifest = json.loads((HERE.parent / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["entrypoints"]["emtk"] == "chisurf.plugins.calculator.hub.gui.app:make_app"
     assert manifest["entrypoints"]["gui"].endswith("CalculatorHub")
-    assert isinstance(make_app(), CalculatorHubApp) and hub_module.CalculatorHubApp is CalculatorHubApp
+    assert (
+        isinstance(make_app(), CalculatorHubApp) and hub_module.CalculatorHubApp is CalculatorHubApp
+    )

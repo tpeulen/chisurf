@@ -20,9 +20,11 @@ import emtk.implot as implot
 import numpy as np
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.plugins.emtk_layout import window_size
 
 if TYPE_CHECKING:
     from .tool import Kappa2Dist, _Kappa2DistModel
@@ -36,8 +38,18 @@ TRUE_K2_COLOUR = (200, 200, 200, 160)
 MODEL_OPTIONS = ("cone", "diffusion", "isotropic")
 
 #: The inputs of the model (what ``export_settings`` keeps).
-INPUT_FIELDS = ("model_type", "r_0", "r_Dinf", "r_Ainf", "r_ADinf", "kappa2_true", "fret_efficiency",
-                "step", "n_bins", "rAD_known")
+INPUT_FIELDS = (
+    "model_type",
+    "r_0",
+    "r_Dinf",
+    "r_Ainf",
+    "r_ADinf",
+    "kappa2_true",
+    "fret_efficiency",
+    "step",
+    "n_bins",
+    "rAD_known",
+)
 
 #: What a computation writes (everything else on the model is an input).
 _RESULT_FIELDS = {"k2_mean", "k2_sd", "Rapp_mean", "RappSD", "delta_deg"}
@@ -47,28 +59,27 @@ _SPEC_PATH = Path(__file__).resolve().parent.parent / "k2dist.view.json"
 
 #: The orientation statistics, declared (the Qt Results panel plus the two order parameters).
 RESULTS_TABLE = {
-    "sections": [{
-        "type": "custom",
-        "key": "data_table",
-        "description": "Orientation statistics of the κ² distribution; SD R_app/R_DA is the relative "
-                       "systematic uncertainty on the distance -- the number to quote.",
-        "options": {
-            "source": "result_rows",
-            "editable": False,
-            "columns": [
-                {"key": "quantity", "title": "Quantity", "description": "What is reported."},
-                {"key": "value", "title": "Value", "description": "Its value for the last computation."},
-            ],
-        },
-    }]
+    "sections": [
+        {
+            "type": "custom",
+            "key": "data_table",
+            "description": "Orientation statistics of the κ² distribution; SD R_app/R_DA is the relative "
+            "systematic uncertainty on the distance -- the number to quote.",
+            "options": {
+                "source": "result_rows",
+                "editable": False,
+                "columns": [
+                    {"key": "quantity", "title": "Quantity", "description": "What is reported."},
+                    {
+                        "key": "value",
+                        "title": "Value",
+                        "description": "Its value for the last computation.",
+                    },
+                ],
+            },
+        }
+    ]
 }
-
-
-
-from emtk.i18n import tr
-
-
-from chisurf.plugins.emtk_layout import window_size
 
 
 class Kappa2Gui(TourTarget):

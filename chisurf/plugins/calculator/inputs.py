@@ -81,7 +81,7 @@ def bounded_float(label, value, *, minimum, maximum, step=None, fmt=None, **kwar
 
 def bounded_int(label, value, *, minimum, maximum, **kwargs):
     """A bounded whole-number parameter, drawn as a slider (Ctrl+Click to type)."""
-    kwargs.pop("step", None)    # a slider has no +/- step; the track is the step
+    kwargs.pop("step", None)  # a slider has no +/- step; the track is the step
     changed, new = im.slider_int(label, int(value), int(minimum), int(maximum), "%d", **kwargs)
     new = min(max(int(new), int(minimum)), int(maximum))
     return changed and new != int(value), new

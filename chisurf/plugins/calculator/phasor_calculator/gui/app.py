@@ -11,29 +11,24 @@ showed, as a real table.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable
-
-import json
 
 import emtk.im as im
 import emtk.implot as implot
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.plugins.emtk_layout import window_size as shared_window_size
 
 if TYPE_CHECKING:
     from .tool import PhasorCalculatorTool, _PhasorCalcModel
 
 WINDOW_BG = (30, 32, 38, 255)
-
-
-from emtk.i18n import tr
-
-
-from chisurf.plugins.emtk_layout import window_size as shared_window_size
 
 
 def _leaves(section: dict):
@@ -47,9 +42,12 @@ def _leaves(section: dict):
 
 def _has_attr(section: dict, attr: str) -> bool:
     """Whether *section* or one inside it edits the model field *attr*."""
-    if section.get("attr") == attr or any(i.get("attr") == attr for i in section.get("items") or []):
+    if section.get("attr") == attr or any(
+        i.get("attr") == attr for i in section.get("items") or []
+    ):
         return True
     return any(_has_attr(inner, attr) for inner in section.get("sections") or [])
+
 
 #: pyqtgraph's single-letter colours, which the shared overlay builder emits.
 _LETTER_COLOURS = {
@@ -86,15 +84,33 @@ def _in_legend(name: str) -> bool:
 SPEC = json.loads((Path(__file__).parent / "phasor_emtk.view.json").read_text(encoding="utf-8"))
 
 #: The model attributes that make up a saved session (everything the controls edit).
-SETTINGS = ("frequency", "harmonic", "taus", "show_grid", "show_ticks", "show_polar_grid", "show_fret", "tau_d0",
-            "show_component", "g1", "s1", "g2", "s2", "show_mixing", "frac1", "show_cursor", "cursor_g", "cursor_s",
-            "cursor_radius")
+SETTINGS = (
+    "frequency",
+    "harmonic",
+    "taus",
+    "show_grid",
+    "show_ticks",
+    "show_polar_grid",
+    "show_fret",
+    "tau_d0",
+    "show_component",
+    "g1",
+    "s1",
+    "g2",
+    "s2",
+    "show_mixing",
+    "frac1",
+    "show_cursor",
+    "cursor_g",
+    "cursor_s",
+    "cursor_radius",
+)
 
 
 class PhasorForm:
     """What the specs read and call: the model's fields, and the derived texts and rows of the results."""
 
-    def __init__(self, gui: "PhasorGui") -> None:
+    def __init__(self, gui: PhasorGui) -> None:
         object.__setattr__(self, "_gui", gui)
 
     def __getattr__(self, name: str):

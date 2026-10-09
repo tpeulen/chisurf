@@ -15,9 +15,11 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.plugins.emtk_layout import window_size as shared_window_size
 
 from ..core import PSFModel
 from .panel import PSFPanel
@@ -28,15 +30,23 @@ SPEC = json.loads((HERE / "psf_emtk.view.json").read_text(encoding="utf-8"))
 DEBOUNCE = 0.25
 #: The 3-D view draws at most this many voxels (the export keeps every one).
 MAX_VOXELS = 6000
-SETTINGS = ("na", "n_immersion", "wavelength_nm", "model", "polarization", "angle_deg", "nxy", "nz", "pixel_size_nm",
-            "z_step_nm", "quality", "threshold", "gamma", "colormap", "show_polarization")
-
-
-
-from emtk.i18n import tr
-
-
-from chisurf.plugins.emtk_layout import window_size as shared_window_size
+SETTINGS = (
+    "na",
+    "n_immersion",
+    "wavelength_nm",
+    "model",
+    "polarization",
+    "angle_deg",
+    "nxy",
+    "nz",
+    "pixel_size_nm",
+    "z_step_nm",
+    "quality",
+    "threshold",
+    "gamma",
+    "colormap",
+    "show_polarization",
+)
 
 
 class PSFApp(TourTarget, ImApp):

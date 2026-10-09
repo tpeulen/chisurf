@@ -16,7 +16,15 @@ from emtk import keys
 
 from chisurf.plugins.calculator.phasor_calculator.gui.app import SETTINGS, make_app
 
-from .driving import BIG, SMALL, PhasorDriver, clipped_texts, draw_clip, hermetic_env, layout_problems
+from .driving import (
+    BIG,
+    SMALL,
+    PhasorDriver,
+    clipped_texts,
+    draw_clip,
+    hermetic_env,
+    layout_problems,
+)
 
 PLUGIN = Path(__file__).parents[1]
 
@@ -124,7 +132,10 @@ def test_the_lifetimes_field_sets_the_reference_rows(drv):
     drv.type_into("taus", "1, 3")
     assert [r[0] for r in table_rows(drv)] == ["1", "3"]
     drv.type_into("taus", "2; 5 ; x")
-    assert [r[0] for r in table_rows(drv)] == ["2", "5"]  # a bad token is skipped, as the Qt model did
+    assert [r[0] for r in table_rows(drv)] == [
+        "2",
+        "5",
+    ]  # a bad token is skipped, as the Qt model did
     drv.type_into("taus", "nonsense")
     assert [r[0] for r in table_rows(drv)] == ["1"]  # nothing usable: the Qt model's fallback
 
@@ -171,7 +182,12 @@ def test_the_two_component_line_toggle_and_its_four_fields(drv):
     unfold(drv, "Two-component line")
     drv.click("show_component")
     assert model(drv).show_component and "component line" in legend(drv)
-    for name, text, expected in (("g1", "0.7", 0.7), ("s1", "0.4", 0.4), ("g2", "0.2", 0.2), ("s2", "0.5", 0.5)):
+    for name, text, expected in (
+        ("g1", "0.7", 0.7),
+        ("s1", "0.4", 0.4),
+        ("g2", "0.2", 0.2),
+        ("s2", "0.5", 0.5),
+    ):
         drv.type_into(name, text)
         assert getattr(model(drv), name) == expected
     drv.type_into("g1", "5")
@@ -190,7 +206,9 @@ def test_the_mixing_region_toggle_and_the_fraction_move_the_mixture_point(drv):
     assert model(drv).frac1 == pytest.approx(0.2)
     moved = (float(mixture()["x"][0]), float(mixture()["y"][0]))
     m = model(drv)
-    assert moved == pytest.approx((0.2 * m.g1 + 0.8 * m.g2, 0.2 * m.s1 + 0.8 * m.s2)) and moved != pytest.approx(half)
+    assert moved == pytest.approx(
+        (0.2 * m.g1 + 0.8 * m.g2, 0.2 * m.s1 + 0.8 * m.s2)
+    ) and moved != pytest.approx(half)
     drv.type_into("frac1", "7")
     assert model(drv).frac1 == 1.0  # the Qt maximum
     stepper(drv, "frac1", -1)
@@ -208,7 +226,9 @@ def test_the_cursor_toggle_and_its_three_fields(drv):
     assert (m.cursor_g, m.cursor_s, m.cursor_radius) == (0.6, 0.25, 0.1)
     cursor = next(o for o in drv.app.phasor_gui._overlays() if o["name"] == "cursor")
     xs = np.asarray(cursor["x"], float)
-    assert xs.mean() == pytest.approx(0.6, abs=0.02) and (xs.max() - xs.min()) / 2 == pytest.approx(0.1, abs=0.01)
+    assert xs.mean() == pytest.approx(0.6, abs=0.02) and (xs.max() - xs.min()) / 2 == pytest.approx(
+        0.1, abs=0.01
+    )
     stepper(drv, "cursor_radius", +1)
     assert m.cursor_radius == pytest.approx(0.11)
 
@@ -236,8 +256,11 @@ def test_the_table_header_sorts_and_a_row_click_selects_without_changing_values(
 
 def tick_labels(drv):
     left = drv.size[0] * 0.36  # the plot window starts here; its axis labels are numbers
-    return [(t[5], round(t[0]), round(t[1])) for t in drv.draw(2).texts
-            if t[0] >= left and t[5].replace("-", "").replace(".", "").isdigit()]
+    return [
+        (t[5], round(t[0]), round(t[1]))
+        for t in drv.draw(2).texts
+        if t[0] >= left and t[5].replace("-", "").replace(".", "").isdigit()
+    ]
 
 
 def test_dragging_the_plot_pans_it(drv):
@@ -304,8 +327,16 @@ def test_settings_round_trip_clamp_and_ignore_garbage(app):
     other.restore_settings(saved)
     o = other.tool._model
     assert (o.frequency, o.harmonic, o.show_fret, o.taus, o.frac1) == (33.0, 3, True, "1, 2", 0.25)
-    other.restore_settings({"frequency": 1e9, "harmonic": "x", "show_fret": 3, "taus": 5, "frac1": float("nan")})
-    assert o.frequency == 10000.0 and o.harmonic == 3 and o.show_fret is True and o.taus == "1, 2" and o.frac1 == 0.25
+    other.restore_settings(
+        {"frequency": 1e9, "harmonic": "x", "show_fret": 3, "taus": 5, "frac1": float("nan")}
+    )
+    assert (
+        o.frequency == 10000.0
+        and o.harmonic == 3
+        and o.show_fret is True
+        and o.taus == "1, 2"
+        and o.frac1 == 0.25
+    )
     other.restore_settings("garbage")  # does not raise
 
 
@@ -317,7 +348,9 @@ def test_every_label_of_the_qt_spec_is_drawn(drv):
     def walk(sections):
         for section in sections:
             if section.get("type") in ("value", "toggle") and section.get("label"):
-                labels.append(section["label"].replace("tau", "τ"))  # AutoForm shows "Donor tau0" as "Donor τ0"
+                labels.append(
+                    section["label"].replace("tau", "τ")
+                )  # AutoForm shows "Donor tau0" as "Donor τ0"
             walk(section.get("sections", []))
 
     walk(spec["sections"])
@@ -325,7 +358,9 @@ def test_every_label_of_the_qt_spec_is_drawn(drv):
     for title in ("Two-component line", "Mixing region", "Cursor"):
         unfold(drv, title)
     shown = set(drv.draw(3).strings)
-    assert not [label for label in labels if label not in shown], [label for label in labels if label not in shown]
+    assert not [label for label in labels if label not in shown], [
+        label for label in labels if label not in shown
+    ]
 
 
 # -- layout --------------------------------------------------------------------------------------------------------- #
@@ -342,7 +377,15 @@ def test_the_layout_is_clean(app, size, open_groups):
         for name in ("show_fret", "show_component", "show_mixing", "show_cursor"):
             setattr(app.tool._model, name, True)
     painter = draw_clip(app, size)
-    plot = app.item_rects["plot"]  # the whole plot window: its axis labels and legend are the plot's own
+    plot = app.item_rects[
+        "plot"
+    ]  # the whole plot window: its axis labels and legend are the plot's own
     problems = layout_problems(painter, size, ignore=[plot]) + clipped_texts(painter, ignore=[plot])
     assert not problems, problems[:6]
-    assert {"Controls", "Reference lifetimes", "Phasor plot", "Frequency", "Effective f = 80 MHz"} <= set(painter.strings)
+    assert {
+        "Controls",
+        "Reference lifetimes",
+        "Phasor plot",
+        "Frequency",
+        "Effective f = 80 MHz",
+    } <= set(painter.strings)

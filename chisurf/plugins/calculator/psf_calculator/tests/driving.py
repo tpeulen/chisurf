@@ -39,7 +39,11 @@ class PSFDriver(Driver):
         """Draw until the debounce has run and the volume for the current parameters is in."""
         end = time.monotonic() + timeout
         self.draw(1)
-        while (self.app.busy or self.app.model.is_stale) and not self.app.error and time.monotonic() < end:
+        while (
+            (self.app.busy or self.app.model.is_stale)
+            and not self.app.error
+            and time.monotonic() < end
+        ):
             time.sleep(0.02)
             self.draw(1)
         assert not self.app.busy, "the computation did not finish"

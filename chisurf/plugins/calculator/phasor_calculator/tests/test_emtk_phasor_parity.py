@@ -25,8 +25,16 @@ SPEC = json.loads((HERE.parent / "gui" / "phasor.view.json").read_text())
 
 from chisurf.plugins.calculator.phasor_calculator.gui.app import make_app  # noqa: E402
 
-ON = {"show_fret": True, "show_component": True, "show_mixing": True, "show_cursor": True, "show_polar_grid": True,
-      "frequency": 40.0, "harmonic": 2, "taus": "1, 3"}
+ON = {
+    "show_fret": True,
+    "show_component": True,
+    "show_mixing": True,
+    "show_cursor": True,
+    "show_polar_grid": True,
+    "frequency": 40.0,
+    "harmonic": 2,
+    "taus": "1, 3",
+}
 
 
 def _app(**settings):
@@ -72,14 +80,22 @@ def qt():
     pytest.importorskip("qtpy")
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT, json.dumps(ON)], capture_output=True, text=True, timeout=300,
-                          env=env, cwd=str(REPO))
+    proc = subprocess.run(
+        [sys.executable, "-c", _QT, json.dumps(ON)],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env=env,
+        cwd=str(REPO),
+    )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and ("No module named" in proc.stderr or "could not connect to display" in proc.stderr):
+    if line is None and (
+        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
+    ):
         pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
     # Any other failure is the Qt tool's own: skipping it hid a broken Qt host.
     assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS"):])
+    return json.loads(line[len("FACTS") :])
 
 
 # 1. the same geometry and the same reference table as the Qt tool
@@ -90,7 +106,7 @@ def test_overlays_equal_the_qt_tools(qt):
         mine = ours[theirs["name"]]
         assert np.asarray(mine["x"], float) == pytest.approx(np.asarray(theirs["x"]))
         assert np.asarray(mine["y"], float) == pytest.approx(np.asarray(theirs["y"]))
-    assert "universal semicircle" in ours                     # the emtk plot draws the circle itself
+    assert "universal semicircle" in ours  # the emtk plot draws the circle itself
 
 
 def test_the_reference_table_holds_the_qt_results(qt):
@@ -99,8 +115,10 @@ def test_the_reference_table_holds_the_qt_results(qt):
     assert [t for t, _g, _s in rows] == [1.0, 3.0]
     for tau, g, s in rows:
         assert f"<td>{tau:g}</td><td>{g:.3f}</td><td>{s:.3f}</td>" in qt["html"]
-        omega_tau = 2 * np.pi * 80e6 * tau * 1e-9            # effective f = 40 MHz x harmonic 2
-        assert g == pytest.approx(1 / (1 + omega_tau ** 2)) and s == pytest.approx(omega_tau / (1 + omega_tau ** 2))
+        omega_tau = 2 * np.pi * 80e6 * tau * 1e-9  # effective f = 40 MHz x harmonic 2
+        assert g == pytest.approx(1 / (1 + omega_tau**2)) and s == pytest.approx(
+            omega_tau / (1 + omega_tau**2)
+        )
 
 
 # 3. one spec: every field drawn, its description the tooltip, the groups folded as declared
@@ -109,9 +127,9 @@ def test_every_spec_field_is_drawn_with_its_description(monkeypatch, qt):
 
     tips = []
     monkeypatch.setattr(im, "set_item_tooltip", tips.append)
-    monkeypatch.setattr(im_widgets, "set_item_tooltip", tips.append)   # the form calls it here
+    monkeypatch.setattr(im_widgets, "set_item_tooltip", tips.append)  # the form calls it here
     app = _app()
-    for panel in app.phasor_gui._controls_spec()["sections"]:     # open every group to draw all fields
+    for panel in app.phasor_gui._controls_spec()["sections"]:  # open every group to draw all fields
         if panel.get("type") == "panel":
             app.phasor_gui.form.folds[panel["title"]] = True
     _draw(app)
@@ -143,7 +161,11 @@ def test_the_plot_is_drawn_at_equal_scale_with_a_short_legend(monkeypatch):
 
     flags = []
     original = implot.begin_plot
-    monkeypatch.setattr(implot, "begin_plot", lambda title, size=(-1.0, 0.0), f=0: (flags.append(f), original(title, size, f))[1])
+    monkeypatch.setattr(
+        implot,
+        "begin_plot",
+        lambda title, size=(-1.0, 0.0), f=0: (flags.append(f), original(title, size, f))[1],
+    )
     app = _app()
     strings = _draw(app).strings
     assert flags and all(f & implot.FLAGS_EQUAL for f in flags)

@@ -13,11 +13,11 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 from emtk.im_core import Col
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
-
 from chisurf.plugins.emtk_layout import button_row, window_size
 
 from .model import SaturationModel
@@ -45,10 +45,6 @@ PLOT_TABS = {
 }
 
 
-
-from emtk.i18n import tr
-
-
 def _colour(value) -> tuple:
     """A series colour (a name or ``#rrggbb``) as the 0..1 RGBA the plot takes."""
     from emtk.colormaps import to_rgba
@@ -72,7 +68,12 @@ def _plot_sections() -> dict[str, dict]:
 
 PLOTS = _plot_sections()
 #: The guide's names for the tables (the form records a table under its source).
-TABLE_ALIASES = {"dark_rows": "k_dark", "exc_rows": "k_exc", "brightness_rows": "brightness", "optics_rows": "optics"}
+TABLE_ALIASES = {
+    "dark_rows": "k_dark",
+    "exc_rows": "k_exc",
+    "brightness_rows": "brightness",
+    "optics_rows": "optics",
+}
 SHORT_TITLES = {"Residual against a single diffusion component": "Residual vs one component"}
 
 

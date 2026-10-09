@@ -112,10 +112,13 @@ def qt_tool():
     QtWidgets = pytest.importorskip("qtpy.QtWidgets")
     qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     source = BASELINE.read_text(encoding="utf-8").replace(
-        "pathlib.Path(__file__).parent\n", f"pathlib.Path({str(PLUGIN / 'gui')!r})\n")
+        "pathlib.Path(__file__).parent\n", f"pathlib.Path({str(PLUGIN / 'gui')!r})\n"
+    )
     path = Path(tempfile.mkdtemp()) / "qt_tool.py"
     path.write_text(source, encoding="utf-8")
-    spec = importlib.util.spec_from_file_location("chisurf.plugins.calculator.kappa2_dist.gui.qt_original", path)
+    spec = importlib.util.spec_from_file_location(
+        "chisurf.plugins.calculator.kappa2_dist.gui.qt_original", path
+    )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     np.random.seed(7)
@@ -123,12 +126,18 @@ def qt_tool():
     tool._qapp, tool._module = qapp, module
     from chisurf.gui.autoform.sections.builtin import ToggleWidget, ValueWidget
 
-    tool._editors = {vw._section.attr: vw.editor for vw in tool._form.findChildren(ValueWidget)
-                     if getattr(vw, "_section", None)}
+    tool._editors = {
+        vw._section.attr: vw.editor
+        for vw in tool._form.findChildren(ValueWidget)
+        if getattr(vw, "_section", None)
+    }
     tool._toggles = {tw._section.attr: tw.checkbox for tw in tool._form.findChildren(ToggleWidget)}
     by_text = {b.text(): b for b in tool._form.findChildren(QtWidgets.QRadioButton)}
-    tool._radios = {"cone": by_text["WIC (Cone)"], "diffusion": by_text["DWT (Diffusion)"],
-                    "isotropic": by_text["Isotropic"]}
+    tool._radios = {
+        "cone": by_text["WIC (Cone)"],
+        "diffusion": by_text["DWT (Diffusion)"],
+        "isotropic": by_text["Isotropic"],
+    }
     yield tool
     tool.close()
 
@@ -150,15 +159,29 @@ def qt_edit(tool, attr, value, seed=7):
 # ── 1. every scenario equals the Qt tool, edited through the real fields ------------------------- #
 
 EDITS = [
-    ("model_type", "isotropic"), ("model_type", "diffusion"), ("fret_efficiency", 0.4), ("model_type", "cone"),
-    ("r_Dinf", 0.15), ("n_bins", 60), ("step", 3.0), ("rAD_known", True), ("kappa2_true", 1.0),
-    ("r_0", 0.3), ("r_Ainf", 0.2), ("r_ADinf", 0.01), ("r_ADinf", 0.4), ("rAD_known", False),
+    ("model_type", "isotropic"),
+    ("model_type", "diffusion"),
+    ("fret_efficiency", 0.4),
+    ("model_type", "cone"),
+    ("r_Dinf", 0.15),
+    ("n_bins", 60),
+    ("step", 3.0),
+    ("rAD_known", True),
+    ("kappa2_true", 1.0),
+    ("r_0", 0.3),
+    ("r_Ainf", 0.2),
+    ("r_ADinf", 0.01),
+    ("r_ADinf", 0.4),
+    ("rAD_known", False),
 ]
 
 
 def apply_native(app, attr, value):
     if attr == "model_type":
-        pick_model(app, {"cone": "WIC (Cone)", "diffusion": "DWT (Diffusion)", "isotropic": "Isotropic"}[value])
+        pick_model(
+            app,
+            {"cone": "WIC (Cone)", "diffusion": "DWT (Diffusion)", "isotropic": "Isotropic"}[value],
+        )
     elif attr == "rAD_known":
         draw(app)
         np.random.seed(7)
@@ -174,7 +197,12 @@ def assert_same(native, qt, what):
         if isinstance(native[key], (str, bool)):
             assert native[key] == qt[key], (what, key)
         else:
-            assert native[key] == pytest.approx(qt[key], rel=1e-9, abs=1e-12, nan_ok=True), (what, key, native[key], qt[key])
+            assert native[key] == pytest.approx(qt[key], rel=1e-9, abs=1e-12, nan_ok=True), (
+                what,
+                key,
+                native[key],
+                qt[key],
+            )
 
 
 def test_defaults_and_every_edit_equal_the_qt_tool(app, qt_tool):
@@ -182,7 +210,9 @@ def test_defaults_and_every_edit_equal_the_qt_tool(app, qt_tool):
     for attr, value in EDITS:
         qt_edit(qt_tool, attr, value)
         apply_native(app, attr, value)
-        assert_same(model_state(app.tool._model), model_state(qt_tool._model), f"after {attr}={value}")
+        assert_same(
+            model_state(app.tool._model), model_state(qt_tool._model), f"after {attr}={value}"
+        )
     np.testing.assert_allclose(app.tool._model._k2hist, qt_tool._model._k2hist, equal_nan=True)
     np.testing.assert_allclose(app.tool._model._k2scale, qt_tool._model._k2scale)
 
@@ -191,7 +221,9 @@ def test_the_numbers_the_qt_window_showed_are_pinned(app):
     """Seed 7 values read off the Qt window (okf/plugins/emtk-ports/kappa2_dist/qt_values.json)."""
     m = app.tool._model
     assert (m.k2_mean, m.k2_sd) == pytest.approx((0.66644, 0.21922), abs=5e-6)
-    assert (m.Rapp_mean, m.RappSD, m.delta_deg) == pytest.approx((0.99288, 0.05216, 57.65812), abs=5e-6)
+    assert (m.Rapp_mean, m.RappSD, m.delta_deg) == pytest.approx(
+        (0.99288, 0.05216, 57.65812), abs=5e-6
+    )
     pick_model(app, "Isotropic")
     assert (m.k2_mean, m.k2_sd, m.RappSD) == pytest.approx((0.66884, 0.71818, 0.23542), abs=5e-6)
     pick_model(app, "DWT (Diffusion)")
@@ -205,7 +237,9 @@ def test_the_statistics_are_the_analytic_ones(app):
     m = app.tool._model
     assert m.k2_mean == pytest.approx(2.0 / 3.0, abs=0.02)
     assert m.k2_sd == pytest.approx(0.7071, abs=0.05)
-    assert m.SD2 == pytest.approx(-np.sqrt(0.05 / 0.38)) and m.SA2 == pytest.approx(np.sqrt(0.1 / 0.38))
+    assert m.SD2 == pytest.approx(-np.sqrt(0.05 / 0.38)) and m.SA2 == pytest.approx(
+        np.sqrt(0.1 / 0.38)
+    )
 
 
 # ── 2. actions, errors ---------------------------------------------------------------------------- #
@@ -217,7 +251,14 @@ def test_the_table_shows_every_result_and_the_order_parameters(app):
     assert rows["Mean κ²"] == f"{m.k2_mean:.4f}" and rows["SD R_app/R_DA"] == f"{m.RappSD:.4f}"
     assert rows["δ (deg)"] == f"{m.delta_deg:.2f}"
     strings = draw(app).strings
-    assert {"Mean κ²", "SD κ²", "Mean R_app/R_DA", "SD R_app/R_DA", "δ (deg)", rows["Mean κ²"]} <= set(strings)
+    assert {
+        "Mean κ²",
+        "SD κ²",
+        "Mean R_app/R_DA",
+        "SD R_app/R_DA",
+        "δ (deg)",
+        rows["Mean κ²"],
+    } <= set(strings)
 
 
 def test_the_compute_button_recomputes_with_the_same_inputs(app):
@@ -227,7 +268,9 @@ def test_the_compute_button_recomputes_with_the_same_inputs(app):
     np.random.seed(11)
     click(app, app.item_rects["compute"])
     settle(app)
-    assert m.k2_mean != first and m.k2_mean == pytest.approx(0.667, abs=0.02)  # another seed, the same distribution
+    assert m.k2_mean != first and m.k2_mean == pytest.approx(
+        0.667, abs=0.02
+    )  # another seed, the same distribution
 
 
 def test_typed_garbage_is_ignored_clamped_and_arrows_step(app):
@@ -265,13 +308,18 @@ def test_an_edit_while_computing_is_not_lost(app):
 def test_a_failing_backend_is_reported_and_the_plot_says_so(app, monkeypatch):
     from chisurf.plugins.calculator.kappa2_dist.backend import services
 
-    monkeypatch.setattr(services, "compute_kappa2_dist", lambda **p: (_ for _ in ()).throw(ValueError("grid is empty")))
+    monkeypatch.setattr(
+        services,
+        "compute_kappa2_dist",
+        lambda **p: (_ for _ in ()).throw(ValueError("grid is empty")),
+    )
     app.tool._model.model_type = "cone"
     app.kappa2_gui.on_compute()
     settle(app)
     assert app.tool.status == "The calculation failed: grid is empty"
     assert "The calculation failed: grid is empty" in draw(app).strings or any(
-        "grid is empty" in s for s in draw(app).strings)
+        "grid is empty" in s for s in draw(app).strings
+    )
     assert app.tool._model._k2hist is None and not app.kappa2_gui.has_results()
     monkeypatch.undo()
     app.kappa2_gui.on_compute()
@@ -306,25 +354,40 @@ def run_save(app, target, size=SIZE):
 
 def test_save_writes_the_csv_the_qt_tool_wrote_and_says_so(app, qt_tool, tmp_path):
     np.random.seed(7)
-    app.tool._model.compute(__import__("types").SimpleNamespace(compute=__import__(
-        "chisurf.plugins.calculator.kappa2_dist.backend.services", fromlist=["x"])._kappa2_compute_handler))
+    app.tool._model.compute(
+        __import__("types").SimpleNamespace(
+            compute=__import__(
+                "chisurf.plugins.calculator.kappa2_dist.backend.services", fromlist=["x"]
+            )._kappa2_compute_handler
+        )
+    )
     target = tmp_path / "k2.csv"
     app.write_csv(target)
     assert app.tool.status == f"Saved to k2.csv ({tmp_path})"
     qt_target = tmp_path / "qt.csv"
-    qt_tool._module.QtWidgets.QFileDialog.getSaveFileName = staticmethod(lambda *a, **k: (str(qt_target), ""))
+    qt_tool._module.QtWidgets.QFileDialog.getSaveFileName = staticmethod(
+        lambda *a, **k: (str(qt_target), "")
+    )
     shown = {}
-    qt_tool._module.dialogs.information = lambda parent, title, text: shown.update(info=(title, text))
+    qt_tool._module.dialogs.information = lambda parent, title, text: shown.update(
+        info=(title, text)
+    )
     np.random.seed(7)
     qt_tool._do_compute()
     qt_tool._on_save()
     assert shown["info"][0] == "Save Successful"
-    assert target.read_text() == qt_target.read_text()  # header, bins and probabilities, byte for byte
+    assert (
+        target.read_text() == qt_target.read_text()
+    )  # header, bins and probabilities, byte for byte
 
 
-def test_save_opens_the_file_dialog_writes_nothing_until_it_returns_and_cancel_closes_it(app, tmp_path):
+def test_save_opens_the_file_dialog_writes_nothing_until_it_returns_and_cancel_closes_it(
+    app, tmp_path
+):
     painter = run_save(app, tmp_path)
-    assert {"Cancel", "kappa2.csv"} <= set(painter.strings)  # the dialog is open, suggesting the file name
+    assert {"Cancel", "kappa2.csv"} <= set(
+        painter.strings
+    )  # the dialog is open, suggesting the file name
     assert not list(tmp_path.glob("*.csv"))
     from emtk import file_dialog as export
 
@@ -341,7 +404,9 @@ def test_save_through_the_dialog_adds_the_extension_and_reports_it(app, tmp_path
     monkeypatch.setattr(export.FileDialog, "draw", lambda self: [str(tmp_path / "distribution")])
     draw(app)
     written = tmp_path / "distribution.csv"
-    assert written.is_file() and written.read_text().startswith("# Kappa2 Distribution\n# Model: cone")
+    assert written.is_file() and written.read_text().startswith(
+        "# Kappa2 Distribution\n# Model: cone"
+    )
     assert app.tool.status == f"Saved to distribution.csv ({tmp_path})"
     shown = " ".join(draw(app).strings)
     assert "Saved to distribution.csv" in shown
@@ -351,7 +416,9 @@ def test_save_to_an_unwritable_place_keeps_the_dialog_with_the_error(app, tmp_pa
     from emtk import file_dialog as export
 
     run_save(app, tmp_path)
-    monkeypatch.setattr(export.FileDialog, "draw", lambda self: [str(tmp_path / "missing_folder" / "k2.csv")])
+    monkeypatch.setattr(
+        export.FileDialog, "draw", lambda self: [str(tmp_path / "missing_folder" / "k2.csv")]
+    )
     strings = draw(app).strings
     assert any("Could not save" in s or "missing_folder" in s for s in strings)
     monkeypatch.setattr(export.FileDialog, "draw", lambda self: False)
@@ -383,23 +450,65 @@ def test_exporting_nothing_is_an_error_not_a_file(app, tmp_path):
 @pytest.mark.parametrize("size", [SIZE, SMALL, (500, 500)])
 def test_draws_form_plot_and_statistics(app, size):
     strings = settle(app, size).strings
-    for label in ("Compute", "Save", "Guide", "Help", "Model", "r₀ (fund.)", "r_D∞", "r_A∞", "r_AD∞", "true κ²", "FRET E",
-                  "Step (°)", "Bins", "r_AD known (use δ)", "Mean κ²", "SD κ²", "Quantity", "Value"):
+    for label in (
+        "Compute",
+        "Save",
+        "Guide",
+        "Help",
+        "Model",
+        "r₀ (fund.)",
+        "r_D∞",
+        "r_A∞",
+        "r_AD∞",
+        "true κ²",
+        "FRET E",
+        "Step (°)",
+        "Bins",
+        "r_AD known (use δ)",
+        "Mean κ²",
+        "SD κ²",
+        "Quantity",
+        "Value",
+    ):
         assert label in strings, (size, label)
     assert any(s.startswith("true κ² = ") for s in strings)
 
 
 def test_every_editable_field_has_arrows_and_the_qt_range_and_step(app):
     spec = json.loads((PLUGIN / "k2dist.view.json").read_text(encoding="utf-8"))
-    qt = {s["attr"]: s for p in spec["sections"] for s in p.get("sections", []) if s.get("type") == "value"
-          and not s.get("read_only")}
-    native = {s["attr"]: s for p in app.kappa2_gui.input_spec["sections"] for s in p.get("sections", [])
-              if s.get("type") == "value"}
-    assert set(native) == set(qt) == {"r_0", "r_Dinf", "r_Ainf", "r_ADinf", "kappa2_true", "fret_efficiency", "step", "n_bins"}
+    qt = {
+        s["attr"]: s
+        for p in spec["sections"]
+        for s in p.get("sections", [])
+        if s.get("type") == "value" and not s.get("read_only")
+    }
+    native = {
+        s["attr"]: s
+        for p in app.kappa2_gui.input_spec["sections"]
+        for s in p.get("sections", [])
+        if s.get("type") == "value"
+    }
+    assert (
+        set(native)
+        == set(qt)
+        == {
+            "r_0",
+            "r_Dinf",
+            "r_Ainf",
+            "r_ADinf",
+            "kappa2_true",
+            "fret_efficiency",
+            "step",
+            "n_bins",
+        }
+    )
     for attr, section in native.items():
         assert section["style"] == "spin"
         assert (section["minimum"], section["maximum"], section.get("step")) == (
-            qt[attr]["minimum"], qt[attr]["maximum"], qt[attr].get("step")), attr
+            qt[attr]["minimum"],
+            qt[attr]["maximum"],
+            qt[attr].get("step"),
+        ), attr
 
 
 def test_no_emoji_and_the_model_choice_lists_the_qt_labels(app):
@@ -433,8 +542,9 @@ def test_every_control_has_a_tooltip(app):
             walk(s.get("sections", []))
 
     walk(spec["sections"])
-    for column in __import__("chisurf.plugins.calculator.kappa2_dist.gui.app", fromlist=["x"]).RESULTS_TABLE[
-            "sections"][0]["options"]["columns"]:
+    for column in __import__(
+        "chisurf.plugins.calculator.kappa2_dist.gui.app", fromlist=["x"]
+    ).RESULTS_TABLE["sections"][0]["options"]["columns"]:
         assert column.get("description")
 
 
@@ -452,9 +562,14 @@ def test_guide_targets_are_drawn_and_the_tour_waits_for_the_user(app):
             name = EmTkGuidedTour._target_key(target)
             assert app.item_rects.get(name), f"{step['title']}: nothing drawn for {name!r}"
     assert [s["title"] for s in steps if s.get("await")] == [
-        "Start with the worst case", "Compute, and read the mean", "Now use your own dyes",
-        "The inputs are anisotropy fits, not guesses"]
-    assert "Press <b>Help</b>" in steps[-1]["text"] and "<b>?</b>" not in steps[-1]["text"]  # the Qt '?' is Help here
+        "Start with the worst case",
+        "Compute, and read the mean",
+        "Now use your own dyes",
+        "The inputs are anisotropy fits, not guesses",
+    ]
+    assert (
+        "Press <b>Help</b>" in steps[-1]["text"] and "<b>?</b>" not in steps[-1]["text"]
+    )  # the Qt '?' is Help here
     app.kappa2_gui.tour.start(1)
     draw(app)
     assert app.kappa2_gui.tour.awaiting
@@ -498,11 +613,24 @@ def test_settings_round_trip_and_invalid_values_are_ignored(app):
     settle(other)
     assert other.export_settings() == saved
     assert other.tool._model.k2_mean != 0.0 and other.tool._model.model_type == "diffusion"
-    other.restore_settings({"model_type": "bogus", "r_0": float("nan"), "r_Dinf": 9, "n_bins": "x", "rAD_known": "yes",
-                            "step": 1e9, "fret_efficiency": -4})
+    other.restore_settings(
+        {
+            "model_type": "bogus",
+            "r_0": float("nan"),
+            "r_Dinf": 9,
+            "n_bins": "x",
+            "rAD_known": "yes",
+            "step": 1e9,
+            "fret_efficiency": -4,
+        }
+    )
     settle(other)
-    assert other.tool._model.model_type == "diffusion" and other.tool._model.r_0 == 0.38  # unusable: unchanged
-    assert other.tool._model.r_Dinf == 0.4 and other.tool._model.step == 10.0  # out of range: clamped
+    assert (
+        other.tool._model.model_type == "diffusion" and other.tool._model.r_0 == 0.38
+    )  # unusable: unchanged
+    assert (
+        other.tool._model.r_Dinf == 0.4 and other.tool._model.step == 10.0
+    )  # out of range: clamped
     assert other.tool._model.fret_efficiency == 0.001 and other.tool._model.rAD_known is False
     other.restore_settings("garbage")
     assert draw(other).strings
@@ -517,7 +645,9 @@ def test_port_is_qt_free():
 
 def test_the_manifest_opens_the_native_app():
     manifest = json.loads((PLUGIN / "manifest.json").read_text(encoding="utf-8"))
-    assert manifest["entrypoints"]["emtk"] == "chisurf.plugins.calculator.kappa2_dist.gui.app:make_app"
+    assert (
+        manifest["entrypoints"]["emtk"] == "chisurf.plugins.calculator.kappa2_dist.gui.app:make_app"
+    )
     assert isinstance(make_app(), Kappa2App)
 
 
