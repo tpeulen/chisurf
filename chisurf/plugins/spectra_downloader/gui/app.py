@@ -19,7 +19,7 @@ from emtk.app import ImApp
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
-from chisurf.plugins.emtk_layout import LabelColumn, button_row, labelled, layout_spec
+from chisurf.plugins.emtk_layout import LabelColumn, button_row, labelled, layout_spec, window_size
 
 from .native import SpectraState
 from .translations import LOCALES, TOOLTIPS, install, tr
@@ -90,6 +90,7 @@ class SpectraApp(TourTarget, ImApp):
             self.forms[key] = FormState(on_used=self.used)
         self.forms["endpoint"] = FormState(on_used=self.used)
         self.sources_json = json.loads((HERE / "spectra_emtk.view.json").read_text(encoding="utf-8"))
+        self.window_size = window_size(self.sources_json, (1100, 720))
         self.specs, self.spec_locale = {}, None
         self.help = EmTkHelpWindow(title="Spectra", resource=HERE / "help.md", on_start_guide=self.start_guide)
         self.tour = EmTkGuidedTour(
@@ -520,7 +521,9 @@ class SpectraApp(TourTarget, ImApp):
         im.set_next_window_size((width - left - 4.0, height - bar), im.Cond.ALWAYS)
         if im.begin(tr(self.panel) + "##content"):
             avail = im.get_content_region_avail()
-            self.draw_content(avail[0], avail[1])
+            im.begin_child("spectra-content", avail)
+            self.draw_content(im.get_content_region_avail()[0], avail[1])
+            im.end_child()
         im.end()
         im.set_next_window_pos((left + 4.0, height - bar), im.Cond.ALWAYS)
         im.set_next_window_size((width - left - 4.0, bar), im.Cond.ALWAYS)

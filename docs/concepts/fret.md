@@ -256,3 +256,13 @@ scalar starter refuses those before writing; it does not collapse a spectrum or
 break a link silently. Its generic 4 ns/52 Å example supplies no named-dye
 calibration. The [FRET-line guide](../guides/82_fret_lines.md) shows the guided
 entry and retained advanced views.
+
+### Browsing spectra at different window sizes
+
+The native Spectra Downloader declares a 1100 × 720 logical-pixel initial host
+size and restores saved geometry. Its scrollable stacked Browse layout exposes
+the component metadata and spectrum on narrow windows without changing stored
+wavelength or intensity arrays. This display contract supplies no extinction
+calibration or spectral normalization: those remain prerequisites of the
+overlap integral. The [spectra workflow](../guides/83_spectra_and_r0.md) illustrates
+the native layout with explicitly labelled analytic fixtures.
