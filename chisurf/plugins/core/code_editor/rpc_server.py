@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import queue
+import time
 from typing import Any
 
 from chisurf.plugins.core.code_editor.backend.services import dispatch
@@ -33,6 +34,7 @@ class EditorRpcServer:
             host=host,
         )
         self._thread = None
+        self._startup_error: Exception | None = None
 
     def start(self) -> None:
         """Start the editor RPC server in a daemon thread."""
@@ -40,8 +42,22 @@ class EditorRpcServer:
             return
         import threading
 
-        self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
+        self._startup_error = None
+        def serve() -> None:
+            try:
+                self._server.serve_forever()
+            except Exception as error:
+                self._startup_error = error
+                self._server._cleanup()
+        self._thread = threading.Thread(target=serve, daemon=True)
         self._thread.start()
+        deadline = time.monotonic() + 1.5
+        while self._thread.is_alive() and not self._server._running and self._startup_error is None and time.monotonic() < deadline:
+            time.sleep(0.005)
+        if self._startup_error is not None or not self._server._running:
+            error = self._startup_error or RuntimeError("Editor RPC startup timed out")
+            self.stop()
+            raise OSError(str(error)) from error
 
     def stop(self) -> None:
         """Stop the editor RPC server."""

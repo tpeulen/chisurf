@@ -1,0 +1,36 @@
+# Acquisition
+
+The native acquisition window keeps the legacy physical workflow: choose a
+source, explicitly **Initialize device**, configure at least one stop condition,
+then use **Start** and **Stop**. Selecting a hardware label never imports or
+contacts its wrapper. If the wrapper, driver, or card is unavailable, the
+initialization status tells you whether no device was made or initialization
+failed; the app never silently switches that choice to Simulation.
+
+## Routing, output, and settings
+
+The four routing controls are passed in order to `PipelineConfig.channels`.
+Set them to the detector routing values used by the measurement before starting.
+**Output folder** is merely passed to compatible Simulation and BrickMic
+backends; it does not promise that every TCSPC backend writes a raw file.
+
+**Save settings** and **Load settings** use a selected JSON file. They preserve
+device choice, stop conditions, routing, output text, tab visibility, and the
+full simulation dictionary. Loading validates the document but never initializes
+hardware.
+
+## Simulation and results
+
+Simulation generates encoded SPC records and feeds them through the same
+`AcquisitionPipeline` as a device FIFO. **Advanced simulation parameters** is a
+complete JSON editor: Apply constructs the real simulator engine before keeping
+the text. Result tabs show pipeline-derived count, decay/intensity, correlation,
+burst/phasor, macrotime, and MCS state; no values are fabricated for the UI.
+
+Vendor-specific setup dialogs remain a legacy Qt configuration boundary: their
+wrappers expose Qt dialogs rather than a Qt-free configuration API, so this
+native app never fakes a successful card-setup dialog.
+
+## Further reading
+
+- [Acquisition plugin README](chisurf/plugins/core/acq/README.md)

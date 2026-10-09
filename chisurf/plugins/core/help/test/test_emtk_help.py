@@ -208,8 +208,9 @@ S = \\frac{\\gamma F_{11} + F_{12}}{\\gamma F_{11} + F_{12} + F_{22}/\\beta}
 
 def test_texture_manager_math_and_figure():
     from emtk.texture import Texture
-    from chisurf.plugins.core.help.gui.help_app import HelpTextureManager
+
     from chisurf.plugins.core.help.api.toc import docs_root
+    from chisurf.plugins.core.help.gui.help_app import HelpTextureManager
 
     mgr = HelpTextureManager()
 
@@ -280,6 +281,7 @@ def test_help_emtk_default_and_ribbon_handler(qapp, qtbot):
 
     # Test drawing help GUI through EMTK with font scaling and markdown
     from emtk.testing import RecordingPainter
+
     with im.frame(RecordingPainter(), (0, 0, 1200.0, 800.0)):
         tool.app.help_gui.draw(1200.0, 800.0)
 
@@ -300,17 +302,24 @@ def test_no_indentation_cascading_on_centered_elements():
     # In bva.md, there are multiple equations and paragraphs.
     # Check that paragraph texts in RecordingPainter are aligned near left margin (around x=0 to x=60)
     # and NOT progressively pushed rightwards (e.g. x > 200).
-    bva_texts = [entry for entry in p.texts if isinstance(entry[5], str) and ("A burst is a stream of photons" in entry[5] or "taken over the" in entry[5])]
+    bva_texts = [
+        entry
+        for entry in p.texts
+        if isinstance(entry[5], str)
+        and ("A burst is a stream of photons" in entry[5] or "taken over the" in entry[5])
+    ]
     assert len(bva_texts) > 0
     for t in bva_texts:
         # Paragraph text should start near left edge of the document pane
         # Check that x is consistent and not progressively shifted (e.g. > 500)
-        assert t[0] < 450.0, f"Paragraph text was shifted right to x={t[0]}! Cascading indentation occurred."
+        assert t[0] < 450.0, (
+            f"Paragraph text was shifted right to x={t[0]}! Cascading indentation occurred."
+        )
 
 
 def test_child_scrolling_and_toolbar_navigation():
     """Verify toolbar navigation, review badges, and child scrolling."""
-    from emtk import im, IO
+    from emtk import IO, im
     from emtk.testing import RecordingPainter
 
     app = make_help_app()
@@ -414,8 +423,8 @@ def test_plugin_to_help_doc_links(qapp):
 def test_help_pinned_toolbar_and_bounded_scroll():
     """Verify toolbar remains pinned at top and scrolling is bounded strictly to visible text range."""
     from emtk import im
-    from emtk.testing import RecordingPainter
     from emtk.im_core import IO
+    from emtk.testing import RecordingPainter
 
     app = make_help_app()
     app.model.open_page("docs/getting_started/index.md")
@@ -433,8 +442,12 @@ def test_help_pinned_toolbar_and_bounded_scroll():
     initial_toolbar = {text[5]: text[1] for text in p.texts if text[5] in pinned_labels}
     # Find the document child key
     doc_child_keys = [
-        k for k in storage.keys()
-        if isinstance(k, tuple) and len(k) > 0 and k[0] == "__child__" and any("getting_started" in str(elem) for elem in k)
+        k
+        for k in storage.keys()
+        if isinstance(k, tuple)
+        and len(k) > 0
+        and k[0] == "__child__"
+        and any("getting_started" in str(elem) for elem in k)
     ]
     assert len(doc_child_keys) == 1
     doc_key = doc_child_keys[0]
@@ -456,6 +469,7 @@ def test_help_pinned_toolbar_and_bounded_scroll():
     toolbar_positions = []
     text_positions = []
     orig_text = p.text
+
     def inspect_text(x, y, w, h, align, string, colour, bold=False):
         if string in pinned_labels:
             toolbar_positions.append((y, string))
@@ -470,7 +484,9 @@ def test_help_pinned_toolbar_and_bounded_scroll():
     # Toolbar must remain pinned near the top of the pane (y in ~20..50), not scrolled off
     assert len(toolbar_positions) > 0
     for y_pos, label in toolbar_positions:
-        assert y_pos == initial_toolbar[label], f"Toolbar item {label} moved while scrolling: y={y_pos}"
+        assert y_pos == initial_toolbar[label], (
+            f"Toolbar item {label} moved while scrolling: y={y_pos}"
+        )
 
     # Frame 3: Scroll all the way back up
     io.mouse_wheel = 200.0  # Scroll up heavily
@@ -526,7 +542,10 @@ def test_multiline_list_item_and_link_wrapping():
     blocks = parse_markdown_blocks(md)
     assert len(blocks) == 2
     assert blocks[0].kind == "list_item"
-    assert blocks[0].text == "First line of item second line of item third line with [Link 1](docs/one.md) and [Link 2](docs/two.md)."
+    assert (
+        blocks[0].text
+        == "First line of item second line of item third line with [Link 1](docs/one.md) and [Link 2](docs/two.md)."
+    )
     assert blocks[1].kind == "list_item"
     assert blocks[1].text == "Second item with [Link 3](docs/three.md)."
 
@@ -588,15 +607,6 @@ def test_literature_citations_expansion_and_links():
     assert len(chips) == 2
 
 
-
-
-
-
-
-
-
-
-
 def test_document_relative_links_and_navigation_history(tmp_path):
     first = tmp_path / "first.md"
     second = tmp_path / "second.md"
@@ -652,7 +662,9 @@ def test_cancelled_help_answer_cannot_replace_new_request():
     model = HelpModel()
     model.is_asking = True
     generation = model._ask_generation
-    model._queue_ask_event(generation, lambda: model.chat_history.add_message("assistant", "late answer"))
+    model._queue_ask_event(
+        generation, lambda: model.chat_history.add_message("assistant", "late answer")
+    )
     model.cancel_ask()
     model.process_events()
     assert not model.chat_history.messages
@@ -664,6 +676,7 @@ def test_help_address_routes_documents_sources_citations_and_search(tmp_path, mo
     import chisurf.emtk.code_links as code_links
     import chisurf.emtk.doc_links as doc_links
     from chisurf.plugins.core.help.api import bibliography as bib
+
     path = tmp_path / "address.md"
     path.write_text("# Address\n\n## Detail\n")
     model = HelpModel()
@@ -671,8 +684,14 @@ def test_help_address_routes_documents_sources_citations_and_search(tmp_path, mo
     assert model.current_path == path
     assert model.current_anchor == "detail"
     opened = []
-    monkeypatch.setattr(code_links, "open_source", lambda target, base=None, prefer_emtk=None: opened.append(target) or True)
-    monkeypatch.setattr(doc_links, "open_link", lambda target, base=None: opened.append(target) or True)
+    monkeypatch.setattr(
+        code_links,
+        "open_source",
+        lambda target, base=None, prefer_emtk=None: opened.append(target) or True,
+    )
+    monkeypatch.setattr(
+        doc_links, "open_link", lambda target, base=None: opened.append(target) or True
+    )
     monkeypatch.setattr(bib, "bibliography", lambda: {"reference": object()})
     monkeypatch.setattr(bib, "entry_url", lambda entry: "https://example.org/reference")
     assert model.navigate_address("src:source.py#symbol")
@@ -685,14 +704,23 @@ def test_help_address_routes_documents_sources_citations_and_search(tmp_path, mo
 
 def test_help_human_and_ai_review_write_current_saved_page(tmp_path, monkeypatch):
     from chisurf.plugins.core.help.api import review
+
     path = tmp_path / "review.md"
     path.write_text("# Review\n")
     model = HelpModel()
     model.open_page(path)
     calls = []
     monkeypatch.setattr(review, "is_tracked", lambda path: True)
-    monkeypatch.setattr(review, "set_status", lambda path, status, **kwargs: calls.append((path, status, kwargs)) or True)
-    monkeypatch.setattr(model, "_get_review_status", lambda path: calls[-1][1] if calls else review.STATUS_UNREVIEWED)
+    monkeypatch.setattr(
+        review,
+        "set_status",
+        lambda path, status, **kwargs: calls.append((path, status, kwargs)) or True,
+    )
+    monkeypatch.setattr(
+        model,
+        "_get_review_status",
+        lambda path: calls[-1][1] if calls else review.STATUS_UNREVIEWED,
+    )
     assert model.set_review_status(review.STATUS_REVIEWED)
     assert calls[-1][2]["reviewer_kind"] == "human"
     assert model.set_review_status(review.STATUS_AI_REVIEWED)
@@ -706,6 +734,7 @@ def test_help_human_and_ai_review_write_current_saved_page(tmp_path, monkeypatch
 def test_virtual_help_home_has_no_review_badge():
     from emtk import im
     from emtk.testing import RecordingPainter
+
     app = make_help_app()
     painter = RecordingPainter()
     with im.frame(painter, (0, 0, 1200, 760)):
@@ -716,25 +745,32 @@ def test_virtual_help_home_has_no_review_badge():
 
 
 def test_loaded_help_rich_content_renders_math_table_figure_and_anchor(tmp_path):
-    from PIL import Image
     from emtk import im
     from emtk.testing import PixelPainter
+    from PIL import Image
+
     Image.new("RGBA", (32, 16), "blue").save(tmp_path / "figure.png")
     path = tmp_path / "rich.md"
-    path.write_text("# Rich page\n\n(detail)=\n## Detail\n\n$$\nE = \\frac{1}{1+(R/R_0)^6}\n$$\n\n| Parameter | Value |\n|---|---|\n| Distance | 42 |\n\n![Figure](figure.png)\n")
+    path.write_text(
+        "# Rich page\n\n(detail)=\n## Detail\n\n$$\nE = \\frac{1}{1+(R/R_0)^6}\n$$\n\n| Parameter | Value |\n|---|---|\n| Distance | 42 |\n\n![Figure](figure.png)\n"
+    )
     app = make_help_app()
     assert app.model.open_page(path, anchor="detail")
+
     class RichPainter(PixelPainter):
         def __init__(self):
             super().__init__(1200, 900)
             self.strings = []
             self.textures = []
+
         def text(self, *args, **kwargs):
             self.strings.append(args[5])
             return super().text(*args, **kwargs)
+
         def image(self, *args, **kwargs):
             self.textures.append(args[4])
             return super().image(*args, **kwargs)
+
     painter = RichPainter()
     with im.frame(painter, (0, 0, 1200, 900)):
         app._render()
@@ -749,6 +785,7 @@ def test_loaded_help_rich_content_renders_math_table_figure_and_anchor(tmp_path)
 
 def test_native_help_review_registry_staleness_and_human_signoff(tmp_path, monkeypatch):
     from chisurf.plugins.core.help.api import review
+
     monkeypatch.setattr(review, "tracked_dirs", lambda: [tmp_path])
     path = tmp_path / "tracked.md"
     path.write_text("# Tracked\n")

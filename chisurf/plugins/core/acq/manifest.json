@@ -23,6 +23,7 @@
   },
   "entrypoints": {
     "gui": "chisurf.plugins.core.acq.gui.tool:SMAcquisitionManager",
+    "emtk": "chisurf.plugins.core.acq.gui.app:make_app",
     "cli": "photon-acquisition=chisurf.plugins.core.acq.standalone:main",
     "services": "chisurf.plugins.core.acq.services:register"
   },

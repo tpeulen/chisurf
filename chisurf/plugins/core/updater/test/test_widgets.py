@@ -32,7 +32,9 @@ def test_a_failed_operation_reports_one_error_and_one_log_line(qapp, qtbot, monk
     from chisurf.plugins.core.updater.package_widget import PackageManagerWidget
 
     errors = []
-    monkeypatch.setattr(dialogs, "error", lambda parent, title, text, **k: errors.append((title, text)))
+    monkeypatch.setattr(
+        dialogs, "error", lambda parent, title, text, **k: errors.append((title, text))
+    )
     widget = PackageManagerWidget()
     qtbot.addWidget(widget)
     qtbot.wait(200)
@@ -51,7 +53,7 @@ def test_a_widget_deleted_while_its_worker_runs_does_not_abort_the_process(qapp)
     worker = pw.PackageWorker(lambda: time.sleep(0.3) or (True, [], ""))
     worker.start()
     assert worker in pw._ALIVE
-    del worker                                   # the starter lets go of it at once
+    del worker  # the starter lets go of it at once
     deadline = time.time() + 5
     while any(not w.isFinished() for w in pw._ALIVE) and time.time() < deadline:
         qapp.processEvents()
@@ -66,12 +68,16 @@ def test_search_results_of_conda_and_micromamba_are_flattened_to_the_rows_the_ta
 
     from .fakes import SEARCH_CONDA, SEARCH_MICROMAMBA
 
-    expected = [{"name": "numpy", "version": "2.0.1", "channel": "conda-forge"},
-                {"name": "numpy", "version": "1.26.4", "channel": "conda-forge"},
-                {"name": "numpy", "version": "1.26.3", "channel": "conda-forge"}]
+    expected = [
+        {"name": "numpy", "version": "2.0.1", "channel": "conda-forge"},
+        {"name": "numpy", "version": "1.26.4", "channel": "conda-forge"},
+        {"name": "numpy", "version": "1.26.3", "channel": "conda-forge"},
+    ]
     assert normalize_search_results(SEARCH_CONDA) == expected
     assert normalize_search_results(SEARCH_MICROMAMBA) == expected
-    assert normalize_search_results([{"name": "a", "version": "1", "channel": "x"}]) == [{"name": "a", "version": "1", "channel": "x"}]
+    assert normalize_search_results([{"name": "a", "version": "1", "channel": "x"}]) == [
+        {"name": "a", "version": "1", "channel": "x"}
+    ]
     assert normalize_search_results(None) == []
     for payload in (SEARCH_CONDA, SEARCH_MICROMAMBA):
         fakes.search_payload = payload

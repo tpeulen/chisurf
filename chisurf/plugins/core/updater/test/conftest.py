@@ -17,7 +17,9 @@ def nothing_ran(fakes):
     """After every test: no process was started and the elevated runner and the restart were never reached."""
     yield
     assert fakes.process_attempts == [], "a test tried to start a process"
-    assert not [c for kind, c in fakes.update_commands if kind in ("run_command", "run_with_elevation")]
+    assert not [
+        c for kind, c in fakes.update_commands if kind in ("run_command", "run_with_elevation")
+    ]
     assert fakes.restarts == 0
 
 

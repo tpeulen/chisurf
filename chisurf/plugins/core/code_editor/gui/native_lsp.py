@@ -1,4 +1,5 @@
 """Optional Python LSP over stdio, with no Qt event-loop dependency."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -39,21 +40,40 @@ class NativeLspClient:
             elif importlib.util.find_spec("pylsp") is not None:
                 command = [sys.executable, "-m", "pylsp"]
             else:
-                self.status_changed.emit("Python LSP unavailable: optional python-lsp-server is not installed")
+                self.status_changed.emit(
+                    "Python LSP unavailable: optional python-lsp-server is not installed"
+                )
                 return False
         self._stopping = False
         try:
-            self.process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE, cwd=str(self.root_path))
+            self.process = subprocess.Popen(
+                command,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                cwd=str(self.root_path),
+            )
         except OSError as error:
             self.status_changed.emit(f"LSP unavailable: {error}")
             return False
         self.status_changed.emit("LSP starting")
         threading.Thread(target=self._read_stdout, daemon=True).start()
         threading.Thread(target=self._read_stderr, daemon=True).start()
-        self.request("initialize", {"processId": None, "rootUri": self.root_path.as_uri(),
-            "capabilities": {"textDocument": {"completion": {"completionItem": {"snippetSupport": False}},
-                "publishDiagnostics": {}, "hover": {"contentFormat": ["markdown", "plaintext"]}}}}, self._initialized)
+        self.request(
+            "initialize",
+            {
+                "processId": None,
+                "rootUri": self.root_path.as_uri(),
+                "capabilities": {
+                    "textDocument": {
+                        "completion": {"completionItem": {"snippetSupport": False}},
+                        "publishDiagnostics": {},
+                        "hover": {"contentFormat": ["markdown", "plaintext"]},
+                    }
+                },
+            },
+            self._initialized,
+        )
         return True
 
     def _initialized(self, result) -> None:
@@ -109,22 +129,31 @@ class NativeLspClient:
             start = boundary + 4
             if len(self._buffer) < start + length:
                 return
-            body = bytes(self._buffer[start:start + length])
-            del self._buffer[:start + length]
+            body = bytes(self._buffer[start : start + length])
+            del self._buffer[: start + length]
             self._handle_message(json.loads(body.decode("utf-8")))
 
     def _handle_message(self, message) -> None:
         if "id" in message and "method" in message:
             method = message["method"]
-            result = [{} for _ in message.get("params", {}).get("items", [])] if method == "workspace/configuration" else None
+            result = (
+                [{} for _ in message.get("params", {}).get("items", [])]
+                if method == "workspace/configuration"
+                else None
+            )
             if method == "workspace/applyEdit":
-                result = {"applied": False, "failureReason": "Unsolicited workspace edits are not supported"}
+                result = {
+                    "applied": False,
+                    "failureReason": "Unsolicited workspace edits are not supported",
+                }
             self._send({"jsonrpc": "2.0", "id": message["id"], "result": result})
         elif "id" in message:
             with self._lock:
                 callback = self._callbacks.pop(message["id"], None)
             if "error" in message:
-                self.status_changed.emit(f"LSP error: {message['error'].get('message', message['error'])}")
+                self.status_changed.emit(
+                    f"LSP error: {message['error'].get('message', message['error'])}"
+                )
             if callback is not None:
                 callback(message.get("result"))
         elif message.get("method") == "textDocument/publishDiagnostics":
@@ -154,7 +183,9 @@ class NativeLspClient:
                 for line in process.stderr:
                     if self._stopping:
                         return
-                    self.status_changed.emit("LSP: " + line.decode("utf-8", errors="replace").rstrip())
+                    self.status_changed.emit(
+                        "LSP: " + line.decode("utf-8", errors="replace").rstrip()
+                    )
         except (OSError, ValueError):
             pass
 
@@ -165,11 +196,20 @@ class NativeLspClient:
         previous = self._opened.get(uri)
         if previous is None:
             self._opened[uri] = (text, 1)
-            self.notify("textDocument/didOpen", {"textDocument": {"uri": uri, "languageId": "python", "version": 1, "text": text}})
+            self.notify(
+                "textDocument/didOpen",
+                {"textDocument": {"uri": uri, "languageId": "python", "version": 1, "text": text}},
+            )
         elif previous[0] != text:
             version = previous[1] + 1
             self._opened[uri] = (text, version)
-            self.notify("textDocument/didChange", {"textDocument": {"uri": uri, "version": version}, "contentChanges": [{"text": text}]})
+            self.notify(
+                "textDocument/didChange",
+                {
+                    "textDocument": {"uri": uri, "version": version},
+                    "contentChanges": [{"text": text}],
+                },
+            )
 
     def close_document(self, path) -> None:
         uri = pathlib.Path(path).resolve().as_uri()
@@ -177,8 +217,14 @@ class NativeLspClient:
             self.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
 
     def at_position(self, method, path, line, character, callback) -> None:
-        self.request("textDocument/" + method, {"textDocument": {"uri": pathlib.Path(path).resolve().as_uri()},
-            "position": {"line": line, "character": character}}, callback)
+        self.request(
+            "textDocument/" + method,
+            {
+                "textDocument": {"uri": pathlib.Path(path).resolve().as_uri()},
+                "position": {"line": line, "character": character},
+            },
+            callback,
+        )
 
     def stop(self) -> None:
         self._stopping = True

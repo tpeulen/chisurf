@@ -1,0 +1,15 @@
+{
+  "score": 72,
+  "verdict": "revise",
+  "threshold": 90,
+  "threshold_pass": false,
+  "category_match": true,
+  "reference_images": [],
+  "generated_screenshots": ["native-normal.png", "native-narrow.png"],
+  "differences": [
+    "Native credential fields and login actions are present, but a genuine Qt reference could not be captured in this environment.",
+    "Session-token persistence and optional password-change prompts need matched workflow verification."
+  ],
+  "suggestions": ["Capture a populated Qt login reference on a GPU-enabled runner and verify token/settings side effects."],
+  "reasoning": "The native surface reuses the MMFDB client login seam and avoids Qt imports, but visual and full authentication parity remain provisional."
+}

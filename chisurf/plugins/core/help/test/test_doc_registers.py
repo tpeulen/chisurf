@@ -115,7 +115,7 @@ def test_the_refresh_rule_is_written_down():
 
 @pytest.mark.parametrize("register", ["figures.md", "tables.md", "code.md"])
 def test_register_is_reachable_from_the_reference_section(register):
-    index = (docs_root() / "reference" / "index.rst").read_text(encoding="utf-8")
+    index = (docs_root() / "reference" / "index.md").read_text(encoding="utf-8")
     assert pathlib.Path(register).stem in index
 
 

@@ -28,13 +28,20 @@ _DOTTED = re.compile(r"\b(chisurf(?:\.[a-z_][a-z_0-9]*)+)\b")
 _NOT_MODULES = {"chisurf.fits", "chisurf.current_fit", "chisurf.macros.add_dataset"}
 
 
+def _page_text(page) -> str:
+    """The page's Markdown body, with the OKF front matter removed."""
+    from chisurf.plugins.core.help.api.markdown import strip_front_matter
+
+    return strip_front_matter(page.read_text(encoding="utf-8"))
+
+
 def _snippets() -> list[tuple[str, str]]:
     """Return ``(page, code)`` for every Python block in the manual."""
     manual = docs_root() / "manual"
     blocks = []
-    for page in sorted(manual.glob("*.rst")):
-        text = page.read_text(encoding="utf-8")
-        for match in re.finditer(r"\.\. code-block:: python\n\n((?:[ \t]+.*\n|\n)+)", text):
+    for page in sorted(manual.glob("*.md")):
+        text = _page_text(page)
+        for match in re.finditer(r"^```python\s*\n(.*?)^```", text, re.MULTILINE | re.DOTALL):
             blocks.append((page.name, match.group(1)))
     return blocks
 
@@ -60,7 +67,7 @@ def _resolve(dotted: str) -> bool:
 @pytest.mark.parametrize(
     "page,code",
     _snippets(),
-    ids=lambda value: value if isinstance(value, str) and value.endswith(".rst") else "",
+    ids=lambda value: value if isinstance(value, str) and value.endswith(".md") else "",
 )
 def test_snippet_names_resolve(page, code):
     """Every ``chisurf.…`` name a manual snippet uses must still exist."""
@@ -81,7 +88,7 @@ def test_sample_fit_is_documented_with_its_real_signature():
     parameters = list(inspect.signature(sample_fit).parameters)
     assert parameters[:2] == ["fit", "target_directory"]
 
-    page = (docs_root() / "manual" / "parameter_sampling.rst").read_text(encoding="utf-8")
+    page = (docs_root() / "manual" / "parameter_sampling.md").read_text(encoding="utf-8")
     assert "sample_fit(fit, " in page
     # The old spelling wrote a *file*; it now creates a timestamped directory.
     assert "filename=" not in page
@@ -91,9 +98,10 @@ def test_manual_pages_are_not_stubs():
     """A page saying "Missing" is a broken promise in the table of contents."""
     manual = docs_root() / "manual"
     stubs = []
-    for page in sorted(manual.glob("*.rst")):
-        text = page.read_text(encoding="utf-8")
-        body = "\n".join(text.splitlines()[2:]).strip()
+    for page in sorted(manual.glob("*.md")):
+        body = "\n".join(
+            line for line in _page_text(page).splitlines() if not line.startswith("#")
+        ).strip()
         if len(body.split()) < 12 or body.lower() in {"missing", "tbd", "todo"}:
             stubs.append(page.name)
     assert not stubs, stubs
@@ -108,9 +116,13 @@ def test_no_lost_conversion_artifacts():
     """
     manual = docs_root() / "manual"
     offenders = []
-    for page in sorted(manual.glob("*.rst")):
-        for number, line in enumerate(page.read_text(encoding="utf-8").splitlines(), 1):
-            if line.startswith((" ", "\t", "..")) or not line.strip():
+    for page in sorted(manual.glob("*.md")):
+        in_fence = False
+        for number, line in enumerate(_page_text(page).splitlines(), 1):
+            if line.startswith("```"):
+                in_fence = not in_fence
+                continue
+            if in_fence or line.startswith((" ", "\t", "..", "|")) or not line.strip():
                 continue
             if re.search(r"\S\s\s+\S", line) or ", ," in line or re.search(r"\(\)\.?\s", line):
                 offenders.append(f"{page.name}:{number}")

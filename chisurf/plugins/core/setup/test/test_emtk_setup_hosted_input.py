@@ -183,7 +183,9 @@ def test_the_real_time_switch_is_a_real_click_and_is_hidden_for_vendor_devices(a
     hub.click(child_rect(hub, "device_type"))
     hub.click_text("Simulation")
     hub.draw(2)
-    assert model.config["device_type"] == "Simulation" and "real_time_sim" in hub.app.child.form.rects
+    assert (
+        model.config["device_type"] == "Simulation" and "real_time_sim" in hub.app.child.form.rects
+    )
 
 
 def test_a_simulator_parameter_edit_keeps_every_other_stored_parameter(acq):
@@ -211,7 +213,9 @@ def test_the_browse_button_opens_the_folder_chooser_and_choose_stores_the_folder
 
 
 def test_the_acquisition_defaults_equal_what_the_qt_simulator_dialog_writes():
-    from chisurf.plugins.core.acq.tcspc_devices.simulation.setup_dialog import SimulationSettingsModel
+    from chisurf.plugins.core.acq.tcspc_devices.simulation.setup_dialog import (
+        SimulationSettingsModel,
+    )
     from chisurf.plugins.core.setup.gui.acq_app import simulation_defaults
 
     assert simulation_defaults() == SimulationSettingsModel().to_parameters()
@@ -228,7 +232,9 @@ def test_the_acquisition_settings_survive_a_round_trip_through_the_settings_file
     model = hub.app.child.model
     model.chunk_size = 4096
     model.device_type = "BrickMic"
-    data = yaml.safe_load((Path(os.environ["CHISURF_SETTINGS_DIR"]) / "settings_chisurf.yaml").read_text())
+    data = yaml.safe_load(
+        (Path(os.environ["CHISURF_SETTINGS_DIR"]) / "settings_chisurf.yaml").read_text()
+    )
     stored = data.get("gui", {}).get("acquisition") or data.get("acquisition")
     assert stored["chunk_size"] == 4096 and stored["device_type"] == "BrickMic"
     assert AcquisitionSettingsModel(stored).chunk_size == 4096
@@ -264,10 +270,15 @@ def test_the_chisurf_settings_help_button_opens_help_and_save_writes_the_file(hu
     hub.draw(2)
     editor.document.text = "gui:\n  language: fr\n"
     hub.click_text("Save")
-    assert "language: fr" in (Path(os.environ["CHISURF_SETTINGS_DIR"]) / "settings_chisurf.yaml").read_text()
+    assert (
+        "language: fr"
+        in (Path(os.environ["CHISURF_SETTINGS_DIR"]) / "settings_chisurf.yaml").read_text()
+    )
 
 
-def test_chisurf_settings_shows_the_defaults_under_the_users_values_and_saves_only_the_differences(hub):
+def test_chisurf_settings_shows_the_defaults_under_the_users_values_and_saves_only_the_differences(
+    hub,
+):
     import os
 
     import yaml
@@ -275,13 +286,17 @@ def test_chisurf_settings_shows_the_defaults_under_the_users_values_and_saves_on
     hub.app.select("chisurf")
     editor = hub.app.child
     shown = yaml.safe_load(editor.document.text)
-    assert shown["gui"]["language"] == "en" and "correlator" in shown       # a packaged default, not in the user file
+    assert (
+        shown["gui"]["language"] == "en" and "correlator" in shown
+    )  # a packaged default, not in the user file
     shown["gui"]["theme"] = "light"
     editor.document.text = yaml.safe_dump(shown, sort_keys=False)
     assert editor.save()
-    written = yaml.safe_load((Path(os.environ["CHISURF_SETTINGS_DIR"]) / "settings_chisurf.yaml").read_text())
+    written = yaml.safe_load(
+        (Path(os.environ["CHISURF_SETTINGS_DIR"]) / "settings_chisurf.yaml").read_text()
+    )
     assert written["gui"]["theme"] == "light"
-    assert "correlator" not in written                                      # defaults are not frozen into the file
+    assert "correlator" not in written  # defaults are not frozen into the file
 
 
 def test_a_hosted_panels_own_close_button_does_not_close_the_window_and_says_so(hub):

@@ -59,7 +59,9 @@ def dest(hub_driver, key):
 def shown_labels(drv):
     """Labels of the destinations drawn in the sidebar (their selectable rows)."""
     drv.draw(2)
-    return [p.label for p in PANELS if "dest_" + p.key in drv.app.item_rects and drv.drawn_sidebar(p)]
+    return [
+        p.label for p in PANELS if "dest_" + p.key in drv.app.item_rects and drv.drawn_sidebar(p)
+    ]
 
 
 def in_sidebar(drv, painter=None):
@@ -67,7 +69,13 @@ def in_sidebar(drv, painter=None):
     box = drv.app.item_rects["destinations"]
     found = []
     for x, y, w, h, *_rest, text in [t[:4] + (None, t[5]) for t in painter.texts]:
-        if text in LABELS and x >= box[0] and x + w <= box[0] + box[2] + 1 and y >= box[1] and y + h <= box[1] + box[3]:
+        if (
+            text in LABELS
+            and x >= box[0]
+            and x + w <= box[0] + box[2] + 1
+            and y >= box[1]
+            and y + h <= box[1] + box[3]
+        ):
             found.append(text)
     return found
 
@@ -97,7 +105,9 @@ def test_every_sidebar_entry_opens_its_dedicated_panel_by_a_real_click(hub, size
         assert hub.app.routes[panel.key] != "unavailable"
 
 
-def test_only_the_settings_file_editor_is_a_file_editor_and_it_is_the_chisurf_settings_destination(hub):
+def test_only_the_settings_file_editor_is_a_file_editor_and_it_is_the_chisurf_settings_destination(
+    hub,
+):
     for panel in PANELS:
         hub.app.select(panel.key)
     generic = [k for k, c in hub.app.children.items() if type(c).__name__ == "ConfigurationApp"]
@@ -115,7 +125,7 @@ def test_layout_sidebar_width_no_clipping_and_the_panel_gets_the_space(hub, size
     panel = hub.app.item_rects["panel"]
     assert panel[0] == pytest.approx(box[2]) and panel[0] + panel[2] == pytest.approx(size[0])
     status = hub.app.item_rects["status"]
-    assert panel[1] + panel[3] <= status[1] + 1          # the panel ends above the status line
+    assert panel[1] + panel[3] <= status[1] + 1  # the panel ends above the status line
     for name in ("guide", "help", "back", "ff", "next"):
         x, y, w, h = hub.app.item_rects[name]
         assert 0 <= x and x + w <= size[0] and 0 <= y and y + h <= size[1], name
@@ -241,7 +251,7 @@ def test_fast_forward_visits_every_remaining_destination_and_says_so(hub):
     assert hub.app.status == "Fast-forward finished - the pipeline is done"
     assert any(s.startswith("Fast-forward 1/15: Getting Started") for s in statuses)
     assert any(s == "Fast-forward 15/15: Plugin Check" for s in statuses)
-    assert len(hub.app.children) == 15            # every destination was built on the way
+    assert len(hub.app.children) == 15  # every destination was built on the way
     assert not hub.app.fast_forward
 
 
@@ -285,16 +295,16 @@ def test_the_guide_walks_the_hub_and_waits_for_the_real_controls(hub):
     tour = hub.app.tour
     assert tour.active and tour.step_idx == 0 and tour.awaiting
     tour.next()
-    assert tour.step_idx == 0                     # Next does nothing until the search box was used
+    assert tour.step_idx == 0  # Next does nothing until the search box was used
     type_search(hub, "p")
     assert not tour.awaiting
-    tour.next()                                   # step 2: informational
+    tour.next()  # step 2: informational
     assert tour.step_idx == 1 and not tour.awaiting
-    tour.next()                                   # step 3: wait for a click on a destination
+    tour.next()  # step 3: wait for a click on a destination
     assert tour.step_idx == 2 and tour.awaiting
     hub.click(dest(hub, "plots"))
     assert not tour.awaiting
-    tour.next()                                   # step 4: wait for Next
+    tour.next()  # step 4: wait for Next
     assert tour.step_idx == 3 and tour.awaiting
     hub.click_name("next")
     assert not tour.awaiting
@@ -324,7 +334,13 @@ def test_the_tour_card_does_not_cover_the_control_it_points_at(hub):
         rect = hub.app.item_rects[step["target"]["name"]]
         w, h = hub.size
         x, y = place_tour_card(rect, w, h, min(480.0, w - 40.0), 140.0)
-        assert x + 480 <= rect[0] or x >= rect[0] + rect[2] or y + 140 <= rect[1] or y >= rect[1] + rect[3] or rect[2] > w * 0.5, step["title"]
+        assert (
+            x + 480 <= rect[0]
+            or x >= rect[0] + rect[2]
+            or y + 140 <= rect[1]
+            or y >= rect[1] + rect[3]
+            or rect[2] > w * 0.5
+        ), step["title"]
 
 
 # ----------------------------------------------------------------------------------------------- hosting
@@ -401,7 +417,7 @@ def fake_hub(world, monkeypatch):
     from chisurf.plugins.core.setup.gui import app as app_module
 
     fake = Recorder()
-    monkeypatch.setattr(app_module, "resolve_factory", lambda panel: (lambda: fake))
+    monkeypatch.setattr(app_module, "resolve_factory", lambda panel: lambda: fake)
     app = app_module.make_app(settings_dir=world)
     drv = Driver(app)
     drv.draw(3)
@@ -410,7 +426,7 @@ def fake_hub(world, monkeypatch):
 
 def test_the_hub_forwards_pointer_wheel_keys_focus_loss_and_drops_to_the_hosted_app(fake_hub):
     drv, fake = fake_hub
-    drv.app.select("style")                                  # a non-file destination: the fake is hosted
+    drv.app.select("style")  # a non-file destination: the fake is hosted
     assert drv.app.child is fake
     bx, by, bw, bh = drv.app.child_box
     inside = (bx + 50, by + 40)
@@ -423,7 +439,17 @@ def test_the_hub_forwards_pointer_wheel_keys_focus_loss_and_drops_to_the_hosted_
     assert drv.app.files_dropped(["/tmp/x.dat"])
     drv.app.focus_lost()
     names = [e[0] for e in fake.log]
-    for expected in ("draw", "move", "press", "release", "wheel", "key", "key_release", "drop", "focus_lost"):
+    for expected in (
+        "draw",
+        "move",
+        "press",
+        "release",
+        "wheel",
+        "key",
+        "key_release",
+        "drop",
+        "focus_lost",
+    ):
         assert expected in names, (expected, names)
     local = (inside[0] - bx, inside[1] - by)
     assert ("press", *local, 1) in fake.log and ("wheel", *local, -2) in fake.log
@@ -442,7 +468,12 @@ def test_a_press_outside_the_hosted_panel_does_not_reach_it_and_keys_stay_with_t
     drv.app.key(keys.KEY_DOWN, "")
     drv.app.wheel(*sidebar, -1)
     names = [e[0] for e in fake.log]
-    assert "press" not in names and "release" not in names and "key" not in names and "wheel" not in names
+    assert (
+        "press" not in names
+        and "release" not in names
+        and "key" not in names
+        and "wheel" not in names
+    )
 
 
 def test_the_wheel_after_a_hosted_panel_was_left_never_reaches_a_stale_child(fake_hub):
@@ -519,7 +550,10 @@ def test_every_hub_control_has_a_tooltip(hub, size):
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "emtk_port_parity", str(__import__("pathlib").Path(__file__).parents[5] / "test" / "gui" / "emtk_port_parity.py")
+        "emtk_port_parity",
+        str(
+            __import__("pathlib").Path(__file__).parents[5] / "test" / "gui" / "emtk_port_parity.py"
+        ),
     )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -561,7 +595,13 @@ print('QT-FREE OK')
 
     from chisurf.plugins.core.updater.test.fakes import REAL_POPEN
 
-    proc = REAL_POPEN([sys.executable, "-c", code, str(world)], env=os.environ.copy(), text=True, stdout=sp.PIPE, stderr=sp.PIPE)
+    proc = REAL_POPEN(
+        [sys.executable, "-c", code, str(world)],
+        env=os.environ.copy(),
+        text=True,
+        stdout=sp.PIPE,
+        stderr=sp.PIPE,
+    )
     out, err = proc.communicate(timeout=300)
     assert proc.returncode == 0 and "QT-FREE OK" in out, out + err[-3000:]
 
@@ -578,7 +618,12 @@ def test_the_saved_window_state_is_plain_json_and_restores_in_a_new_hub(world):
     app.close()
     again = make_app(settings_dir=world)
     again.restore_settings(state)
-    assert again.selected == "check" and set(again.export_settings()["children"]) >= {"acq", "plots", "models", "check"}
+    assert again.selected == "check" and set(again.export_settings()["children"]) >= {
+        "acq",
+        "plots",
+        "models",
+        "check",
+    }
     again.close()
 
 
@@ -633,7 +678,7 @@ def test_drawing_and_using_each_hosted_panel_never_touches_the_real_chisurf_fold
     drv.click((bx + bw * 0.5, by + bh * 0.5, 4, 4))
     drv.wheel(bx + bw * 0.5, by + bh * 0.5, -2)
     app.export_settings()
-    app.close()                       # panels persist their preferences on close
+    app.close()  # panels persist their preferences on close
     assert real_settings_state() == before, key
     assert os.environ["CHISURF_SETTINGS_DIR"] == str(world)
 

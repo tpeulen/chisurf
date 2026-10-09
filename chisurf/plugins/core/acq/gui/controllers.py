@@ -411,7 +411,7 @@ class MCSPlotController(QWidget):
         self.update_frequency_spinbox.setSuffix(" chunks")
         update_layout.addWidget(self.update_frequency_spinbox)
         mcs_layout.addLayout(update_layout)
-        layout.addLayout(mcs_layout)
+        layout.addWidget(mcs_group)
 
         # Y range controls
         y_range_group = QGroupBox("Y Range")

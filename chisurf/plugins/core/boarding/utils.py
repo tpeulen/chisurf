@@ -217,7 +217,9 @@ def _setups_cells(label: str, summary: dict) -> dict:
         return _status_cells(label, "OK", _OK_COLOR, f"{count} {noun} {where}".strip())
     # count == 0 → nothing defined yet; phrase by store so it never looks broken.
     if store == "mmfdb":
-        return _status_cells(label, "none yet", _NEUTRAL_COLOR, "MMFDB connected — none defined yet")
+        return _status_cells(
+            label, "none yet", _NEUTRAL_COLOR, "MMFDB connected — none defined yet"
+        )
     return _status_cells(label, "none yet", _NEUTRAL_COLOR, "define one when needed")
 
 

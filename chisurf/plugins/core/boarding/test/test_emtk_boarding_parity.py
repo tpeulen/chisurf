@@ -140,7 +140,9 @@ def test_finish_does_nothing_before_the_last_step(model):
 
 
 def test_next_is_never_gated_the_wizard_is_not_linear(model):
-    assert not model.step_complete(model.steps.index(next(s for s in model.steps if s.id == "detector")))
+    assert not model.step_complete(
+        model.steps.index(next(s for s in model.steps if s.id == "detector"))
+    )
     for _ in range(len(QT_STEPS) - 1):
         model.go_next()
     assert model.is_last
@@ -161,7 +163,9 @@ def qt_wizard(tmp_path):
     from qtpy import QtCore, QtWidgets
 
     QtCore.QSettings.setDefaultFormat(QtCore.QSettings.IniFormat)
-    QtCore.QSettings.setPath(QtCore.QSettings.IniFormat, QtCore.QSettings.UserScope, str(tmp_path / "qt"))
+    QtCore.QSettings.setPath(
+        QtCore.QSettings.IniFormat, QtCore.QSettings.UserScope, str(tmp_path / "qt")
+    )
     qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     from chisurf.gui.autoform.sections.wizard_section import WizardWidget
     from chisurf.plugins.core.boarding.wizard import WelcomeToChiSurfWizard
@@ -212,7 +216,11 @@ def test_status_table_rows_equal_the_qt_html_rows(model):
 
     html = utils.build_status_html()
     rows = model.status_rows()
-    assert [r["item"] for r in rows][:3] == ["User settings directory", "settings_chisurf.yaml", "settings_colors.yaml"]
+    assert [r["item"] for r in rows][:3] == [
+        "User settings directory",
+        "settings_chisurf.yaml",
+        "settings_colors.yaml",
+    ]
     assert len(rows) == html.count("<tr>")
     for row in rows:
         assert row["item"] in html and row["status"] in html
@@ -226,7 +234,9 @@ def test_status_table_rows_equal_the_qt_html_rows(model):
 def test_create_missing_writes_only_missing_files(model, hermetic):
     target = hermetic / "settings_colors.yaml"
     assert not target.exists()
-    assert {r["item"]: r["status"] for r in model.status_rows()}["settings_colors.yaml"] == "MISSING"
+    assert {r["item"]: r["status"] for r in model.status_rows()}[
+        "settings_colors.yaml"
+    ] == "MISSING"
     model.create_missing()
     assert target.is_file()
     assert model.repair_ok and "missing files only" in model.repair_message
@@ -399,7 +409,16 @@ def spec_walk(spec):
 def test_every_spec_key_exists_on_the_model(model, app):
     spec = json.loads(SPEC_FILE.read_text())
     names = [s["name"] for s in spec["sections"]]
-    assert names[2:] == ["welcome", "settings", "fix", "experiments", "dependencies", "detector", "fcs", "finish"]
+    assert names[2:] == [
+        "welcome",
+        "settings",
+        "fix",
+        "experiments",
+        "dependencies",
+        "detector",
+        "fcs",
+        "finish",
+    ]
     for section in spec_walk(spec):
         for button in section.get("buttons", []):
             assert callable(getattr(model, button["action"], None)), button["action"]
@@ -424,7 +443,10 @@ def test_every_control_has_a_tooltip_on_every_step(app):
     for index in range(len(QT_STEPS)):
         app.model.go_to(index)
         inventory = emtk_inventory(app)
-        assert inventory["controls_without_tooltip"] == [], (index, inventory["controls_without_tooltip"])
+        assert inventory["controls_without_tooltip"] == [], (
+            index,
+            inventory["controls_without_tooltip"],
+        )
     spec = json.loads(SPEC_FILE.read_text())
     for section in spec_walk(spec):
         assert section.get("description"), section.get("name") or section.get("key") or section
@@ -567,8 +589,12 @@ bad = sorted(m for m in sys.modules if m == 'chisurf.gui' or m.startswith('chisu
 assert not bad, bad[:5]
 print('QT-FREE OK')
 """
-    env = dict(os.environ, PYTHONPATH=os.pathsep.join([str(REPO), os.environ.get("PYTHONPATH", "")]))
-    done = subprocess.run([sys.executable, "-c", script], cwd=REPO, env=env, capture_output=True, text=True)
+    env = dict(
+        os.environ, PYTHONPATH=os.pathsep.join([str(REPO), os.environ.get("PYTHONPATH", "")])
+    )
+    done = subprocess.run(
+        [sys.executable, "-c", script], cwd=REPO, env=env, capture_output=True, text=True
+    )
     assert done.returncode == 0 and "QT-FREE OK" in done.stdout, done.stdout + done.stderr
 
 

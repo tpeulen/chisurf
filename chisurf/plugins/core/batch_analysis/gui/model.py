@@ -38,7 +38,9 @@ logger = logging.getLogger(__name__)
 STEPS: tuple[Step, ...] = (
     Step("welcome", "Welcome", "Apply one template fit to many datasets or files."),
     Step("datasets", "Loaded data", "Optionally pick datasets already loaded in ChiSurf."),
-    Step("files", "Files & fit", "Drop files to process and choose the template fit.", "fit_selected"),
+    Step(
+        "files", "Files & fit", "Drop files to process and choose the template fit.", "fit_selected"
+    ),
     Step("run", "Run", "Choose where to save results, then run the batch.", "has_results"),
     Step("results", "Results", "Per-parameter results of the last run."),
 )
@@ -77,7 +79,9 @@ class BatchModel(Stepper, BatchViewModel):
 
     STEPS = STEPS
 
-    def __init__(self, session: Any = None, capture: Callable[[str, str, int], str] | None = None) -> None:
+    def __init__(
+        self, session: Any = None, capture: Callable[[str, str, int], str] | None = None
+    ) -> None:
         BatchViewModel.__init__(self)
         self.session = session
         self.capture = capture
@@ -157,13 +161,24 @@ class BatchModel(Stepper, BatchViewModel):
     def reload_datasets(self) -> None:
         """Re-scan the loaded datasets, keeping the ticks of the ones still there (the Qt Refresh button)."""
         available = self.imported_datasets()
-        self.selected_dataset_indices = [i for i in self.selected_dataset_indices if 0 <= i < len(available)]
+        self.selected_dataset_indices = [
+            i for i in self.selected_dataset_indices if 0 <= i < len(available)
+        ]
         chosen = set(self.selected_dataset_indices)
         rows = []
         for idx, ds in enumerate(available):
-            name = getattr(ds, "name", None) or getattr(ds, "filename", None) or f"Dataset {idx + 1}"
-            rows.append({"index": idx, "label": f"{idx + 1}. {name}", "name": str(name), "use": idx in chosen,
-                         "tip": str(getattr(ds, "filename", "") or name)})
+            name = (
+                getattr(ds, "name", None) or getattr(ds, "filename", None) or f"Dataset {idx + 1}"
+            )
+            rows.append(
+                {
+                    "index": idx,
+                    "label": f"{idx + 1}. {name}",
+                    "name": str(name),
+                    "use": idx in chosen,
+                    "tip": str(getattr(ds, "filename", "") or name),
+                }
+            )
         self._dataset_rows = rows
         self.refresh_completion()
 
@@ -195,8 +210,10 @@ class BatchModel(Stepper, BatchViewModel):
     # -- files ------------------------------------------------------------------------------------------------------- #
     def reload_files(self) -> None:
         """Rebuild the file table from ``files``."""
-        self._file_rows = [{"name": pathlib.Path(p).name, "folder": str(pathlib.Path(p).parent), "path": p}
-                           for p in self.files]
+        self._file_rows = [
+            {"name": pathlib.Path(p).name, "folder": str(pathlib.Path(p).parent), "path": p}
+            for p in self.files
+        ]
         if self.selected_file not in self.files:
             self.selected_file = ""
         self.refresh_completion()
@@ -230,7 +247,11 @@ class BatchModel(Stepper, BatchViewModel):
         """Add files and folders (a folder is expanded, a repeated path ignored). Returns how many were new."""
         before = len(self.files)
         seen: set[str] = set()
-        merged = [p for p in list(self.files) + self.expand([str(p) for p in paths]) if not (p in seen or seen.add(p))]
+        merged = [
+            p
+            for p in list(self.files) + self.expand([str(p) for p in paths])
+            if not (p in seen or seen.add(p))
+        ]
         self.files = merged
         self.update()
         return len(self.files) - before
@@ -335,7 +356,11 @@ class BatchModel(Stepper, BatchViewModel):
         done, total = self.progress
         if not total:
             return "Idle"
-        return f"{done}/{total}: {os.path.basename(self.progress_name)}" if self.progress_name else f"{done}/{total}"
+        return (
+            f"{done}/{total}: {os.path.basename(self.progress_name)}"
+            if self.progress_name
+            else f"{done}/{total}"
+        )
 
     # -- the run ----------------------------------------------------------------------------------------------------- #
     def run(self) -> None:
@@ -363,7 +388,9 @@ class BatchModel(Stepper, BatchViewModel):
         self.progress_name = ""
         fit_index = self.fit_index()
         save_path = self.save_path.strip()
-        self._thread = threading.Thread(target=self._work, args=(fit_index, items, save_path), daemon=True)
+        self._thread = threading.Thread(
+            target=self._work, args=(fit_index, items, save_path), daemon=True
+        )
         self._thread.start()
 
     def _work(self, fit_index: int, items: list, save_path: str) -> None:
@@ -377,6 +404,7 @@ class BatchModel(Stepper, BatchViewModel):
 
             on_complete = None
             if self.capture is not None:
+
                 def on_complete(item, run_index, key):
                     return self.capture(shots_dir, item.name, run_index)
 
@@ -393,11 +421,20 @@ class BatchModel(Stepper, BatchViewModel):
             os.makedirs(os.path.dirname(os.path.abspath(save_path)), exist_ok=True)
             results.write_csv(save_path)
             docx_path = os.path.splitext(save_path)[0] + ".docx"
-            docx_ok, docx_note = runner.write_docx(results.rows, docx_path, results.file_order, results.screenshot_map,
-                                           csv_name=os.path.basename(save_path))
-            zip_out = runner.zip_directory(exports_dir, os.path.splitext(save_path)[0] + "_fit_results")
+            docx_ok, docx_note = runner.write_docx(
+                results.rows,
+                docx_path,
+                results.file_order,
+                results.screenshot_map,
+                csv_name=os.path.basename(save_path),
+            )
+            zip_out = runner.zip_directory(
+                exports_dir, os.path.splitext(save_path)[0] + "_fit_results"
+            )
             lines = [f"CSV: {save_path}"]
-            lines.append(f"DOCX: {docx_path}" if docx_ok else "DOCX report not written: " + str(docx_note))
+            lines.append(
+                f"DOCX: {docx_path}" if docx_ok else "DOCX report not written: " + str(docx_note)
+            )
             if zip_out:
                 lines.append(f"Per-run exports (ZIP): {zip_out}")
             self._events.put(("done", results, lines))
@@ -421,7 +458,9 @@ class BatchModel(Stepper, BatchViewModel):
                 _, results, lines = event
                 self._results = results
                 self.outputs = lines
-                self._result_rows = [{c: r.get(c, "") for c in runner.FIELDNAMES} for r in results.rows]
+                self._result_rows = [
+                    {c: r.get(c, "") for c in runner.FIELDNAMES} for r in results.rows
+                ]
                 self.message, self.message_ok = "Batch complete", True
                 self.running = False
                 self.refresh_completion()
@@ -440,7 +479,11 @@ class BatchModel(Stepper, BatchViewModel):
     # -- persistence ------------------------------------------------------------------------------------------------- #
     def export_settings(self) -> dict:
         """What is remembered: the step, the template fit and the CSV path (the file list is not: paths go stale)."""
-        return {**self.export_step(), "selected_fit_name": self.selected_fit_name, "save_path": self.save_path}
+        return {
+            **self.export_step(),
+            "selected_fit_name": self.selected_fit_name,
+            "save_path": self.save_path,
+        }
 
     def restore_settings(self, settings: dict) -> None:
         """Restore :meth:`export_settings`; an unusable value is ignored."""

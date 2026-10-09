@@ -237,14 +237,22 @@ def test_crud_and_calibration_in_the_mmfdb_equal_the_qt_tool(tmp_path):
     """Save, Public, Calibration, Rename and Delete against a temporary MMFDB, Qt and emtk side by side."""
     pytest.importorskip("qtpy")
     pytest.importorskip("mmfdb.repository")
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen", PYTHONPATH=os.pathsep.join([str(REPO), os.environ.get("PYTHONPATH", "")]))
+    env = dict(
+        os.environ,
+        QT_QPA_PLATFORM="offscreen",
+        PYTHONPATH=os.pathsep.join([str(REPO), os.environ.get("PYTHONPATH", "")]),
+    )
     done = subprocess.run(
         [sys.executable, str(HERE / "reference.py"), str(tmp_path / "ref")],
-        cwd=REPO, env=env, capture_output=True, text=True, timeout=300,
+        cwd=REPO,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=300,
     )
     lines = [line for line in done.stdout.splitlines() if line.startswith("RESULT ")]
     assert lines, done.stdout[-1500:] + done.stderr[-1500:]
-    result = json.loads(lines[0][len("RESULT "):])
+    result = json.loads(lines[0][len("RESULT ") :])
     qt, emtk = result["qt"], result["emtk"]
     # saved, saved public and deleted: identical stored setups, owners and public flags
     for step in ("saved", "saved_public", "deleted"):
@@ -260,10 +268,13 @@ def test_crud_and_calibration_in_the_mmfdb_equal_the_qt_tool(tmp_path):
     assert emtk["renamed"]["rows"]["Lab B"]["public"] is True
     assert qt["renamed"]["rows"]["Lab B"]["public"] in (True, False)
     # calibration: the emtk choice lists the stored snapshot and applies it to the detectors
-    assert emtk["calibration_items"][0] == "Latest" and "2026-09-01T10:00:00" in emtk["calibration_items"]
+    assert (
+        emtk["calibration_items"][0] == "Latest"
+        and "2026-09-01T10:00:00" in emtk["calibration_items"]
+    )
     assert emtk["calibration_cells"] == {"green": [1.7, 0.1, 0.2], "red": [0.9, 0.3, 0.4]}
     if qt["calibration_cells"] == emtk["calibration_cells"]:  # the day the Qt combo works
-        assert qt["calibration_items"] == emtk["calibration_items"][:len(qt["calibration_items"])]
+        assert qt["calibration_items"] == emtk["calibration_items"][: len(qt["calibration_items"])]
     else:
         # Qt defect: its combo calls setup_id_for_name(name, user) without the prefix argument,
         # swallows the TypeError and so never lists a snapshot nor applies one.
@@ -282,9 +293,14 @@ def test_calibration_latest_is_a_no_op_and_a_snapshot_applies_to_named_detectors
 
         def get_setup_calibration(self, key, calibrated_at=None):
             assert calibrated_at == "2026-09-01"
-            return [{"channel_name": "green", "g_factor": 1.7, "l1": 0.1, "l2": 0.2}, {"channel_name": "ghost", "g_factor": 9}]
+            return [
+                {"channel_name": "green", "g_factor": 1.7, "l1": 0.1, "l2": 0.2},
+                {"channel_name": "ghost", "g_factor": 9},
+            ]
 
-    page = ChannelDefinitionWidget(model=ChannelDefinition(DATA, file_path=str(tmp_path / "s.json"), db=Database()))
+    page = ChannelDefinitionWidget(
+        model=ChannelDefinition(DATA, file_path=str(tmp_path / "s.json"), db=Database())
+    )
     bar = SetupToolbar(page)
     bar.definition.current_name = "Inst"
     bar.definition.setups = {"Inst": {}}
@@ -334,10 +350,14 @@ def test_binning_scales_effective_tick_like_frozen_original(legacy, data_app):
     assert data_app.get_settings()["tttr_reading"]["effective_micro_time_resolution"] == pytest.approx(legacy["binning4_effective"], rel=1e-6)
 
 
-def test_reading_something_that_is_not_a_measurement_reports_and_keeps_the_timing(data_app, tmp_path):
+def test_reading_something_that_is_not_a_measurement_reports_and_keeps_the_timing(
+    data_app, tmp_path
+):
     bad = tmp_path / "not_a_measurement.ptu"
     bad.write_text("this is not photon data")
-    data_app.model.data["tttr_reading"]["file_type"] = "auto"  # detect the container, as the Qt tool does
+    data_app.model.data["tttr_reading"]["file_type"] = (
+        "auto"  # detect the container, as the Qt tool does
+    )
     before = json.dumps(data_app.model.data["tttr_reading"], sort_keys=True)
     data_app.page.read(str(bad))
     driver.finish_read(data_app)
@@ -436,7 +456,9 @@ def test_compute_shift_export_and_remove_a_lut(data_app, measurement, tmp_path):
 
 def test_compute_lut_without_a_measurement_says_what_to_do(data_app):
     data_app.page._compute_lut()
-    assert data_app.page.status == "Error: Read a uniform-illumination calibration measurement first."
+    assert (
+        data_app.page.status == "Error: Read a uniform-illumination calibration measurement first."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -462,13 +484,19 @@ def test_every_control_of_the_prompts_has_a_tooltip(data_app, prompt):
         bar.confirm()
     assert bar.dialog == prompt
     inventory = emtk_inventory(data_app)
-    assert any(row["label"] in ("Save", "Rename", "Delete", "Overwrite") for row in inventory["interactive"])
+    assert any(
+        row["label"] in ("Save", "Rename", "Delete", "Overwrite")
+        for row in inventory["interactive"]
+    )
     assert inventory["controls_without_tooltip"] == []
 
 
 def test_the_window_has_the_plugins_name_as_its_title(data_app):
     assert "Setup: Channel Definition" in driver.settle(data_app).strings
-    assert json.loads((PLUGIN / "manifest.json").read_text())["display_name"] == "Setup:Channel Definition"
+    assert (
+        json.loads((PLUGIN / "manifest.json").read_text())["display_name"]
+        == "Setup:Channel Definition"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -493,7 +521,10 @@ def test_the_guide_advances_when_the_user_presses_save(setups_file):
 # ---------------------------------------------------------------------------
 def test_the_manifest_opens_the_emtk_tool_and_keeps_the_qt_one():
     manifest = json.loads((PLUGIN / "manifest.json").read_text())
-    assert manifest["entrypoints"]["emtk"] == "chisurf.plugins.core.setup_channel_definition.gui.app:make_app"
+    assert (
+        manifest["entrypoints"]["emtk"]
+        == "chisurf.plugins.core.setup_channel_definition.gui.app:make_app"
+    )
     assert manifest["entrypoints"]["gui"].endswith("gui.tool:SetupChannelDefinitionWidget")
 
 

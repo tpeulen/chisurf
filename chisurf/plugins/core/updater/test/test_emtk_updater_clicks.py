@@ -33,7 +33,9 @@ class UpdaterDriver(Driver):
     def settle(self, timeout=60.0, extra=2):
         end = time.monotonic() + timeout
         self.draw(1)
-        while (self.app.job.busy or self.app.model.busy or self.app.model.updating) and time.monotonic() < end:
+        while (
+            self.app.job.busy or self.app.model.busy or self.app.model.updating
+        ) and time.monotonic() < end:
             time.sleep(0.01)
             self.draw(1)
         assert not self.app.job.busy, "the background job did not finish"
@@ -105,16 +107,22 @@ def gate(monkeypatch, fakes):
     return state
 
 
-def test_check_for_updates_press_runs_the_check_in_the_background_and_fills_the_window(ui, fakes, gate):
+def test_check_for_updates_press_runs_the_check_in_the_background_and_fills_the_window(
+    ui, fakes, gate
+):
     assert ui.shown("Click 'Check for Updates' to check for available updates.")
     assert ui.app.model.version_labels == []
     ui.click("check_for_updates")
     ui.draw(3)
-    assert ui.shown("Checking for updates...") and ui.app.job.busy      # the window stays alive while it runs
+    assert (
+        ui.shown("Checking for updates...") and ui.app.job.busy
+    )  # the window stays alive while it runs
     gate["release"] = True
     ui.settle()
     assert ui.shown("Update available: version 26.10.02") and ui.shown("Version 26.10.02")
-    assert ui.shown("Changes between 26.09.20 and 26.10.02:") and ui.shown("2026-10-01 Add the updater tour (by Ada)")
+    assert ui.shown("Changes between 26.09.20 and 26.10.02:") and ui.shown(
+        "2026-10-01 Add the updater tour (by Ada)"
+    )
     assert fakes.remote_listings >= 1 and fakes.update_commands == []
 
 
@@ -122,13 +130,19 @@ def test_a_second_press_while_the_check_runs_does_nothing(ui, fakes, gate):
     """The button is greyed while the job runs (the Qt tool disabled it): no second job starts."""
     ui.click("check_for_updates")
     ui.draw(3)
-    assert ui.app.job.busy and not ui.app.model.enabled("check_for_updates") and not ui.app.model.enabled("ask_update")
+    assert (
+        ui.app.job.busy
+        and not ui.app.model.enabled("check_for_updates")
+        and not ui.app.model.enabled("ask_update")
+    )
     calls = gate["calls"]
     ui.click("check_for_updates")
     ui.click("check_for_updates")
     gate["release"] = True
     ui.settle()
-    assert gate["calls"] == calls + 0 or gate["calls"] <= 4          # one check's own listings (info, availability, info), not three more checks
+    assert (
+        gate["calls"] == calls + 0 or gate["calls"] <= 4
+    )  # one check's own listings (info, availability, info), not three more checks
 
 
 def test_a_failing_server_shows_the_error_and_keeps_the_window_usable(ui, fakes):
@@ -137,9 +151,16 @@ def test_a_failing_server_shows_the_error_and_keeps_the_window_usable(ui, fakes)
     ui.settle()
     assert ui.shown("Error checking for updates: No update information available")
     assert not ui.app.model.enabled("ask_update")
-    fakes.releases.extend([{"version": "26.10.02", "file_path": "https://downloads.invalid/x/chisurf-macos-26.10.02.conda",
-                            "file_name": "chisurf-macos-26.10.02.conda"}])
-    ui.click("check_for_updates")                                   # and a later check recovers
+    fakes.releases.extend(
+        [
+            {
+                "version": "26.10.02",
+                "file_path": "https://downloads.invalid/x/chisurf-macos-26.10.02.conda",
+                "file_name": "chisurf-macos-26.10.02.conda",
+            }
+        ]
+    )
+    ui.click("check_for_updates")  # and a later check recovers
     ui.settle()
     assert ui.shown("Update available: version 26.10.02")
 
@@ -176,7 +197,11 @@ def test_picking_a_version_in_the_list_shows_its_changelog(checked):
     ui.click("selected_version")
     ui.press_text("Version 26.08.01")
     ui.settle()
-    assert ui.app.model.version_index == 2 and ui.shown("Changes between ") and not ui.shown("26.08.01 and 26.09.20")
+    assert (
+        ui.app.model.version_index == 2
+        and ui.shown("Changes between ")
+        and not ui.shown("26.08.01 and 26.09.20")
+    )
 
 
 def test_the_picked_version_is_the_one_update_now_installs(checked, fakes):
@@ -187,12 +212,16 @@ def test_the_picked_version_is_the_one_update_now_installs(checked, fakes):
     ui.click("ask_update")
     ui.press_text("Yes")
     ui.settle()
-    (url, local), = fakes.downloads
+    ((url, local),) = fakes.downloads
     assert url.endswith("chisurf-macos-26.08.01.conda") and fakes.update_commands == [
-        ("separate_process", fakes.expected_update_commands(local))]
+        ("separate_process", fakes.expected_update_commands(local))
+    ]
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the wheel over a choice does not step it (a Qt combo box does); repro in REPORT.md")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: the wheel over a choice does not step it (a Qt combo box does); repro in REPORT.md",
+)
 def test_the_wheel_over_the_version_list_steps_it(checked):
     ui = checked
     x, y, w, h = ui.rect("selected_version")
@@ -211,9 +240,13 @@ def test_update_now_is_greyed_before_a_check_and_a_press_opens_nothing(ui):
 def test_update_now_asks_the_qt_question_and_No_leaves_everything_as_it_is(checked, fakes):
     ui = checked
     ui.click("ask_update")
-    assert ui.app.model.dialog == "confirm_update" and ui.shown("The update process will close all ChiSurf windows")
+    assert ui.app.model.dialog == "confirm_update" and ui.shown(
+        "The update process will close all ChiSurf windows"
+    )
     assert ui.shown("Do you want to continue?") and ui.shown("Yes") and ui.shown("No")
-    assert not ui.app.model.enabled("check_for_updates")            # the question is modal: the window behind is greyed
+    assert not ui.app.model.enabled(
+        "check_for_updates"
+    )  # the question is modal: the window behind is greyed
     ui.press_text("No")
     assert ui.app.model.dialog == "" and ui.shown("Update cancelled by user.")
     assert fakes.update_commands == [] and fakes.downloads == []
@@ -236,14 +269,16 @@ def test_Yes_starts_the_update_and_the_fake_runner_sees_the_install_line(checked
     ui.click("ask_update")
     ui.press_text("Yes")
     ui.settle()
-    (url, local), = fakes.downloads
+    ((url, local),) = fakes.downloads
     assert url.endswith("chisurf-macos-26.10.02.tar.bz2")
     assert fakes.update_commands == [("separate_process", fakes.expected_update_commands(local))]
     assert ui.shown("The update was started in a separate window")
     assert fakes.mutating_solver_commands == [] and fakes.restarts == 0
 
 
-def test_the_progress_window_shows_the_latest_step_while_the_update_is_prepared(checked, fakes, monkeypatch):
+def test_the_progress_window_shows_the_latest_step_while_the_update_is_prepared(
+    checked, fakes, monkeypatch
+):
     """While the update runs, a window names its step (the Qt progress dialog's label); it closes when the update has been handed over."""
     from chisurf.plugins.core.updater import updater as up
 
@@ -263,10 +298,17 @@ def test_the_progress_window_shows_the_latest_step_while_the_update_is_prepared(
     ui.press_text("Yes")
     ui.draw(3)
     deadline = time.monotonic() + 5
-    while not ui.shown("Preparing to run update in a separate process...") and time.monotonic() < deadline:
+    while (
+        not ui.shown("Preparing to run update in a separate process...")
+        and time.monotonic() < deadline
+    ):
         time.sleep(0.02)
         ui.draw(1)
-    assert ui.app.model.updating and ui.shown("Updating ChiSurf") and ui.shown("Preparing to run update")
+    assert (
+        ui.app.model.updating
+        and ui.shown("Updating ChiSurf")
+        and ui.shown("Preparing to run update")
+    )
     assert not ui.app.model.enabled("check_for_updates")
     gate["release"] = True
     ui.settle()
@@ -276,8 +318,11 @@ def test_the_progress_window_shows_the_latest_step_while_the_update_is_prepared(
 def test_a_failed_update_start_is_shown_in_the_status(checked, fakes, monkeypatch):
     from chisurf.plugins.core.updater import updater as up
 
-    monkeypatch.setattr(up.ChiSurfUpdater, "_run_update_in_separate_process",
-                        lambda self, cmd, callback=None: (False, "Error starting update process: disk full"))
+    monkeypatch.setattr(
+        up.ChiSurfUpdater,
+        "_run_update_in_separate_process",
+        lambda self, cmd, callback=None: (False, "Error starting update process: disk full"),
+    )
     ui = checked
     ui.click("ask_update")
     ui.press_text("Yes")
@@ -286,11 +331,15 @@ def test_a_failed_update_start_is_shown_in_the_status(checked, fakes, monkeypatc
 
 
 # ---------------------------------------------------------------------------------------------- Package Manager, Development
-def test_the_package_manager_button_opens_the_package_manager_window_and_its_close_button_closes_it(ui, fakes):
+def test_the_package_manager_button_opens_the_package_manager_window_and_its_close_button_closes_it(
+    ui, fakes
+):
     assert ui.app.model.enabled("open_package_manager") and ui.app.packages is None
     ui.click("open_package_manager")
     ui.draw(4)
-    assert ui.app.package_window.open and ui.shown("Installed Packages") and ui.shown("Operation Log")
+    assert (
+        ui.app.package_window.open and ui.shown("Installed Packages") and ui.shown("Operation Log")
+    )
     ui.press_text("\u00d7")
     assert not ui.app.package_window.open
     assert fakes.mutating_solver_commands == []
@@ -313,10 +362,16 @@ def test_the_startup_switches_toggle_with_a_press_and_are_saved_at_once(ui, tmp_
     assert yaml.safe_load(saved.read_text())["plugins"]["updater"]["check_on_startup"] is False
     ui.click("ignore_updates_on_startup", fx=0.05)
     assert ui.app.model.ignore_updates is True
-    assert yaml.safe_load(saved.read_text())["plugins"]["updater"] == {"ignore_updates_on_startup": True, "check_on_startup": False}
-    ui.click("check_on_startup", fx=0.05)                          # and back
+    assert yaml.safe_load(saved.read_text())["plugins"]["updater"] == {
+        "ignore_updates_on_startup": True,
+        "check_on_startup": False,
+    }
+    ui.click("check_on_startup", fx=0.05)  # and back
     ui.click("ignore_updates_on_startup", fx=0.05)
-    assert yaml.safe_load(saved.read_text())["plugins"]["updater"] == {"ignore_updates_on_startup": False, "check_on_startup": True}
+    assert yaml.safe_load(saved.read_text())["plugins"]["updater"] == {
+        "ignore_updates_on_startup": False,
+        "check_on_startup": True,
+    }
 
 
 def test_pressing_the_caption_of_a_switch_toggles_it_as_a_qt_checkbox_does(ui):
@@ -327,8 +382,11 @@ def test_pressing_the_caption_of_a_switch_toggles_it_as_a_qt_checkbox_does(ui):
 
 # ---------------------------------------------------------------------------------------------- the changelog
 def long_changelog(n=60):
-    return "Changes between 1 and 2:\n" + "\n".join(f"- 2026-10-01 commit number {i} (by Ada)" for i in range(n)) + \
-        "\nMore details: https://github.com/Fluorescence-Tools/chisurf/commits"
+    return (
+        "Changes between 1 and 2:\n"
+        + "\n".join(f"- 2026-10-01 commit number {i} (by Ada)" for i in range(n))
+        + "\nMore details: https://github.com/Fluorescence-Tools/chisurf/commits"
+    )
 
 
 def test_a_long_changelog_scrolls_under_the_wheel(checked):
@@ -343,10 +401,10 @@ def test_a_long_changelog_scrolls_under_the_wheel(checked):
     x, y, w, h = ui.rect("changelog")
     ui.wheel(x + w / 2, y + h / 2, -6)
     ui.draw(3)
-    assert first_y() < at_start - 20                                 # a turn down: later lines come into view
+    assert first_y() < at_start - 20  # a turn down: later lines come into view
     ui.wheel(x + w / 2, y + h / 2, 12)
     ui.draw(3)
-    assert abs(first_y() - at_start) < 1.0                           # and back
+    assert abs(first_y() - at_start) < 1.0  # and back
 
 
 def test_a_link_in_the_changelog_opens_in_the_browser_when_pressed(checked):
@@ -383,7 +441,9 @@ def test_the_check_on_opening_starts_by_itself_and_its_notice_closes_with_OK(fak
     app.close()
 
 
-def test_the_check_on_opening_waits_a_moment_and_so_a_drawn_only_window_never_asks_the_network(fakes):
+def test_the_check_on_opening_waits_a_moment_and_so_a_drawn_only_window_never_asks_the_network(
+    fakes,
+):
     from chisurf.plugins.core.updater.gui.app import make_app
 
     app = make_app()
@@ -394,16 +454,22 @@ def test_the_check_on_opening_waits_a_moment_and_so_a_drawn_only_window_never_as
 
 
 # ---------------------------------------------------------------------------------------------- tooltips
-@pytest.mark.parametrize("name, text", [
-    ("check_for_updates", "Ask the update server which versions exist"),
-    ("current_version_text", "The version of ChiSurf installed in this environment."),
-    ("check_on_startup", "When enabled, ChiSurf will check for updates during startup."),
-    ("ignore_updates_on_startup", "If enabled, ChiSurf will not prompt about updates during startup."),
-    ("development", "ChiSurf currently has no stable release"),
-    ("selected_version", "The versions the update server lists"),
-    ("help", "Explain the version list"),
-    ("guide", "Walk through checking for an update"),
-])
+@pytest.mark.parametrize(
+    "name, text",
+    [
+        ("check_for_updates", "Ask the update server which versions exist"),
+        ("current_version_text", "The version of ChiSurf installed in this environment."),
+        ("check_on_startup", "When enabled, ChiSurf will check for updates during startup."),
+        (
+            "ignore_updates_on_startup",
+            "If enabled, ChiSurf will not prompt about updates during startup.",
+        ),
+        ("development", "ChiSurf currently has no stable release"),
+        ("selected_version", "The versions the update server lists"),
+        ("help", "Explain the version list"),
+        ("guide", "Walk through checking for an update"),
+    ],
+)
 def test_resting_the_pointer_on_a_control_shows_its_tooltip(ui, name, text):
     assert tooltip_shown(ui, name, text)
 
@@ -431,7 +497,9 @@ def press_next(ui):
     handle = ui.text_rect("drag here to move")
     ui.drag((handle[0] + 20, handle[1] + 5), (ui.size[0] - 260, 60))
     ui.press_text("Next \u25ba")
-    assert ui.app.tour.step_idx == here + 1, f"the Next button of step {here + 1} stayed dead after the card was dragged away"
+    assert ui.app.tour.step_idx == here + 1, (
+        f"the Next button of step {here + 1} stayed dead after the card was dragged away"
+    )
     return True
 
 
@@ -449,7 +517,9 @@ def test_guide_walks_the_tour_with_the_user_operating_the_awaited_controls(app, 
     assert ui.app.tour.awaiting
     ui.click("check_for_updates")
     ui.settle()
-    assert not ui.app.tour.awaiting and ui.app.tour.step_idx == 1    # the press released the step; Next is the user's
+    assert (
+        not ui.app.tour.awaiting and ui.app.tour.step_idx == 1
+    )  # the press released the step; Next is the user's
     ui.press_text("Next \u25ba")
     assert ui.app.tour.step_idx == 2 and ui.shown("Pick a version") and ui.app.tour.awaiting
     ui.click("selected_version")
@@ -463,7 +533,9 @@ def test_guide_walks_the_tour_with_the_user_operating_the_awaited_controls(app, 
             break
         press_next(ui)
     assert ui.app.tour.step_idx == steps - 1 and ui.shown("Package Manager")
-    assert fakes.update_commands == [] and ui.app.model.dialog == ""   # the tour never presses Update Now for the user
+    assert (
+        fakes.update_commands == [] and ui.app.model.dialog == ""
+    )  # the tour never presses Update Now for the user
 
 
 def test_the_tour_card_can_be_dragged_away(ui):
@@ -489,10 +561,21 @@ def test_every_guide_target_is_drawn_and_the_card_does_not_cover_it(checked):
         assert rect and rect[2] > 0 and rect[3] > 0, f"{step['title']}: nothing drawn for {key!r}"
         card_w = min(480.0, W - 40.0)
         x, y = place_tour_card(rect, W, H, card_w, 150.0)
-        clear = x + card_w <= rect[0] or x >= rect[0] + rect[2] or y + 150.0 <= rect[1] or y >= rect[1] + rect[3]
-        free_side = (rect[0] + rect[2] + card_w + 16 <= W or rect[0] - card_w - 16 >= 0 or rect[1] + rect[3] + 150 + 16 <= H
-                     or rect[1] - 150 - 16 >= 0)
-        assert clear or not free_side, f"{step['title']}: the card would cover its target although room was free"
+        clear = (
+            x + card_w <= rect[0]
+            or x >= rect[0] + rect[2]
+            or y + 150.0 <= rect[1]
+            or y >= rect[1] + rect[3]
+        )
+        free_side = (
+            rect[0] + rect[2] + card_w + 16 <= W
+            or rect[0] - card_w - 16 >= 0
+            or rect[1] + rect[3] + 150 + 16 <= H
+            or rect[1] - 150 - 16 >= 0
+        )
+        assert clear or not free_side, (
+            f"{step['title']}: the card would cover its target although room was free"
+        )
     ui.app.tour.stop()
 
 

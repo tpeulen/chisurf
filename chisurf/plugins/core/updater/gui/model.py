@@ -103,7 +103,9 @@ def format_changelog_html(text: str) -> str:
         for ft in parsed["footer"]:
             label, url = split_footer(ft)
             if url:
-                html_parts.append(f'<p>{html.escape(label)}: <a href="{html.escape(url)}">{html.escape(url)}</a></p>')
+                html_parts.append(
+                    f'<p>{html.escape(label)}: <a href="{html.escape(url)}">{html.escape(url)}</a></p>'
+                )
             else:
                 html_parts.append(f"<p>{html.escape(ft)}</p>")
         return "\n".join(html_parts)
@@ -170,8 +172,12 @@ def save_startup_settings(ignore_updates: bool, check_on_startup: bool) -> bool:
 class UpdaterModel(DialogMixin):
     """The updater window: installed version, update check, version list, changelog, Update Now."""
 
-    def __init__(self, suppress_initial_notification: bool = False, updater: ChiSurfUpdater | None = None,
-                 cs_settings: Any = None) -> None:
+    def __init__(
+        self,
+        suppress_initial_notification: bool = False,
+        updater: ChiSurfUpdater | None = None,
+        cs_settings: Any = None,
+    ) -> None:
         if cs_settings is None:
             from chisurf.core.settings import cs_settings as default_settings
 
@@ -388,7 +394,9 @@ class UpdaterModel(DialogMixin):
 
         Respects the startup switches only when the window was opened by ChiSurf's startup, not by the user.
         """
-        if self.suppress_initial_notification and (self.ignore_updates or not self._check_on_startup):
+        if self.suppress_initial_notification and (
+            self.ignore_updates or not self._check_on_startup
+        ):
             self.status = "Startup update check is disabled by user settings."
             return
         self.update_enabled = False
@@ -424,7 +432,9 @@ class UpdaterModel(DialogMixin):
             self.status = f"Update available: version {latest_version}"
             self.update_enabled = True
             if not self.suppress_initial_notification:
-                self.notice("Update Available", f"A new version of ChiSurf ({latest_version}) is available.")
+                self.notice(
+                    "Update Available", f"A new version of ChiSurf ({latest_version}) is available."
+                )
         elif not populated_versions:
             self.status = f"ChiSurf is up to date (version {info.__version__})."
 
@@ -507,7 +517,9 @@ class UpdaterModel(DialogMixin):
                 callback(self.status)
                 logging.info(f"Update file path: {file_path}")
                 # auto_restart is ignored as the application will be closed
-                result = self.updater.update_to_version(file_path, callback=callback, auto_restart=False)
+                result = self.updater.update_to_version(
+                    file_path, callback=callback, auto_restart=False
+                )
             else:
                 logging.info("No specific version selected, using standard update")
                 result = self.updater.update(callback, auto_restart=False)
@@ -515,15 +527,21 @@ class UpdaterModel(DialogMixin):
             # the update script took over: the real runner ends the process after starting it
             self.exit_requested = True
             result = (True, None)
-        ok, message = result if isinstance(result, tuple) and len(result) == 2 else (bool(result), None)
+        ok, message = (
+            result if isinstance(result, tuple) and len(result) == 2 else (bool(result), None)
+        )
         if self.exit_requested:
-            self.status = "The update continues in a separate window; restart ChiSurf when it has finished."
+            self.status = (
+                "The update continues in a separate window; restart ChiSurf when it has finished."
+            )
         elif not ok:
             self.status = f"Update failed: {message}"
         elif message:
             self.status = str(message)
         else:
-            self.status = "The update was started in a separate window; restart ChiSurf when it has finished."
+            self.status = (
+                "The update was started in a separate window; restart ChiSurf when it has finished."
+            )
         self.updating = False
         self.update_message = ""
 

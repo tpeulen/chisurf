@@ -73,7 +73,9 @@ def test_show_manifest_gui_routes_through_dispatch(qapp, qtbot, monkeypatch):
 
     monkeypatch.setattr(registry, "build_plugin_widget", _spy)
     root = pathlib.Path(__file__).resolve().parents[5]
-    shown = misc_helpers._show_manifest_gui(_Main(), root / "chisurf" / "plugins" / "modelling" / "structure_tools")
+    shown = misc_helpers._show_manifest_gui(
+        _Main(), root / "chisurf" / "plugins" / "modelling" / "structure_tools"
+    )
     assert shown
     assert "ControlHost" in opened["kind"], opened
     assert "Structure Tools" in opened["title"]
@@ -81,7 +83,14 @@ def test_show_manifest_gui_routes_through_dispatch(qapp, qtbot, monkeypatch):
 
 def test_ribbon_callback_targets_the_launcher():
     """The ribbon's plugin callbacks call load_and_show_plugin, not onRunMacro."""
-    source = pathlib.Path(__file__).resolve().parents[5] / "chisurf" / "gui" / "widgets" / "ribbon" / "ribbon_categories.py"
+    source = (
+        pathlib.Path(__file__).resolve().parents[5]
+        / "chisurf"
+        / "gui"
+        / "widgets"
+        / "ribbon"
+        / "ribbon_categories.py"
+    )
     text = source.read_text()
     assert "load_and_show_plugin" in text
     assert 'globals={"__name__": "plugin"}' not in text, (

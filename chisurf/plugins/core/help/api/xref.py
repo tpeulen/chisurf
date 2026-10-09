@@ -198,12 +198,21 @@ def document_reference(
             return None, "", caption or label
         return entry[0], label, caption or entry[1] or label
 
+    if role == "cite":
+        from chisurf.plugins.core.help.api import bibliography as bib
+
+        entry = bib.bibliography().get(label)
+        cite_label = bib.short_citation(entry) if entry else ""
+        ref_entry = ref_index().get(label)
+        if ref_entry is not None:
+            return ref_entry[0], label, caption or cite_label or ref_entry[1] or label
+        return None, "", caption or cite_label or label
+
     if role == "term":
         return None, "", caption or label
 
     # A ``{doc}`` target carries no suffix and may name a directory's index, so
-    # every spelling is tried: ``/concepts/index`` is an *.rst* file, and only
-    # trying ".md" left the guides' own pointer to the concepts dead.
+    # every spelling is tried; the developer API page is the one *.rst* left.
     stem = label.lstrip("/")
     target = None
     for candidate in (f"{stem}.md", f"{stem}.rst", stem, f"{stem}/index.md", f"{stem}/index.rst"):

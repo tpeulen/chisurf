@@ -105,7 +105,9 @@ class UserEditorModel(UserEditorViewModel):
         #: ``"export"`` / ``"copy"`` while the app should act on the table.
         self.request = ""
         #: Returns the records the table shows (filtered, sorted) and its columns.
-        self.displayed_provider: Callable[[], tuple[list[dict], list[tuple[str, str]]]] | None = None
+        self.displayed_provider: Callable[[], tuple[list[dict], list[tuple[str, str]]]] | None = (
+            None
+        )
         #: A one-off message (a refused save or delete) shown on the status line.
         self.notice = ""
         #: The account a pending delete confirmation is about, and why it was refused.

@@ -7,7 +7,11 @@ import json
 import pytest
 from emtk.testing import RecordingPainter
 
-from chisurf.plugins.core.project_browser.test.driving import clipped_texts, draw_clip, layout_problems
+from chisurf.plugins.core.project_browser.test.driving import (
+    clipped_texts,
+    draw_clip,
+    layout_problems,
+)
 from chisurf.plugins.emtk_hermetic import hermetic, real_chisurf_untouched  # noqa: F401
 from chisurf.plugins.emtk_test_input import Driver, assert_tour_card_clear
 
@@ -32,12 +36,17 @@ def test_the_list_equals_the_qt_hubs_list(qapp):
 
     qt = WizardHub()
     app = WizardHubApp()
-    qt_items = [(qt._list.item(i).data(0x100), qt._list.item(i).toolTip()) for i in range(qt._list.count())]
+    qt_items = [
+        (qt._list.item(i).data(0x100), qt._list.item(i).toolTip()) for i in range(qt._list.count())
+    ]
     assert qt_items == [(e.id, e.description) for e in app.entries]
     assert app.selected == qt._list.item(0).data(0x100)
     for i, entry in enumerate(app.entries):
         qt._list.setCurrentRow(i)
-        assert qt._title.text().strip().endswith(entry.label) and qt._subtitle.text() == entry.description
+        assert (
+            qt._title.text().strip().endswith(entry.label)
+            and qt._subtitle.text() == entry.description
+        )
 
 
 def test_the_header_and_the_embedded_wizard_are_drawn_for_each_entry():
@@ -70,7 +79,9 @@ def test_a_failing_factory_is_reported_in_the_header_and_the_rest_works(monkeypa
     app = WizardHubApp(entries=entries)
     d = Driver(app, BIG)
     d.click_name("entry:batch_analysis")
-    assert app.error.startswith("Could not load 'Batch analysis'") and any("Could not load" in s for s in d.draw(2).strings)
+    assert app.error.startswith("Could not load 'Batch analysis'") and any(
+        "Could not load" in s for s in d.draw(2).strings
+    )
     d.click_name("entry:anisotropy")
     assert not app.error and app.child is not None
     app.close()
@@ -95,10 +106,16 @@ def test_settings_round_trip_with_a_wizard_not_yet_opened():
     app.select("batch_analysis")
     app.children["batch_analysis"].model.save_path = "/tmp/x.csv"
     state = json.loads(json.dumps(app.export_settings()))
-    assert state["selected"] == "batch_analysis" and state["children"]["batch_analysis"]["save_path"] == "/tmp/x.csv"
+    assert (
+        state["selected"] == "batch_analysis"
+        and state["children"]["batch_analysis"]["save_path"] == "/tmp/x.csv"
+    )
     fresh = WizardHubApp()
     fresh.restore_settings(state)
-    assert fresh.selected == "batch_analysis" and fresh.children["batch_analysis"].model.save_path == "/tmp/x.csv"
+    assert (
+        fresh.selected == "batch_analysis"
+        and fresh.children["batch_analysis"].model.save_path == "/tmp/x.csv"
+    )
     other = WizardHubApp()
     other.restore_settings({"selected": "ghost", "children": {"ghost": {"a": 1}, "anisotropy": 5}})
     other.restore_settings(None)

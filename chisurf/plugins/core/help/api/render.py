@@ -1,9 +1,9 @@
 """Format-agnostic document rendering for the Help browser.
 
-The browser serves Markdown (guides, concepts, plugin READMEs) and
-reStructuredText (the user manual) side by side. Callers should not care which
-is which, so this module dispatches on the file suffix and presents one
-interface for both.
+The documentation is Markdown; ``development/api.rst`` (the autodoc shell
+behind the Python API reference) is the one page still written in
+reStructuredText. Callers should not care which is which, so this module
+dispatches on the file suffix and presents one interface for both.
 """
 
 from __future__ import annotations

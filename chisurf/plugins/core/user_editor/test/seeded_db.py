@@ -19,15 +19,41 @@ PLAIN_USER = ("user", "user")
 
 #: Accounts seeded on top of the bootstrap ones: ``(user_id, fields)``.
 SEED = (
-    ("alice", dict(display_name="Alice Archer", email="alice@example.org",
-                   role="Principal Investigator", affiliation="Institute of Biophysics",
-                   department="Single-molecule group", phone="+49 211 000 111",
-                   website="https://example.org/alice", address="Main Street 1, Duesseldorf",
-                   details="Runs the confocal setup.", is_admin=1)),
-    ("bob", dict(display_name="Bob Baker", email="bob@example.org", role="Postdoc",
-                 affiliation="Institute of Biophysics", department="FCS")),
-    ("carol", dict(display_name="Carol Chen", email="carol@example.org", role="PhD Student",
-                   department="smFRET", allow_passwordless_login=1)),
+    (
+        "alice",
+        dict(
+            display_name="Alice Archer",
+            email="alice@example.org",
+            role="Principal Investigator",
+            affiliation="Institute of Biophysics",
+            department="Single-molecule group",
+            phone="+49 211 000 111",
+            website="https://example.org/alice",
+            address="Main Street 1, Duesseldorf",
+            details="Runs the confocal setup.",
+            is_admin=1,
+        ),
+    ),
+    (
+        "bob",
+        dict(
+            display_name="Bob Baker",
+            email="bob@example.org",
+            role="Postdoc",
+            affiliation="Institute of Biophysics",
+            department="FCS",
+        ),
+    ),
+    (
+        "carol",
+        dict(
+            display_name="Carol Chen",
+            email="carol@example.org",
+            role="PhD Student",
+            department="smFRET",
+            allow_passwordless_login=1,
+        ),
+    ),
     ("dave", dict(display_name="Dave Dunn", role="Facility Manager")),
     ("erin", dict(display_name="Erin Evans", email="erin@example.org", role="Technician")),
 )
@@ -63,8 +89,13 @@ def seed(client=None) -> list[str]:
     """Create :data:`SEED` through the RPC API; returns the seeded user ids."""
     client = client or admin_client()
     for user_id, fields in SEED:
-        payload = {"user_id": user_id, "requester_id": "admin", "is_admin": 0,
-                   "allow_passwordless_login": 0, "role": "Generic"}
+        payload = {
+            "user_id": user_id,
+            "requester_id": "admin",
+            "is_admin": 0,
+            "allow_passwordless_login": 0,
+            "role": "Generic",
+        }
         payload.update(fields)
         client.save_user(payload)
     return [user_id for user_id, _ in SEED]

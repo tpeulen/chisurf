@@ -1,0 +1,17 @@
+{
+  "score": 70,
+  "verdict": "revise",
+  "threshold": 90,
+  "threshold_pass": false,
+  "category_match": true,
+  "reference_images": [],
+  "generated_screenshots": ["native-normal.png", "native-narrow.png"],
+  "differences": [
+    "The native editor exposes the user list and editable fields, but a genuine Qt reference capture failed in this environment.",
+    "Password strength dialog and live MMFDB populated state still need a matched visual audit."
+  ],
+  "suggestions": [
+    "Capture a populated Qt User Editor reference and add native password-strength staging before acceptance."
+  ],
+  "reasoning": "The Qt-free view model and native CRUD shell are verified, but visual and password-dialog parity remain incomplete."
+}

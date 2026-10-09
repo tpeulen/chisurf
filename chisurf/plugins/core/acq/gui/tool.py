@@ -15,7 +15,6 @@ from qtpy.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
-    QDockWidget,
     QDoubleSpinBox,
     QFileDialog,
     QGridLayout,
@@ -29,6 +28,8 @@ from qtpy.QtWidgets import (
     QSizePolicy,
     QSpinBox,
     QToolButton,
+    QVBoxLayout,
+    QWidget,
 )
 
 from chisurf import settings
@@ -37,7 +38,14 @@ from chisurf.gui.widgets.system_info_watermark import memory_usage_mb, total_mem
 
 from ..pipeline import AcquisitionPipeline, PipelineConfig, record_type_for_device
 from ..tcspc_devices import BHSPCCardSetupDialog, TCSPCDevice
-from .windows import CorrelationWindow, CountRateWindow, DecayWindow, MacrotimeWindow, MCSWindow
+from .windows import (
+    AcquisitionFitWindow,
+    CorrelationWindow,
+    CountRateWindow,
+    DecayWindow,
+    MacrotimeWindow,
+    MCSWindow,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -319,18 +327,21 @@ class DataProcessingThread(QThread):
         self.results_ready.emit()
 
 
-class AcquisitionDockWidget(QDockWidget):
-    """Dock widget for acquisition controls and settings."""
+class AcquisitionDockWidget(QWidget):
+    """Acquisition controls embedded as a page of the unified fit window."""
 
     def __init__(self, parent=None):
-        """Initialize the acquisition dock widget."""
-        super().__init__("Acquisition", parent)
-        self.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
-
+        """Initialize the acquisition settings page."""
+        super().__init__(parent)
+        self.setWindowTitle("Acquisition")
+        self._acquisition_manager = None
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
         self._create_contents()
 
     def _create_contents(self):
-        """Create the dock widget contents."""
+        """Create the embedded acquisition settings page contents."""
         # Control panel
         control_panel = QGroupBox("Control Panel")
         control_layout = QGridLayout(control_panel)
@@ -443,22 +454,14 @@ class AcquisitionDockWidget(QDockWidget):
         self.save_json_button.setText("Save Settings")
         self.save_json_button.setToolTip("Save acquisition settings to JSON file")
         self.save_json_button.clicked.connect(
-            lambda: (
-                self.parent().save_settings_json()
-                if hasattr(self.parent(), "save_settings_json")
-                else None
-            )
+            lambda: self._invoke_manager_method("save_settings_json")
         )
 
         self.load_json_button = QToolButton()
         self.load_json_button.setText("Load Settings")
         self.load_json_button.setToolTip("Load acquisition settings from JSON file")
         self.load_json_button.clicked.connect(
-            lambda: (
-                self.parent().load_settings_json()
-                if hasattr(self.parent(), "load_settings_json")
-                else None
-            )
+            lambda: self._invoke_manager_method("load_settings_json")
         )
 
         json_layout.addWidget(self.save_json_button)
@@ -501,11 +504,17 @@ class AcquisitionDockWidget(QDockWidget):
             control_layout.setRowStretch(row, 0)
         control_layout.setRowStretch(2, 1)
 
-        self.setWidget(control_panel)
+        self.layout().addWidget(control_panel)
+
+    def _invoke_manager_method(self, method_name: str) -> None:
+        """Call a manager action without relying on the settings page's parent."""
+        method = getattr(self._acquisition_manager, method_name, None)
+        if callable(method):
+            method()
 
     def _recreate_contents(self):
-        """Recreate the dock widget contents if they were deleted."""
-        logger.info("Recreating dock widget contents...")
+        """Recreate the settings page contents if they were deleted."""
+        logger.info("Recreating acquisition settings page contents...")
         self._create_contents()
 
     def _browse_output_path(self):
@@ -602,27 +611,7 @@ class AcquisitionDockWidget(QDockWidget):
         self.show_mcs_checkbox.setChecked(bool(value))
 
     def closeEvent(self, event):
-        """When the dock is closed, close acquisition mode."""
-        # Close acquisition mode without additional confirmation
-        try:
-            manager = None
-            parent = self.parent()
-            if parent is not None and hasattr(parent, "_acquisition_manager"):
-                manager = getattr(parent, "_acquisition_manager", None)
-            else:
-                try:
-                    import chisurf
-
-                    if hasattr(chisurf.cs, "_acquisition_manager"):
-                        manager = chisurf.cs._acquisition_manager
-                except Exception:
-                    manager = None
-
-            if manager is not None and hasattr(manager, "close_acquisition_mode"):
-                manager.close_acquisition_mode()
-        except Exception as e:
-            logger.warning(f"Error closing acquisition mode from dock closeEvent: {e}")
-
+        """Accept a page close; the fit window owns acquisition lifecycle cleanup."""
         event.accept()
 
 
@@ -668,20 +657,8 @@ class SMAcquisitionManager:
                 and self.main_window._acquisition_manager
             ):
                 existing_manager = self.main_window._acquisition_manager
-                # Bring existing windows to front
                 try:
-                    existing_manager.decay_window.raise_()
-                    existing_manager.decay_window.activateWindow()
-                except Exception:
-                    pass
-                try:
-                    existing_manager.correlation_window.raise_()
-                    existing_manager.correlation_window.activateWindow()
-                except Exception:
-                    pass
-                try:
-                    existing_manager.count_rate_window.raise_()
-                    existing_manager.count_rate_window.activateWindow()
+                    existing_manager.show()
                 except Exception:
                     pass
             return
@@ -700,6 +677,7 @@ class SMAcquisitionManager:
         self.mean_countrate = 0.0
         self.start_time = 0.0
         self._last_results = None
+        self._is_closing = False
 
         # Simulation mode (default to True)
         self.simulation_mode = True
@@ -738,13 +716,28 @@ class SMAcquisitionManager:
         self.correlation_update_counter = 0
         self.macrotime_update_counter = 0
 
-        # Create UI components
+        # Create the one acquisition fit window.  The control page and every
+        # acquisition graph are tabs of this one MDI surface rather than
+        # independent MDI windows plus a global left dock.
         self.decay_window = DecayWindow()
         self.correlation_window = CorrelationWindow()
         self.count_rate_window = CountRateWindow()
         self.macrotime_window = MacrotimeWindow()
         self.mcs_window = MCSWindow()
-        self.acquisition_dock = AcquisitionDockWidget(self.main_window)
+        self.acquisition_dock = AcquisitionDockWidget()
+        self.acquisition_dock._acquisition_manager = self
+        self.acquisition_window = AcquisitionFitWindow(
+            settings_page=self.acquisition_dock,
+            plot_pages=[
+                ("Decay", self.decay_window),
+                ("Correlation", self.correlation_window),
+                ("Count Rate", self.count_rate_window),
+                ("Macrotime", self.macrotime_window),
+                ("MCS", self.mcs_window),
+            ],
+            main_window=self.main_window,
+            close_callback=self.close_acquisition_mode,
+        )
 
         # Store reference in main window
         if self.main_window is not None:
@@ -752,68 +745,75 @@ class SMAcquisitionManager:
 
         # Connect signals
         self.setup_connections()
+        self._sync_acquisition_page_visibility()
 
         # Read device timing parameters
         self._read_device_timing_parameters()
 
-        # Add to main window
-        if self.chisurf_available:
-            # chisurf mode - use MDI area
-            self.main_window.mdiarea.addSubWindow(self.decay_window)
-            self.main_window.mdiarea.addSubWindow(self.correlation_window)
-            self.main_window.mdiarea.addSubWindow(self.count_rate_window)
-            self.main_window.mdiarea.addSubWindow(self.macrotime_window)
-            self.main_window.mdiarea.addSubWindow(self.mcs_window)
-            self.main_window.addDockWidget(Qt.LeftDockWidgetArea, self.acquisition_dock)
-        elif self.main_window is not None:
-            # Standalone mode - use MDI area from standalone window
-            if hasattr(self.main_window, "mdiarea"):
-                self.main_window.mdiarea.addSubWindow(self.decay_window)
-                self.main_window.mdiarea.addSubWindow(self.correlation_window)
-                self.main_window.mdiarea.addSubWindow(self.count_rate_window)
-                self.main_window.mdiarea.addSubWindow(self.macrotime_window)
-                self.main_window.mdiarea.addSubWindow(self.mcs_window)
-                # For standalone, add dock as regular widget
-                if hasattr(self.main_window, "addDockWidget"):
-                    self.main_window.addDockWidget(Qt.LeftDockWidgetArea, self.acquisition_dock)
-                else:
-                    # Fallback: add to central widget
-                    self.main_window.centralWidget().layout().addWidget(self.acquisition_dock)
+        # Insert exactly one MDI window whenever a host provides an MDI area.
+        if self.main_window is not None and hasattr(self.main_window, "mdiarea"):
+            self.main_window.mdiarea.addSubWindow(self.acquisition_window)
 
-        # Show windows
-        self.decay_window.show()
-        self.correlation_window.show()
-        self.count_rate_window.show()
-        self.acquisition_dock.show()  # Make sure dock is visible
+        self._register_acquisition_dataset()
+        self.acquisition_window.show()
+        self.acquisition_window.raise_()
+        self.acquisition_window.activateWindow()
 
     def show(self):
-        """Bring all acquisition windows to front."""
-        self.decay_window.show()
-        self.correlation_window.show()
-        self.count_rate_window.show()
-        self.acquisition_dock.show()
+        """Bring the unified acquisition fit window to the foreground."""
+        self.acquisition_window.show()
         self.raise_()
         self.activateWindow()
 
     def raise_(self):
-        """Raise all acquisition windows."""
-        for w in [
-            self.decay_window,
-            self.correlation_window,
-            self.count_rate_window,
-            self.acquisition_dock,
-        ]:
-            try:
-                w.raise_()
-            except Exception:
-                pass
-
-    def activateWindow(self):
-        """Activate the primary acquisition window."""
+        """Raise the unified acquisition fit window."""
         try:
-            self.decay_window.activateWindow()
+            self.acquisition_window.raise_()
         except Exception:
             pass
+
+    def activateWindow(self):
+        """Activate the unified acquisition fit window."""
+        try:
+            self.acquisition_window.activateWindow()
+        except Exception:
+            pass
+
+    def _sync_acquisition_page_visibility(self):
+        """Apply initial checkbox defaults after connecting their signals."""
+        pages = (
+            (self.decay_window, self.acquisition_dock.show_decay),
+            (self.correlation_window, self.acquisition_dock.show_correlation),
+            (self.count_rate_window, self.acquisition_dock.show_count_rate),
+            (self.macrotime_window, self.acquisition_dock.show_macrotime),
+            (self.mcs_window, self.acquisition_dock.show_mcs),
+        )
+        for page, visible in pages:
+            self.acquisition_window.set_page_visible(page, visible)
+        self.acquisition_window.plot_tab_widget.setCurrentWidget(self.acquisition_dock)
+
+    def _register_acquisition_dataset(self):
+        """Expose the running acquisition as the single `acq` dataset entry."""
+        self.acquisition_dataset = None
+        if not self.chisurf_available:
+            return
+        try:
+            import chisurf
+            from chisurf.core.data import DataCurve
+
+            dataset = DataCurve(
+                x=np.array([0.0]),
+                y=np.array([0.0]),
+                copy_array=False,
+            )
+            dataset.name = "acq"
+            dataset._acquisition_dummy = True
+            chisurf.imported_datasets.append(dataset)
+            self.acquisition_dataset = dataset
+            if self.main_window is not None:
+                self.main_window.update()
+        except Exception as error:
+            logger.warning("Could not register acquisition dataset: %s", error)
 
     def _read_device_timing_parameters(self):
         """Read timing parameters from the device and update instance variables."""
@@ -988,6 +988,14 @@ class SMAcquisitionManager:
 
     def start_acquisition(self):
         """Start data acquisition."""
+        if self._is_closing:
+            return
+        if not self._acquisition_workers_are_stopped():
+            logger.warning("Refusing to start a new acquisition while workers are still stopping")
+            self._safe_set_status_text("Status: Waiting for previous acquisition workers to stop")
+            self._safe_set_button_enabled("start_button", False)
+            self._safe_set_button_enabled("stop_button", True)
+            return
         # Read settings from central config
         from chisurf.settings import gui as gui_settings
 
@@ -1225,11 +1233,15 @@ class SMAcquisitionManager:
 
     def _on_data_ready(self, data):
         """Slot for incoming raw data – forward to the processing thread."""
+        if self._is_closing:
+            return
         if hasattr(self, "_processing_thread") and self._processing_thread is not None:
             self._processing_thread.submit(data)
 
     def _apply_results(self):
         """Poll results from the processing thread and update plots."""
+        if self._is_closing:
+            return
         proc = getattr(self, "_processing_thread", None)
         if proc is not None:
             results = proc.get_results()
@@ -1301,6 +1313,8 @@ class SMAcquisitionManager:
 
     def _on_processing_stop(self, reason):
         """Handle stop condition fired by the processing thread."""
+        if self._is_closing:
+            return
         logger.info("Processing thread stop requested: %s", reason)
         self._safe_set_status_text(f"Status: {reason}")
         QTimer.singleShot(0, self.stop_acquisition)
@@ -1334,6 +1348,9 @@ class SMAcquisitionManager:
 
     def stop_acquisition(self):
         """Stop data acquisition."""
+        if self._is_closing:
+            return True
+        workers_stopped = True
         try:
             # Stop the background processing thread first (drains queue)
             proc = getattr(self, "_processing_thread", None)
@@ -1341,45 +1358,46 @@ class SMAcquisitionManager:
                 # Cache last results for any pending _apply_results callbacks
                 self._last_results = proc.get_results()
                 proc.stop()
-                proc.wait(3000)
-                self._processing_thread = None
-
-            if hasattr(self, "acquisition_thread") and self.acquisition_thread is not None:
-                logger.debug(
-                    f"Stopping acquisition thread (running: {self.acquisition_thread.isRunning()})"
-                )
-                if self.acquisition_thread.isRunning():
-                    self.acquisition_thread.stop()
-                    # Give the thread a moment to stop
-                    import time
-
-                    timeout = 0
-                    while self.acquisition_thread.isRunning() and timeout < 50:  # 5 second timeout
-                        time.sleep(0.1)
-                        timeout += 1
-
-                    if self.acquisition_thread.isRunning():
-                        logger.warning("Acquisition thread did not stop gracefully")
-                    else:
-                        logger.debug("Acquisition thread stopped successfully")
+                if proc.wait(3000):
+                    self._processing_thread = None
                 else:
-                    logger.debug("Acquisition thread was not running")
+                    workers_stopped = False
+                    logger.warning("Processing thread did not stop within 3 seconds")
 
-            # Update UI regardless of thread state
-            self._safe_set_status_text("Status: Acquisition stopped")
-            self._safe_set_button_enabled("start_button", True)
-            self._safe_set_button_enabled("stop_button", False)
+            acquisition_thread = getattr(self, "acquisition_thread", None)
+            if acquisition_thread is not None:
+                logger.debug(
+                    f"Stopping acquisition thread (running: {acquisition_thread.isRunning()})"
+                )
+                if acquisition_thread.isRunning():
+                    acquisition_thread.stop()
+                if acquisition_thread.wait(5000):
+                    self.acquisition_thread = None
+                    logger.debug("Acquisition thread stopped successfully")
+                else:
+                    workers_stopped = False
+                    logger.warning("Acquisition thread did not stop within 5 seconds")
+
+            workers_stopped = workers_stopped and self._acquisition_workers_are_stopped()
+            if workers_stopped:
+                self._safe_set_status_text("Status: Acquisition stopped")
+                self._safe_set_button_enabled("start_button", True)
+                self._safe_set_button_enabled("stop_button", False)
+            else:
+                self._safe_set_status_text("Status: Waiting for acquisition workers to stop")
+                self._safe_set_button_enabled("start_button", False)
+                self._safe_set_button_enabled("stop_button", True)
 
             # Clear acquisition flag
             self._acquisition_in_progress = False
 
         except Exception as e:
-            # If something goes wrong, at least update the UI
+            workers_stopped = False
             logger.error(f"Error stopping acquisition: {e}")
             try:
-                self._safe_set_status_text("Status: Stopped (with errors)")
-                self._safe_set_button_enabled("start_button", True)
-                self._safe_set_button_enabled("stop_button", False)
+                self._safe_set_status_text("Status: Worker shutdown failed")
+                self._safe_set_button_enabled("start_button", False)
+                self._safe_set_button_enabled("stop_button", True)
                 # Clear acquisition flag even on error
                 self._acquisition_in_progress = False
             except Exception:
@@ -1398,10 +1416,14 @@ class SMAcquisitionManager:
         except Exception as e:
             logger.error(f"Error stopping FIFO timer: {e}")
 
+        return workers_stopped
+
     # Add remaining methods here...
 
     def update_progress(self):
         """Update the progress bar."""
+        if self._is_closing:
+            return
         if not self.acquisition_thread or not self.acquisition_thread.isRunning():
             return
 
@@ -1440,6 +1462,8 @@ class SMAcquisitionManager:
 
     def update_fifo_usage(self):
         """Log the FIFO usage."""
+        if self._is_closing:
+            return
         # Only update FIFO usage if measurement is running
         if not hasattr(self, "device") or not self.device.initialized:
             return
@@ -1577,44 +1601,24 @@ class SMAcquisitionManager:
         logger.info(message)
 
     def toggle_decay_window(self, checked):
-        """Toggle the fluorescence decays window visibility."""
-        if checked:
-            self.decay_window.show()
-            self.decay_window.raise_()  # Bring to front
-        else:
-            self.decay_window.hide()
+        """Show or hide the decay page in the unified acquisition window."""
+        self.acquisition_window.set_page_visible(self.decay_window, checked)
 
     def toggle_correlation_window(self, checked):
-        """Toggle the correlation curve window visibility."""
-        if checked:
-            self.correlation_window.show()
-            self.correlation_window.raise_()  # Bring to front
-        else:
-            self.correlation_window.hide()
+        """Show or hide the correlation page in the unified acquisition window."""
+        self.acquisition_window.set_page_visible(self.correlation_window, checked)
 
     def toggle_count_rate_window(self, checked):
-        """Toggle the count rate window visibility."""
-        if checked:
-            self.count_rate_window.show()
-            self.count_rate_window.raise_()  # Bring to front
-        else:
-            self.count_rate_window.hide()
+        """Show or hide the count-rate page in the unified acquisition window."""
+        self.acquisition_window.set_page_visible(self.count_rate_window, checked)
 
     def toggle_macrotime_window(self, checked):
-        """Toggle the macrotime window visibility."""
-        if checked:
-            self.macrotime_window.show()
-            self.macrotime_window.raise_()  # Bring to front
-        else:
-            self.macrotime_window.hide()
+        """Show or hide the macrotime page in the unified acquisition window."""
+        self.acquisition_window.set_page_visible(self.macrotime_window, checked)
 
     def toggle_mcs_window(self, checked):
-        """Toggle the MCS window visibility."""
-        if checked:
-            self.mcs_window.show()
-            self.mcs_window.raise_()  # Bring to front
-        else:
-            self.mcs_window.hide()
+        """Show or hide the MCS page in the unified acquisition window."""
+        self.acquisition_window.set_page_visible(self.mcs_window, checked)
 
     def show_help(self):
         """Show the help documentation window."""
@@ -1639,132 +1643,125 @@ class SMAcquisitionManager:
                 self.main_window, "Help Error", f"Could not open help documentation:\n{e}"
             )
 
+    def _acquisition_workers_are_stopped(self) -> bool:
+        """Return whether worker threads are quiescent enough for UI destruction."""
+        for attribute in ("_processing_thread", "acquisition_thread"):
+            worker = getattr(self, attribute, None)
+            if worker is None:
+                continue
+            try:
+                if worker.isRunning():
+                    return False
+            except RuntimeError:
+                # A Qt worker that was already deleted cannot emit another callback.
+                continue
+        return True
+
     def close_acquisition_mode(self):
-        """Close the acquisition mode and clean up all components."""
-        # Ask for confirmation
+        """Close the unified acquisition window and release its transient state."""
+        if self._is_closing:
+            return False
         reply = dialogs.question(
             self.main_window,
             "Close Acquisition Mode",
-            "Are you sure you want to close the acquisition mode?\n\nThis will stop any ongoing acquisition and close all acquisition windows.",
+            "Are you sure you want to close the acquisition mode?\n\n"
+            "This will stop any ongoing acquisition and close the acquisition window.",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No,
         )
-
         if reply != QMessageBox.Yes:
-            return
+            return False
 
-        # Stop any ongoing acquisition
-        if (
-            hasattr(self, "acquisition_thread")
-            and self.acquisition_thread
-            and self.acquisition_thread.isRunning()
-        ):
-            self.acquisition_thread.stop()
+        # Stop and join workers before publishing the closing state. Once the
+        # state is published, any late queued worker/timer callbacks are ignored.
+        self.stop_acquisition()
+        if not self._acquisition_workers_are_stopped():
+            logger.error("Acquisition workers are still running; leaving acquisition UI open")
+            dialogs.warning(
+                self.main_window,
+                "Acquisition Still Running",
+                "The acquisition workers did not stop in time. The acquisition window remains open.",
+            )
+            return False
+        self._is_closing = True
+        self._processing_thread = None
+        self.acquisition_thread = None
 
-        # Close device
         if self.device.initialized:
             self.device.close()
+        for timer_name in ("progress_timer", "fifo_timer"):
+            timer = getattr(self, timer_name, None)
+            if timer is not None:
+                timer.stop()
 
-        # Stop timers
-        if hasattr(self, "progress_timer"):
-            self.progress_timer.stop()
-        if hasattr(self, "fifo_timer"):
-            self.fifo_timer.stop()
-
-        # Remove plot controllers from chisurf's plot options layout
-        if hasattr(self.main_window, "plotOptionsLayout"):
-            # Remove decay plot controller
-            if (
-                hasattr(self.decay_window, "plot_controller")
-                and self.decay_window.plot_controller is not None
-            ):
+        pages = (
+            getattr(self, "decay_window", None),
+            getattr(self, "correlation_window", None),
+            getattr(self, "count_rate_window", None),
+            getattr(self, "macrotime_window", None),
+            getattr(self, "mcs_window", None),
+        )
+        plot_layout = getattr(self.main_window, "plotOptionsLayout", None)
+        for page in pages:
+            controller = getattr(page, "plot_controller", None)
+            if controller is None:
+                continue
+            if plot_layout is not None:
                 try:
-                    self.main_window.plotOptionsLayout.removeWidget(
-                        self.decay_window.plot_controller
-                    )
-                    self.decay_window.plot_controller.hide()
-                except RuntimeError as e:
-                    if "wrapped C/C++ object" in str(e) and "has been deleted" in str(e):
-                        logger.debug("Decay plot controller was already removed from layout")
-                    else:
-                        raise
+                    plot_layout.removeWidget(controller)
+                except RuntimeError:
+                    pass
+            controller.hide()
+            if page is not None:
+                controller.setParent(page)
 
-            # Remove correlation plot controller
-            if (
-                hasattr(self.correlation_window, "plot_controller")
-                and self.correlation_window.plot_controller is not None
-            ):
-                try:
-                    self.main_window.plotOptionsLayout.removeWidget(
-                        self.correlation_window.plot_controller
-                    )
-                    self.correlation_window.plot_controller.hide()
-                except RuntimeError as e:
-                    if "wrapped C/C++ object" in str(e) and "has been deleted" in str(e):
-                        logger.debug("Correlation plot controller was already removed from layout")
-                    else:
-                        raise
+        window = getattr(self, "acquisition_window", None)
+        if window is not None:
+            window.prepare_for_teardown()
+        mdi_area = getattr(self.main_window, "mdiarea", None)
+        if mdi_area is not None and window is not None:
+            mdi_area.removeSubWindow(window)
+        if window is not None:
+            window.hide()
+            window.setParent(None)
+            window.deleteLater()
 
-            # Remove count rate plot controller
-            if (
-                hasattr(self.count_rate_window, "plot_controller")
-                and self.count_rate_window.plot_controller is not None
-            ):
-                try:
-                    self.main_window.plotOptionsLayout.removeWidget(
-                        self.count_rate_window.plot_controller
-                    )
-                    self.count_rate_window.plot_controller.hide()
-                except RuntimeError as e:
-                    if "wrapped C/C++ object" in str(e) and "has been deleted" in str(e):
-                        logger.debug("Count rate plot controller was already removed from layout")
-                    else:
-                        raise
+        dataset = getattr(self, "acquisition_dataset", None)
+        if dataset is not None:
+            try:
+                import chisurf
 
-        # Remove windows from MDI area
-        self.main_window.mdiarea.removeSubWindow(self.decay_window)
-        self.main_window.mdiarea.removeSubWindow(self.correlation_window)
-        self.main_window.mdiarea.removeSubWindow(self.count_rate_window)
-        self.main_window.mdiarea.removeSubWindow(self.macrotime_window)
-        self.main_window.mdiarea.removeSubWindow(self.mcs_window)
+                chisurf.imported_datasets[:] = [
+                    item for item in chisurf.imported_datasets if item is not dataset
+                ]
+            except Exception as error:
+                logger.warning("Could not remove acquisition dataset: %s", error)
 
-        # Close and remove dock widgets
-        self.main_window.removeDockWidget(self.acquisition_dock)
+        dock = getattr(self, "acquisition_dock", None)
+        if dock is not None:
+            dock._acquisition_manager = None
 
-        # Close windows
-        self.decay_window.close()
-        self.correlation_window.close()
-        self.count_rate_window.close()
-        self.macrotime_window.close()
-        self.mcs_window.close()
-        self.acquisition_dock.close()
+        for attribute in (
+            "acquisition_window",
+            "acquisition_dock",
+            "decay_window",
+            "correlation_window",
+            "count_rate_window",
+            "macrotime_window",
+            "mcs_window",
+        ):
+            setattr(self, attribute, None)
+        self.acquisition_dataset = None
 
-        # Clear plot controllers to default state (after windows are closed)
-        self._clear_plot_controllers()
-
-        # Clean up widget references
-        try:
-            if hasattr(self, "acquisition_dock"):
-                self.acquisition_dock = None
-            if hasattr(self, "decay_window"):
-                self.decay_window = None
-            if hasattr(self, "correlation_window"):
-                self.correlation_window = None
-            if hasattr(self, "count_rate_window"):
-                self.count_rate_window = None
-            if hasattr(self, "macrotime_window"):
-                self.macrotime_window = None
-            if hasattr(self, "mcs_window"):
-                self.mcs_window = None
-        except Exception as e:
-            logger.error(f"Error cleaning up widget references: {e}")
-
-        # Remove reference from main window
-        if hasattr(self.main_window, "_acquisition_manager"):
+        if (
+            self.main_window is not None
+            and getattr(self.main_window, "_acquisition_manager", None) is self
+        ):
             delattr(self.main_window, "_acquisition_manager")
-
-        # Log the closure
+        if self.main_window is not None:
+            self.main_window.update()
         logger.info("Single-Molecule Acquisition mode closed.")
+        return True
 
     def _decay_window_of_channel(self, channel):
         """Return the decay window holding a device routing channel, or ``None``.
@@ -2505,6 +2502,8 @@ class SMAcquisitionManager:
 
     def acquisition_completed(self):
         """Handle acquisition completion."""
+        if self._is_closing:
+            return
         logger.info("Acquisition completed")
         self._safe_set_status_text("Status: Acquisition completed")
         self._safe_set_button_enabled("start_button", True)
@@ -2518,6 +2517,8 @@ class SMAcquisitionManager:
 
     def acquisition_error(self, error_msg):
         """Handle acquisition error."""
+        if self._is_closing:
+            return
         logger.error(f"Acquisition error: {error_msg}")
         self._safe_set_status_text(f"Status: Error - {error_msg}")
         self._safe_set_button_enabled("start_button", True)

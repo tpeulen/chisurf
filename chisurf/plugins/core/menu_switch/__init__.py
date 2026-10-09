@@ -23,11 +23,18 @@ works best for their workflow.
 name = "Setup:Menu Switch"
 icon = "🔄"
 
-# Import the main functionality
-from .menu_switch import MenuSwitchWidget, run
+def __getattr__(name):
+    """Load the legacy Qt implementation only when explicitly requested."""
+    if name in {"MenuSwitchWidget", "run"}:
+        from .menu_switch import MenuSwitchWidget, run
+
+        return {"MenuSwitchWidget": MenuSwitchWidget, "run": run}[name]
+    raise AttributeError(name)
 
 # When the plugin is loaded as a module with __name__ == "plugin",
 # this code will be executed
 if __name__ == "plugin":
     # Execute the menu switch functionality
+    from .menu_switch import run
+
     run()

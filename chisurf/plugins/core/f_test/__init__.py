@@ -17,6 +17,7 @@ name = _manifest.display_name if _manifest is not None else "Main:Tools:F-Test"
 
 __all__ = ["FTestTool", "FTestWidget"]
 
+
 def __getattr__(name: str):
     if name in {"FTestTool", "FTestWidget"}:
         from .gui import tool
@@ -27,6 +28,7 @@ def __getattr__(name: str):
 
 if __name__ == "plugin":
     from .gui.tool import FTestTool
+
     window = FTestTool()
     if _manifest is not None:
         apply_manifest_statefulness(window, _manifest)

@@ -17,6 +17,7 @@ icon = "⚙️"
 def load():
     """Return the model manager widget."""
     from chisurf.plugins.core.model_manager.gui.tool import ModelManagerWidget
+
     return ModelManagerWidget()
 
 
@@ -32,13 +33,16 @@ __all__ = [
 def __getattr__(attribute):
     if attribute == "ModelManagerWidget":
         from chisurf.plugins.core.model_manager.gui.tool import ModelManagerWidget
+
         return ModelManagerWidget
     raise AttributeError(attribute)
+
 
 if __name__ == "plugin":
     try:
         import chisurf as cs
         from chisurf.core.plugin.registry import apply_manifest_statefulness
+
         ModelManagerWidget = __getattr__("ModelManagerWidget")
         parent = getattr(cs, "cs", None)
         window = ModelManagerWidget(parent=parent)

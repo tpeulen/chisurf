@@ -27,11 +27,25 @@ FIT_DATA = [("decay 1-exp", 1.31, 1024, 3), ("decay 2-exp", 1.02, 1024, 5)]
 #: (fit index, target) loads, then (attr, value) edits -- applied in this order on both sides.
 LOADS = [(0, "model1"), (1, "model2"), (1, "chi2max")]
 EDITS = [("conf_level", 0.99), ("n2", 900), ("npars", 1), ("conf_level_2", 0.68)]
-STATS = ["chi2_1", "n1", "chi2_2", "n2", "conf_level", "chi2_min", "npars", "dof", "conf_level_2", "chi2_max"]
+STATS = [
+    "chi2_1",
+    "n1",
+    "chi2_2",
+    "n2",
+    "conf_level",
+    "chi2_min",
+    "npars",
+    "dof",
+    "conf_level_2",
+    "chi2_max",
+]
 
 
 def _fits():
-    return [SimpleNamespace(name=n, chi2r=c, model=SimpleNamespace(n_points=p, n_free=f)) for n, c, p, f in FIT_DATA]
+    return [
+        SimpleNamespace(name=n, chi2r=c, model=SimpleNamespace(n_points=p, n_free=f))
+        for n, c, p, f in FIT_DATA
+    ]
 
 
 _QT = r"""
@@ -74,14 +88,22 @@ def qt():
     pytest.importorskip("qtpy")
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT, *(json.dumps(x) for x in (FIT_DATA, LOADS, EDITS, STATS))],
-                          capture_output=True, text=True, timeout=300, env=env, cwd=str(REPO))
+    proc = subprocess.run(
+        [sys.executable, "-c", _QT, *(json.dumps(x) for x in (FIT_DATA, LOADS, EDITS, STATS))],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env=env,
+        cwd=str(REPO),
+    )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and ("No module named" in proc.stderr or "could not connect to display" in proc.stderr):
+    if line is None and (
+        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
+    ):
         pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
     # Any other failure is the Qt tool's own: skipping it hid a broken Qt host.
     assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS"):])
+    return json.loads(line[len("FACTS") :])
 
 
 #: Pointer tests draw small: the toolbar and its menu sit top-left, and the pixel painter's cost
@@ -140,7 +162,9 @@ def _reference_trail():
     """
     from scipy.stats import f
 
-    s = dict(chi2_1=1.1, n1=100, chi2_2=1.0, n2=98, chi2_min=1.0, npars=1, dof=100, conf_level_2=0.95)
+    s = dict(
+        chi2_1=1.1, n1=100, chi2_2=1.0, n2=98, chi2_min=1.0, npars=1, dof=100, conf_level_2=0.95
+    )
 
     def conf():
         s["conf_level"] = f.cdf(s["chi2_1"] / s["chi2_2"], s["n1"], s["n2"])
@@ -215,8 +239,10 @@ def test_pressing_a_drawn_menu_row_loads_that_fit_into_that_target(row):
     expected = FTestApp(fit_provider=_fits)
     expected.refresh_fits()
     expected.load_fit_into(index, target)
-    assert {k: getattr(app.model, k) for k in STATS} == {k: getattr(expected.model, k) for k in STATS}
-    assert not app.menu_open                                # the pick closed it
+    assert {k: getattr(app.model, k) for k in STATS} == {
+        k: getattr(expected.model, k) for k in STATS
+    }
+    assert not app.menu_open  # the pick closed it
 
 
 def test_the_menu_rereads_the_open_fits_each_time_it_opens():
@@ -226,9 +252,9 @@ def test_the_menu_rereads_the_open_fits_each_time_it_opens():
     x, y, w, h = app.item_rects["From fit"]
     _click(app, x + w / 2, y + h / 2)
     assert len(app.fits) == 1
-    _click(app, x + w / 2, y + h / 2)                       # close
+    _click(app, x + w / 2, y + h / 2)  # close
     fits.append(_fits()[1])
-    _click(app, x + w / 2, y + h / 2)                       # reopen: the new fit is listed
+    _click(app, x + w / 2, y + h / 2)  # reopen: the new fit is listed
     assert [f.name for f in app.fits] == ["decay 1-exp", "decay 2-exp"]
 
 
@@ -260,8 +286,14 @@ def test_an_empty_menu_says_so(monkeypatch):
     app = FTestApp(fit_provider=list)
     rows = []
     original = im.menu_item
-    monkeypatch.setattr(im, "menu_item", lambda label, *a, **k: (rows.append((label, k.get("enabled", True))),
-                                                                  original(label, *a, **k))[1])
+    monkeypatch.setattr(
+        im,
+        "menu_item",
+        lambda label, *a, **k: (
+            rows.append((label, k.get("enabled", True))),
+            original(label, *a, **k),
+        )[1],
+    )
     _frames(app)
     x, y, w, h = app.item_rects["From fit"]
     _click(app, x + w / 2, y + h / 2)
@@ -293,7 +325,7 @@ def test_draws_empty_and_populated(size):
     for _ in range(2):
         painter = RecordingPainter()
         app.draw(painter, 0, 0, *size)
-    assert any(s.startswith("1.3100") for s in painter.strings)    # χ²(1) of the loaded fit
+    assert any(s.startswith("1.3100") for s in painter.strings)  # χ²(1) of the loaded fit
     assert set(app.forms[1].rects) >= {"chi2_max"}
 
 
@@ -322,6 +354,7 @@ def test_port_is_qt_free():
 def test_every_control_has_a_tooltip(qt, monkeypatch):
     sys.path.insert(0, str(REPO))
     from emtk import im
+
     from test.gui.emtk_port_parity import build_emtk_app, emtk_inventory
 
     assert emtk_inventory(build_emtk_app("f_test"))["controls_without_tooltip"] == []

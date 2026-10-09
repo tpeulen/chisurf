@@ -1,18 +1,11 @@
 """Code Editor plugin launcher."""
 
-from chisurf.plugins.core.code_editor.window import CodeEditorWindow
+from chisurf.plugins.core.code_editor.gui.tool import CodeEditorEmtkTool, run_code_editor
 
 if __name__ == "plugin":
-    window = CodeEditorWindow()
+    window = CodeEditorEmtkTool()
     window.show()
 
 
 if __name__ == "__main__":
-    import sys
-
-    from qtpy import QtWidgets
-
-    app = QtWidgets.QApplication(sys.argv)
-    window = CodeEditorWindow()
-    window.show()
-    sys.exit(app.exec_())
+    run_code_editor()

@@ -49,9 +49,22 @@ def qt_dialogs(monkeypatch):
     from chisurf.gui import dialogs
 
     asked, answers = [], {"confirm": True}
-    monkeypatch.setattr(dialogs, "confirm", lambda parent, title, text, **k: (asked.append(["confirm", title, text]), answers["confirm"])[1])
-    monkeypatch.setattr(dialogs, "information", lambda parent, title, text, **k: asked.append(["information", title, text]))
-    monkeypatch.setattr(dialogs, "error", lambda parent, title, text, **k: asked.append(["error", title, text]))
+    monkeypatch.setattr(
+        dialogs,
+        "confirm",
+        lambda parent, title, text, **k: (
+            asked.append(["confirm", title, text]),
+            answers["confirm"],
+        )[1],
+    )
+    monkeypatch.setattr(
+        dialogs,
+        "information",
+        lambda parent, title, text, **k: asked.append(["information", title, text]),
+    )
+    monkeypatch.setattr(
+        dialogs, "error", lambda parent, title, text, **k: asked.append(["error", title, text])
+    )
     return asked, answers
 
 
@@ -83,7 +96,9 @@ def test_a_check_gives_the_status_versions_and_changelog_the_qt_tool_gave(fakes)
     assert model.version_labels == ref["items"]
     assert model.version_index == ref["index"] == 0
     assert model.changelog_html == today(ref["html"])
-    assert model.update_enabled and model.enabled("ask_update") and model.enabled("selected_version")
+    assert (
+        model.update_enabled and model.enabled("ask_update") and model.enabled("selected_version")
+    )
 
 
 def test_every_version_shows_the_changelog_the_qt_tool_showed_for_it(fakes):
@@ -94,7 +109,9 @@ def test_every_version_shows_the_changelog_the_qt_tool_showed_for_it(fakes):
         assert model.changelog_html == today(REF["html_by_index"][str(index)]), index
 
 
-def test_the_changelog_range_follows_the_previous_listed_version_and_the_installed_one_for_the_oldest(fakes):
+def test_the_changelog_range_follows_the_previous_listed_version_and_the_installed_one_for_the_oldest(
+    fakes,
+):
     """The GitHub query the changelog sends: since the previous listed version (the installed one for the oldest) to the day after."""
     model = model_checked()
     ranges = {}
@@ -103,10 +120,17 @@ def test_the_changelog_range_follows_the_previous_listed_version_and_the_install
         model.version_index = index
         model.update_changelog_for_selected()
         (url,) = fakes.http_requests
-        ranges[index] = (url.split("since=")[1].split("&")[0][:10], url.split("until=")[1].split("&")[0][:10], url.split("sha=")[1])
-    assert ranges[0] == ("2026-09-20", "2026-10-03", "development")        # 26.09.20 -> 26.10.02
-    assert ranges[1] == ("2026-08-01", "2026-09-21", "development")        # 26.08.01 -> 26.09.20
-    assert ranges[2][1:] == ("2026-08-02", "development")                   # oldest: from the installed version (no date: 14 days back)
+        ranges[index] = (
+            url.split("since=")[1].split("&")[0][:10],
+            url.split("until=")[1].split("&")[0][:10],
+            url.split("sha=")[1],
+        )
+    assert ranges[0] == ("2026-09-20", "2026-10-03", "development")  # 26.09.20 -> 26.10.02
+    assert ranges[1] == ("2026-08-01", "2026-09-21", "development")  # 26.08.01 -> 26.09.20
+    assert ranges[2][1:] == (
+        "2026-08-02",
+        "development",
+    )  # oldest: from the installed version (no date: 14 days back)
     assert ranges[2][0] == "2026-07-18"
 
 
@@ -119,12 +143,17 @@ def test_the_start_up_check_matches_the_qt_tool_and_asks_the_same_notice(fakes):
     assert model.status == ref["status"]
     assert model.version_labels == ref["items"]
     assert (model.dialog, model.dialog_title, model.dialog_text) == (
-        "notice", "Update Available", "A new version of ChiSurf (26.10.02) is available.")
+        "notice",
+        "Update Available",
+        "A new version of ChiSurf (26.10.02) is available.",
+    )
     from qtpy import QtGui
 
     doc = QtGui.QTextDocument()
     doc.setHtml(model.changelog_html)
-    assert doc.toPlainText() == today(ref["changelog_plain"])           # the Qt text area's own reading of the same HTML
+    assert doc.toPlainText() == today(
+        ref["changelog_plain"]
+    )  # the Qt text area's own reading of the same HTML
     assert model.update_enabled and not model.suppress_initial_notification
 
 
@@ -143,7 +172,9 @@ def test_start_up_check_is_skipped_by_the_switches_only_when_opened_by_start_up(
     quiet = UpdaterModel(suppress_initial_notification=True)
     quiet.auto_check()
     assert quiet.status == "Startup update check is disabled by user settings."
-    assert fakes.remote_listings == 0 and fakes.http_requests == []        # nothing was asked of the network
+    assert (
+        fakes.remote_listings == 0 and fakes.http_requests == []
+    )  # nothing was asked of the network
     save_startup_settings(False, False)
     assert UpdaterModel(suppress_initial_notification=True).check_on_startup is False
     off = UpdaterModel(suppress_initial_notification=True)
@@ -151,7 +182,9 @@ def test_start_up_check_is_skipped_by_the_switches_only_when_opened_by_start_up(
     assert off.status == "Startup update check is disabled by user settings."
     opened_by_user = UpdaterModel(suppress_initial_notification=False)
     opened_by_user.auto_check()
-    assert opened_by_user.status == "Update available: version 26.10.02" and fakes.remote_listings > 0
+    assert (
+        opened_by_user.status == "Update available: version 26.10.02" and fakes.remote_listings > 0
+    )
 
 
 def test_no_versions_listed_is_the_message_the_qt_tool_gave(fakes):
@@ -161,7 +194,9 @@ def test_no_versions_listed_is_the_message_the_qt_tool_gave(fakes):
     model = UpdaterModel()
     model.auto_check()
     assert model.status == REF["no_versions"]["status"].replace(REF_VERSION, model.current_version)
-    assert model.version_labels == [] and not model.update_enabled and not model.enabled("ask_update")
+    assert (
+        model.version_labels == [] and not model.update_enabled and not model.enabled("ask_update")
+    )
     model.do_check()
     assert model.status == "Error checking for updates: No update information available"
 
@@ -170,7 +205,11 @@ def test_the_changelog_formatting_equals_the_qt_widgets_for_a_recorded_sample():
     from chisurf.plugins.core.updater.gui.model import format_changelog_html
 
     assert format_changelog_html(SAMPLE) == REF["format_changelog"]["html"]
-    assert format_changelog_html("  ") == REF["format_changelog"]["empty"] == "<i>No changelog available.</i>"
+    assert (
+        format_changelog_html("  ")
+        == REF["format_changelog"]["empty"]
+        == "<i>No changelog available.</i>"
+    )
     assert format_changelog_html(None) == "<i>No changelog available.</i>"
 
 
@@ -180,8 +219,10 @@ def test_the_blocks_the_window_draws_say_what_the_qt_text_area_said(qtbot):
 
     from chisurf.plugins.core.updater.gui.model import changelog_blocks, format_changelog_html
 
-    text = ("Changes between 1 and 2:\n- 2026-10-01 fix snake_case_name and *star* <b>x</b> (by Ada)\n- second\nplain & line\n"
-            "More details: https://github.com/o/my_repo_x/commits")
+    text = (
+        "Changes between 1 and 2:\n- 2026-10-01 fix snake_case_name and *star* <b>x</b> (by Ada)\n- second\nplain & line\n"
+        "More details: https://github.com/o/my_repo_x/commits"
+    )
     blocks = changelog_blocks(text)
     assert [b[0] for b in blocks] == ["header", "item", "item", "paragraph", "link"]
     doc = QtGui.QTextDocument()
@@ -210,7 +251,10 @@ def test_the_live_qt_tool_and_the_model_agree_after_a_check(qt_tool, qtbot, fake
         model.update_changelog_for_selected()
         assert qt_tool.htmls[-1] == model.changelog_html
     assert qt_tool.update_button.isEnabled() == model.update_enabled
-    assert qt_tool.dev_checkbox.isChecked() == model.development and not qt_tool.dev_checkbox.isEnabled()
+    assert (
+        qt_tool.dev_checkbox.isChecked() == model.development
+        and not qt_tool.dev_checkbox.isEnabled()
+    )
     assert qt_tool.version_dropdown.isEnabled() == model.enabled("selected_version")
 
 
@@ -222,7 +266,11 @@ def test_the_live_qt_tool_and_the_model_agree_without_versions(qt_tool, qtbot, f
     qtbot.wait(100)
     model = UpdaterModel()
     model.do_check()
-    assert qt_tool.status_label.text() == model.status == "Error checking for updates: No update information available"
+    assert (
+        qt_tool.status_label.text()
+        == model.status
+        == "Error checking for updates: No update information available"
+    )
     assert not qt_tool.update_button.isEnabled() and not model.update_enabled
 
 
@@ -234,14 +282,17 @@ def test_the_startup_switches_are_saved_as_the_qt_tool_saved_them(qt_tool, qtbot
     qt_tool.cb_check_on_start.setChecked(False)
     qt_tool.cb_ignore_updates.setChecked(True)
     qt_saved = yaml.safe_load(settings_file.read_text())
-    assert qt_saved["plugins"]["updater"] == {"ignore_updates_on_startup": True, "check_on_startup": False}
+    assert qt_saved["plugins"]["updater"] == {
+        "ignore_updates_on_startup": True,
+        "check_on_startup": False,
+    }
     assert qt_saved == REF["startup_saved"]
     settings_file.unlink()
     model = UpdaterModel()
     model.check_on_startup = False
     model.ignore_updates_on_startup = True
     assert yaml.safe_load(settings_file.read_text()) == qt_saved
-    again = UpdaterModel()                                               # read back at the next start
+    again = UpdaterModel()  # read back at the next start
     assert (again.check_on_startup, again.ignore_updates_on_startup) == (False, True)
 
 
@@ -251,7 +302,10 @@ def test_the_startup_switch_defaults_are_check_on_and_ignore_off():
     model = UpdaterModel()
     assert (model.check_on_startup, model.ignore_updates_on_startup) == (True, False)
     assert load_startup_settings({}) == (False, True)
-    assert load_startup_settings({"plugins": {"updater": {"check_on_startup": False}}}) == (False, False)
+    assert load_startup_settings({"plugins": {"updater": {"check_on_startup": False}}}) == (
+        False,
+        False,
+    )
 
 
 def test_settings_round_trip_through_the_host_hooks():
@@ -274,15 +328,23 @@ def run_update(model, fakes, accept=True):
 def test_update_now_runs_the_command_the_qt_tool_ran_for_a_remote_package(fakes):
     model = model_checked()
     run_update(model, fakes)
-    (url, local), = fakes.downloads
+    ((url, local),) = fakes.downloads
     assert url == RELEASES[0]["file_path"]
-    assert Path(local).name == "chisurf-macos-26.10.02.tar.bz2" and Path(local).parent.name.startswith("chisurf_update_")
+    assert Path(local).name == "chisurf-macos-26.10.02.tar.bz2" and Path(
+        local
+    ).parent.name.startswith("chisurf_update_")
     assert fakes.update_commands == [("separate_process", fakes.expected_update_commands(local))]
-    kind, recorded = REF["update_accepted"]["commands"][0]               # what the Qt tool ran before the port
-    recorded = [sys.prefix if part == recorded[recorded.index("--prefix") + 1] else part for part in recorded]
+    kind, recorded = REF["update_accepted"]["commands"][0]  # what the Qt tool ran before the port
+    recorded = [
+        sys.prefix if part == recorded[recorded.index("--prefix") + 1] else part
+        for part in recorded
+    ]
     assert kind == "separate_process" and recorded[:-1] == fakes.update_commands[0][1][:-1]
     assert Path(recorded[-1]).name == Path(local).name
-    assert model.status == "The update was started in a separate window; restart ChiSurf when it has finished."
+    assert (
+        model.status
+        == "The update was started in a separate window; restart ChiSurf when it has finished."
+    )
     assert not model.updating and model.update_message == ""
 
 
@@ -290,7 +352,7 @@ def test_update_now_for_a_conda_package_uses_the_same_install_line(fakes):
     model = model_checked()
     model.selected_version = "Version 26.08.01"
     run_update(model, fakes)
-    (url, local), = fakes.downloads
+    ((url, local),) = fakes.downloads
     assert url == RELEASES[2]["file_path"] and local.endswith("chisurf-macos-26.08.01.conda")
     assert fakes.update_commands == [("separate_process", fakes.expected_update_commands(local))]
 
@@ -310,8 +372,10 @@ def test_update_now_matches_the_live_qt_tool_command_for_command(qt_tool, qtbot,
         model.do_check()
         model.selected_version = model.version_labels[index]
         run_update(model, fakes)
-        assert fakes.update_commands[0][1][:-1] == qt_cmd[:-1]                  # the same line ...
-        assert Path(fakes.update_commands[0][1][-1]).name == Path(qt_cmd[-1]).name == name   # ... for the same file (temp folder differs)
+        assert fakes.update_commands[0][1][:-1] == qt_cmd[:-1]  # the same line ...
+        assert (
+            Path(fakes.update_commands[0][1][-1]).name == Path(qt_cmd[-1]).name == name
+        )  # ... for the same file (temp folder differs)
     asked, _ = qt_dialogs
     assert ["confirm", "Update Warning", model.dialog_text or asked[-1][2]] == asked[-1]
 
@@ -320,11 +384,14 @@ def test_update_now_without_a_listed_version_runs_the_standard_install_line_like
     from chisurf.plugins.core.updater.gui.model import UpdaterModel
 
     model = UpdaterModel()
-    model.update_enabled = True                                     # as after a check that listed nothing but found a newer one
+    model.update_enabled = True  # as after a check that listed nothing but found a newer one
     run_update(model, fakes)
     assert fakes.update_commands == [("separate_process", fakes.expected_latest_command())]
-    recorded = REF["standard_update_commands"][0][1]                    # what the Qt tool ran before the port
-    recorded = [sys.prefix if part == recorded[recorded.index("--prefix") + 1] else part for part in recorded]
+    recorded = REF["standard_update_commands"][0][1]  # what the Qt tool ran before the port
+    recorded = [
+        sys.prefix if part == recorded[recorded.index("--prefix") + 1] else part
+        for part in recorded
+    ]
     assert recorded == fakes.update_commands[0][1]
     assert fakes.downloads == []
 
@@ -340,7 +407,7 @@ def test_the_channel_chooses_the_changelog_branch_not_the_install_line(fakes, de
     model.do_check()
     assert fakes.http_requests and all(f"sha={branch}" in url for url in fakes.http_requests[:2])
     run_update(model, fakes)
-    (_, local), = fakes.downloads
+    ((_, local),) = fakes.downloads
     assert fakes.update_commands == [("separate_process", fakes.expected_update_commands(local))]
 
 
@@ -354,7 +421,9 @@ def test_declining_the_question_runs_nothing_and_says_so(fakes, qt_tool, qt_dial
     run_update(model, fakes, accept=False)
     assert model.status == qt_status == "Update cancelled by user."
     assert fakes.update_commands == [] and fakes.downloads == []
-    assert asked[-1][2] == model.dialog_text == REF["update_declined"]["asked"][-1][2]   # the question is the Qt tool's, word for word
+    assert (
+        asked[-1][2] == model.dialog_text == REF["update_declined"]["asked"][-1][2]
+    )  # the question is the Qt tool's, word for word
 
 
 def test_a_failed_download_is_reported_and_runs_nothing(fakes, monkeypatch):
@@ -385,7 +454,7 @@ def test_an_update_script_that_ends_the_process_asks_the_app_to_exit(fakes, monk
     app = UpdaterApp(UpdaterModel(), auto_check=False, exit_hook=lambda: exits.append(1))
     model = app.model
     model.do_check()
-    run_update(model, fakes)                       # the app runs it in the background: draw until it has finished
+    run_update(model, fakes)  # the app runs it in the background: draw until it has finished
     for _ in range(400):
         app.draw(RecordingPainter(), 0, 0, 800, 600)
         if exits:
@@ -394,7 +463,7 @@ def test_an_update_script_that_ends_the_process_asks_the_app_to_exit(fakes, monk
     assert model.exit_requested and "continues in a separate window" in model.status
     assert exits == [1] and app.close_requested
     app.draw(RecordingPainter(), 0, 0, 800, 600)
-    assert exits == [1]                                                  # once
+    assert exits == [1]  # once
     app.close()
 
 
@@ -463,7 +532,16 @@ def test_every_control_has_a_tooltip():
 
     def check(sections):
         for s in sections:
-            if s.get("type") in ("value", "choice", "toggle", "table", "data_table", "custom", "info", "panel"):
+            if s.get("type") in (
+                "value",
+                "choice",
+                "toggle",
+                "table",
+                "data_table",
+                "custom",
+                "info",
+                "panel",
+            ):
                 assert s.get("description"), s.get("attr") or s.get("title") or s
             for b in s.get("buttons", []):
                 assert b.get("description"), b
@@ -481,10 +559,16 @@ def test_the_app_draws_empty_and_after_a_check_at_both_sizes(size):
     for _ in range(3):
         painter = RecordingPainter()
         app.draw(painter, 0, 0, *size)
-    assert "Check for Updates" in painter.strings and "Changelog will appear here after checking for updates..." in painter.strings
+    assert (
+        "Check for Updates" in painter.strings
+        and "Changelog will appear here after checking for updates..." in painter.strings
+    )
     app.model.do_check()
     for _ in range(3):
         painter = RecordingPainter()
         app.draw(painter, 0, 0, *size)
-    assert "Version 26.10.02" in painter.strings and "Update available: version 26.10.02" in painter.strings
+    assert (
+        "Version 26.10.02" in painter.strings
+        and "Update available: version 26.10.02" in painter.strings
+    )
     app.close()

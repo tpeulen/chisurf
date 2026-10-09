@@ -10,6 +10,7 @@
     "Setup"
   ],
   "entrypoints": {
-    "script": "__init__.py"
+    "script": "__init__.py",
+    "emtk": "chisurf.plugins.core.menu_switch.app:make_app"
   }
 }

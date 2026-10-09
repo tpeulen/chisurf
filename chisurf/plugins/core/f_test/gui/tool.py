@@ -28,7 +28,11 @@ from qtpy import QtWidgets
 from chisurf.core.dataspec import load_view_spec as load_view_spec
 from chisurf.core.math.statistics import (
     chi2_max as chi2_max,
+)
+from chisurf.core.math.statistics import (
     f_test_chi2r as f_test_chi2r,
+)
+from chisurf.core.math.statistics import (
     f_test_confidence as f_test_confidence,
 )
 from chisurf.gui.glyphs import Glyphs
@@ -37,7 +41,9 @@ from chisurf.gui.widgets.tools import ChisurfDockTool
 
 _GUI_DIR = pathlib.Path(__file__).parent
 
-from .model import FTestModel as _FTestModel, _CONF_ATTRS, _CHI2_2_ATTRS, _CHI2_MAX_ATTRS
+from .model import _CHI2_2_ATTRS, _CHI2_MAX_ATTRS, _CONF_ATTRS
+from .model import FTestModel as _FTestModel
+
 
 class FTestTool(ChisurfDockTool):
     """F-test / χ²-max calculator; constructs with no required arguments (hub-embeddable).

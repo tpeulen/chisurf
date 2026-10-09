@@ -38,7 +38,6 @@ from qtpy.QtWidgets import (
 
 from .updater import PackageManager
 
-
 #: Workers that may still be running. The widget that started one can be deleted before it has finished (a window
 #: closed while a list loads), and a ``QThread`` destroyed while it runs aborts the whole process; so the module
 #: keeps every worker alive until it has finished.
@@ -759,4 +758,3 @@ class PackageManagerDialog(QDialog):
         close_btn.clicked.connect(self.accept)
         button_box.addWidget(close_btn)
         layout.addLayout(button_box)
-

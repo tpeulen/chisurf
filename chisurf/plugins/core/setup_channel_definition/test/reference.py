@@ -19,7 +19,13 @@ os.environ["MMFDB_SETTINGS_DIR"] = str(tmp / "mmfdb")
 (tmp / "mmfdb").mkdir(parents=True, exist_ok=True)
 QT_DB, EMTK_DB = str(tmp / "qt.sqlite"), str(tmp / "emtk.sqlite")
 
-from chisurf.plugins.core.setup_channel_definition.test.driver import CAL, DATA, STAMP, norm  # noqa: E402
+from chisurf.plugins.core.setup_channel_definition.test.driver import (  # noqa: E402
+    CAL,
+    DATA,
+    STAMP,
+    norm,
+)
+
 
 def rows(db_path):
     """Names and the stored public flag of the setups of the detector-setup type."""
@@ -31,7 +37,10 @@ def rows(db_path):
         for row in db.list_setups():
             cfg = json.loads(row.get("configuration_json") or "{}")
             if cfg.get("setup_type") == "tttr_detector_setup":
-                out[row["name"]] = {"public": bool(row.get("is_public")), "owner": row.get("created_by_user_id")}
+                out[row["name"]] = {
+                    "public": bool(row.get("is_public")),
+                    "owner": row.get("created_by_user_id"),
+                }
         return out
     finally:
         db.close()
@@ -58,7 +67,16 @@ def add_calibration(db_path, name):
     db = MFDatabase(db_path)
     key = setup_store.setup_id_for_name(name, user, "tttr_detector_setup")
     for channel, (g, l1, l2) in CAL.items():
-        db.add_setup_calibration(key, channel, g_factor=g, l1=l1, l2=l2, calibrated_at=STAMP, method="manual", created_by_user_id=user)
+        db.add_setup_calibration(
+            key,
+            channel,
+            g_factor=g,
+            l1=l1,
+            l2=l2,
+            calibrated_at=STAMP,
+            method="manual",
+            created_by_user_id=user,
+        )
     db.conn.commit()
     db.close()
 
@@ -87,7 +105,11 @@ def run_emtk():
     def snap(step):
         definition = bar.definition
         definition.refresh_setups()
-        log[step] = {"names": sorted(definition.setups), "rows": rows(EMTK_DB), "setups": {n: norm(s) for n, s in definition.setups.items()}}
+        log[step] = {
+            "names": sorted(definition.setups),
+            "rows": rows(EMTK_DB),
+            "setups": {n: norm(s) for n, s in definition.setups.items()},
+        }
 
     bar.request_save()
     bar.name_text = "Lab A"
@@ -102,7 +124,10 @@ def run_emtk():
     bar.select("Lab A")
     log["calibration_items"] = bar.calibration_items()
     bar.select_calibration(STAMP)
-    log["calibration_cells"] = {n: [d["g_factor"], d["l1"], d["l2"]] for n, d in sorted(bar.definition.data["detectors"].items())}
+    log["calibration_cells"] = {
+        n: [d["g_factor"], d["l1"], d["l2"]]
+        for n, d in sorted(bar.definition.data["detectors"].items())
+    }
     bar.request_rename()
     bar.name_text = "Lab B"
     bar.confirm()

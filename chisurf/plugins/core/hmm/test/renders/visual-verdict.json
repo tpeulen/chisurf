@@ -1,0 +1,17 @@
+{
+  "score": 84,
+  "verdict": "revise",
+  "threshold": 90,
+  "threshold_pass": false,
+  "category_match": true,
+  "reference_images": [],
+  "generated_screenshots": ["native-normal.png", "native-narrow.png"],
+  "differences": [
+    "The native surface exposes settings, fit/scan actions, three result plots, fitted-state and transition tables, but a genuine Qt reference could not be captured here.",
+    "Native plots use EMTK line primitives rather than the Qt plotting widget."
+  ],
+  "suggestions": [
+    "Capture a matched populated Qt reference before acceptance and compare table density/plot interaction."
+  ],
+  "reasoning": "The Qt-free HMM model, plots and result tables are integrated and tested, but full Qt workflow and visual parity remain incomplete."
+}

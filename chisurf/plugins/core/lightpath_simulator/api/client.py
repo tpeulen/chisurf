@@ -39,13 +39,13 @@ class LightPathClient:
         # The shared client owns canonical nested settings and legacy fallbacks.
         # Overriding it with last_server/last_port ignored current profiles.
         client = MMFDBClient(timeout_ms=timeout_ms)
-        server_host,server_port = client.host,client.cmd_port
-        user_id = config['username']
-        token = cached_token(client.host,client.cmd_port,client.pub_port)
+        server_host, server_port = client.host, client.cmd_port
+        user_id = config["username"]
+        token = cached_token(client.host, client.cmd_port, client.pub_port)
         if token is None:
-            token = load_runtime_session_token(server_host,server_port,user_id)
+            token = load_runtime_session_token(server_host, server_port, user_id)
         if token is None:
-            token = load_session_token(server_host,server_port,user_id)
+            token = load_session_token(server_host, server_port, user_id)
         if token:
             client.token = token
             store_runtime_session_token(server_host, server_port, user_id, token)

@@ -9,7 +9,6 @@ The module is designed to be manufacturer-agnostic, allowing for
 future extension to other hardware (e.g., Picoquant).
 """
 
-from .card_setup_dialog import BHSPCCardSetupDialog
 from .reader import BeckerHicklSPCSetupReader
 from .wrapper import (
     BHSPC,
@@ -34,3 +33,12 @@ __all__ = [
     "BHSPCCardSetupDialog",
     "BeckerHicklSPCSetupReader",
 ]
+
+
+def __getattr__(name):
+    """Load the retained Qt card dialog only for legacy callers that request it."""
+    if name == "BHSPCCardSetupDialog":
+        from .card_setup_dialog import BHSPCCardSetupDialog
+
+        return BHSPCCardSetupDialog
+    raise AttributeError(name)

@@ -9,7 +9,10 @@ from ..gui.model import ModelManagerModel
 
 def test_native_model_manager_filters_and_persists_selection():
     model = ModelManagerModel(settings_block={"disabled_models": ["Disabled"]})
-    model._rows = [ModelRow("a", "Active", "exp", "Experiment", "m", "A", ""), ModelRow("b", "Disabled", "exp", "Experiment", "m", "B", "", disabled=True)]
+    model._rows = [
+        ModelRow("a", "Active", "exp", "Experiment", "m", "A", ""),
+        ModelRow("b", "Disabled", "exp", "Experiment", "m", "B", "", disabled=True),
+    ]
     app = ModelManagerApp(model)
     app.model.select_row(0)
     assert app.model.selected.name == "Active"

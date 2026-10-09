@@ -190,6 +190,7 @@ def test_insert_between_reorders_cells(app):
     QtWidgets.QApplication.processEvents()
     inserts = [
         b for b in nb_ed.container.findChildren(QtWidgets.QToolButton, "notebook_insert_button")
+        if not b.isHidden()
     ]
     assert len(inserts) == 3
     nb_ed.remove_cell(inserted)
@@ -197,6 +198,7 @@ def test_insert_between_reorders_cells(app):
     QtWidgets.QApplication.processEvents()
     inserts = [
         b for b in nb_ed.container.findChildren(QtWidgets.QToolButton, "notebook_insert_button")
+        if not b.isHidden()
     ]
     assert len(inserts) == 2
 

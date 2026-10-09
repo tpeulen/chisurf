@@ -1,11 +1,14 @@
 """reStructuredText rendering for the Help browser.
 
-The user manual is reStructuredText, not Markdown, so the browser needs a second
-renderer. Rendering happens through plain ``docutils`` rather than Sphinx: a full
-Sphinx build is far too slow for interactive browsing and needs the whole project
-environment. The price is that Sphinx-specific roles and directives are unknown
-to bare docutils, so the ones the manual actually uses are registered here as
-no-op fallbacks that render their text instead of raising.
+The documentation is Markdown; one page stays reStructuredText —
+``development/api.rst``, the autodoc shell behind the Python API reference,
+whose generated content leaks as raw text when pushed through a MyST fence —
+so the browser keeps a second renderer for it. Rendering happens through plain
+``docutils`` rather than Sphinx: a full Sphinx build is far too slow for
+interactive browsing and needs the whole project environment. The price is that
+Sphinx-specific roles and directives are unknown to bare docutils, so the ones
+that page actually uses are registered here as no-op fallbacks that render
+their text instead of raising.
 """
 
 from __future__ import annotations

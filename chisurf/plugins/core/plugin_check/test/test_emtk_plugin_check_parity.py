@@ -27,7 +27,12 @@ from chisurf.plugins.core.plugin_check.gui.model import (
     discover,
     render_bounds,
 )
-from chisurf.plugins.core.project_browser.test.driving import ClipPainter, clipped_texts, draw_clip, layout_problems
+from chisurf.plugins.core.project_browser.test.driving import (
+    ClipPainter,
+    clipped_texts,
+    draw_clip,
+    layout_problems,
+)
 
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
@@ -83,11 +88,17 @@ def small_catalog(n=12):
     """A fixed catalog standing in for discovery: every kind of row the table has."""
     catalog = {}
     for i in range(n):
-        catalog[f"p{i:02d}"] = {"id": f"p{i:02d}", "plugin_name": f"Group:Tool {i:02d}", "version": f"1.{i}",
-                                "source": "user" if i == 3 else "built-in", "module_path": f"chisurf.plugins.p{i:02d}",
-                                "description": f"Plugin number {i}.", "requires": {"p00": ">=1"} if i == 1 else {},
-                                "optional_requires": {"p02": "*", "p04": "*"} if i == 5 else {},
-                                "entrypoints": {"emtk": f"pkg{i}:make_app"} if i % 3 else {"gui": f"pkg{i}:Tool"}}
+        catalog[f"p{i:02d}"] = {
+            "id": f"p{i:02d}",
+            "plugin_name": f"Group:Tool {i:02d}",
+            "version": f"1.{i}",
+            "source": "user" if i == 3 else "built-in",
+            "module_path": f"chisurf.plugins.p{i:02d}",
+            "description": f"Plugin number {i}.",
+            "requires": {"p00": ">=1"} if i == 1 else {},
+            "optional_requires": {"p02": "*", "p04": "*"} if i == 5 else {},
+            "entrypoints": {"emtk": f"pkg{i}:make_app"} if i % 3 else {"gui": f"pkg{i}:Tool"},
+        }
     return catalog
 
 
@@ -103,7 +114,9 @@ def qt_tool():
     pytest.importorskip("qtpy.QtWidgets")
     from qtpy import QtWidgets
 
-    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])  # kept alive by the generator frame
+    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication(
+        []
+    )  # kept alive by the generator frame
     from chisurf.plugins.core.plugin_check.gui.tool import PluginCheckTool
 
     tool = PluginCheckTool()
@@ -114,7 +127,9 @@ def qt_tool():
 
 def qt_rows(tool):
     tree = tool.plugin_tree
-    return [[tree.topLevelItem(i).text(c) for c in range(5)] for i in range(tree.topLevelItemCount())]
+    return [
+        [tree.topLevelItem(i).text(c) for c in range(5)] for i in range(tree.topLevelItemCount())
+    ]
 
 
 # -- numeric parity with the Qt tool --------------------------------------------------------------------------------- #
@@ -125,10 +140,14 @@ def test_the_list_equals_the_qt_trees_rows_in_the_same_order(discovered, qt_tool
     rows = model.check_rows()
     qt = qt_rows(qt_tool)
     assert len(rows) == len(qt) > 100
-    assert [r["plugin"] for r in rows] == [q[0] for q in qt]  # the menu path, every row, in the tree's order
+    assert [r["plugin"] for r in rows] == [
+        q[0] for q in qt
+    ]  # the menu path, every row, in the tree's order
     assert [r["source"] for r in rows] == [q[2] for q in qt]
     assert [r["depends"] for r in rows] == [q[3] for q in qt]  # hard names, "(+N optional)"
-    assert {r["status"] for r in rows} == {"pending"} and {q[1] for q in qt} == {qt_tool.plugin_tree.topLevelItem(0).text(1)}
+    assert {r["status"] for r in rows} == {"pending"} and {q[1] for q in qt} == {
+        qt_tool.plugin_tree.topLevelItem(0).text(1)
+    }
 
 
 def test_the_baseline_rows_the_qt_tool_showed_are_matched_cell_for_cell(discovered):
@@ -142,12 +161,16 @@ def test_the_baseline_rows_the_qt_tool_showed_are_matched_cell_for_cell(discover
     assert {n: now[n] for n in common} == {n: old[n] for n in common}
 
 
-def test_the_status_line_counts_plugins_and_dependency_problems_like_the_qt_tool(discovered, qt_tool):
+def test_the_status_line_counts_plugins_and_dependency_problems_like_the_qt_tool(
+    discovered, qt_tool
+):
     model = PluginCheckModel(*discovered)
     found = len(qt_rows(qt_tool))
     assert str(found) in model.message and "plugin(s) found" in model.message
     assert str(found) in qt_tool.status_label.text()
-    qt_problems = qt_tool._dependency_report.problems() if qt_tool._dependency_report is not None else []
+    qt_problems = (
+        qt_tool._dependency_report.problems() if qt_tool._dependency_report is not None else []
+    )
     assert model.problems() == qt_problems
     if qt_problems:
         assert f"{len(qt_problems)} dependency problem(s)" in model.message
@@ -166,9 +189,15 @@ def test_the_details_equal_the_qt_details_pane(discovered, qt_tool):
         model.selected_key = info.get("manifest_id") or info["module_path"]
         blocks = dict(model.details())
         assert blocks["Plugin"] == item.text(0)
-        assert f"<b>Module:</b> {info['module_path']}" in text and blocks["Module"] == info["module_path"]
+        assert (
+            f"<b>Module:</b> {info['module_path']}" in text
+            and blocks["Module"] == info["module_path"]
+        )
         assert blocks["Source"] == info["source"]
-        for caption, key in (("Requires (load order)", "requires"), ("Optional", "optional_requires")):
+        for caption, key in (
+            ("Requires (load order)", "requires"),
+            ("Optional", "optional_requires"),
+        ):
             value = render_bounds(info.get(key) or {})
             if value:
                 assert blocks[caption] == value and f"<b>{caption}:</b> {value}" in text
@@ -199,19 +228,33 @@ def test_an_error_is_cut_at_fifty_characters_with_dots_like_the_qt_tool(qt_tool)
     model.poll()
     cell = model.check_rows()[0]["error"]
     assert cell == qt_cell == long[:50] + "..." and len(long[:ERROR_CELL]) == 50
-    assert model.error_text.startswith(long) and "second line" in model.error_text  # the whole text is in the details
+    assert (
+        model.error_text.startswith(long) and "second line" in model.error_text
+    )  # the whole text is in the details
 
 
 def test_the_qt_status_glyphs_map_to_the_native_status_words(qt_tool):
     model = PluginCheckModel(small_catalog(4))
-    for key, result in (("p00", {"status": "pass"}), ("p01", {"status": "fail", "error": "boom"}),
-                        ("p02", {"status": "skipped", "error": "Blacklisted after repeated failures"})):
+    for key, result in (
+        ("p00", {"status": "pass"}),
+        ("p01", {"status": "fail", "error": "boom"}),
+        ("p02", {"status": "skipped", "error": "Blacklisted after repeated failures"}),
+    ):
         model._events.put((key, result))
     model.poll()
-    assert [model.status_of(k) for k in ("p00", "p01", "p02", "p03")] == ["pass", "fail", "skipped", "pending"]
+    assert [model.status_of(k) for k in ("p00", "p01", "p02", "p03")] == [
+        "pass",
+        "fail",
+        "skipped",
+        "pending",
+    ]
     item = qt_tool.plugin_tree.topLevelItem(0)
     glyphs = []
-    for success, error in ((True, None), (False, "boom"), (False, "Skipped: gui execution blocked")):
+    for success, error in (
+        (True, None),
+        (False, "boom"),
+        (False, "Skipped: gui execution blocked"),
+    ):
         qt_tool.update_plugin_result(item.text(0), success, error)
         glyphs.append(item.text(1))
     assert len(set(glyphs)) == 3  # Qt told pass / fail / skipped apart; so do the three words
@@ -224,9 +267,17 @@ def test_the_sweep_options_have_the_qt_defaults_and_limits(qt_tool):
     spec = json.loads(SPEC.read_text())
     delay = next(s for s in _walk(spec["sections"]) if s.get("attr") == "delay")
     spin = qt_tool.delay_spinbox
-    assert (delay["minimum"], delay["maximum"], delay["step"]) == (spin.minimum(), spin.maximum(), spin.singleStep())
+    assert (delay["minimum"], delay["maximum"], delay["step"]) == (
+        spin.minimum(),
+        spin.maximum(),
+        spin.singleStep(),
+    )
     assert PluginCheckModel(small_catalog(2)).delay == 0.5 == spin.value()
-    assert PluginCheckModel(small_catalog(2)).skip_blacklisted is True is qt_tool.skip_blacklisted_checkbox.isChecked()
+    assert (
+        PluginCheckModel(small_catalog(2)).skip_blacklisted
+        is True
+        is qt_tool.skip_blacklisted_checkbox.isChecked()
+    )
 
 
 def _walk(sections):
@@ -239,13 +290,18 @@ def test_safe_sweep_checks_the_first_ten_plugins_like_the_qt_tool(discovered, qt
     model = PluginCheckModel(*discovered)
     model.delay = 0
     checked = []
-    monkeypatch.setattr(model, "_check", lambda factory, timeout: checked.append((factory, timeout)) or {"status": "pass"})
+    monkeypatch.setattr(
+        model,
+        "_check",
+        lambda factory, timeout: checked.append((factory, timeout)) or {"status": "pass"},
+    )
     assert model.test_safe()
     model._thread.join(10)
     model.poll()
     qt_first = [r[0] for r in qt_rows(qt_tool)[:SAFE_COUNT]]
     assert model.total == SAFE_COUNT == 10 and sorted(model.results) == sorted(
-        k for k in model.catalog if model.name_of(k) in qt_first)
+        k for k in model.catalog if model.name_of(k) in qt_first
+    )
     assert all(timeout <= 5.0 for _factory, timeout in checked)  # the short timeout of a safe sweep
     assert "complete" in model.message and not model.running
 
@@ -271,7 +327,11 @@ def test_a_second_start_while_running_is_refused_and_refresh_waits(monkeypatch):
     release = []
     monkeypatch.setattr(model, "_check", lambda f, t: (time.sleep(0.2), {"status": "pass"})[1])
     assert model.start() and not model.start() and not model.test_safe()
-    assert not model.refresh() and not model.enabled("test_all") and not model.enabled("clear_blacklist")
+    assert (
+        not model.refresh()
+        and not model.enabled("test_all")
+        and not model.enabled("clear_blacklist")
+    )
     assert model.enabled("stop")
     model._thread.join(10)
     model.poll()
@@ -281,7 +341,9 @@ def test_a_second_start_while_running_is_refused_and_refresh_waits(monkeypatch):
 def test_blacklist_after_five_failures_skip_and_clear(monkeypatch):
     model = PluginCheckModel({"bad": {"id": "bad", "entrypoints": {"emtk": "bad:make_app"}}})
     model.delay = 0
-    monkeypatch.setattr(model, "_check", lambda factory, timeout: {"status": "fail", "error": "Failure"})
+    monkeypatch.setattr(
+        model, "_check", lambda factory, timeout: {"status": "fail", "error": "Failure"}
+    )
     for _ in range(BLACKLIST_AFTER):
         assert "bad" not in model.blacklisted
         model.start()
@@ -291,7 +353,10 @@ def test_blacklist_after_five_failures_skip_and_clear(monkeypatch):
     model.start()
     model._thread.join(5)
     model.poll()
-    assert model.results["bad"] == {"status": "skipped", "error": "Blacklisted after repeated failures"}
+    assert model.results["bad"] == {
+        "status": "skipped",
+        "error": "Blacklisted after repeated failures",
+    }
     model.skip_blacklisted = False
     model.start()
     model._thread.join(5)
@@ -319,14 +384,20 @@ def test_refresh_rescans_clears_results_and_keeps_a_valid_selection(monkeypatch)
     fresh = small_catalog(2)
     monkeypatch.setattr(model_module, "discover", lambda: (fresh, None))
     assert model.refresh()
-    assert model.results == {} and list(model.catalog) == ["p00", "p01"] and model.selected_key == "p00"
+    assert (
+        model.results == {}
+        and list(model.catalog) == ["p00", "p01"]
+        and model.selected_key == "p00"
+    )
     assert model.message == "Ready: 2 plugin(s) found"
 
 
 def test_the_empty_catalog_says_so(monkeypatch):
     model = PluginCheckModel({})
     assert model.message == "Ready: 0 plugin(s) found" and not model.start()
-    assert model.message == "No plugins to test" and model.details() == [] and model.error_text == ""
+    assert (
+        model.message == "No plugins to test" and model.details() == [] and model.error_text == ""
+    )
 
 
 # -- the real validator on a real plugin ------------------------------------------------------------------------------- #
@@ -334,8 +405,15 @@ def test_the_empty_catalog_says_so(monkeypatch):
 
 def test_the_real_child_check_passes_the_about_plugin_and_uses_a_temporary_home(tmp_path):
     home_before = _snapshot(REAL_CHISURF)
-    model = PluginCheckModel({"about": {"id": "about", "plugin_name": "Help:About",
-                                        "entrypoints": {"emtk": "chisurf.plugins.core.about.gui.app:make_app"}}})
+    model = PluginCheckModel(
+        {
+            "about": {
+                "id": "about",
+                "plugin_name": "Help:About",
+                "entrypoints": {"emtk": "chisurf.plugins.core.about.gui.app:make_app"},
+            }
+        }
+    )
     model.delay = 0
     assert model.start()
     end = time.monotonic() + 90
@@ -348,9 +426,13 @@ def test_the_real_child_check_passes_the_about_plugin_and_uses_a_temporary_home(
 
 
 def test_a_failing_native_factory_is_reported_with_its_error(tmp_path, monkeypatch):
-    (tmp_path / "broken_native.py").write_text("def make_app():\n    raise RuntimeError('boom from the factory')\n")
+    (tmp_path / "broken_native.py").write_text(
+        "def make_app():\n    raise RuntimeError('boom from the factory')\n"
+    )
     monkeypatch.setenv("PYTHONPATH", str(tmp_path) + os.pathsep + os.environ.get("PYTHONPATH", ""))
-    model = PluginCheckModel({"broken": {"id": "broken", "entrypoints": {"emtk": "broken_native:make_app"}}})
+    model = PluginCheckModel(
+        {"broken": {"id": "broken", "entrypoints": {"emtk": "broken_native:make_app"}}}
+    )
     model.delay = 0
     model.start()
     model._thread.join(60)
@@ -362,7 +444,9 @@ def test_a_failing_native_factory_is_reported_with_its_error(tmp_path, monkeypat
 def test_stop_terminates_the_plugin_being_checked(tmp_path, monkeypatch):
     (tmp_path / "slow_native.py").write_text("import time\ndef make_app():\n    time.sleep(30)\n")
     monkeypatch.setenv("PYTHONPATH", str(tmp_path) + os.pathsep + os.environ.get("PYTHONPATH", ""))
-    model = PluginCheckModel({"slow": {"id": "slow", "entrypoints": {"emtk": "slow_native:make_app"}}})
+    model = PluginCheckModel(
+        {"slow": {"id": "slow", "entrypoints": {"emtk": "slow_native:make_app"}}}
+    )
     model.delay = 0
     model.start()
     end = time.monotonic() + 10
@@ -385,15 +469,20 @@ def test_draws_empty_and_populated_without_clipped_or_overlapping_text(size):
     empty = draw_clip(app, size)
     assert "Test all plugins" in empty.strings and "Plugin" in " ".join(empty.strings)
     model = app.model
-    for key, result in (("p01", {"status": "pass"}), ("p02", {"status": "fail", "error": "Traceback\nImportError: foo"}),
-                        ("p04", {"status": "skipped", "error": "Blacklisted after repeated failures"})):
+    for key, result in (
+        ("p01", {"status": "pass"}),
+        ("p02", {"status": "fail", "error": "Traceback\nImportError: foo"}),
+        ("p04", {"status": "skipped", "error": "Blacklisted after repeated failures"}),
+    ):
         model._events.put((key, result))
     model.current, model.total = 3, 30
     model.selected_key = "p02"
     painter = draw_clip(app, size, frames=4)
     assert {"pass", "fail", "skipped", "pending"} <= set(painter.strings)
     assert "Startup error" in painter.strings and "Module" in painter.strings
-    editor = [app.form.rects["error_text"]]  # the editor draws a line as separate coloured spans: not label text
+    editor = [
+        app.form.rects["error_text"]
+    ]  # the editor draws a line as separate coloured spans: not label text
     assert layout_problems(painter, size, ignore=editor) == []
     assert clipped_texts(painter, ignore=editor) == []
 
@@ -415,7 +504,16 @@ def test_the_error_pane_is_only_there_for_a_failed_check():
     app = PluginCheckApp(PluginCheckModel(small_catalog(4)))
     app.model.selected_key = "p01"
     assert "Startup error" not in draw(app).strings
-    app.model._events.put(("p01", {"status": "fail", "error": "Traceback\nImportError: foo", "traceback": "line A\nline B"}))
+    app.model._events.put(
+        (
+            "p01",
+            {
+                "status": "fail",
+                "error": "Traceback\nImportError: foo",
+                "traceback": "line A\nline B",
+            },
+        )
+    )
     painter = draw(app)
     assert "Startup error" in painter.strings
     assert app._error_editor.text == "Traceback\nImportError: foo\nline A\nline B"
@@ -429,14 +527,22 @@ def test_every_spec_attribute_call_and_action_exists_on_the_model():
     spec = json.loads(SPEC.read_text())
     for section in _walk(spec["sections"]):
         opts = section.get("options") or {}
-        for attr in (section.get("attr"), section.get("text_source"), section.get("source"), opts.get("source"),
-                     opts.get("selected_call"), section.get("call")):
+        for attr in (
+            section.get("attr"),
+            section.get("text_source"),
+            section.get("source"),
+            opts.get("source"),
+            opts.get("selected_call"),
+            section.get("call"),
+        ):
             if attr:
                 assert hasattr(model, attr), attr
         for button in section.get("buttons", []):
             assert callable(getattr(model, button["action"])), button
             assert model.enabled(button["action"]) in (True, False)
-        assert section.get("description"), f"{section.get('type')} {section.get('title') or section.get('attr')}"
+        assert section.get("description"), (
+            f"{section.get('type')} {section.get('title') or section.get('attr')}"
+        )
         for column in opts.get("columns", []):
             assert column.get("tooltip"), column
         for button in section.get("buttons", []):
@@ -466,15 +572,25 @@ def test_settings_round_trip_and_invalid_values_are_ignored():
     app.model.skip_blacklisted = False
     draw(app)
     saved = app.export_settings()
-    assert saved["selected"] == "p03" and saved["delay"] == 2.5 and saved["skip_blacklisted"] is False
+    assert (
+        saved["selected"] == "p03" and saved["delay"] == 2.5 and saved["skip_blacklisted"] is False
+    )
     other = PluginCheckApp(PluginCheckModel(small_catalog(5)))
     other.restore_settings(json.loads(json.dumps({**saved, "query": "Tool 03"})))
     draw(other)
-    assert (other.model.selected_key, other.model.delay, other.model.skip_blacklisted) == ("p03", 2.5, False)
+    assert (other.model.selected_key, other.model.delay, other.model.skip_blacklisted) == (
+        "p03",
+        2.5,
+        False,
+    )
     assert other.export_settings()["query"] == "Tool 03"
     other.restore_settings({"selected": "nope", "delay": 99, "skip_blacklisted": "x"})
     other.restore_settings({"delay": "abc"})
-    assert (other.model.selected_key, other.model.delay, other.model.skip_blacklisted) == ("p03", 2.5, False)
+    assert (other.model.selected_key, other.model.delay, other.model.skip_blacklisted) == (
+        "p03",
+        2.5,
+        False,
+    )
 
 
 def test_make_app_builds_the_real_catalog_and_draws():

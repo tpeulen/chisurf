@@ -85,9 +85,14 @@ class PackageManagerModel(DialogMixin):
             return True
         if self.dialog or self.busy:
             return False
-        needs = {"ask_update_selected": self.sel_installed, "ask_remove_selected": self.sel_installed,
-                 "ask_install_selected": self.sel_search, "ask_clone_env": self.sel_env, "ask_remove_env": self.sel_env,
-                 "remove_channel": self.sel_channel}
+        needs = {
+            "ask_update_selected": self.sel_installed,
+            "ask_remove_selected": self.sel_installed,
+            "ask_install_selected": self.sel_search,
+            "ask_clone_env": self.sel_env,
+            "ask_remove_env": self.sel_env,
+            "remove_channel": self.sel_channel,
+        }
         if name in needs:
             return needs[name] is not None
         if name == "search_packages":
@@ -107,7 +112,7 @@ class PackageManagerModel(DialogMixin):
         if isinstance(result, tuple):
             if len(result) == 3:
                 return result[0], result[1], result[2]
-            if len(result) == 2:      # (success, output): on failure the output is the error text
+            if len(result) == 2:  # (success, output): on failure the output is the error text
                 return result[0], result[1], "" if result[0] else str(result[1])
         return True, result, ""
 
@@ -163,8 +168,13 @@ class PackageManagerModel(DialogMixin):
         """Show only the installed packages whose name contains the filter text (case-insensitive)."""
         text = self.installed_filter.lower()
         self.installed_rows = [
-            {"name": p.get("name", ""), "version": p.get("version", ""), "channel": p.get("channel", "")}
-            for p in self.installed_all if text in p.get("name", "").lower()
+            {
+                "name": p.get("name", ""),
+                "version": p.get("version", ""),
+                "channel": p.get("channel", ""),
+            }
+            for p in self.installed_all
+            if text in p.get("name", "").lower()
         ]
         self.sel_installed = None
 
@@ -194,7 +204,11 @@ class PackageManagerModel(DialogMixin):
         if not ok:
             self.append_log(f"Search failed: {err}")
             return
-        self.search_rows = [dict(p, id=f"{p['name']}=={p['version']}@{p['channel']}") for p in data] if isinstance(data, list) else []
+        self.search_rows = (
+            [dict(p, id=f"{p['name']}=={p['version']}@{p['channel']}") for p in data]
+            if isinstance(data, list)
+            else []
+        )
         self.sel_search = None
         self.append_log(f"Found {len(self.search_rows)} results.")
 
@@ -202,12 +216,21 @@ class PackageManagerModel(DialogMixin):
         """Install Selected: ask first."""
         if self.sel_search:
             name = self.sel_search["name"]
-            self.ask("install", "Confirm Installation", f"Are you sure you want to install:\n{name}?", context=[name])
+            self.ask(
+                "install",
+                "Confirm Installation",
+                f"Are you sure you want to install:\n{name}?",
+                context=[name],
+            )
 
     def ask_update_selected(self) -> None:
         """Update Selected: no question (as in the Qt tool)."""
         if self.sel_installed:
-            self._operate("update", [self.sel_installed["name"]], label=f"Updating {self.sel_installed['name']}...")
+            self._operate(
+                "update",
+                [self.sel_installed["name"]],
+                label=f"Updating {self.sel_installed['name']}...",
+            )
 
     def ask_update_all(self) -> None:
         """Update All: ask first."""
@@ -217,18 +240,32 @@ class PackageManagerModel(DialogMixin):
         """Remove Selected: ask first."""
         if self.sel_installed:
             name = self.sel_installed["name"]
-            self.ask("remove", "Confirm Removal", f"Are you sure you want to remove:\n{name}?", context=[name])
+            self.ask(
+                "remove",
+                "Confirm Removal",
+                f"Are you sure you want to remove:\n{name}?",
+                context=[name],
+            )
 
     # -- environments ------------------------------------------------------------------------------------------------------- #
     def ask_create_env(self) -> None:
         """Create New: ask for the name."""
-        self.ask("create_env", "New Environment", "Enter environment name:", yes_no=False, entry=True)
+        self.ask(
+            "create_env", "New Environment", "Enter environment name:", yes_no=False, entry=True
+        )
 
     def ask_clone_env(self) -> None:
         """Clone Selected: ask for the new name."""
         if self.sel_env:
             src = self.sel_env["env"]
-            self.ask("clone_env", "Clone Environment", f"Enter new name for clone of '{src}':", yes_no=False, entry=True, context=src)
+            self.ask(
+                "clone_env",
+                "Clone Environment",
+                f"Enter new name for clone of '{src}':",
+                yes_no=False,
+                entry=True,
+                context=src,
+            )
 
     def ask_remove_env(self) -> None:
         """Remove Selected (environment): ask first."""
@@ -267,12 +304,20 @@ class PackageManagerModel(DialogMixin):
     def import_from(self, path: str) -> None:
         """A file was chosen for import: ask for the new name (optional)."""
         self._import_path = path
-        self.ask("import_env", "Import Environment", "Enter name for new environment (optional):", yes_no=False, entry=True)
+        self.ask(
+            "import_env",
+            "Import Environment",
+            "Enter name for new environment (optional):",
+            yes_no=False,
+            entry=True,
+        )
 
     # -- channels ----------------------------------------------------------------------------------------------------------- #
     def ask_add_channel(self) -> None:
         """Add Channel: ask for the name or URL."""
-        self.ask("add_channel", "Add Channel", "Enter channel name or URL:", yes_no=False, entry=True)
+        self.ask(
+            "add_channel", "Add Channel", "Enter channel name or URL:", yes_no=False, entry=True
+        )
 
     def remove_channel(self) -> None:
         """Remove Selected (channel): no question (as in the Qt tool)."""
@@ -297,7 +342,12 @@ class PackageManagerModel(DialogMixin):
         elif kind == "clone_env" and value:
             src = context
             kw = {"prefix_src": src} if os.sep in src else {"name_src": src}
-            self._operate("clone_env", name_dst=value, label=f"Cloning environment '{src}' to '{value}'...", **kw)
+            self._operate(
+                "clone_env",
+                name_dst=value,
+                label=f"Cloning environment '{src}' to '{value}'...",
+                **kw,
+            )
         elif kind == "remove_env":
             kw = {"prefix": context} if os.sep in context else {"name": context}
             self._operate("remove_env", label=f"Removing environment '{context}'...", **kw)

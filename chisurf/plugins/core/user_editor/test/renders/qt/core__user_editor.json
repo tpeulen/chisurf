@@ -1,0 +1,5 @@
+{
+  "entrypoint": "chisurf.plugins.core.user_editor.gui.tool:UserEditorWidget",
+  "status": "failed",
+  "error": "This plugin does not support createPlatformOpenGLContext!\nTraceback (most recent call last):\n  File \"/Users/tpeulen/dev/chisurf/tools/emtk_migration/capture_qt_references.py\", line 489, in <module>\n    raise SystemExit(main())\n                     ^^^^^^\n  File \"/Users/tpeulen/dev/chisurf/tools/emtk_migration/capture_qt_references.py\", line 359, in main\n    child(args.child[0], Path(args.child[1]))\n  File \"/Users/tpeulen/dev/chisurf/tools/emtk_migration/capture_qt_references.py\", line 199, in child\n    from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient\nModuleNotFoundError: No module named 'chisurf.plugins.core.mmfdb_admin'\nsource 01559d1fd39820eaf174fec81119d9926dbd97e1\nsnapshot ready\nError opening anisotropy corrections file: [Errno 2] No such file or directory: '/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/chisurf-qt-reference-lxdantcy/source/chisurf/settings/anisotropy_corrections.json'\nmodule imported\n"
+}

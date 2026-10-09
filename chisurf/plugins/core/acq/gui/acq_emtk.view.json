@@ -1,0 +1,39 @@
+{
+  "title": "Acquisition",
+  "sections": [
+    {"type":"panel","title":"Device session","description":"Choose a TCSPC source, explicitly initialize it, then start or stop a bounded acquisition.","sections":[
+      {"type":"choice","attr":"device_type","label":"Device type","options":["SIMULATION","BH_SPC","PICOQUANT","BRICKMIC"],"labels":["Simulation","Becker-Hickl","PicoQuant","BrickMic"],"description":"Selection alone never loads, scans, or contacts a physical device."},
+      {"type":"button_row","description":"Explicit device lifecycle actions.","buttons":[
+        {"action":"initialize_device","label":"Initialize device","description":"Construct and initialize the selected device only after this click. Missing drivers are reported safely."},
+        {"action":"open_device_setup","label":"Device Setup…","description":"Open the selected device's native configuration card. Hardware settings remain locked while acquisition runs."},
+        {"action":"start","label":"Start","description":"Start the initialized device FIFO or encoded simulator stream through AcquisitionPipeline."},
+        {"action":"stop","label":"Stop","description":"Request a safe stop, interrupt an active FIFO, and flush pipeline state."}]},
+      {"type":"value","attr":"time_limit_s","label":"Time limit (s)","kind":"float","minimum":0.0,"maximum":36000.0,"step":1.0,"decimals":1,"style":"spin","description":"Wall-clock stop condition. Set zero to disable it; retain a positive photon limit."},
+      {"type":"value","attr":"photon_limit","label":"Photon limit","kind":"int","minimum":0,"maximum":1000000000,"step":1,"style":"spin","description":"Decoded-photon stop condition. Set zero only when a positive time limit is configured."},
+      {"type":"info","source":"status","description":"Truthful initialization, streaming, stop, driver, and pipeline status."}]},
+    {"type":"panel","title":"Routing and output","description":"Configure four legacy pipeline routing windows and an optional compatible-backend output folder.","sections":[
+      {"type":"value","attr":"channel_0","label":"Routing channel 1","kind":"int","minimum":0,"maximum":4095,"step":1,"style":"spin","description":"Device routing channel for pipeline decay window 1."},
+      {"type":"value","attr":"channel_1","label":"Routing channel 2","kind":"int","minimum":0,"maximum":4095,"step":1,"style":"spin","description":"Device routing channel for pipeline decay window 2."},
+      {"type":"value","attr":"channel_2","label":"Routing channel 3","kind":"int","minimum":0,"maximum":4095,"step":1,"style":"spin","description":"Device routing channel for pipeline decay window 3."},
+      {"type":"value","attr":"channel_3","label":"Routing channel 4","kind":"int","minimum":0,"maximum":4095,"step":1,"style":"spin","description":"Device routing channel for pipeline decay window 4."},
+      {"type":"value","attr":"output_folder","label":"Output folder","kind":"str","description":"Optional path passed only to compatible simulation or BrickMic backends; this UI never claims every device writes raw files."},
+      {"type":"button_row","description":"Choose an output path or save/load portable acquisition settings.","buttons":[
+        {"action":"output_browse","label":"Browse output","description":"Open a native folder chooser without creating or writing to the folder."},
+        {"action":"save_settings","label":"Save settings","description":"Save device selection, limits, routing, output, result visibility, and simulator JSON to a chosen JSON file."},
+        {"action":"load_settings","label":"Load settings","description":"Load and validate a JSON configuration without automatically contacting hardware."}]}]},
+    {"type":"panel","title":"Simulator configuration","description":"Basic controls and a complete validated simulator dictionary for the encoded simulation path.","sections":[
+      {"type":"value","attr":"brightness_khz","label":"Peak brightness","kind":"float","minimum":1.0,"maximum":2000.0,"step":10.0,"decimals":1,"style":"spin","description":"Simulator brightness used to build encoded records; never a hardware detector setting."},
+      {"type":"value","attr":"seed","label":"Deterministic seed","kind":"int","minimum":0,"maximum":2147483647,"step":1,"style":"spin","description":"Simulator random seed for reproducible encoded records."},
+      {"type":"button_row","description":"Open a complete JSON editor for all simulator parameters.","buttons":[{"action":"open_advanced_settings","label":"Advanced simulation parameters","description":"Edit the full actual simulator parameter dictionary; Apply validates it by constructing the simulator engine."}]}]},
+    {"type":"panel","title":"Result visibility","description":"Show actual pipeline result tabs in this native window.","sections":[
+      {"type":"toggle","attr":"show_decay","label":"Decay / intensity tab","description":"Show the pipeline-derived decay and intensity tab."},
+      {"type":"toggle","attr":"show_correlation","label":"Correlation / quality tab","description":"Show the pipeline-derived correlation, burst, and phasor tab."},
+      {"type":"toggle","attr":"show_count_rate","label":"Overview tab","description":"Show decoded count, elapsed time, rate, and progress."},
+      {"type":"toggle","attr":"show_macrotime","label":"Macrotime tab","description":"Show the bounded macrotime interval count from the pipeline."},
+      {"type":"toggle","attr":"show_mcs","label":"MCS trace tab","description":"Show the pipeline MCS trace sample count."},
+      {"type":"button_row","description":"Clear result data or restore native defaults.","buttons":[
+        {"action":"clear","label":"Clear","description":"Clear displayed pipeline results without changing device selection."},
+        {"action":"reset","label":"Reset","description":"Restore native defaults without constructing or contacting a device."}]}]},
+    {"type":"panel","title":"Pipeline results","description":"Result tabs contain values calculated by AcquisitionPipeline from actual device FIFO or simulator records.","sections":[{"type":"custom","key":"pipeline_results","description":"Native tabs for real pipeline-derived overview, decay, correlation, macrotime, and MCS state."}]}
+  ]
+}

@@ -77,12 +77,18 @@ def qt_facts():
     pytest.importorskip("qtpy")
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT_FACTS, str(HERE / "test_model.py")],
-                          capture_output=True, text=True, timeout=300, env=env, cwd=str(REPO))
+    proc = subprocess.run(
+        [sys.executable, "-c", _QT_FACTS, str(HERE / "test_model.py")],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env=env,
+        cwd=str(REPO),
+    )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
     if line is None:
         pytest.skip(f"GraphWizard could not be built here: {proc.stderr[-800:]}")
-    return json.loads(line[len("FACTS"):])
+    return json.loads(line[len("FACTS") :])
 
 
 # 1. the same fits give the same network summary and parameter table as the Qt window
@@ -91,8 +97,11 @@ def test_same_network_as_the_qt_window(qt_facts):
     assert app.model.status == qt_facts["status"]
     assert len(app.model.parameter_records()) == qt_facts["records"]
     # every request the Qt window answered for the model is answered here too
-    hooks = sorted(k for k in ("ask_open_path", "ask_save_path", "warn", "open_help", "open_guide")
-                   if getattr(app.model, k) is not None)
+    hooks = sorted(
+        k
+        for k in ("ask_open_path", "ask_save_path", "warn", "open_help", "open_guide")
+        if getattr(app.model, k) is not None
+    )
     assert hooks == qt_facts["hooks"]
 
 
@@ -137,7 +146,7 @@ def test_a_warning_is_an_in_app_message(tmp_path):
     assert app.message_window.open and "OK" in painter.strings
     app.message_window.hide()
     painter = _draw(app)
-    assert "OK" not in painter.strings      # the text stays in the status line, as in Qt
+    assert "OK" not in painter.strings  # the text stays in the status line, as in Qt
 
 
 def test_help_and_guide(tmp_path):
@@ -220,7 +229,7 @@ def test_fit_events_refresh_the_network(monkeypatch):
     calls = []
     monkeypatch.setattr(app.model, "fits_changed", lambda: calls.append(1))
     subscribed["parameter."]("parameter.changed", {})
-    assert calls == []                       # only a flag on the event's thread
+    assert calls == []  # only a flag on the event's thread
     _draw(app, times=1)
     assert calls == [1]
     app.close()
@@ -250,7 +259,7 @@ def test_every_control_has_a_tooltip():
             if s.get("type") in ("value", "choice", "toggle", "custom"):
                 assert s.get("description"), s.get("attr") or s.get("title") or s
             options = s.get("options")
-            for c in (options.get("columns", []) if isinstance(options, dict) else []):
+            for c in options.get("columns", []) if isinstance(options, dict) else []:
                 assert c.get("description") or c.get("tooltip"), c
             for b in s.get("buttons", []):
                 assert b.get("description"), b

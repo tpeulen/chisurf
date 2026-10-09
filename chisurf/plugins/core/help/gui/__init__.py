@@ -4,9 +4,10 @@ from chisurf.plugins.core.help.gui.help_app import HelpApp, HelpGui, HelpModel, 
 
 __all__ = ["HelpEmtkTool", "HelpWidget", "HelpApp", "HelpGui", "HelpModel", "make_help_app"]
 
+
 def __getattr__(name):
     """Load optional Qt hosting adapters only when explicitly requested."""
-    if name in ['HelpEmtkTool', 'HelpWidget']:
+    if name in ["HelpEmtkTool", "HelpWidget"]:
         from . import tool
 
         return getattr(tool, name)

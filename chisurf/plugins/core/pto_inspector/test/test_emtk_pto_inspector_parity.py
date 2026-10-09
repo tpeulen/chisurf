@@ -81,10 +81,21 @@ def test_rows_equal_the_container_and_the_qt_table(qapp, shared_container, app):
     draw(app, frames=1)  # the table binds its source on a frame
     rows = app.artifacts.control.records
     assert {(r["name"], r["kind"]) for r in rows} == expected
-    assert [r["name"] for r in rows] == ["README", "m.ptu", "bursts", "background", "lifetimes", "fcs"]
+    assert [r["name"] for r in rows] == [
+        "README",
+        "m.ptu",
+        "bursts",
+        "background",
+        "lifetimes",
+        "fcs",
+    ]
     by = {r["name"]: r for r in rows}
-    assert (by["bursts"]["rows"], by["bursts"]["grain"], by["bursts"]["operation"], by["bursts"]["parents"]) == (
-        32, "burst", "burst_selection", 1)
+    assert (
+        by["bursts"]["rows"],
+        by["bursts"]["grain"],
+        by["bursts"]["operation"],
+        by["bursts"]["parents"],
+    ) == (32, "burst", "burst_selection", 1)
     assert by["lifetimes"]["parents"] == 2 and by["fcs"]["rows"] == 64
 
     tool = PtoInspectorTool()
@@ -94,7 +105,9 @@ def test_rows_equal_the_container_and_the_qt_table(qapp, shared_container, app):
         from qtpy import QtWidgets
 
         table = next(
-            t for t in tool.auto_form.findChildren(QtWidgets.QTableWidget) if t.rowCount() == len(rows)
+            t
+            for t in tool.auto_form.findChildren(QtWidgets.QTableWidget)
+            if t.rowCount() == len(rows)
         )
         headers = [table.horizontalHeaderItem(c).text() for c in range(table.columnCount())]
         assert headers[:3] == ["Name", "Kind", "Operation"]
@@ -135,7 +148,9 @@ def test_the_details_name_the_settings_and_the_parents(app):
     assert "bursts" in html and "background" in html and "First Photon" in html
     drawn = " ".join(draw(app).strings)  # the Details tab draws the same text, tags removed
     assert "burst_lifetime_fitting" in drawn and "1-exponential" in drawn and "<table>" not in drawn
-    assert len(app.graph.document.edges) >= 4  # instrument->3, bursts->lifetimes, background->lifetimes
+    assert (
+        len(app.graph.document.edges) >= 4
+    )  # instrument->3, bursts->lifetimes, background->lifetimes
 
 
 def test_selection_by_row_graph_node_and_double_click(app):
@@ -159,7 +174,9 @@ def test_verify_says_what_the_qt_tool_says(qapp, shared_container, app, monkeypa
     from chisurf.plugins.core.pto_inspector.gui.tool import PtoInspectorTool
 
     shown = []
-    monkeypatch.setattr(dialogs.ChiSurfMessageBox, "information", staticmethod(lambda *a, **k: shown.append(a)))
+    monkeypatch.setattr(
+        dialogs.ChiSurfMessageBox, "information", staticmethod(lambda *a, **k: shown.append(a))
+    )
     tool = PtoInspectorTool()
     try:
         tool.model.set_filename(str(shared_container))
@@ -201,17 +218,24 @@ def test_verify_with_nothing_open_reports_it():
         app.close()
 
 
-def test_export_equals_the_qt_tool_for_a_table_and_a_raw_payload(qapp, shared_container, app, tmp_path, monkeypatch):
+def test_export_equals_the_qt_tool_for_a_table_and_a_raw_payload(
+    qapp, shared_container, app, tmp_path, monkeypatch
+):
     from chisurf.gui import dialogs
     from chisurf.gui.widgets import general
     from chisurf.plugins.core.pto_inspector.gui.tool import PtoInspectorTool
 
-    monkeypatch.setattr(dialogs.ChiSurfMessageBox, "information", staticmethod(lambda *a, **k: None))
+    monkeypatch.setattr(
+        dialogs.ChiSurfMessageBox, "information", staticmethod(lambda *a, **k: None)
+    )
     tool = PtoInspectorTool()
     try:
         tool.model.set_filename(str(shared_container))
         for name, suffix in (("bursts", ".csv"), ("m.ptu", ".ptu")):
-            qt_out, native_out = tmp_path / f"qt_{name}{suffix}", tmp_path / f"native_{name}{suffix}"
+            qt_out, native_out = (
+                tmp_path / f"qt_{name}{suffix}",
+                tmp_path / f"native_{name}{suffix}",
+            )
             tool.model.select_uid(uid_of(tool.model, name))
             monkeypatch.setattr(general, "save_file", lambda **kw: str(qt_out))
             tool._export()
@@ -237,12 +261,16 @@ def test_export_with_nothing_selected_raises_a_message_not_a_crash():
         app.close()
 
 
-def test_open_tool_picks_the_same_manifest_and_says_so_when_none_claims_it(qapp, shared_container, app, monkeypatch):
+def test_open_tool_picks_the_same_manifest_and_says_so_when_none_claims_it(
+    qapp, shared_container, app, monkeypatch
+):
     from chisurf.gui import dialogs
     from chisurf.plugins.core.pto_inspector.gui.tool import PtoInspectorTool
 
     messages = []
-    monkeypatch.setattr(dialogs.ChiSurfMessageBox, "information", staticmethod(lambda *a, **k: messages.append(a)))
+    monkeypatch.setattr(
+        dialogs.ChiSurfMessageBox, "information", staticmethod(lambda *a, **k: messages.append(a))
+    )
     tool = PtoInspectorTool()
     try:
         tool.model.set_filename(str(shared_container))
@@ -266,15 +294,23 @@ def test_open_tool_picks_the_same_manifest_and_says_so_when_none_claims_it(qapp,
         tool.deleteLater()
 
 
-def test_open_tool_hands_the_file_to_a_ported_tool_and_reports_an_unported_one(app, shared_container):
+def test_open_tool_hands_the_file_to_a_ported_tool_and_reports_an_unported_one(
+    app, shared_container
+):
     calls = []
-    child = SimpleNamespace(model=SimpleNamespace(set_filename=lambda p: calls.append(p)), close=lambda: calls.append("closed"))
+    child = SimpleNamespace(
+        model=SimpleNamespace(set_filename=lambda p: calls.append(p)),
+        close=lambda: calls.append("closed"),
+    )
     app.tool_loader = lambda plugin_id: child
     app.tools = [SimpleNamespace(id="ported", entrypoints=SimpleNamespace(emtk="x:make_app"))]
     assert app.open_tool() is child and calls == [str(shared_container)] and app.child is child
     app.child = None
     app.tools = [SimpleNamespace(id="legacy", entrypoints=SimpleNamespace(emtk=None))]
-    assert app.open_tool() is None and app.notice == "This tool has not been ported to EMTK yet. legacy"
+    assert (
+        app.open_tool() is None
+        and app.notice == "This tool has not been ported to EMTK yet. legacy"
+    )
 
 
 def test_a_broken_file_reports_what_the_qt_tool_reports(qapp, tmp_path):
@@ -305,8 +341,13 @@ def test_reload_picks_up_a_result_written_since(container):
         draw(app, frames=1)
         assert len(app.artifacts.control.records) == 6
         with Measurement.open(container, writable=True) as m:
-            m.put_table("later", {"v": np.array([1.0, 2.0])}, artifact_kind="analysis_result",
-                        operation_type="fcs_correlation", row_grain="curve_point")
+            m.put_table(
+                "later",
+                {"v": np.array([1.0, 2.0])},
+                artifact_kind="analysis_result",
+                operation_type="fcs_correlation",
+                row_grain="curve_point",
+            )
         app.model.reload()
         draw(app, frames=1)
         assert app.model.selected.name == "later" and len(app.artifacts.control.records) == 7
@@ -389,7 +430,10 @@ def test_the_database_picker_opens_the_resolved_container(shared_container, monk
     app = make_app()
     try:
         app.open_database()
-        assert calls[0]["client"] == "fake client" and calls[0]["kinds"] == ["raw_measurement", "raw_data"]
+        assert calls[0]["client"] == "fake client" and calls[0]["kinds"] == [
+            "raw_measurement",
+            "raw_data",
+        ]
         assert app.model.filename == str(shared_container)
     finally:
         app.close()
@@ -406,7 +450,9 @@ def test_draws_empty_and_populated(app, size):
         strings = " ".join(painter.strings)
         assert "No container open" in strings
         assert empty.artifacts.control.records == []
-        assert "is not a" not in strings  # nothing selected: no "not a table" claim about an artifact
+        assert (
+            "is not a" not in strings
+        )  # nothing selected: no "not a table" claim about an artifact
     finally:
         empty.close()
     painter = draw(app, size)
@@ -440,7 +486,17 @@ def test_every_control_has_a_tooltip(shared_container):
         inventory = emtk_inventory(populated)
         assert inventory["controls_without_tooltip"] == []
         labels = {row["label"] for row in inventory["interactive"]}
-        assert {"Open", "Database", "Reload", "Verify", "Export", "Help", "Guide", "Fit graph", "Open tool"} <= labels
+        assert {
+            "Open",
+            "Database",
+            "Reload",
+            "Verify",
+            "Export",
+            "Help",
+            "Guide",
+            "Fit graph",
+            "Open tool",
+        } <= labels
     finally:
         populated.close()
 
@@ -459,11 +515,21 @@ def test_button_enabled_states_follow_the_state(shared_container, monkeypatch):
     app = make_app()
     try:
         draw(app, frames=1)
-        assert (seen["Open"], seen["Reload"], seen["Verify"], seen["Export"], seen["Open tool"]) == (
-            True, False, False, False, False)
+        assert (
+            seen["Open"],
+            seen["Reload"],
+            seen["Verify"],
+            seen["Export"],
+            seen["Open tool"],
+        ) == (True, False, False, False, False)
         app.model.set_filename(str(shared_container))  # fcs: no tool claims it
         draw(app, frames=1)
-        assert (seen["Reload"], seen["Verify"], seen["Export"], seen["Open tool"]) == (True, True, True, False)
+        assert (seen["Reload"], seen["Verify"], seen["Export"], seen["Open tool"]) == (
+            True,
+            True,
+            True,
+            False,
+        )
         app.model.select_uid(uid_of(app.model, "bursts"))
         draw(app, frames=1)
         assert seen["Open tool"] is True
@@ -481,7 +547,10 @@ def test_guide_steps_point_at_controls_the_app_draws(app):
     for step in steps:
         name = EmTkGuidedTour._target_key(step["target"])
         assert app.rects.get(name), f"{step['title']}: nothing drawn for {name!r}"
-    assert [EmTkGuidedTour._target_key(s["target"]) for s in steps if s.get("await")] == ["filename", "Verify"]
+    assert [EmTkGuidedTour._target_key(s["target"]) for s in steps if s.get("await")] == [
+        "filename",
+        "Verify",
+    ]
 
 
 def test_the_tour_waits_for_the_open_and_the_verify_press(shared_container):
@@ -502,7 +571,9 @@ def test_the_tour_waits_for_the_open_and_the_verify_press(shared_container):
 
 
 def test_the_qt_tool_keeps_its_own_help_and_guide():
-    assert json.loads((GUI / "guide.json").read_text())["steps"][1]["target"] == {"attr": "filename"}
+    assert json.loads((GUI / "guide.json").read_text())["steps"][1]["target"] == {
+        "attr": "filename"
+    }
     assert "csg_pto_inspect" in (GUI / "help.md").read_text()
 
 
@@ -529,14 +600,24 @@ def test_settings_round_trip(shared_container):
         app.model.select_uid(uid_of(app.model, "bursts"))
         app.artifacts.control.filter.set_text("burst")
         saved = json.loads(json.dumps(app.export_settings()))
-        assert saved == {"filename": str(shared_container), "selected_uid": uid_of(app.model, "bursts"),
-                         "artifact_filter": "burst"}
+        assert saved == {
+            "filename": str(shared_container),
+            "selected_uid": uid_of(app.model, "bursts"),
+            "artifact_filter": "burst",
+        }
         other = make_app()
         try:
             other.restore_settings(saved)
-            assert other.model.selected.name == "bursts" and other.artifacts.control.filter.text == "burst"
-            other.restore_settings({"filename": "/nonexistent/x.pto"})  # a vanished file is reported, not raised
-            assert other.model.inspection is None and other.model.status.startswith("Cannot open x.pto")
+            assert (
+                other.model.selected.name == "bursts"
+                and other.artifacts.control.filter.text == "burst"
+            )
+            other.restore_settings(
+                {"filename": "/nonexistent/x.pto"}
+            )  # a vanished file is reported, not raised
+            assert other.model.inspection is None and other.model.status.startswith(
+                "Cannot open x.pto"
+            )
         finally:
             other.close()
     finally:

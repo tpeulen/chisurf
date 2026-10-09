@@ -19,6 +19,7 @@ else:
 
 icon = "📖"
 
+
 def __getattr__(attribute):
     """Resolve the optional Qt host adapter without affecting native EMTK imports."""
     if attribute in {"HelpEmtkTool", "HelpWidget", "HelpTool"}:
@@ -28,6 +29,7 @@ def __getattr__(attribute):
         globals()[attribute] = value
         return value
     raise AttributeError(f"module {__name__!r} has no attribute {attribute!r}")
+
 
 __all__ = ["HelpEmtkTool", "HelpWidget", "HelpTool"]
 

@@ -198,6 +198,7 @@ class GlobalViewModel:
         if mutator is None:
             try:
                 from chisurf.gui.widgets.fitting.parameter_mutator import FittingClientParamMutator
+
                 mutator = FittingClientParamMutator()
             except Exception:
                 mutator = None

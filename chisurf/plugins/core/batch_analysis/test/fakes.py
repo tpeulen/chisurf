@@ -24,7 +24,11 @@ class FakeFit:
     def __init__(self, name="Template fit", dataset=None):
         self.name = name
         self.model = type("M", (), {})()
-        self.model.parameters_all = [FakeParam("tau", 4.0), FakeParam("amplitude", 0.5), FakeParam("offset", 0.0, True)]
+        self.model.parameters_all = [
+            FakeParam("tau", 4.0),
+            FakeParam("amplitude", 0.5),
+            FakeParam("offset", 0.0, True),
+        ]
         self.chi2r = 1.0
         self.dataset = dataset
         self.saved: list[tuple] = []

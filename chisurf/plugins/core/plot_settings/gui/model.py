@@ -379,10 +379,28 @@ class PlotSettingsModel:
         model = 980 * np.exp(-t / 2.9) + 210 * np.exp(-t / 7.8) + background
         irf = 500 * np.exp(-((t - 1.0) ** 2) / 0.05) + background
         return [
-            {"label": "data", "x": t, "y": data, "color": self.color_data,
-             "width": self.line_width, "dash": False},
-            {"label": "model", "x": t, "y": model, "color": self.color_model,
-             "width": self.line_width, "dash": True},
-            {"label": "IRF", "x": t, "y": irf, "color": self.color_irf,
-             "width": 1.5, "dash": False},
+            {
+                "label": "data",
+                "x": t,
+                "y": data,
+                "color": self.color_data,
+                "width": self.line_width,
+                "dash": False,
+            },
+            {
+                "label": "model",
+                "x": t,
+                "y": model,
+                "color": self.color_model,
+                "width": self.line_width,
+                "dash": True,
+            },
+            {
+                "label": "IRF",
+                "x": t,
+                "y": irf,
+                "color": self.color_irf,
+                "width": 1.5,
+                "dash": False,
+            },
         ]

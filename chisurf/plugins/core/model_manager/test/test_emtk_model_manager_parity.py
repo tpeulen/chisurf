@@ -64,7 +64,10 @@ def _fake_registry():
         ),
         "fcs": _Exp(
             "FCS",
-            [_Cls("Parse-Model", "pkg.fcs.parse", "ParseFCS"), _Cls("FCS kinetics", "pkg.fcs", "K")],
+            [
+                _Cls("Parse-Model", "pkg.fcs.parse", "ParseFCS"),
+                _Cls("FCS kinetics", "pkg.fcs", "K"),
+            ],
         ),
         "pda": _Exp("PDA", [_Cls("PDA2c", "pkg.pda", "Pda2c")]),
     }
@@ -212,7 +215,10 @@ def test_filter_box_narrows_the_rows_in_any_column(fake_registry):
     draw(app)
     # any column matches: the TCSPC Parse-Model row names FCS in its Shared cell
     assert shown_names(app) == [
-        ("Parse-Model", "TCSPC"), ("Parse-Model", "FCS"), ("FCS kinetics", "FCS")]
+        ("Parse-Model", "TCSPC"),
+        ("Parse-Model", "FCS"),
+        ("FCS kinetics", "FCS"),
+    ]
     table(app).filter.set_text("pda2c")
     draw(app)
     assert shown_names(app) == [("PDA2c", "PDA")]
@@ -456,8 +462,18 @@ def test_app_draws_populated_and_empty_at_both_sizes(size, fake_registry, monkey
     app = make_app(make_model(["Lifetime"]))
     painter = draw(app, size)
     strings = painter.strings
-    for expected in ("Registered models", "Selected model", "Save", "Revert", "Rescan",
-                     "Drop stale", "Export CSV", "Help", "Guide", "Show disabled models"):
+    for expected in (
+        "Registered models",
+        "Selected model",
+        "Save",
+        "Revert",
+        "Rescan",
+        "Drop stale",
+        "Export CSV",
+        "Help",
+        "Guide",
+        "Show disabled models",
+    ):
         assert expected in strings, expected
     assert "Parse-Model" in strings and "Lifetime" in strings
     assert any("6 models" in s for s in strings)
@@ -471,8 +487,11 @@ def test_app_draws_populated_and_empty_at_both_sizes(size, fake_registry, monkey
 
 def test_real_registry_populates_the_app(qapp):
     """The registry the Qt tool shows: the app draws its models too."""
-    app = make_app(__import__(
-        "chisurf.plugins.core.model_manager.gui.model", fromlist=["x"]).ModelManagerModel())
+    app = make_app(
+        __import__(
+            "chisurf.plugins.core.model_manager.gui.model", fromlist=["x"]
+        ).ModelManagerModel()
+    )
     painter = draw(app)
     assert len(app.model.rows) > 20
     assert "Lifetime" in painter.strings and "TCSPC" in painter.strings
@@ -514,7 +533,14 @@ def test_copy_puts_the_shown_rows_with_headers_on_the_clipboard(fake_registry, m
     draw(app)
     assert len(copied) == 1
     lines = copied[0].splitlines()
-    assert lines[0].split("\t") == ["Model", "Experiment", "Status", "Spec", "Parameter UI", "Shared"]
+    assert lines[0].split("\t") == [
+        "Model",
+        "Experiment",
+        "Status",
+        "Spec",
+        "Parameter UI",
+        "Shared",
+    ]
     assert len(lines) == 2 and lines[1].startswith("PDA2c\tPDA\tenabled")
     assert "Copied 1 rows" in app.model.status_text()
 
@@ -557,9 +583,20 @@ def test_every_control_has_a_tooltip(fake_registry):
     assert inventory["controls_without_tooltip"] == []
     spec = json.loads(SPEC_FILE.read_text())
     for section in _walk(spec["sections"]):
-        if section.get("type") in ("value", "choice", "toggle", "table", "data_table", "custom",
-                                   "info", "button_row", "panel"):
-            assert section.get("description"), section.get("attr") or section.get("title") or section
+        if section.get("type") in (
+            "value",
+            "choice",
+            "toggle",
+            "table",
+            "data_table",
+            "custom",
+            "info",
+            "button_row",
+            "panel",
+        ):
+            assert section.get("description"), (
+                section.get("attr") or section.get("title") or section
+            )
         for column in (section.get("options") or {}).get("columns", []):
             assert column.get("tooltip"), column
         for button in section.get("buttons", []):

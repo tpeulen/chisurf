@@ -15,14 +15,7 @@ import pytest
 from emtk import keys
 
 from .driving import BIG, SMALL, LPDriver
-from .test_emtk_lightpath_parity import (  # noqa: F401  (hermetic is an autouse fixture)
-    app,
-    catalogue,
-    hermetic,
-    in_process_client,
-    load_catalogue,
-    populated,
-)
+from .test_emtk_lightpath_parity import in_process_client, load_catalogue, populated
 
 
 @pytest.fixture(autouse=True)
@@ -61,7 +54,11 @@ def containing(drv, fragment):
 def in_window(drv, name, label):
     """The rectangle of the text *label* drawn inside the region *name* (a row of a list, a header)."""
     x, y, w, h = drv.rect(name)
-    hits = [t[:4] for t in drv.draw(1).texts if label in t[5] and x <= t[0] <= x + w and y <= t[1] <= y + h]
+    hits = [
+        t[:4]
+        for t in drv.draw(1).texts
+        if label in t[5] and x <= t[0] <= x + w and y <= t[1] <= y + h
+    ]
     assert hits, f"{label!r} not drawn inside {name}: {[t[5] for t in drv.painter.texts][:40]}"
     return hits[0]
 
@@ -73,7 +70,11 @@ def dialog_open(drv):
 def message(drv):
     from chisurf.plugins.core.lightpath_simulator.gui.app import MessageDialog
 
-    return drv.app.dialog.title + ": " + drv.app.dialog.text if isinstance(drv.app.dialog, MessageDialog) else None
+    return (
+        drv.app.dialog.title + ": " + drv.app.dialog.text
+        if isinstance(drv.app.dialog, MessageDialog)
+        else None
+    )
 
 
 def node_types(app):
@@ -139,7 +140,10 @@ def test_save_preset_asks_for_a_name_and_writes_it_where_easy_mode_reads(drv, tm
     drv.click("save_preset")
     from chisurf.plugins.core.lightpath_simulator.gui.app import TextInputDialog
 
-    assert isinstance(drv.app.dialog, TextInputDialog) and drv.app.dialog.title == "Save Optical Path Preset"
+    assert (
+        isinstance(drv.app.dialog, TextInputDialog)
+        and drv.app.dialog.title == "Save Optical Path Preset"
+    )
     drv.draw(2)
     drv.click_text("OK")  # empty name: nothing written, as the Qt tool did
     folder = tmp_path / "home/.chisurf/presets/lightpath_optical"
@@ -154,7 +158,9 @@ def test_save_preset_asks_for_a_name_and_writes_it_where_easy_mode_reads(drv, tm
     drv.type_text("My preset")
     drv.click_text("OK")
     assert (folder / "My preset.json").is_file()
-    assert [n["type"] for n in json.loads((folder / "My preset.json").read_text())["nodes"]] == node_types(drv.app)
+    assert [
+        n["type"] for n in json.loads((folder / "My preset.json").read_text())["nodes"]
+    ] == node_types(drv.app)
     assert prompt is not drv.app.dialog
 
 
@@ -162,7 +168,10 @@ def test_save_to_mmfdb_asks_for_a_name_and_confirms_the_operation(drv):
     drv.click("save_mmfdb")
     from chisurf.plugins.core.lightpath_simulator.gui.app import TextInputDialog
 
-    assert isinstance(drv.app.dialog, TextInputDialog) and drv.app.dialog.value == "Light path simulation"  # the Qt default
+    assert (
+        isinstance(drv.app.dialog, TextInputDialog)
+        and drv.app.dialog.value == "Light path simulation"
+    )  # the Qt default
     drv.draw(2)
     drv.click_text("OK")
     drv.settle()
@@ -206,7 +215,9 @@ def test_load_from_mmfdb_cancel_loads_nothing(drv):
     assert drv.app.dialog is None
 
 
-def test_export_setting_is_greyed_until_a_simulation_exists_then_writes_the_instrument_json(app, catalogue, monkeypatch, tmp_path):
+def test_export_setting_is_greyed_until_a_simulation_exists_then_writes_the_instrument_json(
+    app, catalogue, monkeypatch, tmp_path
+):
     monkeypatch.chdir(tmp_path)
     drv = LPDriver(app, BIG)
     load_catalogue(app)
@@ -259,7 +270,16 @@ def test_reset_to_default_restores_the_qt_default_path(drv):
     drv.app.controller.remove_node("sample")
     assert len(drv.app.controller.document.nodes) == 7
     drv.click("reset")
-    assert node_types(drv.app) == ["light_source", "sample", "splitter", "filter", "detector", "filter", "detector", "forster_radius"]
+    assert node_types(drv.app) == [
+        "light_source",
+        "sample",
+        "splitter",
+        "filter",
+        "detector",
+        "filter",
+        "detector",
+        "forster_radius",
+    ]
     assert drv.app.controller.status.startswith("Default optical path restored")
 
 
@@ -300,7 +320,12 @@ def test_calculate_runs_the_simulation_and_the_tables_fill(app, catalogue):
 
 
 def test_each_result_tab_shows_its_table(drv):
-    expect = {"Excitation": ["488 nm", "640 nm"], "Emission": ["Atto 488", "Atto 647N"], "Detected": ["488 nm | Atto 488"], "Förster radius": None}
+    expect = {
+        "Excitation": ["488 nm", "640 nm"],
+        "Emission": ["Atto 488", "Atto 647N"],
+        "Detected": ["488 nm | Atto 488"],
+        "Förster radius": None,
+    }
     for label, rows in expect.items():
         drv.click_text(label)
         assert drv.app.results_tab == label
@@ -321,7 +346,9 @@ def test_clicking_a_table_header_sorts_and_a_row_selects(drv):
     ascending = first_intensities()
     drv.click_at(*_centre(in_window(drv, "signals.rows", "Detected Intensity")))
     descending = first_intensities()
-    assert [float(v) for v in ascending] == sorted(float(v) for v in ascending)  # numeric, not alphabetical
+    assert [float(v) for v in ascending] == sorted(
+        float(v) for v in ascending
+    )  # numeric, not alphabetical
     assert [float(v) for v in descending] == sorted((float(v) for v in descending), reverse=True)
     assert ascending != descending and sorted(before) == sorted(ascending)
     n = len(drv.app.controller.result["detector_signals"])
@@ -379,7 +406,10 @@ def test_the_backend_panel_toggles_and_typed_fields(drv, tmp_path):
     assert c.probes == [] and c.status == "0 optical spectra available."
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: Enter on an emptied text field does not commit the empty text (see REPORT)")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: Enter on an emptied text field does not commit the empty text (see REPORT)",
+)
 def test_an_emptied_spectra_database_field_commits_on_enter(drv):
     drv.click_text("Backend")
     drv.draw(2)
@@ -523,14 +553,19 @@ def test_right_click_delete_node_removes_it_and_its_links(drv):
     press_on(drv, x + 20, y + 2, 2)
     n_edges = len(drv.app.controller.document.edges)
     drv.click_text("Delete Node")
-    assert "forster_radius" not in node_types(drv.app) and len(drv.app.controller.document.edges) == n_edges - 1
+    assert (
+        "forster_radius" not in node_types(drv.app)
+        and len(drv.app.controller.document.edges) == n_edges - 1
+    )
 
 
 def test_right_click_on_the_background_offers_to_add_a_component(drv):
     gx, gy, gw, gh = drv.app.item_rects["graph"]
     press_on(drv, gx + 30, gy + 30, 2)
     shown = drv.draw(2).strings
-    assert "+ Combiner" in shown and "Arrange optical graph" in shown and "Fit graph to view" in shown, shown[-30:]
+    assert (
+        "+ Combiner" in shown and "Arrange optical graph" in shown and "Fit graph to view" in shown
+    ), shown[-30:]
     n = len(drv.app.controller.document.nodes)
     drv.click_text("+ Combiner")
     assert len(drv.app.controller.document.nodes) == n + 1 and node_types(drv.app)[-1] == "combiner"

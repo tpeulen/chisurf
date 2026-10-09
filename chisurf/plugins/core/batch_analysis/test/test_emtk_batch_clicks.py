@@ -13,7 +13,10 @@ from pathlib import Path
 import pytest
 from emtk import keys
 
-from chisurf.plugins.emtk_hermetic import hermetic, real_chisurf_untouched  # noqa: F401  (autouse fixtures)
+from chisurf.plugins.emtk_hermetic import (  # noqa: F401  (autouse fixtures)
+    hermetic,
+    real_chisurf_untouched,
+)
 from chisurf.plugins.emtk_test_input import Driver, assert_tour_card_clear
 
 from ..gui.app import BatchAnalysisApp
@@ -51,8 +54,11 @@ def checkboxes(drv, table="dataset_rows"):
     """Rectangles of the check boxes drawn in the table, top to bottom."""
     painter = drv.draw(2)
     x, y, w, h = drv.app.form.rects[table]
-    boxes = [(s[0], s[1], s[2], s[3]) for s in painter.strokes if abs(s[2] - s[3]) < 0.5 and 6 < s[2] < 24
-             and x <= s[0] <= x + w and y <= s[1] <= y + h]
+    boxes = [
+        (s[0], s[1], s[2], s[3])
+        for s in painter.strokes
+        if abs(s[2] - s[3]) < 0.5 and 6 < s[2] < 24 and x <= s[0] <= x + w and y <= s[1] <= y + h
+    ]
     return sorted(boxes, key=lambda b: b[1])
 
 
@@ -78,17 +84,32 @@ def add_through_the_dialog(drv, *names):
 
 
 def test_a_click_on_each_step_opens_its_page(drv):
-    shown = {"welcome": "Batch Analysis", "datasets": "Loaded datasets", "files": "Files to process", "run": "Results CSV",
-             "results": "Results of the last run"}
+    shown = {
+        "welcome": "Batch Analysis",
+        "datasets": "Loaded datasets",
+        "files": "Files to process",
+        "run": "Results CSV",
+        "results": "Results of the last run",
+    }
     for step_id, text in shown.items():
         to_step(drv, step_id)
         assert any(text in s for s in drv.draw(2).strings), step_id
 
 
 def test_the_check_marks_follow_the_conditions_and_a_run_marks_the_run_step(drv, tmp_path):
-    marks = lambda: {s[5].strip("✓ ").strip(): s[5].startswith("✓") for s in drv.draw(2).texts  # noqa: E731
-                     if s[0] < 200 and s[5].strip("✓ ").strip() in ("Welcome", "Loaded data", "Files & fit", "Run", "Results")}
-    assert marks() == {"Welcome": True, "Loaded data": True, "Files & fit": True, "Run": False, "Results": True}
+    marks = lambda: {
+        s[5].strip("✓ ").strip(): s[5].startswith("✓")
+        for s in drv.draw(2).texts  # noqa: E731
+        if s[0] < 200
+        and s[5].strip("✓ ").strip() in ("Welcome", "Loaded data", "Files & fit", "Run", "Results")
+    }
+    assert marks() == {
+        "Welcome": True,
+        "Loaded data": True,
+        "Files & fit": True,
+        "Run": False,
+        "Results": True,
+    }
     drv.app.model.selected_fit_name = "gone"
     assert marks()["Files & fit"] is False
     drv.app.model.selected_fit_name = "Template fit"
@@ -129,11 +150,15 @@ def test_a_click_on_a_check_box_ticks_and_unticks_the_dataset_and_the_summary_fo
     assert len(boxes) == 3 and drv.drawn("0 of 3 datasets ticked. Hover a row for its file.")
     drv.click(boxes[0])
     drv.click(boxes[2])
-    assert drv.app.model.selected_dataset_indices == [0, 2] and drv.drawn("2 of 3 datasets ticked. Hover a row for its file.")
+    assert drv.app.model.selected_dataset_indices == [0, 2] and drv.drawn(
+        "2 of 3 datasets ticked. Hover a row for its file."
+    )
     drv.click(checkboxes(drv)[0])
     assert drv.app.model.selected_dataset_indices == [2]
     to_step(drv, "run")
-    assert drv.drawn("Loaded datasets: 1") or any("Loaded datasets: 1" in s for s in drv.draw(2).strings)
+    assert drv.drawn("Loaded datasets: 1") or any(
+        "Loaded datasets: 1" in s for s in drv.draw(2).strings
+    )
 
 
 def test_refresh_button_lists_the_datasets_loaded_since(drv):
@@ -162,7 +187,12 @@ def test_files_and_folders_dropped_on_the_window_are_added_and_a_repeat_is_ignor
     (folder / "sub").mkdir()
     (folder / "sub" / "deep.sm").write_text("x")
     assert drv.drop(str(folder)) is True
-    assert sorted(Path(p).name for p in drv.app.model.files) == ["deep.sm", "run_01.sm", "run_02.sm", "run_03.sm"]
+    assert sorted(Path(p).name for p in drv.app.model.files) == [
+        "deep.sm",
+        "run_01.sm",
+        "run_02.sm",
+        "run_03.sm",
+    ]
     assert drv.drop() is False
 
 
@@ -174,7 +204,10 @@ def test_files_button_opens_a_dialog_that_cancels_and_adds_the_chosen_files(drv)
     drv.click_text("Cancel")
     assert drv.app.dialog is None and drv.app.model.files == []
     add_through_the_dialog(drv, "run_01.sm", "run_03.sm")
-    assert [Path(p).name for p in drv.app.model.files] == ["run_01.sm", "run_03.sm"] and drv.app.dialog is None
+    assert [Path(p).name for p in drv.app.model.files] == [
+        "run_01.sm",
+        "run_03.sm",
+    ] and drv.app.dialog is None
     assert drv.drawn("run_01.sm") and drv.drawn("run_03.sm")
 
 
@@ -199,10 +232,17 @@ def test_folder_button_adds_every_file_below_the_chosen_folder(drv, folder):
     drv.click_name("add_folder")
     assert drv.app.dialog is not None
     drv.click_text("Choose")
-    assert sorted(Path(p).name for p in drv.app.model.files) == ["deep.sm", "run_01.sm", "run_02.sm", "run_03.sm"]
+    assert sorted(Path(p).name for p in drv.app.model.files) == [
+        "deep.sm",
+        "run_01.sm",
+        "run_02.sm",
+        "run_03.sm",
+    ]
 
 
-def test_database_button_opens_the_dataset_picker_and_a_picked_path_is_added(drv, monkeypatch, folder):
+def test_database_button_opens_the_dataset_picker_and_a_picked_path_is_added(
+    drv, monkeypatch, folder
+):
     opened = []
     monkeypatch.setattr(drv.app.picker, "open", lambda: opened.append(1))
     to_step(drv, "files")
@@ -213,16 +253,23 @@ def test_database_button_opens_the_dataset_picker_and_a_picked_path_is_added(drv
     assert [Path(p).name for p in drv.app.model.files] == ["run_02.sm"] and drv.drawn("run_02.sm")
 
 
-def test_a_row_is_selected_by_a_click_removed_by_the_button_and_the_delete_key_and_cleared(drv, folder):
+def test_a_row_is_selected_by_a_click_removed_by_the_button_and_the_delete_key_and_cleared(
+    drv, folder
+):
     to_step(drv, "files")
     add_through_the_dialog(drv, "run_01.sm", "run_02.sm", "run_03.sm")
     assert not drv.app.model.enabled("remove_selected")
     drv.click_name("remove_selected")  # nothing selected: greyed
     assert len(drv.app.model.files) == 3
     drv.click_text("run_02.sm", last=False)
-    assert Path(drv.app.model.selected_file).name == "run_02.sm" and drv.app.model.enabled("remove_selected")
+    assert Path(drv.app.model.selected_file).name == "run_02.sm" and drv.app.model.enabled(
+        "remove_selected"
+    )
     drv.click_name("remove_selected")
-    assert [Path(p).name for p in drv.app.model.files] == ["run_01.sm", "run_03.sm"] and not drv.drawn("run_02.sm")
+    assert [Path(p).name for p in drv.app.model.files] == [
+        "run_01.sm",
+        "run_03.sm",
+    ] and not drv.drawn("run_02.sm")
     assert drv.app.model.selected_file == "" and not drv.app.model.enabled("remove_selected")
     drv.click_text("run_03.sm", last=False)
     drv.delete()
@@ -237,7 +284,10 @@ def test_the_wheel_scrolls_a_long_file_list(drv, folder):
     to_step(drv, "files")
     drv.drop(str(folder))
     x, y, w, h = drv.rect("file_rows")
-    first = lambda: sorted((t for t in drv.draw(2).texts if x <= t[0] <= x + w and y + 20 <= t[1] <= y + h), key=lambda t: t[1])[0][5]  # noqa: E731
+    first = lambda: sorted(
+        (t for t in drv.draw(2).texts if x <= t[0] <= x + w and y + 20 <= t[1] <= y + h),
+        key=lambda t: t[1],
+    )[0][5]  # noqa: E731
     before = first()
     drv.wheel(x + w / 2, y + h / 2, steps=-5)
     assert first() != before
@@ -321,7 +371,9 @@ def test_browse_chooses_the_csv_without_running(drv, folder):
     assert drv.app.model.save_path.endswith("picked.csv") and not drv.app.model.running
 
 
-def test_the_buttons_are_greyed_while_the_batch_runs_and_the_bar_reports_the_item(drv, folder, monkeypatch):
+def test_the_buttons_are_greyed_while_the_batch_runs_and_the_bar_reports_the_item(
+    drv, folder, monkeypatch
+):
     import threading
 
     gate = threading.Event()
@@ -339,7 +391,11 @@ def test_the_buttons_are_greyed_while_the_batch_runs_and_the_bar_reports_the_ite
     to_step(drv, "run")
     drv.click_name("run")
     drv.draw(3)
-    assert drv.app.model.running and not drv.app.model.enabled("run") and not drv.app.model.enabled("browse_results")
+    assert (
+        drv.app.model.running
+        and not drv.app.model.enabled("run")
+        and not drv.app.model.enabled("browse_results")
+    )
     drv.click_name("run")
     drv.click_name("browse_results")
     assert drv.app.dialog is None and drv.app.model.running
@@ -364,7 +420,17 @@ def test_the_results_step_shows_the_table_that_sorts_filters_and_scrolls(drv, fo
     assert "Sample A" in shown and "6 rows" not in shown
     x, y, w, h = drv.rect("result_rows")
     drv.click(drv.text_rect(drv.draw(2), "Parameter", last=False))  # header: sort by parameter
-    order = [t[5] for t in sorted((t for t in drv.draw(2).texts if t[5] in ("tau", "amplitude", "offset") and y < t[1] < y + h), key=lambda t: t[1])]
+    order = [
+        t[5]
+        for t in sorted(
+            (
+                t
+                for t in drv.draw(2).texts
+                if t[5] in ("tau", "amplitude", "offset") and y < t[1] < y + h
+            ),
+            key=lambda t: t[1],
+        )
+    ]
     assert order == sorted(order)
     drv.click(drv.text_rect(drv.draw(2), "filter", last=False)) if drv.drawn("filter") else None
     drv.type("offset")
@@ -396,7 +462,16 @@ def test_help_button_opens_the_help_window_whose_buttons_work(drv):
 def test_the_help_text_names_the_controls(drv):
     drv.click_name("help")
     shown = " ".join(drv.draw(2).strings)
-    for word in ("Loaded data", "Files & fit", "Template fit", "Results CSV", "Run batch", "Chi2r", "Folder", "Database"):
+    for word in (
+        "Loaded data",
+        "Files & fit",
+        "Template fit",
+        "Results CSV",
+        "Run batch",
+        "Chi2r",
+        "Folder",
+        "Database",
+    ):
         assert word in shown, word
 
 
@@ -409,7 +484,9 @@ def test_every_guide_target_is_a_drawn_control_on_its_page(drv):
         drv.app.model.go_to(ids.index(step.get("page", "welcome")))
         drv.draw(3)
         key = target.get("name")
-        assert drv.app.item_rects.get(key) or drv.app.form.rects.get(key), f"{step['title']}: {key} is not drawn"
+        assert drv.app.item_rects.get(key) or drv.app.form.rects.get(key), (
+            f"{step['title']}: {key} is not drawn"
+        )
 
 
 @pytest.mark.parametrize("size", [BIG, SMALL])
@@ -438,10 +515,16 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_awaited_cont
                 drv.click_text("Second fit")
             elif target.get("name") == "run":
                 drv.click_name("run")
-            assert not tour.awaiting, f"{step['title']}: operating the control did not release the step"
+            assert not tour.awaiting, (
+                f"{step['title']}: operating the control did not release the step"
+            )
         tour.next()
     wait_run(drv)
-    assert not tour.active and seen == ["Pick datasets already loaded", "Choose the template", "Run it"]
+    assert not tour.active and seen == [
+        "Pick datasets already loaded",
+        "Choose the template",
+        "Run it",
+    ]
     assert app.model.selected_fit_name == "Second fit" and app.model.has_results
 
 

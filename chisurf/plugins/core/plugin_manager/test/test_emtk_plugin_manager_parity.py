@@ -203,9 +203,16 @@ def trio(user_dir):
 # ── 1. rows, columns, status equal the Qt tool's ────────────────────────
 
 QT_TO_KEY = {
-    "Plugin": "name", "Id": "id", "Version": "version", "Category": "category",
-    "Status": "status", "Requires": "requires", "Required by": "required_by",
-    "Optional": "optional", "Source": "source", "Toolbar": "toolbar",
+    "Plugin": "name",
+    "Id": "id",
+    "Version": "version",
+    "Category": "category",
+    "Status": "status",
+    "Requires": "requires",
+    "Required by": "required_by",
+    "Optional": "optional",
+    "Source": "source",
+    "Toolbar": "toolbar",
     "Window state": "state",
 }
 
@@ -229,14 +236,19 @@ def test_rows_columns_and_status_match_the_qt_widget(qapp, qtbot, trio):
     from chisurf.plugins.core.plugin_manager.gui.tool import PluginManagerWidget
     from chisurf.plugins.core.plugin_manager.gui.view_model import PluginManagerViewModel
 
-    settings = {"disabled_plugins": ["tttr_audifier", "photon_table"],
-                "toolbar_plugins": ["alpha"]}
-    qt_widget = PluginManagerWidget(view_model=PluginManagerViewModel(settings_block=dict(settings)))
+    settings = {
+        "disabled_plugins": ["tttr_audifier", "photon_table"],
+        "toolbar_plugins": ["alpha"],
+    }
+    qt_widget = PluginManagerWidget(
+        view_model=PluginManagerViewModel(settings_block=dict(settings))
+    )
     qtbot.addWidget(qt_widget)
     qt_widget.show()
     QTest.qWait(300)
-    tables = sorted(qt_widget.findChildren(ChiTableWidget),
-                    key=lambda t: -t._view.model().rowCount())
+    tables = sorted(
+        qt_widget.findChildren(ChiTableWidget), key=lambda t: -t._view.model().rowCount()
+    )
     titles, qt_cells = _qt_cells(tables[0])
 
     model = make_model(settings)
@@ -250,8 +262,11 @@ def test_rows_columns_and_status_match_the_qt_widget(qapp, qtbot, trio):
         key = QT_TO_KEY[title]
         assert [str(r[key]) for r in rows] == [row[qt_index] for row in qt_cells], title
     assert sorted(QT_TO_KEY[t] for t in titles) == sorted(
-        c["key"] for c in json.loads(SPEC_FILE.read_text())["sections"][0]["sections"][2]
-        ["options"]["columns"])
+        c["key"]
+        for c in json.loads(SPEC_FILE.read_text())["sections"][0]["sections"][2]["options"][
+            "columns"
+        ]
+    )
     assert model.status_text() == qt_widget.model.status_text()
     assert "2 disabled" in model.status_text() and "needing attention" in model.status_text()
 
@@ -259,14 +274,16 @@ def test_rows_columns_and_status_match_the_qt_widget(qapp, qtbot, trio):
     qt_widget.model.select_row({"id": "gamma"})
     model.select_row({"id": "gamma"})
     QTest.qWait(300)
-    deps = sorted(qt_widget.findChildren(ChiTableWidget),
-                  key=lambda t: t._view.model().rowCount())[-2:]
+    deps = sorted(qt_widget.findChildren(ChiTableWidget), key=lambda t: t._view.model().rowCount())[
+        -2:
+    ]
     dep_table = next(t for t in deps if t._view.model().columnCount() == 5)
     dep_titles, dep_cells = _qt_cells(dep_table)
     mine = model.dependency_rows()
     assert dep_titles == ["Plugin", "Relation", "Bound", "Installed", "Status"]
-    assert [[str(r[k]) for k in ("plugin", "relation", "bound", "installed", "status")]
-            for r in mine] == dep_cells
+    assert [
+        [str(r[k]) for k in ("plugin", "relation", "bound", "installed", "status")] for r in mine
+    ] == dep_cells
     assert dep_cells and dep_cells[0][0] == "alpha"
 
 
@@ -278,8 +295,19 @@ def test_rows_status_and_counts_for_the_throwaway_plugins(trio):
     assert rows["gamma"].category == "Setup" and rows["delta"].category == ""
     first = [r for r in model.plugin_rows() if r["id"] == "gamma"][0]
     assert first["status"] == "disabled" and first["requires"] == "alpha"
-    assert set(first) >= {"id", "name", "version", "category", "status", "requires",
-                          "required_by", "optional", "source", "toolbar", "state"}
+    assert set(first) >= {
+        "id",
+        "name",
+        "version",
+        "category",
+        "status",
+        "requires",
+        "required_by",
+        "optional",
+        "source",
+        "toolbar",
+        "state",
+    }
     total = len(model.rows)
     assert model.status_text().startswith(f"{total} plugins · 1 disabled")
     assert "needing attention" in model.status_text()  # the deprecated built-in
@@ -375,12 +403,15 @@ def test_selection_fills_the_detail_pane_and_dependency_table(trio):
     assert "Gamma" in strings and "Id: gamma" in strings and "Source: user" in strings
     assert "No plugin selected" not in strings
     edges = model.dependency_rows()
-    assert [(e["plugin"], e["relation"], e["bound"], e["installed"], e["status"]) for e in edges] \
-        == [("alpha", "requires", "any", "0.1.0", "cli only")]
+    assert [
+        (e["plugin"], e["relation"], e["bound"], e["installed"], e["status"]) for e in edges
+    ] == [("alpha", "requires", "any", "0.1.0", "cli only")]
     assert len(table(app, DEPS).order()) == 1
     click_row(app, "alpha")
     draw(app)
-    assert [(e["plugin"], e["relation"]) for e in model.dependency_rows()] == [("gamma", "required by")]
+    assert [(e["plugin"], e["relation"]) for e in model.dependency_rows()] == [
+        ("gamma", "required by")
+    ]
     click_row(app, "delta")
     draw(app)
     edge = model.dependency_rows()[0]
@@ -453,7 +484,8 @@ def test_disabling_a_required_plugin_names_the_dependants(trio):
 
 
 def test_every_switch_and_choice_marks_dirty_and_save_writes_the_temp_settings(
-        trio, hermetic_settings):
+    trio, hermetic_settings
+):
     block = {"disabled_plugins": [], "toolbar_plugins": []}
     model = make_model(block)
     model.select_key("alpha")
@@ -594,7 +626,10 @@ def test_actions_that_need_a_selection_say_so():
         model.dialog = ""
         getattr(model, action)()
         assert (model.dialog, model.dialog_title, model.dialog_text) == (
-            "notice", "No plugin selected", "Select a plugin first."), action
+            "notice",
+            "No plugin selected",
+            "Select a plugin first.",
+        ), action
     assert not model.icon_open
 
 
@@ -707,7 +742,9 @@ def test_icon_generate_runs_in_the_background_and_writes_the_icon(trio, monkeypa
     draw(app)
     assert app.icon_window.open
     model.icon_generate()
-    assert app.job.busy and model.icon_status == "Generating…" and not model.enabled("icon_generate")
+    assert (
+        app.job.busy and model.icon_status == "Generating…" and not model.enabled("icon_generate")
+    )
     pump(app)
     assert calls and calls[0][3] == "Alpha"
     assert model.icon_status == "Icon generated." and (trio / "alpha" / "icon.png").is_file()
@@ -764,8 +801,19 @@ def test_icon_panel_draws_and_choose_opens_a_file_dialog(trio, tmp_path):
     click_row(app, "alpha")
     model.ask_icon()
     painter = draw(app)
-    for expected in ("Choose…", "Use", "Generate…", "Edit", "Clear", "Provider", "Endpoint",
-                     "Image model", "Close", "no icon", "Icon — Alpha"):
+    for expected in (
+        "Choose…",
+        "Use",
+        "Generate…",
+        "Edit",
+        "Clear",
+        "Provider",
+        "Endpoint",
+        "Image model",
+        "Close",
+        "no icon",
+        "Icon — Alpha",
+    ):
         assert expected in painter.strings, expected
     png = tmp_path / "mark.png"
     png.write_bytes(_png_bytes())
@@ -802,8 +850,12 @@ def test_install_from_a_folder_asks_then_copies_only_into_the_user_dir(trio, tmp
     assert app.job.busy and model.busy
     pump(app)
     after = _snapshot(trio)
-    assert set(after) - set(before) == {"beta/", "beta/__init__.py", "beta/manifest.json",
-                                        "beta/data.txt"}
+    assert set(after) - set(before) == {
+        "beta/",
+        "beta/__init__.py",
+        "beta/manifest.json",
+        "beta/data.txt",
+    }
     assert set(before) <= set(after)
     assert _snapshot(tmp_path / "src") == elsewhere  # the source is left alone
     assert model.status_text() == f"Installed 'beta' into {trio / 'beta'}."
@@ -1042,8 +1094,14 @@ def test_copy_puts_the_shown_rows_with_headers_on_the_clipboard(trio, monkeypatc
     draw(app)
     assert len(copied) == 1
     lines = copied[0].splitlines()
-    assert lines[0].split("\t") == ["Plugin", "Version", "Category", "Status", "Requires",
-                                    "Required by"]
+    assert lines[0].split("\t") == [
+        "Plugin",
+        "Version",
+        "Category",
+        "Status",
+        "Requires",
+        "Required by",
+    ]
     assert len(lines) == 3 and lines[1].startswith("Alpha\t0.1.0\tTools\tcli only")
     assert "Copied 2 rows" in app.model.status_text()
 
@@ -1057,11 +1115,28 @@ def test_app_draws_populated_and_empty_at_both_sizes(size, trio, monkeypatch):
     draw(app, size)
     click_row(app, "alpha")
     strings = draw(app, size).strings
-    for expected in ("Installed plugins", "Selected plugin", "Save", "Revert", "Rescan",
-                     "Install…", "Uninstall", "Move up", "Move down", "Rename…", "Icon…",
-                     "Open folder", "Help", "Guide", "Show disabled plugins", "Disabled",
-                     "Show in main toolbar", "Remember window state", "Window state (all plugins)",
-                     "Dependencies"):
+    for expected in (
+        "Installed plugins",
+        "Selected plugin",
+        "Save",
+        "Revert",
+        "Rescan",
+        "Install…",
+        "Uninstall",
+        "Move up",
+        "Move down",
+        "Rename…",
+        "Icon…",
+        "Open folder",
+        "Help",
+        "Guide",
+        "Show disabled plugins",
+        "Disabled",
+        "Show in main toolbar",
+        "Remember window state",
+        "Window state (all plugins)",
+        "Dependencies",
+    ):
         assert expected in strings, expected
     assert "Alpha" in strings
     assert any("plugins ·" in s and "disabled" in s for s in strings)
@@ -1128,9 +1203,20 @@ def test_every_control_has_a_tooltip(trio):
     assert inventory["controls_without_tooltip"] == []
     spec = json.loads(SPEC_FILE.read_text())
     for section in _walk(spec["sections"]):
-        if section.get("type") in ("value", "choice", "toggle", "table", "data_table", "custom",
-                                   "info", "button_row", "panel"):
-            assert section.get("description"), section.get("attr") or section.get("title") or section
+        if section.get("type") in (
+            "value",
+            "choice",
+            "toggle",
+            "table",
+            "data_table",
+            "custom",
+            "info",
+            "button_row",
+            "panel",
+        ):
+            assert section.get("description"), (
+                section.get("attr") or section.get("title") or section
+            )
         for column in (section.get("options") or {}).get("columns", []):
             assert column.get("tooltip"), column
         for button in section.get("buttons", []):
@@ -1169,8 +1255,17 @@ def test_the_tour_hears_the_row_pick_and_the_save(trio):
 
 def test_help_exists_and_its_links_are_live(trio):
     help_text = (GUI / "help.md").read_text()
-    for word in ("Rescan", "Install…", "Uninstall", "Rename…", "Icon…", "Copy", "Export CSV",
-                 "Remember window state", "GUI runtime"):
+    for word in (
+        "Rescan",
+        "Install…",
+        "Uninstall",
+        "Rename…",
+        "Icon…",
+        "Copy",
+        "Export CSV",
+        "Remember window state",
+        "GUI runtime",
+    ):
         assert word in help_text, word
     repo = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
     for target in re.findall(r"\]\((docs/[^)#]+)\)", help_text):

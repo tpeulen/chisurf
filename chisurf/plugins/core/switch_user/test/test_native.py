@@ -1,4 +1,5 @@
 """The earlier stream's two smoke tests, moved onto the model (the app no longer owns the login)."""
+
 from __future__ import annotations
 
 from emtk.testing import RecordingPainter

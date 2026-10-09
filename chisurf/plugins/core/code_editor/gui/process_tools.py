@@ -1,4 +1,5 @@
 """Cancellable execution for the editor's optional Ruff subprocess."""
+
 from __future__ import annotations
 
 import subprocess
@@ -21,6 +22,7 @@ class CancellableRuffRunner(RuffRunner):
                 process.terminate()
             except ProcessLookupError:
                 return
+
             def ensure_stopped() -> None:
                 try:
                     process.wait(timeout=1)
@@ -29,17 +31,22 @@ class CancellableRuffRunner(RuffRunner):
                         process.kill()
                     except ProcessLookupError:
                         pass
+
             threading.Thread(target=ensure_stopped, daemon=True).start()
 
     def _run(self, args, content, timeout_ms):
         if self.cancelled.is_set():
             raise RuntimeError("Ruff check cancelled")
-        process = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        process = subprocess.Popen(
+            args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
         self.process = process
         if self.cancelled.is_set():
             self.cancel()
         try:
-            stdout, stderr = process.communicate(content, timeout=None if timeout_ms is None else max(0.001, timeout_ms / 1000))
+            stdout, stderr = process.communicate(
+                content, timeout=None if timeout_ms is None else max(0.001, timeout_ms / 1000)
+            )
             if self.cancelled.is_set():
                 raise RuntimeError("Ruff check cancelled")
             return subprocess.CompletedProcess(args, process.returncode, stdout, stderr)

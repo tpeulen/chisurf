@@ -1,0 +1,17 @@
+{
+  "score": 90,
+  "verdict": "pass",
+  "threshold": 90,
+  "threshold_pass": true,
+  "category_match": true,
+  "reference_images": ["qt/core__plot_settings.png"],
+  "generated_screenshots": ["native-normal.png", "native-narrow.png"],
+  "differences": [
+    "Native dark EMTK styling and vertical flow differ from the Qt light collapsible layout.",
+    "The native preview uses EMTK line primitives rather than a pyqtgraph widget, while preserving the visible curve/grid workflow."
+  ],
+  "suggestions": [
+    "Keep the paired toggle rows and compact preview layout when modifying this surface."
+  ],
+  "reasoning": "The native surface exposes the major Qt settings groups, mandatory tooltips, and a visible live curve/grid preview at normal and narrow sizes. Theme and widget implementation differ, but the settings workflow and visual hierarchy are complete and readable."
+}

@@ -60,6 +60,7 @@ class AgentMode(enum.Enum):
 
 
 _PROVIDER_NAMES: dict[str, str] = {
+    "acp": "ACP Agent (stdio)",
     "openai": "OpenAI (ChatGPT)",
     "mistral": "Mistral",
     "local": "Local (Ollama, LMStudio...)",
@@ -568,6 +569,11 @@ class AgentPanelWidget(QtWidgets.QWidget):
         mode = self._current_mode()
         self._update_mode_status(mode)
         self._check_provider_status()
+        if getattr(self, "_active_acp_client", None) is not None and self._active_acp_client.session_id:
+            try:
+                self._active_acp_client.set_mode(mode.value)
+            except Exception:
+                pass
         # The tool set differs per mode, so the running conversation is stale.
         self._agent_session = None
         # ... and so is the greeting, which describes that tool set.
@@ -585,6 +591,12 @@ class AgentPanelWidget(QtWidgets.QWidget):
     def _check_provider_status(self) -> None:
         """Colour the status dot by whether the AI provider is usable."""
         provider_key = self.provider_combo.currentData()
+        if provider_key == "acp":
+            self.rpc_status_label.setStyleSheet(
+                "color: #98c379; font-size: 10pt; margin-right: 4px;"
+            )
+            self.rpc_status_label.setToolTip("ACP Agent ready over stdio")
+            return
         try:
             settings = LLMSettings.from_provider(provider_key)
             settings.validate()
@@ -609,6 +621,9 @@ class AgentPanelWidget(QtWidgets.QWidget):
 
     def _on_cancel(self) -> None:
         """Cancel the running agent operation."""
+        if getattr(self, "_active_acp_client", None) is not None:
+            self._active_acp_client.cancel()
+            self._append_sys(f"{Glyphs.STOP} ACP cancellation requested...")
         if self._runtime is not None:
             self._runtime.cancel()
             self._append_sys(f"{Glyphs.STOP} Cancellation requested...")
@@ -1032,11 +1047,118 @@ updated: 2026-06-09
         self._input_history_index = -1
         self._append_user(text)
 
+        provider_key = self.provider_combo.currentData()
+        if provider_key == "acp":
+            self._start_acp(text)
+            return
+
         mode = self._current_mode()
         if mode in (AgentMode.CHISURF_TOOLS, AgentMode.FULL_CONTROL):
             self._start_runtime(text, mode)
         else:
             self._process_message(text)
+
+    def _start_acp(self, text: str) -> None:
+        """Process user's prompt using the ACP agent client."""
+        client = getattr(self.editor, "ensure_acp", None)
+        if callable(client):
+            acp = self.editor.ensure_acp()
+        else:
+            if getattr(self, "_acp_client", None) is None:
+                from chisurf.plugins.core.code_editor.acp_client import AcpClient
+
+                self._acp_client = AcpClient(parent=self)
+                self._acp_client.start()
+            acp = self._acp_client
+
+        self._active_acp_client = acp
+        self.send_btn.setEnabled(False)
+        self.cancel_btn.setEnabled(True)
+        self.input.setEnabled(False)
+        self.progress_bar.setVisible(True)
+        self.status_label.setText("Agent thinking...")
+
+        # Disconnect prior one-shot connections
+        for sig, slot in (
+            (acp.message_chunk, self._on_acp_chunk),
+            (acp.thought_chunk, self._on_acp_thought),
+            (acp.tool_call, self._on_acp_tool_call),
+            (acp.prompt_finished, self._on_acp_finished),
+            (acp.error_received, self._on_acp_error),
+        ):
+            try:
+                sig.disconnect(slot)
+            except Exception:
+                pass
+            sig.connect(slot)
+
+        self._acp_streaming_text = ""
+        self._acp_msg_header_added = False
+        mode = self._current_mode()
+
+        def do_prompt(session_id: str) -> None:
+            acp.set_mode(mode.value, session_id=session_id)
+            acp.prompt(text, session_id=session_id)
+
+        if not acp.session_id:
+            acp.new_session(callback=do_prompt)
+        else:
+            do_prompt(acp.session_id)
+
+    def _on_acp_chunk(self, session_id: str, chunk: str) -> None:
+        """Handle streaming assistant message chunk from ACP."""
+        if not self._acp_msg_header_added:
+            self.transcript.append('<span style="color: #9ece6a; font-weight: bold;">AI (ACP):</span>')
+            self._acp_msg_header_added = True
+            self.transcript.append(f'<div style="margin-left: 12px; margin-bottom: 4px;">{chunk}</div>')
+        else:
+            cursor = self.transcript.textCursor()
+            cursor.movePosition(QtGui.QTextCursor.End)
+            cursor.insertText(chunk)
+        self._acp_streaming_text += chunk
+
+    def _on_acp_thought(self, session_id: str, thought: str) -> None:
+        """Handle streaming thought chunk from ACP."""
+        self._append_sys(f"<i>Thinking: {thought}</i>")
+
+    def _on_acp_tool_call(self, session_id: str, tool_data: dict[str, Any]) -> None:
+        """Handle tool call update from ACP."""
+        status = tool_data.get("status", "")
+        name = tool_data.get("name", "tool")
+        if status == "in_progress":
+            self.status_label.setText(f"Running {name}...")
+            self._append_sys(f"→ {name}")
+        elif status == "completed":
+            self._append_sys(f"← {name} ok")
+        elif status == "failed":
+            self._append_sys(f"! {name} failed")
+
+    def _on_acp_finished(self, session_id: str, stop_reason: str) -> None:
+        """Handle prompt turn completion from ACP."""
+        self.send_btn.setEnabled(True)
+        self.cancel_btn.setEnabled(False)
+        self.input.setEnabled(True)
+        self.progress_bar.setVisible(False)
+        self.status_label.setText("")
+
+        if self._acp_streaming_text:
+            self._chat_history.append({"role": "assistant", "content": self._acp_streaming_text})
+            writes = self._apply_file_writes(self._acp_streaming_text)
+            if writes:
+                self._append_sys(f"{Glyphs.NOTE} Applying generated code to the editor...")
+                self._start_validation(writes, iteration=0, label="Initial code")
+            self._acp_streaming_text = ""
+        self._acp_msg_header_added = False
+
+    def _on_acp_error(self, error_msg: str) -> None:
+        """Handle error from ACP client."""
+        self.send_btn.setEnabled(True)
+        self.cancel_btn.setEnabled(False)
+        self.input.setEnabled(True)
+        self.progress_bar.setVisible(False)
+        self.status_label.setText(f"{Glyphs.WARNING} ACP Error")
+        self._append_sys(f"ACP Error: {error_msg}")
+        self._acp_msg_header_added = False
 
     def _process_message(self, text: str) -> None:
         """Process the user's message asynchronously without blocking the UI."""

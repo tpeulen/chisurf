@@ -3,6 +3,7 @@
 Hermetic: settings, MMFDB database and credential store are temporary or stubbed (see the
 ``world`` fixture); one test proves the real ``~/.chisurf`` settings file is not touched.
 """
+
 from __future__ import annotations
 
 import copy
@@ -21,11 +22,18 @@ GUIDE_FILE = PLUGIN / "guide.json"
 SIZES = [(1200, 800), (800, 600)]
 
 BASE = {
-    "client": {"mode": "embedded", "username": "alice", "host": "127.0.0.1",
-               "cmd_port": 8765, "pub_port": 8766},
+    "client": {
+        "mode": "embedded",
+        "username": "alice",
+        "host": "127.0.0.1",
+        "cmd_port": 8765,
+        "pub_port": 8766,
+    },
     "server_history": ["127.0.0.1", "lab-server.example.org", "10.0.0.7"],
-    "last_server": "lab-server.example.org", "last_port": 9100,
-    "save_login": True, "autologin": False,
+    "last_server": "lab-server.example.org",
+    "last_port": 9100,
+    "save_login": True,
+    "autologin": False,
 }
 
 
@@ -75,8 +83,11 @@ def world(tmp_path, monkeypatch):
 
     import chisurf.core.settings as cs
 
-    for key, sub in (("CHISURF_SETTINGS_DIR", ""), ("MMFDB_SETTINGS_DIR", ""),
-                     ("MMFDB_DATABASE_PATH", "mmfdb.db")):
+    for key, sub in (
+        ("CHISURF_SETTINGS_DIR", ""),
+        ("MMFDB_SETTINGS_DIR", ""),
+        ("MMFDB_DATABASE_PATH", "mmfdb.db"),
+    ):
         monkeypatch.setenv(key, str(tmp_path / sub) if sub else str(tmp_path))
     saved = copy.deepcopy(cs.cs_settings.get("mmfdb", None))
     had = "mmfdb" in cs.cs_settings
@@ -144,15 +155,15 @@ def click(app, label, size=(1200, 800), nth=0):
 
 def qt_login(world, cfg, user, password, server, port, save, auto, client, qapp, monkeypatch):
     """Run the legacy dialog's login on *cfg*; returns (accepted, dialogs, mmfdb settings, yaml)."""
-    from test.gui import migration_parity  # noqa: F401  (keeps ``test`` resolvable)
-
     from chisurf import gui as g
+    from test.gui import migration_parity  # noqa: F401  (keeps ``test`` resolvable)
 
     world.configure(cfg)
     shown = []
     for name in ("warning", "error", "information"):
-        monkeypatch.setattr(g.dialogs, name,
-                            lambda parent, title, text, _n=name: shown.append((_n, title, text)))
+        monkeypatch.setattr(
+            g.dialogs, name, lambda parent, title, text, _n=name: shown.append((_n, title, text))
+        )
     dlg = g.LoginDialog()
     dlg.server_combo.setCurrentText(server)
     dlg.port_spin.setValue(port)
@@ -194,16 +205,23 @@ def test_remote_mode_equals_the_qt_dialog(world, qapp):
     from chisurf import gui as g
     from chisurf.plugins.core.switch_user.model import SwitchUserModel
 
-    world.configure({"client": {"mode": "remote", "base_url": "http://127.0.0.1:8080",
-                                "username": "alice"}})
+    world.configure(
+        {"client": {"mode": "remote", "base_url": "http://127.0.0.1:8080", "username": "alice"}}
+    )
     dlg = g.LoginDialog()
     m = SwitchUserModel()
     labels = [w.text() for w in dlg.findChildren(QtWidgets.QLabel)]
     assert "MMFDB URL:" in labels and m.server_label == "MMFDB URL"
     assert m.remote and not dlg.port_spin.isVisible()
-    assert [dlg.server_combo.itemText(i) for i in range(dlg.server_combo.count())] == m.server_history
+    assert [
+        dlg.server_combo.itemText(i) for i in range(dlg.server_combo.count())
+    ] == m.server_history
     assert m.server == dlg.server_combo.currentText() == "http://127.0.0.1:8080"
-    assert m.known_users == [dlg.user_combo.itemText(i) for i in range(dlg.user_combo.count())] == ["alice"]
+    assert (
+        m.known_users
+        == [dlg.user_combo.itemText(i) for i in range(dlg.user_combo.count())]
+        == ["alice"]
+    )
     dlg.close()
 
 
@@ -213,7 +231,8 @@ def test_successful_login_persists_exactly_what_the_qt_dialog_did(
     world, model, qapp, save, auto, server, port, monkeypatch
 ):
     q_ok, q_shown, q_cfg, q_yaml = qt_login(
-        world, BASE, "  admin ", "admin", server, port, save, auto, FakeClient(), qapp, monkeypatch)
+        world, BASE, "  admin ", "admin", server, port, save, auto, FakeClient(), qapp, monkeypatch
+    )
     q_tokens = list(world.token_calls)
     world.token_calls.clear()
     world.creds._RUNTIME_SESSION_TOKENS.clear()
@@ -237,13 +256,26 @@ def test_successful_login_persists_exactly_what_the_qt_dialog_did(
 
 
 def test_rejected_login_changes_nothing_like_the_qt_dialog(world, model, qapp, monkeypatch):
-    for answer, expected in (({"ok": False, "error": "Incorrect credentials"}, "Incorrect credentials"),
-                             ({"authenticated": False, "error": {"message": "Account locked"}}, "Account locked"),
-                             ({"ok": False}, "Incorrect credentials")):
+    for answer, expected in (
+        ({"ok": False, "error": "Incorrect credentials"}, "Incorrect credentials"),
+        ({"authenticated": False, "error": {"message": "Account locked"}}, "Account locked"),
+        ({"ok": False}, "Incorrect credentials"),
+    ):
         world.configure(BASE)
         before = copy.deepcopy(world.cs.cs_settings["mmfdb"])
-        q_ok, q_shown, q_cfg, q_yaml = qt_login(world, BASE, "admin", "x", "10.0.0.7", 9200,
-                                                True, False, FakeClient(answer), qapp, monkeypatch)
+        q_ok, q_shown, q_cfg, q_yaml = qt_login(
+            world,
+            BASE,
+            "admin",
+            "x",
+            "10.0.0.7",
+            9200,
+            True,
+            False,
+            FakeClient(answer),
+            qapp,
+            monkeypatch,
+        )
         assert not q_ok and q_shown == [("warning", "Login Failed", expected)]
         assert q_cfg == before and q_yaml is None
         world.configure(BASE)
@@ -258,8 +290,19 @@ def test_rejected_login_changes_nothing_like_the_qt_dialog(world, model, qapp, m
 
 
 def test_exception_is_the_error_message_of_the_qt_dialog(world, model, qapp, monkeypatch):
-    q_ok, q_shown, *_ = qt_login(world, BASE, "admin", "x", "h", 1, True, False,
-                                 FakeClient(error=RuntimeError("Connection refused")), qapp, monkeypatch)
+    q_ok, q_shown, *_ = qt_login(
+        world,
+        BASE,
+        "admin",
+        "x",
+        "h",
+        1,
+        True,
+        False,
+        FakeClient(error=RuntimeError("Connection refused")),
+        qapp,
+        monkeypatch,
+    )
     model.fake.error = RuntimeError("Connection refused")
     model.login()
     assert q_shown == [("error", "Error", "Login failed: Connection refused")]
@@ -279,8 +322,9 @@ def test_token_refused_and_settings_not_saved_warnings_equal_qt(world, model, qa
     from chisurf.core.settings import settings_utils
 
     world.store_ok = False
-    q_ok, q_shown, q_cfg, q_yaml = qt_login(world, BASE, "admin", "admin", "10.0.0.7", 9200,
-                                            True, True, FakeClient(), qapp, monkeypatch)
+    q_ok, q_shown, q_cfg, q_yaml = qt_login(
+        world, BASE, "admin", "admin", "10.0.0.7", 9200, True, True, FakeClient(), qapp, monkeypatch
+    )
     world.token_calls.clear()
     world.configure(BASE)
     model.user, model.password, model.autologin = "admin", "admin", True
@@ -290,7 +334,7 @@ def test_token_refused_and_settings_not_saved_warnings_equal_qt(world, model, qa
     assert model.notices[0][1] == "Autologin Not Saved"
     assert world.cs.cs_settings["mmfdb"]["autologin"] is False and q_cfg["autologin"] is False
     assert world.yaml["autologin"] is False == q_yaml["autologin"]
-    assert model.accepted and not model.closed          # the box must be read first
+    assert model.accepted and not model.closed  # the box must be read first
     model.dismiss_notice()
     assert model.closed
     # settings file cannot be written
@@ -301,8 +345,13 @@ def test_token_refused_and_settings_not_saved_warnings_equal_qt(world, model, qa
     model.accepted = model.closed = False
     model.autologin = False
     model.login()
-    assert model.notices == [("warning", "Settings Not Saved",
-                              "Login succeeded, but ChiSurf could not store the MMFDB login settings.")]
+    assert model.notices == [
+        (
+            "warning",
+            "Settings Not Saved",
+            "Login succeeded, but ChiSurf could not store the MMFDB login settings.",
+        )
+    ]
     assert model.accepted
 
 
@@ -385,7 +434,12 @@ def test_settings_round_trip_and_no_password(world, model):
     from chisurf.plugins.core.switch_user.model import SwitchUserModel
 
     again = SwitchUserModel()
-    assert (again.server, again.port, again.user, again.autologin) == ("10.0.0.7", 9200, "admin", True)
+    assert (again.server, again.port, again.user, again.autologin) == (
+        "10.0.0.7",
+        9200,
+        "admin",
+        True,
+    )
     assert again.server_history[0] == "10.0.0.7" and again.password == ""
     assert "password" not in json.dumps(world.yaml).lower().replace("passwordless", "")
     from chisurf.plugins.core.switch_user.app import SwitchUserApp
@@ -474,9 +528,21 @@ def test_app_draws_empty_and_populated(size, world):
 
     app = SwitchUserApp(client=FakeClient())
     painter = frames(app, size)
-    for text in ("Login", "Cancel", "Server", "Port", "User", "Password", "Save selected user",
-                 "Log in automatically when allowed", "Sign in to the MMFDB workspace",
-                 "Recent servers", "Select user", "Help", "Guide"):
+    for text in (
+        "Login",
+        "Cancel",
+        "Server",
+        "Port",
+        "User",
+        "Password",
+        "Save selected user",
+        "Log in automatically when allowed",
+        "Sign in to the MMFDB workspace",
+        "Recent servers",
+        "Select user",
+        "Help",
+        "Guide",
+    ):
         assert text in painter.strings, text
     assert "lab-server.example.org" in painter.strings and "9100" in painter.strings
     app.model.password = "hunter2-secret"
@@ -489,7 +555,9 @@ def test_app_draws_empty_and_populated(size, world):
 def test_remote_app_shows_the_url_label_and_no_port(world):
     from chisurf.plugins.core.switch_user.app import SwitchUserApp
 
-    world.configure({"client": {"mode": "remote", "base_url": "http://127.0.0.1:8080", "username": "alice"}})
+    world.configure(
+        {"client": {"mode": "remote", "base_url": "http://127.0.0.1:8080", "username": "alice"}}
+    )
     painter = frames(SwitchUserApp(client=FakeClient()))
     assert "MMFDB URL" in painter.strings and "Port" not in painter.strings
     assert "Server" not in painter.strings
@@ -526,8 +594,17 @@ def test_every_control_has_a_tooltip(world):
 
     def walk(sections):
         for s in sections:
-            if s.get("type") in ("value", "choice", "toggle", "table", "data_table", "custom",
-                                 "button_row", "info", "panel"):
+            if s.get("type") in (
+                "value",
+                "choice",
+                "toggle",
+                "table",
+                "data_table",
+                "custom",
+                "button_row",
+                "info",
+                "panel",
+            ):
                 assert s.get("description"), s.get("attr") or s.get("title") or s
             for b in s.get("buttons", []):
                 assert b.get("description"), b

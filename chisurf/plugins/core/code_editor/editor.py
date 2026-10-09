@@ -18,6 +18,7 @@ from chisurf import logging
 from chisurf.gui import dialogs
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.dock_area import DockArea
+from chisurf.plugins.core.code_editor.acp_client import AcpClient
 from chisurf.plugins.core.code_editor.agent_panel import AgentPanelWidget
 from chisurf.plugins.core.code_editor.document_store import DocumentStore
 from chisurf.plugins.core.code_editor.lsp_client import PythonLspClient
@@ -64,6 +65,7 @@ class CodeEditor(QtWidgets.QWidget):
     currentFileChanged = QtCore.Signal(str)
     symbolsChanged = QtCore.Signal(list)
     lspStatusChanged = QtCore.Signal(str)
+    acpStatusChanged = QtCore.Signal(str)
     runStateChanged = QtCore.Signal(bool)
     outputAppended = QtCore.Signal(str)  # emitted from any thread
     endpointHint = QtCore.Signal(str)  # shebang-suggested endpoint for the active file
@@ -112,6 +114,7 @@ class CodeEditor(QtWidgets.QWidget):
             enable_lsp = bool(editor_settings.get("enable_lsp", True))
         self._enable_lsp = enable_lsp
         self._lsp_client: PythonLspClient | None = None
+        self._acp_client: AcpClient | None = None
         self._lsp_sync_timer = QtCore.QTimer(self)
         self._lsp_sync_timer.setSingleShot(True)
         self._lsp_sync_timer.setInterval(350)
@@ -234,6 +237,19 @@ class CodeEditor(QtWidgets.QWidget):
         if self._lsp_client is not None:
             self._lsp_client.stop()
             self._lsp_client = None
+        if self._acp_client is not None:
+            self._acp_client.stop()
+            self._acp_client = None
+
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        """Clean up background processes upon editor closure."""
+        if self._acp_client is not None:
+            self._acp_client.stop()
+            self._acp_client = None
+        if self._lsp_client is not None:
+            self._lsp_client.stop()
+            self._lsp_client = None
+        super().closeEvent(event)
 
     def _open_project_folder_dialog(self) -> None:
         """Show a folder picker and switch the project root to the chosen directory."""
@@ -984,6 +1000,99 @@ class CodeEditor(QtWidgets.QWidget):
             item = QtWidgets.QListWidgetItem(f"{path}:{line}: {message}")
             item.setData(QtCore.Qt.UserRole, {"path": path, "line": line})
             self.diagnostics_list.addItem(item)
+
+    @property
+    def acp_client(self) -> AcpClient | None:
+        """Return the active ACP client instance."""
+        return self._acp_client
+
+    def ensure_acp(self, command: list[str] | None = None) -> AcpClient:
+        """Start or return the active ACP client for the editor."""
+        if self._acp_client is not None and self._acp_client.is_ready:
+            return self._acp_client
+
+        if self._acp_client is None:
+            self._acp_client = AcpClient(
+                root_path=self.project_root,
+                command=command,
+                parent=self,
+                read_file_handler=self._handle_acp_read_file,
+                write_file_handler=self._handle_acp_write_file,
+                permission_handler=self._handle_acp_permission,
+            )
+            self._acp_client.status_changed.connect(self.acpStatusChanged.emit)
+            self._acp_client.start()
+        return self._acp_client
+
+    def _handle_acp_read_file(self, path: str, line: int | None = None, limit: int | None = None) -> str:
+        """Handle fs/read_text_file from ACP agent by checking open tabs first."""
+        target_path = pathlib.Path(path)
+        if not target_path.is_absolute():
+            target_path = (self.project_root / target_path).resolve()
+        target_str = str(target_path)
+
+        editor = self._open_files.get(target_str)
+        if editor is None:
+            for open_path, ed in self._open_files.items():
+                if open_path == path or pathlib.Path(open_path).name == target_path.name:
+                    editor = ed
+                    break
+
+        if editor is not None:
+            content = editor.toPlainText()
+        else:
+            content = target_path.read_text(encoding="utf-8")
+
+        if line is not None or limit is not None:
+            lines = content.splitlines()
+            start = max(0, int(line or 0))
+            count = int(limit) if limit is not None else len(lines)
+            content = "\n".join(lines[start : start + count])
+
+        return content
+
+    def _handle_acp_write_file(self, path: str, content: str) -> None:
+        """Handle fs/write_text_file from ACP agent by updating open tab and file."""
+        target_path = pathlib.Path(path)
+        if not target_path.is_absolute():
+            target_path = (self.project_root / target_path).resolve()
+        target_str = str(target_path)
+
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        target_path.write_text(content, encoding="utf-8")
+
+        editor = self._open_files.get(target_str)
+        if editor is None:
+            for open_path, ed in self._open_files.items():
+                if open_path == path or pathlib.Path(open_path).name == target_path.name:
+                    editor = ed
+                    break
+
+        if editor is not None:
+            cursor = editor.textCursor()
+            pos = cursor.position()
+            editor.setPlainText(content)
+            cursor.setPosition(min(pos, len(content)))
+            editor.setTextCursor(cursor)
+            editor.document().setModified(True)
+            self._sync_editor_document(editor)
+        else:
+            self.open_file(target_str)
+
+    def _handle_acp_permission(self, tool_call: dict[str, Any], options: list[dict[str, Any]]) -> str:
+        """Handle session/request_permission by prompting the user in ChiSurf."""
+        tool_name = tool_call.get("name", "tool")
+        arguments = tool_call.get("rawInput", {})
+        arg_str = json.dumps(arguments, indent=2, default=str)[:2000]
+
+        reply = dialogs.question(
+            self,
+            "ACP Agent Permission Request",
+            f"The ACP agent wants to run <b>{tool_name}</b>:<br><pre>{arg_str}</pre>",
+            buttons=QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            default=QtWidgets.QMessageBox.No,
+        )
+        return "allow" if reply == QtWidgets.QMessageBox.Yes else "deny"
 
     def _on_modification_changed(self, editor: QtWidgets.QWidget, modified: bool) -> None:
         """Update the `` *`` marker on the tab when the document's modified state changes."""

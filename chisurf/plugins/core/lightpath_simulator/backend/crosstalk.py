@@ -233,7 +233,7 @@ def propagate_node(node_type, config, input_spectra, db):
         else:
             # Parse discrete lines, e.g., "488", "488:1.0, 561:0.5"
             lines_str = config.get("manual_lines", "")
-            if isinstance(lines_str,(list,tuple,np.ndarray)):
+            if isinstance(lines_str, (list, tuple, np.ndarray)):
                 lines_str = ", ".join(str(value) for value in lines_str)
             out_dict = {}
             sum_y = np.zeros_like(WAVELENGTHS)

@@ -29,6 +29,25 @@ Data is acquired into RAM and saved at the end of data acquisition.
 
 ## Usage
 
+### Native acquisition mode
+
+The manifest's native emtk entrypoint (`chisurf.plugins.core.acq.gui.app:make_app`) preserves
+the physical session workflow without importing a vendor wrapper until the operator explicitly
+chooses a hardware source and clicks **Initialize device**. It supports Simulation,
+Becker-Hickl, PicoQuant, and BrickMic selection; Start streams device FIFO records through
+`AcquisitionPipeline`, and Stop cancels safely and flushes result state. Missing drivers,
+failed initialization, and no-active-card states are shown truthfully; the app never changes a
+hardware selection into simulation.
+
+Set a positive time and/or photon stop condition, map all four routing channels, and optionally
+choose an output folder. The path is passed only to Simulation and BrickMic backends that expose
+an output capability; it is not a blanket promise that every device writes raw data. Settings
+save/load uses a chosen JSON file and does not initialize hardware. Simulation provides both
+basic controls and a full advanced parameter JSON editor validated by the real simulator engine.
+All native result tabs derive count, decay/intensity, correlation, burst/phasor, macrotime, and
+MCS state from the pipeline rather than fabricated display data. Vendor-specific card setup
+dialogs remain a legacy Qt boundary because their wrappers do not expose a Qt-free setup API.
+
 ### GUI Mode
 
 1. Launch the plugin from the ChiSurf menu: Single-Molecule > BH SPC Acquisition

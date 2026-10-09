@@ -1441,7 +1441,16 @@ def update_chisurf(callback=None, auto_restart=True) -> tuple[bool, str | None]:
     return updater.update(callback, auto_restart)
 
 
-_SUBDIRS = ("noarch", "osx-64", "osx-arm64", "linux-64", "linux-aarch64", "linux-ppc64le", "win-64", "win-arm64")
+_SUBDIRS = (
+    "noarch",
+    "osx-64",
+    "osx-arm64",
+    "linux-64",
+    "linux-aarch64",
+    "linux-ppc64le",
+    "win-64",
+    "win-arm64",
+)
 
 
 def _channel_name(channel: Any) -> str:
@@ -1480,9 +1489,14 @@ def normalize_search_results(data: Any) -> list[dict[str, str]]:
         seen.setdefault(key, {"name": key[0], "version": key[1], "channel": key[2]})
 
     def version_key(version: str) -> tuple:
-        return tuple(int(p) if p.isdigit() else -1 for p in re.split(r"[^0-9A-Za-z]+", version) if p)
+        return tuple(
+            int(p) if p.isdigit() else -1 for p in re.split(r"[^0-9A-Za-z]+", version) if p
+        )
 
-    return sorted(seen.values(), key=lambda r: (r["name"].lower(), tuple(-v for v in version_key(r["version"]))))
+    return sorted(
+        seen.values(),
+        key=lambda r: (r["name"].lower(), tuple(-v for v in version_key(r["version"]))),
+    )
 
 
 class PackageManager:

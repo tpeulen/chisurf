@@ -6,11 +6,17 @@ import pathlib
 from typing import Any
 
 from chisurf.plugins.core.code_editor.gui.chat_app import ChatApp, make_chat_app
-from chisurf.plugins.core.code_editor.gui.editor_app import WINDOW_BG, CodeEditorApp, make_editor_app
+from chisurf.plugins.core.code_editor.gui.editor_app import (
+    WINDOW_BG,
+    CodeEditorApp,
+    make_editor_app,
+)
 
 try:
     from qtpy import QtWidgets
+
     from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
+
     _HAS_QT = True
 except ImportError:
     _HAS_QT = False
@@ -55,6 +61,7 @@ class CodeEditorEmtkTool(ChisurfDockTool):
 
         if _HAS_QT:
             from emtk.qt_host import ControlHost
+
             self.host = ControlHost(self.app, background=WINDOW_BG[:3])
             self.setCentralWidget(self.host)
         else:
@@ -62,7 +69,6 @@ class CodeEditorEmtkTool(ChisurfDockTool):
 
     def open_file(self, path: str | pathlib.Path, line: int | None = None) -> Any:
         return self.app.model.open_file(path, line=line)
-
 
 
 class AgentChatEmtkTool(ChisurfDockTool):
@@ -78,6 +84,7 @@ class AgentChatEmtkTool(ChisurfDockTool):
         self.app = ChatApp()
         if _HAS_QT:
             from emtk.qt_host import ControlHost
+
             self.host = ControlHost(self.app, background=WINDOW_BG[:3])
             self.setCentralWidget(self.host)
         else:
@@ -104,7 +111,14 @@ def run_chat() -> None:
     """Run the AI Chat assistant directly as a pure EMTK desktop app without Qt."""
     from emtk.native import main as emtk_main
 
-    emtk_main(["--app", "chisurf.plugins.core.code_editor.gui.chat_app:make_chat_app", "--size", "440x680"])
+    emtk_main(
+        [
+            "--app",
+            "chisurf.plugins.core.code_editor.gui.chat_app:make_chat_app",
+            "--size",
+            "440x680",
+        ]
+    )
 
 
 __all__ = [

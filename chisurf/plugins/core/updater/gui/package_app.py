@@ -41,14 +41,18 @@ class PackagePanel:
         self.job = SnapshotJob(self.model)
         self.model.runner = self.start_job
         spec = json.loads((HERE / "packages.view.json").read_text(encoding="utf-8"))
-        self.panels = {p["name"]: layout_spec(p) if p["name"] in _NAMES else p for p in spec["sections"]}
+        self.panels = {
+            p["name"]: layout_spec(p) if p["name"] in _NAMES else p for p in spec["sections"]
+        }
         self.form = FormState()
         self.form.custom["env_line"] = self._draw_env
         self.form.custom["operation_log"] = self._draw_log
         self.dialog_form = FormState()
         self.dialog: FileDialog | None = None
         self.dialog_purpose = ""
-        self.message_window = DialogWindow("ChiSurf Package Manager", size=(520.0, 190.0), key="packages_dialog", fit_height=True)
+        self.message_window = DialogWindow(
+            "ChiSurf Package Manager", size=(520.0, 190.0), key="packages_dialog", fit_height=True
+        )
         self.item_rects: dict[str, tuple] = {}
         self.pending_tab: int | None = None
         self._reported_error = ""
@@ -86,7 +90,7 @@ class PackagePanel:
             model.append_log(f"Failed: {self.job.error}")
         if not self.loaded:
             self.loaded = True
-            model.refresh_all()             # the Qt widget loaded its lists when it was created
+            model.refresh_all()  # the Qt widget loaded its lists when it was created
         self.form.rects.clear()
         self._tabs()
         name = _NAMES[model.tab]
@@ -134,7 +138,7 @@ class PackagePanel:
             im.text_wrapped(line)
         if len(model.log) != self._logged:
             self._logged = len(model.log)
-            self._stick = 3                      # the scroll range is the last frame's: follow for a few frames
+            self._stick = 3  # the scroll range is the last frame's: follow for a few frames
         if self._stick > 0:
             self._stick -= 1
             im.set_scroll_here_y(1.0)
@@ -150,12 +154,23 @@ class PackagePanel:
         if request and self.dialog is None:
             home = str(Path.home())
             if request == "export":
-                self.dialog, self.dialog_purpose = FileDialog(
-                    "Export Environment", mode="save", filename="environment.yaml", directory=home,
-                    filters="YAML files (*.yaml *.yml)"), "export"
+                self.dialog, self.dialog_purpose = (
+                    FileDialog(
+                        "Export Environment",
+                        mode="save",
+                        filename="environment.yaml",
+                        directory=home,
+                        filters="YAML files (*.yaml *.yml)",
+                    ),
+                    "export",
+                )
             elif request == "import":
-                self.dialog, self.dialog_purpose = FileDialog(
-                    "Import Environment", directory=home, filters="YAML files (*.yaml *.yml)"), "import"
+                self.dialog, self.dialog_purpose = (
+                    FileDialog(
+                        "Import Environment", directory=home, filters="YAML files (*.yaml *.yml)"
+                    ),
+                    "import",
+                )
 
     def _draw_file_dialog(self) -> None:
         if self.dialog is None:
@@ -204,10 +219,15 @@ class PackageApp(ImApp):
         self.panel = PackagePanel(model)
         self.model = self.panel.model
         self.item_rects = self.panel.item_rects
-        self.help_window = EmTkHelpWindow(title="ChiSurf Package Manager - Help", resource=HERE / "packages_help.md", owner=self)
+        self.help_window = EmTkHelpWindow(
+            title="ChiSurf Package Manager - Help", resource=HERE / "packages_help.md", owner=self
+        )
         self.tour = EmTkGuidedTour(
-            steps=HERE / "packages_guide.json", owner=self, wait_for_controls=True,
-            get_target_rect=lambda key: self.item_rects.get(key) or self.panel.form.rects.get(key))
+            steps=HERE / "packages_guide.json",
+            owner=self,
+            wait_for_controls=True,
+            get_target_rect=lambda key: self.item_rects.get(key) or self.panel.form.rects.get(key),
+        )
         self.panel.on_used = self.tour.notify_used
         super().__init__(self.render, continuous=True)
 

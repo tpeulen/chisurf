@@ -418,7 +418,7 @@ def page_summary(path: pathlib.Path, limit: int = 180) -> str:
 
 #: How each top-level section reads in the browser, keyed by the index that
 #: defines it. The *membership and order* are not here — they come from
-#: ``docs/index.rst``, so a section added to the website appears in the
+#: ``docs/index.md``, so a section added to the website appears in the
 #: application without anyone remembering to add it in two places. This is only
 #: the wording: the website's captions are parenthetical ("Concepts (theory)")
 #: where a navigation row reads better with a dash, and a summary line has
@@ -532,7 +532,9 @@ def build_toc(
             kind="section",
             summary="Architecture, benchmarks and maintainer notes.",
         )
-        development.children = read_index(docs / "development/index.rst")
+        development.children = read_index(
+            _index_path(docs, "development/index") or docs / "development/index.rst"
+        )
         development.children.extend(_module_docs(base))
         if development.children:
             toc.add(development)

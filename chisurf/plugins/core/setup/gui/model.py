@@ -212,7 +212,9 @@ class SettingsDocument:
         if self.merged:
             from chisurf.core.settings.settings_utils import get_chisurf_settings
 
-            self.text = yaml.safe_dump(get_chisurf_settings(self.path, use_source_folder=False), sort_keys=False)
+            self.text = yaml.safe_dump(
+                get_chisurf_settings(self.path, use_source_folder=False), sort_keys=False
+            )
         else:
             self.text = self.path.read_text(encoding="utf-8") if self.path.exists() else "{}\n"
         self.saved_text = self.text
