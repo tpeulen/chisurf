@@ -21,7 +21,7 @@ BID → Analysis Converter  This plugin reads burst ID (BID) files containing st
 | Menu path | Tools → Converter → **BID→Analysis** |
 | Categories | Tools, Converter |
 | Version | 1.0.0 |
-| Surfaces | emtk, script |
+| Surfaces | emtk |
 
 ## Parameters
 

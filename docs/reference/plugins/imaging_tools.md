@@ -21,7 +21,7 @@ Unified imaging toolbox: Image Browser, Drift Correction, FRC Resolution, Flow M
 | Menu path | Spectroscopy → Imaging → **Image Tools** |
 | Categories | Spectroscopy, Imaging |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 
 ## Parameters
 

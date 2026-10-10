@@ -21,7 +21,7 @@ Update checker/installer and conda package manager. Surfaced as panels inside th
 | Menu path | Setup → **Updates & Packages** |
 | Categories | Setup |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 
 ## Parameters
 

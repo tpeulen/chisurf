@@ -21,7 +21,7 @@ Align molecular dynamics trajectories to a reference frame or structure.
 | Menu path | Structure → Trajectory → **Align** |
 | Categories | Structure, Trajectory |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 | State namespace | `traj_align` |
 
 ## Parameters

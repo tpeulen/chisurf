@@ -21,7 +21,7 @@ Style Manager Plugin for ChiSurf
 | Menu path | Setup → **Styles** |
 | Categories | Setup |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 
 ## Parameters
 

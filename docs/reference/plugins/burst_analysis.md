@@ -21,7 +21,7 @@ Integrated burst workflow with burst selection, BVA, burst MLE, burst browser, a
 | Menu path | Spectroscopy → Single-Molecule → **Burst Analysis** |
 | Categories | Spectroscopy, Single-Molecule |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 | State namespace | `burst_analysis` |
 
 ## Parameters

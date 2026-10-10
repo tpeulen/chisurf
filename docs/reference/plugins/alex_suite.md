@@ -21,7 +21,7 @@ The classic ALEX-Suite workflow, as a linear ChiSurf pipeline: files, µs-ALEX a
 | Menu path | Spectroscopy → Single-Molecule → **ALEX Suite** |
 | Categories | Spectroscopy, Single-Molecule, FRET |
 | Version | 1.0.0 |
-| Surfaces | cli, emtk, gui |
+| Surfaces | cli, emtk |
 | State namespace | `alex_suite` |
 
 ## Parameters

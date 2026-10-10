@@ -21,7 +21,7 @@ Join or stack molecular dynamics trajectories.
 | Menu path | Structure → Trajectory → **Join** |
 | Categories | Structure, Trajectory |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 | State namespace | `traj_join` |
 
 ## Parameters

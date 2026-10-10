@@ -21,7 +21,7 @@ Split TTTR files into fixed-duration time-window BID (.bst) files.
 | Menu path | Tools → Converter → **TTTR→Time-Window BIDs** |
 | Categories | Tools, Converter |
 | Version | 2.0.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `tttr_time_windows` |
 
 ## Parameters

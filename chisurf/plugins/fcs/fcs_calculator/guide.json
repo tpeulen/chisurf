@@ -27,7 +27,7 @@
       "title": "The calibration is the measurement",
       "text": "<b>FCS measures τ. It does not measure D.</b> Converting one to the other needs the beam waist w_xy, and w_xy comes from a calibration on a dye of <i>known</i> D — this panel.<br/><br/>Every quantity downstream inherits that calibration's error, and not equally:<br/>• <b>rₕ</b> goes as 1/D — a 10 % calibration error is 10 %;<br/>• <b>V_eff</b> goes as <b>w_xy³</b> — the same 10 % is <b>33 %</b>;<br/>• <b>c</b> is proportional to 1/V_eff, so it carries that 33 % too.<br/><br/>That cube is why FCS concentrations are routinely quoted with more confidence than they have earned. Scale the reference to your temperature and viscosity <i>before</i> it is used — the panel does this — because comparing an uncorrected reference against a corrected measurement is a silent systematic.",
       "target": {
-        "key": "confocal_dye"
+        "title": "Reference dye (D @ 25 °C, water)"
       }
     },
     {
@@ -48,7 +48,7 @@
       "title": "rₕ is not a radius, and c is only as good as V_eff",
       "text": "Stokes–Einstein returns the radius of the <b>sphere that would diffuse the way your molecule does</b>. For anything elongated that number is larger than the molecule's own dimensions, and reading it as \"size\" overstates it.<br/><br/>The shape panel inverts the relation for the case you name — <i>ellipsoid</i> applies the Perrin friction factor, <i>cylinder</i> the Hansen approximation. None of them measures shape: they convert a measured D into a size <b>given</b> an assumption that stays yours.<br/><br/>And the concentration: it is N divided by V_eff, so it inherits the whole calibration chain above. If the number that matters is a concentration, the calibration is not a preliminary — it <i>is</i> the measurement.<br/><br/>Export the state to JSON when a number goes into a figure. The relations are cheap to recompute; the assumptions behind them are what you will want back in six months. The <b>?</b> button has the rest.",
       "target": {
-        "key": "confocal_shape"
+        "title": "Molecular shape"
       }
     }
   ]

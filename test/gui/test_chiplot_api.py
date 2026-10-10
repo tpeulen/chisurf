@@ -467,17 +467,12 @@ def test_migrated_modules_import(qapp):
     for name in (
         "chisurf.plugins.tttr.microtime_histogram.gui.app",
         # Batch 11
-        "chisurf.plugins.fluorescence_decay.tr_anisotropy.gui.irf_widget",
         "chisurf.plugins.vv_vh_anisotropy",
         # Batch 12
-        "chisurf.plugins.tttr.tttr_lut_tools.gui.sections",
         # Batch 13
-        "chisurf.plugins.tttr.tttr_lut_tools.gui.settings_panel",
         # Batch 14
         "chisurf.gui.autoform.sections.decay_conv_section",
         # Batch 15
-        "chisurf.plugins.modelling.fret.gui.dock_tool",
-        "chisurf.plugins.modelling.fret.gui.pair_selection_wizard",
         # Batch 16
         "chisurf.plugins.core.lightpath_simulator.gui.node_types",
         # Batch 17
@@ -496,7 +491,6 @@ def test_migrated_modules_import(qapp):
         # Batch 32
         "chisurf.gui.plots.residual_image",
         # Batch 33
-        "chisurf.plugins.fluorescence_decay.maxent_decay.gui.gui",
     ):
         assert importlib.import_module(name) is not None
 

@@ -21,7 +21,7 @@ FRET-2CDE / ALEX-2CDE per-burst dynamics feature (Tomov et al. 2012).
 | Menu path | Spectroscopy → Single-Molecule → **2CDE** |
 | Categories | Spectroscopy, Single-Molecule |
 | Version | 1.0.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `burst_2cde` |
 
 ## Parameters

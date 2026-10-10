@@ -21,7 +21,7 @@ Integrated fluorescence lifetime analysis tools with IRF estimation, MaxEnt MEM,
 | Menu path | Spectroscopy → Decay → **Decay Analysis** |
 | Categories | Spectroscopy, Decay, Fluorescence decay |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 | State namespace | `lifetime_analysis` |
 
 ## Parameters

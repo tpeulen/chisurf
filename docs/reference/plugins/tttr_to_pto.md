@@ -21,7 +21,7 @@ Convert between a vendor photon file (.ptu, .spc, .ht3, ...) and ChiSurf's own .
 | Menu path | TTTR → **⇄ .pto** |
 | Categories | TTTR |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 
 ## Parameters
 

@@ -21,7 +21,7 @@ Map the velocity field of a sample from its own correlations — one arrow per t
 | Menu path | Spectroscopy → Imaging → **Flow Maps** |
 | Categories | Spectroscopy, Imaging |
 | Version | 1.0.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `img_flow` |
 
 ## Parameters

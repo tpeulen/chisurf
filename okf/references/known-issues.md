@@ -4,6 +4,16 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## The forbidden-communication guard's counts grew instead of shrinking (found 2026-10-10)
+
+status: open — owner: the guard (`test/test_forbidden_communication.py`) and the four `chisurf/gui` files below.
+
+After the W9 retirements `EXPECTED_VIOLATIONS` was regenerated (+36/-6 lines). Most new entries are emtk-native
+plugin files whose own parameter objects and dialog `.value =` match the regex, so the guard should exempt a
+plugin's own parameters rather than count them. Four shell files grew in earlier commits and were raised to
+match: `autoform/sections/builtin.py` 5→6, `parameter_table.py` 5→6, `main_helper.py` 23→24,
+`fit_controller.py` 12→16 — check each new hit is a real fit-client call routed through the API, then lower.
+
 ## Burst plugins whose Qt tool is still shipped: W9 phase 1 skips (found 2026-10-10)
 
 status: open — three Qt entrypoints remain in `chisurf/plugins/burst`:

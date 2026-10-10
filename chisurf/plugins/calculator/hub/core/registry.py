@@ -59,7 +59,7 @@ def default_calculators() -> list[CalculatorEntry]:
                 "Compute static, dynamic, WLC and mixture FRET lines for parameter "
                 "ranges, ready to overlay on smFRET 2D histograms."
             ),
-            widget="chisurf.plugins.fret_line.gui.tool:FRETLineTool",
+            widget="chisurf.plugins.fret_line.gui.app:make_app",
             icon="📈",
         ),
         CalculatorEntry(

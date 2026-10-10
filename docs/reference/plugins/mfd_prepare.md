@@ -21,7 +21,7 @@ Prepare a burst folder for multiparameter-fluorescence (MFD) analysis: resolve p
 | Menu path | Tools → Burst → **MFD Prepare** |
 | Categories | Tools, Burst, MFD |
 | Version | 1.0.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `mfd_prepare` |
 
 ## Parameters

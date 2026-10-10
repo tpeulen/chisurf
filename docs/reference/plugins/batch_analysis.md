@@ -21,7 +21,7 @@ Apply one pre-optimised template fit to many datasets or files in one pass and e
 | Menu path | Main → Tools → **Batch-Analysis** |
 | Categories | Main, Tools, Analysis |
 | Version | 1.0.0 |
-| Surfaces | cli, emtk, gui |
+| Surfaces | cli, emtk |
 | State namespace | `batch_analysis` |
 
 ## Parameters

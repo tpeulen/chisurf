@@ -21,7 +21,7 @@ Apply rigid-body rotation and translation to trajectories.
 | Menu path | Structure → Trajectory → **Rotate/Translate** |
 | Categories | Structure, Trajectory |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 | State namespace | `traj_rotate_translate` |
 
 ## Parameters

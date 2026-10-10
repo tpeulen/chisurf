@@ -21,7 +21,7 @@ Compute and plot the anisotropy decay r(t) of a VV/VH file with a g-factor, back
 | Menu path | Spectroscopy → Decay → **VV/VH Anisotropy Decay** |
 | Categories | Spectroscopy, Fluorescence decay, Decay |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 | State namespace | `vv_vh_anisotropy` |
 
 ## Parameters

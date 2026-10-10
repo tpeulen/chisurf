@@ -21,7 +21,7 @@ Per-pixel Number & Brightness from TTTR imaging stacks: apparent B and N, molecu
 | Menu path | Spectroscopy → Imaging → **Number & Brightness** |
 | Categories | Spectroscopy, Imaging |
 | Version | 1.0.0 |
-| Surfaces | cli, emtk, gui |
+| Surfaces | cli, emtk |
 | State namespace | `img_pixel_nb` |
 
 ## Parameters

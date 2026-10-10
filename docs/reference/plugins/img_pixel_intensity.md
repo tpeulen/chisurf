@@ -21,7 +21,7 @@ Per-pixel intensity map; creates the standard imaging HDF5 (with source back-ref
 | Menu path | Spectroscopy → Imaging → **Intensity** |
 | Categories | Spectroscopy, Imaging |
 | Version | 1.0.0 |
-| Surfaces | cli, emtk, gui |
+| Surfaces | cli, emtk |
 | State namespace | `img_pixel_intensity` |
 
 ## Parameters

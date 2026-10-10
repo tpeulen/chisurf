@@ -55,15 +55,13 @@ def actual_caller(kind):
     """Construct each existing caller; return its real parent and detector page."""
     caller_constructors = {
         "core_wizard": ("chisurf.plugins.core.setup_channel_definition.wizard", "ChisurfWizard", "filter"),
-        "trace": ("chisurf.plugins.tttr.trace_browser.widget", "TraceBrowser", "detector_page"),
-        "intensity": ("chisurf.plugins.tttr.intensity_trace.qt_tool", "IntensityTrace", "detector_wizard_page"),
     }
     module, class_name, attribute = caller_constructors[kind]
     parent = getattr(importlib.import_module(module), class_name)()
     return parent, getattr(parent, attribute), getattr(parent, "model", None)
 
 
-@pytest.mark.parametrize("kind", ["core_wizard", "trace", "intensity"])
+@pytest.mark.parametrize("kind", ["core_wizard"])
 def test_actual_existing_caller_hosts_native_settings_and_preserves_semantics(qapp, kind):
     """Native hosting preserves real callbacks/providers and closes its owned surface."""
     from qtpy.QtWidgets import QWidget
@@ -80,9 +78,6 @@ def test_actual_existing_caller_hosts_native_settings_and_preserves_semantics(qa
         assert data["future_setup_metadata"] == SETTINGS["future_setup_metadata"]
         assert page.filetype == "SPC-130"
         assert page.effective_micro_time_resolution == 6.591796875
-        if kind == "trace":
-            parent._on_continue()
-            assert parent.model.setup_settings["detectors"] == data["detectors"]
         parent.close()
         qapp.processEvents()
         assert page.editor._closing
@@ -91,7 +86,7 @@ def test_actual_existing_caller_hosts_native_settings_and_preserves_semantics(qa
         page.close()
 
 
-@pytest.mark.parametrize("kind", ["intensity_dialog", "burst_dialog"])
+@pytest.mark.parametrize("kind", ["burst_dialog"])
 def test_existing_modal_settings_callers_consume_actual_native_definition(qapp, monkeypatch, kind):
     """The existing accept callback consumes the native definition, not old combo/table fields."""
     from qtpy import QtWidgets
@@ -107,23 +102,12 @@ def test_existing_modal_settings_callers_consume_actual_native_definition(qapp, 
         dialog.accept()
         return QtWidgets.QDialog.Accepted
     monkeypatch.setattr(QtWidgets.QDialog, "exec_", accept)
-    if kind == "intensity_dialog":
-        from chisurf.plugins.tttr.intensity_trace.qt_tool import IntensityTrace
-        parent = IntensityTrace()
-    else:
-        from chisurf.plugins.burst.burst_selection.gui.tool import BurstSelectionTool
-        parent = BurstSelectionTool()
+    from chisurf.plugins.burst.burst_selection.gui.tool import BurstSelectionTool
+    parent = BurstSelectionTool()
     try:
-        if kind == "intensity_dialog":
-            parent._open_setup_dialog()
-            accepted = parent._detector_settings
-            assert accepted is not None
-            assert accepted["detectors"] == SETTINGS["detectors"]
-            assert accepted["future_setup_metadata"] == SETTINGS["future_setup_metadata"]
-        else:
-            parent._show_channel_settings()
-            assert parent._selected_filetype == "SPC-130"
-            assert parent.wizard.detectors == SETTINGS["detectors"]
+        parent._show_channel_settings()
+        assert parent._selected_filetype == "SPC-130"
+        assert parent.wizard.detectors == SETTINGS["detectors"]
         assert len(captured) == 1
     finally:
         parent.close()
@@ -173,7 +157,7 @@ def test_actual_setup_wizard_can_save_a_definition_and_then_finish(qapp, qtbot, 
         page.close()
 
 
-@pytest.mark.parametrize("kind", ["core_wizard", "trace"])
+@pytest.mark.parametrize("kind", ["core_wizard"])
 def test_existing_enclosing_layout_allocates_reachable_native_controls(qapp, kind):
     """Existing parent layouts allocate the real editor, including its lower actions."""
     parent, page, _ = actual_caller(kind)
@@ -182,10 +166,6 @@ def test_existing_enclosing_layout_allocates_reachable_native_controls(qapp, kin
         parent.resize(1400, 1000)
         parent.show()
         qapp.processEvents()
-        if kind == "trace":
-            from qtpy import QtCore, QtTest
-            QtTest.QTest.mouseClick(parent.btn_back, QtCore.Qt.LeftButton)
-            qapp.processEvents()
         page.host.repaint()
         qapp.processEvents()
         assert page.height() >= 400 and page.host.height() >= 400

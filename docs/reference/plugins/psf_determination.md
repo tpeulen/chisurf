@@ -21,7 +21,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 | Menu path | Spectroscopy → Imaging → **PSF Determination** |
 | Categories | Spectroscopy, Imaging |
 | Version | 2.0.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `psf_determination` |
 
 ## Parameters

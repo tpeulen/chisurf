@@ -21,7 +21,7 @@ Unified Settings for ChiSurf
 | Menu path | Setup → **Settings** |
 | Categories | Setup |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 
 ## Parameters
 

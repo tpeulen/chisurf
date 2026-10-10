@@ -21,7 +21,7 @@ Single-particle tracking: detect diffraction-limited particles in every frame, l
 | Menu path | Spectroscopy → Imaging → **Particle Tracking** |
 | Categories | Spectroscopy, Imaging, Tracking |
 | Version | 1.0.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `img_tracking` |
 
 ## Parameters

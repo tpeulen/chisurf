@@ -21,7 +21,7 @@ Unified **FCS** plugin — a meta tool hosting the FCS workflow behind a rail.  
 | Menu path | Spectroscopy → Correlation → **FCS** |
 | Categories | Spectroscopy, Correlation |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui, script |
+| Surfaces | emtk, script |
 
 ## Parameters
 

@@ -49,9 +49,6 @@ chisurf/gui/autoform/sections/quiver_section.py
 chisurf/gui/widgets/models/auto_model_widget.py
 chisurf/gui/widgets/sample_picker.py
 chisurf/gui/widgets/tools/__init__.py
-chisurf/plugins/burst/accurate_fret/__init__.py
-chisurf/plugins/burst/burst_2cde/tests/test_gui.py
-chisurf/plugins/burst/burst_bva/tests/test_construction_smoke.py
 chisurf/plugins/burst/burst_h2mm/core/surrogate.py
 chisurf/plugins/burst/burst_selection/api/mmfdb.py
 chisurf/plugins/burst/burst_selection/api/replay.py
@@ -93,13 +90,10 @@ chisurf/plugins/microscopy/img_pixel_phasor/backend/services.py
 chisurf/plugins/microscopy/img_pixel_phasor/test/test_analysis.py
 chisurf/plugins/microscopy/img_pixel_phasor/test/test_cli.py
 chisurf/plugins/microscopy/img_pixel_phasor/test/test_services.py
-chisurf/plugins/modelling/fps_json_editor/test/test_construction_smoke.py
-chisurf/plugins/modelling/fret/gui/dock_tool.py
 chisurf/plugins/modelling/fret/test/test_cli_flags.py
 chisurf/plugins/modelling/fret/test/test_engine.py
 chisurf/plugins/modelling/fret/test/test_fps_outputs.py
 chisurf/plugins/spectra_downloader/tests/test_register_component.py
-chisurf/plugins/traj/traj_tools/test/test_construction_smoke.py
 chisurf/plugins/tttr/tttr_microtime_shifter/api/replay.py
 chisurf/plugins/tttr/tttr_microtime_shifter/api/transformer.py
 chisurf/plugins/tttr/tttr_microtime_shifter/tests/test_replay.py

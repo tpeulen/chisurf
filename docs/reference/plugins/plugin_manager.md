@@ -21,7 +21,7 @@ Plugin Manager for ChiSurf
 | Menu path | Setup → **Plugins** |
 | Categories | Setup |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 
 ## Parameters
 

@@ -92,7 +92,7 @@ def _module_refs(*paths: pathlib.Path) -> list[str]:
 
 def _panels_json(rel: str) -> list[str]:
     spec = json.loads((ROOT / rel).read_text(encoding="utf-8"))
-    return [p["entrypoint"] for p in spec["panels"] if not p.get("separator")]
+    return [p.get("plugin") or p["entrypoint"] for p in spec["panels"] if not p.get("separator")]
 
 
 def _declared_children() -> dict[str, list[str]]:

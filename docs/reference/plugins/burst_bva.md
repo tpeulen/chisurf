@@ -21,7 +21,7 @@ Burst Variance Analysis for single-molecule FRET experiments.
 | Menu path | Spectroscopy → Single-Molecule → **BVA** |
 | Categories | Spectroscopy, Single-Molecule |
 | Version | 2.1.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `burst_bva` |
 
 ## Parameters

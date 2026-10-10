@@ -21,7 +21,7 @@ ChiSurf About Plugin  This plugin provides information about ChiSurf, including 
 | Menu path | Help → **About ChiSurf** |
 | Categories | Help |
 | Version | 1.0.0 |
-| Surfaces | emtk, script |
+| Surfaces | emtk |
 
 ## Parameters
 

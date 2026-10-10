@@ -21,7 +21,7 @@ Tests all ChiSurf plugins for startup errors and reports successes, failures, an
 | Menu path | Tools → Miscellaneous → **Plugin-Check** |
 | Categories | Tools, Miscellaneous |
 | Version | 2.1.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 | State namespace | `plugin_check` |
 
 ## Parameters

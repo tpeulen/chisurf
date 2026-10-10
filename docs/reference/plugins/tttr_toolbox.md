@@ -21,7 +21,7 @@ Photon-level TTTR toolbox: ALEX Creator, Micro-time Shifter, Photon Table, Count
 | Menu path | Tools → Photon data → **TTTR Tools** |
 | Categories | Tools, Photon data, TTTR |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 
 ## Parameters
 

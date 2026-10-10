@@ -8,14 +8,8 @@
 # adding a NEW line is a test failure, not a fix. Goal: empty.
 chisurf/plugins/burst/burst_mle_analysis
 modules/chimol/chimol/hosts/qt
-chisurf/plugins/core/code_editor/gui
-chisurf/plugins/core/help/gui
-chisurf/plugins/fcs/fcs_channel_preset/gui
 chisurf/plugins/misc/games/breakout
-chisurf/plugins/misc/games/gui
 chisurf/plugins/misc/games/pong
 chisurf/plugins/misc/games/tetris
 chisurf/plugins/modelling/fps_json_editor/gui
-chisurf/plugins/modelling/fret/gui
-chisurf/plugins/modelling/structure_tools/gui
 chisurf/plugins/ndxplorer

@@ -21,7 +21,7 @@ Apply global and per-channel micro-time shifts to TTTR files.
 | Menu path | Tools → TTTR → **Microtime Shifter** |
 | Categories | Tools, TTTR, Editor |
 | Version | 2.0.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `microtime_shifter` |
 
 ## Parameters

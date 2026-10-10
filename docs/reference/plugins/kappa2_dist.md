@@ -21,7 +21,7 @@ Calculate and visualise the k² orientation-factor distribution for FRET using W
 | Menu path | Structure → FRET → **Kappa2 Distribution** |
 | Categories | Structure, FRET |
 | Version | 1.1.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `kappa2_dist` |
 
 ## Parameters

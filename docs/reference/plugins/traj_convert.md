@@ -21,7 +21,7 @@ Convert molecular dynamics trajectory files between supported formats.
 | Menu path | Structure → Trajectory → **Convert** |
 | Categories | Structure, Trajectory |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 | State namespace | `traj_convert` |
 
 ## Parameters

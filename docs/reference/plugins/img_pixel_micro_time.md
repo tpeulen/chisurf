@@ -21,7 +21,7 @@ Per-pixel mean micro-time (arrival time) maps from TTTR imaging data.
 | Menu path | Spectroscopy → Imaging → **Mean Micro-Time** |
 | Categories | Spectroscopy, Imaging |
 | Version | 1.0.0 |
-| Surfaces | cli, emtk, gui |
+| Surfaces | cli, emtk |
 | State namespace | `img_pixel_micro_time` |
 
 ## Parameters

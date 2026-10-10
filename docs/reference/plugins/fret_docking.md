@@ -21,7 +21,7 @@ FRET-restrained rigid-body docking, refinement, structure-library screening and 
 | Menu path | Structure → FRET → **Docking & Screening** |
 | Categories | Structure, FRET |
 | Version | 1.0.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `fret_docking` |
 
 ## Parameters

@@ -21,7 +21,7 @@ Extract a per-detector IRF and background rate from the non-burst photons of a s
 | Menu path | Spectroscopy → Single-Molecule → **Burst IRF & Background** |
 | Categories | Spectroscopy, Single-Molecule |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 | State namespace | `burst_irf_bg` |
 
 ## Parameters

@@ -21,7 +21,7 @@ AI Settings plugin for configuring API providers and backends.
 | Menu path | Tools → **AI Settings** |
 | Categories | Tools |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 
 ## Parameters
 

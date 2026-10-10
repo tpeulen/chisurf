@@ -21,7 +21,7 @@ Unified structure toolbox: FPS JSON Editor, FRET Docking & Screening, QuEst, Hyd
 | Menu path | Structure → Modelling → **Structure Tools** |
 | Categories | Structure, Modelling |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 
 ## Parameters
 

@@ -21,7 +21,7 @@ Switch the active MMFDB user for this ChiSurf session.
 | Menu path | Setup → **Switch User** |
 | Categories | Setup |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 | State namespace | `switch_user` |
 
 ## Parameters

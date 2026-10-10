@@ -21,7 +21,7 @@ Accurate FRET (Hellenkamp): automatic alpha/beta/gamma/delta from the burst popu
 | Menu path | Spectroscopy → FRET → **Accurate FRET** |
 | Categories | Spectroscopy, FRET, Single-Molecule |
 | Version | 1.0.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `accurate_fret` |
 
 ## Parameters

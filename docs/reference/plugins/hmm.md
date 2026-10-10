@@ -21,7 +21,7 @@ Gaussian hidden Markov model for binned time traces: fits states and transitions
 | Menu path | Spectroscopy → Kinetics → **Hidden Markov model** |
 | Categories | Spectroscopy, Kinetics |
 | Version | 0.1.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `hmm` |
 
 ## Parameters

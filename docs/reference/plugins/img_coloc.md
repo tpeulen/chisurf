@@ -21,7 +21,7 @@ Two-channel colocalization (Pearson, Manders, Costes, Li ICQ) on TIFF stacks and
 | Menu path | Spectroscopy → Imaging → **Colocalization** |
 | Categories | Spectroscopy, Imaging |
 | Version | 1.0.0 |
-| Surfaces | cli, emtk, gui |
+| Surfaces | cli, emtk |
 | State namespace | `img_coloc` |
 
 ## Parameters

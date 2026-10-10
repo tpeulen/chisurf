@@ -26,12 +26,11 @@ HERE = Path(__file__).parent
 PLUGIN = HERE.parent
 ERROR = (230, 90, 90, 255)
 JSON_FILTERS = "JSON Files (*.json);;All Files (*)"
-#: guide.json is shared with the Qt tour, which names panels by title and custom sections by
-#: key; those are the spec's fold headers here.
+#: guide.json names panels by title; those are the spec's fold headers here.
 TOUR_KEYS = {
     "Constraint (choose one)": "Constraint (choose one).fold",
-    "confocal_dye": "Reference dye (D @ 25 °C, water).fold",
-    "confocal_shape": "Molecular shape.fold",
+    "Reference dye (D @ 25 °C, water)": "Reference dye (D @ 25 °C, water).fold",
+    "Molecular shape": "Molecular shape.fold",
 }
 
 

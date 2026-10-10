@@ -101,8 +101,9 @@ def test_shipped_literal_contract_has_no_new_or_stale_debt():
         if line.strip() and not line.startswith("#")
     }
     report = audit_tree(ROOT, revision="HEAD", contract="translation")
-    # The accepted measurement covered 1751 production Python sources.
-    assert report["files"].get("python", 0) >= 1700
+    # The accepted measurement covered 1751 production Python sources; retiring the
+    # Qt plugin tools left 1627. The floor only guards against the audit collapsing.
+    assert report["files"].get("python", 0) >= 1600
     new, stale = baseline_delta(report, allowed)
     assert not new, "New untranslated literals:\n" + "\n".join(sorted(new))
     assert not stale, "Remove obsolete literal allowances:\n" + "\n".join(sorted(stale))

@@ -21,7 +21,7 @@ FCS channel definition plugin per detector setup
 | Menu path | Setup → **FCS Definitions** |
 | Categories | Setup |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 
 ## Parameters
 

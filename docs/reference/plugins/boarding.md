@@ -21,7 +21,7 @@ Startup onboarding wizard for first-run ChiSurf configuration.
 | Menu path | Help → **Boarding Wizard** |
 | Categories | Help |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 | State namespace | `boarding` |
 
 ## Parameters

@@ -134,4 +134,5 @@ def test_particle_tracking_sits_with_the_other_imaging_tools():
     manifest = _plugins_root() / "microscopy" / "img_tracking" / "manifest.json"
     data = json.loads(manifest.read_text())
     assert data["display_name"] == "Spectroscopy:Imaging:Particle Tracking"
-    assert data["categories"][0] == "Imaging"
+    # Imaging folded into the Spectroscopy tab; the semantic category stays.
+    assert "Imaging" in data["categories"]

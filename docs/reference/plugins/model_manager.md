@@ -21,7 +21,7 @@ Model Manager for ChiSurf
 | Menu path | Setup → **Models** |
 | Categories | Setup |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 
 ## Parameters
 

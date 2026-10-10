@@ -21,7 +21,7 @@ Hub that lists ChiSurf's guided wizards and embeds the selected one in a two-pan
 | Menu path | Tools → Calculators → **Wizards** |
 | Categories | Tools, Calculators |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 | State namespace | `wizards` |
 
 ## Parameters

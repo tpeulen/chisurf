@@ -45,7 +45,6 @@ EXPECTED = {
             "Trace Browser",
             "ebFRET",
         ],
-        "FRET": ["FRET Line Generator"],
         "Kinetics": ["Hidden Markov model"],
         "Imaging": ["Image Tools"],
     },

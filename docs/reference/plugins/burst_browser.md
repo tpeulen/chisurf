@@ -21,7 +21,7 @@ Inspect burstwise analysis tables and plots.
 | Menu path | Spectroscopy → Single-Molecule → **Burst Browser** |
 | Categories | Spectroscopy, Single-Molecule |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 | State namespace | `burst_browser` |
 
 ## Parameters

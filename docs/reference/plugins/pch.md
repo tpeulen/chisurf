@@ -21,7 +21,7 @@ Photon Counting Histogram (PCH) analysis for single-molecule fluorescence data. 
 | Menu path | Spectroscopy → Correlation → **PCH** |
 | Categories | Spectroscopy, Correlation |
 | Version | 2.0.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `pch` |
 
 ## Parameters

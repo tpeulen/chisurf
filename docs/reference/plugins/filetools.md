@@ -21,7 +21,7 @@ Everything that acts on a file rather than on the physics inside it: TTTR split/
 | Menu path | File → Data → **File tools** |
 | Categories | File, Data |
 | Version | 1.1.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 
 ## Parameters
 

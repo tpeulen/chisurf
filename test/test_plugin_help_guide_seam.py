@@ -109,10 +109,16 @@ class GuiPlugin:
         if self.directory is None:
             return None
         direct = self.directory / name
-        if self.native_only and not direct.is_file() and self.directory.name == "gui":
-            parent = self.directory.parent / name
-            if parent.is_file():
-                return parent
+        if self.native_only and not direct.is_file():
+            # An emtk-only plugin: the app module may sit at the plugin root or in
+            # ``gui/``, and its help/guide live in the plugin root, ``gui/`` or
+            # ``gui_parts/``. The files must still exist.
+            root = self.manifest.parent
+            candidates = [self.directory.parent / name] if self.directory.name == "gui" else []
+            candidates += [root / sub / name for sub in ("", "gui", "gui_parts")]
+            for candidate in candidates:
+                if candidate.is_file():
+                    return candidate
         return direct
 
     @property
@@ -394,7 +400,7 @@ def test_help_is_substantive_and_links_live(plugin: GuiPlugin):
 _DRAWS_HELP = re.compile(
     r"\b(ensure_help_toolbar|add_toolbar_help|attach_help_and_guide"
     r"|NavigationPanelTool|BurstAnalysisTool|AutoFormMleTool|TrajToolApp|ImagingToolApp|PixelToolApp"
-    r"|EmTkHelpWindow|EmTkGuidedTour|ToolHubApp|FcsHubApp|GameApp)\b"
+    r"|EmTkHelpWindow|EmTkGuidedTour|ToolHubApp|FcsHubApp|GameApp|StructureToolsHubApp)\b"
 )
 
 #: Tools that ship help files but do not draw them yet. **Shrinking**; never

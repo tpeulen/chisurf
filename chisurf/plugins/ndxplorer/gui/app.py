@@ -204,11 +204,13 @@ def _add_guide(app):
             return True if action in ("chisurf_guide", "chisurf_quick_reference") else None
 
         def menu_entries(self):
+            from chisurf.plugins.emtk_layout import ACTIONS
+
             return [
                 (
                     ("Help",),
                     {
-                        "label": "Guide",
+                        "label": ACTIONS["guide"].label,
                         "action": "chisurf_guide",
                         "description": "A step-by-step tour of the window; it waits for you to press the controls it points at.",
                     },

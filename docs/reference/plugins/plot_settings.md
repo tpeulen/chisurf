@@ -21,7 +21,7 @@ Configure plot appearance, colors, and rendering backend
 | Menu path | Setup → **Plots** |
 | Categories | Setup |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 
 ## Parameters
 

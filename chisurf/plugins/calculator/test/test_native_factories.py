@@ -144,12 +144,12 @@ def test_fret_line_collection_and_export(tmp_path):
     from chisurf.plugins.fret_line.gui.app import make_app
 
     app = make_app()
-    app.n_points = 5
-    line = app.compute()
+    app.model.n_points = 5
+    line = app.model.add_line()
     assert len(line["result"]["tau_f"]) == 5
-    app.compute()
+    app.model.add_line()
     path = tmp_path / "lines.csv"
-    app.write_csv(path)
+    app.model.write_csv(path)
     assert len(path.read_text().splitlines()) == 12
 
 
@@ -205,21 +205,21 @@ def test_fret_live_parameter_bounds_fixed_and_donor_reference():
     from chisurf.plugins.fret_line.gui.app import make_app
 
     app = make_app()
-    model = app.components[0]["model"]
+    model = app.model.components[0]["model"]
     parameter = _parameters_of(model)[0]
     parameter.bounds = (0.1, 10.0)
     parameter.bounds_on = True
     parameter.fixed = True
     parameter.value = 2.0
     assert parameter.fixed and parameter.bounds == (0.1, 10.0)
-    app.apply_donor_reference(
+    app.model.apply_donor_reference(
         {("amplitude", 0): 0.6, ("tau", 0): 3.0, ("amplitude", 1): 0.4, ("tau", 1): 1.0}
     )
     from chisurf.core.fluorescence.fret.fret_line import find_parameter
 
     assert find_parameter(model, "donor.tau.0").value == pytest.approx(3.0)
     assert find_parameter(model, "donor.tau.1").value == pytest.approx(1.0)
-    owner = next(iter(app._registered))
+    owner = next(iter(app.model._registered))
     assert get_registered_parameter_group(owner) is model
     app.close()
     assert get_registered_parameter_group(owner) is None
@@ -265,17 +265,17 @@ def test_default_fret_sweep_is_visible_and_preserves_editor_values():
     from chisurf.plugins.fret_line.gui.app import make_app
 
     app = make_app()
-    parameters = _parameters_of(app.components[0]["model"])
+    parameters = _parameters_of(app.model.components[0]["model"])
     values = [p.value for p in parameters]
-    app.n_points = 10
-    result = app.compute()["result"]
+    app.model.n_points = 10
+    result = app.model.add_line()["result"]
     assert np.ptp(result["tau_f"]) > 0.1
     assert [p.value for p in parameters] == pytest.approx(values)
-    ordinary = len(app.sweep_targets())
-    target = app.sweep_targets()[app.sweep_index]["name"]
-    app.show_all_parameters = True
-    assert len(app.sweep_targets()) > ordinary
-    assert app.sweep_targets()[app.sweep_index]["name"] == target
+    ordinary = len(app.model.sweep_targets())
+    target = app.model.sweep_targets()[app.model.sweep_index]["name"]
+    app.model.show_all_parameters = True
+    assert len(app.model.sweep_targets()) > ordinary
+    assert app.model.sweep_targets()[app.model.sweep_index]["name"] == target
 
 
 def test_fret_input_curve_bind_unload_and_catalog_are_real(monkeypatch):
@@ -291,11 +291,11 @@ def test_fret_input_curve_bind_unload_and_catalog_are_real(monkeypatch):
     monkeypatch.setattr(chisurf, "imported_datasets", [ExperimentDataCurveGroup([curve])])
     app = make_app()
     assert curve in app.input_curves()
-    model = app.components[0]["model"]
+    model = app.model.components[0]["model"]
     assert "response" in model.dataset_slots()
-    app.bind_input("response", curve)
+    app.model.bind_input("response", curve)
     assert model.has_dataset("response")
     assert model.get_scalar("generated_response") == 0.0
-    app.unload_input("response")
+    app.model.unload_input("response")
     assert not model.has_dataset("response")
     assert model.get_scalar("generated_response") == 1.0

@@ -1716,9 +1716,8 @@ class HelpGui:
             webbrowser.open_new("https://www.peulen.xyz/tutorial/")
         im.set_item_tooltip(tr("Open tutorial videos in your web browser"))
         im.same_line()
-        if im.button(tr("Guide")):
+        if action_button("guide"):
             self.tour.start()
-        im.set_item_tooltip(tr("Start a step-by-step tour that points at the real controls"))
         self.item_rects["guide"] = im.get_item_rect()
 
         im.same_line()

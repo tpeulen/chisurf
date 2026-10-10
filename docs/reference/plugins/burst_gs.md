@@ -21,7 +21,7 @@ Gopich-Szabo photon-by-photon maximum likelihood: continuous-time rate constants
 | Menu path | Spectroscopy → Single-Molecule → **Photon-by-photon kinetics** |
 | Categories | Spectroscopy, Single-Molecule, FRET |
 | Version | 1.0.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `burst_gs` |
 
 ## Parameters

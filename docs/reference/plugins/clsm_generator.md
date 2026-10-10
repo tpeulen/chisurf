@@ -21,7 +21,7 @@ Generate a synthetic CLSM photon image from an intensity image + per-detector li
 | Menu path | Spectroscopy → Imaging → Simulate → **CLSM Generator** |
 | Categories | Spectroscopy, Imaging, Simulate |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 | State namespace | `clsm_generator` |
 
 ## Parameters

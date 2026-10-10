@@ -21,7 +21,7 @@ Edit fps.json files for FRET accessible-volume modeling and fetch reference PDB 
 | Menu path | Structure → FRET → **FPS JSON Editor** |
 | Categories | Structure, FRET |
 | Version | 2.0.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `fps_json_editor` |
 
 ## Parameters

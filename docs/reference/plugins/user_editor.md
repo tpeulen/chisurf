@@ -21,7 +21,7 @@ User editor plugin for Chisurf to manage users registered in the MMFDB.
 | Menu path | Setup → **User Editor** |
 | Categories | Setup |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 | State namespace | `user_editor` |
 
 ## Parameters
