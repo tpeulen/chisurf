@@ -15,6 +15,7 @@
         {
           "type": "panel",
           "title": "",
+          "description": "What this tool answers for your dyes.",
           "sections": [
             {
               "type": "info",

@@ -335,10 +335,23 @@ class FRETLineApp(ImApp):
                     self.error = f"{name}: {problem}"
                 if new is not None:
                     self.error = ""
-                    model.set_scalar(name, new)
+                    self._set_scalar(model, name, float(value), new)
         if self.error:
             im.text_wrapped(self.error)
         draw_sections(self._sections("editor"), m, self.form, titles=False)
+
+    def _set_scalar(self, model: Any, name: str, previous: float, new: float) -> None:
+        """Apply a typed scalar; a value the model rejects (e.g. a negative threshold) is rolled back and reported.
+
+        The native model validates lazily, so an unchecked bad value would make the editor window fail to
+        draw on every following frame.
+        """
+        model.set_scalar(name, new)
+        try:
+            model.problem  # builds the model with the new value
+        except Exception as exc:  # noqa: BLE001 - the native library raises its own exception type
+            model.set_scalar(name, previous)
+            self.error = f"{name}: {str(exc).rsplit(': ', 1)[-1]}"
 
     # -- the plots ---------------------------------------------------------------------------------- #
     def plot(self, key: str, label: str) -> None:

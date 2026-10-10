@@ -21,12 +21,36 @@ from .test_emtk_fret_line_parity import BIG, SMALL, hermetic  # noqa: F401  (her
 
 
 @pytest.fixture
-def drv():
+def fresh():
+    """The app as it opens: the expert windows are hidden behind the collapsed "Advanced" fold."""
     app = FRETLineApp()
     d = Driver(app, BIG)
     d.draw(3)
     yield d
     app.close()
+
+
+@pytest.fixture
+def drv(fresh):
+    open_expert(fresh)
+    return fresh
+
+
+def open_expert(drv):
+    """Press the "Advanced" fold header, then each button in it, as a user opens the expert windows.
+
+    The buttons are pressed in reverse so that "Components" ends up the focused tab, as it was when the
+    windows were always shown.
+    """
+    drv.click(drv.text_rect("Advanced"))
+    drv.draw(3)
+    for button in ("Model editor", "FRET lines", "Sweep", "Components"):
+        drv.click(drv.text_rect(button, last=True))  # the button, not a tab of the same name
+        drv.draw(3)
+        drv.click(drv.text_rect("Your dyes"))
+        drv.draw(3)
+    drv.click(drv.text_rect("Components"))
+    drv.draw(3)
 
 
 def tab(drv, name):
@@ -534,12 +558,13 @@ def test_the_divider_between_the_editor_and_the_left_window_can_be_dragged(drv):
 def test_help_button_opens_the_help_window_whose_buttons_work(drv):
     window = drv.app.help_window
     drv.click_text(action_caption("help"))
-    assert window.open and {"Start Guided Tour", "Close", "Close Help"} <= set(drv.draw(2).strings)
+    close = action_caption("close")
+    assert window.open and {"Start Guided Tour", close, "Close Help"} <= set(drv.draw(2).strings)
     drv.click_text("Start Guided Tour")
     assert not window.open and drv.app.tour.active
     drv.app.tour.stop()
     drv.draw(2)
-    for closer in ("Close Help", "Close"):
+    for closer in ("Close Help", close):
         drv.click_text(action_caption("help"))
         drv.click_text(closer, last=closer == "Close Help")
         assert not window.open, closer
@@ -548,7 +573,8 @@ def test_help_button_opens_the_help_window_whose_buttons_work(drv):
     assert not window.open
 
 
-def test_the_tour_is_walked_with_the_user_operating_each_awaited_control(drv):
+def test_the_tour_is_walked_with_the_user_operating_each_awaited_control(fresh):
+    drv = fresh
     tour = drv.app.tour
     drv.click_text(action_caption("guide"))
     seen = []
@@ -557,27 +583,19 @@ def test_the_tour_is_walked_with_the_user_operating_each_awaited_control(drv):
             break
         drv.draw(2)
         step = tour.steps[tour.step_idx]
-        target = step.get("target") or {}
+        key = (step.get("target") or {}).get("name")
         if tour.awaiting:
-            seen.append(step["title"])
-            if target.get("attr") == "minimum":
-                tab(drv, "Sweep")
-                drv.type_into("minimum", "20")
-            elif target.get("name") == "add_line":
-                drv.click("add_line")
-            elif target.get("name") == "add_component":
-                tab(drv, "Components")
-                drv.click("add_component")
+            seen.append(key)
+            drv.click(key)  # the very control the step points at
+            if key == "save_csv":
+                drv.click(drv.text_rect("Cancel"))
             assert not tour.awaiting, (
                 f"{step['title']}: operating the control did not release the step"
             )
         tour.next()
-    assert (
-        not tour.active
-        and len(seen) == 3
-        and drv.app.model.minimum == 20.0
-        and len(drv.app.model.lines) == 1
-    )
+    assert not tour.active
+    assert seen == ["load_example", "add_line", "Advanced.fold", "show_components", "save_csv"]
+    assert len(drv.app.model.lines) == 1
 
 
 def test_every_guide_target_is_a_drawn_control(drv):
@@ -587,21 +605,14 @@ def test_every_guide_target_is_a_drawn_control(drv):
         key = target.get("name") or target.get("attr")
         if not key:
             continue
-        for name in ("Components", "Sweep", "FRET lines"):
+        for name in ("Your dyes", "Components", "Sweep", "FRET lines"):
             tab(drv, name)
             if drv.app.item_rects.get(key) or drv.app.form.rects.get(key):
                 seen.add(key)
                 break
         else:
             raise AssertionError(f"{step['title']}: {key} is not drawn on any tab")
-    assert {
-        "component_rows",
-        "minimum",
-        "add_line",
-        "add_component",
-        "sweep_label",
-        "save_csv",
-    } <= seen
+    assert {"dye_pair", "load_example", "add_line", "Advanced.fold", "show_components", "save_csv"} <= seen
 
 
 def test_the_tour_card_does_not_cover_the_control_a_step_points_at(drv):
@@ -610,7 +621,7 @@ def test_the_tour_card_does_not_cover_the_control_a_step_points_at(drv):
     for step in drv.app.tour.steps:
         target = step.get("target") or {}
         key = target.get("name") or target.get("attr")
-        for name in ("Components", "Sweep", "FRET lines"):
+        for name in ("Your dyes", "Components", "Sweep", "FRET lines"):
             tab(drv, name)
             rect = drv.app.item_rects.get(key) or drv.app.form.rects.get(key)
             if rect:
@@ -642,6 +653,7 @@ def test_the_whole_flow_works_in_the_small_window_too(tmp_path):
     app = FRETLineApp()
     d = Driver(app, SMALL)
     d.draw(3)
+    open_expert(d)
     d.click("add_line")
     d.click("add_component")
     d.click(d.text_rect("Sweep"))
@@ -663,6 +675,7 @@ def test_compact_editor_tab_keeps_parameter_edits_and_subcomponent_callbacks_rea
     app = FRETLineApp()
     d = Driver(app, (640, 480))
     d.draw(3)
+    open_expert(d)
     tab(d, "Live model editor")
     edit_cell(d, "RDA0", "Value", "68")
     assert param(d).value == 68.0
