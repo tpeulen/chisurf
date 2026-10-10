@@ -14,15 +14,21 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
-from emtk.view_form import FormState, draw_form
 from emtk.i18n import tr
+from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.image_canvas import ImageCanvas
 from chisurf.emtk.jobs import SnapshotJob
 from chisurf.emtk.regions import RegionControls
-from chisurf.plugins.emtk_layout import action_caption, action_tooltip, button_row, layout_spec, window_size
+from chisurf.plugins.emtk_layout import (
+    action_caption,
+    action_tooltip,
+    button_row,
+    layout_spec,
+    window_size,
+)
 
 from ..core import imaging
 from .view_model import ClsmViewModel

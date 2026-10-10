@@ -5,7 +5,6 @@ reads the visible outcome (the model's answer to the input, the strings drawn, t
 Control -> test list: REPORT.md section 6a.
 """
 
-from chisurf.plugins.emtk_layout import action_caption
 import json
 import pathlib
 import time
@@ -15,6 +14,7 @@ import pytest
 from emtk import keys
 from emtk.testing import PixelPainter
 
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver, dialog_open, numeric_ticks, walk
 
 from .conftest import two_detector_setup
@@ -689,7 +689,8 @@ def test_the_wheel_over_the_image_zooms_in_and_out_about_the_pointer(app, drv, s
     assert span(app)[0] > zoomed[0] * 1.1
     # zooming about the pointer: the image pixel under it keeps its place
     rx, ry, rw, rh = app.item_rects["image"]
-    under = lambda: app.view_limits[0] + (cx - rx) / rw * span(app)[0]
+    def under():
+        return app.view_limits[0] + (cx - rx) / rw * span(app)[0]
     before = under()
     notches(drv, cx, cy, 3)
     assert under() == pytest.approx(before, abs=2.0)

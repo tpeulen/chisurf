@@ -8,8 +8,6 @@ the files written). The control -> test list is in ``okf/plugins/emtk-ports/burs
 
 from __future__ import annotations
 
-from chisurf.plugins.emtk_layout import action_caption
-
 import json
 import threading
 import time
@@ -23,6 +21,7 @@ from emtk.testing import RecordingPainter
 from chisurf.plugins.burst.burst_fusion import demo as demo_module
 from chisurf.plugins.burst.burst_fusion.gui import view_model
 from chisurf.plugins.burst.burst_fusion.gui.app import create_app
+from chisurf.plugins.emtk_layout import action_caption
 
 from .test_emtk_fusion_parity import _qt_facts
 

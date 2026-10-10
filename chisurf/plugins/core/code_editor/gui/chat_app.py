@@ -16,13 +16,13 @@ from typing import Any, Callable
 
 import emtk.im as im
 from emtk.app import ImApp
+from emtk.i18n import tr
 from emtk.im_core import Col
 from emtk.widgets.chat import (
     ChatHistory,
     draw_chat_input_bar,
     draw_chat_transcript,
 )
-from emtk.i18n import tr
 
 from chisurf.plugins.core.code_editor.acp_client import AcpClient
 

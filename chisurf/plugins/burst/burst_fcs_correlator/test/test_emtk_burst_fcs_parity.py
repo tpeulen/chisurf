@@ -228,7 +228,7 @@ def test_the_settings_model_converts_like_the_qt_tool():
 
 
 def test_the_tables_show_the_controllers_state(drv, data):
-    c = run(drv, data)
+    _c = run(drv, data)
     p = drv.app.panel
     assert [r["name"] for r in p.file_rows()] == [data[1].name] and p.file_rows()[0]["use"] is True
     assert [(r["name"], r["chs_a"], r["chs_b"]) for r in p.pair_rows()] == [
@@ -369,7 +369,7 @@ def test_every_tab_draws_and_the_layout_is_clean(drv, data, size, tab):
 
 
 def test_the_plots_have_axes_and_the_selected_curve(drv, data):
-    c = run(drv, data)
+    _c = run(drv, data)
     painter = draw_clip(drv.app, BIG)
     assert {"Correlation time t_c (ms)", "G", "data", "fit"} <= set(painter.strings)
     assert len([s for s in painter.strings if s.replace(".", "").replace("-", "").isdigit()]) >= 6

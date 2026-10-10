@@ -567,7 +567,7 @@ def ticks(painter):
 
 def test_the_plots_are_dragged_and_zoomed_by_pointer(drv):
     before = ticks(drv.draw(2))
-    x, y, w, h = 800.0, 130.0, 100.0, 100.0  # the lifetime filters plot of the top right dock
+    x, y, _w, _h = 800.0, 130.0, 100.0, 100.0  # the lifetime filters plot of the top right dock
     drv.drag((x, y), (x - 60, y - 30))
     assert ticks(drv.draw(2)) != before
     mid = ticks(drv.draw(2))

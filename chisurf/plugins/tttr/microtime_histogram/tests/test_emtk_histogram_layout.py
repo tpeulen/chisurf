@@ -128,7 +128,7 @@ def test_the_file_dialog_is_sized_and_inside_the_window(size):
     ui = Ui(create_app(), size)
     try:
         ui.click("photon_files")
-        win = ui.app.dialog_window
+        _win = ui.app.dialog_window
         ui.draw(3)
         assert ui.shown("Cancel") and ui.shown("TTTR inputs")
         cx, cy, cw, ch = ui.text_rect("Cancel")

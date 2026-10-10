@@ -6,8 +6,7 @@ import io
 import json
 import threading
 
-
-from chisurf.core.agent.acp_server import AcpServer, PROTOCOL_VERSION
+from chisurf.core.agent.acp_server import PROTOCOL_VERSION, AcpServer
 from chisurf.core.agent.llm import LLMClient, LLMResponse, LLMSettings
 
 
@@ -136,6 +135,7 @@ class TestAcpServer:
 def test_acp_stdio_entrypoint_never_bootstraps_qt(monkeypatch):
     """The default server starts through a pure scheduler seam, not a GUI import."""
     import builtins
+
     from chisurf.core.agent import acp_server
     original = builtins.__import__
     attempts = []

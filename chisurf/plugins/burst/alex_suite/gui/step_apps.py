@@ -14,16 +14,16 @@ from pathlib import Path
 from typing import Any, Callable
 
 from emtk import im
+from emtk.i18n import tr
 
 from chisurf.plugins.burst.burst_analysis.gui.data_selection_app import BurstDataSelectionApp
 from chisurf.plugins.burst.burst_analysis.gui.setup_selection_app import BurstSetupSelectionApp
+from chisurf.plugins.emtk_layout import action_button
 
 from .alternation_model import AlexAlternationModel
 from .app import AlexAlternationApp, LegacyExportApp, TitrationApp
 from .export_model import LegacyExportModel
 from .titration_view_model import TitrationViewModel
-from emtk.i18n import tr
-from chisurf.plugins.emtk_layout import action_button
 
 logger = logging.getLogger("chisurf.plugins.burst")
 

@@ -15,6 +15,7 @@ from pathlib import Path
 import numpy as np
 from emtk import im, implot, implot3d
 from emtk.docking import DockManager, Region, Split
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.chimol_view import ChimolView
@@ -22,7 +23,6 @@ from chisurf.plugins.emtk_layout import action_caption, action_tooltip, layout_s
 
 from .docking_model import DockingSession
 from .shell import CardShell
-from emtk.i18n import tr
 
 HERE = Path(__file__).resolve().parent
 RES = HERE / "resources" / "docking"
@@ -61,7 +61,7 @@ RESULT_TABLE = {"sections": [{
 class DockingView:
     """What the tables read and call."""
 
-    def __init__(self, card: "DockingCard") -> None:
+    def __init__(self, card: DockingCard) -> None:
         self.card = card
         self.session = card.session
         self.pdb_selected = -1

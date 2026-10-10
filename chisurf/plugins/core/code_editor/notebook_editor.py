@@ -72,7 +72,6 @@ from chisurf.plugins.core.code_editor.text_editor import (
     make_editor_font,
 )
 
-
 __all__ = ["NotebookEditor", "NotebookCell", "CellOutput", "shipped_notebooks"]
 
 

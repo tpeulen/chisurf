@@ -19,7 +19,13 @@ from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.jobs import SnapshotJob
-from chisurf.plugins.emtk_layout import action_caption, action_tooltip, button_row, layout_spec, window_size
+from chisurf.plugins.emtk_layout import (
+    action_caption,
+    action_tooltip,
+    button_row,
+    layout_spec,
+    window_size,
+)
 
 from .model import MfdPrepareModel
 

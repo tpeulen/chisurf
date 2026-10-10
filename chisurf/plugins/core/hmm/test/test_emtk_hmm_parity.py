@@ -8,8 +8,6 @@ native forms must carry the ranges, choices and decimals of ``hmm.view.json``.
 
 from __future__ import annotations
 
-from chisurf.plugins.emtk_layout import action_caption
-
 import json
 import os
 import pwd
@@ -23,6 +21,7 @@ from emtk import keys
 
 from chisurf.plugins.core.hmm.gui.app import HmmApp, make_app
 from chisurf.plugins.core.hmm.gui.view_model import HmmViewModel
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.emtk_test_input import CTRL, SIZE, SMALL, Driver
 
 PLUGIN = Path(__file__).parent.parent

@@ -1,6 +1,7 @@
+import time
+
 import numpy as np
 import pandas as pd
-import time
 
 from chisurf.core.datastore import column_names, numeric_column, row_count, take_rows
 

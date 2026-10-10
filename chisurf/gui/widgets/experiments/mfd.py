@@ -13,6 +13,7 @@ import pathlib
 from qtpy import QtWidgets
 
 import chisurf as cs
+
 # The core reader module (historically reachable as ``experiments.reader``
 # only through the package's star-import leakage; the package is lazy now).
 from chisurf.core.experiments.core import reader

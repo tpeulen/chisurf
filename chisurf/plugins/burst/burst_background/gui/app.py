@@ -28,12 +28,12 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from emtk import im, implot
 from emtk.app import ImApp
+from emtk.i18n import tr
 from emtk.im_core import get_current_context
 
 from chisurf.plugins.emtk_layout import action_button, window_size
 
 from ..view_model import BackgroundViewModel
-from emtk.i18n import tr
 
 if TYPE_CHECKING:
     from .controller import BackgroundController

@@ -27,7 +27,15 @@ from chisurf.core.settings.path_utils import get_path
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.i18n import install
-from chisurf.plugins.emtk_layout import LabelColumn, action_caption, action_tooltip, button_row, labelled, layout_spec, window_size
+from chisurf.plugins.emtk_layout import (
+    LabelColumn,
+    action_caption,
+    action_tooltip,
+    button_row,
+    labelled,
+    layout_spec,
+    window_size,
+)
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 
 from .. import core

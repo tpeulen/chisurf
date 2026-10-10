@@ -5,7 +5,6 @@ import numpy as np
 from chisurf import typing
 
 
-
 def _stats():
     """The F and chi-square distributions (bff-backed, scipy-shaped)."""
     from chisurf.core.math import special

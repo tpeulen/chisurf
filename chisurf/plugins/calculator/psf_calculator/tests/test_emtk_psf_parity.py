@@ -17,6 +17,7 @@ from chisurf.plugins.calculator.psf_calculator.gui.app import SETTINGS, SPEC, PS
 
 from .driving import BIG, SMALL, PSFDriver, clipped_texts, draw_clip, hermetic_env, layout_problems
 
+
 @pytest.fixture(autouse=True)
 def hermetic(tmp_path, monkeypatch):
     hermetic_env(tmp_path, monkeypatch)

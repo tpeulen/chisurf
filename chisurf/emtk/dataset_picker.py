@@ -6,8 +6,9 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
-from emtk.i18n import tr
 from typing import Any, Callable, Sequence
+
+from emtk.i18n import tr
 
 from chisurf.plugins.emtk_layout import action_button
 

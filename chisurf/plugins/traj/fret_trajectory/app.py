@@ -14,6 +14,7 @@ import pathlib
 
 import numpy as np
 from emtk import im
+from emtk.i18n import tr
 
 from chisurf.plugins.traj.emtk_tool import (
     SaveAction,
@@ -24,7 +25,6 @@ from chisurf.plugins.traj.emtk_tool import (
 )
 
 from .view_model import FretTrajectoryViewModel
-from emtk.i18n import tr
 
 HERE = pathlib.Path(__file__).parent
 

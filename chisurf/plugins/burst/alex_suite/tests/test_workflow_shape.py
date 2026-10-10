@@ -7,7 +7,6 @@ behaviour is a bug that presented as the application crashing.
 
 from __future__ import annotations
 
-
 import json
 from pathlib import Path
 

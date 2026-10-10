@@ -12,16 +12,22 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, _clean_html_text
 from chisurf.plugins.emtk_layout import (
-    LabelColumn, action_button, action_caption, action_tooltip, button_row, labelled, layout_spec,
+    LabelColumn,
+    action_button,
+    action_caption,
+    action_tooltip,
+    button_row,
+    labelled,
+    layout_spec,
     window_size,
 )
 
 from .model import NativeAnisotropyModel
-from emtk.i18n import tr
 
 HERE = Path(__file__).parent
 VV_COLOUR, VH_COLOUR = (59, 120, 255), (255, 91, 91)

@@ -18,6 +18,7 @@ from typing import Any, Callable
 from emtk import im, implot
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
+from emtk.i18n import tr
 from emtk.im_core import get_current_context
 from emtk.view_form import FormState, draw_sections
 from emtk.widgets.view_spec import load_view_spec
@@ -36,7 +37,6 @@ from chisurf.plugins.emtk_layout import (
 )
 
 from .model import BurstSelectionModel
-from emtk.i18n import tr
 
 HERE = Path(__file__).parent
 #: Seconds without a change before the visible window is filtered again.

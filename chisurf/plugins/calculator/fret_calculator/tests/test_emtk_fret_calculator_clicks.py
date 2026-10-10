@@ -12,6 +12,8 @@ import pytest
 from emtk import keys
 from emtk.view_form import spin_step
 
+from chisurf.plugins.emtk_layout import action_caption
+
 from .test_emtk_fret_calculator_parity import (
     SIZE,
     SMALL,
@@ -24,7 +26,6 @@ from .test_emtk_fret_calculator_parity import (
     make_app,
     type_into,
 )
-from chisurf.plugins.emtk_layout import action_caption
 
 
 @pytest.fixture

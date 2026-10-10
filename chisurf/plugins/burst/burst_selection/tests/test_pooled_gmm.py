@@ -19,7 +19,7 @@ from chisurf.plugins.burst.burst_selection.tests.test_emtk_native_model import (
 )
 
 
-def _pooled_pr(model):
+def _pooled_pr(model):  # noqa: F811
     model.hist_feature = "Proximity Ratio"
     model.pool_files = True
     return model.feature_data("Proximity Ratio")

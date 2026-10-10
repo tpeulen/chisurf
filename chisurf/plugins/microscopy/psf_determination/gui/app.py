@@ -11,13 +11,19 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
-from emtk.view_form import FormState, draw_form
 from emtk.i18n import tr
+from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import (
-    LabelColumn, action_caption, action_tooltip, button_row, labelled, layout_spec, window_size,
+    LabelColumn,
+    action_caption,
+    action_tooltip,
+    button_row,
+    labelled,
+    layout_spec,
+    window_size,
 )
 
 from .canvas import ImageCanvas
@@ -234,7 +240,7 @@ class PsfDeterminationApp(ImApp):
         draw_form(spec, self.model if name != "beads" else self.beads, self.forms[name])
 
     def do(self, key):
-        m = self.model
+        _m = self.model
         {
             "load_stack": lambda: self.choose("load_stack"),
             "demo": self.load_demo,

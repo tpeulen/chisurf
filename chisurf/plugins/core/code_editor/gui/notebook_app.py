@@ -18,9 +18,9 @@ from typing import Any
 from urllib.parse import unquote, unquote_to_bytes, urlparse
 
 from emtk import im
+from emtk.i18n import tr
 from emtk.texture import Texture
 from emtk.widgets.text_editor import Language, TextEditor
-from emtk.i18n import tr
 
 from chisurf.plugins.emtk_layout import action_button
 

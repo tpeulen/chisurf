@@ -17,8 +17,9 @@ import zipfile
 import numpy as np
 import pytest
 
-from .conftest import REPO, two_detector_setup
 from chisurf.plugins.emtk_layout import action_caption
+
+from .conftest import REPO, two_detector_setup
 
 HERE = pathlib.Path(__file__).resolve().parent
 pytestmark = pytest.mark.usefixtures("hermetic")
@@ -736,7 +737,7 @@ def test_the_drawn_colours_are_the_colormap_of_the_value_between_the_levels(
         assert tuple(texture.get_pixel(x, y)) == expected, (colormap, y, x)
     # gamma lifts a dim pixel; fixed levels clip
     canvas.gamma = 2.0
-    dim = np.argwhere((mosaic > 10) & (mosaic < 40))[0]
+    _dim = np.argwhere((mosaic > 10) & (mosaic < 40))[0]
     assert texture is not canvas.texture(mosaic)
     canvas.auto_levels, canvas.low, canvas.high = False, 20.0, 120.0
     clipped = canvas.texture(mosaic)

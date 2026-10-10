@@ -8,8 +8,6 @@ and (c) the drift written into the test stack, which is known exactly.
 
 from __future__ import annotations
 
-from chisurf.plugins.emtk_layout import action_caption
-
 import importlib.util
 import json
 from pathlib import Path
@@ -18,9 +16,10 @@ import numpy as np
 import pytest
 
 from chisurf.core.fio.image import imread, imwrite
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.microscopy.imaging_emtk.testing import (
-    assert_fingerprint,
     Driver,
+    assert_fingerprint,
     dialog_open,
     hermetic_env,
     numeric_ticks,

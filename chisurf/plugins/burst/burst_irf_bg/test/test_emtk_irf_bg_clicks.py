@@ -9,8 +9,6 @@ the status line, the drawn strings, the files written). The control -> test list
 
 from __future__ import annotations
 
-from chisurf.plugins.emtk_layout import action_caption
-
 import threading
 import time
 from pathlib import Path
@@ -23,7 +21,7 @@ from emtk.testing import RecordingPainter
 from chisurf.plugins.burst.burst_irf_bg.gui import view_model
 from chisurf.plugins.burst.burst_irf_bg.gui.app import create_app
 from chisurf.plugins.burst.burst_irf_bg.test.demo_data import IRF_PEAK_NS, build
-
+from chisurf.plugins.emtk_layout import action_caption
 
 SIZE = (1200, 800)
 SMALL = (800, 600)

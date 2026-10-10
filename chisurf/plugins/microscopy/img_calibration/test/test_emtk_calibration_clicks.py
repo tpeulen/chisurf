@@ -16,10 +16,10 @@ import pytest
 from emtk import keys
 
 from chisurf.plugins.core.project_browser.test.driving import clipped_texts, layout_problems
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver, MetricPainter
 
 from .test_emtk_calibration_parity import SETUP, _binned, _loaded
-from chisurf.plugins.emtk_layout import action_caption
 
 BIG, SMALL = (1200, 800), (800, 600)
 REAL_CHISURF = Path(os.path.expanduser("~")) / ".chisurf"
@@ -358,7 +358,7 @@ def test_next_applies_and_advances_the_pipeline_and_is_not_drawn_without_a_coord
 
 def test_dragging_a_window_boundary_in_the_plot_moves_it(drv):
     drv.draw(3)
-    box = drv.app.item_rects["decay_conv"]
+    _box = drv.app.item_rects["decay_conv"]
     painter = drv.draw(3)
     tags = {
         t[5]: t[:4]

@@ -9,8 +9,6 @@ and write the same file.
 
 from __future__ import annotations
 
-from chisurf.plugins.emtk_layout import action_caption
-
 import json
 import sys
 import time
@@ -20,6 +18,7 @@ import numpy as np
 import pytest
 from emtk.testing import RecordingPainter
 
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.fcs.fcs_merger.gui.app import MergerApp
 
 HERE = Path(__file__).parent

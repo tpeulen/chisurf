@@ -26,11 +26,12 @@ from urllib.parse import unquote, urlparse
 import emtk.im as im
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
-from emtk.i18n import tr
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 from emtk.im_core import Col
 from emtk.widgets.text_editor import Language, TextEditor
 
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.typed_field import typed_number_field
 from chisurf.plugins.core.code_editor.gui.chat_app import ChatGui, ChatModel
 from chisurf.plugins.core.code_editor.gui.native_lsp import NativeLspClient
@@ -38,7 +39,6 @@ from chisurf.plugins.core.code_editor.gui.notebook_app import SHELL_EXECUTION_LO
 from chisurf.plugins.core.code_editor.gui.process_tools import CancellableRuffRunner
 from chisurf.plugins.core.code_editor.ruff_runner import RuffRunner
 from chisurf.plugins.core.code_editor.symbols import extract_python_symbols
-from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import SHORTCUT, action_button, window_size
 
 from .editor_preferences import (
@@ -2137,7 +2137,16 @@ class CodeEditorApp(ImApp):
         The actions are queued and run in the next frame, inside the editor window, exactly where the buttons run them.
         """
         from emtk.events import ALT_MODIFIER, CONTROL_MODIFIER, SHIFT_MODIFIER
-        from emtk.keys import KEY_ESCAPE, KEY_F3, KEY_F12, KEY_LEFT, KEY_RIGHT, KEY_SPACE, letter_of, mac_behaviors
+        from emtk.keys import (
+            KEY_ESCAPE,
+            KEY_F3,
+            KEY_F12,
+            KEY_LEFT,
+            KEY_RIGHT,
+            KEY_SPACE,
+            letter_of,
+            mac_behaviors,
+        )
 
         gui = self.editor_gui
         doc = self.model.active_doc

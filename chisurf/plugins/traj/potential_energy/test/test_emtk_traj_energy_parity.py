@@ -13,11 +13,14 @@ import time
 from pathlib import Path
 
 import pytest
-from chisurf.plugins.traj.traj_save_topology.test.qt_recorded import load_reference, same_coordinates
 from emtk.testing import RecordingPainter
 
 from chisurf.plugins.traj.potential_energy.app import make_app
 from chisurf.plugins.traj.potential_energy.potential_specs import get_spec, make_potential
+from chisurf.plugins.traj.traj_save_topology.test.qt_recorded import (
+    load_reference,
+    same_coordinates,
+)
 
 from .test_view_model import _peptide_trajectory
 

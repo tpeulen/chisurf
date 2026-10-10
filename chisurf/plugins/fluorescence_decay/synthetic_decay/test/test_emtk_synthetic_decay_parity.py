@@ -15,6 +15,7 @@ import numpy as np
 import pytest
 from emtk.testing import RecordingPainter
 
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.fluorescence_decay.synthetic_decay.core.algorithms import (
     compute_aniso_decay,
     compute_decay,
@@ -22,7 +23,6 @@ from chisurf.plugins.fluorescence_decay.synthetic_decay.core.algorithms import (
 )
 from chisurf.plugins.fluorescence_decay.synthetic_decay.gui.app import SyntheticDecayApp, make_app
 from chisurf.plugins.fluorescence_decay.synthetic_decay.gui.model import SyntheticDecayModel
-from chisurf.plugins.emtk_layout import action_caption
 
 HERE = Path(__file__).parent
 GUI = HERE.parent / "gui"

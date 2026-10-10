@@ -8,8 +8,6 @@ control -> test list is in ``okf/plugins/emtk-ports/fcs_saturation/REPORT.md``.
 
 from __future__ import annotations
 
-from chisurf.plugins.emtk_layout import action_caption
-
 import json
 import re
 from pathlib import Path
@@ -20,6 +18,7 @@ from emtk import keys
 
 from chisurf.plugins.calculator.fcs_saturation_calc.gui.app import make_app
 from chisurf.plugins.calculator.fcs_saturation_calc.gui.panel import TABS
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.emtk_test_input import assert_tour_card_clear
 
 from .driving import BIG, SMALL, SatDriver, hermetic_env

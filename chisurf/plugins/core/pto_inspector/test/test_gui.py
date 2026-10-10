@@ -15,7 +15,6 @@ import pytest
 
 from chisurf.core.fio.pto import Measurement
 
-
 DATA = Path(__file__).resolve().parents[4].parent / "test" / "data"
 PTU = DATA / "clsm" / "Leica_SP5.ptu"
 

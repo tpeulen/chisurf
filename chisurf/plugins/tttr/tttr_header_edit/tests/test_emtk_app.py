@@ -11,9 +11,8 @@ import json
 import os
 
 import pytest
+
 from chisurf.plugins.emtk_layout import action_caption
-
-
 
 
 class RecordingPainter:

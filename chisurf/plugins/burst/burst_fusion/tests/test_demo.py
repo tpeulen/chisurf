@@ -20,11 +20,11 @@ from chisurf.plugins.burst.burst_fusion.api.models import FusionSettings
 from chisurf.plugins.burst.burst_fusion.core.fusion import analyze, read_measurements
 from chisurf.plugins.burst.burst_fusion.demo import (
     DEMO,
-    make_demo,
-    read_demo,
     demo_detectors,
     demo_folder,
     describe,
+    make_demo,
+    read_demo,
 )
 
 

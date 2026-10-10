@@ -18,8 +18,6 @@ from typing import Any
 
 from emtk import im
 from emtk.app import ImApp
-
-from chisurf.plugins.emtk_layout import action_button, window_size
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
@@ -27,6 +25,7 @@ from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.jobs import SnapshotJob
+from chisurf.plugins.emtk_layout import action_button, window_size
 
 from .model import UserEditorModel
 

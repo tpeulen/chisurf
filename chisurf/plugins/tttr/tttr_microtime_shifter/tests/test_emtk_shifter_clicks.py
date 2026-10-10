@@ -8,14 +8,14 @@ gets (the strings of the frame, the histogram's drawn lines, the shifted file). 
 
 from __future__ import annotations
 
-from chisurf.plugins.emtk_layout import action_caption
-
 import sys
 import time
 from pathlib import Path
 
 import numpy as np
 import pytest
+
+from chisurf.plugins.emtk_layout import action_caption
 
 REPO = next(p for p in Path(__file__).parents if (p / "pyproject.toml").exists())
 sys.path.insert(0, str(REPO))

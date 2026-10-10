@@ -14,6 +14,7 @@ from pathlib import Path
 
 from emtk import im, keys
 from emtk.app import ImApp
+from emtk.i18n import tr
 
 from chisurf.emtk.background_build import BackgroundBuild, draw_opening
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
@@ -21,7 +22,6 @@ from chisurf.emtk.plugin_icons import entry_icon
 from chisurf.plugins.emtk_layout import action_button, window_size
 
 from ..core.registry import default_calculators
-from emtk.i18n import tr
 
 HERE = Path(__file__).parent
 

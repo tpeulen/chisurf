@@ -7,9 +7,9 @@ from pathlib import Path
 from typing import Any, Callable
 
 from emtk import im
-from emtk.i18n import tr
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow

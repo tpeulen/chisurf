@@ -30,6 +30,7 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
@@ -44,7 +45,6 @@ from chisurf.plugins.emtk_layout import (
     layout_spec,
     window_size,
 )
-from emtk.i18n import tr
 
 ERROR = (1.0, 0.45, 0.45, 1.0)
 LOG_KEY = "log"

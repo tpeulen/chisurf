@@ -14,10 +14,9 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
-from chisurf.plugins.emtk_layout import action_caption
 from emtk import keys
 
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.emtk_test_input import CTRL, SIZE, SMALL, Driver
 from chisurf.plugins.fluorescence_decay.lifetime_analysis.gui.app import PANELS, make_app
 

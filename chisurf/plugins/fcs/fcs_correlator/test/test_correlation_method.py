@@ -13,7 +13,6 @@ import pytest
 
 from chisurf.plugins.fcs.fcs_correlator.correlator_model import METHODS, CorrelatorSettingsModel
 
-
 FIXTURE = Path(__file__).resolve().parents[5] / "test/data/clsm/Leica_SP5.ptu"
 
 

@@ -11,15 +11,14 @@ from typing import Any, Callable
 
 import numpy as np
 from emtk import im
-from emtk.i18n import tr
 from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.file_dialog import FileDialog
 from emtk.flags import InputTextFlags
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
-from chisurf.plugins.emtk_layout import action_button
 from chisurf.plugins.core.acq.gui.live_plots import LivePlots, stream_words
 from chisurf.plugins.core.acq.gui.setup_models import (
     BH_PARAMETERS,
@@ -37,6 +36,7 @@ from chisurf.plugins.core.acq.tcspc_devices.simulation.core.algorithms import (
     build_engine,
     generate_spc132_uint32,
 )
+from chisurf.plugins.emtk_layout import action_button
 
 HERE = Path(__file__).parent
 DEVICE_LABELS = {

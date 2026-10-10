@@ -21,7 +21,13 @@ from chisurf.core.roi import RegionCollection
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.calculator.native_form import plain
-from chisurf.plugins.emtk_layout import action_caption, action_tooltip, button_row, layout_spec, window_size
+from chisurf.plugins.emtk_layout import (
+    action_caption,
+    action_tooltip,
+    button_row,
+    layout_spec,
+    window_size,
+)
 from chisurf.plugins.microscopy.psf_determination.gui.canvas import ImageCanvas
 from chisurf.plugins.microscopy.psf_determination.gui.jobs import SnapshotJob
 

@@ -10,9 +10,9 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 from emtk.widgets.menus import MenuItem, Popup
-from emtk.i18n import tr
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import action_button, window_size

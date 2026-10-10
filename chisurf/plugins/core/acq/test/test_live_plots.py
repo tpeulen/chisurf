@@ -7,8 +7,8 @@ import threading
 
 import numpy as np
 import pytest
-from emtk.app import ImApp
 from emtk import im
+from emtk.app import ImApp
 from emtk.view_form import FormState, draw_sections
 
 from chisurf.plugins.core.acq.gui.live_plots import LivePlots, stream_words

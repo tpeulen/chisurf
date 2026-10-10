@@ -3,22 +3,20 @@
 from __future__ import annotations
 
 import json
-
 from pathlib import Path
 
 from emtk import im
 from emtk.app import ImApp
-
-from chisurf.plugins.emtk_layout import action_button, action_caption, button_width, window_size
 from emtk.dialog_window import DialogWindow
-from emtk.i18n import tr
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 from emtk.keys import KEY_ENTER, KEY_RETURN
 
 from chisurf.emtk.background_build import BackgroundBuild, draw_opening
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.plugin_icons import entry_icon
 from chisurf.emtk.typed_field import parse_number, typed_number_field
+from chisurf.plugins.emtk_layout import action_button, action_caption, button_width, window_size
 
 from .model import (
     DEFAULT_PANEL,

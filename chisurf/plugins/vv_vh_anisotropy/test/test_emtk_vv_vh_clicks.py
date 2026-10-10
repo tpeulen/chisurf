@@ -16,12 +16,11 @@ import numpy as np
 import pytest
 from emtk.events import CONTROL_MODIFIER
 
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.vv_vh_anisotropy.gui.app import create_app
 from chisurf.plugins.vv_vh_anisotropy.gui.model import AnisotropyModel
-
 from chisurf.plugins.vv_vh_anisotropy.test.pointer import KEY_BACKSPACE, KEY_ESCAPE, Pointer
 from chisurf.plugins.vv_vh_anisotropy.test.test_emtk_vv_vh_parity import make
-from chisurf.plugins.emtk_layout import action_caption
 
 
 @pytest.fixture

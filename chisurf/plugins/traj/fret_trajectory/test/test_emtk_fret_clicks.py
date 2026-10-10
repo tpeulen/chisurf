@@ -11,7 +11,18 @@ import numpy as np
 import pytest
 
 from chisurf.plugins.traj.fret_trajectory.app import make_app
-from chisurf.plugins.traj.traj_save_topology.test.real_input import Ui, check_action_flow, check_browse_row, check_guide_and_help_buttons, check_log_scrolls_with_the_wheel, check_number_field, check_row_is_read_only, dead_tour_buttons, read_xyz, wheel_steps_a_number_field
+from chisurf.plugins.traj.traj_save_topology.test.real_input import (
+    Ui,
+    check_action_flow,
+    check_browse_row,
+    check_guide_and_help_buttons,
+    check_log_scrolls_with_the_wheel,
+    check_number_field,
+    check_row_is_read_only,
+    dead_tour_buttons,
+    read_xyz,
+    wheel_steps_a_number_field,
+)
 
 SIZE = (800, 700)  # the Process panel and the log are on screen
 

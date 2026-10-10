@@ -14,10 +14,10 @@ from emtk import im
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.calculator.hub.gui.app import CalculatorHubApp
+from chisurf.plugins.emtk_layout import action_button
 
 from ..core.registry import default_wizards
 from .strings import install_translations, tr
-from chisurf.plugins.emtk_layout import action_button
 
 install_translations()
 

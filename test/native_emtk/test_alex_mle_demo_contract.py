@@ -9,8 +9,8 @@ import numpy as np
 import pytest
 
 from chisurf.plugins.burst.alex_suite import demo as alex
-from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.burst.burst_mle_analysis import demo as mle
+from chisurf.plugins.emtk_layout import action_caption
 
 
 @pytest.mark.parametrize("module,plugin_id", [(alex, "alex_suite"), (mle, "burst_mle_analysis")])

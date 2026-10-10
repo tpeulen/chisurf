@@ -15,6 +15,7 @@ import chisurf.core.fluorescence.burst
 import chisurf.core.math
 import chisurf.gui.decorators
 from chisurf import logging
+from chisurf.core.data_io.detector_setups import save_detector_setups
 from chisurf.core.fio.fluorescence.burst import write_burst_hdf5
 from chisurf.core.fluorescence.burst.utils import create_array_with_ones
 from chisurf.core.math.signal import fill_small_gaps_in_array
@@ -22,7 +23,6 @@ from chisurf.gui import QtCore, QtWidgets, dialogs
 from chisurf.gui.progress import ChiSurfProgress
 
 from ..tttr_channeldefinition.tttr_detector_setups import load_detector_setups
-from chisurf.core.data_io.detector_setups import save_detector_setups
 from .filter_settings_form import (
     install_filter_settings_form,
     refresh_filter_options,

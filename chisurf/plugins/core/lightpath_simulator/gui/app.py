@@ -468,7 +468,7 @@ class LightPathApp(TourTarget, ImApp):
         self._last_palette = picked
 
     def _draw_controls(self, box):
-        panel = self.panel
+        _panel = self.panel
         self._form("palette", SPEC["palette"])
         self._tour_outcomes()
         self._form("palette", SPEC["palette_buttons"])

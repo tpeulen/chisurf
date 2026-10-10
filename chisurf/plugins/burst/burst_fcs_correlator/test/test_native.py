@@ -36,8 +36,8 @@ def test_native_settings_pairs_and_actual_ranges_roundtrip(tmp_path):
 def test_native_correlation_publishes_real_fits_and_preserves_on_cancel(tmp_path, monkeypatch):
     app = create_app()
     ctrl = app.controller
-    from pathlib import Path
     import shutil
+    from pathlib import Path
 
     raw = tmp_path / "measurement.spc"
     shutil.copyfile(Path(__file__).resolve().parents[5] / "test/data/tttr/BH/132/BH_SPC132.spc", raw)

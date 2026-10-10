@@ -12,12 +12,12 @@ import pathlib
 
 import numpy as np
 from emtk import im
+from emtk.i18n import tr
 
 from chisurf.plugins.emtk_layout import NUMBER_WIDTH, icon_label
 from chisurf.plugins.traj.emtk_tool import SaveAction, TrajToolApp, topology_field, trajectory_field
 
 from .view_model import RotateTranslateViewModel
-from emtk.i18n import tr
 
 HERE = pathlib.Path(__file__).parent
 WARNING = (1.0, 0.75, 0.3, 1.0)

@@ -16,7 +16,6 @@ from typing import Any
 # plugin. Importing here pins it to a predictable moment.
 from chisurf.core.settings import cs_settings
 
-
 #: A factory installed by ``user_editor.demo.make_demo``; ``None`` means a real client.
 _demo_factory = None
 

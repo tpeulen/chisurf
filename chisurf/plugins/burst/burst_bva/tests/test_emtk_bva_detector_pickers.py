@@ -6,7 +6,14 @@ import pytest
 
 from chisurf.plugins.burst.burst_bva.gui.app import create_app
 
-from .test_emtk_bva_clicks import SIZE, click, draw, hermetic, press, text_rect  # noqa: F401 (hermetic: autouse)
+from .test_emtk_bva_clicks import (  # noqa: F401 (hermetic: autouse)
+    SIZE,
+    click,
+    draw,
+    hermetic,
+    press,
+    text_rect,
+)
 
 
 @pytest.fixture

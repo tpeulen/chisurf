@@ -159,3 +159,18 @@ def test_zmq_parse_error_handled():
     sock.close()
     ctx.term()
     server.stop()
+
+
+def test_a_client_dropped_without_close_releases_its_sockets():
+    """A leaked client must not leave an open socket for the context destructor to block on."""
+    import gc
+
+    from chisurf.server.transport.zmq import ZmqClient
+
+    client = ZmqClient(cmd_port=59871, pub_port=59872, timeout_ms=100)
+    client.connect()
+    sock = client._req_socket
+    assert not sock.closed
+    del client
+    gc.collect()
+    assert sock.closed

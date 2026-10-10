@@ -12,6 +12,7 @@ import os
 import numpy as np
 import pytest
 
+
 class _Header:
     macro_time_resolution = 1.0e-6  # 1 µs per macro-time unit
 

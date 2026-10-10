@@ -4,6 +4,7 @@ import copy
 import json
 import time
 from pathlib import Path
+
 from emtk.i18n import tr
 
 from chisurf.core.optical_configuration import (

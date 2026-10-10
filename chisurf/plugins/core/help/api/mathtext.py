@@ -1061,8 +1061,8 @@ class MathRenderer:
             return None
         try:
             from emtk.colormaps import to_rgba_bytes
-            from emtk.tex import TexError, render_rgba
             from emtk.testing import png_encode
+            from emtk.tex import TexError, render_rgba
         except Exception:  # pragma: no cover - emtk always present in-app
             self._available = False
             logger.debug("emtk.tex unavailable; help maths stays as text")

@@ -16,13 +16,12 @@ from typing import Any
 
 from emtk import im
 from emtk.app import ImApp
-
-from chisurf.plugins.emtk_layout import action_button, action_caption, window_size
 from emtk.docking import DockManager, Region
 
 from chisurf.core.setup_channel_definition import ChannelDefinition
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.plugins.emtk_layout import action_button, action_caption, window_size
 
 from .model import LATEST, default_settings
 

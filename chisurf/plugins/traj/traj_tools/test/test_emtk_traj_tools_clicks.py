@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from chisurf.plugins.emtk_layout import action_caption
-
 from pathlib import Path
 
 import pytest
 from emtk import keys
 
 from chisurf.plugins.emtk_hermetic import hermetic, real_chisurf_untouched  # noqa: F401
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.emtk_test_input import Driver, assert_tour_card_clear, tour_card_box
 
 from ..app import TrajectoryToolsHubApp

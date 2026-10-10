@@ -21,13 +21,13 @@ from typing import Any
 import numpy as np
 from emtk import im, implot, implot3d
 from emtk.docking import DockManager, Region, Split
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.plugins.emtk_layout import action_caption, action_tooltip, layout_spec
 
 from .fps_model import Rows
 from .shell import CardShell
-from emtk.i18n import tr
 
 HERE = Path(__file__).resolve().parent
 RES = HERE / "resources" / "quest"

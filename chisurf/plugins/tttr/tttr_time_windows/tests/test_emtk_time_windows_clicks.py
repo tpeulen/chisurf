@@ -15,10 +15,10 @@ from pathlib import Path
 import pytest
 from emtk.events import CONTROL_MODIFIER
 
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.tttr.tttr_time_windows.gui.controller import create_app
 from chisurf.plugins.tttr.tttr_time_windows.tests.pointer import KEY_ESCAPE, Pointer
 from chisurf.plugins.tttr.tttr_time_windows.tests.test_emtk_time_windows_parity import _FakeClient
-from chisurf.plugins.emtk_layout import action_caption
 
 
 class _SlowClient(_FakeClient):

@@ -11,8 +11,8 @@ from typing import Any, Callable
 
 import numpy as np
 from emtk import im, implot
-from emtk.view_form import FormState, draw_sections
 from emtk.i18n import tr
+from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.image_canvas import ImageCanvas
 

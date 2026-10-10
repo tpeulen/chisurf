@@ -14,12 +14,12 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 
-from emtk.i18n import tr
 import emtk.im as im
 import emtk.implot as implot
 import numpy as np
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget

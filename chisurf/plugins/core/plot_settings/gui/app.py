@@ -16,12 +16,11 @@ from typing import Any
 
 from emtk import im, implot
 from emtk.app import ImApp
-
-from chisurf.plugins.emtk_layout import action_button, window_size
 from emtk.docking import DockManager, Region, Split
 from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.plugins.emtk_layout import action_button, window_size
 
 from .model import PlotSettingsModel, color_rgb
 

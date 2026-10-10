@@ -11,6 +11,7 @@ import numpy as np
 from emtk import im, implot
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form, draw_sections
 from emtk.widgets.view_spec import load_view_spec
 
@@ -19,7 +20,6 @@ from chisurf.plugins.emtk_layout import window_size
 
 from .controller import AccurateFretController
 from .view_model import AccurateFretViewModel
-from emtk.i18n import tr
 
 WINDOW_BG = (30, 32, 38, 255)
 

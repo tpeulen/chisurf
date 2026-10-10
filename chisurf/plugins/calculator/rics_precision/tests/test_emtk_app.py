@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import pytest
 
+
 class RecordingPainter:
     """Counts the six operations instead of performing them."""
 

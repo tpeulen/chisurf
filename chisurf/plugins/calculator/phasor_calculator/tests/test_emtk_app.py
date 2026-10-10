@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import pytest
 
+
 class RecordingPainter:
     """Counts operations and keeps the strings, instead of drawing."""
 

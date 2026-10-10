@@ -11,14 +11,14 @@ from __future__ import annotations
 
 import pytest
 
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.emtk_test_input import SMALL, Driver, assert_tour_card_clear
 
 from .native_support import admin_folder, app, client, seeded_template  # noqa: F401
-from chisurf.plugins.emtk_layout import action_caption
 
 
 @pytest.fixture
-def driver(app):
+def driver(app):  # noqa: F811
     d = Driver(app)
     d.draw(3)
     assert app.model.connected, app.model.status
@@ -37,13 +37,13 @@ def _row(driver, text):
     return Driver.text_rect(driver.draw(2), text, last=False)
 
 
-def test_the_rail_opens_a_panel(driver, app):
+def test_the_rail_opens_a_panel(driver, app):  # noqa: F811
     driver.click_name("nav.sample")
     assert app.model.selected == "sample"
     assert driver.drawn("sample_gui")
 
 
-def test_a_row_click_opens_the_record_and_a_typed_field_is_saved(driver, app, client):
+def test_a_row_click_opens_the_record_and_a_typed_field_is_saved(driver, app, client):  # noqa: F811
     open_panel(driver, "device", "Devices")
     driver.click(_row(driver, "dev_gui"))
     panel = app.model.current
@@ -53,7 +53,7 @@ def test_a_row_click_opens_the_record_and_a_typed_field_is_saved(driver, app, cl
     assert "Saved device" in app.model.status
 
 
-def test_new_then_tick_and_delete_with_the_confirmation(driver, app, client):
+def test_new_then_tick_and_delete_with_the_confirmation(driver, app, client):  # noqa: F811
     open_panel(driver, "device", "Devices")
     driver.click_name("new_record")
     assert "untitled_1" in {d["device_id"] for d in client.list_devices()}
@@ -70,7 +70,7 @@ def test_new_then_tick_and_delete_with_the_confirmation(driver, app, client):
     assert "untitled_1" not in {d["device_id"] for d in client.list_devices()}
 
 
-def test_a_double_click_on_a_link_cell_opens_the_linked_record(driver, app):
+def test_a_double_click_on_a_link_cell_opens_the_linked_record(driver, app):  # noqa: F811
     open_panel(driver, "experiment", "Experiments")
     cells = [t[:4] for t in driver.draw(2).texts if t[5] == "sample_gui"]
     assert cells
@@ -80,7 +80,7 @@ def test_a_double_click_on_a_link_cell_opens_the_linked_record(driver, app):
     assert app.model.current.selected_id == "sample_gui"
 
 
-def test_logout_then_login_through_the_dialog(driver, app):
+def test_logout_then_login_through_the_dialog(driver, app):  # noqa: F811
     driver.click_name("logout")
     assert app.model.connection == "disconnected"
     app.model.client.token = None
@@ -91,7 +91,7 @@ def test_logout_then_login_through_the_dialog(driver, app):
     assert app.model.connected and app.model.dialog is None
 
 
-def test_spectra_pick_and_approve(driver, app, client):
+def test_spectra_pick_and_approve(driver, app, client):  # noqa: F811
     open_panel(driver, "spectra", "Spectra")
     driver.click(_row(driver, "Acceptor GUI"))
     panel = app.model.current
@@ -102,7 +102,7 @@ def test_spectra_pick_and_approve(driver, app, client):
     assert probe["verification_status"] == "approved"
 
 
-def test_use_as_seed_opens_the_loaded_provenance_graph(driver, app):
+def test_use_as_seed_opens_the_loaded_provenance_graph(driver, app):  # noqa: F811
     open_panel(driver, "raw_data", "Raw Data")
     driver.click(_row(driver, "raw_gui"))
     driver.click_name("use_as_seed")
@@ -114,7 +114,7 @@ def test_use_as_seed_opens_the_loaded_provenance_graph(driver, app):
     driver.wheel(gx + gw / 2, gy + gh / 2, 1.0)  # the wheel zooms the graph, nothing breaks
 
 
-def test_the_seed_controls_load_a_graph(driver, app):
+def test_the_seed_controls_load_a_graph(driver, app):  # noqa: F811
     open_panel(driver, "provenance", "Provenance Graph")
     driver.type_into_name("seed_id", "prod_gui")
     driver.click_name("load_upstream")
@@ -122,7 +122,7 @@ def test_the_seed_controls_load_a_graph(driver, app):
     assert panel.edges and panel.document["nodes"]
 
 
-def test_back_and_next(driver, app):
+def test_back_and_next(driver, app):  # noqa: F811
     keys = app.model.panel_keys()
     driver.click_name("next")
     assert app.model.selected == keys[1]
@@ -130,7 +130,7 @@ def test_back_and_next(driver, app):
     assert app.model.selected == keys[0]
 
 
-def test_help_and_guide(driver, app):
+def test_help_and_guide(driver, app):  # noqa: F811
     driver.click_name("help")
     assert app.help_window.open
     app.help_window.hide()
@@ -141,7 +141,7 @@ def test_help_and_guide(driver, app):
     assert_tour_card_clear(app.tour)
 
 
-def test_the_guide_waits_for_the_rail_click(driver, app):
+def test_the_guide_waits_for_the_rail_click(driver, app):  # noqa: F811
     app.tour.start()
     driver.draw(2)
     while app.tour.active and app.tour.steps[app.tour.step_idx]["target"].get("name") != "nav.sample":
@@ -155,26 +155,26 @@ def test_the_guide_waits_for_the_rail_click(driver, app):
     assert not app.tour.awaiting  # the step's control was used: Next goes on
 
 
-def test_the_file_menu_backup(driver, app):
+def test_the_file_menu_backup(driver, app):  # noqa: F811
     driver.click_text("File")
     driver.click_text("Backup database...")
     assert app.model.status.startswith("Backup:")
 
 
-def test_the_toolbar_reset_asks_and_cancel_keeps_everything(driver, app, client):
+def test_the_toolbar_reset_asks_and_cancel_keeps_everything(driver, app, client):  # noqa: F811
     driver.click_name("reset_database")
     assert app.model.dialog is not None
     driver.click_name("dialog.no")
     assert "sample_gui" in {s["sample_id"] for s in client.list_samples()}
 
 
-def test_the_rail_search_narrows_the_panels(driver, app):
+def test_the_rail_search_narrows_the_panels(driver, app):  # noqa: F811
     driver.type_into_name("search", "lots")
     assert driver.drawn("Reagent Lots")
     assert not driver.drawn("Samples")
 
 
-def test_everything_reachable_at_800x600(app):
+def test_everything_reachable_at_800x600(app):  # noqa: F811
     d = Driver(app, size=SMALL)
     d.draw(3)
     for name in ("login", "logout", "refresh", "help", "guide", "nav.overview", "next", "back"):
@@ -191,7 +191,7 @@ def test_everything_reachable_at_800x600(app):
     assert app.model.current.selected_id == "sample_gui"
 
 
-def test_the_menus_offer_every_qt_menu_action(driver, app):
+def test_the_menus_offer_every_qt_menu_action(driver, app):  # noqa: F811
     expected = {
         "File": [
             "Import...", "Export selected sample...", "Backup database...", action_caption("reset"), "Close",
@@ -207,7 +207,7 @@ def test_the_menus_offer_every_qt_menu_action(driver, app):
         driver.escape()
 
 
-def test_settings_reset_window_layout_returns_to_the_overview(driver, app):
+def test_settings_reset_window_layout_returns_to_the_overview(driver, app):  # noqa: F811
     driver.click_name("nav.sample")
     app.splits["entity"] = 0.2
     driver.click_text("Settings", last=False)
@@ -224,7 +224,7 @@ def test_settings_reset_window_layout_returns_to_the_overview(driver, app):
         ("reagents", "Reagent", "lot_rows", "lot_rows"),
     ],
 )
-def test_a_selection_set_by_the_model_is_shown_in_the_table(driver, app, key, name, rows, source):
+def test_a_selection_set_by_the_model_is_shown_in_the_table(driver, app, key, name, rows, source):  # noqa: F811
     """A jump or a new record sets ``panel.selected``; the table must highlight that row too."""
     open_panel(driver, key, name)
     panel = app.model.current

@@ -12,7 +12,6 @@ _CATALOGS = {
         "Status": "Status",
         "Finish": "Fertig",
         "Create missing files": "Fehlende Dateien erstellen",
-        "Restore defaults": "Standards wiederherstellen",
         "Open settings folder": "Einstellungsordner öffnen",
     },
     "fr": {
@@ -26,7 +25,6 @@ _CATALOGS = {
         "Status": "État",
         "Finish": "Terminer",
         "Create missing files": "Créer les fichiers manquants",
-        "Restore defaults": "Restaurer les valeurs par défaut",
         "Open settings folder": "Ouvrir le dossier des réglages",
     },
     "es": {
@@ -40,7 +38,6 @@ _CATALOGS = {
         "Status": "Estado",
         "Finish": "Finalizar",
         "Create missing files": "Crear archivos faltantes",
-        "Restore defaults": "Restaurar valores predeterminados",
         "Open settings folder": "Abrir carpeta de ajustes",
     },
     "pt": {
@@ -54,7 +51,6 @@ _CATALOGS = {
         "Status": "Estado",
         "Finish": "Concluir",
         "Create missing files": "Criar ficheiros em falta",
-        "Restore defaults": "Restaurar predefinições",
         "Open settings folder": "Abrir pasta de definições",
     },
     "ru": {
@@ -68,7 +64,6 @@ _CATALOGS = {
         "Status": "Состояние",
         "Finish": "Завершение",
         "Create missing files": "Создать недостающие файлы",
-        "Restore defaults": "Восстановить значения по умолчанию",
         "Open settings folder": "Открыть папку настроек",
     },
 }

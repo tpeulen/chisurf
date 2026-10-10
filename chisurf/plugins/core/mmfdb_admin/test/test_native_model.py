@@ -12,13 +12,19 @@ import json
 
 from chisurf.plugins.core.mmfdb_admin.gui.native import dialogs as dlg
 
-from .native_support import admin, admin_folder, answer, client, rows_by_id, seeded_template  # noqa: F401
-
+from .native_support import (  # noqa: F401
+    admin,
+    admin_folder,
+    answer,
+    client,
+    rows_by_id,
+    seeded_template,
+)
 
 # ── connection ──────────────────────────────────────────────────────────
 
 
-def test_connects_and_reports_the_database(admin):
+def test_connects_and_reports_the_database(admin):  # noqa: F811
     assert admin.connected and admin.login_user == "admin"
     assert "schema" in admin.summary and "samples" in admin.summary
     overview = admin.select("overview")
@@ -27,7 +33,7 @@ def test_connects_and_reports_the_database(admin):
     assert "sample 'sample_hp3' has no description" in overview.text
 
 
-def test_a_wrong_password_keeps_the_login_dialog_open_with_the_reason(admin):
+def test_a_wrong_password_keeps_the_login_dialog_open_with_the_reason(admin):  # noqa: F811
     admin.logout()
     assert admin.connection == "disconnected"
     admin.client.token = None
@@ -43,7 +49,7 @@ def test_a_wrong_password_keeps_the_login_dialog_open_with_the_reason(admin):
     assert admin.connected and admin.dialog is None
 
 
-def test_a_non_administrator_is_refused(admin, client):
+def test_a_non_administrator_is_refused(admin, client):  # noqa: F811
     client.save_user({"user_id": "plain", "display_name": "Plain", "password": "Plain#123x",
                       "requester_id": "admin"})
     admin.logout()
@@ -56,7 +62,7 @@ def test_a_non_administrator_is_refused(admin, client):
     assert admin.password == ""
 
 
-def test_logout_drops_the_session(admin):
+def test_logout_drops_the_session(admin):  # noqa: F811
     from chisurf.plugins.core.mmfdb_admin.gui import session
 
     admin.logout()
@@ -67,7 +73,7 @@ def test_logout_drops_the_session(admin):
 # ── entity panels ───────────────────────────────────────────────────────
 
 
-def test_entity_columns_and_rows_match_the_qt_dock_definition(admin):
+def test_entity_columns_and_rows_match_the_qt_dock_definition(admin):  # noqa: F811
     from chisurf.plugins.core.mmfdb_admin.gui.entity_registry import ENTITY_REGISTRY
 
     for spec in ENTITY_REGISTRY:
@@ -78,7 +84,7 @@ def test_entity_columns_and_rows_match_the_qt_dock_definition(admin):
         assert keys[0] == "checked" and keys[1:] == [k for k, _ in panel.columns]
 
 
-def test_samples_list_and_open_a_record(admin):
+def test_samples_list_and_open_a_record(admin):  # noqa: F811
     panel = admin.select("sample")
     rows = rows_by_id(panel)
     assert {"sample_gui", "sample_hp3"} <= set(rows)
@@ -89,7 +95,7 @@ def test_samples_list_and_open_a_record(admin):
     assert panel.form.sample_condition_id == "cond_gui"
 
 
-def test_a_committed_field_is_saved(admin, client):
+def test_a_committed_field_is_saved(admin, client):  # noqa: F811
     panel = admin.select("device")
     panel.select_row(rows_by_id(panel)["dev_gui"])
     panel.form.location = "Lab 2"
@@ -98,7 +104,7 @@ def test_a_committed_field_is_saved(admin, client):
     assert rows_by_id(panel)["dev_gui"]["location"] == "Lab 2"
 
 
-def test_new_creates_an_untitled_record_and_opens_it(admin, client):
+def test_new_creates_an_untitled_record_and_opens_it(admin, client):  # noqa: F811
     panel = admin.select("device")
     panel.new_record()
     assert panel.selected_id == "untitled_1"
@@ -106,7 +112,7 @@ def test_new_creates_an_untitled_record_and_opens_it(admin, client):
     assert "Created device: untitled_1" in admin.status
 
 
-def test_delete_asks_and_declining_changes_nothing(admin, client):
+def test_delete_asks_and_declining_changes_nothing(admin, client):  # noqa: F811
     panel = admin.select("device")
     panel.delete_checked()
     assert isinstance(admin.dialog, dlg.MessageDialog) and "Tick" in admin.dialog.text
@@ -123,13 +129,13 @@ def test_delete_asks_and_declining_changes_nothing(admin, client):
     assert "mt200" not in rows_by_id(panel)
 
 
-def test_read_only_entities_have_no_new_and_read_only_fields(admin):
+def test_read_only_entities_have_no_new_and_read_only_fields(admin):  # noqa: F811
     panel = admin.select("raw_data")
     assert not panel.writable and not panel.enabled("new_record")
     assert all(s.get("read_only") or s["type"] != "value" for s in panel.form_sections())
 
 
-def test_a_foreign_key_cell_opens_the_record_it_names(admin):
+def test_a_foreign_key_cell_opens_the_record_it_names(admin):  # noqa: F811
     panel = admin.select("experiment")
     row = rows_by_id(panel)["exp_gui"]
     links = {c["key"] for c in panel.table_columns() if c.get("display") == "link"}
@@ -142,14 +148,14 @@ def test_a_foreign_key_cell_opens_the_record_it_names(admin):
     assert admin.current.form.description == "GUI sample"
 
 
-def test_foreign_key_choices_list_the_target_records(admin):
+def test_foreign_key_choices_list_the_target_records(admin):  # noqa: F811
     panel = admin.select("experiment")
     panel.select_row(rows_by_id(panel)["exp_gui"])
     choices = dict(panel.fk_choices("sample_id"))
     assert choices[""] == "(none)" and choices["sample_gui"] == "sample_gui — GUI sample"
 
 
-def test_all_items_opens_a_record_in_its_panel(admin):
+def test_all_items_opens_a_record_in_its_panel(admin):  # noqa: F811
     panel = admin.select("all_items")
     assert panel.count_text() == f"{len(panel.rows)} / {len(panel.rows)}"
     panel.type_filter = "processed_data"
@@ -162,7 +168,7 @@ def test_all_items_opens_a_record_in_its_panel(admin):
     assert admin.selected == "processed_product" and admin.current.selected_id == "prod_gui"
 
 
-def test_measurements_filter_by_kind_and_text(admin):
+def test_measurements_filter_by_kind_and_text(admin):  # noqa: F811
     panel = admin.select("measurements")
     kinds = {r["kind"] for r in panel.visible_rows()}
     assert {"Raw", "Processing", "Processed"} <= kinds
@@ -175,7 +181,7 @@ def test_measurements_filter_by_kind_and_text(admin):
 # ── per-entity actions ──────────────────────────────────────────────────
 
 
-def test_raw_data_copy_reveal_validate_and_delete(admin, client):
+def test_raw_data_copy_reveal_validate_and_delete(admin, client):  # noqa: F811
     panel = admin.select("raw_data")
     panel.select_row(rows_by_id(panel)["raw_gui"])
     panel.copy_id()
@@ -197,7 +203,7 @@ def test_raw_data_copy_reveal_validate_and_delete(admin, client):
     assert "raw_gui" not in {r["raw_data_id"] for r in client.list_raw_data()}
 
 
-def test_use_as_provenance_seed_loads_the_graph(admin):
+def test_use_as_provenance_seed_loads_the_graph(admin):  # noqa: F811
     panel = admin.select("processed_product")
     panel.select_row(rows_by_id(panel)["prod_gui"])
     panel.use_as_seed()
@@ -211,7 +217,7 @@ def test_use_as_provenance_seed_loads_the_graph(admin):
     assert json.loads(prov.details)["edge_id"] == prov.edges[0]["edge_id"]
 
 
-def test_analysis_details(admin):
+def test_analysis_details(admin):  # noqa: F811
     panel = admin.select("analysis")
     panel.select_row(rows_by_id(panel)["analysis_gui"])
     panel.details()
@@ -223,7 +229,7 @@ def test_analysis_details(admin):
     assert dialog.output_rows()[0]["processed_data_id"] == "fit_result_gui"
 
 
-def test_objects_copy_reveal_and_delete(admin, client):
+def test_objects_copy_reveal_and_delete(admin, client):  # noqa: F811
     panel = admin.select("object")
     record = panel.rows[0]
     panel.select_row(record)
@@ -238,7 +244,7 @@ def test_objects_copy_reveal_and_delete(admin, client):
     assert len(client.list_objects()) == count
 
 
-def test_branch_set_head(admin, client):
+def test_branch_set_head(admin, client):  # noqa: F811
     panel = admin.select("branch")
     panel.select_row(rows_by_id(panel)["branch_gui"])
     panel.set_head()
@@ -249,7 +255,7 @@ def test_branch_set_head(admin, client):
     assert client.get_branch("branch_gui").get("head_operation_id") in (None, "")
 
 
-def test_change_password_rules_and_save(admin, client):
+def test_change_password_rules_and_save(admin, client):  # noqa: F811
     panel = admin.select("user")
     panel.select_row(rows_by_id(panel)["admin"])
     panel.change_password()
@@ -272,7 +278,7 @@ def test_change_password_rules_and_save(admin, client):
     assert client.login("john_doe", "Abcdef1!", quiet=True).get("ok")
 
 
-def test_jump_to_branch_needs_an_operation(admin):
+def test_jump_to_branch_needs_an_operation(admin):  # noqa: F811
     panel = admin.select("user")
     panel.select_row(rows_by_id(panel)["john_doe"])
     panel.jump_to_branch()
@@ -288,7 +294,7 @@ def test_jump_to_branch_needs_an_operation(admin):
 # ── special panels ──────────────────────────────────────────────────────
 
 
-def test_sample_metadata_edit_and_save(admin, client):
+def test_sample_metadata_edit_and_save(admin, client):  # noqa: F811
     panel = admin.select("metadata")
     assert ("sample_gui", "sample_gui — GUI sample") in panel.sample_options()
     panel.choose_sample("sample_gui")
@@ -307,12 +313,12 @@ def test_sample_metadata_edit_and_save(admin, client):
     assert stored["pH"] == "7.5" and stored["data_notes"] == "seed"
 
 
-def test_metadata_jump_from_another_panel(admin):
+def test_metadata_jump_from_another_panel(admin):  # noqa: F811
     admin.jump("metadata", "sample_gui")
     assert admin.selected == "metadata" and admin.current.sample_id == "sample_gui"
 
 
-def test_spectra_list_select_overlay_and_curate(admin, client):
+def test_spectra_list_select_overlay_and_curate(admin, client):  # noqa: F811
     panel = admin.select("spectra")
     names = {r["chromophore_name"] for r in panel.rows}
     assert {"Donor GUI", "Acceptor GUI"} <= names
@@ -334,7 +340,7 @@ def test_spectra_list_select_overlay_and_curate(admin, client):
     assert panel.status_filter == "all"
 
 
-def test_spectra_component_types(admin):
+def test_spectra_component_types(admin):  # noqa: F811
     panel = admin.select("spectra")
     assert [k for k, _ in panel.component_options()] == [
         "fluorophore", "filter", "dichroic", "detector", "light_source"]
@@ -343,7 +349,7 @@ def test_spectra_component_types(admin):
     assert [c["key"] for c in panel.table_columns()][1:4] == ["probe_id", "chromophore_name", "type_name"]
 
 
-def test_find_duplicates_and_merge(admin, client):
+def test_find_duplicates_and_merge(admin, client):  # noqa: F811
     panel = admin.select("spectra")
     panel.find_duplicates()
     dialog = admin.dialog
@@ -362,7 +368,7 @@ def test_find_duplicates_and_merge(admin, client):
     assert not ({p["probe_id"] for p in group["probes"]} - {primary}) & remaining
 
 
-def test_import_export_requests_a_path_and_previews(admin, tmp_path):
+def test_import_export_requests_a_path_and_previews(admin, tmp_path):  # noqa: F811
     panel = admin.select("import_export")
     sample = admin.select("sample")
     sample.select_row(rows_by_id(sample)["sample_gui"])
@@ -381,14 +387,14 @@ def test_import_export_requests_a_path_and_previews(admin, tmp_path):
     assert cif.exists()
 
 
-def test_reset_asks_first(admin, client):
+def test_reset_asks_first(admin, client):  # noqa: F811
     admin.reset_database()
     assert isinstance(admin.dialog, dlg.ConfirmDialog)
     answer(admin, "no")
     assert "sample_gui" in {s["sample_id"] for s in client.list_samples()}
 
 
-def test_studies_create_add_member_and_field(admin, client):
+def test_studies_create_add_member_and_field(admin, client):  # noqa: F811
     panel = admin.select("studies")
     assert [s["name"] for s in panel.studies] == ["Hairpin dynamics"]
     panel.select_study(panel.studies[0])
@@ -407,7 +413,7 @@ def test_studies_create_add_member_and_field(admin, client):
     assert {s["name"] for s in panel.studies} == {"Hairpin dynamics", "Second"}
 
 
-def test_protocols_history_schema_and_new_version(admin):
+def test_protocols_history_schema_and_new_version(admin):  # noqa: F811
     panel = admin.select("protocols")
     assert {p["name"] for p in panel.protocols} == {"TCSPC acquisition", "Burst selection"}
     panel.select_protocol(next(p for p in panel.protocols if p["name"] == "Burst selection"))
@@ -417,7 +423,7 @@ def test_protocols_history_schema_and_new_version(admin):
     assert "v2" in panel.message
 
 
-def test_lifecycle_load_and_transition(admin):
+def test_lifecycle_load_and_transition(admin):  # noqa: F811
     panel = admin.select("lifecycle")
     assert "sample" in panel.type_options()
     panel.entity_type, panel.entity_id = "sample", "sample_gui"
@@ -431,7 +437,7 @@ def test_lifecycle_load_and_transition(admin):
     assert panel.message.startswith("Transitioned to")
 
 
-def test_calibrations_list_stale_and_register(admin):
+def test_calibrations_list_stale_and_register(admin):  # noqa: F811
     panel = admin.select("calibrations")
     values = sorted(float(r["value"]) for r in panel.calibrations)
     assert values == [1.05, 52.0, 54.0]
@@ -445,7 +451,7 @@ def test_calibrations_list_stale_and_register(admin):
     assert len(panel.calibrations) == 4
 
 
-def test_reagent_lots_filter_detail_and_create(admin):
+def test_reagent_lots_filter_detail_and_create(admin):  # noqa: F811
     panel = admin.select("reagents")
     assert {r["name"] for r in panel.lots} == {"Alexa 488", "PBS"}
     panel.kind_filter = "buffer"
@@ -459,13 +465,13 @@ def test_reagent_lots_filter_detail_and_create(admin):
     assert {r["name"] for r in panel.lots} == {"PBS", "Tris"}
 
 
-def test_pipelines_empty_is_explained(admin):
+def test_pipelines_empty_is_explained(admin):  # noqa: F811
     panel = admin.select("pipelines")
     assert panel.pipelines == []
     assert "No pipelines" in panel.message
 
 
-def test_elabftw_requires_endpoint_and_key_and_never_keeps_the_key(admin, monkeypatch):
+def test_elabftw_requires_endpoint_and_key_and_never_keeps_the_key(admin, monkeypatch):  # noqa: F811
     panel = admin.select("elabftw")
     assert panel.enabled("connect_remote") and not panel.enabled("import_checked")
     panel.connect_remote()
@@ -483,7 +489,7 @@ def test_elabftw_requires_endpoint_and_key_and_never_keeps_the_key(admin, monkey
     assert "secret-key" not in panel.message and "REDACTED" in panel.message
 
 
-def test_back_and_next_walk_the_rail(admin):
+def test_back_and_next_walk_the_rail(admin):  # noqa: F811
     keys = admin.panel_keys()
     admin.select(keys[0])
     assert not admin.can_step(-1)
@@ -493,7 +499,7 @@ def test_back_and_next_walk_the_rail(admin):
     assert not admin.can_step(1)
 
 
-def test_rail_search(admin):
+def test_rail_search(admin):  # noqa: F811
     admin.search = "lots"
     assert [v for kind, v in admin.rail() if kind == "panel"] == ["reagents"]
     admin.search = ""

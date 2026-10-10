@@ -6,7 +6,10 @@ A burst search over a container keeps its bursts there and writes no .bur; the w
 
 from __future__ import annotations
 
-from chisurf.plugins.burst.accurate_fret.gui.controller import AccurateFretController, _is_container_run
+from chisurf.plugins.burst.accurate_fret.gui.controller import (
+    AccurateFretController,
+    _is_container_run,
+)
 
 
 def test_a_container_run_is_loaded_and_a_missing_file_is_not(tmp_path):

@@ -166,7 +166,6 @@ def test_native_stacked_files_select_both_channels_and_preserve_header_dt(tmp_pa
 def test_example_global_fit_recovers_the_simulated_lifetime_and_rotation(tmp_path, monkeypatch):
     """Load example, load, create the linked fits and fit: tau, rho and r0 come back."""
     import chisurf
-
     from chisurf.plugins.fluorescence_decay.tr_anisotropy.demo import DEMO
 
     monkeypatch.setattr(chisurf, "fits", [])

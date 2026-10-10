@@ -18,8 +18,8 @@ import pytest
 
 from chisurf.plugins.core.setup_channel_definition.test import driver
 from chisurf.plugins.core.setup_channel_definition.test.driver import DATA, norm
-from chisurf.plugins.tttr.tttr_count_rate_analysis.tests.pointer import KEY_BACKSPACE, Pointer
 from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.tttr.tttr_count_rate_analysis.tests.pointer import KEY_BACKSPACE, Pointer
 
 SAVE = action_caption("save")
 

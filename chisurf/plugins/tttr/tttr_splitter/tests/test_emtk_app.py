@@ -10,10 +10,6 @@ import os
 import pathlib
 
 import pytest
-
-
-
-
 from emtk.testing import RecordingPainter  # noqa: E402
 
 

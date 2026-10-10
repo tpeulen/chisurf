@@ -16,8 +16,8 @@ from chisurf.core.optical_configuration import (
     normalize_lightpath_graph,
 )
 from chisurf.core.settings import cs_settings
-from chisurf.gui import dialogs
 from chisurf.core.settings.path_utils import get_path
+from chisurf.gui import dialogs
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.filtered_table import FilteredTableWidget
 from chisurf.plugins.core.lightpath_simulator.core.workflow import (

@@ -23,9 +23,9 @@ from chisurf.plugins.core.project_browser.test.driving import (
     draw_clip,
     layout_problems,
 )
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
 from chisurf.plugins.tttr.filetools.gui.app import FileToolsApp, caption
-from chisurf.plugins.emtk_layout import action_caption
 
 PANELS = None
 BIG, SMALL = (1200, 800), (800, 600)
@@ -313,7 +313,7 @@ def test_every_description_fits_above_the_tool_whatever_the_window_width(size):
         d.click(d.rect("nav_" + panel["role"]))
         painter = d.draw(3)
         top = app.child_box[1]
-        words = panel["description"].split()[:3]
+        _words = panel["description"].split()[:3]
         lines = [
             t
             for t in painter.texts

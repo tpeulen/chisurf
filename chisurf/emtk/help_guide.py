@@ -16,9 +16,10 @@ from typing import Any, Callable
 from emtk import im
 from emtk.dialog_window import DialogWindow
 from emtk.i18n import tr
-from chisurf.plugins.emtk_layout import action_button
 from emtk.im_core import Col
 from emtk.keys import KEY_ESCAPE
+
+from chisurf.plugins.emtk_layout import action_button
 
 logger = logging.getLogger(__name__)
 

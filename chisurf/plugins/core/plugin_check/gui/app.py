@@ -13,9 +13,9 @@ from pathlib import Path
 from typing import Any
 
 from emtk import im
-from emtk.i18n import tr
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_sections
 from emtk.widgets.text_editor import TextEditor
 

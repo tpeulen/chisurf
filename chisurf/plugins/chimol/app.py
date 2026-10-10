@@ -18,12 +18,12 @@ from typing import TYPE_CHECKING
 import numpy as np
 from emtk import im
 from emtk.app import ImApp
+from emtk.i18n import tr
 from emtk.im_core import get_current_context
 
 from chisurf.emtk.background_build import BackgroundBuild
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import action_button, window_size
-from emtk.i18n import tr
 
 if TYPE_CHECKING:
     from chimol.hosts.native.app import ChimolApp

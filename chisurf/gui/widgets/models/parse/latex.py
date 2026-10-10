@@ -23,8 +23,8 @@ def expression_preview_png(expression: str, font_size: float = 13.0) -> bytes | 
         typeset -- the caller then hides its preview.
     """
     try:
-        from emtk.tex import render_rgba
         from emtk.testing import png_encode
+        from emtk.tex import render_rgba
 
         tex = sanitize_latex_for_mathtext(convert_python_expression_to_latex(expression))
         w, h, rgba, _ = render_rgba(tex, font_size * 100.0 / 72.0, colour=(0, 0, 0, 255),

@@ -15,10 +15,9 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
-from chisurf.plugins.emtk_layout import action_caption
 from emtk import keys
 
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.emtk_test_input import SIZE, SMALL, Driver
 from chisurf.plugins.fluorescence_decay.tr_anisotropy.core import irf as core_irf
 from chisurf.plugins.fluorescence_decay.tr_anisotropy.core import spectra as core_spectra
@@ -462,7 +461,7 @@ def test_export_writes_the_corrected_irfs_through_the_dialog(ui, files, tmp_path
     ui.app.key(0x41, "a", 0x04000000)
     ui.type("out")
     ui.click_text("Save")
-    out = tmp_path / "out"
+    _out = tmp_path / "out"
     written = [p for p in tmp_path.iterdir() if p.name.startswith("out")]
     assert written, sorted(p.name for p in tmp_path.iterdir())
     saved, meta = read_vv_vh(written[0], split=True, return_metadata=True)
@@ -778,7 +777,7 @@ def test_every_step_draws_populated_and_empty_at_every_size(ui, files, size):
     for index in range(6):
         ui.app.select_step(index)
         ui.draw(3)
-    m = load(ui, files)
+    _m = load(ui, files)
     ui.resize(size)
     for index in range(6):
         ui.app.select_step(index)

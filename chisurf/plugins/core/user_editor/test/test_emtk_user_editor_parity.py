@@ -9,8 +9,6 @@ for the client. ``carry_local_state`` (session tokens) is replaced by a recorder
 
 from __future__ import annotations
 
-from chisurf.plugins.emtk_layout import action_caption
-
 import csv
 import json
 import threading
@@ -21,6 +19,7 @@ import pytest
 from emtk.testing import RecordingPainter
 
 from chisurf.plugins.core.user_editor.test import seeded_db
+from chisurf.plugins.emtk_layout import action_caption
 
 HERE = Path(__file__).parent
 GUI = HERE.parent / "gui"

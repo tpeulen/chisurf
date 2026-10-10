@@ -1,7 +1,8 @@
 """Existing FCS Qt entry points host the real native workflow and navigation."""
 
-from chisurf.plugins.emtk_layout import action_caption
 import pytest
+
+from chisurf.plugins.emtk_layout import action_caption
 
 
 @pytest.mark.parametrize("full", [False, True])
@@ -74,7 +75,6 @@ def test_native_correlator_host_matches_frozen_real_measurement(tmp_path):
     from pathlib import Path
 
     import numpy as np
-
     from emtk.testing import RecordingPainter
 
     from chisurf.plugins.fcs.fcs_toolbox.gui.app import make_app

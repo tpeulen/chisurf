@@ -7,8 +7,6 @@ the fits and the CSV of a run started from the native window must equal those of
 
 from __future__ import annotations
 
-from chisurf.plugins.emtk_layout import action_caption
-
 import json
 import os
 import pwd
@@ -19,6 +17,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.emtk_test_input import CTRL, SIZE, SMALL, Driver
 from chisurf.plugins.microscopy.psf_determination.gui.app import PsfDeterminationApp, make_app
 from chisurf.plugins.microscopy.psf_determination.gui.view_model import PsfViewModel
@@ -127,7 +126,9 @@ def pick(ui, x, y):
 @pytest.fixture
 def qt_model():
     """The view-model the retired Qt tool wrapped (it held no logic of its own), on the same stack."""
-    from chisurf.plugins.microscopy.psf_determination.gui.view_model import PsfViewModel
+    from chisurf.plugins.microscopy.psf_determination.gui.view_model import (
+        PsfViewModel,  # noqa: F811
+    )
 
     model = PsfViewModel()
     model.set_stack(make_stack())
@@ -421,7 +422,7 @@ def test_the_colormap_gamma_levels_and_reset_controls_work(demo):
 def test_the_z_slider_browses_slices_by_dragging(demo):
     c = demo.app.canvas
     label = [t[:4] for t in demo.draw().texts if t[5] == "Z slice"][-1]
-    left = [
+    _left = [
         t for t in demo.draw().texts if t[5] == "Detect"
     ]  # the controls window ends before the stack window
     x0 = demo.app.item_rects["stack"][0]
@@ -450,7 +451,7 @@ def test_save_and_load_settings_round_trip_through_the_dialogs_and_reopen_the_st
 ):
     ui.drop(tiff)
     ui.settle()
-    m = ui.app.model
+    _m = ui.app.model
     type_value(ui, "pixel_size_nm", "65")
     type_value(ui, "roi_xy", "17")
     ui.app.canvas.z = 7

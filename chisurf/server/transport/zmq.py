@@ -305,6 +305,18 @@ class ZmqClient:
         self._req_socket.setsockopt(zmq.LINGER, 0)
         self._req_socket.connect(f"tcp://{self._host}:{self._cmd_port}")
 
+    def __del__(self) -> None:
+        """Close a client that was dropped without :meth:`close`.
+
+        ``Context.term`` blocks while a socket of the context is open, and the context's own destructor runs
+        it -- so a client that leaked (a window closed before its connect finished, say) froze whichever thread
+        the garbage collector, or interpreter exit, ran on.
+        """
+        try:
+            self.close()
+        except Exception:  # noqa: BLE001 - a destructor must not raise
+            pass
+
     def close(self) -> None:
         """Close all ZMQ sockets and release resources."""
         with self._call_lock:

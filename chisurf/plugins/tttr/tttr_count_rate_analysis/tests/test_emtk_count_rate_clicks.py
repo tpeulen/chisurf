@@ -15,9 +15,9 @@ from pathlib import Path
 
 import pytest
 
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.tttr.tttr_count_rate_analysis.gui.controller import create_app
 from chisurf.plugins.tttr.tttr_count_rate_analysis.tests.pointer import KEY_ESCAPE, Pointer
-from chisurf.plugins.emtk_layout import action_caption
 
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())

@@ -8,21 +8,20 @@ for dialog buttons, tabs and list entries); the assertions read the visible outc
 
 from __future__ import annotations
 
-from chisurf.plugins.emtk_layout import action_caption
-
 import json
 import re
 import time
 from concurrent.futures import CancelledError
 from pathlib import Path
 
-import pytest
 import numpy as np
+import pytest
 from emtk import keys
 
 from chisurf.plugins.burst.burst_fcs_correlator import demo
 from chisurf.plugins.burst.burst_fcs_correlator.core import algorithms as core
 from chisurf.plugins.burst.burst_fcs_correlator.gui.app import create_app
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.emtk_test_input import assert_tour_card_clear
 
 from .driving import BIG, SMALL, BurstDriver, hermetic_env
@@ -242,7 +241,7 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_
             elif key == "correlation_plot":
                 x, y, w, h = drv.app.item_rects["correlation_plot"]
                 drv.drag((x + w * 0.1, y + h * 0.5), (x + w * 0.3, y + h * 0.5))
-                lo = model(drv).tmin_fit
+                _lo = model(drv).tmin_fit
                 if not tour.awaiting:
                     pass
             done.append(key)

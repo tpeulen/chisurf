@@ -173,7 +173,10 @@ def test_a_search_parameter_changes_the_number_of_bursts(model, photons):  # noq
 
 def test_bocpd_runs_without_error(photons):
     """BOCPD is backed by the tttrlib C++ engine and runs."""
-    from chisurf.plugins.burst.burst_selection.api.models import BurstFilterMode, PhotonFilterSettings
+    from chisurf.plugins.burst.burst_selection.api.models import (
+        BurstFilterMode,
+        PhotonFilterSettings,
+    )
     from chisurf.plugins.burst.burst_selection.api.selection import apply_photon_filters
 
     mask = apply_photon_filters(photons, PhotonFilterSettings(used_filter=BurstFilterMode.BOCPD))
@@ -444,7 +447,7 @@ class _Trace:
         )
 
 
-def _diagnostic(model, tttr, selected):
+def _diagnostic(model, tttr, selected):  # noqa: F811
     model.diagnostic = {
         "tttr": tttr,
         "selected": np.asarray(selected, dtype=bool),

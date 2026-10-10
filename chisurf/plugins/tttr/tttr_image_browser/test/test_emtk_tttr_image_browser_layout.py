@@ -52,7 +52,7 @@ def inside(rect, box):
 
 @pytest.mark.parametrize("size", SIZES)
 def test_the_image_area_gets_most_of_the_window(app, photon_folder, size):
-    drv = populated(app, photon_folder, size)
+    _drv = populated(app, photon_folder, size)
     x, y, w, h = app.item_rects["image"]
     levels = app.item_rects["levels"]
     plot_share = (w * h + levels[2] * levels[3]) / (size[0] * size[1])
@@ -153,7 +153,7 @@ def test_short_inputs_are_not_stretched(app, photon_folder, size):
 
 @pytest.mark.parametrize("size", SIZES)
 def test_the_windows_do_not_overlap_and_fill_the_frame(app, photon_folder, size):
-    drv = populated(app, photon_folder, size)
+    _drv = populated(app, photon_folder, size)
     rects = app.form.rects
     toolbar = rects["choose_folder"]
     files = rects["rating_filter"]

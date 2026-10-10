@@ -15,7 +15,10 @@ from pathlib import Path
 import numpy as np
 
 from chisurf.plugins.burst.alex_suite.gui import alternation_model
-from chisurf.plugins.burst.alex_suite.gui.alternation_model import AlexAlternationModel, needs_conversion
+from chisurf.plugins.burst.alex_suite.gui.alternation_model import (
+    AlexAlternationModel,
+    needs_conversion,
+)
 
 
 class _Tttr:

@@ -73,7 +73,6 @@ def residues(session) -> list[tuple[str, int, str]]:
 def make_app():
     """Build the QuEst window (the card, as an app of its own, with site picking and the web UI link)."""
     from emtk import im
-
     from emtk.i18n import tr
 
     from chisurf.plugins.modelling.structure_tools.cards.quest import QuestCard

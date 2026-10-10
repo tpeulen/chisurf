@@ -34,8 +34,8 @@ import re
 
 import numpy as np
 
-from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
 from chisurf.core.api import edit_parameter
+from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
 
 __all__ = [
     "LightPathParameters",

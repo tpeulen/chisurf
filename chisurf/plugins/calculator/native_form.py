@@ -4,9 +4,9 @@ import html
 import re
 
 from emtk import im
+from emtk.i18n import tr
 
 from .inputs import bounded_float, bounded_int
-from emtk.i18n import tr
 
 
 def plain(text):

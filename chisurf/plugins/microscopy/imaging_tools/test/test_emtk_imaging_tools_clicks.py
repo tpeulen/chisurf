@@ -9,11 +9,10 @@ native children are drawn in the parity tests). The control -> test list is in
 
 from __future__ import annotations
 
-from chisurf.plugins.emtk_layout import action_caption
-
 import pytest
 from emtk import keys
 
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
 from chisurf.plugins.microscopy.imaging_tools.gui.app import PANELS, ImagingToolsApp
 

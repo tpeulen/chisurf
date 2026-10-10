@@ -16,8 +16,12 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from chisurf.plugins.traj.traj_save_topology.test.qt_recorded import load_reference, same_coordinates
 from emtk.testing import PixelPainter, RecordingPainter
+
+from chisurf.plugins.traj.traj_save_topology.test.qt_recorded import (
+    load_reference,
+    same_coordinates,
+)
 
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())

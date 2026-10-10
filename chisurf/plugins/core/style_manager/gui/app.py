@@ -8,14 +8,14 @@ import re
 import shutil
 
 from emtk import im
-from emtk.i18n import tr
 from emtk.app import ImApp
+from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
+from emtk.im_core import Style
+from emtk.widgets.text_editor import Language, TextEditor
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import action_button, window_size
-from emtk.file_dialog import FileDialog
-from emtk.im_core import Style
-from emtk.widgets.text_editor import Language, TextEditor
 
 
 def color(value):

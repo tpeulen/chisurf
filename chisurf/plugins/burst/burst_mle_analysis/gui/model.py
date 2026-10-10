@@ -20,10 +20,10 @@ from typing import Any, Callable
 import numpy as np
 
 from chisurf.core.support.i18n import tr
+from chisurf.plugins.core.pto_inspector.core import RunPickerMixin
 
 from .. import engine, hpo
 from ..engine import MleSession
-from chisurf.plugins.core.pto_inspector.core import RunPickerMixin
 from . import fit_view
 
 #: Per-detector settings exposed as attributes: name -> (type, rebuilds the decay, rebuilds the patterns).

@@ -196,7 +196,9 @@ class AlexHubApp(BurstAnalysisHubApp):
         return super()._make_setup(app_class or AlexSetupSelectionApp)
 
     def _make_data(self):
-        from chisurf.plugins.burst.burst_analysis.gui.data_selection_app import BurstDataSelectionModel
+        from chisurf.plugins.burst.burst_analysis.gui.data_selection_app import (
+            BurstDataSelectionModel,
+        )
 
         from .step_apps import AlexDataSelectionApp
 

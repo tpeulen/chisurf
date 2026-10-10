@@ -14,8 +14,8 @@ def main_window(qapp, tmp_path, monkeypatch):
     import chisurf as cs
     import chisurf.gui as gui
     import chisurf.gui.widgets
-    from chisurf.core.api.context import PluginContext
     from chisurf.core import settings
+    from chisurf.core.api.context import PluginContext
     from chisurf.gui.main import Main
 
     monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path / "settings"))

@@ -8,7 +8,6 @@ different efficiencies produced two different "decays". These pin the split.
 
 from __future__ import annotations
 
-
 import numpy as np
 import pytest
 

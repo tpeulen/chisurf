@@ -107,9 +107,10 @@ def test_the_completion_marks_follow_the_qt_conditions(monkeypatch):
     session = FakeSession()
     qt, native = BatchViewModel(), BatchModel(session=session)
     monkeypatch.setattr(BatchViewModel, "_fit_client", lambda self: session.client)
-    marks = lambda m: (
-        [m.step_complete(i) for i in range(5)] if hasattr(m, "step_complete") else None
-    )  # noqa: E731
+    def marks(m):
+        return (
+            [m.step_complete(i) for i in range(5)] if hasattr(m, "step_complete") else None
+        )  # noqa: E731
     assert marks(native) == [
         True,
         True,

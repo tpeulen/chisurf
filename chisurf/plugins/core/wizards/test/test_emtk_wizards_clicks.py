@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from chisurf.plugins.emtk_layout import action_caption
-
 import pytest
 from emtk import keys
 
 from chisurf.plugins.emtk_hermetic import hermetic, real_chisurf_untouched  # noqa: F401
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.emtk_test_input import Driver, assert_tour_card_clear
 
 from ..gui.app import WizardHubApp
@@ -55,14 +54,15 @@ def test_pointer_and_wheel_reach_the_embedded_wizard_in_its_own_coordinates(drv,
     batch.model.add_paths([str(tmp_path)])
     drv.draw(3)
     tx, ty, tw, th = batch.form.rects["file_rows"]
-    first = lambda: sorted(
-        (
-            t
-            for t in drv.draw(2).texts
-            if bx + tx <= t[0] <= bx + tx + tw and by + ty + 20 <= t[1] <= by + ty + th
-        ),
-        key=lambda t: t[1],
-    )[0][5]  # noqa: E731
+    def first():
+        return sorted(
+            (
+                t
+                for t in drv.draw(2).texts
+                if bx + tx <= t[0] <= bx + tx + tw and by + ty + 20 <= t[1] <= by + ty + th
+            ),
+            key=lambda t: t[1],
+        )[0][5]  # noqa: E731
     before = first()
     drv.wheel(bx + tx + tw / 2, by + ty + th / 2, steps=-4)
     assert first() != before

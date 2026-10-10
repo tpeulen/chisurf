@@ -26,12 +26,12 @@ from emtk.texture import Texture
 from emtk.widgets.chat import ChatHistory, draw_chat_input_bar, draw_chat_transcript
 from emtk.widgets.text_editor import TextEditor
 
+from chisurf.emtk.help_guide import EmTkGuidedTour
 from chisurf.plugins.core.help.api import io as help_io
 from chisurf.plugins.core.help.api import review as help_review
 from chisurf.plugins.core.help.api import toc as help_toc
 from chisurf.plugins.core.help.api.mathtext import _unicode_fallback, html_math, normalise_latex
 from chisurf.plugins.core.help.api.xref import document_reference, resolve_document, resolve_ref
-from chisurf.emtk.help_guide import EmTkGuidedTour
 from chisurf.plugins.emtk_layout import SHORTCUT, action_button, window_size
 
 _LOGGER = logging.getLogger(__name__)

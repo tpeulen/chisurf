@@ -13,7 +13,7 @@ from .native_support import admin_folder, app, client, seeded_template  # noqa: 
 
 
 @pytest.fixture
-def driver(app):
+def driver(app):  # noqa: F811
     d = Driver(app)
     d.draw(3)
     assert app.model.connected, app.model.status
@@ -31,12 +31,12 @@ def _row(driver, text):
     return Driver.text_rect(driver.draw(2), text, last=False)
 
 
-def _versions(client, project_id):
+def _versions(client, project_id):  # noqa: F811
     return [p for p in client._call("mmfdb.projects.list", None)["projects"]
             if p["project_id"] == project_id]
 
 
-def _save_versions(client):
+def _save_versions(client):  # noqa: F811
     from chisurf.core.project import capture_session
     from chisurf.plugins.core.project_browser.gui.client import ProjectBrowserClient
 
@@ -50,7 +50,7 @@ def _save_versions(client):
     return v1, v2
 
 
-def test_experiment_data_subtable_lists_adds_saves_and_deletes(driver, app, client, tmp_path):
+def test_experiment_data_subtable_lists_adds_saves_and_deletes(driver, app, client, tmp_path):  # noqa: F811
     client.save_experiment_data(
         {"experiment_id": "exp_gui", "data_type": "tttr", "storage_mode": "link",
          "file_path": "/tmp/seed.ptu"}
@@ -80,7 +80,7 @@ def test_experiment_data_subtable_lists_adds_saves_and_deletes(driver, app, clie
     assert [d["data_type"] for d in client.get_experiment("exp_gui")["data"]] == ["tttr"]
 
 
-def test_data_save_refuses_a_row_without_type(driver, app, client):
+def test_data_save_refuses_a_row_without_type(driver, app, client):  # noqa: F811
     open_panel(driver, "experiment", "Experiments")
     driver.click(_row(driver, "exp_gui"))
     driver.click_name("x_data_add")
@@ -89,7 +89,7 @@ def test_data_save_refuses_a_row_without_type(driver, app, client):
     assert client.get_experiment("exp_gui")["data"] == []
 
 
-def test_validate_setup_reports_a_known_bad_setup(driver, app, client, admin_folder):
+def test_validate_setup_reports_a_known_bad_setup(driver, app, client, admin_folder):  # noqa: F811
     open_panel(driver, "setup", "Setups")
     driver.click(_row(driver, "setup_gui"))
     driver.click_name("x_validate_setup")
@@ -105,7 +105,7 @@ def test_validate_setup_reports_a_known_bad_setup(driver, app, client, admin_fol
     assert driver.drawn("Validation FAIL: name is required")
 
 
-def test_restore_returns_the_archived_version_content(driver, app, client):
+def test_restore_returns_the_archived_version_content(driver, app, client):  # noqa: F811
     v1, v2 = _save_versions(client)
     app.model.restored = []
     app.model.restorer = lambda pid, vid, payload: app.model.restored.append((pid, vid, payload))
@@ -123,7 +123,7 @@ def test_restore_returns_the_archived_version_content(driver, app, client):
     assert payload["project_payload"]["ui"] != v2["project_payload"]["ui"]
 
 
-def test_delete_archived_version_removes_only_the_chosen_one(driver, app, client):
+def test_delete_archived_version_removes_only_the_chosen_one(driver, app, client):  # noqa: F811
     v1, v2 = _save_versions(client)
     open_panel(driver, "project", "Projects")
     driver.click(_row(driver, "Arch"))
@@ -155,7 +155,7 @@ def _pick(driver, label):
     driver.draw(2)
 
 
-def test_row_context_menu_copies_and_ticks(driver, app):
+def test_row_context_menu_copies_and_ticks(driver, app):  # noqa: F811
     copied = []
     original = app.model.copy
     app.model.copy = lambda text: (copied.append(str(text)), original(text))
@@ -195,7 +195,7 @@ def test_row_context_menu_copies_and_ticks(driver, app):
     assert len(control.selected_indices()) == n
 
 
-def test_context_menu_closes_on_escape_and_outside_click(driver, app):
+def test_context_menu_closes_on_escape_and_outside_click(driver, app):  # noqa: F811
     open_panel(driver, "device", "Devices")
     _right_click(driver, _row(driver, "dev_gui"))
     assert "Copy row" in driver.draw(2).strings

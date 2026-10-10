@@ -8,8 +8,6 @@ constructed offscreen and run on the same files, and (c) the plugin's own estima
 
 from __future__ import annotations
 
-from chisurf.plugins.emtk_layout import action_caption
-
 import importlib.util
 import json
 import pathlib
@@ -19,6 +17,7 @@ import numpy as np
 import pytest
 
 from chisurf.core.fio.image import imwrite
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.microscopy.imaging_emtk.testing import (
     Driver,
     dialog_open,

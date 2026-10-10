@@ -72,11 +72,11 @@ def test_every_page_is_inside_the_window_apart_and_keeps_the_log_on_screen(app, 
 
 @pytest.mark.parametrize("size", SIZES)
 def test_text_inputs_are_capped_and_the_table_keeps_a_usable_height(app, size):
-    drv = opened(app, size, "installed")
+    _drv = opened(app, size, "installed")
     lc.assert_short(app.form.rects, ["installed_filter"], limit=340)
     table = app.form.tables["installed_rows"].control
     assert table is not None
-    drv = opened(app, size, "search")
+    _drv = opened(app, size, "search")
     lc.assert_short(app.form.rects, ["search_query"], limit=340)
 
 
@@ -98,7 +98,7 @@ def test_the_question_and_entry_dialog_stay_inside_the_window(app, size):
 
 
 def test_an_idle_page_offers_only_what_can_act(app):
-    drv = opened(app, (1200, 800), "installed")
+    _drv = opened(app, (1200, 800), "installed")
     assert [
         app.model.enabled(n)
         for n in (

@@ -46,7 +46,7 @@ def test_buttons_do_nothing_without_files_and_say_why():
     assert app.model.results == []
 
 
-def test_preview_then_run_then_export_then_reopen(workdir, tmp_path):
+def test_preview_then_run_then_export_then_reopen(workdir, tmp_path):  # noqa: F811
     app, driver = _app(loaded_model(workdir))
 
     driver.click("request_preview")
@@ -95,7 +95,7 @@ def test_preview_then_run_then_export_then_reopen(workdir, tmp_path):
     other.close()
 
 
-def test_load_demo_button_fills_the_lists_and_the_run_finds_the_known_lifetimes(demo, tmp_path, monkeypatch):
+def test_load_demo_button_fills_the_lists_and_the_run_finds_the_known_lifetimes(demo, tmp_path, monkeypatch):  # noqa: F811
     monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path / "settings"))
     app, driver = _app()
     assert app.model.files == []
@@ -112,7 +112,7 @@ def test_load_demo_button_fills_the_lists_and_the_run_finds_the_known_lifetimes(
     app.close()
 
 
-def test_a_file_that_cannot_be_fitted_stays_reported_after_run(workdir, tmp_path):
+def test_a_file_that_cannot_be_fitted_stays_reported_after_run(workdir, tmp_path):  # noqa: F811
     bad = tmp_path / "broken.ptu"
     bad.write_bytes(b"not a photon file")
     model = loaded_model(workdir)

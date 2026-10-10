@@ -20,13 +20,13 @@ from typing import Any, Callable
 from emtk import im
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_sections
 from emtk.widgets.view_spec import load_view_spec
 
 from chisurf.core.fio.staging import TTTR_EXTENSIONS
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import action_caption, action_tooltip, button_row
-from emtk.i18n import tr
 
 HERE = Path(__file__).resolve().parent
 

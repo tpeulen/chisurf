@@ -18,6 +18,7 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
@@ -25,7 +26,6 @@ from chisurf.plugins.emtk_layout import LabelColumn, labelled, layout_spec, wind
 
 from ..core.estimation import estimate_irf
 from .view_model import IRFViewModel
-from emtk.i18n import tr
 
 HERE = Path(__file__).parent
 _EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="irf-estimation")

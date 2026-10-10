@@ -127,10 +127,10 @@ def frames(app, size=(1200, 800), n=3):
 def settle(app, size=(1200, 800), seconds=5.0):
     """Draw frames until the job has finished and its answer was delivered."""
     deadline = time.monotonic() + seconds
-    painter = frames(app, size, 2)
+    _painter = frames(app, size, 2)
     while app.job.busy and time.monotonic() < deadline:
         time.sleep(0.01)
-        painter = frames(app, size, 1)
+        _painter = frames(app, size, 1)
     return frames(app, size, 2)
 
 

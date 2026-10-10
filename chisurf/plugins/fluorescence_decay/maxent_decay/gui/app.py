@@ -17,7 +17,13 @@ from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import (
-    LabelColumn, action_caption, action_tooltip, button_row, group_by_width, labelled, layout_spec,
+    LabelColumn,
+    action_caption,
+    action_tooltip,
+    button_row,
+    group_by_width,
+    labelled,
+    layout_spec,
     window_size,
 )
 

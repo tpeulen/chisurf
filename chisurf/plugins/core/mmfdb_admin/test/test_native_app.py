@@ -58,7 +58,7 @@ def test_draws_before_any_connection(size):
         application.close()
 
 
-def test_every_panel_draws_connected(app):
+def test_every_panel_draws_connected(app):  # noqa: F811
     d = Driver(app)
     d.draw(3)
     assert app.model.connected, app.model.status
@@ -68,7 +68,7 @@ def test_every_panel_draws_connected(app):
         assert d.drawn(app.model.panel_name(key)), key
 
 
-def test_settings_round_trip_never_store_the_password(app):
+def test_settings_round_trip_never_store_the_password(app):  # noqa: F811
     model = app.model
     model.password = "s3cret-pass"
     model.select("spectra")

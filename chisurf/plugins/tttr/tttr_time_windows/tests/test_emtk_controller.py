@@ -82,10 +82,10 @@ def test_splitter_error_does_not_claim_complete(monkeypatch):
 def test_pure_apps_render_with_file_choosers():
     # photon_table is covered by its own suite: its controller module was removed by its
     # emtk port (the app owns the model now).
+    from emtk.testing import RecordingPainter
+
     from chisurf.plugins.tttr.tttr_splitter.gui.controller import create_app as splitter
     from chisurf.plugins.tttr.tttr_time_windows.gui.controller import create_app
-
-    from emtk.testing import RecordingPainter
 
     for factory, picker in (
         (create_app, "_add_files_dialog"),

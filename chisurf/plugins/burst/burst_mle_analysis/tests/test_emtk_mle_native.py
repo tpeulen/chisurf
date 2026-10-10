@@ -123,7 +123,7 @@ def test_auto_irf_background_click_equals_the_engine_and_draws_its_curves(monkey
 
 def test_typing_the_window_refits_and_changes_the_curves(fitted):
     window, drv = fitted
-    start, stop = window.model.micro_time_start, window.model.micro_time_stop
+    _start, stop = window.model.micro_time_start, window.model.micro_time_stop
     n = window.model.fit_curves.data.size
     drv.type_into_name("micro_time_stop", str(stop - 20))
     assert window.model.micro_time_stop == stop - 20 and window.model.fit_curves.data.size < n
@@ -269,7 +269,7 @@ def test_the_inspected_burst_follows_the_burst_field(monkeypatch, batch):
 
 def test_the_detector_setup_is_the_shared_editor_and_its_edits_reach_the_session(app):
     drv = Driver(app)
-    shown = texts(drv.draw(2)) + texts(drv.draw(1))
+    _shown = texts(drv.draw(2)) + texts(drv.draw(1))
     drv.click_text("Detector setup")
     assert "Detector Name" in texts(drv.draw(2))
     rec = next(r for r in app.editor.detector_rows() if r["name"] == "red")

@@ -13,11 +13,10 @@ import webbrowser
 from pathlib import Path
 
 import pytest
-
-from chisurf.plugins.emtk_layout import action_caption
 from emtk import keys
 
 from chisurf.plugins.core.project_browser.test.driving import draw_clip, layout_problems
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
 from chisurf.plugins.modelling.hydropro.app import HydroProApp, build_spec
 

@@ -9,8 +9,6 @@ not go through the shared view model.
 
 from __future__ import annotations
 
-from chisurf.plugins.emtk_layout import action_caption
-
 import importlib.util
 import json
 from pathlib import Path
@@ -20,9 +18,10 @@ import pytest
 
 from chisurf.core.fio.image import imwrite
 from chisurf.core.fluorescence.imaging import frc as frc_mod
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.microscopy.imaging_emtk.testing import (
-    assert_fingerprint,
     Driver,
+    assert_fingerprint,
     dialog_open,
     hermetic_env,
     numeric_ticks,

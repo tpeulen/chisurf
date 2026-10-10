@@ -14,7 +14,7 @@ from chisurf.plugins.emtk_test_input import Driver
 from .test_emtk_native_app import app, files, texts, wait  # noqa: F401
 
 
-def _run(drv, app, files):
+def _run(drv, app, files):  # noqa: F811
     assert drv.drop(*files)
     drv.draw(2)
     drv.click_name("toolAction_run")
@@ -22,7 +22,7 @@ def _run(drv, app, files):
     assert app.model.n_bursts == 198, app.model.status_text
 
 
-def test_add_folder_batch_lists_every_tttr_file_of_the_folder(app, files):
+def test_add_folder_batch_lists_every_tttr_file_of_the_folder(app, files):  # noqa: F811
     drv = Driver(app, (1200, 800))
     drv.click_name("add_folder")
     assert app.dialog is not None and app.dialog.mode == "folder"
@@ -43,7 +43,7 @@ def test_add_folder_batch_lists_every_tttr_file_of_the_folder(app, files):
     assert len(app.model.files) == 2 and "Nothing new to add" in app.model.status_text
 
 
-def test_clear_removes_files_and_results_but_keeps_settings(app, files):
+def test_clear_removes_files_and_results_but_keeps_settings(app, files):  # noqa: F811
     drv = Driver(app, (1200, 800))
     _run(drv, app, files)
     app.model.min_photons = 37
@@ -60,7 +60,7 @@ def test_clear_removes_files_and_results_but_keeps_settings(app, files):
     assert not app.job.busy and app.model.n_bursts == 0
 
 
-def test_refresh_plots_recomputes_the_diagnostics(app, files):
+def test_refresh_plots_recomputes_the_diagnostics(app, files):  # noqa: F811
     drv = Driver(app, (1200, 800))
     _run(drv, app, files)
     app._diag_due = 0.0
@@ -75,7 +75,7 @@ def test_refresh_plots_recomputes_the_diagnostics(app, files):
     assert app.model.diagnostic is not None
 
 
-def test_open_in_ndx_sends_the_runs_output_folder(app, files, monkeypatch):
+def test_open_in_ndx_sends_the_runs_output_folder(app, files, monkeypatch):  # noqa: F811
     from chisurf.plugins.ndxplorer import mmfdb_launcher
 
     opened = []
@@ -98,7 +98,7 @@ def test_open_in_ndx_sends_the_runs_output_folder(app, files, monkeypatch):
     assert "Opened" in texts(drv.draw())
 
 
-def test_open_in_ndx_reports_a_window_that_could_not_open(app, files, monkeypatch):
+def test_open_in_ndx_reports_a_window_that_could_not_open(app, files, monkeypatch):  # noqa: F811
     from chisurf.plugins.ndxplorer import mmfdb_launcher
 
     monkeypatch.setattr(mmfdb_launcher, "open_path_in_ndxplorer", lambda path: None)
@@ -109,14 +109,14 @@ def test_open_in_ndx_reports_a_window_that_could_not_open(app, files, monkeypatc
     assert app.model.status_text == "ndX could not be opened."
 
 
-def test_ndx_from_mmfdb_opens_the_picker(app):
+def test_ndx_from_mmfdb_opens_the_picker(app):  # noqa: F811
     drv = Driver(app, (1200, 800))
     drv.click_name("ndx_mmfdb")
     drv.draw(2)
     assert app.picker is not None and app.picker.is_open or "MMFDB is not available" in app.model.status_text
 
 
-def test_fit_gmm_button_fits_the_requested_components(app, files):
+def test_fit_gmm_button_fits_the_requested_components(app, files):  # noqa: F811
     drv = Driver(app, (1200, 800))
     _run(drv, app, files)
     drv.click_text("Histogram")
@@ -144,7 +144,7 @@ def test_fit_gmm_button_fits_the_requested_components(app, files):
     assert app.model.status_text == "GMM fitting skipped: not enough data points or zero components."
 
 
-def test_auto_components_choose_the_count_by_bic_and_settings_dialog_refits(app, files):
+def test_auto_components_choose_the_count_by_bic_and_settings_dialog_refits(app, files):  # noqa: F811
     drv = Driver(app, (1200, 800))
     _run(drv, app, files)
     drv.click_text("Histogram")

@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from chisurf.plugins.microscopy.imaging_emtk.testing import Driver, MetricPainter, hermetic_env  # noqa: F401
+from chisurf.plugins.microscopy.imaging_emtk.testing import (  # noqa: F401
+    Driver,
+    MetricPainter,
+    hermetic_env,
+)
 
 BIG = (1200, 800)
 SMALL = (800, 600)

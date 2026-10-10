@@ -15,9 +15,9 @@ import pytest
 from emtk.testing import RecordingPainter
 
 from chisurf.core.fio.pto import Measurement
-from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.core.tttr_to_pto.gui.app import TttrToPtoApp, create_app, make_app
 from chisurf.plugins.core.tttr_to_pto.gui.model import TttrToPtoModel
+from chisurf.plugins.emtk_layout import action_caption
 
 HERE = Path(__file__).parent
 GUI = HERE.parent / "gui"

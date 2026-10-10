@@ -19,8 +19,9 @@ def test_native_discovery_keeps_pending_ports_explicit(tmp_path):
 
 
 def test_factory_initialization_does_not_override_selected_language():
-    from chisurf.emtk import i18n
     from emtk import i18n as toolkit_i18n
+
+    from chisurf.emtk import i18n
 
     try:
         i18n.install("de")

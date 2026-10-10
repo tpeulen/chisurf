@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+
 import pytest
 from qtpy import QtCore, QtWidgets
 
@@ -295,6 +296,7 @@ class TestAgentPanelAcpFlow:
     def test_acp_client_server_stdio_roundtrip(self, qapp, tmp_path):
         """AcpClient connects to AcpServer over real stdio process and handshakes."""
         import sys
+
         from chisurf.plugins.core.code_editor.acp_client import AcpClient
 
         command = [sys.executable, "-m", "chisurf.core.agent.acp_server", "--no-qt"]

@@ -12,7 +12,6 @@ import importlib
 from . import models, operations
 
 
-
 def __getattr__(name: str):
     """Resolve the optional HTTP surface on first access.
 

@@ -26,12 +26,11 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from chisurf.core.math.special import expm
-
 from chisurf.core.fluorescence.kinetics import (
     equilibrium_populations,
     generator_from_rate_matrix,
 )
+from chisurf.core.math.special import expm
 
 __all__ = [
     "OccupationGrid",

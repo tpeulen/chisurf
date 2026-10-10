@@ -358,7 +358,7 @@ def test_cursors_are_saved_and_loaded_as_json_through_the_dialogs(app, drv, flim
 
 
 def test_the_cursors_are_part_of_the_saved_settings(app, drv, flim):
-    m = phasor_app(app, drv, flim)
+    _m = phasor_app(app, drv, flim)
     open_regions(app, drv)
     drv.click_text("Add ellipse")
     saved = app.export_settings()

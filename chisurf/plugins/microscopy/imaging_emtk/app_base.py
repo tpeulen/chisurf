@@ -18,8 +18,8 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
-from emtk.view_form import FormState, draw_sections
 from emtk.i18n import tr
+from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow

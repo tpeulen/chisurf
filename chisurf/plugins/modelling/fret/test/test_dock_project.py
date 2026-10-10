@@ -259,8 +259,9 @@ def test_capture_reapply_reconstructs_pose(tmp_path):
 
 def test_dock_project_passes_saved_poses_and_av_refinement_to_engine(tmp_path, monkeypatch):
     """Saved poses and AV-refinement settings reach the real docking engine."""
-    from chisurf.plugins.modelling.fret.api import operations as ops
     from math import isfinite
+
+    from chisurf.plugins.modelling.fret.api import operations as ops
 
     pdbs, fps = _pdbs_and_fps()
     params = imp_engine.DockingParameters(

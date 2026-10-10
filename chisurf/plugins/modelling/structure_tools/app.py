@@ -17,8 +17,8 @@ from emtk import i18n, im
 from emtk.app import ImApp
 
 from chisurf.emtk.background_build import BackgroundBuild, draw_opening
-from chisurf.emtk.plugin_icons import entry_icon
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.emtk.plugin_icons import entry_icon
 from chisurf.plugins.emtk_layout import action_button, window_size
 
 from .registry import STRUCTURE_TOOL_PANELS

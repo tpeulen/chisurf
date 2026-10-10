@@ -87,7 +87,7 @@ def test_a_setting_is_one_row_its_key_beside_the_field(hub):
 
 
 def test_dragging_the_scrollbar_to_the_bottom_shows_the_last_setting(hub):
-    painter = hub.draw(2)
+    _painter = hub.draw(2)
     region = body(hub)
     labels = [k[len("field:"):] for k in hub.app.child.item_rects if k.startswith("field:")]
     last = max(labels, key=lambda lb: label_y(hub, lb))

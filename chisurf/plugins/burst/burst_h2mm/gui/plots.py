@@ -9,9 +9,9 @@ import json
 
 import numpy as np
 from emtk import im, implot
+from emtk.i18n import tr
 
 from . import result_view
-from emtk.i18n import tr
 
 REGION_FILL = (46, 117, 182, 60)
 #: One colour per state, the Qt tool's palette (cycles beyond eight states).

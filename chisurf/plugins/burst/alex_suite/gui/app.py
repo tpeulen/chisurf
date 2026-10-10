@@ -20,11 +20,11 @@ import emtk.implot as implot
 import numpy as np
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
+from emtk.i18n import tr
 from emtk.im_core import Col
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.typed_field import typed_number_field
-from emtk.i18n import tr
 from chisurf.plugins.emtk_layout import action_button, action_caption, same_line_or_wrap
 
 if TYPE_CHECKING:

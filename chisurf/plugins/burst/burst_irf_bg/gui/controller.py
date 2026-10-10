@@ -4,9 +4,9 @@ import copy
 from pathlib import Path
 
 import numpy as np
+from emtk.i18n import tr
 
 from chisurf.plugins.burst.burst_background.gui.controller import BackgroundController
-from emtk.i18n import tr
 
 
 class IrfBackgroundController(BackgroundController):

@@ -16,13 +16,19 @@ from typing import Any, Callable
 
 from emtk import im, implot
 from emtk.app import ImApp
+from emtk.i18n import tr
 from emtk.im_core import Col, ItemFlags, get_current_context
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
-from chisurf.plugins.emtk_layout import action_caption, action_tooltip, button_row, icon_label, window_size
+from chisurf.plugins.emtk_layout import (
+    action_caption,
+    action_tooltip,
+    button_row,
+    icon_label,
+    window_size,
+)
 
 from .view_model import BvaViewModel
-from emtk.i18n import tr
 
 __all__ = ["BurstBvaApp", "BurstBvaGui", "WINDOW_BG"]
 

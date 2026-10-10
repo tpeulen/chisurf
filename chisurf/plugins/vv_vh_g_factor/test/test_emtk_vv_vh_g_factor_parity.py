@@ -7,8 +7,6 @@ taken when this module was imported; the session log files chisurf itself starts
 
 from __future__ import annotations
 
-from chisurf.plugins.emtk_layout import action_caption
-
 import csv
 import hashlib
 import json
@@ -22,6 +20,7 @@ import pytest
 from emtk import keys
 
 from chisurf.core.fio import write_vv_vh
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.emtk_test_input import CTRL, SIZE, SMALL, Driver
 from chisurf.plugins.vv_vh_g_factor.core.calculations import calculate_g_factor_core
 from chisurf.plugins.vv_vh_g_factor.gui.app import GFactorApp

@@ -14,13 +14,12 @@ from typing import Any
 
 from emtk import im
 from emtk.app import ImApp
-
-from chisurf.plugins.emtk_layout import action_button, window_size
 from emtk.docking import DockManager, Region
 from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.plugins.emtk_layout import action_button, window_size
 
 from .model import FILE_FILTERS, TttrToPtoModel
 

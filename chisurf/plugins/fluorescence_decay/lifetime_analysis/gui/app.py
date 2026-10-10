@@ -6,14 +6,13 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from emtk import im
-from emtk.i18n import get_locale
+from emtk.i18n import get_locale, tr
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.plugin_icons import entry_icon
 from chisurf.emtk.plugins import load_plugin, manifests
 from chisurf.plugins.calculator.hub.gui.app import CalculatorHubApp
 from chisurf.plugins.emtk_layout import action_button
-from emtk.i18n import tr
 
 #: (plugin id, list label, icon (empty: the plugin's own manifest icon), description, tour alias)
 PANELS = [
@@ -157,7 +156,7 @@ class LifetimeAnalysisApp(CalculatorHubApp):
             _, self.search = im.input_text("##search_tools", self.search, hint=tr("Search..."))
             im.set_item_tooltip(tr("Filter the decay-analysis tools by their name or purpose."))
             self.item_rects["search"] = im.get_item_rect()
-            first = last = None
+            first = _last = None
             for entry in self.visible_entries():
                 mark = " *" if self.experimental_message(entry.id) else ""
                 if im.selectable(entry.label + mark, selected=self.selected == entry.id, icon=entry.icon):
@@ -168,7 +167,7 @@ class LifetimeAnalysisApp(CalculatorHubApp):
                 )
                 rect = im.get_item_rect()
                 self.item_rects[entry.alias] = rect
-                first, last = first or rect, rect
+                first, _last = first or rect, rect
             if not self.visible_entries():
                 im.text_wrapped(tr("No tool matches the search."))
             im.separator()

@@ -22,6 +22,7 @@ from pathlib import Path
 import pytest
 import yaml
 from emtk.testing import RecordingPainter
+
 from chisurf.plugins.emtk_layout import action_caption
 
 HERE = Path(__file__).parent

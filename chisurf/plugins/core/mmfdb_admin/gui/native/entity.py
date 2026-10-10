@@ -19,7 +19,6 @@ from ..entity_registry import EntitySpec
 from ..entity_schema import FieldSpec, entity_columns
 from ..entity_values import coerce_in, coerce_out, default_for, view_section
 from .base import Panel, cell
-from .entity_extras import ExtrasMixin
 from .dialogs import (
     AnalysisDetailsDialog,
     ChoiceDialog,
@@ -29,6 +28,7 @@ from .dialogs import (
     PasswordDialog,
     TextDialog,
 )
+from .entity_extras import ExtrasMixin
 
 #: The validation states an artifact may be given (the server's list).
 try:  # pragma: no cover - mmfdb is a hard dependency of the admin

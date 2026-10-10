@@ -23,9 +23,9 @@ import pytest
 import chisurf.plugins.microscopy.img_flow
 from chisurf.plugins.microscopy.img_flow import core
 from chisurf.plugins.microscopy.img_flow.api import flow as flow_api
+from chisurf.plugins.microscopy.img_flow.api.flow import create_demo
 from chisurf.plugins.microscopy.img_flow.client import FlowClient
 from chisurf.plugins.microscopy.img_flow.demo import DEMO, expected_profile
-from chisurf.plugins.microscopy.img_flow.api.flow import create_demo
 
 pytestmark = pytest.mark.filterwarnings("ignore::RuntimeWarning")
 

@@ -54,7 +54,6 @@ from .api import (
 )
 from .gui.client import FilterCalcClient  # noqa: F401
 
-
 __all__ = [
     "compute_filters",
     "compute_filters_from_files",

@@ -679,3 +679,6 @@ class AdminModel:
                 closer()
         self.password = ""
         self.runner.close()
+        closer = getattr(self.client, "close", None)
+        if callable(closer):
+            closer()

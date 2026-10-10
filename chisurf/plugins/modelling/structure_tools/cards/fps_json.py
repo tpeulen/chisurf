@@ -15,6 +15,7 @@ from typing import Any
 import numpy as np
 from emtk import im, implot3d
 from emtk.docking import DockManager, Region, Split
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.chimol_view import ChimolView
@@ -34,7 +35,6 @@ from .fps_model import (
     safe_mrc_stem,
 )
 from .shell import CardShell
-from emtk.i18n import tr
 
 HERE = Path(__file__).resolve().parent
 RES = HERE / "resources" / "fps_json"

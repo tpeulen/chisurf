@@ -11,6 +11,8 @@ from __future__ import annotations
 import pytest
 from emtk import keys
 
+from chisurf.plugins.emtk_layout import action_caption
+
 from .driving import (
     BIG,
     SMALL,
@@ -21,7 +23,6 @@ from .driving import (
     layout_problems,
 )
 from .test_emtk_project_browser_parity import _app, _project
-from chisurf.plugins.emtk_layout import action_caption
 
 
 @pytest.fixture(autouse=True)

@@ -17,9 +17,9 @@ import numpy as np
 import pytest
 from emtk.testing import RecordingPainter
 
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.tttr.photon_table.gui.app import PhotonTableApp, make_app
 from chisurf.plugins.tttr.photon_table.gui.model import PhotonTableViewModel
-from chisurf.plugins.emtk_layout import action_caption
 
 HERE = Path(__file__).parent
 GUI = HERE.parent / "gui"

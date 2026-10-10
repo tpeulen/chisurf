@@ -4,15 +4,15 @@ import json
 import shutil
 
 import pytest
-from chisurf.plugins.core.about.gui.translations import LOCALES, tr
 from emtk import clipboard, i18n
 from emtk.keys import KEY_ESCAPE
-from emtk.view_form import icon_caption
 from emtk.testing import Driver
+from emtk.view_form import icon_caption
 
 from chisurf.core.dataspec.schema import validate_guide, validate_view_spec
 from chisurf.core.info import __version__
 from chisurf.plugins.core.about.gui import app as owner
+from chisurf.plugins.core.about.gui.translations import LOCALES, tr
 
 
 @pytest.fixture

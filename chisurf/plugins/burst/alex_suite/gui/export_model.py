@@ -45,7 +45,11 @@ class LegacyExportModel:
             self.status_text = "Pick a burst file first."
             return []
         from chisurf.plugins.burst.alex_suite.api.histograms import es_histograms
-        from chisurf.plugins.burst.alex_suite.api.legacy_export import LegacyExport, Metadata, write_legacy_export
+        from chisurf.plugins.burst.alex_suite.api.legacy_export import (
+            LegacyExport,
+            Metadata,
+            write_legacy_export,
+        )
 
         path = Path(source)
         try:

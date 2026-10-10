@@ -29,6 +29,7 @@ import logging
 import pathlib
 import re
 import webbrowser
+from typing import Any
 
 from qtpy.QtCore import QEvent, QStringListModel, Qt, QTimer, QUrl
 from qtpy.QtGui import (

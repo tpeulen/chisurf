@@ -237,8 +237,8 @@ def test_save_records_owner(tmp_path: Path) -> None:
     db = _fresh_db(tmp_path)
     try:
         user_id = "user_default"
-        import chisurf.core.fio.setup_store as utils
         import chisurf.core.data_io.detector_setups as dsu
+        import chisurf.core.fio.setup_store as utils
 
         original_resolve = dsu.resolve_active_user_id
         dsu.resolve_active_user_id = lambda: user_id

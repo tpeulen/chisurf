@@ -7,8 +7,6 @@ the window; assertions read what is drawn, the model's fields and the files writ
 
 from __future__ import annotations
 
-from chisurf.plugins.emtk_layout import action_caption
-
 import os
 import pwd
 import sys
@@ -17,6 +15,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+
+from chisurf.plugins.emtk_layout import action_caption
 
 REPO = next(p for p in Path(__file__).parents if (p / "pyproject.toml").exists())
 sys.path.insert(0, str(REPO))
@@ -427,7 +427,8 @@ def plot_ticks(ui):
 
 def test_the_wheel_over_the_plot_zooms(computed):
     x, y, w, h = computed.app.item_rects["plot"]
-    ticks = lambda: plot_ticks(computed)
+    def ticks():
+        return plot_ticks(computed)
     before = ticks()
     computed.draw(3)
     assert ticks() == before  # stable without input
@@ -523,8 +524,7 @@ def _fields(sections):
     for section in sections:
         yield section
         yield from _fields(section.get("sections", ()))
-        for button in section.get("buttons", ()):
-            yield button
+        yield from section.get("buttons", ())
 
 
 def test_every_spec_field_button_and_the_guide_carry_a_description(ui):

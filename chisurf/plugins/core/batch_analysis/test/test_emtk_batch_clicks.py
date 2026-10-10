@@ -8,8 +8,6 @@ The control -> test list is in ``okf/plugins/emtk-ports/batch_analysis/REPORT.md
 
 from __future__ import annotations
 
-from chisurf.plugins.emtk_layout import action_caption
-
 from pathlib import Path
 
 import pytest
@@ -18,6 +16,7 @@ from chisurf.plugins.emtk_hermetic import (  # noqa: F401  (autouse fixtures)
     hermetic,
     real_chisurf_untouched,
 )
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.emtk_test_input import Driver, assert_tour_card_clear
 
 from ..gui.app import BatchAnalysisApp
@@ -98,12 +97,13 @@ def test_a_click_on_each_step_opens_its_page(drv):
 
 
 def test_the_check_marks_follow_the_conditions_and_a_run_marks_the_run_step(drv, tmp_path):
-    marks = lambda: {
-        s[5].strip("✓ ").strip(): s[5].startswith("✓")
-        for s in drv.draw(2).texts  # noqa: E731
-        if s[0] < 200
-        and s[5].strip("✓ ").strip() in ("Welcome", "Loaded data", "Files & fit", "Run", "Results")
-    }
+    def marks():
+        return {
+            s[5].strip("✓ ").strip(): s[5].startswith("✓")
+            for s in drv.draw(2).texts  # noqa: E731
+            if s[0] < 200
+            and s[5].strip("✓ ").strip() in ("Welcome", "Loaded data", "Files & fit", "Run", "Results")
+        }
     assert marks() == {
         "Welcome": True,
         "Loaded data": True,
@@ -285,10 +285,11 @@ def test_the_wheel_scrolls_a_long_file_list(drv, folder):
     to_step(drv, "files")
     drv.drop(str(folder))
     x, y, w, h = drv.rect("file_rows")
-    first = lambda: sorted(
-        (t for t in drv.draw(2).texts if x <= t[0] <= x + w and y + 20 <= t[1] <= y + h),
-        key=lambda t: t[1],
-    )[0][5]  # noqa: E731
+    def first():
+        return sorted(
+            (t for t in drv.draw(2).texts if x <= t[0] <= x + w and y + 20 <= t[1] <= y + h),
+            key=lambda t: t[1],
+        )[0][5]  # noqa: E731
     before = first()
     drv.wheel(x + w / 2, y + h / 2, steps=-5)
     assert first() != before

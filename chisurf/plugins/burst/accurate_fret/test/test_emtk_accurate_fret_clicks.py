@@ -9,8 +9,6 @@ plots' series, the files written. The coverage list control -> test is in
 
 from __future__ import annotations
 
-from chisurf.plugins.emtk_layout import action_caption
-
 import time
 from pathlib import Path
 
@@ -20,6 +18,7 @@ from emtk import keys
 from emtk.testing import RecordingPainter
 
 from chisurf.plugins.burst.accurate_fret.gui.app import create_app
+from chisurf.plugins.emtk_layout import action_caption
 
 from .test_accurate_fret_plugin import TAU_D0
 from .test_emtk_accurate_fret_parity import _bursts

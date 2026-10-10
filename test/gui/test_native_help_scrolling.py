@@ -1,6 +1,5 @@
 """Real help categories, links and close actions remain reachable in a small host."""
 
-from chisurf.plugins.emtk_layout import action_caption
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -11,6 +10,7 @@ from emtk.events import LEFT_BUTTON
 from emtk.testing import Driver
 
 from chisurf.emtk.help_guide import EmTkHelpWindow, resolve_resource_file
+from chisurf.plugins.emtk_layout import action_caption
 
 RESOURCE = Path(__file__).resolve().parents[2] / "chisurf/plugins/tttr/microtime_histogram/gui/help.md"
 

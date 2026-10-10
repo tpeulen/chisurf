@@ -9,7 +9,6 @@ which must *keep* them rather than redefine the grid it just inherited.
 from __future__ import annotations
 
 import pytest
-
 from emtk import nodes as emtk_nodes
 
 from chisurf.emtk.node_editor.control import GraphControl

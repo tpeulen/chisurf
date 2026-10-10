@@ -8,8 +8,6 @@ same data, and (c) a written-out run of the core functions that does not go thro
 
 from __future__ import annotations
 
-from chisurf.plugins.emtk_layout import action_caption
-
 import importlib.util
 import json
 import sys
@@ -19,6 +17,7 @@ import numpy as np
 import pytest
 
 from chisurf.core.fluorescence.imaging import tracking as tk
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver, hermetic_env
 from chisurf.plugins.microscopy.img_tracking import core
 from chisurf.plugins.microscopy.img_tracking.gui.app import ImgTrackingApp, make_app

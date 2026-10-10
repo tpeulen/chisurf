@@ -18,7 +18,6 @@ import numpy as np
 import pytest
 
 from chisurf.plugins.emtk_layout import action_caption
-
 from chisurf.plugins.emtk_test_input import SIZE, SMALL, Driver
 from chisurf.plugins.fluorescence_decay.maxent_decay.gui.app import make_app
 from chisurf.plugins.fluorescence_decay.maxent_decay.gui.model import MEMModel, execute_job

@@ -11,7 +11,17 @@ import numpy as np
 import pytest
 
 from chisurf.plugins.traj.traj_save_topology.app import SaveTopologyApp, make_app
-from chisurf.plugins.traj.traj_save_topology.test.real_input import DATA, Ui, check_action_flow, check_browse_row, check_guide_and_help_buttons, check_log_scrolls_with_the_wheel, check_row_is_read_only, dead_tour_buttons, read_xyz
+from chisurf.plugins.traj.traj_save_topology.test.real_input import (
+    DATA,
+    Ui,
+    check_action_flow,
+    check_browse_row,
+    check_guide_and_help_buttons,
+    check_log_scrolls_with_the_wheel,
+    check_row_is_read_only,
+    dead_tour_buttons,
+    read_xyz,
+)
 
 
 def test_guide_and_help_buttons_are_pressed():

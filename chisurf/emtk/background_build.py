@@ -20,10 +20,9 @@ from typing import Any, Callable, Hashable
 from emtk import im
 from emtk.i18n import tr
 
-
 #: Every build that may be running, and other first-frame reads (:func:`track`), for :func:`join_all`.
-_LIVE: "weakref.WeakSet[BackgroundBuild]" = weakref.WeakSet()
-_THREADS: "weakref.WeakSet[threading.Thread]" = weakref.WeakSet()
+_LIVE: weakref.WeakSet[BackgroundBuild] = weakref.WeakSet()
+_THREADS: weakref.WeakSet[threading.Thread] = weakref.WeakSet()
 
 
 def track(thread: threading.Thread) -> threading.Thread:

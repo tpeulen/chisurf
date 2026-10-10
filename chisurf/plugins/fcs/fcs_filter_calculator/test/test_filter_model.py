@@ -589,9 +589,9 @@ def test_auto_fit_runs_through_a_real_fit_object(tmp_path):
 
 def fitted_parameters(model):
     """The rows the Auto-fit tab lists (the panel's own filter)."""
-    from chisurf.plugins.fcs.fcs_filter_calculator.gui.panel import FilterPanel  # noqa: F401
-
     from types import SimpleNamespace
+
+    from chisurf.plugins.fcs.fcs_filter_calculator.gui.panel import FilterPanel  # noqa: F401
 
     panel = FilterPanel(SimpleNamespace(model=model, editing_blocked=False))
     return [row["_parameter"] for row in FilterPanel.parameter_rows(panel)]

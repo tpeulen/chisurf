@@ -132,6 +132,17 @@ def credential_endpoint(config: Mapping[str, Any]) -> tuple[str, int]:
     return parsed.hostname, int(parsed.port or default_port)
 
 
+def _log_rpc_failure(method: str, message: Any) -> None:
+    """Log a failed MMFDB call; a refusal for lack of rights is a warning, not an error.
+
+    Signing in as an ordinary user and opening a panel that lists accounts is an expected refusal that the
+    panel shows as a hint, so it must not read as a fault in the log.
+    """
+    text = str(message)
+    refused = "permission denied" in text.lower() or "not authenticated" in text.lower()
+    (logging.warning if refused else logging.error)("MMFDB RPC failed: %s: %s", method, text)
+
+
 class MMFDBClient:
     """Client for MMFDB RPC handlers."""
 
@@ -233,6 +244,15 @@ class MMFDBClient:
         register_services(dispatcher)
         register_project_browser_services(dispatcher)
         return InProcessClient(dispatcher)
+
+    def close(self) -> None:
+        """Release the transport (a ZMQ client holds a context that blocks interpreter exit while its sockets are open)."""
+        closer = getattr(self._client, "close", None)
+        if callable(closer):
+            try:
+                closer()
+            except Exception:  # noqa: BLE001 - closing must never raise
+                pass
 
     def status(self) -> dict[str, Any]:
         return self._call("mmfdb.status")
@@ -1486,11 +1506,11 @@ class MMFDBClient:
             else:
                 message = str(error)
             if not quiet:
-                logging.error("MMFDB RPC failed: %s: %s", method, message)
+                _log_rpc_failure(method, message)
             raise RuntimeError(message)
         if not result.get("ok", True):
             error = result.get("error", method)
             if not quiet:
-                logging.error("MMFDB RPC failed: %s: %s", method, error)
+                _log_rpc_failure(method, error)
             raise RuntimeError(error)
         return result.get("result", result)

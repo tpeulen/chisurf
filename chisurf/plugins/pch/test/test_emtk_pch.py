@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 from emtk.testing import RecordingPainter
+
 from chisurf.plugins.emtk_layout import action_caption
 
 HERE = Path(__file__).parent

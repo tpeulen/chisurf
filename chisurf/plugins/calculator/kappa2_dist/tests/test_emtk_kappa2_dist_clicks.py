@@ -8,11 +8,11 @@ statistics table, dialog, windows). The coverage list control -> test is in
 
 from __future__ import annotations
 
-from chisurf.plugins.emtk_layout import action_caption
-
 import numpy as np
 import pytest
 from emtk import keys
+
+from chisurf.plugins.emtk_layout import action_caption
 
 from .test_emtk_kappa2_dist_verify import (  # noqa: F401  (hermetic is an autouse fixture)
     REPO,
