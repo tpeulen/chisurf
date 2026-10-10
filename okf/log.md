@@ -2,6 +2,9 @@
 
 ## 2026-10-10
 
+- Docs for visible plugins that had none: concepts `file_tools`, `tttr_stream_tools`, `code_editor`,
+  `molecular_viewer`; plugin sections in `games`, `us_alex`, `global_analysis`, `live_streaming_analysis`,
+  `accurate_fret`; guide `104_lightpath_simulator`. The plugin-docs generator skips the cookiecutter template.
 - PRD-154 W14: guide screenshots of the retired Qt tools are rendered from the emtk apps
   (`docs/guides/screenshots/emtk_shot.py`, emtk Driver); docs registers and plugin pages regenerated;
   11 orphan pages put in toctrees; `docs-html` exits 0 (1 autodoc warning). `docs-release` stays red only

@@ -412,6 +412,11 @@ literature (EGFP→mCherry 52 Å, ATTO 550→ATTO 643 65 Å), which is the check
 the stored spectra, the extinction coefficients and the overlap integral are
 consistent with each other.
 
+The [Light Path Simulator](../guides/104_lightpath_simulator.md) (`chisurf/plugins/core/lightpath_simulator/`) evaluates
+this expression with the donor emission normalised to unit area and the acceptor absorption scaled by its
+$\varepsilon_\mathrm{max}$, for every donor/acceptor pair of a simulated optical path, and propagates the lasers, dichroics,
+filters and detector efficiencies to the leakage and direct-excitation crosstalk.
+
 Two caveats are worth keeping in view. $\kappa^2 = 2/3$ is an *average over
 orientations*, justified when both dyes rotate freely on their linkers within the
 fluorescence lifetime; it enters only as $\kappa^{2\,1/6}$, so it is forgiving,

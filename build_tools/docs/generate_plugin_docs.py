@@ -195,6 +195,11 @@ def _param_row(sec: dict) -> tuple:
             _md(rng), _md(sec.get("description", "")))
 
 
+def _is_template(path: pathlib.Path) -> bool:
+    """Whether *path* lies inside the cookiecutter plugin template, which is not a plugin."""
+    return any("cookiecutter" in part for part in path.relative_to(PLUGIN_ROOT).parts)
+
+
 def _display_parts(display_name: str, fallback: str) -> tuple:
     """Split an ``A:B:Leaf`` menu path into (category-path, leaf label)."""
     dn = (display_name or fallback).strip()
@@ -506,6 +511,8 @@ def generate() -> None:
     written = 0
     n_declarative = 0
     for man_path in sorted(PLUGIN_ROOT.rglob("manifest.json")):
+        if _is_template(man_path):
+            continue
         manifest = _load_json(man_path)
         if not manifest or not manifest.get("id"):
             continue
@@ -527,7 +534,7 @@ def generate() -> None:
     # (the module docstring), and their page says the manifest is missing.
     for info in _discovered_plugins():
         directory = pathlib.Path(info["package_dir"])
-        if (directory / "manifest.json").exists():
+        if _is_template(directory) or (directory / "manifest.json").exists():
             continue
         pid = info.get("module_name") or directory.name
         manifest = {
@@ -581,7 +588,7 @@ def generate() -> None:
     kept.add("index.md")
     removed = 0
     for page in sorted(plugins_dir.glob("*.md")):
-        if page.name in kept or "cookiecutter" in page.name:
+        if page.name in kept:
             continue
         page.unlink()
         removed += 1

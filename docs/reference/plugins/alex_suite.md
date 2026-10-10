@@ -50,6 +50,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 ## Theory and workflow
 
+- **Theory** — [µs-ALEX — alternating excitation, and the titration it enables](/concepts/us_alex.md)
 - **Workflow** — [Coming from ALEX-Suite](/guides/66_alex_suite.md)
 
 ## Source

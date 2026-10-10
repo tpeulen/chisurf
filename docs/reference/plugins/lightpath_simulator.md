@@ -68,7 +68,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 ## Theory and workflow
 
-- **Theory** — [Simulating single-molecule photon streams](/concepts/photophysics_simulation.md)
+- **Theory** — [Accurate FRET: correction factors, FRET lines, and where they come from](/concepts/accurate_fret.md), [Simulating single-molecule photon streams](/concepts/photophysics_simulation.md)
+- **Workflow** — [Light path simulator: crosstalk and R0 of an optical setup](/guides/104_lightpath_simulator.md)
 
 ## Source
 

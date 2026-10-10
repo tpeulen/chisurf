@@ -29,6 +29,7 @@ This plugin's window is an EMTK app: its controls and tables are described in th
 
 ## Theory and workflow
 
+- **Theory** — [FCS: the correlation curve and its models](/concepts/fcs_correlation.md)
 - **Workflow** — [FCS toolbox: from photon stream to a curve worth fitting](/guides/75_fcs_toolbox.md)
 
 ## Source

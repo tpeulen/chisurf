@@ -200,3 +200,16 @@ rounding: the shipped three-A488 Confocor example gives approximately
 0.9999763242, whose explicit weighted-residual sum agrees with the reported
 value. Check the residual arithmetic before treating that display as a defect.
 The [global-analysis workflow](../guides/60_global_analysis.md) shows the target menu.
+
+## Global View: the parameter network
+
+`chisurf/plugins/core/globalview/` draws every open fit, its parameters and the links between them. A **link** makes a
+follower take its master's value, so two datasets sharing one lifetime are two fits whose `tau` parameters are linked. A
+link that would close a cycle is refused. Free, linked and fixed parameters have distinct colours; the layout only
+decides where nodes sit and never changes the fit.
+
+The **factor graph** view draws the same fits as the posterior a global fit estimates: each dataset is a likelihood
+(square), joined to the variables it reads with links resolved, so a shared lifetime is one variable joined to both
+squares. The status line counts the likelihoods, the variables, the shared ones and the **independent blocks**; two
+blocks are two separate fits sharing a window, however many links were drawn. Networks save as GraphML and re-apply to a
+new set of datasets. The controls are in the [global-analysis workflow](../guides/60_global_analysis.md).

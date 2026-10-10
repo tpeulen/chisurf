@@ -63,6 +63,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 ## Theory and workflow
 
+- **Theory** — [Global analysis: one value fitted against all the data](/concepts/global_analysis.md)
 - **Workflow** — [Global analysis: linking parameters across fits](/guides/60_global_analysis.md)
 
 ## Source

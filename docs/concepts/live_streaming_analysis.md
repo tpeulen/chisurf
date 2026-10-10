@@ -96,3 +96,17 @@ second one on, with nothing raising.
 - {cite}`schatzel1990` — the multi-tau architecture
 - {cite}`wahl2003` — multi-tau correlation computed directly on photon arrival
   times, the batch counterpart
+
+## The acquisition plugin
+
+`chisurf/plugins/core/acq/` applies this to a running measurement. One Qt-free `AcquisitionPipeline` decodes the device
+words with the photon library's record decoder (a carried decode state keeps macro times absolute across chunks) and feeds
+streaming consumers for the decay, correlation, count rate, MCS and macro time. The sources are Simulation, Becker-Hickl,
+PicoQuant and BrickMic. Selecting hardware never contacts it: you press **Initialize device** first, and a missing driver
+is reported rather than replaced by the simulator. A run needs at least one positive stop condition (time, photon count).
+
+**Simulation** uses the photon library's confocal simulator: Brownian diffusion of molecules through a Gaussian focus
+with N-state photophysics and FRET, rotational anisotropy and CW or pulsed emission. Rates and diffusion share one
+macro-time unit (ms by default, so a rate of 1.0 is 1 kHz); the micro-time axis is separate, in ns. Fixed seeds make a
+simulated trace reproducible. Controls and the Python API:
+[Live acquisition](../guides/65_live_acquisition.md).

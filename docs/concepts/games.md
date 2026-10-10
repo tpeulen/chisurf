@@ -63,3 +63,9 @@ with 🔊 while on, 🔇 while off, greyed without an audio output. Breakout has
 audio backend but keeps its Sound preference switchable, as before. The guide does not activate
 playback. See the [game controls and sound behavior](../guides/95_games.md#2-keys-and-pointer)
 for the per-game actions.
+
+## Where it lives
+
+The hub is `chisurf/plugins/misc/games/` (Number Quest, Minesweeper, Tetris, Pong, Breakout). Each game keeps its state
+while another is shown and mutes its sound whenever the window is not in front; the list, the keys and the Help, Restart
+and Guide controls are in the [Games workflow](../guides/95_games.md).

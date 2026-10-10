@@ -29,6 +29,7 @@ This plugin's window is an EMTK app: its controls and tables are described in th
 
 ## Theory and workflow
 
+- **Theory** — [TTTR Tools: the two clocks of a photon record](/concepts/tttr_stream_tools.md)
 - **Workflow** — [Handling TTTR files (and Photon-HDF5)](/guides/12_handling_tttr_files.md), [Working with timestamps and bursts (the data model)](/guides/33_timestamps_and_bursts.md)
 
 ## Source

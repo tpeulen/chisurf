@@ -113,6 +113,8 @@ deconvolution
 :maxdepth: 1
 
 photon_container
+file_tools
+tttr_stream_tools
 detector_setup
 measurement_database
 microtime_shift
@@ -129,6 +131,7 @@ hydrodynamics
 dye_quenching
 structure_trajectories
 molecular_surfaces
+molecular_viewer
 imaging_flim_phasor
 region_properties
 colocalization
@@ -162,5 +165,6 @@ games
 :maxdepth: 1
 
 application_identity
+code_editor
 flrcif_vocabulary
 ```

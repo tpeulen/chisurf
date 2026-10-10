@@ -10,7 +10,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 
 Every discoverable ChiSurf plugin, grouped by its menu category. Each page gives the plugin's identity, its editable parameters, and its JSON-RPC surface.
 
-Of the **130 plugins**, **90** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the remainder use custom Qt widgets, so their controls are described in each plugin's guide while every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
+Of the **129 plugins**, **90** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the remainder use custom Qt widgets, so their controls are described in each plugin's guide while every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
 
 ```{toctree}
 :hidden:
@@ -19,7 +19,7 @@ Of the **130 plugins**, **90** build their interface from declarative AutoForm s
 *
 ```
 
-**130 plugins** across 34 categories.
+**129 plugins** across 33 categories.
 
 ## Core
 
@@ -314,9 +314,3 @@ Of the **130 plugins**, **90** build their interface from declarative AutoForm s
 | --- | --- |
 | [Imaging Common](imaging_common.md) *(hidden)* | Shared base classes for the per-pixel imaging tools: the common tool shell, the image/frame plumbing and the MMFDB bridge they all reuse. |
 | [Mle Common](mle_common.md) *(hidden)* | Shared maximum-likelihood machinery for the spot/region/pixel MLE tools: the estimator contract, the fitting base class and its tool shell. |
-
-## {{ cookiecutter.plugin_category }}
-
-| Plugin | Summary |
-| --- | --- |
-| [{{ cookiecutter.plugin_display_name }}]({{ cookiecutter.plugin_name }}.md) | {{ cookiecutter.plugin_description }} |

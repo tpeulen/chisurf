@@ -41,6 +41,7 @@ This plugin's window is an EMTK app: its controls and tables are described in th
 
 ## Theory and workflow
 
+- **Theory** — [Code Editor: scripts and notebooks inside the analysis session](/concepts/code_editor.md)
 - **Workflow** — [Driving ChiSurf from its console](/guides/59_console.md), [Notebooks that run inside ChiSurf](/guides/64_notebooks.md)
 
 ## Source

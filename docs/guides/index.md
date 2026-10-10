@@ -62,6 +62,7 @@ saving_projects
 41_accurate_fret
 82_fret_lines
 83_spectra_and_r0
+104_lightpath_simulator
 61_kappa2_distribution
 fret_calibration
 07_rcm_calibration
@@ -236,6 +237,7 @@ irf_estimation
 | [The AI assistant: operating ChiSurf in plain language](40_ai_assistant.md) | `chisurf.core.agent`, agent skills |
 | [Asking the documentation](70_ask_the_documentation.md) | Help browser **Ask** panel, `csc help ask`, `help.docs.ask` |
 | [Accurate FRET: automatic correction factors](41_accurate_fret.md) | `accurate_fret` plugin, `tttrlib.auto_calibrate`, `fret.accurate`, `fret.lines` |
+| [Light path simulator: crosstalk and R0 of an optical setup](104_lightpath_simulator.md) | `lightpath_simulator` (Tools → Calculators), `lightpath-simulator`, `core.workflow.simulate_lightpath` |
 | [κ² distributions: how much is the orientation assumption costing?](61_kappa2_distribution.md) | `kappa2_dist` plugin, `fluorescence.anisotropy.kappa2` |
 | [Three-colour PDA (PDA3c)](42_pda3c.md) | `core.models.pda3c`, `core.fluorescence.pda3c`, `core.fluorescence.kinetics` |
 | [Drift correction](43_drift_correction.md) | `img_drift` plugin, `imaging.drift` |

@@ -139,6 +139,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 ## Theory and workflow
 
+- **Theory** — [Streaming analysis: computing on photons that have not arrived yet](/concepts/live_streaming_analysis.md)
 - **Workflow** — [Live acquisition: watching a measurement while it happens](/guides/65_live_acquisition.md)
 
 ## Source
