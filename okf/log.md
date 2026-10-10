@@ -2,6 +2,11 @@
 
 ## 2026-10-10
 
+- PRD-154 W12 (imp.bff): `src/` split into 12 theme folders compiled
+  through `src/ThemeSources.cpp`; model search lives in `src/search/`. Path
+  references in [imp local build](workflows/imp-local-build.md) and
+  [PRD-154](prds/prd-154.md) updated. W7 click-all remeasured: 81/160 pass, owners
+  in [release-readiness W7](validation/release-readiness-w7.md).
 - W8 (retire pyqtgraph), partial: `.native` allow-list emptied (chiplot `set_axis_style`, `set_tick_labels`, `set_legend_style`; emtk draws horizontal regions); Qt `burst_h2mm` tool + `gui/app.py` deleted (native app is the replacement); photon-filter wizard plots ported to chiplot. Open: `autoform/sections/builtin.py` image section and `intensity_trace/qt_tool.py` (see `okf/subsystems/chiplot.md`).
 
 - One action vocabulary for every emtk app (`ACTIONS` in `chisurf/plugins/emtk_layout.py`):

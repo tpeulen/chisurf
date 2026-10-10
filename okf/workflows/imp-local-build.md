@@ -204,7 +204,7 @@ Appending a sentinel to the file in `../imp.bff` and importing it from the env
 in a fresh interpreter showed it immediately, with no build step, and
 `os.path.realpath(module.__file__)` pointed back into `/Users/tpeulen/dev/imp.bff`.
 
-**C++ — one `ninja`.** `touch ../imp.bff/src/AV.cpp && ninja -C $B IMP.bff-lib`
+**C++ — one `ninja`.** `touch ../imp.bff/src/ThemeSources.cpp && ninja -C $B IMP.bff-lib`
 relinked `lib/libimp_bff.0.dylib` in place (mtime moved), and the env imported
 the rebuilt library on the next interpreter start. Because the extensions
 reference that dylib by absolute path, nothing needs re-linking or re-installing.
