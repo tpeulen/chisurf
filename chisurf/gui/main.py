@@ -433,6 +433,9 @@ class Main(
             self._save_window_state()
         except Exception:
             pass
+        autosave_timer = getattr(self, "_autosave_timer", None)
+        if autosave_timer is not None:
+            autosave_timer.stop()
         if cs.core.settings.gui["confirm_close_program"] and not self._project_has_content():
             reply = dialogs.question(
                 self,

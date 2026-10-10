@@ -119,6 +119,17 @@ def unlink_fit_group(fit_indices: typing.List[int]):
     return {}
 
 
+@action("fit.group_auto_link")
+def auto_link_fit_group(fit_group_name: str = ""):
+    """Record the default linking of a new fit group's non-nuisance parameters.
+
+    Adding a fit group links its shared parameters itself; this row is the
+    audit entry for that step. Undo restores the unlinked state from the
+    scientific snapshot taken with the row.
+    """
+    return {}
+
+
 @action("fit.group_link_toggle", debounce_ms=200)
 def toggle_fit_group_link(fit_indices: typing.List[int]):
     """Toggle linking of a group of fits."""
@@ -137,9 +148,13 @@ def update_fit(fit_index: int = 0):
     return {"source_uid": str(getattr(fit_obj, "unique_identifier", ""))}
 
 
-@action("fit.mask_set", replayable=False, debounce_ms=200)
+@action("fit.mask_set", debounce_ms=200)
 def set_fit_mask(fit_index: int, mask: typing.Any):
-    """Set the fitting mask."""
+    """Set the fitting mask.
+
+    A mask is fit state: undo restores it from the scientific snapshot, so the
+    action is replayable like every other ``state`` action.
+    """
     fit_obj = cs.fits[int(fit_index)]
     fit_obj.mask = mask
     return {"source_uid": str(getattr(fit_obj, "unique_identifier", ""))}

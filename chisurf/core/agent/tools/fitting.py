@@ -505,11 +505,26 @@ def set_parameter(
             f"Parameters of fit {targets[0]}: {available}"
         )
 
-    record_action(
-        action_type="agent.parameter.set",
-        summary=f"agent set {parameter}",
-        payload={"parameter": parameter, "fits": [entry["fit"] for entry in changed]},
-    )
+    # One row per aspect, in the registered parameter vocabulary, so the history
+    # browser and the replay projection resolve the agent's edit like a user's.
+    fits_changed = [entry["fit"] for entry in changed]
+    for action_type, given, label in (
+        ("parameter.bounds.set", bounds, "bounds"),
+        ("parameter.value", value, "value"),
+        ("parameter.fixed", fixed, "fixed"),
+    ):
+        if given is None:
+            continue
+        record_action(
+            action_type=action_type,
+            summary=f"agent set {parameter} {label}",
+            payload={
+                "parameter_name": parameter,
+                label: list(given) if label == "bounds" else given,
+                "fits": fits_changed,
+                "origin": "agent",
+            },
+        )
     refresh_gui()
     result: dict[str, Any] = {"ok": True, "changed": changed}
     if missing:

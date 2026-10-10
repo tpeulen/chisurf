@@ -45,6 +45,40 @@ auto-compacts past ~5000 events.
   server-side; applying the state to live widgets is the GUI adapter's job
   (`chisurf/gui/main_helper.py`).
 
+# Audit contracts
+
+`test/history/test_action_history_audit.py` pins three rules:
+
+- **Catalogue consistency** — a `side_effect_class == "state"` action is replayable; a
+  non-replayable one is `execution` or `diagnostic`. (`fit.mask_set` was state but
+  non-replayable; it is replayable now.)
+- **Recorded names resolve** — every action-type literal reaching `record_action` at the
+  direct call sites (including through a same-module wrapper such as `_record_history`)
+  names a registered action via `cs.action_registry.resolve_name`. This registered
+  `fit.group_auto_link` and `parameter.prior.set` (both added to the MMFDB
+  `_mmfdb_event_log.action_type` enumeration) and moved the agent's `set_parameter` from
+  the unregistered `agent.parameter.set` to `parameter.bounds.set` / `parameter.value` /
+  `parameter.fixed` rows.
+- **Navigable cursor** — with science bound, after `apply_edit` and an audit
+  `record("fit.run.finish")` the cursor `can_navigate`. Assert `can_navigate`, not
+  `len(events)`: an unchanged-science `record` at a historical cursor *inserts* a row.
+
+`test/project/test_e2e_undo_redo_save_reload.py` runs add fit → edit → fit → undo → redo
+→ `storage.save_file` → `load_file` on the real owner and requires equal
+`snapshot_fingerprint`.
+
+# Where to pick this up
+
+1. Measure: `pixi run -e test python -m pytest test/history/test_action_history_audit.py
+   test/history/test_vocabulary.py -q -p no:cacheprovider` (8 passed 2026-10-10). The
+   vocabulary test needs the MMFDB dictionary rows for any new `@action`.
+2. Open: the audit reads only the eight `RECORD_SITES` modules; a new direct
+   `record_action` caller elsewhere is not audited until it is added there.
+3. Open: `record_action` writes the action type verbatim (`fit_mask_set`,
+   `parameter_prior_set`); it resolves, but the stored row is not the dotted canonical
+   name. Normalising at `record_action` would change persisted rows — decide with the
+   history browser/MMFDB projection owners.
+
 # Durable projection into MMFDB ([PRD-43](/prds/prd-43.md))
 
 The in-memory list is authoritative for the live session; each event is also

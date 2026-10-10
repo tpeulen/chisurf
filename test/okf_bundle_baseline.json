@@ -8541,51 +8541,6 @@
     },
     {
       "rule": "PICKUP",
-      "path": "subsystems/project-persistence.md",
-      "line": 342,
-      "message": "resume bullet must start Open:, Blocked:, Measure: or Tried and reverted:",
-      "source": "1. The acceptance plan now names all six fresh specification gates. Read the",
-      "owner": "W0b",
-      "acceptance": "Remove this finding and its baseline record; final baseline must be empty."
-    },
-    {
-      "rule": "PICKUP",
-      "path": "subsystems/project-persistence.md",
-      "line": 345,
-      "message": "resume bullet must start Open:, Blocked:, Measure: or Tried and reverted:",
-      "source": "2. Revision contract in scratch: `chisurf-project-spec-revision-contract.md`.",
-      "owner": "W0b",
-      "acceptance": "Remove this finding and its baseline record; final baseline must be empty."
-    },
-    {
-      "rule": "PICKUP",
-      "path": "subsystems/project-persistence.md",
-      "line": 350,
-      "message": "resume bullet must start Open:, Blocked:, Measure: or Tried and reverted:",
-      "source": "3. Recover reports and **distinct** evidence files",
-      "owner": "W0b",
-      "acceptance": "Remove this finding and its baseline record; final baseline must be empty."
-    },
-    {
-      "rule": "PICKUP",
-      "path": "subsystems/project-persistence.md",
-      "line": 354,
-      "message": "resume bullet must start Open:, Blocked:, Measure: or Tried and reverted:",
-      "source": "4. Then re-run complete project/server/agent and browser/helper/companion",
-      "owner": "W0b",
-      "acceptance": "Remove this finding and its baseline record; final baseline must be empty."
-    },
-    {
-      "rule": "PICKUP",
-      "path": "subsystems/project-persistence.md",
-      "line": 357,
-      "message": "resume bullet must start Open:, Blocked:, Measure: or Tried and reverted:",
-      "source": "5. Require a fresh parseable independent specification PASS before independent",
-      "owner": "W0b",
-      "acceptance": "Remove this finding and its baseline record; final baseline must be empty."
-    },
-    {
-      "rule": "PICKUP",
       "path": "validation/release-readiness-w1.md",
       "line": 11,
       "message": "resume bullet must start Open:, Blocked:, Measure: or Tried and reverted:",

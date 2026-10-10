@@ -19,6 +19,16 @@
       "order": 6
     },
     {
+      "id": "start_autosave",
+      "entrypoint": "chisurf.startup.gui_services:start_autosave",
+      "surface": "gui",
+      "phase": "post_gui_show",
+      "label": "Starting autosave",
+      "progress": 6,
+      "order": 7,
+      "depends_on": ["bind_history_science"]
+    },
+    {
       "id": "deferred_gui_imports",
       "entrypoint": "chisurf.startup.gui_services:deferred_gui_imports",
       "surface": "gui",

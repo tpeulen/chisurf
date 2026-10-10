@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -179,3 +180,93 @@ class ProjectDocument:
         self.version_id = None
         self.visibility = "private"
         self._saved_fingerprint = None
+
+
+AUTOSAVE_SUFFIX = ".autosave.cs.pto"
+
+
+@dataclass
+class Autosave:
+    """Periodic, silent copy of the live project beside its document.
+
+    Autosave is not a save: it never changes the document's accepted baseline
+    (``ProjectDocument._saved_fingerprint``), never records a history row and
+    never asks the user anything. It writes only when the scientific content
+    differs from what it last wrote, so an idle session is not rewritten on
+    every tick. Qt-free: the caller owns the clock.
+
+    Parameters
+    ----------
+    interval_s : float
+        Minimum seconds between two writes.
+    enabled : bool
+        Master switch; a disabled autosave is never due.
+    """
+
+    interval_s: float = 120.0
+    enabled: bool = True
+    _last_fingerprint: str | None = field(default=None, repr=False)
+    _last_time: float = field(default=-math.inf, repr=False)
+
+    def due(self, now: float) -> bool:
+        """Return whether a write may happen at monotonic time ``now``."""
+        return bool(self.enabled) and (now - self._last_time) >= float(self.interval_s)
+
+    @staticmethod
+    def target(document: ProjectDocument, working_path: str | Path) -> Path:
+        """Return the autosave file for ``document``.
+
+        A document with a file path gets a sibling ``<name>.autosave.cs.pto``;
+        an unsaved one goes to ``<working_path>/autosave/``. Both keep the
+        ``.cs.pto`` suffix the project storage requires.
+        """
+        path = getattr(document, "path", None)
+        if path is not None:
+            path = Path(path)
+            name = path.name
+            if name.lower().endswith(".cs.pto"):
+                name = name[: -len(".cs.pto")]
+            return path.with_name(f"{name}{AUTOSAVE_SUFFIX}")
+        name = str(getattr(document, "name", None) or "untitled")
+        return Path(working_path) / "autosave" / f"{name}{AUTOSAVE_SUFFIX}"
+
+    def run(
+        self,
+        project: Project,
+        save: Callable[[Project, Path], Any],
+        document: ProjectDocument,
+        working_path: str | Path,
+        now: float,
+    ) -> Path | None:
+        """Write ``project`` through ``save`` when due and changed.
+
+        Parameters
+        ----------
+        project : Project
+            Live snapshot to write.
+        save : callable
+            ``save(project, path)``; the atomic storage writer.
+        document : ProjectDocument
+            Identity that decides the target path; never modified.
+        working_path : str or Path
+            Fallback folder for a document that has no file yet.
+        now : float
+            Monotonic clock reading.
+
+        Returns
+        -------
+        Path or None
+            The written file, or None when nothing was written. An exception
+            from ``save`` propagates and leaves the recorded state unchanged.
+        """
+        if not self.due(now):
+            return None
+        fingerprint = snapshot_fingerprint(project)
+        if fingerprint == self._last_fingerprint:
+            return None
+        destination = self.target(document, working_path)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        written = save(project, destination)
+        self._last_fingerprint = fingerprint
+        self._last_time = now
+        return Path(written) if written is not None else destination

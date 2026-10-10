@@ -135,9 +135,10 @@ class TestActionDispatcher(unittest.TestCase):
                 summary="save project",
             )
             # A handler return value takes precedence over the history event;
-            # ``project.save`` returns the archive path it just wrote.
+            # ``project.save`` returns its result record with the written path.
             self.assertIsNotNone(event)
-            self.assertTrue(pathlib.Path(event).is_file())
+            self.assertIs(event["ok"], True)
+            self.assertTrue(pathlib.Path(event["file_path"]).is_file())
 
     def test_record_action_falls_back_for_unregistered_type(self):
         from chisurf.core.actions._infra import record_action

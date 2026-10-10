@@ -443,6 +443,14 @@ plugins:
   updater:
     ignore_updates_on_startup: false
     check_on_startup: true
+project:
+  # Silent periodic copy of the open project. Written beside a saved project as
+  # <name>.autosave.cs.pto, or to <working path>/autosave/ before the first save;
+  # rewritten only when the content changed, deleted by the next explicit save.
+  # It never prompts and is not a save (the project still counts as unsaved).
+  autosave:
+    enabled: true
+    interval_s: 120
 tcspc:
   # The estimator for photon-counting decays. See
   # docs/concepts/fitting_objectives.md, which explains both and when to switch.

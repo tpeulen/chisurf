@@ -197,6 +197,40 @@ def bind_history_science(context) -> None:
         )
 
 
+def start_autosave(context) -> None:
+    """Start the silent project autosave on the main window.
+
+    Reads ``project.autosave`` (``enabled``, ``interval_s``) from the settings
+    and drives :meth:`ProjectMixin._autosave_tick` from a timer owned by the
+    window, so it stops with it. The tick itself is Qt-free; only the clock is
+    Qt here.
+    """
+    window = _get_window(context)
+    if window is None:
+        return
+    from qtpy import QtCore
+
+    from chisurf.core.project.lifecycle import Autosave
+
+    settings = getattr(cs.core.settings, "cs_settings", {}) or {}
+    config = (settings.get("project") or {}).get("autosave") or {}
+    try:
+        interval_s = max(1.0, float(config.get("interval_s", 120)))
+    except (TypeError, ValueError):
+        interval_s = 120.0
+    enabled = bool(config.get("enabled", True))
+    window._autosave = Autosave(interval_s=interval_s, enabled=enabled)
+    previous = getattr(window, "_autosave_timer", None)
+    if previous is not None:
+        previous.stop()
+    timer = QtCore.QTimer(window)
+    timer.setInterval(int(interval_s * 1000))
+    timer.timeout.connect(window._autosave_tick)
+    window._autosave_timer = timer
+    if enabled:
+        timer.start()
+
+
 def deferred_gui_imports(context) -> None:
     """Import heavy functional submodules."""
     _import_all(_DEFERRED_MODULES)

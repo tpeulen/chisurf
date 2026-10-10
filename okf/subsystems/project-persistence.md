@@ -9,6 +9,33 @@ timestamp: '2026-10-03T00:00:00Z'
 
 # Project persistence
 
+## Where to pick this up — autosave and undo (2026-10-10)
+
+The silent autosave and the undo/save/reload e2e landed (see [Autosave](#autosave)
+below). Open front, in order:
+
+1. Measure: `QT_QPA_PLATFORM=offscreen pixi run -e test python -m pytest
+   test/project/test_project_autosave.py test/history/test_action_history_audit.py
+   test/project/test_e2e_undo_redo_save_reload.py test/project/test_project_lifecycle.py
+   -q -p no:cacheprovider` (31 passed on 2026-10-10), then
+   `test/gui/test_autosave_main_window.py` (real offscreen Main, `interval_s=1`, decay
+   loaded, file present after 3 s, no modal). Trap: the hermetic settings dir looks like a
+   first run and schedules the onboarding wizard, a modal unrelated to autosave — the test
+   marks it shown; without that the "no modal" assertion measures the wizard.
+2. Open: crash recovery is manual (open the `*.autosave.cs.pto`). Nothing offers it at
+   start-up; a recovery prompt would have to sit outside the timer path (autosave itself
+   must never open a dialog).
+3. Open: the timer is a `QTimer` owned by `Main` (`chisurf/startup/gui_services.py:
+   start_autosave`); the tick (`ProjectMixin._autosave_tick`, `lifecycle.Autosave.run`) is
+   Qt-free so a frame clock can drive it instead. Settings changes apply at the next start.
+4. Measure: each tick that is due captures the full live project to fingerprint it
+   (`snapshot_fingerprint` base64-encodes resource entries). Large embedded resources
+   (sampling chains) make every tick cost a hash of all bytes — hash names+lengths for
+   such entries if a tick shows up in profiles.
+5. Open: headless `macros.core_fit.add_fit` leaves `fit_range == (0, 0)`, so `fit.run()`
+   fails with "0 residuals" until the range is set (the fit window sets it in the GUI);
+   the e2e test sets it explicitly and records `fit.range.set`.
+
 ## Where to pick this up — October 5, 2026 (latest; supersedes the Oct 4 list below)
 
 Goal: a `.cs.pto` restores ChiSurf state for **all 42 configured models (11 families)**,
@@ -139,6 +166,33 @@ by quality review must be closed first.
 | `lifecycle.py` | Save/discard/cancel authorization and document identity/clean baseline. |
 | `ui_state.py` | Supported window state; geometry is separate from essential science. |
 | `ui_layout.py` | The window layout in toolkit-neutral terms + per-front-end hints; backend registry (Qt adapter: `chisurf/gui/layout_state.py`). |
+
+## Autosave
+
+`chisurf/core/project/lifecycle.py: Autosave(interval_s, enabled)` decides *when* and
+*where*; the storage writer decides *how*:
+
+- `due(now)` — enabled and at least `interval_s` since the last write (monotonic clock).
+- `target(document, working_path)` — `<name>.autosave.cs.pto` beside a saved document,
+  else `<working_path>/autosave/<document.name>.autosave.cs.pto`; both keep the
+  `.cs.pto` suffix `storage._canonical_path` / `write_project` require.
+- `run(project, save, document, working_path, now)` — skips when
+  `snapshot_fingerprint(project)` equals the last written one (a bare dataset makes
+  `_project_has_content` true, so this skip is what stops a rewrite every tick), else calls
+  `save(project, path)` and only then records fingerprint and time; a raising `save`
+  records nothing and the next tick retries.
+
+Autosave is **not a save**: it never touches `ProjectDocument._saved_fingerprint`, so the
+session still counts as modified and the close guard still asks. It writes through
+`storage.save_file` directly — never by dispatching `project.archive`/`project.save`,
+which would add a history row per tick — so both existing atomic writers
+(`write_project`, `Project.save`) are reused and no third writer exists. It never opens a
+dialog; failures are logged (`ProjectMixin._autosave_tick`). An explicit save (file or
+MMFDB) deletes the autosave copy for the document identity before and after the save
+(`main_helper._discard_autosave`). Settings: `project.autosave.{enabled, interval_s}` in
+`settings_chisurf.yaml` (deep-merged defaults). Started by the `start_autosave`
+post-show service (after `bind_history_science`), stopped in `Main.closeEvent`.
+User guide: [Saving projects](../../docs/guides/saving_projects.md) "Autosave".
 
 ## Scientific state
 
@@ -339,21 +393,21 @@ scenarios are exercised, not skipped. See `references/known-issues.md`.
 
 ## Where to pick this up
 
-1. The acceptance plan now names all six fresh specification gates. Read the
+1. Open: The acceptance plan now names all six fresh specification gates. Read the
    exact independent result and actual reproductions; do not infer completion
    from old test totals or stopped revision processes.
-2. Revision contract in scratch: `chisurf-project-spec-revision-contract.md`.
+2. Open: Revision contract in scratch: `chisurf-project-spec-revision-contract.md`.
    A owns guarded public API/server transitions (`spec-api`); B owns active UID,
    retained portable resources and shipped readers (`spec-science`); C owns
    configured authenticated Main import and shared atomic native-byte publication
    (`spec-io`). Preserve disjoint file ownership and unrelated dirty work.
-3. Recover reports and **distinct** evidence files
+3. Open: Recover reports and **distinct** evidence files
    `chisurf-project-spec-{api,science,io}-{result,evidence}.md`. Re-run every
    demonstrated cancellation, stale UID write, attachment resave, real BH/DEER
    reader, denied/expired auth and disk-full export case in the parent.
-4. Then re-run complete project/server/agent and browser/helper/companion
+4. Open: Then re-run complete project/server/agent and browser/helper/companion
    selections, actual single-renderer Main guards/ranges and file-only fresh
    interpreter tests. Check complete JUnit and inspect real captures.
-5. Require a fresh parseable independent specification PASS before independent
+5. Open: Require a fresh parseable independent specification PASS before independent
    quality review; only then update user docs/OKF and close acceptance. Work is
    uncommitted/unpushed by this project owner. Never reset others' shared changes.

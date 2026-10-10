@@ -2,6 +2,10 @@
 
 ## 2026-10-10
 
+- W2: projects autosave to a sibling `*.autosave.cs.pto` (setting `project.autosave`, default 120 s,
+  never a dialog; deleted after an explicit save); the history audit binds every recorded action
+  to a registered replayable one (four repaired); undo→redo→save→reload is proven lossless.
+
 - W0b step 1: validator `--fix` for FM/PRD/WIKI/LINK/KI plus hand repairs of seven unparseable
   frontmatters, PRD-139/140 status and index; OKF findings 2332→1880. log.md, gui-autoform.md and the
   board are untouched (another instance's uncommitted edits / tttrlib).

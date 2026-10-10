@@ -31,6 +31,19 @@ def set_parameter_fixed(parameter_name: str, fixed: bool, fit_index: int = 0):
     return {"source_uid": str(getattr(fit_obj, "unique_identifier", ""))}
 
 
+@action(
+    "parameter.prior.set",
+    schema={"parameter_name": str},
+    debounce_ms=200,
+    debounce_keys=("parameter_name", "fit_index"),
+)
+def set_parameter_prior(parameter_name: str, prior: typing.Any = None, fit_index: int = 0):
+    """Set or clear a parameter's prior (a prior state dict, or None)."""
+    fit_obj = cs.fits[int(fit_index)]
+    fit_obj.set_parameter_prior(str(parameter_name), prior)
+    return {"source_uid": str(getattr(fit_obj, "unique_identifier", ""))}
+
+
 @action("parameter.link", schema={"source_parameter": str, "target_parameter": str})
 def link_parameters(
     source_parameter: str,

@@ -18,6 +18,34 @@ if typing.TYPE_CHECKING:
     from chisurf.gui.main import Main
 
 
+def _working_path() -> pathlib.Path:
+    """Return the session working folder (the home folder when unset)."""
+    return pathlib.Path(getattr(cs, "working_path", None) or pathlib.Path.home())
+
+
+def _capture_live_project(name: str):
+    """Capture the complete live project (science, UI state, history) as ``name``."""
+    from chisurf.macros.core_fit import get_project_payload
+
+    return get_project_payload(name)
+
+
+def _discard_autosave(*documents) -> None:
+    """Delete the autosave copies an explicit save has made obsolete.
+
+    Called after a verified save with the document identity before and after
+    it, which covers both the unsaved-session copy in the working folder and a
+    sibling of the saved file. Never raises: a stale copy is harmless.
+    """
+    from chisurf.core.project.lifecycle import Autosave
+
+    for document in documents:
+        try:
+            Autosave.target(document, _working_path()).unlink(missing_ok=True)
+        except Exception:
+            cs.logging.exception("Could not remove the autosave copy")
+
+
 class ProjectMixin:
     @staticmethod
     def _project_display_name(name: str) -> str:
@@ -74,6 +102,42 @@ class ProjectMixin:
         except (TypeError, ValueError):
             return SaveDecision.CANCEL
 
+    def _live_project_payload(self: Main, name: str | None = None):
+        """Capture the complete live project under ``name`` (default: its own)."""
+        if name is None:
+            document = self._get_project_document()
+            name = self._project_display_name(
+                document.name or getattr(self, "_current_project_name", None) or "chisurf_project"
+            )
+        return _capture_live_project(name)
+
+    def _autosave_tick(self: Main) -> None:
+        """Write the silent autosave copy when due and changed.
+
+        Calls the storage writer directly: dispatching ``project.archive`` would
+        record a history row for every tick. Never shows a dialog; a failure is
+        logged and the next tick tries again.
+        """
+        import time
+
+        autosave = getattr(self, "_autosave", None)
+        if autosave is None or not autosave.due(time.monotonic()):
+            return
+        if not self._project_has_content():
+            return
+        try:
+            from chisurf.core.project import storage
+
+            autosave.run(
+                self._live_project_payload(),
+                storage.save_file,
+                self._get_project_document(),
+                _working_path(),
+                time.monotonic(),
+            )
+        except Exception:
+            cs.logging.exception("Project autosave failed")
+
     def _save_project_snapshot(self: Main, *, save_as: pathlib.Path | None = None) -> bool:
         """Capture and publish the current live project through one storage adapter."""
         from chisurf.core.project import storage
@@ -97,8 +161,6 @@ class ProjectMixin:
                 document.name or getattr(self, "_current_project_name", None) or "chisurf_project"
             )
         try:
-            from chisurf.macros.core_fit import get_project_payload
-
             backend = "file" if save_as is not None else storage.select_backend()
             if backend == "file":
                 destination = save_as or document.path
@@ -115,9 +177,10 @@ class ProjectMixin:
                 destination = pathlib.Path(destination)
                 if not str(destination).lower().endswith(".cs.pto"):
                     destination = pathlib.Path(f"{destination}.cs.pto")
-                project = get_project_payload(name)
+                project = _capture_live_project(name)
                 saved_path = storage.save_file(project, destination)
                 document.record_file_save(project, saved_path)
+                _discard_autosave(old_document, document)
                 self._current_project_path = pathlib.Path(saved_path)
                 self._current_project_id = None
                 self._current_project_version_id = None
@@ -129,7 +192,7 @@ class ProjectMixin:
             # this is a configured deployment; file-only sessions never import it.
             from chisurf.plugins.core.project_browser.gui.tool import SaveProjectDialog
 
-            project = get_project_payload(name)
+            project = _capture_live_project(name)
 
             dlg = SaveProjectDialog(
                 current_name=project.name,
@@ -148,6 +211,7 @@ class ProjectMixin:
                 visibility=dlg.visibility,
             )
             document.record_database_save(project, result)
+            _discard_autosave(old_document, document)
             self._current_project_path = None
             self._current_project_id = document.project_id
             self._current_project_version_id = document.version_id

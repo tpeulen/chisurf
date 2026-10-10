@@ -54,6 +54,21 @@ reader controllers and database connections are runtime resources, not
 portable project state. Unsupported scientific state causes a visible error
 instead of being omitted from an apparently successful save.
 
+## Autosave
+
+While a project holds data, ChiSurf writes a silent copy of it every two
+minutes. The copy sits beside the saved project as `<name>.autosave.cs.pto`;
+before the first save it goes to `autosave/untitled.autosave.cs.pto` in the
+working folder. It is rewritten only when the analysis changed since the last
+copy, it never opens a dialog, and the next explicit **Save** deletes it. An
+autosave is not a save: the project still counts as unsaved, and closing it
+still asks. To recover after a crash, open the `.autosave.cs.pto` file like
+any project and save it under a normal name.
+
+The interval and the switch are the `project.autosave` settings
+(`interval_s`, in seconds; `enabled`, true or false). Changes apply at the next
+start.
+
 ## Close, replace or reset the session
 
 Before a nonempty project is discarded, ChiSurf offers:
