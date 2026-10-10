@@ -4,10 +4,12 @@
   "sections": [
     {
       "type": "dock_area",
+      "description": "Maximum-likelihood lifetime fit of the summed decay of each region.",
       "title": "Region MLE",
       "sections": [
         {
           "type": "panel",
+          "description": "Input data, regions and fit settings.",
           "title": "Analysis",
           "n_col": 1,
           "sections": [

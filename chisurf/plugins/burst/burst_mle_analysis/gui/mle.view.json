@@ -2,6 +2,7 @@
   "_comment": "Start value and fit window of the burst-MLE wizard, as an AutoForm spec over the wizard itself (its tau, micro_time_start and micro_time_stop properties). Typed, clamped, Enter commits; a change is written to the wizard, which refits the current decay.",
   "sections": [
     {
+      "description": "Start lifetime and the micro-time window (bins) of the burst-wise lifetime MLE.",
       "type": "panel",
       "title": "Start value and fit window",
       "collapsed": false,

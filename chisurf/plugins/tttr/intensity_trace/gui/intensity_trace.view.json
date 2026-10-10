@@ -73,6 +73,7 @@
         {
           "type": "panel",
           "title": "Time Window",
+          "description": "Time bin width (ms) used to build the intensity trace.",
           "sections": [
             {
               "type": "value",
@@ -110,6 +111,7 @@
         {
           "type": "panel",
           "title": "Histogram Settings",
+          "description": "Number of bins and count range of the count histogram.",
           "n_col": 3,
           "sections": [
             {
@@ -165,6 +167,7 @@
         {
           "type": "panel",
           "title": "HMM Settings",
+          "description": "Number of hidden states of the HMM and the fit buttons.",
           "sections": [
             {
               "type": "value",
@@ -193,6 +196,7 @@
         {
           "type": "panel",
           "title": "HMM Results",
+          "description": "Fitted state intensities, transition rates and BIC of the HMM.",
           "sections": [
             {
               "type": "button_row",

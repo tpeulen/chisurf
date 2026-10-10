@@ -3,16 +3,19 @@
     {
       "type": "dock_area",
       "title": "PSF Calculator",
+      "description": "PSF parameters on the left and the rendered 3-D intensity volume on the right.",
       "persist": "psf_calculator",
       "sections": [
         {
           "type": "panel",
           "title": "Parameters",
+          "description": "Objective, PSF model, illumination polarization, sampling and display settings.",
           "collapsible": false,
           "sections": [
             {
               "type": "panel",
               "title": "Objective",
+              "description": "Numerical aperture, immersion refractive index and wavelength of the objective.",
               "collapsible": false,
               "sections": [
                 {
@@ -54,6 +57,7 @@
             {
               "type": "panel",
               "title": "Model",
+              "description": "Diffraction model used to compute the PSF.",
               "collapsible": false,
               "sections": [
                 {
@@ -78,6 +82,7 @@
             {
               "type": "panel",
               "title": "Polarization",
+              "description": "Polarization state of the light entering the pupil.",
               "collapsible": false,
               "sections": [
                 {
@@ -123,6 +128,7 @@
             {
               "type": "panel",
               "title": "Sampling",
+              "description": "Voxel grid of the computed volume: pixels per side, planes, pixel size and axial step in nm.",
               "collapsible": false,
               "sections": [
                 {
@@ -171,6 +177,7 @@
                   "type": "choice",
                   "attr": "quality",
                   "label": "Quality",
+                  "descriptions": ["Coarser aperture quadrature; fast enough for live editing.", "Finest aperture quadrature; slow for the vectorial model, use once parameters are settled."],
                   "options": [
                     "preview",
                     "full"
@@ -188,6 +195,7 @@
             {
               "type": "panel",
               "title": "Display",
+              "description": "Intensity threshold, gamma and colormap of the 3-D rendering.",
               "collapsible": false,
               "sections": [
                 {
@@ -247,10 +255,12 @@
         {
           "type": "panel",
           "title": "3-D view",
+          "description": "Interactive 3-D rendering of the computed PSF intensity volume.",
           "sections": [
             {
               "type": "custom",
-              "key": "psf_volume_view"
+              "key": "psf_volume_view",
+              "description": "Volume view of the PSF; drag to rotate, wheel to zoom."
             }
           ]
         }

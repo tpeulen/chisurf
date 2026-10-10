@@ -20,6 +20,7 @@ from typing import Any
 
 from emtk import im
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 
 __all__ = [
     "Dialog",
@@ -175,6 +176,7 @@ class Question(Dialog):
                 gui.track(f"dialog.{answer.lower()}")
                 self.close()
                 self.on_answer(answer)
+            im.set_item_tooltip(tr("Answer the question with this choice and close the dialog."))
 
 
 class MessageBox(Dialog):
@@ -198,9 +200,10 @@ class MessageBox(Dialog):
         """The message and *OK*."""
         im.text_wrapped(self.text)
         im.spacing()
-        if im.button("OK##message-ok", (BUTTON_W, 0.0)):
+        if im.button(tr("OK") + "##message-ok", (BUTTON_W, 0.0)):
             gui.track("dialog.ok")
             self.close()
+        im.set_item_tooltip(tr("Dismiss the message."))
 
 
 #: The folder the dialogs' view specs live in.

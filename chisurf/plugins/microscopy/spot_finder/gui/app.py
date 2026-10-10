@@ -546,15 +546,15 @@ class SpotFinderApp(ImApp):
             im.text_wrapped(self.error or self.job.error)
 
     def image_view(self, box):
-        im.text("Filter regions")
+        im.text(tr("Filter regions"))
         im.same_line(110)
         im.set_next_item_width(-1)
         _, self.region_filter = im.input_text(
-            "##filter_regions", self.region_filter, hint="Region name or file"
+            "##filter_regions", self.region_filter, hint=tr("Region name or file")
         )
         self.remember("filter_regions")
         im.set_item_tooltip(
-            "Filter detected-region names; measurements and image picking remain available."
+            tr("Filter detected-region names; measurements and image picking remain available.")
         )
         entries = self.model.region_entries()
         displayed = [e for e in entries if self.region_filter.casefold() in e["label"].casefold()]
@@ -563,13 +563,13 @@ class SpotFinderApp(ImApp):
             (i for i, e in enumerate(displayed) if e["id"] == self.model.current_region), 0
         )
         if displayed:
-            im.text("Selected region")
+            im.text(tr("Selected region"))
             im.same_line(110)
             im.set_next_item_width(-1)
             changed, index = im.combo("##selected_region", current, labels)
             self.remember("selected_region")
             im.set_item_tooltip(
-                "Browse each found region across all input files and inspect its measured geometry."
+                tr("Browse each found region across all input files and inspect its measured geometry.")
             )
             if changed:
                 self.model.current_region = displayed[index]["id"]

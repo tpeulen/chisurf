@@ -160,33 +160,33 @@ class BurstBrowserGui:
         avail_w = im.get_content_region_avail()[0]
         im.text_colored(ACCENT_BLUE, "Data Source")
         btn_w = max(60.0, (avail_w - 6.0) * 0.5)
-        if im.button("Open Folder", (btn_w, 24.0)):
+        if im.button(tr("Open Folder"), (btn_w, 24.0)):
             self.track("open_folder")
             if callable(self.on_open_folder):
                 self.on_open_folder()
-        im.set_item_tooltip("Open a folder of .bur burst files (with their companions).")
+        im.set_item_tooltip(tr("Open a folder of .bur burst files (with their companions)."))
         self.remember("open_folder")
 
         im.same_line()
-        if im.button("Open File", (btn_w, 24.0)):
+        if im.button(tr("Open File"), (btn_w, 24.0)):
             self.track("open_file")
             if callable(self.on_open_file):
                 self.on_open_file()
-        im.set_item_tooltip("Open a single .bur burst file or .pto container.")
+        im.set_item_tooltip(tr("Open a single .bur burst file or .pto container."))
         self.remember("open_file")
 
-        if im.button("📖 Guide", (btn_w, 24.0)):
+        if im.button(tr("📖 Guide"), (btn_w, 24.0)):
             self.track("guide")
             self.start_guide()
         self.remember("guide")
-        im.set_item_tooltip("Start a step-by-step guided tour of this tool.")
+        im.set_item_tooltip(tr("Start a step-by-step guided tour of this tool."))
 
         im.same_line()
-        if im.button("❓ Help", (btn_w, 24.0)):
+        if im.button(tr("❓ Help"), (btn_w, 24.0)):
             self.track("help")
             self.show_help()
         self.remember("help")
-        im.set_item_tooltip("Open the help window with reference documentation.")
+        im.set_item_tooltip(tr("Open the help window with reference documentation."))
 
         path = self.model.path_text
         if len(path) > 36:
@@ -203,9 +203,9 @@ class BurstBrowserGui:
         if self.model.detector in dets:
             cur_det_idx = dets.index(self.model.detector)
         im.set_next_item_width(avail_w)
-        im.text("Detector:")
+        im.text(tr("Detector:"))
         changed, new_det_idx = im.combo("##det", cur_det_idx, dets)
-        im.set_item_tooltip("Detector (channel group) whose bursts are shown.")
+        im.set_item_tooltip(tr("Detector (channel group) whose bursts are shown."))
         self.remember("detector")
         if changed and 0 <= new_det_idx < len(dets):
             self.track("detector")
@@ -219,9 +219,9 @@ class BurstBrowserGui:
         if self.model.hist_column in cols:
             cur_col_idx = cols.index(self.model.hist_column)
         im.set_next_item_width(avail_w)
-        im.text("Histogram column:")
+        im.text(tr("Histogram column:"))
         changed, new_col_idx = im.combo("##col", cur_col_idx, cols)
-        im.set_item_tooltip("Table column whose distribution is plotted in the histogram.")
+        im.set_item_tooltip(tr("Table column whose distribution is plotted in the histogram."))
         self.remember("hist_column")
         if changed and 0 <= new_col_idx < len(cols):
             self.track("hist_column")
@@ -252,7 +252,7 @@ class BurstBrowserGui:
                 self.model.e_max = max(new_e_lo, new_e_hi)
                 self.model.refresh()
         else:
-            im.text_disabled("E Range (not available)")
+            im.text_disabled(tr("E Range (not available)"))
 
         # S Range
         if self.model.have_S:
@@ -270,11 +270,11 @@ class BurstBrowserGui:
                 self.model.s_max = max(new_s_lo, new_s_hi)
                 self.model.refresh()
         else:
-            im.text_disabled("S Range (not available)")
+            im.text_disabled(tr("S Range (not available)"))
 
         # Size Range
         if self.model._col_size is not None:
-            im.text("Photon Size Range:")
+            im.text(tr("Photon Size Range:"))
             im.set_next_item_width(half_w)
             # No -/+ buttons: at half the pane they left too little room and a
             # 3-digit photon count showed as its first two digits.
@@ -283,25 +283,25 @@ class BurstBrowserGui:
                 "sz_min", size_lo, self._number_buffers, minimum=0, maximum=10_000_000
             )
             self.remember("sz_min")
-            im.set_item_tooltip("Minimum number of photons per burst.")
+            im.set_item_tooltip(tr("Minimum number of photons per burst."))
             im.same_line()
             im.set_next_item_width(half_w)
             typed_hi, _ = typed_number_field(
                 "sz_max", size_hi, self._number_buffers, minimum=0, maximum=10_000_000
             )
             self.remember("sz_max")
-            im.set_item_tooltip("Maximum number of photons per burst.")
+            im.set_item_tooltip(tr("Maximum number of photons per burst."))
             if typed_lo is not None or typed_hi is not None:
                 lo = size_lo if typed_lo is None else typed_lo
                 hi = size_hi if typed_hi is None else typed_hi
                 self.model.size_min, self.model.size_max = min(lo, hi), max(lo, hi)
                 self.model.refresh()
         else:
-            im.text_disabled("Size Range (not available)")
+            im.text_disabled(tr("Size Range (not available)"))
 
         im.spacing()
-        ch_sel, new_use_sel = im.checkbox("Use table selection for hist", self.model.use_selection)
-        im.set_item_tooltip("Histogram only the rows currently selected in the bursts table.")
+        ch_sel, new_use_sel = im.checkbox(tr("Use table selection for hist"), self.model.use_selection)
+        im.set_item_tooltip(tr("Histogram only the rows currently selected in the bursts table."))
         if ch_sel:
             self.model.use_selection = new_use_sel
             self.model.refresh()
@@ -341,12 +341,12 @@ class BurstBrowserGui:
     def _draw_table_view(self) -> None:
         avail_w, avail_h = im.get_content_region_avail()
         if self.model.table is None:
-            im.text_disabled("No bursts loaded. Open a .bur folder or file.")
+            im.text_disabled(tr("No bursts loaded. Open a .bur folder or file."))
             return
 
         names = column_names(self.model.table)
         if not names:
-            im.text_disabled("Table has no columns.")
+            im.text_disabled(tr("Table has no columns."))
             return
 
         masked_rows = self.model.masked_row_indices()
@@ -357,22 +357,22 @@ class BurstBrowserGui:
         # Pagination toolbar
         if im.button("<<", (28.0, 22.0)) and self.page > 0:
             self.page -= 1
-        im.set_item_tooltip("Previous page of bursts.")
+        im.set_item_tooltip(tr("Previous page of bursts."))
         im.same_line()
         im.text(f"Page {self.page + 1} / {max_page + 1} ({total_rows} bursts)")
         im.same_line()
         if im.button(">>", (28.0, 22.0)) and self.page < max_page:
             self.page += 1
-        im.set_item_tooltip("Next page of bursts.")
+        im.set_item_tooltip(tr("Next page of bursts."))
 
         im.same_line()
         if im.get_content_region_avail()[0] < 65.0:  # a narrow pane: on its own row, not cut off
             im.new_line()
-        if im.button("Clear Sel", (65.0, 22.0)):
+        if im.button(tr("Clear Sel"), (65.0, 22.0)):
             self.model.selected_indices.clear()
             if self.model.use_selection:
                 self.model.notify("selection")
-        im.set_item_tooltip("Deselect all rows in the table.")
+        im.set_item_tooltip(tr("Deselect all rows in the table."))
 
         im.spacing()
 
@@ -440,7 +440,7 @@ class BurstBrowserGui:
         avail_w, avail_h = im.get_content_region_avail()
         h = self.model.histogram()
         if h is None or len(h.get("centers", [])) == 0:
-            im.text_disabled("No histogram data available.")
+            im.text_disabled(tr("No histogram data available."))
             return
 
         origin = im.get_cursor_screen_pos()

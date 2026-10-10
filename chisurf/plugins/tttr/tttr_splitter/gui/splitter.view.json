@@ -4,15 +4,17 @@
     {
       "type": "dock_area",
       "title": "Split / Convert",
+      "description": "Convert a TTTR file to another format or split it into several files.",
       "persist": "tttr_splitter",
       "sections": [
         {
           "type": "panel",
           "title": "Input / Output",
+          "description": "Input and output file and format.",
           "collapsible": true,
           "collapsed": false,
           "sections": [
-            {"type": "custom", "key": "splitter_io"},
+            {"type": "custom", "key": "splitter_io", "description": "Choose the input file and the output folder."},
             {
               "type": "choice",
               "attr": "input_format",
@@ -32,6 +34,7 @@
         {
           "type": "panel",
           "title": "Split options",
+          "description": "Photons per file, micro-time binning and what to keep.",
           "collapsible": true,
           "collapsed": false,
           "n_col": 1,
@@ -56,6 +59,7 @@
             },
             {
               "type": "toggle_row",
+              "description": "Split into files, reset macro times and keep the original.",
               "items": [
                 {"attr": "split_files", "label": "Split into files",
                  "description": "Split into chunks of N photons; off = a single output file."},
@@ -78,6 +82,7 @@
               "type": "custom",
               "key": "path_list",
               "target": "batch_files",
+              "description": "Files queued for the batch run.",
               "options": {
                 "title": "PTU files (drop files or folders)",
                 "extensions": [".ptu"],
@@ -87,13 +92,14 @@
             {
               "type": "toggle",
               "attr": "batch_use_parent",
+              "description": "Write each result next to its source file.",
               "label": "Use file's parent as output folder"
             },
-            {"type": "custom", "key": "splitter_batch_run"}
+            {"type": "custom", "key": "splitter_batch_run", "description": "Start the batch run."}
           ]
         }
       ]
     },
-    {"type": "custom", "key": "splitter_run"}
+    {"type": "custom", "key": "splitter_run", "description": "Convert or split the loaded file."}
   ]
 }

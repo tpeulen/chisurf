@@ -5,6 +5,7 @@
     {
       "type": "dock_area",
       "title": "2D-FLCS",
+      "description": "Two-dimensional fluorescence lifetime correlation spectroscopy: toolbar, settings and result maps.",
       "sections": [
         {
           "type": "panel",

@@ -9,6 +9,7 @@ import copy
 from concurrent.futures import CancelledError, ThreadPoolExecutor
 from pathlib import Path
 from threading import Event
+from emtk.i18n import tr
 
 
 class BurstGsController:
@@ -206,7 +207,7 @@ class BurstGsController:
 
         if self.running:
             im.progress_bar(self.progress_fraction, overlay=self.progress_text)
-            im.set_item_tooltip("Progress of the running fit; Stop fit cancels it.")
+            im.set_item_tooltip(tr("Progress of the running fit; Stop fit cancels it."))
         if self.status:
             im.text_wrapped(self.status)
 

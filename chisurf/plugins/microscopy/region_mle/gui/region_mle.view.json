@@ -3,10 +3,12 @@
   "sections": [
     {
       "type": "dock_area",
+      "description": "Maximum-likelihood lifetime fit of the summed decay of each region.",
       "title": "Region MLE",
       "sections": [
         {
           "type": "panel",
+          "description": "Input data, regions and fit settings.",
           "title": "Analysis",
           "n_col": 1,
           "collapsed": false,
@@ -30,13 +32,13 @@
              "description": "Fit-window stop on the binned micro-time axis."},
             {"type": "value", "attr": "micro_time_binning", "kind": "int", "label": "Micro-time binning", "minimum": 1, "maximum": 100000,
              "description": "Integer down-binning of the micro-time axis before fitting."},
-            {"type": "panel", "title": "Regions", "n_col": 2, "collapsed": true, "sections": [
+            {"type": "panel", "description": "How regions are defined: from saved masks or detected spots.", "title": "Regions", "n_col": 2, "collapsed": true, "sections": [
               {"type": "value", "attr": "region_set", "kind": "str", "label": "Detection",
                "description": "Which detection in the measurement's container to fit, when it holds more than one. Regions are found by the Spot Finder; this tool fits the ones it is given."},
               {"type": "value", "attr": "min_photons", "kind": "int", "label": "Min photons", "minimum": 1, "maximum": 10000000,
                "description": "Regions with fewer photons in the fit window are not fitted; they keep a row, with NaN parameters."}
             ]},
-            {"type": "panel", "title": "Fit (Fit23)", "n_col": 2, "collapsed": true, "sections": [
+            {"type": "panel", "description": "Fit23 maximum-likelihood decay model and its fixed and free parameters.", "title": "Fit (Fit23)", "n_col": 2, "collapsed": true, "sections": [
               {"type": "value", "attr": "tau", "kind": "float", "label": "τ (ns)", "decimals": 3, "minimum": 0.0, "maximum": 1000.0,
                "description": "Initial fluorescence lifetime."},
               {"type": "toggle", "attr": "fix_tau", "label": "fix τ", "description": "Hold the lifetime fixed."},

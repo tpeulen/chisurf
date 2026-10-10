@@ -275,7 +275,7 @@ class MaxentApp(ImApp):
                     "Live fit", self.fit_index, [getattr(f, "name", "Fit") for f in self.fits]
                 )
                 im.set_item_tooltip(
-                    "Choose a fit for the observed data, the fit range and the instrument values."
+                    tr("Choose a fit for the observed data, the fit range and the instrument values.")
                 )
                 self.buttons(
                     [
@@ -299,7 +299,7 @@ class MaxentApp(ImApp):
                     self.dataset_index,
                     [getattr(d, "name", "Dataset") for d in self.datasets],
                 )
-                im.set_item_tooltip("Choose an existing measured curve.")
+                im.set_item_tooltip(tr("Choose an existing measured curve."))
                 self.buttons(
                     [
                         {
@@ -334,7 +334,7 @@ class MaxentApp(ImApp):
         im.text_wrapped(m.status)
         if self.jobs.progress[1]:
             im.text(f"Progress: {self.jobs.progress[0]}/{self.jobs.progress[1]}")
-            im.set_item_tooltip("Iterations or sweep points done by the running job.")
+            im.set_item_tooltip(tr("Iterations or sweep points done by the running job."))
         if self.jobs.output:
             im.text_disabled(self.jobs.output[-1][:90])
         im.separator()
@@ -343,7 +343,7 @@ class MaxentApp(ImApp):
         self.form("period")
         self.form("instrument")
         opened = im.collapsing_header("L-curve span and sampling")
-        im.set_item_tooltip("The decades the L-curve sweep covers and the Q-MCMC sampling options.")
+        im.set_item_tooltip(tr("The decades the L-curve sweep covers and the Q-MCMC sampling options."))
         if opened:
             self.form("lcurve")
             self.form("sampling")
@@ -516,15 +516,15 @@ class MaxentApp(ImApp):
                 "JSON preferences", self.settings_text, size=(-1.0, 400.0)
             )
             im.set_item_tooltip(
-                "Edit declared grids, nuisance controls, regularization and sampling preferences; live arrays are not persisted."
+                tr("Edit declared grids, nuisance controls, regularization and sampling preferences; live arrays are not persisted.")
             )
-            if im.button("Apply settings"):
+            if im.button(tr("Apply settings")):
                 self.error(lambda: self.model.restore_preferences(json.loads(self.settings_text)))
                 self.edit_settings = False
-            im.set_item_tooltip("Apply valid JSON preferences to the next MEM job.")
-            if im.button("Close settings") or pressed == "close":
+            im.set_item_tooltip(tr("Apply valid JSON preferences to the next MEM job."))
+            if im.button(tr("Close settings")) or pressed == "close":
                 self.edit_settings = False
-            im.set_item_tooltip("Close this settings editor.")
+            im.set_item_tooltip(tr("Close this settings editor."))
             self.settings_window.end()
         if self.dialog is not None:
             pressed = self.file_window.begin(box)

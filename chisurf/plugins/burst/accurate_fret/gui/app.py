@@ -19,6 +19,7 @@ from chisurf.plugins.emtk_layout import window_size
 
 from .controller import AccurateFretController
 from .view_model import AccurateFretViewModel
+from emtk.i18n import tr
 
 WINDOW_BG = (30, 32, 38, 255)
 
@@ -229,7 +230,7 @@ class AccurateFretGui(TourTarget):
             im.text_wrapped(self.model.can_run())
         expanded = self._header("Data, session and catalogue actions")
         im.set_item_tooltip(
-            "Read or publish ndX data, export/store factors, or refresh optical catalogues."
+            tr("Read or publish ndX data, export/store factors, or refresh optical catalogues.")
         )
         if expanded:
             self._button(
@@ -268,10 +269,10 @@ class AccurateFretGui(TourTarget):
                 "List saved light-path simulations that can supply calibration priors.",
                 lambda: controller._start("lightpaths"),
             )
-            im.text("Spectra database path:")
+            im.text(tr("Spectra database path:"))
             changed, path = im.input_text("##accurate_db", self.model.database_path or "")
             im.set_item_tooltip(
-                "Optional MMFDB database path for dyes and saved optical priors; empty uses the configured database."
+                tr("Optional MMFDB database path for dyes and saved optical priors; empty uses the configured database.")
             )
             if changed:
                 self.model.database_path = path or None

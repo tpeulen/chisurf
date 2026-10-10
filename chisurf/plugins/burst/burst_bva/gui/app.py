@@ -22,6 +22,7 @@ from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import button_row, icon_label, window_size
 
 from .view_model import BvaViewModel
+from emtk.i18n import tr
 
 __all__ = ["BurstBvaApp", "BurstBvaGui", "WINDOW_BG"]
 
@@ -132,7 +133,7 @@ class BurstBvaGui:
             # Tab bar for settings
             if im.begin_tab_bar("bva_settings_tabs"):
                 opened = im.begin_tab_item("BVA Settings")
-                im.set_item_tooltip("Adjust analysis and display parameters.")  # selected or not
+                im.set_item_tooltip(tr("Adjust analysis and display parameters."))  # selected or not
                 if opened:
                     self.selected_settings_tab = "BVA Settings"
                     self.remember("BVA Settings")
@@ -142,7 +143,7 @@ class BurstBvaGui:
                     self.remember("BVA Settings")
 
                 opened = im.begin_tab_item("Channel Definitions")
-                im.set_item_tooltip("Set detector routing and microtime gates.")
+                im.set_item_tooltip(tr("Set detector routing and microtime gates."))
                 if opened:
                     self.selected_settings_tab = "Channel Definitions"
                     self.remember("Channel Definitions")
@@ -166,7 +167,7 @@ class BurstBvaGui:
             if im.begin_tab_bar("bva_plot_tabs"):
                 opened = im.begin_tab_item("Plot")
                 im.set_item_tooltip(
-                    "Std of the proximity ratio per burst against its mean, with the static line."
+                    tr("Std of the proximity ratio per burst against its mean, with the static line.")
                 )
                 if opened:
                     self.remember("Plot")
@@ -306,7 +307,7 @@ class BurstBvaGui:
 
     def _draw_folder_input(self, width: float) -> None:
         """Folder path input."""
-        im.text("Burst folder:")
+        im.text(tr("Burst folder:"))
         current = str(self.model.analysis_folder or "")
         # What is typed is kept as typed: the model holds a ``Path``, which drops a trailing "/" and so ate every
         # separator the moment it was typed. The model's value wins as soon as it differs from what was typed
@@ -314,9 +315,9 @@ class BurstBvaGui:
         typed = self._folder_text
         if typed is None or (str(Path(typed)) if typed.strip() else "") != current:
             typed = self._folder_text = current
-        changed, text = im.input_text("##folder_path", typed, hint="Burst analysis folder …")
+        changed, text = im.input_text("##folder_path", typed, hint=tr("Burst analysis folder …"))
         im.set_item_tooltip(
-            "Path to the burst analysis folder; type a path or use Folder to browse."
+            tr("Path to the burst analysis folder; type a path or use Folder to browse.")
         )
         self.remember("folder_path")
         if changed:
@@ -340,14 +341,14 @@ class BurstBvaGui:
         # Window length
         col_x = 175.0
         im.align_text_to_frame_padding()
-        im.text("Min window length (s):")
+        im.text(tr("Min window length (s):"))
         im.same_line(col_x)
         im.set_next_item_width(120)
         changed, wl = im.drag_float(
             "##window_length", self.model.window_length, 0.001, 0.0001, 10.0, "%.4f s"
         )
         im.set_item_tooltip(
-            "Minimum window length in seconds used to slice bursts into photon subsets."
+            tr("Minimum window length in seconds used to slice bursts into photon subsets.")
         )
         self.remember("window_length")
         if changed:
@@ -356,14 +357,14 @@ class BurstBvaGui:
 
         # Photons per slice
         im.align_text_to_frame_padding()
-        im.text("Photons per slice:")
+        im.text(tr("Photons per slice:"))
         im.same_line(col_x)
         im.set_next_item_width(120)
         changed, pps = im.drag_float(
             "##photons_per_slice", float(self.model.photons_per_slice), 1.0, 1.0, 500.0, "%.0f"
         )
         im.set_item_tooltip(
-            "Number of photons per slice when splitting bursts for the variance analysis."
+            tr("Number of photons per slice when splitting bursts for the variance analysis.")
         )
         self.remember("photons_per_slice")
         if changed:
@@ -375,38 +376,38 @@ class BurstBvaGui:
 
         # Bins
         im.align_text_to_frame_padding()
-        im.text("Bins X:")
+        im.text(tr("Bins X:"))
         im.same_line(col_x)
         im.set_next_item_width(120)
         changed, bx = im.drag_float("##bins_x", float(self.model.bins_x), 1.0, 10.0, 500.0, "%.0f")
-        im.set_item_tooltip("Number of histogram bins along the mean proximity-ratio axis.")
+        im.set_item_tooltip(tr("Number of histogram bins along the mean proximity-ratio axis."))
         self.remember("bins_x")
         if changed:
             self.model.bins_x = max(10, int(round(bx)))
             self.model.notify("bins")
 
         im.align_text_to_frame_padding()
-        im.text("Bins Y:")
+        im.text(tr("Bins Y:"))
         im.same_line(col_x)
         im.set_next_item_width(120)
         changed, by = im.drag_float("##bins_y", float(self.model.bins_y), 1.0, 10.0, 500.0, "%.0f")
-        im.set_item_tooltip("Number of histogram bins along the standard-deviation axis.")
+        im.set_item_tooltip(tr("Number of histogram bins along the standard-deviation axis."))
         self.remember("bins_y")
         if changed:
             self.model.bins_y = max(10, int(round(by)))
             self.model.notify("bins")
 
         # Toggles
-        if im.checkbox("Show static line", self.model.show_static_line)[0]:
+        if im.checkbox(tr("Show static line"), self.model.show_static_line)[0]:
             self.model.show_static_line = not self.model.show_static_line
             self.model.notify("display")
-        im.set_item_tooltip("Overlay the shot-noise limited static line on the BVA plot.")
+        im.set_item_tooltip(tr("Overlay the shot-noise limited static line on the BVA plot."))
         self.remember("show_static_line")
 
-        if im.checkbox("Auto update", self.model.auto_update)[0]:
+        if im.checkbox(tr("Auto update"), self.model.auto_update)[0]:
             self.model.auto_update = not self.model.auto_update
             self.model.notify("display")
-        im.set_item_tooltip("Recompute the BVA automatically whenever a parameter changes.")
+        im.set_item_tooltip(tr("Recompute the BVA automatically whenever a parameter changes."))
         self.remember("auto_update")
 
     @staticmethod
@@ -425,20 +426,20 @@ class BurstBvaGui:
         im.spacing()
         im.text_colored((200, 210, 230, 255), "Detector Routing")
 
-        im.text("Donor routing channels:")
+        im.text(tr("Donor routing channels:"))
         changed, donor = im.input_text("##donor_ch", self.model.donor_channels_text, hint="0,8")
         im.set_item_tooltip(
-            "Comma-separated TTTR routing channels assigned to the donor (e.g. 0,8)."
+            tr("Comma-separated TTTR routing channels assigned to the donor (e.g. 0,8).")
         )
         self.remember("donor_channels")
         if changed:
             self.model.donor_channels_text = donor
             self.model.notify("channel")
 
-        im.text("Acceptor routing channels:")
+        im.text(tr("Acceptor routing channels:"))
         changed, acc = im.input_text("##acceptor_ch", self.model.acceptor_channels_text, hint="1,9")
         im.set_item_tooltip(
-            "Comma-separated TTTR routing channels assigned to the acceptor (e.g. 1,9)."
+            tr("Comma-separated TTTR routing channels assigned to the acceptor (e.g. 1,9).")
         )
         self.remember("acceptor_channels")
         if changed:
@@ -458,7 +459,7 @@ class BurstBvaGui:
                 typed = self._microtime_text[name] = ", ".join(f"{lo}:{hi}" for lo, hi in ranges)
             changed, text = im.input_text(f"##{name}_microtime", typed, hint="0:32768")
             im.set_item_tooltip(
-                "Microtime gates in channel bins, written as start:end pairs separated by commas."
+                tr("Microtime gates in channel bins, written as start:end pairs separated by commas.")
             )
             self.remember(f"{name}_microtime")
             if changed:
@@ -474,9 +475,9 @@ class BurstBvaGui:
                     setattr(self.model, f"{name}_micro_time_ranges", parsed)
                     self.model.notify("channel")
 
-        im.text("File type:")
-        changed, ft = im.input_text("##file_type", self.model.file_type, hint="SPC-130")
-        im.set_item_tooltip("TTTR file type of the source measurements (e.g. SPC-130).")
+        im.text(tr("File type:"))
+        changed, ft = im.input_text("##file_type", self.model.file_type, hint=tr("SPC-130"))
+        im.set_item_tooltip(tr("TTTR file type of the source measurements (e.g. SPC-130)."))
         self.remember("file_type")
         if changed:
             self.model.set_file_type(ft)

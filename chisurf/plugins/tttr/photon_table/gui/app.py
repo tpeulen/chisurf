@@ -18,6 +18,7 @@ from emtk import im
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
@@ -100,14 +101,14 @@ class PhotonTableApp(ImApp):
     def draw_file(self, box: Any) -> None:
         """The left window: Open, Copy, Help, Guide and the file summary."""
         draw_sections(self.panels["file"]["sections"][:1], self.model, self.form, titles=False)
-        if im.button("Guide"):
+        if im.button(tr("Guide")):
             self.tour.start()
-        im.set_item_tooltip("A step-by-step walk through the tool.")
+        im.set_item_tooltip(tr("A step-by-step walk through the tool."))
         self.item_rects["guide"] = im.get_item_rect()
         im.same_line()
-        if im.button("Help"):
+        if im.button(tr("Help")):
             self.help_window.show()
-        im.set_item_tooltip("The short help page.")
+        im.set_item_tooltip(tr("The short help page."))
         self.item_rects["help"] = im.get_item_rect()
         im.separator()
         x0, y0 = im.get_cursor_screen_pos()
@@ -121,7 +122,7 @@ class PhotonTableApp(ImApp):
             max(y1 - y0, 1.0),
         )
         if self.job.busy:
-            im.text_disabled("Loading the photons...")
+            im.text_disabled(tr("Loading the photons..."))
 
     def draw_photons(self, box: Any) -> None:
         """The right window: navigation, page fields, channel filter and the table."""

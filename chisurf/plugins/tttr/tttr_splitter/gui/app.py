@@ -14,6 +14,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 
+from emtk.i18n import tr
 import emtk.im as im
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
@@ -133,28 +134,28 @@ class SplitterGui(TourTarget):
         im.push_style_color(Col.BUTTON, ACCENT_GREEN)
         im.push_style_color(Col.BUTTON_HOVERED, (56, 180, 77, 255))
         im.push_style_color(Col.BUTTON_ACTIVE, (36, 140, 57, 255))
-        if im.button("✂ Convert / Split"):
+        if im.button(tr("✂ Convert / Split")):
             if callable(self.on_run):
                 self.on_run()
                 self.tour.notify_used("run")
         im.set_item_tooltip(
-            "Split the loaded TTTR file into the output folder, one file per "
-            "photon chunk, converting the container format when it differs."
+            tr("Split the loaded TTTR file into the output folder, one file per "
+            "photon chunk, converting the container format when it differs.")
         )
         im.pop_style_color(3)
         self.remember("run")
         im.same_line()
-        if im.button("📖 Guide"):
+        if im.button(tr("📖 Guide")):
             self.start_guide()
-        im.set_item_tooltip("A step-by-step walk through the tool.")
+        im.set_item_tooltip(tr("A step-by-step walk through the tool."))
         self.remember("guide")
         if im.get_line_avail() < 110.0:
             im.new_line()
         else:
             im.same_line()
-        if im.button("❓ Help"):
+        if im.button(tr("❓ Help")):
             self.show_help()
-        im.set_item_tooltip("The short help page.")
+        im.set_item_tooltip(tr("The short help page."))
         self.remember("help")
 
         im.separator()
@@ -177,7 +178,7 @@ class SplitterGui(TourTarget):
         self.remember("output")
 
         im.spacing()
-        im.text("Drop a TTTR file onto this window to load it.")
+        im.text(tr("Drop a TTTR file onto this window to load it."))
         if m.tttr is not None:
             n = len(m.tttr)
             im.text_colored(f"Loaded: {m.input_file}", (0.4, 0.85, 0.5, 1.0))
@@ -197,14 +198,14 @@ class SplitterGui(TourTarget):
         m = self.model
 
         formats_open = im.collapsing_header("Formats", im.TreeNodeFlags.DEFAULT_OPEN)
-        im.set_item_tooltip("Expand or collapse the input and output container settings.")
+        im.set_item_tooltip(tr("Expand or collapse the input and output container settings."))
         if formats_open:
             in_opts = m.input_format_options()
             idx = in_opts.index(m.input_format) if m.input_format in in_opts else 0
             changed, new_idx = im.combo("Input format", idx, in_opts)
             im.set_item_tooltip(
-                "How to read the input file. Auto detects the container from its "
-                "content; pick the vendor format when the extension lies."
+                tr("How to read the input file. Auto detects the container from its "
+                "content; pick the vendor format when the extension lies.")
             )
             if changed and 0 <= new_idx < len(in_opts):
                 m.input_format = in_opts[new_idx]
@@ -212,8 +213,8 @@ class SplitterGui(TourTarget):
             idx = out_opts.index(m.output_format) if m.output_format in out_opts else 0
             changed, new_idx = im.combo("Output format", idx, out_opts)
             im.set_item_tooltip(
-                "Container the output files are written in — the same format "
-                "when it matches the input, a transcode otherwise."
+                tr("Container the output files are written in — the same format "
+                "when it matches the input, a transcode otherwise.")
             )
             if changed and 0 <= new_idx < len(out_opts):
                 m.output_format = out_opts[new_idx]
@@ -221,18 +222,18 @@ class SplitterGui(TourTarget):
 
         split_open = im.collapsing_header("Split", im.TreeNodeFlags.DEFAULT_OPEN)
         im.set_item_tooltip(
-            "Expand or collapse photon chunking, timing and source retention settings."
+            tr("Expand or collapse photon chunking, timing and source retention settings.")
         )
         if split_open:
             _, v = im.input_int("Photons per file [k]", m.photons_per_file_k, step=50)
             im.set_item_tooltip(
-                "Chunk size in thousands of photons when Split into files is enabled."
+                tr("Chunk size in thousands of photons when Split into files is enabled.")
             )
             m.photons_per_file_k = max(1, int(v))
             bin_opts = ["1", "2", "4", "8", "16"]
             idx = bin_opts.index(m.microtime_binning) if m.microtime_binning in bin_opts else 0
             changed, new_idx = im.combo("Micro time binning", idx, bin_opts)
-            im.set_item_tooltip("Divide the micro-time resolution of the output by this factor.")
+            im.set_item_tooltip(tr("Divide the micro-time resolution of the output by this factor."))
             if changed and 0 <= new_idx < len(bin_opts):
                 m.microtime_binning = bin_opts[new_idx]
             for attr, label, tip in (
@@ -262,30 +263,30 @@ class SplitterGui(TourTarget):
     def _draw_batch(self, box: tuple[float, float, float, float]) -> None:
         m = self.model
 
-        if im.button("➕ Files"):
+        if im.button(tr("➕ Files")):
             if callable(self.on_add_batch_files):
                 self.on_add_batch_files()
-        im.set_item_tooltip("Queue PTU files for the batch run.")
+        im.set_item_tooltip(tr("Queue PTU files for the batch run."))
         self.remember("batch_files")
         im.same_line()
-        if im.button("📁 Folder"):
+        if im.button(tr("📁 Folder")):
             if callable(self.on_add_batch_folder):
                 self.on_add_batch_folder()
-        im.set_item_tooltip("Queue .ptu files recursively from a folder, sorted by name.")
+        im.set_item_tooltip(tr("Queue .ptu files recursively from a folder, sorted by name."))
         self.remember("batch_folder")
         im.same_line()
-        if im.button("🗑️ Clear"):
+        if im.button(tr("🗑️ Clear")):
             if callable(self.on_clear_batch):
                 self.on_clear_batch()
-        im.set_item_tooltip("Empty the batch queue.")
+        im.set_item_tooltip(tr("Empty the batch queue."))
         self.remember("batch_clear")
-        if im.button("🗄 Database"):
+        if im.button(tr("🗄 Database")):
             self.tool._add_batch_database()
-        im.set_item_tooltip("Queue PTU datasets from the session MMFDB database.")
+        im.set_item_tooltip(tr("Queue PTU datasets from the session MMFDB database."))
         im.separator()
 
         if not m.batch_files:
-            im.text_disabled("No files queued — add PTU files or a folder.")
+            im.text_disabled(tr("No files queued — add PTU files or a folder."))
         else:
             im.text_disabled(f"Queued files ({len(m.batch_files)})")
             available = im.get_content_region_avail()
@@ -305,22 +306,22 @@ class SplitterGui(TourTarget):
                 if im.begin_popup_context_item(f"batch_menu{row}"):
                     if im.menu_item("Remove from queue"):
                         m.batch_files.remove(path)
-                    im.set_item_tooltip("Remove this file without deleting it from disk.")
+                    im.set_item_tooltip(tr("Remove this file without deleting it from disk."))
                     im.end_popup()
                 im.pop_id()
             im.end_child()
 
-        _, checked = im.checkbox("Output next to each file", m.batch_use_parent)
+        _, checked = im.checkbox(tr("Output next to each file"), m.batch_use_parent)
         im.set_item_tooltip(
-            "Write each file's output into its own folder instead of the shared output folder."
+            tr("Write each file's output into its own folder instead of the shared output folder.")
         )
         m.batch_use_parent = checked
 
         im.spacing()
-        if im.button("▶ Start batch"):
+        if im.button(tr("▶ Start batch")):
             if callable(self.on_run_batch):
                 self.on_run_batch()
-        im.set_item_tooltip("Split every queued file with the options set above.")
+        im.set_item_tooltip(tr("Split every queued file with the options set above."))
         self.remember("batch_run")
         index, count = self.tool.batch_progress
         if self.tool.batch_running or count:

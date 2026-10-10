@@ -15,6 +15,7 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 
+from emtk.i18n import tr
 import emtk.im as im
 import emtk.implot as implot
 import numpy as np
@@ -214,39 +215,39 @@ class CountRateGui(TourTarget):
         if job is not None and job.running:
             current, count = self.tool.progress
             im.text(f"{current}/{count} files")
-            if im.button("Stop analysis"):
+            if im.button(tr("Stop analysis")):
                 job.stop()
                 self.tool.message = "Stopped analysis; incomplete results will be discarded."
             im.set_item_tooltip(
-                "Stop between file reads and discard incomplete computation results."
+                tr("Stop between file reads and discard incomplete computation results.")
             )
 
     # ── files ─────────────────────────────────────────────────────────────
 
     def _draw_files(self, box: tuple[float, float, float, float]) -> None:
         im.begin_disabled(self.busy())
-        if im.button("Add files"):
+        if im.button(tr("Add files")):
             self._used("add_files")
             if callable(self.on_add_files):
                 self.on_add_files()
-        im.set_item_tooltip("Queue TTTR files (.ptu, .ht3, .spc, …) for the analysis.")
+        im.set_item_tooltip(tr("Queue TTTR files (.ptu, .ht3, .spc, …) for the analysis."))
         self.remember("add_files")
         if im.get_line_avail() >= im.calc_text_size("Clear")[0] + 24:
             im.same_line()
-        if im.button("Clear"):
+        if im.button(tr("Clear")):
             if callable(self.on_clear):
                 self.on_clear()
-        im.set_item_tooltip("Drop the file queue and any computed results.")
+        im.set_item_tooltip(tr("Drop the file queue and any computed results."))
         self.remember("clear")
         if im.get_line_avail() >= im.calc_text_size("Help")[0] + 24:
             im.same_line()
-        if im.button("Help"):
+        if im.button(tr("Help")):
             self.show_help()
-        im.set_item_tooltip("The short help page.")
+        im.set_item_tooltip(tr("The short help page."))
         self.remember("help")
-        if im.button("Guide"):
+        if im.button(tr("Guide")):
             self.start_guide()
-        im.set_item_tooltip("Walk through inputs, detector gates, calculation and export.")
+        im.set_item_tooltip(tr("Walk through inputs, detector gates, calculation and export."))
         self.remember("guide")
         im.separator()
 
@@ -268,16 +269,16 @@ class CountRateGui(TourTarget):
                 im.set_item_tooltip(tip)
         files = self.model.files
         if not files:
-            im.text_disabled("No files queued.")
+            im.text_disabled(tr("No files queued."))
             im.end_disabled()
             self.draw_status()
             return
         if self.selected_file not in files:
             self.selected_file = None
         im.begin_disabled(self.selected_file is None)
-        if im.button("Remove"):
+        if im.button(tr("Remove")):
             self.remove_file(self.selected_file)
-        im.set_item_tooltip("Remove the selected file from the queue (it stays on disk).")
+        im.set_item_tooltip(tr("Remove the selected file from the queue (it stays on disk)."))
         im.end_disabled()
         self.remember("remove")
         for i, path in enumerate(list(files)):
@@ -287,7 +288,7 @@ class CountRateGui(TourTarget):
             if im.begin_popup_context_item(f"file-menu{i}"):
                 if im.menu_item("Remove from queue"):
                     self.remove_file(path)
-                im.set_item_tooltip("Remove this input without deleting it from disk.")
+                im.set_item_tooltip(tr("Remove this input without deleting it from disk."))
                 im.end_popup()
         self.remember("file_list")
         im.end_disabled()
@@ -316,25 +317,25 @@ class CountRateGui(TourTarget):
             return
         refresh = getattr(tool, "refresh_setups", None)
         if callable(refresh):
-            if im.button("Refresh saved setups"):
+            if im.button(tr("Refresh saved setups")):
                 refresh()
-            im.set_item_tooltip("Read authoritative Detector Definition setups from MMFDB or JSON.")
+            im.set_item_tooltip(tr("Read authoritative Detector Definition setups from MMFDB or JSON."))
         editor = getattr(tool, "edit_setup", None)
         if callable(editor):
-            if im.button("Edit detector setup…"):
+            if im.button(tr("Edit detector setup…")):
                 editor()
-            im.set_item_tooltip("Edit routing channels, detector gates and excitation windows.")
+            im.set_item_tooltip(tr("Edit routing channels, detector gates and excitation windows."))
         browse = getattr(tool, "browse_setups", None)
         if callable(browse):
-            if im.button("Open setup library…"):
+            if im.button(tr("Open setup library…")):
                 browse()
-            im.set_item_tooltip("Read detector definitions from another setup library JSON file.")
+            im.set_item_tooltip(tr("Read detector definitions from another setup library JSON file."))
         setups = tool.available_setups()
         names = list(setups.keys())
         if tool.selected_setup not in names:
             tool.selected_setup = names[0] if names else ""
 
-        im.text("Detector setup:")
+        im.text(tr("Detector setup:"))
         im.same_line()
         if not names:
             im.text_disabled(
@@ -343,8 +344,8 @@ class CountRateGui(TourTarget):
                 else "not loaded — press Refresh"
             )
             im.set_item_tooltip(
-                "No detector setups are saved yet — define one in the "
-                "Detector Configuration wizard and it appears here."
+                tr("No detector setups are saved yet — define one in the "
+                "Detector Configuration wizard and it appears here.")
             )
             im.end_disabled()
             return
@@ -352,8 +353,8 @@ class CountRateGui(TourTarget):
         im.set_next_item_width(-1.0)
         changed, new_idx = im.combo("##setup_source", idx, names)
         im.set_item_tooltip(
-            "The saved detector setup whose detectors and micro-time windows "
-            "define the channels this analysis reports."
+            tr("The saved detector setup whose detectors and micro-time windows "
+            "define the channels this analysis reports.")
         )
         if changed and 0 <= new_idx < len(names):
             tool.selected_setup = names[new_idx]
@@ -362,7 +363,7 @@ class CountRateGui(TourTarget):
         channels = tool.channels()
         im.spacing()
         im.text_colored(f"{len(channels)} channels defined", (0.4, 0.85, 0.5, 1.0))
-        im.set_item_tooltip("The channel names the results table and plot will report.")
+        im.set_item_tooltip(tr("The channel names the results table and plot will report."))
         for cname in channels:
             det = channels[cname]
             chs = ", ".join(
@@ -415,7 +416,7 @@ class CountRateGui(TourTarget):
             else:
                 implot.plot_dummy("press Calculate to draw the count rates")
             implot.end_plot()
-        im.set_item_tooltip("Count rate per channel (kHz), one series per detector.")
+        im.set_item_tooltip(tr("Count rate per channel (kHz), one series per detector."))
         self.remember("plot")
 
     # ── results ───────────────────────────────────────────────────────────
@@ -424,25 +425,25 @@ class CountRateGui(TourTarget):
         m = self.model
 
         im.begin_disabled(self.busy())
-        if im.button("Calculate"):
+        if im.button(tr("Calculate")):
             self._used("calculate")
             if callable(self.on_calculate):
                 self.on_calculate()
-        im.set_item_tooltip("Compute count rates for all queued files.")
+        im.set_item_tooltip(tr("Compute count rates for all queued files."))
         self.remember("calculate")
         im.same_line()
-        if im.button("Save"):
+        if im.button(tr("Save")):
             self._used("save")
             if callable(self.on_save):
                 self.on_save()
-        im.set_item_tooltip("Save the results table as tab-separated text.")
+        im.set_item_tooltip(tr("Save the results table as tab-separated text."))
         self.remember("save")
         im.end_disabled()
         im.separator()
 
         rows = m.results_rows()
         if not rows:
-            im.text_disabled("No results yet — press Calculate.")
+            im.text_disabled(tr("No results yet — press Calculate."))
             return
         draw_form(RESULTS_TABLE, m, self.results_form)
         self.remember("results")

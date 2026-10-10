@@ -22,6 +22,7 @@ from .alternation_model import AlexAlternationModel
 from .app import AlexAlternationApp, LegacyExportApp, TitrationApp
 from .export_model import LegacyExportModel
 from .titration_view_model import TitrationViewModel
+from emtk.i18n import tr
 
 logger = logging.getLogger("chisurf.plugins.burst")
 
@@ -96,16 +97,16 @@ class AlexDataSelectionApp(BurstDataSelectionApp):
 
     def _draw_summary_extra(self) -> None:
         im.separator()
-        im.text_wrapped("No µs-ALEX measurement at hand?")
-        if im.button("Demo"):
+        im.text_wrapped(tr("No µs-ALEX measurement at hand?"))
+        if im.button(tr("Demo")):
             self.track("load_example")
             try:
                 self.load_example()
             except Exception as exc:  # noqa: BLE001 - shown in the window
                 self.message = f"Could not write the demo data: {exc}"
         im.set_item_tooltip(
-            "Write a simulated µs-ALEX measurement (100 µs alternation, donor channel 0, acceptor channel 1; low FRET, "
-            "high FRET, donor-only and acceptor-only molecules) into this plugin’s generated-data folder and add it."
+            tr("Write a simulated µs-ALEX measurement (100 µs alternation, donor channel 0, acceptor channel 1; low FRET, "
+            "high FRET, donor-only and acceptor-only molecules) into this plugin’s generated-data folder and add it.")
         )
         self.remember("load_example")
 

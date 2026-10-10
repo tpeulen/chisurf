@@ -481,7 +481,7 @@ class HistogramApp(TourTarget, ImApp):
         top = im.get_cursor_screen_pos()
         for index, path in enumerate(list(paths)):
             changed, use = im.checkbox(f"##{key}check{index}", enabled.get(path, True))
-            im.set_item_tooltip("Include this file in the histogram calculation.")
+            im.set_item_tooltip(tr("Include this file in the histogram calculation."))
             self.remember(f"{key}_check_{index}")
             if changed:
                 enabled[path] = use
@@ -494,10 +494,10 @@ class HistogramApp(TourTarget, ImApp):
             if im.begin_popup_context_item(f"{key}menu{index}"):
                 if im.menu_item("Remove input"):
                     self.remove_input(key, path)
-                im.set_item_tooltip("Remove this input without deleting its source file.")
+                im.set_item_tooltip(tr("Remove this input without deleting its source file."))
                 im.end_popup()
         if not paths:
-            im.text_disabled("Nothing queued.")
+            im.text_disabled(tr("Nothing queued."))
         self.remember(
             f"{key}_list",
             (
@@ -592,7 +592,7 @@ class HistogramApp(TourTarget, ImApp):
             "Burst selections (BID/BUR)", 32 if self.model.bid_files else 0
         )
         im.set_item_tooltip(
-            "Restrict the photons to bursts: queue .bst/.bur photon-index files (inclusive bounds)."
+            tr("Restrict the photons to bursts: queue .bst/.bur photon-index files (inclusive bounds).")
         )
         self.remember("burst_header")
         if open_bursts:

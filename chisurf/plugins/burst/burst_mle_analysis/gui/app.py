@@ -29,6 +29,7 @@ from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import cap_widths
 
 from . import fit_view
+from emtk.i18n import tr
 
 if TYPE_CHECKING:
     from ..wizard import MLELifetimeAnalysisWizard
@@ -153,34 +154,34 @@ class BurstMleGui(TourTarget):
         im.push_style_color(Col.BUTTON, ACCENT_GREEN)
         im.push_style_color(Col.BUTTON_HOVERED, (56, 180, 77, 255))
         im.push_style_color(Col.BUTTON_ACTIVE, (36, 140, 57, 255))
-        if im.button("Fit Bursts"):
+        if im.button(tr("Fit Bursts")):
             self.track("toolAction_run")
             self.wizard.process_bursts()
         im.set_item_tooltip(
-            "Fit the lifetime model to the micro-time decays of all bursts by maximum likelihood."
+            tr("Fit the lifetime model to the micro-time decays of all bursts by maximum likelihood.")
         )
         self.remember("toolAction_run")
         im.pop_style_color(3)
 
         im.same_line()
-        if im.button("Refit"):
+        if im.button(tr("Refit")):
             self.track("toolAction_restart")
             self.wizard.refit()
         im.set_item_tooltip(
-            "Fit the current burst file's decay again with the current start values and fit window."
+            tr("Fit the current burst file's decay again with the current start values and fit window.")
         )
         self.remember("toolAction_restart")
 
         im.same_line()
-        if im.button("Guide"):
+        if im.button(tr("Guide")):
             self.start_guide()
-        im.set_item_tooltip("Start a step-by-step guided tour of this tool.")
+        im.set_item_tooltip(tr("Start a step-by-step guided tour of this tool."))
         self.remember("guide")
 
         im.same_line()
-        if im.button("Help"):
+        if im.button(tr("Help")):
             self.show_help()
-        im.set_item_tooltip("Open the help window with reference documentation.")
+        im.set_item_tooltip(tr("Open the help window with reference documentation."))
         self.remember("help")
 
         im.separator()
@@ -233,8 +234,8 @@ class BurstMleGui(TourTarget):
         curves = fit_view.fit_curves(self.wizard)
         if curves is None:
             im.text_wrapped(
-                "No fit yet. Load burst files, an IRF and a background in the wizard, then press Fit Bursts "
-                "or Refit: the decay, the model, the IRF and the background of the current file appear here."
+                tr("No fit yet. Load burst files, an IRF and a background in the wizard, then press Fit Bursts "
+                "or Refit: the decay, the model, the IRF and the background of the current file appear here.")
             )
         elif implot.begin_plot("Decay histogram and fit", (-1, -1)):
             implot.setup_axes("Micro-time window (channels, VV then VH)", "Photons")
@@ -266,8 +267,8 @@ class BurstMleGui(TourTarget):
         histograms = fit_view.lifetime_histograms(lifetimes)
         if not histograms:
             im.text_wrapped(
-                "No burst lifetimes yet: press Fit Bursts. The histogram of the fitted lifetimes of all "
-                "bursts appears here."
+                tr("No burst lifetimes yet: press Fit Bursts. The histogram of the fitted lifetimes of all "
+                "bursts appears here.")
             )
             return
         everything = [v for values in lifetimes.values() for v in values]
@@ -287,7 +288,7 @@ class BurstMleGui(TourTarget):
             implot.end_plot()
         inside = sum(1 for v in everything if self.gate_tau_min <= v <= self.gate_tau_max)
         im.text(f"{inside} of {len(everything)} lifetimes inside the gate")
-        im.set_item_tooltip("Fitted lifetimes between the two edges of the dragged box.")
+        im.set_item_tooltip(tr("Fitted lifetimes between the two edges of the dragged box."))
 
         # Region Drop Target
         if im.begin_drag_drop_target():
@@ -333,11 +334,11 @@ class BurstMleGui(TourTarget):
                 im.end_table()
         elif self.split_by_state:
             im.text_wrapped(
-                "No pooled state lifetimes yet: press Fit Bursts to fit every H2MM state."
+                tr("No pooled state lifetimes yet: press Fit Bursts to fit every H2MM state.")
             )
         else:
             im.text_wrapped(
-                "Pooled state lifetimes exist only for the segment-level analysis (split by H2MM state)."
+                tr("Pooled state lifetimes exist only for the segment-level analysis (split by H2MM state).")
             )
 
 

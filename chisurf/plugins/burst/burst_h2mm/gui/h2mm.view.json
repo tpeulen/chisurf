@@ -3,6 +3,7 @@
   "_comment": "Settings of the emtk H2MM app: AutoForm over H2mmViewModel. Same controls as the Qt tool's Settings tab (model selection, optimisation, decoder) plus the detector streams of its Channels tab as routing-channel lists.",
   "sections": [
     {
+      "description": "Burst folder and the donor, acceptor and acceptor-excitation detectors.",
       "type": "panel",
       "title": "Data",
       "collapsed": false,
@@ -38,6 +39,7 @@
       ]
     },
     {
+      "description": "Range of state numbers tried and the information criterion that picks the best.",
       "type": "panel",
       "title": "Model selection",
       "collapsed": false,
@@ -82,6 +84,7 @@
       ]
     },
     {
+      "description": "EM engine, restarts, iterations and photon thresholds of the H2MM fit.",
       "type": "panel",
       "title": "Optimisation",
       "collapsed": false,
@@ -159,6 +162,7 @@
       ]
     },
     {
+      "description": "Optional exports: photon table, decoded state paths and state photons.",
       "type": "panel",
       "title": "Output",
       "collapsed": true,
@@ -221,6 +225,7 @@
       ]
     },
     {
+      "description": "Fitted transition rates between states in 1/s.",
       "type": "table",
       "source": "rate_rows",
       "title": "Rates",
@@ -246,6 +251,7 @@
       ]
     },
     {
+      "description": "Fitted state efficiencies, stoichiometries and populations.",
       "type": "table",
       "source": "state_rows",
       "title": "States",
@@ -271,6 +277,7 @@
       ]
     },
     {
+      "description": "Burst inspected in the result plots.",
       "type": "panel",
       "title": "Burst",
       "collapsed": false,

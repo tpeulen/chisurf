@@ -5,6 +5,7 @@
     {
       "type": "panel",
       "title": "Input file",
+      "description": "Source TTTR file to convert.",
       "n_col": 1,
       "sections": [
         {
@@ -28,6 +29,7 @@
     {
       "type": "panel",
       "title": "Formats",
+      "description": "Input and output file formats.",
       "n_col": 1,
       "sections": [
         {
@@ -49,6 +51,7 @@
     {
       "type": "panel",
       "title": "ALEX modulation",
+      "description": "Alternation period (macro-time units) and phase shift of the ALEX excitation modulation.",
       "n_col": 1,
       "sections": [
         {
@@ -79,6 +82,7 @@
     {
       "type": "panel",
       "title": "Batch",
+      "description": "Convert or merge several files in one run.",
       "n_col": 1,
       "sections": [
         {

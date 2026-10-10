@@ -11,6 +11,7 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
@@ -624,9 +625,9 @@ class AudifierApp(TourTarget, ImApp):
     def draw_setup(self, box):
         im.begin_disabled(self.job.running)
         self.editor.draw()
-        if im.button("Update channels"):
+        if im.button(tr("Update channels")):
             self.update_channels()
-        im.set_item_tooltip("Rebuild detector colours and audio channels from the current setup.")
+        im.set_item_tooltip(tr("Rebuild detector colours and audio channels from the current setup."))
         self.remember("update_channels")
         im.end_disabled()
 
@@ -641,7 +642,7 @@ class AudifierApp(TourTarget, ImApp):
     def draw_mixer(self, box, detectors=True):
         if detectors:
             if not self.model.detectors:
-                im.text_wrapped("Load a stream or define detectors to choose the detector colours.")
+                im.text_wrapped(tr("Load a stream or define detectors to choose the detector colours."))
                 return
             form = self.table_forms["detectors"]
             form.rects.clear()
@@ -649,7 +650,7 @@ class AudifierApp(TourTarget, ImApp):
             self.item_rects.update(form.rects)
             return
         if not self.model.channels:
-            im.text_wrapped("Load a stream or define detectors to configure channel notes.")
+            im.text_wrapped(tr("Load a stream or define detectors to configure channel notes."))
             return
         form = self.table_forms["channels"]
         form.rects.clear()
@@ -661,7 +662,7 @@ class AudifierApp(TourTarget, ImApp):
             draw_form(CHANNEL_FORM, self, f)
             self.item_rects.update(f.rects)
         else:
-            im.text_disabled("Select a channel row to change its chord.")
+            im.text_disabled(tr("Select a channel row to change its chord."))
 
     def draw_waterfall(self, box):
         if self.model.input_file:
@@ -738,7 +739,7 @@ class AudifierApp(TourTarget, ImApp):
         im.text_wrapped(self.message)
         self.remember("message")
         if self.job.running:
-            im.text("Computing in background...")
+            im.text(tr("Computing in background..."))
         im.text(f"{self.player.state}: {self.player.position:.2f} / {self.player.duration:.2f} s")
         self.remember("player_state")
         form = self.forms["range"]
@@ -753,7 +754,7 @@ class AudifierApp(TourTarget, ImApp):
         payload = self.model.waterfall_payload()
         if self.texture is None or not payload:
             im.text_wrapped(
-                "Update computes a waterfall using the enabled detectors. Audio channel selection is independent of detector visibility."
+                tr("Update computes a waterfall using the enabled detectors. Audio channel selection is independent of detector visibility.")
             )
             self.remember("empty_waterfall")
             return
@@ -777,8 +778,8 @@ class AudifierApp(TourTarget, ImApp):
                 )
             implot.end_plot()
             im.set_item_tooltip(
-                "Horizontal axis: elapsed macro-time; vertical axis: micro-time bins or lifetime. "
-                "Brightness encodes amplitude and hue identifies detectors. Wheel zooms, drag pans."
+                tr("Horizontal axis: elapsed macro-time; vertical axis: micro-time bins or lifetime. "
+                "Brightness encodes amplitude and hue identifies detectors. Wheel zooms, drag pans.")
             )
             self.remember("waterfall_plot")
 

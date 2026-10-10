@@ -17,6 +17,7 @@ from chisurf.plugins.emtk_layout import NUMBER_WIDTH, icon_label
 from chisurf.plugins.traj.emtk_tool import SaveAction, TrajToolApp, topology_field, trajectory_field
 
 from .view_model import RotateTranslateViewModel
+from emtk.i18n import tr
 
 HERE = pathlib.Path(__file__).parent
 WARNING = (1.0, 0.75, 0.3, 1.0)
@@ -119,7 +120,7 @@ class RotateTranslateApp(TrajToolApp):
             "rotation_matrix",
             (top[0], top[1], 3 * cell + 2 * spacing, im.get_cursor_screen_pos()[1] - top[1]),
         )
-        im.text("Translation [Ang.]")
+        im.text(tr("Translation [Ang.]"))
         im.same_line(label_w)
         top = im.get_cursor_screen_pos()
         vector = np.array(self.model.translation_vector, dtype=np.float32)

@@ -3,10 +3,12 @@
   "sections": [
     {
       "type": "dock_area",
+      "description": "Mean photon arrival time per pixel, a model-free lifetime contrast.",
       "title": "Mean Micro-time",
       "sections": [
         {
           "type": "panel",
+          "description": "Input file, detector windows and micro-time window.",
           "title": "Controls",
           "collapsed": false,
           "sections": [
@@ -17,13 +19,13 @@
             {"type": "info", "source": "results_html", "height": 90}
           ]
         },
-        {"type": "custom", "key": "image", "target": "intensity_map", "title": "Intensity",
+        {"type": "custom", "description": "Photon count image of the selected detector window.", "key": "image", "target": "intensity_map", "title": "Intensity",
          "options": {"colormap": true, "colormap_attr": "colormap",
                      "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"}},
-        {"type": "custom", "key": "image", "target": "mean_micro_time_map", "title": "Mean micro-time (ns)",
+        {"type": "custom", "description": "Mean photon arrival time per pixel in ns after the micro-time offset and IRF correction.", "key": "image", "target": "mean_micro_time_map", "title": "Mean micro-time (ns)",
          "options": {"colormap": true, "colormap_attr": "colormap",
                      "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"}},
-        {"type": "custom", "key": "image", "target": "mean_micro_time_frames", "title": "Mean micro-time movie",
+        {"type": "custom", "description": "Mean micro-time of each frame in ns as a movie.", "key": "image", "target": "mean_micro_time_frames", "title": "Mean micro-time movie",
          "options": {"colormap": true, "colormap_attr": "colormap", "movie": true,
                      "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"}}
       ]

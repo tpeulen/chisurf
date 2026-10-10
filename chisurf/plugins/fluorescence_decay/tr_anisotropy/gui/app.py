@@ -18,6 +18,7 @@ from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, _clean_html_
 from chisurf.plugins.emtk_layout import LabelColumn, button_row, labelled, layout_spec, window_size
 
 from .model import NativeAnisotropyModel
+from emtk.i18n import tr
 
 HERE = Path(__file__).parent
 VV_COLOUR, VH_COLOUR = (59, 120, 255), (255, 91, 91)
@@ -183,15 +184,15 @@ class AnisotropyApp(ImApp):
 
     # -- navigation ---------------------------------------------------------------------------- #
     def navigation(self, box):
-        if im.button("Help"):
+        if im.button(tr("Help")):
             self.help_window.show()
         im.set_item_tooltip(
-            "Explain polarized decays, background correction and parameter linking."
+            tr("Explain polarized decays, background correction and parameter linking.")
         )
         im.same_line()
-        if im.button("Guide"):
+        if im.button(tr("Guide")):
             self.tour.start()
-        im.set_item_tooltip("Follow a guided tour through the real wizard controls.")
+        im.set_item_tooltip(tr("Follow a guided tour through the real wizard controls."))
         im.separator()
         for index, step in enumerate(self.steps):
             mark = "[x]" if self.model.step_complete(index) else "[ ]"
@@ -221,7 +222,7 @@ class AnisotropyApp(ImApp):
             160.0,
             min(520.0, im.get_content_region_avail()[0] - label_w - browse_w - 80.0 - 3 * spacing),
         )
-        im.text_disabled("Files")
+        im.text_disabled(tr("Files"))
         for attr, label in fields:
             im.text(label)
             im.same_line(label_w)
@@ -278,7 +279,7 @@ class AnisotropyApp(ImApp):
         self.form("background")
         series = m.plot_series()
         if not series:
-            im.text_wrapped("Load the data to see the IRFs.")
+            im.text_wrapped(tr("Load the data to see the IRFs."))
             return
         if implot.begin_plot("IRF normalization", size=(-1.0, -1.0)):
             implot.setup_axes("Channel", "IRF counts")
@@ -318,8 +319,8 @@ class AnisotropyApp(ImApp):
     def corrections_step(self):
         self.form("corrections")
         im.text_wrapped(
-            "g scales every anisotropy: a 10 % error in g is about 10 % in r(t). l1 and l2 compensate the "
-            "polarization mixing of a high-aperture objective (zero on a low-NA setup)."
+            tr("g scales every anisotropy: a 10 % error in g is about 10 % in r(t). l1 and l2 compensate the "
+            "polarization mixing of a high-aperture objective (zero on a low-NA setup).")
         )
 
     def components_step(self):
@@ -364,7 +365,7 @@ class AnisotropyApp(ImApp):
         m = self.model
         im.text_wrapped(_clean_html_text(m.finish_html().split("<p style")[0]))
         if im.button(
-            "Create fits",
+            tr("Create fits"),
         ) and m.enabled("create_fits"):
             m.error(m.create_fits)
             self.tour.notify_used("create_fits")
@@ -410,16 +411,16 @@ class AnisotropyApp(ImApp):
         next_w = im.calc_text_size("Next")[0] + 2 * im.get_style().frame_padding[0]
         im.same_line(max(0.0, avail_w - back_w - next_w - 2 * spacing))
         im.begin_disabled(self.step_index == 0)
-        if im.button("Back"):
+        if im.button(tr("Back")):
             self.select_step(self.step_index - 1)
         im.end_disabled()
-        im.set_item_tooltip("Return to the previous workflow step.")
+        im.set_item_tooltip(tr("Return to the previous workflow step."))
         im.same_line()
         im.begin_disabled(self.step_index == len(self.steps) - 1)
-        if im.button("Next"):
+        if im.button(tr("Next")):
             self.select_step(self.step_index + 1)
         im.end_disabled()
-        im.set_item_tooltip("Continue to the next workflow step.")
+        im.set_item_tooltip(tr("Continue to the next workflow step."))
 
     # -- one frame ------------------------------------------------------------------------------- #
     def render(self):

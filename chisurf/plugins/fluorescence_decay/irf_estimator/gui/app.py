@@ -25,6 +25,7 @@ from chisurf.plugins.emtk_layout import LabelColumn, labelled, layout_spec, wind
 
 from ..core.estimation import estimate_irf
 from .view_model import IRFViewModel
+from emtk.i18n import tr
 
 HERE = Path(__file__).parent
 _EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="irf-estimation")
@@ -348,9 +349,9 @@ class IRFEstimatorApp(ImApp):
         im.set_item_tooltip(str(section.get("description")))
         state.rects["dataset"] = im.get_item_rect()
         im.same_line()
-        if im.button("Load selected##irf_dataset_load"):
+        if im.button(tr("Load selected") + "##irf_dataset_load"):
             self.load_selected_dataset()
-        im.set_item_tooltip("Use the chosen curve's time axis and counts for the estimate.")
+        im.set_item_tooltip(tr("Use the chosen curve's time axis and counts for the estimate."))
         state.rects["dataset_load"] = im.get_item_rect()
 
     def draw_status(self, section, model, state, width):

@@ -33,6 +33,7 @@ from emtk.im_core import get_current_context
 from chisurf.plugins.emtk_layout import window_size
 
 from ..view_model import BackgroundViewModel
+from emtk.i18n import tr
 
 if TYPE_CHECKING:
     from .controller import BackgroundController
@@ -141,7 +142,7 @@ class BurstBackgroundGui:
             controller.channel_definition.draw()
             im.end_disabled()
         else:
-            im.text_wrapped("Detector settings are supplied by the embedding host.")
+            im.text_wrapped(tr("Detector settings are supplied by the embedding host."))
 
     def start_guide(self) -> None:
         """Start the in-EMTK guided tour."""
@@ -176,46 +177,46 @@ class BurstBackgroundGui:
         im.text_colored(ACCENT_BLUE, "Fit Settings")
 
         # Fit from / to (ms)
-        im.text("Fit from (ms):")
+        im.text(tr("Fit from (ms):"))
         im.set_next_item_width(avail_w)
         ch_lo, new_lo = im.drag_float(
             "##fit_from", float(self.model.fit_from_ms), 0.01, 0.001, 1000.0, "%.3f"
         )
         im.set_item_tooltip(
-            "Lower edge of the inter-photon-time tail window (in ms) fitted as background."
+            tr("Lower edge of the inter-photon-time tail window (in ms) fitted as background.")
         )
         if ch_lo and new_lo > 0 and (self.model.fit_to_ms <= 0 or new_lo < self.model.fit_to_ms):
             self.model.fit_from_ms = float(new_lo)
             self.model.update()
 
-        im.text("Fit to (ms):")
+        im.text(tr("Fit to (ms):"))
         im.set_next_item_width(avail_w)
         ch_hi, new_hi = im.drag_float(
             "##fit_to", float(self.model.fit_to_ms), 0.01, 0.001, 1000.0, "%.3f"
         )
         im.set_item_tooltip(
-            "Upper edge of the inter-photon-time tail window (in ms) fitted as background."
+            tr("Upper edge of the inter-photon-time tail window (in ms) fitted as background.")
         )
         if ch_hi and new_hi > self.model.fit_from_ms:
             self.model.fit_to_ms = float(new_hi)
             self.model.update()
 
-        im.text("Bin width (ms):")
+        im.text(tr("Bin width (ms):"))
         im.set_next_item_width(avail_w)
         ch_bin, new_bin = im.drag_float(
             "##bin_w", float(self.model.binsize_ms), 0.01, 0.001, 10.0, "%.3f"
         )
         im.set_item_tooltip(
-            "Histogram bin width of the inter-photon-time distribution in milliseconds."
+            tr("Histogram bin width of the inter-photon-time distribution in milliseconds.")
         )
         if ch_bin and new_bin > 0:
             self.model.binsize_ms = float(new_bin)
             self.model.update()
 
-        im.text("Min counts / bin:")
+        im.text(tr("Min counts / bin:"))
         im.set_next_item_width(avail_w)
         ch_cnt, new_cnt = im.drag_int("##min_cnt", int(self.model.min_counts), 1, 0, 1000)
-        im.set_item_tooltip("Bins with fewer counts than this are ignored when fitting the tail.")
+        im.set_item_tooltip(tr("Bins with fewer counts than this are ignored when fitting the tail."))
         if ch_cnt and new_cnt >= 0:
             self.model.min_counts = int(new_cnt)
             self.model.update()
@@ -232,7 +233,7 @@ class BurstBackgroundGui:
         im.push_style_color(Col.BUTTON, ACCENT_GREEN)
         im.push_style_color(Col.BUTTON_HOVERED, (56, 180, 77, 255))
         im.push_style_color(Col.BUTTON_ACTIVE, (36, 140, 57, 255))
-        if im.button("Estimate Background", (avail_w, 28.0)):
+        if im.button(tr("Estimate Background"), (avail_w, 28.0)):
             self.track("toolAction_run")
             self.track("bg_run")
             if callable(self.on_estimate):
@@ -245,24 +246,24 @@ class BurstBackgroundGui:
         self.remember("toolAction_run")
         self.remember("bg_run")
         im.set_item_tooltip(
-            "Fit the tail of the inter-photon-time distribution to get the per-detector background rates."
+            tr("Fit the tail of the inter-photon-time distribution to get the per-detector background rates.")
         )
         im.pop_style_color(3)
 
         btn_half_w = max(50.0, (avail_w - 6.0) * 0.5)
         im.spacing()
-        if im.button("📖 Guide", (btn_half_w, 24.0)):
+        if im.button(tr("📖 Guide"), (btn_half_w, 24.0)):
             self.track("guide")
             self.start_guide()
         self.remember("guide")
-        im.set_item_tooltip("Start a step-by-step guided tour of this tool.")
+        im.set_item_tooltip(tr("Start a step-by-step guided tour of this tool."))
 
         im.same_line()
-        if im.button("❓ Help", (btn_half_w, 24.0)):
+        if im.button(tr("❓ Help"), (btn_half_w, 24.0)):
             self.track("help")
             self.show_help()
         self.remember("help")
-        im.set_item_tooltip("Open the help window with reference documentation.")
+        im.set_item_tooltip(tr("Open the help window with reference documentation."))
 
         im.spacing()
         im.text_colored(ACCENT_GRAY, f"Files loaded: {len(self.model.files)}")
@@ -278,7 +279,7 @@ class BurstBackgroundGui:
         series = self.model.iht_series()
         if not series:
             im.text_disabled(
-                "No inter-photon time distribution data. Load TTTR files and estimate."
+                tr("No inter-photon time distribution data. Load TTTR files and estimate.")
             )
             return
 
@@ -386,7 +387,7 @@ class BurstBackgroundGui:
                     )
                 implot.end_plot()
         else:
-            im.text_disabled("No rate data available.")
+            im.text_disabled(tr("No rate data available."))
 
         im.same_line()
 

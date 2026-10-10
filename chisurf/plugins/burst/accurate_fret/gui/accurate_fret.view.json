@@ -3,12 +3,14 @@
   "_comment": "Accurate FRET (Hellenkamp) calibration tool. AutoForm over AccurateFretViewModel. Left: a single Settings column in workflow order — where the bursts come from, which column is which channel, the photophysics anchoring the FRET lines, the optics prior, and the procedure knobs. Right: tabbed views (factor table, population table, E-S plot with the automatically found classes, E vs donor-lifetime plot with the static and dynamic FRET lines, accurate-E histogram). Calibrate / register / push / export live in the host toolbar; long help sits behind the ? button. The setting panels start folded except Channels — the column mapping is the one thing that has to be checked on every table; the rest have defaults that are usually right. The long pickers (dyes, columns, light paths) are editable, so typing filters them.",
   "sections": [
     {
+      "description": "Accurate FRET: correct burst E and S for gamma, beta, crosstalk and direct excitation, with uncertainties.",
       "type": "dock_area",
       "title": "Accurate FRET",
       "split": "horizontal",
       "persist": "accurate_fret",
       "sections": [
         {
+          "description": "Burst table, channels, dye and photophysics inputs and the correction procedure.",
           "type": "panel",
           "title": "Settings",
           "collapsed": false,
@@ -33,6 +35,7 @@
               "description": "Per-burst table to calibrate: any delimited text file (.csv/.tsv/.txt/.bur) or an .npz archive, with one row per burst and one column per signal. Files can also be dropped on the window. Use the toolbar's ndX button instead to calibrate exactly the bursts currently open there."
             },
             {
+              "description": "Photon-count channels that enter the correction: donor, FRET (sensitised acceptor) and acceptor-after-acceptor-excitation, plus the donor lifetime.",
               "type": "panel",
               "title": "Channels",
               "collapsed": false,
@@ -73,6 +76,7 @@
               ]
             },
             {
+              "description": "Donor and acceptor dyes and medium from the dye database; they fix R0 and the dynamic-line parameters.",
               "type": "panel",
               "title": "Dyes (database)",
               "collapsed": true,
@@ -123,6 +127,7 @@
               ]
             },
             {
+              "description": "Donor lifetime without acceptor, Foerster radius R0 and linker width used for the FRET lines and the lifetime-based gamma.",
               "type": "panel",
               "title": "Photophysics",
               "collapsed": true,
@@ -170,6 +175,7 @@
               ]
             },
             {
+              "description": "Mean background counts per burst in each channel, subtracted before the correction factors are estimated.",
               "type": "panel",
               "title": "Background",
               "collapsed": true,
@@ -202,6 +208,7 @@
               ]
             },
             {
+              "description": "Priors for gamma and beta computed from the detection light path: quantum yields and detection efficiencies of donor and acceptor.",
               "type": "panel",
               "title": "Optics prior (light path)",
               "collapsed": true,
@@ -268,6 +275,7 @@
               ]
             },
             {
+              "description": "How gamma is obtained and how many FRET populations are fitted; bootstrap resamples set the uncertainty on each factor.",
               "type": "panel",
               "title": "Procedure",
               "collapsed": true,
@@ -332,11 +340,13 @@
           ]
         },
         {
+          "description": "Result views: correction factors and populations as tables, and the corrected E-S, E-lifetime and E plots.",
           "type": "dock_area",
           "title": "Views",
           "persist": "accurate_fret_views",
           "sections": [
             {
+              "description": "Estimated alpha, beta, gamma and delta with bootstrap uncertainties.",
               "type": "table",
               "source": "factor_rows",
               "title": "Correction factors",
@@ -369,6 +379,7 @@
               ]
             },
             {
+              "description": "Fitted FRET populations: mean efficiency, width, fraction and burst count.",
               "type": "table",
               "source": "population_rows",
               "title": "Populations",

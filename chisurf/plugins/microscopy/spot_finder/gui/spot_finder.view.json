@@ -4,10 +4,12 @@
   "sections": [
     {
       "type": "dock_area",
+      "description": "Detect diffraction-limited spots in the images and measure each one.",
       "title": "Spot Finder",
       "sections": [
         {
           "type": "panel",
+          "description": "Detector, spot-size and filter settings.",
           "title": "Detection",
           "n_col": 1,
           "collapsed": false,
@@ -25,7 +27,7 @@
              "options": {"image_attr": "detection_image", "extent_attr": "analysis_extent",
                          "intensity_unit": "ph", "refresh_on": ["region", "done", "results"]},
              "description": "Confines the search. The threshold is computed from these pixels alone, so the rest of the frame does not set it — which is the point of restricting an analysis to one cell or one illuminated patch. Empty = the whole frame."},
-            {"type": "panel", "title": "Detector", "n_col": 2, "collapsed": false, "sections": [
+            {"type": "panel", "description": "Spot detection algorithm (e.g. LoG, DoG) applied to the image.", "title": "Detector", "n_col": 2, "collapsed": false, "sections": [
               {"type": "choice", "attr": "method", "label": "Method",
                "options_source": "method_choices",
                "description": "watershed splits objects that touch; threshold does not, which is right when they do not; log and dog measure each spot's own width."},
@@ -36,7 +38,7 @@
               {"type": "value", "attr": "peak_footprint_size", "kind": "int", "label": "Peak footprint", "minimum": 1, "maximum": 100,
                "description": "Square footprint side for the watershed's local-maxima seeds. Larger merges nearby seeds, which is how over-splitting is cured."}
             ]},
-            {"type": "panel", "title": "Spot width (log / dog)", "n_col": 2, "collapsed": true, "sections": [
+            {"type": "panel", "description": "Range of Gaussian sigma in pixels searched for spots and the allowed overlap between neighbours.", "title": "Spot width (log / dog)", "n_col": 2, "collapsed": true, "sections": [
               {"type": "value", "attr": "min_sigma", "kind": "float", "label": "min σ", "decimals": 2, "minimum": 0.1, "maximum": 100.0,
                "description": "Smallest spot width to look for, in pixels. A diffraction-limited spot has σ ≈ 0.21 λ / NA."},
               {"type": "value", "attr": "max_sigma", "kind": "float", "label": "max σ", "decimals": 2, "minimum": 0.1, "maximum": 100.0,
@@ -46,7 +48,7 @@
               {"type": "value", "attr": "overlap", "kind": "float", "label": "Overlap", "decimals": 2, "minimum": 0.0, "maximum": 1.0,
                "description": "Spots overlapping by more than this fraction are merged, the larger kept."}
             ]},
-            {"type": "panel", "title": "Filters", "n_col": 2, "collapsed": true, "sections": [
+            {"type": "panel", "description": "Reject spots by size, intensity or shape.", "title": "Filters", "n_col": 2, "collapsed": true, "sections": [
               {"type": "value", "attr": "min_area", "kind": "int", "label": "Min area (px)", "minimum": 1, "maximum": 100000,
                "description": "Smaller regions are dropped. 2 is what separates an object from a hot camera pixel: a spot covers several pixels, a defect covers exactly one."},
               {"type": "value", "attr": "max_area", "kind": "int", "label": "Max area (px)", "minimum": 0, "maximum": 10000000,
@@ -54,7 +56,7 @@
               {"type": "toggle", "attr": "clear_border", "label": "Clear border",
                "description": "Drop regions touching the frame edge. A partly-imaged object has a truncated area and a biased centroid — but on a crowded field this can remove most of the data."}
             ]},
-            {"type": "panel", "title": "Pick by clicking", "n_col": 2, "collapsed": true, "sections": [
+            {"type": "panel", "description": "Click an image to add or inspect a spot at that position.", "title": "Pick by clicking", "n_col": 2, "collapsed": true, "sections": [
               {"type": "info", "source": "pick_help", "height": 46},
               {"type": "value", "attr": "pick_window", "kind": "int", "label": "Fit window (px)", "minimum": 5, "maximum": 99,
                "description": "Side of the square the fit sees. Wide enough to hold background as well as the spot — a window cropped to the spot has no baseline — and narrow enough not to contain the neighbouring spot, which is what pulls a fit sideways."},

@@ -26,6 +26,7 @@ from emtk.widgets.view_spec import load_view_spec
 from chisurf.core.fio.staging import TTTR_EXTENSIONS
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import button_row
+from emtk.i18n import tr
 
 HERE = Path(__file__).resolve().parent
 
@@ -482,11 +483,11 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         elif pressed == "help":
             self.show_help()
         im.align_text_to_frame_padding()
-        im.text("Filter")
+        im.text(tr("Filter"))
         im.same_line()
         im.set_next_item_width(min(260.0, max(120.0, im.get_content_region_avail()[0] - 10.0)))
-        _changed, self.filter_text = im.input_text("##data_filter", self.filter_text, hint="file name contains")
-        im.set_item_tooltip("Show only files whose name contains this text.")
+        _changed, self.filter_text = im.input_text("##data_filter", self.filter_text, hint=tr("file name contains"))
+        im.set_item_tooltip(tr("Show only files whose name contains this text."))
         self.remember("filter")
         if self.message:
             im.text_wrapped(self.message)
@@ -494,12 +495,12 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         if "data_table" in self.form.rects:
             self.item_rects["files"] = tuple(self.form.rects["data_table"])
         if not paths:
-            im.text_disabled("No files yet: add TTTR files or a folder, or drop them on this window.")
+            im.text_disabled(tr("No files yet: add TTTR files or a folder, or drop them on this window."))
 
     def _draw_details(self, box=None) -> None:
         paths = self._paths()
         if self.selected_index is None or not 0 <= self.selected_index < len(paths):
-            im.text_wrapped("No file selected. Click a file in the table to see its details.")
+            im.text_wrapped(tr("No file selected. Click a file in the table to see its details."))
             return
         path = paths[self.selected_index]
         im.text(f"Name: {path.name}")
@@ -527,7 +528,7 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         if im.button(label + "##data_import"):
             self.track("import")
             self.source.import_path(path)
-        im.set_item_tooltip("Store this file in the MMFDB object store and register it as raw TTTR data.")
+        im.set_item_tooltip(tr("Store this file in the MMFDB object store and register it as raw TTTR data."))
         self.remember("import")
 
     def _draw_summary(self, box=None) -> None:

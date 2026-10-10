@@ -2,7 +2,7 @@
   "window": {"width": 1100, "height": 720},
   "_comment": "Photon counting histogram tool. Drawn by emtk.view_form over PchModel (gui/model.py); the two plots are hand-drawn in gui/app.py.",
   "sections": [
-    {"type": "panel", "title": "Actions", "sections": [
+    {"type": "panel", "title": "Actions", "description": "Load a photon stream, compute and fit the histogram, and export the results.", "sections": [
       {"type": "button_row", "buttons": [
         {"action": "load", "label": "Load TTTR",
          "description": "Choose a photon-stream file (PTU, HT3, T2R, T3R, PTO, SPC) to analyse."},
@@ -14,7 +14,7 @@
          "description": "Write the histogram, the fit and the results text as NPZ, CSV and TXT files."}
       ]}
     ]},
-    {"type": "panel", "title": "Data settings", "sections": [
+    {"type": "panel", "title": "Data settings", "description": "File, detector channels and bin time (us) from which the photon counting histogram is built.", "sections": [
       {"type": "value", "attr": "filename", "label": "File", "kind": "str",
        "read_only": true, "elide": "start",
        "description": "The photon-stream file that is loaded. Use Load TTTR or drop a file on the window."},
@@ -32,11 +32,11 @@
          "description": "Upper micro-time gate (TAC channel): photons above it are not counted."}
       ]}
     ]},
-    {"type": "panel", "title": "Model fit", "sections": [
+    {"type": "panel", "title": "Model fit", "description": "Fit of the histogram with a sum of species, each with brightness epsilon and mean occupancy N.", "sections": [
       {"type": "value", "attr": "n_components", "label": "Components", "kind": "int",
        "minimum": 1, "maximum": 10, "step": 1, "style": "spin", "call": "set_n_components",
        "description": "Number of molecular species in the model. Each species has a brightness ε and a mean occupancy ⟨N⟩."},
-      {"type": "table", "name": "species", "source": "species", "editable": true,
+      {"type": "table", "name": "species", "description": "Starting values and fitted brightness epsilon and mean molecule number per species.", "source": "species", "editable": true,
        "edited_call": "edit_species", "height": 150,
        "columns": [
          {"key": "component", "label": "#", "width": 40, "editable": false,
@@ -46,7 +46,7 @@
          {"key": "n_mean", "label": "⟨N⟩", "format": "%.4f",
           "description": "Mean number of molecules of this species in the detection volume. Starting value for the fit; replaced by the fitted value. Double click to edit."}
        ]},
-      {"type": "panel", "title": "Fit results", "sections": [
+      {"type": "panel", "title": "Fit results", "description": "Fitted parameters and goodness of fit.", "sections": [
         {"type": "info", "source": "results_text"}
       ]}
     ]},

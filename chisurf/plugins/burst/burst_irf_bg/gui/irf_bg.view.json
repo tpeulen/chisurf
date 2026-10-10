@@ -3,22 +3,26 @@
   "window": {"width": 1100, "height": 720},
   "sections": [
     {
+      "description": "Estimate background and instrument response from the non-burst photons of a measurement.",
       "type": "dock_area",
       "title": "Burst IRF & Background",
       "persist": "burst_irf_bg",
       "sections": [
         {
+          "description": "Assign detector channels to burst detectors.",
           "type": "panel",
           "title": "Channel Definition",
           "sections": [
-            {"type": "custom", "key": "irf_bg_channels"}
+            {"description": "Channel-to-detector assignment for the IRF and background estimate.", "type": "custom", "key": "irf_bg_channels"}
           ]
         },
         {
+          "description": "TTTR files and the burst-free window parameters used for the estimate.",
           "type": "panel",
           "title": "Files & Parameters",
           "sections": [
             {
+              "description": "TTTR files to analyse.",
               "type": "custom",
               "key": "path_list",
               "target": "files",
@@ -40,7 +44,7 @@
             {"type": "value", "attr": "micro_time_binning", "label": "Micro-time binning", "kind": "int",
              "minimum": 1, "maximum": 64, "step": 1,
              "description": "Micro-time coarsening for the MLE IRF/background patterns (match the burst-MLE binning)."},
-            {"type": "custom", "key": "irf_bg_run"}
+            {"description": "Estimate IRF and background for every listed file.", "type": "custom", "key": "irf_bg_run"}
           ]
         },
         {
@@ -54,10 +58,11 @@
           "description": "Per-detector scatter-derived IRF from the non-burst photons (log y)."
         },
         {
+          "description": "Estimated background rates and IRF per detector.",
           "type": "panel",
           "title": "Results",
           "sections": [
-            {"type": "custom", "key": "irf_bg_results"}
+            {"description": "Background and IRF results per file and detector.", "type": "custom", "key": "irf_bg_results"}
           ]
         }
       ]

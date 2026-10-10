@@ -3,23 +3,27 @@
   "window": {"width": 1100, "height": 720},
   "sections": [
     {
+      "description": "Photon-by-photon kinetic analysis of bursts with a hidden Markov model.",
       "type": "dock_area",
       "title": "Photon-by-photon kinetics",
       "split": "horizontal",
       "persist": "burst_gs",
       "sections": [
         {
+          "description": "Photon source, kinetic model and extra analyses.",
           "type": "panel",
           "title": "Settings",
           "collapsed": false,
           "n_col": 1,
           "sections": [
             {
+              "description": "TTTR input and burst selection: channels, macro-time tick, minimum photons and burst count.",
               "type": "panel",
               "title": "Photons",
               "collapsed": false,
               "sections": [
                 {
+                  "description": "TTTR files or burst folders to analyse.",
                   "type": "custom",
                   "key": "path_list",
                   "target": "bur_files",
@@ -181,6 +185,7 @@
               ]
             },
             {
+              "description": "Number of states, starting transition rates and optimiser settings.",
               "type": "panel",
               "title": "Model",
               "collapsed": false,
@@ -229,6 +234,7 @@
               ]
             },
             {
+              "description": "Optional extras: transition-time scan, state-path decoding and cross-check against H2MM.",
               "type": "panel",
               "title": "Extras",
               "collapsed": true,
@@ -265,12 +271,14 @@
           ]
         },
         {
+          "description": "Report and result views.",
           "type": "dock_area",
           "title": "Result",
           "split": "vertical",
           "persist": "burst_gs_result",
           "sections": [
             {
+              "description": "Text report of the fit.",
               "type": "panel",
               "title": "Report",
               "collapsed": false,
@@ -285,11 +293,13 @@
               ]
             },
             {
+              "description": "Rates, states, populations and transition-time views.",
               "type": "dock_area",
               "title": "Views",
               "persist": "burst_gs_views",
               "sections": [
                 {
+                  "description": "Fitted transition rates between states in 1/s.",
                   "type": "table",
                   "source": "rate_rows",
                   "title": "Rates",
@@ -315,6 +325,7 @@
                   ]
                 },
                 {
+                  "description": "Fitted state efficiencies and populations.",
                   "type": "table",
                   "source": "state_rows",
                   "title": "States",

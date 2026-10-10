@@ -33,6 +33,7 @@ from chisurf.plugins.emtk_layout import (
 
 from .model import H2mmViewModel
 from .plots import ResultPlots
+from emtk.i18n import tr
 
 HERE = Path(__file__).parent
 
@@ -421,7 +422,7 @@ class H2mmNativeApp(TourTarget, ImApp):
         im.text_wrapped(self.model.status_text)
         if self.model.analysis is None:
             im.text_wrapped(
-                "No H2MM fit yet. Select a burst folder, define the detectors and press Run H2MM."
+                tr("No H2MM fit yet. Select a burst folder, define the detectors and press Run H2MM.")
             )
             return
         draw_sections(self.tables, self.model, self.form)

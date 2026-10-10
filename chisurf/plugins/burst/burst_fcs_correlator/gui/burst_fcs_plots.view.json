@@ -1,6 +1,7 @@
 {
   "sections": [
     {
+      "description": "Correlation curve and diffusion-time distribution of the selected bursts.",
       "type": "dock_area",
       "title": "Browser plots",
       "height": 260,

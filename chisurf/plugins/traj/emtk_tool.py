@@ -43,6 +43,7 @@ from chisurf.plugins.emtk_layout import (
     layout_spec,
     window_size,
 )
+from emtk.i18n import tr
 
 ERROR = (1.0, 0.45, 0.45, 1.0)
 LOG_KEY = "log"
@@ -427,12 +428,12 @@ class TrajToolApp(TourTarget, ImApp):
     def _draw_main(self, box) -> None:
         if im.button(icon_label("📖", "Guide")):
             self.start_guide()
-        im.set_item_tooltip("A step-by-step walk through the tool, pointing at each control.")
+        im.set_item_tooltip(tr("A step-by-step walk through the tool, pointing at each control."))
         self.remember("guide")
         im.same_line()
         if im.button(icon_label("❓", "Help")):
             self.show_help()
-        im.set_item_tooltip("What the tool does, what it writes, and the known limits.")
+        im.set_item_tooltip(tr("What the tool does, what it writes, and the known limits."))
         self.remember("help")
         im.separator()
         self.form.rects.clear()
@@ -516,7 +517,7 @@ class TrajToolApp(TourTarget, ImApp):
         """Controls a tool's io section has between the file rows and the action (none here)."""
 
     def _draw_log(self, section, model, state, width) -> None:
-        im.text("Log")
+        im.text(tr("Log"))
         x, y = im.get_cursor_screen_pos()
         room = float(im.get_content_region_avail()[1])
         height = min(max(80.0, room), LOG_LINES * im.get_text_line_height_with_spacing() + 8.0)

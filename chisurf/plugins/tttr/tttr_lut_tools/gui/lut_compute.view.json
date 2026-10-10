@@ -3,6 +3,7 @@
   "sections": [
     {
       "type": "custom", "key": "help",
+      "type": "custom", "description": "Explains how a TAC lookup table is computed.",
       "options": {
         "title": "① Compute LUT — help",
         "text": "This is the main tool. Build TAC-linearization LUTs from a **uniform-illumination** (uncorrelated-light / scatter) measurement — light that *should* give a flat TAC histogram. Real TAC hardware (e.g. SPC-130) has differential non-linearity **per routing channel**, so one LUT is computed per channel.\n\n**Steps:** load the file(s) → **➡ Add all channels to setup**. A LUT is computed for every routing channel (region auto-detected each) and assigned. Use the **Preview channel** selector + the orange region only if you want to check or hand-tune a specific channel first.\n\nSaving a LUT file or a settings.tttr.json (tab ②) is optional — only for sharing a correction between machines."
@@ -10,6 +11,7 @@
     },
     {
       "type": "custom", "key": "path_list", "target": "files",
+      "type": "custom", "key": "path_list", "description": "Flat-illumination files used to compute the lookup table.",
       "options": {
         "title": "Uniform-illumination TTTR file(s)",
         "extensions": [".spc", ".ht3", ".ptu", ".t3r", ".t2r", ".phu", ".photonhdf5"],
@@ -21,10 +23,11 @@
       "options_source": "channels_options", "call": "update",
       "description": "Preview / tune THIS routing channel's histogram + region. ‘Add to Detector setup’ computes and assigns a LUT for ALL channels."
     },
-    {"type": "custom", "key": "lut_compute_plot"},
-    {"type": "custom", "key": "lut_info_label"},
+    {"type": "custom", "key": "lut_compute_plot", "description": "Preview of the micro-time histogram and the computed LUT."},
+    {"type": "custom", "key": "lut_info_label", "description": "Summary of the loaded measurement and the LUT."},
     {
-      "type": "panel", "title": "Parameters", "n_col": 2, "collapsed": false,
+      "type": "panel", "title": "Parameters",
+      "type": "panel", "description": "Linear range, required TAC channels, offset, preview photons and normalisation.", "n_col": 2, "collapsed": false,
       "sections": [
         {"type": "value", "attr": "linear_start", "label": "Linear start", "kind": "int", "minimum": 0, "maximum": 1000000, "call": "update", "description": "First bin of the flat linear region (or drag the orange region)."},
         {"type": "value", "attr": "linear_stop", "label": "Linear stop", "kind": "int", "minimum": 1, "maximum": 1000000, "call": "update", "description": "First bin after the flat linear region."},
@@ -35,7 +38,8 @@
       ]
     },
     {
-      "type": "panel", "title": "Advanced", "n_col": 2, "collapsed": true,
+      "type": "panel", "title": "Advanced",
+      "type": "panel", "description": "Random seed, low-count threshold and wrap-spike mitigation.", "n_col": 2, "collapsed": true,
       "sections": [
         {"type": "value", "attr": "seed", "label": "RNG seed", "kind": "int", "minimum": 0, "maximum": 2147483647, "call": "update", "description": "Seed for the stochastic rebinning (reproducible previews)."},
         {"type": "value", "attr": "threshold", "label": "Low-count threshold", "kind": "float", "minimum": 0.0, "maximum": 1000000000.0, "decimals": 6, "call": "update", "description": "Bins at or below this count are zeroed before building the LUT (or drag the green line)."},
@@ -43,6 +47,6 @@
         {"type": "value", "attr": "eps", "label": "ε (wrap)", "kind": "float", "minimum": 0.0, "maximum": 0.01, "decimals": 9, "call": "update", "description": "Epsilon used when 'Mitigate wrap spike' is on."}
       ]
     },
-    {"type": "custom", "key": "lut_compute_actions"}
+    {"type": "custom", "key": "lut_compute_actions", "description": "Compute and save the lookup table."}
   ]
 }

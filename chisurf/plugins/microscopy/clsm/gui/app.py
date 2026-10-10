@@ -15,6 +15,7 @@ from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_form
+from emtk.i18n import tr
 
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
@@ -418,13 +419,13 @@ class ClsmApp(ImApp):
         index = (
             names.index(self.model.setup.setup_name) if self.model.setup.setup_name in names else 0
         )
-        im.text("Setup preset")
+        im.text(tr("Setup preset"))
         im.same_line(150)
         im.set_next_item_width(-1)
         changed, index = im.combo("##Setup preset", index, names)
         self.remember("setup_preset")
         im.set_item_tooltip(
-            "Restore scanner markers, file type and reading routine from a named acquisition preset."
+            tr("Restore scanner markers, file type and reading routine from a named acquisition preset.")
         )
         if changed:
             self.model.apply_preset(names[index])
@@ -474,7 +475,7 @@ class ClsmApp(ImApp):
                 getattr(self.model, remove)(getattr(self.model, attr))
                 self.selection_changed()
             im.set_item_tooltip(
-                "Remove this stored image/representation; retained sources stay available."
+                tr("Remove this stored image/representation; retained sources stay available.")
             )
             self.remember(removed)
         for title, target, spec in self.group_forms:
@@ -503,11 +504,11 @@ class ClsmApp(ImApp):
         before = dict(vars(self.model.setup))
         draw_form(MARKER_SPEC, self.model.setup, self.forms["markers"])
         self.item_rects.update(self.forms["markers"].rects)
-        im.text("Selection")
-        _, self.paint = im.checkbox("Paint selection", self.paint)
+        im.text(tr("Selection"))
+        _, self.paint = im.checkbox(tr("Paint selection"), self.paint)
         self.remember("paint")
         im.set_item_tooltip(
-            "Reserve left-mouse dragging for selecting/erasing pixels; use the middle button to pan."
+            tr("Reserve left-mouse dragging for selecting/erasing pixels; use the middle button to pan.")
         )
         pressed = button_row(
             [
@@ -529,12 +530,12 @@ class ClsmApp(ImApp):
             self.selection_changed()
         elif pressed == "Save painted region":
             self.model.add_roi(self._roi_name)
-        im.text("Region name")
+        im.text(tr("Region name"))
         im.same_line(150)
         im.set_next_item_width(-1)
         _, self._roi_name = im.input_text("##roi_name", self._roi_name)
         self.remember("roi_name")
-        im.set_item_tooltip("Name for the saved painted mask.")
+        im.set_item_tooltip(tr("Name for the saved painted mask."))
         self.regions.draw()
         pressed = button_row(
             [
@@ -605,7 +606,7 @@ class ClsmApp(ImApp):
             implot.end_plot()
             self.remember("decay_plot")
             im.set_item_tooltip(
-                "Photon histograms from saved regions and the current selected pixels; time is calibrated from the TTTR header."
+                tr("Photon histograms from saved regions and the current selected pixels; time is calibrated from the TTTR header.")
             )
 
     def apply_setup_settings(self, payload):

@@ -8,22 +8,26 @@
         {
           "type": "panel",
           "title": "Controls",
+          "description": "Presets, lifetime filters, channel choice and correlator settings.",
           "sections": [
             {
               "type": "custom",
               "key": "fcs_presets",
               "target": "",
+              "description": "Pick a stored FCS channel preset of the detector setup.",
               "options": {}
             },
             {
               "type": "custom",
               "key": "lifetime_filter_controls",
               "target": "",
+              "description": "Load or remove lifetime (FLCS) filters used instead of detector channels.",
               "options": {}
             },
             {
               "type": "panel",
               "title": "Correlation Channels",
+              "description": "Detector channels A and B and their micro-time ranges; A = B gives an autocorrelation.",
               "collapsed": false,
               "n_col": 1,
               "sections": [
@@ -31,6 +35,7 @@
                   "type": "custom",
                   "key": "channel_combos",
                   "target": "",
+                  "description": "Channel combo boxes for the two correlated signals.",
                   "options": {}
                 },
                 {
@@ -70,6 +75,7 @@
             {
               "type": "panel",
               "title": "Correlation Settings",
+              "description": "Multiple-tau correlator geometry: bins per cascade, cascades, splits and algorithm.",
               "collapsed": false,
               "sections": [
                 {
@@ -126,6 +132,7 @@
               "type": "custom",
               "key": "correlate_controls",
               "target": "",
+              "description": "Start or stop the correlation of the ticked files.",
               "options": {}
             }
           ]
@@ -133,6 +140,7 @@
         {
           "type": "panel",
           "title": "FCS Correlation",
+          "description": "Plot of the correlation curves G(tau) against lag time.",
           "sections": [
             {
               "type": "plot",

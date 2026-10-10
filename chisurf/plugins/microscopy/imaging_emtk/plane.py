@@ -15,6 +15,7 @@ from typing import Any, Callable
 
 import numpy as np
 from emtk import im, implot
+from emtk.i18n import tr
 
 from chisurf.core.roi import EllipseROI, PolygonROI, RectangleROI
 from chisurf.emtk.image_canvas import ImageCanvas
@@ -119,7 +120,7 @@ class PlanePanel:
         im.text_unformatted("Colormap")
         _, index = im.combo(f"##{self.key}_colormap", maps.index(self.canvas.colormap), maps)
         self.canvas.colormap = maps[index]
-        im.set_item_tooltip("Color scale of the density; the counts themselves are unchanged.")
+        im.set_item_tooltip(tr("Color scale of the density; the counts themselves are unchanged."))
         x0, x1, y0, y1 = self.extent()
         fingerprint = (round(x0, 6), round(x1, 6), round(y0, 6), round(y1, 6))
         if fingerprint != self._fit:

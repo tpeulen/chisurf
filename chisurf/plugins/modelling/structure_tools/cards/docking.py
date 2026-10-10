@@ -22,6 +22,7 @@ from chisurf.plugins.emtk_layout import layout_spec
 
 from .docking_model import DockingSession
 from .shell import CardShell
+from emtk.i18n import tr
 
 HERE = Path(__file__).resolve().parent
 RES = HERE / "resources" / "docking"
@@ -250,7 +251,7 @@ class DockingCard(CardShell):
             self.remember("progress")
         self.status_line()
         im.separator()
-        im.text("PDB rigid bodies (one per body)")
+        im.text(tr("PDB rigid bodies (one per body)"))
         pressed = self.toolbar([
             {"label": "Add Files", "key": "add_pdb", "enabled": not running, "tip": "Add a structure file as the next rigid body (a dropped .pdb does the same)."},
             {"label": "Database", "key": "database_pdb", "enabled": not running,
@@ -302,7 +303,7 @@ class DockingCard(CardShell):
     def _draw_table(self) -> None:
         self.result_form.rects.clear()
         if not self.session.rows:
-            im.text_wrapped("No results yet: add the structures and the fps.json, then press Run.")
+            im.text_wrapped(tr("No results yet: add the structures and the fps.json, then press Run."))
             self.remember("empty_results")
         draw_form(RESULT_TABLE, self.view, self.result_form)
         self.item_rects.update(self.result_form.rects)
@@ -310,7 +311,7 @@ class DockingCard(CardShell):
     def _draw_score(self) -> None:
         curves = self.session.curves
         if not curves:
-            im.text_wrapped("No score trace yet: it is drawn while a docking run is going on.")
+            im.text_wrapped(tr("No score trace yet: it is drawn while a docking run is going on."))
             self.remember("empty_score")
             return
         if implot.begin_plot("##dockscore", (-1, -1)):
@@ -321,26 +322,26 @@ class DockingCard(CardShell):
                 implot.set_next_line_style(CURVE_COLOURS[i % len(CURVE_COLOURS)], 2.0)
                 implot.plot_line(label, np.asarray(frames, dtype=float), np.asarray(scores, dtype=float))
             implot.end_plot()
-            im.set_item_tooltip("Total restraint score against the step of the run (CG iteration or MC frame).")
+            im.set_item_tooltip(tr("Total restraint score against the step of the run (CG iteration or MC frame)."))
             self.remember("score_plot")
 
     def _draw_structure(self) -> None:
         s = self.session
         if not s.preview:
-            im.text_wrapped("No structure to show: select a structure of the list or a result.")
+            im.text_wrapped(tr("No structure to show: select a structure of the list or a result."))
             self.remember("empty_structure")
             return
         if len(s.preview) > 1:
             im.text(f"Model {s.preview_index + 1} of {len(s.preview)}")
             im.same_line()
-            if im.button("Previous") and s.preview_index > 0:
+            if im.button(tr("Previous")) and s.preview_index > 0:
                 s.preview_index -= 1
-            im.set_item_tooltip("The previous docked model.")
+            im.set_item_tooltip(tr("The previous docked model."))
             self.remember("preview_prev")
             im.same_line()
-            if im.button("Next") and s.preview_index < len(s.preview) - 1:
+            if im.button(tr("Next")) and s.preview_index < len(s.preview) - 1:
                 s.preview_index += 1
-            im.set_item_tooltip("The next docked model.")
+            im.set_item_tooltip(tr("The next docked model."))
             self.remember("preview_next")
         path = str(s.preview[min(s.preview_index, len(s.preview) - 1)])
         viewer = self.chimol.viewer
@@ -352,13 +353,13 @@ class DockingCard(CardShell):
                 self.chimol.sync_panel()
                 self._chimol_path = path
             self.chimol.draw(enabled=not self.blocked)
-            im.set_item_tooltip("The structure as cartoon; drag to rotate, wheel to zoom.")
+            im.set_item_tooltip(tr("The structure as cartoon; drag to rotate, wheel to zoom."))
             self.remember("structure_plot")
             return
         im.text_wrapped(f"The molecular viewer could not start ({self.chimol.error}); showing the CA / P trace.")
         back = s.backbone(path)
         if back is None:
-            im.text_wrapped("The structure could not be read.")
+            im.text_wrapped(tr("The structure could not be read."))
             return
         xyz, chains = back
         if implot3d.begin_plot("##dockstruct", (-1, -1), implot3d.FLAGS_NO_LEGEND):
@@ -369,7 +370,7 @@ class DockingCard(CardShell):
                 implot3d.plot_line(f"chain {chain}", pts[:, 0], pts[:, 1], pts[:, 2],
                                    spec=implot3d.Spec(line_color=colour))
             implot3d.end_plot()
-            im.set_item_tooltip("The CA / P trace of the structure, one colour per chain; drag to rotate, wheel to zoom.")
+            im.set_item_tooltip(tr("The CA / P trace of the structure, one colour per chain; drag to rotate, wheel to zoom."))
             self.remember("structure_plot")
 
     # ── persistence ───────────────────────────────────────────────────────

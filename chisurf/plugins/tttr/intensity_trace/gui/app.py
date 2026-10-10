@@ -335,7 +335,7 @@ class IntensityTraceApp(ImApp):
         self.item_rects.update(form.rects)
 
     def _draw_detectors(self, section, model, state, width) -> None:
-        im.text("Detector Selection")
+        im.text(tr("Detector Selection"))
         im.set_item_tooltip(section.get("description", ""))
         m = self.model
         names = m.choices()
@@ -382,7 +382,7 @@ class IntensityTraceApp(ImApp):
     def _draw_traces(self, box) -> None:
         m = self.model
         if not m.loaded:
-            im.text_wrapped("No trace: load a TTTR file (Load TTTR, or drop one here).")
+            im.text_wrapped(tr("No trace: load a TTTR file (Load TTTR, or drop one here)."))
             self.item_rects["traces"] = tuple(box)
             return
         rows = [(label, m.counts[:, i]) for i, label in enumerate(m.labels)] + [("Sum", m.total)]
@@ -439,8 +439,8 @@ class IntensityTraceApp(ImApp):
                         implot.end_plot()
                     self._fret_hist_plot("FRET Hist per State##frethist")
                 implot.end_subplots()
-        im.set_item_tooltip("Each detector's trace with its count histogram, the sum, and after Compute HMM the "
-                            "hidden states and FRET efficiency.")
+        im.set_item_tooltip(tr("Each detector's trace with its count histogram, the sum, and after Compute HMM the "
+                            "hidden states and FRET efficiency."))
         self.item_rects["traces"] = tuple(box)
 
     def _fret_hist_plot(self, title: str, size=(-1, -1)) -> None:
@@ -478,7 +478,7 @@ class IntensityTraceApp(ImApp):
         im.separator()
         if self.result == "BIC Elbow":
             if not self.bics:
-                im.text_wrapped("Press BIC Elbow (HMM tab) to fit models of 1 to 15 states.")
+                im.text_wrapped(tr("Press BIC Elbow (HMM tab) to fit models of 1 to 15 states."))
             elif implot.begin_plot("BIC vs Number of States##bic", (-1, -1), implot.FLAGS_NO_LEGEND):
                 implot.setup_axes("Number of States", "BIC (lower is better)")
                 pts = [(s, b) for s, b in self.bics if np.isfinite(b)]
@@ -488,7 +488,7 @@ class IntensityTraceApp(ImApp):
                     implot.plot_line("BIC", xs, ys)
                 implot.end_plot()
         elif m.states is None:
-            im.text_wrapped("Compute the HMM (HMM tab) to see its results here.")
+            im.text_wrapped(tr("Compute the HMM (HMM tab) to see its results here."))
         elif self.result == "Dwell Times":
             self._form("dwell")
             hists = dwell_histograms(m.dwell_times(), self.dwell_min, self.dwell_max, self.dwell_bins,
@@ -516,7 +516,7 @@ class IntensityTraceApp(ImApp):
                 implot.end_plot()
         elif self.result == "FRET Distributions":
             if m.fret is None:
-                im.text_wrapped("FRET needs two detectors (first detector over the sum).")
+                im.text_wrapped(tr("FRET needs two detectors (first detector over the sum)."))
             else:
                 self._fret_hist_plot(f"{tr('FRET efficiency by state')}##fretdist")
         self.item_rects["results"] = tuple(box)

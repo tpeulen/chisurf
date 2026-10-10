@@ -18,6 +18,7 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from ..correlator_model import CorrelatorSettingsModel, apply_channel_key, preset_names
@@ -185,20 +186,20 @@ class FilesStepApp(ImApp):
         if im.begin("Files & Steps", frame, flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE):
             _body("files_body")
             im.begin_disabled(blocked)
-            im.text("Files:")
-            im.set_item_tooltip("TTTR files (or folders of them) to correlate; only the ticked ones are used.")
+            im.text(tr("Files:"))
+            im.set_item_tooltip(tr("TTTR files (or folders of them) to correlate; only the ticked ones are used."))
             x, y = im.get_cursor_screen_pos()
             list_h = max(80.0, im.get_content_region_avail()[1] - 90.0)
             im.begin_child("files_list", (im.get_content_region_avail()[0], list_h))
             if not self.paths:
-                im.text_disabled("No file. Add files or a folder, or drop them here.")
+                im.text_disabled(tr("No file. Add files or a folder, or drop them here."))
             for i, path in enumerate(list(self.paths)):
                 on = path in self.checked
                 changed, on = im.checkbox(f"##check{i}", on)
                 if changed:
                     (self.checked.add if on else self.checked.discard)(path)
                     self.changed()
-                im.set_item_tooltip("Use this file.")
+                im.set_item_tooltip(tr("Use this file."))
                 self.item_rects[f"check.{i}"] = im.get_item_rect()
                 im.same_line()
                 if im.selectable(f"{path}##row{i}", i == self.current):
@@ -225,10 +226,10 @@ class FilesStepApp(ImApp):
                 used = _same_line_if_fits(label, used)
                 if self._button(label, key, tip, enabled):
                     act()
-            im.text("Steps:")
+            im.text(tr("Steps:"))
             im.same_line()
             im.begin_disabled(not self.filter_allowed)
-            changed, value = im.checkbox("Count rate/burst filter", self.use_filter)
+            changed, value = im.checkbox(tr("Count rate/burst filter"), self.use_filter)
             im.end_disabled()
             if changed and self.filter_allowed:
                 self.use_filter = value
@@ -238,12 +239,12 @@ class FilesStepApp(ImApp):
                                 if self.filter_allowed else "Disabled when Burst-ID (.bst) files are selected.")
             self.item_rects["use_filter"] = im.get_item_rect()
             im.same_line()
-            changed, value = im.checkbox("FCS merger", self.use_merger)
+            changed, value = im.checkbox(tr("FCS merger"), self.use_merger)
             if changed:
                 self.use_merger = value
                 self.on_used("use_merger")
                 self.changed()
-            im.set_item_tooltip("Screen and merge the correlation curves after correlating (step 5).")
+            im.set_item_tooltip(tr("Screen and merge the correlation curves after correlating (step 5)."))
             self.item_rects["use_merger"] = im.get_item_rect()
             im.end_disabled()
             im.end_child()
@@ -303,7 +304,7 @@ class FilterStepApp(ImApp):
                 self.model.use_min = self.model.use_max = True
                 self.model.on_param_changed()
             implot.end_plot()
-        im.set_item_tooltip("dT between consecutive photons; drag the blue lines to set min / max dMT.")
+        im.set_item_tooltip(tr("dT between consecutive photons; drag the blue lines to set min / max dMT."))
         self.item_rects["filter_dt_plot"] = im.get_item_rect()
 
     def _draw_cr(self, section, model, state, width) -> None:
@@ -314,7 +315,7 @@ class FilterStepApp(ImApp):
                 implot.set_next_line_style(SELECTED if s["name"] == "selected" else REMOVED, 1.0)
                 implot.plot_line(s["name"], np.asarray(s["x"], float), np.asarray(s["y"], float))
             implot.end_plot()
-        im.set_item_tooltip("Count rate of all photons and of the photons the filter keeps.")
+        im.set_item_tooltip(tr("Count rate of all photons and of the photons the filter keeps."))
         self.item_rects["filter_cr_plot"] = im.get_item_rect()
 
     def render(self) -> None:
@@ -323,7 +324,7 @@ class FilterStepApp(ImApp):
                     flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE):
             _body("filter_body")
             if self.model._tttr is None:
-                im.text_wrapped("No photons: tick files in Files & Steps first.")
+                im.text_wrapped(tr("No photons: tick files in Files & Steps first."))
             self.form.rects.clear()
             draw_form(self.spec(), self.model, self.form)
             self.item_rects.update(self.form.rects)
@@ -424,37 +425,37 @@ class CorrelatorStepApp(ImApp):
     def _draw_presets(self, section, model, state, width) -> None:
         names = ["", *preset_names(self.model)]
         idx = names.index(self.preset) if self.preset in names else 0
-        im.text("FCS Preset:")
+        im.text(tr("FCS Preset:"))
         im.same_line()
         im.set_next_item_width(-1)
         changed, new = im.combo("##fcs_preset", idx, names)
         if changed:
             self.preset = names[new]
             self.model.apply_preset(new)
-        im.set_item_tooltip("A correlation pair of the detector setup's FCS presets (step 1): fills the channels, "
-                            "micro-time ranges and correlator settings.")
+        im.set_item_tooltip(tr("A correlation pair of the detector setup's FCS presets (step 1): fills the channels, "
+                            "micro-time ranges and correlator settings."))
         self.item_rects["fcs_preset"] = im.get_item_rect()
 
     def _draw_filter_controls(self, section, model, state, width) -> None:
-        if im.button("Load filters..."):
+        if im.button(tr("Load filters...")):
             self.dialogs.ask("Load lifetime filters", "open", LIFETIME_FILTER, lambda p: self.load_filters(p[0]))
-        im.set_item_tooltip("Load lifetime (FLCS) filters from a Filter-Calculator JSON, or a .npy/.npz filter "
-                            "matrix. Correlation then gives species auto-/cross-correlations; A/B pick species.")
+        im.set_item_tooltip(tr("Load lifetime (FLCS) filters from a Filter-Calculator JSON, or a .npy/.npz filter "
+                            "matrix. Correlation then gives species auto-/cross-correlations; A/B pick species."))
         self.item_rects["load_filters"] = im.get_item_rect()
         used = _same_line_if_fits("Unload", im.calc_text_size("Load filters...")[0] + 2 * im.get_style().frame_padding[0])
         im.begin_disabled(not self.model.filter_mode)
-        if im.button("Unload"):
+        if im.button(tr("Unload")):
             self.model.clear_lifetime_filter()
             self.filter_status = ""
         im.end_disabled()
-        im.set_item_tooltip("Remove the lifetime filters and return to detector-channel correlation.")
+        im.set_item_tooltip(tr("Remove the lifetime filters and return to detector-channel correlation."))
         self.item_rects["unload_filters"] = im.get_item_rect()
         _same_line_if_fits("Filter Calc...", used)
         im.begin_disabled(self.open_tool is None)
-        if im.button("Filter Calc..."):
+        if im.button(tr("Filter Calc...")):
             self.open_tool("filter_calc")
         im.end_disabled()
-        im.set_item_tooltip("Open the fFCS Filter Calculator to compute lifetime filters from decay patterns.")
+        im.set_item_tooltip(tr("Open the fFCS Filter Calculator to compute lifetime filters from decay patterns."))
         self.item_rects["filter_calc"] = im.get_item_rect()
         if self.model.filter_mode:
             src = self.model._filter_source or "filters"
@@ -490,15 +491,15 @@ class CorrelatorStepApp(ImApp):
 
     def _draw_correlate(self, section, model, state, width) -> None:
         if self.running:
-            if im.button("Stop"):
+            if im.button(tr("Stop")):
                 self.stop()
-            im.set_item_tooltip("Stop after the current chunk (the chunks done are kept).")
+            im.set_item_tooltip(tr("Stop after the current chunk (the chunks done are kept)."))
             self.item_rects["stop"] = im.get_item_rect()
         else:
             im.push_style_color(im.Col.BUTTON, (31, 122, 31, 255))
-            pressed = im.button("Correlate")
+            pressed = im.button(tr("Correlate"))
             im.pop_style_color(1)
-            im.set_item_tooltip("Correlate the photons of the ticked files (or the filtered photons).")
+            im.set_item_tooltip(tr("Correlate the photons of the ticked files (or the filtered photons)."))
             self.item_rects["correlate"] = im.get_item_rect()
             if pressed:
                 self.on_used("correlate")

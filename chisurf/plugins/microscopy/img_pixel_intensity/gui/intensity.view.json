@@ -3,10 +3,12 @@
   "sections": [
     {
       "type": "dock_area",
+      "description": "Photon intensity images and count rates from the photon stream.",
       "title": "Intensity",
       "sections": [
         {
           "type": "panel",
+          "description": "Input file, pixel and frame binning and detector windows.",
           "title": "Controls",
           "collapsed": false,
           "sections": [
@@ -15,13 +17,13 @@
             {"type": "info", "source": "results_html", "height": 90}
           ]
         },
-        {"type": "custom", "key": "image", "target": "intensity_map", "title": "Intensity",
+        {"type": "custom", "description": "Photon count image of the selected detector window.", "key": "image", "target": "intensity_map", "title": "Intensity",
          "options": {"colormap": true, "colormap_attr": "colormap",
                      "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"}},
-        {"type": "custom", "key": "image", "target": "count_rate_map", "title": "Count rate (kHz)",
+        {"type": "custom", "description": "Count rate per pixel in kHz: photons divided by pixel dwell time.", "key": "image", "target": "count_rate_map", "title": "Count rate (kHz)",
          "options": {"colormap": true, "colormap_attr": "colormap",
                      "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"}},
-        {"type": "custom", "key": "image", "target": "frame_stack", "title": "Frames (movie)",
+        {"type": "custom", "description": "Intensity of each frame as a movie; use the slider to scrub frames.", "key": "image", "target": "frame_stack", "title": "Frames (movie)",
          "options": {"colormap": true, "colormap_attr": "colormap", "movie": true,
                      "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"}}
       ]

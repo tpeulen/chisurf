@@ -11,6 +11,7 @@ import numpy as np
 from emtk import im, implot
 
 from . import result_view
+from emtk.i18n import tr
 
 REGION_FILL = (46, 117, 182, 60)
 #: One colour per state, the Qt tool's palette (cycles beyond eight states).
@@ -57,8 +58,8 @@ class ResultPlots:
         points = result_view.transition_points(ana)
         if points is None:
             im.text_wrapped(
-                "No transition density yet: it shows the FRET efficiency before and after every decoded "
-                "transition once an H2MM fit has finished."
+                tr("No transition density yet: it shows the FRET efficiency before and after every decoded "
+                "transition once an H2MM fit has finished.")
             )
         elif implot.begin_plot("Transition density (E before vs E after)", (-1, -1)):
             implot.setup_axes("E before", "E after")
@@ -96,7 +97,7 @@ class ResultPlots:
             )
             im.text(f"{inside} of {total} transitions inside the gate")
             im.set_item_tooltip(
-                "Transitions whose E before and E after both lie inside the dragged box."
+                tr("Transitions whose E before and E after both lie inside the dragged box.")
             )
 
         # Region Drop Target
@@ -120,12 +121,12 @@ class ResultPlots:
         histograms, censored = result_view.dwell_histograms(ana)
         if ana is None:
             im.text_wrapped(
-                "No dwell times yet: they are drawn here once an H2MM fit has finished."
+                tr("No dwell times yet: they are drawn here once an H2MM fit has finished.")
             )
             return
         if not histograms:
             im.text_wrapped(
-                "No state has a dwell that ended inside a burst, so there is no dwell-time distribution."
+                tr("No state has a dwell that ended inside a burst, so there is no dwell-time distribution.")
             )
             return
         if implot.begin_plot("Dwell times (burst-edge dwells excluded)", (-1, -1)):
@@ -144,7 +145,7 @@ class ResultPlots:
         info = result_view.dwell_fret(ana)
         if info is None:
             im.text_wrapped(
-                "No dwell FRET states yet: they are drawn here once an H2MM fit has finished."
+                tr("No dwell FRET states yet: they are drawn here once an H2MM fit has finished.")
             )
             return
         if info.has_alex:
@@ -188,7 +189,7 @@ class ResultPlots:
         sel = result_view.model_selection(ana)
         if sel is None:
             im.text_wrapped(
-                "No model selection yet: BIC and ICL of every fitted state count appear here after a fit."
+                tr("No model selection yet: BIC and ICL of every fitted state count appear here after a fit.")
             )
             return
         ns, bic, icl = sel
@@ -205,7 +206,7 @@ class ResultPlots:
         path = result_view.burst_path(ana, data, burst)
         if path is None:
             im.text_wrapped(
-                "No state path yet: after a fit, pick a burst to see its photons coloured by decoded state."
+                tr("No state path yet: after a fit, pick a burst to see its photons coloured by decoded state.")
             )
             return
         if implot.begin_plot("State path", (-1, -1)):
@@ -223,7 +224,7 @@ class ResultPlots:
         """Per-state decays by detection colour (the photons of one colour only)."""
         if decays is None:
             im.text_wrapped(
-                "No per-state decays: they need the photons' micro times, which a fit of this folder did not carry."
+                tr("No per-state decays: they need the photons' micro times, which a fit of this folder did not carry.")
             )
             return
         x = decays.centers_ns()
@@ -248,7 +249,7 @@ class ResultPlots:
     def draw_scans(self, scans, uncertainty=None) -> None:
         """Likelihood profiles (deviance against E or S) of every state."""
         if not scans:
-            im.text_wrapped("No likelihood scan yet: press LL scan after a fit.")
+            im.text_wrapped(tr("No likelihood scan yet: press LL scan after a fit."))
             return
         for param, title in (("E", "FRET-E profile"), ("S", "Stoichiometry profile")):
             subset = [s for s in scans if s.param == param]

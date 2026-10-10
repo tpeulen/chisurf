@@ -4,6 +4,23 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## Pre-existing red plugin tests seen during the W6 UI-debt sweep (found 2026-10-10)
+
+status: open
+
+Each fails identically on HEAD with the lane's edit undone (A/B by the sweep lanes), so none is caused by
+the sweep; listed so the owning families pick them up. **Burst (W6b):** burst_fusion 5 (wheel zoom,
+inert-while-running, picker, status line, tour), burst_gs 4 (tour, keyboard), burst_h2mm tour + 4
+`test_surrogate`, burst_irf_bg 2, burst_mle_analysis `test_the_fit_step_waits_for_the_real_press_of_fit_bursts`,
+mfd_prepare tour, burst_selection `test_cli`/`test_real_data`/`test_server` + six `test_new_gui` FakePlot cases.
+**Microscopy (W6c):** greyed-while-worker-runs (flow, frc, psf), drop-loads-file, and
+`test_zz_the_real_user_settings_were_never_touched` families; region_mle tmp-dir errors under load.
+**W6a:** vv_vh_g_factor parity 7 (frozen Qt numerics/sha256), fcs_channel_preset (`setup_store` has no
+`resolve_database_path`), tttr_image_browser (`tifffile` missing, manifest, colormaps). **W6e:**
+psf_calculator export (`tifffile`), lltf optimizer-warning status text, structure_tools docking ("no
+docking engine" in this IMP.bff build). **W6f:** lightpath_simulator MMFDB-dialog Cancel 2, code_editor
+indent 2, pto_inspector `vv_vh_g_factor` declaration.
+
 ## boarding wizard: "Create missing files" never creates `settings_chisurf.yaml` (found 2026-10-01)
 
 status: resolved 2026-10-10 — ruled: a missing user `settings_chisurf.yaml` means release defaults; the status row reads "defaults" and `settings_ok` needs only the settings folder, in both wizards (shared `utils`/`view_model`).

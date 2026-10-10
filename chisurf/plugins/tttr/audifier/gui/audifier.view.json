@@ -5,31 +5,37 @@
     {
       "type": "dock_area",
       "title": "TTTR Audifier",
+      "description": "Turns photon streams into sound and a waterfall display of micro-time versus macro-time.",
       "persist": "tttr_audifier",
       "sections": [
         {
           "type": "panel",
           "title": "Setup",
+          "description": "Source file and detector settings of the audified stream.",
           "sections": [
             {
               "type": "custom",
-              "key": "audifier_setup"
+              "key": "audifier_setup",
+              "description": "Load a photon stream and choose detectors and their colours."
             }
           ]
         },
         {
           "type": "panel",
           "title": "Mixer",
+          "description": "Per-detector volume, note and chord of the audio mix.",
           "sections": [
             {
               "type": "custom",
-              "key": "audifier_mix"
+              "key": "audifier_mix",
+              "description": "Mixer rows: one per detector channel."
             }
           ]
         },
         {
           "type": "panel",
           "title": "Audio",
+          "description": "Audio rendering: bin width, envelope, sample rate, gain, floor, scale, attack and release.",
           "n_col": 1,
           "sections": [
             {
@@ -121,6 +127,7 @@
         {
           "type": "panel",
           "title": "Waterfall params",
+          "description": "Parameters of the micro-time or lifetime waterfall.",
           "n_col": 1,
           "sections": [
             {
@@ -132,11 +139,13 @@
                 "lifetime"
               ],
               "style": "radio",
-              "description": "Show a micro-time histogram waterfall or an ILT lifetime waterfall."
+              "description": "Show a micro-time histogram waterfall or an ILT lifetime waterfall.",
+              "descriptions": ["Histogram of the photon micro-times for each time bin.", "Lifetime distribution from an inverse Laplace transform for each time bin."]
             },
             {
               "type": "panel",
               "title": "Micro-time",
+              "description": "Time bin width, number of micro-time bins and logarithmic intensity scale.",
               "collapsible": true,
               "collapsed": false,
               "n_col": 1,
@@ -173,6 +182,7 @@
             {
               "type": "panel",
               "title": "Lifetime",
+              "description": "Lifetime waterfall: time bin width, tau range and grid points, and regularisation.",
               "collapsible": true,
               "collapsed": true,
               "n_col": 1,
@@ -233,6 +243,7 @@
                 },
                 {
                   "type": "toggle_row",
+                  "description": "Logarithmic tau axis and logarithmic amplitude scale.",
                   "items": [
                     {
                       "attr": "lt_log_tau",
@@ -253,18 +264,21 @@
         {
           "type": "panel",
           "title": "Waterfall",
+          "description": "Waterfall image and playback controls.",
           "sections": [
             {
               "type": "custom",
               "key": "waterfall",
               "target": "waterfall_payload",
+              "description": "Waterfall of macro-time (horizontal) against micro-time or lifetime (vertical).",
               "options": {
                 "position_source": "waterfall_position"
               }
             },
             {
               "type": "custom",
-              "key": "audifier_transport"
+              "key": "audifier_transport",
+              "description": "Play, pause and stop the audio and set the playback position."
             }
           ]
         }

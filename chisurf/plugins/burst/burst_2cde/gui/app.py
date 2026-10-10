@@ -24,6 +24,7 @@ from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import window_size
 
 from .view_model import TwoCdeViewModel
+from emtk.i18n import tr
 
 __all__ = ["BurstTwoCdeApp", "BurstTwoCdeGui", "WINDOW_BG"]
 
@@ -172,12 +173,12 @@ class BurstTwoCdeGui:
         im.push_style_color(Col.BUTTON, ACCENT_GREEN)
         im.push_style_color(Col.BUTTON_HOVERED, (56, 180, 77, 255))
         im.push_style_color(Col.BUTTON_ACTIVE, (36, 140, 57, 255))
-        if im.button("🚀 Run"):
+        if im.button(tr("🚀 Run")):
             self.track("toolAction_run")
             if not locked and callable(self.on_run):
                 self.on_run()
         im.set_item_tooltip(
-            "Compute the 2CDE metric for every burst and plot FRET efficiency vs 2CDE."
+            tr("Compute the 2CDE metric for every burst and plot FRET efficiency vs 2CDE.")
         )
         self.remember("run")
         self.remember("toolAction_run")
@@ -188,11 +189,11 @@ class BurstTwoCdeGui:
         if attention:  # the Qt tool's flag_attention: a skipped run points at Restart
             im.push_style_color(Col.BUTTON, (200, 120, 20, 255))
             im.push_style_color(Col.BUTTON_HOVERED, (220, 140, 40, 255))
-        if im.button("🔄 Restart"):
+        if im.button(tr("🔄 Restart")):
             self.track("toolAction_restart")
             if not self.model.is_running and callable(self.on_restart):
                 self.on_restart()
-        im.set_item_tooltip("Reset the analysis state and recompute the 2CDE values from scratch.")
+        im.set_item_tooltip(tr("Reset the analysis state and recompute the 2CDE values from scratch."))
         self.remember("restart")
         self.remember("toolAction_restart")
         if attention:
@@ -203,44 +204,44 @@ class BurstTwoCdeGui:
             im.push_style_color(Col.BUTTON, ACCENT_RED)
             im.push_style_color(Col.BUTTON_HOVERED, (234, 59, 60, 255))
             im.push_style_color(Col.BUTTON_ACTIVE, (180, 20, 20, 255))
-        if im.button("⏹ Stop"):
+        if im.button(tr("⏹ Stop")):
             self.track("toolAction_stop")
             if self.model.is_running and callable(self.on_stop):
                 self.on_stop()
-        im.set_item_tooltip("Stop the running 2CDE analysis.")
+        im.set_item_tooltip(tr("Stop the running 2CDE analysis."))
         self.remember("stop")
         self.remember("toolAction_stop")
         if self.model.is_running:
             im.pop_style_color(3)
 
         self._same_line_if_fits("📁 Folder")
-        if im.button("📁 Folder"):
+        if im.button(tr("📁 Folder")):
             self.track("folder")
             if callable(self.on_browse):
                 self.on_browse()
-        im.set_item_tooltip("Browse for the folder containing the burst analysis files.")
+        im.set_item_tooltip(tr("Browse for the folder containing the burst analysis files."))
         self.remember("folder")
 
         self._same_line_if_fits("📖 Guide")
-        if im.button("📖 Guide"):
+        if im.button(tr("📖 Guide")):
             self.track("guide")
             self.start_guide()
         self.remember("guide")
-        im.set_item_tooltip("Start a step-by-step guided tour of this tool.")
+        im.set_item_tooltip(tr("Start a step-by-step guided tour of this tool."))
 
         self._same_line_if_fits("❓ Help")
-        if im.button("❓ Help"):
+        if im.button(tr("❓ Help")):
             self.track("help")
             self.show_help()
         self.remember("help")
-        im.set_item_tooltip("Open the help window with reference documentation.")
+        im.set_item_tooltip(tr("Open the help window with reference documentation."))
 
     def _draw_folder_input(self, width: float) -> None:
         """Folder path input."""
-        im.text("Analysis folder:")
-        changed, text = im.input_text("##folder_path", self.model.folder, hint="Burst folder …")
+        im.text(tr("Analysis folder:"))
+        changed, text = im.input_text("##folder_path", self.model.folder, hint=tr("Burst folder …"))
         im.set_item_tooltip(
-            "Path to the folder with the bursts to analyze; type a path or use Folder to browse."
+            tr("Path to the folder with the bursts to analyze; type a path or use Folder to browse.")
         )
         if changed:
             self.model.set_folder(text)
@@ -251,38 +252,38 @@ class BurstTwoCdeGui:
         im.text_colored((200, 210, 230, 255), "2CDE Parameters")
 
         # Variant
-        im.text("Variant:")
+        im.text(tr("Variant:"))
         if im.begin_combo("##twocde_variant", self.model.variant):
             for var in ("fret", "alex"):
                 if im.selectable(var, var == self.model.variant):
                     self.model.variant = var
                     self.model.notify("variant")
-                im.set_item_tooltip("Choose this 2CDE variant.")
+                im.set_item_tooltip(tr("Choose this 2CDE variant."))
             im.end_combo()
         im.set_item_tooltip(
-            "FRET-2CDE uses donor excitation only; ALEX-2CDE also uses acceptor excitation."
+            tr("FRET-2CDE uses donor excitation only; ALEX-2CDE also uses acceptor excitation.")
         )
         self.remember("twocde_variant")
 
         # Kernel
-        im.text("Kernel:")
+        im.text(tr("Kernel:"))
         if im.begin_combo("##twocde_kernel", self.model.kernel):
             for k in ("laplace", "gaussian"):
                 if im.selectable(k, k == self.model.kernel):
                     self.model.kernel = k
                     self.model.notify("kernel")
-                im.set_item_tooltip("Choose this smoothing kernel.")
+                im.set_item_tooltip(tr("Choose this smoothing kernel."))
             im.end_combo()
-        im.set_item_tooltip("Smoothing kernel applied to the 2CDE values (laplace or gaussian).")
+        im.set_item_tooltip(tr("Smoothing kernel applied to the 2CDE values (laplace or gaussian)."))
         self.remember("twocde_kernel")
 
         # tau
-        im.text("τ (window):")
+        im.text(tr("τ (window):"))
         changed, tau = im.drag_float(
             "##twocde_tau", self.model.tau_us, 1.0, 1.0, 100000.0, "%.1f µs"
         )
         im.set_item_tooltip(
-            "Averaging window τ in microseconds used when computing the 2CDE metric."
+            tr("Averaging window τ in microseconds used when computing the 2CDE metric.")
         )
         if changed:
             self.model.tau_us = max(1.0, float(tau))
@@ -290,10 +291,10 @@ class BurstTwoCdeGui:
         self.remember("twocde_tau")
 
         # Donor channels
-        im.text("Donor routing channels:")
+        im.text(tr("Donor routing channels:"))
         changed, donor = im.input_text("##twocde_donor", self.model.donor_channels_text, hint="0,8")
         im.set_item_tooltip(
-            "Comma-separated TTTR routing channels assigned to the donor (e.g. 0,8)."
+            tr("Comma-separated TTTR routing channels assigned to the donor (e.g. 0,8).")
         )
         if changed:
             self.model.donor_channels_text = donor
@@ -301,12 +302,12 @@ class BurstTwoCdeGui:
         self.remember("twocde_donor")
 
         # Acceptor channels
-        im.text("Acceptor routing channels:")
+        im.text(tr("Acceptor routing channels:"))
         changed, acc = im.input_text(
             "##twocde_acceptor", self.model.acceptor_channels_text, hint="1,9"
         )
         im.set_item_tooltip(
-            "Comma-separated TTTR routing channels assigned to the acceptor (e.g. 1,9)."
+            tr("Comma-separated TTTR routing channels assigned to the acceptor (e.g. 1,9).")
         )
         if changed:
             self.model.acceptor_channels_text = acc
@@ -314,9 +315,9 @@ class BurstTwoCdeGui:
         self.remember("twocde_acceptor")
 
         # File type
-        im.text("File type:")
-        changed, ft = im.input_text("##twocde_file_type", self.model.file_type, hint="SPC-130")
-        im.set_item_tooltip("TTTR file type of the source measurements (e.g. SPC-130, PTO).")
+        im.text(tr("File type:"))
+        changed, ft = im.input_text("##twocde_file_type", self.model.file_type, hint=tr("SPC-130"))
+        im.set_item_tooltip(tr("TTTR file type of the source measurements (e.g. SPC-130, PTO)."))
         if changed:
             self.model.file_type = ft
             self.model.notify("file_type")
@@ -331,7 +332,7 @@ class BurstTwoCdeGui:
             im.progress_bar(
                 0.0 if fraction is None else float(fraction), overlay=self.model.progress_text
             )
-            im.set_item_tooltip("Progress of the running 2CDE computation; Stop cancels it.")
+            im.set_item_tooltip(tr("Progress of the running 2CDE computation; Stop cancels it."))
         if self.model.status_text:
             im.separator()
             im.text_wrapped(self.model.status_text)

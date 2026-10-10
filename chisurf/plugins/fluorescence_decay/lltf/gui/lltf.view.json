@@ -8,13 +8,15 @@
     {
       "type": "panel",
       "title": "Input Files",
+      "description": "Measured decay and instrument response files read by the LLTF analysis.",
       "sections": [
-        {"type": "custom", "key": "lltf_files"}
+        {"type": "custom", "key": "lltf_files", "description": "List of the decay and IRF files; drop files here or add them with the buttons."}
       ]
     },
     {
       "type": "panel",
       "title": "Fitting Options",
+      "description": "Number of lifetime components, automatic model selection and the settings that control it.",
       "sections": [
         {"type": "value", "attr": "n_lifetimes", "label": "Number of Lifetimes", "kind": "int", "style": "spin", "minimum": 1, "maximum": 6, "step": 1,
          "description": "Exponential components of the fit. Used when Find Optimal is off; it then also switches the configuration file's own find_optimal off."},
@@ -31,8 +33,9 @@
     {
       "type": "panel",
       "title": "Results",
+      "description": "Fitted lifetimes and amplitudes with the fit report.",
       "sections": [
-        {"type": "table", "source": "lifetime_rows", "height": 96,
+        {"type": "table","description": "Fitted lifetime components with species fractions and lifetimes in ns.", "source": "lifetime_rows", "height": 96,
          "columns": [
            {"key": "component", "label": "Component", "description": "Component number."},
            {"key": "amplitude", "label": "Amplitude", "format": "%.3f", "description": "Species fraction; the fractions sum to 1 (not intensity fractions)."},

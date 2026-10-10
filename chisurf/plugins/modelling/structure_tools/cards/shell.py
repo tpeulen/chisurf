@@ -21,6 +21,7 @@ from emtk.file_dialog import FileDialog
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import button_row
+from emtk.i18n import tr
 
 
 class CardShell(TourTarget, ImApp):
@@ -232,7 +233,7 @@ class CardShell(TourTarget, ImApp):
                                            flags=im.InputTextFlags.ENTER_RETURNS_TRUE)
             modal["value"] = value
             self.remember("prompt", im.get_item_rect())
-            im.set_item_tooltip("The name; press OK or Enter.")
+            im.set_item_tooltip(tr("The name; press OK or Enter."))
             if modal.get("error"):
                 im.text_wrapped(modal["error"])
         im.new_line()

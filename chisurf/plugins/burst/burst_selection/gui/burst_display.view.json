@@ -2,6 +2,7 @@
   "_comment": "Display settings of the burst-selection diagnostics, moved out of the main toolbar (which was full, and holds actions rather than settings). The visible-window control is NOT here: it governs every dock, so it lives in a toolbar row across the top of the window (BurstSelectionTool._setup_viewport_toolbar). It writes the two photon-index spin boxes below, which remain for typing an exact range. Binds to BurstDisplayViewModel, which proxies to the tool's own widgets so nothing is duplicated.",
   "sections": [
     {
+      "description": "Which photons of the burst to draw: all, selected, first and last.",
       "type": "panel",
       "title": "Display",
       "collapsible": true,

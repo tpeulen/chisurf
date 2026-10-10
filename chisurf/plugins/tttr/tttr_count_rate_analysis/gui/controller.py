@@ -9,6 +9,7 @@ from pathlib import Path
 from emtk import im
 from emtk.dialog_window import DialogWindow
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 
 from chisurf.core.data_io.detector_setups import setup_lut_open_kwargs
 from chisurf.core.fio.staging import TTTR_EXTENSIONS, open_tttr
@@ -338,14 +339,14 @@ class _StandaloneApp(CountRateApp):
                     "Definition", self.tool.setup_editor, (-1, 300)
                 )
                 im.set_item_tooltip(
-                    "Define detector routing channels, inclusive micro-time gates and excitation-window ranges."
+                    tr("Define detector routing channels, inclusive micro-time gates and excitation-window ranges.")
                 )
-                if im.button("Apply setup"):
+                if im.button(tr("Apply setup")):
                     self.tool.apply_setup()
-                im.set_item_tooltip("Validate and adopt this detector/window definition.")
-                if im.button("Cancel setup"):
+                im.set_item_tooltip(tr("Validate and adopt this detector/window definition."))
+                if im.button(tr("Cancel setup")):
                     self.tool.setup_editor = None
-                im.set_item_tooltip("Discard the current channel-definition edit.")
+                im.set_item_tooltip(tr("Discard the current channel-definition edit."))
             im.end()
 
     def files_dropped(self, paths):

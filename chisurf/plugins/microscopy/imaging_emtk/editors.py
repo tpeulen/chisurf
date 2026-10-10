@@ -111,6 +111,7 @@ class PlaneMixin:
 
     def _draw_region_list(self, section: dict) -> None:
         from emtk import im as _im
+        from emtk.i18n import tr
 
         name = str(section.get("options", {}).get("name", section.get("title", "")))
         controls = self.region_lists[name]
@@ -121,5 +122,5 @@ class PlaneMixin:
         if section.get("options", {}).get("clear", True):
             if _im.button(f"Clear all##{name}"):
                 self.model.clear_regions()
-            _im.set_item_tooltip("Remove every region; all pixels are selected again.")
+            _im.set_item_tooltip(tr("Remove every region; all pixels are selected again."))
             self.item_rects[f"{name}.clear"] = _im.get_item_rect()

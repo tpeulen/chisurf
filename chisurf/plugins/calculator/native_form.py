@@ -6,6 +6,7 @@ import re
 from emtk import im
 
 from .inputs import bounded_float, bounded_int
+from emtk.i18n import tr
 
 
 def plain(text):
@@ -99,21 +100,21 @@ def parameter_field(parameter, label=None):
     expanded = im.collapsing_header("Fitting state and bounds")
     im.set_item_tooltip(f"Edit {label} fixed state and lower/upper limits.")
     if expanded:
-        changed, fixed = im.checkbox("Fixed", bool(parameter.fixed))
+        changed, fixed = im.checkbox(tr("Fixed"), bool(parameter.fixed))
         im.set_item_tooltip(
-            "Hold this parameter constant during fitting; its manually entered value remains editable."
+            tr("Hold this parameter constant during fitting; its manually entered value remains editable.")
         )
         if changed:
             parameter.fixed = fixed
             edited = True
-        changed, enabled = im.checkbox("Bounds enabled", bool(parameter.bounds_on))
-        im.set_item_tooltip("Apply the lower and upper limits to this parameter.")
+        changed, enabled = im.checkbox(tr("Bounds enabled"), bool(parameter.bounds_on))
+        im.set_item_tooltip(tr("Apply the lower and upper limits to this parameter."))
         if changed:
             parameter.bounds_on = enabled
             edited = True
         for index, title in enumerate(["Lower bound", "Upper bound"]):
             changed, text = im.input_text(title, str(parameter.bounds[index]))
-            im.set_item_tooltip("Numeric fitting limit; use inf or -inf for an unbounded side.")
+            im.set_item_tooltip(tr("Numeric fitting limit; use inf or -inf for an unbounded side."))
             if changed:
                 try:
                     value = float(text)

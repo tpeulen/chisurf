@@ -28,12 +28,14 @@
     {
       "type": "panel",
       "title": "Channel pairs",
+      "description": "Detector pairs that are auto- and cross-correlated by the FCS correlator.",
       "collapsible": false,
       "sections": [
         {
           "type": "custom",
           "key": "fcs_channel_pairs",
           "target": "pairs",
+          "description": "Table of channel pairs; one row per correlation.",
           "options": {
             "add_label": "Add",
             "placeholder": "Pair label (optional)",

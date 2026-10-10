@@ -22,6 +22,7 @@ from emtk import im, implot
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
@@ -252,7 +253,7 @@ class FlcApp(ImApp):
             self._image_ids[target] = id(image)
             canvas.reset()
         if image is None:
-            im.text_disabled("Run the analysis to see this map.")
+            im.text_disabled(tr("Run the analysis to see this map."))
             return
         canvas.draw(image, pick_enabled=False)
         if canvas.colormap != model.colormap:

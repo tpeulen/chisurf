@@ -4,16 +4,19 @@
   "sections": [
     {
       "type": "dock_area",
+      "description": "Measure the point-spread function from images of sub-resolution beads.",
       "title": "PSF Determination",
       "sections": [
         {
           "type": "panel",
+          "description": "Input stack, voxel sizes, bead detection and fit settings.",
           "title": "Controls",
           "collapsed": false,
           "sections": [
-            {"type": "custom", "key": "psf_controls"},
+            {"type": "custom", "description": "Voxel sizes, ROI and bead selection used for the PSF fit.", "key": "psf_controls"},
             {
               "type": "panel",
+              "description": "Voxel size in nm and ROI size around each bead.",
               "title": "PSF parameters",
               "n_col": 1,
               "collapsed": false,
@@ -34,6 +37,7 @@
             },
             {
               "type": "panel",
+              "description": "Bead detection thresholds and sizes.",
               "title": "Detection",
               "n_col": 1,
               "collapsed": false,
@@ -95,6 +99,7 @@
         },
         {
           "type": "panel",
+          "description": "Fitted 3-D Gaussian widths of each bead in nm.",
           "title": "Fit Results",
           "n_col": 1,
           "sections": [

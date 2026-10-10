@@ -5,6 +5,7 @@ import json
 from concurrent.futures import CancelledError, ThreadPoolExecutor
 from pathlib import Path
 from threading import Event
+from emtk.i18n import tr
 
 
 class FusionController:
@@ -241,35 +242,35 @@ class FusionController:
             self.browse()
         elif pressed == "MMFDB datasets":
             self.datasets.open()
-        im.text("TTTR file type")
+        im.text(tr("TTTR file type"))
         im.same_line()
         im.set_next_item_width(TEXT_WIDTH / 2)
         changed, file_type = im.input_text("##fusion_type", self.model.settings.file_type)
         im.set_item_tooltip(
-            "Use auto for header detection or specify SPC-130, PTU, HT3 or HDF; a source manifest takes precedence."
+            tr("Use auto for header detection or specify SPC-130, PTU, HT3 or HDF; a source manifest takes precedence.")
         )
         if changed:
             self.model.settings.file_type = file_type
         expanded = im.collapsing_header("Detector definitions")
         im.set_item_tooltip(
-            "Define detector routing and PIE windows when a legacy source folder has no reading manifest."
+            tr("Define detector routing and PIE windows when a legacy source folder has no reading manifest.")
         )
         if expanded:
             changed, text = im.input_text_multiline(
                 "##fusion_channels", self.channel_text, size=(0, 140)
             )
             im.set_item_tooltip(
-                "JSON with named detectors (chs and micro_time_ranges) and named PIE windows."
+                tr("JSON with named detectors (chs and micro_time_ranges) and named PIE windows.")
             )
             if changed:
                 self.channel_text = text
-            if im.button("Apply detector definitions"):
+            if im.button(tr("Apply detector definitions")):
                 try:
                     self.apply_channels(self.channel_text)
                 except Exception as exc:
                     self.status = f"Invalid detector definitions: {exc}"
             im.set_item_tooltip(
-                "Validate and apply detector definitions used to regenerate fused burst tables."
+                tr("Validate and apply detector definitions used to regenerate fused burst tables.")
             )
         im.end_disabled()
 

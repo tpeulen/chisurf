@@ -50,6 +50,7 @@ from emtk import im, implot
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.core import setup_channel_definition as definition
@@ -511,18 +512,18 @@ class TraceBrowserApp(ImApp):
 
     def _draw_help_buttons(self) -> None:
         """Help and Guide, at the top of both pages."""
-        if im.button("Help"):
+        if im.button(tr("Help")):
             self.help_window.show()
         im.set_item_tooltip(
-            "Explain the Trace Browser: the setup page, the file table, the trace plot, "
-            "exporting, deleting and the hand-offs to other tools."
+            tr("Explain the Trace Browser: the setup page, the file table, the trace plot, "
+            "exporting, deleting and the hand-offs to other tools.")
         )
         self.item_rects["help"] = im.get_item_rect()
         im.same_line()
-        if im.button("Guide"):
+        if im.button(tr("Guide")):
             self.tour.start()
         im.set_item_tooltip(
-            "Walk through accepting a setup, opening a folder, selecting files and exporting them."
+            tr("Walk through accepting a setup, opening a folder, selecting files and exporting them.")
         )
         self.item_rects["guide"] = im.get_item_rect()
 
@@ -567,9 +568,9 @@ class TraceBrowserApp(ImApp):
 
     def draw_setup(self, box: Any) -> None:
         """Page 0: *Continue*, then the shared setup editor."""
-        if im.button("Continue"):
+        if im.button(tr("Continue")):
             self.continue_to_browser()
-        im.set_item_tooltip("Accept detector setup and open trace browser")
+        im.set_item_tooltip(tr("Accept detector setup and open trace browser"))
         self.item_rects["continue"] = im.get_item_rect()
         im.same_line()
         self._draw_help_buttons()
@@ -648,7 +649,7 @@ class TraceBrowserApp(ImApp):
                 text = "Open a folder with TTTR files, then select a file to show its trace."
             im.text_wrapped(text)
         elif self.model.trace_error:
-            im.text_wrapped("No trace to show for this file.")
+            im.text_wrapped(tr("No trace to show for this file."))
 
     def _current_view(self) -> TraceView | None:
         """The drawn data of the model's trace (rebuilt when the model holds another trace)."""
@@ -705,17 +706,17 @@ class TraceBrowserApp(ImApp):
                 implot.end_plot()
             implot.end_subplots()
         im.set_item_tooltip(
-            "Counts per time bin of the selected file, one line per series and their sum. "
+            tr("Counts per time bin of the selected file, one line per series and their sum. "
             "Scroll to zoom, drag to pan, double click to fit. The histogram on the right counts "
-            "how many bins hold each count."
+            "how many bins hold each count.")
         )
 
     def _draw_notes(self, current: Any) -> None:
         """The annotation box: the notes of the current file (the same field as the Notes column)."""
         model = self.model
-        im.text("Annotation")
+        im.text(tr("Annotation"))
         if current is None:
-            im.text_wrapped("Select a file to write an annotation for it.")
+            im.text_wrapped(tr("Select a file to write an annotation for it."))
             return
         disabled = bool(model.busy)
         if disabled:
@@ -726,9 +727,9 @@ class TraceBrowserApp(ImApp):
         if disabled:
             im.end_disabled()
         im.set_item_tooltip(
-            "Free text about the selected file. It is the Notes column of the table: both show and "
+            tr("Free text about the selected file. It is the Notes column of the table: both show and "
             "edit the same text, saved beside the data in the folder's .trace_browser_meta.json "
-            "shortly after you stop typing."
+            "shortly after you stop typing.")
         )
         self.item_rects["annotation"] = im.get_item_rect()
         if changed and not disabled:
@@ -808,14 +809,14 @@ class TraceBrowserApp(ImApp):
             if im.button(str(pending["yes"]) + "##confirm_yes"):
                 self.model.confirm_yes()
             im.set_item_tooltip(
-                "Move the listed files to the .trash folder of the opened folder. "
-                "They are not deleted for good."
+                tr("Move the listed files to the .trash folder of the opened folder. "
+                "They are not deleted for good.")
             )
             self.item_rects["confirm_yes"] = im.get_item_rect()
             im.same_line()
-            if im.button("Cancel##confirm_no"):
+            if im.button(tr("Cancel") + "##confirm_no"):
                 self.model.confirm_no()
-            im.set_item_tooltip("Keep the files where they are. Nothing changes.")
+            im.set_item_tooltip(tr("Keep the files where they are. Nothing changes."))
             self.item_rects["confirm_no"] = im.get_item_rect()
         im.end()
 

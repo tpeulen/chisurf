@@ -53,7 +53,7 @@
     "lifetime": {
       "sections": [
         {"type": "panel", "title": "Lifetime spectrum", "description": "The fluorescence lifetime components shared by the VV and VH fits.", "sections": [
-          {"type": "custom", "key": "data_table", "options": {
+          {"type": "custom", "key": "data_table", "description": "Lifetime components: amplitude and lifetime in ns; double-click a cell to edit.", "options": {
             "source": "rows", "selected_call": "select", "edited_call": "edit",
             "delete_call": "delete", "editable": true, "row_key": "row", "expand": true, "reserve": 112, "height": 120,
             "columns": [
@@ -75,7 +75,7 @@
     "rotation": {
       "sections": [
         {"type": "panel", "title": "Rotation spectrum", "description": "The rotational correlation components shared by the VV and VH fits.", "sections": [
-          {"type": "custom", "key": "data_table", "options": {
+          {"type": "custom", "key": "data_table", "description": "Rotational components: amplitude and correlation time in ns; double-click a cell to edit.", "options": {
             "source": "rows", "selected_call": "select", "edited_call": "edit",
             "delete_call": "delete", "editable": true, "row_key": "row", "expand": true, "reserve": 112, "height": 120,
             "columns": [

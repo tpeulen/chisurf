@@ -178,7 +178,7 @@ class BurstAnalysisGui:
             can_prev = self._can_go_prev()
             if not can_prev:
                 im.push_style_color(Col.TEXT, (0.5, 0.5, 0.5, 1.0))
-            if im.button("◀ Back") and can_prev:
+            if im.button(tr("◀ Back")) and can_prev:
                 self.tool.goto_prev_step()
             im.set_item_tooltip(tr("Go back to the previous workflow step."))
             self.remember("back_step")
@@ -191,7 +191,7 @@ class BurstAnalysisGui:
                 im.push_style_color(Col.TEXT, (0.5, 0.5, 0.5, 1.0))
             else:
                 im.push_style_color(Col.BUTTON, ACCENT_BLUE)
-            if im.button("Next ▶") and can_next:
+            if im.button(tr("Next ▶")) and can_next:
                 self.tool.goto_next_step()
             im.set_item_tooltip(tr("Advance to the next workflow step."))
             self.remember("next_step")
@@ -205,7 +205,7 @@ class BurstAnalysisGui:
             im.same_line()
 
             # Fast Forward (Run Pipeline)
-            if im.button("⏩ Run"):
+            if im.button(tr("⏩ Run")):
                 self.track("fast_forward")
                 self.tool.fast_forward()
             im.set_item_tooltip(tr("Fast-forward: run the remaining pipeline steps automatically."))
@@ -216,13 +216,13 @@ class BurstAnalysisGui:
             im.same_line()
 
             # In-EMTK Guide & Help
-            if im.button("Guide"):
+            if im.button(tr("Guide")):
                 self.start_guide()
             im.set_item_tooltip(tr("Start a step-by-step guided tour of the workflow."))
             self.remember("guide")
 
             im.same_line()
-            if im.button("? Help"):
+            if im.button(tr("? Help")):
                 self.show_help()
             im.set_item_tooltip(tr("Open the help window with reference documentation."))
             self.remember("help")
@@ -257,17 +257,17 @@ class BurstAnalysisGui:
                 im.pop_item_width()
 
                 im.same_line()
-                if im.button("◀##collapse", (26.0, 22.0)):
+                if im.button(tr("◀") + "##collapse", (26.0, 22.0)):
                     self.sidebar_collapsed = True
                 im.set_item_tooltip(tr("Collapse the navigation rail to icons only."))
                 self.remember("sidebar_toggle")
 
                 im.spacing()
-                im.text_disabled("PIPELINE STEPS")
+                im.text_disabled(tr("PIPELINE STEPS"))
                 im.spacing()
             else:
                 im.spacing()
-                if im.button("▶##expand", (width - 16.0, 24.0)):
+                if im.button(tr("▶") + "##expand", (width - 16.0, 24.0)):
                     self.sidebar_collapsed = False
                 im.set_item_tooltip(tr("Expand the navigation rail to show the step names."))
                 self.remember("sidebar_toggle")
@@ -285,7 +285,7 @@ class BurstAnalysisGui:
                         im.separator()
                         im.spacing()
                         im.set_cursor_pos_x(12.0)
-                        im.text_disabled("SIDE TOOLS")
+                        im.text_disabled(tr("SIDE TOOLS"))
                         im.spacing()
                     else:
                         im.spacing()
@@ -452,7 +452,7 @@ class BurstAnalysisGui:
 
                 if getattr(self.tool, "_status_cancel_visible", False):
                     im.same_line()
-                    if im.button("Cancel##task_cancel"):
+                    if im.button(tr("Cancel") + "##task_cancel"):
                         active_task.cancel()
                     im.set_item_tooltip(tr("Cancel the running background task."))
 

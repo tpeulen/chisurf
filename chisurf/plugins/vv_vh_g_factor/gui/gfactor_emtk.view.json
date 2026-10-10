@@ -228,6 +228,7 @@
       {
        "type": "custom",
        "key": "data_table",
+       "description": "Quantity and value of the G-factor tail match.",
        "options": {
         "source": "result_rows",
         "height": 150,
@@ -260,6 +261,7 @@
       {
        "type": "custom",
        "key": "data_table",
+       "description": "Quantity and value of the mixing estimate.",
        "options": {
         "source": "mixing_rows",
         "height": 140,
@@ -295,6 +297,7 @@
     {
      "type": "custom",
      "key": "data_table",
+     "description": "Anisotropy r(inf), region and status per queued file.",
      "options": {
       "source": "batch_rows",
       "min_column_width": 80,

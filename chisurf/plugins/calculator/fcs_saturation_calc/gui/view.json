@@ -4,12 +4,14 @@
     {
       "type": "dock_area",
       "title": "FCS Saturation",
+      "description": "Photophysics inputs, state diagram and the resulting FCS curves, volume profiles and diffusion times as a function of laser power.",
       "split": "horizontal",
       "persist": "fcs_saturation_docks",
       "sections": [
         {
           "type": "panel",
           "title": "Photophysics",
+          "description": "Dye, excitation power and the rate constants of the multi-state photophysical scheme.",
           "collapsed": false,
           "n_col": 1,
           "sections": [
@@ -84,6 +86,7 @@
             {
               "type": "custom",
               "key": "rate_matrix",
+              "description": "Power-independent rate constants between states (relaxation, intersystem crossing, triplet decay), in the chosen rate unit.",
               "target": "saturation.dark.rate_values",
               "options": {
                 "size_attr": "saturation.n_states",
@@ -100,6 +103,7 @@
             {
               "type": "custom",
               "key": "rate_matrix",
+              "description": "Excitation coupling of each state; multiplied by the local excitation intensity it gives the power-dependent transition rate.",
               "target": "saturation.exc.rate_values",
               "options": {
                 "size_attr": "saturation.n_states",
@@ -123,12 +127,14 @@
         {
           "type": "panel",
           "title": "State diagram",
+          "description": "Diagram of the photophysical states and their transition rates, with the optics and measurement parameters.",
           "collapsed": false,
           "n_col": 1,
           "sections": [
             {
               "type": "custom",
               "key": "state_scheme",
+              "description": "Graph of the states and the transitions between them for the selected scheme.",
               "target": "saturation",
               "options": {
                 "unit_attr": "rate_unit",
@@ -150,6 +156,7 @@
         {
           "type": "panel",
           "title": "FCS curve",
+          "description": "Simulated FCS curves at several laser powers and the residual against a single diffusion component.",
           "collapsed": false,
           "n_col": 2,
           "sections": [
@@ -169,6 +176,7 @@
               "type": "plot",
               "source": "fcs_curves_series",
               "title": "FCS Saturation Effect",
+              "description": "FCS autocorrelation G(tau) versus lag time (ms) at several laser powers; saturation changes amplitude and shape.",
               "x_label": "τ (ms)",
               "y_label": "G(τ)",
               "log_x": true,
@@ -193,6 +201,7 @@
         {
           "type": "panel",
           "title": "Info",
+          "description": "Summary of the model, its assumptions and the derived saturation quantities.",
           "collapsed": false,
           "n_col": 1,
           "sections": [
@@ -207,6 +216,7 @@
         {
           "type": "panel",
           "title": "Volume profile",
+          "description": "Radial profiles of excitation, state populations and detected fluorescence across the focal volume.",
           "collapsed": false,
           "n_col": 2,
           "sections": [
@@ -232,6 +242,7 @@
               "type": "plot",
               "source": "volume_profile_series",
               "title": "Radial Spatial Volume Profiles",
+              "description": "Radial profiles versus position r (nm): fraction of molecules per state and excitation rate relative to its peak.",
               "x_label": "Radial Position r (nm)",
               "y_label": "Fraction of molecules  ·  k_exc/peak",
               "log_x": false,
@@ -244,6 +255,7 @@
         {
           "type": "panel",
           "title": "Volume(P)",
+          "description": "Effective detection volume relative to its low-power value as a function of laser power.",
           "collapsed": false,
           "n_col": 1,
           "sections": [
@@ -251,6 +263,7 @@
               "type": "plot",
               "source": "volume_power_series",
               "title": "Volume Expansion vs Laser Power",
+              "description": "Ratio V_eff / V_0 of the effective to the low-power detection volume versus laser power (mW).",
               "x_label": "Power (mW)",
               "y_label": "V_eff / V_0",
               "log_x": true,
@@ -263,6 +276,7 @@
         {
           "type": "panel",
           "title": "Diffusion time",
+          "description": "Apparent diffusion time as a function of laser power.",
           "collapsed": false,
           "n_col": 1,
           "sections": [
@@ -270,6 +284,7 @@
               "type": "plot",
               "source": "tau_d_power_series",
               "title": "Diffusion Time vs Laser Power",
+              "description": "Apparent diffusion time tau_D (ms) from a single-component fit versus laser power (mW); saturation shortens it.",
               "x_label": "Power (mW)",
               "y_label": "τ_D (ms)",
               "log_x": true,

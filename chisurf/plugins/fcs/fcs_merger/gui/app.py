@@ -318,7 +318,7 @@ class MergerApp(ImApp):
         m = self.model
         if m.correlations and not any(m.use):
             im.text_disabled(
-                "No curve ticked: the merge averages all of them, as the Qt page does."
+                tr("No curve ticked: the merge averages all of them, as the Qt page does.")
             )
 
     def draw_files(self, box):

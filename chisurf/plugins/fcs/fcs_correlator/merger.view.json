@@ -4,6 +4,7 @@
       "type": "custom",
       "key": "merger_folder_picker",
       "target": "",
+      "description": "Button that opens a dialog to choose the folder of correlation chunks.",
       "options": {}
     },
     {

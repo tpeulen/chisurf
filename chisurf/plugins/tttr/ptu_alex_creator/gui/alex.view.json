@@ -4,17 +4,20 @@
     {
       "type": "dock_area",
       "title": "ALEX Creator",
+      "description": "Adds an ALEX (alternating laser excitation) channel to a TTTR file.",
       "persist": "ptu_alex_creator",
       "sections": [
         {
           "type": "panel",
           "title": "Controls",
+          "description": "Convert one file and set formats and ALEX modulation.",
           "collapsed": false,
           "sections": [
-            {"type": "custom", "key": "alex_actions"},
+            {"type": "custom", "key": "alex_actions", "description": "Open, convert and save the current file."},
             {
               "type": "panel",
               "title": "Formats",
+              "description": "Input and output file formats.",
               "n_col": 1,
               "collapsed": false,
               "sections": [
@@ -37,6 +40,7 @@
             {
               "type": "panel",
               "title": "ALEX modulation",
+              "description": "Alternation period (macro-time units) and phase shift of the ALEX excitation modulation.",
               "n_col": 1,
               "collapsed": false,
               "sections": [
@@ -76,6 +80,7 @@
         {
           "type": "panel",
           "title": "Batch",
+          "description": "Convert or merge several files in one run.",
           "collapsed": true,
           "sections": [
             {
@@ -85,19 +90,21 @@
               "options": ["convert", "merge"],
               "labels": ["Convert each", "Merge into one"],
               "style": "radio",
-              "description": "Convert every file to its own ALEX output, or merge them all into one."
+              "description": "Convert every file to its own ALEX output, or merge them all into one.",
+              "descriptions": ["Every file gets its own ALEX output.", "All files are merged into a single ALEX output."]
             },
             {
               "type": "custom",
               "key": "path_list",
               "target": "batch_files",
+              "description": "Files queued for the batch run.",
               "options": {
                 "title": "Files (drop .sm files or folders)",
                 "extensions": [".sm", ".ptu", ".ht3", ".spc", ".hdf", ".h5", ".raw"],
                 "add_folders": true
               }
             },
-            {"type": "custom", "key": "alex_batch_run"}
+            {"type": "custom", "key": "alex_batch_run", "description": "Start the batch run."}
           ]
         }
       ]

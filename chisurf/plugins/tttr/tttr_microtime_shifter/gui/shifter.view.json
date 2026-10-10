@@ -5,6 +5,7 @@
     {
       "type": "panel",
       "title": "Alignment",
+      "description": "Preview of the micro-time histograms with the shifts applied.",
       "collapsible": true,
       "sections": [
         {
@@ -61,6 +62,7 @@
     {
       "type": "panel",
       "title": "Shifts",
+      "description": "Micro-time shift per detector channel.",
       "collapsible": true,
       "sections": [
         {
@@ -81,13 +83,15 @@
         },
         {
           "type": "custom",
-          "key": "channel_shifts"
+          "key": "channel_shifts",
+          "description": "Shift of each channel in micro-time bins."
         }
       ]
     },
     {
       "type": "panel",
       "title": "Save",
+      "description": "Write the shifted TTTR file.",
       "collapsible": true,
       "sections": [
         {
@@ -135,12 +139,14 @@
     {
       "type": "panel",
       "title": "MMFDB",
+      "description": "Register the shifted file as artifact of a sample in the database.",
       "collapsible": true,
       "collapsed": true,
       "sections": [
         {
           "type": "custom",
-          "key": "sample_list"
+          "key": "sample_list",
+          "description": "Samples available in the database."
         },
         {
           "type": "panel",

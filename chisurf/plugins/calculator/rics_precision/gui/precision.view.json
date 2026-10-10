@@ -4,18 +4,21 @@
     {
       "type": "dock_area",
       "title": "RICS precision",
+      "description": "Inputs for the RICS precision prediction and the predicted error of the diffusion coefficient.",
       "split": "horizontal",
       "persist": "rics_precision",
       "sections": [
         {
           "type": "panel",
           "title": "Settings",
+          "description": "Sample, optics, scan and estimator settings of the prediction.",
           "collapsed": false,
           "n_col": 1,
           "sections": [
             {
               "type": "panel",
               "title": "Sample",
+              "description": "Diffusion coefficient, number of particles in the focus and molecular brightness.",
               "collapsed": false,
               "n_col": 1,
               "sections": [
@@ -45,6 +48,7 @@
             {
               "type": "panel",
               "title": "Optics",
+              "description": "Lateral and axial waist of the focus and the pixel size.",
               "collapsed": false,
               "n_col": 1,
               "sections": [
@@ -72,6 +76,7 @@
             {
               "type": "panel",
               "title": "Scan",
+              "description": "Pixel dwell time, line overhead, image size and number of images.",
               "collapsed": false,
               "n_col": 1,
               "sections": [
@@ -105,6 +110,7 @@
             {
               "type": "panel",
               "title": "Estimator",
+              "description": "Settings of the Monte Carlo estimator: lag count, repeats and random seed.",
               "collapsed": true,
               "n_col": 1,
               "sections": [
@@ -130,6 +136,7 @@
         {
           "type": "dock_area",
           "title": "Prediction",
+          "description": "Predicted error against pixel dwell time, as a plot and a table.",
           "sections": [
             {
               "type": "plot",
@@ -145,6 +152,7 @@
               "type": "table",
               "source": "sweep_rows",
               "title": "Numbers",
+              "description": "Pixel dwell, line and frame times with the predicted relative error on D.",
               "expand": true,
               "columns": [
                 {"key": "dwell", "label": "Dwell [µs]", "width": 110, "description": "Pixel dwell time."},

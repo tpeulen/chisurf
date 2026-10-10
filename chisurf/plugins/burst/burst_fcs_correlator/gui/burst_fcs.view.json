@@ -1,6 +1,7 @@
 {
   "sections": [
     {
+      "description": "Burst-wise FCS correlator: binning, cascades, fine grid and padding around each burst.",
       "type": "panel",
       "title": "Correlator",
       "collapsed": false,
@@ -19,11 +20,12 @@
       ]
     },
     {
+      "description": "Fit of the burst-wise correlation curve: mode, MaxEnt regularisation and diffusion-time and lag ranges.",
       "type": "panel",
       "title": "Fitting",
       "collapsed": false,
       "sections": [
-        {"type": "choice", "attr": "fit_mode", "label": "Mode", "style": "radio",
+        {"descriptions": ["No fit; correlation curve only.", "Single-component diffusion model.", "Maximum-entropy distribution of diffusion times."], "type": "choice", "attr": "fit_mode", "label": "Mode", "style": "radio",
          "options": ["none", "simple", "maxent"], "labels": ["None", "Simple", "MaxEnt"],
          "description": "Per-curve fit: none, single-component diffusion, or MaxEnt distribution."},
         {"type": "value", "attr": "maxent_log10_reg", "label": "MaxEnt reg (log10)", "kind": "float",

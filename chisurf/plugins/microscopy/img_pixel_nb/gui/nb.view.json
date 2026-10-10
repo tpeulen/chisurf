@@ -3,12 +3,14 @@
   "sections": [
     {
       "type": "dock_area",
+      "description": "Number and brightness analysis from the intensity fluctuations of each pixel.",
       "title": "Number & Brightness",
       "split": "horizontal",
       "persist": "img_pixel_nb",
       "sections": [
         {
           "type": "panel",
+          "description": "Input stack and N&B estimator settings.",
           "title": "Settings",
           "collapsed": false,
           "n_col": 1,
@@ -18,6 +20,7 @@
             {"type": "info", "source": "results_html", "height": 90},
             {
               "type": "panel",
+              "description": "Corrections for photobleaching and drift applied to the frame stack before the moments are taken.",
               "title": "Stack corrections",
               "collapsed": true,
               "n_col": 1,
@@ -38,6 +41,7 @@
             },
             {
               "type": "panel",
+              "description": "Detector offset, gain and noise needed to convert counts to photons.",
               "title": "Detector",
               "collapsed": true,
               "n_col": 1,
@@ -56,6 +60,7 @@
             },
             {
               "type": "panel",
+              "description": "How the mean and variance of the intensity are estimated from the frames.",
               "title": "Estimator",
               "collapsed": true,
               "n_col": 1,
@@ -72,6 +77,7 @@
             },
             {
               "type": "panel",
+              "description": "Brightness versus intensity histogram; draw gates to select pixels by oligomer state.",
               "title": "Parameter plane / gates",
               "collapsed": false,
               "n_col": 1,
@@ -96,6 +102,7 @@
             },
             {
               "type": "panel",
+              "description": "Cross-correlated number and brightness between two detector windows.",
               "title": "Cross N&B",
               "collapsed": true,
               "n_col": 1,
@@ -108,9 +115,10 @@
         },
         {
           "type": "dock_area",
+          "description": "Number, brightness and intensity maps.",
           "title": "Maps",
           "sections": [
-            {"type": "custom", "key": "image", "target": "intensity_map", "title": "Intensity",
+            {"type": "custom", "description": "Mean photon count per pixel over the frames.", "key": "image", "target": "intensity_map", "title": "Intensity",
              "options": {"colormap": true, "colormap_attr": "colormap",
                          "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"}},
             {"type": "custom", "key": "image", "target": "b_map", "title": "Brightness (B)",
@@ -148,7 +156,7 @@
              "options": {"colormap": true, "colormap_attr": "colormap",
                          "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"},
              "description": "N_cross = ⟨a⟩⟨b⟩/cov between the two windows."},
-            {"type": "custom", "key": "image", "target": "frame_stack", "title": "Frames (movie)",
+            {"type": "custom", "description": "Intensity of each frame as a movie.", "key": "image", "target": "frame_stack", "title": "Frames (movie)",
              "options": {"colormap": true, "colormap_attr": "colormap", "movie": true,
                          "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"}}
           ]

@@ -24,7 +24,7 @@
          ]},
         {"type": "choice", "attr": "stage_name", "label": "", "style": "radio_list",
          "options": ["Compute LUT", "settings.tttr.json (optional)"],
-         "description": "Compute LUT: MAKE a per-routing-channel LUT from a flat / uniform-illumination measurement (the main tool). settings.tttr.json: OPTIONAL, save or load a portable settings file, or assign LUT files to channels by hand."}
+         "description": "Compute LUT: MAKE a per-routing-channel LUT from a flat / uniform-illumination measurement (the main tool). settings.tttr.json: OPTIONAL, save or load a portable settings file, or assign LUT files to channels by hand.", "descriptions": ["Make a per-routing-channel LUT from a flat measurement.", "Save or load a portable settings file, or assign LUTs by hand."]}
       ]
     },
     {

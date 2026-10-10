@@ -3,10 +3,12 @@
   "sections": [
     {
       "type": "dock_area",
+      "description": "Maximum-likelihood lifetime fit of every pixel decay.",
       "title": "Pixel-wise MLE",
       "sections": [
         {
           "type": "panel",
+          "description": "Input data, model and fit settings of the pixel-wise fit.",
           "title": "Analysis",
           "n_col": 1,
           "collapsed": false,
@@ -32,7 +34,7 @@
              "description": "Pixels with fewer photons in the fit window are not fitted."},
             {"type": "value", "attr": "roi_path", "kind": "file", "label": "Region",
              "description": "Optional region confining the fit to part of the frame — regions saved in CLSM Draw (.json), a Cellpose segmentation (_seg.npy), a label image or a binary mask. Leave empty to fit the whole frame."},
-            {"type": "panel", "title": "IRF preparation", "n_col": 2, "collapsed": true, "sections": [
+            {"type": "panel", "description": "Threshold and parallel/perpendicular shifts in channels applied to the measured IRF before fitting.", "title": "IRF preparation", "n_col": 2, "collapsed": true, "sections": [
               {"type": "value", "attr": "irf_threshold", "kind": "float", "label": "Threshold", "decimals": 3, "minimum": 0.0, "maximum": 1.0,
                "description": "Fraction of the IRF maximum below which bins are zeroed."},
               {"type": "value", "attr": "shift_sp", "kind": "float", "label": "Shift ∥", "decimals": 3, "minimum": -1000.0, "maximum": 1000.0,
@@ -40,18 +42,18 @@
               {"type": "value", "attr": "shift_ss", "kind": "float", "label": "Shift ⊥", "decimals": 3, "minimum": -1000.0, "maximum": 1000.0,
                "description": "Perpendicular-channel sub-bin IRF shift."}
             ]},
-            {"type": "panel", "title": "Fit flags", "n_col": 2, "collapsed": true, "sections": [
+            {"type": "panel", "description": "Optional fit terms such as the 2I* criterion and scatter treatment.", "title": "Fit flags", "n_col": 2, "collapsed": true, "sections": [
               {"type": "toggle", "attr": "twoi_star", "label": "2I* (P+2S)", "description": "Optimise P+2S instead of P and S separately."},
               {"type": "toggle", "attr": "bifl_scatter", "label": "BIFL scatter", "description": "Reduce Istar by the background contribution."}
             ]},
-            {"type": "panel", "title": "Background", "n_col": 2, "collapsed": true, "sections": [
+            {"type": "panel", "description": "Background decays subtracted from the signal, per polarization.", "title": "Background", "n_col": 2, "collapsed": true, "sections": [
               {"type": "toggle", "attr": "use_bg", "label": "Subtract", "description": "Subtract a flat background from the fit window."},
               {"type": "value", "attr": "bg_p", "kind": "float", "label": "bg ∥", "decimals": 3, "minimum": 0.0, "maximum": 1000000.0,
                "description": "Parallel background counts spread over the fit window."},
               {"type": "value", "attr": "bg_s", "kind": "float", "label": "bg ⊥", "decimals": 3, "minimum": 0.0, "maximum": 1000000.0,
                "description": "Perpendicular background counts spread over the fit window."}
             ]},
-            {"type": "panel", "title": "Performance", "n_col": 2, "collapsed": true, "sections": [
+            {"type": "panel", "description": "Compute engine and number of parallel workers for the per-pixel fits.", "title": "Performance", "n_col": 2, "collapsed": true, "sections": [
               {"type": "choice", "attr": "engine", "label": "Engine", "options": ["auto", "fast", "loop"],
                "description": "Histogram extraction: fast = vectorised C++, loop = exact bincount, auto = fast with bincount fallback on saturation."},
               {"type": "value", "attr": "n_workers", "kind": "int", "label": "Threads", "minimum": 0, "maximum": 256,

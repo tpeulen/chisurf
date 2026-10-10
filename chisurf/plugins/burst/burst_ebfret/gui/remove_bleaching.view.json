@@ -28,6 +28,7 @@
           "description": "Crop where the donor intensity falls below the value."
         },
         {
+          "description": "Donor intensity threshold in counts per frame.",
           "type": "value",
           "attr": "don_value",
           "label": "",
@@ -40,6 +41,7 @@
           "description": "Crop where the acceptor intensity falls below the value."
         },
         {
+          "description": "Acceptor intensity threshold in counts per frame.",
           "type": "value",
           "attr": "acc_value",
           "label": "",
@@ -52,6 +54,7 @@
           "description": "Crop where donor plus acceptor falls below the value."
         },
         {
+          "description": "Threshold on donor plus acceptor intensity in counts per frame.",
           "type": "value",
           "attr": "sum_value",
           "label": "",
@@ -64,6 +67,7 @@
           "description": "Crop where the FRET signal falls below the value."
         },
         {
+          "description": "FRET threshold (efficiency, 0 to 1).",
           "type": "value",
           "attr": "fret_value",
           "label": "",
@@ -76,6 +80,7 @@
           "description": "Frames removed before the detected point."
         },
         {
+          "description": "Number of frames removed before the detected point.",
           "type": "value",
           "attr": "pad_value",
           "label": "",
@@ -87,10 +92,12 @@
       "type": "button_row",
       "buttons": [
         {
+          "description": "Accept the settings and close.",
           "label": "Ok",
           "action": "ok"
         },
         {
+          "description": "Close without applying changes.",
           "label": "Cancel",
           "action": "cancel"
         }

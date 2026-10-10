@@ -12,6 +12,7 @@ from typing import Any, Callable
 import numpy as np
 from emtk import im, implot
 from emtk.view_form import FormState, draw_sections
+from emtk.i18n import tr
 
 from chisurf.emtk.image_canvas import ImageCanvas
 
@@ -246,17 +247,17 @@ class ImagePanel:
             if im.button(f"{'Pause' if self.playing else 'Play'}##{self.key}_play"):
                 self.toggle_play()
             im.set_item_tooltip(
-                "Play the frame stack; it stops at the last frame unless Loop is on."
+                tr("Play the frame stack; it stops at the last frame unless Loop is on.")
             )
             self.rects["play"] = im.get_item_rect()
             im.same_line()
             _, self.loop = im.checkbox(f"Loop##{self.key}_loop", self.loop)
-            im.set_item_tooltip("Wrap around to the first frame at the end of the stack.")
+            im.set_item_tooltip(tr("Wrap around to the first frame at the end of the stack."))
             self.rects["loop"] = im.get_item_rect()
             im.same_line()
             if im.button(f"Stop##{self.key}_stop"):
                 self.stop()
-            im.set_item_tooltip("Stop playback and return to the first frame.")
+            im.set_item_tooltip(tr("Stop playback and return to the first frame."))
             self.rects["stop"] = im.get_item_rect()
             im.end_disabled()
             im.begin_disabled(not stack)

@@ -34,6 +34,7 @@ from .fps_model import (
     safe_mrc_stem,
 )
 from .shell import CardShell
+from emtk.i18n import tr
 
 HERE = Path(__file__).resolve().parent
 RES = HERE / "resources" / "fps_json"
@@ -792,10 +793,10 @@ class FpsJsonCard(CardShell):
             and DISTANCE_TYPE_NAMES.get(ed._dist(ed.selected_dist).get("distance_type"), "dRDA")
             == "pRDA"
         ):
-            if im.button("Load DA Distribution..."):
+            if im.button(tr("Load DA Distribution...")):
                 self.load_distribution()
             im.set_item_tooltip(
-                "A file with R_DA in the first column and p(R_DA) in the second; one header line."
+                tr("A file with R_DA in the first column and p(R_DA) in the second; one header line.")
             )
             self.remember("load_distribution")
 
@@ -807,19 +808,19 @@ class FpsJsonCard(CardShell):
         ed = self.editor
         options = [ALL_DISTANCES, *ed.score_set_names]
         idx = options.index(ed.score_filter) if ed.score_filter in options else 0
-        im.text("Scoring group / set:")
+        im.text(tr("Scoring group / set:"))
         im.same_line()
         im.set_next_item_width(200)
         changed, new = im.combo("##scorefilter", idx, options)
         if changed:
             ed.set_score_filter(options[new])
         self.remember("score_filter")
-        im.set_item_tooltip("Show only the restraints of one scoring group, or all of them.")
+        im.set_item_tooltip(tr("Show only the restraints of one scoring group, or all of them."))
 
     def _draw_flexfit(self) -> None:
         ed = self.editor
         names = ed.flexfit_names
-        im.text("Set:")
+        im.text(tr("Set:"))
         im.same_line()
         im.set_next_item_width(220)
         idx = names.index(ed.flexfit_set) if ed.flexfit_set in names else 0
@@ -827,7 +828,7 @@ class FpsJsonCard(CardShell):
         if changed and names:
             ed.select_flexfit_set(names[new])
         self.remember("flex_set")
-        im.set_item_tooltip("The FlexFit set whose residues and bonds are shown.")
+        im.set_item_tooltip(tr("The FlexFit set whose residues and bonds are shown."))
         im.same_line()
         pressed = self.toolbar(
             [
@@ -923,8 +924,8 @@ class FpsJsonCard(CardShell):
         scene = self.editor.scene3d()
         if not scene["structures"] and not scene["avs"]:
             im.text_wrapped(
-                "Nothing to show: give a position a structure (Positions tab, PDB file or ID), and compute its "
-                "accessible volume with Compute AVs."
+                tr("Nothing to show: give a position a structure (Positions tab, PDB file or ID), and compute its "
+                "accessible volume with Compute AVs.")
             )
             self.remember("empty_3d")
             return
@@ -951,9 +952,9 @@ class FpsJsonCard(CardShell):
         self._follow_selection(viewer)
         self.chimol.draw(enabled=not self.blocked)
         im.set_item_tooltip(
-            "The structures as cartoon, the accessible volumes as surfaces with their mean positions, and the "
+            tr("The structures as cartoon, the accessible volumes as surfaces with their mean positions, and the "
             "distance lines; the selected position's attachment atom is the white sphere. Drag to rotate, wheel to "
-            "zoom; click an atom to attach the selected position to it, click a mean sphere to select its position."
+            "zoom; click an atom to attach the selected position to it, click a mean sphere to select its position.")
         )
         self.remember("plot3d")
 
@@ -1119,8 +1120,8 @@ class FpsJsonCard(CardShell):
                 )
             implot3d.end_plot()
             im.set_item_tooltip(
-                "Accessible volumes (points), mean positions and distance lines; "
-                "drag to rotate, wheel to zoom."
+                tr("Accessible volumes (points), mean positions and distance lines; "
+                "drag to rotate, wheel to zoom.")
             )
             self.remember("plot3d")
 

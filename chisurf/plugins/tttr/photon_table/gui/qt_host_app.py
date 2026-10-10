@@ -12,6 +12,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 
+from emtk.i18n import tr
 import emtk.im as im
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
@@ -96,40 +97,40 @@ class PhotonTableGui(TourTarget):
         tool = self.tool
         m = self.model
 
-        if im.button("📂 Open TTTR…"):
+        if im.button(tr("📂 Open TTTR…")):
             if callable(self.on_browse):
                 self.on_browse()
         im.set_item_tooltip(
-            "Open a TTTR file (.ptu, .ht3, .phu, …). Dropping one on the window does the same."
+            tr("Open a TTTR file (.ptu, .ht3, .phu, …). Dropping one on the window does the same.")
         )
         self.remember("open")
 
         im.same_line()
-        if im.button("📋 Copy visible"):
+        if im.button(tr("📋 Copy visible")):
             im.set_clipboard_text(
                 m.page_tsv(tool.first_index, tool.rows_per_page, tool.channel_filter)
             )
-        im.set_item_tooltip("Copy the visible rows to the clipboard as tab-separated text.")
+        im.set_item_tooltip(tr("Copy the visible rows to the clipboard as tab-separated text."))
         self.remember("copy")
 
         im.same_line()
-        if im.button("📖 Guide"):
+        if im.button(tr("📖 Guide")):
             self.start_guide()
-        im.set_item_tooltip("A step-by-step walk through the tool.")
+        im.set_item_tooltip(tr("A step-by-step walk through the tool."))
         self.remember("guide")
         if im.get_line_avail() < 110.0:
             im.new_line()
         else:
             im.same_line()
-        if im.button("❓ Help"):
+        if im.button(tr("❓ Help")):
             self.show_help()
-        im.set_item_tooltip("The short help page.")
+        im.set_item_tooltip(tr("The short help page."))
         self.remember("help")
 
         im.separator()
         if not m.n_photons:
             im.text_wrapped(
-                "Open a TTTR file — or drop one on this window — to inspect its photons."
+                tr("Open a TTTR file — or drop one on this window — to inspect its photons.")
             )
             return
 
@@ -152,27 +153,27 @@ class PhotonTableGui(TourTarget):
         m = self.model
         count = m.filtered_count(tool.channel_filter)
 
-        if im.button("⏮ First"):
+        if im.button(tr("⏮ First")):
             tool.first_index = 0
-        im.set_item_tooltip("Jump to the first photon of the filtered selection.")
+        im.set_item_tooltip(tr("Jump to the first photon of the filtered selection."))
         im.same_line()
-        if im.button("◀ Prev"):
+        if im.button(tr("◀ Prev")):
             tool.first_index = m.clamp_first(
                 tool.first_index - tool.rows_per_page, tool.rows_per_page, tool.channel_filter
             )
-        im.set_item_tooltip("One page back.")
+        im.set_item_tooltip(tr("One page back."))
         im.same_line()
-        if im.button("Next ▶"):
+        if im.button(tr("Next ▶")):
             tool.first_index = m.clamp_first(
                 tool.first_index + tool.rows_per_page, tool.rows_per_page, tool.channel_filter
             )
-        im.set_item_tooltip("One page forward.")
+        im.set_item_tooltip(tr("One page forward."))
         im.same_line()
-        if im.button("Last ⏭"):
+        if im.button(tr("Last ⏭")):
             tool.first_index = m.clamp_first(
                 max(count - tool.rows_per_page, 0), tool.rows_per_page, tool.channel_filter
             )
-        im.set_item_tooltip("Jump to the last full page of the filtered selection.")
+        im.set_item_tooltip(tr("Jump to the last full page of the filtered selection."))
 
         im.same_line()
         im.text_disabled(
@@ -188,16 +189,16 @@ class PhotonTableGui(TourTarget):
         im.spacing()
         # One control per row, each filling the line: two fields sharing a row
         # overflowed a narrow dock and pushed the channel combo off its edge.
-        im.text("First photon:")
+        im.text(tr("First photon:"))
         im.same_line()
         im.set_next_item_width(-1.0)
         v, _ = typed_number_field("first_photon", tool.first_index, self._number_buffers, minimum=0)
         self.remember("first_photon")
-        im.set_item_tooltip("Index of the first photon shown (within the filtered selection).")
+        im.set_item_tooltip(tr("Index of the first photon shown (within the filtered selection)."))
         if v is not None:
             tool.first_index = m.clamp_first(v, tool.rows_per_page, tool.channel_filter)
 
-        im.text("Rows:")
+        im.text(tr("Rows:"))
         im.same_line()
         im.set_next_item_width(-1.0)
         r, _ = typed_number_field(
@@ -205,8 +206,8 @@ class PhotonTableGui(TourTarget):
         )
         self.remember("rows_per_page")
         im.set_item_tooltip(
-            "Rows shown at once (1–20000). Large pages are fine; the table only "
-            "draws what fits the window."
+            tr("Rows shown at once (1–20000). Large pages are fine; the table only "
+            "draws what fits the window.")
         )
         if r is not None:
             tool.rows_per_page = r
@@ -223,12 +224,12 @@ class PhotonTableGui(TourTarget):
             if str(tool.channel_filter) in options
             else 0
         )
-        im.text("Channel:")
+        im.text(tr("Channel:"))
         im.same_line()
         im.set_next_item_width(-1.0)
         changed, new_idx = im.combo("##channel_filter", current, options)
         im.set_item_tooltip(
-            "Show only the photons of one routing channel. 'All channels' keeps the file's order."
+            tr("Show only the photons of one routing channel. 'All channels' keeps the file's order.")
         )
         if changed and 0 <= new_idx < len(options):
             tool.channel_filter = _CHANNEL_ANY if new_idx == 0 else int(options[new_idx])
@@ -243,7 +244,7 @@ class PhotonTableGui(TourTarget):
         im.separator()
 
         if not m.n_photons:
-            im.text_disabled("No photons loaded.")
+            im.text_disabled(tr("No photons loaded."))
             return
 
         rows = m.page(tool.first_index, tool.rows_per_page, tool.channel_filter)

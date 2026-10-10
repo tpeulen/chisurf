@@ -21,6 +21,7 @@ from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import window_size
 
 from .model import FretCalculatorModel
+from emtk.i18n import tr
 
 HERE = Path(__file__).parent
 
@@ -85,14 +86,14 @@ class _Tab:
     # -- windows --------------------------------------------------------------- #
     def _draw_params(self, box) -> None:
         app = self.app
-        if im.button("Guide"):
+        if im.button(tr("Guide")):
             app.start_guide()
-        im.set_item_tooltip("A step-by-step walk through the calculator.")
+        im.set_item_tooltip(tr("A step-by-step walk through the calculator."))
         self.item_rects["guide"] = im.get_item_rect()
         im.same_line()
-        if im.button("Help"):
+        if im.button(tr("Help")):
             app.show_help()
-        im.set_item_tooltip("The help page for the FRET calculator.")
+        im.set_item_tooltip(tr("The help page for the FRET calculator."))
         self.item_rects["help"] = im.get_item_rect()
         im.separator()
         im.text_wrapped(self.model.status_text())

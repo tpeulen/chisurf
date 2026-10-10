@@ -2,6 +2,10 @@
 
 ## 2026-10-10
 
+- W6a–e UI-debt sweep: 436 tooltip and 693 literal allowances closed across tttr, fcs, pch,
+  vv_vh_g_factor, burst, microscopy, calculator, fluorescence_decay, chimol, modelling and traj
+  (tooltips 568→132, literals 1049→356); id suffixes kept outside `tr()`.
+
 - Boarding: a missing user `settings_chisurf.yaml` reads as release defaults and no longer blocks
   the Settings step (both wizards).
 

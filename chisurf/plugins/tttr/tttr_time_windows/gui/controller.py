@@ -7,6 +7,7 @@ from emtk import im
 from emtk.dialog_window import DialogWindow
 from emtk.docking import LayoutStore
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 
@@ -303,14 +304,14 @@ class _StandaloneApp(TimeWindowApp):
         # whole viewport, so every status message hid the tool.
         if self.tool.job.running:
             self._job_window.begin(frame)
-            im.text("Working…")
-            if im.button("Stop"):
+            im.text(tr("Working…"))
+            if im.button(tr("Stop")):
                 self.tool.job.stop()
                 self.tool.notify(
                     "Stopped publication. The current file operation may finish writing output."
                 )
             im.set_item_tooltip(
-                "Discard the pending result. A file write already running may finish."
+                tr("Discard the pending result. A file write already running may finish.")
             )
             self._job_window.end()
         if self.tool.dialog is not None:

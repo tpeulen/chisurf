@@ -3,14 +3,16 @@
     {
       "type": "panel",
       "title": "Constraint (choose one)",
+      "description": "Which quantity is fixed (D, rh or Veff); the other two are computed from it and are read-only.",
       "collapsed": false,
       "sections": [
-        {"type": "custom", "key": "confocal_constraint"}
+        {"type": "custom", "key": "confocal_constraint", "description": "Radio buttons: Fix D, Fix rh or Fix Veff."}
       ]
     },
     {
       "type": "panel",
       "title": "Diffusion / volume",
+      "description": "Diffusion time, diffusion coefficient, hydrodynamic radius, structure parameter S = wz/wxy and effective volume, tied by the Stokes-Einstein relation at temperature T and viscosity η.",
       "collapsed": false,
       "sections": [
         {"type": "value", "attr": "tau_us", "label": "τ (µs)", "kind": "float",
@@ -41,6 +43,7 @@
     {
       "type": "panel",
       "title": "Occupancy",
+      "description": "Mean number of molecules N in the effective volume (G(0) = 1/N) and the corresponding concentration in nM.",
       "collapsed": false,
       "sections": [
         {"type": "value", "attr": "invN", "label": "1/N", "kind": "float",
@@ -57,25 +60,28 @@
     {
       "type": "panel",
       "title": "Reference dye (D @ 25 °C, water)",
+      "description": "Reference dye with a known diffusion coefficient at 25 °C in water; its D is rescaled to the current temperature and viscosity.",
       "collapsed": false,
       "sections": [
-        {"type": "custom", "key": "confocal_dye"}
+        {"type": "custom", "key": "confocal_dye", "description": "Choose the reference dye whose known diffusion coefficient sets the calibration."}
       ]
     },
     {
       "type": "panel",
       "title": "Molecular shape",
+      "description": "Estimates D of a sphere, ellipsoid or cylinder from its size (nm) and aspect ratio.",
       "collapsed": true,
       "sections": [
-        {"type": "custom", "key": "confocal_shape"}
+        {"type": "custom", "key": "confocal_shape", "description": "Shape type, size (nm) and aspect ratio; apply writes the resulting D into the calculator."}
       ]
     },
     {
       "type": "panel",
       "title": "Settings JSON",
+      "description": "Current calculator settings as JSON; copy it out or paste one in to restore them.",
       "collapsed": true,
       "sections": [
-        {"type": "custom", "key": "confocal_json"}
+        {"type": "custom", "key": "confocal_json", "description": "Editable JSON text of all calculator settings."}
       ]
     }
   ]

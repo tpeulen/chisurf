@@ -13,6 +13,7 @@ from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_form
+from emtk.i18n import tr
 
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
@@ -404,23 +405,23 @@ class ClsmGeneratorApp(ImApp):
             self.choose("load_settings")
         if pressed:
             self.tour.notify_used(pressed)
-        im.text("Output format")
+        im.text(tr("Output format"))
         im.same_line(120)
         im.set_next_item_width(120)
         _, index = im.combo("##output_format", FORMATS.index(self.output_format), list(FORMATS))
         self.output_format = FORMATS[index]
         self.remember("output_format")
         im.set_item_tooltip(
-            "PTO preserves the measurement and embedded intensity; NPZ exports photon arrays. Other formats use tttrlib writers."
+            tr("PTO preserves the measurement and embedded intensity; NPZ exports photon arrays. Other formats use tttrlib writers.")
         )
         im.end_disabled()
         if self.job.busy:
             im.text_wrapped(self.job.progress)
             if self.job.method == "generate" and not self.job.canceled:
-                if im.button("Cancel generation"):
+                if im.button(tr("Cancel generation")):
                     self.job.cancel()
                 im.set_item_tooltip(
-                    "Discard the running simulation's result; the C++ calculation finishes safely in the background."
+                    tr("Discard the running simulation's result; the C++ calculation finishes safely in the background.")
                 )
                 self.remember("Cancel generation")
         else:
@@ -440,19 +441,19 @@ class ClsmGeneratorApp(ImApp):
         entries = self.model.view_entries()
         if not entries:
             im.text_wrapped(
-                "Load an intensity image and one lifetime map per detector, then Generate."
+                tr("Load an intensity image and one lifetime map per detector, then Generate.")
             )
             return
         index = next(
             (i for i, entry in enumerate(entries) if entry["id"] == self.model.current_view), 0
         )
-        im.text("Map")
+        im.text(tr("Map"))
         im.same_line(80)
         im.set_next_item_width(-1)
         edited, index = im.combo("##map", index, [entry["label"] for entry in entries])
         self.remember("map")
         im.set_item_tooltip(
-            "Browse input brightness, each detector lifetime and reconstructed photon counts."
+            tr("Browse input brightness, each detector lifetime and reconstructed photon counts.")
         )
         if edited:
             self.model.current_view = entries[index]["id"]

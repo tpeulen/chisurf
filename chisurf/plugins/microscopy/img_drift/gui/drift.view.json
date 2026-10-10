@@ -3,18 +3,21 @@
   "sections": [
     {
       "type": "dock_area",
+      "description": "Estimate and correct sample drift between frames of an image stack.",
       "title": "Drift correction",
       "split": "horizontal",
       "persist": "img_drift",
       "sections": [
         {
           "type": "panel",
+          "description": "Input stack and drift-estimation settings.",
           "title": "Settings",
           "collapsed": false,
           "n_col": 1,
           "sections": [
             {
               "type": "custom",
+              "description": "Image or photon stream to analyse; TTTR and .pto files are binned into frames using the pixel and frame markers.",
               "key": "data_source",
               "options": {
                 "attr": "filename",
@@ -67,6 +70,7 @@
             },
             {
               "type": "panel",
+              "description": "Reference frame, algorithm and sub-pixel precision of the frame-to-frame shift estimate.",
               "title": "Estimator",
               "collapsed": true,
               "sections": [
@@ -92,6 +96,7 @@
         },
         {
           "type": "dock_area",
+          "description": "Stack, projections and per-frame shifts of the drift correction.",
           "title": "Views",
           "sections": [
             {
@@ -104,6 +109,7 @@
             },
             {
               "type": "dock_area",
+              "description": "Corrected and uncorrected projections of the stack; blur of the uncorrected one shows the drift.",
               "title": "Projection",
               "split": "horizontal",
               "sections": [
@@ -133,6 +139,7 @@
             },
             {
               "type": "table",
+              "description": "Estimated displacement of each frame relative to the reference, in pixels.",
               "source": "shift_rows",
               "title": "Shifts",
               "expand": true,

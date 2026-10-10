@@ -4,10 +4,12 @@
   "sections": [
     {
       "type": "dock_area",
+      "description": "Simulate a TTTR CLSM measurement from an intensity image and lifetime maps.",
       "title": "CLSM Generator",
       "sections": [
         {
           "type": "panel",
+          "description": "Intensity image and one fluorescence-lifetime map per detector that define the simulated sample.",
           "title": "Inputs",
           "n_col": 1,
           "collapsed": false,
@@ -18,7 +20,7 @@
             {"type": "custom", "key": "path_list", "target": "sel_lifetime_files", "title": "Lifetime map(s)",
              "options": {"add_folders": false, "dialog_filter": "Maps (*.tif *.tiff *.npy *.npz);;All files (*)"},
              "description": "One fluorescence-lifetime map (ns) per detector channel, matching the intensity-image shape."},
-            {"type": "panel", "title": "Simulation", "n_col": 2, "collapsed": true, "sections": [
+            {"type": "panel", "description": "Scan timing, laser and detector settings of the simulated measurement.", "title": "Simulation", "n_col": 2, "collapsed": true, "sections": [
               {"type": "value", "attr": "pixel_size", "kind": "float", "label": "Pixel size (µm)", "decimals": 3, "minimum": 0.001, "maximum": 100.0,
                "description": "Physical pixel size."},
               {"type": "value", "attr": "dwell", "kind": "float", "label": "Dwell", "decimals": 4, "minimum": 0.0001, "maximum": 100.0,

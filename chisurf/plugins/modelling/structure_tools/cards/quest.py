@@ -27,6 +27,7 @@ from chisurf.plugins.emtk_layout import layout_spec
 
 from .fps_model import Rows
 from .shell import CardShell
+from emtk.i18n import tr
 
 HERE = Path(__file__).resolve().parent
 RES = HERE / "resources" / "quest"
@@ -508,21 +509,21 @@ class QuestCard(CardShell):
         self.item_rects.update(self.form.rects)
 
     def _draw_unavailable(self) -> None:
-        im.text("QuEst cannot start here")
+        im.text(tr("QuEst cannot start here"))
         im.separator()
         im.text_wrapped(
-            "QuEst needs the IMP.bff quenching tables (IMP.bff.quenching), which this Python environment "
-            "does not provide. The reason it reported:"
+            tr("QuEst needs the IMP.bff quenching tables (IMP.bff.quenching), which this Python environment "
+            "does not provide. The reason it reported:")
         )
         im.text_wrapped(self.session.error)
         self.remember("unavailable")
-        if im.button("Retry"):
+        if im.button(tr("Retry")):
             self.session.build()
             if self.session.ready:
                 self.spec = quest_spec()
             self.sync()
         im.set_item_tooltip(
-            "Try to load QuEst again (after installing the IMP.bff quenching module)."
+            tr("Try to load QuEst again (after installing the IMP.bff quenching module).")
         )
         self.remember("retry")
         im.same_line()
@@ -534,7 +535,7 @@ class QuestCard(CardShell):
 
     def _draw_results(self, box) -> None:
         if not self.session.ready:
-            im.text_wrapped("The results appear here once QuEst can run.")
+            im.text_wrapped(tr("The results appear here once QuEst can run."))
             return
         from emtk.im_core import Col
 
@@ -568,7 +569,7 @@ class QuestCard(CardShell):
     def _draw_plots(self) -> None:
         series = self.session.series()
         if not any(series.values()):
-            im.text_wrapped("No result yet: set the structure and the dye, then press Simulate.")
+            im.text_wrapped(tr("No result yet: set the structure and the dye, then press Simulate."))
             self.remember("empty_plots")
             return
         height = max(90.0, (im.get_content_region_avail()[1] - 16.0) / 3.0)
@@ -615,7 +616,7 @@ class QuestCard(CardShell):
         data = self.session.backbone()
         if data is None:
             im.text_wrapped(
-                "No structure loaded: press Load PDB... (or drop a .pdb file on the window)."
+                tr("No structure loaded: press Load PDB... (or drop a .pdb file on the window).")
             )
             self.remember("empty_structure")
             return
@@ -641,15 +642,15 @@ class QuestCard(CardShell):
                 )
             implot3d.end_plot()
             im.set_item_tooltip(
-                "The CA / P trace of the structure with the donor (blue) and acceptor (red) attachment sites."
+                tr("The CA / P trace of the structure with the donor (blue) and acceptor (red) attachment sites.")
             )
             self.remember("structure_plot")
 
     def _draw_quenching(self) -> None:
-        if im.button("Reset Defaults"):
+        if im.button(tr("Reset Defaults")):
             self.session.reset_quencher_defaults()
             self.sync()
-        im.set_item_tooltip("Replace the table by the reference PET chemistry.")
+        im.set_item_tooltip(tr("Replace the table by the reference PET chemistry."))
         self.remember("reset_defaults")
         self.table_form.rects.clear()
         draw_form(QUENCH_TABLE, self.session, self.table_form)

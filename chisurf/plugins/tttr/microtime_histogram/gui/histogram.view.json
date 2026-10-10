@@ -5,6 +5,7 @@
     {
       "type": "panel",
       "title": "Run",
+      "description": "Compute the histogram, load a demo and autosave the result.",
       "sections": [
         {
           "type": "button_row",
@@ -52,6 +53,7 @@
     {
       "type": "panel",
       "title": "Detector and channels",
+      "description": "Detector setup and channels used; polarization resolved gives VV and VH decays.",
       "sections": [
         {
           "type": "panel",
@@ -92,6 +94,7 @@
     {
       "type": "panel",
       "title": "Reading and gates",
+      "description": "Excitation window, file format, binning and the inter-photon filter that selects photons.",
       "sections": [
         {
           "type": "choice",
@@ -146,6 +149,7 @@
     {
       "type": "panel",
       "title": "Time step, G-factor and shifts",
+      "description": "Micro-time step (ns), G-factor and VV / VH channel shifts applied to the histogram.",
       "sections": [
         {
           "type": "value",
@@ -192,6 +196,7 @@
     {
       "type": "panel",
       "title": "Output",
+      "description": "Where and in which format the histogram is written.",
       "sections": [
         {
           "type": "panel",

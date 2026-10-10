@@ -12,6 +12,7 @@ from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.plugin_icons import entry_icon
 from chisurf.emtk.plugins import load_plugin, manifests
 from chisurf.plugins.calculator.hub.gui.app import CalculatorHubApp
+from emtk.i18n import tr
 
 #: (plugin id, list label, icon (empty: the plugin's own manifest icon), description, tour alias)
 PANELS = [
@@ -159,8 +160,8 @@ class LifetimeAnalysisApp(CalculatorHubApp):
         im.set_next_window_size((left, height), im.Cond.ALWAYS)
         if im.begin("Decay Analysis", flags=im.WindowFlags.NO_RESIZE):
             im.set_next_item_width(-1)
-            _, self.search = im.input_text("##search_tools", self.search, hint="Search...")
-            im.set_item_tooltip("Filter the decay-analysis tools by their name or purpose.")
+            _, self.search = im.input_text("##search_tools", self.search, hint=tr("Search..."))
+            im.set_item_tooltip(tr("Filter the decay-analysis tools by their name or purpose."))
             self.item_rects["search"] = im.get_item_rect()
             first = last = None
             for entry in self.visible_entries():
@@ -175,35 +176,35 @@ class LifetimeAnalysisApp(CalculatorHubApp):
                 self.item_rects[entry.alias] = rect
                 first, last = first or rect, rect
             if not self.visible_entries():
-                im.text_wrapped("No tool matches the search.")
+                im.text_wrapped(tr("No tool matches the search."))
             im.separator()
             ids = [e.id for e in self.entries]
             at = ids.index(self.selected) if self.selected in ids else 0
             im.begin_disabled(at == 0)
-            if im.button("Back"):
+            if im.button(tr("Back")):
                 self.step(-1)
             im.end_disabled()
             im.set_item_tooltip(
-                "Go to the previous tool in the order the analyses depend on each other."
+                tr("Go to the previous tool in the order the analyses depend on each other.")
             )
             self.item_rects["back"] = im.get_item_rect()
             im.same_line()
             im.begin_disabled(at == len(ids) - 1)
-            if im.button("Next"):
+            if im.button(tr("Next")):
                 self.step(1)
             im.end_disabled()
             im.set_item_tooltip(
-                "Go to the next tool in the order the analyses depend on each other."
+                tr("Go to the next tool in the order the analyses depend on each other.")
             )
             self.item_rects["next"] = im.get_item_rect()
-            if im.button("Help"):
+            if im.button(tr("Help")):
                 self.help_window.show()
-            im.set_item_tooltip("Explain the complementary lifetime-analysis workflows.")
+            im.set_item_tooltip(tr("Explain the complementary lifetime-analysis workflows."))
             self.item_rects["help"] = im.get_item_rect()
             im.same_line()
-            if im.button("Guide"):
+            if im.button(tr("Guide")):
                 self.tour.start()
-            im.set_item_tooltip("Walk through the real analysis panels and their purpose.")
+            im.set_item_tooltip(tr("Walk through the real analysis panels and their purpose."))
             self.item_rects["guide"] = im.get_item_rect()
             im.separator()
             im.text_wrapped(self.status)
@@ -231,7 +232,7 @@ class LifetimeAnalysisApp(CalculatorHubApp):
                 im.text_wrapped(entry.description)
             if warning:
                 im.text_colored(EXPERIMENTAL_COLOUR, warning)
-                im.set_item_tooltip("This tool declares itself experimental in its manifest.")
+                im.set_item_tooltip(tr("This tool declares itself experimental in its manifest."))
             if self.error:
                 im.text_wrapped(self.error)
             self.item_rects["description"] = im.get_item_rect()

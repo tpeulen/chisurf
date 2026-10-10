@@ -30,6 +30,7 @@ from chisurf.plugins.emtk_layout import (
     labelled,
     window_size,
 )
+from emtk.i18n import tr
 
 WINDOW_BG = (30, 32, 38, 255)
 
@@ -268,10 +269,10 @@ class BurstGsGui:
 
         # Simulation Mode Toggle
         toggled, self.model.use_simulation = im.checkbox(
-            "Use Simulation Mode", self.model.use_simulation
+            tr("Use Simulation Mode"), self.model.use_simulation
         )
         im.set_item_tooltip(
-            "Generate simulated burst trains instead of reading .bur files, to test the fitting."
+            tr("Generate simulated burst trains instead of reading .bur files, to test the fitting.")
         )
         self.remember("use_simulation")
         if toggled:

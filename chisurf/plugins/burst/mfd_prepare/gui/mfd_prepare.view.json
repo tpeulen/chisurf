@@ -8,6 +8,7 @@
       "description": "What the tool did last."
     },
     {
+      "description": "Detectors found in the data and their roles.",
       "type": "panel",
       "title": "Detectors",
       "n_col": 1,
@@ -28,6 +29,7 @@
       }
     },
     {
+      "description": "TTTR sources that supply the photons.",
       "type": "panel",
       "title": "Photon sources",
       "n_col": 1,
@@ -48,6 +50,7 @@
       }
     },
     {
+      "description": "Overview of the prepared burst folder.",
       "type": "panel",
       "title": "Folder summary",
       "n_col": 1,

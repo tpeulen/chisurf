@@ -4,6 +4,7 @@
     {
       "type": "panel",
       "title": "Sample",
+      "description": "Name, description and buffer of the sample.",
       "sections": [
         {
           "type": "value",
@@ -31,6 +32,7 @@
     {
       "type": "panel",
       "title": "Entity",
+      "description": "Molecular entity: name, type, sequence, UniProt and PDB identifiers, organism.",
       "sections": [
         {
           "type": "value",
@@ -93,6 +95,7 @@
     {
       "type": "panel",
       "title": "Reference",
+      "description": "Reference sample of the shifts.",
       "sections": [
         {
           "type": "button_row",
@@ -114,6 +117,7 @@
     {
       "type": "panel",
       "title": "Probes",
+      "description": "Donor and acceptor dyes of the sample.",
       "sections": [
         {
           "type": "value",

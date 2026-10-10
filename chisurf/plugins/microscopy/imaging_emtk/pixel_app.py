@@ -12,6 +12,7 @@ import copy
 from typing import Any
 
 from emtk import im
+from emtk.i18n import tr
 
 from chisurf.plugins.emtk_layout import layout_spec
 
@@ -226,9 +227,9 @@ class PixelToolApp(DetectorEditorMixin, PlaneMixin, ImagingToolApp):
             im.set_next_window_pos((x, y), im.Cond.ALWAYS)
             im.set_next_window_size((w, NDX_BAR), im.Cond.ALWAYS)
             if im.begin(f"{self.TITLE} navigation", flags=im.WindowFlags.NO_TITLE_BAR):
-                if im.button("Back to the maps"):
+                if im.button(tr("Back to the maps")):
                     self.view_ndx = False
-                im.set_item_tooltip("Return to the maps; ndX keeps its selection.")
+                im.set_item_tooltip(tr("Return to the maps; ndX keeps its selection."))
                 self.item_rects["ndx_back"] = im.get_item_rect()
             im.end()
             self._ndx_box = (x, y + NDX_BAR, w, max(1.0, h - NDX_BAR))

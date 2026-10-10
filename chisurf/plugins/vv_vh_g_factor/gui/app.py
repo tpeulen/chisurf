@@ -349,7 +349,7 @@ class GFactorApp(ImApp):
             )
         if not m.batch_files:
             im.text_wrapped(
-                "No files queued. Add VV/VH decays to evaluate their steady anisotropy with this calibration."
+                tr("No files queued. Add VV/VH decays to evaluate their steady anisotropy with this calibration.")
             )
         self.form("batch", m)
 
@@ -382,11 +382,11 @@ class GFactorApp(ImApp):
                 im.same_line()
             _, value = im.checkbox(label, getattr(self, attr))
             setattr(self, attr, value)
-            im.set_item_tooltip("Show or hide this trace group, or change the intensity scale.")
+            im.set_item_tooltip(tr("Show or hide this trace group, or change the intensity scale."))
             used += width
         im.new_line()
         if self.model.fast is None and self.model.slow is None:
-            im.text_wrapped("Load a VV/VH decay (button, or drop a file on the window).")
+            im.text_wrapped(tr("Load a VV/VH decay (button, or drop a file on the window)."))
             return
         if implot.begin_plot("##vvvh", (-1, -1)):
             implot.setup_axes("TAC bin", "Counts")
@@ -448,7 +448,7 @@ class GFactorApp(ImApp):
 
     def draw_anisotropy(self, box):
         if self.model.fast is None and self.model.slow is None:
-            im.text_wrapped("The anisotropy r(t) of the loaded decays appears here.")
+            im.text_wrapped(tr("The anisotropy r(t) of the loaded decays appears here."))
             return
         if implot.begin_plot("##anisotropy", (-1, -1)):
             implot.setup_axes("TAC bin", "Anisotropy r(t)")

@@ -352,7 +352,7 @@ class MleNativeApp(TourTarget, ImApp):
     def _irf(self, box=None) -> None:
         self.remember("irf", box)
         im.text_wrapped(
-            "IRF and background as the fit sees them: the estimated or loaded patterns after shift, window and threshold."
+            tr("IRF and background as the fit sees them: the estimated or loaded patterns after shift, window and threshold.")
         )
         draw_sections(self.irf_sections, self.model, self.form)
 
@@ -368,7 +368,7 @@ class MleNativeApp(TourTarget, ImApp):
         curves = self.model.fit_curves
         if curves is None:
             im.text_wrapped(
-                "No fit yet. Add burst files and press Auto IRF/background: the decay, the model, the IRF and the background of the current file appear here."
+                tr("No fit yet. Add burst files and press Auto IRF/background: the decay, the model, the IRF and the background of the current file appear here.")
             )
             return
         if implot.begin_plot("Decay histogram and fit", (-1, -1)):
@@ -385,13 +385,13 @@ class MleNativeApp(TourTarget, ImApp):
         bursts = self.model.n_bursts
         if not bursts:
             im.text_wrapped(
-                "No bursts loaded: add burst files to inspect one burst's decay per detector."
+                tr("No bursts loaded: add burst files to inspect one burst's decay per detector.")
             )
             return
         draw_sections(self.burst_sections, self.model, self.form)
         data = self.model.inspected_burst()
         if not data:
-            im.text_wrapped("The raw photon file of this burst could not be read.")
+            im.text_wrapped(tr("The raw photon file of this burst could not be read."))
             return
         if implot.begin_plot("Inspected burst", (-1, -1)):
             implot.setup_axes("Micro-time window (channels, VV then VH)", "Photons")
@@ -407,7 +407,7 @@ class MleNativeApp(TourTarget, ImApp):
         )
         if not histograms:
             im.text_wrapped(
-                "No burst lifetimes yet: press Fit bursts. The histogram of the fitted lifetimes appears here."
+                tr("No burst lifetimes yet: press Fit bursts. The histogram of the fitted lifetimes appears here.")
             )
             return
         everything = [
@@ -431,7 +431,7 @@ class MleNativeApp(TourTarget, ImApp):
 
     def _results(self, box=None) -> None:
         if not self.model.burst_results:
-            im.text_wrapped("No lifetime table yet: press Fit bursts.")
+            im.text_wrapped(tr("No lifetime table yet: press Fit bursts."))
             return
         draw_sections(self.tables, self.model, self.form)
 

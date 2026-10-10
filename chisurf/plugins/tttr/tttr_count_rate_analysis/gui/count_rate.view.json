@@ -5,27 +5,31 @@
     {
       "type": "dock_area",
       "title": "Count Rate Analysis",
+      "description": "Count rate per detector for one or many TTTR files.",
       "persist": "tttr_count_rate_analysis",
       "sections": [
         {
           "type": "panel",
           "title": "Channel Definition",
+          "description": "Detector setup, routing channels and gates that define the channels.",
           "sections": [
-            {"type": "custom", "key": "count_rate_channels"}
+            {"type": "custom", "key": "count_rate_channels", "description": "Pick or edit the detector setup that defines the reported channels."}
           ]
         },
         {
           "type": "panel",
           "title": "Files",
+          "description": "Queued files and the calculate button.",
           "sections": [
             {
               "type": "custom",
               "key": "path_list",
               "target": "files",
+              "description": "TTTR files queued for the analysis.",
               "options": {"title": "TTTR files (drop files or folders)", "add_folders": true,
                           "guards": ["tttr_to_pto"]}
             },
-            {"type": "custom", "key": "count_rate_run"}
+            {"type": "custom", "key": "count_rate_run", "description": "Calculate the count rates and save the results."}
           ]
         },
         {
@@ -40,8 +44,9 @@
         {
           "type": "panel",
           "title": "Results",
+          "description": "Count rate (kHz) per file and channel.",
           "sections": [
-            {"type": "custom", "key": "count_rate_results"}
+            {"type": "custom", "key": "count_rate_results", "description": "Table and plot of the count rates."}
           ]
         }
       ]

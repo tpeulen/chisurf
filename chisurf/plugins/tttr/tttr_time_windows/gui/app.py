@@ -14,6 +14,7 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 
+from emtk.i18n import tr
 import emtk.im as im
 import emtk.implot as implot
 import numpy as np
@@ -144,22 +145,22 @@ class TimeWindowGui(TourTarget):
     # ── the file queue ────────────────────────────────────────────────────
 
     def _draw_files(self, box: tuple[float, float, float, float]) -> None:
-        if im.button("Files"):
+        if im.button(tr("Files")):
             self._used("add_files")
             if callable(self.on_add_files):
                 self.on_add_files()
-        im.set_item_tooltip("Pick TTTR files (.ptu, .ht3, .phu, …) and queue them for splitting.")
+        im.set_item_tooltip(tr("Pick TTTR files (.ptu, .ht3, .phu, …) and queue them for splitting."))
         self.remember("add_files")
         im.same_line()
-        if im.button("Clear"):
+        if im.button(tr("Clear")):
             if callable(self.on_clear):
                 self.on_clear()
-        im.set_item_tooltip("Empty the file queue and reset the preview and the log.")
+        im.set_item_tooltip(tr("Empty the file queue and reset the preview and the log."))
         self.remember("clear")
         im.same_line()
-        if im.button("Help"):
+        if im.button(tr("Help")):
             self.show_help()
-        im.set_item_tooltip("How this tool works: queue files, set the window, Process.")
+        im.set_item_tooltip(tr("How this tool works: queue files, set the window, Process."))
         self.remember("help")
         im.separator()
 
@@ -184,10 +185,10 @@ class TimeWindowGui(TourTarget):
                 callback()
             im.set_item_tooltip(tooltip)
         im.separator()
-        im.text_wrapped("Drop TTTR files here (.ptu, .ht3, .phu, …) — or use the buttons.")
+        im.text_wrapped(tr("Drop TTTR files here (.ptu, .ht3, .phu, …) — or use the buttons."))
         paths = self.tool._file_paths
         if not paths:
-            im.text_disabled("No files queued.")
+            im.text_disabled(tr("No files queued."))
             return
         # One row per queued file; clicking a row selects it for the preview.
         for i, path in enumerate(paths):
@@ -195,7 +196,7 @@ class TimeWindowGui(TourTarget):
             if im.selectable(f"{path.name}##file{i}", selected=selected):
                 self.select_preview(i)
             im.set_item_tooltip(
-                "Click to preview this file's intensity trace with the window boundaries."
+                tr("Click to preview this file's intensity trace with the window boundaries.")
             )
             self.remember(f"file{i}")
 
@@ -212,27 +213,27 @@ class TimeWindowGui(TourTarget):
     def _draw_settings(self, box: tuple[float, float, float, float]) -> None:
         tool = self.tool
 
-        if im.button("Process"):
+        if im.button(tr("Process")):
             self._used("process")
             if callable(self.on_process):
                 self.on_process()
         im.set_item_tooltip(
-            "Compute start/stop photon indices per time window for every queued "
-            "file and write one .bst (BID) file each."
+            tr("Compute start/stop photon indices per time window for every queued "
+            "file and write one .bst (BID) file each.")
         )
         self.remember("process")
         im.same_line()
-        if im.button("Guide"):
+        if im.button(tr("Guide")):
             self.start_guide()
-        im.set_item_tooltip("A step-by-step walk through the tool.")
+        im.set_item_tooltip(tr("A step-by-step walk through the tool."))
         self.remember("guide")
         if im.get_line_avail() < 140.0:
             im.new_line()
         else:
             im.same_line()
-        if im.button("Help"):
+        if im.button(tr("Help")):
             self.show_help()
-        im.set_item_tooltip("The short help page, also behind Help ▸ About.")
+        im.set_item_tooltip(tr("The short help page, also behind Help ▸ About."))
         self.remember("help")
         im.separator()
 
@@ -242,7 +243,7 @@ class TimeWindowGui(TourTarget):
         if "time_window_ms" in self.form.rects:
             self.item_rects["time_window"] = self.form.rects["time_window_ms"]
 
-        im.text("Output folder:")
+        im.text(tr("Output folder:"))
         im.same_line()
         browse_w = im.calc_text_size("Browse…")[0] + 24.0
         caption_w = max(im.get_line_avail() - browse_w - 8.0, 60.0)
@@ -251,15 +252,15 @@ class TimeWindowGui(TourTarget):
             "##output_dir", tool.output_dir_text, "Auto (derived from first file)"
         )
         im.set_item_tooltip(
-            "Where the .bst files go. Leave empty to create a folder next to the first input file."
+            tr("Where the .bst files go. Leave empty to create a folder next to the first input file.")
         )
         if hint != tool.output_dir_text:
             tool.output_dir_text = hint
         im.same_line()
-        if im.button("Browse…"):
+        if im.button(tr("Browse…")):
             if callable(self.on_browse):
                 self.on_browse()
-        im.set_item_tooltip("Choose the output folder manually.")
+        im.set_item_tooltip(tr("Choose the output folder manually."))
         self.remember("output")
         # The status line (the Qt window's status bar): what was loaded, done or failed.
         if tool.message:
@@ -322,7 +323,7 @@ class TimeWindowGui(TourTarget):
     def _draw_summary(self, box: tuple[float, float, float, float]) -> None:
         lines = self.tool._log_lines
         if not lines:
-            im.text_disabled("Processing log will appear here…")
+            im.text_disabled(tr("Processing log will appear here…"))
             return
         # Newest at the bottom, like the log it replaces; a clip keeps long
         # sessions from dragging the layout.

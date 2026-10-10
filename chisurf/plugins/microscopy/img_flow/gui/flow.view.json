@@ -3,18 +3,21 @@
   "sections": [
     {
       "type": "dock_area",
+      "description": "Map the direction and speed of flow from the pixel-time correlation of a line- or raster-scanned stack.",
       "title": "Flow map",
       "split": "horizontal",
       "persist": "img_flow",
       "sections": [
         {
           "type": "panel",
+          "description": "Input image, scan geometry and estimator settings of the flow map.",
           "title": "Settings",
           "collapsed": false,
           "n_col": 1,
           "sections": [
             {
               "type": "custom",
+              "description": "Image or photon stream to analyse; TTTR and .pto files are binned into frames using the pixel and frame markers.",
               "key": "data_source",
               "options": {
                 "attr": "filename",
@@ -88,6 +91,7 @@
             },
             {
               "type": "panel",
+              "description": "Pixel size and pixel, line and frame times of the scanner; they set the velocity scale.",
               "title": "Scanner",
               "collapsed": false,
               "n_col": 1,
@@ -136,6 +140,7 @@
             },
             {
               "type": "panel",
+              "description": "Arrow scale, tile step and mean-flow subtraction for the displayed field.",
               "title": "Display and estimator",
               "collapsed": true,
               "n_col": 1,
@@ -179,6 +184,7 @@
         },
         {
           "type": "dock_area",
+          "description": "Flow field, profile and per-tile table.",
           "title": "Result",
           "split": "vertical",
           "sections": [
@@ -191,6 +197,7 @@
             },
             {
               "type": "dock_area",
+              "description": "Flow vectors over the image and their profile along the chosen axis.",
               "title": "Field and profile",
               "split": "horizontal",
               "sections": [
@@ -209,6 +216,7 @@
                 },
                 {
                   "type": "dock_area",
+                  "description": "Velocity profile and the table of fitted tiles.",
                   "title": "Profile and tiles",
                   "sections": [
                     {
@@ -221,6 +229,7 @@
                     },
                     {
                       "type": "table",
+                      "description": "Fitted flow per tile: position in um and velocity components.",
                       "source": "vector_rows",
                       "title": "Tiles",
                       "expand": true,

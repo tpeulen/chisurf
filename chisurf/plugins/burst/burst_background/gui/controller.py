@@ -6,6 +6,7 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Event
+from emtk.i18n import tr
 
 
 class BackgroundController:
@@ -244,12 +245,12 @@ class BackgroundController:
     def _show_channels_button(self, remember=None):
         from emtk import im
 
-        if im.button("Channel definition"):
+        if im.button(tr("Channel definition")):
             callback = getattr(self, "on_show_channels", None)
             if callable(callback):
                 callback()
         im.set_item_tooltip(
-            "Open the complete detector setup, timing, calibration, PIE, TAC and optical editor."
+            tr("Open the complete detector setup, timing, calibration, PIE, TAC and optical editor.")
         )
         if remember is not None:
             remember("bg_channels")
@@ -261,7 +262,7 @@ class BackgroundController:
         """File inputs, the channel editor button, Stop and the status; *remember* records rects for the guide."""
         from emtk import im
 
-        im.text("Measurements & detectors")
+        im.text(tr("Measurements & detectors"))
         im.begin_disabled(self.running)
         for label, callback, tip in (
             ("Open TTTR files", self.browse, "Choose one or more photon measurement files."),
@@ -291,9 +292,9 @@ class BackgroundController:
             im.set_item_tooltip(f"Remove {Path(path).name} from the analysis.")
         self._show_channels_button(remember)
         im.end_disabled()
-        if im.button("Stop computation"):
+        if im.button(tr("Stop computation")):
             self.stop()
-        im.set_item_tooltip("Cancel at the next file boundary and retain the previous results.")
+        im.set_item_tooltip(tr("Cancel at the next file boundary and retain the previous results."))
         if self.status:
             im.text_wrapped(self.status)
         im.separator()

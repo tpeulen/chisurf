@@ -3,21 +3,23 @@
   "sections": [
     {
       "type": "dock_area",
+      "description": "Colocalization of two image channels: coefficients, scatter gates and significance tests.",
       "title": "Colocalization",
       "split": "horizontal",
       "persist": "img_coloc",
       "sections": [
         {
           "type": "panel",
+          "description": "Input image, channel assignment and analysis settings for the colocalization.",
           "title": "Settings",
           "collapsed": false,
           "n_col": 1,
           "sections": [
-            {"type": "custom", "key": "setup_selector",
+            {"type": "custom", "description": "Detector setup whose named windows and channels are applied to the analysis.", "key": "setup_selector",
              "options": {"attr": "setup_name", "call": "apply_setup_settings",
                          "label": "Setup", "placeholder": "— raw detector channels —",
                          "description": "Detector setup whose named windows (green, red, …) become the pickable image channels — the same vocabulary as the rest of ChiSurf. Setups are created in the Detector Def tool. Leave it empty to use the raw detector channels stored in the file; it does not apply to camera images."}},
-            {"type": "custom", "key": "data_source",
+            {"type": "custom", "description": "Image or photon stream to analyse; TTTR and .pto files are binned into frames using the pixel and frame markers.", "key": "data_source",
              "options": {"attr": "filename", "call": "set_filename", "label": "Image",
                          "filter": "Images and photon streams (*.pto *.tif *.tiff *.png *.ptu *.ht3 *.spc);;All files (*)",
                          "mmfdb_kinds": ["raw_data", "raw_measurement"],
@@ -32,6 +34,7 @@
              "description": "Only for images whose axes are unlabelled. 'auto' treats a short leading axis (≤ 4 planes) as the channels and anything longer as frames; 'first axis' forces the leading axis to be the channels. TIFFs written with ImageJ/OME metadata are read exactly as labelled and ignore this."},
             {
               "type": "panel",
+              "description": "Background subtraction and intensity thresholds applied per channel before the coefficients are computed.",
               "title": "Background / thresholds",
               "collapsed": false,
               "n_col": 1,
@@ -54,6 +57,7 @@
             },
             {
               "type": "panel",
+              "description": "Gate on the channel A versus B intensity scatter to restrict the analysis to selected pixels.",
               "title": "Scatter gate",
               "collapsed": true,
               "n_col": 1,
@@ -80,6 +84,7 @@
             },
             {
               "type": "panel",
+              "description": "Restrict the analysis to saved regions; pixels outside are ignored.",
               "title": "Region of interest",
               "collapsed": true,
               "n_col": 1,
@@ -94,6 +99,7 @@
             },
             {
               "type": "panel",
+              "description": "Object-based analysis of punctate signal: segment objects and measure distances between channels.",
               "title": "Objects (punctate signal)",
               "collapsed": true,
               "n_col": 1,
@@ -112,6 +118,7 @@
             },
             {
               "type": "panel",
+              "description": "Costes randomization test, cross-correlation shift range and histogram binning.",
               "title": "Significance / profile",
               "collapsed": true,
               "n_col": 1,
@@ -138,10 +145,11 @@
         },
         {
           "type": "dock_area",
+          "description": "Channel images, scatter plots and result plots of the colocalization.",
           "title": "Views",
           "persist": "img_coloc_views",
           "sections": [
-            {"type": "table", "source": "metric_rows", "title": "Coefficients", "expand": true,
+            {"type": "table", "description": "Colocalization coefficients (Pearson, Manders, ...) of the current selection; see the ? help for each.", "source": "metric_rows", "title": "Coefficients", "expand": true,
              "columns": [
                {"key": "name", "label": "Coefficient", "width": 260,
                 "description": "Colocalization coefficient (see the ? help for what each one answers)."},
@@ -150,6 +158,7 @@
              ]},
             {
               "type": "dock_area",
+              "description": "Per-channel intensity images used for the colocalization.",
               "title": "Channels",
               "split": "horizontal",
               "sections": [
@@ -173,17 +182,17 @@
                          "selection_attr": "gate_paint", "brush_kernel_source": "gate_brush_kernel",
                          "on_draw": "on_gate_painted"},
              "description": "Joint histogram of the two channels (A horizontal, B vertical); the axes carry the intensities themselves. Drag the blue rectangle to gate a pixel population, paint one directly when it is not a box, or draw a shape in the Gate regions list — they combine rather than override one another."},
-            {"type": "plot", "source": "ccf_series", "title": "van Steensel CCF",
+            {"type": "plot", "description": "Pearson correlation of channel A against channel B shifted by n pixels; a peak at zero shift indicates colocalization.", "source": "ccf_series", "title": "van Steensel CCF",
              "x_label": "shift / px", "y_label": "PCC"},
             {"type": "custom", "key": "image", "target": "ccf_map_image", "title": "CCF map (2-D)",
              "options": {"colormap": true, "colormap_attr": "colormap", "invert_y": false},
              "description": "Full 2-D cross-correlation plane: the peak sits at the (Δx, Δy) that realigns the channels, so a vertical registration offset is visible too."},
-            {"type": "plot", "source": "profile_series", "title": "PCC vs intensity",
+            {"type": "plot", "description": "Pearson correlation as a function of intensity, to locate the pixels that drive the coefficient.", "source": "profile_series", "title": "PCC vs intensity",
              "x_label": "intensity / ratio", "y_label": "PCC"},
             {"type": "custom", "key": "image", "target": "object_map_image", "title": "Objects",
              "options": {"colormap": true, "colormap_attr": "colormap"},
              "description": "Segmented objects: 1 = channel A only, 2 = channel B only, 3 = both — coincidence read directly off the map."},
-            {"type": "plot", "source": "object_distance_series", "title": "Object distances",
+            {"type": "plot", "description": "Histogram of distances in pixels between objects of the two channels.", "source": "object_distance_series", "title": "Object distances",
              "x_label": "nearest-neighbour distance / px", "y_label": "objects"}
           ]
         }

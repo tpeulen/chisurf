@@ -4,6 +4,7 @@
     {
       "type": "panel",
       "title": "Species",
+      "description": "Lifetime tau (ns) and diffusion coefficient D (um2/ms) of the two simulated species.",
       "collapsed": false,
       "sections": [
         {"type": "value", "attr": "tau1_ns", "label": "τ₁ (ns)", "kind": "float",
@@ -23,6 +24,7 @@
     {
       "type": "panel",
       "title": "Kinetics / statistics",
+      "description": "Exchange rate k (1/ms) between the species, number of photons and random seed.",
       "collapsed": false,
       "sections": [
         {"type": "value", "attr": "exchange_rate_ms", "label": "k (1/ms)", "kind": "float",
@@ -39,9 +41,10 @@
     {
       "type": "panel",
       "title": "Run",
+      "description": "Simulate the photon stream and correlate it.",
       "collapsed": false,
       "sections": [
-        {"type": "custom", "key": "lfcs_sim_controls"}
+        {"type": "custom", "key": "lfcs_sim_controls", "description": "Simulate & Correlate button with a status line."}
       ]
     }
   ]

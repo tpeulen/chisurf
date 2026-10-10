@@ -311,7 +311,7 @@ class BurstFcsApp(TourTarget, ImApp):
                 implot.plot_text("Run FCS, then select a curve", 1e-1, 0.5)
             implot.end_plot()
             im.set_item_tooltip(
-                "The selected burst's correlation curve (white) and its fit (red). Drag the two vertical lines to set the fit window t_min and t_max; the wheel zooms."
+                tr("The selected burst's correlation curve (white) and its fit (red). Drag the two vertical lines to set the fit window t_min and t_max; the wheel zooms.")
             )
 
     def draw_distribution(self, box):

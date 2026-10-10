@@ -24,6 +24,7 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form, draw_sections
 
 from chisurf.core.fio.staging import TTTR_EXTENSIONS
@@ -775,7 +776,7 @@ class MicrotimeShifterApp(TourTarget, ImApp):
             if im.begin_popup_context_item(f"file-menu{i}"):
                 if im.menu_item("Remove from queue"):
                     self.remove_file(i)
-                im.set_item_tooltip("Remove this input without deleting it from disk.")
+                im.set_item_tooltip(tr("Remove this input without deleting it from disk."))
                 im.end_popup()
         self.remember(
             "files",
@@ -807,7 +808,7 @@ class MicrotimeShifterApp(TourTarget, ImApp):
     def draw_channel_shifts(self, section, model, state, width):
         """One spec row per routing channel of the loaded file: its shift (a spin field) and a reset."""
         if not self.channel_shifts:
-            im.text_disabled("No file loaded.")
+            im.text_disabled(tr("No file loaded."))
             self.remember("channel_shifts")
             return
         top = im.get_cursor_screen_pos()
@@ -864,7 +865,7 @@ class MicrotimeShifterApp(TourTarget, ImApp):
         changed, index = im.combo(
             "##sample", ids.index(self.sample_id) if self.sample_id in ids else -1, names
         )
-        im.set_item_tooltip("Sample to own the registered shifted TTTR artifacts.")
+        im.set_item_tooltip(tr("Sample to own the registered shifted TTTR artifacts."))
         self.remember("sample_list")
         if changed:
             self.sample_id = ids[index]
@@ -918,7 +919,7 @@ class MicrotimeShifterApp(TourTarget, ImApp):
                     self.auto_align()
             implot.end_plot()
         im.set_item_tooltip(
-            "Drag green target-bin and yellow threshold lines; align on release. Log Y uses actual count units."
+            tr("Drag green target-bin and yellow threshold lines; align on release. Log Y uses actual count units.")
         )
         self.remember("histogram")
 
@@ -1026,8 +1027,8 @@ class MicrotimeShifterApp(TourTarget, ImApp):
                     "##sample-json", self.sample_definition, (-1, 150)
                 )
                 im.set_item_tooltip(
-                    "Complete sample schema: name, description, entities, probes, FRET pairs, buffer, pH, "
-                    "temperature and external-reference annotations."
+                    tr("Complete sample schema: name, description, entities, probes, FRET pairs, buffer, pH, "
+                    "temperature and external-reference annotations.")
                 )
             im.end_child()
             self.button(

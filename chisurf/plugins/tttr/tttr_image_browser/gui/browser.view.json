@@ -4,10 +4,12 @@
     {
       "type": "dock_area",
       "title": "Images",
+      "description": "Browser of the images in the loaded folder.",
       "sections": [
         {
           "type": "panel",
           "title": "Files",
+          "description": "Files of the folder with the rating filter.",
           "n_col": 1,
           "collapsed": false,
           "sections": [

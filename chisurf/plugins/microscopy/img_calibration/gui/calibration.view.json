@@ -4,10 +4,12 @@
   "sections": [
     {
       "type": "dock_area",
+      "description": "Estimate the instrument response and background used by the pixel-wise fits.",
       "title": "IRF & BG",
       "sections": [
         {
           "type": "panel",
+          "description": "Choose the IRF and background source and their windows for the micro-time calibration.",
           "title": "Calibration",
           "n_col": 1,
           "collapsed": false,

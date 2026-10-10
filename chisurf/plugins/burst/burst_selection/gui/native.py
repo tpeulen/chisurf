@@ -28,6 +28,7 @@ from chisurf.emtk.jobs import SnapshotJob
 from chisurf.plugins.emtk_layout import LabelColumn, button_row, cap_widths, labelled, window_size
 
 from .model import BurstSelectionModel
+from emtk.i18n import tr
 
 HERE = Path(__file__).parent
 #: Seconds without a change before the visible window is filtered again.
@@ -516,17 +517,17 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         if params:
             draw_sections(params, m.search, self.form)
         if nested:
-            im.text("Per-group search parameters")
+            im.text(tr("Per-group search parameters"))
             draw_sections(nested, m.inner_search, self.form)
-        if im.button("Save as setup default"):
+        if im.button(tr("Save as setup default")):
             self.track("save_defaults")
             try:
                 m.save_defaults_to_setup()
             except Exception as exc:  # noqa: BLE001 - shown in the status line
                 m.status_text = f"Error: {exc}"
         im.set_item_tooltip(
-            "Store the current filter and search as the defaults of the selected detector setup "
-            "(read again whenever the setup is chosen)."
+            tr("Store the current filter and search as the defaults of the selected detector setup "
+            "(read again whenever the setup is chosen).")
         )
         self.remember("save_defaults")
         draw_sections(self.filter_sections, target, self.form)
@@ -541,7 +542,7 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         m = self.model
         if not m.has_processed and m.display_frame is None:
             im.text_wrapped(
-                "No search yet: add TTTR files and press Run. The key figures of the run appear here."
+                tr("No search yet: add TTTR files and press Run. The key figures of the run appear here.")
             )
             return
         draw_sections(self.summary_table, m, self.form)
@@ -719,12 +720,12 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             draw_sections(self.metadata_sections, self.model, self.form)
         else:
             draw_sections(self.gmm_settings_sections, self.model.gmm, self.form)
-            if im.button("Fit GMM with these settings"):
+            if im.button(tr("Fit GMM with these settings")):
                 try:
                     self.model.fit_gmm()
                 except Exception as exc:  # noqa: BLE001
                     self.model.status_text = f"GMM fitting failed: {exc}"
-            im.set_item_tooltip("Refit the histogram with the settings above.")
+            im.set_item_tooltip(tr("Refit the histogram with the settings above."))
         self._panel_window.end()
         if pressed == "close":
             self.panel_dialog = ""

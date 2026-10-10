@@ -19,6 +19,7 @@ from chisurf.emtk.plugin_icons import entry_icon
 from chisurf.plugins.emtk_layout import window_size
 
 from ..core.registry import default_calculators
+from emtk.i18n import tr
 
 HERE = Path(__file__).parent
 
@@ -165,14 +166,14 @@ class CalculatorHubApp(ImApp):
                     last[1] + last[3] - first[1],
                 )
             im.separator()
-            if im.button("Guide"):
+            if im.button(tr("Guide")):
                 self.start_guide()
-            im.set_item_tooltip("A short walk through the hub.")
+            im.set_item_tooltip(tr("A short walk through the hub."))
             self.item_rects["guide"] = im.get_item_rect()
             im.same_line()
-            if im.button("Help"):
+            if im.button(tr("Help")):
                 self.show_help()
-            im.set_item_tooltip("What the hub is and how the embedded calculators are used.")
+            im.set_item_tooltip(tr("What the hub is and how the embedded calculators are used."))
             self.item_rects["help"] = im.get_item_rect()
         im.end()
         entry = next((e for e in self.entries if e.id == self.selected), None)
@@ -195,7 +196,7 @@ class CalculatorHubApp(ImApp):
                 im.text_unformatted(entry.label)
                 im.text_wrapped(entry.description)
             else:
-                im.text_wrapped("Select a calculator on the left to get started.")
+                im.text_wrapped(tr("Select a calculator on the left to get started."))
             if self.error:
                 im.text_wrapped(self.error)
             self.item_rects["description"] = im.get_item_rect()

@@ -3,6 +3,7 @@
   "_comment": "The control panels of ebFRET's main window (MainWindow.m), declared rather than hand-drawn. Panel titles are the MATLAB uipanel titles; the window frames each panel and draws the plots between them. Tables are ChiSurf additions (the MATLAB window has none): the series list drives Select Series, the state table shows the selected model.",
   "sections": [
     {
+      "description": "Time series currently shown and edited.",
       "type": "panel",
       "title": "Select Series",
       "sections": [
@@ -18,6 +19,7 @@
       ]
     },
     {
+      "description": "Frame range of the current series that enters the analysis, and whether to exclude it.",
       "type": "panel",
       "title": "Crop",
       "n_col": 3,
@@ -47,6 +49,7 @@
       ]
     },
     {
+      "description": "Number-of-states model shown in the ensemble panel.",
       "type": "panel",
       "title": "Select States",
       "sections": [
@@ -62,6 +65,7 @@
       ]
     },
     {
+      "description": "Range of state numbers (HMM complexity) fitted in the analysis.",
       "type": "panel",
       "title": "States",
       "n_col": 2,
@@ -85,6 +89,7 @@
       ]
     },
     {
+      "description": "Variational HMM settings: state range, random restarts and convergence precision.",
       "type": "panel",
       "title": "Analysis",
       "n_col": 4,
@@ -140,6 +145,7 @@
       ]
     },
     {
+      "description": "Loaded time series with their length, crop range and exclusion flag.",
       "type": "panel",
       "title": "Series List",
       "sections": [
@@ -166,6 +172,7 @@
                 "width": 56
               },
               {
+                "description": "Source file of the series.",
                 "key": "file",
                 "title": "File",
                 "width": 200
@@ -177,21 +184,25 @@
                 "width": 70
               },
               {
+                "description": "Number of frames in the series.",
                 "key": "length",
                 "title": "Frames",
                 "width": 56
               },
               {
+                "description": "First frame kept in the analysis.",
                 "key": "crop_min",
                 "title": "Crop min",
                 "width": 66
               },
               {
+                "description": "Last frame kept in the analysis.",
                 "key": "crop_max",
                 "title": "Crop max",
                 "width": 66
               },
               {
+                "description": "Series is left out of the analysis when set.",
                 "key": "exclude",
                 "title": "Excluded",
                 "width": 66
@@ -212,6 +223,7 @@
       ]
     },
     {
+      "description": "Fitted state parameters for the selected number of states.",
       "type": "panel",
       "title": "States Table",
       "sections": [
@@ -222,6 +234,7 @@
           "description": "The selected model per state, as in the Analysis Summary export: occupancy, center, noise and dwell time of the prior.",
           "columns": [
             {
+              "description": "State index.",
               "key": "state",
               "label": "State"
             },
@@ -243,6 +256,7 @@
               "format": "%.3f"
             },
             {
+              "description": "Posterior standard deviation of the state centre (FRET efficiency).",
               "key": "center_std",
               "label": "Center std",
               "format": "%.3f"

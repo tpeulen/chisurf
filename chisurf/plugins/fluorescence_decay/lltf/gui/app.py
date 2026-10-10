@@ -24,6 +24,7 @@ from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import window_size
 
 from .model import LLTFModel
+from emtk.i18n import tr
 
 DATA_FILTERS = [("TCSPC data", ["*.dat", "*.txt", "*.csv"]), ("All files", ["*"])]
 YAML_FILTERS = [("YAML", ["*.yml", "*.yaml"]), ("All files", ["*"])]
@@ -188,15 +189,15 @@ class LLTFApp(TourTarget, ImApp):
 
     def controls(self, box):
         m = self.model
-        if im.button("📖  Guide"):
+        if im.button(tr("📖  Guide")):
             self.tour.start()
-        im.set_item_tooltip("Walk through loading the inputs and running a real lifetime analysis.")
+        im.set_item_tooltip(tr("Walk through loading the inputs and running a real lifetime analysis."))
         self.remember("Guide")
         im.same_line()
-        if im.button("❓  Help"):
+        if im.button(tr("❓  Help")):
             self.help_window.show()
         im.set_item_tooltip(
-            "What the fit decides by rule, what it reports, and what to check before believing it."
+            tr("What the fit decides by rule, what it reports, and what to check before believing it.")
         )
         self.remember("help")
         im.separator()
@@ -210,20 +211,20 @@ class LLTFApp(TourTarget, ImApp):
         )  # the Qt tour's name for it
         ready = Path(m.decay_file).is_file() and Path(m.irf_file).is_file()
         im.begin_disabled(m.running or not ready)
-        if im.button("▶  Fit"):
+        if im.button(tr("▶  Fit")):
             self.error(self.start)
         im.set_item_tooltip(
-            "Run the LLTF command line in a background process with these inputs and options; "
-            "needs a decay and an IRF."
+            tr("Run the LLTF command line in a background process with these inputs and options; "
+            "needs a decay and an IRF.")
         )
         self.remember("Fit")
         im.end_disabled()
         im.same_line()
         im.begin_disabled(not m.running)
-        if im.button("⏹  Stop"):
+        if im.button(tr("⏹  Stop")):
             self.model.stop()
         im.set_item_tooltip(
-            "Terminate the running fit; its captured output stays in Analysis Output."
+            tr("Terminate the running fit; its captured output stays in Analysis Output.")
         )
         self.remember("stop")
         im.end_disabled()
@@ -305,23 +306,23 @@ class LLTFApp(TourTarget, ImApp):
                     self.tab = tab
                     if tab == "Information":
                         im.text_wrapped(
-                            "Load the measured decay and IRF, edit YAML settings if needed, choose a fixed or automatically selected lifetime count, then Fit. Analysis runs separately; inspect its output, fitted lifetimes and weighted residuals before interpreting the model."
+                            tr("Load the measured decay and IRF, edit YAML settings if needed, choose a fixed or automatically selected lifetime count, then Fit. Analysis runs separately; inspect its output, fitted lifetimes and weighted residuals before interpreting the model.")
                         )
                     elif tab == "Analysis Output":
-                        if im.button("Clear output"):
+                        if im.button(tr("Clear output")):
                             m.clear_output()
                         im.set_item_tooltip(
-                            "Clear displayed logs without interrupting the analysis."
+                            tr("Clear displayed logs without interrupting the analysis.")
                         )
                         im.text_unformatted("\n".join(m.output))
                     else:
                         if m.result is None:
                             im.text_wrapped(m.results_summary())
                         else:
-                            if im.button("💾  Export result JSON"):
+                            if im.button(tr("💾  Export result JSON")):
                                 self.choose("save_results")
                             im.set_item_tooltip(
-                                "Copy the complete fit result and model arrays to a JSON file."
+                                tr("Copy the complete fit result and model arrays to a JSON file.")
                             )
                             self.remember("export_json")
                             draw_form(
@@ -333,7 +334,7 @@ class LLTFApp(TourTarget, ImApp):
 
     def plots(self, box):
         if self.arrays is None:
-            im.text_wrapped("Fit plots appear after a successful analysis.")
+            im.text_wrapped(tr("Fit plots appear after a successful analysis."))
             return
         a = self.arrays
         if im.begin_tab_bar("lltf_plot_tabs"):
@@ -394,18 +395,18 @@ class LLTFApp(TourTarget, ImApp):
                 "YAML##lltf", self.model.config_text, size=(-1.0, 420.0)
             )
             im.set_item_tooltip(
-                "Edit the complete LLTF YAML configuration; the next run uses this buffer."
+                tr("Edit the complete LLTF YAML configuration; the next run uses this buffer.")
             )
             if changed:
                 self.model.config_text = text
                 self.model.config_dirty = True
-            if im.button("Save configuration"):
+            if im.button(tr("Save configuration")):
                 self.choose("save_config")
-            im.set_item_tooltip("Save the edited YAML configuration to a chosen file.")
+            im.set_item_tooltip(tr("Save the edited YAML configuration to a chosen file."))
             im.same_line()
-            if im.button("Close editor") or pressed == "close":
+            if im.button(tr("Close editor")) or pressed == "close":
                 self.config_open = False
-            im.set_item_tooltip("Close the editor; unsaved edits remain available to the next run.")
+            im.set_item_tooltip(tr("Close the editor; unsaved edits remain available to the next run."))
             self.config_window.end()
         if self.dialog is not None:
             pressed = self.file_window.begin(box)

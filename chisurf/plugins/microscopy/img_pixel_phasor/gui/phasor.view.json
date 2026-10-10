@@ -3,10 +3,12 @@
   "sections": [
     {
       "type": "dock_area",
+      "description": "Fit-free lifetime analysis of every pixel via the phasor transform of its decay.",
       "title": "Phasor-FLIM",
       "sections": [
         {
           "type": "panel",
+          "description": "Input file, harmonic, IRF calibration and filtering settings.",
           "title": "Controls",
           "collapsed": false,
           "sections": [
@@ -24,25 +26,25 @@
              "description": "Cursors on the (g, s) plane. Draw an ellipse round a lifetime cluster, a polygon round one that is neither round nor elliptical, or several combined; ~ selects everything outside. The Selected dock shows the pixels they pick out."}
           ]
         },
-        {"type": "custom", "key": "image", "target": "intensity_map", "title": "Intensity",
+        {"type": "custom", "description": "Photon count image of the selected detector window.", "key": "image", "target": "intensity_map", "title": "Intensity",
          "options": {"colormap": true, "colormap_attr": "colormap",
                      "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"}},
         {"type": "custom", "key": "image", "target": "masked_intensity_map", "title": "Selected",
          "description": "Intensity of the pixels the phasor cursors select — the image, gated by lifetime.",
          "options": {"colormap": true, "colormap_attr": "colormap"}},
-        {"type": "custom", "key": "image", "target": "g_map", "title": "Phasor g",
+        {"type": "custom", "description": "Cosine component g of the per-pixel phasor, dimensionless.", "key": "image", "target": "g_map", "title": "Phasor g",
          "options": {"colormap": true, "colormap_attr": "colormap",
                      "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"}},
-        {"type": "custom", "key": "image", "target": "s_map", "title": "Phasor s",
+        {"type": "custom", "description": "Sine component s of the per-pixel phasor, dimensionless.", "key": "image", "target": "s_map", "title": "Phasor s",
          "options": {"colormap": true, "colormap_attr": "colormap",
                      "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"}},
-        {"type": "custom", "key": "image", "target": "g_frames", "title": "Phasor g movie",
+        {"type": "custom", "description": "Phasor g of each frame as a movie.", "key": "image", "target": "g_frames", "title": "Phasor g movie",
          "options": {"colormap": true, "colormap_attr": "colormap", "movie": true,
                      "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"}},
-        {"type": "custom", "key": "image", "target": "s_frames", "title": "Phasor s movie",
+        {"type": "custom", "description": "Phasor s of each frame as a movie.", "key": "image", "target": "s_frames", "title": "Phasor s movie",
          "options": {"colormap": true, "colormap_attr": "colormap", "movie": true,
                      "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"}},
-        {"type": "custom", "key": "image", "target": "frame_stack", "title": "Frames (movie)",
+        {"type": "custom", "description": "Intensity of each frame as a movie.", "key": "image", "target": "frame_stack", "title": "Frames (movie)",
          "options": {"colormap": true, "colormap_attr": "colormap", "movie": true,
                      "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"}},
         {"type": "custom", "key": "phasor", "target": "phasor_histogram_map", "title": "Phasor plot",

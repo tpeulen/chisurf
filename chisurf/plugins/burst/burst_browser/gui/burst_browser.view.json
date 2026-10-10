@@ -3,21 +3,23 @@
   "window": {"width": 1200, "height": 800},
   "sections": [
     {
+      "description": "Browse single bursts of a burst-analysis folder and inspect their photon streams and histograms.",
       "type": "dock_area",
       "title": "Burst Browser",
       "persist": "burst_browser",
       "split": "horizontal",
       "sections": [
         {
+          "description": "Choose the burst source and the quantities shown.",
           "type": "panel",
           "title": "Controls",
           "sections": [
-            {"type": "custom", "key": "browser_source"},
-            {"type": "custom", "key": "browser_controls"}
+            {"description": "Burst folder or file to browse.", "type": "custom", "key": "browser_source"},
+            {"description": "Burst quantity, selection and display controls.", "type": "custom", "key": "browser_controls"}
           ]
         },
-        {"type": "custom", "key": "browser_table", "title": "Bursts"},
-        {"type": "custom", "key": "browser_histogram", "title": "Histogram"}
+        {"description": "Table of bursts with their summary values; select a row to inspect it.", "type": "custom", "key": "browser_table", "title": "Bursts"},
+        {"description": "Histogram of the chosen burst quantity over all listed bursts.", "type": "custom", "key": "browser_histogram", "title": "Histogram"}
       ]
     }
   ]

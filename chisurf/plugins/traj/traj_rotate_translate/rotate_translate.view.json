@@ -5,11 +5,13 @@
     {
       "type": "panel",
       "title": "Rotate / translate trajectory",
+      "description": "Input and output trajectories, frame stride and the rotation and translation to apply.",
       "n_col": 1,
       "sections": [
         {
           "type": "custom",
-          "key": "traj_rotate_translate_io"
+          "key": "traj_rotate_translate_io",
+          "description": "Choose the input trajectory with its topology and the output file."
         },
         {
           "type": "value",

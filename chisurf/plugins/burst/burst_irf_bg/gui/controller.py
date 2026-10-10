@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 
 from chisurf.plugins.burst.burst_background.gui.controller import BackgroundController
+from emtk.i18n import tr
 
 
 class IrfBackgroundController(BackgroundController):
@@ -19,7 +20,7 @@ class IrfBackgroundController(BackgroundController):
 
         from chisurf.plugins.emtk_layout import button_row
 
-        im.text("Measurements & detectors")
+        im.text(tr("Measurements & detectors"))
         im.begin_disabled(self.running)
         pressed = button_row(
             [

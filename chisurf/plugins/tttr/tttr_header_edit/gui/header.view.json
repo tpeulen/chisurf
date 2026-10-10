@@ -4,19 +4,22 @@
     {
       "type": "dock_area",
       "title": "TTTR Header Editor",
+      "description": "Edit the header tags of a TTTR file.",
       "persist": "tttr_header_edit",
       "sections": [
         {
           "type": "panel",
           "title": "Header tags",
+          "description": "Tag names and values of the file header.",
           "collapsed": false,
           "sections": [
-            {"type": "custom", "key": "header_table"}
+            {"type": "custom", "key": "header_table", "description": "Editable table of header tags."}
           ]
         },
         {
           "type": "panel",
           "title": "JSON",
+          "description": "Header as JSON; edit the text and apply it.",
           "collapsed": true,
           "n_col": 1,
           "sections": [

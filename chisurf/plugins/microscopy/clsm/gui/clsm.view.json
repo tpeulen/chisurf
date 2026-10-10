@@ -8,6 +8,7 @@
       "sections": [
         {
           "type": "panel",
+          "description": "Open the CLSM measurement and pick the scanner setup it was acquired on.",
           "title": "File",
           "n_col": 1,
           "sections": [
@@ -75,6 +76,7 @@
         },
         {
           "type": "panel",
+          "description": "Scanner geometry and marker channels that turn the photon stream into pixels and frames.",
           "title": "Acquisition",
           "n_col": 1,
           "sections": [
@@ -138,6 +140,7 @@
         },
         {
           "type": "panel",
+          "description": "Brush size and mode for selecting pixels; the decay below follows the selection.",
           "title": "Brush & Decay",
           "n_col": 1,
           "sections": [
@@ -274,6 +277,7 @@
         },
         {
           "type": "plot",
+          "description": "Photon arrival-time histogram of the selected pixels and saved regions; time axis in ns from the TTTR header.",
           "title": "Decay",
           "source": "decay_series",
           "x_label": "time (ns)",

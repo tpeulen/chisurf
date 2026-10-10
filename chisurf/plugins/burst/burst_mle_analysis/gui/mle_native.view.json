@@ -6,6 +6,7 @@
   },
   "sections": [
     {
+      "description": "Burst files to fit and the fit model.",
       "type": "panel",
       "title": "Burst files",
       "collapsed": false,
@@ -71,6 +72,7 @@
       ]
     },
     {
+      "description": "Detector, micro-time binning and fit window (bins), and minimum photons per burst.",
       "type": "panel",
       "title": "Detector and window",
       "collapsed": false,
@@ -128,6 +130,7 @@
       ]
     },
     {
+      "description": "Instrument-response settings: VH shift, sub-bin shifts, IRF range and thresholds for the 2I* fit.",
       "type": "panel",
       "title": "IRF",
       "collapsed": true,
@@ -288,6 +291,7 @@
       ]
     },
     {
+      "description": "Burst shown in the result plot.",
       "type": "panel",
       "title": "Burst",
       "collapsed": false,
@@ -304,6 +308,7 @@
       ]
     },
     {
+      "description": "Fitted lifetime of each burst.",
       "type": "table",
       "source": "lifetime_rows",
       "title": "Burst lifetimes",

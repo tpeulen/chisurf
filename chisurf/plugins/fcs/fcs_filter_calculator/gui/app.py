@@ -12,6 +12,7 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
@@ -370,7 +371,7 @@ class FilterApp(TourTarget, ImApp):
     def draw_sources(self, box):
         self.form("toolbar")
         if self.job.running:
-            im.text_disabled("Computing ...")
+            im.text_disabled(tr("Computing ..."))
         elif self.model.message:
             im.text_wrapped(self.model.message)
         else:
@@ -445,7 +446,7 @@ class FilterApp(TourTarget, ImApp):
                         except Exception as exc:
                             self.model.message = str(exc)
                     im.set_item_tooltip(
-                        "Follow this live parameter value; recursive links are rejected by the core model."
+                        tr("Follow this live parameter value; recursive links are rejected by the core model.")
                     )
             self.button(
                 "Cancel link",
@@ -570,7 +571,7 @@ class FilterApp(TourTarget, ImApp):
                 self.model._fit_bounds = (max(0, int(left.value)), max(1, int(right.value)))
             implot.end_plot()
         im.set_item_tooltip(
-            "Drag the vertical lines to edit the fitted TAC range; Compute applies the new range."
+            tr("Drag the vertical lines to edit the fitted TAC range; Compute applies the new range.")
         )
 
     def draw_residuals(self, box):

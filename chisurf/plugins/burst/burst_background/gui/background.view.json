@@ -6,25 +6,30 @@
   "_comment": "Declarative AutoForm layout for Burst Background Estimation: a persistent dock area with the detector channel-definition page, the TTTR file list + Estimate action, the tail-fit settings (sliders over the fit window, which is the one judgement call in the estimate, coupled to the draggable band on the inter-photon-time plot), the inter-photon-time distribution (points + fitted tail), the per-detector background-rate bars and the results table \u2014 each a draggable chisurf dock. The Channel Definition and Files docks are dropped when a workflow supplies them (BackgroundViewModel.view_spec).",
   "sections": [
     {
+      "description": "Estimate the per-detector background count rate from the inter-photon-time distribution of a measurement.",
       "type": "dock_area",
       "title": "Burst Background",
       "persist": "burst_background",
       "sections": [
         {
+          "description": "Assign detector and routing channels to the burst detectors that get a background rate.",
           "type": "panel",
           "title": "Channel Definition",
           "sections": [
             {
+              "description": "Channel-to-detector assignment table for the background estimate.",
               "type": "custom",
               "key": "bg_channels"
             }
           ]
         },
         {
+          "description": "TTTR files to analyse; one background rate per file and detector.",
           "type": "panel",
           "title": "Files",
           "sections": [
             {
+              "description": "Drop or add the TTTR files whose background is estimated.",
               "type": "custom",
               "key": "path_list",
               "target": "files",
@@ -37,12 +42,14 @@
               }
             },
             {
+              "description": "Estimate the background rate for every listed file.",
               "type": "custom",
               "key": "bg_run"
             }
           ]
         },
         {
+          "description": "Inter-photon-time window and binning for the exponential tail fit that gives the background rate.",
           "type": "panel",
           "title": "Fit",
           "n_col": 1,
@@ -97,32 +104,39 @@
           ]
         },
         {
+          "description": "Inter-photon-time histogram with the fitted exponential background tail.",
           "type": "custom",
           "key": "bg_iht_plot",
           "title": "Inter-photon time"
         },
         {
+          "description": "Fitted background rate per file and detector.",
           "type": "custom",
           "key": "bg_rate_plot",
           "title": "Background rate"
         },
         {
+          "description": "Background rate per file and detector.",
           "type": "panel",
           "title": "Results",
           "sections": [
             {
+              "description": "Fitted background rates, one row per file and detector.",
               "type": "table",
               "source": "results_rows",
               "columns": [
                 {
+                  "description": "TTTR file the rate was estimated from.",
                   "key": "file",
                   "label": "File"
                 },
                 {
+                  "description": "Detector (channel) the rate belongs to.",
                   "key": "detector",
                   "label": "Detector"
                 },
                 {
+                  "description": "Background count rate in kHz (1000 counts per second).",
                   "key": "rate_khz",
                   "label": "Rate (kHz)"
                 }

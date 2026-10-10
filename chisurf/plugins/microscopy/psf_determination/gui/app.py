@@ -12,6 +12,7 @@ from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_form
+from emtk.i18n import tr
 
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
@@ -374,7 +375,7 @@ class PsfDeterminationApp(ImApp):
                     implot.plot_line(series["name"], series["x"], series["y"])
             implot.end_plot()
             im.set_item_tooltip(
-                "Measured bead intensity and its fitted 3-D Gaussian evaluated along this axis."
+                tr("Measured bead intensity and its fitted 3-D Gaussian evaluated along this axis.")
             )
 
     def results(self, box):

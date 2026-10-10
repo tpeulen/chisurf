@@ -206,17 +206,17 @@ class RegionMleApp(ImApp):
                 self.item_rects[key] = rects[name]
 
     def _draw_analysis(self, box: Any) -> None:
-        if im.button("Help"):
+        if im.button(tr("Help")):
             self.help_window.show()
         im.set_item_tooltip(
-            "Explain what the fit does, what a region needs and how to read the decay."
+            tr("Explain what the fit does, what a region needs and how to read the decay.")
         )
         self.item_rects["help"] = im.get_item_rect()
         im.same_line()
-        if im.button("Guide"):
+        if im.button(tr("Guide")):
             self.tour.start()
         im.set_item_tooltip(
-            "Walk through the demo: load it, preview the regions, run and read a decay."
+            tr("Walk through the demo: load it, preview the regions, run and read a decay.")
         )
         self.item_rects["guide"] = im.get_item_rect()
         im.separator()
@@ -246,7 +246,7 @@ class RegionMleApp(ImApp):
         paths = list(getattr(model, target))
         index = min(self.selected.get(target, 0), max(len(paths) - 1, 0))
         if not paths:
-            im.text_disabled("No file. Add or drop one.")
+            im.text_disabled(tr("No file. Add or drop one."))
         for i, path in enumerate(paths):
             if im.selectable(f"{Path(path).name}##{target}{i}", index == i):
                 self.selected[target] = index = i
@@ -382,7 +382,7 @@ class RegionMleApp(ImApp):
                 model.current_molecule = int(shown[index]["id"])
             self.item_rects["Regions.list"] = im.get_item_rect()
         else:
-            im.text_disabled("No regions yet. Run or Preview, or open saved results.")
+            im.text_disabled(tr("No regions yet. Run or Preview, or open saved results."))
         im.text_wrapped(view["info"])
         editable = not model.busy and self.dialog is None and not self.picker.is_open
         self.canvas.draw(
@@ -406,7 +406,7 @@ class RegionMleApp(ImApp):
         """Weighted residuals above the log decay, sharing the channel axis."""
         curves = self._view_of_results()["curves"]
         if curves is None:
-            im.text_disabled("Select a region with a fitted decay.")
+            im.text_disabled(tr("Select a region with a fitted decay."))
             self.item_rects["Decay"] = im.get_item_rect()
             return
         n = len(curves.channels)
@@ -432,7 +432,7 @@ class RegionMleApp(ImApp):
                 implot.end_plot()
             self.item_rects["Decay"] = state.rects["current_region_curves"] = im.get_item_rect()
             im.set_item_tooltip(
-                "Weighted residuals of the fit; a systematic trend lines up with the channel below."
+                tr("Weighted residuals of the fit; a systematic trend lines up with the channel below.")
             )
             if implot.begin_plot("##decay", (-1.0, height * 0.68)):
                 implot.setup_axes(x_label, "Intensity")

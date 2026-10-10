@@ -223,65 +223,65 @@ class H2mmGui(TourTarget):
         im.push_style_color(Col.BUTTON, ACCENT_GREEN)
         im.push_style_color(Col.BUTTON_HOVERED, (56, 180, 77, 255))
         im.push_style_color(Col.BUTTON_ACTIVE, (36, 140, 57, 255))
-        if im.button("Run H2MM"):
+        if im.button(tr("Run H2MM")):
             self.track("toolAction_run")
             self._sync_to_tool()
             if hasattr(self.tool, "btn_run"):
                 self.tool.btn_run.click()
         im.set_item_tooltip(
-            "Fit the photon-by-photon HMM to the bursts to find states and transition rates."
+            tr("Fit the photon-by-photon HMM to the bursts to find states and transition rates.")
         )
         self.remember("toolAction_run")
         im.pop_style_color(3)
 
         im.same_line()
-        if im.button("Restart"):
+        if im.button(tr("Restart")):
             self.track("toolAction_restart")
             self._sync_to_tool()
             if hasattr(self.tool, "btn_restart"):
                 self.tool.btn_restart.click()
-        im.set_item_tooltip("Reset the fit state and re-run the optimization from scratch.")
+        im.set_item_tooltip(tr("Reset the fit state and re-run the optimization from scratch."))
         self.remember("toolAction_restart")
 
         self._next_row_if_clipped()
         if is_running:
             im.push_style_color(Col.BUTTON, ACCENT_RED)
-            if im.button("Stop"):
+            if im.button(tr("Stop")):
                 if hasattr(self.tool, "stop"):
                     self.tool.stop()
-            im.set_item_tooltip("Stop the running H2MM optimization.")
+            im.set_item_tooltip(tr("Stop the running H2MM optimization."))
             im.pop_style_color(1)
         else:
             im.begin_disabled()
-            im.button("Stop")
-            im.set_item_tooltip("Stop the running H2MM optimization (nothing is running).")
+            im.button(tr("Stop"))
+            im.set_item_tooltip(tr("Stop the running H2MM optimization (nothing is running)."))
             im.end_disabled()
 
         self._next_row_if_clipped()
-        if im.button("Bootstrap"):
+        if im.button(tr("Bootstrap")):
             if hasattr(self.tool, "btn_uncert"):
                 self.tool.btn_uncert.click()
-        im.set_item_tooltip("Estimate parameter uncertainties by bootstrapping the fit.")
+        im.set_item_tooltip(tr("Estimate parameter uncertainties by bootstrapping the fit."))
 
         self._next_row_if_clipped()
-        if im.button("LL Scan"):
+        if im.button(tr("LL Scan")):
             if hasattr(self.tool, "btn_llscan"):
                 self.tool.btn_llscan.click()
-        im.set_item_tooltip("Scan the log-likelihood over state numbers to help choose the model.")
+        im.set_item_tooltip(tr("Scan the log-likelihood over state numbers to help choose the model."))
 
         self._next_row_if_clipped()
-        if im.button("Guide"):
+        if im.button(tr("Guide")):
             self.track("guide")
             self.start_guide()
         self.remember("guide")
-        im.set_item_tooltip("Start a step-by-step guided tour of this tool.")
+        im.set_item_tooltip(tr("Start a step-by-step guided tour of this tool."))
 
         self._next_row_if_clipped()
-        if im.button("Help"):
+        if im.button(tr("Help")):
             self.track("help")
             self.show_help()
         self.remember("help")
-        im.set_item_tooltip("Open the help window with reference documentation.")
+        im.set_item_tooltip(tr("Open the help window with reference documentation."))
 
         im.separator()
 
@@ -289,14 +289,14 @@ class H2mmGui(TourTarget):
         if im.collapsing_header("Model Selection", im.TreeNodeFlags.DEFAULT_OPEN):
             im.set_next_item_width(120)
             ch_min, new_min = im.slider_int("Min States", self.min_states, 1, 8)
-            im.set_item_tooltip("Minimum number of states tried during model selection.")
+            im.set_item_tooltip(tr("Minimum number of states tried during model selection."))
             if ch_min:
                 self.min_states = new_min
                 self._sync_to_tool()
 
             im.set_next_item_width(120)
             ch_max, new_max = im.slider_int("Max States", self.max_states, 1, 8)
-            im.set_item_tooltip("Maximum number of states tried during model selection.")
+            im.set_item_tooltip(tr("Maximum number of states tried during model selection."))
             if ch_max:
                 self.max_states = max(self.min_states, new_max)
                 self._sync_to_tool()
@@ -308,10 +308,10 @@ class H2mmGui(TourTarget):
                     if im.selectable(opt, opt == self.criterion):
                         self.criterion = opt
                         self._sync_to_tool()
-                        im.set_item_tooltip("Select this information criterion.")
+                    im.set_item_tooltip(tr("Select this information criterion."))
                 im.end_combo()
             im.set_item_tooltip(
-                "Information criterion used to pick the best state number (BIC or ICL)."
+                tr("Information criterion used to pick the best state number (BIC or ICL).")
             )
 
         im.separator()
@@ -330,10 +330,10 @@ class H2mmGui(TourTarget):
                     if im.selectable(label, key == self.engine):
                         self.engine = key
                         self._sync_to_tool()
-                        im.set_item_tooltip("Run the optimizer with this engine.")
+                    im.set_item_tooltip(tr("Run the optimizer with this engine."))
                 im.end_combo()
             im.set_item_tooltip(
-                "Optimizer used: fast float32 EM, exact float64 EM, or a neural surrogate."
+                tr("Optimizer used: fast float32 EM, exact float64 EM, or a neural surrogate.")
             )
 
             # A narrow field plus a short label: the dock window is ~200 px of
@@ -370,19 +370,19 @@ class H2mmGui(TourTarget):
                     f"Best model: {n_best} states ({ana.n_bursts} bursts, {ana.n_photons} photons)",
                     (0.3, 0.85, 0.4, 1.0),
                 )
-                if im.button("Open Dwells in ndX"):
+                if im.button(tr("Open Dwells in ndX")):
                     if hasattr(self.tool, "open_dwells_in_ndx"):
                         self.tool.open_dwells_in_ndx()
                 im.set_item_tooltip(
-                    "Send the fitted dwell-time segments to ndXplorer for inspection."
+                    tr("Send the fitted dwell-time segments to ndXplorer for inspection.")
                 )
             else:
-                im.text_wrapped("No H2MM fit yet. Select a burst folder and press Run H2MM.")
+                im.text_wrapped(tr("No H2MM fit yet. Select a burst folder and press Run H2MM."))
 
     def _draw_rate_matrix_dock(self, box: tuple[float, float, float, float]) -> None:
         rates = result_view.rate_matrix(self._analysis())
         if rates is None:
-            im.text_wrapped("No transition rates yet: they appear here once an H2MM fit has finished.")
+            im.text_wrapped(tr("No transition rates yet: they appear here once an H2MM fit has finished."))
             return
         n = rates.shape[0]
         im.text_colored(f"Transition rates (1/s), {n} states:", (0.3, 0.85, 0.4, 1.0))

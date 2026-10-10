@@ -16,6 +16,7 @@ from emtk import im, implot
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
@@ -112,14 +113,14 @@ class PchApp(ImApp):
     # ── windows ────────────────────────────────────────────────────────
     def draw_settings(self, box: Any) -> None:
         """The form window: Help/Guide, then the spec."""
-        if im.button("Help"):
+        if im.button(tr("Help")):
             self.help_window.show()
-        im.set_item_tooltip("Explain the photon counting histogram, the settings and the outputs.")
+        im.set_item_tooltip(tr("Explain the photon counting histogram, the settings and the outputs."))
         self.item_rects["help"] = im.get_item_rect()
         im.same_line()
-        if im.button("Guide"):
+        if im.button(tr("Guide")):
             self.tour.start()
-        im.set_item_tooltip("Walk through loading a file, computing the histogram and fitting it.")
+        im.set_item_tooltip(tr("Walk through loading a file, computing the histogram and fitting it."))
         self.item_rects["guide"] = im.get_item_rect()
         im.separator()
         draw_form(self.spec, self.model, self.form)
@@ -160,8 +161,8 @@ class PchApp(ImApp):
                     self.tour.notify_used("region")
             implot.end_plot()
         im.set_item_tooltip(
-            "Drag the two vertical lines to choose the k range of the fit; "
-            "the χ² of an existing fit is recomputed over it."
+            tr("Drag the two vertical lines to choose the k range of the fit; "
+            "the χ² of an existing fit is recomputed over it.")
         )
         self.item_rects["region"] = im.get_item_rect()
 

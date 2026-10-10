@@ -5,6 +5,7 @@
     {
       "type": "panel",
       "title": "Lifetime spectrum",
+      "description": "Amplitudes and lifetimes (ns) of the exponential components of the simulated decay.",
       "sections": [
         {
           "type": "table",
@@ -32,6 +33,7 @@
     {
       "type": "panel",
       "title": "Histogram",
+      "description": "Number of time bins, bin width and start bin of the simulated histogram.",
       "n_col": 2,
       "sections": [
         {"type": "value", "attr": "n_bins", "label": "Bins", "kind": "int", "minimum": 2, "maximum": 65535, "description": "Number of micro-time (TAC) bins in the decay histogram."},
@@ -42,6 +44,7 @@
     {
       "type": "panel",
       "title": "IRF & noise",
+      "description": "Instrument response file, shot noise, photon count and random seed.",
       "n_col": 2,
       "sections": [
         {"type": "value", "attr": "irf_path", "kind": "file", "label": "IRF", "description": "Optional instrument response function file (text or .npy) to convolve with the decay. Empty = ideal decay."},
@@ -53,11 +56,13 @@
     {
       "type": "panel",
       "title": "Anisotropy",
+      "description": "Detection mode and polarization-related settings.",
       "sections": [
         {
           "type": "choice",
           "attr": "polarization",
           "label": "Mode",
+          "descriptions": ["Magic-angle decay; carries no anisotropy.", "Parallel and perpendicular channels generated from the rotation spectrum."],
           "options": ["vm", "vv/vh"],
           "labels": ["VM (magic angle)", "VV/VH (polarized)"],
           "style": "radio",
@@ -67,6 +72,7 @@
         {
           "type": "panel",
           "title": "VV/VH detection corrections",
+          "description": "G factor and polarization leakage l1, l2 applied to the VV/VH channels.",
           "n_col": 3,
           "collapsed": true,
           "collapsed_when": {"attr": "polarization", "equals": "vm"},
@@ -81,6 +87,7 @@
     {
       "type": "panel",
       "title": "Rotation spectrum r0 = Σb",
+      "description": "Rotational correlation times with amplitudes b_i; the initial anisotropy r0 is their sum.",
       "sections": [
         {
           "type": "table",

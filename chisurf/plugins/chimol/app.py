@@ -22,6 +22,7 @@ from emtk.im_core import get_current_context
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import window_size
+from emtk.i18n import tr
 
 if TYPE_CHECKING:
     from chimol.hosts.native.app import ChimolApp
@@ -176,7 +177,7 @@ class ChimolHostApp(ImApp):
         if self._frame is not None:
             im.image(self._frame, size=(width, viewport_h))
         else:
-            im.text_disabled("Rendering…")
+            im.text_disabled(tr("Rendering…"))
         vx, vy, vw, vh = im.get_item_rect()
         self.item_rects["viewport"] = (vx, vy, vw, vh)
         self.item_rects["structure"] = (vx, vy, vw, vh)
@@ -196,12 +197,12 @@ class ChimolHostApp(ImApp):
     def _toolbar(self, width: float) -> None:
         """Help and Guide, right-aligned in the status strip."""
         im.same_line(max(0.0, width - 130.0))
-        if im.button("Help"):
+        if im.button(tr("Help")):
             self.help_window.show()
         im.set_item_tooltip(TOOLTIPS["help"])
         self.item_rects["help"] = im.get_item_rect()
         im.same_line()
-        if im.button("Guide"):
+        if im.button(tr("Guide")):
             self.tour.start()
         im.set_item_tooltip(TOOLTIPS["guide"])
         self.item_rects["guide"] = im.get_item_rect()

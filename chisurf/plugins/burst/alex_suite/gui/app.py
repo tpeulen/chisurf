@@ -24,6 +24,7 @@ from emtk.im_core import Col
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.typed_field import typed_number_field
+from emtk.i18n import tr
 
 if TYPE_CHECKING:
     from .alternation import AlexAlternationPanel
@@ -136,9 +137,9 @@ class LegacyExportGui(TourTarget):
             im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE | im.WindowFlags.NO_MOVE,
         ):
             im.text_wrapped(
-                "The five CSV files the old ALEX-Suite wrote — for scripts "
+                tr("The five CSV files the old ALEX-Suite wrote — for scripts "
                 "built on that layout. The analysis itself stays in the "
-                ".pto container and the burst companions beside it."
+                ".pto container and the burst companions beside it.")
             )
             im.separator()
 
@@ -148,7 +149,7 @@ class LegacyExportGui(TourTarget):
                     self.selected_index = len(files) - 1
                 im.set_next_item_width(-160.0)
                 changed, new_idx = im.combo("##BurstFile", self.selected_index, files)
-                im.set_item_tooltip("Burst file (from the burst search) whose data is exported.")
+                im.set_item_tooltip(tr("Burst file (from the burst search) whose data is exported."))
                 if changed:
                     self.selected_index = new_idx
                 self.remember("burst_file")
@@ -161,12 +162,12 @@ class LegacyExportGui(TourTarget):
             ch, self.sample_text = im.input_text_with_hint(
                 "Sample", self.sample_text, "e.g. dsDNA 15 bp, Cy3B/ATTO647N"
             )
-            im.set_item_tooltip("Sample description written into the CSV metadata.")
+            im.set_item_tooltip(tr("Sample description written into the CSV metadata."))
             im.set_next_item_width(-80.0)
             ch, self.buffer_text = im.input_text_with_hint(
                 "Buffer", self.buffer_text, "e.g. TE + 100 mM NaCl"
             )
-            im.set_item_tooltip("Buffer description written into the CSV metadata.")
+            im.set_item_tooltip(tr("Buffer description written into the CSV metadata."))
 
             im.separator()
             labels = (
@@ -180,14 +181,14 @@ class LegacyExportGui(TourTarget):
                 if i:
                     im.same_line()
                 _, self.parts[key] = im.checkbox(f"{label}##{key}", self.parts[key])
-                im.set_item_tooltip("Include this part in the CSV export.")
+                im.set_item_tooltip(tr("Include this part in the CSV export."))
             self.remember("parts")
 
             im.separator()
             im.push_style_color(Col.BUTTON, ACCENT_GREEN)
             im.push_style_color(Col.BUTTON_HOVERED, (56, 180, 77, 255))
             im.push_style_color(Col.BUTTON_ACTIVE, (36, 140, 57, 255))
-            if im.button("💾 Write ALEX-Suite CSVs"):
+            if im.button(tr("💾 Write ALEX-Suite CSVs")):
                 self.panel.run_export(
                     source=files[self.selected_index] if files else "",
                     sample=self.sample_text,
@@ -195,16 +196,16 @@ class LegacyExportGui(TourTarget):
                     parts=dict(self.parts),
                 )
             im.set_item_tooltip(
-                "Write the five ALEX-Suite CSV files beside the selected burst file."
+                tr("Write the five ALEX-Suite CSV files beside the selected burst file.")
             )
             im.pop_style_color(3)
             self.remember("run")
 
             im.same_line()
-            if im.button("❓ Help"):
+            if im.button(tr("❓ Help")):
                 self.show_help()
             self.remember("help")
-            im.set_item_tooltip("Open the help window with reference documentation.")
+            im.set_item_tooltip(tr("Open the help window with reference documentation."))
 
             im.spacing()
             im.separator()
@@ -325,35 +326,35 @@ class TitrationGui(TourTarget):
     def _draw_series(self, box: tuple[float, float, float, float]) -> None:
         model = self.model
 
-        if im.button("➕ Add burst files…"):
+        if im.button(tr("➕ Add burst files…")):
             model.browse_files()
-        im.set_item_tooltip("Add burst files as titration points (one concentration each).")
+        im.set_item_tooltip(tr("Add burst files as titration points (one concentration each)."))
         self.remember("add_files")
         im.same_line()
         if im.button("➖"):
             model.remove_last_row()
-        im.set_item_tooltip("Remove the last row of the titration series.")
+        im.set_item_tooltip(tr("Remove the last row of the titration series."))
         im.same_line()
         if im.button("🗑️"):
             model.clear_rows()
-        im.set_item_tooltip("Clear the whole titration series.")
+        im.set_item_tooltip(tr("Clear the whole titration series."))
         im.same_line()
         im.push_style_color(Col.BUTTON, ACCENT_GREEN)
-        if im.button("📈 Fit series"):
+        if im.button(tr("📈 Fit series")):
             model.run()
-        im.set_item_tooltip("Fit the selected binding model to the titration series.")
+        im.set_item_tooltip(tr("Fit the selected binding model to the titration series."))
         im.pop_style_color(1)
         self.remember("run")
         im.same_line()
-        if im.button("💾 Export CSV"):
+        if im.button(tr("💾 Export CSV")):
             self.panel.export_csv()
-        im.set_item_tooltip("Export the titration series and fit results to a CSV file.")
+        im.set_item_tooltip(tr("Export the titration series and fit results to a CSV file."))
         self.remember("export")
         im.same_line()
-        if im.button("❓ Help"):
+        if im.button(tr("❓ Help")):
             self.show_help()
         self.remember("help")
-        im.set_item_tooltip("Open the help window with reference documentation.")
+        im.set_item_tooltip(tr("Open the help window with reference documentation."))
 
         im.separator()
         rows = model.series_rows()
@@ -367,7 +368,7 @@ class TitrationGui(TourTarget):
                 im.table_set_column_index(0)
                 current = self._cell_edits.get((i, "concentration"), f"{row['concentration']:g}")
                 changed, text = im.input_text(f"##c{i}", current)
-                im.set_item_tooltip("Concentration of this titration point (see Unit below).")
+                im.set_item_tooltip(tr("Concentration of this titration point (see Unit below)."))
                 if changed:
                     self._cell_edits[(i, "concentration")] = text
                     model.update_series_cell(i, "concentration", text)
@@ -378,41 +379,41 @@ class TitrationGui(TourTarget):
 
         im.spacing()
         if im.collapsing_header("Fit", im.TreeNodeFlags.DEFAULT_OPEN):
-            im.set_item_tooltip("Configure fit model and parameters.")
+            im.set_item_tooltip(tr("Configure fit model and parameters."))
             model.n_populations = _typed_number(self, "n_populations", "Populations", model.n_populations, 1, 6)
-            im.set_item_tooltip("Number of FRET populations fitted in each histogram.")
+            im.set_item_tooltip(tr("Number of FRET populations fitted in each histogram."))
             options = model.binding_model_options()
             idx = options.index(model.binding_model) if model.binding_model in options else 0
             changed, new_idx = im.combo("Isotherm", idx, options)
-            im.set_item_tooltip("Binding model fitted to the fractions across the series.")
+            im.set_item_tooltip(tr("Binding model fitted to the fractions across the series."))
             if changed and 0 <= new_idx < len(options):
                 model.binding_model = options[new_idx]
             changed, model.concentration_unit = im.input_text("Unit", model.concentration_unit)
-            im.set_item_tooltip("Concentration unit label used on the axes (e.g. nM).")
+            im.set_item_tooltip(tr("Concentration unit label used on the axes (e.g. nM)."))
             _, model.fix_peak_positions = im.checkbox(
-                "Fix peak positions", model.fix_peak_positions
+                tr("Fix peak positions"), model.fix_peak_positions
             )
             im.set_item_tooltip(
-                "Keep the peak positions fixed across concentrations while fitting."
+                tr("Keep the peak positions fixed across concentrations while fitting.")
             )
 
         # The tooltip follows the header whether it is open or not (inside the branch a closed header had none).
         filters_open = im.collapsing_header("Burst filters", 0)
-        im.set_item_tooltip("Configure photon and stoichiometry filters.")
+        im.set_item_tooltip(tr("Configure photon and stoichiometry filters."))
         if filters_open:
             # Ranges of the Qt form (titration.view.json).
             model.min_photons = _typed_number(self, "min_photons", "Min. photons", model.min_photons, 0, 100000)
-            im.set_item_tooltip("Minimum photons per burst included in the histograms.")
+            im.set_item_tooltip(tr("Minimum photons per burst included in the histograms."))
             model.bins = _typed_number(self, "bins", "E bins", model.bins, 11, 501)
-            im.set_item_tooltip("Number of bins of the FRET efficiency histograms.")
+            im.set_item_tooltip(tr("Number of bins of the FRET efficiency histograms."))
             model.s_low = _typed_number(self, "s_low", "S gate from", model.s_low, -1.0, 2.0, integer=False)
-            im.set_item_tooltip("Lower stoichiometry gate applied before fitting.")
+            im.set_item_tooltip(tr("Lower stoichiometry gate applied before fitting."))
             model.s_high = _typed_number(self, "s_high", "S gate to", model.s_high, -1.0, 2.0, integer=False)
-            im.set_item_tooltip("Upper stoichiometry gate applied before fitting.")
+            im.set_item_tooltip(tr("Upper stoichiometry gate applied before fitting."))
             model.gamma = _typed_number(self, "gamma", "gamma", model.gamma, 0.0, 100.0, integer=False)
-            im.set_item_tooltip("Gamma detection-efficiency correction used by the fit.")
+            im.set_item_tooltip(tr("Gamma detection-efficiency correction used by the fit."))
             model.beta = _typed_number(self, "beta", "beta", model.beta, 0.0, 100.0, integer=False)
-            im.set_item_tooltip("Beta direct-excitation correction used by the fit.")
+            im.set_item_tooltip(tr("Beta direct-excitation correction used by the fit."))
 
         im.spacing()
         im.separator()
@@ -569,20 +570,20 @@ class AlexAlternationGui(TourTarget):
         panel = self.panel
 
         im.text_wrapped(
-            "µs-ALEX only — already PIE / ns-ALEX? Skip this step; the setup "
-            "step already has your detector definition."
+            tr("µs-ALEX only — already PIE / ns-ALEX? Skip this step; the setup "
+            "step already has your detector definition.")
         )
         im.separator()
 
         _, panel.donor_text = im.input_text_with_hint("Donor channels", panel.donor_text, "auto")
         im.set_item_tooltip(
-            "Routing channels of the donor; leave 'auto' to detect them from the data."
+            tr("Routing channels of the donor; leave 'auto' to detect them from the data.")
         )
         _, panel.acceptor_text = im.input_text_with_hint(
             "Acceptor channels", panel.acceptor_text, "auto"
         )
         im.set_item_tooltip(
-            "Routing channels of the acceptor; leave 'auto' to detect them from the data."
+            tr("Routing channels of the acceptor; leave 'auto' to detect them from the data.")
         )
         self.remember("channels")
 
@@ -590,24 +591,24 @@ class AlexAlternationGui(TourTarget):
         im.push_style_color(Col.BUTTON, ACCENT_GREEN)
         im.push_style_color(Col.BUTTON_HOVERED, (56, 180, 77, 255))
         im.push_style_color(Col.BUTTON_ACTIVE, (36, 140, 57, 255))
-        if im.button("🚦 Detect alternation and convert"):
+        if im.button(tr("🚦 Detect alternation and convert")):
             panel.run(convert=True)
         im.set_item_tooltip(
-            "Detect the µs-ALEX period and fold the photons into donor/acceptor excitation periods."
+            tr("Detect the µs-ALEX period and fold the photons into donor/acceptor excitation periods.")
         )
         im.pop_style_color(3)
         self.remember("run")
 
         im.same_line()
-        if im.button("🔎 Detect only"):
+        if im.button(tr("🔎 Detect only")):
             panel.run(convert=False)
-        im.set_item_tooltip("Detect the alternation period without converting the data.")
+        im.set_item_tooltip(tr("Detect the alternation period without converting the data."))
         self.remember("detect_only")
         im.same_line()
-        if im.button("❓ Help"):
+        if im.button(tr("❓ Help")):
             self.show_help()
         self.remember("help")
-        im.set_item_tooltip("Open the help window with reference documentation.")
+        im.set_item_tooltip(tr("Open the help window with reference documentation."))
 
         im.spacing()
         im.separator()
@@ -623,7 +624,7 @@ class AlexAlternationGui(TourTarget):
             # Ranges of the Qt spin boxes: the period up to 1e8, each gate edge inside the period.
             panel.period = _typed_number(self, "period", "Period (units)", panel.period, 0, 100_000_000)
             im.set_item_tooltip(
-                "ALEX alternation period in macro-time units; leave 0 to measure it from the data."
+                tr("ALEX alternation period in macro-time units; leave 0 to measure it from the data.")
             )
             windows = panel.windows or {}
             for name, label in (("green", "Donor excitation"), ("red", "Acceptor excitation")):
@@ -641,7 +642,7 @@ class AlexAlternationGui(TourTarget):
                     panel.set_gate(name, lo, hi)
             self.remember("gates")
         else:
-            im.text_disabled("Period: auto — measured from the data on arrival.")
+            im.text_disabled(tr("Period: auto — measured from the data on arrival."))
 
         im.spacing()
         im.separator()
@@ -915,15 +916,15 @@ class AlexSuiteGui(TourTarget):
 
             im.separator()
             im.same_line()
-            if im.button("🧭 Guide##suite_guide"):
+            if im.button(tr("🧭 Guide") + "##suite_guide"):
                 self.start_guide()
-            im.set_item_tooltip("Start the guided tour of the ALEX Suite.")
+            im.set_item_tooltip(tr("Start the guided tour of the ALEX Suite."))
             self.remember("guide_button")
 
             im.same_line()
-            if im.button("❓ Help##suite_help"):
+            if im.button(tr("❓ Help") + "##suite_help"):
                 self.show_help()
-            im.set_item_tooltip("Open the help and reference documentation.")
+            im.set_item_tooltip(tr("Open the help and reference documentation."))
             self.remember("help_button")
         im.end()
 

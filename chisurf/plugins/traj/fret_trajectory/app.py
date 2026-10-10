@@ -24,6 +24,7 @@ from chisurf.plugins.traj.emtk_tool import (
 )
 
 from .view_model import FretTrajectoryViewModel
+from emtk.i18n import tr
 
 HERE = pathlib.Path(__file__).parent
 
@@ -111,7 +112,7 @@ class FretTrajectoryApp(TrajToolApp):
     def draw_atom_pairs(self, section, model, state, width) -> None:
         index = self.atom_index()
         if index is None:
-            im.text_disabled("Choose the trajectory and its topology to pick the atoms.")
+            im.text_disabled(tr("Choose the trajectory and its topology to pick the atoms."))
             self.remember("donor")
             self.remember("acceptor")
             return

@@ -192,7 +192,8 @@
             "2",
             "3"
           ],
-          "description": "Stars for the file shown (0 clears the rating). Saved at once beside the data in .image_browser_meta.json; the filter above uses it."
+          "description": "Stars for the file shown (0 clears the rating). Saved at once beside the data in .image_browser_meta.json; the filter above uses it.",
+          "descriptions": ["No rating; clears the stored rating.", "One star.", "Two stars.", "Three stars."]
         },
         {
           "type": "info",

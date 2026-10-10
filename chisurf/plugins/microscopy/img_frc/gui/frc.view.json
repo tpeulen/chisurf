@@ -3,18 +3,21 @@
   "sections": [
     {
       "type": "dock_area",
+      "description": "Fourier ring correlation estimate of the image resolution in nm.",
       "title": "FRC resolution",
       "split": "horizontal",
       "persist": "img_frc",
       "sections": [
         {
           "type": "panel",
+          "description": "Input images and FRC settings.",
           "title": "Settings",
           "collapsed": false,
           "n_col": 1,
           "sections": [
             {
               "type": "custom",
+              "description": "Image or photon stream to analyse; TTTR and .pto files are binned into frames using the pixel and frame markers.",
               "key": "data_source",
               "options": {
                 "attr": "filename",
@@ -62,6 +65,7 @@
             },
             {
               "type": "custom",
+              "description": "Independent second image of the same field; FRC correlates the two images instead of splitting one.",
               "key": "data_source",
               "options": {
                 "attr": "second_filename",
@@ -103,6 +107,7 @@
             },
             {
               "type": "panel",
+              "description": "Ring width, threshold criterion and pixel size used to read the resolution off the FRC curve.",
               "title": "Estimator",
               "collapsed": true,
               "n_col": 1,
@@ -148,6 +153,7 @@
         },
         {
           "type": "dock_area",
+          "description": "FRC curve, diagnostics and ring table.",
           "title": "Result",
           "sections": [
             {
@@ -160,6 +166,7 @@
             },
             {
               "type": "dock_area",
+              "description": "FRC curve against spatial frequency with the threshold; the crossing gives the resolution.",
               "title": "Curve and diagnostics",
               "split": "horizontal",
               "sections": [
@@ -177,10 +184,12 @@
                 },
                 {
                   "type": "dock_area",
+                  "description": "Halves and ring table used to check the FRC estimate.",
                   "title": "Diagnostics",
                   "sections": [
                     {
                       "type": "dock_area",
+                      "description": "The two image halves (or the two files) that are correlated.",
                       "title": "Halves",
                       "split": "horizontal",
                       "sections": [
@@ -210,6 +219,7 @@
                     },
                     {
                       "type": "table",
+                      "description": "FRC per ring: frequency, period and correlation.",
                       "source": "ring_rows",
                       "title": "Rings",
                       "expand": true,

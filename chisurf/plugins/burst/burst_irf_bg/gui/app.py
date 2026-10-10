@@ -32,6 +32,7 @@ from emtk.widgets.view_spec import load_view_spec
 from chisurf.plugins.emtk_layout import LabelColumn, button_row, cap_widths, icon_label, labelled, window_size
 
 from .view_model import IrfBackgroundViewModel
+from emtk.i18n import tr
 
 if TYPE_CHECKING:
     from .controller import IrfBackgroundController
@@ -164,7 +165,7 @@ class BurstIrfBackgroundGui:
             controller.channel_definition.draw()
             im.end_disabled()
         else:
-            im.text_wrapped("Detector settings are supplied by the embedding host.")
+            im.text_wrapped(tr("Detector settings are supplied by the embedding host."))
 
     def start_guide(self) -> None:
         """Start the in-EMTK guided tour."""
@@ -345,7 +346,7 @@ class BurstIrfBackgroundGui:
         series = self.model.irf_series()
         if not series:
             im.text_disabled(
-                "No IRF data available. Load TTTR files, define detectors, and compute."
+                tr("No IRF data available. Load TTTR files, define detectors, and compute.")
             )
             return
 
