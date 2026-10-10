@@ -1993,6 +1993,742 @@ p, li { white-space: pre-wrap; }
     <context>
         <name>chisurf</name>
         <message>
+            <source>&lt; Back</source>
+            <translation>&lt; Retour</translation>
+        </message>
+        <message>
+            <source>Adjust editor text size; saved as a native preference</source>
+            <translation>Taille du texte de l'éditeur ajustable ; enregistrée comme préférence native</translation>
+        </message>
+        <message>
+            <source>Advance to the next page in navigation history</source>
+            <translation>Passer à la page suivante de l'historique de navigation</translation>
+        </message>
+        <message>
+            <source>Also list architecture notes and the bundled modules' documentation.</source>
+            <translation>Répertorie aussi les notes d'architecture et la documentation des modules fournis.</translation>
+        </message>
+        <message>
+            <source>Apply &amp; Save</source>
+            <translation>Appliquer et enregistrer</translation>
+        </message>
+        <message>
+            <source>Apply a preset editor palette, background, margins, selection and current-line colors</source>
+            <translation>Appliquer une palette d'éditeur prédéfinie, fond, marges, couleurs de sélection et de ligne courante</translation>
+        </message>
+        <message>
+            <source>Apply and persist the declared editor preferences; no buffers or credentials are saved</source>
+            <translation>Appliquer et conserver les préférences déclarées de l'éditeur ; aucun tampon ni identifiant n'est enregistré</translation>
+        </message>
+        <message>
+            <source>Authoring tools</source>
+            <translation>Outils de rédaction</translation>
+        </message>
+        <message>
+            <source>Back to document</source>
+            <translation>Retour au document</translation>
+        </message>
+        <message>
+            <source>Cancel reload</source>
+            <translation>Annuler le rechargement</translation>
+        </message>
+        <message>
+            <source>Check the active document asynchronously after a successful save</source>
+            <translation>Vérifier le document actif de façon asynchrone après un enregistrement réussi</translation>
+        </message>
+        <message>
+            <source>Choose another path</source>
+            <translation>Choisir un autre chemin</translation>
+        </message>
+        <message>
+            <source>Choose highlighting or Auto to follow each document's file extension</source>
+            <translation>Choisissez la coloration ou Auto pour suivre l'extension de fichier de chaque document</translation>
+        </message>
+        <message>
+            <source>Choose the editor color without changing the application's global theme</source>
+            <translation>Choisir la couleur de l'éditeur sans modifier le thème global de l'application</translation>
+        </message>
+        <message>
+            <source>Close document</source>
+            <translation>Fermer le document</translation>
+        </message>
+        <message>
+            <source>Close find</source>
+            <translation>Fermer la recherche</translation>
+        </message>
+        <message>
+            <source>Close the shared provider configuration form</source>
+            <translation>Fermer le formulaire partagé de configuration du fournisseur</translation>
+        </message>
+        <message>
+            <source>Close this configuration panel</source>
+            <translation>Fermer ce panneau de configuration</translation>
+        </message>
+        <message>
+            <source>Close this help window.</source>
+            <translation>Fermer cette fenêtre d'aide.</translation>
+        </message>
+        <message>
+            <source>Close this list without loading anything.</source>
+            <translation>Fermer cette liste sans rien charger.</translation>
+        </message>
+        <message>
+            <source>Close without doing anything.</source>
+            <translation>Fermer sans rien faire.</translation>
+        </message>
+        <message>
+            <source>Close — close the active document; ask before discarding changes</source>
+            <translation>Fermer — ferme le document actif ; demande confirmation avant d'abandonner les modifications</translation>
+        </message>
+        <message>
+            <source>Configure font, colors, language, editing behavior, Ruff and the editor RPC service</source>
+            <translation>Configurer la police, les couleurs, la langue, le comportement d'édition, Ruff et le service RPC de l'éditeur</translation>
+        </message>
+        <message>
+            <source>Configure how editor source is displayed and indented</source>
+            <translation>Configurer l'affichage et l'indentation du source de l'éditeur</translation>
+        </message>
+        <message>
+            <source>Configure the shared API provider, masked credential, models and sampling</source>
+            <translation>Configurer le fournisseur d'API partagé, l'identifiant masqué, les modèles et l'échantillonnage</translation>
+        </message>
+        <message>
+            <source>Copy file path</source>
+            <translation>Copier le chemin du fichier</translation>
+        </message>
+        <message>
+            <source>Copy full path</source>
+            <translation>Copier le chemin complet</translation>
+        </message>
+        <message>
+            <source>Copy path</source>
+            <translation>Copier le chemin</translation>
+        </message>
+        <message>
+            <source>Copy relative path</source>
+            <translation>Copier le chemin relatif</translation>
+        </message>
+        <message>
+            <source>Copy this code block to the clipboard</source>
+            <translation>Copier ce bloc de code dans le presse-papiers</translation>
+        </message>
+        <message>
+            <source>Define the excitation ranges</source>
+            <translation>Définir les plages d'excitation</translation>
+        </message>
+        <message>
+            <source>Detect period</source>
+            <translation>Détecter la période</translation>
+        </message>
+        <message>
+            <source>Developer docs</source>
+            <translation>Documentation développeur</translation>
+        </message>
+        <message>
+            <source>Disable Python LSP</source>
+            <translation>Désactiver le LSP Python</translation>
+        </message>
+        <message>
+            <source>Discard changes</source>
+            <translation>Abandonner les modifications</translation>
+        </message>
+        <message>
+            <source>Documentation TOC is unavailable.</source>
+            <translation>La table des matières de la documentation n'est pas disponible.</translation>
+        </message>
+        <message>
+            <source>Drag nodes to arrange; drag pins to connect; wheel zooms; right-click for the component menu; select items and use Delete Selected to remove them.</source>
+            <translation>Faites glisser les nœuds pour les disposer ; faites glisser les broches pour les relier ; la molette zoome ; clic droit pour le menu des composants ; sélectionnez des éléments puis utilisez « Supprimer la sélection » pour les retirer.</translation>
+        </message>
+        <message>
+            <source>Each row is one excitation phase found in the folded histogram and drawn as a shaded band. Double-click &lt;b&gt;Start&lt;/b&gt; or &lt;b&gt;End&lt;/b&gt; to define a range by hand (Start above End wraps across phase zero), and tick &lt;b&gt;Review&lt;/b&gt; once checked. &lt;b&gt;Re-detect&lt;/b&gt; replaces your edits with the measured ranges. Regions never filter the exported photons.</source>
+            <translation>Chaque ligne correspond à une phase d'excitation trouvée dans l'histogramme replié et tracée comme une bande ombrée. Double-cliquez sur &lt;b&gt;Début&lt;/b&gt; ou &lt;b&gt;Fin&lt;/b&gt; pour définir une plage à la main (un Début après la Fin passe par la phase zéro), puis cochez &lt;b&gt;Relecture&lt;/b&gt; une fois vérifié. &lt;b&gt;Redétecter&lt;/b&gt; remplace vos modifications par les plages mesurées. Les régions ne filtrent jamais les photons exportés.</translation>
+        </message>
+        <message>
+            <source>Edit source</source>
+            <translation>Modifier la source</translation>
+        </message>
+        <message>
+            <source>Edit the active document; use standard keyboard shortcuts for editing</source>
+            <translation>Modifier le document actif ; utilisez les raccourcis clavier standard pour l'édition</translation>
+        </message>
+        <message>
+            <source>Edit the documentation source; Save writes your changes to the document</source>
+            <translation>Modifier la source de la documentation ; Enregistrer écrit vos modifications dans le document</translation>
+        </message>
+        <message>
+            <source>Editor settings…</source>
+            <translation>Paramètres de l'éditeur…</translation>
+        </message>
+        <message>
+            <source>Enable Python LSP</source>
+            <translation>Activer le LSP Python</translation>
+        </message>
+        <message>
+            <source>Enable Ruff</source>
+            <translation>Activer Ruff</translation>
+        </message>
+        <message>
+            <source>Enable editor RPC</source>
+            <translation>Activer le RPC de l'éditeur</translation>
+        </message>
+        <message>
+            <source>Enable optional Ruff checks and fixes for editor buffers</source>
+            <translation>Activer les vérifications et corrections Ruff facultatives pour les tampons de l'éditeur</translation>
+        </message>
+        <message>
+            <source>Enter a document, source symbol, citation key or web address; press Enter or Go</source>
+            <translation>Saisissez un document, un symbole source, une clé de citation ou une adresse web ; appuyez sur Entrée ou Aller</translation>
+        </message>
+        <message>
+            <source>Expose open-buffer operations through the existing local ZeroMQ service</source>
+            <translation>Exposer les opérations sur les tampons ouverts via le service ZeroMQ local existant</translation>
+        </message>
+        <message>
+            <source>Extra Ruff command arguments; quoted values are supported</source>
+            <translation>Arguments de commande Ruff supplémentaires ; les valeurs entre guillemets sont prises en charge</translation>
+        </message>
+        <message>
+            <source>Filter project files by name</source>
+            <translation>Filtrer les fichiers du projet par nom</translation>
+        </message>
+        <message>
+            <source>Filter the destinations by name.</source>
+            <translation>Filtrer les destinations par nom.</translation>
+        </message>
+        <message>
+            <source>Filter tracked documentation by its review status</source>
+            <translation>Filtrer la documentation suivie par son statut de relecture</translation>
+        </message>
+        <message>
+            <source>Find</source>
+            <translation>Rechercher</translation>
+        </message>
+        <message>
+            <source>Fwd</source>
+            <translation>Suiv.</translation>
+        </message>
+        <message>
+            <source>Go</source>
+            <translation>Aller</translation>
+        </message>
+        <message>
+            <source>Go to the next destination.</source>
+            <translation>Aller à la destination suivante.</translation>
+        </message>
+        <message>
+            <source>Go to the previous destination.</source>
+            <translation>Aller à la destination précédente.</translation>
+        </message>
+        <message>
+            <source>Grounded Q&amp;A from ChiSurf docs</source>
+            <translation>Questions-réponses fondées sur la documentation de ChiSurf</translation>
+        </message>
+        <message>
+            <source>Hide the find bar (Escape)</source>
+            <translation>Masquer la barre de recherche (Échap)</translation>
+        </message>
+        <message>
+            <source>Highlight current line</source>
+            <translation>Surligner la ligne courante</translation>
+        </message>
+        <message>
+            <source>Hold Left/Right (or Down/Up) to move, then use Space or Enter to launch. P pauses; R or Esc restarts. The Help panel explains lives, colours and the remaining controls.</source>
+            <translation>Maintenez Gauche/Droite (ou Bas/Haut) pour vous déplacer, puis Espace ou Entrée pour lancer. P met en pause ; R ou Échap redémarre. Le panneau d'aide explique les vies, les couleurs et les commandes restantes.</translation>
+        </message>
+        <message>
+            <source>Home</source>
+            <translation>Accueil</translation>
+        </message>
+        <message>
+            <source>Increase document text by half a point; Ctrl/Command+wheel also zooms</source>
+            <translation>Augmenter le texte du document d'un demi-point ; Ctrl/Commande+molette zoome aussi</translation>
+        </message>
+        <message>
+            <source>Jump to a class, function, method or section in the unsaved Python source</source>
+            <translation>Aller à une classe, une fonction, une méthode ou une section du source Python non enregistré</translation>
+        </message>
+        <message>
+            <source>Jump to the diagnostic's source location</source>
+            <translation>Aller à l'emplacement source du diagnostic</translation>
+        </message>
+        <message>
+            <source>Keep your current notebook and unsaved changes</source>
+            <translation>Conserver votre carnet actuel et les modifications non enregistrées</translation>
+        </message>
+        <message>
+            <source>Left/Right: move. Up/Enter: rotate. Down: soft drop. Space: hard drop.</source>
+            <translation>Gauche/Droite : déplacer. Haut/Entrée : tourner. Bas : chute douce. Espace : chute rapide.</translation>
+        </message>
+        <message>
+            <source>Load the selected simulation: its graph and its numerical result.</source>
+            <translation>Charger la simulation sélectionnée : son graphe et son résultat numérique.</translation>
+        </message>
+        <message>
+            <source>Loopback host for the editor's optional JSON-RPC service</source>
+            <translation>Hôte de boucle locale pour le service JSON-RPC facultatif de l'éditeur</translation>
+        </message>
+        <message>
+            <source>Match case</source>
+            <translation>Respecter la casse</translation>
+        </message>
+        <message>
+            <source>Match only whole words</source>
+            <translation>Mots entiers uniquement</translation>
+        </message>
+        <message>
+            <source>Match upper and lower case exactly</source>
+            <translation>Respecter exactement les majuscules et minuscules</translation>
+        </message>
+        <message>
+            <source>Maximum time allowed for the optional Ruff subprocess</source>
+            <translation>Durée maximale autorisée pour le sous-processus Ruff facultatif</translation>
+        </message>
+        <message>
+            <source>Measure the alternation period from the loaded photon stream (the two busiest detector groups alternate) and set Period to it; the histogram and excitation regions refold. Grey until a file is loaded.</source>
+            <translation>Mesurer la période d'alternance à partir du flux de photons chargé (les deux groupes de détecteurs les plus actifs alternent) et y régler la Période ; l'histogramme et les régions d'excitation sont repliés. Grisé tant qu'aucun fichier n'est chargé.</translation>
+        </message>
+        <message>
+            <source>Measure the period</source>
+            <translation>Mesurer la période</translation>
+        </message>
+        <message>
+            <source>Measured period</source>
+            <translation>Période mesurée</translation>
+        </message>
+        <message>
+            <source>Measured period is outside the Period range</source>
+            <translation>La période mesurée est hors de la plage de Période</translation>
+        </message>
+        <message>
+            <source>Measuring the period…</source>
+            <translation>Mesure de la période…</translation>
+        </message>
+        <message>
+            <source>Move with the arrow keys, reveal with Enter or Space, flag with F, and restart with R or Esc. Mouse buttons reveal or flag cells. Help explains difficulty changes and the board rules.</source>
+            <translation>Déplacez-vous avec les flèches, révélez avec Entrée ou Espace, marquez avec F et recommencez avec R ou Échap. Les boutons de la souris révèlent ou marquent les cases. L'aide explique les changements de difficulté et les règles du plateau.</translation>
+        </message>
+        <message>
+            <source>Navigate to this address or search for its text</source>
+            <translation>Aller à cette adresse ou rechercher son texte</translation>
+        </message>
+        <message>
+            <source>New notebook — create an empty notebook with editable cells and a persistent ChiSurf shell</source>
+            <translation>Nouveau carnet — crée un carnet vide avec des cellules modifiables et un shell ChiSurf persistant</translation>
+        </message>
+        <message>
+            <source>New — create an empty document</source>
+            <translation>Nouveau — crée un document vide</translation>
+        </message>
+        <message>
+            <source>Next &gt;</source>
+            <translation>Suivant &gt;</translation>
+        </message>
+        <message>
+            <source>No diagnostics. Run Ruff Check on a Python document.</source>
+            <translation>Aucun diagnostic. Lancez Vérification Ruff sur un document Python.</translation>
+        </message>
+        <message>
+            <source>No document content loaded.</source>
+            <translation>Aucun contenu de document chargé.</translation>
+        </message>
+        <message>
+            <source>No matching documentation found.</source>
+            <translation>Aucune documentation correspondante trouvée.</translation>
+        </message>
+        <message>
+            <source>No matching settings.</source>
+            <translation>Aucun paramètre correspondant.</translation>
+        </message>
+        <message>
+            <source>No open documents. Click 'New' or pick a file on the left.</source>
+            <translation>Aucun document ouvert. Cliquez sur « Nouveau » ou choisissez un fichier à gauche.</translation>
+        </message>
+        <message>
+            <source>Number of columns used for tab indentation</source>
+            <translation>Nombre de colonnes utilisées pour l'indentation par tabulation</translation>
+        </message>
+        <message>
+            <source>Online docs</source>
+            <translation>Documentation en ligne</translation>
+        </message>
+        <message>
+            <source>Open document</source>
+            <translation>Ouvrir le document</translation>
+        </message>
+        <message>
+            <source>Open in editor</source>
+            <translation>Ouvrir dans l'éditeur</translation>
+        </message>
+        <message>
+            <source>Open in ndX</source>
+            <translation>Ouvrir dans ndX</translation>
+        </message>
+        <message>
+            <source>Open the documentation website in a browser</source>
+            <translation>Ouvrir le site de la documentation dans un navigateur</translation>
+        </message>
+        <message>
+            <source>Open the next document in the table of contents</source>
+            <translation>Ouvrir le document suivant de la table des matières</translation>
+        </message>
+        <message>
+            <source>Open the previous document in the table of contents</source>
+            <translation>Ouvrir le document précédent de la table des matières</translation>
+        </message>
+        <message>
+            <source>Open this documentation address</source>
+            <translation>Ouvrir cette adresse de documentation</translation>
+        </message>
+        <message>
+            <source>Open this documentation item</source>
+            <translation>Ouvrir cet élément de documentation</translation>
+        </message>
+        <message>
+            <source>Open this source file in the code editor</source>
+            <translation>Ouvrir ce fichier source dans l'éditeur de code</translation>
+        </message>
+        <message>
+            <source>Open tutorial videos in your web browser</source>
+            <translation>Ouvrir les vidéos de tutoriel dans votre navigateur web</translation>
+        </message>
+        <message>
+            <source>Open… — choose files to open in the editor</source>
+            <translation>Ouvrir… — choisir les fichiers à ouvrir dans l'éditeur</translation>
+        </message>
+        <message>
+            <source>Point size; 0 preserves the native baked font's default metrics</source>
+            <translation>Taille en points ; 0 conserve les métriques par défaut de la police native intégrée</translation>
+        </message>
+        <message>
+            <source>Press &lt;b&gt;Detect period&lt;/b&gt; to measure the alternation period from the photons themselves: the two busiest detectors alternate, and the strongest line of that alternation sets &lt;b&gt;Period&lt;/b&gt;. A stream that does not alternate is refused with its contrast and Period stays as it was. The histogram and the excitation regions fold again at the measured period.</source>
+            <translation>Appuyez sur &lt;b&gt;Détecter la période&lt;/b&gt; pour mesurer la période d'alternance à partir des photons eux-mêmes : les deux détecteurs les plus actifs alternent, et la raie la plus forte de cette alternance règle la &lt;b&gt;Période&lt;/b&gt;. Un flux sans alternance est refusé avec son contraste, et la Période reste inchangée. L'histogramme et les régions d'excitation sont à nouveau repliés sur la période mesurée.</translation>
+        </message>
+        <message>
+            <source>Press &lt;b&gt;Detect period&lt;/b&gt;.</source>
+            <translation>Appuyez sur &lt;b&gt;Détecter la période&lt;/b&gt;.</translation>
+        </message>
+        <message>
+            <source>Press Calculate Emission Intensity to simulate the light path; the results appear in these tabs.</source>
+            <translation>Appuyez sur Calculer l'intensité d'émission pour simuler le trajet lumineux ; les résultats apparaissent dans ces onglets.</translation>
+        </message>
+        <message>
+            <source>Process: isolated, stoppable execution. Console: main-thread macros with access to ChiSurf state; long macros block interaction.</source>
+            <translation>Processus : exécution isolée et interruptible. Console : macros dans le thread principal avec accès à l'état de ChiSurf ; les macros longues bloquent l'interaction.</translation>
+        </message>
+        <message>
+            <source>Put a caret on every match; typing then edits all of them</source>
+            <translation>Placer un curseur sur chaque occurrence ; la saisie modifie alors toutes les occurrences</translation>
+        </message>
+        <message>
+            <source>Read how the Settings hub, its destinations and its stepper work.</source>
+            <translation>Découvrez le fonctionnement du centre de paramètres, de ses destinations et de son sélecteur pas à pas.</translation>
+        </message>
+        <message>
+            <source>Read the referenced source; open the full code editor to edit it</source>
+            <translation>Lire la source référencée ; ouvrir l'éditeur de code complet pour la modifier</translation>
+        </message>
+        <message>
+            <source>Record this saved page's review status; later edits make the sign-off stale</source>
+            <translation>Enregistrer le statut de relecture de cette page enregistrée ; les modifications ultérieures rendent la validation caduque</translation>
+        </message>
+        <message>
+            <source>Reduce document text by half a point</source>
+            <translation>Réduire le texte du document d'un demi-point</translation>
+        </message>
+        <message>
+            <source>Reload and discard</source>
+            <translation>Recharger et abandonner</translation>
+        </message>
+        <message>
+            <source>Reopen a recently opened or saved document</source>
+            <translation>Rouvrir un document récemment ouvert ou enregistré</translation>
+        </message>
+        <message>
+            <source>Replace</source>
+            <translation>Remplacer</translation>
+        </message>
+        <message>
+            <source>Replace all</source>
+            <translation>Tout remplacer</translation>
+        </message>
+        <message>
+            <source>Replace every match in the document</source>
+            <translation>Remplacer chaque occurrence dans le document</translation>
+        </message>
+        <message>
+            <source>Replace file</source>
+            <translation>Remplacer le fichier</translation>
+        </message>
+        <message>
+            <source>Replace the selected file with this document's contents</source>
+            <translation>Remplacer le fichier sélectionné par le contenu de ce document</translation>
+        </message>
+        <message>
+            <source>Replace the selected match and select the next one</source>
+            <translation>Remplacer l'occurrence sélectionnée et sélectionner la suivante</translation>
+        </message>
+        <message>
+            <source>Replace this buffer with the file on disk</source>
+            <translation>Remplacer ce tampon par le fichier sur le disque</translation>
+        </message>
+        <message>
+            <source>Restart after game over (Enter/Space, Up or R).</source>
+            <translation>Recommencer après la fin de partie (Entrée/Espace, Haut ou R).</translation>
+        </message>
+        <message>
+            <source>Return from the source view to the document</source>
+            <translation>Revenir de la vue source au document</translation>
+        </message>
+        <message>
+            <source>Return to choosing a destination</source>
+            <translation>Revenir au choix d'une destination</translation>
+        </message>
+        <message>
+            <source>Return to the previous page in navigation history</source>
+            <translation>Revenir à la page précédente de l'historique de navigation</translation>
+        </message>
+        <message>
+            <source>Review sign-off is available for tracked documentation pages.</source>
+            <translation>La validation de relecture est disponible pour les pages de documentation suivies.</translation>
+        </message>
+        <message>
+            <source>Ruff Check — check the unsaved Python buffer using the optional Ruff executable</source>
+            <translation>Vérification Ruff — vérifie le tampon Python non enregistré avec l'exécutable Ruff facultatif</translation>
+        </message>
+        <message>
+            <source>Ruff Fix — apply Ruff's safe fixes to the unsaved buffer; save explicitly afterwards</source>
+            <translation>Correction Ruff — applique les corrections sûres de Ruff au tampon non enregistré ; enregistrez ensuite explicitement</translation>
+        </message>
+        <message>
+            <source>Ruff after save</source>
+            <translation>Ruff après l'enregistrement</translation>
+        </message>
+        <message>
+            <source>Ruff is checking the document…</source>
+            <translation>Ruff vérifie le document…</translation>
+        </message>
+        <message>
+            <source>Run Script — run the active Python document and display its output</source>
+            <translation>Exécuter le script — exécute le document Python actif et affiche sa sortie</translation>
+        </message>
+        <message>
+            <source>Save As… — save the active document under a chosen name</source>
+            <translation>Enregistrer sous… — enregistre le document actif sous un nom choisi</translation>
+        </message>
+        <message>
+            <source>Save and close</source>
+            <translation>Enregistrer et fermer</translation>
+        </message>
+        <message>
+            <source>Save changes to the current documentation source</source>
+            <translation>Enregistrer les modifications de la source de documentation actuelle</translation>
+        </message>
+        <message>
+            <source>Save document</source>
+            <translation>Enregistrer le document</translation>
+        </message>
+        <message>
+            <source>Save this document to a chosen destination</source>
+            <translation>Enregistrer ce document vers une destination choisie</translation>
+        </message>
+        <message>
+            <source>Save — save the active document to disk</source>
+            <translation>Enregistrer — enregistre le document actif sur le disque</translation>
+        </message>
+        <message>
+            <source>Search documentation titles and text</source>
+            <translation>Rechercher dans les titres et les textes de la documentation</translation>
+        </message>
+        <message>
+            <source>Search documentation...</source>
+            <translation>Rechercher dans la documentation...</translation>
+        </message>
+        <message>
+            <source>Search full setting names; matching entries retain their parent section names.</source>
+            <translation>Recherche dans les noms complets des paramètres ; les entrées correspondantes conservent le nom de leur section parente.</translation>
+        </message>
+        <message>
+            <source>Select an available monospaced font supported by the native renderer</source>
+            <translation>Sélectionner une police à chasse fixe disponible et prise en charge par le moteur de rendu natif</translation>
+        </message>
+        <message>
+            <source>Select the next match (wraps around at the end)</source>
+            <translation>Sélectionner l'occurrence suivante (reprend au début en fin de document)</translation>
+        </message>
+        <message>
+            <source>Settings… — open the native editor appearance and diagnostics settings</source>
+            <translation>Paramètres… — ouvre les paramètres natifs d'apparence et de diagnostic de l'éditeur</translation>
+        </message>
+        <message>
+            <source>Show documentation start page</source>
+            <translation>Afficher la page d'accueil de la documentation</translation>
+        </message>
+        <message>
+            <source>Show human and AI review sign-off actions, status filters and manual review summary</source>
+            <translation>Afficher les actions de validation humaine et IA, les filtres de statut et le résumé de relecture manuelle</translation>
+        </message>
+        <message>
+            <source>Show or hide the configured background behind the caret's line</source>
+            <translation>Afficher ou masquer l'arrière-plan configuré derrière la ligne du curseur</translation>
+        </message>
+        <message>
+            <source>Start an installed optional python-lsp-server; no packages are installed automatically</source>
+            <translation>Démarrer un python-lsp-server facultatif installé ; aucun paquet n'est installé automatiquement</translation>
+        </message>
+        <message>
+            <source>Stop the language server and close its document sessions</source>
+            <translation>Arrêter le serveur de langage et fermer ses sessions de document</translation>
+        </message>
+        <message>
+            <source>Stop — stop the running script subprocess</source>
+            <translation>Arrêter — arrête le sous-processus du script en cours</translation>
+        </message>
+        <message>
+            <source>Switch between reading the document and editing its source; the virtual Home page has no source file</source>
+            <translation>Basculer entre la lecture du document et la modification de sa source ; la page d'accueil virtuelle n'a pas de fichier source</translation>
+        </message>
+        <message>
+            <source>Switch between typed setting fields and the complete YAML/JSON source.</source>
+            <translation>Basculer entre les champs de paramètres saisis et la source YAML/JSON complète.</translation>
+        </message>
+        <message>
+            <source>Text that replaces a match</source>
+            <translation>Texte qui remplace une occurrence</translation>
+        </message>
+        <message>
+            <source>Text to find in the active document; Enter selects the next match</source>
+            <translation>Texte à rechercher dans le document actif ; Entrée sélectionne l'occurrence suivante</translation>
+        </message>
+        <message>
+            <source>The arrow keys change the estimate, Q/E changes it by ten and Enter or Space submits. You can also click the plot and lower footer. Help explains the turns, hints and sound.</source>
+            <translation>Les flèches modifient l'estimation, Q/E la modifie de dix, et Entrée ou Espace valide. Vous pouvez aussi cliquer sur le graphe et le pied de page. L'aide explique les tours, les indices et le son.</translation>
+        </message>
+        <message>
+            <source>This document has a list at its root; use Edit source to edit list records.</source>
+            <translation>Ce document a une liste à sa racine ; utilisez Modifier la source pour modifier les enregistrements de la liste.</translation>
+        </message>
+        <message>
+            <source>This settings panel could not be opened.</source>
+            <translation>Ce panneau de paramètres n'a pas pu être ouvert.</translation>
+        </message>
+        <message>
+            <source>Try to build this panel again.</source>
+            <translation>Essayer de reconstruire ce panneau.</translation>
+        </message>
+        <message>
+            <source>Type the name, then press OK.</source>
+            <translation>Saisissez le nom, puis appuyez sur OK.</translation>
+        </message>
+        <message>
+            <source>UI language. Applies to newly opened tools immediately; restart to fully retranslate open windows.</source>
+            <translation>Langue de l'interface. S'applique immédiatement aux outils nouvellement ouverts ; redémarrez pour retraduire entièrement les fenêtres ouvertes.</translation>
+        </message>
+        <message>
+            <source>Up/Down (or Left/Right) moves your paddle; M changes the opponent mode and W/S controls the second player. P pauses. Open Help for the complete controls and sound behavior.</source>
+            <translation>Haut/Bas (ou Gauche/Droite) déplace votre raquette ; M change le mode adversaire et W/S contrôle le second joueur. P met en pause. Ouvrez l'aide pour toutes les commandes et le comportement sonore.</translation>
+        </message>
+        <message>
+            <source>Use Left/Right to move, Down to descend faster, Up or Enter to rotate and Space to drop. P pauses; R or Esc restarts; M mutes. Help describes the saved round, score and optional sound.</source>
+            <translation>Gauche/Droite pour déplacer, Bas pour descendre plus vite, Haut ou Entrée pour tourner et Espace pour faire tomber. P met en pause ; R ou Échap recommence ; M coupe le son. L'aide décrit la manche sauvegardée, le score et le son facultatif.</translation>
+        </message>
+        <message>
+            <source>Use as project root</source>
+            <translation>Utiliser comme racine du projet</translation>
+        </message>
+        <message>
+            <source>Use this name. An empty name does nothing.</source>
+            <translation>Utiliser ce nom. Un nom vide n'a aucun effet.</translation>
+        </message>
+        <message>
+            <source>Videos</source>
+            <translation>Vidéos</translation>
+        </message>
+        <message>
+            <source>View source</source>
+            <translation>Voir la source</translation>
+        </message>
+        <message>
+            <source>Walk through searching, choosing a destination and the Back / Next buttons.</source>
+            <translation>Parcourez la recherche, le choix d'une destination et les boutons Précédent / Suivant.</translation>
+        </message>
+        <message>
+            <source>Walk through the tool controls and workflow step by step.</source>
+            <translation>Parcourez pas à pas les commandes de l'outil et le flux de travail.</translation>
+        </message>
+        <message>
+            <source>Whole word</source>
+            <translation>Mot entier</translation>
+        </message>
+        <message>
+            <source>YAML or JSON source. Comments and exact string/list types are preserved when saving. Invalid content cannot replace the existing file.</source>
+            <translation>Source YAML ou JSON. Les commentaires et les types exacts de chaîne et de liste sont conservés à l'enregistrement. Un contenu invalide ne peut pas remplacer le fichier existant.</translation>
+        </message>
+        <message>
+            <source>alternation contrast</source>
+            <translation>contraste d'alternance</translation>
+        </message>
+        <message>
+            <source>chain has {n} draws; at least {m} are needed</source>
+            <translation>la chaîne a {n} tirages ; au moins {m} sont nécessaires</translation>
+        </message>
+        <message>
+            <source>chain was produced in another process — open its folder in ndX</source>
+            <translation>la chaîne a été produite dans un autre processus — ouvrez son dossier dans ndX</translation>
+        </message>
+        <message>
+            <source>docs/page.md#anchor, src:path#symbol, cite:key, URL or search</source>
+            <translation>docs/page.md#ancre, src:chemin#symbole, cite:clé, URL ou recherche</translation>
+        </message>
+        <message>
+            <source>no chain stored for this fit — run a sampling job (Chain diagnostics describes what it produced, it does not sample)</source>
+            <translation>aucune chaîne enregistrée pour cet ajustement — lancez un échantillonnage (Diagnostics de chaîne décrit ce qui a été produit, il n'échantillonne pas)</translation>
+        </message>
+        <message>
+            <source>↑ Parent</source>
+            <translation>↑ Parent</translation>
+        </message>
+        <message>
+            <source>■ Stop</source>
+            <translation>■ Arrêter</translation>
+        </message>
+        <message>
+            <source>⚙ Settings</source>
+            <translation>⚙ Paramètres</translation>
+        </message>
+        <message>
+            <source>✖ Close</source>
+            <translation>✖ Fermer</translation>
+        </message>
+        <message>
+            <source>➕ New</source>
+            <translation>➕ Nouveau</translation>
+        </message>
+        <message>
+            <source>📋 Copy</source>
+            <translation>📋 Copier</translation>
+        </message>
+        <message>
+            <source>📓 Notebook</source>
+            <translation>📓 Carnet</translation>
+        </message>
+        <message>
+            <source>📝 Save As</source>
+            <translation>📝 Enregistrer sous</translation>
+        </message>
+        <message>
+            <source>🔍 Filter files...</source>
+            <translation>🔍 Filtrer les fichiers...</translation>
+        </message>
+        <message>
+            <source>🛠 Fix</source>
+            <translation>🛠 Corriger</translation>
+        </message>
+        <message>
+            <source>🧹 Check</source>
+            <translation>🧹 Vérifier</translation>
+        </message>
+        <message>
             <source>A step-by-step walk through the tools, pointing at each control.</source>
             <translation>Un parcours pas à pas des outils, qui désigne chaque commande.</translation>
         </message>
