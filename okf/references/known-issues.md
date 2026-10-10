@@ -68,7 +68,7 @@ rebuild" applies). The test should also not prefer an unlinkable binary silently
 
 ## ALEX hub: Accurate FRET opens no table from the container run (found 2026-10-10)
 
-status: fixed 2026-10-10 (W4)
+status: resolved 2026-10-10 — W4: the hub no longer calls the removed `_editor_to`; a run handed to a busy step is kept.
 
 **Cause** (found while landing the run handoff): `AlexHubApp._to_accurate_fret` called `self._editor_to(...)`, a
 helper removed when the burst workflow moved to one authoritative acquisition setup, so the hand-off raised

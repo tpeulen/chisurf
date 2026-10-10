@@ -1,5 +1,7 @@
 {
   "steps": [
+    {"title":"A stream whose answer is known","text":"Opening the plugin already started a simulated stream and the <b>Acquisition</b> fit window: watch its Decay page fill, then Correlation, MCS and Macro time. The stream has two species with donor lifetimes 3.4 ns and 1.1 ns."},
+    {"title":"Load the example again","text":"Load example simulates (or reuses) the demo stream, registers it as a dataset and opens a new Acquisition fit window for it.","target":{"name":"load_example","action":"Load example"},"await":{"hint":"Press <b>Load example</b>."}},
     {"title":"Select source","text":"Choose Simulation, Becker-Hickl, PicoQuant, or BrickMic. Selecting hardware does not scan or contact it.","target":{"name":"device_type","attr":"device_type"},"await":{"hint":"Choose the source you intend to use."}},
     {"title":"Initialize explicitly","text":"Press Initialize device before Start. A missing driver or unavailable card is reported here rather than silently falling back to simulation.","target":{"name":"initialize_device","action":"initialize_device"},"await":{"hint":"Press Initialize device."}},
     {"title":"Bound the run","text":"Keep at least one positive stop condition. Time is wall-clock; photon count is decoded by the live pipeline.","target":{"name":"photon_limit","attr":"photon_limit"},"await":{"hint":"Set a time and/or photon limit."}},

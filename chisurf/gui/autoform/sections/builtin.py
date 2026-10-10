@@ -58,6 +58,20 @@ register_plot("sampling_diagnostics", lambda: _plots().SamplingDiagnosticsPlot)
 register_plot("conditional_scan", lambda: _plots().ConditionalScanPlot)
 
 
+def _acquisition_plots():
+    import chisurf.gui.plots.acquisition as _p
+
+    return _p
+
+
+# The Acquisition fit window's pages (see chisurf.gui.plots.acquisition): each
+# class docstring is the page's description.
+register_plot("acq_decay", lambda: _acquisition_plots().DecayPage)
+register_plot("acq_correlation", lambda: _acquisition_plots().CorrelationPage)
+register_plot("acq_mcs", lambda: _acquisition_plots().McsPage)
+register_plot("acq_macrotime", lambda: _acquisition_plots().MacrotimePage)
+
+
 def _proteinmc_plots():
     import chisurf.gui.plots.proteinMC as _p
 

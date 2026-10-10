@@ -2,7 +2,7 @@
 
 A fit window is one emtk surface and its pages are not widgets; the main
 window's *Plot settings* dock is one emtk surface showing the current page's
-settings. This sweep opens the real science of all 42 catalogued models in a
+settings. This sweep opens the real science of all 43 catalogued models in a
 real Main, visits every page, and fails on a page object that is a Qt widget, a
 page that declares nothing to draw, or settings that raise while drawn.
 

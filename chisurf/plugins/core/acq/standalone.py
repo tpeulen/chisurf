@@ -1,210 +1,34 @@
 #!/usr/bin/env python3
-"""
-Standalone SM Acquisition Application
+"""Entry point of the single-molecule acquisition: native window or simulation CLI.
 
-This application can run the single-molecule acquisition plugin either as part of chisurf
-or as a standalone application with its own MDI interface.
+Inside ChiSurf the plugin opens the native acquisition window and, next to it,
+the *Acquisition* fit window. This module starts the same native window on its
+own (``photon-acquisition``), or forwards ``--cli`` to the simulation CLI.
 """
 
 import logging
 import sys
 
-from chisurf.gui import dialogs
-
-try:
-    from qtpy.QtCore import Qt
-    from qtpy.QtWidgets import (
-        QAction,
-        QApplication,
-        QMainWindow,
-        QMdiArea,
-        QMenu,
-        QMenuBar,
-        QStatusBar,
-        QVBoxLayout,
-        QWidget,
-    )
-
-    from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
-
-    PYQT_AVAILABLE = True
-except Exception:
-    # Allow this module to be imported in environments without a Qt stack so that
-    # CLI-only mode (``standalone.py --cli ...``) continues to work.
-    QApplication = None  # type: ignore
-    QMainWindow = object  # type: ignore
-    # The shared tool base is Qt-only, so CLI-only mode falls back to ``object``
-    # exactly as it already does for the Qt classes above.
-    ChisurfDockTool = object  # type: ignore
-    QMdiArea = QVBoxLayout = QWidget = QMenuBar = QMenu = QAction = QStatusBar = object  # type: ignore
-    Qt = None  # type: ignore
-    PYQT_AVAILABLE = False
-
-# Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def is_chisurf_available():
-    """Check if chisurf is available."""
+def run_standalone() -> int:
+    """Run the native acquisition window as its own application."""
+    from emtk.native import NativeHost
+
+    from .gui.app import make_app
+
+    app = make_app()
+    host = NativeHost(app, title="ChiSurf Acquisition")
     try:
-        import chisurf
-
-        return True, chisurf
-    except ImportError:
-        return False, None
-
-
-def run_standalone():
-    """Run the SM acquisition as a standalone application."""
-    if not PYQT_AVAILABLE:
-        logger.error("PyQt5 is not available; standalone GUI mode cannot be used.")
-        return 1
-    logger.info("Running SM Acquisition in standalone mode")
-
-    # Import our modules
-    # The manager lives in `gui.tool`; `main` has not existed since the plugin
-    # was split into gui/ and this import raised ModuleNotFoundError on every
-    # standalone start.
-    from .gui.tool import SMAcquisitionManager
-
-    # Create the application
-    app = QApplication(sys.argv) if not QApplication.instance() else QApplication.instance()
-
-    # Create standalone main window
-    main_window = StandaloneMainWindow()
-
-    # Create and initialize the acquisition manager
-    try:
-        manager = SMAcquisitionManager(main_window)
-        main_window.acquisition_manager = manager
-        logger.info("SM Acquisition manager initialized successfully")
-    except Exception as e:
-        logger.error(f"Failed to initialize SM Acquisition manager: {e}")
-        import traceback
-
-        traceback.print_exc()
-        return 1
-
-    # Show the main window
-    main_window.show()
-    main_window.raise_()
-    main_window.activateWindow()
-
-    # Run the application
-    return app.exec()
+        host.run()
+    finally:
+        host.close()
+    return 0
 
 
-def run_as_plugin():
-    """Run the SM acquisition as a chisurf plugin."""
-    if not PYQT_AVAILABLE:
-        logger.error("PyQt5 is not available; plugin GUI mode cannot be used.")
-        return 1
-    logger.info("Running SM Acquisition as chisurf plugin")
-
-    chisurf_available, chisurf = is_chisurf_available()
-    if not chisurf_available:
-        logger.error("chisurf not available, cannot run as plugin")
-        return 1
-
-    # Import and run as normal plugin
-    from .gui.tool import SMAcquisitionManager
-
-    if QApplication is not None and QApplication.instance() is None:
-        # "As a plugin" presupposes chisurf's Qt application is already running.
-        # Launched from the command line it is not, and constructing a widget
-        # without a QApplication aborts the process — run standalone instead.
-        logger.info("No running Qt application; falling back to standalone mode")
-        return run_standalone()
-
-    try:
-        SMAcquisitionManager()
-        logger.info("SM Acquisition plugin loaded successfully")
-    except Exception as e:
-        logger.error(f"Failed to load SM Acquisition plugin: {e}")
-        import traceback
-
-        traceback.print_exc()
-        return 1
-
-    # Keep the plugin running
-    return chisurf.run()
-
-
-class StandaloneMainWindow(ChisurfDockTool):
-    """Standalone main window for SM Acquisition."""
-
-    def __init__(self):
-        super().__init__()
-        self.acquisition_manager = None
-        self.setup_ui()
-
-    def setup_ui(self):
-        """Setup the user interface."""
-        self.setWindowTitle("SM Acquisition - Standalone")
-        self.setGeometry(100, 100, 1400, 900)
-
-        # Create central widget with MDI area
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-
-        layout = QVBoxLayout(central_widget)
-
-        # Create MDI area
-        self.mdiarea = QMdiArea()
-        self.mdiarea.setViewMode(QMdiArea.TabbedView)
-        layout.addWidget(self.mdiarea)
-
-        # Create menu bar
-        self.create_menu_bar()
-
-        # Create status bar
-        self.status_bar = QStatusBar()
-        self.setStatusBar(self.status_bar)
-        self.status_bar.showMessage("Ready")
-
-    def create_menu_bar(self):
-        """Create the menu bar."""
-        menubar = self.menuBar()
-
-        # File menu
-        file_menu = menubar.addMenu("&File")
-        exit_action = QAction("&Exit", self)
-        exit_action.triggered.connect(self.close)
-        file_menu.addAction(exit_action)
-
-        # View menu
-        menubar.addMenu("&View")
-
-        # Window menu
-        menubar.addMenu("&Window")
-
-        # Help menu
-        help_menu = menubar.addMenu("&Help")
-        about_action = QAction("&About", self)
-        about_action.triggered.connect(self.show_about)
-        help_menu.addAction(about_action)
-
-    def show_about(self):
-        """Show about dialog."""
-        dialogs.about(
-            self,
-            "About SM Acquisition",
-            "Single-Molecule Acquisition Plugin\n\nStandalone version for testing and development.",
-        )
-
-    def closeEvent(self, event):
-        """Handle close event."""
-        if self.acquisition_manager:
-            try:
-                self.acquisition_manager.close_acquisition_mode()
-            except Exception as e:
-                logger.error(f"Error closing acquisition manager: {e}")
-
-        super().closeEvent(event)
-
-
-def main():
+def main() -> int:
     """Main entry point.
 
     Modes:
@@ -212,10 +36,8 @@ def main():
     - **CLI mode**: if ``--cli`` is present in the arguments, the remaining
       arguments are forwarded to the simulation CLI (config/run) and no GUI
       is started.
-    - **GUI/plugin mode** (default): existing behaviour, either running as a
-      chisurf plugin or as a standalone Qt application.
+    - **GUI mode** (default, also ``--standalone``): the native acquisition window.
     """
-    # First: check for CLI mode flag and delegate to the simulation CLI.
     args = sys.argv[1:]
     if "--cli" not in args and ("-h" in args or "--help" in args):
         # Reachable as `csc photon-acquisition --help`, where silently opening a
@@ -223,14 +45,13 @@ def main():
         # flag belongs to the simulation CLI below, not to this wrapper.
         print(
             "Usage: photon-acquisition [--standalone] [--cli SUBCOMMAND ...]\n\n"
-            "  (no arguments)   open the acquisition GUI\n"
-            "  --standalone     force the standalone Qt application\n"
+            "  (no arguments)   open the acquisition window\n"
+            "  --standalone     the same, spelled out\n"
             "  --cli ...        forward to the simulation CLI (try: --cli --help)"
         )
         return 0
     if "--cli" in args:
-        cli_index = args.index("--cli")
-        cli_args = args[cli_index + 1 :]
+        cli_args = args[args.index("--cli") + 1 :]
 
         # Import here to avoid unnecessary Click/CLI setup when running GUI.
         from .tcspc_devices.simulation.simulation_cli import main as simulation_cli_main
@@ -240,22 +61,7 @@ def main():
         #   python standalone.py --cli config --output ...
         sys.argv = [sys.argv[0]] + cli_args
         return simulation_cli_main()
-
-    # Otherwise: run in GUI/plugin mode as before.
-    # Check if chisurf is available
-    chisurf_available, chisurf = is_chisurf_available()
-
-    if chisurf_available:
-        logger.info("chisurf detected, running as plugin")
-        # Check command line arguments
-        if len(sys.argv) > 1 and sys.argv[1] == "--standalone":
-            logger.info("Forced standalone mode")
-            return run_standalone()
-        else:
-            return run_as_plugin()
-    else:
-        logger.info("chisurf not detected, running standalone")
-        return run_standalone()
+    return run_standalone()
 
 
 if __name__ == "__main__":

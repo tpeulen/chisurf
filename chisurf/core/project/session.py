@@ -26,6 +26,7 @@ _EXPERIMENT_REGISTRY: dict[tuple[str, str], type] = {}
 # identities are the actual shipped Model classes, not archive-provided aliases.
 _BUILTIN_MODELS = {
     "model": ("Model", "ModelCurve"),
+    "acquisition.acquisition_model": ("AcquisitionModel",),
     "parse.parse": ("ParseModel",),
     "global_model.globalfit": ("GlobalFitModel",),
     "fcs.mdf": ("MdfFCSModel",),

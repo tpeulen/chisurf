@@ -379,7 +379,7 @@ def test_real_native_input_exercises_cancel_help_and_guide(ui):
     assert any("Acquisition" in text for text in ui.strings())
     ui.click_text("×", last=True)
     ui.click("guide")
-    assert any("Select source" in text for text in ui.strings())
+    assert any("answer is known" in text for text in ui.strings())
     ui.click_text("Next ►", last=True)
     ui.click_text("Close Tour", last=True)
     assert ui.app.model.hardware_contacted is False

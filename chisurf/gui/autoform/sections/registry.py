@@ -57,6 +57,10 @@ _SECTION_MODULES = {
     "waterfall": "waterfall_section",
 }
 _PLOT_MODULES = {
+    "acq_correlation": "builtin",
+    "acq_decay": "builtin",
+    "acq_macrotime": "builtin",
+    "acq_mcs": "builtin",
     "conditional_scan": "builtin",
     "distribution": "builtin",
     "fit_info": "builtin",

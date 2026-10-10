@@ -62,7 +62,7 @@ def _run_child(command, directory, stage, timeout):
 @pytest.mark.parametrize("entry", CATALOGUE, ids=[e["configured_path"] for e in CATALOGUE])
 def test_configured_model_actual_main_scientific_persistence(tmp_path, entry):
     """Restore real science, edit its exposed control, save, and fresh-restore."""
-    assert len(CATALOGUE) == 42
+    assert len(CATALOGUE) == 43
     (tmp_path / "entry.json").write_text(json.dumps(entry, indent=2))
     code, error = _run_child(
         [

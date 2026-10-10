@@ -2,6 +2,12 @@
 
 ## 2026-10-10
 
+- PRD-154 P-E: live acquisition is a fit window. `acq/demo.py` writes a known two-species SPC stream,
+  `acq/dataset.py` (`AcquisitionDataset`) streams it on a worker thread, the parameterless
+  `AcquisitionModel` (`chisurf/core/models/acquisition/`) shows Decay, Correlation, MCS and Macro time
+  pages (`chisurf/gui/plots/acquisition.py`), and the native window gets **Load example**. The Qt
+  acquisition tool (`gui/tool.py`, `windows.py`, `controllers.py`) is deleted. Open: count-rate page,
+  the document-GUI harness exemption for a parameterless model, a hardware run.
 - PRD-154 W9 phase 1: the Qt tool of ten plugins is deleted and their `gui` entrypoint dropped
   (psf_calculator, calculator hub, fret_calculator, phasor_calculator, rics_precision,
   fcs_saturation_calc, fcs_lfcs_sim, flc_2d, irf_estimator, synthetic_decay); Qt parity tests

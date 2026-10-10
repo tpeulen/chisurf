@@ -81,6 +81,8 @@ tcspc:
     # Maximum-entropy distributions over the instrument's own basis.
     - chisurf.core.models.description.tcspc_maxent_lifetime
     - chisurf.core.models.description.tcspc_maxent_fret
+    # The live acquisition: no parameters, four pages over the pipeline snapshot.
+    - chisurf.core.models.acquisition.acquisition_model.AcquisitionModel
 
 
 stopped_flow:

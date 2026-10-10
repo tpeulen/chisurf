@@ -81,10 +81,14 @@ keeps up with typing. The vectorial model takes a few seconds on **Preview**.
    widths by less than 1 nm at the defaults, so switch to it once the
    parameters are settled and before exporting.
 
-**Display**: **Threshold** hides voxels below a fraction of the peak,
-**Gamma** (shown as Γ) shapes the opacity ramp, **Colormap** colours the
-volume, and **Polarization vectors** draws the pupil state as strokes on a
-ring above the focus. None of these enter the computation.
+**Display**: the 3-D window draws isosurfaces (in chimol) at three fractions of
+the peak: the **Threshold** shell, the half-maximum shell and a bright core.
+**Threshold** sets the outer shell and crops the view to it, **Gamma** (shown
+as Γ) and **Colormap** colour the shells, and **Polarization vectors** draws
+the pupil state as strokes on a ring above the focus. None of these enter the
+computation. **Left-drag** rotates the volume, the **wheel** zooms and
+**Ctrl + left-drag** (or middle-drag) pans; the guide's last-but-one step walks
+you through it.
 
 ## Read the result
 

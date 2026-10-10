@@ -32,7 +32,7 @@ def _resolve(path):
     return getattr(importlib.import_module(module), name)
 
 
-def test_shipped_catalogue_has_exactly_the_independent_42_entries():
+def test_shipped_catalogue_has_exactly_the_independent_43_entries():
     """New configured entries cannot silently fall outside the scientific matrix."""
     config = yaml.safe_load(Path("chisurf/core/settings/experiment_configs.yaml").read_text())
     configured = [
@@ -42,7 +42,7 @@ def test_shipped_catalogue_has_exactly_the_independent_42_entries():
         for path in settings.get("models", [])
     ]
     assert configured == [(entry["experiment"], entry["configured_path"]) for entry in CATALOGUE]
-    assert len(configured) == 42
+    assert len(configured) == 43
 
 
 @pytest.mark.parametrize("entry", CATALOGUE, ids=IDS)
@@ -408,6 +408,11 @@ def _file_roundtrip(tmp_path, entry):
             from test.project.test_fcs_snapshot_science_edits import edit_fcs_science
 
             edit_fcs_science(fit.model)
+            fit.model.update()
+        elif cls.__name__ == "AcquisitionModel":
+            # A display model: it has no parameters, its curve is the data's.
+            curve = fit.data
+            curve.set_data(x=curve.x, y=curve.y * 1.01 + 0.001, ey=curve.ey)
             fit.model.update()
         elif cls.__name__ == "ProteinMCModel":
             coordinates = fit.model.structure.xyz.copy()

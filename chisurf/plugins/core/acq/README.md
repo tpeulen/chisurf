@@ -21,11 +21,16 @@ Data is acquired into RAM and saved at the end of data acquisition.
 - Becker & Hickl SPC-830 TCSPC board (optional, simulation mode available)
 - Becker & Hickl SPCM-DLL (part of the TCSPC Package or SPCM Data Acquisition Software)
 - Python packages:
-  - PyQt5
-  - pyqtgraph
   - numpy
   - psutil
   - tttrlib
+
+## Acquisition fit window
+
+Inside ChiSurf the plugin simulates a demo stream (`demo.py`), registers it as an
+`AcquisitionDataset` (`dataset.py`) and opens a fit window with the `Acquisition`
+model (`chisurf/core/models/acquisition`) whose pages (`chisurf/gui/plots/acquisition.py`)
+are the live decay, correlation, MCS and macro-time plots. The Qt tool is gone.
 
 ## Usage
 
@@ -70,14 +75,14 @@ that supports both GUI and headless simulation CLI.
 From the repository root:
 
 ```bash
-# Start SM Acquisition (GUI or plugin mode, PyQt required)
+# Start SM Acquisition (native window)
 python -m chisurf.plugins.core.acq
 
 # Force standalone GUI window (without starting full chisurf)
 python -m chisurf.plugins.core.acq --standalone
 ```
 
-#### Headless simulation CLI (no PyQt required)
+#### Headless simulation CLI
 
 The same entry point exposes the simulation CLI when you pass `--cli`.
 This uses the Burbulator DLL and the same parameter structure as the

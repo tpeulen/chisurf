@@ -65,6 +65,11 @@
     "identity": "chisurf.core.models.description.DescriptionModel_tcspc_maxent_fret"
   },
   {
+    "experiment": "tcspc",
+    "configured_path": "chisurf.core.models.acquisition.acquisition_model.AcquisitionModel",
+    "identity": "chisurf.core.models.acquisition.acquisition_model.AcquisitionModel"
+  },
+  {
     "experiment": "stopped_flow",
     "configured_path": "chisurf.core.models.stopped_flow.parse.ParseStoppedFlowModel",
     "identity": "chisurf.core.models.stopped_flow.parse.EquationModel_stopped_flow"

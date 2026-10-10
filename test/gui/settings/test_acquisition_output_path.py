@@ -6,27 +6,24 @@ import copy
 def test_acquisition_output_path_helper_falls_back_to_working_path(monkeypatch, tmp_path):
     """The acquisition output helper should use the working path fallback."""
     from chisurf import settings
-    from chisurf.plugins.core.acq.gui import tool
+    from chisurf.plugins.core.acq.gui import app
 
     monkeypatch.setattr(settings, "working_path", tmp_path)
     monkeypatch.setitem(settings.gui, "acquisition", {})
 
-    assert tool._default_acquisition_output_path() == str(tmp_path / "acquisition")
+    assert app.default_acquisition_output_path() == str(tmp_path / "acquisition")
+    assert app.configured_output_path() == ""
 
 
-def test_acquisition_dock_uses_configured_output_path(qtbot, monkeypatch, tmp_path):
-    """The acquisition dock should prefill the saved standard output folder."""
+def test_native_acquisition_model_uses_configured_output_path(monkeypatch, tmp_path):
+    """The native acquisition model prefills the saved standard output folder."""
     from chisurf import settings
-    from chisurf.plugins.core.acq.gui.tool import AcquisitionDockWidget
+    from chisurf.plugins.core.acq.gui.app import AcquisitionNativeModel
 
     output_path = tmp_path / "measurements"
     monkeypatch.setitem(settings.gui, "acquisition", {"output_path": str(output_path)})
 
-    dock = AcquisitionDockWidget()
-    qtbot.addWidget(dock)
-
-    assert dock.output_path == str(output_path)
-    assert dock.output_path_edit.text() == str(output_path)
+    assert AcquisitionNativeModel().output_folder == str(output_path)
 
 
 def test_acquisition_settings_widget_persists_output_path(qtbot, monkeypatch, tmp_path):

@@ -47,6 +47,34 @@ DEVICE_LABELS = {
 }
 
 
+def default_acquisition_output_path() -> str:
+    """Return the configured standard output folder, or the working-path fallback.
+
+    The Settings panel's *standard output folder* (``gui["acquisition"]["output_path"]``)
+    wins; without one, ``<working path>/acquisition`` and finally
+    ``~/chisurf/acquisition``.
+    """
+    from chisurf import settings
+
+    configured = str((getattr(settings, "gui", {}).get("acquisition", {}) or {}).get(
+        "output_path", "") or "").strip()
+    if configured:
+        return str(Path(configured).expanduser())
+    working_path = getattr(settings, "working_path", "") or ""
+    if working_path:
+        return str(Path(working_path).expanduser() / "acquisition")
+    return str(Path.home() / "chisurf" / "acquisition")
+
+
+def configured_output_path() -> str:
+    """Return the standard output folder only when the user configured one, else ``""``."""
+    from chisurf import settings
+
+    configured = str((getattr(settings, "gui", {}).get("acquisition", {}) or {}).get(
+        "output_path", "") or "").strip()
+    return str(Path(configured).expanduser()) if configured else ""
+
+
 def _default_hardware_factory(device_type: str):
     """Load a Qt wrapper only after the operator explicitly initializes hardware."""
     from chisurf.plugins.core.acq.tcspc_devices.device_factory import TCSPCDevice
@@ -70,7 +98,8 @@ class AcquisitionNativeModel:
         self.device_type = "SIMULATION"
         self.time_limit_s, self.photon_limit = 900.0, 256
         self.channel_0, self.channel_1, self.channel_2, self.channel_3 = 8, 0, 9, 1
-        self.output_folder = ""
+        # Prefilled from the Settings panel; empty (nothing written) until one is configured.
+        self.output_folder = configured_output_path()
         self.brightness_khz, self.seed = 300.0, 12345
         self.show_decay, self.show_correlation, self.show_count_rate = True, True, True
         self.show_macrotime, self.show_mcs = False, False
@@ -78,6 +107,8 @@ class AcquisitionNativeModel:
         self.running = self.cancel_requested = self.initialized = False
         self.snapshot: dict[str, Any] | None = None
         self.live = LivePlots()
+        #: The registered :class:`AcquisitionDataset` the fit window shows, if any.
+        self.dataset: Any | None = None
         self.device: Any | None = None
         self.progress_percent = 0.0
         self._events: queue.Queue[tuple[str, Any]] = queue.Queue()
@@ -105,9 +136,24 @@ class AcquisitionNativeModel:
             return not self.running
         if action == "stop":
             return self.running
-        if action in {"clear", "reset", "save_settings", "load_settings", "output_browse"}:
+        if action in {"clear", "reset", "save_settings", "load_settings", "output_browse",
+                      "load_example"}:
             return not self.running
         return True
+
+    def load_example(self) -> None:
+        """Open the demo stream as a dataset with its Acquisition fit window (Load example)."""
+        if self.running:
+            return
+        from chisurf.plugins.core.acq.dataset import open_demo
+
+        try:
+            if self.dataset is not None:
+                self.dataset.close()
+            self.dataset = open_demo()
+            self.status = "Demo stream running: watch the Acquisition fit window."
+        except Exception as exc:
+            self.status = f"Could not open the demo fit window: {exc}"
 
     def open_device_setup(self) -> bool:
         """Request the selected device's native configuration card."""
@@ -349,6 +395,8 @@ class AcquisitionNativeModel:
             if kind == "snapshot":
                 self.snapshot = payload
                 self.live.set_snapshot(payload)
+                if self.dataset is not None:
+                    self.dataset.set_snapshot(payload)
                 limit = int(self.photon_limit)
                 if limit > 0:
                     self.progress_percent = min(99.0, 100.0 * payload["total_photons"] / limit)
@@ -357,6 +405,8 @@ class AcquisitionNativeModel:
             if kind == "result":
                 self.snapshot, cancelled, source = payload
                 self.live.set_snapshot(self.snapshot)
+                if self.dataset is not None:
+                    self.dataset.set_snapshot(self.snapshot)
                 label = DEVICE_LABELS.get(source, str(source))
                 self.status = f"{label} acquisition {'cancelled' if cancelled else 'complete'}: {int(self.snapshot['total_photons']):,} decoded photons."
             else:
@@ -561,7 +611,28 @@ class AcquisitionApp(ImApp):
             get_target_rect=lambda key: self.item_rects.get(key) or self.form.rects.get(key),
         )
         self.form.on_used = self.tour.notify_used
+        self._last_fit_update = 0.0
+        self._open_dataset()
         super().__init__(self.render, continuous=True)
+
+    def _open_dataset(self) -> None:
+        """Inside ChiSurf, open the demo stream's dataset and Acquisition fit window."""
+        import chisurf as cs
+
+        if getattr(cs, "cs", None) is not None:
+            self.model.load_example()
+
+    def _update_fits(self) -> None:
+        """Pull the dataset's newest snapshot and redraw the fit windows that show it."""
+        dataset = self.model.dataset
+        if dataset is None:
+            return
+        changed = dataset.refresh()
+        now = time.monotonic()
+        if not changed or now - self._last_fit_update < 0.1:
+            return
+        self._last_fit_update = now
+        dataset.update_fit()
 
     def _toolbar(self) -> None:
         """Draw the native Help and Guide buttons with useful tooltips."""
@@ -922,6 +993,7 @@ class AcquisitionApp(ImApp):
     def render(self) -> None:
         """Render one responsive frame and service model-requested native dialogs."""
         self.model.poll()
+        self._update_fits()
         vp = im.get_main_viewport()
         box = (*vp.pos, *vp.size)
         self.form.rects.clear()
@@ -953,6 +1025,8 @@ class AcquisitionApp(ImApp):
 
     def close(self) -> None:
         """Close a session through the model's safe cancellation lifecycle."""
+        if self.model.dataset is not None:
+            self.model.dataset.close()
         self.model.close()
 
 
