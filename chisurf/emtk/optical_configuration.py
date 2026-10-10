@@ -3,6 +3,7 @@
 import copy
 import json
 from pathlib import Path
+from emtk.i18n import tr
 
 from chisurf.core.optical_configuration import (
     _graph_to_config,
@@ -201,22 +202,22 @@ class OpticalConfigurationWidget:
             lambda: self.browse("save"),
         )
         if self.templates:
-            im.text("Built-in template:")
+            im.text(tr("Built-in template:"))
             changed, index = im.combo(
                 "##optical_template",
                 self.template_index,
                 ["Choose template"] + [p.stem for p in self.templates],
             )
             self.template_index = index
-            im.set_item_tooltip("Load a packaged instrument light-path template.")
+            im.set_item_tooltip(tr("Load a packaged instrument light-path template."))
             if changed and index > 0:
                 self._action(self.load, self.templates[index - 1])
-        im.text("Laser lines wavelength:power:")
+        im.text(tr("Laser lines wavelength:power:"))
         changed, value = im.input_text(
             "##optical_lasers", self.config.get("lasers", "488:1.0, 640:1.0")
         )
         im.set_item_tooltip(
-            "Comma-separated excitation lines in nanometers with relative powers, for example 488:1.0, 640:1.0."
+            tr("Comma-separated excitation lines in nanometers with relative powers, for example 488:1.0, 640:1.0.")
         )
         if changed:
             self.config["lasers"] = value
@@ -233,7 +234,7 @@ class OpticalConfigurationWidget:
                 maximum,
             )
             im.set_item_tooltip(
-                "Parameter used in the Förster-radius calculation for the selected fluorophores."
+                tr("Parameter used in the Förster-radius calculation for the selected fluorophores.")
             )
             if changed:
                 self.config[key] = value
@@ -279,7 +280,7 @@ class OpticalConfigurationWidget:
             changed, selected = im.combo(
                 "Splitter type", options.index(current) if current in options else 0, options
             )
-            im.set_item_tooltip("Choose a dichroic splitter or polarization splitter.")
+            im.set_item_tooltip(tr("Choose a dichroic splitter or polarization splitter."))
             if changed:
                 splitter["type"] = options[selected]
                 self.changed()
@@ -293,9 +294,9 @@ class OpticalConfigurationWidget:
                 lambda i=index: self._remove_splitter(i),
             )
             im.pop_id()
-        im.text("New optical detector name:")
+        im.text(tr("New optical detector name:"))
         _, self.new_detector = im.input_text("##new_optical_detector", self.new_detector)
-        im.set_item_tooltip("Name of the optical detector channel to add.")
+        im.set_item_tooltip(tr("Name of the optical detector channel to add."))
         self._button(
             "Add optical detector",
             "Add a detector channel with its bandpass and quantum-efficiency spectrum.",

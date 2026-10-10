@@ -35,6 +35,7 @@ import logging
 import typing
 
 from emtk import im, nodes
+from emtk.i18n import tr
 
 from .document import GraphDocument, GraphEdge, GraphNode
 
@@ -232,6 +233,7 @@ class NodeContentRenderer:
             if key in self.SLIDERS and isinstance(value, (int, float)):
                 low, high = self.SLIDERS[key]
                 moved, new = im.slider_float(key, float(value), low, high)
+                im.set_item_tooltip(tr("Adjust this node setting."))
                 if moved and not read_only:
                     node.config[key] = new
                     changed = True
@@ -239,11 +241,13 @@ class NodeContentRenderer:
                 options = self.COMBOS[key]
                 index = options.index(value) if value in options else 0
                 moved, new_index = im.combo(key, index, options)
+                im.set_item_tooltip(tr("Choose a value for this node setting."))
                 if moved and not read_only:
                     node.config[key] = options[new_index]
                     changed = True
             elif isinstance(value, bool):
                 moved, new = im.checkbox(key, value)
+                im.set_item_tooltip(tr("Toggle this node setting."))
                 if moved and not read_only:
                     node.config[key] = new
                     changed = True

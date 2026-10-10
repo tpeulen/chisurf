@@ -6,6 +6,7 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
+from emtk.i18n import tr
 from typing import Any, Callable, Sequence
 
 DEFAULT_KINDS = ("raw_data", "raw_measurement", "external_reference")
@@ -215,9 +216,9 @@ class DatasetPicker:
         if self._pending is not None:
             self._request_completion_frame()
             im.text_wrapped("Loading datasets…" if self._pending_kind == "browse" else "Opening dataset…")
-            if im.button("Cancel##dataset_pending_cancel") or pressed == "close":
+            if im.button(tr("Cancel") + "##dataset_pending_cancel") or pressed == "close":
                 self.close()
-            im.set_item_tooltip("Close the picker; the database operation can finish in the background.")
+            im.set_item_tooltip(tr("Close the picker; the database operation can finish in the background."))
             self._dialog.end()
             return
         for label, scope in (("Mine", "own"), ("Public", "public"), ("All", "all")):
@@ -228,12 +229,12 @@ class DatasetPicker:
             im.same_line()
         im.new_line()
         changed, self.query = im.input_text("Search##dataset_search", self.query)
-        im.set_item_tooltip("Search dataset names and metadata; press Refresh to apply.")
+        im.set_item_tooltip(tr("Search dataset names and metadata; press Refresh to apply."))
         if changed:
             self.page = 0
-        if im.button("Refresh##dataset_refresh"):
+        if im.button(tr("Refresh") + "##dataset_refresh"):
             self._request_refresh()
-        im.set_item_tooltip("Reload datasets with the current scope, search, kind and format filters.")
+        im.set_item_tooltip(tr("Reload datasets with the current scope, search, kind and format filters."))
         im.text_wrapped("Kinds: " + ", ".join(self.kinds) + " | Formats: " + ", ".join(self.formats or ["all"]))
         if self.error:
             im.text_wrapped("Database error: " + self.error)
@@ -247,25 +248,25 @@ class DatasetPicker:
                 self.select(artifact_id)
             im.set_item_tooltip(f"Select dataset {artifact_id}; sample: {dataset.get('sample_name') or dataset.get('sample_id') or 'unspecified'}.")
         if not self.datasets and not self.error:
-            im.text_wrapped("No datasets match these filters.")
+            im.text_wrapped(tr("No datasets match these filters."))
         im.end_child()
         im.begin_disabled(self.page == 0)
-        if im.button("Previous##dataset_previous"):
+        if im.button(tr("Previous") + "##dataset_previous"):
             self.page -= 1
             self._request_refresh()
-        im.set_item_tooltip("Show the previous page of datasets.")
+        im.set_item_tooltip(tr("Show the previous page of datasets."))
         im.end_disabled()
         im.same_line()
         im.begin_disabled((self.page + 1) * self.page_size >= self.total)
-        if im.button("Next##dataset_next"):
+        if im.button(tr("Next") + "##dataset_next"):
             self.page += 1
             self._request_refresh()
-        im.set_item_tooltip("Show the next page of datasets.")
+        im.set_item_tooltip(tr("Show the next page of datasets."))
         im.end_disabled()
         im.same_line()
         im.text(f"{self.total} datasets")
         im.begin_disabled(self.selection is None)
-        if im.button("Open selected##dataset_open_selected"):
+        if im.button(tr("Open selected") + "##dataset_open_selected"):
             if self.on_paths is None:
                 self.accept()
             else:
@@ -273,12 +274,12 @@ class DatasetPicker:
                 self._pending = _EXECUTOR.submit(resolve_local_path, self.client, self.selection)
                 self._pending_frame_hooked = False
                 self._request_completion_frame()
-        im.set_item_tooltip("Open the selected dataset in this tool; remote objects are downloaded by MMFDB.")
+        im.set_item_tooltip(tr("Open the selected dataset in this tool; remote objects are downloaded by MMFDB."))
         im.end_disabled()
         im.same_line()
-        if im.button("Cancel##dataset_cancel"):
+        if im.button(tr("Cancel") + "##dataset_cancel"):
             self.close()
-        im.set_item_tooltip("Close the picker without opening a dataset.")
+        im.set_item_tooltip(tr("Close the picker without opening a dataset."))
         self._dialog.end()
         if pressed == "close":
             self.close()

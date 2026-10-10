@@ -424,17 +424,17 @@ class ToolHubApp(ImApp):
         im.set_next_window_pos((0, 0), im.Cond.ALWAYS)
         im.set_next_window_size((left, height), im.Cond.ALWAYS)
         if im.begin(self.title, flags=im.WindowFlags.NO_RESIZE):
-            if im.button("Help"):
+            if im.button(tr("Help")):
                 self.help.show()
             im.set_item_tooltip(f"Read the {self.title} reference.")
             self.item_rects["help"] = im.get_item_rect()
             im.same_line()
-            if im.button("Guide"):
+            if im.button(tr("Guide")):
                 self.tour.start()
-            im.set_item_tooltip("A step-by-step walk through the tools, pointing at each control.")
+            im.set_item_tooltip(tr("A step-by-step walk through the tools, pointing at each control."))
             self.item_rects["guide"] = im.get_item_rect()
             _, self.filter = im.input_text(f"##Find {self.title}", self.filter, hint=tr("Search…"))
-            im.set_item_tooltip("Find tools by name or description.")
+            im.set_item_tooltip(tr("Find tools by name or description."))
             self.item_rects["search"] = im.get_item_rect()
             matching = {p["role"] for p in self.matching_panels()}
             for panel in self.panels:
@@ -474,9 +474,9 @@ class ToolHubApp(ImApp):
             if self.panel:
                 im.text_unformatted(tr(self.panel["name"]))
                 im.same_line()
-                if im.button("Tool help"):
+                if im.button(tr("Tool help")):
                     self.show_child_help()
-                im.set_item_tooltip("Read help for the selected tool.")
+                im.set_item_tooltip(tr("Read help for the selected tool."))
                 self.item_rects["tool_help"] = im.get_item_rect()
                 banners = [self.panel[flag + "_message"] for flag in MATURITY if self.panel.get(flag)]
                 if banners:
@@ -527,10 +527,10 @@ class ToolHubApp(ImApp):
             if im.begin(f"{self.title} tool unavailable", flags=im.WindowFlags.NO_RESIZE):
                 im.text_wrapped(tr("The selected tool could not be opened."))
                 im.text_wrapped(tr(self.errors[self.selected]))
-                if im.button("Retry"):
+                if im.button(tr("Retry")):
                     self.select(self.selected, retry=True)
                 self.item_rects["retry"] = im.get_item_rect()
-                im.set_item_tooltip("Build the tool again.")
+                im.set_item_tooltip(tr("Build the tool again."))
             im.end()
         if self._pending_next or self._ff_queue:
             self._advance()

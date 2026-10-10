@@ -6,6 +6,7 @@ import copy
 
 import numpy as np
 from emtk import im
+from emtk.i18n import tr
 
 from chisurf.core.roi import (
     COMBINE_OPS,
@@ -93,7 +94,7 @@ class RegionControls:
         m = self.model
         expanded = im.collapsing_header("Analysis regions", 0)
         im.set_item_tooltip(
-            "Restrict detection to named regions; empty or disabled regions use the entire frame."
+            tr("Restrict detection to named regions; empty or disabled regions use the entire frame.")
         )
         if not expanded:
             return
@@ -106,7 +107,7 @@ class RegionControls:
             "Combine regions", COMBINE_OPS.index(collection.combine), list(COMBINE_OPS)
         )
         im.set_item_tooltip(
-            "AND intersects, OR unions and XOR keeps pixels included by an odd number of enabled regions."
+            tr("AND intersects, OR unions and XOR keeps pixels included by an odd number of enabled regions.")
         )
         if changed:
             collection.combine = COMBINE_OPS[index]
@@ -117,18 +118,18 @@ class RegionControls:
             if im.selectable(name, self.selected == name):
                 self.selected = name
             im.set_item_tooltip(
-                "Select this analysis region for renaming, geometry edits, duplication or removal."
+                tr("Select this analysis region for renaming, geometry edits, duplication or removal.")
             )
-            changed, value = im.checkbox("Enabled", entry.enabled)
+            changed, value = im.checkbox(tr("Enabled"), entry.enabled)
             im.set_item_tooltip(
-                "Include this region in detection; disabled entries remain available for later use."
+                tr("Include this region in detection; disabled entries remain available for later use.")
             )
             if changed:
                 entry.enabled = value
                 self.changed()
             im.same_line()
-            changed, value = im.checkbox("Invert", entry.invert)
-            im.set_item_tooltip("Use pixels outside this region instead of inside it.")
+            changed, value = im.checkbox(tr("Invert"), entry.invert)
+            im.set_item_tooltip(tr("Use pixels outside this region instead of inside it."))
             if changed:
                 entry.invert = value
                 self.changed()
@@ -137,7 +138,7 @@ class RegionControls:
         if entry:
             changed, value = im.input_text("Region name", entry.name)
             im.set_item_tooltip(
-                "Name the selected region; names are kept unique when saved and restored."
+                tr("Name the selected region; names are kept unique when saved and restored.")
             )
             if changed and value.strip():
                 self.selected = collection.rename(self.selected, value)
@@ -163,7 +164,7 @@ class RegionControls:
                     step=0.5,
                 )
                 im.set_item_tooltip(
-                    "Geometric coordinate in image pixels; ellipse rotation is in radians."
+                    tr("Geometric coordinate in image pixels; ellipse rotation is in radians.")
                 )
                 if changed:
                     setattr(roi, attr, value)
@@ -172,9 +173,9 @@ class RegionControls:
                 for i, (x, y) in enumerate(roi.vertices):
                     im.push_id(i)
                     changed, newx = im.input_float("Vertex x", float(x), step=0.5)
-                    im.set_item_tooltip("Horizontal image coordinate of this polygon vertex.")
+                    im.set_item_tooltip(tr("Horizontal image coordinate of this polygon vertex."))
                     changed_y, newy = im.input_float("Vertex y", float(y), step=0.5)
-                    im.set_item_tooltip("Vertical image coordinate of this polygon vertex.")
+                    im.set_item_tooltip(tr("Vertical image coordinate of this polygon vertex."))
                     if changed or changed_y:
                         roi.vertices[i] = [newx, newy]
                         self.changed()
@@ -186,21 +187,21 @@ class RegionControls:
                     im.text_unformatted(
                         f"{props[0].area} px; mean intensity {props[0].intensity_mean:.3g}"
                     )
-            if im.button("Duplicate region"):
+            if im.button(tr("Duplicate region")):
                 self.duplicate()
-            im.set_item_tooltip("Copy the selected region including its enabled/inverted state.")
-            if im.button("Remove region"):
+            im.set_item_tooltip(tr("Copy the selected region including its enabled/inverted state."))
+            if im.button(tr("Remove region")):
                 collection.remove(self.selected)
                 self.selected = ""
                 self.changed()
-            im.set_item_tooltip("Delete the selected analysis region from the collection.")
-        if im.button("Save regions"):
+            im.set_item_tooltip(tr("Delete the selected analysis region from the collection."))
+        if im.button(tr("Save regions")):
             self.choose("save_regions")
         im.set_item_tooltip(
-            "Save all regions as JSON with flags, or export their raster labels as TIFF/NumPy."
+            tr("Save all regions as JSON with flags, or export their raster labels as TIFF/NumPy.")
         )
-        if im.button("Load regions"):
+        if im.button(tr("Load regions")):
             self.choose("load_regions")
         im.set_item_tooltip(
-            "Append regions from JSON, masks, label images or Cellpose segmentation files."
+            tr("Append regions from JSON, masks, label images or Cellpose segmentation files.")
         )

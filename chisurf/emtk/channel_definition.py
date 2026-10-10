@@ -789,7 +789,7 @@ class ChannelDefinitionWidget:
         index = names.index(bar.selected) if bar.selected in names else 0
         place(self._width("Setup:") + 230.0)
         im.align_text_to_frame_padding()
-        im.text("Setup:")
+        im.text(tr("Setup:"))
         im.same_line()
         im.set_next_item_width(220.0)
         changed, picked = im.combo("##setup_choice", index, names)
@@ -822,7 +822,7 @@ class ChannelDefinitionWidget:
             self._item(name, tip)
         place(self._width("Public") + 24.0)
         im.begin_disabled(not bar.can_public())
-        changed, value = im.checkbox("Public", bool(self.public))
+        changed, value = im.checkbox(tr("Public"), bool(self.public))
         self._item(
             "public",
             "When checked, the setup is visible to all users in the MMFDB; it takes effect with Save. Only the owner of a saved setup can change this.",
@@ -834,7 +834,7 @@ class ChannelDefinitionWidget:
         picked_index = items.index(self.calibration) if self.calibration in items else 0
         place(self._width("Calibration:") + 200.0)
         im.align_text_to_frame_padding()
-        im.text("Calibration:")
+        im.text(tr("Calibration:"))
         im.same_line()
         im.set_next_item_width(190.0)
         changed, picked = im.combo("##calibration_choice", picked_index, items)
@@ -851,7 +851,7 @@ class ChannelDefinitionWidget:
         place(self._width("?") + 8.0)
         for col, rgba in zip((Col.BUTTON, Col.BUTTON_HOVERED, Col.BUTTON_ACTIVE), RED_BUTTON):
             im.push_style_color(col, rgba)
-        if im.button("?##page_help"):
+        if im.button(tr("?") + "##page_help"):
             self.help_window.show()
             self._used("page_help")
         im.pop_style_color(3)
@@ -865,7 +865,7 @@ class ChannelDefinitionWidget:
         from emtk import im, style
 
         reading = self.model.data["tttr_reading"]
-        im.text("TTTR Reading Routine:")
+        im.text(tr("TTTR Reading Routine:"))
         current = str(reading.get("file_type") or "Auto")
         shown = "Auto" if current.lower() == "auto" else current
         options = list(FILE_TYPES) + ([shown] if shown not in FILE_TYPES else [])
@@ -881,7 +881,7 @@ class ChannelDefinitionWidget:
                 self.model.changed()
                 self._used("file_type")
             im.same_line()
-            if im.button("Read"):
+            if im.button(tr("Read")):
                 self.browse("measurement")
                 self._used("read")
             self._item(
@@ -960,7 +960,7 @@ class ChannelDefinitionWidget:
         plotting = self.preview_window.open
         if plotting:
             im.push_style_color(im.Col.BUTTON, style.BUTTON_ACTIVE)
-        if im.button("Plot"):
+        if im.button(tr("Plot")):
             self.preview_window.toggle()
             self._used("plot")
         if plotting:
@@ -1502,10 +1502,10 @@ class ChannelDefinitionWidget:
 
         if self.is_visible("add_inputs"):
             im.align_text_to_frame_padding()
-            im.text("PIE Windows")
+            im.text(tr("PIE Windows"))
             im.same_line(self._width("PIE Windows"))
             width = max(im.get_content_region_avail()[0], 40.0)
-            if im.button("Add##add_window", (width, 0.0)):
+            if im.button(tr("Add") + "##add_window", (width, 0.0)):
                 self.add_window()
                 self._used("add_window")
             self._item(
@@ -1522,10 +1522,10 @@ class ChannelDefinitionWidget:
 
         if self.is_visible("add_inputs"):
             im.align_text_to_frame_padding()
-            im.text("Detectors")
+            im.text(tr("Detectors"))
             im.same_line(self._width("PIE Windows"))
             width = max(im.get_content_region_avail()[0], 40.0)
-            if im.button("Add##add_detector", (width, 0.0)):
+            if im.button(tr("Add") + "##add_detector", (width, 0.0)):
                 self.add_detector()
                 self._used("add_detector")
             self._item(
@@ -1563,7 +1563,7 @@ class ChannelDefinitionWidget:
         from chisurf.plugins.emtk_layout import button_row
 
         changed, value = im.checkbox(
-            "Apply TAC linearization (LUT) when reading", bool(self.model.data.get("apply_lut"))
+            tr("Apply TAC linearization (LUT) when reading"), bool(self.model.data.get("apply_lut"))
         )
         self._item(
             "apply_lut",
@@ -1690,11 +1690,11 @@ class ChannelDefinitionWidget:
                 "lut": "TAC linearization tables and micro-time shifts per routing channel.",
             }[key]
             if key == "detectors":
-                right = self._width("Polarization resolved") + 28.0
+                right = self._width(tr("Polarization resolved")) + 28.0
                 opened = self._section(key, title, tip, right=right)
                 im.same_line()
                 changed, value = im.checkbox(
-                    "Polarization resolved",
+                    tr("Polarization resolved"),
                     bool(self.model.data.get("polarization_resolved", True)),
                 )
                 self._item(
@@ -1724,7 +1724,7 @@ class ChannelDefinitionWidget:
             max(im.get_content_region_avail()[0] - width - im.get_style().item_spacing[0], 0.0), 1.0
         )
         im.same_line()
-        if im.button("Optical Setup..."):
+        if im.button(tr("Optical Setup...")):
             self.optical_window.show()
             self._used("optical")
         self._item(
@@ -1733,9 +1733,9 @@ class ChannelDefinitionWidget:
         )
         im.end_disabled()
         if self._future is not None or self._reference_future is not None:
-            if im.button("Cancel calibration read"):
+            if im.button(tr("Cancel calibration read")):
                 self.cancel_read()
-            im.set_item_tooltip("Cancel staged reading and keep previous calibration values.")
+            im.set_item_tooltip(tr("Cancel staged reading and keep previous calibration values."))
         if self.status:
             im.text_wrapped(self.status)
 
@@ -1752,7 +1752,7 @@ class ChannelDefinitionWidget:
             from emtk import im
 
             im.text_wrapped(
-                "Read a measurement to see the micro-time decay of every routing channel."
+                tr("Read a measurement to see the micro-time decay of every routing channel.")
             )
             return
         if implot.begin_plot("Micro-time decay##plot", size):
@@ -1851,7 +1851,7 @@ class ChannelDefinitionWidget:
             )
             im.set_next_item_width(-1.0)
             changed, value = im.input_text("##setup_name_prompt", bar.name_text)
-            im.set_item_tooltip("The name the setup is stored under.")
+            im.set_item_tooltip(tr("The name the setup is stored under."))
             self.item_rects["name_prompt"] = im.get_item_rect()
             if changed:
                 bar.name_text = value
@@ -1883,7 +1883,7 @@ class ChannelDefinitionWidget:
         im.same_line()
         if im.button(keep):
             bar.cancel()
-        im.set_item_tooltip("Close this prompt; nothing changes.")
+        im.set_item_tooltip(tr("Close this prompt; nothing changes."))
         window.end()
         if pressed == "close":
             bar.cancel()
@@ -1895,14 +1895,14 @@ class ChannelDefinitionWidget:
             return
         pressed = self.question_window.begin(frame)
         im.text_wrapped(self.question)
-        if im.button("Yes"):
+        if im.button(tr("Yes")):
             self.question_window.hide()
             self.lut_window.show()
-        im.set_item_tooltip("Open the LUT tools to compute a LUT now.")
+        im.set_item_tooltip(tr("Open the LUT tools to compute a LUT now."))
         im.same_line()
-        if im.button("No"):
+        if im.button(tr("No")):
             self.question_window.hide()
-        im.set_item_tooltip("Keep reading the channels without a LUT raw.")
+        im.set_item_tooltip(tr("Keep reading the channels without a LUT raw."))
         self.question_window.end()
         if pressed == "close":
             self.question_window.hide()
@@ -1920,16 +1920,16 @@ class ChannelDefinitionWidget:
 
         channels = self.used_channels()
         if not channels:
-            im.text_wrapped("Define detectors or read a measurement to discover routing channels.")
+            im.text_wrapped(tr("Define detectors or read a measurement to discover routing channels."))
             return
         self.lut_channel()
-        im.text("Routing channel:")
+        im.text(tr("Routing channel:"))
         im.same_line()
         im.set_next_item_width(NUMBER_W)
         changed, index = im.combo(
             "##lut_channel", channels.index(self.selected_channel), [str(c) for c in channels]
         )
-        im.set_item_tooltip("Routing channel whose LUT is computed, assigned, exported or removed.")
+        im.set_item_tooltip(tr("Routing channel whose LUT is computed, assigned, exported or removed."))
         if changed:
             self.selected_channel = channels[index]
         key = str(self.selected_channel)
@@ -2043,7 +2043,7 @@ class ChannelDefinitionWidget:
             )
             if value is not None:
                 self._shift_draft[channel] = value
-        if im.button("OK##shift_ok"):
+        if im.button(tr("OK") + "##shift_ok"):
             self.model.data["channel_shifts"] = {
                 str(c): int(s) for c, s in self._shift_draft.items() if int(s)
             }
@@ -2051,11 +2051,11 @@ class ChannelDefinitionWidget:
             self._lut_sig = None
             self.refresh_preview()
             self.shift_window.hide()
-        im.set_item_tooltip("Keep the shifts shown.")
+        im.set_item_tooltip(tr("Keep the shifts shown."))
         im.same_line()
-        if im.button("Cancel##shift_cancel"):
+        if im.button(tr("Cancel") + "##shift_cancel"):
             self.shift_window.hide()
-        im.set_item_tooltip("Close without changing the shifts.")
+        im.set_item_tooltip(tr("Close without changing the shifts."))
 
     def _preview_body(self):
         from emtk import im

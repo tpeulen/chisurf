@@ -143,7 +143,7 @@ class ImageCanvas:
             self.z = int(np.clip(self.z, 0, source.shape[0] - 1))
             _, self.z = bounded_int("Z slice", self.z, minimum=0, maximum=source.shape[0] - 1)
             im.set_item_tooltip(
-                "Browse the axial stack; image picks and bead overlays refer to this slice."
+                tr("Browse the axial stack; image picks and bead overlays refer to this slice.")
             )
         maps = ["magma", "inferno", "viridis", "gray"]
         im.text_unformatted("Colormap")
@@ -151,24 +151,24 @@ class ImageCanvas:
             "##Colormap", maps.index(self.colormap) if self.colormap in maps else 0, maps
         )
         self.colormap = maps[index]
-        im.set_item_tooltip("Color scale of the image; pixel values and fits remain unchanged.")
+        im.set_item_tooltip(tr("Color scale of the image; pixel values and fits remain unchanged."))
         im.text_unformatted("Display gamma")
         _, self.gamma = bounded_float(
             "##Display gamma", self.gamma, minimum=0.1, maximum=5.0, step=0.1
         )
         im.set_item_tooltip(
-            "Lift dim structures with gamma above one; display changes do not affect detection or fitting."
+            tr("Lift dim structures with gamma above one; display changes do not affect detection or fitting.")
         )
-        _, self.auto_levels = im.checkbox("Automatic levels", self.auto_levels)
-        im.set_item_tooltip("Map the minimum and maximum finite image values to the color range.")
+        _, self.auto_levels = im.checkbox(tr("Automatic levels"), self.auto_levels)
+        im.set_item_tooltip(tr("Map the minimum and maximum finite image values to the color range."))
         if not self.auto_levels:
             _, self.low = im.input_float("Display minimum", self.low, step=1.0)
-            im.set_item_tooltip("Set the lower display level without changing stored pixel values.")
+            im.set_item_tooltip(tr("Set the lower display level without changing stored pixel values."))
             _, self.high = im.input_float("Display maximum", self.high, step=1.0)
-            im.set_item_tooltip("Set the upper display level without changing stored pixel values.")
-        if im.button("Reset view"):
+            im.set_item_tooltip(tr("Set the upper display level without changing stored pixel values."))
+        if im.button(tr("Reset view")):
             self._reset_axes = True
-        im.set_item_tooltip("Restore the full-image view after zooming or panning.")
+        im.set_item_tooltip(tr("Restore the full-image view after zooming or panning."))
         texture = self.texture(source)
         ny, nx = source.shape[-2:]
         available = im.get_content_region_avail()
@@ -393,7 +393,7 @@ class ImageCanvas:
                 self.rect = (*pos, *size)
                 implot.end_plot()
                 im.set_item_tooltip(
-                    "Click a bead/spot to fit it. Drag to pan, scroll to zoom; blue handles edit analysis regions. Found and picked outlines are measured results."
+                    tr("Click a bead/spot to fit it. Drag to pan, scroll to zoom; blue handles edit analysis regions. Found and picked outlines are measured results.")
                 )
         finally:
             input_map.pan, input_map.fit = previous_pan, previous_fit

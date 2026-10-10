@@ -1,9 +1,6 @@
 # Initial measured release tooltip debt (2026-10-08); only shrink this file.
 # A passing baseline guard does not mean tooltip coverage is complete.
 # All1143declarations remain assigned to their owning GUI families until removed.
-chisurf/emtk/node_editor/control.py#NodeContentRenderer.draw_body/checkbox(key)[1]:control-tooltip
-chisurf/emtk/node_editor/control.py#NodeContentRenderer.draw_body/combo(key)[1]:control-tooltip
-chisurf/emtk/node_editor/control.py#NodeContentRenderer.draw_body/slider_float(key)[1]:control-tooltip
 modules/chimol/chimol/ui/data/appearance.view.json#/sections/0:section-tooltip
 modules/chimol/chimol/ui/data/appearance.view.json#/sections/1:section-tooltip
 modules/chimol/chimol/ui/data/appearance.view.json#/sections/2:section-tooltip
