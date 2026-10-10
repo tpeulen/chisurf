@@ -96,8 +96,10 @@ class TetrisGame(TetrisModel, chigame.Game):
         class QtInputs:
             def just_pressed(self, action):
                 return keys.just_pressed(Action(action))
+
             def is_held(self, action):
                 return keys.is_held(Action(action))
+
         super().update(dt, QtInputs())
 
     def _cell_center(self, col: int, row: int) -> tuple[float, float]:

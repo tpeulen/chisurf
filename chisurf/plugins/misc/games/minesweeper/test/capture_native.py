@@ -1,4 +1,5 @@
 """Capture populated native boards; --qt also captures the legacy game renderer."""
+
 import sys
 from pathlib import Path
 
@@ -26,6 +27,7 @@ def main():
             from chisurf.gui import chigame
 
             from ..gui.tool import MinesweeperChiGame
+
             application = QApplication.instance() or QApplication([])
             application.processEvents()
 
@@ -33,7 +35,9 @@ def main():
                 if frame == 0:
                     populate(host.game.game)
 
-            frame = chigame.capture(MinesweeperChiGame(), size=(width, height), frames=2, script=script)
+            frame = chigame.capture(
+                MinesweeperChiGame(), size=(width, height), frames=2, script=script
+            )
             chigame.save_png(frame, OUTPUT / f"qt-game-{width}x{height}.png")
         app = make_app()
         populate(app.game)

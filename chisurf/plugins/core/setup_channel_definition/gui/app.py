@@ -59,7 +59,9 @@ class SetupChannelDefinitionApp(ImApp):
         self.model = self.page.model
         #: Rectangles of the named controls (tests, guided tours, embedding hosts): the page's and this app's.
         self.item_rects: dict[str, tuple] = self.page.item_rects
-        self.help_window = EmTkHelpWindow(title="Setup: Channel Definition - Help", resource=HERE / "help.md", owner=self)
+        self.help_window = EmTkHelpWindow(
+            title="Setup: Channel Definition - Help", resource=HERE / "help.md", owner=self
+        )
         self.tour = EmTkGuidedTour(
             steps=HERE / "guide.json",
             owner=self,
@@ -106,7 +108,9 @@ class SetupChannelDefinitionApp(ImApp):
         if not self.page.is_visible("help"):
             return
         width = self._width("Guide") + self._width("Help") + im.get_style().item_spacing[0]
-        im.dummy(max(im.get_content_region_avail()[0] - width - im.get_style().item_spacing[0], 0.0), 1.0)
+        im.dummy(
+            max(im.get_content_region_avail()[0] - width - im.get_style().item_spacing[0], 0.0), 1.0
+        )
         im.same_line()
         if im.button("Guide"):
             self.tour.start()
@@ -114,7 +118,10 @@ class SetupChannelDefinitionApp(ImApp):
         im.same_line()
         if im.button("Help"):
             self.help_window.show()
-        self._item("help", "Explain the page: setups, the reading routine, PIE windows, detectors, units of micro-time ranges and LUTs.")
+        self._item(
+            "help",
+            "Explain the page: setups, the reading routine, PIE windows, detectors, units of micro-time ranges and LUTs.",
+        )
 
     def _item(self, name: str, tooltip: str) -> None:
         """Tooltip and tour rectangle for the control just drawn."""

@@ -1,4 +1,6 @@
 """The original chigame spectral colour mapping, without its GUI imports."""
+
+
 def wavelength_to_srgb(nanometres: float) -> tuple[float, float, float]:
     """Convert a visible wavelength to an approximate sRGB colour.
 
@@ -48,5 +50,3 @@ def wavelength_to_srgb(nanometres: float) -> tuple[float, float, float]:
     else:
         falloff = 1.0
     return r * falloff, g * falloff, b * falloff
-
-

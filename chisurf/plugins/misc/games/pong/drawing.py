@@ -1,4 +1,5 @@
 """Plugin-owned bitmap font from the legacy chigame pixel face."""
+
 import json
 from pathlib import Path
 
@@ -6,10 +7,11 @@ from emtk import im
 
 GLYPHS = json.loads(Path(__file__).with_name("glyphs.json").read_text())
 
+
 def pixel_text(draw, text, pos, height, colour, align="left"):
     """Draw the original proportional pixel face, with Unicode fallback."""
     if any(char not in GLYPHS for char in text):
-        im.push_font_scale(max(.3, height / 12))
+        im.push_font_scale(max(0.3, height / 12))
         width, line_height = draw.calc_text_size(text)
         x = pos[0] - (width / 2 if align == "center" else width if align == "right" else 0)
         draw.add_text((x, pos[1] - line_height / 2), colour, text)
@@ -33,10 +35,9 @@ def pixel_text(draw, text, pos, height, colour, align="left"):
         x += (width + 1) * unit
 
 
-
 def text_width(draw, text, height):
     if any(char not in GLYPHS for char in text):
-        im.push_font_scale(max(.3, height / 12))
+        im.push_font_scale(max(0.3, height / 12))
         width, _ = draw.calc_text_size(text)
         im.pop_font_scale()
         return width

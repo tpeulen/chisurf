@@ -1,4 +1,5 @@
 """Capture the retained Qt GPU Tetris view with a populated well."""
+
 from pathlib import Path
 
 from qtpy.QtWidgets import QApplication

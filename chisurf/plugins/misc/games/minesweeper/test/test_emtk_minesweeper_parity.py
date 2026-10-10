@@ -61,18 +61,29 @@ def qt():
     pytest.importorskip("qtpy")
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT, json.dumps(sorted(MINES)), json.dumps(SCRIPT)],
-                          capture_output=True, text=True, timeout=300, env=env, cwd=str(REPO))
+    proc = subprocess.run(
+        [sys.executable, "-c", _QT, json.dumps(sorted(MINES)), json.dumps(SCRIPT)],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env=env,
+        cwd=str(REPO),
+    )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and ("No module named" in proc.stderr or "could not connect to display" in proc.stderr):
+    if line is None and (
+        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
+    ):
         pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
     # Any other failure is the Qt view's own: skipping it hid a broken Qt host.
     assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS"):])
+    return json.loads(line[len("FACTS") :])
 
 
 def _board_counts(game):
-    return (sum(c.revealed for r in game.board for c in r), sum(c.flagged for r in game.board for c in r))
+    return (
+        sum(c.revealed for r in game.board for c in r),
+        sum(c.flagged for r in game.board for c in r),
+    )
 
 
 # 1. the same presses on the same board give the same game
@@ -90,11 +101,24 @@ def test_a_scripted_game_matches_the_qt_view(qt):
 
 # 2. the same keys
 def test_bindings_match_the_qt_view(qt):
-    keycode = {"ArrowUp": KEY_UP, "ArrowDown": KEY_DOWN, "ArrowLeft": KEY_LEFT, "ArrowRight": KEY_RIGHT,
-               "Enter": KEY_ENTER}
-    effect = {"UP": ("move", (-1, 0)), "DOWN": ("move", (1, 0)), "LEFT": ("move", (0, -1)),
-              "RIGHT": ("move", (0, 1)), "CONFIRM": ("reveal",), "MENU": ("flag",), "CANCEL": ("restart",),
-              "SHOULDER_L": ("change_difficulty", -1), "SHOULDER_R": ("change_difficulty", 1)}
+    keycode = {
+        "ArrowUp": KEY_UP,
+        "ArrowDown": KEY_DOWN,
+        "ArrowLeft": KEY_LEFT,
+        "ArrowRight": KEY_RIGHT,
+        "Enter": KEY_ENTER,
+    }
+    effect = {
+        "UP": ("move", (-1, 0)),
+        "DOWN": ("move", (1, 0)),
+        "LEFT": ("move", (0, -1)),
+        "RIGHT": ("move", (0, 1)),
+        "CONFIRM": ("reveal",),
+        "MENU": ("flag",),
+        "CANCEL": ("restart",),
+        "SHOULDER_L": ("change_difficulty", -1),
+        "SHOULDER_R": ("change_difficulty", 1),
+    }
     for key, action in qt["bindings"].items():
         app = make_app()
         seen = []
@@ -155,14 +179,15 @@ def test_a_held_direction_repeats_like_the_qt_view():
     app.cursor_row, app.cursor_col = 0, 0
     app.key(KEY_RIGHT)
     assert app.cursor_col == 1
-    app.key(KEY_RIGHT)                       # an auto-repeated press from the host
+    app.key(KEY_RIGHT)  # an auto-repeated press from the host
     assert app.cursor_col == 1
-    def frames(seconds):                     # 10 ms frames (advance clamps one frame to 0.1 s)
+
+    def frames(seconds):  # 10 ms frames (advance clamps one frame to 0.1 s)
         for _ in range(round(seconds / 0.01)):
             app.advance(0.01)
 
     frames(0.29)
-    assert app.cursor_col == 1               # still in the initial delay
+    assert app.cursor_col == 1  # still in the initial delay
     frames(0.16)
     assert app.cursor_col == 3
     app.key_release(KEY_RIGHT)

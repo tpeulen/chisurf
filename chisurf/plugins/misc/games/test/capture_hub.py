@@ -44,7 +44,9 @@ def qt():
     window.nav_list.setCurrentRow(1)
     application.processEvents()
     game_widgets = window.panels[1]["instance"].findChildren(QtWidgets.QWidget)
-    game_widget = next((w for w in game_widgets if hasattr(w, "game") and hasattr(w.game, "game")), None)
+    game_widget = next(
+        (w for w in game_widgets if hasattr(w, "game") and hasattr(w.game, "game")), None
+    )
     if game_widget is not None:
         populate(game_widget.game.game)
     else:

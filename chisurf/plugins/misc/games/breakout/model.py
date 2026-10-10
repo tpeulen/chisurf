@@ -1,4 +1,5 @@
 """Breakout physics shared by Qt and EMTK, with no toolkit imports."""
+
 from __future__ import annotations
 
 import math
@@ -320,15 +321,15 @@ class BreakoutModel:
         keys : chisurf.gui.chigame.input.InputMap
             Controller state.
         """
-        if keys.just_pressed('menu'):
+        if keys.just_pressed("menu"):
             self.paused = not self.paused
-        if keys.just_pressed('cancel'):
+        if keys.just_pressed("cancel"):
             self.restart()
             return
-        if keys.just_pressed('shoulder_r'):
+        if keys.just_pressed("shoulder_r"):
             self.muted = not self.muted
         if self.message is not None:
-            if keys.just_pressed('confirm'):
+            if keys.just_pressed("confirm"):
                 self.restart()
             return
         if self.paused:
@@ -339,7 +340,7 @@ class BreakoutModel:
 
         if self.stuck:
             self.ball_x = self.paddle_x
-            if keys.just_pressed('confirm'):
+            if keys.just_pressed("confirm"):
                 self.launch()
         else:
             self._move_ball(dt)
@@ -430,4 +431,3 @@ class BreakoutModel:
         if all(not brick.alive for brick in self.bricks):
             self.level += 1
             self.init_level()
-
