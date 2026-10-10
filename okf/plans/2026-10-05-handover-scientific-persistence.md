@@ -1,3 +1,11 @@
+---
+type: Plan
+title: Handover — ChiSurf scientific session persistence (2026-10-05)
+description: 'Repair ChiSurf project/session persistence so that:'
+tags: [plans]
+timestamp: 2026-10-05T13:55:57+02:00
+---
+
 # Handover — ChiSurf scientific session persistence (2026-10-05)
 
 ## Goal

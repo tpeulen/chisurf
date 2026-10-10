@@ -165,43 +165,6 @@ because the next person to try will spend the same half hour on `record type -1`
 Fix belongs in tttrlib: a record type for in-memory streams (or a PTO header
 writer), and an HDF5 version check that raises instead of aborting.
 
-## A simulated photon stream cannot be persisted, and the HDF5 path aborts the process
-
-status: resolved 2026-10-10 — re-measured on tttrlib 0.27.0: an in-memory stream (record type -1) writes PTO, SPC-130, PTU and HDF5 with `True` and non-empty files; HDF5 no longer aborts.
-
-**Found 2026-08-10** while capturing a pre-split baseline for
-[PRD-92](/prds/prd-92.md), which wanted the simulated CLSM stream stored beside
-the labels it produced so an equivalence test could re-derive the whole chain
-rather than its two ends.
-
-**`TTTR.write` itself is fine**, including the `"PTO"` container: a stream read
-from a real file (`m000.spc`, 174,438 photons) writes a 1.2 MB `.pto` and a
-1.2 MB `.spc`, both returning `True`. The limitation is specific to a stream
-**built in memory** — what `simulate_clsm_molecules` returns. It carries
-`get_tttr_record_type() == -1`, `TTTRHeader.ensure_minimal_tags(header, 20, n)`
-does not give it one, and PTO header writing is not implemented in the installed
-build (`Error in TTTR::write, writing of headers not implemented`). The write
-then returns `False` and leaves a **0-byte file**, with nothing raised — so a
-caller that does not check the return value gets an empty container and
-discovers it later.
-
-**The HDF5 path is worse and is a separate defect.** `tttr.write(path)` with the
-HDF5 default `abort()`s the interpreter — the installed tttrlib was compiled
-against HDF5 headers 1.14.6 and links a 2.1.1 library, and the library's version
-check kills the process rather than raising. A dependency mismatch should not be
-able to end a user's session.
-
-Neither is worked around in ChiSurf, and neither should be: **ChiSurf persists
-to `.mmfdb.pto`**, and the container writers (`Measurement.create`,
-`write_imaging_table`, `write_image`, `write_regions`) all embed files that
-already exist on disk, so nothing in the shipped tree hits either path. It is
-recorded because the *tests* want it — a simulated measurement that cannot be
-stored is a fixture that has to be a pile of derived arrays instead — and
-because the next person to try will spend the same half hour on `record type -1`.
-
-Fix belongs in tttrlib: a record type for in-memory streams (or a PTO header
-writer), and an HDF5 version check that raises instead of aborting.
-
 ## ALEX French batch label exceeds its pane (2026-10-09)
 
 status: queued
@@ -396,6 +359,66 @@ outputs in the W6g primary-spec evidence, preserving the existing document
 edits. Re-run `pixi run -e docs docs-plugins` in a private owned-source tree and
 compare the three pages. Do not overwrite them from a dirty-tree generator.
 
+## Demo documentation validation: foreign source metadata drift (2026-10-08)
+
+status: open
+
+The active demo unit's link checks pass. Its source-attribution guard sees1,617
+scalar entries in four unrelated foreign working-tree pages: factor_graphs,
+frap, us_alex and fundamentals/instrumentation. The corresponding committed
+HEAD has zero malformed entries; none is introduced by these21doccandidates.
+Do not absorb or overwrite those foreign edits to obtain a green local test.
+Re-derive with targeted test/test_docs_sources.py and the docs receipt in the
+[demo archive](../validation/release-readiness-w6g/demo-contracts-final-source.zip).
+Resolve with those pages' owner during W0/W14 integration.
+
+## ndX inherited frame/launcher static diagnostics (2026-10-08)
+
+status: open
+
+The declared-window unit preserves eight existing Ruff findings (import sorting,
+quoted annotation, legacy Dict spelling) and eight mypy findings in frame.py
+(names annotation, optional tuple/message/drag state, and pointer_release call
+inference). Original/final identities are in static-baseline-diagnostics.json
+inside [exact owner archive](../validation/release-readiness-w6g/ndx-window-final-source.zip).
+No suppression was added. Owner45geometry/data tests pass; these do not prove
+all unrelated callback paths. The callable pointer_release signature accepts
+x/y/button/modifiers; its starred tuple inference is not a demonstrated runtime
+failure. Static cleanup requires a separate bounded behavior-preserving plan;
+the geometry source excludes six foreign sibling changes. Re-derive with the
+same ChiSurf Ruff config and test-environment mypy follow-imports=skip as the
+recorded before/after commands. Programme root owns this follow-up; do not
+interpret unchanged baseline counts as clean static analysis.
+
+## FPS card inherited typing diagnostics (2026-10-08)
+
+status: open
+
+Thirteenexisting mypy findings in fps_json.py remain unchanged by the host
+geometry declaration: dynamic _View.card/ed attributes assigned via
+object.__setattr__, cache/drawsignature annotations, sideeffect tuples involving
+None-returning sync_status, andexactremaining messages recorded in
+static-baseline-diagnostics.json inside [cardarchive](../validation/release-readiness-w6g/fps-card-window-final-source.zip).
+No suppression ornewruntime failure is introduced. Actual11AV computation,
+scoring/FlexFit/renderer andsavedgeometry tests pass; these do not prove all
+unrelated callback paths. Re-derive using recorded before/final commands and
+same testenvmypy. Rootowns a separate bounded behavior-preserving typing cleanup
+plan; geometry acceptance is qualified, not a cleanstatic claim.
+
+## Spectral model inherited typing limits (2026-10-08)
+
+status: open
+
+FLCSgui/model.py retains16exactbefore/finalmypy identities; corelifetime-FCS
+simulate.py retains its dataclass total_decay ndarray=None annotation. No new
+runtimefailure orsuppression is inferred. Fullmessages/commands/originals are
+in [spectralarchive](../validation/release-readiness-w6g/spectral-window-final-source.zip)
+and [backgroundarchive](../validation/release-readiness-w6g/lfcs-background-final-source.zip).
+ActualNNLS/MEM/correlation anduniformbackground/zero-signalphysics tests pass;
+this is not cleanstaticanalysis. Rootowns a separate boundedtypingcleanup with
+existingbehavior locked; do not alter numericalalgorithms orregolden spectra
+to silence these diagnostics.
+
 ## Native detector caller and mixin static declarations incomplete (2026-10-07)
 
 status: open
@@ -474,7 +497,253 @@ only list paths. Three exact-tree cold regressions pass; pixi namespace and
 arm64 regular-package cold imports preserve source precedence and exit zero.
 Foreign lazy-loader work is retained separately. [Owning explanation](imp-ecosystem.md).
 
+## Resolved: shared-server lifecycle contracts and the stale 43-case record
+
+status: open
+
+**Resolved measurement, 2026-10-07:** the complete targeted lifecycle file now
+passes 75 cases in 9.93s under isolated settings/MMFDB/object/cache paths and
+owned ephemeral server ports. The watchdog was inactive and the process
+exited 0; no shared-state failure, startup timeout or hang reproduced. Current
+committed tests already use Lifetime, real 64-point decays, RemoteError and
+scientific .cs.pto persistence contracts (`a67d359b2`, `4c21a578b`,
+`d577d93c1`). No new fixture change is justified by this stale baseline.
+[JUnit receipt](../validation/release-readiness-w7/server-lifecycle.xml).
+The following paragraphs are retained history, not an outstanding failure.
+
+**The RPC server could not build a fit at all.** ``fit_create`` resolves a model
+by walking ``Model.__subclasses__()``, which only sees *imported* classes, and
+the server imports none of them: measured in a fresh server process, exactly
+**one** model class was reachable ("Global fit", pulled in by the fitting
+machinery). Every ``fit.create`` naming a real model answered ``model 'X' not
+found``. It now runs the same headless bootstrap the agent layer uses
+(``ensure_experiments_registered``), which brings the count to 43, and the error
+lists what *is* available.
+
+Two more, each hidden behind the first:
+
+* ``FitGroup`` **iterates** its data to build one member fit per dataset, and a
+  bare ``DataCurve`` iterates into ``(x, y)`` tuples — so the single-dataset
+  path built member fits whose ``data`` was a tuple and the first read of
+  ``data.x`` failed. It takes a ``DataGroup``, one dataset or several.
+* A server-created fit had the range ``(0, 0)`` and could be created but never
+  run (``Improper input: N=4 must not exceed M=(0,)``). ``fit_create`` now
+  initialises it from the reader's ``autofitrange``, falling back to the whole
+  curve for a dataset that arrived as raw ``curve_data`` and has no reader.
+
+Also fixed: ``fit_set_dataset`` did not accept ``fit_uid`` while the dispatcher
+passes it, and ``fit_set_result_idx`` made ``fit_index`` a required positional —
+so addressing either by uid, the documented way, raised ``TypeError`` inside the
+dispatcher. And ``Fit.set_result_idx`` documented "clipped to the valid range"
+while ``np.clip(idx, 0, len(results) - 1)`` returns **-1** for an empty deque and
+then indexes it: "this fit has not been run yet" reached the caller as
+``IndexError: deque index out of range``.
+
+### What is left, and the trap in measuring it
+
+43 failures across 12 classes in ``test_integration_lifecycle.py``. **They do not
+reproduce class by class**: ``TestErrorBoundary`` passes **12/12 alone** and
+fails 3 in the full file, and ``TestProxyRpcErrorHandling`` passes 6/6 alone and
+fails 6 in it. The file shares one module-scoped server and client
+(``_client()``) and resets only datasets and fits between tests
+(``reset_state`` → ``fit__clear`` / ``dataset__clear``), so anything else a test
+leaves behind is inherited by the next one. **Fix the isolation before chasing
+any individual assertion** — a per-test failure here may be a previous test's
+residue, and a fix verified on one class is not verified.
+
+Three classes have been ported and pass in isolation (``TestErrorBoundary``,
+``TestProxyRpcErrorHandling``, ``TestChisurfRunPattern``); the pattern for the
+rest is the same. A failing call **raises** ``RemoteError`` — service errors are
+carried in the JSON-RPC ``error`` member (SV-04) — and these tests still assert
+``not result.get("ok")``, which never described the contract: it also passes on
+success, because a result payload has no ``"ok"`` key either. Port to
+``pytest.raises(RemoteError)``, and where the test only means "the server must
+survive this", assert that with a following ``meta__ping``.
+
+The whole file takes **13.5 minutes**; run one class at a time while working.
+
+## Resolved: shared-server integration startup and hang record
+
+status: open
+
+**Resolved measurement, 2026-10-07:** the complete targeted lifecycle file now
+passes 75 cases in 9.93s under isolated settings/MMFDB/object/cache paths and
+owned ephemeral server ports. The watchdog was inactive and the process
+exited 0; no shared-state failure, startup timeout or hang reproduced. Current
+committed tests already use Lifetime, real 64-point decays, RemoteError and
+scientific .cs.pto persistence contracts (`a67d359b2`, `4c21a578b`,
+`d577d93c1`). No new fixture change is justified by this stale baseline.
+[JUnit receipt](../validation/release-readiness-w7/server-lifecycle.xml).
+The following paragraphs are retained history, not an outstanding failure.
+
+**Found 2026-07-28**, while test-gating an unrelated proxy fix (RF-722).
+`pytest test/server` never finishes: `test_integration_lifecycle.py` runs its
+module-scoped `ChiSurfServer` in-process, and most of its tests error in
+*setup* with
+
+```
+chisurf.startup.services.AppStartupError: service 'mmfdb' did not become ready
+within 5.0s
+```
+
+after which the run stalls indefinitely at
+`TestParameterLifecycle::test_linked_info` (>180 s, no output). The 5 s
+`ready_timeout` in `chisurf/startup/services.py` is the visible trigger and it
+is load-dependent — the same tests pass when the machine is idle, so a machine
+running several suites (or several agent instances) turns it red. Which of the
+two symptoms causes the other is not yet established: a server whose startup
+raised may leave the ZMQ socket half-alive, which would explain a later call
+that never returns.
+
+Not fixed in the change that found it: the failure is in the shared server
+fixture, not in anything that change touched (nothing in the file calls the
+insertion routes it altered), and diagnosing a startup-timeout-plus-hang is its
+own change. The proxy behaviour itself is covered by `test_proxy.py` and
+`test_proxy_integration.py`, which are green.
+
+**Update 2026-07-28 — the startup half is fixed; two other faults were behind
+it.** The `mmfdb` stage now declares `"ready_timeout": 30` in
+`chisurf/startup/services.d/10_mmfdb.json`. Measured, the stage costs **3.8 s**
+on an *idle* machine for its first import, so the 5 s default was never a budget
+— it was a hang-detector consuming 76 % of itself on a good day. Raising it
+costs nothing in failure latency: `_run_service` records the exception and sets
+`ready_event` on the way out, so a service that *fails* still surfaces at once
+and only a service that truly *hangs* waits out the budget
+(`test_app_startup_manager_reports_background_failure_without_waiting` pins
+that, and `test_config_background_services_budget_a_cold_import` stops a new
+background stage from silently inheriting the bare default). The server now
+constructs, and `TestProxyLifecycle`/`TestLargePayload` run to completion in 8 s.
+
+What that uncovered, both still open:
+
+1. **The fit tests ask for a model that does not exist.** Every
+   `client.fit__create(..., model_name="TCSPC")` returns `model 'TCSPC' not
+   found`. `fit_create` (`chisurf/server/services/fits.py:410`) resolves a model
+   by walking `Model.__subclasses__()` for one whose `name` matches; after
+   importing `chisurf.core.models` the only reachable names are `Global fit` and
+   `Model name not available`, so no spelling of that call can succeed. Two
+   faults stacked: the name is stale, *and* the subclass walk only sees models
+   some other import happened to pull in.
+2. **The intended skip guard is dead.** `TestParameterLifecycle._setup` writes
+   `if not ft.get("ok"): pytest.skip(...)`, but since [SV-04](../specs/assessment.md#sv-04)
+   moved service errors into the JSON-RPC `error` member, `fit__create` *raises*
+   `RemoteError` instead of returning `{"ok": False}`. So the guard never runs
+   and 7 tests fail where the author meant them to skip. Do **not** patch the
+   guard to swallow `RemoteError` — that would hide finding 1 rather than fix it.
+
+**The hang is still unexplained**, and it is not specific to `test_linked_info`:
+with the timeout raised the run now stalls in the same class at
+`TestParameterLifecycle::test_set_bounds` (>5 min, no output), while
+`test_set_value` and `test_set_fixed` — which reach the identical `_setup` —
+fail fast a moment earlier.
+
+**To close it:** give `fit.create` a model lookup that does not depend on what
+happens to have been imported (an explicit registry, as the model/UI split
+already needs), fix the test's model name, then give the client a receive
+timeout so the remaining stall is a failure with a traceback instead of silence.
+
+**Update 2026-08-03 — the model name is not the only blocker.** Driving the
+server directly, with `chisurf.core.models.tcspc.lifetime` imported first so
+the subclass walk can see it, both real names (`"Lifetime "` — note the
+trailing space — and `"Lifetime (new)"`) get past the lookup and then fail in
+`fit.create` itself with
+
+```
+'tuple' object has no attribute 'x'
+```
+
+so a dataset loaded over `dataset.load` with a `curve_data` payload does not
+arrive as something `FitGroup` can build a fit on. Fixing the test's model name
+alone would therefore turn a wrong error into a different wrong error. The
+whole-suite symptom is unchanged: `pytest test/ --ignore=test/gui` still stalls
+at `TestParameterLifecycle::test_set_bounds` (main thread blocked in
+`zmq_ctx_destroy` → `ctx_t::terminate` → `mailbox_t::recv`, i.e. a context
+being torn down while a socket still holds queued data), and run on its own the
+class fails fast instead. So the hang needs state from the tests that precede
+it.
+
+## `pixi.toml` requires `wgpu`, and the lock file has never contained it
+
+status: resolved 2026-10-07
+
+Fresh verification: the manifest declares wgpu-py and pixi lock --check exits
+zero. The measured stale manifest/lock condition below is historical.
+
+**2026-08-10.** Re-recorded after being removed from this file without a fix —
+the entry went, the condition did not.
+
+* `pixi.toml:78` declares `wgpu = "*"` as a conda dependency.
+* `grep -c wgpu pixi.lock` returns **0**. The lock has no such package at all,
+  so it predates that line and is stale against the manifest.
+* `pixi run --frozen <task>` therefore still works — it ignores the manifest and
+  uses the lock as-is. **Plain `pixi run` re-solves**, which is where this bites.
+
+On conda-forge the package providing the `wgpu` Python module is named
+**`wgpu-py`**; `wgpu` is a different (Rust) package. If the solve is failing,
+that rename is the reason and the fix is one word in `pixi.toml`. Confirm with a
+full `pixi install` before changing it — this entry deliberately stops short of
+claiming the solve fails, because that was not re-measured here, only that the
+lock cannot satisfy the manifest.
+
+It matters out of proportion to its size: `pixi` is the single sanctioned
+environment and build tool, every CI workflow uses it, and `build-extensions` is
+a `depends-on` of every `test*` task. A broken default solve takes the whole
+sanctioned test path with it, and `--frozen` masks that locally.
+
+## 2026-10-07: QuEst legacy surface clips controls and imports retired ChiMOL paths
+
+status: open
+
+**Open, owner W6d/W9 plugin migration.** A scratch offscreen construction of
+`quenching_estimator` succeeds after the owning Quest numerical dependency fix,
+but its 1200×760 PNG shows the left settings panel split into three columns
+too narrow for the Structure file/Attachment/Simulation labels and controls.
+The parent inspected the image, rather than accepting the construction test.
+The owning `modules/quest/quest/gui/chimol_widget.py` also imports removed
+`chisurf.plugins.chimol.chimol.app.sequence_dock`, `renderer.view` and
+`io.structure` paths; its caught errors leave the sequence and 3D tabs as
+placeholders. Current ChiMOL uses its own standalone package and native
+surfaces, so replacing a prefix alone cannot restore these old Qt interfaces.
+
+This blocks visual and molecular-selection parity for Qt retirement. Capture
+the real loaded-148L baseline before replacing the QuEst surface, reuse the
+current ChiMOL viewer/sequence APIs in the owning Quest framework, and render
+every tab with the same data. Do not count the W7 factory-only PNG as a complete
+migration baseline. Numerical provider readiness is separate: the immutable
+IMP.bff core wheel supplies F arrays and residual callbacks with scientific
+oracle tests. [Readiness evidence](../validation/release-readiness-w7.md).
+
+## Standalone parameter JSON/YAML file corruption (2026-10-07)
+
+status: resolved 2026-10-07
+
+Parameter-only JSON/YAML hooks now persist existing portable scalar state and
+validated identity/metadata, rather than native-port repr strings. Actual
+save/load/read/update and cold-process checks pass; YAML metadata rejects
+unsupported keys before mutation. The old load-only test and private raw-dict
+expected failure are replaced with strict usable-state/identity assertions.
+105 targeted cases pass, zero expected failures. Live dictionary/graph aliases
+and value/hot-loop behavior are unchanged; unsupported linked/callable standalone
+files and irrecoverable old repr-only records fail explicitly.
+[Inspected editor and file proof](../validation/release-readiness-w1/parameter-state/receipt.md).
+
+## Mixed targeted Qt/pyqtgraph process teardown (2026-10-07)
+
+status: open
+
+A19-file targeted FCS/layout/chiplot group can fail late in ViewBox.resizeEvent
+via childrenBounds/mapFromItemToView/updateMatrix when ChildGroup is deleted,
+then SIGSEGV. Its previous run reached279passes/3old skips/4resize failures;
+a fresh isolated chiplot family passes59 with normal exit. Splitting verifies
+individual source behavior but does not fix the native lifetime problem. No
+skip/retention/forced-exit workaround is added. A deterministic minimal owner
+reproduction is not yet established; the chiplot/Qt retirement owners must
+close this lifetime gate before programme completion. Keep original crash
+evidence, diagnose ownership, and do not infer a product fix from isolation.
+
 ## ALEX Suite hub: a long status line disables Back / Next, and what is left of the port (2026-10-06)
+
+status: open
 
 Found while building the native ALEX Suite (T-20261006-ALEXHUB, `alex_suite/gui/native.py`):
 
@@ -483,6 +752,8 @@ Found while building the native ALEX Suite (T-20261006-ALEXHUB, `alex_suite/gui/
   untracked, still drives it, and `app.py` carries that lane's uncommitted edits).
 
 ## Burst tools: five click tests red at HEAD, and the native hub's rail limits (2026-10-06)
+
+status: open
 
 Found while running the burst suites for the native Burst Analysis hub (T-20261005-BURSTEMTK). Shown red on a
 throwaway `git worktree` of HEAD `77ffe8b95` (so not from uncommitted edits), arm64 env, offscreen:
@@ -534,6 +805,8 @@ reproduction in `okf/validation/manual-screenshots/{fcs,general,anisotropy}.json
 
 ## Burst Selection Qt tool records wrong values beside a correct search (2026-10-05)
 
+status: open
+
 Found while measuring the Qt baseline for the native port (198 bursts on copies of
 `burst_selection/tests/data/bh_spc132_sm_dna/m000.spc,m001.spc`, setup green 0,1 / red 8,9,
 SPC-130). The registry search reads none of these fields, so **the bursts are right**; the
@@ -561,6 +834,8 @@ Since 2026-10-06 the Burst Analysis window is the native hub, whose step 2 is th
 
 ## FCS diffusion calculator vs the hermetic MMFDB test env (2026-10-05)
 
+status: open
+
 With `MMFDB_DATABASE_PATH` pointing at a file that does not exist (as hermetic
 test fixtures do), `chisurf/core/fluorescence/dyes.py::_entries_from_database`
 raises *"configured MMFDB reference database is absent"* instead of falling back to
@@ -578,6 +853,8 @@ change to `dyes.py`.
 
 ## Project restore: what "reopens 1:1" covers (2026-10-05)
 
+status: open
+
 Measured by `test/gui/test_project_window_restore.py` (save in one process, open in
 a fresh one, compare widget-level facts; plain, one window maximized, and tabbed
 view mode): main geometry and docks, MDI view mode, active window and stacking,
@@ -591,6 +868,8 @@ axis) is fixed in chiplot (`LOG_AUTOSCALE_DECADES`, 12); the IRF tail still fill
 the lower part of that panel -- a tighter cap is a judgment call, not a defect.
 
 ## Native TCSPC visual-test teardown/restart (2026-10-03)
+
+status: open
 
 The standalone FitWindow visual round-trip followed by Main construction in the
 same offscreen process exits 139 in `qapp.processEvents()` before the second test
@@ -610,6 +889,8 @@ do not weaken project round-trip assertions to mask the issue.
 
 ## ndX recovery: intermittent mixed-Qt test-process crash (2026-10-03)
 
+status: open
+
 During recovery, an early combined ndX-host/FRET/ALEX pytest process exited 139.
 The cause was not isolated; do not attribute it to the overlay-axis or native
 provenance fixes. Subsequent replays using a scratch copy of the pre-fix ndX
@@ -623,6 +904,8 @@ verification scope, so no speculative Qt lifecycle patch was applied.
 
 ## ndX recovery: shared documentation inventory baseline (2026-10-03)
 
+status: open
+
 The global documentation-register guards report **9 passed, 2 failed**: 132
 unregistered image origins and stale figure/table/code indexes. A scratch replay
 with the pre-edit ndX guide, concept, provenance, and original register snapshot
@@ -632,7 +915,239 @@ The new measured-data screenshot and Python example have scoped inventory entrie
 all 14 ndX guide code checks pass. Regenerate the global indexes and assign real
 origins in the documentation lane rather than sweeping its concurrent edits here.
 
+## emtk help window draws help.md as raw markdown, one source line per paragraph (found 2026-10-02)
+
+status: open
+
+Status: resolved 2026-10-06 — existing fix `401af4ab9` verified: EmTkHelpWindow renders paragraphs with im.markdown and live links; native helper seam 12 passed.
+
+**Measured** in traj_save_topology's help (`okf/plugins/emtk-ports/traj_save_topology/after_help_1200x800.png`):
+`chisurf/emtk/help_guide.py:EmTkHelpWindow.draw` hands each stripped source line to `im.text_wrapped`, so `**bold**`,
+`` `code` ``, `*emphasis*` and `[title](docs/…)` links show their markup, and a paragraph wrapped over several source
+lines breaks at every source newline (a bullet's continuation line starts flush left, outside the bullet). The Qt `?`
+modal renders the same files as rich text and routes links to the documentation browser. Every emtk port with a
+`help.md` is affected. *Not fixed here:* `chisurf/emtk/*` is a shared helper outside the EMTK-1 claim; the fix is to join
+a paragraph's lines before wrapping and to render (or at least strip) inline markup, with links going through
+`chisurf/gui/widgets/tools/doc_links.py`'s routing.
+
+## Importing a tttr plugin moves `modules/ndxplorer` to the front of `sys.path`; its `test` package shadows the repo's (found 2026-10-02)
+
+status: open
+
+**Measured**: with the repo root at `sys.path[0]`, `import chisurf.plugins.tttr.tttr_microtime_shifter.tests.demo_data` leaves
+`sys.path[0] == ".../modules/ndxplorer"`, and a following `import test` resolves to `modules/ndxplorer/test/__init__.py` —
+so `from test.gui.emtk_port_parity import …` fails with `No module named 'test.gui'` in a script (pytest is unaffected when
+the repo's `test` is imported first). The move is not a `list.insert` on `sys.path` (a profile hook on it saw nothing), so
+probably a slice assignment or an import hook; the guarded insert in `chisurf/plugins/ndxplorer/__init__.py` only runs as a
+plugin. Workaround: import `test.gui` before any plugin. *Not fixed here:* find the mover, and rename ndxplorer's top-level
+`test` package (or stop putting the module root on the path) so the two cannot collide.
+
+## `trajectory_data.load` reads a multi-model PDB as its first model (found 2026-10-02)
+
+status: open
+
+**Measured** in the traj_convert upgrade: Convert writes frames 0, 10, 20 of hgbp1 to one `.pdb` with three `MODEL`
+blocks (correct), but `chisurf.core.structure.trajectory_data.load` returns one frame for it — by its docstring a
+structure file is "read as a single frame" (`Topology.from_file` reads the first model). So a multi-frame PDB ChiSurf
+writes cannot be read back by ChiSurf as a trajectory; the converter's parity test reads the models from the PDB columns
+instead. *Not fixed here:* reading every `MODEL` block into the frame axis belongs in core (`trajectory_data.load` /
+`chisurf/core/fio/structure`), with a round-trip test; guide 81 lists it under Known defects.
+
+## LLTF fits are not reproducible: random starting values are unseeded (found 2026-10-02)
+
+status: open
+
+**Measured** in the lltf upgrade: two runs of the same command on the shipped example (`5-44_D0.dat`, `IRF_D0.dat`,
+`config.yml`) gave τ = 3.9659 / 1.4465 / 0.1449 ns and 3.9673 / 1.4585 / 0.1477 ns. With
+`lifetime_fit_parameter.randomize_initial_values.enabled` (on in the example config, always on in the component scan)
+`lltf/core/fitter.py` draws starting lifetimes and amplitudes from Python's `random` without a seed. The parity tests
+compare the commands the two hosts build and check one fit with tolerances for this reason. *Not fixed here:* a
+`random_seed` setting (default fixed, so a run is repeatable) belongs in the fitter and its settings file, with a
+reproducibility test; guide 76 lists it under Known defects.
+
+## Ported burst apps draw invented data (found 2026-10-01)
+
+status: open
+
+`chisurf/plugins/burst/burst_mle_analysis/gui/app.py` (around lines 280-340) and
+`chisurf/plugins/burst/burst_h2mm/gui/app.py` (around lines 395-505) fill their plots and tables with
+synthetic values -- a model IRF and decay built with `np.exp`, a lifetime histogram from `tau1`/`tau2`, a hard-coded
+rate table, a seeded `np.random.normal` FRET scatter -- instead of the analysis result, so the window looks like an
+analysis of the user's data and is not. In the burst-analysis MLE step the real wizard is created and hidden and the
+mock is what is shown. Reproduce: open either app with no data and read the plot calls. Fix: draw only model results
+(an empty-state message when there are none); a demo is allowed only behind an explicit, labelled Demo action.
+PRD-153 now forbids invented data in a port. Survey: `okf/plugins/emtk-ports/burst-survey.md`.
+
+## Setup:Channel Definition: lost first save, Qt calibration and rename, shared-editor gaps (found 2026-10-01)
+
+status: open
+
+Measured while giving `setup_channel_definition` its own tests; evidence and reproductions in
+`okf/plugins/emtk-ports/setup_channel_definition/REPORT.md`.
+
+* **The first setup save on a fresh MMFDB is lost without an error.** `setup_store.save_setup_row` calls
+  `db.ensure_user(user)` first; `ensure_user` inserts through `dao.insert` and leaves that insert in an open transaction,
+  and `save_setup`'s own transaction nests inside it and never commits, so closing the handle rolls both back
+  (`save_setups` still returns `True`, the Qt tool still says "saved successfully"). Reproduce (5 lines):
+  `db = MFDatabase(p); setup_store.save_setup_row(db, CONFIG, "Mine", {"windows": {}}, user_id="brand_new_user");
+  len(db.list_setups())` is 1; `db.close(); len(MFDatabase(p).list_setups())` is 0.
+  `test/fio/test_setup_store_fresh_database.py` passes because it reads on the same connection. Fix: commit in
+  `ensure_user` (mmfdb) or wrap it in `self._transaction()`; add the reopen assertion to that test.
+* **Qt calibration combo never lists a snapshot.** `DetectorWizardPage._populate_calibration_combo` and
+  `_on_calibration_changed` call `setup_id_for_name(name, user)`; the function takes `(name, user_id, prefix)`, the
+  `TypeError` is swallowed and the combo stays at "Latest". The emtk toolbar lists and applies snapshots.
+* **Qt rename drops the Public flag.** `tttr_detector_setups._setup_row_data` returns `setup_data` without `_is_public` /
+  `_owner`, so a renamed public setup is stored private. The emtk toolbar (core `ChannelDefinition`) keeps it.
+* **Shared editor (`chisurf/emtk/channel_definition.py`, another stream's) gaps**: detectors are stacked blocks, not a
+  table; the Setups tab stacks its buttons full width; the last tab cannot be restored (the editor owns the tab state);
+  microtime ranges reject `20:10`, `5:5` and `;` separators that Qt accepts; with a fixed File Type the reader accepts any
+  bytes and overwrites the timing (`xfail` test); no "Configure LUTs" / visual "Adjust shifts" hand-off; the last-used
+  setup is neither written on selection nor opened at start (`ChannelDefinition.refresh_setups` drops `last_used`).
+
+## chimol: the toolkit-free host loads a PDB through a different route than the Qt window (found 2026-10-01)
+
+status: open
+
+**Measured** with chimol's demo `148l.pdb`, same command `load <path>` on both hosts
+(`okf/plugins/emtk-ports/chimol/before_populated.png` Qt vs `after_populated_1200x800.png` emtk): both report 1363
+atoms and the same object list, but the Qt window draws the ligands/hetero groups as spheres and its sequence strip
+starts at residue 0 with an extra leading code and an "… and 1 more chains" line, while the emtk host (chimol's
+`ChimolApp`, the same one `python -m chimol` opens) draws no hetero spheres, numbers from 1 and shows the system-info
+panel on load. *Cause:* `chimol.hosts.qt.window.MolViewPluginWindow.load_structure_from_path` reads through
+`load_structure_payload(path, structure_factory=chisurf.core.structure.Structure)`; `chimol.hosts.base.ViewerHost.
+load_structure_from_path` passes no factory, so the built-in PDB parser and `viewer.apply_payload` build the scene
+(log: "No structure factory available ... falling back to the built-in PDB parser"). The info panel on load is
+deliberate in `ViewerHost` (unpinned, a click dismisses it). Reproduce (5 lines):
+`from chimol.io.structure import load_structure_payload; from chisurf.core.structure import Structure`;
+`p = Path(".../chimol/data/demos/148l.pdb")`; `load_structure_payload(p)` returns `(None, payload)`;
+`load_structure_payload(p, structure_factory=Structure)` returns `(Structure, None)`; render each.
+*Not fixed here:* the fix belongs in chimol (a structure-factory hook on `ViewerHost` that ChiSurf's plugin package
+injects, the way it injects the settings directory), not in the ChiSurf adapter, and chimol is a separate repository.
+Which rendering is right (hetero spheres; residue 0) is chimol's call.
+
+## emtk apps opened from ChiSurf's menu are never closed (found 2026-10-01)
+
+status: open
+
+Status: resolved 2026-10-06 — emtk `67500cf`: ControlHost.closeEvent calls control.close() once; host/state tests and geometry captures verified.
+
+**Measured** with ndX (`okf/plugins/emtk-ports/ndxplorer/`): `chisurf.core.plugin.registry.build_plugin_widget` wraps an
+emtk factory's app in `emtk.qt_host.ControlHost(factory())` and returns the host; when that window closes,
+`ControlHost.closeEvent` only detaches the frame-request callback (`set_frame_request_callback(None)`) and nothing calls
+the app's `close()`. So every ported app's close -- saving a layout or session, stopping worker threads and executors,
+unsubscribing from fit events, withdrawing a Global View group -- does not run when the user closes it from the menu.
+Reproduce (5 lines): `w = build_plugin_widget(manifest_of_any_emtk_plugin)`; `closed = []`;
+`w.control.close = lambda: closed.append(1)`; `w.show(); w.close()`; `closed == []`.
+*Worked around in ndX only* (its factory closes when the callback is removed after one was set). *Not fixed here:* the
+fix belongs in `build_plugin_widget` (another stream's uncommitted change: call `control.close()` from the host window's
+close / `destroyed`) or in emtk's `ControlHost.closeEvent`; both are outside this session's scope.
+
+## emtk games have no sound (found 2026-10-01)
+
+status: open
+
+**Measured** on the four ported games (number_quest, pong, tetris, minesweeper): the Qt games play music and effects through
+`chisurf.gui.chigame.audio.Audio`, which uses `qtpy.QtMultimedia.QSoundEffect`; the emtk apps take an `audio` object with
+`sfx` / `set_enabled` / `close`, and their factories pass none, because emtk has no audio output. Their Sound switch therefore
+changed nothing; it is now greyed with the tooltip "No sound here: this window has no audio output." (number_quest
+`bdf892ca5`, the other games in their own commits). Reproduce: `app = make_app(); app.set_sound(); app.sound_enabled` stays
+`False`. *Not fixed here:* an audio backend is new infrastructure (emtk or a shared ChiSurf module), not part of a port; the
+only Qt-free player in the tree is `chisurf/plugins/tttr/audifier/native_playback.py` (a WAV file per playback through
+`afplay`/`ffplay`/`aplay`), too coarse for music loops and per-event effects. The factories accept `audio=` for when one exists.
+
+## emtk implot: a first `COND_ONCE` axis-limits request on an existing plot is ignored (found 2026-10-01)
+
+status: open
+
+Status: resolved 2026-10-06 — emtk `eb604b1`: a missing previous ONCE request is new; axes/interaction regressions and delayed-counts PNG verified.
+
+**Measured** in burst_fusion's fragments histogram: the plot is drawn empty, then data arrives and the app calls
+`implot.setup_axis_limits(AXIS_Y1, lo, hi, COND_ONCE)` for the first time. `emtk/implot.py:setup_axis_limits` applies a ONCE
+request only when the plot is not yet initialized or the request differs from an earlier ONCE request; with no earlier request it
+does neither, but still sets `has_range`, which turns auto-fit off — the axis stays at its default (1e-6–1 on a log axis) and the
+bars fill the plot. Reproduce: `test_the_fragments_axis_holds_every_bar` with the app calling ONCE only fails with
+`(1e-06, 1.0, [158, 105, 20])`. Worked around in the app (ALWAYS when the requested range changes, ONCE after it);
+burst_2cde is unaffected because its empty plot makes a ONCE request first. *Not fixed here:* emtk is outside the EMTK-1 claim;
+the fix belongs in `setup_axis_limits` (treat "no earlier ONCE request" as new), with a regression test in emtk.
+
+## region_mle: the simulated demo reads as an empty image (found 2026-09-30)
+
+status: open
+
+`region_mle`'s `preview_regions` / `fit_regions` (`core/region_mle.py`, around line 826) build
+`tttrlib.CLSMImage(tttr, channels=..., fill=True)` directly. The simulated demo written by
+`spot_finder/demo.py` does not carry the scanner's marker layout, so that call returns an empty
+image (`intensity.shape == (1, 1, 0)`), and Load demo then Run/Preview fails with
+`the regions are (48, 48) and the image is (1, 0)` -- in the shipped Qt tool as well, not only in the
+emtk port. `run()` then clears its own `status_text`, so the user sees the intro text and no error.
+Reproduce: `create_demo(tmp)` then `np.asarray(tttrlib.CLSMImage(tttrlib.TTTR(str(path)), channels=[0, 1], fill=True).intensity).shape`.
+Fix direction: read through the shared loader Spot Finder uses
+(`imaging.simulate.clsm_from_scan` with the sidecar `scan_layout`; another stream is moving this into
+`core/fluorescence/imaging/intensity.py`), and keep the error text in `run()`. The emtk port's tests
+and populated screenshots wrap `CLSMImage` in a test-side shim (the `workdir` fixture) until then.
+
+### emtk: docked tab strips do not scroll (found porting flc-2d; the radio-tooltip half is fixed)
+
+`emtk.view_form._draw_choice` calls `_tooltip(section)` only for the combo branch, so a
+`choice` with `style: radio` leaves its radio buttons untooltipped and the port parity tool
+lists them in `controls_without_tooltip`. Repro: `draw_form({"sections":[{"type":"choice",
+"attr":"m","options":["a","b"],"style":"radio","description":"x"}]}, model, FormState())`
+under `test.gui.emtk_port_parity` recording. flc-2d uses a drop-down for its solver meanwhile.
+**Radio tooltips: fixed 2026-09-30** (emtk `608be8c`, `view_form` sets the description on every radio button).
+Still open: `emtk.docking` tab strips neither scroll nor wrap: seven tabs need ~670 px, a narrower
+region cuts the last tab (flc-2d avoids it with one full-width strip). Fix direction: tooltip
+after the radio loop; an overflow menu or scrolling for tabs.
+
+## ndX menu/ribbon route vs manifest emtk entrypoint (found 2026-09-29)
+
+status: open
+
+The ndxplorer manifest gained `entrypoints.emtk`
+(`chisurf.plugins.ndxplorer.gui.app:make_app`) while
+`chisurf/plugins/ndxplorer/tests/test_window_routes.py::test_menu_and_ribbon_host_the_emtk_app`
+still asserts the menu opens the `NdxWindow` (`build_ndxplorer_window`). The
+launcher dispatches through `select_gui_entrypoint`, which prefers `emtk`, so
+the menu now yields a bare `ControlHost` and the test fails. The emtk factory
+does not (yet) give the window-level features `NdxWindow` adds: the Global
+View slot withdrawal, `session_autosave`, the geometry persistence, the MMFDB
+opener wiring. Decide the direction (wrap the emtk app in `NdxWindow` when a
+Qt host is available, or port the missing pieces) and fix one side.
+
+**Resolved 2026-10-01 (EMTK-1, commit dddeb4d1f):** the missing pieces were ported into `make_app`: the
+in-process RPC client, `session_autosave=True`, closing with the host (session kept, Global View slot
+withdrawn); the MMFDB opener is the emtk `DatasetPicker` under the Qt label "From MMFDB…". Geometry is the
+host's; the dock layout lives in ChiSurf's native-state store instead of ndX's settings file. The route test
+now checks the app's wiring on either host. Report: `okf/plugins/emtk-ports/ndxplorer/REPORT.md`.
+
+## ndX opened from the MMFDB admin no longer records a selection back into MMFDB
+
+status: open
+
+**Since 2026-09-28** ChiSurf opens only the emtk ndX app. The legacy Qt window,
+when the MMFDB admin opened it with `processed_data_id`/`experiment_id`, called
+`ndxplorer.record_analysis` (mmfdb `admin/backend/ndxplorer_services.py`) when
+burst IDs were saved; the emtk io feature has no such hook, so the admin now
+opens the path and nothing is recorded. **Blocks:** provenance of gate
+selections made from an MMFDB product. Fix: an app hook after
+`_write_burst_ids` that the host sets (as `app.mmfdb_opener`). Resume point:
+[ndxplorer-emtk-port](../plugins/ndxplorer-emtk-port.md) "Hosted in ChiSurf".
+
+## Two guard tests red on 2026-09-28, from uncommitted native-port files
+
+status: open
+
+Measured in the arm64 env while switching ndX to the emtk app:
+`test/test_forbidden_communication.py` (17 files over their count, all in the
+uncommitted native emtk ports: `*/gui/app.py`, `*/test/test_native.py`,
+`calculator/native_form.py`, `autoform/sections/{builtin,parameter_table}.py`)
+and `test/test_prd_mentions.py::test_prd_mention_allowlist_has_no_stale_entries`
+(`calculator/kappa2_dist/gui/tool.py`,
+`tttr/tttr_time_windows/tests/test_construction_smoke.py` no longer name a
+PRD). Not edited under their owners. **Blocks:** nothing at run time.
+
 ## Two GUI test failures that predate the vector-parameter commits (test fixes 2026-09-24)
+
+status: open
 
 **Measured 2026-09-24** (arm64 env, `QT_QPA_PLATFORM=offscreen`), identically
 at HEAD, at `5b1a33b3e` and at `66b02a057` (before any vector-parameter
@@ -701,7 +1216,313 @@ the process exits 139 after the summary. The earlier entry on `test/gui`
 contamination below lists the first; the second may be the same stale-wrapper
 crash at exit.
 
+## globalview: two graph builders, and they have already drifted
+
+status: open
+
+**Resolved 2026-09-23**: every builder now reads
+`chisurf/core/fitting/parameter_network.py` (see
+[core tools](../plugins/core-tools.md#global-view-the-parameter-network)). The
+history below is kept for why.
+
+**2026-08-06.** The parameter graph is built twice. The plugin builds it locally
+(`chisurf/plugins/core/globalview/api/graph.py`); the server builds it again, by
+hand, for the `graph.build` RPC (`chisurf/server/services/graph.py`,
+"mirrors the client-side logic"). They are not one implementation with two
+transports — they are two implementations of the same contract, and today they
+were fixed twice for the same defect: a link edge resolved by parameter *name*,
+which drew an arrow from a follower to every same-named parameter in the session
+(three fits with a `tau1` turned one link into three arrows, two of them false).
+The server copy has also never had the `group` node type the plugin grew for
+out-of-fit parameter groups, so a network fetched over RPC is missing every
+plugin working model that a locally built one shows.
+
+The durable fix is to delete the server copy and have `graph.build` call the
+plugin's Qt-free `api/graph.py`, which already returns plain dataclasses. It was
+not done here because the plugin `api` package has not been checked for
+Qt-freeness in the server's import path, and unifying it is a wider change than
+the GUI work that surfaced the defect. Until then, **a change to one builder must
+be made to the other**, and the record is
+[core tools](../plugins/core-tools.md#global-view-the-parameter-network).
+
+## Intensity trace / File tools defects found while documenting them (2026-09-23)
+
+status: open
+
+Found while writing `docs/guides/74_intensity_traces_and_file_tools.md`; not
+fixed in that change because `chisurf/plugins/tttr/intensity_trace/__init__.py`
+is a 1700-line legacy Qt + direct-pyqtgraph widget (on
+`test/pyqtgraph_import_allowlist.txt`), and touching it obliges the chiplot
+port. Whoever takes that port should fix these with it:
+
+* ~~**Off-by-one in every `.bst` these tools write.**~~ **Fixed 2026-09-23**:
+  both writers now emit `stop - 1` and drop empty windows
+  (`tttr_time_windows/api/io.py::save_bst`, `intensity_trace.save_burst_ids`;
+  guard `tttr_time_windows/tests/test_bst_inclusive.py`). Original report:
+  `intensity_trace.save_burst_ids`
+  and `tttr_time_windows/api/selection.py::compute_bids_from_tttr` write the
+  second column as `searchsorted(..., end)` — the first photon *after* the
+  run/window (half-open). `core/fio/fluorescence/burst.py::generate_burst_dataframe`
+  (used by BID → Analysis) documents the stop as the **last photon, inclusive**.
+  Each run/window therefore gains one photon when read back. Verify on
+  `BH_SPC132.spc` with 1000 ms windows: row 0 is `0 2788`, row 1 `2788 5620`.
+* **Fallback routing mode bins one channel.** With no detector setup,
+  `process_ptu` passes only `selected_detectors[0]` to
+  `_process_routing_channels`; the default (all eight "Routing Channel" boxes
+  ticked) therefore shows only channel 0, and nothing if channel 0 is absent.
+* **"FRET efficiency" is `ch0 / sum`** of whatever detector is first; with the
+  donor first it is 1 − E_PR. The bottom trace plot is x-labelled "FRET
+  Efficiency" though its x axis is time.
+* **Layout:** the Processing/HMM tab widget and the plot widget share stretch
+  equally, so ~40 % of the window is empty control area and the stacked plots'
+  y-labels overlap; the histogram axis says "Counts (log)" on a linear axis.
+* **No `help.md` / `guide.json`** for the intensity-trace tool (CLAUDE.md
+  requires both); README.md names `chisurf.core.math.hmm` while the code uses
+  `chisurf.plugins.core.hmm`.
+* **TTTR Split / Convert:** the "µ-time binning" choice is never applied —
+  `SplitterViewModel.micro_time_binning` is not used by `do_split`.
+* **BID → Analysis GUI:** `process_all` has its `try/except` commented out, so
+  one failing file aborts the batch; `README.md` says BUR is the default output
+  while `convert_bid_file` defaults to `{"pto"}`.
+* **tttrlib:** `TTTR.get_intensity_trace` docstring says the window is in
+  milliseconds; it is in seconds (0.005 → 12466 bins over 62.3 s). Belongs
+  upstream in tttrlib.
+* **Time Windows preview** draws one `vline` per window over the whole file
+  (6000+ lines at 10 ms on a 1-min file) and the `style="dash"` pen renders
+  solid.
+
+## TTTR: Generate Decay / TTTR: Correlate compute wrong axes and error bars (found 2026-09-23)
+
+status: open
+
+Found while documenting both tools (`docs/guides/73_tttr_decay_and_correlation.md`,
+"Known defects"); the docs session was not cleared to edit plugin code, so none
+is fixed. Re-derive with the grab script's probe: load
+`test/data/tttr/BH/132/BH_SPC132.spc`, histogram detector 0, correlate 0 × 8.
+
+1. **Correlate — error bars inverted.** `Correlator.run` builds
+   `ey = 1.0 / w.mean(axis=0)`, but `Correlator.weight` returns
+   `fcs.noise(...)`, which is a *standard deviation* (every reader in
+   `core/fio/fluorescence/fcs/` inverts it to get a weight). Measured: `ey` 0.32
+   at 13.5 ns (G = 12.8) and 15.9 at 127 ms (G = 1.08). Fix: `ey` = rms of the
+   split σ over √n_splits; guard test: `ey` at the longest lags < `ey` at the
+   shortest. Blocks any weighted FCS fit of this tool's output.
+2. **Correlate — Fine mislabels the lag axis.** With `set_microtimes` the
+   correlator's lags are micro-time ticks, but `tau = x * mt_clk * 1e3` scales
+   by the macro clock. Measured: fine curve ends at 31 µs, labelled 127.4 ms.
+   Fix: scale by `self.p.dt` (already mt_clk / effective_n_tac when fine).
+3. **Generate Decay — axis in seconds and TAC div ignored.** `make_histogram`
+   uses `photons.dt` (seconds, undivided) and `minlength=photons.n_tac`, so
+   x is in s (lifetime models expect ns) and with TAC div 16 the decay is drawn
+   over 0.84 ns followed by empty channels. `onTacDivChanged` shows
+   `(nTAC + 1) / div` (4097 at div 1). Fix: ⌈n_tac/div⌉ channels at
+   `self.dt` (ns, divided).
+4. **Generate Decay — curve list never shows curves.** The selector is built
+   with `experiment=tcspc` and filters on `isinstance(d.experiment, ...)`; the
+   tool's `DataCurve`s have no experiment. `add_curve` also refreshes list and
+   plot *before* `super().add_curve(v)`, so the plot lags one press.
+5. **Both — context-menu Save writes nothing.** `ExperimentalDataSelector.
+   onSaveDataset` saves `file_type="pkl"`, which `Base.save` does not support
+   (`supported_save_file_types = ["yaml", "json"]`); it returns silently.
+   Neither tool therefore has a GUI route to a fit.
+6. **Correlate — `default` Type** is not a tttrlib method; tttrlib keeps `wahl`
+   without warning.
+7. Neither tool has `help.md` or `gui/guide.json` (legacy Qt, no AutoForm spec).
+
+## PSF calculator: backend and two tttrlib optics errors (found 2026-09-23)
+
+status: open
+
+Found while writing `docs/guides/72_psf_calculator.md` and
+`docs/concepts/point_spread_function.md`; measurement scripts were an
+independent Debye pupil integral (NA 1.4, n 1.518, 520 nm, full quadrature).
+
+1. **The tool does not open on the default plot backend.** `gui/tool.py`
+   builds `cp.VolumeView()`, and emtk has no volume renderer
+   (`NotImplementedError`). Opening it from the Calculators hub fails unless
+   `CHISURF_PLOT_BACKEND=pyqtgraph`. Blocks: every user on defaults. Fix
+   belongs in emtk (a volume/iso-surface widget), not a Qt fallback.
+2. **tttrlib radial polarization over-weights the longitudinal field 2×.**
+   `ext/python/CLSMSuperRes.i::vectorial_psf` uses `e_z = 2j*j0`; Youngworth &
+   Brown 2000 give `E_r ∝ sin2θ`, `E_z ∝ 2i sin²θ`, i.e. `e_z = 1j*j0` with
+   this code's `e_r`. Measured: tttrlib radial 181 nm vs circular 210 nm; the
+   independent integral gives radial 241 nm vs circular 209 nm (same integral
+   reproduces tttrlib's linear-x 250 × 179 exactly). Dorn 2003: over the full
+   aperture radial is *wider*. File + fix upstream in tttrlib; the docs carry a
+   warning until then.
+3. **tttrlib Gaussian axial envelope 4× too short.** `z_r = π σ² n/λ` where the
+   beam waist is `w0 = 2σ`, so `z_r = π w0² n/λ`. Axial FWHM 117 nm measured vs
+   ~456 nm expected. Upstream in tttrlib.
+4. pyqtgraph `_PgVolumeView.set_vectors` skips the translation `set_volume`
+   applies, so polarization strokes draw off-centre. The Result line
+   "(1.12 x lateral)" is lateral ÷ scalar and reads backwards.
+
+## FCS toolbox defects (found 2026-09-23)
+
+status: open
+
+Found while writing `docs/guides/75_fcs_toolbox.md` ("Known issue" boxes).
+
+1. **Channel Definitions no longer reaches the correlator.** After the
+   AutoForm port `FCSChannelWidget` has no `setup_combo` / `_detector_setups` /
+   `_channels_for_setup`, but `fcs_correlator/tool.py` `_channel_def_context`
+   and `_bind_channel_def_panel` still read them, so the context is always
+   empty: FCS Preset list and A/B selectors stay empty and the LUT setup is
+   never forwarded. Fix: read `widget.model`, observe `setup_changed`. (A docs
+   agent's attempt at this edit was refused by the permission system and
+   reverted; left for the owner.) Related: `apply_preset` looks for
+   bins/cascades under `pair["correlator"]`; the editor saves them top-level.
+2. **Default `suren` noise differs from Koppel 1974.** `core/fluorescence/fcs/__init__.py::noise`
+   codes the middle term `2*G0/ns**2*(1+B)` where Koppel has
+   `2*G0*(1+B)/(ns*na)`, and scales variance by 10 ms/τ above `time_upper`
+   without reason. Affects fit weights everywhere.
+3. `fcs_yaml.read_yaml` is a stub: YAML conversion is write-only (TypeError).
+4. Readers disagree on the plateau (ALV +1 → 1; PyCorrFit/.pqres/.dat → 0);
+   the converter preserves the source's convention.
+5. `.pqres`: missing σ → unit weights (skips the promised noise fallback); lag
+   units possibly seconds on an ms axis (max lag 0.092, unverified); no count
+   rate → 1 kHz written to `.cor`.
+6. `merge.py::compute_average_correlations` says "weighted" but is an
+   unweighted mean, drops the first lag, and counts unticked curves in its label.
+7. Filter panel: `invert` also inverts channel/dMT cuts; inter-photon plot
+   fails on the emtk backend ("horizontal region not drawn yet"); clipped
+   y-label. Merger dock does not stretch; status stays "Computing…".
+8. Fixed in the same change: `fcs-convert -v/--verbose` was a click on/off
+   pair (`--verbose` turned it *off*); guide 16 imported a non-existent
+   `fcs.correlate.correlate`.
+
+## Defects found writing guides 76–82 (2026-09-23, second round)
+
+status: open
+
+Measured while documenting; each guide carries a "Known defects" note. Fixed
+in the same change: LLTF `dof` precedence (fixed=None gave dof 0);
+synthetic-decay IRF loader flattened two-column files (peak at channel 1238
+instead of 624); batch `restore_parameters` ignored `{"ok": False}` (now
+raises) and headless `run_batch` crashed on `cs.core.actions`;
+`open_maybe_zipped` had no append mode, so every multi-frame PDB write raised,
+and `write_pdb` fused `MODEL`/`ENDMDL` into ATOM lines with no serial; the
+AutoForm wizard's selected step was invisible; the `?`/Guide buttons were
+missing on phasor calculator, F-test, batch analysis, HydroPro, QuEst, LLTF,
+trajectory tools and FRET lines (help files existed, nothing drew them).
+
+Open:
+
+1. **QuEst does not import (blocker).** `modules/quest` imports
+   `IMP.bff.quenching`, `IMP.bff.av.compute`, `IMP.bff.av._kernels`,
+   `IMP.bff.distance_metrics` (`quest/core/dye_diffusion.py:47`, `photon.py:43,69`,
+   `av.py:52…477`); imp.bff 294e63fa moved them to top-level C++ `IMP.bff`.
+   Tool, `csc quest` and the Structure Tools panel all fail; 3/14 plugin tests.
+   Port in the quest repo. Two more tests fail because
+   `modules/imp-tricks/src/sitecustomize.py` imports IMP at start-up.
+2. **LLTF component-count test is mis-specified** (`lltf/core/fitter.py:661-672`):
+   `f.cdf(chi2r[n-1]/chi2r[n], 2, df2)` ≈ 1−e^(−R) whatever the photon count —
+   0.68 needs a 14 % χ²r drop. On 3.0+4.5 ns (seed 2) it picks n=1 at p=0.667
+   where extra-sum-of-squares gives p=6e-78. And nested fits start from
+   `linspace`, hit `maxfev` and end *worse* than n−1, so selection counts
+   optimizer failures (warm-start n+1 from n). Three differing default sets
+   (YAML + two in `fit_lifetime`); CLI `-f` overwrites `selection_mode`; the
+   `$TMPDIR/lltf_config.yml` copy is never refreshed; `plot_decay_curve` calls
+   `plt.show()` unconditionally.
+3. **F-test tool reports the variance-ratio form** (`core/math/statistics.py`
+   `f_test_confidence`), conservative for two fits of the same data: 0.59 vs
+   extra-sum-of-squares p=0.003 on ibh donor 2→3 exp. Add the ESS F as a second
+   readout.
+4. **Batch analysis:** mixed experiment types never rejected
+   (`datasets_have_mixed_types` has no caller); Results panel prints
+   full-precision floats in a short scroll box; CSV rows include placeholder
+   parameters (unused `a2`/`t2`). `python-docx` missing from the local arm64 env.
+5. **Phasor calculator:** Results panel lists only reference τ/g/s despite its
+   description; controls split each (g, s) pair across rows.
+6. **HydroPro:** an executable name without "hydropro" is treated as HYDRO++
+   and gets a hard-coded input (20 °C, 0.01 P, 1e5 Da); only D_t parsed; job
+   folders overwritten; `_DOWNLOAD_URL` is the HYDRO++ page; the startup
+   dialog's "don't show" is never saved. No macOS HYDROPRO binary exists.
+7. **Trajectory tools:** ~~Convert split mode ignores stride and crashes with a
+   frame range (`chunk=None`); folder mode loads the folder itself; "Last
+   frame" exclusive~~ — fixed 2026-10-02 in the traj_convert upgrade (one frame
+   selection for every mode, inclusive, folder PDBs joined in name order). ~~Join interleaves chunks A,B,A… and truncates to the
+   shorter trajectory~~ — fixed 2026-10-02 in the traj_join upgrade (whole
+   trajectories appended, whole-trajectory reversal, a mismatch raises). ~~FRET tab
+   has no topology row, so a DCD cannot be opened;
+   its dipole selectors overlap~~ — fixed 2026-10-02 in the traj_fret upgrade (a
+   topology row on both hosts, DCD filter, cascading pickers in the emtk app). 6/9 energy potentials fail on a plain
+   `Structure` (no `l_res`/`dist_ca`), Ramachandran returns 0, H-Bond is the
+   default. `trajectory_data` docstrings say nm but data are Å, and
+   `plugins/modelling/fret/core/trajectory.py:158` multiplies by 10
+   (E ≈ 2e-5 where 0.97 is right; `rmsd_matrix` too). traj2fret `__main__` is
+   Python 2.
+8. **FRET lines:** CLI docstring's "R(G,1)" names error (use
+   `distance.mean.0`); FD-Gaussian at σ=0 gives NaN; the plot's grey background
+   leaves axis labels low-contrast.
+9. **Synthetic Decay Generator:** unreachable from the GUI (`menu_hidden`, no
+   hub); a Mode change re-creates the promoted Generate/Save/Fit row.
+10. **Help-render guard:** `{src}` role cannot link a directory — link a file in it.
+
+## Defects found by the screenshot and citation passes (2026-09-23, third round)
+
+status: open
+
+Each guide carries its own "Known defects" note. Fixed in the same round:
+emtk error-bar updates (blank BVA plot) and markers-only curves joined by
+black lines; Burst Selection file offsets past the second file; H2MM
+accepting resolution −1; MFD Prepare RPC result unserializable; Spectra
+Downloader menu entry opening nothing; acquisition SIMULATION/Simulation
+mismatch; MFD reader `update_widgets`; seven tools not drawing shipped help
+(new guard `test_shipped_help_is_drawn`).
+
+Open, highest value first:
+
+1. ~~**tttrlib ALEX-2CDE sign**~~ **Fixed 2026-09-24 in tttrlib `04d83cd29`**
+   (eq. 12 verified against the paper; clean-burst median now ~1.5). ChiSurf
+   sees it after the next tttrlib rebuild of the arm64/pixi env; ALEX-2CDE
+   columns written before that are on the old ~100 scale.
+2. **`Bursts.recurrence()` always raises** — `burst_analysis/api/workflow.py`
+   ~1313 `select_bursts` builds its `AnalysisRequest` without the setup's
+   detectors/windows, so the table has no per-detector counts (hit by two passes).
+3. **Burst Selection won't open on a fresh profile** —
+   `tttr_detector_setups.load_detector_setups` (~228) with owner
+   "user_default" hits a sqlite FOREIGN KEY when that user row is absent.
+4. **PCH plugin fit unusable** — `pch/backend/services.py:156-171` unweighted,
+   Pearson χ² over bins with expected ~1e-14 (χ²r 1.5e20). FIDA fits run N
+   negative with bounds off; `fida_pch` ignores `profile`/`oversample`.
+5. **Flow demo draws no arrows** — demo PTU reads 29 of 30 frames, all 25
+   tiles refused; plugin's own test fails. Guide 55 keeps the intended figure.
+6. **Acquisition**: routing-channel spinboxes never added to the dock (stay
+   0–3) while the decay controller defaults to 8/9/10 → no decay at defaults;
+   standalone window plot controllers overlap title bars.
+7. **Trace Browser lists nothing for point measurements** —
+   `_is_clsm_compatible` (trace_browser/__init__.py:1432) accepts
+   intensity shape (1,0,0).
+8. **Burst-selection tables**: Bursts/Histogram tabs and Fit GMM use only the
+   visible window (8 of 1130 bursts); dT trace joins across gaps.
+9. **Accurate FRET dye choice ignored** — `apply_dye_selection(self)` receives
+   a value from the bound control and fails every commit.
+10. **ndX bridges**: send menu discards the result (`send_menu.py:106`); FCS
+    defaults use `ch1/ch2` where the correlator reads `chs_a/chs_b`
+    (`server/burst_consumers.json:35`); PDA reads non-PTU files as PTU and
+    reports success (`server/services/pda.py:42,122`); bare file names not
+    resolved against the analysis folder (`burst_bridge.py:200`).
+11. **BVA**: `concat_stores` fails on mixed float/empty rate columns; a
+    second Run raises (`compute_bva` appends in place); static line not drawn
+    on emtk.
+12. **Spot Finder threshold is in image units** though three docstrings say
+    otherwise; `camera_spots.json` ships 0.05 (every noise maximum).
+13. **Förster calculator** offers only acceptors with an "absorption"
+    spectrum (164/543 Chroma dyes carry excitation only); a cached R0
+    silently overrides user Q_D/ε/n. Staging DB: ATTO-550 carries ATTO 565's
+    data; the ATTO-TEC ATTO488 record is soft-deleted.
+14. **Smaller**: MFD Prepare unreachable from any menu/hub; `csc mfd-prepare
+    fit` AttributeError; partial `streams=` IndexError; burst fusion writes an
+    empty folder before validating; burst-FCS progress bar never closes; H2MM
+    floor rates printed as measured; `fcs-convert` etc. HDF5 "compressed ~4×"
+    wording (measured 2.8×); CLSM-Draw "&" mnemonic; ndX
+    `DataSource(columns, frame)` gone, breaking make_screenshots'
+    `_grab_ndx_gaussian_panel`.
+
 ## Two fitting tests red on 2026-09-17, in files other sessions changed that day
+
+status: open
 
 **Measured 2026-09-17** (aGrUM-to-bff session, arm64 env, `pytest test/fitting`,
 1125 passed): both also fail run alone, and neither touches the engine, the
@@ -716,6 +1537,8 @@ string does not. **Blocks:** the first means the documented "fallback still
 produces a curve" guarantee is gone; the second is cosmetic.
 
 ## Four repository guard tests are red, none from the change that found them
+
+status: open
 
 **Measured 2026-09-17** (ebFRET port session, arm64 env,
 `pytest test/test_plugin_dependencies.py test/test_ui_schemas.py
@@ -735,6 +1558,8 @@ time; each keeps its guard from catching the next regression of its kind. Each
 is a one-line fix by whoever owns the file.
 
 ## The flow-map demo PTU reconstructs to an empty image
+
+status: open
 
 **Measured 2026-09-17.** `chisurf/plugins/microscopy/img_flow/demo.py::create_demo`
 writes a scan whose frame, line-stop and line-start markers share macro-time
@@ -757,6 +1582,8 @@ harvest).
 
 ## The image section still draws with raw pyqtgraph, and can crash on teardown
 
+status: open
+
 **2026-09-17.** chiplot's default backend is emtk now, but
 `chisurf/gui/autoform/sections/builtin.py::ImageMapWidget` (the `image` custom
 section: 11 view specs -- colour/channel pickers, movie playback, brush
@@ -771,7 +1598,76 @@ has events queued. The real fix is porting `ImageMapWidget` onto
 inverted-axis pieces; a z/frame slider and brush painting are what it would
 need to gain.
 
+## 2026-09-17 — 2D-FLC's linear matrix *did* lose its highest bin: it sat one bin off its axis
+
+status: resolved 2026-09-17
+
+The withdrawal below was right that the reference trims one bin and wrong about
+which. `TK_Create2DFDC_04.m` returns bins `1..lint_Imax-1` of a matrix sized from
+the span **padded** by one linear bin, so the bin it drops lies past the gate.
+tttrlib's `fdc_scan_two_axes` stores linear bin `ceil(tau/f)` *at that index*, so
+index 0 is always empty, and `core.create_2d_fdc_numba_int` sliced
+`[:lint_imax - 1]` — the reference's size at the wrong offset — keeping the empty
+row and dropping the last real bin. Found by running the reference driver
+(`TK_MyMain_Create2DFDC_cor_SeparateData_BootStrap_v02.m`) in Octave against the
+port: every log matrix identical, every linear one shifted by exactly one bin.
+Now `[1:lint_imax]`: all 6443 brute-force pairs kept at factors 2, 3, 5 (were
+6443/5789/5469), and `test_one_d_fdc_matches_microtime_histogram` correlation
+0.98 → 0.99997 (the "fix" of 2026-08-11 that dropped it to 0.9695 changed the size,
+not the offset). The call-site parity fixture's linear matrices were re-recorded;
+the reference anchor is `flc_2d/test/test_bootstrap.py` (Octave fixture). tttrlib's
+own MATLAB test was right all along — it slices `[1:n+1]`. Two consequences worth
+announcing: the linearly-binned decay (`one_d_fdc`, `create_1d_fdc`) and `mat_lin`
+moved by one bin (4 ps × factor) and regained their last bin; and a photon at
+exactly `tMax` is now counted at factor 1, as in the reference.
+
+Found in the same A/B and fixed with it: `create_1d_fdc` counted every pair of
+photons sharing a macro tick and a bin twice (the reference pairs forward only;
++41 on the diagonal of a stream with 427 repeated ticks), and
+`TwoDFDCreator._pick_n_chunks` called numba's `get_num_threads` after numba had
+left the module, so every build since ran as one chunk behind a swallowed
+`NameError`.
+
+## 33 of the MMFDB suite's failures were test-order contamination
+
+status: resolved 2026-09-16
+
+**Found 2026-08-10** while adding three enumeration terms to
+`mmfdb_flr_ext.dic` for the region/spot container contract
+([PRD-92](/prds/prd-92.md)) and checking what that broke. `pytest tests` in
+`modules/mmfdb` reports **33 failed / 757 passed**, concentrated in four files:
+`test_mmfdb_user_management.py` (14), `test_security_architecture.py` (10),
+`test_zip_archive_export.py` (6), plus one each in `test_fdb_general.py`,
+`test_fdb_setups.py`, `test_mmcif_database_resolver.py`.
+
+**Every one of them passes when its file is run alone** — the two largest were
+checked directly (`test_mmfdb_user_management.py` + `test_security_architecture.py`
+→ 40 passed), as was `test_zip_archive_export.py` (6 passed). So the suite is
+carrying process-wide state between files, most likely an auth/session or
+database singleton, in the same family as the `_DISPLAY_CONFIG` contamination
+already recorded for ChiMOL: one test's leftovers break *other files*, which is
+why bisecting with `-k` finds nothing.
+
+**Not fixed here**, and not caused by the dictionary change (that adds three
+enum values and a comment; the failures are in user management, security and
+zip export, none of which read the enumeration). Recorded because the number is
+large enough to look like a regression to whoever runs the suite next, and
+because it means the suite currently cannot tell a real breakage from this
+noise. Whoever fixes it should bisect by explicit node ids across *files*, not
+within one.
+
+**Resolved 2026-09-16** (mmfdb `a581bb6`). The singleton was what this entry
+guessed at: `register_services` resolved the default database path once and
+cached it in a module global, so every handler called afterwards went to
+whichever database the *first* registration had found. A later file's handler
+then read an empty database -- a valid session token was "Authentication
+required", and inserts failed their foreign keys. The path is now pinned only
+when a caller names one. `pytest tests` passes in one run (809 passed), and the
+same bug was failing 11 tests in ChiSurf's `test/fio`.
+
 ## `_flr_fret_calibration_parameters.phi_donor` is uncommitted
+
+status: open
 
 **2026-09-08.** IHM-FLR defines `phi_acceptor` and no donor counterpart,
 although γ = (gR·φ_A)/(gG·φ_D) needs both. The term was added to
@@ -786,6 +1682,8 @@ that dictionary rewrite should check `phi_donor` survives it; if their version
 defines an equivalent, the declaration should point at theirs instead.
 
 ## The ALEX period spectrum runs at 2.6 samples per period
+
+status: open
 
 **Measured 2026-09-08.** `detect_alex_period` bins the signed donor−acceptor
 stream and takes the peak of its power spectrum. `bin_width` is chosen to make
@@ -816,6 +1714,8 @@ FFT only has to land within 2 %.
 
 ## The background estimator's default tail window can fit an empty range
 
+status: open
+
 **Measured 2026-09-08** on `001_60g_25r_cal1_cy3b_8_18_33bp_atto647n_alex.pto`.
 The tail fit took every bin above `tail_fraction × max(inter-photon time)` and had
 **no upper edge**. With the shipped `tail_fraction = 0.8` that is 17.4–21.8 ms on
@@ -843,6 +1743,8 @@ would do), and that changes numbers for every existing caller, so it was not
 done here.
 
 ## `.pto` can compress its payloads; ChiSurf writes them raw
+
+status: open
 
 **Measured 2026-09-08.** The question was whether the container supports
 transparent compression. **It does, and no ptolib change is needed:** the format
@@ -873,6 +1775,8 @@ it compresses inside its own `dstore` encoding, column by column, so the
 directory still reads without decoding anything.
 
 ## A burst table's per-stream count *rates* are not proportional to its counts
+
+status: open
 
 **Found 2026-09-08.** `E` and `S` are ratios of photon counts. The `.bur` schema
 writes each PIE window x detector stream as a **count rate**
@@ -911,6 +1815,8 @@ deliberately; do not swap the column names in passing.
 
 ## Four burst tools silently reject a `.pto` burst analysis
 
+status: open
+
 **Found 2026-09-08.** A burst search over a `.pto` container keeps its results
 **inside the measurement** and writes no folder at all: its output is a path like
 `m000.pto/sliding_window_All 0.1500#60`, addressed like a folder but not one.
@@ -937,7 +1843,816 @@ Still silent, each one line plus a check that the reader behind it copes:
 
 The predicate is `p.is_dir() or burst_tree.is_container_path(p)`.
 
+## test_prd_mentions and test_plugin_help_guide_seam are red at HEAD for unrelated plugins (open) — both resolved 2026-09-03
+
+status: open
+
+**Found 2026-08-14, during the chimol relocation** (which is *not* the
+cause — verified against HEAD before touching anything).
+
+Two guardrail suites fail on plugins whose modernisation is in flight
+elsewhere:
+
+* ✅ **RESOLVED 2026-09-03** `test_prd_mentions.py`: every current offender was
+  cleaned rather than allow-listed — the `fret/core` forwarders' and
+  `model_manager`'s "(PRD-97)"/"(PRD-38)" parentheticals dropped, the
+  `flc_2d` parity test and `lumis_quest` CREDITS.md reworded, the historical
+  "(PRD-109/122/130/133)" asides in
+  `core/{fluorescence/burst,math/{linalg,optimization},structure/av,
+  fluorescence/tcspc/irf_estimation}` and `gui/chiplot/backends` rewritten to
+  say what happened without the number. The allow-list's genuinely stale lines
+  (`core/fio/trajectory/{__init__,xtc}.py` — the latter file no longer exists)
+  were struck. Both guards green.
+* ✅ **RESOLVED 2026-09-03** `test_plugin_help_guide_seam.py`: the six plugins
+  now ship their `help.md`/`guide.json` — see the plugin-manager-rebuild entry
+  below.
+
+`mfd_prepare` was mid-restructure (its files were staged for deletion in the
+shared index), which is why the PRD fix did not land with the relocation; the
+restructure finished **2026-08-15** and its PRD mentions and the broken
+`ServiceDispatcher.method` registration were fixed together (commit
+`e7f9a3835`). What this entry called "free wins" are now taken.
+
+## Six plugin-suite failures that predate the dependency work (open) — 4 of 6 fixed 2026-09-03
+
+status: open
+
+**Found 2026-08-20, during the plugin-dependency change's `pytest test/plugins`
+run.** All six reproduce on HEAD content and are unrelated to manifests,
+discovery or load order; verified by checking the relevant files with
+`git show HEAD:<path>` rather than by assuming.
+
+State after the 2026-09-03 sweep (arm64 env, `QT_QPA_PLATFORM=offscreen`):
+
+- ✅ **FIXED** `burst/test_mmfdb_h2mm_simulation.py::test_model_selection_scan_is_exposed`
+  — the scan is a `tttrlib.DataStore` now, not a frame: `.columns` is the list
+  of `Column` objects and `Column == str` raises the truth-value ambiguity the
+  test showed. The test's spelling moved to `.names`
+  (`list(h2mm.scan.names) == [...]`); the store's column order is first-seen,
+  which is the order `store_from_rows` builds, so the assertion holds. Whole
+  file: 5 passed.
+- ✅ **FIXED, and it was hiding a real defect**
+  `burst_selection/test_export_guards.py::test_export_bur_writes_non_empty_frame`
+  — the test fed a `pandas.DataFrame` where production holds a `DataStore`, and
+  `write_csv_table` no longer converts frames, so the export silently reported
+  "Export failed". **Behind it, both exporters (`export_bur`,
+  `export_flr_cif`) guarded on `self._last_frame.empty` — a pandas attribute
+  the DataStore does not have — so in production, with a real table, the
+  guard itself raised `AttributeError` and neither export could run at all.**
+  The guards now test `n_rows() == 0`; the test builds its table through
+  `store_from_rows`, the way the pipeline does. 6 passed.
+- ✅ **FIXED** `test_plugin_entrypoints_import[fps_json_editor]` and `[fret]`'s
+  root cause is unchanged — `IMP.bff.fret` does not exist — **but the
+  environment question is now answered**: the forwarders
+  (`plugins/modelling/fret/core/*.py`) name a Python subpackage that exists
+  only in `/Users/tpeulen/dev/imp.bff/cmake-build-debug`, and that build
+  cannot even initialise under the arm64 env (its `IMP/__init__.py`
+  path arithmetic fails before any import). The env's installed build
+  (`/Users/tpeulen/dev/imp/cmake-build-arm64`) has the flat C++ surface —
+  `fret_efficiency`, `FretSpectrum`, `histogram_rada`, … — and no `fret`
+  subpackage. So this is the PRD-97 stream's decision, on the record now:
+  either install the `IMP.bff.fret` Python portion into the active imp build,
+  or de-forward `fret/core` onto the flat surface. **Still open.**
+- **Still open on purpose** `test_plugin_demo_gating.py::test_every_game_declares_itself_a_demo`
+  and `::test_opting_in_brings_the_demo_hub_back` — the three game manifests
+  still carry `"demo": false` and `chisurf/gui/chigame/` is still modified in
+  the shared tree (re-verified 2026-09-03). It belongs to whoever owns the
+  chigame work; flipping the flag hides the Games entry from the default menu.
+
+Tally at the end of the original change: 6 failed, 319 passed, 1 skipped (down
+from 18 failed, since 12 of the original failures *were* caused by the change
+or by manifest-scanning tests that mistook chimol render baselines for plugin
+manifests, and were fixed).
+
+## Pre-existing failures found during the plugin-manager rebuild (open) — both fixed 2026-09-03
+
+status: open
+
+**Found 2026-08-20.** None were caused by that change; each was checked against
+the working tree's own state before the rewrite began.
+
+- ✅ **FIXED 2026-09-03**
+  `test/test_ui_schemas.py::test_the_written_schemas_match_the_generator` —
+  the schema work flagged as uncommitted in August has long since landed; the
+  written schemas under `chisurf/core/dataspec/schemas/` had simply drifted
+  from the generator again. Regenerated with
+  `python -m chisurf.core.dataspec.schema` (`guide.schema.json` +16 lines,
+  `view.schema.json` +243). The whole file: 325 passed.
+- ✅ **FIXED 2026-09-03**
+  `test/test_plugin_help_guide_seam.py::test_every_gui_plugin_has_help_and_guide`
+  — the six unlisted GUI plugins (`mfd_prepare`, `plot_settings`,
+  `tttr_to_pto`, `filetools`, `lumis_quest`, `ninja_adventure`) now ship
+  `help.md` and `guide.json` beside their GUI modules, written against what
+  each tool actually does; no code change was involved, exactly as the seam
+  promised. Whole file: 121 passed, 20 skipped. The allow-list was not
+  touched.
+
+## 2026-09-03 — `IMP.bff.av` no longer exists — three test/models failures (2026-09-02)
+
+status: resolved 2026-09-03
+
+`chisurf/core/structure/av/__init__.py` imported
+`IMP.bff.av.compute.compute_av`, but the installed imp build (the arm64 env's
+`/Users/tpeulen/dev/imp/cmake-build-arm64`) carries no `IMP.bff.av` Python
+subpackage — the PRD-117-style move put the builder on the flat `IMP.bff` C++
+surface. Failed: `test/models/test_fret_structure.py` (both tests),
+`test/fluorescence/test_structure.py::test_labeled_structure`, and
+`test/models/test_detector_setups.py::test_a_missing_setups_file_never_blocks_a_headless_run`
+(the last two only through shared import/state).
+
+**Fixed 2026-09-03** by pointing the wrapper at the new surface — verified by
+introspection and by running the AV parity set, not by renaming:
+
+* `_compute_av()` → `IMP.bff.compute_av`, which takes **one (N, 4) xyz+radius
+  array** and `r1/r2/r3` separately (no `dye_radii=`, no `backend=`), and
+  returns an `AccessibleVolume` read through `get_ng()/get_density()/
+  attachment_point`.
+* The other lazy imports moved to module-level functions that exist now:
+  `density_to_points` (returns one `(n, 4)` array, not `(n, points)`),
+  `random_distances`, `av_pair_statistics` (deterministic across calls;
+  takes the point clouds directly), `mean_position_distance`,
+  `histogram_rda` (takes **point arrays**, no longer the duck-typed AV —
+  real `States` or nothing), `split_contact_volume_masks` (returns
+  `[contact_mask, free_mask]`, wants 2-D radius/centre arrays),
+  and `IMP.bff.DynamicAccessibleVolume` (built from the real upstream AV plus
+  an `ObstacleAtoms`; `dye_radius` renamed `probe_radius`).
+* **The site strip is the load-bearing part.** With the FRETStructure model
+  defaults (`linker_width=4.5`, `radius1=4`, grid 0.5) the raw-array door
+  returned **zero** points for the hGBP1 18/577 sites while upstream's own
+  PDB door returned 106k for the same parameters — because the PDB door
+  strips the attachment residue to backbone + attachment atom
+  (`default_strip_mask`), which is what keeps the source from obstructing
+  itself. The wrapper now applies the same keep-set before calling.
+* `allowed_sphere_radius=None` now passes the **derive sentinel** (`-1.0`)
+  instead of the flat settings value 2.0. Upstream derives
+  `max(1.5, linker_width/2 + grid/2)`; the search inflates obstacles by half
+  the linker width, so a flat 2.0 at `linker_width=4.5` walls the source in —
+  exactly the fps.json-door bug upstream's `AV.h` documents as fixed by the
+  same derivation. The yaml key `fps.allowed_sphere_radius` is no longer read
+  by the wrapper.
+
+With `QT_QPA_PLATFORM=offscreen`, `test/fluorescence/test_structure.py`
+(7), `test/models/test_fret_structure.py` (3) and
+`test/models/test_detector_setups.py` (5) all pass. The Qt-offscreen
+platform is required for the last two — bare `QApplication([])` aborts the
+interpreter headless, which had masked these tests' progress earlier.
+
+**`DynamicAV` was rewired end-to-end the same day** (it shared the dead
+import): the upstream class renames every field to a getter
+(`get_diffusion_map`, `get_quenching_rate_map`, `get_fret_rate_map`,
+`get_rate_map`, `get_occupancy`), needs `update_diffusion_map()` before
+`update_occupancy()` will run, and `donor_decay` takes `(t_max, t_step,
+n_out)` positionally returning a `GridDiffusionResult` read through
+`get_time/get_fluorescence/get_density`. The PET quenching table is now
+`PETParametersMap`: ChiSurf's `structure.json` `Quencher` block
+(`{RES: {ATOM: [rate (1/ns), contact_distance (Å)]}}` — the residue-varying
+number is the rate, the shared 2.9 Å the contact radius) maps onto
+`PETParameters(comp_id, rate_constant, contact_distance)`. Exercised
+end-to-end on hGBP1 site 18 (quenching field max 5.55/ns, occupancy
+normalised, decay integrated to f(∞)=0.067). One honest gap: upstream's
+`n_out` sampling semantics returned fewer samples than requested in the
+smoke test, and the AV-decay model (`av_decay.py`) has no test coverage of
+its own — nothing pins the output length the fit sees.
+
+The fret-plugin forwarders still naming `IMP.bff.fret.*` are a *separate*
+gap and remain open — see the plugin-suite entry below.
+
+## 2026-09-03 — `test_change_dihedral` red: the test relied on two accidents, not on the dihedral machinery
+
+status: resolved 2026-09-03
+
+`test/fluorescence/test_structure.py::Tests::test_change_dihedral` expected
+zeroing ``omega`` and calling ``update()`` to move the first atoms;
+coordinates came back unchanged. **Both halves of the premise were wrong, and
+neither had anything to do with the dihedral machinery:**
+
+1. **``s1.omega *= 0.0`` never wrote anything.** The ``omega`` getter returns
+   ``internal_coordinates[self._omega_indices]['d']`` — fancy indexing, hence a
+   **copy** — so the in-place multiply modified a temporary. True since the
+   property was introduced (2019); the *setter* writes through, the augmented
+   assignment does not.
+2. **The first atoms cannot move under ``omega`` at all.** The omega rows sit
+   at the CA atoms; residue 1's row carries dummy anchors ``(0, 0, 0)``, and
+   the first *effective* omega is the CA of residue 2 — atom 7. Atoms 0–6
+   (N, CA, C, O, CB, … of MET 7) are built before any omega and are unmoved by
+   a real omega write (verified: zeroing every omega moves 3449/3456 atoms, max
+   Δ 170 Å, first mover exactly atom 7).
+
+The test had been green because the old internal→cartesian reconstruction was
+lossy enough to jiggle the first atoms on every ``update()``; the numba-removal
+stack made the round-trip exact (Δ ≈ 2e-15), which turned the dormant no-op
+into a red assertion. Fails identically on a clean worktree at HEAD, so it was
+never working-tree fallout.
+
+**Fixed the test** (2026-09-03): set ``s1.omega = np.zeros_like(s1.omega)``
+through the property, then assert atoms `[:7]` stay and atoms `[7:]` move.
+Not from the 2026-09-02/03 PRD wave; the internal-coordinate code was never
+wrong. Sibling `test_labeled_structure` was the already-recorded
+`IMP.bff.av` import baseline — also fixed, see above its entry.
+
+## The `common.py` move left two stale `cs.core.common`/import sites — 24 pda2c tests red, one PDB parse path dead (found & fixed 2026-09-03)
+
+status: open
+
+The working tree's `chisurf/core/common.py` → `chisurf/core/support/common.py`
+relocation (part of the large uncommitted refactor) did not move all of its
+callers with it. Three separate symptoms, one cause:
+
+* `chisurf/core/models/pda2c/simple.py` imported `Pda2cModelMixin`,
+  `mask_zero_photon_bins`, `pda_1d_residuals_from_s1s2` and
+  `resolve_fit_settings` from `chisurf.core.support.common` — the *relocated
+  general helpers* module — when they live in
+  `chisurf/core/models/pda2c/common.py`, the *pda2c* module of the same
+  basename. Every import of `simple.py` raised, which took down
+  **24 tests** across `test_pda2c_diagnostics.py` (12),
+  `test_pda2c_statistics.py` (9) and `test_pda2c_saw_nu.py` (3) with one
+  `ImportError`. **Fixed**: the import now names `chisurf.core.models.pda2c.common`.
+  All 47 pda2c tests pass.
+* `chisurf/core/fio/structure/coordinates.py` still spelled the old namespace
+  eight times (`cs.core.common.atom_weights`, `CHARGE_DICT`,
+  `TITR_ATOM_COARSE`, `VDW_DICT`) — even though it *already imported*
+  `chisurf.core.support.common`. Killed `parse_string_pdb`'s mass/radius
+  assignment and the PQR writer. **Fixed** to the `chisurf.core.support.common`
+  spelling; found because `test_structure_Structure` failed with
+  `module 'chisurf.core' has no attribute 'common'`.
+* `chisurf/core/structure/av/__init__.py:564` had the same stale
+  `cs.core.common.quencher` reference. **Fixed** the same way.
+
+The trap worth keeping: `support/common.py` and `models/pda2c/common.py` share
+a basename, and a mechanical `chisurf.core.common` → `chisurf.core.support.common`
+rewrite pastes over *both* kinds of caller. A file that stopped importing is a
+red suite; a file that now imports the wrong `common` and silently loses
+`atom_weights` is a wrong-answer path — the PDB parser's `except KeyError`
+printed "Cloud not assign parameters" and kept going.
+
+## `.native` calls outlive the backend they were written against
+
+status: open
+
+**2026-09-02.** `lightpath_simulator/gui/node_types.py` reached past chiplot
+with `plot_w.native.hideAxis('left')` and three more, under a comment saying
+chiplot had no verb for it. chiplot has had `set_axis_visible` for a while, so
+the comment outlived the gap it described -- and when chiplot's native backend
+stopped being pyqtgraph, `hideAxis` became an `AttributeError` that took the
+whole node factory down with it and left the beam-path simulator unable to
+build its default path.
+
+Fixed there. The general shape is the risk: **a `.native` call is a bet on
+which backend chiplot happens to have**, and it is invisible to the import
+guard because it reaches pyqtgraph without importing it.
+`test/chiplot_native_allowlist.txt` is the list of remaining bets.
+
+## Bounded LM stalls when the bounds span decades (2026-09-02)
+
+status: resolved 2026-09-02
+
+Fixed via [PRD-120](../prds/prd-120.md) (2026-09-02): `IMP.bff.Minimizer::fdjac2_step`
+takes the smaller in magnitude of an internal-relative and an
+externally-relative forward-difference step for two-sided bounds, so a
+decade-spanning box no longer collapses the LM step. ICS 2D-Gaussian
+chi2r 608 → 1.03 bounded, matching unbounded. `test_graph_fit_ics.py`'s
+bounds-off workaround is gone.
+
+## — `pch_mixture` indexes `avg_numbers` by the length of `brightnesses`, and reads past the end (2026-09-02)
+
+status: resolved 2026-09-02
+
+Filed against tttrlib by `chisurf/core/models/pch/pch.py`'s `pch_mixture`
+wrapper, which raised a defensive `ValueError` in front of the delegation and
+documented the bug in its own docstring ("filed upstream ... this raises
+until it is fixed there"). Confirmed **fixed in tttrlib**, `okf/BUGS.md`
+("`pch_mixture` indexes `avg_numbers` by the length of `brightnesses`, and
+reads past the end", fixed 2026-08-10): a mismatched `(brightnesses,
+avg_numbers)` pair used to be read with no bounds check — not a crash, a
+*silent* one, because the `avg_numbers[s] <= 0.0` guard on the very next line
+then skipped the species whose occupancy read past the end into zeroed
+memory, and the result was a normalised, finite histogram of *fewer species
+than were asked for*. `pch_mixture` now throws `std::invalid_argument` naming
+both sizes, surfaced to Python as `ValueError`.
+
+**Verified present in the environment chisurf actually runs in**, not just
+in the tttrlib checkout: the `arm64` conda env's installed
+`tttrlib.pch_mixture` raises `ValueError: pch_mixture: brightnesses (3) and
+avg_numbers (1) must have one entry per species` for a mismatched pair,
+2026-09-02. The chisurf wrapper's own length check is kept regardless, as
+defense in depth (one call earlier, a message this module controls, and no
+dependency on which tttrlib build happens to be linked) — its docstring now
+says so instead of "filed, awaiting a fix". `FidaModel` does not go through
+`pch_mixture` (it uses the pure-Python `fida.fida_pch` generating-function
+path) and was not affected by this defect; its own axis problem is the
+separate refusal documented under PRD-121 in `okf/prds/prd-121.md`.
+
+## `AnisotropySpectrum` applies the G-factor before the mixing (2026-09-02)
+
+status: open
+
+Found porting the MFD patterns onto the graph's producer nodes (PRD-128).
+The engine node's polarised mixing applies ``G`` in a different slot than
+the Schaffer form the MFD side derives from: at ``G = 1`` the two spellings
+are algebraically identical for every ``l1``/``l2``, away from it they are
+not (at ``G = 2``, ``l1 = l2 = 0.1`` the recovered anisotropy differs by a
+factor of two). `chisurf/core/fluorescence/mfd/patterns.py`
+(`_polarized_spectrum`) works around it by driving the node at ``g = 1``
+and applying ``G`` afterwards as a perpendicular-channel gain — one
+multiplication, not a second copy of the algebra. **Not corrected in the
+node** because `AnisotropySpectrum` must stay bit-identical to
+`chisurf.core.fluorescence.anisotropy.decay.calculcate_spectrum`, which the
+fitted TCSPC models are pinned against; fixing the ordering is an
+engine-side change that must move both together, with the VV/VH parity
+tests re-based in the same commit.
+
+## No `AcceptorSpectrum` producer node — the sensitized-acceptor transform is a second implementation (2026-09-02)
+
+status: open
+
+`mfd/patterns.py::acceptor_lifetime_spectrum` computes the sensitized
+acceptor's rise/decay spectrum in numpy because nothing in `IMP.bff` emits
+it — the decay graph's producers cover the donor (`FretSpectrum`) and the
+polarisation (`AnisotropySpectrum`); no fitted TCSPC model has needed the
+acceptor rise yet. The transform belongs *in* the engine (an
+`AcceptorSpectrum` node taking the quenched donor spectrum plus ``tau_a``
+and ``tau0``); until that node exists the numpy transform stays, stated
+loudly in its docstring rather than hidden behind a fallback. This is the
+one recorded exception to PRD-128's "patterns.py computes no spectrum
+algebra of its own".
+
+## The Objects dock is retired, and the overlay that replaced it lists nothing
+
+status: open
+
+`chimol/hosts/qt/window.py` states it plainly — *"Objects is permanently hidden
+(the list is in the viewport)"* — so `window.objects` no longer exists and the
+old grab raised `AttributeError`. That part is intended.
+
+What is **not** intended: the viewport Object List draws only `all` and `sele`.
+With three real objects loaded it still shows those two rows, before and after
+`refresh_objects()`:
+
+```python
+win = MolViewPluginWindow(); win.load_structure_from_path(pdb)
+Cmd(win).do("create ligand, resn NAG")
+list(win.viewer.objects)      # ['obj2', 'obj3', 'obj4']
+win.refresh_objects()         # overlay still shows only `all` and `sele`
+```
+
+So the panel that replaced the dock does not yet do the dock's job. Consequence
+for the docs: `chimol_objects_panel.png` and `chimol_groups_panel.png` in guide
+44 show the **retired** Qt dock. They were deliberately *not* regenerated from
+the overlay — that would swap two figures that show the old UI correctly for two
+that show the new UI wrongly. The guide's prose around them (rows carrying
+PyMOL's five **A S H L C** menus) still describes what the overlay draws, so it
+is not misleading, only dated.
+
+## The ray tracer draws a mesh contour as streaks
+
+status: open
+
+`isomesh` renders as a clean wireframe cage through the WebGPU path and as long
+crossing bars through `ray`. Same scene, same commands:
+
+```
+molmap all, 6
+isomesh m, molmap_6     # NO level -- see below
+orient all
+zoom all
+ray out.png, 900, 650
+```
+
+This blocks regenerating `chimol_molmap.png` and `chimol_map_isomesh.png`, which
+are chrome-free ray renders; the existing files are correct and were left alone.
+
+**Worth knowing whichever path you use:** give `isomesh` **no level**. A map
+opens already contoured, and a level argument *appends* a second contour rather
+than restyling the first — the solid surface the map opened with then hides the
+mesh, and the figure looks like `isomesh` silently did nothing.
+
+## `orient` with no target resolves nothing on a bare viewer
+
+status: open
+
+`Viewer.add_structure(..., name="148l")` does not take the name; the object is
+auto-named (`obj2`). A bare `orient` / `zoom` then fails with *"orient: nothing
+to orient"* and leaves the camera wherever it was — which reads as a badly
+framed render rather than as an error, because the message goes to the error
+callback a script usually discards. Name `all` explicitly.
+
+# ~~H2MM's fallback engine is correct but 300x slower than the reference~~ — RESOLVED (2026-08-31)
+
+Found immediately after fixing the `NameError` that stopped `_estep` running at
+all (see `okf/log.md`, same date). With the fix, `test_ab_vs_h2mm_c.py` gets
+*past* the correctness assertion —
+
+```
+assert mine.loglik == pytest.approx(ref.loglik, rel=1e-4, abs=1.0)   # passes
+```
+
+— and fails the one after it:
+
+```
+numba H2MM 307.55x the H2MM_C time/iter - performance regression
+assert 307.54749331660156 < 1.5
+```
+
+**This is not a regression from that fix.** It is what retiring numba left
+behind: `core/h2mm.py` is now interpreted Python running an `O(N·n²)` loop
+photon by photon, and the guard was written when a JIT stood behind it. Before
+the fix the same test failed earlier and louder, with a `NameError`.
+
+**It does not affect normal use.** `core/engines.py` prefers the tttrlib C++
+backend (`_use_tttrlib()`) and only falls back to this module, so the GUI, the
+wizard and the export all take the compiled path. The slow path is what you get
+when tttrlib is missing, when a caller reaches into `h2mm.fit_states` directly
+(which is what the benchmark does), or when the tttrlib call raises and the
+fallback catches it — and that last one is silent apart from a log line.
+
+Two things are therefore stale rather than broken, and neither is fixed:
+
+* the guard asserts a `< 1.5x` ratio that the architecture no longer promises
+  for this module. Either it should compare the *tttrlib* path against the
+  reference — which is the path users get — or it should be marked as measuring
+  the fallback and given a realistic bound;
+* the fallback is still called "the numba engine" in `engines.py`
+  (`backend()` returns the string `'numba'`, and the fallback warning names it),
+  which will mislead the next reader: there is no numba left in it.
+
+**Resolved the same day, by deleting the fallback** (`T-20260831-02`). Neither
+follow-up was needed in the end:
+
+* the perf guard now benchmarks the engine users actually get, and **passes** —
+  1.04× the reference on the 2-state case and **0.48×** on the 3-state one, so
+  ChiSurf is *faster* than `H2MM_C` there. Both parametrisations had been red;
+  they are green.
+* nothing is called "the numba engine" any more because there is no second
+  engine. `active_backend()` returns `'tttrlib'` or raises.
+
+`core/h2mm.py` went 1210 → 376 lines, keeping only the data types
+(`H2mmModel`, `BurstPhotons`, `prepare_bursts`, `factory_model`,
+`simulate_bursts`). The whole H2MM + burst_gs suite went from 535 s to 138 s,
+which is the same slow EM leaving the tests.
+
+# Further tttrlib delegation — the five candidates, settled (2026-08-31)
+
+The table below was published earlier the same day as **candidates, not
+findings**: five unused tttrlib entry points sitting next to an in-tree module
+that *might* implement the same thing. All five have now been settled by
+importing and A/B-ing on real data. Three were false candidates — the symbol
+name matched a subsystem and computed something else — which is exactly the
+failure mode the original note warned about.
+
+| tttrlib symbol | what it actually computes | verdict |
+|---|---|---|
+| `BurstML`, `BurstMLFitResult` | FRET_burstML (Hoffmann *et al.*): a **joint diffusion + kinetics + photon-counting** likelihood over burst photon sequences, 5·n parameters (`n0`, `tau_diff`, `k`, `f`, `E`, `bkg`), radial coordinate discretised and eigendecomposed per parameter set. | **false candidate.** `core/fluorescence/mle/` is a typed facade over `fit2x` (`DecayFit2`/`DecayFitProblem`) and carries no algorithm of its own; the nearest in-tree relative of `BurstML` is `burst/gopich_szabo.py`, which has no diffusion term. Nothing to delete — this is a *missing feature*, not a duplicate. |
+| `BurstFeatureExtractor`, `BurstFeature` | Per burst `[start, stop, size, duration (s), rate (Hz)]`, per-channel photon counts, and uncorrected `E = A/(D+A)`. | **false candidate, but verified numerically.** On 293 bursts of `BH_SPC132.spc` it reproduces ChiSurf's `.bur` arithmetic exactly (size max\|Δ\| = 0, duration 1.8e-15 ms after the s→ms conversion). It is a strict *subset* — no per-detector first/last photon, no per-detector duration or mean macro/micro time, no per-window count rates, no corrected E/S (γ/α/β/δ) — and it only reads a `tttrlib.BurstFilter`, which ChiSurf never has: its boundaries come from eight searches, several of them in-tree (BOCPD, CUSUM, Kalman). Delegating five of ~40 columns would add a conversion path without removing an algorithm. |
+| `DecayPhasor`, `StreamingPhasor` | Sine/cosine moments of a decay, normalised by its integral, with IRF calibration. | **duplicate — deleted.** The imaging phasor already delegated (`CLSMImage.get_phasor`) and `StreamingPhasor` was already live in the acquisition pipeline; the duplicate was the unreachable `core/fluorescence/tcspc/phasor.py`. See [FLIM and the phasor approach](imaging-flim-phasor-theory.md) for the measurement. |
+| `maxent_invert` | Skilling–Bryan MEM: minimise `‖Ax − b‖² − ν²·S(x)` by an active-set bound-constrained QP inside a Newton outer iteration. | **duplicate — deleted.** `core/math/optimization/mem.py::maxent` had the same signature, no callers, and the **wrong sign** on the entropy gradient: it returned `chi2` as the objective but `grad_chi2 − ν²(1 + ln x)`, which minimises entropy instead of maximising it. On a 3-peak/30-node inversion its objective is worse at every ν, and at ν = 30 it drives S to 5.5e-6 (every component on the 1e-8 floor) where the compiled solve holds S = −87. tttrlib's own registry entry had already recorded `mem.py` as "not equivalent … which is why that was rejected as a reference". |
+| `OptsCluster`, `ResultsCluster` | **Single-molecule localisation**: 2-D Gaussian PSF fitting (`fit2DGauss`, `maxNPeaks`, `elliptical_circular`), whose results carry `peak_x/y`, `sigma_x/y`, `background`, `chi2`, `imageID`, `pixelID`. | **false candidate**, as the earlier tracker already suspected. Nothing to do with `core/ml/cluster/`. |
+
+Also settled while surveying, and *not* from the table:
+`plugins/core/acq/tcspc_devices/simulation/core/algorithms.py` picked the
+excitation focus with `elif <name> and hasattr(tttrlib.SimGrid, <ctor>)` ending
+in `else: # gaussian3d (default / fallback)`, so a library missing
+`gaussian_lorentzian` or `numeric_from_file` silently simulated a different
+optical model. It now raises. And `core/ml/cluster/_hdbscan.py`
+carried an in-tree `O(n²·d)` brute-force core distance and an `O(n²)` Prim MST
+behind a `hasattr` probe on `tttrlib.mutual_reachability_mst`. They agreed
+**bit for bit** (max\|Δ\| = 0 in core distance, in every MST edge weight and in the
+edge set) on 500 and 2000 real photons from `BH_SPC132.spc` at `min_samples`
+3/5/10, and were 700–3000× slower. Deleted; a missing kernel now raises.
+
+Already delegating, listed so nobody re-checks: `DecayFitNExp` (tcspc models),
+`StreamingCorrelator` (fcs), `GopichSzabo`, `HMM`, `TwoCDE`, `BVA`,
+`tcspc_run_mem`, `HmmSurrogate`, `sim_occupation_fractions`, `SimEngine`,
+`richardson_lucy_2d`, `PdaBurstLikelihood`.
+
+**What is left from this survey.** Nothing to delete. One genuine *gap*:
+`BurstML` implements a method ChiSurf does not have at all — freely-diffusing
+burst analysis where diffusion through the focus, conformational kinetics and
+photon counting are fitted jointly, without binning. `burst_gs` fits kinetics on
+photon sequences but assumes the burst is the observation window and carries no
+diffusion term, so the two are complementary rather than competing. The entry
+point is `tttrlib.BurstML` (`set_burst_data(times_ms, colours, offsets)`, then
+`fit(init, lower, upper, n_states, n_colours, jmax, qmax, t_th, n_th)`);
+`examples/single_molecule/plot_burstml_two_state.py` upstream documents the
+5·n parameter layout and simulates data the likelihood's own forward model
+generated, which is the fixture a plugin would be built against.
+
+**The method that worked**, and the traps it caught, are worth reusing:
+
+- Run the A/B on a **real** file, not synthetic data (synthetic photons put 2CDE
+  into its sentinel branch and proved nothing).
+- Call it **the way callers call it** (passing `[]` for BVA's micro-time ranges
+  made a correct path look like it returned only zeros).
+- **Match the unit and index conventions before concluding anything.**
+  `DecayPhasor` takes frequency in *cycles per micro-time channel*, not per
+  nanosecond; passing the physical frequency makes it return `(≈0, ≈0)` and look
+  like a different quantity entirely. `BurstFeatureExtractor` reports duration in
+  seconds and rate in Hz where the `.bur` contract is ms and kHz. Both looked
+  like disagreements at first and were unit mismatches.
+- Report `max|Δ|`, never "they agree" — and when they differ, settle it against
+  an **independent third** calculation rather than against either side. The
+  MaxEnt verdict came from SciPy L-BFGS-B on the documented objective; the
+  phasor verdict from writing the definition out as a weighted sum; the MST
+  verdict from SciPy's `minimum_spanning_tree` over an explicit
+  mutual-reachability matrix.
+
+## — chiplot's WGPU backend: middle-drag opens a selection rectangle instead of panning
+
+status: resolved 2026-08-20
+
+**Found 2026-08-20** (user report). In the `wgpu` native chiplot backend
+(`chisurf/gui/chiplot/backends/wgpu/_canvas.py`), a middle-button drag does not
+pan the view the way it does in pyqtgraph — instead it opens a rubber-band
+selection rectangle, whenever the "left button pans" preference
+(`gui.plot.pyqtgraph_config.leftButtonPan`) is off, i.e. the panel is in
+left-drag-zooms mode.
+
+The docstring on `_mouse_press` already states the intended pyqtgraph
+semantics: "Only the *left* button grabs a region, a marker or the corner
+button — pyqtgraph's items ignore the middle one, so a middle drag pans across
+a fit range instead of moving it." `_is_view_drag_button` correctly admits both
+`QtCore.Qt.LeftButton` and `QtCore.Qt.MiddleButton` into the drag path
+(`_canvas.py:856-864`). But the branch that decides pan-vs-rubber-band
+(`_canvas.py:920-927`) only inspects `self._left_button_pans()` — it never
+checks *which* button is down:
+
+```python
+if self._left_button_pans():
+    self._panning = True
+    ...
+else:
+    self._rubber = (px, py, px, py)
+```
+
+So with `leftButtonPan=False`, a middle-button press falls into the `else`
+branch and starts a rubber-band drag exactly like a left click would, even
+though the middle button is supposed to always pan regardless of that
+preference. With `leftButtonPan=True` (the default) the bug is invisible,
+because both buttons pan anyway — that is likely why it was not caught by the
+existing tests.
+
+**Fixed 2026-08-20**: the pan branch now also fires on a middle-button press
+regardless of the preference (`_canvas.py:923`,
+`if event.button() == QtCore.Qt.MiddleButton or self._left_button_pans():`).
+Covered by
+`test/gui/test_chiplot_wgpu.py::test_a_middle_drag_still_pans_when_left_draws_a_zoom_rectangle`,
+which sets `leftButtonPan=False` via `set_left_button_pans(False)` and asserts
+a middle drag still pans (`_panning is True`, `_rubber is None`, range
+changes). Full file: 57 passed.
+
+The legacy `opengl` backend (`chisurf/gui/chiplot/backends/opengl/_canvas.py`)
+has no equivalent pan/rubber-band logic at all, so this is specific to the
+WGPU backend, which is the one under active migration
+([chiplot](../subsystems/chiplot.md)).
+
+
+# chimol: three things a documentation grab walked into (2026-08-31)
+
+Found while making `docs/guides/make_screenshots.py` regenerate the figures for
+[the molecular-viewer guide](../../docs/guides/44_molecular_viewer.md). Two of
+the three are chimol's, filed here because chimol is a companion checkout with
+another instance active in it; none is fixed.
+
+## Clicking empty space does not clear the selection (open)
+
+status: open
+
+`MolView.handle_mouse_click` documents PyMOL's rule -- *"left-clicking away
+from any atom should deactivate the selection"* -- and says that with nothing
+picked it falls through to a `set` of no indices. It does not: a selection
+survives a click on an empty point **inside** the viewport.
+
+Found while wiring picking into the browser host and **not browser-specific**;
+the toolkit-free path is simply where it was first exercised, because that is
+the configuration the page runs. Guarded by a strict `xfail` in
+`chisurf/plugins/chimol/test/test_browser_picking.py`, so it flips to a
+failure -- and starts guarding the behaviour -- the moment it is fixed.
+
+To reproduce, take a point at least 40 px from every projected atom rather
+than a coordinate off the surface: a click the viewer never considers proves
+nothing about the rule, and `(-10000, -10000)` was the first thing tried.
+
+## The screenshot helper predates the WebGPU port, and returns a blank image (open)
+
+status: open
+
+`test/screenshot.py` is the tool the project rule *"never implement a GUI
+blind"* depends on. It cannot photograph chimol any more, and it **fails
+silently**: the image is a uniform grey rectangle of the right size rather than
+an error.
+
+Cause. The helper finds the 3-D view with
+`widget.findChildren(QtWidgets.QOpenGLWidget)` and captures it with
+`gl.grabFramebuffer()`. chimol's renderer is `WgpuRenderer` -- a plain
+`QWidget` presenting a WebGPU surface -- so there is no `QOpenGLWidget` to
+find. Its whole docstring argues about the offscreen platform plugin and GL
+contexts, which is the *previous* renderer's problem.
+
+Both routes are dead, and neither says so:
+
+* `QT_QPA_PLATFORM=offscreen` + `win.grab()` -> uniform grey. A presented
+  WebGPU surface is not in the widget's backing store.
+* the documented route (real window server, `WA_DontShowOnScreen`,
+  `shoot(win, ..., area="window")`) -> also uniform grey, because the
+  `QOpenGLWidget` search finds nothing and the fallback is the same
+  `widget.grab()`.
+
+Consequence. Any chimol GUI change "verified by screenshot" since the WebGPU
+port was verified against a blank image. The rule has been unenforceable for
+this plugin and nothing reported it.
+
+What a fix needs. The renderer already composites its chrome into the frame
+(`host/qt_overlay.paint_chrome_into`) and `WgpuMeshRenderer` can render
+offscreen -- `test/chrome_baseline.py` and the visual-rendering tests both get
+real pixels that way. So the capture should go through the *renderer*, not
+through Qt: draw a frame into a texture, read it back, and composite the
+chrome, which is also the only route that works for the browser host. Until
+then `screenshot.py` should raise rather than return grey.
+
+## Browser clicks land in the wrong place -- two boxes, not one (open)
+
+status: open
+
+Picking now runs in the page, and it misses. Not a constant shift: the error
+grows toward the bottom and the right, because the projection and the render
+use **differently sized rectangles**.
+
+The renderer draws with (`hosts/web/page.py`):
+
+    viewport=(0.0, 0.0, self.scene_width() * dpr, self.scene_height() * dpr)
+
+where `Viewer.scene_width/height` *do* subtract the panel column and the
+sequence strip. So the molecule is drawn into a shorter, narrower box -- but
+anchored at **y = 0**, where the desktop anchors it under the strip
+(`CanvasRenderer._scene_viewport` returns `(0, strip, ...)`).
+
+The projection runs on `SceneSink`, which inherits `CameraState.scene_width()`
+and `scene_height()`. Those return the **full** surface -- their docstrings say
+so outright: *"No panel is reserved"*, *"No strip is reserved"* -- so
+`scene_origin_y()` is 0 and the aspect used for the projection matrix is the
+whole canvas rather than the scene box.
+
+So: drawn in one rectangle, projected in another. `scene_origin_y()`'s own
+docstring is the statement of the invariant being broken -- *"both the
+projection and the render viewport need it and they must not disagree by a
+pixel: they are what decides whether a click lands on the atom under the
+cursor."*
+
+**Same root cause as the five missing host features.** `SceneSink` is a sibling
+of `CanvasRenderer`, not a child, so it has no `_internal_gui` and cannot know
+what the chrome reserves; `Viewer` therefore hand-rolls the scene metrics and
+the two halves drift. Re-basing `SceneSink` fixes the offset and the missing
+features together -- see the relocation concept.
+
+**Why the test suite did not catch it.** `test_browser_picking.py` projects an
+atom and clicks at the projected coordinate. That is self-consistent under any
+projection, correct or not: it proves the pick *path* is wired, never that the
+projection agrees with what was drawn. A real check has to render a frame and
+find the molecule's pixels, then click those -- the same "measure it, do not
+re-derive it" rule the trajectory test now follows.
+
+## — lumis_quest: `test_a_hitched_frame_does_not_throw_anybody_through_a_wall` fails on the working tree
+
+status: resolved 2026-08-14
+
+**Found 2026-08-14 (T-20260814-05). Fixed by 2026-08-23** — the npcs edit the
+entry blamed landed, and the full lumis + games suite runs green (434 passed,
+3 skipped) with the hitch-step test among them. Kept as a FIXED stub so a
+reader can tell a healed failure from one nobody filed.
+
+**Original text.** Deterministic failure (3/3 runs) in
+`chisurf/plugins/misc/games/lumis_quest/test/test_npcs.py`. The cause is an
+**uncommitted in-flight edit to `api/npcs.py`** (working-tree diff of
+-125/+59 lines against HEAD by a peer session, still evolving at time of
+writing) — the test is pure `api.npcs` physics and imports no GUI module, so
+the T-20260814-05 presentation work cannot be implicated. Not fixed by the
+finder because the file is actively owned mid-edit: reverting or patching it
+would discard the peer's work. Whoever lands the npcs change owns the test;
+if it is still red after their landing, the hitch-step resolution in
+`npcs.update` lets a beast end a 0.75 s step inside a solid (observed at
+(710.0, 376.0), a `beast` inside a wall of the test world).
+
+## test_keyboard_layout's browser-host case fails on T-20260814-01's in-flight rewire (open)
+
+status: open
+
+**Found 2026-08-14, during the relocation's full-suite run.** The test builds
+`object.__new__(Viewer)` and stubs `viewer.gui`; the half-finished
+`hosts/web/page.py` on disk routes `key()` through `self.sink.on_key_press`
+instead. Fails identically on the pre-move disk state — carried verbatim to
+`~/dev/chimol` — so it is that ticket's to finish, not relocation fallout.
+Full-suite tally after the relocation: 3625 passed, 41 skipped, and this one
+failure.
+
+## chimol's full test suite segfaulted
+
+status: resolved 2026-08-13
+
+**Symptom.** `pytest chisurf/plugins/chimol/test` died with SIGSEGV around 7%
+of the way in, inside an unrelated test. The file it died in passed on its own,
+and the test it died on moved between runs -- the marks of a fault that is not
+where it appears.
+
+**How to read the fault report.** The give-away is two lines, not the stack:
+
+```
+Current thread ...:
+  Garbage-collecting
+  File ".../renderer/wgpu_view.py", line ??? in _mark_closed
+  File ".../geometry/cartoon.py", line 128 in _transport_ups
+```
+
+`Garbage-collecting` directly above a chimol frame means the code below it did
+not call the code above it. A collection ran at an arbitrary allocation point
+-- here, ordinary cartoon geometry -- and destroyed a widget left over from an
+*earlier test*, whose C++ destructor called back into Python.
+
+**Cause.** `WgpuRenderer.__init__` connected a `_mark_closed` slot to Qt's
+`destroyed` signal so rendercanvas's loop would not probe a dead wrapper. The
+slot mutated the instance `__dict__`, and when the last reference is dropped by
+the collector that mutation happens *mid-collection*.
+
+**Fix.** Stop pushing the state out. `_rc_get_closed` and `_rc_close` are
+overridden to ask `_cpp_alive()` -- one cheap C++ call in a `try` -- so the
+question is answered when rendercanvas asks it, on its own stack. No chimol
+code can run during a collection any more.
+
+**Do not reintroduce it.** Two earlier attempts pushed the state from the same
+signal (a keyword-only default holding `self.__dict__`, then a closure over
+it). The first exited 134 at interpreter shutdown *after* every test passed;
+the second is the segfault above. The full history is in the comment block
+above `_cpp_alive` in `hosts/qt/wgpu_view.py`.
+
+## The whole chimol suite segfaults in one process; the files do not
+
+status: open
+
+**Found 2026-08-12.** `pytest chisurf/plugins/chimol/test` (3,496 tests) dies
+around 16-17% with `Fatal Python error: Segmentation fault`. The dump says
+**`Garbage-collecting`**, then `_mark_closed` in `hosts/qt/wgpu_view.py`, then
+whatever was allocating when the collection ran -- twice in a row it was
+`geometry/guide_frames.py:_flip_sweep` calling `.tolist()`, once under
+`create`, once under `spectrum`, i.e. two different tests.
+
+That is the same shape as the pyqtgraph teardown crash above and should be read
+the same way: **the named caller is not the culprit.** `_mark_closed` is two
+dict writes; it cannot fault. What faults is the C++ teardown that emitted
+`destroyed` -- a `WgpuMolView` widget abandoned by an earlier test, collected at
+an arbitrary later allocation, with a wgpu poller thread still running.
+
+**It does not reproduce per file.** `test_demos.py` alone -- which contains the
+test that was running -- is clean, so bisecting by the file named in the
+traceback finds nothing. It needs a process that has already built and dropped
+many viewers.
+
+Not fixed. The fix is deterministic viewer teardown rather than leaving the
+canvas to the collector; the `destroyed` connection in `wgpu_view.py` (whose
+comment records two *earlier* shutdown crashes at the same seam) is where to
+start. Until then, run chimol tests **per file or per directory**, which is what
+the project asks for anyway on cost grounds.
+
+
+### Open 2026-08-13 — chimol: `orthoscopic` is a setting nothing reads
+
+Found while giving `reinitialize` a single push path for the display config.
+`camera.orthoscopic` is a registered setting with a default, it appears in the
+settings panel, `set orthoscopic, on` reports success and writes it — and
+**nothing in the renderer ever reads it**. `CameraState._orthoscopic` is set
+only from a restored view tuple, and no projection consults either. So the
+control is fully wired at the settings end and connected to nothing at the
+other.
+
+It is deliberately **not** in `chimol/apply.py`'s `PUSHED_PATHS`: adding it
+there would make a setting that does nothing look wired up, which is the
+failure mode that module exists to end.
+
+Closing it is a feature, not a fix — an orthographic projection matrix, plus
+the two places that derive a distance from the field of view. Until then the
+setting is honest only in that it changes nothing.
+
+### Open 2026-08-13 — chimol: two chrome baseline PNGs are stale after the eye change
+
+`test_chrome_painter::test_the_chrome_is_unchanged_by_the_painter_interface`
+fails for the `panel` and `panel_and_sequence` states, and **only** those two —
+the two that contain the object list. The object list's eye stopped being the
+letter `o` and a hyphen and became a drawn pictogram, so those pixels legitimately
+moved; the other three states (`command_line`, `menu_open`, `movie_transport`)
+still match byte-for-byte, which is what says the change is the eye and nothing
+else.
+
+The fix is one command:
+
+    QT_QPA_PLATFORM=offscreen python -m chisurf.plugins.chimol.test.chrome_baseline
+
+It was **not** run here because every file in
+`chimol/test/renders/chrome_baseline/` is already modified and staged in the
+working tree by another agent instance's in-flight work. Re-capturing would
+write my change into their staged files, and a PNG cannot be split into "my
+hunks" the way a source file can. Whoever owns those staged captures should
+re-run it; the images will then carry both changes, which is correct.
+
 ## flc_2d cannot delegate to tttrlib yet: importing it segfaults the widget tests
+
+status: open
 
 **Found 2026-08-11.** A delegation of `plugins/fcs/flc_2d/core.py` to
 `fdc_scan_axis` / `fdc_scan_two_axes` is **numerically exact** — all 13 recorded
@@ -990,35 +2705,9 @@ triggered the withdrawal was a *different command* (it included two other test
 files), so it was never evidence about this one. Match the arms before comparing
 them.
 
-## ✅ FIXED 2026-09-17 — 2D-FLC's linear matrix *did* lose its highest bin: it sat one bin off its axis
+## — 2D-FLC's linear matrix does not "silently drop" its highest bin
 
-The withdrawal below was right that the reference trims one bin and wrong about
-which. `TK_Create2DFDC_04.m` returns bins `1..lint_Imax-1` of a matrix sized from
-the span **padded** by one linear bin, so the bin it drops lies past the gate.
-tttrlib's `fdc_scan_two_axes` stores linear bin `ceil(tau/f)` *at that index*, so
-index 0 is always empty, and `core.create_2d_fdc_numba_int` sliced
-`[:lint_imax - 1]` — the reference's size at the wrong offset — keeping the empty
-row and dropping the last real bin. Found by running the reference driver
-(`TK_MyMain_Create2DFDC_cor_SeparateData_BootStrap_v02.m`) in Octave against the
-port: every log matrix identical, every linear one shifted by exactly one bin.
-Now `[1:lint_imax]`: all 6443 brute-force pairs kept at factors 2, 3, 5 (were
-6443/5789/5469), and `test_one_d_fdc_matches_microtime_histogram` correlation
-0.98 → 0.99997 (the "fix" of 2026-08-11 that dropped it to 0.9695 changed the size,
-not the offset). The call-site parity fixture's linear matrices were re-recorded;
-the reference anchor is `flc_2d/test/test_bootstrap.py` (Octave fixture). tttrlib's
-own MATLAB test was right all along — it slices `[1:n+1]`. Two consequences worth
-announcing: the linearly-binned decay (`one_d_fdc`, `create_1d_fdc`) and `mat_lin`
-moved by one bin (4 ps × factor) and regained their last bin; and a photon at
-exactly `tMax` is now counted at factor 1, as in the reference.
-
-Found in the same A/B and fixed with it: `create_1d_fdc` counted every pair of
-photons sharing a macro tick and a bin twice (the reference pairs forward only;
-+41 on the diagonal of a stream with 427 repeated ticks), and
-`TwoDFDCreator._pick_n_chunks` called numba's `get_num_threads` after numba had
-left the module, so every build since ran as one chunk behind a swallowed
-`NameError`.
-
-## WITHDRAWN — 2D-FLC's linear matrix does not "silently drop" its highest bin
+status: withdrawn 2026-08-11
 
 **Filed and withdrawn 2026-08-11, same day.** I reported that
 `create_2d_fdc_numba_int` loses 654 pairs at `lint_bin_factor` 3 and 974 at 5
@@ -1089,6 +2778,8 @@ a first-hand check reads exactly like a verified one. The trim stays; whether
 it *should* is now back with the user as a deliberate-divergence question.
 
 ## 2D-FLC: the log-binned matrix moves when `lint_bin_factor` changes, and the two kernels disagree
+
+status: open
 
 **Found 2026-08-11**, from an observation by the tttrlib session porting these
 kernels, then confirmed against the original MATLAB.
@@ -1180,6 +2871,8 @@ code is owned by the ChiSurf session and has not been touched from here.
 
 ## The acquisition plot controllers paint over the window title with no host
 
+status: open
+
 **Found 2026-08-11**, in the PRD-98 screenshots. Each acquisition window builds
 its plot controller parented to itself (`DecayPlotController(self)`, and the
 four siblings). Inside ChiSurf the controller is re-homed into the main window's
@@ -1195,6 +2888,8 @@ itself) when `chisurf.cs` is None, decided in the window rather than by whoever
 happens to construct it.
 
 ## `core/math/hmm.py` needs a tttrlib that is not committed anywhere
+
+status: open
 
 **Found 2026-08-11**, by landing it. The HMM lattice delegation
 ([numba retirement](/subsystems/numba-retirement.md) item 3) calls
@@ -1224,7 +2919,922 @@ vanish, and ChiSurf's HMM stops working with an error that points at a rebuild
 rather than at the real cause. Check `python -c "import tttrlib;
 tttrlib.hmm_forward_log"` before believing any other diagnosis.
 
+## `test_numba_seam` is red at HEAD: six allow-list strikes landed without their code
+
+status: open
+
+**2026-08-11.** `test/test_numba_seam.py::test_no_new_numba_imports` fails on
+six files that import numba and are no longer listed in
+`test/numba_import_allowlist.txt`:
+
+```
+chisurf/core/fluorescence/burst/bocpd.py
+chisurf/core/fluorescence/tcspc/corrections.py
+chisurf/core/fluorescence/tcspc/tcspc.py
+chisurf/plugins/fluorescence_decay/lltf/core/convolve.py
+chisurf/plugins/fluorescence_decay/lltf/core/fitter.py
+chisurf/plugins/fluorescence_decay/lltf/core/scaling.py
+```
+
+All six are **already ported in the shared working tree** — none imports numba
+there — so the failure is invisible to anyone running the suite from that tree
+and appears only against a clean checkout. The allow-list strike was committed;
+the ported source was not. Fixing it means committing another session's
+uncommitted work, which is off limits, so it belongs to whoever owns those
+files.
+
+**The shape is what to carry forward, because the retirement will keep hitting
+it:** striking a line and porting the kernel are *one* change. Split across two
+commits, the tree is red for everyone who did not inherit the working tree —
+and the guard, which exists precisely to keep the list from drifting from the
+code, reads as broken rather than as correct. Verified pre-existing: identical
+at `HEAD~1` and at HEAD, in an isolated `git worktree`, with the same six files.
+
+## — ChiMOL's chrome was laid out into boxes too small for its own text
+
+status: resolved 2026-08-11
+
+**Found 2026-08-11** while capturing the before-half of the chrome for the
+GPU-quad port; **fixed the same day** ([chimol-web](/plugins/chimol-web.md)).
+
+Reported first as "an object menu runs off the right edge of the window", which
+is what it looks like. It is not a clamping bug -- top-level menus *are* clamped
+to the viewport and submenus already flip sides. The cause is one constant:
+
+```python
+char_w = self.FONT_PT * 0.62      # 6.2 px at 10 pt
+```
+
+Menlo at 10 pt advances **8.5 px**, so every box in the panel was budgeted 22 %
+narrow. `assign sec. structure` was given 130 px and needs 177; because a menu
+is clamped against the *right* edge, the 47 px of overflow ran off-screen
+instead of merely overlapping. The truncated mouse-mode block
+(`Mouse Mode 3-Button Viewin…`) and the cramped sequence strip were the same
+constant, which is why they looked like three separate defects.
+
+The width now comes from the baked glyph atlas -- the thing that actually draws
+the text -- via `internal_gui.char_width()`.
+
+A second, independent bug surfaced with it: `column_width` starts at PyMOL's
+`internal_gui_width` of 220 and **only the splitter drag consulted
+`minimum_column_width()`**, so until someone dragged it the mouse-mode block was
+laid out wider than the column that positions it. `layout()` now holds the
+column to its own minimum, which is the invariant
+`test_internal_gui.py` was already asserting after a drag.
+
+Control inventory is unchanged across the fix (11/56/66/81 reachable controls in
+the four captured states); only the widths moved. Baselines in
+`test/renders/chrome_baseline/` were deliberately re-taken.
+
+## ✅  — ChiMOL's browser page renders; drive it with Playwright, not the Chrome tools
+
+status: resolved 2026-08-11
+
+**Found and resolved 2026-08-11** ([chimol-web](/plugins/chimol-web.md)).
+
+The browser tools drive a Chrome that is **not on the same host** as the shell.
+A dev server that answers
+
+```
+curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8792/     # 200
+```
+
+gives that Chrome `ERR_CONNECTION_REFUSED` at the same URL, on `localhost` and
+`127.0.0.1` alike, with the shell sandbox disabled. Every read landed on
+`chrome-error://chromewebdata/`, which is also why `navigator.gpu` read as
+false -- it was being read on the error page.
+
+**Playwright's Chromium runs in the same sandbox as the shell and works.** With
+`--enable-unsafe-webgpu`, `navigator.gpu` is present and the page renders.
+`test/test_browser_render.py` does the whole thing -- server, browser, Pyodide,
+device, frame, pixels -- and is marked `slow`.
+
+So: **to look at chimol in a browser from an agent session, use Playwright.**
+The Chrome tools cannot reach a locally served page on this machine.
+
+## ChiMOL's WGSL backend silently ignores `px_mode`, and selection markers look wrong
+
+status: open
+
+**Found 2026-08-11** from a user screenshot: selected atoms draw as red dots of
+wildly varying size scattered through the cartoon, where PyMOL draws even pink
+markers of a fixed pixel size.
+
+`core/viewer.py` sets `meta["px_mode"] = True` in **three** places — the
+`dots` representation (`:8492`), an overlay path (`:8564`) and the selection
+indicator (`:8942`) — and `px_mode` appears **nowhere** in `wgpu_backend.py` or
+`compute.py`. The backend's geometry signature reads only `meta["size"]` and
+`meta["world_radius"]` (`wgpu_backend.py:906`), so a builder asking for
+pixel-mode markers gets whatever that pair happens to mean. Size varying with
+depth is what world-radius spheres do and what pixel-mode markers must not do,
+which matches the screenshot. `_selection_marker_width` computes its value in
+**pixels**, clamped to PyMOL's 3–10 band, so the units are certain at the
+producing end.
+
+**Not fixed, and not diagnosed past this point.** The open question is what the
+impostor pipeline does with `size` when `world_radius` is false, and whether the
+fix belongs in `impostor.wgsl`, in the interleave, or in teaching the backend to
+honour `px_mode`. This is the "silently degraded path" shape the project rules
+warn about: the flag is not rejected, it is simply never read.
+
+## ChiMOL's test suite cannot collect while `chimol/` is on `sys.path`
+
+status: open
+
+**Found 2026-08-11.** `pytest chisurf/plugins/chimol/test/...` fails at
+configure time:
+
+```
+INTERNALERROR   File ".../pdb.py", line 74, in <module>
+    import cmd
+ImportError: attempted relative import beyond top-level package
+```
+
+chimol has a top-level `cmd` package, so anything putting
+`chisurf/plugins/chimol/chimol` on `sys.path` shadows the standard library's
+`cmd` — which `pdb` imports, which pytest's debugging plugin imports at
+configure time, before a single test runs. Same hazard CLAUDE.md already records
+for `chisurf/math/` and the stdlib `math`, and the reason chimol's `host`
+package is deliberately not called `platform`.
+
+The suites run when the path is clean. Find what inserted it before trusting a
+green *or* a red run — a collection error here says nothing about the tests.
+
+## chimol: C > "by element" sets an object-wide colour *mode*, so it paints the whole molecule and not the selection
+
+status: open
+
+**Found 2026-08-11, reported by tpeulen:** "the coloring menu color by atom of
+selection just colors the entire protein by residue color not by atom". Two
+defects in one menu entry, and a missing menu.
+
+**1 — the selection is ignored.** `chrome/object_menus.py:537` issues
+`color byelement, {sele}`. In `cmd/rendering.py`, `color()` normalises
+`byelement` to the mode `by_element` (`_normalize_color_mode`, l. 1601) and
+hands it to `_apply_color_mode` (l. 1612), which is explicit about what it then
+does — l. 1626: *"The colour mode is a property of an object, not of individual
+atoms, so a selection here picks which objects it is set on"*. So the selection
+is resolved only far enough to name the objects it touches; every atom of each
+of those objects is repainted. Selecting one residue and colouring by element
+recolours the whole protein. Worse, `_apply_color_mode` calls
+`clear_color_overrides()` first, so it also **discards** whatever per-atom
+colours were already there.
+
+The correct path already exists in the same package and is unused by the menu:
+`cmd/presets.py:252` `_color_by_element(sel, carbon=None)` writes per-atom
+overrides through `viewer.set_atom_color_override` and its docstring gives the
+reason — *"because a mode belongs to a whole object and this has to reach a
+subset"*. The presets (`preset simple`, `ligands`, …) get this right; the C
+menu does not.
+
+**2 — "by residue colour, not by atom" is the cartoon path.** For a molecule
+shown as cartoon the mode is consumed at `core/viewer.py:9287`, which builds
+`_colors_per_ca` from the **CA atoms' elements** — every CA is carbon, so the
+by-element mode has nothing to vary over and the ribbon does not turn CPK. What
+the user sees instead is the previous per-residue colouring, unchanged.
+
+**3 — the CNOS menu is missing.** PyMOL's C > "by element" is not one entry, it
+is 49 (`junk/pymol-open-source/modules/pymol/menu.py:404`, `by_elem`):
+
+- the first entry, `util.cnc(sele)` — the **CNOS** case the user asked for:
+  colour H/N/O/S by element and **leave carbon alone**;
+- 8 x `util.cba(<carbon_colour>, sele)` — colour by atom with a chosen carbon
+  (tv_green, cyan, lightmagenta, yellow, salmon, grey90, slate, orange);
+- submenus "set 2" … "set 5" (8 more carbon colours each, `by_elem2`–`by_elem5`)
+  and "set 6/H" (`util.cbh`, 8 hydrogen colours).
+
+chimol's `COLOR_MENU` has a single child, `by element`. `_color_by_element`
+already takes the `carbon` argument these 40 entries need, so the menu data is
+the gap, not the machinery.
+
+**Where a fix goes:** make `COLOR_MENU`'s by-element children call the per-atom
+path (a `cnc` / `cba` command, or `util.cnc`-equivalents) instead of
+`color byelement`, and leave `color by_element` as the object-wide mode it
+documents itself to be. Do not "fix" it by teaching `_apply_color_mode` to mask
+atoms — the mode genuinely is per object, and `by_residue`/`by_ss`/`by_chain`
+share that path.
+
+**Not verified in a running viewer.** Read from the source; no screenshot taken.
+The cartoon claim in (2) in particular should be confirmed against a rendered
+frame before it is treated as settled.
+
+## chimol: the mutagenesis wizard leaves a second sequence row behind
+
+status: open
+
+**Found 2026-08-11, reported by tpeulen with a screenshot.** After a mutation
+the Sequence strip shows two rows — `1f5n` and a second row labelled
+`mutation` — while the object panel on the right lists only `all`, `1f5n`,
+`sele`. The extra row persists after the wizard has finished.
+
+`mutation` is a real object by design: `cmd/interactions.py:621`
+`_wizard_show_states` creates it (PyMOL's `do_library` does the same, one state
+per rotamer) and `PREVIEW_OBJECT = "mutation"`. The sequence view builds one row
+per entry in `_object_store` (`hosts/qt/window.py:1178`), so while the
+preview exists a `mutation` row is expected.
+
+**The leading hypothesis is refresh ordering in `_wizard_finish`**
+(`interactions.py:838`), which runs:
+
+1. `_wizard_commit` → `_apply_mutation`, and *that* is what refreshes the UI —
+   `interactions.py:396` calls `_refresh_objects_from_viewer`,
+   `_update_sequence_view`, `sync_internal_gui`. The `mutation` object is
+   **still present** at this point, so the sequence view is rebuilt *with* its
+   row;
+2. `_wizard_delete_preview` (l. 805) → `viewer.remove_object(preview)`;
+3. `viewer._update_view()` — a 3D redraw only.
+
+Nothing re-runs `_update_sequence_view` after step 2, so the row outlives the
+object. The same hole is in `_wizard_show_states`, which refreshes the object
+list when the preview appears but never the sequence view.
+
+**What does not fit, and should be checked first.** If both refreshers ran at
+step 1 the *object panel* should be equally stale, and the screenshot shows it
+clean — so either something else re-lists objects afterwards, or
+`remove_object` reaches the panel by a route the sequence view does not.
+Establish which before writing a fix.
+
+**Also worth confirming:** the `mutation` row in the screenshot appears to span
+the full 479–555 axis, but the preview carries a *single* residue — every atom
+row is stamped with the source residue's `res_id`/`chain`
+(`interactions.py:640`). Under `build_residue_alignment` that should render as
+one letter in a row of gaps. If the row really is full-length, there is a
+second defect in how a one-residue object is aligned, independent of the
+staleness above.
+
+## 2026-08-11 — chimol: the viewport's "Selecting Residues" line was decorative, and only the residue level existed
+
+status: resolved 2026-08-11
+
+**Found 2026-08-11, user-reported** ("missing feature selection of CA, atoms,
+currently only residues work"). PyMOL's mouse block carries a selection *level*
+— Atoms / Residues / Chains / Segments / Objects / Molecules — and clicking the
+word cycles it. chimol paints the line and stops there:
+
+* `chrome/gui.py:398` `self.selecting = "Residues"`, painted at
+  `:1835` and **never assigned again**;
+* `core/viewer.py:2461` `self.selection_mode: str = "Residues"`, which has no
+  other reader or writer in the tree.
+
+So the level is a constant, there is nothing to cycle it with, and no code
+consults it when a click lands.
+
+**The blocker is the selection model, not the click.** The pick is already
+atom-precise: `handle_mouse_click` (`view.py:4609`) resolves
+`picked_atom_idx` and emits `atomSelectionChanged([idx])`. It then throws that
+precision away — it maps the atom to its residue index and calls
+`_apply_selection_indices`, whose entire state is `self._selected_residues`, a
+list of **residue** indices (`:4734-4808`). Everything downstream is indexed the
+same way: `residueSelectionChanged`, `objectResidueSelectionChanged`,
+`refresh_selection_highlight`, the sequence strip, and the `sele` object.
+
+That splits the work in two, and they are not the same size:
+
+* **Chains / Objects / Molecules are cheap** — they are still sets of residues,
+  so the click expands the picked atom to its chain's or object's residue
+  indices before `_apply_selection_indices`. No model change.
+* **Atoms (and "CA only") need an atom-indexed selection set**, because a
+  residue-index list cannot express "one atom of this residue". That reaches
+  the highlight renderer, the `sele` object and the sequence strip, all of which
+  currently assume whole residues.
+
+Do the cheap half first only if the split is stated; shipping Chains and
+Objects while Atoms silently still selects the whole residue would make the
+line *more* misleading than a constant, not less.
+
+## 2026-08-11 — chimol: no mouse-driven measurement; the reference viewer's Measurement wizard was missing
+
+status: resolved 2026-08-11
+
+**Found 2026-08-11, user-requested** ("add measurement feat, like in pymol, meas
+distance with mouse and clicking").
+
+Both halves already exist and are simply not joined:
+
+* the **measurements** — `cmd/measurements.py` has `distance`/`dist` (`:156`),
+  `angle` (`:828`) and the dihedral, all drawing into `viewer._measurements`,
+  which the scene already renders;
+* the **wizard framework** — `cmd/interactions.py` runs the mutagenesis wizard
+  with a viewport panel, prompt, per-step rows and a Done/Apply lifecycle
+  (`_wizard_finish`, `_wizard_refresh`, `_wizard_gui`), and `menu_bar.py:175`
+  lists wizards;
+* the **atom-precise pick** — `handle_mouse_click` already resolves
+  `picked_atom_idx` before discarding it for the residue (see the entry above),
+  which is exactly the input a measurement needs and the reason this does *not*
+  depend on the selection-level work.
+
+What is missing is a `wizard measurement` that collects picked atoms and, at
+two/three/four picks, calls the existing command. PyMOL's modes are the spec:
+distance, angle, dihedral, plus its "no wizard" reset.
+
+**Watch for:** the picked index is into `_all_atom_coords`, whereas the
+measurement commands take *selections* — a pick has to be turned into an atom
+expression (object, chain, resi, name) or the measurement API given an
+index-taking entry point. Choose one deliberately; going through a selection
+string round-trips through the parser on every click.
+
+## 2026-08-11 — chimol: `distance` reported scene units and drew its dashes in the wrong place
+
+status: resolved 2026-08-11
+
+**Found while building the measurement wizard, which depends on this code.**
+Two mirror-image defects in `cmd/measurements.py`, both from the same cause:
+`_resolve_selection_to_atom` returns **scene** coordinates —
+`(xyz - raw_center) * _scale_factor`, and `_scale_factor` is **10**.
+
+* the **value** was the scene length: measured against 148L's own file,
+  `distance resi 1 and name CA, resi 21 and name CA` reported **258.450** for a
+  **25.845 Å** pair. `rms`/`align` already carried the same correction
+  (`measurements.py:1100-1105`), which is why the fault was confined to
+  `distance`/`angle`/`dihedral`;
+* the **positions** were double-transformed: `MolView._update_measurements`
+  transforms whatever it is given into scene space unless
+  `transform_to_scene` is false, so a scene coordinate stored as a measurement
+  position is scaled and centred a second time. Its bbox came out at ±200 for a
+  molecule spanning −11…68.
+
+The *set* paths (`dist ... mode=2` and the rest) were **already right** —
+they work from `atoms["xyz"]` — so the two halves of the same command disagreed
+with each other, which is what made this hard to see: polar contacts drew
+correctly and a two-atom measurement did not.
+
+**Fixed** by `_scene_point_to_world`, applied in `distance`, `angle` and
+`dihedral`. Guardrail: `test_measure_suite.py::test_two_atom_distance_is_in_angstrom`,
+which checks against coordinates parsed from the PDB rather than against another
+part of the same code — the one measurement here with a reference value.
+
+## 2026-08-11 — chimol: a residue id is not unique across chains, and the selection matched on it alone
+
+status: resolved 2026-08-11
+
+**Found while adding the `Atoms` selection level, which made it visible.**
+`_selection_atom_positions` and the pick-to-residue lookup in
+`handle_mouse_click` both matched atoms to residues on `res_id`. Residue ids
+restart per chain, so on 1RTD (eight chains, each numbering from 1):
+
+* selecting **one residue** marked **104 atoms** instead of 19 — every chain's
+  copy of that number;
+* one picked **atom** mapped back to **eight residues**;
+* `handle_mouse_click` took `matches[0]`, i.e. the *first* chain's copy, so
+  clicking a residue in chain E could select chain A's.
+
+The missing half of the key was already in the tree: `_residue_chain_ids` is
+built alongside `_residue_ids` at load and was unused here.
+
+**Fixed** by `MolView._atom_residue_indices`, which keys on (chain, residue id)
+and returns a per-atom index into the residue table, with `-1` for an atom whose
+residue is not in it (a ligand where the trace is protein-only) rather than
+silently borrowing a neighbour's. Every count in
+`test_selection_levels.py` is cross-checked against the atom table, and the
+fixture is deliberately **1RTD, not 148L**: a single-chain structure cannot tell
+a chain-aware lookup from an id-only one, which is how this survived.
+
+## 2026-08-11 — chimol: five reports on the viewport's own chrome
+
+status: resolved 2026-08-11
+
+All five are the same shape of fault, which is why they are recorded together:
+**a value that was configured, loaded or drawn, and read by nothing.**
+
+* **The in-viewport prompt had a black backdrop** (`CMD_BG = (0, 0, 0, 190)`),
+  which is invisible on the default black background — the prompt read as text
+  lying on the molecule — and needlessly heavy on a white one. Now the same
+  semi-transparent grey as the system-info panel, which darkens white and
+  lightens black.
+* **3-D labels were drawn at a hard-coded 10 points** while `label.size` sat in
+  the display config at **14**, read by nothing: the setting was documented,
+  stored, and could not change anything. `paint_labels` now takes the size,
+  `WgpuRenderer._label_size` supplies it, `label_size` / `label_color` are
+  registered settings, and the default moved to **16** (migration 17) because
+  14 was never what anyone saw and 10 was reported as too small.
+* **A measurement whose segment produced no dashes still drew its number** — a
+  value floating over the molecule attached to nothing, indistinguishable from a
+  label that has come adrift. `_dash_segments` returns nothing for a zero-length
+  segment; the label is now suppressed with it.
+* **A measurement's first pick drew nothing at all**, so a mis-aim and a
+  mis-click looked identical. Picked atoms now carry the selection marker via
+  `MolView.set_pick_markers` — deliberately *not* the selection: they never
+  reach `sele` and they clear when the group becomes a measurement.
+* **The sequence strip ran every chain into one row** named after the object.
+  Residue numbers restart per chain, so the same number appeared several times
+  with nothing to say which chain it belonged to. Now one row per chain,
+  labelled in PyMOL's slash syntax (`1f5n/A`), each carrying
+  `residue_indices` — the map back to the object's residue indices.
+
+**The trap in the last one**, and the reason it needed care: a per-chain row's
+columns are **not** the object's residue indices, and everything the strip talks
+to speaks the object's. Without the map, clicking chain B's third residue
+selects the object's third, which is chain A's — silently. Rows are also matched
+by `object_id` now rather than by label, because the label carries the chain.
+Pinned by `test_sequence_chains_and_labels.py`, which checks the rows *partition*
+the object exactly and round-trips a selection through a later chain.
+
+### Not reproduced: "the measurement label jumps around when I change the view"
+
+Reported with a screenshot showing the number far from its dashes. **In the
+current tree the label sits exactly on the segment midpoint and tracks the
+camera** — `project_to_screen` agrees with the backend's own MVP to the last
+decimal at four rotations, checked against `perspective`/`view_matrix` rebuilt
+from `_scene_viewport`.
+
+The likely cause is the double-transform fixed the same day (see the entry
+above): `distance` stored **scene** coordinates and `_update_measurements`
+transformed them into scene space a second time, which puts a measurement's
+whole drawing somewhere else and moves it at a different rate from the molecule
+as the camera turns. If it recurs after a restart, the thing to capture is
+whether the *dashes* are also displaced or only the number — they are built from
+one array, so a genuine split between them would mean something new.
+
+## 2026-08-11 — chimol: the system-info panel covered the in-viewport prompt
+
+status: resolved 2026-08-11
+
+**Reported with a screenshot** showing `(no system loaded)` sitting over the
+`ChiMOL>` line. Both are anchored bottom-left of the same corner, and only one
+of them is a Qt widget: the panel is a `QPlainTextEdit` stacked on the surface,
+while the prompt and its feedback are painted **into** the surface by the chrome
+painter. Qt therefore knows nothing about the prompt, and the panel — laid out
+with `full_height` and `AlignBottom` — ran straight over it. It became obvious
+only once the panel gained a backdrop the same day; before that the two sets of
+text simply overprinted on black.
+
+**Fixed** by giving the container grid a second row whose only job is to be
+empty: the renderer spans both (it draws the whole surface, prompt included) and
+the panel spans the first. Its height is `InternalGui.command_area_height()`.
+
+**That method returns the maximum, not the current height**, and the reason is
+the point: the log grows and shrinks as commands run, so a panel laid out around
+the *current* height would overlap for as long as it took a printed line to
+trigger the next relayout — a bug that appears only after output, which is
+exactly when nobody is looking at the panel. `visible_log` is capped at
+`feedback`, so the ceiling is a constant and reserving it needs no upkeep.
+
+**The guard is in two halves** (`test_sequence_chains_and_labels.py`), because
+the two rectangles are laid out by different code at different moments and
+comparing them directly measures whichever ran last as often as it measures the
+bug: one half asserts the reserve is at least what the prompt uses, the other
+that the panel stays out of the reserve.
+
+## 2026-08-11 — chimol: the system-info panel was a Qt widget, and is now chrome
+
+status: resolved 2026-08-11
+
+The overlap fixed earlier the same day was a symptom. The panel was a
+`QPlainTextEdit` stacked on the surface while every other thing in the viewport
+-- the object list, the sequence strip, the mouse-mode block, the prompt -- is
+drawn *into* the surface by `InternalGui` through the six-operation
+`Painter` interface and rasterised as GPU quads. A Qt widget cannot see chrome
+painted into the surface, which is why it sat on top of the prompt, and the
+first fix was a spacer row in the container's grid **guessing** how tall the
+prompt would get.
+
+**The panel is now `InternalGui`'s** (`layout_info`, `_paint_info`,
+`INFO_BG`/`INFO_FG`/`INFO_EDGE`, `_wrap_lines`). Consequences worth having:
+
+* one object lays out the strip, the panel and the prompt, so "above the
+  prompt" is arithmetic rather than a guess -- there is nothing left to keep in
+  sync, and the container's layout is a single widget again;
+* it draws on the **GPU path** with the rest of the chrome, so it costs quads
+  rather than a stacked widget's compositing, and it will follow the chrome
+  into a browser, where a `QPlainTextEdit` could never have gone;
+* the text is **wrapped by character count** -- the chrome's font is monospace
+  -- which the widget used to do for free. A file path has no spaces to break
+  at, so a long run is cut rather than allowed to run off the panel;
+* a viewport too short for one line **drops the panel** rather than drawing it
+  over the strip or the prompt. Keeping its height and overlapping is precisely
+  what the widget did.
+
+`set_system_info_text` / `set_system_info_visible` now only store and request a
+repaint; the text and palette are *pulled* by `refresh_gui_state` at paint time,
+as the sequence colours and the frame position already were. `info_overlay`'s
+settings are unchanged and still honoured -- `MolView.info_overlay_colors`
+converts them for the chrome, and `max_width` / `min_width` / `full_height` are
+now the panel's own `INFO_MAX_CHARS` / `INFO_MIN_CHARS` and content height.
+
+## chimol: density maps are slow, and the NPC load has regressed (2026-08-11)
+
+status: open
+
+Two performance reports, filed rather than fixed at the user's direction —
+*"just note as issues and continue with migration"*. Neither is measured yet;
+what follows is the starting point so the next session does not begin at zero.
+
+### Density maps are slow
+
+The instruction is explicit: **learn from ChimeraX how it does this.** That is
+the right reference — ChimeraX's volume viewer is interactive on maps chimol
+struggles with, and the techniques are documented rather than folklore. What to
+look for, in the order they usually matter:
+
+* **Multi-resolution / step.** ChimeraX draws a map at a *step* (2, 4, …) and
+  re-contours at full resolution only when asked. chimol has
+  `stride_for_limit()` for the point cloud but the **isosurface contours the
+  full grid every time** — a 180³ map is 5.8 M cells per level per rebuild.
+* **Region cropping.** ChimeraX contours a sub-box, not the whole map.
+* **Caching the surface per (level, step)** so re-showing a level is free —
+  chimol re-runs marching cubes.
+* Its `Volume`/`GridData` split is worth reading directly: the data source, the
+  region, and the rendering settings are three separate objects, which is what
+  makes "re-contour at a different step" cheap to express.
+
+The contour **drag** is already fixed (0 rebuilds while dragging, 1 on release,
+see PRD-101 req. 2); this is about the rebuilds themselves.
+
+### The NPC takes forever to load — a regression
+
+Reported as a regression, so the suspects are recent work, and the most likely
+are **mine, from 2026-08-11**:
+
+1. **Per-chain sequence rows.** `_sequence_rows_for_object` splits the strip by
+   chain in Python, walking every residue and building per-row lists. The NPC
+   is an integrative model with a very large number of chains, so this went
+   from one row to hundreds, each with its own list comprehension over residues
+   — and it runs inside `sync_internal_gui`, which is called often.
+2. **`MolView._atom_residue_indices`.** Added for the cross-chain fix. It is
+   O(n log n) over *every atom* and is recomputed on **every call** —
+   selection markers, every pick, every highlight refresh. On a bead model with
+   hundreds of thousands of particles that is a per-click cost that did not
+   exist before. It should be cached per object and invalidated on structure
+   change; the state fields are already the place for it.
+3. Less likely but cheap to rule out: the measurement rows now walk
+   `viewer._measurements` on every `sync_internal_gui`.
+
+**Measure before changing anything** — time a load of the `npc_integrative`
+demo against the commit before 2026-08-11, and profile `sync_internal_gui`
+separately from the structure read. The demo exists precisely so this is one
+command.
+
+### Resolved 2026-08-12 — and none of the three suspects above was the cause
+
+Measured, as the entry above insisted. The `npc_integrative` demo took
+**113.2 s** end to end on an Apple M1 Pro (offscreen WebGPU/Metal, 234,184
+beads). It now takes **9.3 s** — **12.1x** — and the three suspects listed above
+were not involved. They may still be worth fixing on their own merits; they were
+not what made the demo slow. This is the entry's own advice paying off, and the
+reason to leave the wrong guesses in place above rather than quietly deleting
+them.
+
+What it actually was, in order of size:
+
+1. **`MolView.get_atom_sphere_data` was quadratic** — 88.7 s of self time across
+   three calls. For each atom it ran `np.where(self._residue_ids == rid)` over
+   the *whole* residue array to find its colour: 234,184 x 234,184 comparisons,
+   5.5e10 of them. Replaced by a stable `argsort` plus `searchsorted`, which is
+   the same answer — the stable sort is what makes the leftmost slot of a run of
+   equal ids the *first* match the loop took — in N log N. Verified identical
+   over 380 randomised trials covering duplicate ids, gaps, unmatched ids,
+   unsorted input and string ids.
+2. **Ambient occlusion recomputed on a colour change** — 4.7 s. Occlusion is a
+   function of geometry alone, and `spectrum molecule` changes only colours, but
+   the neighbour search ran again with the same points and the same radius.
+   Memoised on a hash of the coordinates in the one place occlusion is already
+   gated. Results are handed out read-only: a caller shading one in place would
+   poison every later hit, and that is a bug found days later in a colour.
+3. **Beads built one row at a time** — 2.7 s of `atom_row`, once per bead, each
+   allocating its own one-element structured array. The vectorised builder
+   already existed (`make_bead_rows`, written for the RMF reader); the mmCIF
+   reader simply was not using it. Verified identical on all twelve fields of
+   `ATOM_DTYPE` over 200 randomised trials.
+
+The pattern in all three is the same and worth naming: **none was an algorithm
+anyone chose**. Each was a per-item Python loop that was correct and
+unremarkable at a few thousand atoms and became the whole runtime at a few
+hundred thousand. The remaining 9.3 s is dominated by one genuine neighbour
+search (~3.0 s) that now runs once.
+
+Reproduce with the profile harness described in
+[chimol-viewport-ui](../plugins/chimol-viewport-ui.md).
+
+### Open, in imp-tricks — the in-tree Martini table is not Martini 3
+
+Found 2026-08-12 while assessing imp-tricks' Martini support for
+[PRD-102](../prds/prd-102.md). Not fixed here because it lives in imp-tricks and
+that work is scoped as research; recorded so it is not rediscovered.
+
+* `MartiniParticle._size_nm` returns one sigma per size-class prefix. The shipped
+  Apache-2.0 `martini_v3.0.0.itp` has several per class — regular beads take
+  0.47 **and 0.50** (divalent ions), and tiny beads take **fourteen** distinct
+  values from 0.34 to 0.438. Read the matrix; do not assume one sigma per class.
+* `_well_depth` is a five-value lookup on a bead's first letter, collapsing all
+  of P1…P6 to 4.0 kJ/mol. The real matrix has thousands of distinct epsilon
+  values. As written this is a different force field wearing Martini's name.
+* Synthesised missing-residue beads hardcode mass 72.0 regardless of bead size;
+  the real masses are 72 / 54 / 36 for regular / small / tiny.
+* A vendored `Martini3-IDP-parameters` directory carries **no license**. It is
+  Martini3-IDP ([10.1038/s41467-025-58199-2](https://doi.org/10.1038/s41467-025-58199-2));
+  resolve the license before anything ships with it.
+
+Consequence for users: a Martini-shaped model here is a candidate for simulation
+only through an exported GROMACS topology, never through the in-tree scoring.
+
+### Open 2026-08-12 — chimol: the frame is 94 % chrome, not molecule
+
+Measured on the same M1 Pro, same NPC, offscreen WebGPU/Metal, once the load
+costs above were fixed. Frame time went **45.7 ms -> 36.9 ms** (22 -> 27 fps)
+by caching the sequence gradient, and the profile then says plainly where the
+rest is:
+
+* `_chrome_quads` is **37.8 ms of a 41 ms frame**. It rebuilds **~2,800 quads
+  and ~330 text runs from scratch every frame**, in Python.
+* The molecule itself barely appears in the profile. It is built once and drawn
+  by the GPU; drawing 234,184 beads is not what costs.
+
+So "chimol's UI is slow" and "the NPC demo is slow to interact with" are the
+same defect, and it is **not** a rendering-scale problem. The chrome is
+immediate-mode — every panel, row and glyph re-emitted per frame — and the
+sequence strip of an integrative model with hundreds of chains is thousands of
+cells wide.
+
+The fix is a dirty-flag cache on the chrome quad buffer: the chrome changes on
+hover, focus and state, not on camera motion, and camera motion is when frames
+matter. **Not done here** because `internal_gui.py` and `emtk/*` are
+being actively edited by another agent (+2,496 uncommitted lines, and the chrome
+baseline PNGs themselves are modified), so it would collide.
+
+Note for whoever picks it up: `test_chrome_painter.py`'s five baseline
+comparisons are **currently failing in the working tree** for that same
+in-flight reason, so they cannot be used as a regression check until that work
+lands. Confirmed not caused by the colour caching above —
+`_build_sequence_gradient_colors` is called **zero** times during those tests.
+
+One caching trap, already paid for once: the gradient cache first handed out its
+array **read-only**, to stop a caller recolouring the shared copy. That is the
+right instinct and it immediately found two real in-place writers (`spectrum`,
+and the per-atom sort path) — but as a shipped behaviour it turns aliasing into
+`assignment destination is read-only` raised from inside a command that did
+nothing wrong. It now returns a copy, which is one memcpy against rebuilding the
+ramp. The separate defensive copy added in `_recompute_colors_per_ca` is worth
+keeping regardless: it wrote overrides in place into whatever array the colour
+mode returned.
+
+### Corrected and advanced 2026-08-12 — the chrome numbers, measured without a profiler
+
+The entry above put `_chrome_quads` at 37.8 ms of a 41 ms frame. Those figures
+came from `cProfile`, which inflates Python-heavy code badly — 33,876 `_quad`
+calls a frame is exactly the shape it mis-measures. **The conclusion survived;
+the numbers did not.** Timed directly, with no profiler:
+
+| | before | after |
+|---|---|---|
+| `_draw` (no readback) | 26.0 ms | **17.0 ms** |
+| `_chrome_quads` | 25.2 ms | 16.4 ms |
+| `refresh_gui_state` | 10.6 ms | **3.1 ms** |
+| `draw_frame` (offscreen) | 36.1 ms | 31.1 ms |
+
+So the chrome really is ~97 % of the render, and the molecule really is about
+1 ms — an independent measurement of 234,184 impostors on this M1 puts them at
+0.94 ms, which agrees.
+
+**Two measurement traps here, both of which cost time and both of which look
+like a result:**
+
+1. **`draw_frame` on the offscreen canvas includes a GPU-to-CPU readback** —
+   about 10 ms of the 36. That is an artifact of measuring headlessly and is
+   not paid by a real window. Time `_draw` for the render.
+2. **Hiding the chrome to see what it costs does not work.** Setting
+   `gui.visible = False` and `gui.sequence_visible = False` changed the frame
+   time by nothing, which reads as "the chrome is free" and is wrong:
+   `refresh_gui_state` re-asserts both flags from the viewer **every frame**.
+   That is the same per-frame clobber that has bitten `info_visible`,
+   `info_text` and `selecting`. Measure the function, not the flag.
+
+**Fixed:** `refresh_gui_state` was hashing the per-residue colour array with
+**blake2b, on every frame** -- 234,184 x 4 float64 is 7.5 MB, and it measured
+**9.9 ms**, more than building every quad in the chrome and ten times the cost
+of drawing the beads the colours describe. The cost is the algorithm, not the
+size: a cryptographic hash runs near 1 GB/s where a NumPy reduction runs at
+memory bandwidth. Nothing there needs collision resistance against an
+adversary — it needs to notice that a colour command changed the colours. It is
+now a handful of reductions (total, three strided totals, one position-weighted
+total over a subsample) at **0.29 ms, a 34x saving**, verified to detect
+**400/400** single- and triple-residue recolours and to detect a reordering.
+The honest limit is written at the function: an array permuted so that all five
+reductions are preserved would be reported unchanged. No colour command does
+that.
+
+**Still open, and now the whole of it:** the remaining 16.4 ms is building
+~2,800 quads and ~330 text runs from scratch every frame. It wants a dirty-flag
+cache on the chrome vertex buffer — the chrome changes on hover, focus and
+state, not on camera motion, and camera motion is when frames matter. Not done
+here because `internal_gui.py` and `emtk/*` are under active edit by
+another agent.
+
+### 2026-08-12 — the chimol suite's exit code lies, and four tests are stale
+
+A full run: **3360 passed, 25 failed, 1 error, exit 134**. Every part of that
+sentence needs qualifying, which is the point of this entry.
+
+**The exit code was a teardown crash, not a test failure.** `WgpuRenderer`
+captured its instance dict as a **keyword-only default**
+(`def _mark_closed(*_args, _d=self.__dict__)`) on a `destroyed` slot. That works
+until interpreter shutdown, when `__kwdefaults__` may already be torn down; the
+slot then raises *"missing 1 required keyword-only argument: `_d`"* from inside
+Qt's signal, which becomes **SIGABRT after every test has already passed**.
+Fixed here by capturing in a closure cell, which cannot be stripped and keeps
+the property that motivated the default — it captures the `__dict__`, not
+`self`.
+
+**A second teardown crash remains: SIGSEGV (exit 139)** when several
+wgpu-using test files run in one process. It also happens after the tests
+themselves have finished, and it truncates pytest's summary, so a run can look
+like it ended mid-test when it did not. Not diagnosed. **Read the summary line
+from the log rather than trusting the exit code**, and re-run a suspicious file
+on its own.
+
+**Two of the 25 failures were pollution, not failures.** `test_create_extract`
+and `test_config_and_ss` fail in a full run and **pass in isolation** — this
+suite has known global-state leakage. Always confirm a failure alone before
+believing it.
+
+**Seventeen belong to another agent's in-flight work**, not to any change:
+`test_display_config_prompt` (12) — `settings_window.py` is staged as *deleted*
+while still present in the tree, mid-refactor; and `test_chrome_painter` (5) —
+the chrome baseline PNGs are themselves modified in the working tree.
+
+**Four are genuinely stale tests** describing behaviour that has deliberately
+changed, and each should be updated by whoever owns the change:
+
+* `test_camera_framing::test_a_widget_that_was_never_laid_out_frames_square`
+  asserts a degenerate viewport by sizing the window to the *panel column* width
+  and expecting almost no scene. The object list is a **floating window now, not
+  a docked column**, so `scene_width` correctly returns the full width (221, not
+  &lt;16). The guard it protects is still worth testing; the way it builds the
+  degenerate case is not.
+* `test_demos` (2) — the demo menu comes back empty. `demo_catalog.py` is
+  untracked in-flight work.
+* `test_surface_splat` — expects `splat` and gets `fast`; the default in the
+  untracked `surface_quality.py` changed.
+
+### Resolved 2026-09-03 — the SQLite databases named `<sqlite3.Connection object at 0x…>`
+
+The call site stayed unconfirmed, but the mechanism is now pinned and guarded
+in mmfdb itself. `MFDatabase.__init__` forwards `db_path` to
+`parse_database_target`, whose old `raw = str(location)` accepted anything — a
+`Connection` passed positionally became the string
+`"<sqlite3.Connection object at 0x…>"`, matched "no `://`", and was treated as
+a SQLite *path*. `connect()` then created that file and `_initialize_schema()`
+bootstrapped the full mmfdb schema into it — which is why the strays were
+~1 MB of fresh-schema databases (77 tables, the 226-row vocabulary) rather
+than empty files. The one zero-byte stray is the other shape: a bare
+`sqlite3.connect(<repr>)` read, of the kind `local_admin_status` in the
+mmfdb-admin GUI does — a SELECT over `sqlite_master` creates the file and
+leaves it empty.
+
+Fix (mmfdb `repository.py` + `store/sql_backend.py`): both entry points now
+raise `TypeError` for a non-str/non-PathLike location, with a message that
+says to pass an open connection as `connection=` instead.
+`local_admin_status` validates its argument too. A regression test
+(`tests/test_sql_backends.py::test_a_connection_as_path_is_rejected_and_never_creates_a_file`)
+asserts the raise *and* that no file appears in the working directory. The
+strays themselves, with their `-wal`/`-shm` sidecars, are deleted; the
+`.gitignore` carries a `<sqlite3.Connection object at 0x*` pattern so any
+regression is visible rather than silent.
+
+Found 2026-08-12 while clearing the repository root for a full commit. Five
+untracked files sit there with names like
+``<sqlite3.Connection object at 0x157baf790>``, and `xxd` says each really is a
+database: they begin `SQLite format 3`.
+
+So the cause is unambiguous even though the call site is not: **something passes
+a `Connection` where `sqlite3.connect()` expects a path**. `connect()` stringifies
+its argument, and the repr of a Connection is a valid filename, so instead of
+raising it silently creates a *new, empty* database named after the object's
+memory address. Nothing fails, nothing is logged, and the real database is never
+touched -- which is why five of them accumulated without anyone noticing.
+
+The shape to look for is a helper that accepts "a path **or** a connection" and
+forwards it to `connect()` on the path branch without checking which it got.
+`chisurf/plugins/spectra_downloader/download/` has two functions taking a bare
+`db` argument and two that call `sqlite3.connect(<arg>)` directly, which is the
+most likely neighbourhood, but this was **not** confirmed -- do not treat that as
+the answer.
+
+Worth fixing rather than deleting the files: a `connect()` that quietly makes an
+empty database is a data-loss shape. Any write that went to one of these went
+nowhere.
+
+**Also left in the repository root, deliberately uncommitted:** `MARK.txt` (a
+DataCurve debug dump), `_smoke_nb_tmp.py`, a **zero-byte** `elements.py`,
+`chisurf_project.csp`, `simulation_output_20260811_051840/`, `demo/` (2.8 MB of
+`.ptu`), and about 2.8 MB of loose PNGs from surface and GUI work -- including
+`200.png`, which is the artefact of the `ray 200, 150` filename bug fixed today.
+None of it is source; all of it is safe to delete, and that is the user's call
+rather than an agent's.
+
+### Resolved 2026-08-12 — the chrome is cached between frames
+
+The entry above left "the remaining 16.4 ms is building ~2,800 quads and ~330
+text runs from scratch every frame" as the whole of the problem, and named the
+fix: a dirty-flag cache, because the chrome changes on hover, focus and state
+and **not** on camera motion, which is the only time anyone watches the frame
+rate. Done.
+
+Measured on the same M1 Pro, same 234,184-bead nuclear pore:
+
+| | before | after |
+|---|---|---|
+| `_draw` | 14.97 ms | **4.50 ms** |
+| `_chrome_quads` | 13.71 ms | **2.62 ms** |
+| `refresh_gui_state` (inside it) | 2.40 ms | 2.50 ms |
+
+**3.3x**, and the remaining chrome cost is almost entirely `refresh_gui_state`,
+which is now the next thing worth attacking: it re-derives the per-residue
+colours every frame through `get_residue_colors`, which is 2.2 ms of the 2.5.
+
+Two smaller wins landed with it: `QuadPainter.vertices` uses `np.fromiter` with
+an exact count rather than `np.asarray` (4.1 ms to 2.9 ms on a chrome frame, for
+identical output), and an `array("f")` accumulator was **tried and rejected** --
+it is 1.7x *slower* than a list, because per-element conversion on every
+`extend` costs more than one batch conversion at the end. Worth recording so
+nobody tries it twice.
+
+**The cache's one failure mode is silent**, so it is guarded by
+`test_chrome_cache.py`, which compares the cached path against a freshly emitted
+build after each of twenty-two real interactions. Written first, it immediately
+caught two genuine omissions from the fingerprint:
+
+* `SequenceRow.selected` -- the strip highlights the selection, and the set is
+  mutated **in place** in three separate places, so neither the row's identity
+  nor the list's length notices a change;
+* the **command-line feedback log** -- every command appends a line that is
+  drawn as text. `select everything` moved exactly nine quads while the rows,
+  the sequences and the windows were all unchanged, which is what pointed at it.
+
+Method worth reusing: when the differential test failed, the control was to run
+the same sweep with the cache *disabled*. That showed 52/54 rather than 42/54,
+and the two remaining mismatches were the progress overlay, which animates and
+counts seconds and so differs between any two paints. Without that control the
+animation would have looked like a cache bug.
+
+A selection larger than `InternalGui.SELECTION_HASH_MAX` (4096) deliberately
+never compares equal, so the frame rebuilds -- hashing 234,184 selected residues
+would cost more than the paint it saves, and rebuilding is exactly the behaviour
+that was there before.
+
+### Rejected twice — sharing the sequence gradient read-only
+
+The next 1.3 ms after the chrome cache is a single `ndarray.copy()`:
+`_build_sequence_gradient_colors` hands out a copy of its cached ramp, which on
+an integrative model is 234,184 x 4 float64 -- 7.5 MB -- copied on every frame,
+because the sequence strip re-reads the colours every frame.
+
+Sharing it read-only instead has now been tried **twice**, and the second
+attempt is the one worth recording. By then the one known mutator had been
+fixed: `_recompute_colors_per_ca` takes an explicit writable copy before
+applying per-residue overrides in place. It still failed, and not narrowly --
+**50 failures in the object-menu suite alone**, plus `spectrum`, the per-atom
+sort, colour-by-element and camera persistence.
+
+The conclusion is not "add another copy at the next mutator". It is that
+`_colors_per_ca` is written in place from *many* places, and the copy is not
+defensive against a hypothetical caller — it is a copy the code needs. Anyone
+tempted a third time: the saving is 1.3 ms, and the failure mode is a command
+raising *"assignment destination is read-only"* from a call site that has done
+nothing wrong.
+
+The real fix, if this 2.5 ms is ever worth attacking, is upstream of the copy:
+`refresh_gui_state` calls `get_residue_colors` on every frame purely to notice
+that the colours changed, and the colours change only when a command changes
+them. A change signal on the viewer would remove the call, the copy and the
+signature together. That is a larger change than it sounds, because there is no
+one place a colour changes -- which is exactly why the per-frame re-read exists.
+
+### Rejected — memoising `_recompute_colors_per_ca`
+
+The second attempt on the same 2 ms, and it failed the same way as the first.
+
+`get_residue_colors` is called on **every frame** by the sequence strip -- that
+is how a `spectrum` or a `color` reaches the strip, there being no signal to
+listen to -- and it recomputes the whole per-residue colour array each time. The
+obvious fix is to skip the recomputation when nothing it reads has changed, with
+a key over the colour mode, the residue names, the chains, the atoms, the base
+colour, the per-residue override and the per-atom projection (`_ca_rgba`, hoisted
+above the key precisely so it would be covered).
+
+Result: **152 failures in the object-menu suite**, plus spectrum, the per-atom
+sort, colour-by-element and the appearance suite. Reverted; `view.py` is
+byte-identical to before and all 272 object-menu tests pass again.
+
+The lesson is now well evidenced from two directions -- the read-only attempt
+and this one. **The colour pipeline is mutated in place from many places that a
+key over its declared inputs does not see.** Any further attempt at this level
+is likely to fail the same way.
+
+If the 2 ms is ever worth having, the change is structural rather than another
+cache: give the viewer an explicit **colour revision** bumped by the commands
+that change colours, and have `refresh_gui_state` consult that instead of
+re-deriving the array to notice. That is a real refactor -- there is no one
+place a colour changes today, which is exactly why the per-frame re-read exists
+-- and it should be done deliberately, not smuggled in behind a memo.
+
+For scale: after the chrome cache and the frame-rate fix, `_draw` on the
+234,184-bead nuclear pore is **6.7 ms** with the developer instruments on. This
+2 ms is the last large CPU item, and it is guarded by a suite that catches every
+attempt at it -- which is the system working.
+
 ## `test/gui/test_chiplot.py` segfaults in the shared working tree, and not from chiplot
+
+status: open
 
 **Found 2026-08-10** while landing the WebGPU plot backend. `pytest
 test/gui/test_chiplot.py` reports **56 passed** and then dies with
@@ -1258,42 +3868,9 @@ bug in the code being written. Two rules follow:
 Whoever owns the in-flight change should re-measure; until then, run
 `test/gui/test_chiplot.py` in its own pytest invocation.
 
-## 33 of the MMFDB suite's failures were test-order contamination (fixed 2026-09-16)
-
-**Found 2026-08-10** while adding three enumeration terms to
-`mmfdb_flr_ext.dic` for the region/spot container contract
-([PRD-92](/prds/prd-92.md)) and checking what that broke. `pytest tests` in
-`modules/mmfdb` reports **33 failed / 757 passed**, concentrated in four files:
-`test_mmfdb_user_management.py` (14), `test_security_architecture.py` (10),
-`test_zip_archive_export.py` (6), plus one each in `test_fdb_general.py`,
-`test_fdb_setups.py`, `test_mmcif_database_resolver.py`.
-
-**Every one of them passes when its file is run alone** — the two largest were
-checked directly (`test_mmfdb_user_management.py` + `test_security_architecture.py`
-→ 40 passed), as was `test_zip_archive_export.py` (6 passed). So the suite is
-carrying process-wide state between files, most likely an auth/session or
-database singleton, in the same family as the `_DISPLAY_CONFIG` contamination
-already recorded for ChiMOL: one test's leftovers break *other files*, which is
-why bisecting with `-k` finds nothing.
-
-**Not fixed here**, and not caused by the dictionary change (that adds three
-enum values and a comment; the failures are in user management, security and
-zip export, none of which read the enumeration). Recorded because the number is
-large enough to look like a regression to whoever runs the suite next, and
-because it means the suite currently cannot tell a real breakage from this
-noise. Whoever fixes it should bisect by explicit node ids across *files*, not
-within one.
-
-**Resolved 2026-09-16** (mmfdb `a581bb6`). The singleton was what this entry
-guessed at: `register_services` resolved the default database path once and
-cached it in a module global, so every handler called afterwards went to
-whichever database the *first* registration had found. A later file's handler
-then read an empty database -- a valid session token was "Authentication
-required", and inserts failed their foreign keys. The path is now pinned only
-when a caller names one. `pytest tests` passes in one run (809 passed), and the
-same bug was failing 11 tests in ChiSurf's `test/fio`.
-
 ## The OpenGL point glyph renders at half the size it is asked for
+
+status: open
 
 **Found 2026-08-10** while porting point geometry to the WebGPU backend, by
 comparing the same scene through both renderers.
@@ -1316,132 +3893,7 @@ the renderer toward the baseline.
 
 ## `test/gui` crashes the interpreter mid-run, and 20 of its failures are contamination
 
-**2026-08-10.** `pytest test/gui` dies with `Bus error: 10` (exit 138) at around
-44 %, just after `test_language_selector`, and reports ~22 failures before it
-does. Almost none of that is real:
-
-- **The failures are mostly cross-test contamination.** Two of three sampled
-  failures (`test_dialogs_and_progress::test_confirm_declines_by_default`,
-  `settings/test_log_filter::test_log_list_widget_uses_multiple_columns`) **pass
-  when run on their own**. Judge a `test/gui` failure by re-running that test
-  alone before believing it.
-- **The one real failure sampled** is `ParseFCSModel object has no attribute
-  'get_plot_reference_modes'` (raised from `chisurf/core/base.py`), i.e. an FCS
-  model/plot-reference API mismatch — not a GUI defect.
-- **A second, separate crash** appears when several plugin suites are combined in
-  one process: `chisurf/plugins/{tttr,pch,core/project_browser,burst/...}` plus
-  the dock suites run to ~89 % **with zero failures** and then take
-  `Segmentation fault: 11` in teardown. Split into two invocations, the same
-  tests are 146 + 254 passed. Same shape as the `fret_trajectory` entry below.
-
-So a red `test/gui` is not evidence that a change broke something. Until the
-contamination and the two crashes are fixed, verify a GUI change by running the
-suites that cover it, individually, and say which ones.
-
-## `test/gui/test_chiplot.py` segfaults in the shared working tree, and not from chiplot
-
-**Found 2026-08-10** while landing the WebGPU plot backend. `pytest
-test/gui/test_chiplot.py` reports **56 passed** and then dies with
-`Fatal Python error: Segmentation fault` during garbage collection, inside a
-pyqtgraph `ViewBox` weakref lambda or an `InfiniteLine.boundingRect`. Rate in
-the working tree: **5–8 of 8 runs**.
-
-**It is not the chiplot changes.** A clean `git worktree` at HEAD carrying the
-*entire* WebGPU backend, its 31 tests, the pyqtgraph SI-prefix and legend fixes,
-and every uncommitted chiplot source edit (`canvas.py`, `handles.py`,
-`backends/base.py`, `backends/pyqtgraph_backend.py`) runs the four chiplot-related
-suites **0 crashes in 8 runs**. Adding the working tree's `chisurf/gui/__init__.py`
-and settings edits on top: still 0 in 6. The trigger is one of the other several
-dozen files another agent instance has in flight, and it was not found.
-
-**The trap, which cost most of a session.** The crash is a *latent* pyqtgraph
-teardown defect — abandoned panels whose finalizers touch Qt objects C++ has
-already deleted — so it fires inside **whatever happens to allocate next**, and
-the traceback names that caller. It pointed at the WebGPU driver's cffi
-initialisation, then at a legend, then at an axis. Each looked like a specific
-bug in the code being written. Two rules follow:
-
-* **Never add a `gc.collect()` to "fix" it.** Doing so converts a probabilistic
-  crash into a deterministic one at the collect site, and the new site looks
-  even more like the culprit.
-* **Bisect in a clean worktree, not by editing the shared tree.** Six A/B
-  measurements at 6–8 runs each were run against a baseline that was already
-  crashing, so every one of them was noise. The clean-worktree comparison
-  settled it in two runs.
-
-Whoever owns the in-flight change should re-measure; until then, run
-`test/gui/test_chiplot.py` in its own pytest invocation.
-
-## `test/gui/test_chiplot.py` segfaults in the shared working tree, and not from chiplot
-
-**Found 2026-08-10** while landing the WebGPU plot backend. `pytest
-test/gui/test_chiplot.py` reports **56 passed** and then dies with
-`Fatal Python error: Segmentation fault` during garbage collection, inside a
-pyqtgraph `ViewBox` weakref lambda or an `InfiniteLine.boundingRect`. Rate in
-the working tree: **5–8 of 8 runs**.
-
-**It is not the chiplot changes.** A clean `git worktree` at HEAD carrying the
-*entire* WebGPU backend, its 31 tests, the pyqtgraph SI-prefix and legend fixes,
-and every uncommitted chiplot source edit (`canvas.py`, `handles.py`,
-`backends/base.py`, `backends/pyqtgraph_backend.py`) runs the four chiplot-related
-suites **0 crashes in 8 runs**. Adding the working tree's `chisurf/gui/__init__.py`
-and settings edits on top: still 0 in 6. The trigger is one of the other several
-dozen files another agent instance has in flight, and it was not found.
-
-**The trap, which cost most of a session.** The crash is a *latent* pyqtgraph
-teardown defect — abandoned panels whose finalizers touch Qt objects C++ has
-already deleted — so it fires inside **whatever happens to allocate next**, and
-the traceback names that caller. It pointed at the WebGPU driver's cffi
-initialisation, then at a legend, then at an axis. Each looked like a specific
-bug in the code being written. Two rules follow:
-
-* **Never add a `gc.collect()` to "fix" it.** Doing so converts a probabilistic
-  crash into a deterministic one at the collect site, and the new site looks
-  even more like the culprit.
-* **Bisect in a clean worktree, not by editing the shared tree.** Six A/B
-  measurements at 6–8 runs each were run against a baseline that was already
-  crashing, so every one of them was noise. The clean-worktree comparison
-  settled it in two runs.
-
-Whoever owns the in-flight change should re-measure; until then, run
-`test/gui/test_chiplot.py` in its own pytest invocation.
-
-## 33 of the MMFDB suite's failures were test-order contamination (fixed 2026-09-16)
-
-**Found 2026-08-10** while adding three enumeration terms to
-`mmfdb_flr_ext.dic` for the region/spot container contract
-([PRD-92](/prds/prd-92.md)) and checking what that broke. `pytest tests` in
-`modules/mmfdb` reports **33 failed / 757 passed**, concentrated in four files:
-`test_mmfdb_user_management.py` (14), `test_security_architecture.py` (10),
-`test_zip_archive_export.py` (6), plus one each in `test_fdb_general.py`,
-`test_fdb_setups.py`, `test_mmcif_database_resolver.py`.
-
-**Every one of them passes when its file is run alone** — the two largest were
-checked directly (`test_mmfdb_user_management.py` + `test_security_architecture.py`
-→ 40 passed), as was `test_zip_archive_export.py` (6 passed). So the suite is
-carrying process-wide state between files, most likely an auth/session or
-database singleton, in the same family as the `_DISPLAY_CONFIG` contamination
-already recorded for ChiMOL: one test's leftovers break *other files*, which is
-why bisecting with `-k` finds nothing.
-
-**Not fixed here**, and not caused by the dictionary change (that adds three
-enum values and a comment; the failures are in user management, security and
-zip export, none of which read the enumeration). Recorded because the number is
-large enough to look like a regression to whoever runs the suite next, and
-because it means the suite currently cannot tell a real breakage from this
-noise. Whoever fixes it should bisect by explicit node ids across *files*, not
-within one.
-
-**Resolved 2026-09-16** (mmfdb `a581bb6`). The singleton was what this entry
-guessed at: `register_services` resolved the default database path once and
-cached it in a module global, so every handler called afterwards went to
-whichever database the *first* registration had found. A later file's handler
-then read an empty database -- a valid session token was "Authentication
-required", and inserts failed their foreign keys. The path is now pinned only
-when a caller names one. `pytest tests` passes in one run (809 passed), and the
-same bug was failing 11 tests in ChiSurf's `test/fio`.
-
-## `test/gui` crashes the interpreter mid-run, and 20 of its failures are contamination
+status: open
 
 **2026-08-10.** `pytest test/gui` dies with `Bus error: 10` (exit 138) at around
 44 %, just after `test_language_selector`, and reports ~22 failures before it
@@ -1466,6 +3918,8 @@ contamination and the two crashes are fixed, verify a GUI change by running the
 suites that cover it, individually, and say which ones.
 
 ## 20 file types in `chisurf/` are missing from an installed distribution
+
+status: open
 
 **Found 2026-08-10** while adding `*.wgsl` for the chigame shader, which had the
 same defect and would have shipped broken.
@@ -1498,7 +3952,9 @@ that is a packaging change, not a side effect of adding a shader.
 this cannot grow silently. A companion test fails when an entry becomes stale.
 The fix for each is to add a pattern to `pyproject.toml` and strike the line.
 
-## ✅ FIXED — ChiMOL ambient occlusion was wired the wrong way round
+## — ChiMOL ambient occlusion was wired the wrong way round
+
+status: resolved 2026-08-10
 
 **Fixed 2026-08-10.** Kept here because the *first* diagnosis below was wrong in
 an instructive way, and because one gap remains.
@@ -1536,6 +3992,8 @@ grab. And the background is most of the frame, so a mean over the whole image
 dilutes an inverted switch into what looks like rounding; compare lit pixels only.
 
 ## Superseded first diagnosis, and the other two settings
+
+status: open
 
 **2026-08-10.** Found while capturing the OpenGL render baselines before the
 WebGPU port ([chimol-web](/plugins/chimol-web.md)). All three were measured with
@@ -1578,36 +4036,9 @@ sphere scenes captured with `balls.impostor_min_atoms` at 100000 and at 10 came
 out **bit-identical**, which looks like a broken setting until you find the
 docstring.
 
-## `test_numba_seam` is red at HEAD: six allow-list strikes landed without their code
-
-**2026-08-11.** `test/test_numba_seam.py::test_no_new_numba_imports` fails on
-six files that import numba and are no longer listed in
-`test/numba_import_allowlist.txt`:
-
-```
-chisurf/core/fluorescence/burst/bocpd.py
-chisurf/core/fluorescence/tcspc/corrections.py
-chisurf/core/fluorescence/tcspc/tcspc.py
-chisurf/plugins/fluorescence_decay/lltf/core/convolve.py
-chisurf/plugins/fluorescence_decay/lltf/core/fitter.py
-chisurf/plugins/fluorescence_decay/lltf/core/scaling.py
-```
-
-All six are **already ported in the shared working tree** — none imports numba
-there — so the failure is invisible to anyone running the suite from that tree
-and appears only against a clean checkout. The allow-list strike was committed;
-the ported source was not. Fixing it means committing another session's
-uncommitted work, which is off limits, so it belongs to whoever owns those
-files.
-
-**The shape is what to carry forward, because the retirement will keep hitting
-it:** striking a line and porting the kernel are *one* change. Split across two
-commits, the tree is red for everyone who did not inherit the working tree —
-and the guard, which exists precisely to keep the list from drifting from the
-code, reads as broken rather than as correct. Verified pre-existing: identical
-at `HEAD~1` and at HEAD, in an isolated `git worktree`, with the same six files.
-
 ## `test_prd_mentions` is red on two files that belong to another session
+
+status: open
 
 **2026-08-10.** `test/test_prd_mentions.py` fails on files that name a PRD in
 shipped source (the `mfd_prepare` files this entry originally listed were
@@ -1627,7 +4058,105 @@ Not to be confused with a regression from the tool-window migration: that pass
 *removed* a file from the allowlist (`chisurf_dock_tool.py`, 154 → 153 entries)
 and added none.
 
+## `IMP.bff.restraints.AVNetworkRestraintWrapper` is gone — it was shadowed. Fixed 2026-08-10
+
+status: resolved 2026-08-10
+
+> **RESOLVED 2026-08-10, and the diagnosis below was wrong.** The wrapper is not
+> "an IMP API that moved" and it never went anywhere: it is in imp.bff at
+> `pyext/src/restraints/AVNetworkRestraint.py:69`, and the local IMP 2.25 build
+> now in `arm64` exposes it. It was **shadowed**.
+> `modules/imp-tricks/src/sitecustomize.py` inserted imp-tricks' own tree at the
+> *front* of `IMP.bff.__path__`; imp-tricks ships its own `IMP/bff/restraints/`
+> package, and a subpackage resolves to the **first** matching directory and
+> stops — so imp.bff's `restraints` was unreachable, submodules and exported
+> names alike. imp-tricks' own `__init__` calls its classes "non-breaking
+> additions to `IMP.bff`", which is exactly what they were not.
+>
+> Fixed in **imp-tricks** (`5967e77`), where it belonged: a subpackage found in
+> both trees now gets the two directories unioned into one `__path__` (local
+> first, so precedence is unchanged), and the shadowed `__init__` is evaluated
+> against the live package so its public names are adopted. Nothing local is
+> overwritten, and it recurses to any depth.
+>
+> **FRET suite: 16 failed / 112 passed → 6 failed / 122 passed.** All ten
+> `AVNetworkRestraintWrapper` failures are gone. The six that remain are all
+> `test_examples.py` and want `/Users/tpeulen/dev/olga`, a sibling checkout not
+> on this machine; they say nothing about the code. Full write-up in
+> [workflows/imp-local-build](../workflows/imp-local-build.md#what-the-build-fixed-and-what-it-did-not).
+>
+> **The lesson worth keeping**: "the attribute is missing" was recorded as an
+> upstream API removal without anyone checking whether something on `sys.path`
+> was standing in front of it. `IMP.bff.__path__` had two entries the whole
+> time, and printing it would have ended the question in one line.
+
+**Found 2026-08-05** while porting the FRET modelling plugin off mdtraj. Not
+caused by that port — but the port is how they were noticed, so they are written
+down rather than left.
+
+**The measurement.** In the `arm64` env with IMP 2.24:
+
+```
+python -m pytest -q chisurf/plugins/modelling/fret/test
+# 16 failed, 112 passed
+```
+
+Every failure reduces to one of exactly two causes, and neither involves the
+trajectory code:
+
+| Cause | Tests |
+|---|---|
+| `AttributeError: module 'IMP.bff.restraints' has no attribute 'AVNetworkRestraintWrapper'` | 13 (`test_imp_engine.py`, `test_dock_project.py`) |
+| `FileNotFoundError: /Users/tpeulen/dev/olga/doc/data/T4L/screening_tutorial.fps.json` | 3 (`test_examples.py`) |
+
+The second is a sibling checkout that is simply not present on this machine, so
+those three say nothing about the code. The first is real, and the correction
+above says why: the wrapper exists, but `IMP.bff.restraints` resolves to
+imp-tricks' package rather than imp.bff's. Fix it in **imp-tricks** — either
+re-export `AVNetworkRestraintWrapper` from its
+`IMP/bff/restraints/__init__.py`, or make `sitecustomize` merge same-named
+subpackages instead of letting the first entry on `__path__` win — not by
+working around it here.
+
+**A trap in re-measuring this.** A `git worktree` at HEAD is *not* a usable
+baseline for this suite: `modules/` holds symlinks to sibling checkouts and is
+gitignored, so a fresh worktree collects two import errors before it runs a
+single test. Compare by classifying the failures' root causes instead, which is
+what established that the mdtraj port added none of them.
+
+## structure: `ProteinCentroid` cannot coarse-grain nucleic acids
+
+status: open
+
+**2026-08-10.** Found while making `calc_internal_coordinates_bb` survive
+crystallographic PDB files (three separate crashes, all fixed:
+`KeyError: 'H'` on structures without hydrogens, `KeyError: 'CA'` on waters,
+`ValueError: -1 is not in list` on the absent-atom sentinel). One failure was
+left, because it is a capability gap rather than a guard:
+
+```
+>>> ProteinCentroid('test/data/atomic_coordinates/pdb_files/1rtd.pdb')
+KeyError: np.str_('DG')      # protein.py, to_coarse
+```
+
+`residue_atoms_internal` is keyed by amino-acid name only, so `to_coarse`
+raises on the first nucleotide. **1RTD is this project's designated
+protein + DNA/RNA fixture** ([testing](../workflows/testing.md)), which means
+the coarse-grained path has never been exercised on the structure class it was
+supposed to be tested against — the two combined-molecule tests in the tree use
+the all-atom path.
+
+Not fixed here for one reason worth stating: `chisurf/core/structure/protein.py`
+is route `imp` in the [numba retirement](../subsystems/numba-retirement.md) —
+its counterpart already exists as `IMP.cgmol.protein`, and CLAUDE.md records
+that molecular modelling has migrated to imp-tricks. Adding nucleotide
+templates here would be work thrown away at that port. **Check whether
+`IMP.cgmol` already handles nucleic acids before writing any**; if it does, this
+closes by deletion.
+
 ## Registering a dropped measurement in MMFDB fails on a foreign key
+
+status: open
 
 **2026-08-07.** Dropping eleven `.spc` files into the burst workflow, with the
 `tttr_to_pto` guard converting them, stores the object and then fails to
@@ -1654,6 +4183,8 @@ otherwise be re-diagnosed from scratch every time.
 
 ## `NUMBA_NUM_THREADS` collides when the fio suite runs as a whole
 
+status: open
+
 **2026-08-07.** `test/fio/test_vv_vh.py::test_vv_vh_spectrum_equals_concatenated_components`
 and `test/fio/test_ndxplorer_rpc_bridge.py::test_lines_service_phasor_and_fret_over_inprocess_client`
 fail with `RuntimeError: Cannot set NUMBA_NUM_THREADS to a different value once
@@ -1668,6 +4199,8 @@ shape as chimol's `_DISPLAY_CONFIG`, and it wants the same treatment: bisect by
 explicit node ids, not `-k`.
 
 ## Burst Selection's progress bar cannot advance within a single large file
+
+status: open
 
 **2026-08-07.** `analyze_request` (`chisurf/plugins/burst/burst_selection/api/selection.py`)
 now reports progress **per file** to the GUI's `TaskHandle` (one file
@@ -1707,6 +4240,8 @@ already depends on the current blanket-catch behaviour before changing it.
 
 ## Two `ParameterGroupTable*` GUI tests fail headless, unrelated to anything they test
 
+status: open
+
 **2026-08-07.** `test/gui/test_paired_table_layout.py::test_the_list_style_stacks_a_wide_component`
 and `test/gui/test_parameter_table_wheel.py::test_a_long_table_can_still_be_scrolled`
 fail deterministically under `QT_QPA_PLATFORM=offscreen`, both against a
@@ -1724,6 +4259,8 @@ after removing chitable's module-level pandas import; not investigated
 further because neither file was touched.
 
 ## img_flow: the demo PTU is one frame short of what it simulates
+
+status: open
 
 `test_the_demo_is_a_readable_ptu_whose_flow_comes_back` asks `create_demo` for
 30 frames and `load_image_stack` reports 29. Pre-existing and deterministic —
@@ -1747,7 +4284,9 @@ marker. If it does, the simulator is wrong; if it does not, the reader is, and
 every measured file has been one frame short all along — which would be the
 more interesting answer.
 
-## RESOLVED — burst FCS: the `td4` companion was written on the bursts that produced a result, not on the bursts
+## — burst FCS: the `td4` companion was written on the bursts that produced a result, not on the bursts
+
+status: resolved 2026-08-07
 
 **Discovered 2026-08-07, fixed the same day.** `_save_td4_results` in
 `chisurf/plugins/burst/burst_fcs_correlator/wizard.py` built its row grid from
@@ -1789,7 +4328,78 @@ sentinel row, not a missing one, and a computed burst keeps its true row
 position rather than being compacted upward. Landed alongside the last three
 [PRD-82](../prds/prd-82.md) pandas ports.
 
+## Mutagenesis resets the view, and hidden waters come back
+
+status: open
+
+**2026-08-07**, reported by the user against the state-based wizard
+(`03a04ca07`). Two defects, both about state the wizard is not preserving.
+
+**1. The view is reset.** Something in the mutagenesis flow still moves the
+camera. The build and the rotamer step are each wrapped in
+`_wizard_keeps_the_camera` (`cmd/interactions.py`), and
+`test_the_wizard_never_moves_the_camera` asserts `get_view_state()` is
+unchanged across `wizard target` and two `wizard rotamer, next` — so the path
+that does it is **not** one of those two, and the guardrail passes while the
+user sees the fault. Candidates, in the order worth checking:
+
+* `wizard apply` and `wizard clear`/`done` — neither is wrapped. Apply
+  rebuilds the source object, which is exactly the operation that re-derives
+  the scene centre and radius;
+* `_wizard_delete_preview` — removing an object changes the scene bounds the
+  same way adding one does;
+* entering the wizard at all (`wizard mutagenesis`), or the residue pick that
+  precedes it.
+
+Take the measurement the same way the earlier camera bug was finally caught:
+`get_view_state()` before and after **each** command in a full session
+(`wizard mutagenesis` → pick → `target` → step → `apply` → `done`), not only
+the two already covered. Note the trap recorded in the parity concept: the
+symptom reads as *darkness* in a screenshot, because the molecule recedes
+rather than the lighting changing.
+
+**2. Hidden waters reappear.** Visibility set before the wizard runs is lost —
+`hide solvent` (or any scoped `hide`) comes back on. Almost certainly the same
+root cause as the first: whatever rebuilds the source object on Apply is
+restoring the representation masks from the payload rather than carrying the
+object's current ones across. If so, one fix closes both, and the test should
+assert the *masks* as well as the view state, since a rebuilt object with
+default visibility is indistinguishable from a correct one in a mesh count.
+
+**Tried to fix, and it does not reproduce through the command path.** Measured
+on 148L, driving the whole flow as commands (`wizard mutagenesis` → `target` →
+`rotamer, next` → `apply` → `done`) and printing the 18-float view state and
+the per-atom masks after each:
+
+* the view is **identical at every step**, apply included — position
+  `[0, 0, -467.83]`, near/far/fov `[1.65, 660.39, -20]`. So `apply` being
+  unwrapped is *not* the cause, and wrapping it would fix nothing;
+* the masks resize correctly: `sticks_mask` goes 1363 → 1370 with the atom
+  count when a THR becomes a TRP, rather than being dropped or left stale;
+* the water half could not be exercised at all — **148L carries no waters**
+  (`tot=0`), so a fixture with solvent is needed to see it.
+
+That leaves the **GUI interaction path**, which is what the report came from
+and what none of this touched. Two candidates worth taking first:
+
+* the mouse mode itself. In 3-Button Viewing, `SnglClk` is **Cent** — a single
+  click centres on the atom under the cursor. Picking the residue to mutate is
+  a click, so the "reset" may be the mouse mode doing exactly what the panel
+  says it does, and the fix (if any) is that picking *for the wizard* should
+  not re-centre;
+* whatever the object menu's **H** button emits for waters, followed by
+  `_refresh_objects_from_viewer` after apply. The command spelling is
+  `hide everything, solvent`; a bare `hide solvent` is rejected
+  ("Unsupported representation for show/hide: solvent"), so the two paths may
+  not be setting the same state.
+
+Reproduce with a structure that has waters, driving the GUI rather than the
+command line — the standing correction in the parity concept applies: a test
+that calls the handler cannot see what the widget does.
+
 ## acquisition: the SPC-130 record decoder exists twice, because the library exposes its own only behind a file reader
+
+status: open
 
 **2026-08-06.** `_process_bh_spc_records_numba` in
 `chisurf/plugins/core/acq/gui/tool.py` is a hand-maintained numba copy of the
@@ -1834,7 +4444,9 @@ already in memory, in 0.66 ms (457 M records/s). Different work — one includes
 the file read — and both far faster than anything downstream needs. The copy
 exists because there is no entry point.
 
-## RESOLVED — photon container: adding an instrument file read it whole into memory
+## — photon container: adding an instrument file read it whole into memory
+
+status: resolved 2026-08-06
 
 **2026-08-06, fixed 2026-08-07.** `Measurement.create` embeds the instrument
 file verbatim, and the only input path tttrlib exposed took bytes, so an 8 GiB
@@ -1848,6 +4460,8 @@ column subsets and row windows of an embedded store, ranged byte reads, and
 cues for positioning in a photon stream.
 
 ## imaging: a 30-frame acquisition reconstructs as 29, and the flags that would fix it do not reach the reconstruction
+
+status: open
 
 **2026-08-06.** Found by rebuilding the simulation library from source (the
 environment carried a build predating its 2026-08-05 CLSM fix, so this is
@@ -1896,6 +4510,8 @@ there, and the array shape is the only thing that says so.
 
 ## PDA: the dynamic two-state fit lands just past its convergence threshold
 
+status: open
+
 **2026-08-06.** `test/gui/test_pda2c_model_editor.py::test_dynamic_pda_recovers_
 exchange_and_rejects_the_static_model` fails on `assert fit_dyn.chi2r < 1.5` with
 **chi2r = 1.5339**, deterministically — the same value on every run and on the
@@ -1909,6 +4525,8 @@ for this fixture or whether the dynamic model leaves a small systematic residual
 Do not "fix" it by moving the number without answering that.
 
 ## chimol: the mouse-mode block's text is clipped at the panel's column width
+
+status: open
 
 **2026-08-06.** Seen while composing the object panel over a `ray` result on a
 902x562 viewport: the bottom-right block reads `Mouse Mode 3-Button Viewin`,
@@ -1925,7 +4543,9 @@ PyMOL sizes the internal-GUI column from the text. Reproduce with the composer
 in `chisurf/plugins/chimol/test/test_ray_keeps_the_panel.py` — paint
 `paint_screen_space` onto a `QImage` and read the bottom-right corner.
 
-## models: `ReactionWidget` (stopped flow) could not be instantiated — RESOLVED 2026-08-06
+## models: `ReactionWidget` (stopped flow) could not be instantiated —  2026-08-06
+
+status: resolved 2026-08-06
 
 **Resolved** by [PRD-38](../prds/prd-38.md) increment 18: `ReactionModel`
 (`core/models/stopped_flow/reaction.py` + `reaction.view.json`) implements
@@ -1960,6 +4580,8 @@ for the missing caller, not only the missing control.*
 
 ## models: `EtModelFreeWidget` is registered and cannot be instantiated
 
+status: open
+
 **2026-08-06. Resolved by deprecation** — the fit is deregistered and the module
 deleted; `EtModelFreeWidget` resolves to `None` so an old config drops the entry
 instead of crashing. Kept here because the *reason* matters: it had never worked.
@@ -1993,7 +4615,9 @@ Once ported, drop it from `_a_still_legacy_widget_model`'s skip in
 `test/gui/test_auto_model_widget.py` -- that helper currently steps over abstract
 widgets so the MRO tests do not report this pre-existing breakage as their own.
 
-## models: the parse editors' validity badge and LaTeX preview — RESOLVED 2026-08-06
+## models: the parse editors' validity badge and LaTeX preview —  2026-08-06
+
+status: resolved 2026-08-06
 
 **Resolved** by [PRD-38](../prds/prd-38.md): a `value` section of
 `kind: "expression"` renders the equation field through the shared
@@ -2009,7 +4633,9 @@ typeset LaTeX preview, the names-and-functions reference and parameter discovery
 did it rather than re-implementing the check inside `ValueWidget`. A second
 implementation of "is this formula safe" is a second answer to that question.*
 
-## chimol: the nucleic-acid cartoon has artifacts — RESOLVED 2026-08-06
+## chimol: the nucleic-acid cartoon has artifacts —  2026-08-06
+
+status: resolved 2026-08-06
 
 Kept for the mechanism, which generalises past this one representation.
 
@@ -2042,6 +4668,8 @@ and it is worth treating as a pattern: a test that supplies its own config is
 testing the code, not the product.
 
 ## ndX: the mask event filter reads a deleted check box during start-up (2026-08-06)
+
+status: open
 
 `MaskDrawingIntegration.eventFilter` (`utils/mask_drawing_integration.py:427`)
 asks `plot_control.mask_widget.is_drawing_enabled()` on every event it sees,
@@ -2077,6 +4705,8 @@ was made while wrapping the panels.
 
 ## okf: the update log is ~40 % duplicated entries (2026-08-06)
 
+status: open
+
 `okf/log.md` holds **1977 entries of which 1180 are distinct** — 765 appear more
 than once, some four times, and the repeats go back months (`chimol: sessions`,
 `Parameter error estimates were wrong by √2`, `German catalogue brought to ~90 %`).
@@ -2105,6 +4735,8 @@ right, and there is no undo for a working-tree write. It was restored from
 the new content, diff it against the old, and only then write.**
 
 ## testing: `fret_trajectory`'s suite crashes the interpreter *after* every test passes
+
+status: open
 
 **2026-08-06.** `pytest chisurf/plugins/traj/fret_trajectory/` reports
 `11 passed  [100%]` and then dies with `Fatal Python error: Bus error` (sometimes
@@ -2152,7 +4784,9 @@ disproven. Whatever holds the Qt objects past shutdown is something else; the
 shared session-scoped `qapp` in `chisurf/plugins/conftest.py`, which overrides
 pytest-qt's own and never tears the application down, is the next thing to look at.
 
-## packaging: five pandas HDF5 writers outlived the `pytables` removal — RESOLVED 2026-08-06
+## packaging: five pandas HDF5 writers outlived the `pytables` removal —  2026-08-06
+
+status: resolved 2026-08-06
 
 **2026-08-06.** `pytables` was dropped on the grounds that its "only remaining
 use" was the MEM sampler's posterior (commit `ffeab9f0c`). It was not: pandas
@@ -2193,71 +4827,388 @@ the same shape as the one `pyarrow` needed: a test that fails when a
 module-level *or* in-function `pd.to_hdf`/`pd.read_hdf`/`pd.HDFStore` exists
 without `pytables` declared.
 
-## Resolved: shared-server lifecycle contracts and the stale 43-case record
+## `import tttrlib` is broken in the `arm64` env — a half-finished rebuild
 
+status: open
 
-**Resolved measurement, 2026-10-07:** the complete targeted lifecycle file now
-passes 75 cases in 9.93s under isolated settings/MMFDB/object/cache paths and
-owned ephemeral server ports. The watchdog was inactive and the process
-exited 0; no shared-state failure, startup timeout or hang reproduced. Current
-committed tests already use Lifetime, real 64-point decays, RemoteError and
-scientific .cs.pto persistence contracts (`a67d359b2`, `4c21a578b`,
-`d577d93c1`). No new fixture change is justified by this stale baseline.
-[JUnit receipt](../validation/release-readiness-w7/server-lifecycle.xml).
-The following paragraphs are retained history, not an outstanding failure.
+**Found 2026-08-06**, mid-session, between two test runs that both passed:
 
-**The RPC server could not build a fit at all.** ``fit_create`` resolves a model
-by walking ``Model.__subclasses__()``, which only sees *imported* classes, and
-the server imports none of them: measured in a fresh server process, exactly
-**one** model class was reachable ("Global fit", pulled in by the fitting
-machinery). Every ``fit.create`` naming a real model answered ``model 'X' not
-found``. It now runs the same headless bootstrap the agent layer uses
-(``ensure_experiments_registered``), which brings the count to 43, and the error
-lists what *is* available.
+```
+ImportError: dlopen(.../tttrlib/_tttrlib.cpython-312-darwin.so):
+  symbol not found in flat namespace '__Z18isFlimLabsITT1File...'
+```
 
-Two more, each hidden behind the first:
+Nothing in ChiSurf caused it. `~/dev/tttrlib` has moved several commits ahead
+and carries a large uncommitted change (`CMakeLists.txt`, new format docs), so
+the installed `_tttrlib.so` references a symbol the currently-linked per-module
+dylibs do not have — the package is a **directory of dylibs** now, and the link
+step runs without a rebuild, so a partial rebuild leaves exactly this.
 
-* ``FitGroup`` **iterates** its data to build one member fit per dataset, and a
-  bare ``DataCurve`` iterates into ``(x, y)`` tuples — so the single-dataset
-  path built member fits whose ``data`` was a tuple and the first read of
-  ``data.x`` failed. It takes a ``DataGroup``, one dataset or several.
-* A server-created fit had the range ``(0, 0)`` and could be created but never
-  run (``Improper input: N=4 must not exceed M=(0,)``). ``fit_create`` now
-  initialises it from the reader's ``autofitrange``, falling back to the whole
-  curve for a dataset that arrived as raw ``curve_data`` and has no reader.
+**Do not "fix" it by running `pixi run build-tttrlib`** unless you own that
+tttrlib change: it compiles whatever C++ is in the working tree into the shared
+env, and another instance's half-finished work will land on everyone. Either
+wait for them to finish, or build from a clean checkout at a known commit.
 
-Also fixed: ``fit_set_dataset`` did not accept ``fit_uid`` while the dispatcher
-passes it, and ``fit_set_result_idx`` made ``fit_index`` a required positional —
-so addressing either by uid, the documented way, raised ``TypeError`` inside the
-dispatcher. And ``Fit.set_result_idx`` documented "clipped to the valid range"
-while ``np.clip(idx, 0, len(results) - 1)`` returns **-1** for an empty deque and
-then indexes it: "this fit has not been run yet" reached the caller as
-``IndexError: deque index out of range``.
+**What it costs meanwhile:** any suite touching `tttrlib` cannot even be
+collected — 37 collection errors across the plugin tests — so a green run is
+not obtainable while it lasts, and a red one says nothing.
 
-### What is left, and the trap in measuring it
+## A 3-atom AV fixture segfaults LabelLib
 
-43 failures across 12 classes in ``test_integration_lifecycle.py``. **They do not
-reproduce class by class**: ``TestErrorBoundary`` passes **12/12 alone** and
-fails 3 in the full file, and ``TestProxyRpcErrorHandling`` passes 6/6 alone and
-fails 6 in it. The file shares one module-scoped server and client
-(``_client()``) and resets only datasets and fits between tests
-(``reset_state`` → ``fit__clear`` / ``dataset__clear``), so anything else a test
-leaves behind is inherited by the next one. **Fix the isolation before chasing
-any individual assertion** — a per-test failure here may be a previous test's
-residue, and a fix verified on one class is not verified.
+status: open
 
-Three classes have been ported and pass in isolation (``TestErrorBoundary``,
-``TestProxyRpcErrorHandling``, ``TestChisurfRunPattern``); the pattern for the
-rest is the same. A failing call **raises** ``RemoteError`` — service errors are
-carried in the JSON-RPC ``error`` member (SV-04) — and these tests still assert
-``not result.get("ok")``, which never described the contract: it also passes on
-success, because a result payload has no ``"ok"`` key either. Port to
-``pytest.raises(RemoteError)``, and where the test only means "the server must
-survive this", assert that with a following ``meta__ping``.
+**Found 2026-08-06** finishing the mdtraj port. `test_pair_selection.py`
+reaches `compute_efficiency_matrix_from_evaluators_trajectory` on a **3-atom**
+"protein" (one ALA: CA, HA, N) and LabelLib's C extension segfaults:
 
-The whole file takes **13.5 minutes**; run one class at a time while working.
+```
+Fatal Python error: Segmentation fault
+  av.py:141 in _av_labellib   <- compute_av <- compute_avs_for_structure
+  evaluate.py:234 in evaluate_trajectory
+  pair_selection.py:292 in compute_efficiency_matrix_from_evaluators_trajectory
+```
+
+**Honest attribution:** the crash appeared when that test's fixture moved from
+an mdtraj-written XTC to a ChiSurf-written DCD, so it is *plausibly* mine — but
+the coordinates round-trip correctly and the PDB carries the right element
+column, so what changed is the numbers reaching an AV grid, not their meaning.
+An accessible volume around three atoms is degenerate input either way, and a
+segfault is never the right answer to it. **Do not assume the port is
+innocent** without checking; equally, do not assume the fixture is the only
+caller that can reach this.
+
+**Where to start:** guard `_av_labellib` against a structure too small to grid
+(it should raise, not crash), then re-point the fixture at a real structure —
+a 3-atom AV asserts nothing useful about efficiency matrices anyway.
+
+**This is why `mdtraj` is still declared.** Every import of it is gone from the
+tree, but a suite that segfaults cannot show the removal is safe, and removing
+a dependency on the strength of a crash would be backwards.
+
+## storage: a borrowed `Column` from the columnar store is not safe to cache
+
+status: open
+
+**2026-08-06.** In the simulation library's `DataStore`, a `Column` handed out
+by `add()` or `store[i]` is a borrowed reference into the store's column
+container. A structural change can invalidate it, and the stale proxy does not
+raise — it reads freed memory and answers with an empty name and an empty
+array. The symptom is a column that silently goes blank, which no assertion
+catches.
+
+**The append case is fixed at the source, and is not yet in any built
+environment.** The container is now one whose references survive an append
+(`std::deque`, `modules/core/include/DataStore.h`) — verified by building the
+library into a scratch prefix and holding a proxy across fifty `add()` calls:
+name, data and write-through all intact, where the shipped build reports `''`
+and `[]`. **That change is uncommitted in the library checkout and the binary in
+this environment is still the old one**, so every environment here still dangles
+on append until it is rebuilt.
+
+**Removal still invalidates, and unevenly.** `remove_column` invalidates some
+proxies and not others depending on the index and the container — a vector erase
+at index 2 leaves index 0 readable, a deque erase does not. So *whether* a given
+proxy survives is not a contract in either build.
+
+**The rule is therefore unchanged: never cache a proxy.**
+`chisurf/core/datastore.py` re-fetches through `column_at()` and
+`DataStoreSource` goes through it for every access. `test/test_datastore_seam.py`
+asserts the positive invariant — `column_at` answers with live data across both
+an append and a removal — and passes against the shipped build *and* the fixed
+one. It deliberately does **not** assert that a stale proxy breaks: that would
+be pinning a bug whose presence depends on the build.
+
+**Two smaller gaps found the same way**, both real and both worked around in
+`chisurf/core/datastore.py`: a boolean column has no zero-copy view and decodes
+through a per-row Python loop (so a write through the returned array is silently
+lost, and filtering a large boolean column is O(n) in Python), and `mask_numpy()`
+returns a copy (so a single-cell mask change is a read-modify-write of the whole
+mask). Both are listed in the [columnar-store concept](../subsystems/columnar-store.md).
+
+## build: the sibling environment gets a build it cannot load
+
+status: open
+
+**2026-08-06.** The photon library is built into the pixi environment and
+symlinked into the sibling conda environment. The two disagree about HDF5 — pixi
+solves 2.1 (`libhdf5.320`), the conda environment carries 1.14 (`libhdf5.310`) —
+so the shared build is unloadable in the sibling:
+
+```
+ImportError: dlopen(...): Library not loaded: @rpath/libhdf5.320.dylib
+```
+
+**`build-tttrlib` reports success**, because it verifies the environment it
+installed into and that one is fine; the sibling breaks silently and shows up
+only when a suite next runs there. Worked around by giving the sibling its own
+build installed as a real directory instead of a symlink (recipe in
+[build and env](../workflows/build-and-env.md)) — **which the next
+`build-tttrlib` undoes**, re-creating the symlink.
+
+The durable fix is one of: pin the same HDF5 in both environments, or make the
+link step verify that the extension actually *loads* in every environment it
+links into rather than only in the one it installed to. Neither is done.
+
+## storage: seven pandas HDF5 call sites are dead in a freshly solved environment —  2026-08-06
+
+status: resolved 2026-08-06
+
+**Resolved** by [PRD-82](../prds/prd-82.md) stage 2: all seven writers now go
+through `chisurf.core.datastore.write_table`, which writes one dataset per
+column and needs no optional HDF5 package. `to_hdf` and `HDFStore` appear
+nowhere in the shipped package and `test/test_pandas_hdf5_seam.py` fails on one
+coming back. Kept here for the part that is **still true**.
+
+**A file written by an EARLIER release still needs that optional package to
+open.** `read_table_frame` tries the columnar layout first and falls back to the
+frame reader, which needs it; where it is absent the fallback is a named
+`LegacyTableError` rather than an empty table, so the failure is legible instead
+of silent. That is no worse than before — those files were unreadable there
+either way — but it means the removal is complete for *writing* and not for
+*reading history*.
+
+A reader for the frame layout was written inside the simulation library and
+**reverted deliberately**: that library reads photon data and has no business
+knowing another ecosystem's container layout. Do not propose it there again.
+The remaining options, neither taken: convert old files on open (needs the
+package once, on a machine that has it), or read the layout in ChiSurf, which
+means a new HDF5 dependency for a legacy path. Both are worse than the named
+decline until someone has a file they actually cannot open.
+
+## The assistant still fabricates a citation now and then
+
+status: open
+
+**2026-08-06.** Over thirteen live questions on `mistral-large-latest`, two
+answers named a page that does not exist — `docs/concepts/pda.md` and
+`docs/guides/42_fret_from_bursts.md`. Both are plausible file names for pages
+that *could* exist, which is exactly why the model wrote them. Nothing reached
+the reader: `ask.verify_citations` resolves every path, strikes the dead ones
+and reports them, and both the panel and the CLI say so in as many words. So
+the guard works and the behaviour underneath does not.
+
+Worth knowing before trying to fix it: the fabricated paths appear **alongside
+real, opened ones** in the same answer, so "did it read anything" does not
+catch it — only resolving each path does. The obvious next step is to give the
+model the page list it is allowed to cite (the `related` list already in every
+`read_documentation` result), or to feed the struck paths back for one
+correction turn the way `READ_FIRST` does for an unread answer. Neither was
+done here because the current behaviour is honest and visible, and a second
+retry turn costs every answer a round trip to fix one in six.
+
+## The documentation assistant has never answered a question from a real model
+
+status: resolved 2026-08-06
+
+**Closed the same day** — a working key arrived and the battery was run; see
+the log entry and [LLM agent](../subsystems/llm-agent.md). What follows is the
+original note, kept because it says what the measurement is.
+
+**2026-08-06.** `chisurf/plugins/core/help/api/ask.py` and everything behind it
+are covered by scripted-model tests (the restricted registry, the citation
+collection, the panel's rendering of an answer, a no-read answer and a
+failure), and the retrieval underneath is covered by asserting *which page*
+comes back for a question. What has **not** happened is one end-to-end run
+against a live provider: on the machine this was built on, the configured
+Mistral key expired the same day (HTTP 401, "Your API key expired on
+2026-08-06") and the OpenRouter account has no credit (HTTP 402, "can only
+afford 213" of the 4096 reserved tokens). Both error paths are reported
+clearly, which is itself worth something, but the *answer* path has only ever
+run against `ScriptedLLM`.
+
+What that leaves unknown is not the plumbing — it is whether the prompt and the
+`answer-from-docs` skill actually make a model browse before it answers rather
+than answering from memory and citing nothing. The measurement is exactly the
+one the panel already shows: run `csc help ask "what does the gamma factor
+correct for?"` with a working key and check that `answer.pages` is non-empty
+and names `docs/concepts/accurate_fret.md`. If it comes back empty, the fix is
+in the skill, not in the harness.
+
+## An in-flight rename left `test_an_ambiguous_model_name_asks_for_the_full_one` red
+
+status: open
+
+**2026-08-06.** `test/agent/test_tools.py` fails in the working tree, and it is
+not this change: another instance is renaming the TCSPC model from
+`"Lifetime (new)"` to `"Lifetime"` and applied the rename mechanically to the
+ambiguity fixture, which turned a prefix-only case into an exact-match one.
+With the registry `["Lifetime", "Lifetime mixer"]`, asking for `"Lifetime"` is
+not ambiguous — `resolve_model_name` finds an exact match and returns it, which
+is the documented and correct precedence. The test is the defect, not the code:
+the fixture needs a registry where no exact match exists (`["Lifetime ",
+"Lifetime mixer"]`, as it effectively was before). Left alone here because the
+file has another instance's uncommitted edits in it.
+
+## `img_flow`'s demo PTU reconstructs 29 of its 30 frames
+
+status: open
+
+**Found 2026-08-05** while running the microscopy plugin suites during the
+`tifffile`/`imageio` removal. Unrelated to that change — nothing on this path
+touches image files — but worth writing down, because the default suite cannot
+see it: `test_the_demo_is_a_readable_ptu_whose_flow_comes_back` is marked
+`slow`, and the `test` task runs `-m 'not slow'`.
+
+**The measurement.** Deterministic, not flaky (three runs, same number):
+
+```
+python -m pytest -q chisurf/plugins/microscopy/img_flow/test/test_img_flow.py \
+    ::test_the_demo_is_a_readable_ptu_whose_flow_comes_back
+# assert 29 == 30
+```
+
+The written stream is not short of markers — that is the first thing to check
+and it rules out the obvious explanation. `create_demo(..., n_frames=30)`
+produces 423 058 events carrying **30 frame markers** (routing channel 4) and
+1920 line-start / 1920 line-stop markers, i.e. exactly 64 lines for each of the
+30 frames. `tttrlib.CLSMImage(t, fill=False)` then reports `29 x 64 x 64`.
+
+**Where the frame goes.** `CLSMImage::get_frame_edges` turns N frame markers
+into N−1 intervals; the last frame is closed only by the `n_events` edge that
+`skip_after_last_frame_marker == false` appends. Thirty markers giving
+twenty-nine frames means both skip flags are effectively true for this file, so
+the final frame — which has no *following* frame marker, only the end of the
+stream — is discarded with its photons. Establish which code path sets those
+flags for a PQ PTU before changing anything: the defaults in `CLSMImage.h` are
+`false` for both, so they are being set somewhere along the PQ header route.
+
+**Not the recent CLSM commit.** The suspicion falls naturally on tttrlib
+`37dedfc4` ("reconstruct images from a line clock that has no stop marker"),
+which reworked frame edges the same day. It is not the cause: its only
+default-routine change is `walk_back_over_simultaneous_markers`, which moves an
+edge earlier within one macro-time tick and cannot change how many edges there
+are. Do not spend the rebuild on that A/B.
+
+## Companion explorer: eight cache/change-token defects fixed, not yet committable
+
+status: open
+
+**Where to pick this up.** The fixes and their tests are **in the ndXplorer
+working tree and green** (861 passed, 6 skipped, from a 572-test baseline), but
+they could not land as their own commit and are waiting on the peer refactor
+underneath them.
+
+**Why they cannot land alone.** Every fix edits code that exists only in the
+working tree. `git show HEAD:ndxplorer/core/data_source.py | grep -c "def gate_key"`
+returns **0**, and the same for `_frame_column` in `axis_helpers.py` — so a
+commit of "just my hunks" against HEAD would target functions HEAD does not
+have. The peer refactor in flight (arrow backend removed, gates evaluated in the
+store, masks as TIFF) spans 46 paths and has 9 staged deletions in the shared
+index. These fixes go in **with** it; extracting them first is not a smaller
+change, it is an incoherent one.
+
+**What was fixed** — all eight are the same failure mode, a change token that
+does not change, so the plot silently keeps the previous population and the
+counts under it agree because they came from the same skipped update:
+
+1. `histogram_helpers` keyed bin edges on `(count, first, last)`. A log axis is
+   `logspace(log10(lo), log10(hi), n+1)` and a linear one `linspace(lo, hi, n+1)`
+   — identical on all three. Switching an axis to log left `should_recompute`
+   seeing nothing and the plot kept its linearly binned histogram. Now
+   `bins_token`, which adds the **middle** edge; that separates any two monotone
+   spacings over the same endpoints, which is the general form.
+2. `MaskDataSelection.gate_key` had the same collision, and there the gate
+   demonstrably selects different points either side of it.
+3. `_compute_selection_hash` dispatched on the class *name* and mis-spelled
+   `Gaussian2DSelection` as `Gauss2DSelection`, so every ellipse fell through to
+   `str(sel)` — the object **address**, which does not move when the table edits
+   the gate in place. Reshaping, resizing or inverting an ellipse changed
+   nothing. The bitmap branch used the construction-time uuid while the brush
+   paints into `sel.mask` in place. Now delegates to `mask_state.gate_key`, the
+   routine the mask cache already keys on, so the two caches cannot disagree.
+4. All three selection classes had a `selection_id` fast path in `__eq__`. The
+   id is frozen at `__init__` and never mentioned `cov` or the log flags, so a
+   round ellipse compared **equal** to an elongated one and a dragged interval
+   equal to its pre-drag self. Removed; `selection_id` is for matching a table
+   row to its object, not for describing the gate.
+5. `cache_manager.HistogramCache` keyed on three sampled data values and on
+   `np.sum(mask)`, and handed one dataset's histogram to another. Its 2-D key
+   built an **object array** of the two edge arrays, whose `tobytes()` is a list
+   of pointers. Now hashes contents.
+6. `histogram_export.copy_2d_hist_csv` indexed `H[i, j]`, x first, while `H` is
+   stored `(n_y, n_x)`: the square default binning exported the **transpose**,
+   and an image histogram raised an uncaught `IndexError` so the copy silently
+   did not happen.
+7. `vectorized_ops.digitize_parallel` carried `fastmath=True`, which folds away
+   its own `isfinite` guard: a NaN came out as bin **0**, a real bin at the left
+   edge, while the NumPy fallback put it past the top edge. Which answer a column
+   of NaNs got depended on whether numba was installed. Dropping the flag gives
+   exact `np.digitize` parity and costs nothing (2M points into 512 bins: 10.9 ms
+   with, 9.1 ms without, against 122 ms for `np.digitize`).
+8. `fast_percentile_range` read `valid_data[index]` out of the **unsorted** array
+   when both percentiles rounded to one rank — not a percentile of anything, and
+   it moved when the rows were reordered. Also `save_mask_as_bitmap` crashed
+   inside libtiff on an empty mask and silently wrapped a label past its dtype.
+
+**Trap in re-deriving any of this**: the ndXplorer suite needs `chisurf` on
+`PYTHONPATH` or 16 region-gate tests fail with `ModuleNotFoundError` and read as
+a code defect.
+
+The dependency is **intended** (user, 2026-08-05) and is now declared in
+`modules/ndxplorer/pyproject.toml`. It is not an optional integration: region
+and lasso gates are `chisurf.core.roi` shapes, the parameter and constants
+tables are `chisurf.core.fitting.parameter` groups, and the data-frame editor,
+curve-fit dialog and glyphs come from `chisurf.gui`. It had been used in all of
+those and declared in none, so a clean install imported fine and then raised the
+first time somebody drew a lasso.
+
+It is deliberately **absent from `conda-recipe/meta.yaml`**, with a comment
+saying so, because there is no chisurf conda package on any channel that recipe
+builds against — listing it fails the build rather than documenting anything.
+The recipe installs with `--no-deps` and its `test:` block only imports
+`ndxplorer` and launches the GUI, so the package still builds. Add it there once
+chisurf is published; do not "fix" the omission before that.
+
+**Trap in the fixtures**: a square histogram cannot show a transpose, a mask
+with all labels under 256 cannot show the 16-bit path, and a selection test that
+builds a second object cannot show any of defects 3 and 4 — the table edits gates
+**in place**, so the tests have to as well.
+
+## packaging: the release installs the tttrlib that development refuses (2026-08-05)
+
+status: open
+
+`pixi.toml` states the case against the published TTTR library plainly — conda
+and PyPI are both capped at `0.26.2`, which predates the photon-simulation
+engine and still carries the `compute_ics` defect that segfaults any image
+correlation using frame lags — and `build_tools/build_tttrlib.py` is therefore
+its *only* provider in a development environment, building `0.27.0` from the
+sibling checkout.
+
+`build_tools/build_installer.py` does the opposite. It passes `tttrlib` in
+`conda_extras` for the macOS and Linux runtimes (resolved from bioconda) and in
+`pip_nodeps` for Windows, so every shipped installer contains the version the
+project has documented as wrong. A user's ICS correlation crashes where a
+developer's works, and nothing in CI distinguishes the two — the installer smoke
+test only asserts the main window appears.
+
+Fixing it means building the library from source inside the installer, the way
+`_install_imp_tricks` already clones and installs its sibling: the runtime env
+would need `swig`, `ninja` and a compiler alongside the `cmake` it already
+installs for labellib, and the build tools are stripped afterwards anyway. Left
+undone here because it cannot be verified without a full installer run on each
+platform.
+
+## packaging: about twenty plugin CLIs ship with no command to reach them
+
+status: open
+
+`rattler-recipe/collect_entry_points.py` discovers a plugin's command only
+through a `cli_entrypoint = "<name>=<module>:<func>"` assignment in the plugin's
+`__init__.py`. A plugin that grows a `cli.py` without one is packaged with its
+CLI unreachable — `python -m` still works from a checkout, which is why this
+goes unnoticed. Current count: 29 plugins declare one, roughly twenty more have
+a `cli.py`/`cli/` and do not, among them `accurate_fret`, `burst_2cde`,
+`burst_bva`, `burst_h2mm`, `flc_2d`, `irf_estimator` and `batch_analysis`.
+
+`burst_background` was the visible case: it *had* a console script, lost the
+assignment when the plugin was rewritten as an AutoForm tool, and silently
+dropped out of the recipe. That one is restored. The rest need a name each —
+that is the only real work — and one line per plugin.
 
 ## The arm64 env's tttrlib symlinks can dangle into a deleted pixi cache
+
+status: open
 
 **Found 2026-08-04**, mid-session: every GUI tool stopped constructing with
 `ModuleNotFoundError: No module named 'tttrlib'`, having worked minutes earlier.
@@ -2299,6 +5250,8 @@ the optional package, now behind a named `LegacyTableError`. See the storage
 entry below and [PRD-82](/prds/prd-82.md).
 
 ## Test suite: what is still red after the 2026-08-04 sweep
+
+status: open
 
 **Where to pick this up.** The suite was run **one directory (and, for
 `test/gui`, one file) per pytest process**, because a directory-wide run dies
@@ -2404,6 +5357,8 @@ small enough to be safe is too small to help. Any real fix has to change the
 
 ## 2D-FLCS prints a pyqtgraph teardown traceback when its window closes
 
+status: open
+
 **Found 2026-08-04**, while walking the new 2D-FLCS guided tour headlessly.
 
 Closing `FlcTwoDTool` prints, two to four times,
@@ -2430,7 +5385,9 @@ teardown, printed and swallowed, with no state left broken. Left alone because
 the fix belongs in pyqtgraph's `ViewBoxMenu`, and the plugin is scheduled to move
 off pyqtgraph anyway ([PRD-64](../prds/prd-64.md), [chiplot](../subsystems/chiplot.md)).
 
-## chimol: every scene rebuild refits the camera — RESOLVED 2026-08-04
+## chimol: every scene rebuild refits the camera —  2026-08-04
+
+status: resolved 2026-08-04
 
 **Found 2026-08-04**, while photographing `cartoon_side_chain_helper` — the
 framing kept resetting between the "off" and "on" shots.
@@ -2495,7 +5452,128 @@ concluded.
 
 ---
 
+## 2D-MFD exchange rates came back 20-35% low  **
+
+status: resolved 2026-08-04
+
+**Fixed.** A fitted exchange rate was biased low, from -20% at 1 kHz to -33% at
+5 kHz on ground-truth simulated data, and the cause was not any of the five
+places it was looked for. Kept because the eliminations are the expensive part
+and a later regression should not repeat them.
+
+Ruled out, each by measurement, with the instrument response *declared* rather
+than estimated so it could not contribute:
+
+* the instrument — a perfect response left the bias unchanged;
+* the burst-duration binning — 6 -> 40 span bins moved the answer 0.7%;
+* the occupation-node coarsening — 16 -> 200 nodes was identical;
+* the analytic approximations as a class — the transcribed Sim2D Monte Carlo,
+  which makes none of them, had the *same* bias;
+* the pinned optics — correcting the benchmark's distances (they gave E = 0.190
+  and 0.843 where the simulator generates 0.2 and 0.8) and removing a static
+  6 A width improved the deviance from 823 to 675 and left the bias.
+
+**The cause.** Both forward models handed a burst's photons out over the states
+in proportion to the *time* spent in each. A molecule is brightest at the centre
+of its transit, so its photons over-sample whichever state it held then: the
+effective averaging window is shorter than the burst's first-to-last-photon span,
+the observed histogram is *less* averaged than the model predicts at the true
+rate, and the fit compensates by lowering it.
+
+**The fix.** `occupation.photon_weighted_occupation_variance` evaluates
+
+    Var(f) = pi0 pi1 (1/N^2) sum_i sum_j exp(-k |t_i - t_j|)
+
+which is exact for a telegraph process whatever the arrival pattern, and
+`effective_window_scale` inverts it to the window a burst's photons behave like.
+`MfdKineticModel.photon_weighted_window` applies it, on by default and silently
+skipped when the folder carries no photons.
+
+| exchange | span assumption | photon-weighted |
+|---|---|---|
+| 1 kHz | -26.8% | **-7.3%** |
+| 5 kHz | -33.1% | **-3.0%** |
+
+It is also *faster* — 18.9 s/fit against 28.8 at 5 kHz — because a shorter window
+needs fewer transfer-matrix slices.
+
+**What is left.** One scale factor is used for the whole measurement rather than
+one per nuisance cell, because the ratio is a property of a burst's brightness
+*shape* and varies far less than its duration or photon count; per cell needs the
+cell index the binning does not return. The residual -7.3% at 1 kHz is larger
+than at 5 kHz and has not been chased.
+
+Gates: `test_photons_do_not_sample_a_burst_uniformly_in_time` (mechanism) and
+`test_the_photon_weighted_window_recovers_the_generating_rate` (end to end), both
+slow, in `test/fluorescence/test_mfd_ground_truth.py`.
+
+## Three-colour PDA is slow, and not where it looks
+
+status: open
+
+**Open, now profiled.** `chisurf/core/models/pda2c/` drives `tttrlib.Pda` — the
+C++ two-colour engine. `pda3c/likelihood.py` computes the three-colour equivalent
+in Python, and it is slow: ~17 s for 4 000 bursts × 120 model points.
+
+**Where the time goes**, measured with `cProfile`:
+
+| | share |
+|---|---|
+| `_background_factors` | **64%** (28.9 s of 45.5 s over three calls) |
+| `burst_log_likelihood` itself | 34% |
+| `log_multinomial_pmf` | **0.07%** |
+
+So the multinomial is free and the background correction is everything.
+
+**What does not work, and was tried.** Inside `_background_factors` the obvious
+tttrlib reuse is `Pda.poisson_0toN` for the per-channel background series — it
+agrees with `scipy` to 6e-17 and is about 4× faster on the series alone. Caching
+it, together with the `meshgrid` exponent bookkeeping, against the background
+rates and box shape produced **no measurable gain** (16 929 ms against 16 942 ms,
+bit-identical output). Two reasons, both worth knowing before trying again:
+
+* `boxes` comes from `_channel_boxes(counts, ...)`, so it depends on the burst
+  chunk and a cache keyed on it misses;
+* the cost is the `gammaln` broadcast over `(n_bursts × K × width)` — the falling
+  factorials — not the Poisson series, which is one small array per channel.
+
+**What would.** Either a C++ kernel for the falling-factorial box (the thing
+`Pda` does for two channels, generalised), or a smaller box: `_tail_cutoff` and
+`_MAX_CUTOFF` decide `width`, and the array is linear in it. Measure the cutoff's
+effect on the answer before making it a knob.
+
+Unrelated and unexplained: `burst_log_likelihood` and
+`burst_log_likelihood_reference` disagree by up to 28 log units on a
+naive comparison. That is **pre-existing** — identical at HEAD before any of the
+above — and may be a misuse of the reference's contract rather than a defect, but
+nobody has checked.
+
+## The Mistral icon tests would call the real API if their mock were fixed
+
+status: open
+
+**Open.** `test/plugins/test_plugin_manager_mistral_icon.py` fails with
+
+    TypeError: _manager.<locals>.<lambda>() missing 1 required positional argument: 'path'
+
+because `_post_mistral_json_with_retries` dropped its `requests_module`
+parameter — it reaches the transport through `chisurf.core.http` itself now —
+and the test's stand-in still threads one through.
+
+**Do not just fix the signature.** Doing that makes the six tests *pass the
+mock* and then issue **live HTTP requests**: `api.mistral.ai` returns 401, and
+the OpenAI-compatible cases fail DNS on `api.example.test`. The mock was the only
+thing holding the transport, so correcting its shape removes the seam without
+replacing it.
+
+The fix is to intercept at the new seam — patch `chisurf.core.http` (or inject a
+transport) rather than hand a module in — which is a change to how these tests
+are built, not a one-line signature edit. Until then the `TypeError` is the safer
+failure: it is loud, fast, and offline.
+
 ## Stale tests left behind by finished refactors
+
+status: open
 
 **Found 2026-08-03**, while running the guard suites for the PSF calculator's
 guide/help and export work. Six failures in `test/gui` and `test/server` that
@@ -2527,106 +5605,9 @@ Fixed in passing, since they were unambiguous and one line each: the
 asked to skip, a missing `Path` import, and three stale
 `serialize_reader_state` mocks.
 
-## Resolved: shared-server integration startup and hang record
-
-
-**Resolved measurement, 2026-10-07:** the complete targeted lifecycle file now
-passes 75 cases in 9.93s under isolated settings/MMFDB/object/cache paths and
-owned ephemeral server ports. The watchdog was inactive and the process
-exited 0; no shared-state failure, startup timeout or hang reproduced. Current
-committed tests already use Lifetime, real 64-point decays, RemoteError and
-scientific .cs.pto persistence contracts (`a67d359b2`, `4c21a578b`,
-`d577d93c1`). No new fixture change is justified by this stale baseline.
-[JUnit receipt](../validation/release-readiness-w7/server-lifecycle.xml).
-The following paragraphs are retained history, not an outstanding failure.
-
-**Found 2026-07-28**, while test-gating an unrelated proxy fix (RF-722).
-`pytest test/server` never finishes: `test_integration_lifecycle.py` runs its
-module-scoped `ChiSurfServer` in-process, and most of its tests error in
-*setup* with
-
-```
-chisurf.startup.services.AppStartupError: service 'mmfdb' did not become ready
-within 5.0s
-```
-
-after which the run stalls indefinitely at
-`TestParameterLifecycle::test_linked_info` (>180 s, no output). The 5 s
-`ready_timeout` in `chisurf/startup/services.py` is the visible trigger and it
-is load-dependent — the same tests pass when the machine is idle, so a machine
-running several suites (or several agent instances) turns it red. Which of the
-two symptoms causes the other is not yet established: a server whose startup
-raised may leave the ZMQ socket half-alive, which would explain a later call
-that never returns.
-
-Not fixed in the change that found it: the failure is in the shared server
-fixture, not in anything that change touched (nothing in the file calls the
-insertion routes it altered), and diagnosing a startup-timeout-plus-hang is its
-own change. The proxy behaviour itself is covered by `test_proxy.py` and
-`test_proxy_integration.py`, which are green.
-
-**Update 2026-07-28 — the startup half is fixed; two other faults were behind
-it.** The `mmfdb` stage now declares `"ready_timeout": 30` in
-`chisurf/startup/services.d/10_mmfdb.json`. Measured, the stage costs **3.8 s**
-on an *idle* machine for its first import, so the 5 s default was never a budget
-— it was a hang-detector consuming 76 % of itself on a good day. Raising it
-costs nothing in failure latency: `_run_service` records the exception and sets
-`ready_event` on the way out, so a service that *fails* still surfaces at once
-and only a service that truly *hangs* waits out the budget
-(`test_app_startup_manager_reports_background_failure_without_waiting` pins
-that, and `test_config_background_services_budget_a_cold_import` stops a new
-background stage from silently inheriting the bare default). The server now
-constructs, and `TestProxyLifecycle`/`TestLargePayload` run to completion in 8 s.
-
-What that uncovered, both still open:
-
-1. **The fit tests ask for a model that does not exist.** Every
-   `client.fit__create(..., model_name="TCSPC")` returns `model 'TCSPC' not
-   found`. `fit_create` (`chisurf/server/services/fits.py:410`) resolves a model
-   by walking `Model.__subclasses__()` for one whose `name` matches; after
-   importing `chisurf.core.models` the only reachable names are `Global fit` and
-   `Model name not available`, so no spelling of that call can succeed. Two
-   faults stacked: the name is stale, *and* the subclass walk only sees models
-   some other import happened to pull in.
-2. **The intended skip guard is dead.** `TestParameterLifecycle._setup` writes
-   `if not ft.get("ok"): pytest.skip(...)`, but since [SV-04](../specs/assessment.md#sv-04)
-   moved service errors into the JSON-RPC `error` member, `fit__create` *raises*
-   `RemoteError` instead of returning `{"ok": False}`. So the guard never runs
-   and 7 tests fail where the author meant them to skip. Do **not** patch the
-   guard to swallow `RemoteError` — that would hide finding 1 rather than fix it.
-
-**The hang is still unexplained**, and it is not specific to `test_linked_info`:
-with the timeout raised the run now stalls in the same class at
-`TestParameterLifecycle::test_set_bounds` (>5 min, no output), while
-`test_set_value` and `test_set_fixed` — which reach the identical `_setup` —
-fail fast a moment earlier.
-
-**To close it:** give `fit.create` a model lookup that does not depend on what
-happens to have been imported (an explicit registry, as the model/UI split
-already needs), fix the test's model name, then give the client a receive
-timeout so the remaining stall is a failure with a traceback instead of silence.
-
-**Update 2026-08-03 — the model name is not the only blocker.** Driving the
-server directly, with `chisurf.core.models.tcspc.lifetime` imported first so
-the subclass walk can see it, both real names (`"Lifetime "` — note the
-trailing space — and `"Lifetime (new)"`) get past the lookup and then fail in
-`fit.create` itself with
-
-```
-'tuple' object has no attribute 'x'
-```
-
-so a dataset loaded over `dataset.load` with a `curve_data` payload does not
-arrive as something `FitGroup` can build a fit on. Fixing the test's model name
-alone would therefore turn a wrong error into a different wrong error. The
-whole-suite symptom is unchanged: `pytest test/ --ignore=test/gui` still stalls
-at `TestParameterLifecycle::test_set_bounds` (main thread blocked in
-`zmq_ctx_destroy` → `ctx_t::terminate` → `mailbox_t::recv`, i.e. a context
-being torn down while a socket still holds queued data), and run on its own the
-class fails fast instead. So the hang needs state from the tests that precede
-it.
-
 ## fitting over a genuinely remote server still has a 5-second deadline (2026-08-03)
+
+status: open
 
 `FittingClient.run_fit` no longer crosses the socket when the server is embedded
 in this process -- which is the GUI's normal case, and where the bug actually
@@ -2647,132 +5628,9 @@ machinery already exists for sampling (`_watch_sampling_job` polls exactly that
 way). Not attempted here because this tree has no remote server to test against,
 and a fix that cannot be run is a guess.
 
-## quest: the plugin's RPC layer targets a backend the package does not have
-
-**Found 2026-07-28.** Starting the GUI logs
-
-```
-Failed to register services for plugin 'quenching_estimator'
-ModuleNotFoundError: No module named 'quest.backend'
-```
-
-`chisurf/plugins/quenching_estimator/` is deliberately a thin shell: its
-`rpc/services.py`, `api/contract.py` and `api/client.py` all forward to
-`quest.backend.services` / `quest.backend.contract` so the CLI, the web backend
-and ChiSurf share one implementation of the sixteen `quest.*` methods the
-manifest declares. That backend package does not exist -- not in the checked-out
-`modules/quest`, and not on any of its branches (`git ls-tree` over `master`,
-`main`, `dev`, `devel`, `development`, `chisurf-pin` shows only `quest/lib` and
-`quest/settings`). So every `quest.*` RPC is unreachable, and the plugin's own
-tests for the contract cannot run either. The GUI entry point still works: it
-imports `quest.gui` directly and never touches the backend.
-
-**To close it:** write `quest/backend/{contract,services}.py` in the quest
-repository, over `quest.core` / `quest.api`, matching the schemas already in
-`chisurf/plugins/quenching_estimator/manifest.json` (that file is the contract's
-written form). It belongs there, not here: a second implementation ChiSurf-side
-is exactly the `LAY-01` duplication the shell was built to avoid. Until then the
-failure is a logged registration error, not a crash.
-
-## packaging: the LaTeX converter has no Python 3.12 conda build
-
-**Found 2026-07-28.** `chisurf/gui/widgets/models/parse/latex.py` renders a
-parse-model formula through the third-party `latexify` converter. The
-conda-forge package for it stops at Python 3.11, so it cannot go into the
-recipe's `run:` list, and the module-level `from latexify import ...` therefore
-made the module -- and with it the whole parse-model widget -- unimportable in
-the released conda package. Only a pip install ever had it.
-
-The import is now inside the conversion function, next to the `except` that
-already fell back to `_convert_python_expression_to_latex_fallback`, the in-tree
-AST converter. A conda install renders through the fallback instead of failing:
-it covers the operators the parse models use, and is less complete than
-`latexify` for anything exotic.
-
-**To close it:** either a Python 3.12 build lands on conda-forge (then declare it
-in the recipe and drop the fallback path from the hot path), or the in-tree
-converter grows to full parity and the dependency goes for good -- it is one
-`ast.NodeVisitor`, so the second is the more likely end state.
-
-## RESOLVED — chimol: large integrative models, and the "fix" that killed them
-
-**Opened and closed 2026-07-27.** The nuclear pore complex was the case that
-showed it.
-
-| Entry | Beads | Load before | Load after |
-| --- | --- | --- | --- |
-| `PDBDEV_00000010` (one spoke) | 29,273 | 8.7 s → 4.3 s | **0.36 s** |
-| `PDBDEV_00000012` (eight spokes) | 234,184 | **430 s**, ~11 GB | **1.6 s**, 0.7 GB |
-
-The cost was never the reader — `ihm` reads the 31.5 MB file in well under a
-second. It was **a cartoon splined through beads that have no backbone**: 234k
-beads become thousands of short chains, each fully splined, framed and extruded.
-A bead stands for a *range* of residues, so the ribbon was meaningless as well as
-expensive.
-
-**The trap, explained.** Switching beads to the sphere representation — the
-correct depiction, and what `set_rmf_data` already did — appeared to make the
-entry *die silently*. It did not die. `ball_mask` was left all-**false** by the
-mmCIF path (only the RMF path set it), and the sphere branch's fallback for "no
-selection" is a **sparse sampling of 50 points along the chain**. The viewer drew
-fifty dots and called it a nuclear pore. Nothing raised, because nothing was
-wrong as far as any single line of it was concerned.
-
-**What landed.** A bead model is now recognised in the viewer, so every reader
-agrees on it: all beads selected, spheres on, cartoon and trace off, no bond
-inference, per-bead radii carried through `set_coordinates` and scaled with the
-coordinates. Past 20,000 beads the depiction is **sphere impostors** — one vertex
-each, shaded as a sphere in the fragment shader — instead of ~160 vertices of
-merged mesh per bead, with the impostor's world radius projected to a sprite size
-so it follows the camera. Pinned by `test/test_bead_model.py`.
-
-**IMP RMF support landed on 2026-07-28** — and the shape of what was wrong is
-worth keeping. RMF was not missing the bead rule because nobody had written it
-for RMF; it was missing it because RMF had *its own route into the viewer* and
-therefore could not receive anything the common route learned. Measured: one
-global radius for every bead, decimation instead of impostors, and hierarchy
-check boxes that moved nothing. All of it silent. The fix was to remove the
-route, not to duplicate the rule — see the log for that date.
-
-**Still open from that thread:** interior culling (`_get_surface_atom_mask`
-exists and is unused), dynamic LOD on camera motion (the draft/settle mechanism
-from the trajectory work generalises), and depth-cue fog.
-
----
-
-## chimol: three atom dtypes — RESOLVED 2026-07-28
-
-Chimol carried **three** transcriptions of "the atom dtype every reader
-produces", no two of them the same: a six-field one in `io/beads.py` for the
-PDB/mmCIF/RMF readers, a twelve-field `_MDTRAJ_ATOM_DTYPE` for trajectory
-topologies, and a twelve-field `PSEUDOATOM_DTYPE` in `cmd/editing.py`. Two of
-the three carried a comment asserting they matched the core's `keys_formats`.
-
-All three are gone. `chimol/io/atoms.py` (renamed from `beads.py`, since it now
-owns the atom row and not only the bead) imports
-`chisurf.core.fio.structure.coordinates.atom_dtype`. Rows are built by field
-name (`atom_row(**fields)`) rather than as twelve-long positional tuples.
-
-**The interesting part was not the duplication but what it hid.** The canonical
-dtype had `chain` as `|U1`. An mmCIF asym id runs `A..Z` then `AA`, `AB`, …, so
-on the eight-spoke nuclear pore 518 of 544 chains needed two characters and
-every one was stored as its first letter: **544 chains became 26**, silently.
-`chain AB` selected the whole of A and colouring by chain painted twenty
-molecules alike. The field is `|U4` now. Widening it made the PDB *writer* a
-hazard in turn — `%1s` is a minimum width in Python, not a truncation, so a
-two-character id would have shifted every following column — so the writer uses
-`%1.1s` and warns, naming the chains whose identity a PDB file cannot carry.
-
-**`modules/quest` still carries two more copies of that PDB format string**
-(`quest/lib/io/PDB.py`, `quest/lib/structure/Structure.py`), with the same `%1s`
-that does not truncate. They are deliberately untouched: quest builds its own
-atom arrays, so the core's widened `chain` cannot reach them, and quest is
-slated for deprecation rather than repair. If any of it is kept, the writer goes
-with the rest of the duplication — it should not be ported forward as it is.
-
----
-
 ## chimol: a ray-traced mesh is shaded twice, and comes out muddy
+
+status: open
 
 **2026-08-03.** Mesh vertex colours arrive at the tracer with ambient occlusion
 *and* a cast shadow already multiplied in — `Geometry.occlusion` says so in its
@@ -2800,6 +5658,8 @@ The depth-cue half of the same darkness *was* fixed — see
 
 ## chimol: five camera-framing tests are red
 
+status: open
+
 **2026-08-03.** `test_camera_framing.py` fails five ways, in isolation and in the
 full run, and identically at `HEAD` with no working-tree changes:
 `test_distance_follows_the_field_of_view[True/False]`,
@@ -2813,73 +5673,53 @@ not that change's to fix; the assertions encode PyMOL's
 
 ---
 
-## chimol: a sphere impostor occludes as a flat disc (RF-522)
+## `test/fitting` — the ten inherited failures, resolved (2026-08-03)
 
-**2026-07-27.** The impostor is exact in silhouette and in shading, but every
-fragment is written at the depth of the bead *centre*, because the fragment
-shader assigns no `gl_FragDepth`. Where beads overlap each other or other
-geometry, the nearer centre takes the whole disc instead of the two surfaces
-intersecting — by up to one bead radius, which on the nuclear pore is tens of
-ångström. Below `balls.impostor_min_atoms` the same beads are meshes and
-intersect correctly, so the two depictions do not match across the threshold.
+status: open
 
-**Why it is not simply fixed.** Writing `gl_FragDepth` in *any* branch of a
-GLSL 1.20 shader disables early-Z for every draw that shader serves — and this
-one serves the cartoon and every mesh in the scene, which is the path a lot of
-work has gone into keeping fast. The correct fix is a **separate shader program
-for impostors** (its own vertex/fragment pair, the depth write confined to it),
-not a branch in the shared one. Documented as a limitation in the viewer guide
-in the meantime.
+Recorded here when the consolidation commits turned a body of in-progress work
+into history; all ten now pass, and the entry is kept because *why* they failed
+is more useful than that they did. Six were tests written against APIs that
+never existed; two were real bugs; two were about reproducibility.
 
----
+**Real bugs, fixed in the code.**
 
-## chimol: `show` and `hide` say nothing on an empty viewer
+* **Parameter links were lost on every project reload.** `fit_state` stored a
+  link target by uid, and loading a project constructs fresh models with fresh
+  uids, so no link could ever resolve. The parameter *lookup* already fell back
+  to the name; the link target did not. It now records `link_target_name` and
+  falls back the same way. This silently un-linked every global fit that was
+  saved and reopened.
+* **MCMC chains were irreproducible.** `walk_mcmc` and `walk_mcmc_blocked` drew
+  from NumPy's global stream with no way to pin them, so the same fit sampled
+  twice gave different credible intervals. Both now take `seed=`, which
+  `sample_fit` forwards. The default still draws from the global stream, so
+  `np.random.seed` keeps working for existing callers.
 
-**2026-07-27.** `spectrum`, `zoom` and `color` now answer "nothing is loaded" on
-an empty viewer instead of describing a molecule that is not there, because they
-all resolve a selection first and the resolver raises. `show spheres` and `hide
-everything` do not go through the resolver — they go through
-`RenderingMixin._toggle_representation` — so on an empty viewer they still
-silently do nothing, which is the same class of wart one step quieter.
+**Tests asserting an API that was never implemented.** `Pda2cGaussianDistanceModel`
+has never existed in this tree; `Gaussians.append` takes `x`, not `amplitude`;
+`ParseModel` and `LifetimeModel` are constructed *by* a `Fit` and read data
+through `fit.data`, so neither can be built bare with a mock hung off it
+afterwards; and two tests stubbed a model through `__new__` and then assigned to
+`parameters_all_dict`, which is a read-only property. Each was rewritten against
+the real API, keeping the behaviour it meant to cover.
 
-Not fixed with the others only because `rendering.py` had concurrent edits from
-another working copy at the time; it is a two-line guard in
-`_toggle_representation`.
+**Assertions about the wrong quantity.** A lifetime spectrum's amplitudes are
+normalised fractions -- one component is 1.0 by construction, and the absolute
+scale lives in the scaling parameter -- so comparing an amplitude against the
+generating count rate tests a number the model does not claim. `Parameter`
+derives from `Base` and compares by identity, because two parameters holding 2.0
+are still two different parameters; comparing values is what `.value` is for.
+And `FitGroup.save` derives one filename per member, so the base picks up a
+member suffix.
 
----
-
-## chimol: a point glyph's configured size never reaches the renderer
-
-**2026-07-27.** `QtGLRenderer._geometry_to_draw_data` computes `size` from
-`geom.meta["size"]` and then does not pass it to `_DrawData`, so every point
-glyph draws at the 4-pixel default: `dots.size_px`, the overlay sizes, and the
-`px_mode` flag that distinguishes a pixel size from a world one are all dead
-configuration. Sphere impostors are unaffected — they carry a per-vertex radius,
-which does reach the shader.
-
-Not fixed in the change that found it because the fix changes the size of every
-point glyph in the application at once, and the render fixtures would all need
-re-inspecting; that is its own change, with its own before/after images.
-
----
-
-## mmfdb: the shipped curated seed is two schema versions behind
-
-**2026-07-28.** `tests/test_mmcif_database_resolver.py::test_packaged_seed_is_curated_and_on_the_current_schema`
-is red at mmfdb `HEAD`: the packaged `data/sample_management.db` is stamped
-schema **45** while `schema.SCHEMA_VERSION` is **47**. Since PRD-19 removed the
-migration waterfall a stale seed is not fully migrated forward — missing
-*columns* are added, stale *table structure* is not — so an unconfigured first
-run copies a seed the current code cannot fully write to. The regenerator is
-`build_tools/regenerate_curated_db.py` in chisurf (`--replace`).
-
-Not fixed here because that script had concurrent edits from another working
-copy at the time; regenerating and re-committing the binary seed belongs to
-whoever bumped the schema.
-
----
+*Lesson worth keeping:* a test that has never passed is not evidence of a
+regression, and reading it as one sends you looking for a bug that is not there.
+Six of these ten described a system nobody had built.
 
 ## examples: a shipped example imports a package that moved, and no test reaches it
+
+status: open
 
 **2026-07-29.** `examples/fdb_burst_selection_roundtrip.py` opens with
 `from chisurf.core.mmfdb import FluorescenceDatabase, BurstPipeline`. That
@@ -3834,36 +6674,9 @@ be, because three of them were defects in the code rather than in the tests.
   the dependency); it is recorded rather than fixed here because it belongs to
   the burst subsystem and not to the PDA finding this run closed.
 
-
-## Burst GUI follow-ups (opened 2026-07-28)
-
-
-## tttr_image_browser: the widget suite aborts at teardown, about one run in three
-
-**Found 2026-07-28** while migrating the tool onto the shared dockable-tool base
-(PRD-36). `chisurf/plugins/tttr/tttr_image_browser/test/test_widgets.py` aborts
-with `libc++abi: Pure virtual function called!` inside `pytest-qt`'s
-`_process_events`, after the body of `test_tttr_image_browser_tool_creation` has
-already passed — so it is a **teardown** crash, not a test failure, and it takes
-the whole pytest process with it.
-
-It needs the *sequence*: the two Qt-free view-model tests, then a bare
-`TTTRImageBrowser`, then a second one inside `TTTRImageBrowserTool`. Constructing
-either widget four times on its own never crashes. Measured alone-vs-alone over
-five runs each with the pre-migration `gui/tool.py` loaded side by side with the
-new one: **2/5 crashes on the old class, 3/5 on the new** — the rate is the same,
-so the migration neither caused nor cured it. `-p no:randomly` does not help; the
-order is already fixed, the crash is simply intermittent.
-
-The shape (a pure-virtual call while deferred deletions are processed) points at
-a `pyqtgraph` item outliving the C++ half of its owner across two widget
-generations in one process. The fix belongs in the offscreen-Qt test fixture or
-in the image-browser section's teardown, not in this plugin's tests, so it is
-recorded rather than patched around; the plugin's own suite is green under
-`-p no:randomly` and green about two runs in three otherwise.
-
-
 ## An unregistered fit's curve input dispatches nothing, and a test still expects it to
+
+status: open
 
 **Found 2026-07-29** while checking that a shared-table change had not broken
 anything: `test/gui/test_auto_model_widget.py::test_curve_input_widget_renders_and_dispatches`
@@ -3888,6 +6701,8 @@ wrong fit" bug the docstring describes.
 ---
 
 ## Three plugin GUIs die when constructed bare (no main window, no credentials)
+
+status: open
 
 **Found 2026-07-29** while sweeping every chiplot-using plugin GUI to check that
 the [chiplot](/subsystems/chiplot.md) `add_arrow` fix had not left another panel
@@ -3915,2915 +6730,240 @@ the real application, where `chisurf.cs` exists and a login dialog is answered �
 the sweep only proves the bare-construction path is broken, which is the path a
 headless test or a standalone launcher would take.
 
-## `test/fitting` — the ten inherited failures, resolved (2026-08-03)
-
-Recorded here when the consolidation commits turned a body of in-progress work
-into history; all ten now pass, and the entry is kept because *why* they failed
-is more useful than that they did. Six were tests written against APIs that
-never existed; two were real bugs; two were about reproducibility.
-
-**Real bugs, fixed in the code.**
-
-* **Parameter links were lost on every project reload.** `fit_state` stored a
-  link target by uid, and loading a project constructs fresh models with fresh
-  uids, so no link could ever resolve. The parameter *lookup* already fell back
-  to the name; the link target did not. It now records `link_target_name` and
-  falls back the same way. This silently un-linked every global fit that was
-  saved and reopened.
-* **MCMC chains were irreproducible.** `walk_mcmc` and `walk_mcmc_blocked` drew
-  from NumPy's global stream with no way to pin them, so the same fit sampled
-  twice gave different credible intervals. Both now take `seed=`, which
-  `sample_fit` forwards. The default still draws from the global stream, so
-  `np.random.seed` keeps working for existing callers.
-
-**Tests asserting an API that was never implemented.** `Pda2cGaussianDistanceModel`
-has never existed in this tree; `Gaussians.append` takes `x`, not `amplitude`;
-`ParseModel` and `LifetimeModel` are constructed *by* a `Fit` and read data
-through `fit.data`, so neither can be built bare with a mock hung off it
-afterwards; and two tests stubbed a model through `__new__` and then assigned to
-`parameters_all_dict`, which is a read-only property. Each was rewritten against
-the real API, keeping the behaviour it meant to cover.
-
-**Assertions about the wrong quantity.** A lifetime spectrum's amplitudes are
-normalised fractions -- one component is 1.0 by construction, and the absolute
-scale lives in the scaling parameter -- so comparing an amplitude against the
-generating count rate tests a number the model does not claim. `Parameter`
-derives from `Base` and compares by identity, because two parameters holding 2.0
-are still two different parameters; comparing values is what `.value` is for.
-And `FitGroup.save` derives one filename per member, so the base picks up a
-member suffix.
-
-*Lesson worth keeping:* a test that has never passed is not evidence of a
-regression, and reading it as one sends you looking for a bug that is not there.
-Six of these ten described a system nobody had built.
-
-## 2D-MFD exchange rates came back 20-35% low  *(fixed)*
-
-**Fixed.** A fitted exchange rate was biased low, from -20% at 1 kHz to -33% at
-5 kHz on ground-truth simulated data, and the cause was not any of the five
-places it was looked for. Kept because the eliminations are the expensive part
-and a later regression should not repeat them.
-
-Ruled out, each by measurement, with the instrument response *declared* rather
-than estimated so it could not contribute:
-
-* the instrument — a perfect response left the bias unchanged;
-* the burst-duration binning — 6 -> 40 span bins moved the answer 0.7%;
-* the occupation-node coarsening — 16 -> 200 nodes was identical;
-* the analytic approximations as a class — the transcribed Sim2D Monte Carlo,
-  which makes none of them, had the *same* bias;
-* the pinned optics — correcting the benchmark's distances (they gave E = 0.190
-  and 0.843 where the simulator generates 0.2 and 0.8) and removing a static
-  6 A width improved the deviance from 823 to 675 and left the bias.
-
-**The cause.** Both forward models handed a burst's photons out over the states
-in proportion to the *time* spent in each. A molecule is brightest at the centre
-of its transit, so its photons over-sample whichever state it held then: the
-effective averaging window is shorter than the burst's first-to-last-photon span,
-the observed histogram is *less* averaged than the model predicts at the true
-rate, and the fit compensates by lowering it.
-
-**The fix.** `occupation.photon_weighted_occupation_variance` evaluates
-
-    Var(f) = pi0 pi1 (1/N^2) sum_i sum_j exp(-k |t_i - t_j|)
-
-which is exact for a telegraph process whatever the arrival pattern, and
-`effective_window_scale` inverts it to the window a burst's photons behave like.
-`MfdKineticModel.photon_weighted_window` applies it, on by default and silently
-skipped when the folder carries no photons.
-
-| exchange | span assumption | photon-weighted |
-|---|---|---|
-| 1 kHz | -26.8% | **-7.3%** |
-| 5 kHz | -33.1% | **-3.0%** |
-
-It is also *faster* — 18.9 s/fit against 28.8 at 5 kHz — because a shorter window
-needs fewer transfer-matrix slices.
-
-**What is left.** One scale factor is used for the whole measurement rather than
-one per nuisance cell, because the ratio is a property of a burst's brightness
-*shape* and varies far less than its duration or photon count; per cell needs the
-cell index the binning does not return. The residual -7.3% at 1 kHz is larger
-than at 5 kHz and has not been chased.
-
-Gates: `test_photons_do_not_sample_a_burst_uniformly_in_time` (mechanism) and
-`test_the_photon_weighted_window_recovers_the_generating_rate` (end to end), both
-slow, in `test/fluorescence/test_mfd_ground_truth.py`.
-
-## Three-colour PDA is slow, and not where it looks
-
-**Open, now profiled.** `chisurf/core/models/pda2c/` drives `tttrlib.Pda` — the
-C++ two-colour engine. `pda3c/likelihood.py` computes the three-colour equivalent
-in Python, and it is slow: ~17 s for 4 000 bursts × 120 model points.
-
-**Where the time goes**, measured with `cProfile`:
-
-| | share |
-|---|---|
-| `_background_factors` | **64%** (28.9 s of 45.5 s over three calls) |
-| `burst_log_likelihood` itself | 34% |
-| `log_multinomial_pmf` | **0.07%** |
-
-So the multinomial is free and the background correction is everything.
-
-**What does not work, and was tried.** Inside `_background_factors` the obvious
-tttrlib reuse is `Pda.poisson_0toN` for the per-channel background series — it
-agrees with `scipy` to 6e-17 and is about 4× faster on the series alone. Caching
-it, together with the `meshgrid` exponent bookkeeping, against the background
-rates and box shape produced **no measurable gain** (16 929 ms against 16 942 ms,
-bit-identical output). Two reasons, both worth knowing before trying again:
-
-* `boxes` comes from `_channel_boxes(counts, ...)`, so it depends on the burst
-  chunk and a cache keyed on it misses;
-* the cost is the `gammaln` broadcast over `(n_bursts × K × width)` — the falling
-  factorials — not the Poisson series, which is one small array per channel.
-
-**What would.** Either a C++ kernel for the falling-factorial box (the thing
-`Pda` does for two channels, generalised), or a smaller box: `_tail_cutoff` and
-`_MAX_CUTOFF` decide `width`, and the array is linear in it. Measure the cutoff's
-effect on the answer before making it a knob.
-
-Unrelated and unexplained: `burst_log_likelihood` and
-`burst_log_likelihood_reference` disagree by up to 28 log units on a
-naive comparison. That is **pre-existing** — identical at HEAD before any of the
-above — and may be a misuse of the reference's contract rather than a defect, but
-nobody has checked.
-
-## The Mistral icon tests would call the real API if their mock were fixed
-
-**Open.** `test/plugins/test_plugin_manager_mistral_icon.py` fails with
-
-    TypeError: _manager.<locals>.<lambda>() missing 1 required positional argument: 'path'
-
-because `_post_mistral_json_with_retries` dropped its `requests_module`
-parameter — it reaches the transport through `chisurf.core.http` itself now —
-and the test's stand-in still threads one through.
-
-**Do not just fix the signature.** Doing that makes the six tests *pass the
-mock* and then issue **live HTTP requests**: `api.mistral.ai` returns 401, and
-the OpenAI-compatible cases fail DNS on `api.example.test`. The mock was the only
-thing holding the transport, so correcting its shape removes the seam without
-replacing it.
-
-The fix is to intercept at the new seam — patch `chisurf.core.http` (or inject a
-transport) rather than hand a module in — which is a change to how these tests
-are built, not a one-line signature edit. Until then the `TypeError` is the safer
-failure: it is loud, fast, and offline.
-
-## `img_flow`'s demo PTU reconstructs 29 of its 30 frames
-
-**Found 2026-08-05** while running the microscopy plugin suites during the
-`tifffile`/`imageio` removal. Unrelated to that change — nothing on this path
-touches image files — but worth writing down, because the default suite cannot
-see it: `test_the_demo_is_a_readable_ptu_whose_flow_comes_back` is marked
-`slow`, and the `test` task runs `-m 'not slow'`.
-
-**The measurement.** Deterministic, not flaky (three runs, same number):
-
-```
-python -m pytest -q chisurf/plugins/microscopy/img_flow/test/test_img_flow.py \
-    ::test_the_demo_is_a_readable_ptu_whose_flow_comes_back
-# assert 29 == 30
-```
-
-The written stream is not short of markers — that is the first thing to check
-and it rules out the obvious explanation. `create_demo(..., n_frames=30)`
-produces 423 058 events carrying **30 frame markers** (routing channel 4) and
-1920 line-start / 1920 line-stop markers, i.e. exactly 64 lines for each of the
-30 frames. `tttrlib.CLSMImage(t, fill=False)` then reports `29 x 64 x 64`.
-
-**Where the frame goes.** `CLSMImage::get_frame_edges` turns N frame markers
-into N−1 intervals; the last frame is closed only by the `n_events` edge that
-`skip_after_last_frame_marker == false` appends. Thirty markers giving
-twenty-nine frames means both skip flags are effectively true for this file, so
-the final frame — which has no *following* frame marker, only the end of the
-stream — is discarded with its photons. Establish which code path sets those
-flags for a PQ PTU before changing anything: the defaults in `CLSMImage.h` are
-`false` for both, so they are being set somewhere along the PQ header route.
-
-**Not the recent CLSM commit.** The suspicion falls naturally on tttrlib
-`37dedfc4` ("reconstruct images from a line clock that has no stop marker"),
-which reworked frame edges the same day. It is not the cause: its only
-default-routine change is `walk_back_over_simultaneous_markers`, which moves an
-edge earlier within one macro-time tick and cannot change how many edges there
-are. Do not spend the rebuild on that A/B.
-
-## Companion explorer: eight cache/change-token defects fixed, not yet committable
-
-**Where to pick this up.** The fixes and their tests are **in the ndXplorer
-working tree and green** (861 passed, 6 skipped, from a 572-test baseline), but
-they could not land as their own commit and are waiting on the peer refactor
-underneath them.
-
-**Why they cannot land alone.** Every fix edits code that exists only in the
-working tree. `git show HEAD:ndxplorer/core/data_source.py | grep -c "def gate_key"`
-returns **0**, and the same for `_frame_column` in `axis_helpers.py` — so a
-commit of "just my hunks" against HEAD would target functions HEAD does not
-have. The peer refactor in flight (arrow backend removed, gates evaluated in the
-store, masks as TIFF) spans 46 paths and has 9 staged deletions in the shared
-index. These fixes go in **with** it; extracting them first is not a smaller
-change, it is an incoherent one.
-
-**What was fixed** — all eight are the same failure mode, a change token that
-does not change, so the plot silently keeps the previous population and the
-counts under it agree because they came from the same skipped update:
-
-1. `histogram_helpers` keyed bin edges on `(count, first, last)`. A log axis is
-   `logspace(log10(lo), log10(hi), n+1)` and a linear one `linspace(lo, hi, n+1)`
-   — identical on all three. Switching an axis to log left `should_recompute`
-   seeing nothing and the plot kept its linearly binned histogram. Now
-   `bins_token`, which adds the **middle** edge; that separates any two monotone
-   spacings over the same endpoints, which is the general form.
-2. `MaskDataSelection.gate_key` had the same collision, and there the gate
-   demonstrably selects different points either side of it.
-3. `_compute_selection_hash` dispatched on the class *name* and mis-spelled
-   `Gaussian2DSelection` as `Gauss2DSelection`, so every ellipse fell through to
-   `str(sel)` — the object **address**, which does not move when the table edits
-   the gate in place. Reshaping, resizing or inverting an ellipse changed
-   nothing. The bitmap branch used the construction-time uuid while the brush
-   paints into `sel.mask` in place. Now delegates to `mask_state.gate_key`, the
-   routine the mask cache already keys on, so the two caches cannot disagree.
-4. All three selection classes had a `selection_id` fast path in `__eq__`. The
-   id is frozen at `__init__` and never mentioned `cov` or the log flags, so a
-   round ellipse compared **equal** to an elongated one and a dragged interval
-   equal to its pre-drag self. Removed; `selection_id` is for matching a table
-   row to its object, not for describing the gate.
-5. `cache_manager.HistogramCache` keyed on three sampled data values and on
-   `np.sum(mask)`, and handed one dataset's histogram to another. Its 2-D key
-   built an **object array** of the two edge arrays, whose `tobytes()` is a list
-   of pointers. Now hashes contents.
-6. `histogram_export.copy_2d_hist_csv` indexed `H[i, j]`, x first, while `H` is
-   stored `(n_y, n_x)`: the square default binning exported the **transpose**,
-   and an image histogram raised an uncaught `IndexError` so the copy silently
-   did not happen.
-7. `vectorized_ops.digitize_parallel` carried `fastmath=True`, which folds away
-   its own `isfinite` guard: a NaN came out as bin **0**, a real bin at the left
-   edge, while the NumPy fallback put it past the top edge. Which answer a column
-   of NaNs got depended on whether numba was installed. Dropping the flag gives
-   exact `np.digitize` parity and costs nothing (2M points into 512 bins: 10.9 ms
-   with, 9.1 ms without, against 122 ms for `np.digitize`).
-8. `fast_percentile_range` read `valid_data[index]` out of the **unsorted** array
-   when both percentiles rounded to one rank — not a percentile of anything, and
-   it moved when the rows were reordered. Also `save_mask_as_bitmap` crashed
-   inside libtiff on an empty mask and silently wrapped a label past its dtype.
-
-**Trap in re-deriving any of this**: the ndXplorer suite needs `chisurf` on
-`PYTHONPATH` or 16 region-gate tests fail with `ModuleNotFoundError` and read as
-a code defect.
-
-The dependency is **intended** (user, 2026-08-05) and is now declared in
-`modules/ndxplorer/pyproject.toml`. It is not an optional integration: region
-and lasso gates are `chisurf.core.roi` shapes, the parameter and constants
-tables are `chisurf.core.fitting.parameter` groups, and the data-frame editor,
-curve-fit dialog and glyphs come from `chisurf.gui`. It had been used in all of
-those and declared in none, so a clean install imported fine and then raised the
-first time somebody drew a lasso.
-
-It is deliberately **absent from `conda-recipe/meta.yaml`**, with a comment
-saying so, because there is no chisurf conda package on any channel that recipe
-builds against — listing it fails the build rather than documenting anything.
-The recipe installs with `--no-deps` and its `test:` block only imports
-`ndxplorer` and launches the GUI, so the package still builds. Add it there once
-chisurf is published; do not "fix" the omission before that.
-
-**Trap in the fixtures**: a square histogram cannot show a transpose, a mask
-with all labels under 256 cannot show the 16-bit path, and a selection test that
-builds a second object cannot show any of defects 3 and 4 — the table edits gates
-**in place**, so the tests have to as well.
-
-## ~~`IMP.bff.restraints.AVNetworkRestraintWrapper` is gone~~ — it was shadowed. Fixed 2026-08-10
-
-> **RESOLVED 2026-08-10, and the diagnosis below was wrong.** The wrapper is not
-> "an IMP API that moved" and it never went anywhere: it is in imp.bff at
-> `pyext/src/restraints/AVNetworkRestraint.py:69`, and the local IMP 2.25 build
-> now in `arm64` exposes it. It was **shadowed**.
-> `modules/imp-tricks/src/sitecustomize.py` inserted imp-tricks' own tree at the
-> *front* of `IMP.bff.__path__`; imp-tricks ships its own `IMP/bff/restraints/`
-> package, and a subpackage resolves to the **first** matching directory and
-> stops — so imp.bff's `restraints` was unreachable, submodules and exported
-> names alike. imp-tricks' own `__init__` calls its classes "non-breaking
-> additions to `IMP.bff`", which is exactly what they were not.
->
-> Fixed in **imp-tricks** (`5967e77`), where it belonged: a subpackage found in
-> both trees now gets the two directories unioned into one `__path__` (local
-> first, so precedence is unchanged), and the shadowed `__init__` is evaluated
-> against the live package so its public names are adopted. Nothing local is
-> overwritten, and it recurses to any depth.
->
-> **FRET suite: 16 failed / 112 passed → 6 failed / 122 passed.** All ten
-> `AVNetworkRestraintWrapper` failures are gone. The six that remain are all
-> `test_examples.py` and want `/Users/tpeulen/dev/olga`, a sibling checkout not
-> on this machine; they say nothing about the code. Full write-up in
-> [workflows/imp-local-build](../workflows/imp-local-build.md#what-the-build-fixed-and-what-it-did-not).
->
-> **The lesson worth keeping**: "the attribute is missing" was recorded as an
-> upstream API removal without anyone checking whether something on `sys.path`
-> was standing in front of it. `IMP.bff.__path__` had two entries the whole
-> time, and printing it would have ended the question in one line.
-
-**Found 2026-08-05** while porting the FRET modelling plugin off mdtraj. Not
-caused by that port — but the port is how they were noticed, so they are written
-down rather than left.
-
-**The measurement.** In the `arm64` env with IMP 2.24:
-
-```
-python -m pytest -q chisurf/plugins/modelling/fret/test
-# 16 failed, 112 passed
-```
-
-Every failure reduces to one of exactly two causes, and neither involves the
-trajectory code:
-
-| Cause | Tests |
-|---|---|
-| `AttributeError: module 'IMP.bff.restraints' has no attribute 'AVNetworkRestraintWrapper'` | 13 (`test_imp_engine.py`, `test_dock_project.py`) |
-| `FileNotFoundError: /Users/tpeulen/dev/olga/doc/data/T4L/screening_tutorial.fps.json` | 3 (`test_examples.py`) |
-
-The second is a sibling checkout that is simply not present on this machine, so
-those three say nothing about the code. The first is real, and the correction
-above says why: the wrapper exists, but `IMP.bff.restraints` resolves to
-imp-tricks' package rather than imp.bff's. Fix it in **imp-tricks** — either
-re-export `AVNetworkRestraintWrapper` from its
-`IMP/bff/restraints/__init__.py`, or make `sitecustomize` merge same-named
-subpackages instead of letting the first entry on `__path__` win — not by
-working around it here.
-
-**A trap in re-measuring this.** A `git worktree` at HEAD is *not* a usable
-baseline for this suite: `modules/` holds symlinks to sibling checkouts and is
-gitignored, so a fresh worktree collects two import errors before it runs a
-single test. Compare by classifying the failures' root causes instead, which is
-what established that the mdtraj port added none of them.
-
-## packaging: the release installs the tttrlib that development refuses (2026-08-05)
-
-`pixi.toml` states the case against the published TTTR library plainly — conda
-and PyPI are both capped at `0.26.2`, which predates the photon-simulation
-engine and still carries the `compute_ics` defect that segfaults any image
-correlation using frame lags — and `build_tools/build_tttrlib.py` is therefore
-its *only* provider in a development environment, building `0.27.0` from the
-sibling checkout.
-
-`build_tools/build_installer.py` does the opposite. It passes `tttrlib` in
-`conda_extras` for the macOS and Linux runtimes (resolved from bioconda) and in
-`pip_nodeps` for Windows, so every shipped installer contains the version the
-project has documented as wrong. A user's ICS correlation crashes where a
-developer's works, and nothing in CI distinguishes the two — the installer smoke
-test only asserts the main window appears.
-
-Fixing it means building the library from source inside the installer, the way
-`_install_imp_tricks` already clones and installs its sibling: the runtime env
-would need `swig`, `ninja` and a compiler alongside the `cmake` it already
-installs for labellib, and the build tools are stripped afterwards anyway. Left
-undone here because it cannot be verified without a full installer run on each
-platform.
-
-## packaging: about twenty plugin CLIs ship with no command to reach them
-
-`rattler-recipe/collect_entry_points.py` discovers a plugin's command only
-through a `cli_entrypoint = "<name>=<module>:<func>"` assignment in the plugin's
-`__init__.py`. A plugin that grows a `cli.py` without one is packaged with its
-CLI unreachable — `python -m` still works from a checkout, which is why this
-goes unnoticed. Current count: 29 plugins declare one, roughly twenty more have
-a `cli.py`/`cli/` and do not, among them `accurate_fret`, `burst_2cde`,
-`burst_bva`, `burst_h2mm`, `flc_2d`, `irf_estimator` and `batch_analysis`.
-
-`burst_background` was the visible case: it *had* a console script, lost the
-assignment when the plugin was rewritten as an AutoForm tool, and silently
-dropped out of the recipe. That one is restored. The rest need a name each —
-that is the only real work — and one line per plugin.
-
-## `import tttrlib` is broken in the `arm64` env — a half-finished rebuild
-
-**Found 2026-08-06**, mid-session, between two test runs that both passed:
-
-```
-ImportError: dlopen(.../tttrlib/_tttrlib.cpython-312-darwin.so):
-  symbol not found in flat namespace '__Z18isFlimLabsITT1File...'
-```
-
-Nothing in ChiSurf caused it. `~/dev/tttrlib` has moved several commits ahead
-and carries a large uncommitted change (`CMakeLists.txt`, new format docs), so
-the installed `_tttrlib.so` references a symbol the currently-linked per-module
-dylibs do not have — the package is a **directory of dylibs** now, and the link
-step runs without a rebuild, so a partial rebuild leaves exactly this.
-
-**Do not "fix" it by running `pixi run build-tttrlib`** unless you own that
-tttrlib change: it compiles whatever C++ is in the working tree into the shared
-env, and another instance's half-finished work will land on everyone. Either
-wait for them to finish, or build from a clean checkout at a known commit.
-
-**What it costs meanwhile:** any suite touching `tttrlib` cannot even be
-collected — 37 collection errors across the plugin tests — so a green run is
-not obtainable while it lasts, and a red one says nothing.
-
-## A 3-atom AV fixture segfaults LabelLib
-
-**Found 2026-08-06** finishing the mdtraj port. `test_pair_selection.py`
-reaches `compute_efficiency_matrix_from_evaluators_trajectory` on a **3-atom**
-"protein" (one ALA: CA, HA, N) and LabelLib's C extension segfaults:
-
-```
-Fatal Python error: Segmentation fault
-  av.py:141 in _av_labellib   <- compute_av <- compute_avs_for_structure
-  evaluate.py:234 in evaluate_trajectory
-  pair_selection.py:292 in compute_efficiency_matrix_from_evaluators_trajectory
-```
-
-**Honest attribution:** the crash appeared when that test's fixture moved from
-an mdtraj-written XTC to a ChiSurf-written DCD, so it is *plausibly* mine — but
-the coordinates round-trip correctly and the PDB carries the right element
-column, so what changed is the numbers reaching an AV grid, not their meaning.
-An accessible volume around three atoms is degenerate input either way, and a
-segfault is never the right answer to it. **Do not assume the port is
-innocent** without checking; equally, do not assume the fixture is the only
-caller that can reach this.
-
-**Where to start:** guard `_av_labellib` against a structure too small to grid
-(it should raise, not crash), then re-point the fixture at a real structure —
-a 3-atom AV asserts nothing useful about efficiency matrices anyway.
-
-**This is why `mdtraj` is still declared.** Every import of it is gone from the
-tree, but a suite that segfaults cannot show the removal is safe, and removing
-a dependency on the strength of a crash would be backwards.
-
-## storage: a borrowed `Column` from the columnar store is not safe to cache
-
-**2026-08-06.** In the simulation library's `DataStore`, a `Column` handed out
-by `add()` or `store[i]` is a borrowed reference into the store's column
-container. A structural change can invalidate it, and the stale proxy does not
-raise — it reads freed memory and answers with an empty name and an empty
-array. The symptom is a column that silently goes blank, which no assertion
-catches.
-
-**The append case is fixed at the source, and is not yet in any built
-environment.** The container is now one whose references survive an append
-(`std::deque`, `modules/core/include/DataStore.h`) — verified by building the
-library into a scratch prefix and holding a proxy across fifty `add()` calls:
-name, data and write-through all intact, where the shipped build reports `''`
-and `[]`. **That change is uncommitted in the library checkout and the binary in
-this environment is still the old one**, so every environment here still dangles
-on append until it is rebuilt.
-
-**Removal still invalidates, and unevenly.** `remove_column` invalidates some
-proxies and not others depending on the index and the container — a vector erase
-at index 2 leaves index 0 readable, a deque erase does not. So *whether* a given
-proxy survives is not a contract in either build.
-
-**The rule is therefore unchanged: never cache a proxy.**
-`chisurf/core/datastore.py` re-fetches through `column_at()` and
-`DataStoreSource` goes through it for every access. `test/test_datastore_seam.py`
-asserts the positive invariant — `column_at` answers with live data across both
-an append and a removal — and passes against the shipped build *and* the fixed
-one. It deliberately does **not** assert that a stale proxy breaks: that would
-be pinning a bug whose presence depends on the build.
-
-**Two smaller gaps found the same way**, both real and both worked around in
-`chisurf/core/datastore.py`: a boolean column has no zero-copy view and decodes
-through a per-row Python loop (so a write through the returned array is silently
-lost, and filtering a large boolean column is O(n) in Python), and `mask_numpy()`
-returns a copy (so a single-cell mask change is a read-modify-write of the whole
-mask). Both are listed in the [columnar-store concept](../subsystems/columnar-store.md).
-
-## build: the sibling environment gets a build it cannot load
-
-**2026-08-06.** The photon library is built into the pixi environment and
-symlinked into the sibling conda environment. The two disagree about HDF5 — pixi
-solves 2.1 (`libhdf5.320`), the conda environment carries 1.14 (`libhdf5.310`) —
-so the shared build is unloadable in the sibling:
-
-```
-ImportError: dlopen(...): Library not loaded: @rpath/libhdf5.320.dylib
-```
-
-**`build-tttrlib` reports success**, because it verifies the environment it
-installed into and that one is fine; the sibling breaks silently and shows up
-only when a suite next runs there. Worked around by giving the sibling its own
-build installed as a real directory instead of a symlink (recipe in
-[build and env](../workflows/build-and-env.md)) — **which the next
-`build-tttrlib` undoes**, re-creating the symlink.
-
-The durable fix is one of: pin the same HDF5 in both environments, or make the
-link step verify that the extension actually *loads* in every environment it
-links into rather than only in the one it installed to. Neither is done.
-
-## storage: seven pandas HDF5 call sites are dead in a freshly solved environment — RESOLVED 2026-08-06
-
-**Resolved** by [PRD-82](../prds/prd-82.md) stage 2: all seven writers now go
-through `chisurf.core.datastore.write_table`, which writes one dataset per
-column and needs no optional HDF5 package. `to_hdf` and `HDFStore` appear
-nowhere in the shipped package and `test/test_pandas_hdf5_seam.py` fails on one
-coming back. Kept here for the part that is **still true**.
-
-**A file written by an EARLIER release still needs that optional package to
-open.** `read_table_frame` tries the columnar layout first and falls back to the
-frame reader, which needs it; where it is absent the fallback is a named
-`LegacyTableError` rather than an empty table, so the failure is legible instead
-of silent. That is no worse than before — those files were unreadable there
-either way — but it means the removal is complete for *writing* and not for
-*reading history*.
-
-A reader for the frame layout was written inside the simulation library and
-**reverted deliberately**: that library reads photon data and has no business
-knowing another ecosystem's container layout. Do not propose it there again.
-The remaining options, neither taken: convert old files on open (needs the
-package once, on a machine that has it), or read the layout in ChiSurf, which
-means a new HDF5 dependency for a legacy path. Both are worse than the named
-decline until someone has a file they actually cannot open.
-
-## globalview: two graph builders, and they have already drifted
-
-**Resolved 2026-09-23**: every builder now reads
-`chisurf/core/fitting/parameter_network.py` (see
-[core tools](../plugins/core-tools.md#global-view-the-parameter-network)). The
-history below is kept for why.
-
-**2026-08-06.** The parameter graph is built twice. The plugin builds it locally
-(`chisurf/plugins/core/globalview/api/graph.py`); the server builds it again, by
-hand, for the `graph.build` RPC (`chisurf/server/services/graph.py`,
-"mirrors the client-side logic"). They are not one implementation with two
-transports — they are two implementations of the same contract, and today they
-were fixed twice for the same defect: a link edge resolved by parameter *name*,
-which drew an arrow from a follower to every same-named parameter in the session
-(three fits with a `tau1` turned one link into three arrows, two of them false).
-The server copy has also never had the `group` node type the plugin grew for
-out-of-fit parameter groups, so a network fetched over RPC is missing every
-plugin working model that a locally built one shows.
-
-The durable fix is to delete the server copy and have `graph.build` call the
-plugin's Qt-free `api/graph.py`, which already returns plain dataclasses. It was
-not done here because the plugin `api` package has not been checked for
-Qt-freeness in the server's import path, and unifying it is a wider change than
-the GUI work that surfaced the defect. Until then, **a change to one builder must
-be made to the other**, and the record is
-[core tools](../plugins/core-tools.md#global-view-the-parameter-network).
-
-## The assistant still fabricates a citation now and then
-
-**2026-08-06.** Over thirteen live questions on `mistral-large-latest`, two
-answers named a page that does not exist — `docs/concepts/pda.md` and
-`docs/guides/42_fret_from_bursts.md`. Both are plausible file names for pages
-that *could* exist, which is exactly why the model wrote them. Nothing reached
-the reader: `ask.verify_citations` resolves every path, strikes the dead ones
-and reports them, and both the panel and the CLI say so in as many words. So
-the guard works and the behaviour underneath does not.
-
-Worth knowing before trying to fix it: the fabricated paths appear **alongside
-real, opened ones** in the same answer, so "did it read anything" does not
-catch it — only resolving each path does. The obvious next step is to give the
-model the page list it is allowed to cite (the `related` list already in every
-`read_documentation` result), or to feed the struck paths back for one
-correction turn the way `READ_FIRST` does for an unread answer. Neither was
-done here because the current behaviour is honest and visible, and a second
-retry turn costs every answer a round trip to fix one in six.
-
-## (closed) The documentation assistant has never answered a question from a real model
-
-**Closed the same day** — a working key arrived and the battery was run; see
-the log entry and [LLM agent](../subsystems/llm-agent.md). What follows is the
-original note, kept because it says what the measurement is.
-
-**2026-08-06.** `chisurf/plugins/core/help/api/ask.py` and everything behind it
-are covered by scripted-model tests (the restricted registry, the citation
-collection, the panel's rendering of an answer, a no-read answer and a
-failure), and the retrieval underneath is covered by asserting *which page*
-comes back for a question. What has **not** happened is one end-to-end run
-against a live provider: on the machine this was built on, the configured
-Mistral key expired the same day (HTTP 401, "Your API key expired on
-2026-08-06") and the OpenRouter account has no credit (HTTP 402, "can only
-afford 213" of the 4096 reserved tokens). Both error paths are reported
-clearly, which is itself worth something, but the *answer* path has only ever
-run against `ScriptedLLM`.
-
-What that leaves unknown is not the plumbing — it is whether the prompt and the
-`answer-from-docs` skill actually make a model browse before it answers rather
-than answering from memory and citing nothing. The measurement is exactly the
-one the panel already shows: run `csc help ask "what does the gamma factor
-correct for?"` with a working key and check that `answer.pages` is non-empty
-and names `docs/concepts/accurate_fret.md`. If it comes back empty, the fix is
-in the skill, not in the harness.
-
-## An in-flight rename left `test_an_ambiguous_model_name_asks_for_the_full_one` red
-
-**2026-08-06.** `test/agent/test_tools.py` fails in the working tree, and it is
-not this change: another instance is renaming the TCSPC model from
-`"Lifetime (new)"` to `"Lifetime"` and applied the rename mechanically to the
-ambiguity fixture, which turned a prefix-only case into an exact-match one.
-With the registry `["Lifetime", "Lifetime mixer"]`, asking for `"Lifetime"` is
-not ambiguous — `resolve_model_name` finds an exact match and returns it, which
-is the documented and correct precedence. The test is the defect, not the code:
-the fixture needs a registry where no exact match exists (`["Lifetime ",
-"Lifetime mixer"]`, as it effectively was before). Left alone here because the
-file has another instance's uncommitted edits in it.
-
-
-## Mutagenesis resets the view, and hidden waters come back
-
-**2026-08-07**, reported by the user against the state-based wizard
-(`03a04ca07`). Two defects, both about state the wizard is not preserving.
-
-**1. The view is reset.** Something in the mutagenesis flow still moves the
-camera. The build and the rotamer step are each wrapped in
-`_wizard_keeps_the_camera` (`cmd/interactions.py`), and
-`test_the_wizard_never_moves_the_camera` asserts `get_view_state()` is
-unchanged across `wizard target` and two `wizard rotamer, next` — so the path
-that does it is **not** one of those two, and the guardrail passes while the
-user sees the fault. Candidates, in the order worth checking:
-
-* `wizard apply` and `wizard clear`/`done` — neither is wrapped. Apply
-  rebuilds the source object, which is exactly the operation that re-derives
-  the scene centre and radius;
-* `_wizard_delete_preview` — removing an object changes the scene bounds the
-  same way adding one does;
-* entering the wizard at all (`wizard mutagenesis`), or the residue pick that
-  precedes it.
-
-Take the measurement the same way the earlier camera bug was finally caught:
-`get_view_state()` before and after **each** command in a full session
-(`wizard mutagenesis` → pick → `target` → step → `apply` → `done`), not only
-the two already covered. Note the trap recorded in the parity concept: the
-symptom reads as *darkness* in a screenshot, because the molecule recedes
-rather than the lighting changing.
-
-**2. Hidden waters reappear.** Visibility set before the wizard runs is lost —
-`hide solvent` (or any scoped `hide`) comes back on. Almost certainly the same
-root cause as the first: whatever rebuilds the source object on Apply is
-restoring the representation masks from the payload rather than carrying the
-object's current ones across. If so, one fix closes both, and the test should
-assert the *masks* as well as the view state, since a rebuilt object with
-default visibility is indistinguishable from a correct one in a mesh count.
-
-**Tried to fix, and it does not reproduce through the command path.** Measured
-on 148L, driving the whole flow as commands (`wizard mutagenesis` → `target` →
-`rotamer, next` → `apply` → `done`) and printing the 18-float view state and
-the per-atom masks after each:
-
-* the view is **identical at every step**, apply included — position
-  `[0, 0, -467.83]`, near/far/fov `[1.65, 660.39, -20]`. So `apply` being
-  unwrapped is *not* the cause, and wrapping it would fix nothing;
-* the masks resize correctly: `sticks_mask` goes 1363 → 1370 with the atom
-  count when a THR becomes a TRP, rather than being dropped or left stale;
-* the water half could not be exercised at all — **148L carries no waters**
-  (`tot=0`), so a fixture with solvent is needed to see it.
-
-That leaves the **GUI interaction path**, which is what the report came from
-and what none of this touched. Two candidates worth taking first:
-
-* the mouse mode itself. In 3-Button Viewing, `SnglClk` is **Cent** — a single
-  click centres on the atom under the cursor. Picking the residue to mutate is
-  a click, so the "reset" may be the mouse mode doing exactly what the panel
-  says it does, and the fix (if any) is that picking *for the wizard* should
-  not re-centre;
-* whatever the object menu's **H** button emits for waters, followed by
-  `_refresh_objects_from_viewer` after apply. The command spelling is
-  `hide everything, solvent`; a bare `hide solvent` is rejected
-  ("Unsupported representation for show/hide: solvent"), so the two paths may
-  not be setting the same state.
-
-Reproduce with a structure that has waters, driving the GUI rather than the
-command line — the standing correction in the parity concept applies: a test
-that calls the handler cannot see what the widget does.
-
-## structure: `ProteinCentroid` cannot coarse-grain nucleic acids
-
-**2026-08-10.** Found while making `calc_internal_coordinates_bb` survive
-crystallographic PDB files (three separate crashes, all fixed:
-`KeyError: 'H'` on structures without hydrogens, `KeyError: 'CA'` on waters,
-`ValueError: -1 is not in list` on the absent-atom sentinel). One failure was
-left, because it is a capability gap rather than a guard:
-
-```
->>> ProteinCentroid('test/data/atomic_coordinates/pdb_files/1rtd.pdb')
-KeyError: np.str_('DG')      # protein.py, to_coarse
-```
-
-`residue_atoms_internal` is keyed by amino-acid name only, so `to_coarse`
-raises on the first nucleotide. **1RTD is this project's designated
-protein + DNA/RNA fixture** ([testing](../workflows/testing.md)), which means
-the coarse-grained path has never been exercised on the structure class it was
-supposed to be tested against — the two combined-molecule tests in the tree use
-the all-atom path.
-
-Not fixed here for one reason worth stating: `chisurf/core/structure/protein.py`
-is route `imp` in the [numba retirement](../subsystems/numba-retirement.md) —
-its counterpart already exists as `IMP.cgmol.protein`, and CLAUDE.md records
-that molecular modelling has migrated to imp-tricks. Adding nucleotide
-templates here would be work thrown away at that port. **Check whether
-`IMP.cgmol` already handles nucleic acids before writing any**; if it does, this
-closes by deletion.
-
-## `pixi.toml` requires `wgpu`, and the lock file has never contained it
-
-status: resolved 2026-10-07
-
-Fresh verification: the manifest declares wgpu-py and pixi lock --check exits
-zero. The measured stale manifest/lock condition below is historical.
-
-**2026-08-10.** Re-recorded after being removed from this file without a fix —
-the entry went, the condition did not.
-
-* `pixi.toml:78` declares `wgpu = "*"` as a conda dependency.
-* `grep -c wgpu pixi.lock` returns **0**. The lock has no such package at all,
-  so it predates that line and is stale against the manifest.
-* `pixi run --frozen <task>` therefore still works — it ignores the manifest and
-  uses the lock as-is. **Plain `pixi run` re-solves**, which is where this bites.
-
-On conda-forge the package providing the `wgpu` Python module is named
-**`wgpu-py`**; `wgpu` is a different (Rust) package. If the solve is failing,
-that rename is the reason and the fix is one word in `pixi.toml`. Confirm with a
-full `pixi install` before changing it — this entry deliberately stops short of
-claiming the solve fails, because that was not re-measured here, only that the
-lock cannot satisfy the manifest.
-
-It matters out of proportion to its size: `pixi` is the single sanctioned
-environment and build tool, every CI workflow uses it, and `build-extensions` is
-a `depends-on` of every `test*` task. A broken default solve takes the whole
-sanctioned test path with it, and `--frozen` masks that locally.
-
-## ✅ FIXED — ChiMOL's chrome was laid out into boxes too small for its own text
-
-**Found 2026-08-11** while capturing the before-half of the chrome for the
-GPU-quad port; **fixed the same day** ([chimol-web](/plugins/chimol-web.md)).
-
-Reported first as "an object menu runs off the right edge of the window", which
-is what it looks like. It is not a clamping bug -- top-level menus *are* clamped
-to the viewport and submenus already flip sides. The cause is one constant:
-
-```python
-char_w = self.FONT_PT * 0.62      # 6.2 px at 10 pt
-```
-
-Menlo at 10 pt advances **8.5 px**, so every box in the panel was budgeted 22 %
-narrow. `assign sec. structure` was given 130 px and needs 177; because a menu
-is clamped against the *right* edge, the 47 px of overflow ran off-screen
-instead of merely overlapping. The truncated mouse-mode block
-(`Mouse Mode 3-Button Viewin…`) and the cramped sequence strip were the same
-constant, which is why they looked like three separate defects.
-
-The width now comes from the baked glyph atlas -- the thing that actually draws
-the text -- via `internal_gui.char_width()`.
-
-A second, independent bug surfaced with it: `column_width` starts at PyMOL's
-`internal_gui_width` of 220 and **only the splitter drag consulted
-`minimum_column_width()`**, so until someone dragged it the mouse-mode block was
-laid out wider than the column that positions it. `layout()` now holds the
-column to its own minimum, which is the invariant
-`test_internal_gui.py` was already asserting after a drag.
-
-Control inventory is unchanged across the fix (11/56/66/81 reachable controls in
-the four captured states); only the widths moved. Baselines in
-`test/renders/chrome_baseline/` were deliberately re-taken.
-
-## ✅ RESOLVED — ChiMOL's browser page renders; drive it with Playwright, not the Chrome tools
-
-**Found and resolved 2026-08-11** ([chimol-web](/plugins/chimol-web.md)).
-
-The browser tools drive a Chrome that is **not on the same host** as the shell.
-A dev server that answers
-
-```
-curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8792/     # 200
-```
-
-gives that Chrome `ERR_CONNECTION_REFUSED` at the same URL, on `localhost` and
-`127.0.0.1` alike, with the shell sandbox disabled. Every read landed on
-`chrome-error://chromewebdata/`, which is also why `navigator.gpu` read as
-false -- it was being read on the error page.
-
-**Playwright's Chromium runs in the same sandbox as the shell and works.** With
-`--enable-unsafe-webgpu`, `navigator.gpu` is present and the page renders.
-`test/test_browser_render.py` does the whole thing -- server, browser, Pyodide,
-device, frame, pixels -- and is marked `slow`.
-
-So: **to look at chimol in a browser from an agent session, use Playwright.**
-The Chrome tools cannot reach a locally served page on this machine.
-
-## ChiMOL's WGSL backend silently ignores `px_mode`, and selection markers look wrong
-
-**Found 2026-08-11** from a user screenshot: selected atoms draw as red dots of
-wildly varying size scattered through the cartoon, where PyMOL draws even pink
-markers of a fixed pixel size.
-
-`core/viewer.py` sets `meta["px_mode"] = True` in **three** places — the
-`dots` representation (`:8492`), an overlay path (`:8564`) and the selection
-indicator (`:8942`) — and `px_mode` appears **nowhere** in `wgpu_backend.py` or
-`compute.py`. The backend's geometry signature reads only `meta["size"]` and
-`meta["world_radius"]` (`wgpu_backend.py:906`), so a builder asking for
-pixel-mode markers gets whatever that pair happens to mean. Size varying with
-depth is what world-radius spheres do and what pixel-mode markers must not do,
-which matches the screenshot. `_selection_marker_width` computes its value in
-**pixels**, clamped to PyMOL's 3–10 band, so the units are certain at the
-producing end.
-
-**Not fixed, and not diagnosed past this point.** The open question is what the
-impostor pipeline does with `size` when `world_radius` is false, and whether the
-fix belongs in `impostor.wgsl`, in the interleave, or in teaching the backend to
-honour `px_mode`. This is the "silently degraded path" shape the project rules
-warn about: the flag is not rejected, it is simply never read.
-
-## ChiMOL's test suite cannot collect while `chimol/` is on `sys.path`
-
-**Found 2026-08-11.** `pytest chisurf/plugins/chimol/test/...` fails at
-configure time:
-
-```
-INTERNALERROR   File ".../pdb.py", line 74, in <module>
-    import cmd
-ImportError: attempted relative import beyond top-level package
-```
-
-chimol has a top-level `cmd` package, so anything putting
-`chisurf/plugins/chimol/chimol` on `sys.path` shadows the standard library's
-`cmd` — which `pdb` imports, which pytest's debugging plugin imports at
-configure time, before a single test runs. Same hazard CLAUDE.md already records
-for `chisurf/math/` and the stdlib `math`, and the reason chimol's `host`
-package is deliberately not called `platform`.
-
-The suites run when the path is clean. Find what inserted it before trusting a
-green *or* a red run — a collection error here says nothing about the tests.
-
-## chimol: C > "by element" sets an object-wide colour *mode*, so it paints the whole molecule and not the selection
-
-**Found 2026-08-11, reported by tpeulen:** "the coloring menu color by atom of
-selection just colors the entire protein by residue color not by atom". Two
-defects in one menu entry, and a missing menu.
-
-**1 — the selection is ignored.** `chrome/object_menus.py:537` issues
-`color byelement, {sele}`. In `cmd/rendering.py`, `color()` normalises
-`byelement` to the mode `by_element` (`_normalize_color_mode`, l. 1601) and
-hands it to `_apply_color_mode` (l. 1612), which is explicit about what it then
-does — l. 1626: *"The colour mode is a property of an object, not of individual
-atoms, so a selection here picks which objects it is set on"*. So the selection
-is resolved only far enough to name the objects it touches; every atom of each
-of those objects is repainted. Selecting one residue and colouring by element
-recolours the whole protein. Worse, `_apply_color_mode` calls
-`clear_color_overrides()` first, so it also **discards** whatever per-atom
-colours were already there.
-
-The correct path already exists in the same package and is unused by the menu:
-`cmd/presets.py:252` `_color_by_element(sel, carbon=None)` writes per-atom
-overrides through `viewer.set_atom_color_override` and its docstring gives the
-reason — *"because a mode belongs to a whole object and this has to reach a
-subset"*. The presets (`preset simple`, `ligands`, …) get this right; the C
-menu does not.
-
-**2 — "by residue colour, not by atom" is the cartoon path.** For a molecule
-shown as cartoon the mode is consumed at `core/viewer.py:9287`, which builds
-`_colors_per_ca` from the **CA atoms' elements** — every CA is carbon, so the
-by-element mode has nothing to vary over and the ribbon does not turn CPK. What
-the user sees instead is the previous per-residue colouring, unchanged.
-
-**3 — the CNOS menu is missing.** PyMOL's C > "by element" is not one entry, it
-is 49 (`junk/pymol-open-source/modules/pymol/menu.py:404`, `by_elem`):
-
-- the first entry, `util.cnc(sele)` — the **CNOS** case the user asked for:
-  colour H/N/O/S by element and **leave carbon alone**;
-- 8 x `util.cba(<carbon_colour>, sele)` — colour by atom with a chosen carbon
-  (tv_green, cyan, lightmagenta, yellow, salmon, grey90, slate, orange);
-- submenus "set 2" … "set 5" (8 more carbon colours each, `by_elem2`–`by_elem5`)
-  and "set 6/H" (`util.cbh`, 8 hydrogen colours).
-
-chimol's `COLOR_MENU` has a single child, `by element`. `_color_by_element`
-already takes the `carbon` argument these 40 entries need, so the menu data is
-the gap, not the machinery.
-
-**Where a fix goes:** make `COLOR_MENU`'s by-element children call the per-atom
-path (a `cnc` / `cba` command, or `util.cnc`-equivalents) instead of
-`color byelement`, and leave `color by_element` as the object-wide mode it
-documents itself to be. Do not "fix" it by teaching `_apply_color_mode` to mask
-atoms — the mode genuinely is per object, and `by_residue`/`by_ss`/`by_chain`
-share that path.
-
-**Not verified in a running viewer.** Read from the source; no screenshot taken.
-The cartoon claim in (2) in particular should be confirmed against a rendered
-frame before it is treated as settled.
-
-## chimol: the mutagenesis wizard leaves a second sequence row behind
-
-**Found 2026-08-11, reported by tpeulen with a screenshot.** After a mutation
-the Sequence strip shows two rows — `1f5n` and a second row labelled
-`mutation` — while the object panel on the right lists only `all`, `1f5n`,
-`sele`. The extra row persists after the wizard has finished.
-
-`mutation` is a real object by design: `cmd/interactions.py:621`
-`_wizard_show_states` creates it (PyMOL's `do_library` does the same, one state
-per rotamer) and `PREVIEW_OBJECT = "mutation"`. The sequence view builds one row
-per entry in `_object_store` (`hosts/qt/window.py:1178`), so while the
-preview exists a `mutation` row is expected.
-
-**The leading hypothesis is refresh ordering in `_wizard_finish`**
-(`interactions.py:838`), which runs:
-
-1. `_wizard_commit` → `_apply_mutation`, and *that* is what refreshes the UI —
-   `interactions.py:396` calls `_refresh_objects_from_viewer`,
-   `_update_sequence_view`, `sync_internal_gui`. The `mutation` object is
-   **still present** at this point, so the sequence view is rebuilt *with* its
-   row;
-2. `_wizard_delete_preview` (l. 805) → `viewer.remove_object(preview)`;
-3. `viewer._update_view()` — a 3D redraw only.
-
-Nothing re-runs `_update_sequence_view` after step 2, so the row outlives the
-object. The same hole is in `_wizard_show_states`, which refreshes the object
-list when the preview appears but never the sequence view.
-
-**What does not fit, and should be checked first.** If both refreshers ran at
-step 1 the *object panel* should be equally stale, and the screenshot shows it
-clean — so either something else re-lists objects afterwards, or
-`remove_object` reaches the panel by a route the sequence view does not.
-Establish which before writing a fix.
-
-**Also worth confirming:** the `mutation` row in the screenshot appears to span
-the full 479–555 axis, but the preview carries a *single* residue — every atom
-row is stamped with the source residue's `res_id`/`chain`
-(`interactions.py:640`). Under `build_residue_alignment` that should render as
-one letter in a row of gaps. If the row really is full-length, there is a
-second defect in how a one-residue object is aligned, independent of the
-staleness above.
-
-## RESOLVED 2026-08-11 — chimol: the viewport's "Selecting Residues" line was decorative, and only the residue level existed
-
-**Found 2026-08-11, user-reported** ("missing feature selection of CA, atoms,
-currently only residues work"). PyMOL's mouse block carries a selection *level*
-— Atoms / Residues / Chains / Segments / Objects / Molecules — and clicking the
-word cycles it. chimol paints the line and stops there:
-
-* `chrome/gui.py:398` `self.selecting = "Residues"`, painted at
-  `:1835` and **never assigned again**;
-* `core/viewer.py:2461` `self.selection_mode: str = "Residues"`, which has no
-  other reader or writer in the tree.
-
-So the level is a constant, there is nothing to cycle it with, and no code
-consults it when a click lands.
-
-**The blocker is the selection model, not the click.** The pick is already
-atom-precise: `handle_mouse_click` (`view.py:4609`) resolves
-`picked_atom_idx` and emits `atomSelectionChanged([idx])`. It then throws that
-precision away — it maps the atom to its residue index and calls
-`_apply_selection_indices`, whose entire state is `self._selected_residues`, a
-list of **residue** indices (`:4734-4808`). Everything downstream is indexed the
-same way: `residueSelectionChanged`, `objectResidueSelectionChanged`,
-`refresh_selection_highlight`, the sequence strip, and the `sele` object.
-
-That splits the work in two, and they are not the same size:
-
-* **Chains / Objects / Molecules are cheap** — they are still sets of residues,
-  so the click expands the picked atom to its chain's or object's residue
-  indices before `_apply_selection_indices`. No model change.
-* **Atoms (and "CA only") need an atom-indexed selection set**, because a
-  residue-index list cannot express "one atom of this residue". That reaches
-  the highlight renderer, the `sele` object and the sequence strip, all of which
-  currently assume whole residues.
-
-Do the cheap half first only if the split is stated; shipping Chains and
-Objects while Atoms silently still selects the whole residue would make the
-line *more* misleading than a constant, not less.
-
-## RESOLVED 2026-08-11 — chimol: no mouse-driven measurement; PyMOL's Measurement wizard was missing
-
-**Found 2026-08-11, user-requested** ("add measurement feat, like in pymol, meas
-distance with mouse and clicking").
-
-Both halves already exist and are simply not joined:
-
-* the **measurements** — `cmd/measurements.py` has `distance`/`dist` (`:156`),
-  `angle` (`:828`) and the dihedral, all drawing into `viewer._measurements`,
-  which the scene already renders;
-* the **wizard framework** — `cmd/interactions.py` runs the mutagenesis wizard
-  with a viewport panel, prompt, per-step rows and a Done/Apply lifecycle
-  (`_wizard_finish`, `_wizard_refresh`, `_wizard_gui`), and `menu_bar.py:175`
-  lists wizards;
-* the **atom-precise pick** — `handle_mouse_click` already resolves
-  `picked_atom_idx` before discarding it for the residue (see the entry above),
-  which is exactly the input a measurement needs and the reason this does *not*
-  depend on the selection-level work.
-
-What is missing is a `wizard measurement` that collects picked atoms and, at
-two/three/four picks, calls the existing command. PyMOL's modes are the spec:
-distance, angle, dihedral, plus its "no wizard" reset.
-
-**Watch for:** the picked index is into `_all_atom_coords`, whereas the
-measurement commands take *selections* — a pick has to be turned into an atom
-expression (object, chain, resi, name) or the measurement API given an
-index-taking entry point. Choose one deliberately; going through a selection
-string round-trips through the parser on every click.
-
-## RESOLVED 2026-08-11 — chimol: `distance` reported scene units and drew its dashes in the wrong place
-
-**Found while building the measurement wizard, which depends on this code.**
-Two mirror-image defects in `cmd/measurements.py`, both from the same cause:
-`_resolve_selection_to_atom` returns **scene** coordinates —
-`(xyz - raw_center) * _scale_factor`, and `_scale_factor` is **10**.
-
-* the **value** was the scene length: measured against 148L's own file,
-  `distance resi 1 and name CA, resi 21 and name CA` reported **258.450** for a
-  **25.845 Å** pair. `rms`/`align` already carried the same correction
-  (`measurements.py:1100-1105`), which is why the fault was confined to
-  `distance`/`angle`/`dihedral`;
-* the **positions** were double-transformed: `MolView._update_measurements`
-  transforms whatever it is given into scene space unless
-  `transform_to_scene` is false, so a scene coordinate stored as a measurement
-  position is scaled and centred a second time. Its bbox came out at ±200 for a
-  molecule spanning −11…68.
-
-The *set* paths (`dist ... mode=2` and the rest) were **already right** —
-they work from `atoms["xyz"]` — so the two halves of the same command disagreed
-with each other, which is what made this hard to see: polar contacts drew
-correctly and a two-atom measurement did not.
-
-**Fixed** by `_scene_point_to_world`, applied in `distance`, `angle` and
-`dihedral`. Guardrail: `test_measure_suite.py::test_two_atom_distance_is_in_angstrom`,
-which checks against coordinates parsed from the PDB rather than against another
-part of the same code — the one measurement here with a reference value.
-
-## RESOLVED 2026-08-11 — chimol: a residue id is not unique across chains, and the selection matched on it alone
-
-**Found while adding the `Atoms` selection level, which made it visible.**
-`_selection_atom_positions` and the pick-to-residue lookup in
-`handle_mouse_click` both matched atoms to residues on `res_id`. Residue ids
-restart per chain, so on 1RTD (eight chains, each numbering from 1):
-
-* selecting **one residue** marked **104 atoms** instead of 19 — every chain's
-  copy of that number;
-* one picked **atom** mapped back to **eight residues**;
-* `handle_mouse_click` took `matches[0]`, i.e. the *first* chain's copy, so
-  clicking a residue in chain E could select chain A's.
-
-The missing half of the key was already in the tree: `_residue_chain_ids` is
-built alongside `_residue_ids` at load and was unused here.
-
-**Fixed** by `MolView._atom_residue_indices`, which keys on (chain, residue id)
-and returns a per-atom index into the residue table, with `-1` for an atom whose
-residue is not in it (a ligand where the trace is protein-only) rather than
-silently borrowing a neighbour's. Every count in
-`test_selection_levels.py` is cross-checked against the atom table, and the
-fixture is deliberately **1RTD, not 148L**: a single-chain structure cannot tell
-a chain-aware lookup from an id-only one, which is how this survived.
-
-## RESOLVED 2026-08-11 — chimol: five reports on the viewport's own chrome
-
-All five are the same shape of fault, which is why they are recorded together:
-**a value that was configured, loaded or drawn, and read by nothing.**
-
-* **The in-viewport prompt had a black backdrop** (`CMD_BG = (0, 0, 0, 190)`),
-  which is invisible on the default black background — the prompt read as text
-  lying on the molecule — and needlessly heavy on a white one. Now the same
-  semi-transparent grey as the system-info panel, which darkens white and
-  lightens black.
-* **3-D labels were drawn at a hard-coded 10 points** while `label.size` sat in
-  the display config at **14**, read by nothing: the setting was documented,
-  stored, and could not change anything. `paint_labels` now takes the size,
-  `WgpuRenderer._label_size` supplies it, `label_size` / `label_color` are
-  registered settings, and the default moved to **16** (migration 17) because
-  14 was never what anyone saw and 10 was reported as too small.
-* **A measurement whose segment produced no dashes still drew its number** — a
-  value floating over the molecule attached to nothing, indistinguishable from a
-  label that has come adrift. `_dash_segments` returns nothing for a zero-length
-  segment; the label is now suppressed with it.
-* **A measurement's first pick drew nothing at all**, so a mis-aim and a
-  mis-click looked identical. Picked atoms now carry the selection marker via
-  `MolView.set_pick_markers` — deliberately *not* the selection: they never
-  reach `sele` and they clear when the group becomes a measurement.
-* **The sequence strip ran every chain into one row** named after the object.
-  Residue numbers restart per chain, so the same number appeared several times
-  with nothing to say which chain it belonged to. Now one row per chain,
-  labelled in PyMOL's slash syntax (`1f5n/A`), each carrying
-  `residue_indices` — the map back to the object's residue indices.
-
-**The trap in the last one**, and the reason it needed care: a per-chain row's
-columns are **not** the object's residue indices, and everything the strip talks
-to speaks the object's. Without the map, clicking chain B's third residue
-selects the object's third, which is chain A's — silently. Rows are also matched
-by `object_id` now rather than by label, because the label carries the chain.
-Pinned by `test_sequence_chains_and_labels.py`, which checks the rows *partition*
-the object exactly and round-trips a selection through a later chain.
-
-### Not reproduced: "the measurement label jumps around when I change the view"
-
-Reported with a screenshot showing the number far from its dashes. **In the
-current tree the label sits exactly on the segment midpoint and tracks the
-camera** — `project_to_screen` agrees with the backend's own MVP to the last
-decimal at four rotations, checked against `perspective`/`view_matrix` rebuilt
-from `_scene_viewport`.
-
-The likely cause is the double-transform fixed the same day (see the entry
-above): `distance` stored **scene** coordinates and `_update_measurements`
-transformed them into scene space a second time, which puts a measurement's
-whole drawing somewhere else and moves it at a different rate from the molecule
-as the camera turns. If it recurs after a restart, the thing to capture is
-whether the *dashes* are also displaced or only the number — they are built from
-one array, so a genuine split between them would mean something new.
-
-## RESOLVED 2026-08-11 — chimol: the system-info panel covered the in-viewport prompt
-
-**Reported with a screenshot** showing `(no system loaded)` sitting over the
-`ChiMOL>` line. Both are anchored bottom-left of the same corner, and only one
-of them is a Qt widget: the panel is a `QPlainTextEdit` stacked on the surface,
-while the prompt and its feedback are painted **into** the surface by the chrome
-painter. Qt therefore knows nothing about the prompt, and the panel — laid out
-with `full_height` and `AlignBottom` — ran straight over it. It became obvious
-only once the panel gained a backdrop the same day; before that the two sets of
-text simply overprinted on black.
-
-**Fixed** by giving the container grid a second row whose only job is to be
-empty: the renderer spans both (it draws the whole surface, prompt included) and
-the panel spans the first. Its height is `InternalGui.command_area_height()`.
-
-**That method returns the maximum, not the current height**, and the reason is
-the point: the log grows and shrinks as commands run, so a panel laid out around
-the *current* height would overlap for as long as it took a printed line to
-trigger the next relayout — a bug that appears only after output, which is
-exactly when nobody is looking at the panel. `visible_log` is capped at
-`feedback`, so the ceiling is a constant and reserving it needs no upkeep.
-
-**The guard is in two halves** (`test_sequence_chains_and_labels.py`), because
-the two rectangles are laid out by different code at different moments and
-comparing them directly measures whichever ran last as often as it measures the
-bug: one half asserts the reserve is at least what the prompt uses, the other
-that the panel stays out of the reserve.
-
-## RESOLVED 2026-08-11 — chimol: the system-info panel was a Qt widget, and is now chrome
-
-The overlap fixed earlier the same day was a symptom. The panel was a
-`QPlainTextEdit` stacked on the surface while every other thing in the viewport
--- the object list, the sequence strip, the mouse-mode block, the prompt -- is
-drawn *into* the surface by `InternalGui` through the six-operation
-`Painter` interface and rasterised as GPU quads. A Qt widget cannot see chrome
-painted into the surface, which is why it sat on top of the prompt, and the
-first fix was a spacer row in the container's grid **guessing** how tall the
-prompt would get.
-
-**The panel is now `InternalGui`'s** (`layout_info`, `_paint_info`,
-`INFO_BG`/`INFO_FG`/`INFO_EDGE`, `_wrap_lines`). Consequences worth having:
-
-* one object lays out the strip, the panel and the prompt, so "above the
-  prompt" is arithmetic rather than a guess -- there is nothing left to keep in
-  sync, and the container's layout is a single widget again;
-* it draws on the **GPU path** with the rest of the chrome, so it costs quads
-  rather than a stacked widget's compositing, and it will follow the chrome
-  into a browser, where a `QPlainTextEdit` could never have gone;
-* the text is **wrapped by character count** -- the chrome's font is monospace
-  -- which the widget used to do for free. A file path has no spaces to break
-  at, so a long run is cut rather than allowed to run off the panel;
-* a viewport too short for one line **drops the panel** rather than drawing it
-  over the strip or the prompt. Keeping its height and overlapping is precisely
-  what the widget did.
-
-`set_system_info_text` / `set_system_info_visible` now only store and request a
-repaint; the text and palette are *pulled* by `refresh_gui_state` at paint time,
-as the sequence colours and the frame position already were. `info_overlay`'s
-settings are unchanged and still honoured -- `MolView.info_overlay_colors`
-converts them for the chrome, and `max_width` / `min_width` / `full_height` are
-now the panel's own `INFO_MAX_CHARS` / `INFO_MIN_CHARS` and content height.
-
-## chimol: density maps are slow, and the NPC load has regressed (2026-08-11)
-
-Two performance reports, filed rather than fixed at the user's direction —
-*"just note as issues and continue with migration"*. Neither is measured yet;
-what follows is the starting point so the next session does not begin at zero.
-
-### Density maps are slow
-
-The instruction is explicit: **learn from ChimeraX how it does this.** That is
-the right reference — ChimeraX's volume viewer is interactive on maps chimol
-struggles with, and the techniques are documented rather than folklore. What to
-look for, in the order they usually matter:
-
-* **Multi-resolution / step.** ChimeraX draws a map at a *step* (2, 4, …) and
-  re-contours at full resolution only when asked. chimol has
-  `stride_for_limit()` for the point cloud but the **isosurface contours the
-  full grid every time** — a 180³ map is 5.8 M cells per level per rebuild.
-* **Region cropping.** ChimeraX contours a sub-box, not the whole map.
-* **Caching the surface per (level, step)** so re-showing a level is free —
-  chimol re-runs marching cubes.
-* Its `Volume`/`GridData` split is worth reading directly: the data source, the
-  region, and the rendering settings are three separate objects, which is what
-  makes "re-contour at a different step" cheap to express.
-
-The contour **drag** is already fixed (0 rebuilds while dragging, 1 on release,
-see PRD-101 req. 2); this is about the rebuilds themselves.
-
-### The NPC takes forever to load — a regression
-
-Reported as a regression, so the suspects are recent work, and the most likely
-are **mine, from 2026-08-11**:
-
-1. **Per-chain sequence rows.** `_sequence_rows_for_object` splits the strip by
-   chain in Python, walking every residue and building per-row lists. The NPC
-   is an integrative model with a very large number of chains, so this went
-   from one row to hundreds, each with its own list comprehension over residues
-   — and it runs inside `sync_internal_gui`, which is called often.
-2. **`MolView._atom_residue_indices`.** Added for the cross-chain fix. It is
-   O(n log n) over *every atom* and is recomputed on **every call** —
-   selection markers, every pick, every highlight refresh. On a bead model with
-   hundreds of thousands of particles that is a per-click cost that did not
-   exist before. It should be cached per object and invalidated on structure
-   change; the state fields are already the place for it.
-3. Less likely but cheap to rule out: the measurement rows now walk
-   `viewer._measurements` on every `sync_internal_gui`.
-
-**Measure before changing anything** — time a load of the `npc_integrative`
-demo against the commit before 2026-08-11, and profile `sync_internal_gui`
-separately from the structure read. The demo exists precisely so this is one
-command.
-
-### Resolved 2026-08-12 — and none of the three suspects above was the cause
-
-Measured, as the entry above insisted. The `npc_integrative` demo took
-**113.2 s** end to end on an Apple M1 Pro (offscreen WebGPU/Metal, 234,184
-beads). It now takes **9.3 s** — **12.1x** — and the three suspects listed above
-were not involved. They may still be worth fixing on their own merits; they were
-not what made the demo slow. This is the entry's own advice paying off, and the
-reason to leave the wrong guesses in place above rather than quietly deleting
-them.
-
-What it actually was, in order of size:
-
-1. **`MolView.get_atom_sphere_data` was quadratic** — 88.7 s of self time across
-   three calls. For each atom it ran `np.where(self._residue_ids == rid)` over
-   the *whole* residue array to find its colour: 234,184 x 234,184 comparisons,
-   5.5e10 of them. Replaced by a stable `argsort` plus `searchsorted`, which is
-   the same answer — the stable sort is what makes the leftmost slot of a run of
-   equal ids the *first* match the loop took — in N log N. Verified identical
-   over 380 randomised trials covering duplicate ids, gaps, unmatched ids,
-   unsorted input and string ids.
-2. **Ambient occlusion recomputed on a colour change** — 4.7 s. Occlusion is a
-   function of geometry alone, and `spectrum molecule` changes only colours, but
-   the neighbour search ran again with the same points and the same radius.
-   Memoised on a hash of the coordinates in the one place occlusion is already
-   gated. Results are handed out read-only: a caller shading one in place would
-   poison every later hit, and that is a bug found days later in a colour.
-3. **Beads built one row at a time** — 2.7 s of `atom_row`, once per bead, each
-   allocating its own one-element structured array. The vectorised builder
-   already existed (`make_bead_rows`, written for the RMF reader); the mmCIF
-   reader simply was not using it. Verified identical on all twelve fields of
-   `ATOM_DTYPE` over 200 randomised trials.
-
-The pattern in all three is the same and worth naming: **none was an algorithm
-anyone chose**. Each was a per-item Python loop that was correct and
-unremarkable at a few thousand atoms and became the whole runtime at a few
-hundred thousand. The remaining 9.3 s is dominated by one genuine neighbour
-search (~3.0 s) that now runs once.
-
-Reproduce with the profile harness described in
-[chimol-viewport-ui](../plugins/chimol-viewport-ui.md).
-
-### Open, in imp-tricks — the in-tree Martini table is not Martini 3
-
-Found 2026-08-12 while assessing imp-tricks' Martini support for
-[PRD-102](../prds/prd-102.md). Not fixed here because it lives in imp-tricks and
-that work is scoped as research; recorded so it is not rediscovered.
-
-* `MartiniParticle._size_nm` returns one sigma per size-class prefix. The shipped
-  Apache-2.0 `martini_v3.0.0.itp` has several per class — regular beads take
-  0.47 **and 0.50** (divalent ions), and tiny beads take **fourteen** distinct
-  values from 0.34 to 0.438. Read the matrix; do not assume one sigma per class.
-* `_well_depth` is a five-value lookup on a bead's first letter, collapsing all
-  of P1…P6 to 4.0 kJ/mol. The real matrix has thousands of distinct epsilon
-  values. As written this is a different force field wearing Martini's name.
-* Synthesised missing-residue beads hardcode mass 72.0 regardless of bead size;
-  the real masses are 72 / 54 / 36 for regular / small / tiny.
-* A vendored `Martini3-IDP-parameters` directory carries **no license**. It is
-  Martini3-IDP ([10.1038/s41467-025-58199-2](https://doi.org/10.1038/s41467-025-58199-2));
-  resolve the license before anything ships with it.
-
-Consequence for users: a Martini-shaped model here is a candidate for simulation
-only through an exported GROMACS topology, never through the in-tree scoring.
-
-### Open 2026-08-12 — chimol: the frame is 94 % chrome, not molecule
-
-Measured on the same M1 Pro, same NPC, offscreen WebGPU/Metal, once the load
-costs above were fixed. Frame time went **45.7 ms -> 36.9 ms** (22 -> 27 fps)
-by caching the sequence gradient, and the profile then says plainly where the
-rest is:
-
-* `_chrome_quads` is **37.8 ms of a 41 ms frame**. It rebuilds **~2,800 quads
-  and ~330 text runs from scratch every frame**, in Python.
-* The molecule itself barely appears in the profile. It is built once and drawn
-  by the GPU; drawing 234,184 beads is not what costs.
-
-So "chimol's UI is slow" and "the NPC demo is slow to interact with" are the
-same defect, and it is **not** a rendering-scale problem. The chrome is
-immediate-mode — every panel, row and glyph re-emitted per frame — and the
-sequence strip of an integrative model with hundreds of chains is thousands of
-cells wide.
-
-The fix is a dirty-flag cache on the chrome quad buffer: the chrome changes on
-hover, focus and state, not on camera motion, and camera motion is when frames
-matter. **Not done here** because `internal_gui.py` and `emtk/*` are
-being actively edited by another agent (+2,496 uncommitted lines, and the chrome
-baseline PNGs themselves are modified), so it would collide.
-
-Note for whoever picks it up: `test_chrome_painter.py`'s five baseline
-comparisons are **currently failing in the working tree** for that same
-in-flight reason, so they cannot be used as a regression check until that work
-lands. Confirmed not caused by the colour caching above —
-`_build_sequence_gradient_colors` is called **zero** times during those tests.
-
-One caching trap, already paid for once: the gradient cache first handed out its
-array **read-only**, to stop a caller recolouring the shared copy. That is the
-right instinct and it immediately found two real in-place writers (`spectrum`,
-and the per-atom sort path) — but as a shipped behaviour it turns aliasing into
-`assignment destination is read-only` raised from inside a command that did
-nothing wrong. It now returns a copy, which is one memcpy against rebuilding the
-ramp. The separate defensive copy added in `_recompute_colors_per_ca` is worth
-keeping regardless: it wrote overrides in place into whatever array the colour
-mode returned.
-
-### Corrected and advanced 2026-08-12 — the chrome numbers, measured without a profiler
-
-The entry above put `_chrome_quads` at 37.8 ms of a 41 ms frame. Those figures
-came from `cProfile`, which inflates Python-heavy code badly — 33,876 `_quad`
-calls a frame is exactly the shape it mis-measures. **The conclusion survived;
-the numbers did not.** Timed directly, with no profiler:
-
-| | before | after |
-|---|---|---|
-| `_draw` (no readback) | 26.0 ms | **17.0 ms** |
-| `_chrome_quads` | 25.2 ms | 16.4 ms |
-| `refresh_gui_state` | 10.6 ms | **3.1 ms** |
-| `draw_frame` (offscreen) | 36.1 ms | 31.1 ms |
-
-So the chrome really is ~97 % of the render, and the molecule really is about
-1 ms — an independent measurement of 234,184 impostors on this M1 puts them at
-0.94 ms, which agrees.
-
-**Two measurement traps here, both of which cost time and both of which look
-like a result:**
-
-1. **`draw_frame` on the offscreen canvas includes a GPU-to-CPU readback** —
-   about 10 ms of the 36. That is an artifact of measuring headlessly and is
-   not paid by a real window. Time `_draw` for the render.
-2. **Hiding the chrome to see what it costs does not work.** Setting
-   `gui.visible = False` and `gui.sequence_visible = False` changed the frame
-   time by nothing, which reads as "the chrome is free" and is wrong:
-   `refresh_gui_state` re-asserts both flags from the viewer **every frame**.
-   That is the same per-frame clobber that has bitten `info_visible`,
-   `info_text` and `selecting`. Measure the function, not the flag.
-
-**Fixed:** `refresh_gui_state` was hashing the per-residue colour array with
-**blake2b, on every frame** -- 234,184 x 4 float64 is 7.5 MB, and it measured
-**9.9 ms**, more than building every quad in the chrome and ten times the cost
-of drawing the beads the colours describe. The cost is the algorithm, not the
-size: a cryptographic hash runs near 1 GB/s where a NumPy reduction runs at
-memory bandwidth. Nothing there needs collision resistance against an
-adversary — it needs to notice that a colour command changed the colours. It is
-now a handful of reductions (total, three strided totals, one position-weighted
-total over a subsample) at **0.29 ms, a 34x saving**, verified to detect
-**400/400** single- and triple-residue recolours and to detect a reordering.
-The honest limit is written at the function: an array permuted so that all five
-reductions are preserved would be reported unchanged. No colour command does
-that.
-
-**Still open, and now the whole of it:** the remaining 16.4 ms is building
-~2,800 quads and ~330 text runs from scratch every frame. It wants a dirty-flag
-cache on the chrome vertex buffer — the chrome changes on hover, focus and
-state, not on camera motion, and camera motion is when frames matter. Not done
-here because `internal_gui.py` and `emtk/*` are under active edit by
-another agent.
-
-### 2026-08-12 — the chimol suite's exit code lies, and four tests are stale
-
-A full run: **3360 passed, 25 failed, 1 error, exit 134**. Every part of that
-sentence needs qualifying, which is the point of this entry.
-
-**The exit code was a teardown crash, not a test failure.** `WgpuRenderer`
-captured its instance dict as a **keyword-only default**
-(`def _mark_closed(*_args, _d=self.__dict__)`) on a `destroyed` slot. That works
-until interpreter shutdown, when `__kwdefaults__` may already be torn down; the
-slot then raises *"missing 1 required keyword-only argument: `_d`"* from inside
-Qt's signal, which becomes **SIGABRT after every test has already passed**.
-Fixed here by capturing in a closure cell, which cannot be stripped and keeps
-the property that motivated the default — it captures the `__dict__`, not
-`self`.
-
-**A second teardown crash remains: SIGSEGV (exit 139)** when several
-wgpu-using test files run in one process. It also happens after the tests
-themselves have finished, and it truncates pytest's summary, so a run can look
-like it ended mid-test when it did not. Not diagnosed. **Read the summary line
-from the log rather than trusting the exit code**, and re-run a suspicious file
-on its own.
-
-**Two of the 25 failures were pollution, not failures.** `test_create_extract`
-and `test_config_and_ss` fail in a full run and **pass in isolation** — this
-suite has known global-state leakage. Always confirm a failure alone before
-believing it.
-
-**Seventeen belong to another agent's in-flight work**, not to any change:
-`test_display_config_prompt` (12) — `settings_window.py` is staged as *deleted*
-while still present in the tree, mid-refactor; and `test_chrome_painter` (5) —
-the chrome baseline PNGs are themselves modified in the working tree.
-
-**Four are genuinely stale tests** describing behaviour that has deliberately
-changed, and each should be updated by whoever owns the change:
-
-* `test_camera_framing::test_a_widget_that_was_never_laid_out_frames_square`
-  asserts a degenerate viewport by sizing the window to the *panel column* width
-  and expecting almost no scene. The object list is a **floating window now, not
-  a docked column**, so `scene_width` correctly returns the full width (221, not
-  &lt;16). The guard it protects is still worth testing; the way it builds the
-  degenerate case is not.
-* `test_demos` (2) — the demo menu comes back empty. `demo_catalog.py` is
-  untracked in-flight work.
-* `test_surface_splat` — expects `splat` and gets `fast`; the default in the
-  untracked `surface_quality.py` changed.
-
-### Resolved 2026-09-03 — the SQLite databases named `<sqlite3.Connection object at 0x…>`
-
-The call site stayed unconfirmed, but the mechanism is now pinned and guarded
-in mmfdb itself. `MFDatabase.__init__` forwards `db_path` to
-`parse_database_target`, whose old `raw = str(location)` accepted anything — a
-`Connection` passed positionally became the string
-`"<sqlite3.Connection object at 0x…>"`, matched "no `://`", and was treated as
-a SQLite *path*. `connect()` then created that file and `_initialize_schema()`
-bootstrapped the full mmfdb schema into it — which is why the strays were
-~1 MB of fresh-schema databases (77 tables, the 226-row vocabulary) rather
-than empty files. The one zero-byte stray is the other shape: a bare
-`sqlite3.connect(<repr>)` read, of the kind `local_admin_status` in the
-mmfdb-admin GUI does — a SELECT over `sqlite_master` creates the file and
-leaves it empty.
-
-Fix (mmfdb `repository.py` + `store/sql_backend.py`): both entry points now
-raise `TypeError` for a non-str/non-PathLike location, with a message that
-says to pass an open connection as `connection=` instead.
-`local_admin_status` validates its argument too. A regression test
-(`tests/test_sql_backends.py::test_a_connection_as_path_is_rejected_and_never_creates_a_file`)
-asserts the raise *and* that no file appears in the working directory. The
-strays themselves, with their `-wal`/`-shm` sidecars, are deleted; the
-`.gitignore` carries a `<sqlite3.Connection object at 0x*` pattern so any
-regression is visible rather than silent.
-
-Found 2026-08-12 while clearing the repository root for a full commit. Five
-untracked files sit there with names like
-``<sqlite3.Connection object at 0x157baf790>``, and `xxd` says each really is a
-database: they begin `SQLite format 3`.
-
-So the cause is unambiguous even though the call site is not: **something passes
-a `Connection` where `sqlite3.connect()` expects a path**. `connect()` stringifies
-its argument, and the repr of a Connection is a valid filename, so instead of
-raising it silently creates a *new, empty* database named after the object's
-memory address. Nothing fails, nothing is logged, and the real database is never
-touched -- which is why five of them accumulated without anyone noticing.
-
-The shape to look for is a helper that accepts "a path **or** a connection" and
-forwards it to `connect()` on the path branch without checking which it got.
-`chisurf/plugins/spectra_downloader/download/` has two functions taking a bare
-`db` argument and two that call `sqlite3.connect(<arg>)` directly, which is the
-most likely neighbourhood, but this was **not** confirmed -- do not treat that as
-the answer.
-
-Worth fixing rather than deleting the files: a `connect()` that quietly makes an
-empty database is a data-loss shape. Any write that went to one of these went
-nowhere.
-
-**Also left in the repository root, deliberately uncommitted:** `MARK.txt` (a
-DataCurve debug dump), `_smoke_nb_tmp.py`, a **zero-byte** `elements.py`,
-`chisurf_project.csp`, `simulation_output_20260811_051840/`, `demo/` (2.8 MB of
-`.ptu`), and about 2.8 MB of loose PNGs from surface and GUI work -- including
-`200.png`, which is the artefact of the `ray 200, 150` filename bug fixed today.
-None of it is source; all of it is safe to delete, and that is the user's call
-rather than an agent's.
-
-### Resolved 2026-08-12 — the chrome is cached between frames
-
-The entry above left "the remaining 16.4 ms is building ~2,800 quads and ~330
-text runs from scratch every frame" as the whole of the problem, and named the
-fix: a dirty-flag cache, because the chrome changes on hover, focus and state
-and **not** on camera motion, which is the only time anyone watches the frame
-rate. Done.
-
-Measured on the same M1 Pro, same 234,184-bead nuclear pore:
-
-| | before | after |
-|---|---|---|
-| `_draw` | 14.97 ms | **4.50 ms** |
-| `_chrome_quads` | 13.71 ms | **2.62 ms** |
-| `refresh_gui_state` (inside it) | 2.40 ms | 2.50 ms |
-
-**3.3x**, and the remaining chrome cost is almost entirely `refresh_gui_state`,
-which is now the next thing worth attacking: it re-derives the per-residue
-colours every frame through `get_residue_colors`, which is 2.2 ms of the 2.5.
-
-Two smaller wins landed with it: `QuadPainter.vertices` uses `np.fromiter` with
-an exact count rather than `np.asarray` (4.1 ms to 2.9 ms on a chrome frame, for
-identical output), and an `array("f")` accumulator was **tried and rejected** --
-it is 1.7x *slower* than a list, because per-element conversion on every
-`extend` costs more than one batch conversion at the end. Worth recording so
-nobody tries it twice.
-
-**The cache's one failure mode is silent**, so it is guarded by
-`test_chrome_cache.py`, which compares the cached path against a freshly emitted
-build after each of twenty-two real interactions. Written first, it immediately
-caught two genuine omissions from the fingerprint:
-
-* `SequenceRow.selected` -- the strip highlights the selection, and the set is
-  mutated **in place** in three separate places, so neither the row's identity
-  nor the list's length notices a change;
-* the **command-line feedback log** -- every command appends a line that is
-  drawn as text. `select everything` moved exactly nine quads while the rows,
-  the sequences and the windows were all unchanged, which is what pointed at it.
-
-Method worth reusing: when the differential test failed, the control was to run
-the same sweep with the cache *disabled*. That showed 52/54 rather than 42/54,
-and the two remaining mismatches were the progress overlay, which animates and
-counts seconds and so differs between any two paints. Without that control the
-animation would have looked like a cache bug.
-
-A selection larger than `InternalGui.SELECTION_HASH_MAX` (4096) deliberately
-never compares equal, so the frame rebuilds -- hashing 234,184 selected residues
-would cost more than the paint it saves, and rebuilding is exactly the behaviour
-that was there before.
-
-### Rejected twice — sharing the sequence gradient read-only
-
-The next 1.3 ms after the chrome cache is a single `ndarray.copy()`:
-`_build_sequence_gradient_colors` hands out a copy of its cached ramp, which on
-an integrative model is 234,184 x 4 float64 -- 7.5 MB -- copied on every frame,
-because the sequence strip re-reads the colours every frame.
-
-Sharing it read-only instead has now been tried **twice**, and the second
-attempt is the one worth recording. By then the one known mutator had been
-fixed: `_recompute_colors_per_ca` takes an explicit writable copy before
-applying per-residue overrides in place. It still failed, and not narrowly --
-**50 failures in the object-menu suite alone**, plus `spectrum`, the per-atom
-sort, colour-by-element and camera persistence.
-
-The conclusion is not "add another copy at the next mutator". It is that
-`_colors_per_ca` is written in place from *many* places, and the copy is not
-defensive against a hypothetical caller — it is a copy the code needs. Anyone
-tempted a third time: the saving is 1.3 ms, and the failure mode is a command
-raising *"assignment destination is read-only"* from a call site that has done
-nothing wrong.
-
-The real fix, if this 2.5 ms is ever worth attacking, is upstream of the copy:
-`refresh_gui_state` calls `get_residue_colors` on every frame purely to notice
-that the colours changed, and the colours change only when a command changes
-them. A change signal on the viewer would remove the call, the copy and the
-signature together. That is a larger change than it sounds, because there is no
-one place a colour changes -- which is exactly why the per-frame re-read exists.
-
-### Rejected — memoising `_recompute_colors_per_ca`
-
-The second attempt on the same 2 ms, and it failed the same way as the first.
-
-`get_residue_colors` is called on **every frame** by the sequence strip -- that
-is how a `spectrum` or a `color` reaches the strip, there being no signal to
-listen to -- and it recomputes the whole per-residue colour array each time. The
-obvious fix is to skip the recomputation when nothing it reads has changed, with
-a key over the colour mode, the residue names, the chains, the atoms, the base
-colour, the per-residue override and the per-atom projection (`_ca_rgba`, hoisted
-above the key precisely so it would be covered).
-
-Result: **152 failures in the object-menu suite**, plus spectrum, the per-atom
-sort, colour-by-element and the appearance suite. Reverted; `view.py` is
-byte-identical to before and all 272 object-menu tests pass again.
-
-The lesson is now well evidenced from two directions -- the read-only attempt
-and this one. **The colour pipeline is mutated in place from many places that a
-key over its declared inputs does not see.** Any further attempt at this level
-is likely to fail the same way.
-
-If the 2 ms is ever worth having, the change is structural rather than another
-cache: give the viewer an explicit **colour revision** bumped by the commands
-that change colours, and have `refresh_gui_state` consult that instead of
-re-deriving the array to notice. That is a real refactor -- there is no one
-place a colour changes today, which is exactly why the per-frame re-read exists
--- and it should be done deliberately, not smuggled in behind a memo.
-
-For scale: after the chrome cache and the frame-rate fix, `_draw` on the
-234,184-bead nuclear pore is **6.7 ms** with the developer instruments on. This
-2 ms is the last large CPU item, and it is guarded by a suite that catches every
-attempt at it -- which is the system working.
-
-## The whole chimol suite segfaults in one process; the files do not
-
-**Found 2026-08-12.** `pytest chisurf/plugins/chimol/test` (3,496 tests) dies
-around 16-17% with `Fatal Python error: Segmentation fault`. The dump says
-**`Garbage-collecting`**, then `_mark_closed` in `hosts/qt/wgpu_view.py`, then
-whatever was allocating when the collection ran -- twice in a row it was
-`geometry/guide_frames.py:_flip_sweep` calling `.tolist()`, once under
-`create`, once under `spectrum`, i.e. two different tests.
-
-That is the same shape as the pyqtgraph teardown crash above and should be read
-the same way: **the named caller is not the culprit.** `_mark_closed` is two
-dict writes; it cannot fault. What faults is the C++ teardown that emitted
-`destroyed` -- a `WgpuMolView` widget abandoned by an earlier test, collected at
-an arbitrary later allocation, with a wgpu poller thread still running.
-
-**It does not reproduce per file.** `test_demos.py` alone -- which contains the
-test that was running -- is clean, so bisecting by the file named in the
-traceback finds nothing. It needs a process that has already built and dropped
-many viewers.
-
-Not fixed. The fix is deterministic viewer teardown rather than leaving the
-canvas to the collector; the `destroyed` connection in `wgpu_view.py` (whose
-comment records two *earlier* shutdown crashes at the same seam) is where to
-start. Until then, run chimol tests **per file or per directory**, which is what
-the project asks for anyway on cost grounds.
-
-
-### Open 2026-08-13 — chimol: `orthoscopic` is a setting nothing reads
-
-Found while giving `reinitialize` a single push path for the display config.
-`camera.orthoscopic` is a registered setting with a default, it appears in the
-settings panel, `set orthoscopic, on` reports success and writes it — and
-**nothing in the renderer ever reads it**. `CameraState._orthoscopic` is set
-only from a restored view tuple, and no projection consults either. So the
-control is fully wired at the settings end and connected to nothing at the
-other.
-
-It is deliberately **not** in `chimol/apply.py`'s `PUSHED_PATHS`: adding it
-there would make a setting that does nothing look wired up, which is the
-failure mode that module exists to end.
-
-Closing it is a feature, not a fix — an orthographic projection matrix, plus
-the two places that derive a distance from the field of view. Until then the
-setting is honest only in that it changes nothing.
-
-### Open 2026-08-13 — chimol: two chrome baseline PNGs are stale after the eye change
-
-`test_chrome_painter::test_the_chrome_is_unchanged_by_the_painter_interface`
-fails for the `panel` and `panel_and_sequence` states, and **only** those two —
-the two that contain the object list. The object list's eye stopped being the
-letter `o` and a hyphen and became a drawn pictogram, so those pixels legitimately
-moved; the other three states (`command_line`, `menu_open`, `movie_transport`)
-still match byte-for-byte, which is what says the change is the eye and nothing
-else.
-
-The fix is one command:
-
-    QT_QPA_PLATFORM=offscreen python -m chisurf.plugins.chimol.test.chrome_baseline
-
-It was **not** run here because every file in
-`chimol/test/renders/chrome_baseline/` is already modified and staged in the
-working tree by another agent instance's in-flight work. Re-capturing would
-write my change into their staged files, and a PNG cannot be split into "my
-hunks" the way a source file can. Whoever owns those staged captures should
-re-run it; the images will then carry both changes, which is correct.
-
-## chimol's full test suite segfaulted (fixed 2026-08-13)
-
-**Symptom.** `pytest chisurf/plugins/chimol/test` died with SIGSEGV around 7%
-of the way in, inside an unrelated test. The file it died in passed on its own,
-and the test it died on moved between runs -- the marks of a fault that is not
-where it appears.
-
-**How to read the fault report.** The give-away is two lines, not the stack:
-
-```
-Current thread ...:
-  Garbage-collecting
-  File ".../renderer/wgpu_view.py", line ??? in _mark_closed
-  File ".../geometry/cartoon.py", line 128 in _transport_ups
-```
-
-`Garbage-collecting` directly above a chimol frame means the code below it did
-not call the code above it. A collection ran at an arbitrary allocation point
--- here, ordinary cartoon geometry -- and destroyed a widget left over from an
-*earlier test*, whose C++ destructor called back into Python.
-
-**Cause.** `WgpuRenderer.__init__` connected a `_mark_closed` slot to Qt's
-`destroyed` signal so rendercanvas's loop would not probe a dead wrapper. The
-slot mutated the instance `__dict__`, and when the last reference is dropped by
-the collector that mutation happens *mid-collection*.
-
-**Fix.** Stop pushing the state out. `_rc_get_closed` and `_rc_close` are
-overridden to ask `_cpp_alive()` -- one cheap C++ call in a `try` -- so the
-question is answered when rendercanvas asks it, on its own stack. No chimol
-code can run during a collection any more.
-
-**Do not reintroduce it.** Two earlier attempts pushed the state from the same
-signal (a keyword-only default holding `self.__dict__`, then a closure over
-it). The first exited 134 at interpreter shutdown *after* every test passed;
-the second is the segfault above. The full history is in the comment block
-above `_cpp_alive` in `hosts/qt/wgpu_view.py`.
-
-
-## Clicking empty space does not clear the selection (open)
-
-`MolView.handle_mouse_click` documents PyMOL's rule -- *"left-clicking away
-from any atom should deactivate the selection"* -- and says that with nothing
-picked it falls through to a `set` of no indices. It does not: a selection
-survives a click on an empty point **inside** the viewport.
-
-Found while wiring picking into the browser host and **not browser-specific**;
-the toolkit-free path is simply where it was first exercised, because that is
-the configuration the page runs. Guarded by a strict `xfail` in
-`chisurf/plugins/chimol/test/test_browser_picking.py`, so it flips to a
-failure -- and starts guarding the behaviour -- the moment it is fixed.
-
-To reproduce, take a point at least 40 px from every projected atom rather
-than a coordinate off the surface: a click the viewer never considers proves
-nothing about the rule, and `(-10000, -10000)` was the first thing tried.
-
-
-## The screenshot helper predates the WebGPU port, and returns a blank image (open)
-
-`test/screenshot.py` is the tool the project rule *"never implement a GUI
-blind"* depends on. It cannot photograph chimol any more, and it **fails
-silently**: the image is a uniform grey rectangle of the right size rather than
-an error.
-
-Cause. The helper finds the 3-D view with
-`widget.findChildren(QtWidgets.QOpenGLWidget)` and captures it with
-`gl.grabFramebuffer()`. chimol's renderer is `WgpuRenderer` -- a plain
-`QWidget` presenting a WebGPU surface -- so there is no `QOpenGLWidget` to
-find. Its whole docstring argues about the offscreen platform plugin and GL
-contexts, which is the *previous* renderer's problem.
-
-Both routes are dead, and neither says so:
-
-* `QT_QPA_PLATFORM=offscreen` + `win.grab()` -> uniform grey. A presented
-  WebGPU surface is not in the widget's backing store.
-* the documented route (real window server, `WA_DontShowOnScreen`,
-  `shoot(win, ..., area="window")`) -> also uniform grey, because the
-  `QOpenGLWidget` search finds nothing and the fallback is the same
-  `widget.grab()`.
-
-Consequence. Any chimol GUI change "verified by screenshot" since the WebGPU
-port was verified against a blank image. The rule has been unenforceable for
-this plugin and nothing reported it.
-
-What a fix needs. The renderer already composites its chrome into the frame
-(`host/qt_overlay.paint_chrome_into`) and `WgpuMeshRenderer` can render
-offscreen -- `test/chrome_baseline.py` and the visual-rendering tests both get
-real pixels that way. So the capture should go through the *renderer*, not
-through Qt: draw a frame into a texture, read it back, and composite the
-chrome, which is also the only route that works for the browser host. Until
-then `screenshot.py` should raise rather than return grey.
-
-
-## Browser clicks land in the wrong place -- two boxes, not one (open)
-
-Picking now runs in the page, and it misses. Not a constant shift: the error
-grows toward the bottom and the right, because the projection and the render
-use **differently sized rectangles**.
-
-The renderer draws with (`hosts/web/page.py`):
-
-    viewport=(0.0, 0.0, self.scene_width() * dpr, self.scene_height() * dpr)
-
-where `Viewer.scene_width/height` *do* subtract the panel column and the
-sequence strip. So the molecule is drawn into a shorter, narrower box -- but
-anchored at **y = 0**, where the desktop anchors it under the strip
-(`CanvasRenderer._scene_viewport` returns `(0, strip, ...)`).
-
-The projection runs on `SceneSink`, which inherits `CameraState.scene_width()`
-and `scene_height()`. Those return the **full** surface -- their docstrings say
-so outright: *"No panel is reserved"*, *"No strip is reserved"* -- so
-`scene_origin_y()` is 0 and the aspect used for the projection matrix is the
-whole canvas rather than the scene box.
-
-So: drawn in one rectangle, projected in another. `scene_origin_y()`'s own
-docstring is the statement of the invariant being broken -- *"both the
-projection and the render viewport need it and they must not disagree by a
-pixel: they are what decides whether a click lands on the atom under the
-cursor."*
-
-**Same root cause as the five missing host features.** `SceneSink` is a sibling
-of `CanvasRenderer`, not a child, so it has no `_internal_gui` and cannot know
-what the chrome reserves; `Viewer` therefore hand-rolls the scene metrics and
-the two halves drift. Re-basing `SceneSink` fixes the offset and the missing
-features together -- see the relocation concept.
-
-**Why the test suite did not catch it.** `test_browser_picking.py` projects an
-atom and clicks at the projected coordinate. That is self-consistent under any
-projection, correct or not: it proves the pick *path* is wired, never that the
-projection agrees with what was drawn. A real check has to render a frame and
-find the molecule's pixels, then click those -- the same "measure it, do not
-re-derive it" rule the trajectory test now follows.
-
-## test_prd_mentions and test_plugin_help_guide_seam are red at HEAD for unrelated plugins (open) — both resolved 2026-09-03
-
-**Found 2026-08-14, during the chimol relocation** (which is *not* the
-cause — verified against HEAD before touching anything).
-
-Two guardrail suites fail on plugins whose modernisation is in flight
-elsewhere:
-
-* ✅ **RESOLVED 2026-09-03** `test_prd_mentions.py`: every current offender was
-  cleaned rather than allow-listed — the `fret/core` forwarders' and
-  `model_manager`'s "(PRD-97)"/"(PRD-38)" parentheticals dropped, the
-  `flc_2d` parity test and `lumis_quest` CREDITS.md reworded, the historical
-  "(PRD-109/122/130/133)" asides in
-  `core/{fluorescence/burst,math/{linalg,optimization},structure/av,
-  fluorescence/tcspc/irf_estimation}` and `gui/chiplot/backends` rewritten to
-  say what happened without the number. The allow-list's genuinely stale lines
-  (`core/fio/trajectory/{__init__,xtc}.py` — the latter file no longer exists)
-  were struck. Both guards green.
-* ✅ **RESOLVED 2026-09-03** `test_plugin_help_guide_seam.py`: the six plugins
-  now ship their `help.md`/`guide.json` — see the plugin-manager-rebuild entry
-  below.
-
-`mfd_prepare` was mid-restructure (its files were staged for deletion in the
-shared index), which is why the PRD fix did not land with the relocation; the
-restructure finished **2026-08-15** and its PRD mentions and the broken
-`ServiceDispatcher.method` registration were fixed together (commit
-`e7f9a3835`). What this entry called "free wins" are now taken.
-
-## ✅ FIXED — lumis_quest: `test_a_hitched_frame_does_not_throw_anybody_through_a_wall` fails on the working tree
-
-**Found 2026-08-14 (T-20260814-05). Fixed by 2026-08-23** — the npcs edit the
-entry blamed landed, and the full lumis + games suite runs green (434 passed,
-3 skipped) with the hitch-step test among them. Kept as a FIXED stub so a
-reader can tell a healed failure from one nobody filed.
-
-**Original text.** Deterministic failure (3/3 runs) in
-`chisurf/plugins/misc/games/lumis_quest/test/test_npcs.py`. The cause is an
-**uncommitted in-flight edit to `api/npcs.py`** (working-tree diff of
--125/+59 lines against HEAD by a peer session, still evolving at time of
-writing) — the test is pure `api.npcs` physics and imports no GUI module, so
-the T-20260814-05 presentation work cannot be implicated. Not fixed by the
-finder because the file is actively owned mid-edit: reverting or patching it
-would discard the peer's work. Whoever lands the npcs change owns the test;
-if it is still red after their landing, the hitch-step resolution in
-`npcs.update` lets a beast end a 0.75 s step inside a solid (observed at
-(710.0, 376.0), a `beast` inside a wall of the test world).
-
-## test_keyboard_layout's browser-host case fails on T-20260814-01's in-flight rewire (open)
-
-**Found 2026-08-14, during the relocation's full-suite run.** The test builds
-`object.__new__(Viewer)` and stubs `viewer.gui`; the half-finished
-`hosts/web/page.py` on disk routes `key()` through `self.sink.on_key_press`
-instead. Fails identically on the pre-move disk state — carried verbatim to
-`~/dev/chimol` — so it is that ticket's to finish, not relocation fallout.
-Full-suite tally after the relocation: 3625 passed, 41 skipped, and this one
-failure.
-
-## Six plugin-suite failures that predate the dependency work (open) — 4 of 6 fixed 2026-09-03
-
-**Found 2026-08-20, during the plugin-dependency change's `pytest test/plugins`
-run.** All six reproduce on HEAD content and are unrelated to manifests,
-discovery or load order; verified by checking the relevant files with
-`git show HEAD:<path>` rather than by assuming.
-
-State after the 2026-09-03 sweep (arm64 env, `QT_QPA_PLATFORM=offscreen`):
-
-- ✅ **FIXED** `burst/test_mmfdb_h2mm_simulation.py::test_model_selection_scan_is_exposed`
-  — the scan is a `tttrlib.DataStore` now, not a frame: `.columns` is the list
-  of `Column` objects and `Column == str` raises the truth-value ambiguity the
-  test showed. The test's spelling moved to `.names`
-  (`list(h2mm.scan.names) == [...]`); the store's column order is first-seen,
-  which is the order `store_from_rows` builds, so the assertion holds. Whole
-  file: 5 passed.
-- ✅ **FIXED, and it was hiding a real defect**
-  `burst_selection/test_export_guards.py::test_export_bur_writes_non_empty_frame`
-  — the test fed a `pandas.DataFrame` where production holds a `DataStore`, and
-  `write_csv_table` no longer converts frames, so the export silently reported
-  "Export failed". **Behind it, both exporters (`export_bur`,
-  `export_flr_cif`) guarded on `self._last_frame.empty` — a pandas attribute
-  the DataStore does not have — so in production, with a real table, the
-  guard itself raised `AttributeError` and neither export could run at all.**
-  The guards now test `n_rows() == 0`; the test builds its table through
-  `store_from_rows`, the way the pipeline does. 6 passed.
-- ✅ **FIXED** `test_plugin_entrypoints_import[fps_json_editor]` and `[fret]`'s
-  root cause is unchanged — `IMP.bff.fret` does not exist — **but the
-  environment question is now answered**: the forwarders
-  (`plugins/modelling/fret/core/*.py`) name a Python subpackage that exists
-  only in `/Users/tpeulen/dev/imp.bff/cmake-build-debug`, and that build
-  cannot even initialise under the arm64 env (its `IMP/__init__.py`
-  path arithmetic fails before any import). The env's installed build
-  (`/Users/tpeulen/dev/imp/cmake-build-arm64`) has the flat C++ surface —
-  `fret_efficiency`, `FretSpectrum`, `histogram_rada`, … — and no `fret`
-  subpackage. So this is the PRD-97 stream's decision, on the record now:
-  either install the `IMP.bff.fret` Python portion into the active imp build,
-  or de-forward `fret/core` onto the flat surface. **Still open.**
-- **Still open on purpose** `test_plugin_demo_gating.py::test_every_game_declares_itself_a_demo`
-  and `::test_opting_in_brings_the_demo_hub_back` — the three game manifests
-  still carry `"demo": false` and `chisurf/gui/chigame/` is still modified in
-  the shared tree (re-verified 2026-09-03). It belongs to whoever owns the
-  chigame work; flipping the flag hides the Games entry from the default menu.
-
-Tally at the end of the original change: 6 failed, 319 passed, 1 skipped (down
-from 18 failed, since 12 of the original failures *were* caused by the change
-or by manifest-scanning tests that mistook chimol render baselines for plugin
-manifests, and were fixed).
-
-## Pre-existing failures found during the plugin-manager rebuild (open) — both fixed 2026-09-03
-
-**Found 2026-08-20.** None were caused by that change; each was checked against
-the working tree's own state before the rewrite began.
-
-- ✅ **FIXED 2026-09-03**
-  `test/test_ui_schemas.py::test_the_written_schemas_match_the_generator` —
-  the schema work flagged as uncommitted in August has long since landed; the
-  written schemas under `chisurf/core/dataspec/schemas/` had simply drifted
-  from the generator again. Regenerated with
-  `python -m chisurf.core.dataspec.schema` (`guide.schema.json` +16 lines,
-  `view.schema.json` +243). The whole file: 325 passed.
-- ✅ **FIXED 2026-09-03**
-  `test/test_plugin_help_guide_seam.py::test_every_gui_plugin_has_help_and_guide`
-  — the six unlisted GUI plugins (`mfd_prepare`, `plot_settings`,
-  `tttr_to_pto`, `filetools`, `lumis_quest`, `ninja_adventure`) now ship
-  `help.md` and `guide.json` beside their GUI modules, written against what
-  each tool actually does; no code change was involved, exactly as the seam
-  promised. Whole file: 121 passed, 20 skipped. The allow-list was not
-  touched.
-
-## ✅ FIXED — chiplot's WGPU backend: middle-drag opens a selection rectangle instead of panning
-
-**Found 2026-08-20** (user report). In the `wgpu` native chiplot backend
-(`chisurf/gui/chiplot/backends/wgpu/_canvas.py`), a middle-button drag does not
-pan the view the way it does in pyqtgraph — instead it opens a rubber-band
-selection rectangle, whenever the "left button pans" preference
-(`gui.plot.pyqtgraph_config.leftButtonPan`) is off, i.e. the panel is in
-left-drag-zooms mode.
-
-The docstring on `_mouse_press` already states the intended pyqtgraph
-semantics: "Only the *left* button grabs a region, a marker or the corner
-button — pyqtgraph's items ignore the middle one, so a middle drag pans across
-a fit range instead of moving it." `_is_view_drag_button` correctly admits both
-`QtCore.Qt.LeftButton` and `QtCore.Qt.MiddleButton` into the drag path
-(`_canvas.py:856-864`). But the branch that decides pan-vs-rubber-band
-(`_canvas.py:920-927`) only inspects `self._left_button_pans()` — it never
-checks *which* button is down:
-
-```python
-if self._left_button_pans():
-    self._panning = True
-    ...
-else:
-    self._rubber = (px, py, px, py)
-```
-
-So with `leftButtonPan=False`, a middle-button press falls into the `else`
-branch and starts a rubber-band drag exactly like a left click would, even
-though the middle button is supposed to always pan regardless of that
-preference. With `leftButtonPan=True` (the default) the bug is invisible,
-because both buttons pan anyway — that is likely why it was not caught by the
-existing tests.
-
-**Fixed 2026-08-20**: the pan branch now also fires on a middle-button press
-regardless of the preference (`_canvas.py:923`,
-`if event.button() == QtCore.Qt.MiddleButton or self._left_button_pans():`).
-Covered by
-`test/gui/test_chiplot_wgpu.py::test_a_middle_drag_still_pans_when_left_draws_a_zoom_rectangle`,
-which sets `leftButtonPan=False` via `set_left_button_pans(False)` and asserts
-a middle drag still pans (`_panning is True`, `_rubber is None`, range
-changes). Full file: 57 passed.
-
-The legacy `opengl` backend (`chisurf/gui/chiplot/backends/opengl/_canvas.py`)
-has no equivalent pan/rubber-band logic at all, so this is specific to the
-WGPU backend, which is the one under active migration
-([chiplot](../subsystems/chiplot.md)).
-
-
-# chimol: three things a documentation grab walked into (2026-08-31)
-
-Found while making `docs/guides/make_screenshots.py` regenerate the figures for
-[the molecular-viewer guide](../../docs/guides/44_molecular_viewer.md). Two of
-the three are chimol's, filed here because chimol is a companion checkout with
-another instance active in it; none is fixed.
-
-## The Objects dock is retired, and the overlay that replaced it lists nothing
-
-`chimol/hosts/qt/window.py` states it plainly — *"Objects is permanently hidden
-(the list is in the viewport)"* — so `window.objects` no longer exists and the
-old grab raised `AttributeError`. That part is intended.
-
-What is **not** intended: the viewport Object List draws only `all` and `sele`.
-With three real objects loaded it still shows those two rows, before and after
-`refresh_objects()`:
-
-```python
-win = MolViewPluginWindow(); win.load_structure_from_path(pdb)
-Cmd(win).do("create ligand, resn NAG")
-list(win.viewer.objects)      # ['obj2', 'obj3', 'obj4']
-win.refresh_objects()         # overlay still shows only `all` and `sele`
-```
-
-So the panel that replaced the dock does not yet do the dock's job. Consequence
-for the docs: `chimol_objects_panel.png` and `chimol_groups_panel.png` in guide
-44 show the **retired** Qt dock. They were deliberately *not* regenerated from
-the overlay — that would swap two figures that show the old UI correctly for two
-that show the new UI wrongly. The guide's prose around them (rows carrying
-PyMOL's five **A S H L C** menus) still describes what the overlay draws, so it
-is not misleading, only dated.
-
-## The ray tracer draws a mesh contour as streaks
-
-`isomesh` renders as a clean wireframe cage through the WebGPU path and as long
-crossing bars through `ray`. Same scene, same commands:
-
-```
-molmap all, 6
-isomesh m, molmap_6     # NO level -- see below
-orient all
-zoom all
-ray out.png, 900, 650
-```
-
-This blocks regenerating `chimol_molmap.png` and `chimol_map_isomesh.png`, which
-are chrome-free ray renders; the existing files are correct and were left alone.
-
-**Worth knowing whichever path you use:** give `isomesh` **no level**. A map
-opens already contoured, and a level argument *appends* a second contour rather
-than restyling the first — the solid surface the map opened with then hides the
-mesh, and the figure looks like `isomesh` silently did nothing.
-
-## `orient` with no target resolves nothing on a bare viewer
-
-`Viewer.add_structure(..., name="148l")` does not take the name; the object is
-auto-named (`obj2`). A bare `orient` / `zoom` then fails with *"orient: nothing
-to orient"* and leaves the camera wherever it was — which reads as a badly
-framed render rather than as an error, because the message goes to the error
-callback a script usually discards. Name `all` explicitly.
-
-# ~~H2MM's fallback engine is correct but 300x slower than the reference~~ — RESOLVED (2026-08-31)
-
-Found immediately after fixing the `NameError` that stopped `_estep` running at
-all (see `okf/log.md`, same date). With the fix, `test_ab_vs_h2mm_c.py` gets
-*past* the correctness assertion —
-
-```
-assert mine.loglik == pytest.approx(ref.loglik, rel=1e-4, abs=1.0)   # passes
-```
-
-— and fails the one after it:
-
-```
-numba H2MM 307.55x the H2MM_C time/iter - performance regression
-assert 307.54749331660156 < 1.5
-```
-
-**This is not a regression from that fix.** It is what retiring numba left
-behind: `core/h2mm.py` is now interpreted Python running an `O(N·n²)` loop
-photon by photon, and the guard was written when a JIT stood behind it. Before
-the fix the same test failed earlier and louder, with a `NameError`.
-
-**It does not affect normal use.** `core/engines.py` prefers the tttrlib C++
-backend (`_use_tttrlib()`) and only falls back to this module, so the GUI, the
-wizard and the export all take the compiled path. The slow path is what you get
-when tttrlib is missing, when a caller reaches into `h2mm.fit_states` directly
-(which is what the benchmark does), or when the tttrlib call raises and the
-fallback catches it — and that last one is silent apart from a log line.
-
-Two things are therefore stale rather than broken, and neither is fixed:
-
-* the guard asserts a `< 1.5x` ratio that the architecture no longer promises
-  for this module. Either it should compare the *tttrlib* path against the
-  reference — which is the path users get — or it should be marked as measuring
-  the fallback and given a realistic bound;
-* the fallback is still called "the numba engine" in `engines.py`
-  (`backend()` returns the string `'numba'`, and the fallback warning names it),
-  which will mislead the next reader: there is no numba left in it.
-
-**Resolved the same day, by deleting the fallback** (`T-20260831-02`). Neither
-follow-up was needed in the end:
-
-* the perf guard now benchmarks the engine users actually get, and **passes** —
-  1.04× the reference on the 2-state case and **0.48×** on the 3-state one, so
-  ChiSurf is *faster* than `H2MM_C` there. Both parametrisations had been red;
-  they are green.
-* nothing is called "the numba engine" any more because there is no second
-  engine. `active_backend()` returns `'tttrlib'` or raises.
-
-`core/h2mm.py` went 1210 → 376 lines, keeping only the data types
-(`H2mmModel`, `BurstPhotons`, `prepare_bursts`, `factory_model`,
-`simulate_bursts`). The whole H2MM + burst_gs suite went from 535 s to 138 s,
-which is the same slow EM leaving the tests.
-
-# Further tttrlib delegation — the five candidates, settled (2026-08-31)
-
-The table below was published earlier the same day as **candidates, not
-findings**: five unused tttrlib entry points sitting next to an in-tree module
-that *might* implement the same thing. All five have now been settled by
-importing and A/B-ing on real data. Three were false candidates — the symbol
-name matched a subsystem and computed something else — which is exactly the
-failure mode the original note warned about.
-
-| tttrlib symbol | what it actually computes | verdict |
-|---|---|---|
-| `BurstML`, `BurstMLFitResult` | FRET_burstML (Hoffmann *et al.*): a **joint diffusion + kinetics + photon-counting** likelihood over burst photon sequences, 5·n parameters (`n0`, `tau_diff`, `k`, `f`, `E`, `bkg`), radial coordinate discretised and eigendecomposed per parameter set. | **false candidate.** `core/fluorescence/mle/` is a typed facade over `fit2x` (`DecayFit2`/`DecayFitProblem`) and carries no algorithm of its own; the nearest in-tree relative of `BurstML` is `burst/gopich_szabo.py`, which has no diffusion term. Nothing to delete — this is a *missing feature*, not a duplicate. |
-| `BurstFeatureExtractor`, `BurstFeature` | Per burst `[start, stop, size, duration (s), rate (Hz)]`, per-channel photon counts, and uncorrected `E = A/(D+A)`. | **false candidate, but verified numerically.** On 293 bursts of `BH_SPC132.spc` it reproduces ChiSurf's `.bur` arithmetic exactly (size max\|Δ\| = 0, duration 1.8e-15 ms after the s→ms conversion). It is a strict *subset* — no per-detector first/last photon, no per-detector duration or mean macro/micro time, no per-window count rates, no corrected E/S (γ/α/β/δ) — and it only reads a `tttrlib.BurstFilter`, which ChiSurf never has: its boundaries come from eight searches, several of them in-tree (BOCPD, CUSUM, Kalman). Delegating five of ~40 columns would add a conversion path without removing an algorithm. |
-| `DecayPhasor`, `StreamingPhasor` | Sine/cosine moments of a decay, normalised by its integral, with IRF calibration. | **duplicate — deleted.** The imaging phasor already delegated (`CLSMImage.get_phasor`) and `StreamingPhasor` was already live in the acquisition pipeline; the duplicate was the unreachable `core/fluorescence/tcspc/phasor.py`. See [FLIM and the phasor approach](imaging-flim-phasor-theory.md) for the measurement. |
-| `maxent_invert` | Skilling–Bryan MEM: minimise `‖Ax − b‖² − ν²·S(x)` by an active-set bound-constrained QP inside a Newton outer iteration. | **duplicate — deleted.** `core/math/optimization/mem.py::maxent` had the same signature, no callers, and the **wrong sign** on the entropy gradient: it returned `chi2` as the objective but `grad_chi2 − ν²(1 + ln x)`, which minimises entropy instead of maximising it. On a 3-peak/30-node inversion its objective is worse at every ν, and at ν = 30 it drives S to 5.5e-6 (every component on the 1e-8 floor) where the compiled solve holds S = −87. tttrlib's own registry entry had already recorded `mem.py` as "not equivalent … which is why that was rejected as a reference". |
-| `OptsCluster`, `ResultsCluster` | **Single-molecule localisation**: 2-D Gaussian PSF fitting (`fit2DGauss`, `maxNPeaks`, `elliptical_circular`), whose results carry `peak_x/y`, `sigma_x/y`, `background`, `chi2`, `imageID`, `pixelID`. | **false candidate**, as the earlier tracker already suspected. Nothing to do with `core/ml/cluster/`. |
-
-Also settled while surveying, and *not* from the table:
-`plugins/core/acq/tcspc_devices/simulation/core/algorithms.py` picked the
-excitation focus with `elif <name> and hasattr(tttrlib.SimGrid, <ctor>)` ending
-in `else: # gaussian3d (default / fallback)`, so a library missing
-`gaussian_lorentzian` or `numeric_from_file` silently simulated a different
-optical model. It now raises. And `core/ml/cluster/_hdbscan.py`
-carried an in-tree `O(n²·d)` brute-force core distance and an `O(n²)` Prim MST
-behind a `hasattr` probe on `tttrlib.mutual_reachability_mst`. They agreed
-**bit for bit** (max\|Δ\| = 0 in core distance, in every MST edge weight and in the
-edge set) on 500 and 2000 real photons from `BH_SPC132.spc` at `min_samples`
-3/5/10, and were 700–3000× slower. Deleted; a missing kernel now raises.
-
-Already delegating, listed so nobody re-checks: `DecayFitNExp` (tcspc models),
-`StreamingCorrelator` (fcs), `GopichSzabo`, `HMM`, `TwoCDE`, `BVA`,
-`tcspc_run_mem`, `HmmSurrogate`, `sim_occupation_fractions`, `SimEngine`,
-`richardson_lucy_2d`, `PdaBurstLikelihood`.
-
-**What is left from this survey.** Nothing to delete. One genuine *gap*:
-`BurstML` implements a method ChiSurf does not have at all — freely-diffusing
-burst analysis where diffusion through the focus, conformational kinetics and
-photon counting are fitted jointly, without binning. `burst_gs` fits kinetics on
-photon sequences but assumes the burst is the observation window and carries no
-diffusion term, so the two are complementary rather than competing. The entry
-point is `tttrlib.BurstML` (`set_burst_data(times_ms, colours, offsets)`, then
-`fit(init, lower, upper, n_states, n_colours, jmax, qmax, t_th, n_th)`);
-`examples/single_molecule/plot_burstml_two_state.py` upstream documents the
-5·n parameter layout and simulates data the likelihood's own forward model
-generated, which is the fixture a plugin would be built against.
-
-**The method that worked**, and the traps it caught, are worth reusing:
-
-- Run the A/B on a **real** file, not synthetic data (synthetic photons put 2CDE
-  into its sentinel branch and proved nothing).
-- Call it **the way callers call it** (passing `[]` for BVA's micro-time ranges
-  made a correct path look like it returned only zeros).
-- **Match the unit and index conventions before concluding anything.**
-  `DecayPhasor` takes frequency in *cycles per micro-time channel*, not per
-  nanosecond; passing the physical frequency makes it return `(≈0, ≈0)` and look
-  like a different quantity entirely. `BurstFeatureExtractor` reports duration in
-  seconds and rate in Hz where the `.bur` contract is ms and kHz. Both looked
-  like disagreements at first and were unit mismatches.
-- Report `max|Δ|`, never "they agree" — and when they differ, settle it against
-  an **independent third** calculation rather than against either side. The
-  MaxEnt verdict came from SciPy L-BFGS-B on the documented objective; the
-  phasor verdict from writing the definition out as a weighted sum; the MST
-  verdict from SciPy's `minimum_spanning_tree` over an explicit
-  mutual-reachability matrix.
-
-## `.native` calls outlive the backend they were written against
-
-**2026-09-02.** `lightpath_simulator/gui/node_types.py` reached past chiplot
-with `plot_w.native.hideAxis('left')` and three more, under a comment saying
-chiplot had no verb for it. chiplot has had `set_axis_visible` for a while, so
-the comment outlived the gap it described -- and when chiplot's native backend
-stopped being pyqtgraph, `hideAxis` became an `AttributeError` that took the
-whole node factory down with it and left the beam-path simulator unable to
-build its default path.
-
-Fixed there. The general shape is the risk: **a `.native` call is a bet on
-which backend chiplot happens to have**, and it is invisible to the import
-guard because it reaches pyqtgraph without importing it.
-`test/chiplot_native_allowlist.txt` is the list of remaining bets.
-
-## RESOLVED 2026-09-03 — `IMP.bff.av` no longer exists — three test/models failures (2026-09-02)
-
-`chisurf/core/structure/av/__init__.py` imported
-`IMP.bff.av.compute.compute_av`, but the installed imp build (the arm64 env's
-`/Users/tpeulen/dev/imp/cmake-build-arm64`) carries no `IMP.bff.av` Python
-subpackage — the PRD-117-style move put the builder on the flat `IMP.bff` C++
-surface. Failed: `test/models/test_fret_structure.py` (both tests),
-`test/fluorescence/test_structure.py::test_labeled_structure`, and
-`test/models/test_detector_setups.py::test_a_missing_setups_file_never_blocks_a_headless_run`
-(the last two only through shared import/state).
-
-**Fixed 2026-09-03** by pointing the wrapper at the new surface — verified by
-introspection and by running the AV parity set, not by renaming:
-
-* `_compute_av()` → `IMP.bff.compute_av`, which takes **one (N, 4) xyz+radius
-  array** and `r1/r2/r3` separately (no `dye_radii=`, no `backend=`), and
-  returns an `AccessibleVolume` read through `get_ng()/get_density()/
-  attachment_point`.
-* The other lazy imports moved to module-level functions that exist now:
-  `density_to_points` (returns one `(n, 4)` array, not `(n, points)`),
-  `random_distances`, `av_pair_statistics` (deterministic across calls;
-  takes the point clouds directly), `mean_position_distance`,
-  `histogram_rda` (takes **point arrays**, no longer the duck-typed AV —
-  real `States` or nothing), `split_contact_volume_masks` (returns
-  `[contact_mask, free_mask]`, wants 2-D radius/centre arrays),
-  and `IMP.bff.DynamicAccessibleVolume` (built from the real upstream AV plus
-  an `ObstacleAtoms`; `dye_radius` renamed `probe_radius`).
-* **The site strip is the load-bearing part.** With the FRETStructure model
-  defaults (`linker_width=4.5`, `radius1=4`, grid 0.5) the raw-array door
-  returned **zero** points for the hGBP1 18/577 sites while upstream's own
-  PDB door returned 106k for the same parameters — because the PDB door
-  strips the attachment residue to backbone + attachment atom
-  (`default_strip_mask`), which is what keeps the source from obstructing
-  itself. The wrapper now applies the same keep-set before calling.
-* `allowed_sphere_radius=None` now passes the **derive sentinel** (`-1.0`)
-  instead of the flat settings value 2.0. Upstream derives
-  `max(1.5, linker_width/2 + grid/2)`; the search inflates obstacles by half
-  the linker width, so a flat 2.0 at `linker_width=4.5` walls the source in —
-  exactly the fps.json-door bug upstream's `AV.h` documents as fixed by the
-  same derivation. The yaml key `fps.allowed_sphere_radius` is no longer read
-  by the wrapper.
-
-With `QT_QPA_PLATFORM=offscreen`, `test/fluorescence/test_structure.py`
-(7), `test/models/test_fret_structure.py` (3) and
-`test/models/test_detector_setups.py` (5) all pass. The Qt-offscreen
-platform is required for the last two — bare `QApplication([])` aborts the
-interpreter headless, which had masked these tests' progress earlier.
-
-**`DynamicAV` was rewired end-to-end the same day** (it shared the dead
-import): the upstream class renames every field to a getter
-(`get_diffusion_map`, `get_quenching_rate_map`, `get_fret_rate_map`,
-`get_rate_map`, `get_occupancy`), needs `update_diffusion_map()` before
-`update_occupancy()` will run, and `donor_decay` takes `(t_max, t_step,
-n_out)` positionally returning a `GridDiffusionResult` read through
-`get_time/get_fluorescence/get_density`. The PET quenching table is now
-`PETParametersMap`: ChiSurf's `structure.json` `Quencher` block
-(`{RES: {ATOM: [rate (1/ns), contact_distance (Å)]}}` — the residue-varying
-number is the rate, the shared 2.9 Å the contact radius) maps onto
-`PETParameters(comp_id, rate_constant, contact_distance)`. Exercised
-end-to-end on hGBP1 site 18 (quenching field max 5.55/ns, occupancy
-normalised, decay integrated to f(∞)=0.067). One honest gap: upstream's
-`n_out` sampling semantics returned fewer samples than requested in the
-smoke test, and the AV-decay model (`av_decay.py`) has no test coverage of
-its own — nothing pins the output length the fit sees.
-
-The fret-plugin forwarders still naming `IMP.bff.fret.*` are a *separate*
-gap and remain open — see the plugin-suite entry below.
-
-## Bounded LM stalls when the bounds span decades (2026-09-02) — FIXED
-
-Fixed via [PRD-120](../prds/prd-120.md) (2026-09-02): `IMP.bff.Minimizer::fdjac2_step`
-takes the smaller in magnitude of an internal-relative and an
-externally-relative forward-difference step for two-sided bounds, so a
-decade-spanning box no longer collapses the LM step. ICS 2D-Gaussian
-chi2r 608 → 1.03 bounded, matching unbounded. `test_graph_fit_ics.py`'s
-bounds-off workaround is gone.
-
-## ✅ FIXED — `pch_mixture` indexes `avg_numbers` by the length of `brightnesses`, and reads past the end (2026-09-02)
-
-Filed against tttrlib by `chisurf/core/models/pch/pch.py`'s `pch_mixture`
-wrapper, which raised a defensive `ValueError` in front of the delegation and
-documented the bug in its own docstring ("filed upstream ... this raises
-until it is fixed there"). Confirmed **fixed in tttrlib**, `okf/BUGS.md`
-("`pch_mixture` indexes `avg_numbers` by the length of `brightnesses`, and
-reads past the end", fixed 2026-08-10): a mismatched `(brightnesses,
-avg_numbers)` pair used to be read with no bounds check — not a crash, a
-*silent* one, because the `avg_numbers[s] <= 0.0` guard on the very next line
-then skipped the species whose occupancy read past the end into zeroed
-memory, and the result was a normalised, finite histogram of *fewer species
-than were asked for*. `pch_mixture` now throws `std::invalid_argument` naming
-both sizes, surfaced to Python as `ValueError`.
-
-**Verified present in the environment chisurf actually runs in**, not just
-in the tttrlib checkout: the `arm64` conda env's installed
-`tttrlib.pch_mixture` raises `ValueError: pch_mixture: brightnesses (3) and
-avg_numbers (1) must have one entry per species` for a mismatched pair,
-2026-09-02. The chisurf wrapper's own length check is kept regardless, as
-defense in depth (one call earlier, a message this module controls, and no
-dependency on which tttrlib build happens to be linked) — its docstring now
-says so instead of "filed, awaiting a fix". `FidaModel` does not go through
-`pch_mixture` (it uses the pure-Python `fida.fida_pch` generating-function
-path) and was not affected by this defect; its own axis problem is the
-separate refusal documented under PRD-121 in `okf/prds/prd-121.md`.
-
-## `AnisotropySpectrum` applies the G-factor before the mixing (2026-09-02)
-
-Found porting the MFD patterns onto the graph's producer nodes (PRD-128).
-The engine node's polarised mixing applies ``G`` in a different slot than
-the Schaffer form the MFD side derives from: at ``G = 1`` the two spellings
-are algebraically identical for every ``l1``/``l2``, away from it they are
-not (at ``G = 2``, ``l1 = l2 = 0.1`` the recovered anisotropy differs by a
-factor of two). `chisurf/core/fluorescence/mfd/patterns.py`
-(`_polarized_spectrum`) works around it by driving the node at ``g = 1``
-and applying ``G`` afterwards as a perpendicular-channel gain — one
-multiplication, not a second copy of the algebra. **Not corrected in the
-node** because `AnisotropySpectrum` must stay bit-identical to
-`chisurf.core.fluorescence.anisotropy.decay.calculcate_spectrum`, which the
-fitted TCSPC models are pinned against; fixing the ordering is an
-engine-side change that must move both together, with the VV/VH parity
-tests re-based in the same commit.
-
-## No `AcceptorSpectrum` producer node — the sensitized-acceptor transform is a second implementation (2026-09-02)
-
-`mfd/patterns.py::acceptor_lifetime_spectrum` computes the sensitized
-acceptor's rise/decay spectrum in numpy because nothing in `IMP.bff` emits
-it — the decay graph's producers cover the donor (`FretSpectrum`) and the
-polarisation (`AnisotropySpectrum`); no fitted TCSPC model has needed the
-acceptor rise yet. The transform belongs *in* the engine (an
-`AcceptorSpectrum` node taking the quenched donor spectrum plus ``tau_a``
-and ``tau0``); until that node exists the numpy transform stays, stated
-loudly in its docstring rather than hidden behind a fallback. This is the
-one recorded exception to PRD-128's "patterns.py computes no spectrum
-algebra of its own".
-
-## RESOLVED 2026-09-03 — `test_change_dihedral` red: the test relied on two accidents, not on the dihedral machinery
-
-`test/fluorescence/test_structure.py::Tests::test_change_dihedral` expected
-zeroing ``omega`` and calling ``update()`` to move the first atoms;
-coordinates came back unchanged. **Both halves of the premise were wrong, and
-neither had anything to do with the dihedral machinery:**
-
-1. **``s1.omega *= 0.0`` never wrote anything.** The ``omega`` getter returns
-   ``internal_coordinates[self._omega_indices]['d']`` — fancy indexing, hence a
-   **copy** — so the in-place multiply modified a temporary. True since the
-   property was introduced (2019); the *setter* writes through, the augmented
-   assignment does not.
-2. **The first atoms cannot move under ``omega`` at all.** The omega rows sit
-   at the CA atoms; residue 1's row carries dummy anchors ``(0, 0, 0)``, and
-   the first *effective* omega is the CA of residue 2 — atom 7. Atoms 0–6
-   (N, CA, C, O, CB, … of MET 7) are built before any omega and are unmoved by
-   a real omega write (verified: zeroing every omega moves 3449/3456 atoms, max
-   Δ 170 Å, first mover exactly atom 7).
-
-The test had been green because the old internal→cartesian reconstruction was
-lossy enough to jiggle the first atoms on every ``update()``; the numba-removal
-stack made the round-trip exact (Δ ≈ 2e-15), which turned the dormant no-op
-into a red assertion. Fails identically on a clean worktree at HEAD, so it was
-never working-tree fallout.
-
-**Fixed the test** (2026-09-03): set ``s1.omega = np.zeros_like(s1.omega)``
-through the property, then assert atoms `[:7]` stay and atoms `[7:]` move.
-Not from the 2026-09-02/03 PRD wave; the internal-coordinate code was never
-wrong. Sibling `test_labeled_structure` was the already-recorded
-`IMP.bff.av` import baseline — also fixed, see above its entry.
-
-## The `common.py` move left two stale `cs.core.common`/import sites — 24 pda2c tests red, one PDB parse path dead (found & fixed 2026-09-03)
-
-The working tree's `chisurf/core/common.py` → `chisurf/core/support/common.py`
-relocation (part of the large uncommitted refactor) did not move all of its
-callers with it. Three separate symptoms, one cause:
-
-* `chisurf/core/models/pda2c/simple.py` imported `Pda2cModelMixin`,
-  `mask_zero_photon_bins`, `pda_1d_residuals_from_s1s2` and
-  `resolve_fit_settings` from `chisurf.core.support.common` — the *relocated
-  general helpers* module — when they live in
-  `chisurf/core/models/pda2c/common.py`, the *pda2c* module of the same
-  basename. Every import of `simple.py` raised, which took down
-  **24 tests** across `test_pda2c_diagnostics.py` (12),
-  `test_pda2c_statistics.py` (9) and `test_pda2c_saw_nu.py` (3) with one
-  `ImportError`. **Fixed**: the import now names `chisurf.core.models.pda2c.common`.
-  All 47 pda2c tests pass.
-* `chisurf/core/fio/structure/coordinates.py` still spelled the old namespace
-  eight times (`cs.core.common.atom_weights`, `CHARGE_DICT`,
-  `TITR_ATOM_COARSE`, `VDW_DICT`) — even though it *already imported*
-  `chisurf.core.support.common`. Killed `parse_string_pdb`'s mass/radius
-  assignment and the PQR writer. **Fixed** to the `chisurf.core.support.common`
-  spelling; found because `test_structure_Structure` failed with
-  `module 'chisurf.core' has no attribute 'common'`.
-* `chisurf/core/structure/av/__init__.py:564` had the same stale
-  `cs.core.common.quencher` reference. **Fixed** the same way.
-
-The trap worth keeping: `support/common.py` and `models/pda2c/common.py` share
-a basename, and a mechanical `chisurf.core.common` → `chisurf.core.support.common`
-rewrite pastes over *both* kinds of caller. A file that stopped importing is a
-red suite; a file that now imports the wrong `common` and silently loses
-`atom_weights` is a wrong-answer path — the PDB parser's `except KeyError`
-printed "Cloud not assign parameters" and kept going.
-
-## Intensity trace / File tools defects found while documenting them (2026-09-23)
-
-Found while writing `docs/guides/74_intensity_traces_and_file_tools.md`; not
-fixed in that change because `chisurf/plugins/tttr/intensity_trace/__init__.py`
-is a 1700-line legacy Qt + direct-pyqtgraph widget (on
-`test/pyqtgraph_import_allowlist.txt`), and touching it obliges the chiplot
-port. Whoever takes that port should fix these with it:
-
-* ~~**Off-by-one in every `.bst` these tools write.**~~ **Fixed 2026-09-23**:
-  both writers now emit `stop - 1` and drop empty windows
-  (`tttr_time_windows/api/io.py::save_bst`, `intensity_trace.save_burst_ids`;
-  guard `tttr_time_windows/tests/test_bst_inclusive.py`). Original report:
-  `intensity_trace.save_burst_ids`
-  and `tttr_time_windows/api/selection.py::compute_bids_from_tttr` write the
-  second column as `searchsorted(..., end)` — the first photon *after* the
-  run/window (half-open). `core/fio/fluorescence/burst.py::generate_burst_dataframe`
-  (used by BID → Analysis) documents the stop as the **last photon, inclusive**.
-  Each run/window therefore gains one photon when read back. Verify on
-  `BH_SPC132.spc` with 1000 ms windows: row 0 is `0 2788`, row 1 `2788 5620`.
-* **Fallback routing mode bins one channel.** With no detector setup,
-  `process_ptu` passes only `selected_detectors[0]` to
-  `_process_routing_channels`; the default (all eight "Routing Channel" boxes
-  ticked) therefore shows only channel 0, and nothing if channel 0 is absent.
-* **"FRET efficiency" is `ch0 / sum`** of whatever detector is first; with the
-  donor first it is 1 − E_PR. The bottom trace plot is x-labelled "FRET
-  Efficiency" though its x axis is time.
-* **Layout:** the Processing/HMM tab widget and the plot widget share stretch
-  equally, so ~40 % of the window is empty control area and the stacked plots'
-  y-labels overlap; the histogram axis says "Counts (log)" on a linear axis.
-* **No `help.md` / `guide.json`** for the intensity-trace tool (CLAUDE.md
-  requires both); README.md names `chisurf.core.math.hmm` while the code uses
-  `chisurf.plugins.core.hmm`.
-* **TTTR Split / Convert:** the "µ-time binning" choice is never applied —
-  `SplitterViewModel.micro_time_binning` is not used by `do_split`.
-* **BID → Analysis GUI:** `process_all` has its `try/except` commented out, so
-  one failing file aborts the batch; `README.md` says BUR is the default output
-  while `convert_bid_file` defaults to `{"pto"}`.
-* **tttrlib:** `TTTR.get_intensity_trace` docstring says the window is in
-  milliseconds; it is in seconds (0.005 → 12466 bins over 62.3 s). Belongs
-  upstream in tttrlib.
-* **Time Windows preview** draws one `vline` per window over the whole file
-  (6000+ lines at 10 ms on a 1-min file) and the `style="dash"` pen renders
-  solid.
-
-## TTTR: Generate Decay / TTTR: Correlate compute wrong axes and error bars (found 2026-09-23)
-
-Found while documenting both tools (`docs/guides/73_tttr_decay_and_correlation.md`,
-"Known defects"); the docs session was not cleared to edit plugin code, so none
-is fixed. Re-derive with the grab script's probe: load
-`test/data/tttr/BH/132/BH_SPC132.spc`, histogram detector 0, correlate 0 × 8.
-
-1. **Correlate — error bars inverted.** `Correlator.run` builds
-   `ey = 1.0 / w.mean(axis=0)`, but `Correlator.weight` returns
-   `fcs.noise(...)`, which is a *standard deviation* (every reader in
-   `core/fio/fluorescence/fcs/` inverts it to get a weight). Measured: `ey` 0.32
-   at 13.5 ns (G = 12.8) and 15.9 at 127 ms (G = 1.08). Fix: `ey` = rms of the
-   split σ over √n_splits; guard test: `ey` at the longest lags < `ey` at the
-   shortest. Blocks any weighted FCS fit of this tool's output.
-2. **Correlate — Fine mislabels the lag axis.** With `set_microtimes` the
-   correlator's lags are micro-time ticks, but `tau = x * mt_clk * 1e3` scales
-   by the macro clock. Measured: fine curve ends at 31 µs, labelled 127.4 ms.
-   Fix: scale by `self.p.dt` (already mt_clk / effective_n_tac when fine).
-3. **Generate Decay — axis in seconds and TAC div ignored.** `make_histogram`
-   uses `photons.dt` (seconds, undivided) and `minlength=photons.n_tac`, so
-   x is in s (lifetime models expect ns) and with TAC div 16 the decay is drawn
-   over 0.84 ns followed by empty channels. `onTacDivChanged` shows
-   `(nTAC + 1) / div` (4097 at div 1). Fix: ⌈n_tac/div⌉ channels at
-   `self.dt` (ns, divided).
-4. **Generate Decay — curve list never shows curves.** The selector is built
-   with `experiment=tcspc` and filters on `isinstance(d.experiment, ...)`; the
-   tool's `DataCurve`s have no experiment. `add_curve` also refreshes list and
-   plot *before* `super().add_curve(v)`, so the plot lags one press.
-5. **Both — context-menu Save writes nothing.** `ExperimentalDataSelector.
-   onSaveDataset` saves `file_type="pkl"`, which `Base.save` does not support
-   (`supported_save_file_types = ["yaml", "json"]`); it returns silently.
-   Neither tool therefore has a GUI route to a fit.
-6. **Correlate — `default` Type** is not a tttrlib method; tttrlib keeps `wahl`
-   without warning.
-7. Neither tool has `help.md` or `gui/guide.json` (legacy Qt, no AutoForm spec).
-
-## PSF calculator: backend and two tttrlib optics errors (found 2026-09-23)
-
-Found while writing `docs/guides/72_psf_calculator.md` and
-`docs/concepts/point_spread_function.md`; measurement scripts were an
-independent Debye pupil integral (NA 1.4, n 1.518, 520 nm, full quadrature).
-
-1. **The tool does not open on the default plot backend.** `gui/tool.py`
-   builds `cp.VolumeView()`, and emtk has no volume renderer
-   (`NotImplementedError`). Opening it from the Calculators hub fails unless
-   `CHISURF_PLOT_BACKEND=pyqtgraph`. Blocks: every user on defaults. Fix
-   belongs in emtk (a volume/iso-surface widget), not a Qt fallback.
-2. **tttrlib radial polarization over-weights the longitudinal field 2×.**
-   `ext/python/CLSMSuperRes.i::vectorial_psf` uses `e_z = 2j*j0`; Youngworth &
-   Brown 2000 give `E_r ∝ sin2θ`, `E_z ∝ 2i sin²θ`, i.e. `e_z = 1j*j0` with
-   this code's `e_r`. Measured: tttrlib radial 181 nm vs circular 210 nm; the
-   independent integral gives radial 241 nm vs circular 209 nm (same integral
-   reproduces tttrlib's linear-x 250 × 179 exactly). Dorn 2003: over the full
-   aperture radial is *wider*. File + fix upstream in tttrlib; the docs carry a
-   warning until then.
-3. **tttrlib Gaussian axial envelope 4× too short.** `z_r = π σ² n/λ` where the
-   beam waist is `w0 = 2σ`, so `z_r = π w0² n/λ`. Axial FWHM 117 nm measured vs
-   ~456 nm expected. Upstream in tttrlib.
-4. pyqtgraph `_PgVolumeView.set_vectors` skips the translation `set_volume`
-   applies, so polarization strokes draw off-centre. The Result line
-   "(1.12 x lateral)" is lateral ÷ scalar and reads backwards.
-
-## FCS toolbox defects (found 2026-09-23)
-
-Found while writing `docs/guides/75_fcs_toolbox.md` ("Known issue" boxes).
-
-1. **Channel Definitions no longer reaches the correlator.** After the
-   AutoForm port `FCSChannelWidget` has no `setup_combo` / `_detector_setups` /
-   `_channels_for_setup`, but `fcs_correlator/tool.py` `_channel_def_context`
-   and `_bind_channel_def_panel` still read them, so the context is always
-   empty: FCS Preset list and A/B selectors stay empty and the LUT setup is
-   never forwarded. Fix: read `widget.model`, observe `setup_changed`. (A docs
-   agent's attempt at this edit was refused by the permission system and
-   reverted; left for the owner.) Related: `apply_preset` looks for
-   bins/cascades under `pair["correlator"]`; the editor saves them top-level.
-2. **Default `suren` noise differs from Koppel 1974.** `core/fluorescence/fcs/__init__.py::noise`
-   codes the middle term `2*G0/ns**2*(1+B)` where Koppel has
-   `2*G0*(1+B)/(ns*na)`, and scales variance by 10 ms/τ above `time_upper`
-   without reason. Affects fit weights everywhere.
-3. `fcs_yaml.read_yaml` is a stub: YAML conversion is write-only (TypeError).
-4. Readers disagree on the plateau (ALV +1 → 1; PyCorrFit/.pqres/.dat → 0);
-   the converter preserves the source's convention.
-5. `.pqres`: missing σ → unit weights (skips the promised noise fallback); lag
-   units possibly seconds on an ms axis (max lag 0.092, unverified); no count
-   rate → 1 kHz written to `.cor`.
-6. `merge.py::compute_average_correlations` says "weighted" but is an
-   unweighted mean, drops the first lag, and counts unticked curves in its label.
-7. Filter panel: `invert` also inverts channel/dMT cuts; inter-photon plot
-   fails on the emtk backend ("horizontal region not drawn yet"); clipped
-   y-label. Merger dock does not stretch; status stays "Computing…".
-8. Fixed in the same change: `fcs-convert -v/--verbose` was a click on/off
-   pair (`--verbose` turned it *off*); guide 16 imported a non-existent
-   `fcs.correlate.correlate`.
-
-## Defects found writing guides 76–82 (2026-09-23, second round)
-
-Measured while documenting; each guide carries a "Known defects" note. Fixed
-in the same change: LLTF `dof` precedence (fixed=None gave dof 0);
-synthetic-decay IRF loader flattened two-column files (peak at channel 1238
-instead of 624); batch `restore_parameters` ignored `{"ok": False}` (now
-raises) and headless `run_batch` crashed on `cs.core.actions`;
-`open_maybe_zipped` had no append mode, so every multi-frame PDB write raised,
-and `write_pdb` fused `MODEL`/`ENDMDL` into ATOM lines with no serial; the
-AutoForm wizard's selected step was invisible; the `?`/Guide buttons were
-missing on phasor calculator, F-test, batch analysis, HydroPro, QuEst, LLTF,
-trajectory tools and FRET lines (help files existed, nothing drew them).
-
-Open:
-
-1. **QuEst does not import (blocker).** `modules/quest` imports
-   `IMP.bff.quenching`, `IMP.bff.av.compute`, `IMP.bff.av._kernels`,
-   `IMP.bff.distance_metrics` (`quest/core/dye_diffusion.py:47`, `photon.py:43,69`,
-   `av.py:52…477`); imp.bff 294e63fa moved them to top-level C++ `IMP.bff`.
-   Tool, `csc quest` and the Structure Tools panel all fail; 3/14 plugin tests.
-   Port in the quest repo. Two more tests fail because
-   `modules/imp-tricks/src/sitecustomize.py` imports IMP at start-up.
-2. **LLTF component-count test is mis-specified** (`lltf/core/fitter.py:661-672`):
-   `f.cdf(chi2r[n-1]/chi2r[n], 2, df2)` ≈ 1−e^(−R) whatever the photon count —
-   0.68 needs a 14 % χ²r drop. On 3.0+4.5 ns (seed 2) it picks n=1 at p=0.667
-   where extra-sum-of-squares gives p=6e-78. And nested fits start from
-   `linspace`, hit `maxfev` and end *worse* than n−1, so selection counts
-   optimizer failures (warm-start n+1 from n). Three differing default sets
-   (YAML + two in `fit_lifetime`); CLI `-f` overwrites `selection_mode`; the
-   `$TMPDIR/lltf_config.yml` copy is never refreshed; `plot_decay_curve` calls
-   `plt.show()` unconditionally.
-3. **F-test tool reports the variance-ratio form** (`core/math/statistics.py`
-   `f_test_confidence`), conservative for two fits of the same data: 0.59 vs
-   extra-sum-of-squares p=0.003 on ibh donor 2→3 exp. Add the ESS F as a second
-   readout.
-4. **Batch analysis:** mixed experiment types never rejected
-   (`datasets_have_mixed_types` has no caller); Results panel prints
-   full-precision floats in a short scroll box; CSV rows include placeholder
-   parameters (unused `a2`/`t2`). `python-docx` missing from the local arm64 env.
-5. **Phasor calculator:** Results panel lists only reference τ/g/s despite its
-   description; controls split each (g, s) pair across rows.
-6. **HydroPro:** an executable name without "hydropro" is treated as HYDRO++
-   and gets a hard-coded input (20 °C, 0.01 P, 1e5 Da); only D_t parsed; job
-   folders overwritten; `_DOWNLOAD_URL` is the HYDRO++ page; the startup
-   dialog's "don't show" is never saved. No macOS HYDROPRO binary exists.
-7. **Trajectory tools:** ~~Convert split mode ignores stride and crashes with a
-   frame range (`chunk=None`); folder mode loads the folder itself; "Last
-   frame" exclusive~~ — fixed 2026-10-02 in the traj_convert upgrade (one frame
-   selection for every mode, inclusive, folder PDBs joined in name order). ~~Join interleaves chunks A,B,A… and truncates to the
-   shorter trajectory~~ — fixed 2026-10-02 in the traj_join upgrade (whole
-   trajectories appended, whole-trajectory reversal, a mismatch raises). ~~FRET tab
-   has no topology row, so a DCD cannot be opened;
-   its dipole selectors overlap~~ — fixed 2026-10-02 in the traj_fret upgrade (a
-   topology row on both hosts, DCD filter, cascading pickers in the emtk app). 6/9 energy potentials fail on a plain
-   `Structure` (no `l_res`/`dist_ca`), Ramachandran returns 0, H-Bond is the
-   default. `trajectory_data` docstrings say nm but data are Å, and
-   `plugins/modelling/fret/core/trajectory.py:158` multiplies by 10
-   (E ≈ 2e-5 where 0.97 is right; `rmsd_matrix` too). traj2fret `__main__` is
-   Python 2.
-8. **FRET lines:** CLI docstring's "R(G,1)" names error (use
-   `distance.mean.0`); FD-Gaussian at σ=0 gives NaN; the plot's grey background
-   leaves axis labels low-contrast.
-9. **Synthetic Decay Generator:** unreachable from the GUI (`menu_hidden`, no
-   hub); a Mode change re-creates the promoted Generate/Save/Fit row.
-10. **Help-render guard:** `{src}` role cannot link a directory — link a file in it.
-
-## Defects found by the screenshot and citation passes (2026-09-23, third round)
-
-Each guide carries its own "Known defects" note. Fixed in the same round:
-emtk error-bar updates (blank BVA plot) and markers-only curves joined by
-black lines; Burst Selection file offsets past the second file; H2MM
-accepting resolution −1; MFD Prepare RPC result unserializable; Spectra
-Downloader menu entry opening nothing; acquisition SIMULATION/Simulation
-mismatch; MFD reader `update_widgets`; seven tools not drawing shipped help
-(new guard `test_shipped_help_is_drawn`).
-
-Open, highest value first:
-
-1. ~~**tttrlib ALEX-2CDE sign**~~ **Fixed 2026-09-24 in tttrlib `04d83cd29`**
-   (eq. 12 verified against the paper; clean-burst median now ~1.5). ChiSurf
-   sees it after the next tttrlib rebuild of the arm64/pixi env; ALEX-2CDE
-   columns written before that are on the old ~100 scale.
-2. **`Bursts.recurrence()` always raises** — `burst_analysis/api/workflow.py`
-   ~1313 `select_bursts` builds its `AnalysisRequest` without the setup's
-   detectors/windows, so the table has no per-detector counts (hit by two passes).
-3. **Burst Selection won't open on a fresh profile** —
-   `tttr_detector_setups.load_detector_setups` (~228) with owner
-   "user_default" hits a sqlite FOREIGN KEY when that user row is absent.
-4. **PCH plugin fit unusable** — `pch/backend/services.py:156-171` unweighted,
-   Pearson χ² over bins with expected ~1e-14 (χ²r 1.5e20). FIDA fits run N
-   negative with bounds off; `fida_pch` ignores `profile`/`oversample`.
-5. **Flow demo draws no arrows** — demo PTU reads 29 of 30 frames, all 25
-   tiles refused; plugin's own test fails. Guide 55 keeps the intended figure.
-6. **Acquisition**: routing-channel spinboxes never added to the dock (stay
-   0–3) while the decay controller defaults to 8/9/10 → no decay at defaults;
-   standalone window plot controllers overlap title bars.
-7. **Trace Browser lists nothing for point measurements** —
-   `_is_clsm_compatible` (trace_browser/__init__.py:1432) accepts
-   intensity shape (1,0,0).
-8. **Burst-selection tables**: Bursts/Histogram tabs and Fit GMM use only the
-   visible window (8 of 1130 bursts); dT trace joins across gaps.
-9. **Accurate FRET dye choice ignored** — `apply_dye_selection(self)` receives
-   a value from the bound control and fails every commit.
-10. **ndX bridges**: send menu discards the result (`send_menu.py:106`); FCS
-    defaults use `ch1/ch2` where the correlator reads `chs_a/chs_b`
-    (`server/burst_consumers.json:35`); PDA reads non-PTU files as PTU and
-    reports success (`server/services/pda.py:42,122`); bare file names not
-    resolved against the analysis folder (`burst_bridge.py:200`).
-11. **BVA**: `concat_stores` fails on mixed float/empty rate columns; a
-    second Run raises (`compute_bva` appends in place); static line not drawn
-    on emtk.
-12. **Spot Finder threshold is in image units** though three docstrings say
-    otherwise; `camera_spots.json` ships 0.05 (every noise maximum).
-13. **Förster calculator** offers only acceptors with an "absorption"
-    spectrum (164/543 Chroma dyes carry excitation only); a cached R0
-    silently overrides user Q_D/ε/n. Staging DB: ATTO-550 carries ATTO 565's
-    data; the ATTO-TEC ATTO488 record is soft-deleted.
-14. **Smaller**: MFD Prepare unreachable from any menu/hub; `csc mfd-prepare
-    fit` AttributeError; partial `streams=` IndexError; burst fusion writes an
-    empty folder before validating; burst-FCS progress bar never closes; H2MM
-    floor rates printed as measured; `fcs-convert` etc. HDF5 "compressed ~4×"
-    wording (measured 2.8×); CLSM-Draw "&" mnemonic; ndX
-    `DataSource(columns, frame)` gone, breaking make_screenshots'
-    `_grab_ndx_gaussian_panel`.
-
-## ndX opened from the MMFDB admin no longer records a selection back into MMFDB
-
-**Since 2026-09-28** ChiSurf opens only the emtk ndX app. The legacy Qt window,
-when the MMFDB admin opened it with `processed_data_id`/`experiment_id`, called
-`ndxplorer.record_analysis` (mmfdb `admin/backend/ndxplorer_services.py`) when
-burst IDs were saved; the emtk io feature has no such hook, so the admin now
-opens the path and nothing is recorded. **Blocks:** provenance of gate
-selections made from an MMFDB product. Fix: an app hook after
-`_write_burst_ids` that the host sets (as `app.mmfdb_opener`). Resume point:
-[ndxplorer-emtk-port](../plugins/ndxplorer-emtk-port.md) "Hosted in ChiSurf".
-
-## Two guard tests red on 2026-09-28, from uncommitted native-port files
-
-Measured in the arm64 env while switching ndX to the emtk app:
-`test/test_forbidden_communication.py` (17 files over their count, all in the
-uncommitted native emtk ports: `*/gui/app.py`, `*/test/test_native.py`,
-`calculator/native_form.py`, `autoform/sections/{builtin,parameter_table}.py`)
-and `test/test_prd_mentions.py::test_prd_mention_allowlist_has_no_stale_entries`
-(`calculator/kappa2_dist/gui/tool.py`,
-`tttr/tttr_time_windows/tests/test_construction_smoke.py` no longer name a
-PRD). Not edited under their owners. **Blocks:** nothing at run time.
-
-## ndX menu/ribbon route vs manifest emtk entrypoint (found 2026-09-29)
-
-The ndxplorer manifest gained `entrypoints.emtk`
-(`chisurf.plugins.ndxplorer.gui.app:make_app`) while
-`chisurf/plugins/ndxplorer/tests/test_window_routes.py::test_menu_and_ribbon_host_the_emtk_app`
-still asserts the menu opens the `NdxWindow` (`build_ndxplorer_window`). The
-launcher dispatches through `select_gui_entrypoint`, which prefers `emtk`, so
-the menu now yields a bare `ControlHost` and the test fails. The emtk factory
-does not (yet) give the window-level features `NdxWindow` adds: the Global
-View slot withdrawal, `session_autosave`, the geometry persistence, the MMFDB
-opener wiring. Decide the direction (wrap the emtk app in `NdxWindow` when a
-Qt host is available, or port the missing pieces) and fix one side.
-
-**Resolved 2026-10-01 (EMTK-1, commit dddeb4d1f):** the missing pieces were ported into `make_app`: the
-in-process RPC client, `session_autosave=True`, closing with the host (session kept, Global View slot
-withdrawn); the MMFDB opener is the emtk `DatasetPicker` under the Qt label "From MMFDB…". Geometry is the
-host's; the dock layout lives in ChiSurf's native-state store instead of ndX's settings file. The route test
-now checks the app's wiring on either host. Report: `okf/plugins/emtk-ports/ndxplorer/REPORT.md`.
-
-## region_mle: the simulated demo reads as an empty image (found 2026-09-30)
-
-`region_mle`'s `preview_regions` / `fit_regions` (`core/region_mle.py`, around line 826) build
-`tttrlib.CLSMImage(tttr, channels=..., fill=True)` directly. The simulated demo written by
-`spot_finder/demo.py` does not carry the scanner's marker layout, so that call returns an empty
-image (`intensity.shape == (1, 1, 0)`), and Load demo then Run/Preview fails with
-`the regions are (48, 48) and the image is (1, 0)` -- in the shipped Qt tool as well, not only in the
-emtk port. `run()` then clears its own `status_text`, so the user sees the intro text and no error.
-Reproduce: `create_demo(tmp)` then `np.asarray(tttrlib.CLSMImage(tttrlib.TTTR(str(path)), channels=[0, 1], fill=True).intensity).shape`.
-Fix direction: read through the shared loader Spot Finder uses
-(`imaging.simulate.clsm_from_scan` with the sidecar `scan_layout`; another stream is moving this into
-`core/fluorescence/imaging/intensity.py`), and keep the error text in `run()`. The emtk port's tests
-and populated screenshots wrap `CLSMImage` in a test-side shim (the `workdir` fixture) until then.
-
-### emtk: docked tab strips do not scroll (found porting flc-2d; the radio-tooltip half is fixed)
-
-`emtk.view_form._draw_choice` calls `_tooltip(section)` only for the combo branch, so a
-`choice` with `style: radio` leaves its radio buttons untooltipped and the port parity tool
-lists them in `controls_without_tooltip`. Repro: `draw_form({"sections":[{"type":"choice",
-"attr":"m","options":["a","b"],"style":"radio","description":"x"}]}, model, FormState())`
-under `test.gui.emtk_port_parity` recording. flc-2d uses a drop-down for its solver meanwhile.
-**Radio tooltips: fixed 2026-09-30** (emtk `608be8c`, `view_form` sets the description on every radio button).
-Still open: `emtk.docking` tab strips neither scroll nor wrap: seven tabs need ~670 px, a narrower
-region cuts the last tab (flc-2d avoids it with one full-width strip). Fix direction: tooltip
-after the radio loop; an overflow menu or scrolling for tabs.
-
-## Ported burst apps draw invented data (found 2026-10-01)
-
-`chisurf/plugins/burst/burst_mle_analysis/gui/app.py` (around lines 280-340) and
-`chisurf/plugins/burst/burst_h2mm/gui/app.py` (around lines 395-505) fill their plots and tables with
-synthetic values -- a model IRF and decay built with `np.exp`, a lifetime histogram from `tau1`/`tau2`, a hard-coded
-rate table, a seeded `np.random.normal` FRET scatter -- instead of the analysis result, so the window looks like an
-analysis of the user's data and is not. In the burst-analysis MLE step the real wizard is created and hidden and the
-mock is what is shown. Reproduce: open either app with no data and read the plot calls. Fix: draw only model results
-(an empty-state message when there are none); a demo is allowed only behind an explicit, labelled Demo action.
-PRD-153 now forbids invented data in a port. Survey: `okf/plugins/emtk-ports/burst-survey.md`.
-
-## Setup:Channel Definition: lost first save, Qt calibration and rename, shared-editor gaps (found 2026-10-01)
-
-Measured while giving `setup_channel_definition` its own tests; evidence and reproductions in
-`okf/plugins/emtk-ports/setup_channel_definition/REPORT.md`.
-
-* **The first setup save on a fresh MMFDB is lost without an error.** `setup_store.save_setup_row` calls
-  `db.ensure_user(user)` first; `ensure_user` inserts through `dao.insert` and leaves that insert in an open transaction,
-  and `save_setup`'s own transaction nests inside it and never commits, so closing the handle rolls both back
-  (`save_setups` still returns `True`, the Qt tool still says "saved successfully"). Reproduce (5 lines):
-  `db = MFDatabase(p); setup_store.save_setup_row(db, CONFIG, "Mine", {"windows": {}}, user_id="brand_new_user");
-  len(db.list_setups())` is 1; `db.close(); len(MFDatabase(p).list_setups())` is 0.
-  `test/fio/test_setup_store_fresh_database.py` passes because it reads on the same connection. Fix: commit in
-  `ensure_user` (mmfdb) or wrap it in `self._transaction()`; add the reopen assertion to that test.
-* **Qt calibration combo never lists a snapshot.** `DetectorWizardPage._populate_calibration_combo` and
-  `_on_calibration_changed` call `setup_id_for_name(name, user)`; the function takes `(name, user_id, prefix)`, the
-  `TypeError` is swallowed and the combo stays at "Latest". The emtk toolbar lists and applies snapshots.
-* **Qt rename drops the Public flag.** `tttr_detector_setups._setup_row_data` returns `setup_data` without `_is_public` /
-  `_owner`, so a renamed public setup is stored private. The emtk toolbar (core `ChannelDefinition`) keeps it.
-* **Shared editor (`chisurf/emtk/channel_definition.py`, another stream's) gaps**: detectors are stacked blocks, not a
-  table; the Setups tab stacks its buttons full width; the last tab cannot be restored (the editor owns the tab state);
-  microtime ranges reject `20:10`, `5:5` and `;` separators that Qt accepts; with a fixed File Type the reader accepts any
-  bytes and overwrites the timing (`xfail` test); no "Configure LUTs" / visual "Adjust shifts" hand-off; the last-used
-  setup is neither written on selection nor opened at start (`ChannelDefinition.refresh_setups` drops `last_used`).
-
-## chimol: the toolkit-free host loads a PDB through a different route than the Qt window (found 2026-10-01)
-
-**Measured** with chimol's demo `148l.pdb`, same command `load <path>` on both hosts
-(`okf/plugins/emtk-ports/chimol/before_populated.png` Qt vs `after_populated_1200x800.png` emtk): both report 1363
-atoms and the same object list, but the Qt window draws the ligands/hetero groups as spheres and its sequence strip
-starts at residue 0 with an extra leading code and an "… and 1 more chains" line, while the emtk host (chimol's
-`ChimolApp`, the same one `python -m chimol` opens) draws no hetero spheres, numbers from 1 and shows the system-info
-panel on load. *Cause:* `chimol.hosts.qt.window.MolViewPluginWindow.load_structure_from_path` reads through
-`load_structure_payload(path, structure_factory=chisurf.core.structure.Structure)`; `chimol.hosts.base.ViewerHost.
-load_structure_from_path` passes no factory, so the built-in PDB parser and `viewer.apply_payload` build the scene
-(log: "No structure factory available ... falling back to the built-in PDB parser"). The info panel on load is
-deliberate in `ViewerHost` (unpinned, a click dismisses it). Reproduce (5 lines):
-`from chimol.io.structure import load_structure_payload; from chisurf.core.structure import Structure`;
-`p = Path(".../chimol/data/demos/148l.pdb")`; `load_structure_payload(p)` returns `(None, payload)`;
-`load_structure_payload(p, structure_factory=Structure)` returns `(Structure, None)`; render each.
-*Not fixed here:* the fix belongs in chimol (a structure-factory hook on `ViewerHost` that ChiSurf's plugin package
-injects, the way it injects the settings directory), not in the ChiSurf adapter, and chimol is a separate repository.
-Which rendering is right (hetero spheres; residue 0) is chimol's call.
-
-## emtk apps opened from ChiSurf's menu are never closed (found 2026-10-01)
-
-Status: resolved 2026-10-06 — emtk `67500cf`: ControlHost.closeEvent calls control.close() once; host/state tests and geometry captures verified.
-
-**Measured** with ndX (`okf/plugins/emtk-ports/ndxplorer/`): `chisurf.core.plugin.registry.build_plugin_widget` wraps an
-emtk factory's app in `emtk.qt_host.ControlHost(factory())` and returns the host; when that window closes,
-`ControlHost.closeEvent` only detaches the frame-request callback (`set_frame_request_callback(None)`) and nothing calls
-the app's `close()`. So every ported app's close -- saving a layout or session, stopping worker threads and executors,
-unsubscribing from fit events, withdrawing a Global View group -- does not run when the user closes it from the menu.
-Reproduce (5 lines): `w = build_plugin_widget(manifest_of_any_emtk_plugin)`; `closed = []`;
-`w.control.close = lambda: closed.append(1)`; `w.show(); w.close()`; `closed == []`.
-*Worked around in ndX only* (its factory closes when the callback is removed after one was set). *Not fixed here:* the
-fix belongs in `build_plugin_widget` (another stream's uncommitted change: call `control.close()` from the host window's
-close / `destroyed`) or in emtk's `ControlHost.closeEvent`; both are outside this session's scope.
-
-
-## emtk games have no sound (found 2026-10-01)
-
-**Measured** on the four ported games (number_quest, pong, tetris, minesweeper): the Qt games play music and effects through
-`chisurf.gui.chigame.audio.Audio`, which uses `qtpy.QtMultimedia.QSoundEffect`; the emtk apps take an `audio` object with
-`sfx` / `set_enabled` / `close`, and their factories pass none, because emtk has no audio output. Their Sound switch therefore
-changed nothing; it is now greyed with the tooltip "No sound here: this window has no audio output." (number_quest
-`bdf892ca5`, the other games in their own commits). Reproduce: `app = make_app(); app.set_sound(); app.sound_enabled` stays
-`False`. *Not fixed here:* an audio backend is new infrastructure (emtk or a shared ChiSurf module), not part of a port; the
-only Qt-free player in the tree is `chisurf/plugins/tttr/audifier/native_playback.py` (a WAV file per playback through
-`afplay`/`ffplay`/`aplay`), too coarse for music loops and per-event effects. The factories accept `audio=` for when one exists.
-
-## emtk implot: a first `COND_ONCE` axis-limits request on an existing plot is ignored (found 2026-10-01)
-
-Status: resolved 2026-10-06 — emtk `eb604b1`: a missing previous ONCE request is new; axes/interaction regressions and delayed-counts PNG verified.
-
-**Measured** in burst_fusion's fragments histogram: the plot is drawn empty, then data arrives and the app calls
-`implot.setup_axis_limits(AXIS_Y1, lo, hi, COND_ONCE)` for the first time. `emtk/implot.py:setup_axis_limits` applies a ONCE
-request only when the plot is not yet initialized or the request differs from an earlier ONCE request; with no earlier request it
-does neither, but still sets `has_range`, which turns auto-fit off — the axis stays at its default (1e-6–1 on a log axis) and the
-bars fill the plot. Reproduce: `test_the_fragments_axis_holds_every_bar` with the app calling ONCE only fails with
-`(1e-06, 1.0, [158, 105, 20])`. Worked around in the app (ALWAYS when the requested range changes, ONCE after it);
-burst_2cde is unaffected because its empty plot makes a ONCE request first. *Not fixed here:* emtk is outside the EMTK-1 claim;
-the fix belongs in `setup_axis_limits` (treat "no earlier ONCE request" as new), with a regression test in emtk.
-
-## emtk help window draws help.md as raw markdown, one source line per paragraph (found 2026-10-02)
-
-Status: resolved 2026-10-06 — existing fix `401af4ab9` verified: EmTkHelpWindow renders paragraphs with im.markdown and live links; native helper seam 12 passed.
-
-**Measured** in traj_save_topology's help (`okf/plugins/emtk-ports/traj_save_topology/after_help_1200x800.png`):
-`chisurf/emtk/help_guide.py:EmTkHelpWindow.draw` hands each stripped source line to `im.text_wrapped`, so `**bold**`,
-`` `code` ``, `*emphasis*` and `[title](docs/…)` links show their markup, and a paragraph wrapped over several source
-lines breaks at every source newline (a bullet's continuation line starts flush left, outside the bullet). The Qt `?`
-modal renders the same files as rich text and routes links to the documentation browser. Every emtk port with a
-`help.md` is affected. *Not fixed here:* `chisurf/emtk/*` is a shared helper outside the EMTK-1 claim; the fix is to join
-a paragraph's lines before wrapping and to render (or at least strip) inline markup, with links going through
-`chisurf/gui/widgets/tools/doc_links.py`'s routing.
-
-## Importing a tttr plugin moves `modules/ndxplorer` to the front of `sys.path`; its `test` package shadows the repo's (found 2026-10-02)
-
-**Measured**: with the repo root at `sys.path[0]`, `import chisurf.plugins.tttr.tttr_microtime_shifter.tests.demo_data` leaves
-`sys.path[0] == ".../modules/ndxplorer"`, and a following `import test` resolves to `modules/ndxplorer/test/__init__.py` —
-so `from test.gui.emtk_port_parity import …` fails with `No module named 'test.gui'` in a script (pytest is unaffected when
-the repo's `test` is imported first). The move is not a `list.insert` on `sys.path` (a profile hook on it saw nothing), so
-probably a slice assignment or an import hook; the guarded insert in `chisurf/plugins/ndxplorer/__init__.py` only runs as a
-plugin. Workaround: import `test.gui` before any plugin. *Not fixed here:* find the mover, and rename ndxplorer's top-level
-`test` package (or stop putting the module root on the path) so the two cannot collide.
-
-## `trajectory_data.load` reads a multi-model PDB as its first model (found 2026-10-02)
-
-**Measured** in the traj_convert upgrade: Convert writes frames 0, 10, 20 of hgbp1 to one `.pdb` with three `MODEL`
-blocks (correct), but `chisurf.core.structure.trajectory_data.load` returns one frame for it — by its docstring a
-structure file is "read as a single frame" (`Topology.from_file` reads the first model). So a multi-frame PDB ChiSurf
-writes cannot be read back by ChiSurf as a trajectory; the converter's parity test reads the models from the PDB columns
-instead. *Not fixed here:* reading every `MODEL` block into the frame axis belongs in core (`trajectory_data.load` /
-`chisurf/core/fio/structure`), with a round-trip test; guide 81 lists it under Known defects.
-
-## LLTF fits are not reproducible: random starting values are unseeded (found 2026-10-02)
-
-**Measured** in the lltf upgrade: two runs of the same command on the shipped example (`5-44_D0.dat`, `IRF_D0.dat`,
-`config.yml`) gave τ = 3.9659 / 1.4465 / 0.1449 ns and 3.9673 / 1.4585 / 0.1477 ns. With
-`lifetime_fit_parameter.randomize_initial_values.enabled` (on in the example config, always on in the component scan)
-`lltf/core/fitter.py` draws starting lifetimes and amplitudes from Python's `random` without a seed. The parity tests
-compare the commands the two hosts build and check one fit with tolerances for this reason. *Not fixed here:* a
-`random_seed` setting (default fixed, so a run is repeatable) belongs in the fitter and its settings file, with a
-reproducibility test; guide 76 lists it under Known defects.
-
-## 2026-10-07: QuEst legacy surface clips controls and imports retired ChiMOL paths
-
-**Open, owner W6d/W9 plugin migration.** A scratch offscreen construction of
-`quenching_estimator` succeeds after the owning Quest numerical dependency fix,
-but its 1200×760 PNG shows the left settings panel split into three columns
-too narrow for the Structure file/Attachment/Simulation labels and controls.
-The parent inspected the image, rather than accepting the construction test.
-The owning `modules/quest/quest/gui/chimol_widget.py` also imports removed
-`chisurf.plugins.chimol.chimol.app.sequence_dock`, `renderer.view` and
-`io.structure` paths; its caught errors leave the sequence and 3D tabs as
-placeholders. Current ChiMOL uses its own standalone package and native
-surfaces, so replacing a prefix alone cannot restore these old Qt interfaces.
-
-This blocks visual and molecular-selection parity for Qt retirement. Capture
-the real loaded-148L baseline before replacing the QuEst surface, reuse the
-current ChiMOL viewer/sequence APIs in the owning Quest framework, and render
-every tab with the same data. Do not count the W7 factory-only PNG as a complete
-migration baseline. Numerical provider readiness is separate: the immutable
-IMP.bff core wheel supplies F arrays and residual callbacks with scientific
-oracle tests. [Readiness evidence](../validation/release-readiness-w7.md).
-
-
-## Standalone parameter JSON/YAML file corruption (2026-10-07)
-
-status: resolved 2026-10-07
-
-Parameter-only JSON/YAML hooks now persist existing portable scalar state and
-validated identity/metadata, rather than native-port repr strings. Actual
-save/load/read/update and cold-process checks pass; YAML metadata rejects
-unsupported keys before mutation. The old load-only test and private raw-dict
-expected failure are replaced with strict usable-state/identity assertions.
-105 targeted cases pass, zero expected failures. Live dictionary/graph aliases
-and value/hot-loop behavior are unchanged; unsupported linked/callable standalone
-files and irrecoverable old repr-only records fail explicitly.
-[Inspected editor and file proof](../validation/release-readiness-w1/parameter-state/receipt.md).
-
-## Mixed targeted Qt/pyqtgraph process teardown (2026-10-07)
+## quest: the plugin's RPC layer targets a backend the package does not have
 
 status: open
 
-A19-file targeted FCS/layout/chiplot group can fail late in ViewBox.resizeEvent
-via childrenBounds/mapFromItemToView/updateMatrix when ChildGroup is deleted,
-then SIGSEGV. Its previous run reached279passes/3old skips/4resize failures;
-a fresh isolated chiplot family passes59 with normal exit. Splitting verifies
-individual source behavior but does not fix the native lifetime problem. No
-skip/retention/forced-exit workaround is added. A deterministic minimal owner
-reproduction is not yet established; the chiplot/Qt retirement owners must
-close this lifetime gate before programme completion. Keep original crash
-evidence, diagnose ownership, and do not infer a product fix from isolation.
+**Found 2026-07-28.** Starting the GUI logs
 
-## Demo documentation validation: foreign source metadata drift (2026-10-08)
+```
+Failed to register services for plugin 'quenching_estimator'
+ModuleNotFoundError: No module named 'quest.backend'
+```
 
-The active demo unit's link checks pass. Its source-attribution guard sees1,617
-scalar entries in four unrelated foreign working-tree pages: factor_graphs,
-frap, us_alex and fundamentals/instrumentation. The corresponding committed
-HEAD has zero malformed entries; none is introduced by these21doccandidates.
-Do not absorb or overwrite those foreign edits to obtain a green local test.
-Re-derive with targeted test/test_docs_sources.py and the docs receipt in the
-[demo archive](../validation/release-readiness-w6g/demo-contracts-final-source.zip).
-Resolve with those pages' owner during W0/W14 integration.
+`chisurf/plugins/quenching_estimator/` is deliberately a thin shell: its
+`rpc/services.py`, `api/contract.py` and `api/client.py` all forward to
+`quest.backend.services` / `quest.backend.contract` so the CLI, the web backend
+and ChiSurf share one implementation of the sixteen `quest.*` methods the
+manifest declares. That backend package does not exist -- not in the checked-out
+`modules/quest`, and not on any of its branches (`git ls-tree` over `master`,
+`main`, `dev`, `devel`, `development`, `chisurf-pin` shows only `quest/lib` and
+`quest/settings`). So every `quest.*` RPC is unreachable, and the plugin's own
+tests for the contract cannot run either. The GUI entry point still works: it
+imports `quest.gui` directly and never touches the backend.
 
-## ndX inherited frame/launcher static diagnostics (2026-10-08)
+**To close it:** write `quest/backend/{contract,services}.py` in the quest
+repository, over `quest.core` / `quest.api`, matching the schemas already in
+`chisurf/plugins/quenching_estimator/manifest.json` (that file is the contract's
+written form). It belongs there, not here: a second implementation ChiSurf-side
+is exactly the `LAY-01` duplication the shell was built to avoid. Until then the
+failure is a logged registration error, not a crash.
 
-The declared-window unit preserves eight existing Ruff findings (import sorting,
-quoted annotation, legacy Dict spelling) and eight mypy findings in frame.py
-(names annotation, optional tuple/message/drag state, and pointer_release call
-inference). Original/final identities are in static-baseline-diagnostics.json
-inside [exact owner archive](../validation/release-readiness-w6g/ndx-window-final-source.zip).
-No suppression was added. Owner45geometry/data tests pass; these do not prove
-all unrelated callback paths. The callable pointer_release signature accepts
-x/y/button/modifiers; its starred tuple inference is not a demonstrated runtime
-failure. Static cleanup requires a separate bounded behavior-preserving plan;
-the geometry source excludes six foreign sibling changes. Re-derive with the
-same ChiSurf Ruff config and test-environment mypy follow-imports=skip as the
-recorded before/after commands. Programme root owns this follow-up; do not
-interpret unchanged baseline counts as clean static analysis.
+## packaging: the LaTeX converter has no Python 3.12 conda build
 
-## FPS card inherited typing diagnostics (2026-10-08)
+status: open
 
-Thirteenexisting mypy findings in fps_json.py remain unchanged by the host
-geometry declaration: dynamic _View.card/ed attributes assigned via
-object.__setattr__, cache/drawsignature annotations, sideeffect tuples involving
-None-returning sync_status, andexactremaining messages recorded in
-static-baseline-diagnostics.json inside [cardarchive](../validation/release-readiness-w6g/fps-card-window-final-source.zip).
-No suppression ornewruntime failure is introduced. Actual11AV computation,
-scoring/FlexFit/renderer andsavedgeometry tests pass; these do not prove all
-unrelated callback paths. Re-derive using recorded before/final commands and
-same testenvmypy. Rootowns a separate bounded behavior-preserving typing cleanup
-plan; geometry acceptance is qualified, not a cleanstatic claim.
+**Found 2026-07-28.** `chisurf/gui/widgets/models/parse/latex.py` renders a
+parse-model formula through the third-party `latexify` converter. The
+conda-forge package for it stops at Python 3.11, so it cannot go into the
+recipe's `run:` list, and the module-level `from latexify import ...` therefore
+made the module -- and with it the whole parse-model widget -- unimportable in
+the released conda package. Only a pip install ever had it.
 
-## Spectral model inherited typing limits (2026-10-08)
+The import is now inside the conversion function, next to the `except` that
+already fell back to `_convert_python_expression_to_latex_fallback`, the in-tree
+AST converter. A conda install renders through the fallback instead of failing:
+it covers the operators the parse models use, and is less complete than
+`latexify` for anything exotic.
 
-FLCSgui/model.py retains16exactbefore/finalmypy identities; corelifetime-FCS
-simulate.py retains its dataclass total_decay ndarray=None annotation. No new
-runtimefailure orsuppression is inferred. Fullmessages/commands/originals are
-in [spectralarchive](../validation/release-readiness-w6g/spectral-window-final-source.zip)
-and [backgroundarchive](../validation/release-readiness-w6g/lfcs-background-final-source.zip).
-ActualNNLS/MEM/correlation anduniformbackground/zero-signalphysics tests pass;
-this is not cleanstaticanalysis. Rootowns a separate boundedtypingcleanup with
-existingbehavior locked; do not alter numericalalgorithms orregolden spectra
-to silence these diagnostics.
+**To close it:** either a Python 3.12 build lands on conda-forge (then declare it
+in the recipe and drop the fallback path from the hot path), or the in-tree
+converter grows to full parity and the dependency goes for good -- it is one
+`ast.NodeVisitor`, so the second is the more likely end state.
+
+## chimol: three atom dtypes —  2026-07-28
+
+status: resolved 2026-07-28
+
+Chimol carried **three** transcriptions of "the atom dtype every reader
+produces", no two of them the same: a six-field one in `io/beads.py` for the
+PDB/mmCIF/RMF readers, a twelve-field `_MDTRAJ_ATOM_DTYPE` for trajectory
+topologies, and a twelve-field `PSEUDOATOM_DTYPE` in `cmd/editing.py`. Two of
+the three carried a comment asserting they matched the core's `keys_formats`.
+
+All three are gone. `chimol/io/atoms.py` (renamed from `beads.py`, since it now
+owns the atom row and not only the bead) imports
+`chisurf.core.fio.structure.coordinates.atom_dtype`. Rows are built by field
+name (`atom_row(**fields)`) rather than as twelve-long positional tuples.
+
+**The interesting part was not the duplication but what it hid.** The canonical
+dtype had `chain` as `|U1`. An mmCIF asym id runs `A..Z` then `AA`, `AB`, …, so
+on the eight-spoke nuclear pore 518 of 544 chains needed two characters and
+every one was stored as its first letter: **544 chains became 26**, silently.
+`chain AB` selected the whole of A and colouring by chain painted twenty
+molecules alike. The field is `|U4` now. Widening it made the PDB *writer* a
+hazard in turn — `%1s` is a minimum width in Python, not a truncation, so a
+two-character id would have shifted every following column — so the writer uses
+`%1.1s` and warns, naming the chains whose identity a PDB file cannot carry.
+
+**`modules/quest` still carries two more copies of that PDB format string**
+(`quest/lib/io/PDB.py`, `quest/lib/structure/Structure.py`), with the same `%1s`
+that does not truncate. They are deliberately untouched: quest builds its own
+atom arrays, so the core's widened `chain` cannot reach them, and quest is
+slated for deprecation rather than repair. If any of it is kept, the writer goes
+with the rest of the duplication — it should not be ported forward as it is.
+
+---
+
+## mmfdb: the shipped curated seed is two schema versions behind
+
+status: open
+
+**2026-07-28.** `tests/test_mmcif_database_resolver.py::test_packaged_seed_is_curated_and_on_the_current_schema`
+is red at mmfdb `HEAD`: the packaged `data/sample_management.db` is stamped
+schema **45** while `schema.SCHEMA_VERSION` is **47**. Since PRD-19 removed the
+migration waterfall a stale seed is not fully migrated forward — missing
+*columns* are added, stale *table structure* is not — so an unconfigured first
+run copies a seed the current code cannot fully write to. The regenerator is
+`build_tools/regenerate_curated_db.py` in chisurf (`--replace`).
+
+Not fixed here because that script had concurrent edits from another working
+copy at the time; regenerating and re-committing the binary seed belongs to
+whoever bumped the schema.
+
+---
+
+## Burst GUI follow-ups (opened 2026-07-28)
+
+status: open
+
+## tttr_image_browser: the widget suite aborts at teardown, about one run in three
+
+status: open
+
+**Found 2026-07-28** while migrating the tool onto the shared dockable-tool base
+(PRD-36). `chisurf/plugins/tttr/tttr_image_browser/test/test_widgets.py` aborts
+with `libc++abi: Pure virtual function called!` inside `pytest-qt`'s
+`_process_events`, after the body of `test_tttr_image_browser_tool_creation` has
+already passed — so it is a **teardown** crash, not a test failure, and it takes
+the whole pytest process with it.
+
+It needs the *sequence*: the two Qt-free view-model tests, then a bare
+`TTTRImageBrowser`, then a second one inside `TTTRImageBrowserTool`. Constructing
+either widget four times on its own never crashes. Measured alone-vs-alone over
+five runs each with the pre-migration `gui/tool.py` loaded side by side with the
+new one: **2/5 crashes on the old class, 3/5 on the new** — the rate is the same,
+so the migration neither caused nor cured it. `-p no:randomly` does not help; the
+order is already fixed, the crash is simply intermittent.
+
+The shape (a pure-virtual call while deferred deletions are processed) points at
+a `pyqtgraph` item outliving the C++ half of its owner across two widget
+generations in one process. The fix belongs in the offscreen-Qt test fixture or
+in the image-browser section's teardown, not in this plugin's tests, so it is
+recorded rather than patched around; the plugin's own suite is green under
+`-p no:randomly` and green about two runs in three otherwise.
+
+## — chimol: large integrative models, and the "fix" that killed them
+
+status: resolved 2026-07-27
+
+**Opened and closed 2026-07-27.** The nuclear pore complex was the case that
+showed it.
+
+| Entry | Beads | Load before | Load after |
+| --- | --- | --- | --- |
+| `PDBDEV_00000010` (one spoke) | 29,273 | 8.7 s → 4.3 s | **0.36 s** |
+| `PDBDEV_00000012` (eight spokes) | 234,184 | **430 s**, ~11 GB | **1.6 s**, 0.7 GB |
+
+The cost was never the reader — `ihm` reads the 31.5 MB file in well under a
+second. It was **a cartoon splined through beads that have no backbone**: 234k
+beads become thousands of short chains, each fully splined, framed and extruded.
+A bead stands for a *range* of residues, so the ribbon was meaningless as well as
+expensive.
+
+**The trap, explained.** Switching beads to the sphere representation — the
+correct depiction, and what `set_rmf_data` already did — appeared to make the
+entry *die silently*. It did not die. `ball_mask` was left all-**false** by the
+mmCIF path (only the RMF path set it), and the sphere branch's fallback for "no
+selection" is a **sparse sampling of 50 points along the chain**. The viewer drew
+fifty dots and called it a nuclear pore. Nothing raised, because nothing was
+wrong as far as any single line of it was concerned.
+
+**What landed.** A bead model is now recognised in the viewer, so every reader
+agrees on it: all beads selected, spheres on, cartoon and trace off, no bond
+inference, per-bead radii carried through `set_coordinates` and scaled with the
+coordinates. Past 20,000 beads the depiction is **sphere impostors** — one vertex
+each, shaded as a sphere in the fragment shader — instead of ~160 vertices of
+merged mesh per bead, with the impostor's world radius projected to a sprite size
+so it follows the camera. Pinned by `test/test_bead_model.py`.
+
+**IMP RMF support landed on 2026-07-28** — and the shape of what was wrong is
+worth keeping. RMF was not missing the bead rule because nobody had written it
+for RMF; it was missing it because RMF had *its own route into the viewer* and
+therefore could not receive anything the common route learned. Measured: one
+global radius for every bead, decimation instead of impostors, and hierarchy
+check boxes that moved nothing. All of it silent. The fix was to remove the
+route, not to duplicate the rule — see the log for that date.
+
+**Still open from that thread:** interior culling (`_get_surface_atom_mask`
+exists and is unused), dynamic LOD on camera motion (the draft/settle mechanism
+from the trajectory work generalises), and depth-cue fog.
+
+---
+
+## chimol: a sphere impostor occludes as a flat disc (RF-522)
+
+status: open
+
+**2026-07-27.** The impostor is exact in silhouette and in shading, but every
+fragment is written at the depth of the bead *centre*, because the fragment
+shader assigns no `gl_FragDepth`. Where beads overlap each other or other
+geometry, the nearer centre takes the whole disc instead of the two surfaces
+intersecting — by up to one bead radius, which on the nuclear pore is tens of
+ångström. Below `balls.impostor_min_atoms` the same beads are meshes and
+intersect correctly, so the two depictions do not match across the threshold.
+
+**Why it is not simply fixed.** Writing `gl_FragDepth` in *any* branch of a
+GLSL 1.20 shader disables early-Z for every draw that shader serves — and this
+one serves the cartoon and every mesh in the scene, which is the path a lot of
+work has gone into keeping fast. The correct fix is a **separate shader program
+for impostors** (its own vertex/fragment pair, the depth write confined to it),
+not a branch in the shared one. Documented as a limitation in the viewer guide
+in the meantime.
+
+---
+
+## chimol: `show` and `hide` say nothing on an empty viewer
+
+status: open
+
+**2026-07-27.** `spectrum`, `zoom` and `color` now answer "nothing is loaded" on
+an empty viewer instead of describing a molecule that is not there, because they
+all resolve a selection first and the resolver raises. `show spheres` and `hide
+everything` do not go through the resolver — they go through
+`RenderingMixin._toggle_representation` — so on an empty viewer they still
+silently do nothing, which is the same class of wart one step quieter.
+
+Not fixed with the others only because `rendering.py` had concurrent edits from
+another working copy at the time; it is a two-line guard in
+`_toggle_representation`.
+
+---
+
+## chimol: a point glyph's configured size never reaches the renderer
+
+status: open
+
+**2026-07-27.** `QtGLRenderer._geometry_to_draw_data` computes `size` from
+`geom.meta["size"]` and then does not pass it to `_DrawData`, so every point
+glyph draws at the 4-pixel default: `dots.size_px`, the overlay sizes, and the
+`px_mode` flag that distinguishes a pixel size from a world one are all dead
+configuration. Sphere impostors are unaffected — they carry a per-vertex radius,
+which does reach the shader.
+
+Not fixed in the change that found it because the fix changes the size of every
+point glyph in the application at once, and the render fixtures would all need
+re-inspecting; that is its own change, with its own before/after images.
+
+---
+

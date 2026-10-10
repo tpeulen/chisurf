@@ -3,6 +3,13 @@ title: ebFRET — the MATLAB GUI and analysis, ported onto emtk
 status: in-progress
 group: plugins
 updated: 2026-09-17
+type: Plugin Note
+description: 'is a plain port of the ebFRET GUI (, github.com/ebfret/ebfret-gui at
+  28e548a, MIT): the window with its panels, menus, dialogs and defaults, and the
+  MATLAB analysis behind it. Plain means reproduced, '
+tags:
+- plugins
+timestamp: '2026-09-17T11:38:23+02:00'
 ---
 
 # ebFRET — the MATLAB GUI and analysis, ported onto emtk

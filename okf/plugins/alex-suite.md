@@ -3,11 +3,20 @@ id: plugins/alex-suite
 title: ALEX Suite — the legacy ALEX workflow as a ChiSurf pipeline
 type: plugin
 status: active
-tags: [burst, smfret, alex, titration, migration]
+tags:
+- burst
+- smfret
+- alex
+- titration
+- migration
 related:
-  - plugins/burst-analysis
-  - subsystems/burst-companions
-  - architecture/declarative-analysis-definitions
+- plugins/burst-analysis
+- subsystems/burst-companions
+- architecture/declarative-analysis-definitions
+description: 0. Arriving converts — and it has to, because Next does not. The step
+  is declared, and the shell's returns early on an optional panel by design ("walking
+  past a step must not silently change the analy
+timestamp: '2026-09-08T17:01:52+02:00'
 ---
 
 # ALEX Suite

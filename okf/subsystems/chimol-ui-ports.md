@@ -3,6 +3,13 @@ title: Porting a widget into chimol's chrome
 status: in-progress
 group: subsystems
 updated: 2026-08-13
+type: Subsystem
+description: 1. still exists in the chrome's Qt painter. Nothing here made it worse,
+  but the two new controls draw through 's six operations only, which is the property
+  the whole package rests on; re-run before ad
+tags:
+- subsystems
+timestamp: '2026-09-16T19:20:27+02:00'
 ---
 
 # Porting a widget into chimol's chrome

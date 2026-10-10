@@ -2,7 +2,7 @@
 type: PRD
 prd: "83"
 title: "PRD-83: Retire pyqtgraph — the umbrella, and the 3-D half nobody owned"
-description: pyqtgraph is a declared dependency reached from 14 files, one .native escape hatch, and three subsystems that are not plotting at all — OpenGL views, a parameter tree, and a dock area. PRD-64 owns the 2-D seam; this concept owns the end state (pyqtgraph absent from the environment) and the parts PRD-64 does not reach. The 3-D half is closed here: ChiMOL renders through PyOpenGL on a plain QOpenGLWidget and imports nothing from pyqtgraph.
+description: "pyqtgraph is a declared dependency reached from 14 files, one .native escape hatch, and three subsystems that are not plotting at all — OpenGL views, a parameter tree, and a dock area. PRD-64 owns the 2-D seam; this concept owns the end state (pyqtgraph absent from the environment) and the parts PRD-64 does not reach. The 3-D half is closed here: ChiMOL renders through PyOpenGL on a plain QOpenGLWidget and imports nothing from pyqtgraph."
 status: in-progress
 phase: "3-D half landed; 2-D seam is PRD-64"
 resource: test/pyqtgraph_import_allowlist.txt

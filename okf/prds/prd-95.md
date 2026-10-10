@@ -3,7 +3,7 @@ type: PRD
 prd: "95"
 title: "PRD-95: One serialization story — cereal aligned with IMP, and JSON a human can read"
 description: imp.bff's cereal coverage is real but unnamed — zero CEREAL_NVP in the tree, so a JSON archive would emit value0/value1 keys — and IMP's own pickle registry is hard-wired to binary archives. Name every field (free for the binary format), add a per-class JSON surface next to _get_as_binary, and draw the line between object-state JSON (cereal) and interchange JSON (fps.json stays nlohmann).
-status: proposed
+status: draft
 resource: /Users/tpeulen/dev/imp.bff
 tags: [prd, imp.bff, cereal, serialization, json, pickle, swig]
 timestamp: '2026-08-10T00:00:00Z'

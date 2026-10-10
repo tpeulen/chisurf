@@ -1,3 +1,11 @@
+---
+type: Plan
+title: ndX session recovery
+description: 'Scope: finish the executable leftovers from session 62a3ae40-4905-4104-b93f-26b66caa779a. The last push completed; modules/mmfdb is a symlink, not a gitlink.'
+tags: [plans]
+timestamp: 2026-10-03T21:45:39+02:00
+---
+
 # ndX session recovery
 
 Scope: finish the executable leftovers from session 62a3ae40-4905-4104-b93f-26b66caa779a. The last push completed; modules/mmfdb is a symlink, not a gitlink.

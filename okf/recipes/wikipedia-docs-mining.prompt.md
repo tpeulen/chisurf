@@ -1,3 +1,11 @@
+---
+type: Recipe
+title: wikipedia-docs-mining.prompt
+description: You are running one tranche of a continuous docs-mining loop for ChiSurf. The working directory is already /Users/tpeulen/dev/chisurf. Confirm prints before touching anything; if it does not, log that
+tags: [recipes]
+timestamp: 2026-08-31T14:15:54+02:00
+---
+
 You are running one tranche of a continuous docs-mining loop for ChiSurf.
 The working directory is already /Users/tpeulen/dev/chisurf. Confirm
 `git rev-parse --abbrev-ref HEAD` prints `development` before touching

@@ -1,3 +1,11 @@
+---
+type: Plan
+title: Full scientific session and history acceptance plan
+description: The user requires remaining Qt model interfaces to be replaced by AutoForm; do not retain old model/widget compatibility or serialize widgets. Inventory configured compute classes and actual renderer
+tags: [plans]
+timestamp: 2026-10-05T13:55:57+02:00
+---
+
 # Full scientific session and history acceptance plan
 
 > **For Hermes:** Execute the disjoint workstreams with strict TDD and independent specification review before quality review. Preserve shared work; no git mutation/commit/push.

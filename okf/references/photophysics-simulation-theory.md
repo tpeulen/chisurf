@@ -1,7 +1,7 @@
 ---
 type: Reference
 title: "Single-molecule photon-simulation theory — diffusing particles to TTTR"
-description: The physics behind ChiSurf's forward confocal simulator — Brownian trajectories in a 3-D Gaussian detection profile, position-dependent Poisson emission, FRET channel partitioning, background, detector/micro-time effects, and Markov state kinetics — mapped to tttrlib.SimEngine and the chisurf wrappers, so a simulated stream correlates/bursts/H2MM-fits exactly like real data. Prior art: PyBroMo and QuickFit3's FCS simulator.
+description: "The physics behind ChiSurf's forward confocal simulator — Brownian trajectories in a 3-D Gaussian detection profile, position-dependent Poisson emission, FRET channel partitioning, background, detector/micro-time effects, and Markov state kinetics — mapped to tttrlib.SimEngine and the chisurf wrappers, so a simulated stream correlates/bursts/H2MM-fits exactly like real data. Prior art: PyBroMo and QuickFit3's FCS simulator."
 resource: chisurf/core/fluorescence/fcs/simulate.py
 tags: [reference, simulation, diffusion, fcs, burst, fret, h2mm, tttr, pedagogy]
 timestamp: '2026-07-24T00:00:00Z'

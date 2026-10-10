@@ -3,6 +3,13 @@ title: The node editor
 status: current
 group: subsystems
 updated: 2026-09-03
+type: Subsystem
+description: 'ChiSurf shows graphs in four places: the lightpath simulator''s optical
+  path, MMFDB''s provenance DAG, the AutoForm section, and the standalone demo. All
+  four are drawn by one editor, and since 2026-09-'
+tags:
+- subsystems
+timestamp: '2026-10-06T22:45:08+02:00'
 ---
 
 # The node editor

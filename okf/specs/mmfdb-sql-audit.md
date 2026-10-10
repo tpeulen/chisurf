@@ -1,3 +1,11 @@
+---
+type: Spec
+title: 'MMFDB raw-SQL audit (PRD-26: no scattered SQL)'
+description: CRUD (select/insert/update/delete) should route through or a centralized query method. (joins/aggregates/recursive/DISTINCT) and may stay raw.
+tags: [specs]
+timestamp: 2026-07-12T15:49:05+02:00
+---
+
 # MMFDB raw-SQL audit (PRD-26: no scattered SQL)
 
 CRUD (select/insert/update/delete) should route through `db.dao` or a centralized

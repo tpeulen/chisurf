@@ -1,7 +1,7 @@
 ---
 type: Reference
 title: "Automatic differentiation for ChiSurf fitting — measured assessment"
-description: Whether exposing tttrlib's forward-mode autodiff to ChiSurf would improve fitting or sampling. Measured answer: no, because the finite-difference Jacobian is already accurate and the differentiable C++ kernel is 5–15% of a model evaluation.
+description: "Whether exposing tttrlib's forward-mode autodiff to ChiSurf would improve fitting or sampling. Measured answer: no, because the finite-difference Jacobian is already accurate and the differentiable C++ kernel is 5–15% of a model evaluation."
 resource: modules/tttrlib/src/ImageLocalization.cpp
 tags: [fitting, performance, gradients, assessment, tttrlib]
 timestamp: '2026-07-25T00:00:00Z'

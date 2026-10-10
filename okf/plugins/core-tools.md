@@ -145,8 +145,8 @@ worked:
   chunk. Pushing photon by photon costs 1.13 µs each, which does not fail — it
   simply stops keeping up with a card.
 
-The theory is in [Streaming analysis](/docs/concepts/live_streaming_analysis.md)
-and the workflow in [Live acquisition](/docs/guides/65_live_acquisition.md).
+The theory is in [Streaming analysis](../../docs/concepts/live_streaming_analysis.md)
+and the workflow in [Live acquisition](../../docs/guides/65_live_acquisition.md).
 `PhotonSink` is the seam for writing the stream to a `.pto` *during* the
 measurement; it is a `NullSink` today and tracked in [PRD-98](/prds/prd-98.md)
 against the container work.

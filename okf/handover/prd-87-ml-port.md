@@ -1,3 +1,11 @@
+---
+type: Handover
+title: 'Handover — PRD-87 stages 1–4: the in-tree scikit-learn port'
+description: 'Date: 2026-08-09 Owner of the concept: PRD-87 Status: stages 1–4 landed in; stage 5 (HDBSCAN) untouched.'
+tags: [handover]
+timestamp: 2026-08-10T06:33:11+02:00
+---
+
 # Handover — PRD-87 stages 1–4: the in-tree scikit-learn port
 
 Date: 2026-08-09

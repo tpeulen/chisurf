@@ -3,7 +3,7 @@ type: PRD
 prd: "94"
 title: "PRD-94: An AV is a Gaussian that means it — mean and covariance from the path-map density"
 description: imp.bff's AV decorator derives from IMP::core::Gaussian but never sets the Gaussian — every accessible volume claims an identity covariance whatever its shape. Compute the density-weighted first and second moments of the path-map cloud on every resample and write them through set_gaussian(), fixing the biased mean along the way.
-status: proposed
+status: draft
 resource: /Users/tpeulen/dev/imp.bff
 tags: [prd, imp.bff, av, pathmap, gaussian, accessible-volume]
 timestamp: '2026-08-10T00:00:00Z'

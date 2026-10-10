@@ -2,8 +2,8 @@
 type: PRD
 prd: "89"
 title: "PRD-89: Consume the tttrlib spectroscopy data standard (decay, FCS, PDA, PCH) in ChiSurf"
-description: tttrlib PRD-028 defines self-describing .dstore/.pto tables for decay curves, FCS curves, PDA histograms, and PCH. This is the consumer side: ChiSurf reads those tables through the standard read_table vocabulary and feeds them to its fit/analysis GUIs — no private format, no tttrlib-specific glue.
-status: Draft
+description: "tttrlib PRD-028 defines self-describing .dstore/.pto tables for decay curves, FCS curves, PDA histograms, and PCH. This is the consumer side: ChiSurf reads those tables through the standard read_table vocabulary and feeds them to its fit/analysis GUIs — no private format, no tttrlib-specific glue."
+status: draft
 created: 2026-08-08
 owner: tpeulen
 sibling: tttrlib/okf/prds/PRD-028-spectroscopy-data-standard.md

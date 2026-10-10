@@ -3,7 +3,7 @@ type: PRD
 prd: "52"
 title: "PRD-52: Phasor-FLIM Imaging & Particle Tracking"
 description: Add per-pixel phasor-FLIM imaging, universal-circle ROI segmentation, per-PIE/spectral-channel phasor, and phasor-based particle detection and tracking.
-status: obsolete
+status: superseded
 phase: "unassigned"
 resource: chisurf/plugins/microscopy/img_pixel_phasor/
 tags: [prd, imaging]

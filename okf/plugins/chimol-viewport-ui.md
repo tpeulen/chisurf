@@ -3,6 +3,12 @@ title: ChiMOL — one UI, drawn in the viewport
 status: in-progress
 group: plugins
 updated: 2026-08-12
+type: Plugin Note
+description: 'Two follow-on defects, each only visible once the one before it was
+  fixed:'
+tags:
+- plugins
+timestamp: '2026-09-16T19:20:27+02:00'
 ---
 
 # ChiMOL — one UI, drawn in the viewport

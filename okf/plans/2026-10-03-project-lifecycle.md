@@ -1,3 +1,11 @@
+---
+type: Plan
+title: Project lifecycle replacement implementation plan
+description: 'The user''s October 4 clarification is authoritative: all experiments, models, parameters, GUI model states and cross-fit dependencies, plus a working history system. The explicit enumerated catalogue/'
+tags: [plans]
+timestamp: 2026-10-05T13:55:57+02:00
+---
+
 # Project lifecycle replacement implementation plan
 
 > **For Hermes:** Implement the separated workstreams with test-driven-development and independent review. Preserve concurrent edits; do not push.

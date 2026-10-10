@@ -3,7 +3,7 @@ type: PRD
 prd: "91"
 title: "PRD-91: Lumis Quest — the documentation is the world"
 description: A top-down, gamepad-playable JRPG in ChiSurf's games hub where the documentation tree is the overworld, real fluorophores from spectra.db are the creature roster, combat is photophysics, and reviewing a page turns a wild room into a villager. Runs on chigame, a wgpu 2D engine mined from a reference render engine and reimplemented in-tree. Layers on top of the existing review_status.json sign-off system — does not replace it.
-status: Draft
+status: draft
 created: 2026-08-08
 updated: 2026-08-11
 owner: tpeulen

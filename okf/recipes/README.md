@@ -1,3 +1,11 @@
+---
+type: Recipe
+title: Automated docs loops
+description: 'One tranche per run: pick a lead, mine the local Wikipedia dump, Crossref-verify every DOI, land it, pass the four docs guardrail tests, commit only its own files, record the next lead, stop.'
+tags: [recipes]
+timestamp: 2026-08-31T14:19:41+02:00
+---
+
 # Automated docs loops
 
 ## Wikipedia docs-mining tranche

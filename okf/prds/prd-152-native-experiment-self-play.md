@@ -1,6 +1,14 @@
 ---
-okf_version: "0.2"
+okf_version: '0.2'
 status: active
+type: PRD
+title: 'PRD-152: native experiment-generating self-play for residual-aware model search'
+description: The model-search policy is trained on newly generated experiments, not
+  only on perturbations of an already bound curve. is mined for physics and parity
+  fixtures only; it is not a runtime dependency, s
+tags:
+- prds
+timestamp: '2026-09-23T21:13:31+02:00'
 ---
 
 # PRD-152: native experiment-generating self-play for residual-aware model search

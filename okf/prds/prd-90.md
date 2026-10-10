@@ -2,8 +2,8 @@
 type: PRD
 prd: "90"
 title: "PRD-90: Provenance-driven citation list for ChiSurf analysis pipelines"
-description: tttrlib PRD-027 Part 5b defines automatic citation generation from .pto provenance graphs. This is the ChiSurf side: surface those citations in the GUI, let the user export them, and ensure ChiSurf-written .pto files embed them.
-status: Draft
+description: "tttrlib PRD-027 Part 5b defines automatic citation generation from .pto provenance graphs. This is the ChiSurf side: surface those citations in the GUI, let the user export them, and ensure ChiSurf-written .pto files embed them."
+status: draft
 created: 2026-08-08
 owner: tpeulen
 sibling: tttrlib/okf/prds/PRD-027-modular-algorithm-registry.md (Part 5b)

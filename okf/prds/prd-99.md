@@ -3,7 +3,7 @@ type: PRD
 prd: "99"
 title: "PRD-99: Calibrating the cheap model against the expensive one — linker length and rigidity as variables, AV as the thing that must reproduce them"
 description: An AV is a uniform distribution over a hard-sphere-accessible volume with no energetics and an infinitely flexible linker; FPSIMP's PMI Monte Carlo is a Boltzmann ensemble with excluded volume and connectivity. Nobody has ever asked the two for the same number on the same structure. Make linker length and rigidity explicit variables of the expensive simulation, make a run cheap enough to sweep them, and fit AV's nine parameters so the cheap model reproduces the expensive one — including a map of where it provably cannot, which is the scientific result rather than a failure.
-status: proposed
+status: draft
 resource: /Users/tpeulen/dev/imp.bff
 tags: [prd, imp.bff, fpsimp, av, sampling, calibration, linker, kappa2, fret]
 timestamp: '2026-08-11T00:00:00Z'

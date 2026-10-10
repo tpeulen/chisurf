@@ -1,3 +1,11 @@
+---
+type: Plan
+title: Full experiment/model acceptance checklist
+description: Each unchecked item blocks the all-model claim. Class resolution is verified by the parent inventory; scientific round-trip, nondefault state, GUI and history acceptance remain separate gates. Catalog
+tags: [plans]
+timestamp: 2026-10-05T13:55:57+02:00
+---
+
 # Full experiment/model acceptance checklist
 
 Each unchecked item blocks the all-model claim. Class resolution is verified by the parent inventory; scientific round-trip, nondefault state, GUI and history acceptance remain separate gates. Catalogue source: `chisurf/core/settings/experiment_configs.yaml`.

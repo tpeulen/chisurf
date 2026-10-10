@@ -1,3 +1,11 @@
+---
+type: Reference
+title: Scientific project/model acceptance matrix
+description: 'Catalogue:; actual import identities retained in. Counts: 11 experiment families, 42 configured model entries.'
+tags: [references]
+timestamp: 2026-10-05T13:55:57+02:00
+---
+
 # Scientific project/model acceptance matrix
 
 **Status: REQUEST_CHANGES — October 4, 2026.** Every row below is required. Successful runtime class resolution is inventory evidence only; it is not roundtrip or scientific approval.

@@ -3,6 +3,11 @@ title: ChiMOL moves to its own repository — sever first, move second
 status: done
 group: plugins
 updated: 2026-08-14
+type: Plugin Note
+description: 'Three states existed at move time and none was dropped:'
+tags:
+- plugins
+timestamp: '2026-09-16T19:20:27+02:00'
 ---
 
 # ChiMOL moves to its own repository — sever first, move second

@@ -3,6 +3,13 @@ title: Handover — wire the beam path onto the emtk node editor
 status: done
 group: handover
 updated: 2026-09-02
+type: Handover
+description: 'One deliberate departure from the plan below: pans instead of fitting.
+  emtk kept a node''s pixel size fixed regardless of zoom, so fitting this 8-node,
+  plot-heavy graph to the panel only shrank the spa'
+tags:
+- handover
+timestamp: '2026-09-16T19:20:27+02:00'
 ---
 
 # Handover: the beam path is the last consumer on the old editor

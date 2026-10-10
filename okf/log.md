@@ -2,6 +2,10 @@
 
 ## 2026-10-10
 
+- W0b step 1: validator `--fix` for FM/PRD/WIKI/LINK/KI plus hand repairs of seven unparseable
+  frontmatters, PRD-139/140 status and index; OKF findings 2332→1880. log.md, gui-autoform.md and the
+  board are untouched (another instance's uncommitted edits / tttrlib).
+
 - W6a–e UI-debt sweep: 436 tooltip and 693 literal allowances closed across tttr, fcs, pch,
   vv_vh_g_factor, burst, microscopy, calculator, fluorescence_decay, chimol, modelling and traj
   (tooltips 568→132, literals 1049→356); id suffixes kept outside `tr()`.
