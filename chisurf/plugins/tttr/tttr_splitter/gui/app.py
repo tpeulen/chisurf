@@ -28,6 +28,8 @@ if TYPE_CHECKING:
 
 WINDOW_BG = (30, 32, 38, 255)
 ACCENT_GREEN = (46, 160, 67, 255)
+#: The smallest chunk the Qt spin box allowed (``splitter.view.json`` ``minimum``), in thousands of photons.
+MIN_PHOTONS_PER_FILE_K = 100
 
 
 class SplitterGui(TourTarget):
@@ -224,11 +226,16 @@ class SplitterGui(TourTarget):
             tr("Expand or collapse photon chunking, timing and source retention settings.")
         )
         if split_open:
-            _, v = im.input_int("Photons per file [k]", m.photons_per_file_k, step=50)
+            changed_k, v = im.input_int("Photons per file [k]", m.photons_per_file_k, step=100)
             im.set_item_tooltip(
-                tr("Chunk size in thousands of photons when Split into files is enabled.")
+                tr("Chunk size in thousands of photons when Split into files is enabled "
+                "(at least 100 k).")
             )
-            m.photons_per_file_k = max(1, int(v))
+            # The Qt spin box bounded what a user commits (100 k) while letting "3" through on the way to "300".
+            if changed_k:
+                m.photons_per_file_k = max(1, int(v))
+            if im.is_item_deactivated_after_edit() or (changed_k and not im.is_item_active()):
+                m.photons_per_file_k = max(MIN_PHOTONS_PER_FILE_K, m.photons_per_file_k)
             bin_opts = ["1", "2", "4", "8", "16"]
             idx = bin_opts.index(m.microtime_binning) if m.microtime_binning in bin_opts else 0
             changed, new_idx = im.combo("Micro time binning", idx, bin_opts)

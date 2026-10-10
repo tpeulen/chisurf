@@ -68,6 +68,12 @@ class BurstBvaGui:
         self.selected_settings_tab = "BVA Settings"
         self._folder_text: str | None = None
         self._microtime_text: dict[str, str] = {}
+        #: The shared detector editor (``chisurf.emtk.channel_definition``) and the detectors picked from it.
+        self.editor: Any = None
+        self.donor_detector = ""
+        self.acceptor_detector = ""
+        self._syncing = False
+        self._seen_editor: tuple | None = None
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.on_used: Callable[[str], None] | None = None
         help_resource = Path(__file__).parent / "help.md"
@@ -102,7 +108,104 @@ class BurstBvaGui:
         self.help_window.show()
 
     def _on_model_event(self, event: str) -> None:
-        pass
+        if event == "detector_settings" and self.editor is not None and not self._syncing:
+            self._syncing = True  # a workflow hand-off: the editor shows what the model now holds
+            try:
+                self.editor.load_definition(self._editor_settings())
+            finally:
+                self._syncing = False
+            self._sync_pair(self.editor.model.get_settings(), assign=False)
+
+    # ── the shared detector editor and the FRET pair picked from it ──────
+    def _editor_settings(self) -> dict:
+        """The definition the editor starts from: the model's donor and acceptor detectors and file type."""
+        detectors = {}
+        for role in ("donor", "acceptor"):
+            detectors[role] = {
+                "chs": list(getattr(self.model, f"{role}_channels")),
+                "micro_time_ranges": [list(r) for r in getattr(self.model, f"{role}_micro_time_ranges")],
+                "g_factor": 1.0,
+                "l1": 0.0,
+                "l2": 0.0,
+            }
+        return {
+            "windows": {},
+            "detectors": detectors,
+            "tttr_reading": {
+                "file_type": self.model.file_type,
+                "macro_time_resolution": 0.0,
+                "micro_time_resolution": 0.0,
+                "micro_time_binning": 1,
+            },
+        }
+
+    def attach_editor(self, host_app: Any) -> None:
+        """Create the shared detector editor (the Qt tool's Channels tab) and list the saved setups."""
+        from chisurf.core.setup_channel_definition import ChannelDefinition
+        from chisurf.emtk.channel_definition import ChannelDefinitionWidget
+
+        self.editor = ChannelDefinitionWidget(
+            model=ChannelDefinition(self._editor_settings()),
+            on_changed=self._editor_changed,
+            host_app=host_app,
+        )
+        self.editor.on_used = self.track
+        self.editor.toolbar.reload(open_last=False)
+        settings = self.editor.model.get_settings()
+        self._seen_editor = (
+            json.dumps(settings.get("detectors"), sort_keys=True, default=str),
+            (settings.get("tttr_reading") or {}).get("file_type"),
+        )
+        self.donor_detector, self.acceptor_detector = self._default_pair(list(settings["detectors"]))
+
+    @staticmethod
+    def _default_pair(names: list[str]) -> tuple[str, str]:
+        """The donor and acceptor among *names*: by green/red naming, else the first two."""
+        donor = next((n for n in names if "green" in n.lower() or "donor" in n.lower()), "")
+        acceptor = next((n for n in names if "red" in n.lower() or "acceptor" in n.lower()), "")
+        donor = donor or (names[0] if names else "")
+        acceptor = acceptor or next((n for n in names if n != donor), donor)
+        return donor, acceptor
+
+    def _editor_changed(self, settings: dict) -> None:
+        """A detector, window or setup of the editor changed: refresh the pair choices and the model."""
+        if self._syncing:
+            return
+        # An event that carries no change of detectors or file type must not overwrite routing typed by hand.
+        seen = (
+            json.dumps((settings or {}).get("detectors"), sort_keys=True, default=str),
+            ((settings or {}).get("tttr_reading") or {}).get("file_type"),
+        )
+        changed, self._seen_editor = seen != self._seen_editor, seen
+        self._sync_pair(settings, assign=changed)
+
+    def _sync_pair(self, settings: dict, assign: bool) -> None:
+        """Keep the chosen donor/acceptor detectors valid for *settings*; push them into the model when *assign*."""
+        names = list((settings or {}).get("detectors") or {})
+        default_donor, default_acceptor = self._default_pair(names)
+        if self.donor_detector not in names:
+            self.donor_detector = default_donor
+        if self.acceptor_detector not in names:
+            self.acceptor_detector = default_acceptor
+        if assign:
+            self._assign_pair(settings)
+
+    def _assign_pair(self, settings: dict) -> None:
+        """Take the picked detectors' channels and micro-time gates, and the file type, into the model."""
+        detectors = (settings or {}).get("detectors") or {}
+        for role, name in (("donor", self.donor_detector), ("acceptor", self.acceptor_detector)):
+            det = detectors.get(name)
+            if det is None:
+                continue
+            chs = ",".join(str(c) for c in det.get("chs", []))
+            ranges = [tuple(r) for r in (det.get("micro_time_ranges") or [])] or [(0, 32768)]
+            setattr(self.model, f"{role}_channels_text", chs)
+            setattr(self.model, f"{role}_micro_time_ranges", ranges)
+            self._microtime_text.pop(role, None)
+        file_type = ((settings or {}).get("tttr_reading") or {}).get("file_type")
+        if file_type and file_type != "auto" and file_type != self.model.file_type:
+            self.model.set_file_type(file_type)
+        self.model.notify("channel")
 
     def track(self, name: str) -> None:
         """Record usage of a named control."""
@@ -151,6 +254,22 @@ class BurstBvaGui:
                     im.end_tab_item()
                 else:
                     self.remember("Channel Definitions")
+
+                opened = im.begin_tab_item("Detectors")
+                im.set_item_tooltip(
+                    tr("The shared detector editor: setups, reading routine, PIE windows and detectors.")
+                )
+                if opened:
+                    self.selected_settings_tab = "Detectors"
+                    self.remember("Detectors")
+                    if self.editor is not None:
+                        self.editor.draw()
+                        self.item_rects.update(
+                            {f"detectors.{k}": v for k, v in self.editor.item_rects.items()}
+                        )
+                    im.end_tab_item()
+                else:
+                    self.remember("Detectors")
                 im.end_tab_bar()
 
             im.spacing()
@@ -421,9 +540,52 @@ class BurstBvaGui:
             return None
         return [(pair[0], pair[1]) for pair in parsed]
 
+    def _draw_pair_assignment(self) -> None:
+        """Setup, donor detector and acceptor detector: choose them, do not type routing numbers."""
+        if self.editor is None:
+            return
+        from chisurf.emtk.channel_setup_bar import UNSAVED
+
+        im.text_colored((200, 210, 230, 255), tr("FRET Pair Assignment"))
+        bar = self.editor.toolbar
+        setups = [UNSAVED, *bar.names]
+        index = setups.index(bar.selected) if bar.selected in setups else 0
+        im.text(tr("Setup:"))
+        changed, picked = im.combo("##bva_setup", index, setups)
+        im.set_item_tooltip(
+            tr("Choose a saved detector setup; its detectors become the donor and acceptor choices.")
+        )
+        self.remember("bva_setup")
+        if changed:
+            bar.select("" if picked == 0 else setups[picked])
+            self._sync_pair(self.editor.model.get_settings(), assign=True)
+            self.track("bva_setup")
+        names = list(self.editor.model.get_settings().get("detectors") or {})
+        for role, label, tip in (
+            ("donor", "Donor detector:", "The detector whose photons are the donor channel (I_DD, I_DA)."),
+            ("acceptor", "Acceptor detector:", "The detector whose photons are the acceptor channel."),
+        ):
+            current = getattr(self, f"{role}_detector")
+            im.text(tr(label))
+            changed, picked = im.combo(
+                f"##bva_{role}_detector", names.index(current) if current in names else 0, names
+            )
+            im.set_item_tooltip(tr(tip))
+            self.remember(f"{role}_detector")
+            if changed and names:
+                setattr(self, f"{role}_detector", names[picked])
+                self._assign_pair(self.editor.model.get_settings())
+                self.track(f"{role}_detector")
+
     def _draw_channel_definitions(self) -> None:
         """Draw detector channel controls."""
         im.spacing()
+        self._draw_pair_assignment()
+        im.spacing()
+        if not im.collapsing_header(tr("Manual routing"), im.TreeNodeFlags.DEFAULT_OPEN):
+            self.remember("manual_routing")
+            return
+        self.remember("manual_routing")
         im.text_colored((200, 210, 230, 255), "Detector Routing")
 
         im.text(tr("Donor routing channels:"))
@@ -608,6 +770,7 @@ class BurstBvaApp(ImApp):
         self.item_rects = self.bva_gui.item_rects
         self._size = (1200, 800)
         super().__init__(gui=self._render)
+        self.bva_gui.attach_editor(self)
 
     def start_guide(self) -> None:
         """Start guided tour inside EMTK."""
@@ -621,6 +784,8 @@ class BurstBvaApp(ImApp):
         """Cancel pending work and release the analysis executor."""
         if self.controller is not None:
             self.controller.close()
+        if self.bva_gui.editor is not None:
+            self.bva_gui.editor.close()
 
     def draw(self, painter, x, y, w, h) -> None:
         super().draw(painter, x, y, w, h)
@@ -646,7 +811,11 @@ class BurstBvaApp(ImApp):
                 ctx = get_current_context()
                 ctx.request_frame_at(ctx.io.now + 0.1)
         w, h = im.get_main_viewport().size
+        if self.bva_gui.editor is not None:
+            self.bva_gui.editor.poll()
         self.bva_gui.draw(float(w), float(h))
+        if self.bva_gui.editor is not None:
+            self.bva_gui.editor.draw_dialogs((0.0, 0.0, float(w), float(h)))
         if self.controller is not None:
             self.controller.draw_dialog((0.0, 0.0, float(w), float(h)))
 

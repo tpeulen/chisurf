@@ -144,6 +144,8 @@ FIDA photon-counting histograms.
   arguments, but the function calls `tttrlib.fida_pch(k_max, species, n, bg)`
   without them, so a custom brightness profile has no effect.
 
+**Save Results** writes `<base>.npz`, `.csv` and `.txt` plus two pictures, `<base>_histogram.png` (the P(k) plot with its fit) and `<base>_window.png` (the intensity trace above it).
+
 The native PCH tool starts at1100×720, preserving saved geometry, loaded photons
 and completed fitted species. Symmetric mixture components can exchange order
 without changing their paired brightness/occupancy or predicted histogram.

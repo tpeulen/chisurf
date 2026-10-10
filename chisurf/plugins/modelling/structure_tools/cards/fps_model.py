@@ -484,6 +484,29 @@ class FpsEditor:
         self._changed()
         return True
 
+    def delete_positions(self, rids: list[str]) -> int:
+        """Remove several rows at once (each as :meth:`delete_position`); returns how many went."""
+        removed = sum(1 for rid in list(rids) if self.delete_position(rid))
+        if removed > 1:
+            self.say(f"Removed {removed} rows.")
+        return removed
+
+    def delete_avs(self, rids: list[str]) -> int:
+        """Drop the computed accessible volumes of *rids* (the positions stay); returns how many were dropped."""
+        dropped = 0
+        for rid in rids:
+            future = self._futures.pop(rid, None)
+            if future is not None:
+                future.cancel()
+            had = rid in self.av_cache
+            for cache in (self.av_cache, self.av_signatures, self.av_state):
+                cache.pop(rid, None)
+            dropped += int(had)
+        self.av_message = f"AV: deleted {dropped} computed volume(s)." if dropped else "AV: Not computed"
+        self.sync(json_text=False)
+        self.on_change()
+        return dropped
+
     def toggle_position(self, rid: str) -> None:
         params = self._pos(rid)
         if params is not None:
@@ -767,6 +790,10 @@ class FpsEditor:
         if selected and selected in self.av_cache:
             return [selected]
         return [n for n in self.doc.positions if n in self.av_cache]
+
+    def computed_subset(self, rids: list[str]) -> list[str]:
+        """The computed accessible volumes among *rids* (the Qt "Save Selected AV(s) as MRC")."""
+        return [n for n in self.doc.positions if n in rids and n in self.av_cache]
 
     def write_mrc(self, name: str, path: str | Path) -> Path:
         import IMP.bff as bff

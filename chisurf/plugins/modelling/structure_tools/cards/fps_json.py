@@ -94,6 +94,13 @@ class PositionsView(_View):
     def has_position(self) -> bool:
         return bool(self.ed.selected_pos) and self.ed._pos(self.ed.selected_pos) is not None
 
+    #: the records of every selected row (the table's ``selection_attr``): ctrl/shift-click or Select All
+    picked_rows: list = []
+
+    def picked_ids(self) -> list[str]:
+        """The rows of the selection that still exist, in table order."""
+        return [r["row"] for r in self.picked_rows if isinstance(r, dict) and self.ed._pos(r["row"]) is not None]
+
     # table callbacks
     def select_row(self, record) -> None:
         self.ed.selected_pos = record["row"] if isinstance(record, dict) else ""
@@ -122,7 +129,12 @@ class PositionsView(_View):
             self.card.used("name")
 
     def delete_row(self, record) -> None:
-        if isinstance(record, dict):
+        if not isinstance(record, dict):
+            return
+        picked = self.picked_ids()
+        if len(picked) > 1 and record["row"] in picked:
+            self.card.ask_delete_positions(picked)
+        else:
             self.card.ask_delete_position(record["row"])
 
     # the selected position's fields
@@ -454,6 +466,40 @@ class FpsJsonCard(CardShell):
         self.editor.delete_position(rid)
         self.sync_status()
 
+    def ask_delete_positions(self, rids: list[str]) -> None:
+        """One question for the whole selection (Delete Row(s), the Delete key on several rows)."""
+        if len(rids) == 1:
+            self.ask_delete_position(rids[0])
+            return
+        self.ask(
+            "Remove positions",
+            f"Remove {len(rids)} rows and every distance that uses them?",
+            lambda: self._delete_positions(list(rids)),
+            yes="Remove",
+            no="Keep",
+        )
+
+    def _delete_positions(self, rids: list[str]) -> None:
+        self.editor.delete_positions(rids)
+        self.sync_status()
+
+    def targets(self) -> list[str]:
+        """The rows an action applies to: the selection, else the current row."""
+        view = self.views["positions"]
+        picked = view.picked_ids()
+        if picked:
+            return picked
+        rid = self.editor.selected_pos
+        return [rid] if rid and self.editor._pos(rid) is not None else []
+
+    def delete_avs(self) -> None:
+        names = self.targets()
+        dropped = self.editor.delete_avs(names)
+        self.say(
+            f"Deleted {dropped} computed accessible volume(s)." if dropped else "None of the selected rows has a computed AV.",
+            not dropped,
+        )
+
     def ask_delete_distance(self, rid: str) -> None:
         self.ask(
             "Remove Restraint?",
@@ -497,7 +543,11 @@ class FpsJsonCard(CardShell):
         self.used("pdb")
 
     def save_mrc(self) -> None:
-        names = self.editor.computed_names(self.editor.selected_pos)
+        picked = self.views["positions"].picked_ids()
+        if len(picked) > 1:  # a subset: the selected rows' computed volumes
+            names = self.editor.computed_subset(picked)
+        else:
+            names = self.editor.computed_names(self.editor.selected_pos)
         if not names:
             self.editor.av_message = "No computed AVs available to save as MRC."
             self.say(self.editor.av_message, True)
@@ -675,10 +725,17 @@ class FpsJsonCard(CardShell):
                     "tip": "Add an empty position row; it becomes a position once it has a name.",
                 },
                 {
-                    "label": "Delete Row",
+                    "label": "Delete Row(s)",
                     "key": "delete_row",
-                    "enabled": bool(ed.selected_pos) and ed._pos(ed.selected_pos) is not None,
-                    "tip": "Remove the selected row (asks first; the distances that use a position go with it).",
+                    "enabled": bool(self.targets()),
+                    "tip": "Remove the selected rows (ctrl- or shift-click to select several; asks first; the "
+                    "distances that use a position go with it).",
+                },
+                {
+                    "label": "Delete AV(s)",
+                    "key": "delete_avs",
+                    "enabled": any(n in ed.av_cache for n in self.targets()),
+                    "tip": "Drop the computed accessible volumes of the selected rows; the positions stay.",
                 },
                 {
                     "label": "Browse PDB...",
@@ -714,7 +771,8 @@ class FpsJsonCard(CardShell):
                 {
                     "label": "Save AV MRC",
                     "key": "save_mrc",
-                    "tip": "Save the selected position's computed accessible volume (else every one) as an MRC density map.",
+                    "tip": "Save the computed accessible volume of the selected rows (one row: its volume, several: those "
+                    "volumes, none: every one) as MRC density maps.",
                 },
             ]
         )
@@ -723,7 +781,9 @@ class FpsJsonCard(CardShell):
             self.sync_status()
             self.used("add_row")
         elif pressed == "delete_row":
-            self.ask_delete_position(ed.selected_pos)
+            self.ask_delete_positions(self.targets())
+        elif pressed == "delete_avs":
+            self.delete_avs()
         elif pressed == "browse_pdb":
             self.browse_pdb()
         elif pressed == "fetch_pdb":

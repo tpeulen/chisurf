@@ -124,3 +124,44 @@ app.close()
         timeout=20,
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_apply_restyles_the_running_application_with_the_shared_widget_fragments(tmp_path):
+    m = model(tmp_path)
+    (m.package_dir / "widgets").mkdir()
+    (m.package_dir / "widgets" / "buttons.qss").write_text("/* shared */ QPushButton { padding: 3px; }")
+    m.editor.set_text("QWidget { background-color: #abcdef; }")
+    seen = []
+    m.application_callback = lambda text: seen.append(text) or True
+    assert m.apply()
+    assert seen and seen[-1].startswith("/* shared */") and seen[-1].endswith("#abcdef; }")
+    assert m.status.endswith("The running application was restyled.")
+    m.application_callback = lambda text: False
+    assert m.apply() and m.status.endswith("at the next launch.")
+
+
+def test_apply_button_press_changes_the_look_of_a_live_qt_application(tmp_path, qapp):
+    from emtk import im
+    from emtk.testing import RecordingPainter
+
+    from chisurf.plugins.core.style_manager.gui.app import StyleManagerApp
+
+    m = model(tmp_path)
+    m.editor.set_text("QPushButton { background-color: #123456; }")
+    app = StyleManagerApp(m)
+    before = qapp.styleSheet()
+    try:
+        # the real Apply button is pressed in a frame
+        pressed = []
+        original = im.button
+        im.button = lambda label, *a, **k: pressed.append(label) or label == "Apply"
+        try:
+            with im.frame(RecordingPainter(), (0, 0, 800, 600)):
+                app._render()
+        finally:
+            im.button = original
+        assert "#123456" in qapp.styleSheet()
+        assert "restyled" in m.status
+    finally:
+        qapp.setStyleSheet(before)
+        app.close()

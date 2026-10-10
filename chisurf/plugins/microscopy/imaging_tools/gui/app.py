@@ -177,6 +177,8 @@ class ImagingToolsApp(CalculatorHubApp):
         self._mmfdb_session = mmfdb_session
         self._mmfdb_source_artifact_id = ""
         self._ff_queue = []
+        self._precompute_queue = []
+        self._precomputing = False
         self.help = self.help_window = EmTkHelpWindow(
             title="Imaging Tools - Help",
             resource=HERE / "help.md",
@@ -210,33 +212,11 @@ class ImagingToolsApp(CalculatorHubApp):
         self.tour.notify_used("entry:" + role)
         if role in self.children:
             return True
-        factory = self.factory(role)
-        if factory is None:
-            self.error = label("Native migration pending for this tool.")
-            return False
         try:
-            if isinstance(factory, str):
-                module, name = factory.split(":")
-                factory = getattr(importlib.import_module(module), name)
-            kwargs = (
-                {"settings": self.setup or None, "on_changed": self.set_setup}
-                if role == "setup"
-                else {"coordinator": self}
-            )
-            child = factory(**kwargs)
-            child.set_frame_request_callback(self.request_frame)
-            child._coordinator = self
-            child._pipeline_role = role
-            model = getattr(child, "model", None)
-            if model is not None:
-                model.pipeline_sink = self.set_pipeline
-                if hasattr(model, "publish"):
-                    model.publish = self.set_calibration
-            self.children[role] = child
-            if role in self._saved_children:
-                restore = getattr(child, "restore_settings", None)
-                if restore:
-                    restore(copy.deepcopy(self._saved_children[role]))
+            child = self._build_child(role)
+            if child is None:
+                self.error = label("Native migration pending for this tool.")
+                return False
             if role == "setup":
                 self.set_setup(child.get_settings())
             else:
@@ -249,6 +229,37 @@ class ImagingToolsApp(CalculatorHubApp):
             self.error = str(exc)
             self.status = self.error
             return False
+
+    def _build_child(self, role):
+        """Build the native app of *role* (once), wired to the hub; ``None`` when it has no native app."""
+        if role in self.children:
+            return self.children[role]
+        factory = self.factory(role)
+        if factory is None:
+            return None
+        if isinstance(factory, str):
+            module, name = factory.split(":")
+            factory = getattr(importlib.import_module(module), name)
+        kwargs = (
+            {"settings": self.setup or None, "on_changed": self.set_setup}
+            if role == "setup"
+            else {"coordinator": self}
+        )
+        child = factory(**kwargs)
+        child.set_frame_request_callback(self.request_frame)
+        child._coordinator = self
+        child._pipeline_role = role
+        model = getattr(child, "model", None)
+        if model is not None:
+            model.pipeline_sink = self.set_pipeline
+            if hasattr(model, "publish"):
+                model.publish = self.set_calibration
+        self.children[role] = child
+        if role in self._saved_children:
+            restore = getattr(child, "restore_settings", None)
+            if restore:
+                restore(copy.deepcopy(self._saved_children[role]))
+        return child
 
     select = goto_role  # the hub base's name for it
 
@@ -287,11 +298,13 @@ class ImagingToolsApp(CalculatorHubApp):
         for role, child in self.children.items():
             if role != "setup":
                 self._apply_context(child)
+        self.precompute()
         self.request_frame()
 
     def set_pipeline(self, source=None, hdf5=None):
+        new_source = bool(source) and str(source) != self._pipeline["source"]
         if source:
-            if str(source) != self._pipeline["source"]:
+            if new_source:
                 self._mmfdb_source_artifact_id = ""
                 if self._mmfdb_db is not None and self._mmfdb_session is not None:
                     from mmfdb.provenance.result_registry import register_raw_measurement
@@ -310,10 +323,95 @@ class ImagingToolsApp(CalculatorHubApp):
             self._pipeline["hdf5"] = str(hdf5)
         for role, child in self.children.items():
             if role != "setup":
-                apply = getattr(child, "apply_pipeline_context", None)
-                if apply:
-                    apply(copy.deepcopy(self._pipeline))
+                self._apply_pipeline_quietly(role, child)
                 self._bind_model_to_mmfdb(getattr(child, "model", None))
+        if new_source:
+            self.precompute()
+        self.request_frame()
+
+    def _apply_pipeline_quietly(self, role, child):
+        """Hand a child the source and HDF5; the analysis steps are *selected*, the precompute queue runs them one by one."""
+        model = getattr(child, "model", None)
+        idle = not (getattr(getattr(child, "job", None), "busy", False) or getattr(model, "busy", False))
+        if (
+            idle
+            and role in self.ANALYSIS_ROLES
+            and hasattr(model, "apply_pipeline_context")
+            and hasattr(child, "start")
+        ):
+            model.apply_pipeline_context(copy.deepcopy(self._pipeline))
+            return
+        apply = getattr(child, "apply_pipeline_context", None)
+        if apply:
+            apply(copy.deepcopy(self._pipeline))
+
+    # -- background precompute (the Qt hub's _start_background_compute) -------------------------------------------------- #
+    def precompute(self):
+        """Queue intensity, N&B, micro-time and phasor to compute in the background, one after the other.
+
+        Called when a new source arrives and when the detector setup changes (the windows changed, so the maps
+        are stale); a step whose inputs did not change is skipped when its turn comes. The steps share one
+        imaging HDF5, so they run in series, each started from the frame after the previous finished.
+        """
+        if not self._pipeline["source"]:
+            return
+        self._precompute_queue = list(self.ANALYSIS_ROLES)
+        self._precomputing = True
+        self.status = label("Computing imaging steps in background ...")
+
+    def precompute_pending(self):
+        """The steps still waiting for (or in) their background compute."""
+        return list(self._precompute_queue)
+
+    def _any_child_busy(self):
+        for child in self.children.values():
+            job = getattr(child, "job", None)
+            model = getattr(child, "model", None)
+            if getattr(job, "busy", False) or getattr(model, "busy", False):
+                return True
+        return False
+
+    def _poll_children(self):
+        """Deliver the results of background jobs; a tool that is not on screen never draws, so nobody else would."""
+        for child in self.children.values():
+            job = getattr(child, "job", None)
+            if job is not None and job.busy and callable(getattr(job, "poll", None)):
+                job.poll()
+                if hasattr(child, "model"):
+                    child.model.busy = job.busy
+
+    def animating(self):
+        return bool(
+            super().animating() or self._precompute_queue or self._precomputing
+        )
+
+    def _precompute_tick(self):
+        """Start the next queued step when no tool is computing."""
+        self._poll_children()
+        if not self._precompute_queue:
+            if self._precomputing and not self._any_child_busy():
+                self._precomputing = False
+                if not self.status.endswith("failed"):
+                    self.status = label("Imaging steps ready.")
+            return
+        if self._any_child_busy():
+            return
+        role = self._precompute_queue.pop(0)
+        try:
+            child = self._build_child(role)
+            model = getattr(child, "model", None)
+            if child is None or model is None or not hasattr(child, "start"):
+                return
+            flush = getattr(child, "_flush_pending", None)
+            if flush:
+                flush()
+            self._apply_pipeline_quietly(role, child)
+            if model.filename and model.needs_recompute():
+                self.status = f"{role}: computing in the background ..."
+                self._precomputing = True
+                child.start("compute_job")
+        except Exception as exc:
+            self.status = f"Background compute of {role} failed: {exc}"
         self.request_frame()
 
     def set_calibration(self, calibration):
@@ -588,6 +686,7 @@ class ImagingToolsApp(CalculatorHubApp):
         self.help.draw((0, 0, width, height))
         self.tour.draw(width, height)
         self._fast_forward_tick()
+        self._precompute_tick()
 
     def on_files_dropped(self, paths):
         handler = getattr(self.child, "on_files_dropped", None)

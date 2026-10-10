@@ -11,7 +11,7 @@
         {"action": "fit", "label": "Fit Model",
          "description": "Fit the species model (brightness and occupancy per component) to the histogram over the selected k range."},
         {"action": "save", "label": "Save Results",
-         "description": "Write the histogram, the fit and the results text as NPZ, CSV and TXT files."}
+         "description": "Write the histogram, the fit and the results text as NPZ, CSV and TXT files plus two PNG pictures."}
       ]}
     ]},
     {"type": "panel", "title": "Data settings", "description": "File, detector channels and bin time (us) from which the photon counting histogram is built.", "sections": [

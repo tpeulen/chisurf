@@ -72,6 +72,10 @@ between sessions. A file dropped on the window goes to the open tool.
 * **Run all** walks the rest of the numbered steps (Setup to Pixel-wise MLE), each when the previous one has finished
   computing; the button turns into **Stop** while it walks, and a second press stops it after the step in flight. It is
   greyed below the rule and on the last step.
+* **Background precompute.** As soon as a photon source is chosen, the hub computes Intensity, Number & Brightness,
+  Mean Micro-Time and Phasor in the background, one after the other (they share one imaging HDF5), so the tabs show
+  finished maps when you arrive. Changing the detector setup makes those maps stale and the hub recomputes them with the
+  new windows; the status line reads *Computing imaging steps in background ...* and then *Imaging steps ready.*
 
 The tools themselves also hand off: **Next** inside a step asks the hub to move to the following step of the pipeline
 (Browser, Drift, Resolution, Tracking, then the numbered steps), skipping the tools that are not part of it.

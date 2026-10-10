@@ -78,7 +78,7 @@ profile use the same channel and slicing definition as the burst points.
 |---|---|---|
 | **Min window length (s)** | 0.01 | Alternative slicing by a fixed time. |
 | **Photons per slice** | 10 | $n$ of the slices and of the static line. |
-| **Setup** | — | Detector setup (also editable on **Channel Definitions**). |
+| **Setup** | — | Saved detector setup; its detectors fill the two pickers below. The full shared detector editor is on the **Detectors** tab. |
 | **Donor detector** / **Acceptor detector** | first two detectors | Which detectors form $p = n_A/(n_D+n_A)$. |
 | **Bins X** / **Bins Y** | 31 / 31 | Resolution of the 2-D histogram. |
 | **Show static line** / **Auto update** (toolbar) | on / on | Overlay the shot-noise line; recompute on every change. |

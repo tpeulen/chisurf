@@ -132,6 +132,9 @@ class StyleManagerModel:
         self.saved_text = ""
         self.status = ""
         self.apply_callback = None
+        #: ``application_callback(qss_text)`` restyles the running application; ``None`` uses
+        #: :meth:`restyle_application` (the Qt application when one is already loaded in this process).
+        self.application_callback = None
         self.applied_style = None
         self.ignored_rules = []
         self.copy_defaults()
@@ -210,6 +213,41 @@ class StyleManagerModel:
             self.status = f"Error saving style: {error}"
             return False
 
+    def combined_qss(self, theme_text):
+        """The application's sheet as the startup builds it: the shared widget fragments, then the theme."""
+        parts = []
+        for folder in (self.package_dir / "widgets", self.styles_dir / "widgets"):
+            if folder.is_dir():
+                for path in sorted(folder.glob("*.qss")):
+                    try:
+                        parts.append(path.read_text(encoding="utf-8"))
+                    except (OSError, UnicodeError):
+                        continue
+        return "\n\n".join(part for part in (*parts, theme_text) if part)
+
+    def restyle_application(self, qss_text):
+        """Apply *qss_text* to the running Qt application, as the legacy Apply did; ``True`` when one was restyled.
+
+        Qt is never imported here: a process without a Qt application (the standalone native window) has
+        nothing to restyle and the style takes effect at the next launch.
+        """
+        if callable(self.application_callback):
+            return bool(self.application_callback(qss_text))
+        import sys
+
+        widgets = sys.modules.get("qtpy.QtWidgets")
+        application = widgets.QApplication.instance() if widgets is not None else None
+        if application is None:
+            return False
+        application.setStyleSheet(qss_text)
+        try:
+            import chisurf as cs
+
+            cs.core.settings.style_sheet = qss_text  # what the startup compares against to skip a re-apply
+        except Exception:  # noqa: BLE001 - the sheet is applied; only the cache of it is missing
+            pass
+        return True
+
     def apply(self):
         if not self.save():
             return False
@@ -217,6 +255,7 @@ class StyleManagerModel:
             style, ignored = convert_qss(self.editor.text)
             if self.apply_callback:
                 self.apply_callback(style)
+            restyled = self.restyle_application(self.combined_qss(self.editor.text))
             self.applied_style = style
             self.ignored_rules = ignored
             from chisurf.core.settings.settings_utils import update_settings_section
@@ -224,6 +263,11 @@ class StyleManagerModel:
             persisted = update_settings_section("gui", {"style_sheet": self.current_file.name})
             self.status = (
                 f"Applied {self.current_file.name}; {len(ignored)} Qt-only declarations retained."
+                + (
+                    " The running application was restyled."
+                    if restyled
+                    else " Takes effect in the main window at the next launch."
+                )
             )
             if not persisted:
                 self.status += " Preference could not be saved."

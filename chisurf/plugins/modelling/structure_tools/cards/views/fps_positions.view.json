@@ -13,6 +13,7 @@
         "row_key": "row",
         "status": true,
         "selected_call": "select_row",
+        "selection_attr": "picked_rows",
         "edited_call": "edit_row",
         "delete_call": "delete_row",
         "columns": [

@@ -441,10 +441,46 @@ class PchModel:
         with open(f"{base}.txt", "w", encoding="utf-8") as ftxt:
             ftxt.write(self.results_text)
 
+    def _draw_histogram_panel(self, ax: Any) -> None:
+        """Measured P(k) points, the fit over its range and the axis labels on *ax*."""
+        k, p = self.histogram_points()
+        if k.size:
+            ax.scatter(k, p, color="C0", label="P(k)")
+        kf, pf = self.fit_curve()
+        if kf.size:
+            ax.line(kf, pf, color="crimson", width=2, label="fit")
+        ax.set_labels(x="Photon Count k", y="P(k)")
+        ax.set_log(y=True)
+        ax.legend()
+
+    def save_pictures(self, base: str) -> None:
+        """Write ``<base>_histogram.png`` and ``<base>_window.png`` (CPU-rasterised, no Qt).
+
+        The histogram picture is the P(k) plot with its fit; the window picture stacks the
+        intensity trace above it.
+        """
+        if self.result is None:
+            raise RuntimeError("Compute the histogram first.")
+        from emtk.figure import Figure
+
+        fig = Figure(size=(720, 480), title="Photon counting histogram")
+        self._draw_histogram_panel(fig.ax())
+        fig.save(f"{base}_histogram.png")
+
+        win = Figure(rows=2, cols=1, size=(900, 800), title="Photon counting histogram")
+        trace = win.ax(0, 0)
+        if self.trace_x.size:
+            trace.line(self.trace_x, self.trace_y, color="C0", label="counts")
+        trace.set_labels(x="Time (s)", y="Photon Counts")
+        trace.set_title("Intensity trace")
+        self._draw_histogram_panel(win.ax(1, 0))
+        win.save(f"{base}_window.png")
+
     def save_to(self, base: str) -> bool:
         """Save under *base*; report the outcome as the status or the error."""
         try:
             self.save_outputs(base)
+            self.save_pictures(base)
         except Exception as exc:
             self._fail(f"Saving failed: {exc}")
             return False
