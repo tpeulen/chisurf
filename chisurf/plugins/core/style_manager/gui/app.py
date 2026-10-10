@@ -11,6 +11,7 @@ from emtk import im
 from emtk.i18n import tr
 from emtk.app import ImApp
 
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import action_button, window_size
 from emtk.file_dialog import FileDialog
 from emtk.im_core import Style
@@ -309,6 +310,21 @@ class StyleManagerApp(ImApp):
         self.pending = None
         self.new_name = ""
         self.new_visible = False
+        #: control name -> last drawn frame, for the guided tour's spotlight
+        self.item_rects: dict[str, tuple] = {}
+        gui_dir = pathlib.Path(__file__).parent
+        self.tour = EmTkGuidedTour(
+            gui_dir / "guide.json",
+            get_target_rect=self.item_rects.get,
+            owner=self,
+            wait_for_controls=True,
+        )
+        self.help_window = EmTkHelpWindow(
+            title="Style manager - Help",
+            resource=gui_dir / "help.md",
+            owner=self,
+            on_start_guide=self.tour.start,
+        )
         super().__init__(gui=self._render, continuous=False)
         self.model.apply_callback = self._apply_style
 
@@ -368,6 +384,13 @@ class StyleManagerApp(ImApp):
             im.end_child()
         im.end()
         self._draw_dialogs()
+        vp = im.get_main_viewport()
+        self.help_window.draw((0.0, 0.0, vp.size[0], vp.size[1]))
+        self.tour.draw(*vp.size)
+
+    def _remember(self, name):
+        """Store the last drawn item's frame under *name* for the tour."""
+        self.item_rects[name] = tuple(im.get_item_rect())
 
     def _draw_main(self):
         m = self.model
@@ -377,8 +400,10 @@ class StyleManagerApp(ImApp):
         im.set_next_item_width(max(160, min(320, im.get_content_region_avail()[0] - 120)))
         changed, index = im.combo("Style File", selected, choices)
         im.set_item_tooltip(tr("Browse editable QSS files copied to your user settings directory"))
+        self._remember("style_file")
         if changed:
             self.request_load(m.files[index])
+            self.tour.notify_used("style_file")
         if im.button(tr("New")):
             if m.modified:
                 self.pending = ("new", None)
@@ -406,14 +431,25 @@ class StyleManagerApp(ImApp):
         if wide_toolbar:
             im.same_line()
         if im.button(tr("Apply")):
-            m.apply()
+            if m.apply():
+                self.tour.notify_used("apply")
         im.set_item_tooltip(
             tr("Save and apply supported palette rules to this native window; Qt-only rules remain in the file")
         )
+        self._remember("apply")
         im.same_line()
         if im.button(tr("Reset styles")):
             self.pending = ("reset", None)
         im.set_item_tooltip(tr("Confirm deletion of user QSS files and restore packaged defaults"))
+        self._remember("reset_styles")
+        im.same_line()
+        if action_button("guide"):
+            self.tour.start()
+        self._remember("guide")
+        im.same_line()
+        if action_button("help"):
+            self.help_window.show()
+        self._remember("help")
         im.text_wrapped(str(m.current_file or "No style selected") + (" *" if m.modified else ""))
         if m.ignored_rules:
             if im.collapsing_header(f"Qt-only declarations ({len(m.ignored_rules)})"):
@@ -425,6 +461,7 @@ class StyleManagerApp(ImApp):
         im.text_editor(
             "##style_source", m.editor, (0, max(100, im.get_content_region_avail()[1] - 8))
         )
+        self._remember("style_source")
         im.set_item_tooltip(
             tr("Edit QSS source with syntax highlighting, selection, clipboard and undo/redo")
         )
@@ -491,6 +528,7 @@ class StyleManagerApp(ImApp):
 
     def close(self):
         self.model.apply_callback = None
+        self.tour.stop()
         self.file_dialog = None
         self.pending = None
 

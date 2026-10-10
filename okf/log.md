@@ -2,6 +2,10 @@
 
 ## 2026-10-10
 
+- W7 tours: style_manager, code_editor, the games hub, structure_tools and ndX now build a guided tour
+  whose awaited step the click-all drives (ndX gains `chisurf/plugins/ndxplorer/demo.py` and a Help >
+  Guide menu); guardrail `test/gui/test_native_guides_wired.py`. Note: `check_plugin_guide.py --live`
+  presses only `load_example`, so other awaited steps report "pending" there.
 - Linked fits refresh on an edit: `chisurf/core/fitting/link_propagation.py` finds every fit whose
   parameters follow the edited fit (transitively, once each, masters first, cycle-safe) and updates it
   after the owner's update on every edit path (server `fit.update`, the action, the local API, the GUI

@@ -142,6 +142,105 @@ def _add_mmfdb_integration(app):
     return feature
 
 
+def _add_guide(app):
+    """Give the shared ndX window ChiSurf's Guide and quick reference (Help menu).
+
+    ndX itself is toolkit-light and ships neither, so the host adds both as a feature: the tour is
+    ``guide.json`` beside this module, its targets are the controls ndX's own forms drew last frame, and
+    it opens the demo table when nothing is loaded, and is drawn in the same frame as the window so the card lies over the plots.
+    """
+    from ndxplorer.app.features import Feature
+    from ndxplorer.app.menus import build_menu_bar
+
+    from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+
+    here = Path(__file__).parent
+
+    def target_rect(key):
+        """Where the control or plot part named *key* was drawn last frame."""
+        if key == "menu_bar":
+            return app._menu_box
+        if key in app.plot_boxes:
+            return app.plot_boxes[key]
+        for form in app.forms.values():
+            rect = form.rects.get(key)
+            if rect is not None:
+                return rect
+        return None
+
+    def open_demo_when_empty(index, _step):
+        """The first step opens the demo table when nothing is loaded: its steps need data to point at."""
+        if index == 0 and app.model.source is None:
+            import tempfile
+
+            from chisurf.plugins.ndxplorer.demo import make_demo
+
+            app.open_path(str(make_demo(tempfile.mkdtemp(prefix="ndx_demo_"))))
+
+    tour = EmTkGuidedTour(
+        here / "guide.json",
+        get_target_rect=target_rect,
+        on_step_change=open_demo_when_empty,
+        owner=app,
+        wait_for_controls=True,
+    )
+    help_window = EmTkHelpWindow(
+        title="ndXplorer - Quick reference",
+        resource=here / "help.md",
+        owner=app,
+        on_start_guide=tour.start,
+    )
+    for form in app.forms.values():
+        form.on_used = tour.notify_used
+    app.tour, app.help_window = tour, help_window
+
+    class GuideFeature(Feature):
+        name = "chisurf_guide"
+
+        def actions(self):
+            return {"chisurf_guide": tour.start, "chisurf_quick_reference": help_window.show}
+
+        def available(self, action):
+            return True if action in ("chisurf_guide", "chisurf_quick_reference") else None
+
+        def menu_entries(self):
+            return [
+                (
+                    ("Help",),
+                    {
+                        "label": "Guide",
+                        "action": "chisurf_guide",
+                        "description": "A step-by-step tour of the window; it waits for you to press the controls it points at.",
+                    },
+                ),
+                (
+                    ("Help",),
+                    {
+                        "label": "Quick reference",
+                        "action": "chisurf_quick_reference",
+                        "description": "What the window's parts are, in a few lines.",
+                    },
+                ),
+            ]
+
+        def draw_windows(self):
+            width, height = self.app.box[2], self.app.box[3]
+            help_window.draw((0.0, 0.0, width, height))
+            tour.draw(width, height)
+            return False
+
+        def close(self):
+            tour.stop()
+
+    feature = GuideFeature(app)
+    app.features.append(feature)
+    app.panel.actions.update(feature.actions())
+    app.menubar = build_menu_bar(
+        app.panel.available, app._checked, extra=app._feature_menu_entries()
+    )
+    return feature
+
+
 def _load_ndx_app_factory():
     """Import the bundled ndX app whether its module root is installed or vendored."""
     root = Path(__file__).resolve().parents[4] / "modules" / "ndxplorer"
@@ -189,6 +288,7 @@ def make_app(session_autosave: bool = True, chisurf_rpc=None):
     app._chisurf_native_source = source
     register_source("ndx", source)
     mmfdb_feature = _add_mmfdb_integration(app)
+    guide_feature = _add_guide(app)
 
     def set_frame_request_callback(callback):
         # emtk's Qt host (what ChiSurf's menu wraps the app in) never calls the
@@ -216,6 +316,7 @@ def make_app(session_autosave: bool = True, chisurf_rpc=None):
         app._chisurf_closed = True
         unregister_source("ndx", source)
         mmfdb_feature.close()
+        guide_feature.close()
         app._chisurf_request_frame_callback = None
         original_close()
         # Empty the Global View slot if it still holds this app's constants, as

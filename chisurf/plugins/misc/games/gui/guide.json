@@ -1,0 +1,26 @@
+{
+  "_comment": "Guided tour of the games hub. Each game has its own Guide; this one shows how to pick a game. The awaited step waits for the user to select one.",
+  "steps": [
+    {
+      "title": "A short break between fits",
+      "text": "Five small games live in this window. Each one keeps its score and state while you try another, and every game mutes itself when its window is not in front. You press the controls; the tour only points at them.",
+      "target": {}
+    },
+    {
+      "title": "Pick a game",
+      "text": "One row per game; hover for what it is. <b>Pong</b> is a good first one: a paddle, a CPU opponent and arrow keys.",
+      "target": {"name": "game_Pong"},
+      "await": {"hint": "Select <b>Pong</b> in the list."}
+    },
+    {
+      "title": "What you selected",
+      "text": "The header names the game and lists its keys. Keys go to the game as soon as it is shown; press <b>1</b> to <b>5</b> or <b>Tab</b> to switch game from the keyboard.",
+      "target": {"name": "game_header"}
+    },
+    {
+      "title": "The game itself",
+      "text": "The game fills this area. It has its own <b>Guide</b> and <b>Help</b> buttons in its header row, and its own controls for sound, pause and restart.",
+      "target": {"name": "game_area"}
+    }
+  ]
+}

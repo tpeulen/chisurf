@@ -38,6 +38,7 @@ from chisurf.plugins.core.code_editor.gui.notebook_app import SHELL_EXECUTION_LO
 from chisurf.plugins.core.code_editor.gui.process_tools import CancellableRuffRunner
 from chisurf.plugins.core.code_editor.ruff_runner import RuffRunner
 from chisurf.plugins.core.code_editor.symbols import extract_python_symbols
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import SHORTCUT, action_button, window_size
 
 from .editor_preferences import (
@@ -1139,6 +1140,19 @@ class CodeEditorGui:
         self._find_focus = False
         self.pending_actions: list[Callable[[], None]] = []
         self._nav_seen: tuple[EditorDocument, int, int] | None = None
+        gui_dir = pathlib.Path(__file__).parent
+        self.tour = EmTkGuidedTour(
+            gui_dir / "guide.json",
+            get_target_rect=self.item_rects.get,
+            owner=self,
+            wait_for_controls=True,
+        )
+        self.help_window = EmTkHelpWindow(
+            title="Code Editor - Help",
+            resource=gui_dir / "help.md",
+            owner=self,
+            on_start_guide=self.tour.start,
+        )
 
         # Dock layout:
         # files (left) | (editor top / output bottom) (center) | agent (right)
@@ -1207,6 +1221,8 @@ class CodeEditorGui:
             if im.begin("Agent permission##editor_permission"):
                 self.chat_gui._draw_permission_banner()
             im.end()
+        self.help_window.draw((0.0, 0.0, width, height))
+        self.tour.draw(width, height)
 
     # -- find / replace -------------------------------------------------------------------------------------------------- #
     def open_find(self) -> None:
@@ -1698,7 +1714,9 @@ class CodeEditorGui:
         # frame style -- the rounding that made them read as tiles is gone.
         if im.button(tr("➕ New")):
             self.model.new_document()
+            self.tour.notify_used("new")
         im.set_item_tooltip(tr("New — create an empty document"))
+        self.item_rects["new"] = im.get_item_rect()
         self._same_line_or_wrap(box, im.calc_text_size("📂 Open")[0] + 14.0)
         if action_button("open", tooltip=tr("Open… — choose files to open in the editor")):
             self._request_open()
@@ -1724,17 +1742,20 @@ class CodeEditorGui:
             im.push_style_color(Col.BUTTON, (46, 140, 67, 255))
             if action_button("run", tooltip=tr("Run Script — run the active Python document and display its output")):
                 self.model.run_active_script()
+            self.item_rects["run"] = im.get_item_rect()
             im.pop_style_color()
         self._same_line_or_wrap(box, 150.0)
         im.set_next_item_width(150.0)
         changed, endpoint = im.combo("##run_endpoint", 1 if self.model.run_endpoint == "console" else 0,
             ["Separate process", "In ChiSurf console"])
+        self.item_rects["run_endpoint"] = im.get_item_rect()
         im.set_item_tooltip(tr("Process: isolated, stoppable execution. Console: main-thread macros with access to ChiSurf state; long macros block interaction."))
         if changed:
             self.model.run_endpoint = "console" if endpoint == 1 else "process"
         self._same_line_or_wrap(box, im.calc_text_size("🧹 Check")[0] + 14.0)
         if im.button(tr("🧹 Check")):
             self.model.start_ruff()
+        self.item_rects["check"] = im.get_item_rect()
         im.set_item_tooltip(tr("Ruff Check — check the unsaved Python buffer using the optional Ruff executable"))
         self._same_line_or_wrap(box, im.calc_text_size("🛠 Fix")[0] + 14.0)
         if im.button(tr("🛠 Fix")):
@@ -1749,6 +1770,14 @@ class CodeEditorGui:
             self.settings_open = True
             self.docks.focus("editor_settings")
         im.set_item_tooltip(tr("Settings… — open the native editor appearance and diagnostics settings"))
+        self._same_line_or_wrap(box, 70.0)
+        if action_button("guide"):
+            self.tour.start()
+        self.item_rects["guide"] = im.get_item_rect()
+        self._same_line_or_wrap(box, 70.0)
+        if action_button("help"):
+            self.help_window.show()
+        self.item_rects["help"] = im.get_item_rect()
         symbols = self.model.document_symbols()
         if symbols:
             im.set_next_item_width(max(120.0, box[2]))
@@ -1824,6 +1853,7 @@ class CodeEditorGui:
             else:
                 im.text_editor(f"##editor_{id(active)}", active.editor, (avail_w, editor_h))
                 im.set_item_tooltip(tr("Edit the active document; use standard keyboard shortcuts for editing"))
+                self.item_rects["editor_text"] = im.get_item_rect()
                 # A click far from the previous caret is a jump: Back returns to where it was.
                 here = self.model.nav_mark()
                 seen = self._nav_seen
@@ -2087,6 +2117,16 @@ class CodeEditorApp(ImApp):
     def item_rects(self) -> dict[str, tuple[float, float, float, float]]:
         """Rectangles of the named controls the editor drew last frame."""
         return self.editor_gui.item_rects
+
+    @property
+    def tour(self) -> EmTkGuidedTour:
+        """The editor's guided tour (owned by the editor surface)."""
+        return self.editor_gui.tour
+
+    @property
+    def help_window(self) -> EmTkHelpWindow:
+        """The editor's in-window help (owned by the editor surface)."""
+        return self.editor_gui.help_window
 
     def key(self, key, text="", modifiers=0):
         """Editor shortcuts (Ctrl, or Command on a Mac): S save, Shift+S save as, O open, N new, W close, F find; Escape closes find.

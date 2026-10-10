@@ -9,7 +9,8 @@ from pathlib import Path
 from emtk import i18n, im
 from emtk.app import ImApp
 
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.plugins.emtk_layout import action_button, window_size
 
 from .registry import GAME_PANELS
 from .translations import install_translations
@@ -33,6 +34,14 @@ class GamesHubApp(ImApp):
         self.error = ""
         self.child_box = (180.0, 86.0, 880.0, 644.0)
         self._painter = None
+        self.item_rects: dict[str, tuple[float, float, float, float]] = {}
+        gui_dir = Path(__file__).parent
+        self.tour = EmTkGuidedTour(
+            gui_dir / "guide.json", get_target_rect=self.item_rects.get, owner=self, wait_for_controls=True
+        )
+        self.help_window = EmTkHelpWindow(
+            title="Games - Help", resource=gui_dir / "help.md", owner=self, on_start_guide=self.tour.start
+        )
         super().__init__(self.render)
         # The game shown on first open must exist at once: it used to be built only when its list
         # entry was clicked, so the first game took no keys and drew nothing until then.
@@ -63,6 +72,7 @@ class GamesHubApp(ImApp):
         return self.child
 
     def close(self):
+        self.tour.stop()
         for child in self.children.values():
             close = getattr(child, "close", None)
             if callable(close):
@@ -115,7 +125,18 @@ class GamesHubApp(ImApp):
                     icon=panel.get("icon"),
                 ):
                     self.select(panel["name"])
+                    self.tour.notify_used("game_" + panel["name"])
+                self.remember("game_" + panel["name"])
                 im.set_item_tooltip(tr(panel["description"]))
+            im.dummy(0.0, 4.0)
+            im.separator()
+            if action_button("guide"):
+                self.tour.start()
+            self.remember("guide")
+            im.same_line()
+            if action_button("help"):
+                self.help_window.show()
+            self.remember("help")
             im.unindent(self.PAD)
         im.end()
 
@@ -130,11 +151,13 @@ class GamesHubApp(ImApp):
             im.text(tr(entry["description"]))
             if entry.get("keys"):
                 im.text_disabled(tr("Keys: ") + tr(entry["keys"]))
+            self.remember("game_header", (area_x, 0.0, area_w, self.HEADER_H))
             im.unindent(self.PAD)
         im.end()
 
         # -- the game fills the rest -------------------------------------- #
         self.child_box = (area_x, self.HEADER_H, area_w, max(1.0, height - self.HEADER_H))
+        self.item_rects["game_area"] = self.child_box
         if self.child is not None:
             self.draw_child(self._painter, self.child, *self.child_box, local_coordinates=True)
         else:
@@ -147,6 +170,8 @@ class GamesHubApp(ImApp):
                 im.text_wrapped(self.error or tr("This game has no native version yet."))
                 im.unindent(self.PAD)
             im.end()
+        self.help_window.draw((0.0, 0.0, width, height))
+        self.tour.draw(width, height)
 
     def _inside_child(self, x, y):
         bx, by, bw, bh = self.child_box

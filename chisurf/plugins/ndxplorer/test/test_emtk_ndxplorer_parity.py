@@ -141,7 +141,10 @@ def test_same_controls_as_the_qt_window_on_the_same_table():
         app.data_changed()
         inv = emtk_inventory(app)
         ours = {"controls": inv["controls"], "menus": _flat(app.menubar.menus)}
-        assert ours["menus"] == qt["menus"]
+        # The factory's app adds ChiSurf's Guide and quick reference to Help; the legacy Qt host has neither.
+        added = {"Help/Guide", "Help/Quick reference"}
+        assert [m for m in ours["menus"] if m not in added] == qt["menus"]
+        assert added <= set(ours["menus"])
 
         # Every control of the Qt-hosted app is drawn by the factory's app too -- in full,
         # or clipped: the factory gives Plot controls a wider column (split 0.44), so the

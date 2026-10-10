@@ -16,8 +16,10 @@ from pathlib import Path
 from emtk import i18n, im
 from emtk.app import ImApp
 
+from chisurf.emtk.background_build import BackgroundBuild, draw_opening
 from chisurf.emtk.plugin_icons import entry_icon
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.plugins.emtk_layout import action_button, window_size
 
 from .registry import STRUCTURE_TOOL_PANELS
 from .strings import install_translations
@@ -42,6 +44,9 @@ class StructureToolsHubApp(ImApp):
     COMPACT = False
     #: The width of the list in a compact hub (the names are short, the tool gets the room).
     NAV_WIDTH = 150.0
+    #: ``guide.json`` / ``help.md`` of the hub itself; ``None`` leaves the hub without Guide and Help buttons.
+    GUIDE_FILE: Path | None = None
+    HELP_FILE: Path | None = None
 
     def __init__(self) -> None:
         primary = json.loads((Path(__file__).parent / "gui/window.view.json").read_text())
@@ -55,6 +60,17 @@ class StructureToolsHubApp(ImApp):
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.child_box = (180.0, 86.0, 880.0, 644.0)
         self._painter = None
+        #: The tool shown when the hub opens is made on a worker thread, behind an "Opening" placeholder.
+        self._builder = BackgroundBuild(wake=self.request_frame)
+        self._prebuilt: dict[str, tuple] = {}
+        if self.GUIDE_FILE is not None:
+            self.tour = EmTkGuidedTour(
+                self.GUIDE_FILE, get_target_rect=self.item_rects.get, owner=self, wait_for_controls=True
+            )
+            self.help_window = EmTkHelpWindow(
+                title=f"{self.TITLE} - Help", resource=self.HELP_FILE, owner=self,
+                on_start_guide=self.tour.start,
+            )
         super().__init__(self.render)
 
     @property
@@ -71,9 +87,13 @@ class StructureToolsHubApp(ImApp):
         if not factory:
             self.error = f"{tr('Tool unavailable')}: no native app"
         elif name not in self.children:
+            if self._builder.building(name):
+                self._prebuilt.update(self._builder.collect(wait=True) or {})
             try:
-                module, attr = factory.split(":", 1)
-                self.children[name] = getattr(importlib.import_module(module), attr)()
+                made, exc = self._prebuilt.pop(name, (None, None))
+                if exc is not None:
+                    raise exc
+                self.children[name] = made if made is not None else self._make(factory)
             except Exception as exc:  # noqa: BLE001 - surface child load errors inline
                 self.error = f"{tr('Tool unavailable')}: {exc}"
             else:
@@ -84,7 +104,17 @@ class StructureToolsHubApp(ImApp):
         self.request_frame()
         return self.child
 
+    @staticmethod
+    def _make(factory: str):
+        """Import and construct a tool's app (may run on the build thread)."""
+        module, attr = factory.split(":", 1)
+        return getattr(importlib.import_module(module), attr)()
+
     def close(self):
+        self._prebuilt.clear()
+        self._builder.collect(wait=True)
+        if self.GUIDE_FILE is not None:
+            self.tour.stop()
         for child in self.children.values():
             close = getattr(child, "close", None)
             if callable(close):
@@ -92,7 +122,7 @@ class StructureToolsHubApp(ImApp):
         self.children.clear()
 
     def animating(self):
-        return super().animating() or bool(self.child and self.child.animating())
+        return super().animating() or self._builder.busy or bool(self.child and self.child.animating())
 
     def next_frame_in(self):
         values = [super().next_frame_in()]
@@ -104,7 +134,13 @@ class StructureToolsHubApp(ImApp):
         self._painter = painter
         try:
             if self.child is None and not self.error:
-                self.select(self.selected)
+                self._prebuilt.update(self._builder.collect() or {})
+                entry = next(item for item in self.entries if item["name"] == self.selected)
+                if self.selected in self._prebuilt or not entry["emtk"]:
+                    self.select(self.selected)
+                elif not self._builder.busy:
+                    self._builder.start({self.selected: lambda f=entry["emtk"]: self._make(f)},
+                                        name="chisurf-structure-tools")
             super().draw(painter, x, y, w, h)
         finally:
             self._painter = None
@@ -152,6 +188,8 @@ class StructureToolsHubApp(ImApp):
                     label, self.selected == panel["name"], icon=entry_icon(panel, panel.get("emtk"))
                 ):
                     self.select(panel["name"])
+                    if self.GUIDE_FILE is not None:
+                        self.tour.notify_used(f"nav_{panel['name']}")
                 self.remember(f"nav_{panel['name']}")
                 im.set_item_tooltip(tr(panel["description"]))
             if not shown:
@@ -176,11 +214,22 @@ class StructureToolsHubApp(ImApp):
             im.push_text_wrap_pos()
             im.text_wrapped(tr(entry["description"]))
             im.pop_text_wrap_pos()
+            if self.GUIDE_FILE is not None:
+                if action_button("guide"):
+                    self.tour.start()
+                self.remember("guide")
+                im.same_line()
+                if action_button("help"):
+                    self.help_window.show()
+                self.remember("help")
         im.end()
 
         self.child_box = (nav_width, 86.0, max(1.0, width - nav_width), max(1.0, height - 86.0))
+        self.item_rects["tool_area"] = self.child_box
         if self.child is not None:
             self.draw_child(self._painter, self.child, *self.child_box, local_coordinates=True)
+        elif self._builder.busy:
+            draw_opening(tr(self.selected), self.child_box, "Structure tool opening")
         else:
             im.set_next_window_pos((nav_width + 16, 102), im.Cond.ALWAYS)
             im.set_next_window_size((max(1.0, width - nav_width - 32), max(1.0, height - 118)), im.Cond.ALWAYS)
@@ -189,6 +238,9 @@ class StructureToolsHubApp(ImApp):
                 im.text_wrapped(self.error)
                 self.remember("tool_error")
             im.end()
+        if self.GUIDE_FILE is not None:
+            self.help_window.draw((0.0, 0.0, width, height))
+            self.tour.draw(width, height)
 
     # ── input forwarding into the visible child ─────────────────────────
     def _inside_child(self, x, y):
@@ -256,5 +308,12 @@ class StructureToolsHubApp(ImApp):
             self.select(active)
 
 
+class StructureToolsApp(StructureToolsHubApp):
+    """The Structure Tools workspace, with its own Guide and Help."""
+
+    GUIDE_FILE = Path(__file__).parent / "gui" / "guide.json"
+    HELP_FILE = Path(__file__).parent / "gui" / "help.md"
+
+
 def make_app():
-    return StructureToolsHubApp()
+    return StructureToolsApp()
