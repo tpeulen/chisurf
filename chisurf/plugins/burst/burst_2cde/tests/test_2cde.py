@@ -191,23 +191,26 @@ def test_read_burst_analysis_skips_json_sidecar_and_isolates_bi4_bur(tmp_path, m
     assert list(tttrs) == ["m000.spc"]
 
 
-def test_write_sidecars(tmp_path):
-    rng = np.random.default_rng(11)
-    bursts = [(rng.random(150) < 0.5).astype(int) for _ in range(5)]
-    tttrs, df, _, _ = _build(bursts)
-    out = core.compute_2cde(
-        df,
-        tttrs,
-        donor_channels=[0],
-        acceptor_channels=[1],
-        donor_micro_time_ranges=[],
-        acceptor_micro_time_ranges=[],
-        tau=30.0,
-        variant="fret",
-    )
-    core.write_2cde_analysis(out, str(tmp_path), variant="fret")
-    files = list((tmp_path / "2c4").glob("*.2c4"))
-    assert len(files) == 1
+def test_write_result_goes_into_the_container_not_a_companion(tmp_path):
+    import shutil
+    from pathlib import Path
+
+    import pandas as pd
+
+    from chisurf.core.fio.fluorescence.burst_container import container_for
+    from chisurf.core.fio.pto import Measurement
+
+    ptu = Path(__file__).resolve().parents[5] / "test" / "data" / "clsm" / "Leica_SP5.ptu"
+    if not ptu.exists():
+        pytest.skip("no instrument test data")
+    raw = tmp_path / "m000.ptu"
+    shutil.copy(ptu, raw)
+    frame = pd.DataFrame({"First File": [str(raw)] * 5, core.COLUMN_FRET_2CDE: np.linspace(1, 5, 5)})
+    written = core.write_2cde_container(frame, "fret", analysis_folder=tmp_path)
+    assert written == [str(container_for(raw))]
+    assert not (tmp_path / "2c4").exists()
+    with Measurement.open(container_for(raw)) as m:
+        assert "2cde fret" in [o.name for o in m.artifacts()]
 
 
 def test_workflow_prepare_resolves_context(tmp_path):

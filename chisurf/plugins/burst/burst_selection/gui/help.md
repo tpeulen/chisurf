@@ -58,6 +58,11 @@ lifetime fit will be run on.
 
 **Summary** — counts and rates for the whole run.
 
+**Runs** — the analyses stored in the file's `.pto` (one per search setting). Pick one,
+then **Decay from selected bursts** pools the micro times of the bursts inside the
+histogram range into one TCSPC decay, stores it beside that run and offers it to the
+TCSPC fit window.
+
 ## Before you go on
 
 1. **Vary the threshold by a factor of two.** A real population survives it. If

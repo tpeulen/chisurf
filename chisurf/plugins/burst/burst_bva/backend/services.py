@@ -73,7 +73,7 @@ def compute_bva_handler(
 ) -> dict[str, Any]:
     """Run BVA analysis from explicit parameters or a workflow handoff."""
     try:
-        from ..core.computation import compute_bva, read_burst_analysis, write_bv4_analysis
+        from ..core.computation import compute_bva, read_burst_analysis, write_bva_container
 
         resolved_folder = _resolve_analysis_folder(
             analysis_folder=analysis_folder,
@@ -98,8 +98,12 @@ def compute_bva_handler(
 
         output_paths: dict[str, str] = {}
         if write_output:
-            write_bv4_analysis(df_v, str(resolved_folder))
-            output_paths["bv4_folder"] = str(resolved_folder / "bv4")
+            containers = write_bva_container(
+                df_v,
+                parameters=asdict(bva_settings),
+                analysis_folder=resolved_folder,
+            )
+            output_paths["containers"] = ", ".join(containers)
 
         valid = int((numeric_column(df_v, "Proximity Ratio Std") > 0).sum())
         result = BvaResult(

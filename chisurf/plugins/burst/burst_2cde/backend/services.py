@@ -77,7 +77,7 @@ def compute_2cde_handler(
             column_for_variant,
             compute_2cde,
             read_burst_analysis,
-            write_2cde_analysis,
+            write_2cde_container,
         )
 
         resolved_folder = _resolve_analysis_folder(
@@ -107,8 +107,13 @@ def compute_2cde_handler(
         column = column_for_variant(cfg.variant)
         output_paths: dict[str, str] = {}
         if write_output:
-            write_2cde_analysis(df_v, str(resolved_folder), variant=cfg.variant)
-            output_paths["2cde_folder"] = str(resolved_folder / "2cde")
+            containers = write_2cde_container(
+                df_v,
+                cfg.variant,
+                parameters=asdict(cfg),
+                analysis_folder=resolved_folder,
+            )
+            output_paths["containers"] = ", ".join(containers)
 
         valid = int(np.isfinite(df_v[column]).sum()) if column in df_v else 0
         result = TwoCdeResult(

@@ -114,7 +114,7 @@ def write_fcs_container(
 
 
 def write_fcs_results(rows, burst_counts, *, parameters=None, cancel_check=None):
-    """Publish indexed FCS results and the full positional companion together.
+    """Publish indexed FCS results into each measurement's container.
 
     Parameters
     ----------
@@ -130,7 +130,8 @@ def write_fcs_results(rows, burst_counts, *, parameters=None, cancel_check=None)
     Returns
     -------
     list of pathlib.Path
-        Published containers, companions and settings sidecars.
+        Published containers. The legacy ``td4`` companion is made on request by
+        :func:`~chisurf.core.fio.fluorescence.legacy_export.export_legacy`.
     """
     import hashlib
     import json
@@ -142,7 +143,6 @@ def write_fcs_results(rows, burst_counts, *, parameters=None, cancel_check=None)
     import numpy as np
 
     from chisurf.core.datastore import store_from_arrays
-    from chisurf.core.fio.fluorescence.burst_companion import write_companion
     from chisurf.core.fio.fluorescence.burst_container import container_for
 
     groups = {}
@@ -183,21 +183,14 @@ def write_fcs_results(rows, burst_counts, *, parameters=None, cancel_check=None)
                 logging.warning("Missing burst count for %s; inferring %s from results", source, count)
             if any(bid < 0 or bid >= count for bid in ids):
                 raise ValueError("A result lies outside the declared input burst grid")
-            full = np.full((count, len(columns)), np.nan)
             sparse = {"Burst Index": np.asarray(ids, dtype=float)}
             for j, (name, values) in enumerate(columns.items()):
                 sparse[name] = np.asarray([values.get(bid, np.nan) for bid in ids])
-                for bid, value in values.items():
-                    full[bid, j] = value
             # Copy an existing PTO before extending it: all scientific lineage
             # survives, and a failed/cancelled run leaves its original untouched.
             stage = Path(stack.enter_context(TemporaryDirectory(prefix=".burst-fcs-", dir=source.parent)))
             target = container_for(source)
             original.setdefault(target, fingerprint(target))
-            companion_target = root / "td4" / (source.stem + ".td4")
-            original.setdefault(companion_target, fingerprint(companion_target))
-            settings_target = root / "td4" / "td4_settings.json"
-            original.setdefault(settings_target, fingerprint(settings_target))
             staged_source = staged_containers.get(target, source)
             if target not in staged_containers:
                 if target.exists():
@@ -206,16 +199,9 @@ def write_fcs_results(rows, burst_counts, *, parameters=None, cancel_check=None)
                     staged_source = stage / source.name
             written = Path(write_fcs_container(staged_source, store_from_arrays(sparse),
                                                parameters=parameters, out_dir=stage))
-            companion = write_companion(stage, "td4", source.stem, list(columns), full)
             if target not in staged_containers:
                 staged_containers[target] = written
                 prepared.append((written, target))
-            prepared.append((companion, root / "td4" / companion.name))
-            settings = stage / "td4" / "td4_settings.json"
-            settings.write_text(json.dumps(parameters or {}, indent=4), encoding="utf-8")
-            settings_target = root / "td4" / settings.name
-            if not any(destination == settings_target for _, destination in prepared):
-                prepared.append((settings, settings_target))
         if cancel_check is not None:
             cancel_check()
         if any(fingerprint(target) != initial for target, initial in original.items()):

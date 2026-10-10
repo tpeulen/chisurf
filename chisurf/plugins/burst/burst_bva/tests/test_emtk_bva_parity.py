@@ -108,7 +108,7 @@ first = run(w)
 w.model.set_folder(pathlib.Path(sys.argv[2]))
 second = run(w)
 print("FACTS" + json.dumps({"first": first, "second": second, "status": w.model.status_text,
-                            "companions": sorted(p.name for p in (pathlib.Path(sys.argv[1]) / "bv4").glob("*"))}))
+                            "companions": sorted(p.name for p in pathlib.Path(sys.argv[1]).parent.glob("*.pto"))}))
 """
 
 
@@ -145,7 +145,8 @@ def test_a_run_gives_the_qt_tools_bva_and_writes_the_same_companions(tmp_path):
         _settle(app)
         std = _std(app.model.df)
         assert std == pytest.approx(np.asarray(qt["first"]), nan_ok=True)
-        assert sorted(p.name for p in (ours_a / "bv4").glob("*")) == qt["companions"]
+        assert sorted(p.name for p in ours_a.parent.glob("*.pto")) == qt["companions"]
+        assert qt["companions"] == ["m000.pto"] and not (ours_a / "bv4").exists()
         assert app.model.status_text == qt["status"]
         index = np.arange(len(std))
         # dynamic bursts (every 4th) spread far above the static ones
@@ -196,9 +197,8 @@ def test_auto_update_recomputes_without_writing_and_run_writes(folder, monkeypat
         assert reads == [1]  # the table is read once and reused
         app.controller.run()  # an explicit Run writes
         _settle(app)
-        assert (folder / "bv4" / "bva.stamp.json").exists() and (
-            folder / "bv4" / "bva_settings.json"
-        ).exists()
+        assert (folder / "Info" / "bva.stamp.json").exists()
+        assert (folder.parent / "m000.pto").exists() and not (folder / "bv4").exists()
         app.controller.run()
         assert (
             app.model.status_text
@@ -237,14 +237,14 @@ def test_stop_then_an_explicit_run_computes(folder, monkeypatch):
 
 def test_a_failed_bv4_write_keeps_the_result(folder, monkeypatch):
     monkeypatch.setattr(
-        core, "write_bv4_analysis", lambda *a, **k: (_ for _ in ()).throw(OSError("disk full"))
+        core, "write_bva_container", lambda *a, **k: (_ for _ in ()).throw(OSError("disk full"))
     )
     app = _app(folder)
     try:
         app.controller.run()
         _settle(app)
         assert app.model.df is not None
-        assert "could not write the bv4 companions: disk full" in app.model.status_text
+        assert "could not write the BVA result: disk full" in app.model.status_text
     finally:
         app.close()
 

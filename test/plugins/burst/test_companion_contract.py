@@ -79,12 +79,12 @@ def test_non_finite_values_become_the_sentinel(tmp_path):
 
 def test_the_burst_plugins_declare_discoverable_companions():
     """Every companion name a burst plugin writes must be discoverable."""
-    from chisurf.plugins.burst.burst_h2mm.core.export import H2MM_COMPANION
+    from chisurf.core.fio.fluorescence.legacy_export import COMPANION_ENDINGS
 
-    # Every companion directory the burst plugins write. Sub-populations are
-    # *columns* of the burst row (Tau S0 (green)), not folders of their own —
+    # Every companion directory the one legacy export writes. Sub-populations
+    # are *columns* of the burst row (Tau S0 (green)), not folders of their own —
     # see the state-split MLE — so this list stays short by design.
-    declared = [H2MM_COMPANION, "bg4", "br4", "by4", "bv4", "2c4"]
+    declared = list(COMPANION_ENDINGS)
 
     bad = [name for name in declared if not is_companion_dir(name)]
     assert not bad, f"companion(s) a burst folder reader would never merge: {bad}"

@@ -16,6 +16,8 @@ import pathlib
 import threading
 from typing import Any, Callable
 
+from chisurf.plugins.core.pto_inspector.core import RunPickerMixin
+
 from ..api.models import H2mmSettings, StreamSettings
 
 #: Bump in the same change that alters what this tool computes, so results written by the previous version stop
@@ -69,13 +71,13 @@ def parse_channels(text: str) -> list[int]:
     return out
 
 
-class H2mmViewModel:
+class H2mmViewModel(RunPickerMixin):
     """State and actions of the photon-by-photon HMM tool (no Qt, no emtk)."""
 
     def __init__(self) -> None:
         self._observers: list[Callable[[str], None]] = []
         self._cancel = threading.Event()
-        #: Burst folder (``.bur`` tables, the photons they name beside them).
+        #: Burst folder (``.bur`` tables, the photons they name beside them) or a measurement ``.pto``.
         self.data_folder: str = ""
         # The detector definition (the Qt tool's Channels tab, edited by the shared detector editor) and which of its
         # detectors is the donor, acceptor and (optional) acceptor-excitation stream.
@@ -261,9 +263,34 @@ class H2mmViewModel:
             for i, (e, p) in enumerate(zip(ana.fret, pops))
         ]
 
+    run_picker_attr = "data_folder"
+
+    def input_path(self) -> str:
+        """What the fit reads: the run chosen in the Runs table, else the data folder.
+
+        A run only counts while it belongs to the container the data field names,
+        so pointing the field somewhere else is not undone by an earlier choice.
+        """
+        from chisurf.core.fio.analysis_path import split_container_path
+
+        if self.run_path and split_container_path(self.run_path)[0] == split_container_path(
+            self.data_folder
+        )[0]:
+            return self.run_path
+        return str(self.data_folder)
+
+    def container_path(self) -> str:
+        """The ``.pto`` behind :meth:`input_path`, or ``""`` when the input is a folder."""
+        from chisurf.core.fio.analysis_path import split_container_path
+
+        container, _run = split_container_path(self.input_path())
+        return str(container) if container is not None else ""
+
     def can_run(self) -> str:
         """Why Run is unavailable (empty when it is available); the Qt tool's wording for the missing folder."""
-        if not self.data_folder or not pathlib.Path(self.data_folder).is_dir():
+        if not self.data_folder or not (
+            pathlib.Path(self.data_folder).is_dir() or self.container_path()
+        ):
             return "Select a folder of .bur files first."
         if not self._stream(self.donor).channels or not self._stream(self.acceptor).channels:
             return "Define the donor and the acceptor detector (routing channels) first."
@@ -276,6 +303,8 @@ class H2mmViewModel:
 
         if not self.data_folder:
             return []
+        if self.container_path():
+            return [pathlib.Path(self.container_path())]
         tables = sorted(pathlib.Path(self.data_folder).glob("**/*.bur"))
         return tables + list(source_inputs(self.data_folder))
 
@@ -314,11 +343,17 @@ class H2mmViewModel:
             self.notify("progress")
 
         result, bundle = run_analysis(
-            settings, analysis_folder=str(self.data_folder), progress=progress
+            settings, analysis_folder=self.input_path(), progress=progress
         )
         if getattr(settings, "write_photons", True):
             try:
-                write_result_tables(result, bundle, pathlib.Path(self.data_folder) / "h2mm")
+                # Beside the container when the input is one, inside the folder otherwise.
+                where = (
+                    pathlib.Path(self.container_path()).parent
+                    if self.container_path()
+                    else pathlib.Path(self.data_folder)
+                )
+                write_result_tables(result, bundle, where / "h2mm")
             except Exception as exc:  # disk / permission path: the fit itself succeeded
                 self.status_text = f"Fitted, but the tables could not be written: {exc}"
         self.result, self.bundle, self.uncertainty, self.scans = result, bundle, None, []

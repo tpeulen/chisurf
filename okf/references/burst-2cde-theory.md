@@ -147,10 +147,9 @@ histograms.
 - **Engine**: `tttrlib.TwoCDE` (base `tttrlib.BurstFeature`) — parallel over
   bursts, bit-exact against the NumPy reference; selected when `hasattr(tttrlib,
   "TwoCDE")`, else the NumPy fallback runs (`_compute_file_numpy`).
-- **Persistence**: `write_2cde_analysis` writes one `<stem>.2c4` tab-separated
-  companion per TTTR under a `2c4/` subfolder (the `…4` burst-companion family
-  alongside `bg4`/`bv4`); ndX and the burst browser join it to the burst
-  table by stem. Columns are `FRET-2CDE` / `ALEX-2CDE`.
+- **Persistence**: `write_2cde_container` writes the score as a `burst_2cde` run in the
+  measurement's `.pto`; the legacy `<stem>.2c4` companion (the `…4` family beside `bg4`/`bv4`) exists
+  only as an explicit `export_legacy` of that run. Columns are `FRET-2CDE` / `ALEX-2CDE`.
 
 ## Provenance / bit-exactness
 

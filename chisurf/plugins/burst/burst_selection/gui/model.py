@@ -37,6 +37,7 @@ from chisurf.core.datastore import (
     store_from_rows,
     write_csv_table,
 )
+from chisurf.plugins.core.pto_inspector.core import RunPickerMixin
 
 from ..api.models import (
     AnalysisSettings,
@@ -303,8 +304,11 @@ class GmmSettings:
         self._model.gmm_settings[name] = type(DEFAULT_GMM_SETTINGS[name])(value)
 
 
-class BurstSelectionModel:
+class BurstSelectionModel(RunPickerMixin):
     """Files, detector setup, filter and search settings, results and plot data of Burst Selection."""
+
+    #: The run picker lists the runs of the container of the file on show.
+    run_picker_attr = "run_container"
 
     def __init__(self, client: Any = None) -> None:
         self._observers: list[Callable[[str], None]] = []
@@ -1424,6 +1428,73 @@ class BurstSelectionModel:
                 if name in present
             ),
         ]
+
+    def run_container(self) -> str:
+        """The ``.pto`` of the file on show, when it has one (what the run picker lists)."""
+        from chisurf.core.fio.fluorescence.burst_container import container_for
+        from chisurf.core.fio.pto import is_measurement
+
+        path = self.active_file
+        if path is None:
+            return ""
+        container = container_for(path)
+        return str(container) if container.exists() and is_measurement(container) else ""
+
+    def decay_selection(self, run_path: str) -> np.ndarray | None:
+        """Which bursts of *run_path* the histogram range selects (``None`` = all of them).
+
+        The selection is the one the histogram on screen shows: the bursts whose
+        ``hist_feature`` lies inside ``[hist_min, hist_max]``.
+        """
+        from chisurf.core.fio.fluorescence.burst_tree import read_burst_table
+
+        frame = read_burst_table(run_path)
+        if frame is None:
+            return None
+        try:
+            data = diag_mod.histogram_data_from_frame(frame, self.hist_feature)
+        except Exception:  # noqa: BLE001 - a feature the run's table lacks selects nothing in particular
+            return None
+        if data.size == 0:
+            return None
+        lo, hi = self.histogram_range(data)
+        return (data >= lo) & (data <= hi)
+
+    def write_decay(self) -> str:
+        """Write the decay of the selected bursts of the chosen run (the *Decay from selected bursts* button).
+
+        The run is the one picked in the Runs table, else the newest. The bursts
+        are those inside the histogram range; the photons are the detector and
+        micro-time window the filter keeps.
+        """
+        from ..api.io import write_decay
+
+        run_path = self.run_path
+        if not run_path:
+            rows = self.run_rows()
+            if not rows:
+                self.status_text = "No run to take a decay from: run a burst search into a .pto first."
+                self.notify("status")
+                return self.status_text
+            self.select_run(rows[-1])
+            run_path = self.run_path
+        try:
+            mask = self.decay_selection(run_path)
+            stream = {"channels": self.channels or list(range(64)),
+                      "micro_time_ranges": [list(r) for r in self.microtime_ranges]}
+            out = write_decay(run_path, mask, self.decay_bins, stream=stream,
+                              parameters={"feature": self.hist_feature,
+                                          "range": [self.hist_min, self.hist_max]})
+        except Exception as exc:  # noqa: BLE001 - the verdict is the point; say why there is no decay
+            self.status_text = f"Decay from selected bursts failed: {exc}"
+        else:
+            n = out["bursts"] if out["bursts"] is not None else "all"
+            self.status_text = (
+                f"Decay of {n} bursts ({out['photons']:.0f} photons) written beside "
+                f"{Path(run_path).name}" + ("; registered as a dataset" if out["dataset_index"] is not None else "")
+            )
+        self.notify("status")
+        return self.status_text
 
     def output_path(self) -> str | None:
         """Folder or file of the last run's output (what ndX opens)."""

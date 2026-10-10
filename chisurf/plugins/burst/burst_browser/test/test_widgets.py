@@ -66,11 +66,8 @@ def _interleave(df_n: pd.DataFrame, cols) -> pd.DataFrame:
 def test_read_bur_with_companions_merges_bv4_and_2c4(tmp_path):
     """The browser's loader joins BVA (bv4) and 2CDE (2c4) columns into the table."""
     from chisurf.core.fio.fluorescence import burst as burstio
-    from chisurf.plugins.burst.burst_2cde.core.computation import (
-        COLUMN_FRET_2CDE,
-        write_2cde_analysis,
-    )
-    from chisurf.plugins.burst.burst_bva.core.computation import write_bv4_analysis
+    from chisurf.core.fio.fluorescence.burst_companion import write_companion as legacy_writer
+    from chisurf.plugins.burst.burst_2cde.core.computation import COLUMN_FRET_2CDE
 
     n = 5
     src = pd.DataFrame(
@@ -88,8 +85,16 @@ def test_read_bur_with_companions_merges_bv4_and_2c4(tmp_path):
     _interleave(src, ["First Photon", "Last Photon"]).to_csv(
         burd / "m000.bur", sep="\t", index=False
     )
-    write_bv4_analysis(src, str(tmp_path))  # -> bv4/m000.bv4
-    write_2cde_analysis(src, str(tmp_path), variant="fret")  # -> 2c4/m000.2c4
+    # The browser still reads legacy folders; the companions it reads are what
+    # `export_legacy` produces, so write them the way that does.
+    legacy_writer(
+        tmp_path,
+        "bv4",
+        "m000",
+        ["Proximity Ratio Mean", "Proximity Ratio Std"],
+        src[["Proximity Ratio Mean", "Proximity Ratio Std"]].to_numpy(),
+    )
+    legacy_writer(tmp_path, "2c4", "m000", [COLUMN_FRET_2CDE], src[[COLUMN_FRET_2CDE]].to_numpy())
 
     merged = burstio.read_bur_with_companions(burd / "m000.bur")
     assert "Proximity Ratio Std" in column_names(merged)  # from BVA

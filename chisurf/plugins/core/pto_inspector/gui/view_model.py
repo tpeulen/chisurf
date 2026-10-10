@@ -22,7 +22,7 @@ from typing import Any
 
 from chisurf.core.plugin.operations import tools_for_operation
 
-from ..core import PtoInspection, settings_text, short_uid
+from ..core import PtoInspection, export_legacy, settings_text, short_uid
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +38,7 @@ class PtoInspectorViewModel:
         self._observers: list[Callable[[str], None]] = []
 
         self.filename: str = ""
+        self.export_legacy_folder: str = ""
         self._inspection: PtoInspection | None = None
         self._selected: int = 0
         self._status: str = "Open a .pto container."
@@ -366,6 +367,43 @@ class PtoInspectorViewModel:
         return self._inspection.text(item.uid)
 
     # -- actions --------------------------------------------------------------
+
+    def export_legacy(self, folder: str | None = None) -> str:
+        """Write the open container as the Seidel/Margarita burst folder.
+
+        The one explicit way to get ``bi4_bur`` and the ``…4`` companions out of
+        a container; nothing else writes them any more.
+
+        Parameters
+        ----------
+        folder : str, optional
+            The folder that receives the layout; defaults to
+            :attr:`export_legacy_folder`.
+
+        Returns
+        -------
+        str
+            A one-line verdict, also the status.
+        """
+        if folder:
+            self.export_legacy_folder = str(folder)
+        if self._inspection is None:
+            self._status = "No container open."
+        elif not self.export_legacy_folder:
+            self._status = "Choose the legacy folder first."
+        else:
+            try:
+                written = export_legacy(self.filename, self.export_legacy_folder)
+            except Exception as exc:  # the verdict is the point; say why nothing was written
+                logger.debug("legacy export failed", exc_info=True)
+                self._status = f"Legacy export failed: {exc}"
+            else:
+                self._status = (
+                    f"Exported {len(written)} files to {self.export_legacy_folder} "
+                    "(bi4_bur + companions)"
+                )
+        self.notify("exported")
+        return self._status
 
     def verify(self) -> str:
         """Check every recorded checksum and return a readable verdict."""

@@ -140,6 +140,16 @@ the details panel are still the whole recipe.
 recorded beside it. Do this before deleting an original file: *restorable*
 without verification is only *probably restorable*.
 
+## Export legacy
+
+**📤 Export legacy…** is the one way to get the old folder layout out of a container:
+choose a folder and it receives `bi4_bur/<stem>.bur` for every burst run, beside one
+`<ending>4/<stem>.<ending>` companion per analysis (`bv4`, `2c4`, `bg4`/`br4`/`by4`,
+`bh4`, `td4`, `bf4`). Every companion has one row per burst of the measurement; a
+burst the analysis skipped is a row of zeros, never a missing row, and a result that
+cannot be placed on the burst grid is refused. See [exporting burst
+data](34_exporting_burst_data.md).
+
 ## Headless
 
 Everything above is also available without a window:
@@ -151,6 +161,7 @@ csg_pto_inspect lineage  measurement.pto burst_lifetimes
 csg_pto_inspect graph    measurement.pto --out provenance.json
 csg_pto_inspect verify   measurement.pto
 csg_pto_inspect export   measurement.pto bursts bursts.csv
+csg_pto_inspect export-legacy measurement.pto legacy_folder   # bi4_bur + the ...4 companions
 ```
 
 and from Python:

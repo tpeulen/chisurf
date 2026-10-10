@@ -315,7 +315,7 @@ class BurstTwoCdeTool(ChisurfDockTool):
             self._set_status("Select a valid burstwise analysis folder.")
             return
         fingerprint = self.analysis_fingerprint()
-        stamp = pathlib.Path(folder) / "2c4" / "2cde.stamp.json"
+        stamp = pathlib.Path(folder) / "Info" / "2cde.stamp.json"
         if (
             not force
             and self.model.df is not None
@@ -394,18 +394,19 @@ class BurstTwoCdeTool(ChisurfDockTool):
             progress_window=task.progress_window("Computing 2CDE …"),
         )
         try:
-            core.write_2cde_analysis(df, folder, variant=settings["variant"])
-            out = pathlib.Path(folder) / "2c4"
+            written = core.write_2cde_container(
+                df, settings["variant"], parameters=params, analysis_folder=folder
+            )
             analysis_cache.write_stamp(
-                pathlib.Path(folder) / "2c4" / "2cde.stamp.json",
+                pathlib.Path(folder) / "Info" / "2cde.stamp.json",
                 fingerprint,
                 params=params,
                 inputs=inputs,
-                outputs=sorted(out.glob("*.2c4")),
+                outputs=[pathlib.Path(p) for p in written],
                 tool="2cde",
             )
         except Exception as exc:  # pragma: no cover
-            logging.getLogger(__name__).warning("Could not write 2c4 companion: %s", exc)
+            logging.getLogger(__name__).warning("Could not write the 2CDE result: %s", exc, exc_info=True)
         return df, settings["variant"]
 
     def _analysis_done(self, result) -> None:

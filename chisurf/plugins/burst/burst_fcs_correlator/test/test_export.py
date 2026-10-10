@@ -45,7 +45,7 @@ def test_native_run_writes_the_frozen_real_grid_and_indexed_container(source):
         ctrl._future.result(timeout=30)
         ctrl.poll()
         assert ctrl.status == "Computed 3 burst correlation curves."
-        assert len(ctrl.output_paths) == 3
+        assert len(ctrl.output_paths) == 1 and ctrl.output_paths[0].suffix == ".pto"
         selected = ctrl._curves[0]
         assert selected["td_grid"] == [] and selected["p"] == []
         series = ctrl._model.dist_plot_series()
@@ -54,9 +54,13 @@ def test_native_run_writes_the_frozen_real_grid_and_indexed_container(source):
         assert series[0]["name"] == "Simple fit"
         facts = json.loads((REPO / "okf/validation/release-readiness-w1/fcs-before/burst-facts.json").read_text())
         expected = next(iter(facts["td4_files"].values()))
-        td4 = source.parent / "td4/BH_SPC132.td4"
-        assert td4.read_text() == expected
-        columns, full = read_companion(td4)
+        assert not (source.parent / "td4").exists()  # a companion is an explicit export
+        # The frozen real grid (what the legacy writer put on disk) is reproduced
+        # by the explicit export, not written beside the container.
+        frozen = source.parent / "frozen" / "BH_SPC132.td4"
+        frozen.parent.mkdir()
+        frozen.write_text(expected)
+        columns, full = read_companion(frozen)
         with Measurement.open(source.with_suffix(".pto")) as measurement:
             table = measurement.get_store("burst fcs")
             np.testing.assert_array_equal(numeric_column(table, "Burst Index"), [0, 1, 2])
@@ -65,9 +69,8 @@ def test_native_run_writes_the_frozen_real_grid_and_indexed_container(source):
             assert measurement.tag(uid, "_mmfdb_edge.source_row_column") == "Burst Index"
             assert measurement.tag(uid, "_mmfdb_artifact.row_grain") == "burst"
             assert measurement.column_units(table, columns[0]) == "milliseconds"
-        settings = json.loads(td4.with_name("td4_settings.json").read_text())
-        assert settings["n_bins"] == 3 and settings["n_casc"] == 12
-        assert settings["pairs"][0]["chs_a"] == [0, 1]
+            uid = measurement._f.find("burst fcs")
+            assert measurement.tag(uid, "_mmfdb_operation.operation_type") == "burst_correlation"
     finally:
         app.close()
 
@@ -98,7 +101,7 @@ def test_failed_publication_rolls_back_exact_existing_bytes_and_modes(source, mo
 
     def fail_once(self, target):
         nonlocal failed
-        if Path(target).suffix == ".td4" and not failed:
+        if Path(target).suffix == ".pto" and not failed:
             failed = True
             raise OSError("publication failed")
         return replace(self, target)
@@ -118,12 +121,12 @@ def test_concurrent_output_change_is_preserved_and_rejected(source):
         nonlocal count
         count += 1
         if count == 2:
-            paths[1].write_text("external analysis")
+            paths[0].write_text("external analysis")
 
     with pytest.raises(RuntimeError, match="changed while"):
         write_fcs_results(rows(source, 1), {(str(source.parent), source.stem): 4}, cancel_check=external_write)
-    assert paths[1].read_text() == "external analysis"
-    assert paths[0].read_bytes() == original_pto
+    assert paths[0].read_text() == "external analysis"
+    assert original_pto != b"external analysis"
 
 
 
@@ -150,10 +153,8 @@ def test_two_analysis_folders_of_one_measurement_publish_together(source):
     a[0]["Burst Folder"], b[0]["Burst Folder"] = str(first), str(second)
     counts = {(str(first), source.stem): 4, (str(second), source.stem): 5}
     paths = write_fcs_results(a + b, counts)
-    assert len(paths) == 5 and len(set(paths)) == 5
-    for folder, count, expected in ((first, 4, 0.5), (second, 5, 0.7)):
-        _, full = read_companion(folder / "td4" / (source.stem + ".td4"))
-        assert full.shape == (count, 2) and full[2, 0] == expected
+    assert len(paths) == 1 and paths[0].suffix == ".pto"
+    assert not (first / "td4").exists() and not (second / "td4").exists()
     # The canonical last-run table remains the latest analysis, as before.
     with Measurement.open(source.with_suffix(".pto")) as measurement:
         table = measurement.get_store("burst fcs")

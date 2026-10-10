@@ -106,6 +106,27 @@ def verify(path: str) -> None:
     raise SystemExit(1)
 
 
+@cli.command("export-legacy")
+@click.argument("container", type=click.Path(exists=True))
+@click.argument("out_dir", type=click.Path())
+def export_legacy_cmd(container: str, out_dir: str) -> None:
+    """Unpack CONTAINER into the Seidel/Margarita folder OUT_DIR.
+
+    Writes ``bi4_bur/<stem>.bur`` for every burst run and, beside it, one
+    ``<ending>4/<stem>.<ending>`` companion per analysis, each with one row per
+    burst (a burst the analysis skipped is a row of zeros, never a missing row).
+    """
+    from ..core import export_legacy
+
+    try:
+        written = export_legacy(container, out_dir)
+    except Exception as exc:
+        raise click.ClickException(str(exc)) from exc
+    for path in written:
+        click.echo(str(path))
+    click.echo(f"wrote {len(written)} files to {out_dir}")
+
+
 @cli.command("export")
 @click.argument("path", type=click.Path(exists=True))
 @click.argument("ref")

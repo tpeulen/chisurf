@@ -27,9 +27,12 @@ __all__ = [
     "as_table",
     "container_for",
     "deinterleave_bursts",
+    "destination_for",
     "open_measurement",
+    "resolve_source",
     "units_for",
     "write_burst_artifact",
+    "write_per_source",
 ]
 
 #: Units for burst columns whose **name does not already carry one**.
@@ -331,10 +334,72 @@ def write_burst_artifact(
         return str(m.path)
 
 
+def resolve_source(name: str | Path, search_from: str | Path | None = None) -> Path:
+    """Return the instrument file a burst table's ``First File`` value names.
+
+    A burst table records the file by the name it was found under, which is
+    usually relative (``m000.spc``) to the folder the measurements live in, a
+    folder or two above the analysis. The container is placed beside the
+    instrument file, so a result written against the *relative* name would land
+    in whatever the working directory happens to be.
+
+    Parameters
+    ----------
+    name : str or Path
+        The ``First File`` value.
+    search_from : str or Path, optional
+        Where to start looking; the folder and every parent are tried.
+
+    Returns
+    -------
+    Path
+        The first existing candidate, else *name* unchanged (a writer then
+        creates the container where the name says, rather than guessing).
+    """
+    candidate = Path(str(name))
+    if candidate.is_absolute() or search_from is None:
+        return candidate
+    base = Path(search_from)
+    for parent in (base, *base.parents):
+        if (parent / candidate).exists():
+            return parent / candidate
+    return candidate
+
+
+def destination_for(analysis_folder: str | Path | None) -> tuple[Path | None, Path | None]:
+    """Say where a result computed from *analysis_folder* should be written.
+
+    The analysis steps are handed whatever the bursts were read from -- a
+    ``.pto`` (or a run inside one) or a legacy burst folder. This is the one
+    place that turns that into :func:`write_per_source` arguments.
+
+    Parameters
+    ----------
+    analysis_folder : str or Path or None
+
+    Returns
+    -------
+    container : Path or None
+        The container that receives every row, when the bursts came from one.
+    search_from : Path or None
+        The folder relative ``First File`` names are resolved from, otherwise.
+    """
+    if analysis_folder is None:
+        return None, None
+    from chisurf.core.fio.analysis_path import split_container_path
+
+    container, _run = split_container_path(analysis_folder)
+    if container is not None:
+        return container, None
+    return None, Path(str(analysis_folder))
+
+
 def write_per_source(
     df,
     *,
     source_column: str = "First File",
+    container: str | Path | None = None,
+    search_from: str | Path | None = None,
     **kwargs: Any,
 ) -> list[str]:
     """Split a result by its source file and write each into its own container.
@@ -349,6 +414,13 @@ def write_per_source(
         The result, carrying *source_column*.
     source_column : str, optional
         Column holding the instrument-file path per row.
+    container : str or Path, optional
+        Write every row into this one container instead of splitting. The right
+        call when the analysis *was read from* a container: one container is one
+        measurement, whatever the ``First File`` values say.
+    search_from : str or Path, optional
+        Where relative ``First File`` values are resolved from
+        (see :func:`resolve_source`).
     **kwargs
         Forwarded to :func:`write_burst_artifact`.
 
@@ -376,12 +448,15 @@ def write_per_source(
             f"{source_column!r} is not in the table, so the rows cannot be "
             "attributed to a measurement"
         )
-    sources = np.asarray(df[source_column])
     keep = [c for c in names if c != source_column]
+    if container is not None:
+        return [write_burst_artifact(str(container), take_columns(df, keep), **kwargs)]
+    sources = np.asarray(df[source_column])
     written: list[str] = []
     # dict.fromkeys, not a sort: the groups come back in the order the
     # measurements were read, which is the order a progress bar counts in.
     for path in dict.fromkeys(sources.tolist()):
         group = take_columns(take_where(df, sources == path), keep)
-        written.append(write_burst_artifact(str(path), group, **kwargs))
+        target = resolve_source(str(path), search_from)
+        written.append(write_burst_artifact(str(target), group, **kwargs))
     return written

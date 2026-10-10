@@ -35,7 +35,7 @@ __all__ = [
     "read_burst_analysis",
     "compute_static_bva_line",
     "compute_bva",
-    "write_bv4_analysis",
+    "write_bva_container",
 ]
 
 
@@ -297,6 +297,7 @@ def write_bva_container(
     *,
     parameters: dict | None = None,
     progress_window=None,
+    analysis_folder=None,
 ) -> list[str]:
     """Write the BVA result into each measurement's own container.
 
@@ -315,13 +316,24 @@ def write_bva_container(
         reader of that directory.
     progress_window : optional
         Anything with ``set_value``.
+    analysis_folder : str or Path, optional
+        What the bursts were read from: a container receives every row, a burst
+        folder is where relative ``First File`` names are resolved from. No
+        ``bv4`` companion is written -- :func:`~chisurf.core.fio.fluorescence.legacy_export.export_legacy`
+        produces it on request.
 
     Returns
     -------
     list of str
         The containers written.
     """
-    from chisurf.core.fio.fluorescence.burst_container import as_table, write_per_source
+    from chisurf.core.fio.fluorescence.burst_container import (
+        as_table,
+        destination_for,
+        write_per_source,
+    )
+
+    container, search_from = destination_for(analysis_folder)
 
     written = write_per_source(
         take_columns(
@@ -334,46 +346,10 @@ def write_bva_container(
         row_grain="burst",
         parameters=parameters,
         derived_from="bursts",
+        container=container,
+        search_from=search_from,
     )
     if progress_window:
         progress_window.set_value(len(written))
     logging.info("BVA results written to %d container(s)", len(written))
     return written
-
-
-def write_bv4_analysis(df: Any, analysis_folder: str = "analysis", progress_window=None):
-    """Write BVA results to ``.bv4`` files in a ``bv4/`` subfolder.
-
-    Parameters
-    ----------
-    df : tttrlib.DataStore
-        BVA results, one row per burst, carrying ``First File``.
-    analysis_folder : str
-        The burst-analysis folder the ``bv4`` directory goes beside.
-    progress_window : optional
-        Anything with ``set_value``.
-    """
-    # write_companion owns the layout -- the "…4" directory, the %.6f and the
-    # zero interleaving. Building it here, one measurement at a time, is how a
-    # companion drifts from the contract that merges it back.
-    from chisurf.core.fio.fluorescence.burst_companion import write_companion
-
-    files = np.asarray(df["First File"])
-    means = numeric_column(df, "Proximity Ratio Mean")
-    stds = numeric_column(df, "Proximity Ratio Std")
-    # Name the companion after the .bur stem (``m000.bur`` -> ``m000.bv4``) so
-    # per-stem consumers (ndX, the burst browser) join it to the burst table.
-    # The historic ``_0`` sub-file suffix broke that stem match.
-    for i, tttr_file in enumerate(dict.fromkeys(files), start=1):
-        keep = files == tttr_file
-        write_companion(
-            analysis_folder,
-            "bv4",
-            pathlib.Path(str(tttr_file)).stem,
-            ["Proximity Ratio Mean", "Proximity Ratio Std"],
-            np.column_stack([means[keep], stds[keep]]),
-        )
-        if progress_window:
-            progress_window.set_value(i)
-
-    logging.info("BVA results written to %s", pathlib.Path(analysis_folder) / "bv4")

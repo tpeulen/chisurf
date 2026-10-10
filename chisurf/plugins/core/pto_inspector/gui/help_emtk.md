@@ -1,6 +1,6 @@
 # PTO containers
 
-A .pto is one measurement in one file. The instrument file goes in byte for byte and is never decoded into a second copy beside itself; every result computed from it (a burst table, a decay, a correlation, a fit) is written beside it as an artifact, together with the operation and the settings that produced it. This window reads that back. It writes nothing.
+A .pto is one measurement in one file. The instrument file goes in byte for byte and is never decoded into a second copy beside itself; every result computed from it (a burst table, a decay, a correlation, a fit) is written beside it as an artifact, together with the operation and the settings that produced it. This window reads that back. It writes nothing into the container; Export legacy is the one way out to the old folder layout.
 
 ## Open a container
 Open chooses a .pto. Database picks one from the MMFDB database. You can also drop a .pto on the window. A vendor photon file (.ptu, .spc, .ht3, ...) dropped here is offered for packing into a new container in a folder you choose; the source file is kept and an existing container is never overwritten. Reload reads the file again, picking up anything written since.
@@ -19,6 +19,9 @@ Details lists everything recorded about the selected object, including the setti
 
 ## Open tool and Export
 Open tool (or a double-click on a graph node or a row) looks the selected object's operation up in the installed tools and opens the matching window on this file. A step no installed tool claims says so. Export writes a table as CSV, or extracts any other payload as it is.
+
+## Export legacy
+Export legacy… unpacks every run into the Seidel/Margarita burst folder you choose: bi4_bur/<stem>.bur for each burst run, beside one <ending>4/<stem>.<ending> companion per analysis (bv4, 2c4, bg4/br4/by4, bh4, td4, bf4). Each companion has one row per burst of the measurement; a burst the analysis skipped is a row of zeros, never a missing row, because the folder is merged by position. A result that cannot be placed on the burst grid is refused, not guessed. Headless: csg_pto_inspect export-legacy m000.pto out_folder.
 
 ## Verify
 Verify re-hashes every payload and compares it with the checksum recorded beside it. Worth doing before deleting an original.

@@ -191,43 +191,53 @@ def test_asking_for_neither_still_writes_one(tmp_path):
     assert (tmp_path / "h2mm_photons.h5").is_file() or (tmp_path / "h2mm_photons.csv").is_file()
 
 
-def test_the_burst_companions_line_up_with_the_bur_rows(tmp_path):
-    """Per-measurement `.bh4` files, in the shape a burst folder already speaks.
+def test_the_burst_states_line_up_with_the_burst_rows(tmp_path):
+    """Per-measurement results in the container, exported to a `.bh4` on request.
 
     One table for the whole folder cannot be joined back: H2MM numbers only the
     bursts it kept, so one dropped burst shifts every later row. These are one
-    file per measurement, one row per burst *of that measurement*, so they line
-    up positionally exactly as `bv4`/`2c4` do.
+    table per measurement, one row per burst *of that measurement*, so the
+    explicit legacy export lines them up exactly as `bv4`/`2c4` do.
     """
+    import shutil
+    from pathlib import Path
+
     import numpy as np
     import pandas as pd
 
+    from chisurf.core.fio.fluorescence.burst_companion import read_companion
+    from chisurf.core.fio.fluorescence.legacy_export import export_legacy
     from chisurf.plugins.burst.burst_h2mm.core.export import (
-        H2MM_COMPANION,
         H2MM_COMPANION_COLUMNS,
-        write_burst_companions,
+        write_burst_states,
     )
 
     class _Data:
         burst_offsets = np.array([0, 3, 6])
 
+    raw = tmp_path / "m000.spc"
+    shutil.copyfile(
+        Path(__file__).resolve().parents[5] / "test/data/tttr/BH/132/BH_SPC132.spc", raw
+    )
     # Four bursts in the table; H2MM kept rows 0 and 2 (1 and 3 were too short),
     # and the padding row the .bur zero-interleaving leaves behind reads as "0".
     burst_df = pd.DataFrame({"First File": ["m000.spc", "m000.spc", "m000.spc", "0"]})
     path = np.array([0, 0, 1, 1, 1, 1])
-    written = write_burst_companions(
-        burst_df, [0, 2], _Data(), path, np.array([0.2, 0.8]), tmp_path
+    written = write_burst_states(
+        burst_df, [0, 2], _Data(), path, np.array([0.2, 0.8]), tmp_path, parameters={"states": 2}
     )
 
-    assert [p.name for p in written] == [f"m000.{H2MM_COMPANION}"], (
-        "the zero padding row must not become a companion file"
+    assert [Path(p).name for p in written] == ["m000.pto"], (
+        "the zero padding row must not become a result"
     )
-    text = written[0].read_text().splitlines()
-    assert text[0].split("\t")[: len(H2MM_COMPANION_COLUMNS)] == H2MM_COMPANION_COLUMNS
-    body = np.loadtxt(written[0], skiprows=1, delimiter="\t")
-    # 3 real bursts for this measurement → zero-interleaved 2*3+1 rows.
-    assert body.shape == (7, len(H2MM_COMPANION_COLUMNS))
-    data_rows = body[1::2]
+    assert not (tmp_path / "bh4").exists(), "a companion is an explicit export"
+
+    exported = export_legacy(written[0], tmp_path / "legacy")
+    bh4 = next(p for p in exported if p.suffix == ".bh4")
+    columns, data_rows = read_companion(bh4)
+    assert columns == H2MM_COMPANION_COLUMNS
+    # 3 real bursts for this measurement -> 3 rows.
+    assert data_rows.shape == (3, len(H2MM_COMPANION_COLUMNS))
     fitted = data_rows[:, H2MM_COMPANION_COLUMNS.index("H2MM Fitted")]
     assert fitted.tolist() == [1.0, 0.0, 1.0], (
         "an unfitted burst keeps its row rather than shifting the ones after it"
@@ -240,8 +250,7 @@ def test_ndx_merges_the_companions_without_being_told_about_them(tmp_path):
     """NdX discovers any sibling `*4` folder — the companion needs no ndX config."""
     from ndxplorer.io.reader import _discover_burst_extra_endings
 
-    from chisurf.plugins.burst.burst_h2mm.core.export import H2MM_COMPANION
-
+    H2MM_COMPANION = "bh4"
     (tmp_path / "bi4_bur").mkdir()
     (tmp_path / H2MM_COMPANION).mkdir()
     assert H2MM_COMPANION in _discover_burst_extra_endings(tmp_path), (

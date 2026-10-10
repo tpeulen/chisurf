@@ -31,7 +31,9 @@ class SnapshotJob:
             "selected_files",
             "_files",
         ):
-            if hasattr(snapshot, name):
+            # A method of that name (the run picker's ``run_rows()``) is a source,
+            # not a collection the job owns.
+            if hasattr(snapshot, name) and not callable(getattr(snapshot, name)):
                 setattr(
                     snapshot,
                     name,

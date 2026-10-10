@@ -2,6 +2,14 @@
 
 ## 2026-10-10
 
+- PRD-154 W4: `.pto`-first burst workflow. Burst tools (BVA, 2CDE, fusion, H2MM, burst FCS) write
+  runs into the measurement container instead of `<ending>4/` companion folders;
+  `chisurf/core/fio/fluorescence/legacy_export.py` (`export_legacy`) re-creates the legacy burst-folder
+  folder layout on demand (PTO Inspector "Export legacy…", `csg_pto_inspect export-legacy`). Run picker
+  (`RunPickerMixin` in `pto_inspector/core.py`) spliced into Burst Selection and H2MM; sub-ensemble decay
+  from selected bursts (`chisurf/core/fluorescence/burst/decay.py`); ndX opens `.pto` tables; ALEX hub
+  hands its run to Accurate FRET again. Open: run picker for burst MLE and burst FCS (see
+  [burst companions](subsystems/burst-companions.md)).
 - PRD-154 P-E: live acquisition is a fit window. `acq/demo.py` writes a known two-species SPC stream,
   `acq/dataset.py` (`AcquisitionDataset`) streams it on a worker thread, the parameterless
   `AcquisitionModel` (`chisurf/core/models/acquisition/`) shows Decay, Correlation, MCS and Macro time

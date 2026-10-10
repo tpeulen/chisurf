@@ -223,3 +223,102 @@ def zip_output_folder(output_folder: Path, zip_path: str | Path | None = None) -
                 zf.write(entry, str(rel))
 
     return zip_path
+
+
+def write_decay(
+    run_path: str | Path,
+    mask=None,
+    n_bins: int = 0,
+    *,
+    stream=None,
+    parameters: dict | None = None,
+    register: bool = True,
+) -> dict:
+    """Write the decay of the selected bursts of a run, and offer it to the fit window.
+
+    The bursts a user selects (a histogram range, a mixture component) are the
+    start of a lifetime analysis, not its end: this pools their photons' micro
+    times into one TCSPC histogram, stores it beside the run it was selected from
+    -- recording that run as its parent -- and, when a ChiSurf session is running,
+    registers it as a dataset so the TCSPC fit window can take it.
+
+    Parameters
+    ----------
+    run_path : str or Path
+        The burst run, ``m000.pto/<run>``.
+    mask : sequence of bool, optional
+        One entry per burst of the run; ``None`` takes every burst.
+    n_bins : int, optional
+        Histogram channels; ``0`` keeps the instrument's.
+    stream : StreamDef, dict or sequence of int, optional
+        Which photons count; default is every routing channel.
+    parameters : dict, optional
+        What identifies the selection. The mask itself is always part of it, so
+        two selections never overwrite each other.
+    register : bool, optional
+        Register the decay as a dataset when a session is available.
+
+    Returns
+    -------
+    dict
+        ``container``, ``photons`` (the histogram's total), ``bursts`` selected
+        and ``dataset_index`` (``None`` when nothing was registered).
+    """
+    import numpy as np
+
+    from chisurf.core.datastore import numeric_column, row_count
+    from chisurf.core.fluorescence.burst.decay import sub_ensemble_decay, write_sub_ensemble_decay
+
+    if stream is None:
+        stream = {"channels": list(range(64))}
+    store = sub_ensemble_decay(run_path, stream, n_bins=n_bins, mask=mask)
+    selection = (
+        "all" if mask is None else np.flatnonzero(np.asarray(mask, dtype=bool)).tolist()
+    )
+    identity = {"stream": str(stream), "n_bins": int(n_bins), "bursts": str(selection)}
+    identity.update(parameters or {})
+    container = write_sub_ensemble_decay(run_path, store, identity)
+    counts = numeric_column(store, "Counts")
+    result = {
+        "container": container,
+        "photons": float(np.sum(counts)),
+        "bursts": int(np.sum(mask)) if mask is not None else None,
+        "bins": row_count(store),
+        "dataset_index": None,
+    }
+    if register:
+        result["dataset_index"] = _register_decay(store, Path(container).stem)
+    return result
+
+
+def _register_decay(store, name: str) -> int | None:
+    """Register a decay with the running session so the TCSPC fit window can take it."""
+    import numpy as np
+
+    import chisurf as cs
+    from chisurf.core.data import DataCurve
+    from chisurf.core.datastore import column_names, numeric_column
+
+    api = getattr(cs, "api", None)
+    if api is None:
+        return None
+    axis = "Time (ns)" if "Time (ns)" in column_names(store) else "Channel"
+    y = numeric_column(store, "Counts")
+    curve = DataCurve(
+        x=numeric_column(store, axis),
+        y=y,
+        ey=np.sqrt(np.maximum(y, 1.0)),
+        name=f"{name} sub-ensemble decay",
+        load_filename_on_init=False,
+    )
+    try:
+        from chisurf.core.experiments import types as experiment_types
+
+        curve.experiment = experiment_types["tcspc"]
+    except Exception:  # noqa: BLE001 - a session without experiments still keeps the curve
+        pass
+    before = len(getattr(cs, "imported_datasets", []))
+    result = api.load_dataset(dataset=curve, name=curve.name)
+    if isinstance(result, dict) and result.get("ok") and len(cs.imported_datasets) > before:
+        return len(cs.imported_datasets) - 1
+    return None

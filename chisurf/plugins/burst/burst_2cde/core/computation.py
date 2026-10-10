@@ -197,6 +197,7 @@ def write_2cde_container(
     *,
     parameters: dict | None = None,
     progress_window=None,
+    analysis_folder=None,
 ) -> list[str]:
     """Write the 2CDE result into each measurement's own container.
 
@@ -219,18 +220,31 @@ def write_2cde_container(
         reader of that directory.
     progress_window : optional
         Anything with ``set_value``.
+    analysis_folder : str or Path, optional
+        What the bursts were read from. A container (``m000.pto`` or a run in
+        it) receives every row; a burst folder is where relative ``First File``
+        names are resolved from, so the container lands beside the instrument
+        file rather than in the working directory. A ``…4`` companion is no
+        longer written -- :func:`~chisurf.core.fio.fluorescence.legacy_export.export_legacy`
+        produces it on request.
 
     Returns
     -------
     list of str
         The containers written.
     """
-    from chisurf.core.fio.fluorescence.burst_container import write_per_source
+    from chisurf.core.datastore import take_columns
+    from chisurf.core.fio.fluorescence.burst_container import (
+        as_table,
+        destination_for,
+        write_per_source,
+    )
 
+    container, search_from = destination_for(analysis_folder)
     column = column_for_variant(variant)
     settings = {"variant": variant, **(parameters or {})}
     written = write_per_source(
-        df[["First File", column]],
+        take_columns(as_table(df), ["First File", column]),
         name=f"2cde {variant}",
         artifact_kind="burst_table",
         operation_type="burst_2cde",
@@ -238,36 +252,10 @@ def write_2cde_container(
         parameters=settings,
         derived_from="bursts",
         units={column: "dimensionless"},
+        container=container,
+        search_from=search_from,
     )
     if progress_window:
         progress_window.set_value(len(written))
     logging.info("2CDE (%s) written to %d container(s)", variant, len(written))
     return written
-
-
-def write_2cde_analysis(
-    df, analysis_folder: str, variant: str = "fret", progress_window=None
-) -> None:
-    """Write per-burst 2CDE values to companion files under a ``2c4/`` subfolder.
-
-    One tab-separated file per source TTTR named after the ``.bur`` stem
-    (``<stem>.2c4``), part of the ``…4`` burst-companion family (``bg4`` / ``bv4``
-    / ``2c4`` …). Per-stem consumers — ndX and the burst browser — join it
-    to the burst table by stem, so it must match the ``.bur`` name (no ``_0``).
-    """
-    from chisurf.core.fio.fluorescence.burst_companion import write_companion
-
-    column = column_for_variant(variant)
-    files = np.asarray(df["First File"])
-    values = numeric_column(df, column)
-    # write_companion owns the layout -- the "…4" directory, the %.6f, and the
-    # zero interleaving. This used to build all three by hand, one measurement
-    # at a time, which is how a companion drifts from the contract that merges
-    # it.
-    for i, tttr_file in enumerate(dict.fromkeys(files), start=1):
-        stem = pathlib.Path(str(tttr_file)).stem
-        rows = values[files == tttr_file].reshape(-1, 1)
-        write_companion(analysis_folder, "2c4", stem, [column], rows)
-        if progress_window:
-            progress_window.set_value(i)
-    logging.info("2CDE results written beside %s", analysis_folder)

@@ -24,7 +24,6 @@ from dataclasses import dataclass
 import numpy as np
 
 from chisurf.core.datastore import column_names, store_from_arrays
-from chisurf.core.fio.fluorescence.burst_companion import write_companion
 
 from .h2mm import BurstPhotons
 from .photons import PhotonMeta
@@ -319,13 +318,7 @@ def write_csv(df, path: str | pathlib.Path) -> str:
     return str(path)
 
 
-#: Companion folder/extension for the per-burst H2MM results. Ends in ``4`` so
-#: ndX's burst-folder reader discovers it with no code change: it merges
-#: ``<ending>/<stem>.<ending>`` beside each ``.bur`` for any sibling directory
-#: whose name ends in ``4``, exactly as it already does for ``bv4`` and ``2c4``.
-H2MM_COMPANION = "bh4"
-
-#: The columns a ``.bh4`` carries. ``H2MM Fitted`` is 0 for a burst H2MM skipped
+#: The columns the per-burst H2MM table carries (and a legacy ``bh4`` exports). ``H2MM Fitted`` is 0 for a burst H2MM skipped
 #: (too few photons), so "not fitted" is a value rather than an absence.
 H2MM_COMPANION_COLUMNS = [
     "H2MM State",
@@ -407,24 +400,27 @@ def write_h2mm_container(
     return written
 
 
-def write_burst_companions(
+def write_burst_states(
     burst_df,
     burst_rows,
     data: BurstPhotons,
     path: np.ndarray,
     fret: np.ndarray,
-    out_root,
-) -> list:
-    """Write per-measurement H2MM results, one row per burst, ndX-mergeable.
+    search_from=None,
+    *,
+    container=None,
+    parameters: dict | None = None,
+) -> list[str]:
+    """Write per-measurement H2MM results, one row per burst, into each container.
 
-    ``h2mm_bursts.csv`` is one table for the whole folder indexed by a
-    *compacted* burst number — the bursts H2MM kept. That cannot be joined back
-    to a burst folder: one dropped burst shifts every later row. These companions
-    are the shape the folder already speaks: one file per measurement, one row
-    per burst **of that measurement**, in the same zero-interleaved layout as
-    ``bv4``/``2c4``, with zeros and ``H2MM Fitted = 0`` for a burst that was not
-    analysed. ndX merges them beside each ``.bur`` with no change to ndX at all,
-    so bursts can be gated by H2MM state.
+    The H2MM burst table is indexed by a *compacted* burst number --
+    ``extract_burst_photons`` skips bursts below ``min_photons`` -- so it cannot
+    be joined back to the burst table by position. These tables are the shape the
+    burst table itself has: one per measurement, one row per burst **of that
+    measurement**, with zeros and ``H2MM Fitted = 0`` for a burst that was not
+    analysed. A skipped burst is a row with a sentinel, never an absent row, so
+    :func:`~chisurf.core.fio.fluorescence.legacy_export.export_legacy` can turn
+    the run into a ``bh4`` companion that cannot misalign.
 
     Parameters
     ----------
@@ -440,14 +436,22 @@ def write_burst_companions(
         Per-photon Viterbi state.
     fret : numpy.ndarray
         Per-state apparent FRET efficiency.
-    out_root : path-like
-        The burst-analysis folder; ``bh4/`` is created inside it.
+    search_from : path-like, optional
+        Where relative ``First File`` names are resolved from, so the container
+        lands beside the instrument file.
+    container : path-like, optional
+        The measurement container the bursts were read from; every row goes
+        into it (one container is one measurement) instead of one found from
+        ``First File``.
+    parameters : dict, optional
+        The model settings; their hash is the identity of the run.
 
     Returns
     -------
-    list of pathlib.Path
-        Every file written — empty when the row mapping is unavailable, which is
-        the honest outcome for an analysis that cannot say which burst is which.
+    list of str
+        The containers written -- empty when the row mapping is unavailable,
+        which is the honest outcome for an analysis that cannot say which burst
+        is which.
     """
     if burst_rows is None or burst_df is None:
         return []
@@ -477,19 +481,20 @@ def write_burst_companions(
         mean_e[b] = float((occ * fret_arr).sum() / occ.sum()) if occ.sum() else np.nan
         photons[b] = float(seg.size)
 
+    from chisurf.core.fio.fluorescence.burst_container import resolve_source
+
     files = np.asarray(burst_df["First File"]).astype(str)
+    where = {int(r): i for i, r in enumerate(rows[:n_analysed])}
     written = []
     for name in dict.fromkeys(files.tolist()):
         # ``.bur`` tables are zero-interleaved, and the loader keeps those
         # padding rows: their "First File" reads as "0". They are not a
-        # measurement and must not become a companion file.
+        # measurement and must not become a result.
         if "." not in name:
             continue
-        # Every burst of this measurement, in burst-table order — the row grid
-        # the .bur file itself has, so the companion lines up positionally.
+        # Every burst of this measurement, in burst-table order.
         mine = np.flatnonzero(files == name)
         table = np.zeros((mine.size, len(H2MM_COMPANION_COLUMNS)), dtype=float)
-        where = {int(r): i for i, r in enumerate(rows[:n_analysed])}
         for local, global_row in enumerate(mine):
             b = where.get(int(global_row))
             if b is None:
@@ -501,14 +506,12 @@ def write_burst_companions(
                 photons[b],
                 1.0,
             )
-
+        frame = store_from_arrays(
+            {column: table[:, j] for j, column in enumerate(H2MM_COMPANION_COLUMNS)}
+        )
         written.append(
-            write_companion(
-                out_root,
-                H2MM_COMPANION,
-                pathlib.Path(str(name)).stem,
-                H2MM_COMPANION_COLUMNS,
-                table,
+            write_h2mm_container(
+                container if container is not None else resolve_source(name, search_from), frame, None, parameters=parameters
             )
         )
     return written

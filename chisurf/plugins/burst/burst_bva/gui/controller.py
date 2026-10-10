@@ -1,7 +1,7 @@
 """Toolkit-free BVA execution; rendering owns polling on the UI thread.
 
 The same run as the Qt tool's (``gui/tool.py``): an explicit Run or Restart forgets
-an earlier Stop and writes the ``bv4`` companions; an auto-update after a parameter
+an earlier Stop and writes the result into the measurement containers; an auto-update after a parameter
 change recomputes without writing; the burst table read once is reused until the
 folder or file type changes; an unchanged run is kept and points at Restart.
 """
@@ -62,7 +62,7 @@ class BvaController:
 
     # -- runs ---------------------------------------------------------------- #
     def run(self, force=False, write_output=True, explicit=True):
-        """Compute BVA; *write_output* writes the bv4 companions, *explicit* forgets a Stop."""
+        """Compute BVA; *write_output* writes the result into the containers, *explicit* forgets a Stop."""
         if self.model.is_running:
             return
         if explicit:
@@ -75,7 +75,7 @@ class BvaController:
         settings = self.model.bva_settings()
         self._fingerprint = self.model.analysis_fingerprint(settings)
         outputs_current = analysis_cache.is_current(
-            folder / "bv4" / "bva.stamp.json", self._fingerprint
+            folder / "Info" / "bva.stamp.json", self._fingerprint
         )
         if (
             not force
@@ -129,22 +129,25 @@ class BvaController:
         self.set_value(0)
         note = ""
         if write_output:
-            output = folder / "bv4"
+            written = []
             try:
-                core.write_bv4_analysis(result, str(folder), progress_window=self)
+                written = core.write_bva_container(
+                    result,
+                    parameters=saved_settings,
+                    progress_window=self,
+                    analysis_folder=folder,
+                )
             except InterruptedError:
                 raise
             except Exception as exc:  # the result stands, as in the Qt tool
-                logger.error("BV4 write failed: %s", exc)
-                note = f" (could not write the bv4 companions: {exc})"
-            output.mkdir(parents=True, exist_ok=True)
-            (output / "bva_settings.json").write_text(json.dumps(saved_settings, indent=4))
+                logger.error("BVA write failed: %s", exc)
+                note = f" (could not write the BVA result: {exc})"
             analysis_cache.write_stamp(
-                output / "bva.stamp.json",
+                folder / "Info" / "bva.stamp.json",
                 fingerprint,
                 params=params,
                 inputs=inputs,
-                outputs=sorted(output.glob("*.bv4")),
+                outputs=[Path(p) for p in written],
                 tool="bva",
             )
         return burst_df, tttrs, result, note

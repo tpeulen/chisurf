@@ -32,6 +32,23 @@
               }
             },
             {
+              "description": "Folder that receives the Seidel/Margarita layout: bi4_bur/*.bur beside one <ending>4/ companion directory per analysis.",
+              "type": "custom",
+              "key": "data_source",
+              "options": {
+                "attr": "export_legacy_folder",
+                "mode": "folder",
+                "label": "Legacy folder",
+                "description": "Folder that receives the Seidel/Margarita layout: bi4_bur/*.bur beside one <ending>4/ companion directory per analysis."
+              }
+            },
+            {
+              "type": "button_row",
+              "buttons": [
+                {"label": "Export legacy (Seidel/Margarita)", "action": "export_legacy", "description": "Unpack every run of this container into the tab-separated burst folder older tools read."}
+              ]
+            },
+            {
               "type": "info",
               "source": "summary_html",
               "max_height": 180,

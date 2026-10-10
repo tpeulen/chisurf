@@ -14,7 +14,7 @@ from chisurf.plugins.burst.burst_2cde.core.computation import (
     column_for_variant,
     compute_2cde,
     read_burst_analysis,
-    write_2cde_analysis,
+    write_2cde_container,
 )
 
 
@@ -95,8 +95,8 @@ def compute(
     click.echo(f"Valid bursts: {valid} / {row_count(df_v)} total")
 
     out_root = pathlib.Path(output) if output else af
-    write_2cde_analysis(df_v, str(out_root), variant=variant)
-    click.echo(f"Wrote {column} sidecars to {out_root / '2cde'}")
+    written = write_2cde_container(df_v, variant, analysis_folder=out_root)
+    click.echo(f"Wrote {column} into {len(written)} measurement container(s)")
 
     if save_settings:
         from chisurf.plugins.burst.burst_2cde.api.serialization import to_jsonable

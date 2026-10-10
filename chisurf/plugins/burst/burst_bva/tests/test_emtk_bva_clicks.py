@@ -147,7 +147,7 @@ def test_run_click_computes_bva_as_the_qt_tool_did_and_writes_the_companions(
     assert _std(app.model.df) == pytest.approx(np.asarray(qt["first"]), nan_ok=True)
     assert app.model.status_text == qt["status"]
     assert "Done – 60 bursts with Std > 0 on 60 total" in draw(app).strings
-    assert sorted(p.name for p in (measurement / "bv4").glob("*")) == qt["companions"]
+    assert sorted(p.name for p in measurement.parent.glob("*.pto")) == qt["companions"]
 
 
 def test_run_without_a_folder_says_so_in_the_window(app):

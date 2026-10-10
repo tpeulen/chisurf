@@ -134,16 +134,24 @@ Consequences worth not re-deriving:
    `test/data/baselines/`. Judge parity on **columns, not bytes** — the
    container deliberately stores a table where the folder stored a padded text
    grid.
-9. Open: **`export_seidel` is not written yet.** It is `PtoFile.disassemble()` plus
-   the existing `burst_companion.write_companion` — it must go through that
-   function and never hand-roll the `2n+1` interleave, which is the mistake
-   four current writers make. It is **lossy by construction** for anything not
-   at burst grain and must say so.
 10. Open: **`read_bur_with_companions` has no PTO branch yet.** That is the single
    seam `burst_browser` and ndX read through, so adding it there gives both
    PTO support without touching either.
 
 ## Resume history (moved out of Where to pick this up)
+
+- **the legacy export is `legacy_export.export_legacy`** — `export_tree` for the `.bur` tree
+   plus `write_companion` for every per-burst result, with a sentinel row for each skipped burst and a
+   refusal for a result that cannot be placed on the burst grid. It is the only writer of a companion
+   (PTO inspector *Export legacy…*, `csg_pto_inspect export-legacy`); see
+   [burst companions](/subsystems/burst-companions.md). It is lossy by construction for anything not at
+   burst grain: only per-burst results are exported.
+- **Run picker and sub-ensemble decay.** `pto_inspector.core.RUN_PICKER_SECTION` / `RunPickerMixin`
+   (source `run_rows` is a *method*) list the runs of a container and record the choice as
+   `m000.pto/<run>`; Burst Selection and H2MM consume it. `core.fluorescence.burst.decay` pools the micro
+   times of a burst selection into a `tcspc_decay` stored beside the run it came from, with that run as
+   its parent (`row_grain` is `histogram_bin`, the dictionary's term). ndX lists a container's burst
+   tables with `pto_reader.list_tables` and asks which with `StoreChoice(kind="pto")`.
 
 Moved here unchanged: notes that are history, done work or standing rules rather than the next step.
 

@@ -54,7 +54,6 @@ from chisurf.core.fio.fluorescence.burst import (
     read_bur_file,
     write_mti_summary,
 )
-from chisurf.core.fio.fluorescence.burst_companion import write_companion
 from chisurf.core.fio.fluorescence.burst_manifest import (
     describe_tttr_source,
     read_analysis_manifest,
@@ -74,14 +73,11 @@ from ..api.models import FusionAnalysis, FusionSettings, MeasurementFusion
 
 logger = logging.getLogger(__name__)
 
-#: Companion written into the *source* folder: which fused burst each original
-#: burst joined. Deliberately a different ending from the one written beside the
-#: fused bursts — fusing a folder that is itself a fusion output would otherwise
-#: overwrite that folder's own companion with a same-named file of other columns.
-SOURCE_COMPANION = "fg4"
-
-#: Companion written beside the *fused* bursts: how each one was assembled.
-FUSED_COMPANION = "fu4"
+#: The run (analysis name inside the container) that holds how each *fused*
+#: burst was assembled. Its rows are on the fused bursts' grid, not the source
+#: bursts', which is why it is a run of its own -- as the legacy layout's new
+#: output folder was.
+FUSED_RUN = "fused"
 
 #: Record of the run, written into the fused folder's ``Info``.
 FUSION_INFO = "fusion.json"
@@ -458,9 +454,10 @@ def write_fused_analysis(
             "bursts_after": int(len(intervals)),
         }
 
-        _write_fused_companion(target, measurement, frame, intervals, kept, fused)
+        run_parameters = analysis.settings.to_dict()
+        _write_fused_assembly(path, measurement, frame, intervals, kept, fused, run_parameters)
         if analysis.settings.write_source_companion:
-            _write_source_companion(analysis.folder, measurement, frame)
+            _write_source_groups(path, measurement, frame, run_parameters)
 
         macro_times = tttr.macro_times
         if len(macro_times):
@@ -605,8 +602,15 @@ def write_fusion_container(
         return str(m.path)
 
 
-def _write_source_companion(folder, measurement: MeasurementFusion, frame) -> None:
-    """Record each original burst's fused-burst membership beside the source."""
+def _write_source_groups(source_path, measurement: MeasurementFusion, frame, parameters) -> None:
+    """Record each original burst's fused-burst membership in its container.
+
+    One row per source burst, so it is an ordinary burst-grain result of the
+    measurement. The legacy ``fg4`` companion is what
+    :func:`~chisurf.core.fio.fluorescence.legacy_export.export_legacy` makes of it.
+    """
+    from chisurf.core.fio.fluorescence.burst_container import write_burst_artifact
+
     labels = np.asarray(measurement.labels, dtype=int)
     if labels.size == 0:
         return
@@ -614,33 +618,52 @@ def _write_source_companion(folder, measurement: MeasurementFusion, frame) -> No
     times = burst_times_s(frame)
     lag = np.zeros(labels.size)
     lag[1:] = np.diff(times) * 1e3
-    rows = np.column_stack([labels.astype(float), sizes[labels].astype(float), lag])
-    write_companion(
-        analysis_root(folder),
-        SOURCE_COMPANION,
-        measurement.stem,
-        ["Fusion Group", "Fusion Group Size", "Fusion Lag (ms)"],
-        rows,
+    write_burst_artifact(
+        source_path,
+        store_from_arrays(
+            {
+                "Fusion Group": labels.astype(float),
+                "Fusion Group Size": sizes[labels].astype(float),
+                "Fusion Lag (ms)": lag,
+            }
+        ),
+        name="fusion groups",
+        artifact_kind="burst_table",
+        operation_type="burst_fusion",
+        row_grain="burst",
+        algorithm="recurrence_probability",
+        parameters=parameters,
+        derived_from="bursts",
+        units={"Fusion Lag (ms)": "milliseconds"},
+        deinterleave=False,
     )
 
 
-def _write_fused_companion(
-    target,
+def _write_fused_assembly(
+    source_path,
     measurement: MeasurementFusion,
     frame,
     intervals: Sequence[tuple[int, int]],
     kept: Sequence[np.ndarray],
     fused,
+    parameters,
 ) -> None:
-    """Record how each fused burst was assembled, beside the fused bursts.
+    """Record how each fused burst was assembled, as a run of its own.
 
     ``Fused Bursts`` is 1 for a burst fusion left alone, so the column is a
     filter downstream: keep only fused bursts, or only untouched ones, without
     having to diff two folders. ``Fused Gap Photons`` is the price of the
-    span — the photons that fall between the fragments and are now inside the
-    burst — which is the number to look at when deciding whether a threshold
+    span -- the photons that fall between the fragments and are now inside the
+    burst -- which is the number to look at when deciding whether a threshold
     went too far.
+
+    One row per *fused* burst, so it is not on the source bursts' grid: it is
+    stored under the ``fused`` run, which is the folder the legacy layout wrote
+    these bursts into.
     """
+    from chisurf.core.fio.analysis_path import artifact_name
+    from chisurf.core.fio.fluorescence.burst_container import write_burst_artifact
+
     if not intervals:
         return
     counts = numeric_column(frame, "Number of Photons")
@@ -651,12 +674,19 @@ def _write_fused_companion(
         signal = float(np.nansum(counts[group]))
         span = float(span_photons[i]) if i < span_photons.size else signal
         rows.append([float(len(group)), max(span - signal, 0.0)])
-    write_companion(
-        target,
-        FUSED_COMPANION,
-        measurement.stem,
-        ["Fused Bursts", "Fused Gap Photons"],
-        rows,
+    table = np.asarray(rows, dtype=float)
+    write_burst_artifact(
+        source_path,
+        store_from_arrays({"Fused Bursts": table[:, 0], "Fused Gap Photons": table[:, 1]}),
+        name=artifact_name(FUSED_RUN, "assembly"),
+        artifact_kind="burst_table",
+        operation_type="burst_fusion",
+        row_grain="burst",
+        algorithm="recurrence_probability",
+        parameters=parameters,
+        derived_from="bursts",
+        units={"Fused Gap Photons": "photons", "Fused Bursts": "counts"},
+        deinterleave=False,
     )
 
 

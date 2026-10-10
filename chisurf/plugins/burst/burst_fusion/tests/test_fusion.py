@@ -16,8 +16,7 @@ import numpy as np
 import pytest
 
 from chisurf.core.datastore import column_names, numeric_column, row_count
-from chisurf.core.fio.fluorescence.burst import read_bur_file, read_bur_with_companions
-from chisurf.core.fio.fluorescence.burst_companion import is_companion_dir
+from chisurf.core.fio.fluorescence.burst import read_bur_file
 from chisurf.plugins.burst.burst_fusion.api.models import FusionSettings
 from chisurf.plugins.burst.burst_fusion.core.fusion import (
     FusionError,
@@ -146,32 +145,29 @@ def test_fused_bursts_span_their_fragments(folder):
         assert int(emitted_last[hit[0]]) == int(source_last[in_group].max())
 
 
-def test_companions_follow_the_contract_and_merge(folder):
+def test_fusion_results_land_in_the_measurement_container(folder):
+    """No companion is written: the run goes into the measurement's `.pto`."""
+    from chisurf.core.fio.analysis_path import list_runs, read_tables
+
     result = analyze(folder, FusionSettings(threshold=0.5))
     out = write_fused_analysis(result, detectors=DETECTORS, windows=WINDOWS)
     target = pathlib.Path(out["output_folder"])
 
-    # Discoverable: a folder reader finds companions by the trailing "4".
-    assert is_companion_dir("fu4") and is_companion_dir("fg4")
-    assert (target / "fu4" / "m000.fu4").is_file()
-    assert (folder / "fg4" / "m000.fg4").is_file()
+    assert not (target / "fu4").exists() and not (folder / "fg4").exists()
+    container = folder.parent / "m000.pto"
+    assert container.is_file()
+    assert {"", "fused"} <= set(list_runs(container))
 
-    # One row per burst, so the positional merge lines up.
-    merged = read_bur_with_companions(target / "bi4_bur" / "m000.bur")
-    assert "Fused Bursts" in column_names(merged)
-    assert "Fused Gap Photons" in column_names(merged)
-    rows = data_rows(merged)
-    assert np.all(numeric_column(rows, "Fused Bursts") >= 1)
-    assert numeric_column(rows, "Fused Bursts").max() > 1
-
-    source_merged = read_bur_with_companions(folder / "bi4_bur" / "m000.bur")
-    assert "Fusion Group" in column_names(source_merged)
-    source_rows = data_rows(source_merged)
-    assert row_count(source_rows) == row_count(result.measurements[0].source)
+    groups = read_tables(container)["fusion groups"]
+    assert row_count(groups) == row_count(result.measurements[0].source)
     np.testing.assert_allclose(
-        numeric_column(source_rows, "Fusion Group"),
+        numeric_column(groups, "Fusion Group"),
         np.asarray(result.measurements[0].labels, dtype=float),
     )
+    assembly = read_tables(f"{container}/fused")["assembly"]
+    assert row_count(assembly) == out["per_measurement"]["m000"]["bursts_after"]
+    assert numeric_column(assembly, "Fused Bursts").min() >= 1
+    assert numeric_column(assembly, "Fused Bursts").max() > 1
 
 
 def test_the_source_bursts_are_left_alone(folder):

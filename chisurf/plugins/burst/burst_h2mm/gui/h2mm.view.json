@@ -13,7 +13,29 @@
           "attr": "data_folder",
           "label": "Burst folder",
           "kind": "directory",
-          "description": "Folder with the burst (.bur) tables of a finished burst analysis; the photons they name are read from beside them."
+          "description": "Folder with the burst (.bur) tables of a finished burst analysis, or a measurement .pto container; the photons they name are read from beside them (a container holds them)."
+        },
+        {
+          "type": "custom",
+          "key": "data_table",
+          "title": "Runs",
+          "description": "The analyses stored in the container; pick the one the next step reads.",
+          "options": {
+            "source": "run_rows",
+            "row_key": "run",
+            "selected_call": "select_run",
+            "editable": false,
+            "height": 100,
+            "fit_columns": false,
+            "columns": [
+              {"key": "run", "title": "Run", "width": 230, "tooltip": "The analysis' name inside the container; the settings are part of it."},
+              {"key": "operation", "title": "Operation", "width": 110, "tooltip": "What produced the burst table of this run."},
+              {"key": "algorithm", "title": "Algorithm", "width": 100, "tooltip": "The estimator or search that produced it, when recorded."},
+              {"key": "rows", "title": "Rows", "width": 60, "tooltip": "Rows in the run's burst table."},
+              {"key": "settings_hash", "title": "Settings", "width": 80, "tooltip": "Hash of the run's settings: the same settings always give the same one."},
+              {"key": "created", "title": "Order", "width": 50, "tooltip": "Position in the container's write order; the last one is the newest."}
+            ]
+          }
         },
         {
           "type": "choice",

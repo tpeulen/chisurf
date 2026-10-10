@@ -86,17 +86,29 @@ def run_analysis(
     bundle : H2mmAnalysisBundle
         The full in-memory analysis (for GUI plotting).
     """
+    from chisurf.core.fio.analysis_path import is_container_path, split_container_path
+
     from ..core import photons as photons_mod
     from ..core.analysis import analyze
     from ..core.photons import StreamDef, bursts_from_dataframe
 
-    bur_paths = _resolve_bur_files(files, analysis_folder, pattern)
-    if not bur_paths:
-        raise ValueError("no .bur files found for H2MM analysis")
+    container = None
+    if analysis_folder and is_container_path(analysis_folder):
+        # A run in a measurement's `.pto`: the bursts and the photons are both in
+        # the one file, so there is no folder to search and nothing to resolve.
+        from chisurf.core.fio.fluorescence.burst import _read_burst_analysis_from_container
 
-    df = photons_mod.load_bur_dataframe(bur_paths)
-    data_dir = pathlib.Path(bur_paths[0]).parent
-    tttrs = _load_tttrs(df, data_dir, settings.file_type)
+        container, _run = split_container_path(analysis_folder)
+        df, tttrs = _read_burst_analysis_from_container(pathlib.Path(analysis_folder))
+        data_dir = container.parent
+    else:
+        bur_paths = _resolve_bur_files(files, analysis_folder, pattern)
+        if not bur_paths:
+            raise ValueError("no .bur files found for H2MM analysis")
+
+        df = photons_mod.load_bur_dataframe(bur_paths)
+        data_dir = pathlib.Path(bur_paths[0]).parent
+        tttrs = _load_tttrs(df, data_dir, settings.file_type)
 
     base_time_s = _macro_resolution(tttrs) * max(int(settings.time_scale), 1)
 
@@ -160,6 +172,8 @@ def run_analysis(
     bundle = H2mmAnalysisBundle(analysis=ana, data=data, settings=settings)
     bundle.meta = meta
     bundle.burst_df = df
+    bundle.data_dir = data_dir
+    bundle.container = container
     bundle.tttrs = tttrs
     bundle.micro_time_ns = _micro_resolution(tttrs) * 1e9
     return result, bundle
@@ -274,7 +288,7 @@ def write_result_tables(
     from ..core.export import (
         build_dwell_table,
         build_tables,
-        write_burst_companions,
+        write_burst_states,
         write_csv,
         write_hdf5,
     )
@@ -376,20 +390,21 @@ def write_result_tables(
         decay_table(decays), out_dir / "h2mm_state_decays.csv"
     )
 
-    # Per-measurement companions beside the .bur files themselves, so a burst
-    # folder loaded in ndX carries the H2MM state as just another column and
-    # bursts can be gated on it. Written to the *analysis* folder, not this
-    # output folder: that is where the .bur files and their bv4/2c4 siblings are.
-    companions = write_burst_companions(
+    # Per-measurement results in each measurement's own container, one row per
+    # burst, so the H2MM state is a column of the burst table's run and bursts
+    # can be gated on it. A legacy ``bh4`` is `export_legacy`'s business.
+    containers = write_burst_states(
         getattr(bundle, "burst_df", None),
         getattr(meta, "burst_rows", None),
         bundle.data,
         ana.path,
         ana.fret,
-        pathlib.Path(out_dir).parent,
+        getattr(bundle, "data_dir", None),
+        container=getattr(bundle, "container", None),
+        parameters=dict(getattr(result, "settings_applied", None) or {}),
     )
-    for target in companions:
-        result.output_paths[f"companion_{target.stem}"] = str(target)
+    for target in containers:
+        result.output_paths[f"container_{pathlib.Path(target).stem}"] = str(target)
 
 
 def _result_from_analysis(ana, settings: H2mmSettings) -> H2mmResult:

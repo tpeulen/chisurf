@@ -152,6 +152,9 @@ class AlexHubApp(BurstAnalysisHubApp):
         self._source_files: list[Path] = []
         #: Next on Accurate FRET while its table is still loading: calibrate once the load is done.
         self._pending_calibration = False
+        #: A burst run Accurate FRET was handed while it was still busy (reading its dye catalogue): taken up as
+        #: soon as it is idle, because the hand-off happens once per arrival and would otherwise be lost.
+        self._pending_table = ""
         super().__init__(title=title, steps=STEPS if steps is None else steps)
         from chisurf.emtk.help_guide import EmTkHelpWindow
 
@@ -286,9 +289,12 @@ class AlexHubApp(BurstAnalysisHubApp):
             child.apply_setup(settings, self.context.setup_name)
 
     def _to_accurate_fret(self, child) -> None:
-        self._editor_to("accurate_fret", child.controller.channel_definition, self._setup_payload())
         sources = burst_sources(self.context)
-        if not sources or child.controller.running:
+        if not sources:
+            return
+        if child.controller.running:
+            # Not dropped: remembering nothing here is what let a busy arrival lose the run for good.
+            self._pending_table = str(sources[0])
             return
         if self._changed("accurate_fret", "table", str(sources[0])):
             child.controller.load(str(sources[0]))
@@ -383,6 +389,10 @@ class AlexHubApp(BurstAnalysisHubApp):
         child = self.child
         if child is None:
             return False
+        if self._pending_table and self.selected == "accurate_fret" and not child.controller.running:
+            table, self._pending_table = self._pending_table, ""
+            if self._changed("accurate_fret", "table", table):
+                child.controller.load(table)
         if self._pending_calibration and self.selected == "accurate_fret" and not child.controller.running:
             self._pending_calibration = False
             if child.model.result is None and child.model.can_run() is None:

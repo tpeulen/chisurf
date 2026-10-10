@@ -27,9 +27,34 @@ other tools. Three levels are common:
 
 ## In ChiSurf
 
-The burst analyses write per-file sidecars (BVA `.bv4`, 2CDE `.2cde`) into the
-burst folder, and the workflow tables are plain pandas DataFrames — so any format
-is a one-liner. The H2MM export is designed to open directly in **ndxplorer**:
+Every burst step writes its result as a **run into the measurement's `.pto`**:
+the burst search, BVA, 2CDE, the lifetime fits, H2MM, burst FCS, fusion. Nothing
+writes a `bv4/`, `2c4/`, `bh4/` … companion folder any more. When an older tool
+(ndX's folder reader, the Seidel/Margarita software) needs the folder layout, you
+ask for it once, explicitly:
+
+- in the **PTO inspector**: open the container, press **Export legacy…** and
+  choose a folder;
+- on the command line: `csg_pto_inspect export-legacy m000.pto out_folder`;
+- in Python: `chisurf.core.fio.fluorescence.legacy_export.export_legacy(container, out_dir)`.
+
+The export writes `bi4_bur/<stem>.bur` for each burst run and, beside it, one
+`<ending>4/<stem>.<ending>` companion per analysis (`bv4`, `2c4`, `bg4`/`br4`/`by4`,
+`bh4`, `td4`, `bf4`) with **one row per burst of the measurement** — a burst the
+analysis skipped is a row of zeros, never a missing row, because the folder is
+merged by position. A result that covers only some bursts (H2MM, burst FCS) is
+placed by the burst number its table declares; one that cannot be placed is refused
+rather than guessed. A zero in a companion is therefore the export's "skipped";
+the container still holds the real value.
+
+The **Runs** table in Burst Selection and H2MM lists the analyses in a container;
+pick one and the next step reads that run. **Decay from selected bursts** (Burst
+Selection) pools the micro times of the bursts inside the histogram range of the
+chosen run into one TCSPC decay, stores it beside that run and offers it to the
+TCSPC fit window; the histogram sums to the selected photon count.
+
+The workflow tables are plain tables, so any other format is a one-liner. The H2MM
+export is designed to open directly in **ndxplorer**:
 
 ```python
 # burst table -> CSV / the MFD-HDF5 columns ndxplorer plots on
@@ -84,6 +109,7 @@ collapsed, which a screenshot of an empty table would not have told you.
 
 ## See also
 
-- {src}`chisurf/plugins/burst/burst_h2mm/core/export.py`, `chisurf/plugins/burst/bid_to_analysis/`.
+- {src}`chisurf/plugins/burst/burst_h2mm/core/export.py`, `chisurf/core/fio/fluorescence/legacy_export.py`, `chisurf/plugins/burst/bid_to_analysis/`.
+- The companion contract the export keeps: [burst companions](/subsystems/burst-companions.md).
 - What the index ranges being exported mean: [timestamps and bursts](33_timestamps_and_bursts.md).
 - The analysis that produces the `State` column: [H2MM](19_h2mm_hidden_markov.md).

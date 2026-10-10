@@ -369,7 +369,7 @@ class BVATool(ChisurfDockTool):
     def _stamp_path(self) -> pathlib.Path | None:
         if self.model.analysis_folder is None:
             return None
-        return pathlib.Path(self.model.analysis_folder) / "bv4" / "bva.stamp.json"
+        return pathlib.Path(self.model.analysis_folder) / "Info" / "bva.stamp.json"
 
     def fingerprint_params(self, settings: dict) -> dict:
         return self.model.fingerprint_params(settings)
@@ -467,25 +467,23 @@ class BVATool(ChisurfDockTool):
             import numpy as np
 
             task.set_range(0, len(set(np.asarray(df_v["First File"]).tolist())))
-            task.set_text("Writing BV4 files...")
+            task.set_text("Writing BVA result...")
+            written = []
             try:
-                core.write_bv4_analysis(
+                written = core.write_bva_container(
                     df_v,
-                    str(self.model.analysis_folder),
-                    progress_window=task.progress_window("Writing BV4 files..."),
+                    parameters=settings,
+                    progress_window=task.progress_window("Writing BVA result..."),
+                    analysis_folder=self.model.analysis_folder,
                 )
             except Exception as e:
-                logging.error(f"BV4 write failed: {e}")
-            bv4_folder = self.model.analysis_folder / "bv4"
-            bv4_folder.mkdir(parents=True, exist_ok=True)
-            with open(bv4_folder / "bva_settings.json", "w") as f:
-                json.dump(settings, f, indent=4)
+                logging.error(f"BVA write failed: {e}")
             analysis_cache.write_stamp(
-                bv4_folder / "bva.stamp.json",
+                pathlib.Path(self.model.analysis_folder) / "Info" / "bva.stamp.json",
                 fingerprint,
                 params=params,
                 inputs=inputs,
-                outputs=sorted(bv4_folder.glob("*.bv4")),
+                outputs=[pathlib.Path(p) for p in written],
                 tool="bva",
             )
         return burst_df, tttrs, df_v

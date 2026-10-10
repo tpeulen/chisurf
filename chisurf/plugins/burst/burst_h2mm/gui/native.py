@@ -502,8 +502,11 @@ class H2mmNativeApp(TourTarget, ImApp):
 
     # -- host input ---------------------------------------------------------------------------------------- #
     def files_dropped(self, paths) -> bool:
-        """A dropped folder (or the folder of a dropped file) becomes the burst folder."""
+        """A dropped folder (or the folder of a dropped file) becomes the burst folder; a ``.pto`` is its own input."""
         for path in map(Path, paths):
+            if path.suffix.lower() == ".pto":
+                self.model.data_folder = str(path)
+                return True
             folder = path if path.is_dir() else path.parent
             if folder.is_dir():
                 self.model.data_folder = str(folder)

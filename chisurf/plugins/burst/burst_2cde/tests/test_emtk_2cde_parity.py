@@ -86,7 +86,7 @@ import numpy as np
 from chisurf.plugins.burst.burst_2cde.core import computation as core
 print("FACTS" + json.dumps({"values": np.asarray(df[core.COLUMN_FRET_2CDE], float).tolist(), "variant": variant,
                             "params": w.fingerprint_params(),
-                            "companions": sorted(p.name for p in (folder / "2c4").glob("*"))}))
+                            "companions": sorted(p.name for p in folder.parent.glob("*.pto"))}))
 """
 
 
@@ -123,7 +123,8 @@ def test_a_run_gives_the_qt_tools_answer_and_writes_the_same_companion(folder, t
         ours = _values(app.model.df)
         assert ours == pytest.approx(np.asarray(qt["values"]), nan_ok=True)
         assert json.loads(json.dumps(app.model.fingerprint_params())) == qt["params"]
-        assert sorted(p.name for p in (folder / "2c4").glob("*")) == qt["companions"]
+        assert sorted(p.name for p in folder.parent.glob("*.pto")) == qt["companions"]
+        assert qt["companions"] == ["m000.pto"] and not (folder / "2c4").exists()
         index = np.arange(len(ours))
         assert np.nanmedian(ours[index % 4 != 3]) < 15 < np.nanmedian(ours[index % 4 == 3])
         assert app.model.status_text == "FRET-2CDE: 60 / 60 bursts valid"
@@ -254,12 +255,12 @@ def test_errors_reach_the_window(folder, tmp_path, monkeypatch):
         assert app.model.status_text == "Select a valid burstwise analysis folder."
         app.model.set_folder(folder)
         monkeypatch.setattr(
-            core, "write_2cde_analysis", lambda *a, **k: (_ for _ in ()).throw(OSError("disk full"))
+            core, "write_2cde_container", lambda *a, **k: (_ for _ in ()).throw(OSError("disk full"))
         )
         app.controller.run()
         _settle(app)
         assert app.model.df is not None  # the result stands, as in Qt
-        assert "could not write the 2c4 companion: disk full" in app.model.status_text
+        assert "could not write the 2CDE result: disk full" in app.model.status_text
         monkeypatch.setattr(
             core,
             "read_burst_analysis",

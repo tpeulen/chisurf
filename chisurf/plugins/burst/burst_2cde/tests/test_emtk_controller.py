@@ -21,7 +21,7 @@ def test_native_compute_snapshot_output_and_unlock(tmp_path, monkeypatch):
     monkeypatch.setattr(core, "compute_2cde", lambda df, tttrs, **kw: settings.append(kw) or df)
     written = []
     monkeypatch.setattr(
-        core, "write_2cde_analysis", lambda *args, **kw: written.append(kw["variant"])
+        core, "write_2cde_container", lambda df, variant, **kw: written.append(variant) or []
     )
     try:
         ctrl.run()
@@ -51,7 +51,7 @@ def test_native_stop_discards_result_and_does_not_write(tmp_path, monkeypatch):
 
     monkeypatch.setattr(core, "read_burst_analysis", read)
     writes = []
-    monkeypatch.setattr(core, "write_2cde_analysis", lambda *args, **kw: writes.append(True))
+    monkeypatch.setattr(core, "write_2cde_container", lambda *args, **kw: writes.append(True) or [])
     try:
         ctrl.run()
         assert ready.wait(5)

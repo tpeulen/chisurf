@@ -98,11 +98,10 @@ def test_native_bva_runs_backend_and_updates_plot(tmp_path, monkeypatch):
 
     def write(*args, **kwargs):
         written.append(True)
-        output = tmp_path / "bv4"
-        output.mkdir(exist_ok=True)
-        (output / "test.bv4").write_text("test")
+        (tmp_path / "m000.pto").write_text("container")
+        return [str(tmp_path / "m000.pto")]
 
-    monkeypatch.setattr(core, "write_bv4_analysis", write)
+    monkeypatch.setattr(core, "write_bva_container", write)
     try:
         ctrl.run()
         ctrl._future.result(timeout=5)
@@ -110,8 +109,8 @@ def test_native_bva_runs_backend_and_updates_plot(tmp_path, monkeypatch):
         assert written == [True]
         assert settings[0]["number_of_photons_per_slice"] == 10
         assert model.df is table
-        assert (tmp_path / "bv4" / "bva.stamp.json").exists()
-        assert (tmp_path / "bv4" / "bva_settings.json").exists()
+        assert (tmp_path / "Info" / "bva.stamp.json").exists()
+        assert not (tmp_path / "bv4").exists()
         ctrl.run()
         assert ctrl._future is None
         assert "Unchanged" in model.status_text

@@ -237,6 +237,18 @@ class PtoInspectorApp(ImApp):
             tr("Open") if action == "open" else tr("Export"), size=(780, 560)
         )
 
+    def choose_legacy_folder(self):
+        self.file_action = "legacy"
+        self.dialog = FileDialog(
+            tr("Legacy folder"),
+            mode="folder",
+            directory=str(Path(self.model.filename).parent) if self.model.filename else None,
+        )
+        self.file_window = DialogWindow(tr("Legacy folder"), size=(780, 560))
+
+    def export_legacy(self, folder):
+        self.notice = self.model.export_legacy(str(folder))
+
     def choose_pack_directory(self):
         self.file_action = "pack"
         self.dialog = FileDialog(
@@ -323,6 +335,13 @@ class PtoInspectorApp(ImApp):
                 "Export the selected payload.",
                 lambda: self.choose_file("export"),
                 bool(self.model.selected),
+            ),
+            (
+                "📤  Export legacy…",
+                "Unpack every run into the Seidel/Margarita burst folder older tools read: "
+                "bi4_bur/*.bur beside one companion directory per analysis.",
+                self.choose_legacy_folder,
+                bool(self.model.inspection),
             ),
             ("help", "Read the inspector help.", lambda: setattr(self.help, "open", True), True),
             ("guide", "Start the guided tour.", self.tour.start, True),
@@ -534,6 +553,8 @@ class PtoInspectorApp(ImApp):
                         if action == "open"
                         else self.pack_vendor_files(selected[0])
                         if action == "pack"
+                        else self.export_legacy(selected[0])
+                        if action == "legacy"
                         else self.export_payload(selected[0])
                     )
                 )

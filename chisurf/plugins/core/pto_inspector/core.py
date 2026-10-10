@@ -18,6 +18,7 @@ raw data, and listing it must not cost a read of it.
 
 from __future__ import annotations
 
+import copy
 import json
 import logging
 from collections.abc import Iterable
@@ -32,9 +33,14 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "KIND_COLORS",
     "PtoInspection",
+    "RUN_PICKER_SECTION",
+    "RunPickerMixin",
     "artifact_rows",
+    "export_legacy",
     "provenance_graph",
+    "run_rows_for",
     "short_uid",
+    "with_run_picker",
 ]
 
 #: Header colour per artifact kind, so a glance at the graph separates the
@@ -378,6 +384,31 @@ class PtoInspection:
 # -- free functions (testable without a file) ---------------------------------
 
 
+def export_legacy(path: str | Path, out_dir: str | Path) -> list[Path]:
+    """Unpack a container into the Seidel/Margarita burst folder.
+
+    The one explicit export: ``bi4_bur/<stem>.bur`` per burst run, beside one
+    ``<ending>4/<stem>.<ending>`` companion per analysis, with a row for every
+    burst (the skipped ones as sentinel rows). See
+    :func:`chisurf.core.fio.fluorescence.legacy_export.export_legacy`.
+
+    Parameters
+    ----------
+    path : str or pathlib.Path
+        The ``.pto``.
+    out_dir : str or pathlib.Path
+        The folder that receives the layout.
+
+    Returns
+    -------
+    list of pathlib.Path
+        Every file written.
+    """
+    from chisurf.core.fio.fluorescence.legacy_export import export_legacy as _export
+
+    return _export(path, out_dir)
+
+
 def artifact_rows(infos: Iterable[ArtifactInfo]) -> list[dict]:
     """Return display records for *infos*."""
     return [item.as_row() for item in infos]
@@ -526,3 +557,231 @@ def settings_text(settings: dict) -> str:
             value = json.dumps(value, sort_keys=True)
         lines.append(f"{key} = {value}")
     return "\n".join(lines)
+
+
+# -- the run picker -----------------------------------------------------------
+#
+# One reusable table that says which analysis of a container the next step reads.
+# A measurement's `.pto` holds several analyses of the same photons -- a burst
+# search per setting, each with the results computed from it -- so a step that
+# takes "the bursts" has to be told *which* run. Every consumer used to answer
+# that differently (or not at all, taking the latest). This is the one answer: a
+# `data_table` section listing the runs, a model method that builds its rows, and
+# a callback that records the choice as a container path, `m000.pto/<run>`, which
+# is what every reader of a container already understands.
+#
+# It is not a new section kind: RUN_PICKER_SECTION is an ordinary
+# `custom`/`data_table` section that emtk already draws, and RunPickerMixin is the
+# half of the contract the *model* owes it. The source is a **method**, not a
+# property: AutoForm calls `source()`.
+
+#: The section every consumer splices in. Columns mirror what the inspector
+#: records about a run; ``Order`` is the write order (the container records no
+#: timestamp), newest last.
+RUN_PICKER_SECTION: dict[str, Any] = {
+    "type": "custom",
+    "key": "data_table",
+    "title": "Runs",
+    "description": (
+        "The analyses stored in the container; pick the one the next step reads."
+    ),
+    "options": {
+        "source": "run_rows",
+        "row_key": "run",
+        "selected_call": "select_run",
+        "editable": False,
+        "height": 120,
+        "columns": [
+            {"key": "run", "title": "Run", "width": 230,
+             "tooltip": "The analysis' name inside the container; the settings are part of it."},
+            {"key": "operation", "title": "Operation", "width": 110,
+             "tooltip": "What produced the burst table of this run."},
+            {"key": "algorithm", "title": "Algorithm", "width": 100,
+             "tooltip": "The estimator or search that produced it, when recorded."},
+            {"key": "rows", "title": "Rows", "width": 60,
+             "tooltip": "Bursts in the run's table."},
+            {"key": "settings_hash", "title": "Settings", "width": 80,
+             "tooltip": "Hash of the run's settings: the same settings always give the same one."},
+            {"key": "created", "title": "Order", "width": 50,
+             "tooltip": "Position in the container's write order; the last one is the newest."},
+        ],
+    },
+}
+
+#: What a "run" is when a consumer does not say otherwise: a burst search.
+DEFAULT_OPERATION = "burst_selection"
+
+
+def run_rows_for(path, *, operation: str = DEFAULT_OPERATION) -> list[dict]:
+    """Return one display row per run of the container at *path*.
+
+    Parameters
+    ----------
+    path : str or pathlib.Path
+        A ``.pto`` (or a run inside one). Anything else gives no rows, so a
+        model whose input is a vendor file or an empty field just shows an empty
+        table.
+    operation : str, optional
+        Which runs to list. The default lists the burst searches; ``""`` lists
+        every analysis.
+
+    Returns
+    -------
+    list of dict
+        ``run`` (display name), ``run_name`` (the real one, ``""`` for the top
+        level), ``operation``, ``algorithm``, ``rows``, ``settings_hash`` and
+        ``created`` (write order, from 1).
+    """
+    from chisurf.core.fio.analysis_path import split_artifact_name, split_container_path
+    from chisurf.core.fio.pto import Measurement, is_measurement
+
+    container, _wanted = split_container_path(path)
+    if container is None or not container.exists() or not is_measurement(container):
+        return []
+    rows: dict[str, dict] = {}
+    try:
+        with Measurement.open(container, writable=False) as m:
+            for obj in m.artifacts():
+                op = str(m.tag(obj.uid, "_mmfdb_operation.operation_type"))
+                if not op or (operation and op != operation):
+                    continue
+                run, _table = split_artifact_name(str(obj.name))
+                if run in rows and not str(obj.name).endswith(".bur"):
+                    continue  # the burst table of a run describes it
+                prov = m.provenance(obj.uid)
+                n_rows = int(getattr(obj, "rows", 0) or 0)
+                if str(obj.name).endswith(".bur") and n_rows % 2 == 1:
+                    n_rows = (n_rows - 1) // 2  # the file's zero rows are padding, not bursts
+                rows[run] = {
+                    "run": run or "(top level)",
+                    "run_name": run,
+                    "operation": op,
+                    "algorithm": str(m.tag(obj.uid, "_mmfdb_operation.algorithm")),
+                    "rows": n_rows,
+                    "settings_hash": str(prov["settings_hash"])[:8],
+                }
+    except Exception:  # noqa: BLE001 - an unreadable container lists nothing
+        logger.debug("listing the runs of %s failed", container, exc_info=True)
+        return []
+    out = list(rows.values())
+    for order, row in enumerate(out, start=1):
+        row["created"] = order
+    return out
+
+
+class RunPickerMixin:
+    """The model half of the run picker.
+
+    A model that inherits this names the attribute holding its input
+    (:attr:`run_picker_attr`) and gets :meth:`run_rows` and :meth:`select_run`.
+    The chosen run is :attr:`run_path`; a step reads *that* instead of guessing
+    which analysis in the container it was meant to use.
+
+    Attributes
+    ----------
+    run_picker_attr : str
+        Name of the model attribute holding the input path (a ``.pto``, a run in
+        one, or something else, which lists nothing).
+    run_picker_operation : str
+        Which operation's runs to list.
+    run_path : str
+        The container path of the chosen run; empty until one is chosen.
+    """
+
+    run_picker_attr: str = "folder"
+    run_picker_operation: str = DEFAULT_OPERATION
+    run_path: str = ""
+
+    def _run_picker_input(self) -> str:
+        """Return the input path the picker lists runs of."""
+        value = getattr(self, self.run_picker_attr, "")
+        if callable(value):
+            value = value()
+        if isinstance(value, (list, tuple)):
+            value = value[0] if value else ""
+        return str(value or "")
+
+    def run_rows(self) -> list[dict]:
+        """Rows for the picker table -- a method, because AutoForm calls its sources."""
+        return run_rows_for(self._run_picker_input(), operation=self.run_picker_operation)
+
+    def select_run(self, row: Any) -> None:
+        """Record the chosen run as a container path (the table's ``selected_call``).
+
+        Parameters
+        ----------
+        row : dict or None
+            The selected row; ``None`` (selection cleared) leaves the choice alone.
+        """
+        if not isinstance(row, dict):
+            return
+        from chisurf.core.fio.analysis_path import split_container_path
+
+        container, _ = split_container_path(self._run_picker_input())
+        if container is None:
+            return
+        run = row.get("run_name", row.get("run", ""))
+        run = "" if run == "(top level)" else str(run)
+        self.run_path = f"{container}/{run}" if run else str(container)
+        notify = getattr(self, "notify", None)
+        if callable(notify):
+            notify("run_selected")
+
+
+def with_run_picker(spec: dict, *, after_title: str | None = None) -> dict:
+    """Return *spec* with the run picker spliced in, once.
+
+    The section goes right after the first ``data_table`` section (the input
+    table) found anywhere in the spec -- or after the section titled
+    *after_title* -- so every consumer shows it in the same place: under the
+    input, above the settings.
+
+    Parameters
+    ----------
+    spec : dict
+        A loaded view spec (not modified).
+    after_title : str, optional
+        Title of the section to follow instead of the first ``data_table``.
+
+    Returns
+    -------
+    dict
+        A copy with :data:`RUN_PICKER_SECTION` inserted; unchanged (still a copy)
+        if the picker is already there or no anchor is found, in which case it is
+        appended to the top-level sections.
+    """
+    out = copy.deepcopy(spec)
+
+    def is_picker(section: dict) -> bool:
+        return (section.get("options") or {}).get("source") == "run_rows"
+
+    def walk(sections: list) -> bool:
+        for index, section in enumerate(sections):
+            if not isinstance(section, dict):
+                continue
+            if is_picker(section):
+                return True
+            anchor = (
+                section.get("title") == after_title
+                if after_title
+                else section.get("key") == "data_table"
+            )
+            if anchor:
+                sections.insert(index + 1, copy.deepcopy(RUN_PICKER_SECTION))
+                return True
+            if walk(section.get("sections") or []):
+                return True
+        return False
+
+    def present(sections: list) -> bool:
+        return any(
+            isinstance(sec, dict) and (is_picker(sec) or present(sec.get("sections") or []))
+            for sec in sections
+        )
+
+    top = out.setdefault("sections", [])
+    if present(top):
+        return out
+    if not walk(top):
+        top.append(copy.deepcopy(RUN_PICKER_SECTION))
+    return out

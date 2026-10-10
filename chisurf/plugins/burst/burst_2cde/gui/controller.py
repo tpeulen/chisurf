@@ -48,7 +48,7 @@ class TwoCdeController:
             self.model.status_text = "Select a valid burstwise analysis folder."
             return
         fingerprint = self.model.analysis_fingerprint()
-        stamp = folder / "2c4" / "2cde.stamp.json"
+        stamp = folder / "Info" / "2cde.stamp.json"
         if (
             not force
             and self.model.df is not None
@@ -125,23 +125,28 @@ class TwoCdeController:
         )
         self.set_value(0)
         self._progress_max = 0
-        self._set_progress("Writing the 2c4 companion …", None)
+        self._set_progress("Writing the 2CDE result …", None)
         note = ""
         try:
-            core.write_2cde_analysis(df, str(folder), variant=settings["variant"])
+            written = core.write_2cde_container(
+                df,
+                settings["variant"],
+                parameters=params,
+                analysis_folder=folder,
+            )
             analysis_cache.write_stamp(
-                folder / "2c4" / "2cde.stamp.json",
+                folder / "Info" / "2cde.stamp.json",
                 fingerprint,
                 params=params,
                 inputs=inputs,
-                outputs=sorted((folder / "2c4").glob("*.2c4")),
+                outputs=[Path(p) for p in written],
                 tool="2cde",
             )
         except (
             Exception
         ) as exc:  # the result stands, as in the Qt tool; say why nothing was written
-            logger.warning("Could not write 2c4 companion: %s", exc)
-            note = f" (could not write the 2c4 companion: {exc})"
+            logger.warning("Could not write the 2CDE result: %s", exc)
+            note = f" (could not write the 2CDE result: {exc})"
         return df, settings["variant"], note
 
     def stop(self):
