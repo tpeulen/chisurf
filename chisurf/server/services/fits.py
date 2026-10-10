@@ -1254,6 +1254,16 @@ cooperative cancellation and history trimming are implemented once (INC-08).
 """
 
 
+def has_running_fit_job() -> bool:
+    """Return ``True`` while a sampling or scan job may still be moving parameters.
+
+    A project capture rebuilds each model and compares its prediction with the
+    live one; a worker that rewrites parameter values in between makes that check
+    fail spuriously. Callers that can retry later (autosave) use this to skip.
+    """
+    return any(not job.status.is_terminal for job in _JOBS.list_jobs())
+
+
 def _job_or_error(job_id: str, action: str):
     """Return the job with *job_id* if it belongs to *action*, else an error.
 

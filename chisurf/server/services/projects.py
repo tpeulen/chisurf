@@ -95,9 +95,23 @@ def load_project(
         return service_error(str(e), error_code=OPERATION_FAILED, exception=e)
 
 
-def capture_project_payload(state: SessionState, ui_state: dict | None = None) -> ServiceResult:
-    """Capture server-owned science together with detached client presentation."""
+def capture_project_payload(
+    state: SessionState,
+    ui_state: dict | None = None,
+    skip_if_busy: bool = False,
+) -> ServiceResult:
+    """Capture server-owned science together with detached client presentation.
+
+    With ``skip_if_busy`` a running sampling/scan job (which moves the fit's
+    parameters under the capture's reconstruction check) makes the call answer
+    ``{"ok": True, "busy": True}`` instead of capturing an inconsistent state.
+    """
     try:
+        if skip_if_busy:
+            from chisurf.server.services.fits import has_running_fit_job
+
+            if has_running_fit_job():
+                return {"ok": True, "busy": True}
         project = _capture_project(state, ui_state=ui_state)
         return {
             "ok": True,
@@ -127,7 +141,11 @@ def register_project_snapshot_services(dispatcher: Any, state: SessionState) -> 
     """Register project DTO RPCs that are intentionally unavailable as file aliases."""
     dispatcher.register(
         "project.capture",
-        lambda params: capture_project_payload(state, ui_state=params.get("ui_state")),
+        lambda params: capture_project_payload(
+            state,
+            ui_state=params.get("ui_state"),
+            skip_if_busy=bool(params.get("skip_if_busy", False)),
+        ),
     )
     dispatcher.register("project.read", lambda params: read_project_payload(params["project_path"]))
     dispatcher.register(

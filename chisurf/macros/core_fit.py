@@ -1610,8 +1610,14 @@ def change_selected_fit_of_group(selected_fit: int) -> None:
         pass
 
 
-def get_project_payload(project_name: str = "chisurf_project") -> CSProject:
-    """Capture owned science and client presentation through the shared codec."""
+def get_project_payload(
+    project_name: str = "chisurf_project", *, skip_if_busy: bool = False
+) -> CSProject:
+    """Capture owned science and client presentation through the shared codec.
+
+    ``skip_if_busy`` (autosave) raises ``ProjectCaptureBusy`` instead of capturing
+    while a sampling job moves the owner's parameters.
+    """
     from chisurf.core.project.ui_state import get_ui_state
 
     gui = getattr(cs, "cs", None)
@@ -1623,7 +1629,9 @@ def get_project_payload(project_name: str = "chisurf_project") -> CSProject:
         from chisurf.core.api._proxies import ProxyDatasetList, ProxyFitList
 
         if isinstance(cs.imported_datasets, ProxyDatasetList) and isinstance(cs.fits, ProxyFitList):
-            result = client.call("project.capture", {"ui_state": ui_state})
+            result = client.call(
+                "project.capture", {"ui_state": ui_state, "skip_if_busy": skip_if_busy}
+            )
             from chisurf.core.project.capture import project_from_capture_reply
 
             return project_from_capture_reply(result, name=project_name)

@@ -47,13 +47,13 @@ and so is not a row of its own. Measure: `pytest test/e2e/test_release_scenario.
 
 ## An autosave tick during a running sampling job fails to capture (found 2026-10-10)
 
-status: open — owner: W2/W3 (project autosave, sampling persistence).
+status: resolved 2026-10-10 — the autosave capture passes `skip_if_busy`; the owner answers `{ok, busy}` while any `fit.sample`/scan job is live (`has_running_fit_job`), the client raises `ProjectCaptureBusy` and the tick logs at debug and tries again next tick. Guard `test/server/test_services_projects.py::TestAutosaveDefersWhileAJobMovesTheFits`. Explicit saves still capture immediately.
 
 Intermittent: in one of six scenario runs, the 1 s autosave tick that fell inside a server sampling job logged
 `Project autosave failed … SessionCodecError: model '<uid>' prediction changed after reconstruction` (the sampler moves
 the model's parameters while `capture_session` rebuilds it). The next tick after the job succeeds, so nothing is lost and
 no dialog appears, but the log shows an exception. Measure: drive the scenario with `interval_s=1` and grep
-`worker.log` for `Project autosave failed`. Fix: skip (or defer) the tick while a sampling/fit job owns the fit.
+`worker.log` for `Project autosave failed`. Cause: the capture's reconstruction check compares live vs rebuilt predictions, and the sampler rewrites parameters between the two.
 
 ## A `.pto` read with the setup's vendor routine parsed the container as raw SPC (found 2026-10-10)
 

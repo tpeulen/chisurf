@@ -7,8 +7,14 @@ from typing import Any
 from .project import Project, ResourceContext
 
 
+class ProjectCaptureBusy(RuntimeError):
+    """The owner declined a deferrable capture because a job is moving the fits."""
+
+
 def project_from_capture_reply(reply: Any, *, name: str) -> Project:
     """Require explicit success before adopting a detached snapshot and resources."""
+    if isinstance(reply, dict) and reply.get("ok") is True and reply.get("busy"):
+        raise ProjectCaptureBusy("a sampling job owns the fits")
     if not isinstance(reply, dict) or reply.get("ok") is not True:
         error = (
             reply.get("error", "missing acknowledgement")
