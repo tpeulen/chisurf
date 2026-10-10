@@ -6,6 +6,6 @@
     {"title":"Map routing channels","text":"These four controls are the pipeline decay-window routing order. Match them to your instrument's channels before starting.","target":{"name":"channel_0","attr":"channel_0"},"await":{"hint":"Review the four routing mappings."}},
     {"title":"Configure simulation","text":"For Simulation, Advanced simulation parameters exposes the full actual dictionary and validates it with the simulator engine before applying it.","target":{"name":"open_advanced_settings","action":"open_advanced_settings"},"await":{"hint":"Open and review the advanced simulation parameters."}},
     {"title":"Start and stop","text":"Start streams FIFO or encoded simulator records through AcquisitionPipeline. Stop interrupts the active source and flushes its result state.","target":{"name":"start","action":"start"},"await":{"hint":"Press Start when the source is initialized."}},
-    {"title":"Inspect results","text":"Use the real pipeline result tabs and their visibility controls. Clear removes displayed state; Reset does not contact a device.","target":{"name":"pipeline_results","key":"pipeline_results"}}
+    {"title":"Inspect results","text":"The plots fill while the run is going: decay, correlation, count rate, MCS and macrotime, each tab with its own controls (channel pairs, binning, Set to mean, bin width, update rate). Clear removes displayed state; Reset does not contact a device.","target":{"name":"pipeline_results","key":"pipeline_results"}}
   ]
 }

@@ -211,6 +211,23 @@ Measured on the standalone window (`photon-acquisition`) with the simulator:
   above hides them.
 - The burst/phasor line under the decay takes half the decay window's height.
 
+## Live plots in the native window
+
+The native window draws the five live plots from `AcquisitionPipeline.snapshot()`
+(`chisurf/plugins/core/acq/gui/live_plots.py`, controls in `live_plots.view.json`),
+one tab each:
+
+- **Decay**: routing channel and Show per curve, Log Y, update frequency.
+- **Correlation**: channel A / channel B per curve (`-1` = every photon), Log lag axis.
+- **Count rate**: channel per curve, **Set to mean** (draws a line at the displayed
+  mean), rolling window size, binning (points per bin), Log Y.
+- **MCS**: bin width, rollaround, manual Y range.
+- **Macrotime**: dt or absolute times.
+
+Routing channels, correlation pairs, MCS bin width and rollaround are fixed when the
+pipeline is built, so they apply from the next Start; everything else acts on the
+running plot. All settings are saved with the plugin settings.
+
 ## Related
 
 - {doc}`Streaming analysis </concepts/live_streaming_analysis>` — why the live

@@ -25,15 +25,15 @@
       {"type":"value","attr":"brightness_khz","label":"Peak brightness","kind":"float","minimum":1.0,"maximum":2000.0,"step":10.0,"decimals":1,"style":"spin","description":"Simulator brightness used to build encoded records; never a hardware detector setting."},
       {"type":"value","attr":"seed","label":"Deterministic seed","kind":"int","minimum":0,"maximum":2147483647,"step":1,"style":"spin","description":"Simulator random seed for reproducible encoded records."},
       {"type":"button_row","description":"Open a complete JSON editor for all simulator parameters.","buttons":[{"action":"open_advanced_settings","label":"Advanced simulation parameters","description":"Edit the full actual simulator parameter dictionary; Apply validates it by constructing the simulator engine."}]}]},
-    {"type":"panel","title":"Result visibility","description":"Show actual pipeline result tabs in this native window.","sections":[
-      {"type":"toggle","attr":"show_decay","label":"Decay / intensity tab","description":"Show the pipeline-derived decay and intensity tab."},
-      {"type":"toggle","attr":"show_correlation","label":"Correlation / quality tab","description":"Show the pipeline-derived correlation, burst, and phasor tab."},
-      {"type":"toggle","attr":"show_count_rate","label":"Overview tab","description":"Show decoded count, elapsed time, rate, and progress."},
-      {"type":"toggle","attr":"show_macrotime","label":"Macrotime tab","description":"Show the bounded macrotime interval count from the pipeline."},
-      {"type":"toggle","attr":"show_mcs","label":"MCS trace tab","description":"Show the pipeline MCS trace sample count."},
+    {"type":"panel","title":"Result visibility","description":"Show the live plot tabs in this native window.","sections":[
+      {"type":"toggle","attr":"show_decay","label":"Decay plot","description":"Show the live decay plot tab."},
+      {"type":"toggle","attr":"show_correlation","label":"Correlation plot","description":"Show the live correlation plot tab."},
+      {"type":"toggle","attr":"show_count_rate","label":"Count-rate plot","description":"Show the live count-rate plot tab."},
+      {"type":"toggle","attr":"show_macrotime","label":"Macrotime plot","description":"Show the live macrotime plot tab."},
+      {"type":"toggle","attr":"show_mcs","label":"MCS plot","description":"Show the live MCS trace tab."},
       {"type":"button_row","description":"Clear result data or restore native defaults.","buttons":[
         {"action":"clear","label":"Clear","description":"Clear displayed pipeline results without changing device selection."},
         {"action":"reset","label":"Reset","icon":"♻️","description":"Restore native defaults without constructing or contacting a device."}]}]},
-    {"type":"panel","title":"Pipeline results","description":"Result tabs contain values calculated by AcquisitionPipeline from actual device FIFO or simulator records.","sections":[{"type":"custom","key":"pipeline_results","description":"Native tabs for real pipeline-derived overview, decay, correlation, macrotime, and MCS state."}]}
+    {"type":"panel","title":"Pipeline results","description":"Result tabs contain values calculated by AcquisitionPipeline from actual device FIFO or simulator records.","sections":[{"type":"custom","key":"pipeline_results","description":"Live decay, correlation, count-rate, MCS and macrotime plots with their own controls, drawn from pipeline snapshots."}]}
   ]
 }

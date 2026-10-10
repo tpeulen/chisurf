@@ -20,6 +20,7 @@ from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import action_button
+from chisurf.plugins.core.acq.gui.live_plots import LivePlots, stream_words
 from chisurf.plugins.core.acq.gui.setup_models import (
     BH_PARAMETERS,
     BHSetupModel,
@@ -76,6 +77,7 @@ class AcquisitionNativeModel:
         self.status = "Ready: select a device and explicitly initialize it before Start."
         self.running = self.cancel_requested = self.initialized = False
         self.snapshot: dict[str, Any] | None = None
+        self.live = LivePlots()
         self.device: Any | None = None
         self.progress_percent = 0.0
         self._events: queue.Queue[tuple[str, Any]] = queue.Queue()
@@ -191,15 +193,16 @@ class AcquisitionNativeModel:
     ) -> AcquisitionPipeline:
         """Create one production pipeline using native mappings and stop conditions."""
         tac = float((params or {}).get("tac_dt", 0.004069)) * 1e-9
-        return AcquisitionPipeline(
-            PipelineConfig(
-                record_type=record_type,
-                channels=self.channels,
-                time_limit_s=max(0.0, float(self.time_limit_s)),
-                photon_limit=max(0, int(self.photon_limit)),
-                microtime_resolution_s=tac,
-            )
+        for i, channel in enumerate(self.channels):
+            setattr(self.live, f"decay_ch{i}", channel)
+        config = PipelineConfig(
+            record_type=record_type,
+            channels=self.channels,
+            time_limit_s=max(0.0, float(self.time_limit_s)),
+            photon_limit=max(0, int(self.photon_limit)),
+            microtime_resolution_s=tac,
         )
+        return AcquisitionPipeline(self.live.apply_to_config(config))
 
     def _configure_compatible_output(
         self, device: Any, params: dict[str, Any] | None = None
@@ -291,11 +294,9 @@ class AcquisitionNativeModel:
         try:
             words = generate_spc132_uint32(params)
             pipeline = self._pipeline(PipelineConfig().record_type, params)
-            for start in range(0, len(words), 64):
-                if self._cancel.is_set() or pipeline.stop_reason:
-                    break
-                pipeline.push(words[start : start + 64])
-                time.sleep(0.001)
+            stream_words(
+                pipeline, words, self._events, every=8, cancel=self._cancel, pause_s=0.001
+            )
             self._publish(pipeline, self._cancel.is_set(), "SIMULATION")
         except Exception as exc:
             self._events.put(("error", f"Simulation failed: {exc}; no hardware contacted."))
@@ -304,6 +305,7 @@ class AcquisitionNativeModel:
         """Read fake or hardware FIFO words until stop, a limit, or FIFO exhaustion."""
         pipeline = self._pipeline(record_type_for_device(device))
         started, wall_start, empty = False, time.monotonic(), 0
+        last_snapshot = wall_start
         try:
             if self._cancel.is_set():
                 self._publish(pipeline, True, self.device_type)
@@ -320,6 +322,9 @@ class AcquisitionNativeModel:
                 words = device.read_fifo(32768)
                 if words is not None and len(words):
                     pipeline.push(np.asarray(words, dtype=np.uint32))
+                    if time.monotonic() - last_snapshot >= 0.25:
+                        last_snapshot = time.monotonic()
+                        self._events.put(("snapshot", pipeline.snapshot()))
                     empty = 0
                 else:
                     empty += 1
@@ -341,9 +346,17 @@ class AcquisitionNativeModel:
                 kind, payload = self._events.get_nowait()
             except queue.Empty:
                 break
+            if kind == "snapshot":
+                self.snapshot = payload
+                self.live.set_snapshot(payload)
+                limit = int(self.photon_limit)
+                if limit > 0:
+                    self.progress_percent = min(99.0, 100.0 * payload["total_photons"] / limit)
+                continue
             self.running, self.progress_percent = False, 100.0
             if kind == "result":
                 self.snapshot, cancelled, source = payload
+                self.live.set_snapshot(self.snapshot)
                 label = DEVICE_LABELS.get(source, str(source))
                 self.status = f"{label} acquisition {'cancelled' if cancelled else 'complete'}: {int(self.snapshot['total_photons']):,} decoded photons."
             else:
@@ -353,6 +366,7 @@ class AcquisitionNativeModel:
         """Clear only native result visibility, retaining selected device configuration."""
         if not self.running:
             self.snapshot, self.status = None, "Results cleared."
+            self.live.clear()
 
     def reset(self) -> None:
         """Close any initialized session and restore defaults without constructing a device."""
@@ -416,6 +430,7 @@ class AcquisitionNativeModel:
                 )
             },
             "simulation_params": self._editor_params(),
+            "live_plots": self.live.export_settings(),
         }
 
     def apply_settings_dict(self, settings: dict[str, Any]) -> bool:
@@ -457,6 +472,7 @@ class AcquisitionNativeModel:
         for key, value in settings.get("show", {}).items():
             if key.startswith("show_") and hasattr(self, key):
                 setattr(self, key, bool(value))
+        self.live.restore_settings(settings.get("live_plots", {}))
         self.status = "Settings loaded; initialize selected hardware explicitly before Start."
         return True
 
@@ -525,6 +541,10 @@ class AcquisitionApp(ImApp):
         self.form, self.item_rects = FormState(), {}
         self.setup_buffers: dict[str, str] = {}
         self.form.custom["pipeline_results"] = self._draw_results
+        for plot_key in (
+            "live_decay", "live_correlation", "live_count_rate", "live_mcs", "live_macrotime",
+        ):
+            self.form.custom[plot_key] = lambda *a: self.model.live.draw_plot(*a)
         self.dialog, self.dialog_action = None, ""
         self.setup_open, self.setup_kind, self.setup_model = False, "", None
         self.setup_window = DialogWindow("Device Setup", size=(760, 560), key="acq_device_setup")
@@ -872,8 +892,17 @@ class AcquisitionApp(ImApp):
     def _draw_results(
         self, section: dict[str, Any], model: AcquisitionNativeModel, state: FormState, width: float
     ) -> None:
-        """Draw native result tabs directly from :class:`AcquisitionPipeline` snapshots."""
+        """Draw the overview line and the live plots from :class:`AcquisitionPipeline` snapshots."""
         top, snapshot = im.get_cursor_screen_pos(), model.snapshot
+        live = model.live
+        for tab, flag in (
+            ("decay", model.show_decay),
+            ("correlation", model.show_correlation),
+            ("count_rate", model.show_count_rate),
+            ("mcs", model.show_mcs),
+            ("macrotime", model.show_macrotime),
+        ):
+            setattr(live, f"tab_{tab}", bool(flag))
         if snapshot is None:
             im.text_wrapped(
                 tr("No result yet. Initialize a device or run the simulator, then Start acquisition.")
@@ -881,48 +910,12 @@ class AcquisitionApp(ImApp):
             im.set_item_tooltip(str(section["description"]))
             state.rects["pipeline_results"] = (*top, width, 28.0)
             return
-        if im.begin_tab_bar("acq_results"):
-            tabs = (
-                ("Overview", model.show_count_rate),
-                ("Decay / intensity", model.show_decay),
-                ("Correlation / quality", model.show_correlation),
-                ("Macrotime", model.show_macrotime),
-                ("MCS trace", model.show_mcs),
-            )
-            for label, visible in tabs:
-                if not visible:
-                    continue
-                opened = im.begin_tab_item(label)
-                im.set_item_tooltip(f"Pipeline-derived {label.lower()} result section.")
-                if opened:
-                    if label == "Overview":
-                        im.text(f"Photons decoded: {int(snapshot['total_photons']):,}")
-                        im.text(f"Elapsed photon time: {float(snapshot['elapsed_s']):.3f} s")
-                        im.text(
-                            f"Mean count rate: {float(snapshot['mean_count_rate_khz']):.3f} kHz"
-                        )
-                        im.text(f"Progress: {model.progress_percent:.0f}%")
-                    elif label == "Decay / intensity":
-                        decay, trace = (
-                            np.asarray(snapshot["decay_data"][0]),
-                            snapshot.get("mcs_trace"),
-                        )
-                        im.text(
-                            f"Decay window 1: {int(decay.sum()):,} photons; peak bin {int(decay.argmax())}"
-                        )
-                        im.text(f"Intensity bins: {0 if trace is None else len(trace[1])}")
-                    elif label == "Correlation / quality":
-                        curve = snapshot["correlation_results"][0]
-                        im.text(f"Correlation points: {0 if curve is None else len(curve[0])}")
-                        im.text(f"Burst candidates: {snapshot['burst_count']}")
-                        im.text(f"Phasor: {snapshot.get('phasor')}")
-                    elif label == "Macrotime":
-                        im.text(f"Recent macrotime intervals: {len(snapshot['macrotime_data'])}")
-                    else:
-                        trace = snapshot.get("mcs_trace")
-                        im.text(f"MCS samples: {0 if trace is None else len(trace[1])}")
-                    im.end_tab_item()
-            im.end_tab_bar()
+        im.text(
+            f"{tr('Photons')}: {int(snapshot['total_photons']):,} | "
+            f"{tr('Elapsed')}: {float(snapshot['elapsed_s']):.3f} s | "
+            f"{float(snapshot['mean_count_rate_khz']):.1f} kHz | {model.progress_percent:.0f}%"
+        )
+        draw_sections(live.sections, live, state, titles=False)
         bottom = im.get_cursor_screen_pos()
         state.rects["pipeline_results"] = (top[0], top[1], width, max(28.0, bottom[1] - top[1]))
 

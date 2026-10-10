@@ -1,0 +1,600 @@
+{
+ "title": "Live plots",
+ "sections": [
+  {
+   "type": "tabs",
+   "sections": [
+    {
+     "type": "panel",
+     "title": "Decay",
+     "sections": [
+      {
+       "type": "info",
+       "text": "Routing channels of the four decay windows are set under Routing and output; they apply when an acquisition starts.",
+       "description": "Where the decay channel map lives."
+      },
+      {
+       "type": "panel",
+       "n_col": 4,
+       "sections": [
+        {
+         "type": "toggle",
+         "attr": "decay_show0",
+         "label": "Curve 0",
+         "description": "Draw decay window 0."
+        },
+        {
+         "type": "toggle",
+         "attr": "decay_show1",
+         "label": "Curve 1",
+         "description": "Draw decay window 1."
+        },
+        {
+         "type": "toggle",
+         "attr": "decay_show2",
+         "label": "Curve 2",
+         "description": "Draw decay window 2."
+        },
+        {
+         "type": "toggle",
+         "attr": "decay_show3",
+         "label": "Curve 3",
+         "description": "Draw decay window 3."
+        }
+       ]
+      },
+      {
+       "type": "toggle",
+       "attr": "decay_log_y",
+       "label": "Log Y scale",
+       "description": "Logarithmic counts axis; empty bins are not drawn."
+      },
+      {
+       "type": "value",
+       "attr": "decay_every",
+       "label": "Update every (snapshots)",
+       "kind": "int",
+       "minimum": 1,
+       "maximum": 1000,
+       "step": 1,
+       "style": "spin",
+       "description": "Redraw this plot only on every N-th published snapshot (a snapshot is one data chunk batch); raise it to spare the CPU on fast streams."
+      },
+      {
+       "type": "custom",
+       "key": "live_decay",
+       "description": "Fluorescence decay histogram of each enabled window, built by the pipeline from micro times."
+      },
+      {
+       "type": "info",
+       "source": "qc_text",
+       "description": "Live burst count and phasor from the same photon pass as the decay."
+      }
+     ],
+     "hidden_when": {
+      "attr": "tab_decay",
+      "equals": "false"
+     },
+     "description": "Live decay histogram per routing window."
+    },
+    {
+     "type": "panel",
+     "title": "Correlation",
+     "sections": [
+      {
+       "type": "panel",
+       "n_col": 3,
+       "sections": [
+        {
+         "type": "value",
+         "attr": "corr_a0",
+         "label": "Curve 0 channel A",
+         "kind": "int",
+         "minimum": -1,
+         "maximum": 4095,
+         "step": 1,
+         "style": "spin",
+         "description": "Routing channel of the first side; -1 means every photon. Applied when the acquisition starts."
+        },
+        {
+         "type": "value",
+         "attr": "corr_b0",
+         "label": "channel B",
+         "kind": "int",
+         "minimum": -1,
+         "maximum": 4095,
+         "step": 1,
+         "style": "spin",
+         "description": "Routing channel of the second side; equal to A gives the autocorrelation, -1 means every photon."
+        },
+        {
+         "type": "toggle",
+         "attr": "corr_show0",
+         "label": "Curve 0",
+         "description": "Compute and draw this correlation curve."
+        }
+       ]
+      },
+      {
+       "type": "panel",
+       "n_col": 3,
+       "sections": [
+        {
+         "type": "value",
+         "attr": "corr_a1",
+         "label": "Curve 1 channel A",
+         "kind": "int",
+         "minimum": -1,
+         "maximum": 4095,
+         "step": 1,
+         "style": "spin",
+         "description": "Routing channel of the first side; -1 means every photon. Applied when the acquisition starts."
+        },
+        {
+         "type": "value",
+         "attr": "corr_b1",
+         "label": "channel B",
+         "kind": "int",
+         "minimum": -1,
+         "maximum": 4095,
+         "step": 1,
+         "style": "spin",
+         "description": "Routing channel of the second side; equal to A gives the autocorrelation, -1 means every photon."
+        },
+        {
+         "type": "toggle",
+         "attr": "corr_show1",
+         "label": "Curve 1",
+         "description": "Compute and draw this correlation curve."
+        }
+       ]
+      },
+      {
+       "type": "panel",
+       "n_col": 3,
+       "sections": [
+        {
+         "type": "value",
+         "attr": "corr_a2",
+         "label": "Curve 2 channel A",
+         "kind": "int",
+         "minimum": -1,
+         "maximum": 4095,
+         "step": 1,
+         "style": "spin",
+         "description": "Routing channel of the first side; -1 means every photon. Applied when the acquisition starts."
+        },
+        {
+         "type": "value",
+         "attr": "corr_b2",
+         "label": "channel B",
+         "kind": "int",
+         "minimum": -1,
+         "maximum": 4095,
+         "step": 1,
+         "style": "spin",
+         "description": "Routing channel of the second side; equal to A gives the autocorrelation, -1 means every photon."
+        },
+        {
+         "type": "toggle",
+         "attr": "corr_show2",
+         "label": "Curve 2",
+         "description": "Compute and draw this correlation curve."
+        }
+       ]
+      },
+      {
+       "type": "panel",
+       "n_col": 3,
+       "sections": [
+        {
+         "type": "value",
+         "attr": "corr_a3",
+         "label": "Curve 3 channel A",
+         "kind": "int",
+         "minimum": -1,
+         "maximum": 4095,
+         "step": 1,
+         "style": "spin",
+         "description": "Routing channel of the first side; -1 means every photon. Applied when the acquisition starts."
+        },
+        {
+         "type": "value",
+         "attr": "corr_b3",
+         "label": "channel B",
+         "kind": "int",
+         "minimum": -1,
+         "maximum": 4095,
+         "step": 1,
+         "style": "spin",
+         "description": "Routing channel of the second side; equal to A gives the autocorrelation, -1 means every photon."
+        },
+        {
+         "type": "toggle",
+         "attr": "corr_show3",
+         "label": "Curve 3",
+         "description": "Compute and draw this correlation curve."
+        }
+       ]
+      },
+      {
+       "type": "toggle",
+       "attr": "corr_log_x",
+       "label": "Log lag axis",
+       "description": "Logarithmic lag axis (the correlator bins are logarithmic)."
+      },
+      {
+       "type": "value",
+       "attr": "corr_every",
+       "label": "Update every (snapshots)",
+       "kind": "int",
+       "minimum": 1,
+       "maximum": 1000,
+       "step": 1,
+       "style": "spin",
+       "description": "Redraw this plot only on every N-th published snapshot (a snapshot is one data chunk batch); raise it to spare the CPU on fast streams."
+      },
+      {
+       "type": "custom",
+       "key": "live_correlation",
+       "description": "Normalised correlation G of each enabled channel pair; channel -1 means all photons."
+      }
+     ],
+     "hidden_when": {
+      "attr": "tab_correlation",
+      "equals": "false"
+     },
+     "description": "Live correlation curves per channel pair."
+    },
+    {
+     "type": "panel",
+     "title": "Count rate",
+     "sections": [
+      {
+       "type": "panel",
+       "n_col": 3,
+       "sections": [
+        {
+         "type": "value",
+         "attr": "rate_ch0",
+         "label": "Curve 0 channel",
+         "kind": "int",
+         "minimum": -1,
+         "maximum": 4095,
+         "step": 1,
+         "style": "spin",
+         "description": "Routing channel whose count rate is drawn; -1 draws the sum over all channels."
+        },
+        {
+         "type": "toggle",
+         "attr": "rate_show0",
+         "label": "Curve 0",
+         "description": "Draw count-rate curve 0."
+        },
+        {
+         "type": "button_row",
+         "buttons": [
+          {
+           "action": "set_mean_0",
+           "label": "Set to mean",
+           "description": "Draw a horizontal line at the mean of this curve's currently displayed rate."
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "panel",
+       "n_col": 3,
+       "sections": [
+        {
+         "type": "value",
+         "attr": "rate_ch1",
+         "label": "Curve 1 channel",
+         "kind": "int",
+         "minimum": -1,
+         "maximum": 4095,
+         "step": 1,
+         "style": "spin",
+         "description": "Routing channel whose count rate is drawn; -1 draws the sum over all channels."
+        },
+        {
+         "type": "toggle",
+         "attr": "rate_show1",
+         "label": "Curve 1",
+         "description": "Draw count-rate curve 1."
+        },
+        {
+         "type": "button_row",
+         "buttons": [
+          {
+           "action": "set_mean_1",
+           "label": "Set to mean",
+           "description": "Draw a horizontal line at the mean of this curve's currently displayed rate."
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "panel",
+       "n_col": 3,
+       "sections": [
+        {
+         "type": "value",
+         "attr": "rate_ch2",
+         "label": "Curve 2 channel",
+         "kind": "int",
+         "minimum": -1,
+         "maximum": 4095,
+         "step": 1,
+         "style": "spin",
+         "description": "Routing channel whose count rate is drawn; -1 draws the sum over all channels."
+        },
+        {
+         "type": "toggle",
+         "attr": "rate_show2",
+         "label": "Curve 2",
+         "description": "Draw count-rate curve 2."
+        },
+        {
+         "type": "button_row",
+         "buttons": [
+          {
+           "action": "set_mean_2",
+           "label": "Set to mean",
+           "description": "Draw a horizontal line at the mean of this curve's currently displayed rate."
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "panel",
+       "n_col": 3,
+       "sections": [
+        {
+         "type": "value",
+         "attr": "rate_ch3",
+         "label": "Curve 3 channel",
+         "kind": "int",
+         "minimum": -1,
+         "maximum": 4095,
+         "step": 1,
+         "style": "spin",
+         "description": "Routing channel whose count rate is drawn; -1 draws the sum over all channels."
+        },
+        {
+         "type": "toggle",
+         "attr": "rate_show3",
+         "label": "Curve 3",
+         "description": "Draw count-rate curve 3."
+        },
+        {
+         "type": "button_row",
+         "buttons": [
+          {
+           "action": "set_mean_3",
+           "label": "Set to mean",
+           "description": "Draw a horizontal line at the mean of this curve's currently displayed rate."
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "panel",
+       "n_col": 2,
+       "sections": [
+        {
+         "type": "toggle",
+         "attr": "rate_all_show",
+         "label": "All channels",
+         "description": "Draw the sum over all windows."
+        },
+        {
+         "type": "button_row",
+         "buttons": [
+          {
+           "action": "set_mean_4",
+           "label": "Set to mean",
+           "description": "Draw a horizontal line at the mean of the all-channel rate."
+          },
+          {
+           "action": "clear_mean_lines",
+           "label": "Clear lines",
+           "description": "Remove every mean line."
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "toggle",
+       "attr": "rate_log_y",
+       "label": "Log Y scale",
+       "description": "Logarithmic rate axis."
+      },
+      {
+       "type": "toggle",
+       "attr": "rate_rolling",
+       "label": "Rolling window",
+       "description": "Show only the most recent points; off shows the whole retained history."
+      },
+      {
+       "type": "value",
+       "attr": "rate_window",
+       "label": "Window size (points)",
+       "kind": "int",
+       "minimum": 10,
+       "maximum": 10000,
+       "step": 1,
+       "style": "spin",
+       "description": "Number of most recent count-rate points kept in the rolling window."
+      },
+      {
+       "type": "value",
+       "attr": "rate_binning",
+       "label": "Binning (points per bin)",
+       "kind": "int",
+       "minimum": 1,
+       "maximum": 100,
+       "step": 1,
+       "style": "spin",
+       "description": "Average this many consecutive points into one; the bin count shown is the window size divided by this."
+      },
+      {
+       "type": "value",
+       "attr": "rate_every",
+       "label": "Update every (snapshots)",
+       "kind": "int",
+       "minimum": 1,
+       "maximum": 1000,
+       "step": 1,
+       "style": "spin",
+       "description": "Redraw this plot only on every N-th published snapshot (a snapshot is one data chunk batch); raise it to spare the CPU on fast streams."
+      },
+      {
+       "type": "custom",
+       "key": "live_count_rate",
+       "description": "Count rate per window versus macro time."
+      }
+     ],
+     "hidden_when": {
+      "attr": "tab_count_rate",
+      "equals": "false"
+     },
+     "description": "Live count rate per channel."
+    },
+    {
+     "type": "panel",
+     "title": "MCS",
+     "sections": [
+      {
+       "type": "value",
+       "attr": "mcs_bin_width_ms",
+       "label": "Bin width (ms)",
+       "kind": "float",
+       "minimum": 0.1,
+       "maximum": 100.0,
+       "step": 0.1,
+       "style": "spin",
+       "description": "Width of one MCS intensity bin. Applied when the acquisition starts.",
+       "decimals": 2
+      },
+      {
+       "type": "value",
+       "attr": "mcs_rollaround_s",
+       "label": "Rollaround (s)",
+       "kind": "float",
+       "minimum": 0.01,
+       "maximum": 100.0,
+       "step": 0.1,
+       "style": "spin",
+       "description": "Length of the displayed MCS window; older bins are dropped, which bounds memory. Applied when the acquisition starts.",
+       "decimals": 2
+      },
+      {
+       "type": "value",
+       "attr": "mcs_every",
+       "label": "Update every (snapshots)",
+       "kind": "int",
+       "minimum": 1,
+       "maximum": 100,
+       "step": 1,
+       "style": "spin",
+       "description": "Redraw this plot only on every N-th published snapshot (a snapshot is one data chunk batch); raise it to spare the CPU on fast streams."
+      },
+      {
+       "type": "toggle",
+       "attr": "mcs_manual_y",
+       "label": "Manual Y range",
+       "description": "Fix the counts axis to the limits below instead of fitting the data."
+      },
+      {
+       "type": "value",
+       "attr": "mcs_y_min",
+       "label": "Y min",
+       "kind": "float",
+       "minimum": -1000000.0,
+       "maximum": 1000000.0,
+       "step": 1.0,
+       "style": "spin",
+       "description": "Lower counts limit used with Manual Y range.",
+       "decimals": 1
+      },
+      {
+       "type": "value",
+       "attr": "mcs_y_max",
+       "label": "Y max",
+       "kind": "float",
+       "minimum": -1000000.0,
+       "maximum": 1000000.0,
+       "step": 1.0,
+       "style": "spin",
+       "description": "Upper counts limit used with Manual Y range.",
+       "decimals": 1
+      },
+      {
+       "type": "custom",
+       "key": "live_mcs",
+       "description": "Multichannel-scaler intensity trace of the rolling window."
+      }
+     ],
+     "hidden_when": {
+      "attr": "tab_mcs",
+      "equals": "false"
+     },
+     "description": "Live multichannel-scaler intensity trace."
+    },
+    {
+     "type": "panel",
+     "title": "Macrotime",
+     "sections": [
+      {
+       "type": "toggle",
+       "attr": "macro_show",
+       "label": "Show macrotime plot",
+       "description": "Draw the macrotime plot."
+      },
+      {
+       "type": "choice",
+       "attr": "macro_type",
+       "label": "Plot type",
+       "options": [
+        "dt",
+        "absolute"
+       ],
+       "labels": [
+        "Time differences (dt)",
+        "Absolute times"
+       ],
+       "description": "dt plots the inter-photon time against time; absolute plots the photon time stamps against photon index."
+      },
+      {
+       "type": "value",
+       "attr": "macro_every",
+       "label": "Update every (snapshots)",
+       "kind": "int",
+       "minimum": 1,
+       "maximum": 1000,
+       "step": 1,
+       "style": "spin",
+       "description": "Redraw this plot only on every N-th published snapshot (a snapshot is one data chunk batch); raise it to spare the CPU on fast streams."
+      },
+      {
+       "type": "custom",
+       "key": "live_macrotime",
+       "description": "Recent photon macro times."
+      }
+     ],
+     "hidden_when": {
+      "attr": "tab_macrotime",
+      "equals": "false"
+     },
+     "description": "Live recent photon macro times."
+    }
+   ]
+  }
+ ]
+}

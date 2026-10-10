@@ -24,8 +24,11 @@ hardware.
 Simulation generates encoded SPC records and feeds them through the same
 `AcquisitionPipeline` as a device FIFO. **Advanced simulation parameters** is a
 complete JSON editor: Apply constructs the real simulator engine before keeping
-the text. Result tabs show pipeline-derived count, decay/intensity, correlation,
-burst/phasor, macrotime, and MCS state; no values are fabricated for the UI.
+the text. Live plots (decay, correlation, count rate, MCS, macrotime) are drawn from
+`AcquisitionPipeline.snapshot()` while the run is going; no values are fabricated
+for the UI. Each tab has its own controls: channel pairs, binning, **Set to mean**,
+bin width and update rate. Routing channels, correlation pairs and MCS bin width
+apply when the next acquisition starts.
 
 Vendor-specific setup dialogs remain a legacy Qt configuration boundary: their
 wrappers expose Qt dialogs rather than a Qt-free configuration API, so this

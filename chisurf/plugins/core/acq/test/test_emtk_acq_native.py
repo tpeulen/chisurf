@@ -352,12 +352,13 @@ def test_real_native_input_configures_runs_reads_tabs_and_clears(ui):
     assert ui.app.model.snapshot is not None
     assert 128 <= ui.app.model.snapshot["total_photons"] <= 129
     assert any("Simulation acquisition complete" in text for text in ui.strings())
-    ui.click_text("Decay / intensity")
-    assert any("Decay window 1:" in text for text in ui.strings())
-    ui.click_text("Correlation / quality")
-    assert any("Correlation points:" in text for text in ui.strings())
-    ui.click_text("Overview")
-    assert any("Photons decoded:" in text for text in ui.strings())
+    assert any(text.startswith("Photons: ") for text in ui.strings())
+    ui.click_text("Correlation")
+    assert any("Lag (ms)" in text for text in ui.strings())
+    ui.click_text("Count rate")
+    assert any("Count rate (cps)" in text for text in ui.strings())
+    ui.click_text("Decay")
+    assert any("Time (ns)" in text for text in ui.strings())
     ui.click("clear")
     assert ui.app.model.snapshot is None
     assert any("No result yet" in text for text in ui.strings())
@@ -425,13 +426,7 @@ def test_real_native_input_exercises_settings_output_advanced_and_visibility(tmp
         ui.click("show_mcs")
         ui.click("start")
         wait_for_run(app)
-        for tab in (
-            "Overview",
-            "Decay / intensity",
-            "Correlation / quality",
-            "Macrotime",
-            "MCS trace",
-        ):
+        for tab in ("Decay", "Correlation", "Count rate", "MCS", "Macrotime"):
             ui.click_text(tab)
         ui.click("clear")
     finally:
