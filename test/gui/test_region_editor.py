@@ -202,7 +202,6 @@ _CANVAS: list = []
 
 @pytest.fixture(scope="module")
 def canvas(qapp):
-    pytest.importorskip("pyqtgraph")
     from chisurf.gui.chiplot import canvas as C
 
     view = C.ImageView()

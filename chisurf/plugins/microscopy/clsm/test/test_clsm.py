@@ -352,7 +352,6 @@ def test_selection_array_accepts_a_region_or_an_array():
 
 
 def test_tool_widget_creation(qapp, qtbot):
-    pytest.importorskip("pyqtgraph")
     from qtpy import QtWidgets
 
     from chisurf.plugins.microscopy.clsm.gui.tool import CLSMPixelSelect

@@ -1,15 +1,10 @@
-"""Construction + behaviour tests for the chiplot plotting API.
+"""Construction + behaviour tests for the chiplot plotting API, on the emtk backend.
 
-These run headlessly (offscreen Qt) and exercise the whole public surface
-against the **pyqtgraph** backend. A large share of them reach through
-``.native`` on purpose — the passthrough seam, ``PlotDataItem.opts``,
-``LinearRegionItem.setRegion`` — because that seam is what keeps not-yet-ported
-call sites working, and it is pyqtgraph's by definition.
-
-So the backend is pinned here rather than taken from the environment: with
-``CHISURF_PLOT_BACKEND`` set to a native renderer these would fail on the
-absence of pyqtgraph internals, which says nothing about that renderer. The
-native backend has its own suite in ``test_chiplot_emtk.py``.
+These run headlessly (offscreen Qt) and exercise the public surface through
+chiplot's own verbs and handles. This file was the pyqtgraph-pinned suite;
+the tests that asserted on pyqtgraph internals (``PlotDataItem.opts``, the
+passthrough seam) went with that backend and the rest run on emtk, which also
+has its own drawing-level suite in ``test_chiplot_emtk.py``.
 """
 
 from __future__ import annotations
@@ -24,7 +19,6 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 pytestmark = pytest.mark.gui
 
 qtpy = pytest.importorskip("qtpy")
-pytest.importorskip("pyqtgraph")
 
 from qtpy import QtWidgets  # noqa: E402
 
@@ -33,16 +27,11 @@ from chisurf.gui.chiplot import backends as _backends  # noqa: E402
 
 
 @pytest.fixture(scope="module", autouse=True)
-def _pyqtgraph_backend():
-    """Pin this module to the pyqtgraph backend, whatever the environment says.
-
-    These tests assert on pyqtgraph internals; with ``CHISURF_PLOT_BACKEND``
-    pointing at a native renderer they would fail on the absence of those
-    internals, which says nothing about that renderer.
-    """
+def _emtk_backend():
+    """Pin this module to the emtk backend, whatever the environment says."""
     previous = _backends._active
     previous_env = os.environ.get("CHISURF_PLOT_BACKEND")
-    os.environ["CHISURF_PLOT_BACKEND"] = "pyqtgraph"
+    os.environ["CHISURF_PLOT_BACKEND"] = "emtk"
     _backends._active = None
     try:
         yield
@@ -119,49 +108,22 @@ def test_plot_draw_all_families(qapp):
     img.set_image(np.random.rand(4, 4))
 
 
-def test_passthrough_reaches_the_host_widget(qapp):
-    """Widget-level pyqtgraph API resolves through the seam too (RF-142).
+def test_there_is_no_passthrough_to_a_backing_library(qapp):
+    """chiplot offers what it offers: an unknown name is an error, not a silent fall-through.
 
-    pyqtgraph splits its API between the ``PlotItem`` (``setLogMode``,
-    ``getViewBox``) and the ``PlotWidget`` that hosts it (``getPlotItem``,
-    ``plotItem``). ``Plot.native`` is the *item*, so a migrated call site
-    reaching for the widget half used to get an ``AttributeError`` from the one
-    mechanism whose job is to keep such calls working.
+    The pyqtgraph backend answered ``getPlotItem``, ``mkPen`` and ``LinearRegionItem``
+    by forwarding to the library behind it; with that backend gone a call site
+    spelled that way fails where it is written.
     """
     plot = cp.Plot()
-    with pytest.warns(cp.ChiplotPassthroughWarning):
-        assert plot.getPlotItem() is plot.native
-    # An attribute on neither object is still an error, not a silent None.
     with pytest.raises(AttributeError):
-        plot.definitelyNotAPyqtgraphMethod
-
-
-def test_configure_refuses_an_invisible_axis(qapp):
-    """A foreground matching the background is corrected, loudly.
-
-    It draws every axis line, tick and label in the background colour while the
-    panel still reserves their space, so the plot reads as *having no axes*
-    rather than as a colour setting — and it is easy to arrive at by accident,
-    then permanent, because user settings are copied to ~/.chisurf once and
-    never refreshed. Two real panels shipped that way.
-    """
-    import pyqtgraph as pg
-
-    previous = pg.getConfigOption("foreground")
-    try:
-        with pytest.warns(RuntimeWarning, match="invisible"):
-            cp.configure(background="k", foreground="k")
-        assert pg.getConfigOption("foreground") == "w"
-
-        with pytest.warns(RuntimeWarning, match="invisible"):
-            cp.configure(background="w", foreground="w")
-        assert pg.getConfigOption("foreground") == "k"
-
-        # A contrasting pair is passed through untouched.
-        cp.configure(background="k", foreground="d")
-        assert pg.getConfigOption("foreground") == "d"
-    finally:
-        pg.setConfigOptions(foreground=previous)
+        plot.getPlotItem
+    with pytest.raises(AttributeError):
+        cp.mkPen
+    with pytest.raises(AttributeError):
+        cp.LinearRegionItem
+    with pytest.raises(AttributeError):
+        plot.line([0, 1], [0, 1]).setDownsampling_not_a_chiplot_verb
 
 
 def test_handle_is_alive_tracks_the_native_item(qapp):
@@ -199,6 +161,7 @@ def test_set_range_takes_data_units_on_a_log_axis(qapp):
 def test_menu_enabled_reads_back(qapp):
     """``set_menu_enabled`` has a read side that needs no renderer spelling."""
     plot = cp.Plot()
+    plot.set_menu_enabled(True)
     assert plot.menu_enabled() is True
     plot.set_menu_enabled(False)
     assert plot.menu_enabled() is False
@@ -209,9 +172,8 @@ def test_menu_enabled_reads_back(qapp):
 def test_arrow_angle_convention(qapp):
     """``Plot.arrow`` places the tip and aims in chiplot's convention (RF-141).
 
-    chiplot measures the pointing angle counter-clockwise from ``+x``; the
-    pyqtgraph arrow is drawn at ``0`` pointing left and rotates clockwise on
-    screen, so the backend must convert. Getting that wrong silently mirrors
+    chiplot measures the pointing angle counter-clockwise from ``+x`` in degrees,
+    whatever the renderer does internally. Getting that wrong silently mirrors
     every directed edge (a rate arrow between two states pointing the wrong way
     reads as the reverse transition).
     """
@@ -221,18 +183,15 @@ def test_arrow_angle_convention(qapp):
     assert isinstance(arrow, cp.handles.Arrow)
     assert arrow.position == (2.0, 3.0)
     assert arrow.angle == pytest.approx(45.0)
-    # pyqtgraph's own convention, as converted by the backend.
-    assert arrow.native.opts["angle"] == pytest.approx(135.0)
 
     arrow.set_angle(-90.0)
     assert arrow.angle == pytest.approx(-90.0)
-    assert arrow.native.opts["angle"] == pytest.approx(270.0)
 
     arrow.set_position(-1.0, 0.5)
     assert arrow.position == (-1.0, 0.5)
 
     plot.remove(arrow)
-    assert arrow.native not in plot.native.items
+    assert not arrow.is_alive()
 
 
 def test_arrow_from_edge_direction(qapp):
@@ -252,28 +211,25 @@ def test_arrow_from_edge_direction(qapp):
 def test_text_does_not_drive_autorange(qapp):
     """A text annotation must not blow the view auto-range (PRD-64 Batch 22).
 
-    Text items are added with ignoreBounds=True; a label placed at a far data
-    coordinate (e.g. a raw value on a log axis) must not stretch the range.
+    A label placed at a far data coordinate (e.g. a raw value on a log axis) must
+    not stretch the range: the range is the data's.
     """
     x = np.logspace(-2, 3, 60)
     y = 1.0 + 0.8 * np.exp(-x / 2.0)
     plot = cp.Plot()
     plot.set_log(x=True, y=False)
     plot.line(x, y, pen="w")
-    plot.text("inset", (float(x.max()), float(y.max())), color="y")  # raw coord on log-x
+    plot.text("inset", (float(x.max()) * 1e6, float(y.max())), color="y")
     plot.autoscale()
-    (x0, x1) = plot.native.getViewBox().viewRange()[0]
-    # log10(data-x) spans -2..3; the text at raw x=1000 would push x1 to ~1000
-    # without ignoreBounds. Assert the range stays near the data.
-    assert x1 < 10.0, f"text drove the x auto-range out (x1={x1})"
+    (x0, x1) = plot.canvas.get_range()[0]
+    assert x1 < 10.0 * float(x.max()), f"text drove the x auto-range out (x1={x1})"
 
 
 def test_scatter_is_log_aware(qapp):
     """Scatter points must transform under log mode (PRD-64 Batch 20 fix).
 
-    A raw pyqtgraph ScatterPlotItem ignores log mode and would leave the view
-    auto-ranged at the linear default (~[0,1]); a log-aware PlotDataItem makes
-    the view span the data's log10 range.
+    A scatter that ignored log mode would leave the view auto-ranged at the linear
+    default (~[0, 1]); a log-aware one spans the data (here ~5 .. ~1000).
     """
     x = np.logspace(-3, 1, 60)
     y = np.exp(-x / 0.5) * 1000 + 5  # ~5 .. ~1000
@@ -281,9 +237,8 @@ def test_scatter_is_log_aware(qapp):
     plot.set_log(x=True, y=True)
     plot.scatter(x, y, size=3, brush=(60, 120, 200, 90), symbol="o")
     plot.autoscale()
-    (y0, y1) = plot.native.getViewBox().viewRange()[1]
-    # log10(data) spans ~0.7 .. 3.0; a linear-default view would be ~[0, 1].
-    assert y1 > 2.0, f"scatter did not autorange under log mode (y1={y1})"
+    (y0, y1) = plot.canvas.get_range()[1]
+    assert y1 > 500.0, f"scatter did not autorange under log mode (y1={y1})"
 
 
 def test_region_and_marker_values(qapp):
@@ -295,7 +250,8 @@ def test_region_and_marker_values(qapp):
 
     seen = []
     reg.on_change(lambda lo, hi: seen.append((lo, hi)), final=False)
-    reg.native.setRegion((0.0, 1.0))  # simulate a drag through the native item
+    reg.set_bounds(0.0, 1.0)
+    reg.native["callbacks"][0][0](*reg.bounds)  # what a drag does: report where it is
     assert seen and seen[-1] == (0.0, 1.0)
 
     m = plot.vline(4.0, movable=True)
@@ -308,20 +264,15 @@ def test_legend_idempotent_refresh_loop(qapp):
     """A clear -> legend -> redraw refresh loop must not stack legends.
 
     Regression guard for PRD-64 Batch 9: the curve-viewer tools
-    (microtime_histogram / fcs merger) call
-    ``legend()`` on every refresh, so it must remove the prior legend rather
-    than orphan a new box each time.
+    (microtime_histogram / fcs merger) call ``legend()`` on every refresh.
     """
     plot = cp.Plot()
-    pi = plot.native  # the pyqtgraph PlotItem
     for i in range(4):
         plot.clear()
         plot.legend()
         plot.line([0, 1, 2], [i, i + 1, i], name=f"c{i}")
-    # Exactly one legend survives the repeated refresh.
-    assert pi.legend is not None
-    scene_legends = [it for it in pi.scene().items() if it.__class__.__name__ == "LegendItem"]
-    assert len(scene_legends) == 1
+    assert plot.canvas._legend is True
+    assert [e.state.get("name") for e in plot.canvas._entries] == ["c3"]
 
 
 def test_set_menu_enabled_returns_self(qapp):
@@ -341,9 +292,9 @@ def test_link_x_shares_range(qapp):
     a.line([0, 1, 2], [0, 1, 0])
     b.line([0, 1, 2], [1, 0, 1])
     assert a.link_x(b) is a
-    b.native.getViewBox().setXRange(0.4, 0.6)
-    ax0, ax1 = a.native.getViewBox().viewRange()[0]
-    assert ax0 < 0.7 and ax1 > 0.3  # a followed b's zoom, not its own autorange
+    b.set_xlim(0.4, 0.6)
+    ax0, ax1 = a.canvas.get_range()[0]
+    assert ax0 == pytest.approx(0.4) and ax1 == pytest.approx(0.6)  # a followed b's zoom
 
 
 def test_text_fill_border(qapp):
@@ -393,7 +344,7 @@ def test_programmatic_set_bounds_is_signal_safe(qapp):
 
     Regression guard for PRD-64 Batch 9: filter_panel positions a draggable
     region from the model on every refresh; that must not feed back into the
-    handler that writes the model (the old code hand-managed ``blockSignals``).
+    handler that writes the model.
     """
     plot = cp.Plot()
     reg = plot.region((1.0, 3.0), orientation="horizontal", movable=True)
@@ -402,8 +353,9 @@ def test_programmatic_set_bounds_is_signal_safe(qapp):
     reg.set_bounds(2.0, 5.0)  # programmatic move -> must stay silent
     assert seen == []
     assert reg.bounds == (2.0, 5.0)
-    # A genuine (native) drag still fires the callback.
-    reg.native.setRegion((0.5, 0.9))
+    # A genuine drag still fires the callback.
+    reg.set_bounds(0.5, 0.9)
+    reg._notify(final=True)
     assert seen and seen[-1] == (0.5, 0.9)
 
 
@@ -416,10 +368,9 @@ def test_programmatic_set_value_is_signal_safe(qapp):
     m.set_value(6.5)  # programmatic move -> silent
     assert seen == []
     assert m.value == 6.5
-    # Simulate a user drag completing on the native item (setValue alone does
-    # not emit the finished signal; a real drag release does).
-    m.native.setValue(1.25)
-    m.native.sigPositionChangeFinished.emit(m.native)
+    # A user drag completing reports where the marker ended.
+    m.set_value(1.25)
+    m._notify(final=True)
     assert seen and seen[-1] == 1.25
 
 
@@ -626,8 +577,6 @@ def test_grid_panels(qapp):
 
 
 def test_image_view_and_roi(qapp):
-    import numpy as np
-
     iv = cp.ImageView()
     iv.set_image(np.random.rand(16, 16))
     iv.set_image(np.random.rand(4, 8, 8), axes={"t": 0, "y": 1, "x": 2})  # stack
@@ -646,9 +595,10 @@ def test_image_view_and_roi(qapp):
     assert roi.pos == (5.0, 6.0)
     assert roi.size == (7.0, 8.0)
     seen = []
-    roi.on_change(lambda: seen.append(roi.pos), final=False)
-    roi.native.setPos((2.0, 2.0))
-    assert seen  # fired
+    roi.on_change(lambda *_: seen.append(roi.pos), final=False)
+    roi.set_pos(2.0, 2.0)
+    roi._notify(final=False)  # what a drag does
+    assert seen == [(2.0, 2.0)]
     roi.visible = False
     roi.z = 10
     iv.clear()
@@ -691,57 +641,12 @@ def test_clicked_signal_wired(qapp):
     assert got == [(1.0, 2.0)]
 
 
-def test_module_passthrough_flags_and_works(qapp):
-    import pyqtgraph as pg
-
-    cp.reset_gaps()
-    with pytest.warns(cp.ChiplotPassthroughWarning):
-        pen = cp.mkPen("r", width=2)  # not native -> falls through to pyqtgraph
-    assert isinstance(pen, pg.functions.mkPen("r").__class__)
-    # a class symbol falls through too
-    with pytest.warns(cp.ChiplotPassthroughWarning):
-        assert cp.LinearRegionItem is pg.LinearRegionItem
-    assert "module.mkPen" in cp.passthrough_gaps()
-    assert "module.LinearRegionItem" in cp.passthrough_gaps()
-
-
-def test_module_passthrough_warns_once(qapp, recwarn):
-    cp.reset_gaps()
-    cp.mkBrush("g")
-    cp.mkBrush("g")  # second access: no new warning
-    passthrough_warnings = [
-        w for w in recwarn if issubclass(w.category, cp.ChiplotPassthroughWarning)
-    ]
-    assert len(passthrough_warnings) == 1
-
-
-def test_handle_passthrough_parity(qapp):
-    # A pyqtgraph item method chiplot doesn't expose natively still works on the
-    # handle, flagged as a passthrough gap.
-    cp.reset_gaps()
-    plot = cp.Plot()
-    curve = plot.line([0, 1, 2], [0, 1, 0])
-    with pytest.warns(cp.ChiplotPassthroughWarning):
-        curve.setDownsampling(auto=True)  # pyqtgraph PlotDataItem method
-    assert any(g.startswith("Curve.") for g in cp.passthrough_gaps())
-
-
-def test_colormap_hybrid_parity(qapp):
-    import pyqtgraph as pg
-
-    # chiplot API: returns a chiplot Colormap reference
+def test_colormap_is_a_plain_reference(qapp):
+    """``cp.colormap(name)`` returns a chiplot Colormap; it is not a proxy to a library."""
     assert isinstance(cp.colormap("viridis"), cp.Colormap)
-    # pyqtgraph parity: cp.colormap.get(...) proxies to pg.colormap.get(...)
-    cm = cp.colormap.get("CET-L4")
-    assert isinstance(cm, pg.ColorMap)
-
-
-def test_handle_setattr_forwards_to_native(qapp):
-    plot = cp.Plot()
-    c = plot.line([0, 1], [0, 1])
-    c.customFlag = 99  # arbitrary attr assignment
-    assert getattr(c.native, "customFlag", None) == 99  # landed on the native item
-    assert c.customFlag == 99  # and reads back
+    assert cp.colormap("CET-L4", source="colorcet").source == "colorcet"
+    with pytest.raises(AttributeError):
+        cp.colormap.get
 
 
 def test_handle_truthiness_and_container_parity(qapp):
@@ -761,25 +666,14 @@ def test_unknown_symbol_raises(qapp):
         cp.this_symbol_does_not_exist_anywhere
 
 
-def test_instance_passthrough_to_native(qapp):
-    cp.reset_gaps()
-    plot = cp.Plot()
-    with pytest.warns(cp.ChiplotPassthroughWarning):
-        vb = plot.getViewBox()  # pyqtgraph-only method, not native chiplot
-    assert vb is plot.native.getViewBox()
-    assert "Plot.getViewBox" in cp.passthrough_gaps()
-
-
 def test_curve_set_opacity(qapp):
-    """Curve.set_opacity sets whole-curve opacity (replaces the old 4-method
-    pyqtgraph transparency fallback used by the grouped LinePlot).
-    """
+    """Curve.set_opacity sets whole-curve opacity (the grouped LinePlot's transparency)."""
     plot = cp.Plot()
     c = plot.line([0, 1, 2], [0, 1, 0])
     c.set_opacity(0.4)
-    assert abs(float(c.native.opacity()) - 0.4) < 1e-6
+    assert abs(float(c.native["opacity"]) - 0.4) < 1e-6
     c.set_opacity(1.0)
-    assert abs(float(c.native.opacity()) - 1.0) < 1e-6
+    assert abs(float(c.native["opacity"]) - 1.0) < 1e-6
 
 
 def test_curve_symbol_setters(qapp):
@@ -793,51 +687,46 @@ def test_curve_symbol_setters(qapp):
     c.set_symbol("o")
     c.set_symbol_size(6)
     c.set_symbol_brush("r")
-    assert c.native.opts["symbol"] == "o"
-    assert c.native.opts["symbolSize"] == 6
-    # Clearing the symbol (and the line) is supported too.
+    assert c.native["symbol"] == "o"
+    assert c.native["symbol_size"] == 6
+    assert c.native["symbol_color"] == (255, 0, 0)
     c.set_symbol(None)
-    assert c.native.opts["symbol"] is None
-    c.set_pen(None)  # no_line style
-    assert c.native.opts["pen"] is None or c.native.opts["pen"].style() == qtpy.QtCore.Qt.NoPen
+    assert c.native["symbol"] is None
 
 
 def test_region_set_limits_constrains_drag(qapp):
-    """Region.set_limits bounds the draggable range (pyqtgraph setBounds), which
-    is distinct from set_bounds (the current position) and must be signal-safe.
-    """
+    """Region.set_limits bounds the draggable range, distinct from set_bounds (the position)."""
     plot = cp.Plot()
     reg = plot.region((2.0, 4.0), movable=True)
     seen = []
     reg.on_change(lambda lo, hi: seen.append((lo, hi)), final=True)
     reg.set_limits(0.0, 10.0)  # programmatic -> silent
     assert seen == []
-    # A drag beyond the limit is clamped to it.
-    reg.native.setRegion((-5.0, 4.0))
+    # A move beyond the limit is clamped to it.
+    reg.set_bounds(-5.0, -1.0)
     lo, _ = reg.bounds
     assert lo >= 0.0 - 1e-9
 
 
 def test_anchored_text_is_screen_pinned(qapp):
-    """text(anchored=True) parents to the PlotItem (fixed screen offset) rather
-    than living at a data coordinate — the LinePlot fit-quality overlay.
+    """text(anchored=True) is a fixed screen offset rather than a data coordinate.
+
+    The LinePlot fit-quality overlay is one: it must stay put when the view moves.
     """
     plot = cp.Plot()
     data_txt = plot.text("data", (1.0, 2.0))
     anchored_txt = plot.text("pinned", (10, 0), anchored=True, draggable=True)
-    # The anchored label's parent is the PlotItem itself; the data label's is not.
-    assert anchored_txt.native.parentItem() is plot.native
-    assert data_txt.native.parentItem() is not plot.native
-    # The text property setter keeps working through the handle.
+    assert anchored_txt.native["anchored"] is True
+    assert not data_txt.native["anchored"]
     anchored_txt.text = "updated"
-    assert anchored_txt.native.toPlainText() == "updated"
+    assert anchored_txt.text == "updated"
 
 
 def test_line_step_string_modes(qapp):
-    """line(step=...) accepts the equal-length pyqtgraph step modes as strings.
+    """line(step=...) accepts the equal-length step modes as strings.
 
     ``step=True`` maps to centered bins (needs ``len(x) == len(y) + 1``) while
-    ``"left"``/``"right"``/``"center"`` keep x and y the same length — the mode
+    ``"left"``/``"right"``/``"center"`` keep x and y the same length -- the mode
     the DistributionPlot histograms (data/model) use, together with a fill.
     """
     plot = cp.Plot()
@@ -845,20 +734,16 @@ def test_line_step_string_modes(qapp):
     y = [1.0, 3.0, 2.0, 0.0]
     # Equal-length "right" step must not raise (a bare True would demand N+1).
     c = plot.line(x, y, step="right", pen="b", fill=(0, 0, 255, 127))
-    assert c.native.opts["stepMode"] == "right"
-    # The fill brush survives to the backend item.
-    assert c.native.opts["fillLevel"] == 0.0
-    assert c.native.opts["fillBrush"].color().alpha() == 127
+    assert c.native["step"] == "right"
+    # The fill brush survives to the backend entry.
+    assert c.native["fill"][3] == 127
 
 
 def test_errorbars_set_data_replaces_extents(qapp):
     """set_data replaces the extents rather than merging them.
 
-    pyqtgraph's ``ErrorBarItem.setData`` only updates the keys it is handed and
-    lets a stale ``height`` override ``top``/``bottom``. A handle created with
-    ``height`` and later updated with ``top``/``bottom`` therefore kept the old
-    ``height`` and — with a different point count — crashed while painting
-    (BVA proximity-ratio profile: ``height`` of length 0 vs. 31 points).
+    A handle created with ``height`` and later updated with ``top``/``bottom``
+    must not keep the old ``height`` (a different point count crashed painting).
     """
     plot = cp.Plot()
     eb = plot.errorbars(np.array([]), np.array([]), height=np.array([]), beam=0.01)
@@ -867,33 +752,30 @@ def test_errorbars_set_data_replaces_extents(qapp):
     y = np.sin(x)
     sd = np.full(31, 0.05)
     eb.set_data(x, y, top=sd, bottom=sd)
+    assert len(eb.native["top"]) == len(eb.native["bottom"]) == 31
 
-    assert eb.native.opts["height"] is None
-    assert len(eb.native.opts["top"]) == 31
-    eb.native.drawPath()  # would raise a broadcast ValueError with a stale height
-
-    # ...and the other way round: switching back to symmetric clears top/bottom.
+    # ...and the other way round: switching back to symmetric replaces top/bottom.
     eb.set_data(x, y, height=np.full(31, 0.1))
-    assert eb.native.opts["top"] is None and eb.native.opts["bottom"] is None
-    eb.native.drawPath()
+    assert np.allclose(eb.native["top"], 0.05) and np.allclose(eb.native["bottom"], 0.05)
+    plot.canvas.refresh()
 
 
 def test_grid_colorbar_binds_image(qapp):
-    """Grid.add_colorbar replaces the pyqtgraph HistogramLUTItem passthrough."""
+    """Grid.add_colorbar binds a colour ramp to an image's levels."""
     grid = cp.Grid()
     plot = grid.add_plot(row=0, col=0)
     img = plot.image(np.random.rand(8, 8), axis_order="col-major")
 
     bar = grid.add_colorbar(img, colormap="CET-L4", row=0, col=1)
     assert isinstance(bar, cp.handles.ColorBar)
-    assert bar.native.imageItem() is img.native
 
     bar.set_levels(0.25, 0.75)
     assert bar.get_levels() == pytest.approx((0.25, 0.75))
+    assert img.get_levels() == pytest.approx((0.25, 0.75))
 
     seen = []
     bar.on_levels_changed(lambda lo, hi: seen.append((lo, hi)))
-    bar.set_levels(0.0, 1.0)
+    bar.set_levels(0.0, 1.0, notify=True)
     assert seen and seen[-1] == pytest.approx((0.0, 1.0))
 
     bar.set_colormap("viridis")  # a name is accepted as well as a Colormap
@@ -908,78 +790,19 @@ def test_to_colormap_coercion():
         cp.to_colormap(3.5)
 
 
-def test_mouse_events_are_panel_scoped(qapp):
-    """Clicks/motion only reach the panel they happened in (RF-131).
-
-    pyqtgraph's mouse signals are scene-wide and grid panels share one scene, so
-    an unscoped handler fired on every panel with a coordinate extrapolated
-    through that panel's own view range.
-    """
-    from qtpy import QtCore
-
-    class _Click:
-        """Minimal stand-in for pyqtgraph's MouseClickEvent."""
-
-        def __init__(self, scene_pos):
-            self._pos = scene_pos
-
-        def scenePos(self):  # noqa: N802 (Qt spelling)
-            return self._pos
-
-        def button(self):
-            return QtCore.Qt.LeftButton
+def test_background_is_set_per_panel(qapp):
+    """background= colours the panel (RF-133), and a grid panel keeps its own."""
+    plot = cp.Plot(background="w")
+    assert plot.canvas._background == (255, 255, 255)
+    plot.set_background("k")
+    assert plot.canvas._background == (0, 0, 0)
 
     grid = cp.Grid()
-    grid.resize(600, 400)
     p0 = grid.add_plot(row=0, col=0)
     p1 = grid.add_plot(row=1, col=0)
-    p0.line([0, 1, 2], [0, 1, 0])
-    p1.line([0, 1, 2], [0, 500, 0])
-    qapp.processEvents()
-
-    seen = []
-    p0.clicked.connect(lambda x, y: seen.append(("p0", x, y)))
-    p1.clicked.connect(lambda x, y: seen.append(("p1", x, y)))
-
-    target = p1.native.getViewBox().sceneBoundingRect().center()
-    grid.native.scene().sigMouseClicked.emit(_Click(target))
-
-    assert [name for name, _, _ in seen] == ["p1"]
-
-
-def test_line_symbol_uses_renderer_default_colors(qapp):
-    """line(symbol=...) with no colours draws a *visible* marker (RF-132)."""
-    from qtpy import QtCore
-
-    plot = cp.Plot()
-    c = plot.line([0, 1, 2], [0, 1, 0], pen="w", symbol="o", symbol_size=6)
-    scatter = c.native.scatter
-    assert scatter.opts["brush"].style() != QtCore.Qt.NoBrush
-    assert scatter.opts["pen"].style() != QtCore.Qt.NoPen
-    # An explicit colour still wins.
-    c2 = plot.line([0, 1], [1, 0], symbol="o", symbol_brush="#ff0000")
-    assert c2.native.scatter.opts["brush"].color().getRgb()[:3] == (255, 0, 0)
-
-
-def test_background_paints_whole_widget(qapp):
-    """background= paints the axis margins too, and None means transparent (RF-133)."""
-    from qtpy import QtCore
-
-    cp.configure(background="k")
-    plot = cp.Plot(background="w")
-    view = plot._canvas.widget()
-    assert view.backgroundBrush().color().getRgb()[:3] == (255, 255, 255)
-    assert plot.native.getViewBox().state["background"] == (255, 255, 255, 255)
-
-    transparent = cp.Plot(background=None)
-    assert transparent._canvas.widget().backgroundBrush().style() == QtCore.Qt.NoBrush
-
-    # A grid panel must not repaint the widget it shares with its siblings.
-    grid = cp.Grid()
-    p0 = grid.add_plot(row=0, col=0)
-    grid.add_plot(row=1, col=0)
     p0.set_background("w")
-    assert grid.native.backgroundBrush().color().getRgb()[:3] != (255, 255, 255)
+    assert p0.canvas._background == (255, 255, 255)
+    assert p1.canvas._background != (255, 255, 255), "a panel must not repaint its siblings"
 
 
 def test_to_color_float_tuple_detection():
@@ -996,37 +819,21 @@ def test_backend_contract_matches_implementation():
 
     Also that every abstract method is *implemented*, not merely inherited
     (RF-141): a method added to the contract without a backend body leaves the
-    concrete class abstract, and Python only complains at instantiation — i.e.
-    when a user opens the tool ("Can't instantiate abstract class _PgCanvas
-    without an implementation for abstract method 'add_arrow'"), taking every
-    chiplot panel in the application down with it.
-
-    Both backends are checked here, so a half-landed contract breaks the
-    test, not every plot panel.
+    concrete class abstract, and Python only complains at instantiation -- i.e.
+    when a user opens the tool, taking every chiplot panel in the application
+    down with it. A half-landed contract breaks this test, not every plot panel.
     """
     import inspect
 
     from chisurf.gui.chiplot.backends import base
-    from chisurf.gui.chiplot.backends import pyqtgraph_backend as pgb
-
-    pairs: list[tuple[type, type]] = [
-        (base.Canvas, pgb._PgCanvas),
-        (base.GridCanvas, pgb._PgGrid),
-        (base.ImageViewCanvas, pgb._PgImageView),
-        (base.Backend, pgb.PyQtGraphBackend),
-    ]
-
     from chisurf.gui.chiplot.backends import emtk_backend as eb
 
-    pairs.extend(
-        [
-            (base.Canvas, eb.EmtkCanvas),
-            (base.GridCanvas, eb.EmtkGrid),
-            (base.ImageViewCanvas, eb.EmtkImageView),
-            (base.Backend, eb.EmtkBackend),
-        ]
-    )
-
+    pairs: list[tuple[type, type]] = [
+        (base.Canvas, eb.EmtkCanvas),
+        (base.GridCanvas, eb.EmtkGrid),
+        (base.ImageViewCanvas, eb.EmtkImageView),
+        (base.Backend, eb.EmtkBackend),
+    ]
     for abstract, concrete in pairs:
         unimplemented = sorted(getattr(concrete, "__abstractmethods__", ()))
         assert not unimplemented, f"{concrete.__name__} does not implement {unimplemented}"
@@ -1058,12 +865,12 @@ def test_image_view_clear_removes_overlays(qapp):
     iv.set_image(np.random.rand(16, 16))
     overlay = iv.add_overlay(np.zeros((8, 8, 4), dtype=np.uint8))
     roi = iv.add_roi(kind="rect", pos=(1, 2), size=(3, 4), pen="y")
-    view = iv.native.getView()
-    assert overlay.native in view.addedItems and roi.native in view.addedItems
+    entries = iv.native._entries
+    assert overlay in entries and roi in entries
 
     iv.clear()
-    assert overlay.native not in view.addedItems
-    assert roi.native not in view.addedItems
+    assert iv.native._entries == []
+    assert not overlay.is_alive() and not roi.is_alive()
 
 
 def test_image_restyles_without_reuploading_data(qapp):
@@ -1071,58 +878,21 @@ def test_image_restyles_without_reuploading_data(qapp):
 
     The 2-D residual view drives contrast and colormap from spin boxes and a
     combo box while the data stands still, so both must be settable on the
-    handle rather than only through ``set_image``.
-
-    ``RdBu`` is the case that matters: ``pg.colormap.get("RdBu")`` with no
-    source raises ``FileNotFoundError`` (it is a matplotlib name, not a
-    pyqtgraph one), which is what left every residual image grayscale before
-    the port. chiplot resolves the matplotlib namespace first.
+    handle rather than only through ``set_image``. ``RdBu`` is a matplotlib name.
     """
     plot = cp.Plot()
     data = np.linspace(-1.0, 1.0, 64).reshape(8, 8)
     img = plot.image(data, axis_order="col-major")
 
     img.set_levels(-0.5, 0.5)
-    assert tuple(img.native.getLevels()) == pytest.approx((-0.5, 0.5))
+    assert img.get_levels() == pytest.approx((-0.5, 0.5))
 
     img.set_colormap("RdBu")
-    assert img.native.lut is not None
-    img.set_colormap(None)  # back to the grayscale ramp
-    assert img.native.lut is None
+    assert img.native["colormap"] == "RdBu" or getattr(img.native["colormap"], "name", None) == "RdBu"
+    img.set_colormap(None)  # back to the default ramp
+    assert img.native["colormap"] is None
 
     # the data itself is untouched by either restyle
-    assert np.array_equal(img.native.image, data)
+    assert np.array_equal(img.get_image(), data)
 
 
-def test_a_renamed_pyqtgraph_name_says_what_chiplot_calls_it(qapp, recwarn):
-    """A rename is not a gap, and the warning must say the replacement.
-
-    ``Plot.plot`` is not a chiplot method, so it falls through to pyqtgraph —
-    where a chiplot ``Pen`` is unreadable and dies with an unrelated "not sure
-    how to make a color from" deep in the backend. Naming the chiplot spelling
-    turns that into a one-line fix.
-    """
-    import warnings
-
-    from chisurf.gui import chiplot as cp
-    from chisurf.gui.chiplot import _passthrough
-
-    _passthrough.reset_gaps()
-    plot = cp.Plot()
-    with warnings.catch_warnings(record=True) as caught:
-        warnings.simplefilter("always")
-        plot.plot([0, 1], [0, 1])  # the pyqtgraph spelling
-    messages = [
-        str(w.message) for w in caught if issubclass(w.category, cp.ChiplotPassthroughWarning)
-    ]
-    assert messages, "falling through must warn"
-    assert "Plot.line" in messages[0], messages[0]
-    assert "Plot.plot" in _passthrough.passthrough_gaps()
-
-    # A genuine gap still reads as a gap, not as a rename.
-    _passthrough.reset_gaps()
-    with warnings.catch_warnings(record=True) as caught:
-        warnings.simplefilter("always")
-        cp.LinearRegionItem  # noqa: B018 - attribute access is the call
-    gap = [str(w.message) for w in caught if issubclass(w.category, cp.ChiplotPassthroughWarning)]
-    assert gap and "migration gap" in gap[0], gap

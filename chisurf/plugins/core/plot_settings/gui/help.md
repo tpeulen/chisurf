@@ -19,10 +19,10 @@ line under the buttons says whether edits are waiting.
 
 ## Backend
 
-The backend decides *how* a plot is drawn, not *what* is in it. The emtk
-renderer is the default and pyqtgraph stays selectable for the plot families
-emtk does not draw yet. A changed backend applies on the next application start
-or when a new plot is created.
+The backend decides *how* a plot is drawn, not *what* is in it. emtk is the
+renderer and the only choice (the pyqtgraph backend was removed; a settings
+file that still names it opens as emtk). A changed backend applies on the next
+application start or when a new plot is created.
 
 ## Colours and appearance
 

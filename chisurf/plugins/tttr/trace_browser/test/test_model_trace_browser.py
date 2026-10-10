@@ -1,4 +1,4 @@
-"""The Qt-free Trace Browser model, and its agreement with the Qt widget.
+"""The Qt-free Trace Browser model, and its agreement with the values the retired Qt widget produced.
 
 Everything runs on a temporary COPY of repository sample data: the browser writes
 ``.trace_browser_meta.json`` and a ``.tttr_trace_cache`` folder beside the data and
@@ -10,7 +10,6 @@ import pathlib
 import shutil
 import subprocess
 import sys
-import types
 
 import pytest
 
@@ -334,84 +333,74 @@ def test_trace_job_runs_on_a_snapshot(qapp, real_dir):
     assert m.trace["counts"].shape == (6233, 3)
 
 
-# ---- the Qt widget and the model agree -------------------------------------------------------
-def test_qt_widget_and_model_agree_on_the_same_folder(qapp, qtbot, fake_dir):
-    pytest.importorskip("pyqtgraph")
-    from chisurf.plugins.tttr.trace_browser import TraceBrowser
-
+# ---- the model agrees with what the retired Qt widget did --------------------------------------
+def test_the_model_lists_what_the_qt_widget_listed_for_the_same_folder(fake_dir):
     m = TraceBrowserModel()
     for recursive in (False, True):
         for idx in range(5):
-            w = TraceBrowser()
-            qtbot.addWidget(w)
-            # the widget's setup page defaults to its own file type (SPC-130 with no saved
-            # setup, hermetic); the model has no setup: both must list every supported type
-            w.detector_page = types.SimpleNamespace(filetype="Auto")
-            w.chk_subfolders.setChecked(recursive)
-            w.filter_combo.setCurrentIndex(idx)
-            w._open_folder(fake_dir)
-            visible = [
-                (w.table.item(r, 0).text(), w.table.cellWidget(r, 1).rating())
-                for r in range(w.table.rowCount())
-                if not w.table.isRowHidden(r)
-            ]
             m.include_subfolders, m.filter_index = recursive, idx
             m.open_folder(fake_dir)
-            assert sorted(visible) == _names(m.rows) == sorted(LEGACY_ROWS[(recursive, idx)])
-    # the widget keeps its state in its model (``w`` is the last widget of the loop)
-    assert w.current_folder == w.model.current_folder == fake_dir
-    assert w.selected_channels == w.model.selected_channels
-    # setup file type drives the extensions in both
-    w.detector_page = types.SimpleNamespace(filetype="PTU")
-    assert w._allowed_exts_for_setup() == {".ptu"}
+            assert _names(m.rows) == sorted(LEGACY_ROWS[(recursive, idx)])
+    assert m.current_folder == fake_dir
+    # the setup file type drives the extensions (the widget read ``detector_page.filetype``)
+    m.setup_filetype = "PTU"
+    assert m.allowed_exts() == {".ptu"}
 
 
-def test_qt_widget_rating_and_notes_persist_through_the_model(qapp, qtbot, fake_dir):
-    pytest.importorskip("pyqtgraph")
-    from chisurf.plugins.tttr.trace_browser import TraceBrowser
-
-    w = TraceBrowser()
-    qtbot.addWidget(w)
-    w._open_folder(fake_dir)
-    row = next(r for r in range(w.table.rowCount()) if w.table.item(r, 0).text() == "c.spc")
-    w.table.cellWidget(row, 1).ratingChanged.emit(4)
-    w._flush_meta_to_disk()
+def test_rating_and_notes_persist_through_the_model(fake_dir):
+    """What the widget's rating cell and ``_flush_meta_to_disk`` did, through the model."""
+    w = TraceBrowserModel()
+    w.open_folder(fake_dir)
+    w.set_rating(fake_dir / "c.spc", 4)
+    w.flush_meta()
     m = TraceBrowserModel()
     m.open_folder(fake_dir)
     assert m.get_rating(fake_dir / "c.spc") == 4
 
 
-def test_default_image_probe_matches_the_widget(qapp, qtbot, real_dir, fake_dir):
-    pytest.importorskip("pyqtgraph")
-    from chisurf.plugins.tttr.trace_browser import TraceBrowser
-
-    w = TraceBrowser()
-    qtbot.addWidget(w)
+def test_default_image_probe_matches_the_widget(real_dir, fake_dir):
+    """``TraceBrowser._is_image_tttr`` answered False for both (recorded 2026-10-10)."""
     m = TraceBrowserModel()
     for p in (real_dir / "m000.spc", fake_dir / "a.ptu"):
-        assert m.probe_image(p) == w._is_image_tttr(p)
-    # unreadable files are listed (non-image); with the installed tttrlib every readable
-    # TTTR counts as an image and is hidden (documented in REPORT-T0)
-    assert m.probe_image(fake_dir / "a.ptu") is False
+        assert m.probe_image(p) is False
 
 
-# ---- the legacy import surface and Qt-freedom ------------------------------------------------
-def test_legacy_import_paths_still_resolve():
+def test_fractional_bin_widths_have_distinct_cache_signatures():
+    """The widget's ``_trace_signature``: 0.25 and 0.75 ms must not collapse to one (integer truncation)."""
+    m = TraceBrowserModel()
+    p = pathlib.Path(__file__)
+    assert m.trace_signature(p, 0.25) != m.trace_signature(p, 0.75)
+    # and the form takes them: the widget's spin box had >= 3 decimals and a minimum below 1 ms
+    spec = json.loads((HERE.parent / "gui" / "trace_browser_emtk.view.json").read_text())
+
+    def find(node):
+        if isinstance(node, dict):
+            if node.get("attr") == "window_ms":
+                return node
+            node = list(node.values())
+        for child in node if isinstance(node, list) else []:
+            found = find(child)
+            if found:
+                return found
+
+    field = find(spec)
+    assert field["minimum"] < 1.0 and field["decimals"] >= 3
+
+
+# ---- the import surface and Qt-freedom -----------------------------------------------------------
+def test_import_paths_resolve_and_the_qt_workspace_is_gone():
     import chisurf.plugins.tttr.trace_browser as pkg
     from chisurf.plugins.tttr.trace_browser import (  # noqa: F401
         META_FILENAME,
-        NoHoverSelectTable,
-        StarCombo,
-        StarRatingWidget,
-        TraceBrowser,
         get_tttr_supported_exts,
     )
-    from chisurf.plugins.tttr.trace_browser.gui.tool import TraceBrowserTool  # noqa: F401
 
     assert META_FILENAME == ".trace_browser_meta.json"
     assert pkg.name == "Spectroscopy:Single-Molecule:Trace Browser"
     assert pkg.cli_entrypoint.startswith("trace-browser=")
-    assert TraceBrowser.__module__.endswith("trace_browser.widget")
+    for gone in ("TraceBrowser", "StarCombo", "StarRatingWidget", "NoHoverSelectTable"):
+        with pytest.raises(AttributeError):
+            getattr(pkg, gone)
     with pytest.raises(AttributeError):
         pkg.does_not_exist
 

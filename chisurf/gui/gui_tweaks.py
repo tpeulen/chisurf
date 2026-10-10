@@ -326,9 +326,3 @@ def apply_dock_tab_colors(window) -> None:
                     tabbar.setTabTextColor(i, color)
                 except Exception:
                     pass
-
-
-# The pyqtgraph >= 0.14 ``PlotWidget.autoRangeEnabled`` compatibility shim moved
-# to the chiplot pyqtgraph backend (chisurf/gui/chiplot/backends/
-# pyqtgraph_backend.py), where it is applied on backend load — covering full GUI
-# startup, tests, and scripts alike, without gui_tweaks importing pyqtgraph.

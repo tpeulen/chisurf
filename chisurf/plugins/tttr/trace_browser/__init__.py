@@ -9,11 +9,9 @@ Page 1: Trace browser with folder selection, file list, star quality rating (0-3
 Metadata (ratings and annotations) are stored in a JSON file in the same folder
 as the traces: .trace_browser_meta.json
 
-The Qt workspace (:class:`TraceBrowser` and its helper widgets) lives in
-:mod:`.widget` and is resolved lazily (PEP 562), so importing this package -- and
-with it the Qt-free ``core`` / ``api`` / ``backend`` / ``cli`` layers and
-:mod:`.gui.model` -- needs no Qt binding.  ``from ...trace_browser import
-TraceBrowser`` keeps working.
+The window is the native emtk app :mod:`.gui.app`; its state is :mod:`.gui.model`, so importing this
+package -- and with it the Qt-free ``core`` / ``api`` / ``backend`` / ``cli`` layers -- needs no Qt binding.
+(The Qt workspace, ``TraceBrowser``, was retired with the pyqtgraph dependency.)
 """
 
 from __future__ import annotations
@@ -31,18 +29,11 @@ else:
     name = "Spectroscopy:Single-Molecule:Trace Browser"
     cli_entrypoint = ""
 
-#: Names that live in the Qt module :mod:`.widget` and are loaded on first access.
-_WIDGET_NAMES = ("TraceBrowser", "StarCombo", "StarRatingWidget", "NoHoverSelectTable")
-
-__all__ = [*_WIDGET_NAMES, "META_FILENAME", "get_tttr_supported_exts"]
+__all__ = ["META_FILENAME", "get_tttr_supported_exts"]
 
 
 def __getattr__(attribute: str) -> Any:
-    """Resolve the Qt widgets and Qt-free helpers on first access (PEP 562)."""
-    if attribute in _WIDGET_NAMES:
-        from . import widget
-
-        return getattr(widget, attribute)
+    """Resolve the Qt-free helpers on first access (PEP 562)."""
     if attribute == "META_FILENAME":
         from .core.metadata import META_FILENAME
 
@@ -56,10 +47,10 @@ def __getattr__(attribute: str) -> Any:
 
 # When the plugin is loaded as a module with __name__ == "plugin",
 # this code will be executed by the Plugin Manager
-if __name__ == "plugin":
-    from chisurf.plugins.tttr.trace_browser.gui.tool import TraceBrowserTool
+if __name__ == "plugin":  # pragma: no cover - the legacy macro launch; the manifest's emtk entry comes first
+    from emtk.qt_host import ControlHost
 
-    window = TraceBrowserTool()
+    from chisurf.plugins.tttr.trace_browser.gui.app import make_app
+
+    window = ControlHost(make_app())
     window.show()
-    window.raise_()
-    window.activateWindow()

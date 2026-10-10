@@ -22,10 +22,10 @@ def private_settings(tmp_path, monkeypatch):
 
 def test_native_plot_settings_controls_and_state():
     app = PlotSettingsApp()
-    app.model.backend = "pyqtgraph"
+    app.model.backend = "emtk"
     app.model.color_data = "#123456"
     app.model.apply()
-    assert app.model.collect()["backend"] == "pyqtgraph"
+    assert app.model.collect()["backend"] == "emtk"
     assert app.model.collect()["colors"]["data"] == "#123456"
     app.restore_settings({"folds": {"Appearance": True}})
     assert app.export_settings() == {"folds": {"Appearance": True}}

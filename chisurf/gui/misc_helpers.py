@@ -61,7 +61,7 @@ def warmup_imports():
     try:
         from chisurf.gui import chiplot as _cp  # noqa: F401
 
-        _cp.get_backend()  # warms the plotting backend (pyqtgraph today)
+        _cp.get_backend()  # warms the plotting backend (emtk)
 
         import chisurf.gui.widgets.fitting as _fitwidgets  # noqa: F401
 

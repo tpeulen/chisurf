@@ -23,24 +23,9 @@ def main():
         path = Path(directory) / "sample_vv_vh.dat"
         np.savetxt(path, np.r_[vv, vh])
         if args.mode == "qt":
-            os.environ["CHISURF_PLOT_BACKEND"] = "pyqtgraph"
-            from qtpy.QtWidgets import QApplication, QWidget
-
-            from chisurf.gui import chiplot
-            from chisurf.plugins.vv_vh_anisotropy.qt_tool import VvVhAnisotropyCalculator
-
-            app = QApplication.instance() or QApplication([])
-            chiplot.set_backend("pyqtgraph")
-            widget = VvVhAnisotropyCalculator()
-            widget.load_vv_vh_file(path)
-            widget.resize(1200, 800)
-            widget.show()
-            for _ in range(20):
-                app.processEvents()
-            children = [type(w).__module__ for w in widget.findChildren(QWidget)]
-            assert not any("emtk" in module.lower() for module in children)
-            assert widget.grab().save(str(renders / "qt-populated-1200x800.png"))
-            widget.close()
+            # The Qt reference was captured with the pyqtgraph backend forced on, so that no emtk
+            # widget could hide in it. That backend is gone: the recorded reference stays in renders/.
+            parser.error("the Qt reference needed the removed pyqtgraph backend; use 'native'")
         else:
             from emtk.pil_painter import PilPainter
 

@@ -18,13 +18,26 @@ from chisurf.gui.chiplot.backends import base
 
 _REGISTRY: dict[str, str] = {
     # name -> "module:ClassName"
-    # emtk, the native renderer and the default: chimol's own toolkit, drawn
-    # through its painter. What it does not draw yet raises a
-    # NotImplementedError naming the family (open front: okf/subsystems/chiplot.md); pyqtgraph stays
-    # selectable for those (CHISURF_PLOT_BACKEND=pyqtgraph).
+    # emtk, the renderer: chimol's own toolkit, drawn through its painter. What it
+    # does not draw yet raises a NotImplementedError naming the family (open
+    # front: okf/subsystems/chiplot.md).
     "emtk": "chisurf.gui.chiplot.backends.emtk_backend:EmtkBackend",
-    "pyqtgraph": "chisurf.gui.chiplot.backends.pyqtgraph_backend:PyQtGraphBackend",
 }
+
+#: Backends that existed and were removed, with what to say to someone who asks for one.
+_REMOVED: dict[str, str] = {
+    "pyqtgraph": (
+        "the pyqtgraph backend was removed (pyqtgraph is no longer a dependency); "
+        "chiplot draws with emtk. Unset CHISURF_PLOT_BACKEND / gui.plot.backend, or set it to 'emtk'"
+    ),
+}
+
+
+def _unknown(name: str) -> KeyError:
+    """The error for a backend name that is not registered, saying why when it was removed."""
+    if name in _REMOVED:
+        return KeyError(f"chiplot backend {name!r}: {_REMOVED[name]}")
+    return KeyError(f"unknown chiplot backend {name!r}; registered: {sorted(_REGISTRY)}")
 
 _active: base.Backend | None = None
 
@@ -79,7 +92,7 @@ def get_backend() -> base.Backend:
     if _active is None:
         name = _resolve_backend_name()
         if name not in _REGISTRY:
-            raise KeyError(f"unknown chiplot backend {name!r}; registered: {sorted(_REGISTRY)}")
+            raise _unknown(name)
         module_path, cls_name = _REGISTRY[name].split(":")
         import importlib
 
@@ -98,6 +111,6 @@ def set_backend(name: str) -> None:
     """
     global _active
     if name not in _REGISTRY:
-        raise KeyError(f"unknown chiplot backend {name!r}; registered: {sorted(_REGISTRY)}")
+        raise _unknown(name)
     os.environ["CHISURF_PLOT_BACKEND"] = name
     _active = None

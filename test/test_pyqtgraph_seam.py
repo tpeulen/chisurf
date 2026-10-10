@@ -1,23 +1,22 @@
-"""Guard: pyqtgraph is imported only through the chiplot backend seam.
+"""Guard: pyqtgraph is gone, and chiplot is *the* plotting API.
 
-**The rule: plot through chiplot, never pyqtgraph.** ``chisurf.gui.chiplot`` is
-*the* plotting API; pyqtgraph is an implementation detail behind it that the repo
-is migrating away from (PRD-64). Concretely:
+**The rule: plot through chiplot.** ``chisurf.gui.chiplot`` is the plotting API
+and its only renderer is emtk. pyqtgraph is not a dependency any more (W8
+removed the last two importers, the AutoForm ``image`` section and the Qt
+intensity-trace tool, then the backend itself), so concretely:
 
-* new code must not ``import pyqtgraph``;
-* ``test/pyqtgraph_import_allowlist.txt`` is a **shrinking** record of files not
-  yet ported — never somewhere to add yourself to make this test pass;
-* use the chiplot spelling: ``Plot.line`` not ``plot``, ``to_pen`` not
-  ``mkPen``, ``set_labels`` not ``setLabel``. Anything chiplot lacks *falls
-  through* to pyqtgraph with a ``ChiplotPassthroughWarning`` rather than
-  failing, so a wrong spelling does not announce itself at import time — it
-  breaks later, when a chiplot ``Pen`` reaches a pyqtgraph function;
+* no file under ``chisurf/`` may import pyqtgraph, and there is no allow-list
+  to add yourself to;
+* ``pixi.toml``, ``pyproject.toml`` and the conda recipe do not declare it;
+* asking chiplot for the pyqtgraph backend fails with a message that says it was
+  removed, instead of an unexplained ``KeyError``;
+* use the chiplot spelling -- ``Plot.line`` not ``plot``, ``to_pen`` not
+  ``mkPen`` -- chiplot has no passthrough to a backing library, so another
+  spelling is an ``AttributeError`` where it is written;
 * **if chiplot cannot do it, add the API to chiplot**, then use it. Reaching
-  past the seam "just this once" is what stops a migration ever finishing.
-
-This test fails if a **new** file imports pyqtgraph directly (regression) or if
-a listed file has already been migrated (stale allow-list entry). The end state
-is an empty allow-list (bar the ChiMOL OpenGL module owned by PRD-57).
+  into the backend's internals through ``.native`` is the other way past the
+  seam, and ``test/chiplot_native_allowlist.txt`` (empty, and it stays so) is
+  its guard.
 """
 
 from __future__ import annotations
@@ -26,10 +25,10 @@ import ast
 import pathlib
 import re
 
+import pytest
+
 _ROOT = pathlib.Path(__file__).resolve().parent.parent
 _PKG = _ROOT / "chisurf"
-_ALLOWLIST = _ROOT / "test" / "pyqtgraph_import_allowlist.txt"
-_SANCTIONED = "chisurf/gui/chiplot/backends/pyqtgraph_backend.py"
 _IMPORT_RE = re.compile(r"^\s*(?:import\s+pyqtgraph|from\s+pyqtgraph)", re.MULTILINE)
 _DOCKAREA_RE = re.compile(
     r"^\s*(?:import\s+pyqtgraph\.dockarea|from\s+pyqtgraph\.dockarea\s+import|"
@@ -38,57 +37,63 @@ _DOCKAREA_RE = re.compile(
 )
 
 
-def _load_allowlist() -> set[str]:
-    lines = _ALLOWLIST.read_text().splitlines()
-    return {ln.strip() for ln in lines if ln.strip() and not ln.startswith("#")}
-
-
 def _current_importers() -> set[str]:
     found = set()
     for path in _PKG.rglob("*.py"):
-        rel = path.relative_to(_ROOT).as_posix()
-        if rel == _SANCTIONED:
-            continue
         if _IMPORT_RE.search(path.read_text(encoding="utf-8", errors="ignore")):
-            found.add(rel)
+            found.add(path.relative_to(_ROOT).as_posix())
     return found
 
 
-def test_no_new_direct_pyqtgraph_imports():
-    """No file outside the sanctioned backend imports pyqtgraph unless allow-listed."""
-    allow = _load_allowlist()
-    current = _current_importers()
-
-    new_offenders = sorted(current - allow)
-    assert not new_offenders, (
-        "New direct pyqtgraph import(s) detected — plot through "
-        "chisurf.gui.chiplot instead (PRD-64):\n  "
-        + "\n  ".join(new_offenders)
-        + "\n\nDo NOT add these to test/pyqtgraph_import_allowlist.txt: that list "
-        "only shrinks. Port the call site — Plot.line(x, y, pen=…, width=…, "
-        "style=…, name=…) rather than plot(...)/mkPen(...) — and if chiplot "
-        "cannot express it, add the API to chiplot first."
+def test_nothing_imports_pyqtgraph():
+    """No file under ``chisurf/`` imports pyqtgraph; there is no allow-list."""
+    offenders = sorted(_current_importers())
+    assert not offenders, (
+        "pyqtgraph was removed -- plot through chisurf.gui.chiplot instead:\n  "
+        + "\n  ".join(offenders)
     )
-
-
-def test_allowlist_has_no_stale_entries():
-    """Every allow-listed file still imports pyqtgraph; migrated ones must be removed."""
-    allow = _load_allowlist()
-    current = _current_importers()
-
-    stale = sorted(allow - current)
-    assert not stale, (
-        "Allow-list entries no longer import pyqtgraph — remove them from "
-        "test/pyqtgraph_import_allowlist.txt:\n  " + "\n  ".join(stale)
+    assert not (_ROOT / "test" / "pyqtgraph_import_allowlist.txt").exists(), (
+        "the import allow-list is retired with the dependency"
     )
+    assert not (_PKG / "gui" / "chiplot" / "backends" / "pyqtgraph_backend.py").exists()
+    assert not (_PKG / "gui" / "chiplot" / "_passthrough.py").exists()
+
+
+@pytest.mark.parametrize("manifest", ["pixi.toml", "pyproject.toml", "rattler-recipe/recipe.yaml"])
+def test_the_dependency_is_not_declared(manifest):
+    """pyqtgraph is in no dependency list: the build files do not pull it in."""
+    text = (_ROOT / manifest).read_text(encoding="utf-8")
+    declared = [
+        line.strip()
+        for line in text.splitlines()
+        if "pyqtgraph" in line.lower() and not line.strip().startswith("#")
+    ]
+    assert not declared, f"{manifest} still declares pyqtgraph: {declared}"
+
+
+def test_asking_for_the_pyqtgraph_backend_says_it_was_removed(monkeypatch):
+    """A stale ``CHISURF_PLOT_BACKEND=pyqtgraph`` or settings value fails with the reason."""
+    from chisurf.gui.chiplot import backends
+
+    monkeypatch.setenv("CHISURF_PLOT_BACKEND", "pyqtgraph")
+    monkeypatch.setattr(backends, "_active", None)
+    with pytest.raises(KeyError, match="pyqtgraph backend was removed"):
+        backends.get_backend()
+    with pytest.raises(KeyError, match="pyqtgraph backend was removed"):
+        backends.set_backend("pyqtgraph")
+    assert backends.available_backends() == ["emtk"]
+    # an unknown name still lists what is registered
+    monkeypatch.setenv("CHISURF_PLOT_BACKEND", "nonesuch")
+    monkeypatch.setattr(backends, "_active", None)
+    with pytest.raises(KeyError, match="registered"):
+        backends.get_backend()
 
 
 def test_no_pyqtgraph_dockarea():
     """``pyqtgraph.dockarea`` is deprecated repo-wide — use the chisurf DockArea.
 
     Replaced by ``chisurf.gui.widgets.dock_area.dock_area`` (DockArea /
-    DockSplitter). This guard forbids reintroducing the pyqtgraph dock system
-    anywhere, including the sanctioned chiplot backend.
+    DockSplitter). This guard forbids reintroducing the pyqtgraph dock system.
     """
     offenders = sorted(
         path.relative_to(_ROOT).as_posix()
@@ -103,15 +108,14 @@ def test_no_pyqtgraph_dockarea():
 
 # ── the other way past the seam: ``.native`` ──────────────────────────────────
 #
-# ``Plot.native`` is the *documented* escape hatch to the backing pyqtgraph
-# object, which makes it the invisible one: it reaches pyqtgraph without
-# importing it, so every check above passes while the call site is as coupled to
-# the renderer as a direct import. Worse, most of these are not gaps at all —
-# they predate the chiplot API that now covers them (``set_si_prefix``,
-# ``set_axis_visible``, ``set_tick_spacing``, ``legend``), so they are simply
-# legacy that nobody had a reason to notice.
+# ``Plot.native`` is the *documented* escape hatch to the backend's own object
+# (emtk's display list), which makes it the invisible one: it reaches the
+# renderer without importing it, so every check above passes while the call site
+# is as coupled to the renderer as a direct import. Most of these were never
+# gaps -- they predate the chiplot API that covers them (``set_si_prefix``,
+# ``set_axis_visible``, ``set_tick_spacing``, ``legend``).
 #
-# Same contract as the import list: shrinking, never somewhere to add yourself.
+# The list is empty, and adding to it is never the fix.
 
 _NATIVE_ALLOWLIST = _ROOT / "test" / "chiplot_native_allowlist.txt"
 #: ``.native`` on a chiplot handle or canvas. Deliberately loose — it also
@@ -162,7 +166,7 @@ def test_no_new_reaches_past_the_chiplot_seam():
     """A file outside chiplot must not reach the renderer through ``.native``."""
     offenders = sorted(_current_native_users() - _load_native_allowlist())
     assert not offenders, (
-        "these files reach pyqtgraph through the chiplot escape hatch:\n  "
+        "these files reach the renderer through the chiplot escape hatch:\n  "
         + "\n  ".join(offenders)
         + "\n\nCheck whether chiplot already has the API — most of these predate "
         "one that exists (set_si_prefix, set_axis_visible, set_tick_spacing, "

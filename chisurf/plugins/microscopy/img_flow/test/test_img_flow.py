@@ -393,14 +393,12 @@ def test_the_manifest_declares_what_the_code_implements():
             assert schema.get("description"), f"{method.name}.{name}"
 
 
-def test_the_field_is_drawn_through_chiplot_and_nothing_falls_through(qapp):
-    """No pyqtgraph, and nothing quietly passing *through* chiplot either.
+def test_the_field_is_drawn_through_chiplot_alone(qapp):
+    """No pyqtgraph import, and the field draws with chiplot's own verbs.
 
-    Two different mistakes. Importing pyqtgraph is caught by
-    ``test/test_pyqtgraph_seam.py``; calling a chiplot object with a spelling
-    chiplot does not have is not — it *falls through* to the backend with a
-    warning and keeps working, so the plugin silently opts itself out of the
-    migration while every screenshot still looks right (PRD-64).
+    Importing pyqtgraph is caught by ``test/test_pyqtgraph_seam.py``; a spelling chiplot
+    does not have is an ``AttributeError`` (chiplot has no passthrough), so drawing the
+    field without one proves it.
     """
     import numpy as np
 
@@ -419,7 +417,6 @@ def test_the_field_is_drawn_through_chiplot_and_nothing_falls_through(qapp):
         def flow_extent(self):
             return (0.0, 2.4, 0.0, 2.4)
 
-    before = set(chiplot.passthrough_gaps())
     widget = QuiverSectionWidget(
         Model(),
         "",
@@ -431,7 +428,6 @@ def test_the_field_is_drawn_through_chiplot_and_nothing_falls_through(qapp):
     )
     widget.refresh()
     assert "4 of 4 arrows" in widget.caption.text()
-    assert set(chiplot.passthrough_gaps()) - before == set()
 
     banned = "import " + "pyqtgraph"  # split so this file is not its own hit
     source = pathlib.Path(chisurf.plugins.microscopy.img_flow.__file__).parent

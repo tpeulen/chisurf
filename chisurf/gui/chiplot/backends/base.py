@@ -6,8 +6,8 @@ multi-panel :class:`GridCanvas` — plus global configuration.
 
 The public :class:`~chisurf.gui.chiplot.Plot` / :class:`~chisurf.gui.chiplot.Grid`
 wrappers delegate to these. Concrete backends live alongside this module
-(``pyqtgraph_backend`` today, an OpenGL backend later); only they may import a
-third-party rendering library, so swapping backends never touches call sites.
+(``emtk_backend`` today); only they may import a rendering library, so swapping
+backends never touches call sites.
 """
 
 from __future__ import annotations
@@ -501,8 +501,7 @@ class GridCanvas(abc.ABC):
 class ImageViewCanvas(abc.ABC):
     """An image viewer: image + intensity/LUT histogram + (3-D) frame slider.
 
-    Wraps the renderer's composite image-view widget (pyqtgraph ``ImageView``
-    today). Overlays and ROIs live on its internal view.
+    Wraps the renderer's composite image-view widget. Overlays and ROIs live on its internal view.
     """
 
     @abc.abstractmethod
@@ -565,6 +564,78 @@ class ImageViewCanvas(abc.ABC):
     @abc.abstractmethod
     def native(self):
         """The backend-specific image-view object (escape hatch)."""
+
+    # -- what an interactive image dock needs beyond showing a picture ------
+    # Not abstract: a backend that cannot do one of these raises, by name,
+    # instead of drawing a dock that silently ignores the request.
+    def _unsupported(self, what: str):
+        raise NotImplementedError(f"the {type(self).__name__} backend has no {what}")
+
+    @property
+    def frame_count(self) -> int:
+        """Number of frames in the shown stack (``1`` for a single image)."""
+        self._unsupported("frame stepping")
+
+    @property
+    def frame(self) -> int:
+        """Index of the frame being shown."""
+        self._unsupported("frame stepping")
+
+    def set_frame(self, index: int) -> None:
+        """Show frame *index* (wrapping) of the stack."""
+        self._unsupported("frame stepping")
+
+    def on_frame_changed(self, callback) -> None:
+        """Call ``callback(index)`` when the shown frame changes."""
+        self._unsupported("frame stepping")
+
+    def colorbar_widget(self) -> QtWidgets.QWidget | None:
+        """The colour ramp widget with draggable levels, or ``None`` without one."""
+        return None
+
+    def set_extent(self, extent) -> None:
+        """Place the picture on ``(x0, x1, y0, y1)`` axes; ``None`` = pixel indices."""
+        self._unsupported("extent placement")
+
+    def set_labels(self, *, bottom=None, left=None) -> None:
+        """Title the axes."""
+        self._unsupported("axis titles")
+
+    def set_axes_visible(self, visible: bool) -> None:
+        """Show or hide tick numbers and titles."""
+        self._unsupported("axes")
+
+    def invert_y(self, invert: bool = True) -> None:
+        """Row 0 at the top (``True``) or the bottom."""
+        self._unsupported("y inversion")
+
+    def set_aspect_locked(self, lock: bool = True) -> None:
+        """Square pixels, or fill the panel."""
+        self._unsupported("aspect locking")
+
+    def auto_range(self) -> None:
+        """Fit the view to the picture."""
+        self._unsupported("auto range")
+
+    def view_range(self):
+        """The visible ``((x0, x1), (y0, y1))``."""
+        self._unsupported("view range")
+
+    def add_marks(self, x, y, **style) -> H.Scatter:
+        """Draw symbols over the picture."""
+        self._unsupported("marks")
+
+    def add_text(self, text, pos, **style) -> H.Text:
+        """Write text at a data position."""
+        self._unsupported("text")
+
+    def on_hover(self, callback) -> None:
+        """Register ``callback(x, y)`` for pointer motion."""
+        self._unsupported("hover reporting")
+
+    def set_paint_handler(self, handler) -> None:
+        """Hand the left drag to ``handler(phase, x, y)``."""
+        self._unsupported("painting")
 
 
 class VolumeViewCanvas(abc.ABC):
@@ -655,13 +726,3 @@ class Backend(abc.ABC):
     @abc.abstractmethod
     def configure(self, **global_opts) -> None:
         """Apply process-wide rendering options (antialiasing, defaults)."""
-
-    def raw_module(self):
-        """Return the underlying rendering library module, or ``None``.
-
-        This is the passthrough target: symbols chiplot does not natively offer
-        are resolved from here (flagged) so migration can proceed before every
-        pyqtgraph feature has a chiplot equivalent. A fully native backend that
-        has no third-party library to fall through to returns ``None``.
-        """
-        return None

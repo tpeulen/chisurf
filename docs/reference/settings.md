@@ -400,7 +400,7 @@ protein MC plots, etc.).
   fit ranges.
 
 - **`hideTitle`**  
-  If true, hides the titles of pyqtgraph `Dock` widgets in multi‑panel
+  If true, hides the titles of the dock widgets in multi‑panel
   plots (e.g. AV plots, protein MC plots).
 
 - **`label_axis`**  
@@ -408,9 +408,9 @@ protein MC plots, etc.).
   clarity in modern plots.
 
 - **`pyqtgraph_config`**  
-  Sub‑dictionary with low‑level pyqtgraph options such as `antialias`,
-  `background`, `foreground`, or `leftButtonPan`. Applied when initializing
-  pyqtgraph widgets.
+  Sub‑dictionary named after the removed pyqtgraph backend (saved settings use the
+  key): `antialias`, `background`, `foreground`, `leftButtonPan`. It is handed to
+  `chiplot.configure()`, which the emtk renderer largely ignores.
 
 - **`colors`**  
   Named colors used in most line plots:

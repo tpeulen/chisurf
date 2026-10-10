@@ -1,4 +1,4 @@
-"""A/B screenshot comparison of the chiplot backends.
+"""Screenshot recipes for the chiplot backends (emtk is the only one; pyqtgraph was removed).
 
 Renders the same example plots through each backend and saves paired PNGs so
 the output can be compared side by side::
@@ -9,9 +9,9 @@ the output can be compared side by side::
 
 Usage::
 
-    python test/gui/chiplot_ab_screenshots.py                # pyqtgraph + emtk
+    python test/gui/chiplot_ab_screenshots.py                # emtk
 
-Both backends paint through QPainter, so they grab headlessly like any other
+The backend paints through QPainter, so they grab headlessly like any other
 widget and this script needs no display.
 
 The recipes are deliberately *realistic*: the decay carries a constant
@@ -27,9 +27,9 @@ import pathlib
 import sys
 
 RENDER_DIR = pathlib.Path("renders")
-SUFFIX = {"pyqtgraph": "pg", "emtk": "emtk"}
+SUFFIX = {"emtk": "emtk"}
 
-_backends = [a for a in sys.argv[1:] if not a.startswith("-")] or ["pyqtgraph", "emtk"]
+_backends = [a for a in sys.argv[1:] if not a.startswith("-")] or ["emtk"]
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from qtpy import QtCore, QtGui, QtWidgets  # noqa: E402

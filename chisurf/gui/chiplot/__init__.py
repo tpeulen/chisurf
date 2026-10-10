@@ -1,9 +1,9 @@
 """chiplot — ChiSurf's renderer-neutral plotting API.
 
 chiplot is the single seam through which ChiSurf draws 2-D plots. Call sites
-use this package; they never import a rendering library directly. A backend
-(pyqtgraph today, an OpenGL renderer later) is selected at runtime and can be
-swapped without touching any call site.
+use this package; they never import a rendering library directly. The backend
+(emtk, drawn through its own painter) is selected at runtime; another renderer
+can be registered without touching any call site.
 
 Quick start
 -----------
@@ -27,12 +27,6 @@ Public surface
 
 from __future__ import annotations
 
-from chisurf.gui.chiplot._passthrough import (
-    ChiplotPassthroughWarning,
-    passthrough_gaps,
-    record_and_warn,
-    reset_gaps,
-)
 from chisurf.gui.chiplot.backends import available_backends, get_backend, set_backend
 from chisurf.gui.chiplot.canvas import Grid, ImageView, Panel, PanelPlot, Plot, PlotAPI, VolumeView
 from chisurf.gui.chiplot.handles import Orientation, Symbol
@@ -64,35 +58,6 @@ def configure(**global_opts) -> None:
     get_backend().configure(**global_opts)
 
 
-def __getattr__(name: str):
-    """Resolve unknown names from the backend's raw library, flagged.
-
-    chiplot's native API (see ``__all__``) is preferred. Anything it does not
-    offer yet — ``mkPen``, ``PlotWidget``, ``LinearRegionItem``, … — falls
-    through to the active backend's underlying module (pyqtgraph) and is
-    recorded as a migration gap via :func:`passthrough_gaps`. This lets a call
-    site switch to ``import chisurf.gui.chiplot as pg`` and keep working while
-    the native surface grows.
-
-    Parameters
-    ----------
-    name : str
-        Attribute requested from the ``chisurf.gui.chiplot`` module.
-
-    Raises
-    ------
-    AttributeError
-        If neither chiplot nor the backend's raw module provides ``name``.
-    """
-    if name.startswith("__"):
-        raise AttributeError(name)
-    raw = get_backend().raw_module()
-    if raw is not None and hasattr(raw, name):
-        record_and_warn("module", name)
-        return getattr(raw, name)
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-
 __all__ = [
     "Plot",
     "Grid",
@@ -118,7 +83,4 @@ __all__ = [
     "set_backend",
     "get_backend",
     "available_backends",
-    "ChiplotPassthroughWarning",
-    "passthrough_gaps",
-    "reset_gaps",
 ]

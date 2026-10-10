@@ -22,8 +22,8 @@ curves -- raises :class:`NotImplementedError` naming what is
 missing, because a plot that silently omits half of what it was asked to draw
 is worse than one that says so. Those are the open front recorded in okf/subsystems/chiplot.md.
 
-It is the default backend; ``CHISURF_PLOT_BACKEND=pyqtgraph`` or
-``gui.plot.backend: pyqtgraph`` selects the other one.
+It is the only backend (the pyqtgraph one was removed); ``CHISURF_PLOT_BACKEND=pyqtgraph``
+or ``gui.plot.backend: pyqtgraph`` fails with a message saying so.
 """
 
 from __future__ import annotations
@@ -169,6 +169,59 @@ def _whiskers(xs, height=None, top=None, bottom=None) -> tuple[np.ndarray, np.nd
     return tops, bottoms
 
 
+def _stroke_segment(painter, a, b, width: float, colour) -> None:
+    """A straight line of *width* pixels between *a* and *b*, as two triangles."""
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    length = math.hypot(dx, dy)
+    if length == 0.0:
+        return
+    nx, ny = -dy / length * width / 2.0, dx / length * width / 2.0
+    p0, p1 = (a[0] + nx, a[1] + ny), (a[0] - nx, a[1] - ny)
+    p2, p3 = (b[0] - nx, b[1] - ny), (b[0] + nx, b[1] + ny)
+    painter.fill_triangle(p0, p1, p2, colour)
+    painter.fill_triangle(p0, p2, p3, colour)
+
+
+def _draw_symbol(painter, x, y, symbol, size, brush, pen, width) -> None:
+    """One marker centred on ``(x, y)``: filled with *brush*, outlined with *pen*.
+
+    The painter draws rectangles and triangles, so a circle is a fan and an
+    outline is a ring of thin quads. Either colour may be ``None`` (a hollow
+    marker has no brush, a flat one no pen).
+    """
+    half = size / 2.0
+    if symbol in ("+", "x"):
+        colour = pen or brush
+        if colour is None:
+            return
+        if symbol == "+":
+            spans = [((x - half, y), (x + half, y)), ((x, y - half), (x, y + half))]
+        else:
+            spans = [((x - half, y - half), (x + half, y + half)),
+                     ((x - half, y + half), (x + half, y - half))]
+        for a, b in spans:
+            _stroke_segment(painter, a, b, max(width, 1.0), colour)
+        return
+    if symbol == "s":
+        outline = [(x - half, y - half), (x + half, y - half), (x + half, y + half),
+                   (x - half, y + half)]
+    elif symbol == "t":
+        outline = [(x, y - half), (x + half, y + half), (x - half, y + half)]
+    elif symbol == "d":
+        outline = [(x, y - half), (x + half, y), (x, y + half), (x - half, y)]
+    else:  # "o" and anything unknown: a circle
+        steps = 20
+        outline = [(x + half * math.cos(2.0 * math.pi * k / steps),
+                    y + half * math.sin(2.0 * math.pi * k / steps)) for k in range(steps)]
+    if brush is not None:
+        for index in range(1, len(outline) - 1):
+            painter.fill_triangle(outline[0], outline[index], outline[index + 1], brush)
+    if pen is not None:
+        for index, point in enumerate(outline):
+            _stroke_segment(painter, point, outline[(index + 1) % len(outline)],
+                            max(width, 1.0), pen)
+
+
 def _lut(colormap, size: int = 256) -> np.ndarray:
     """Return ``colormap`` as an ``(size, 4)`` uint8 RGBA lookup table.
 
@@ -178,6 +231,9 @@ def _lut(colormap, size: int = 256) -> np.ndarray:
     """
     from emtk import colormaps
 
+    if isinstance(colormap, np.ndarray) and colormap.ndim == 2 and colormap.shape[1] == 4:
+        # A table handed over as-is: how an overlay gets a transparent low end.
+        return np.asarray(colormap, dtype=np.uint8)
     name = getattr(colormap, "name", colormap)
     try:
         return np.asarray(colormaps.lookup_table(str(name), size), dtype=np.uint8)
@@ -197,9 +253,21 @@ def _texture(data: np.ndarray, colormap, levels) -> tuple[Any, int, int]:
     """
     from emtk.texture import Texture
 
+    if np.ndim(data) == 3 and np.shape(data)[-1] in (3, 4):
+        # Colours already: RGB(A) as bytes, or as floats in 0..1 (or 0..255).
+        colours = np.asarray(data)
+        if colours.dtype != np.uint8:
+            colours = np.asarray(colours, dtype=float)
+            scale = 255.0 if np.nanmax(colours, initial=0.0) <= 1.0 else 1.0
+            colours = np.clip(colours * scale, 0.0, 255.0).astype(np.uint8)
+        if colours.shape[-1] == 3:
+            alpha = np.full(colours.shape[:2] + (1,), 255, np.uint8)
+            colours = np.concatenate([colours, alpha], axis=2)
+        rows, columns = colours.shape[:2]
+        return Texture(columns, rows, np.ascontiguousarray(colours).tobytes()), rows, columns
     values = np.asarray(data, dtype=float)
     if values.ndim != 2:
-        raise ValueError(f"an image is 2-D; got shape {values.shape}")
+        raise ValueError(f"an image is 2-D (or RGB/RGBA); got shape {values.shape}")
     finite = values[np.isfinite(values)]
     if levels is not None:
         low, high = float(levels[0]), float(levels[1])
@@ -343,7 +411,8 @@ class _Entry:
     # -- Image ---------------------------------------------------------
     def set_image(self, data, **_: Any) -> None:
         """Replace the image's samples, keeping its colours and levels."""
-        self.state["data"] = np.asarray(data, dtype=float)
+        colours = np.ndim(data) == 3 and np.shape(data)[-1] in (3, 4)
+        self.state["data"] = np.asarray(data) if colours else np.asarray(data, dtype=float)
         self.state["texture"] = None
         self._canvas.refresh()
 
@@ -557,6 +626,11 @@ class EmtkCanvas(base.Canvas):
         self._click_callbacks: list[Callable] = []
         self._move_callbacks: list[Callable] = []
         self._range_callbacks: list[Callable] = []
+        #: ``(ratio)`` while the axes keep equal pixels per unit, else ``None``.
+        self._aspect: float | None = None
+        #: ``handler(phase, x, y)`` taking over the left drag (painting), else ``None``.
+        self._paint: Callable | None = None
+        self._painting = False
         #: The Qt host, built when :meth:`widget` is first asked for. A panel
         #: drawn as a control by an emtk surface never needs one.
         self._widget = None
@@ -627,6 +701,15 @@ class EmtkCanvas(base.Canvas):
 
         x_range = self._to_axis("x", self._range["x"]) or self._group_x_extent()
         y_range = self._to_axis("y", self._range["y"]) or self._fitted(1, 0.04)
+        if self._aspect is not None and x_range and y_range:
+            # Equal pixels per unit on both axes: the box shrinks to the range's
+            # proportions and sits in the middle of what the panel was given.
+            span_x, span_y = abs(x_range[1] - x_range[0]), abs(y_range[1] - y_range[0])
+            if span_x > 0.0 and span_y > 0.0:
+                unit = min(bw / span_x, bh / (span_y * self._aspect))
+                fitted_w, fitted_h = span_x * unit, span_y * unit * self._aspect
+                bx, by = bx + (bw - fitted_w) / 2.0, by + (bh - fitted_h) / 2.0
+                bw, bh = max(fitted_w, 8.0), max(fitted_h, 8.0)
         plot = EmtkPlot(
             bx,
             by,
@@ -643,6 +726,9 @@ class EmtkCanvas(base.Canvas):
         plot.y_tick_target = max(3, int(bh // 36))
         plot._x_axis.log_decades = self._log["x"]
         plot._y_axis.log_decades = self._log["y"]
+        # The pictures go down first, so what is drawn over them -- curves,
+        # markers, shapes -- is not hidden by them.
+        plot.underlays.append(self._draw_images)
         plot.underlays.append(self._draw_regions)
         for entry in sorted(self._entries, key=lambda e: e.z):
             if not entry.visible:
@@ -651,9 +737,19 @@ class EmtkCanvas(base.Canvas):
         plot.draw(painter)
         self._drawn = {"x": plot._x_axis.range, "y": plot._y_axis.range}
         # After the axes exist: the plot places its own box and axis ranges in
-        # draw(), and an image is positioned in data coordinates, so it cannot
-        # be blitted before that mapping is known.
-        self._draw_bands(painter, plot)
+        # draw(), and bands, shapes and marks are positioned in data
+        # coordinates, so they cannot be drawn before that mapping is known.
+        painter.push_clip(plot.x, plot.y, plot.w, plot.h)
+        try:
+            self._draw_bands(painter, plot)
+            self._draw_marks(painter, plot)
+        finally:
+            painter.pop_clip()
+        self._draw_axes(painter, plot, x, y, w, h, row)
+        self._draw_texts(painter, plot)
+
+    def _draw_images(self, painter, plot) -> None:
+        """Blit the images ``_draw_entry`` collected, under the series."""
         for texture, x0, y0, width, height in getattr(plot, "_images", []):
             left = plot._x_axis.to_pixels(x0)
             right = plot._x_axis.to_pixels(x0 + width)
@@ -662,8 +758,29 @@ class EmtkCanvas(base.Canvas):
             painter.image(
                 min(left, right), min(top, bottom), abs(right - left), abs(bottom - top), texture
             )
-        self._draw_axes(painter, plot, x, y, w, h, row)
-        self._draw_texts(painter, plot)
+
+    def _draw_marks(self, painter, plot) -> None:
+        """Draw the symbol sets over everything else in the plot area."""
+        for entry in sorted(self._entries, key=lambda e: e.z):
+            if not entry.visible or entry.kind != "marks":
+                continue
+            state = entry.state
+            xs, ys = state["x"], state["y"]
+            pixels = [
+                (plot._x_axis.to_pixels(float(px)), plot._y_axis.to_pixels(float(py)))
+                for px, py in zip(xs, ys)
+            ]
+            for px, py in pixels:
+                _draw_symbol(
+                    painter,
+                    px,
+                    py,
+                    str(state.get("symbol", "o")),
+                    float(state.get("size", 7.0)),
+                    state.get("brush"),
+                    state.get("pen"),
+                    float(state.get("width", 1.0)),
+                )
 
     def _axis_display(
         self,
@@ -1017,6 +1134,9 @@ class EmtkCanvas(base.Canvas):
                 painter.fill_triangle(
                     (xs[index], ys[index]), (xs[nxt], ys[nxt]), (xs[index], ys[nxt]), (*colour, 60)
                 )
+                _stroke_segment(
+                    painter, (xs[index], ys[index]), (xs[nxt], ys[nxt]), 1.5, (*colour, 255)
+                )
             entry.state["_box"] = (min(xs), min(ys), max(xs), max(ys))
             return
 
@@ -1040,11 +1160,44 @@ class EmtkCanvas(base.Canvas):
             for step in range(1, steps + 1):
                 angle = 2.0 * math.pi * step / steps
                 point = (cx + rx * math.cos(angle), cy + ry * math.sin(angle))
-                painter.fill_triangle((cx, cy), previous, point, (*colour, 60))
+                painter.fill_triangle((cx, cy), previous, point, (*colour, 40))
+                _stroke_segment(painter, previous, point, 1.5, (*colour, 255))
                 previous = point
         else:
             painter.stroke_rect(*box, colour, (*colour, 40))
         entry.state["_box"] = (box[0], box[1], box[0] + box[2], box[1] + box[3])
+        self._draw_grips(painter, plot, entry, colour)
+
+    #: Half the side of a resize grip, in pixels.
+    GRIP = 4.0
+
+    def _grip_at(self, entry: _Entry, px: float, py: float) -> str | None:
+        """``"lo"`` or ``"hi"`` when the press is on a resize grip of *entry*."""
+        grips = entry.state.get("_grips")
+        if not entry.state.get("resizable") or not entry.state.get("movable", True) or not grips:
+            return None
+        for name, (gx, gy) in grips.items():
+            if abs(px - gx) <= self.GRIP + 2.0 and abs(py - gy) <= self.GRIP + 2.0:
+                return name
+        return None
+
+    def _draw_grips(self, painter, plot, entry: _Entry, colour) -> None:
+        """Square grips on the low and high corners of a resizable shape."""
+        if not entry.state.get("resizable") or not entry.state.get("movable", True):
+            entry.state.pop("_grips", None)
+            return
+        x, y = entry.pos
+        width, height = entry.size
+        grips = {
+            "lo": (plot._x_axis.to_pixels(x), plot._y_axis.to_pixels(y)),
+            "hi": (plot._x_axis.to_pixels(x + width), plot._y_axis.to_pixels(y + height)),
+        }
+        entry.state["_grips"] = grips
+        for gx, gy in grips.values():
+            painter.fill_rect(gx - self.GRIP, gy - self.GRIP, 2 * self.GRIP, 2 * self.GRIP,
+                              (*colour, 255))
+            painter.stroke_rect(gx - self.GRIP, gy - self.GRIP, 2 * self.GRIP, 2 * self.GRIP,
+                                (20, 22, 28, 255))
 
     def _draw_arrow(self, painter, plot, entry: _Entry) -> None:
         """A filled head with its tip at ``pos``, sized in pixels.
@@ -1125,11 +1278,11 @@ class EmtkCanvas(base.Canvas):
             for u, v in local
         ]
         centre = (plot._x_axis.to_pixels(cx), plot._y_axis.to_pixels(cy))
-        alpha = 60 if kind == "ellipse" else 40
+        alpha = 40
         for index, point in enumerate(outline):
-            painter.fill_triangle(
-                centre, point, outline[(index + 1) % len(outline)], (*colour, alpha)
-            )
+            following = outline[(index + 1) % len(outline)]
+            painter.fill_triangle(centre, point, following, (*colour, alpha))
+            _stroke_segment(painter, point, following, 1.5, (*colour, 255))
         xs, ys = [p[0] for p in outline], [p[1] for p in outline]
         entry.state["_box"] = (min(xs), min(ys), max(xs), max(ys))
 
@@ -1255,6 +1408,13 @@ class EmtkCanvas(base.Canvas):
                     break
                 continue
             if entry.kind == "roi":
+                grip = self._grip_at(entry, px, py)
+                if grip is not None:
+                    x0, y0 = entry.pos
+                    w0, h0 = entry.size
+                    fixed = (x0 + w0, y0 + h0) if grip == "lo" else (x0, y0)
+                    self._dragging = (entry, ("grip", fixed))
+                    break
                 box = entry.state.get("_box")
                 if box and box[0] <= px <= box[2] and box[1] <= py <= box[3]:
                     self._dragging = (entry, (self._from_pixels(px), self._from_pixels_y(py)))
@@ -1282,15 +1442,27 @@ class EmtkCanvas(base.Canvas):
             if span[0] - 3.0 <= along <= span[1] + 3.0:
                 self._dragging = (entry, convert(along))
                 break
-        if self._dragging is None and self._interactive:
-            # Nothing under the pointer: the gesture pans the view, which is
-            # what dragging a plot does everywhere else.
-            self._panning = (self._from_pixels(px), self._from_pixels_y(py))
+        if self._dragging is None and (self._interactive or self._paint is not None):
+            x, y = self._from_pixels(px), self._from_pixels_y(py)
+            if self._paint is not None:
+                # Nothing under the pointer and a brush is armed: the gesture
+                # paints instead of panning.
+                self._painting = True
+                self._paint_last = (x, y)
+                self._paint("start", x, y)
+            else:
+                # The gesture pans the view, which is what dragging a plot
+                # does everywhere else.
+                self._panning = (x, y)
             for callback in self._click_callbacks:
-                callback(self._from_pixels(px), self._from_pixels_y(py), 1)
+                callback(x, y, 1)
 
     def drag(self, px: float, py: float, *_args: Any) -> None:
         """Move whatever the press picked up, or pan the view."""
+        if self._painting and self._paint is not None:
+            self._paint_last = (self._from_pixels(px), self._from_pixels_y(py))
+            self._paint("move", *self._paint_last)
+            return
         if getattr(self, "_panning", None):
             grabbed_x, grabbed_y = self._panning
             (x0, x1), (y0, y1) = self._view()
@@ -1326,6 +1498,15 @@ class EmtkCanvas(base.Canvas):
             self._dragging = (entry, (edge, at))
             entry._notify(final=False)
             return
+        if entry.kind == "roi" and grabbed_at[0] == "grip":
+            # A corner follows the pointer; the opposite one stays where it was
+            # when the grip was taken, even if the pointer crosses it.
+            fixed_x, fixed_y = grabbed_at[1]
+            now_x, now_y = self._from_pixels(px), self._from_pixels_y(py)
+            entry.set_pos((min(fixed_x, now_x), min(fixed_y, now_y)))
+            entry.set_size((max(abs(now_x - fixed_x), 1e-9), max(abs(now_y - fixed_y), 1e-9)))
+            entry._notify(final=False)
+            return
         if entry.kind == "roi":
             grabbed_x, grabbed_y = grabbed_at
             now_x, now_y = self._from_pixels(px), self._from_pixels_y(py)
@@ -1347,6 +1528,13 @@ class EmtkCanvas(base.Canvas):
 
     def release(self, *_args: Any) -> None:
         """Finish the drag and tell the listeners where it ended."""
+        if self._painting:
+            self._painting = False
+            if self._paint is not None:
+                self._paint("end", *getattr(self, "_paint_last", (0.0, 0.0)))
+            self._dragging = None
+            self._panning = None
+            return
         if getattr(self, "_dragging", None):
             entry, _ = self._dragging
             if entry.kind != "text":
@@ -1387,7 +1575,7 @@ class EmtkCanvas(base.Canvas):
         if state.get("texture") is None or state.get("_upright") != upright:
             data = np.asarray(state["data"])
             if state.get("col_major"):
-                data = data.T
+                data = data.T if data.ndim == 2 else np.transpose(data, (1, 0, 2))
             state["texture"], rows, columns = _texture(
                 data[::-1] if upright else data, state.get("colormap"), state.get("levels")
             )
@@ -1484,6 +1672,26 @@ class EmtkCanvas(base.Canvas):
             color=_rgb(brush, _rgb(pen)),
             symbol_size=size,
             symbol=symbol,
+        )
+
+    def add_marks(self, x, y, *, symbol="o", size=7.0, pen=None, brush=None, width=1.0) -> H.Scatter:
+        """Draw a set of symbols over the plot area and return its handle.
+
+        Unlike :meth:`add_scatter` these are drawn after the images, shapes and
+        bands, so they are never hidden by a picture, and each symbol has its own
+        fill and outline (``brush`` / ``pen`` of ``None`` = hollow / flat).
+        """
+        xs, ys = _finite_pairs(x, y)
+        symbol = getattr(symbol, "value", symbol)
+        return self._add(
+            "marks",
+            x=xs,
+            y=ys,
+            symbol=str(symbol),
+            size=float(size),
+            pen=None if pen is None else _rgba(pen, (255, 255, 255, 255)),
+            brush=None if brush is None else _rgba(brush, (255, 255, 255, 255)),
+            width=float(width),
         )
 
     def add_marker(
@@ -1765,7 +1973,9 @@ class EmtkCanvas(base.Canvas):
         """Not offered: emtk chooses its own tick interval."""
 
     def set_aspect_locked(self, lock: bool, ratio: float = 1.0) -> None:
-        """Not offered yet; the panel always fills its widget."""
+        """Keep equal pixels per unit on both axes (``ratio`` is y-over-x), or free them."""
+        self._aspect = float(ratio) if lock else None
+        self.refresh()
 
     def set_si_prefix(self, *, x=None, y=None) -> None:
         """Toggle SI scaling of tick text and unit prefixes, keeping data unchanged."""
@@ -1787,6 +1997,17 @@ class EmtkCanvas(base.Canvas):
     def on_mouse_move(self, callback) -> None:
         """Register ``callback(x, y)`` for pointer motion in data coordinates."""
         self._move_callbacks.append(callback)
+
+    def set_paint_handler(self, handler: Callable | None) -> None:
+        """Give the left drag to ``handler(phase, x, y)`` instead of panning.
+
+        ``phase`` is ``"start"``, ``"move"`` or ``"end"`` and ``x``, ``y`` are in
+        data coordinates (``"end"`` repeats the last position). A drag that
+        starts on a shape, region or label still moves that, so painting never
+        steals a handle. ``None`` restores panning.
+        """
+        self._paint = handler
+        self._painting = False
 
     def set_interactive(self, *, mouse=None, menu=None) -> None:
         """Enable or disable mouse pan and zoom."""
@@ -1828,8 +2049,7 @@ class EmtkCanvas(base.Canvas):
     # -- the families this backend does not draw yet -------------------
     def _unsupported(self, what: str):
         raise NotImplementedError(
-            f"emtk: {what} is not drawn yet; use CHISURF_PLOT_BACKEND="
-            f"pyqtgraph for a plot that needs it"
+            f"emtk: {what} is not drawn yet (open front: okf/subsystems/chiplot.md)"
         )
 
     def add_bars(self, x, height, *, width=None, pen=None, brush=None) -> H.Bars:
@@ -1873,13 +2093,14 @@ class EmtkCanvas(base.Canvas):
 
     def add_image(self, data, *, colormap=None, levels=None, rect=None, axis_order=None) -> H.Image:
         """Draw an image or heatmap and return its handle."""
-        values = np.asarray(data, dtype=float)
-        if values.ndim != 2:
-            raise ValueError(f"an image is 2-D; got shape {values.shape}")
+        rgb = np.ndim(data) == 3 and np.shape(data)[-1] in (3, 4)
+        values = np.asarray(data) if rgb else np.asarray(data, dtype=float)
+        if values.ndim != 2 and not rgb:
+            raise ValueError(f"an image is 2-D (or RGB/RGBA); got shape {values.shape}")
         if str(axis_order or "row-major") not in ("row-major", "col-major"):
             raise ValueError(f"unknown axis order {axis_order!r}")
         col_major = str(axis_order) == "col-major"
-        rows, columns = values.shape[::-1] if col_major else values.shape
+        rows, columns = values.shape[:2][::-1] if col_major else values.shape[:2]
         return self._add(
             "image",
             data=values,
@@ -1917,19 +2138,20 @@ class EmtkCanvas(base.Canvas):
         rotatable=False,
         points=None,
         angle=0.0,
+        resizable=False,
     ) -> H.Roi:
         """Draw a region of interest and return its handle.
 
         Rectangles, ellipses, polygons and polylines are drawn and can be
         dragged; a rectangle or ellipse is turned ``angle`` degrees about its
-        centre. Resize and rotation grips are not drawn: a shape is moved whole,
-        and its size and angle are set programmatically.
+        centre. A shape is moved whole; ``resizable`` adds a grip on two opposite
+        corners of an upright rectangle or ellipse that resizes it. Rotation
+        grips are not drawn: the angle is set programmatically.
         """
         shape = str(getattr(kind, "value", kind)).lower()
         if shape not in ("rect", "rectangle", "ellipse", "circle", "polygon", "polyline"):
             raise NotImplementedError(
-                f"emtk: a {shape!r} region of interest is not drawn yet; "
-                f"use CHISURF_PLOT_BACKEND=pyqtgraph for one"
+                f"emtk: a {shape!r} region of interest is not drawn yet"
             )
         shape = {"rectangle": "rect", "circle": "ellipse"}.get(shape, shape)
         vertices = [(float(x), float(y)) for x, y in (points or [])]
@@ -1946,6 +2168,7 @@ class EmtkCanvas(base.Canvas):
             size=(float(size[0]), float(size[1])) if size is not None else (1.0, 1.0),
             points=vertices,
             movable=bool(movable),
+            resizable=bool(resizable) and shape in ("rect", "ellipse") and not angle,
             color=_rgb(pen, (240, 200, 90)),
         )
 
@@ -2007,28 +2230,50 @@ class EmtkCanvas(base.Canvas):
 
 
 class EmtkImageView(base.ImageViewCanvas):
-    """An image view: one canvas showing a picture, with a frame slider.
+    """An image view: one canvas showing a picture, with a frame stepper.
 
-    pyqtgraph's ImageView is a widget of its own with a LUT panel and a
-    timeline. Here it is the panel that already draws images, plus the two
-    things the view adds -- a stack it can step through, and clicks reported
+    The canvas already draws images with axes, pan and zoom; the view adds
+    what makes it an *image* viewer -- a stack it can step through (the Qt
+    slider belongs to :class:`chisurf.gui.chiplot.ImageView`), the picture
+    placed on real axes, square pixels, image row order, and clicks reported
     in image coordinates.
     """
 
     def __init__(self, **opts: Any) -> None:
         self._canvas = EmtkCanvas(**opts)
+        self._canvas.set_axis_visible("left", False)
+        self._canvas.set_axis_visible("bottom", False)
+        self._canvas.set_grid(x=False, y=False)
+        self._canvas.invert_y(True)
+        self._canvas.set_aspect_locked(True)
         self._stack: np.ndarray | None = None
         self._frame = 0
         self._image: _Entry | None = None
         self._colormap: Any = "viridis"
         self._overlays: list[_Entry] = []
+        self._extent: tuple[float, float, float, float] | None = None
+        self._frame_callbacks: list[Callable] = []
+        self._bar: _ColorBar | None = None
+        self._ramp_width: int | None = None
 
     def widget(self) -> QtWidgets.QWidget:
         """Return the embeddable Qt widget."""
         return self._canvas.widget()
 
+    def _rect_for(self, rows: int, columns: int) -> tuple[float, float, float, float]:
+        """Where a ``rows x columns`` picture sits: the extent, or its pixels."""
+        if self._extent is not None:
+            x0, x1, y0, y1 = self._extent
+            return (x0, y0, x1 - x0, y1 - y0)
+        return (0.0, 0.0, float(columns), float(rows))
+
     def set_image(self, data, *, auto_levels: bool = True, axes=None) -> None:
-        """Show an image, or a ``(t, y, x)`` stack whose first frame is shown."""
+        """Show an image, or a ``(t, y, x)`` stack whose first frame is shown.
+
+        A stack is mapped over its **whole** range so stepping through it does
+        not rescale every frame; ``axes`` is accepted for the old
+        ``pg.ImageView`` spelling and ignored, the order is always ``(t, row, column)``.
+        """
         values = np.asarray(data, dtype=float)
         if values.ndim == 3:
             self._stack = values
@@ -2039,12 +2284,45 @@ class EmtkImageView(base.ImageViewCanvas):
         else:
             raise ValueError(f"an image view takes 2-D or 3-D data; got {values.shape}")
         self._frame = 0
+        rect = self._rect_for(*frame.shape)
         if self._image is None:
-            self._image = self._canvas.add_image(frame, colormap=self._colormap)
+            self._image = self._canvas.add_image(frame, colormap=self._colormap, rect=rect)
+            first = True
         else:
+            first = self._image.state.get("rect") != rect or self._image.get_image().shape != frame.shape
             self._image.set_image(frame)
-            if auto_levels:
+            self._image.set_rect(*rect)
+        if auto_levels:
+            if self._stack is not None:
+                finite = values[np.isfinite(values)]
+                low, high = (
+                    (float(finite.min()), float(finite.max())) if finite.size else (0.0, 1.0)
+                )
+                self._image.set_levels(low, high)
+            else:
                 self._image.auto_levels()
+        if first:
+            self._canvas.auto_range()
+        if self._bar is None:
+            self._bar = _ColorBar(self._image)
+            self.set_histogram_width(self._ramp_width)
+        self._bar.widget().update()
+        for callback in self._frame_callbacks:
+            callback(0)
+
+    def colorbar_widget(self) -> QtWidgets.QWidget | None:
+        """The colour ramp with draggable levels, once an image is shown (else ``None``)."""
+        return None if self._bar is None else self._bar.widget()
+
+    @property
+    def frame_count(self) -> int:
+        """Number of frames: the stack's length, ``1`` for a single image."""
+        return 1 if self._stack is None else int(self._stack.shape[0])
+
+    @property
+    def frame(self) -> int:
+        """The frame being shown."""
+        return self._frame
 
     def set_frame(self, index: int) -> None:
         """Show frame *index* of a stack (a no-op for a single image)."""
@@ -2053,34 +2331,112 @@ class EmtkImageView(base.ImageViewCanvas):
         self._frame = int(index) % self._stack.shape[0]
         if self._image is not None:
             self._image.set_image(self._stack[self._frame])
+        for callback in self._frame_callbacks:
+            callback(self._frame)
+
+    def on_frame_changed(self, callback) -> None:
+        """Call ``callback(index)`` whenever the shown frame changes."""
+        self._frame_callbacks.append(callback)
+
+    def set_extent(self, extent) -> None:
+        """Place the picture on real axes ``(x0, x1, y0, y1)``; ``None`` = pixel indices."""
+        changed = extent is not None and tuple(extent) != self._extent
+        self._extent = None if extent is None else tuple(float(v) for v in extent)
+        self._replace_rects()
+        if changed or extent is None:
+            self._canvas.auto_range()
+
+    def _replace_rects(self) -> None:
+        """Re-place the picture and every overlay on the current extent."""
+        for entry in [self._image, *self._overlays]:
+            if entry is None:
+                continue
+            rows, columns = np.asarray(entry.get_image()).shape[:2]
+            entry.set_rect(*self._rect_for(rows, columns))
+
+    def set_labels(self, *, bottom=None, left=None) -> None:
+        """Title the axes; either one makes the axes visible."""
+        self._canvas.set_labels(bottom=bottom, left=left)
+
+    def set_axes_visible(self, visible: bool) -> None:
+        """Draw tick numbers and titles on both axes (off: a bare picture)."""
+        for side in ("left", "bottom"):
+            self._canvas.set_axis_visible(side, visible)
+
+    def invert_y(self, invert: bool = True) -> None:
+        """Row 0 at the top (``True``, the picture convention) or at the bottom."""
+        self._canvas.invert_y(invert)
+
+    def set_aspect_locked(self, lock: bool = True) -> None:
+        """Square pixels, or fill the panel."""
+        self._canvas.set_aspect_locked(lock)
+
+    def auto_range(self) -> None:
+        """Fit the view to the picture."""
+        self._canvas.auto_range()
+
+    def view_range(self):
+        """The visible ``((x0, x1), (y0, y1))`` in axis units."""
+        return self._canvas.get_range()
 
     def set_colormap(self, name, source: str = "matplotlib") -> None:
         """Apply a named colormap."""
         self._colormap = name
         if self._image is not None:
             self._image.set_colormap(name)
+        if self._bar is not None:
+            self._bar.widget().update()
 
     def clear(self) -> None:
         """Clear the image and its overlays."""
         self._canvas.clear()
         self._image = None
+        if self._bar is not None:
+            self._bar.widget().setParent(None)
+            self._bar = None
         self._overlays.clear()
         self._stack = None
+        self._frame = 0
 
     def set_histogram_width(self, width) -> None:
-        """No histogram panel to size: levels are set through the handle."""
+        """Fix the colour ramp's width in pixels, or free it with ``None``."""
+        self._ramp_width = width
+        if self._bar is not None:
+            widget = self._bar.widget()
+            if width is None:
+                widget.setMinimumWidth(56)
+                widget.setMaximumWidth(80)
+            else:
+                widget.setFixedWidth(int(width))
 
     def set_interactive(self, *, mouse=None, menu=None) -> None:
-        """No pan/zoom yet; the view always shows the whole image."""
+        """Toggle pan and zoom."""
+        self._canvas.set_interactive(mouse=mouse, menu=menu)
 
     def add_overlay(self, data, *, colormap=None) -> H.Image:
         """Overlay a second image on the view and return its handle."""
+        rgb = np.ndim(data) == 3
+        values = np.asarray(data) if rgb else np.asarray(data, dtype=float)
         overlay = self._canvas.add_image(
-            np.asarray(data, dtype=float), colormap=colormap or self._colormap
+            values,
+            colormap=self._colormap if colormap is None else colormap,
+            rect=self._rect_for(*values.shape[:2]),
         )
         overlay.z = 1.0 + len(self._overlays)
         self._overlays.append(overlay)
         return overlay
+
+    def add_marks(self, x, y, **style) -> H.Scatter:
+        """Draw symbols (``symbol``, ``size``, ``pen``, ``brush``, ``width``) over the picture."""
+        marks = self._canvas.add_marks(x, y, **style)
+        marks.z = 10.0
+        return marks
+
+    def add_text(self, text, pos, **style) -> H.Text:
+        """Write *text* at data position *pos* (``color``, ``anchor``)."""
+        label = self._canvas.add_text(text, pos, **style)
+        label.z = 11.0
+        return label
 
     def add_roi(
         self,
@@ -2093,6 +2449,7 @@ class EmtkImageView(base.ImageViewCanvas):
         rotatable=False,
         points=None,
         angle=0.0,
+        resizable=False,
     ) -> H.Roi:
         """Add a region of interest to the view and return its handle."""
         return self._canvas.add_roi(
@@ -2104,12 +2461,22 @@ class EmtkImageView(base.ImageViewCanvas):
             rotatable=rotatable,
             points=points,
             angle=angle,
+            resizable=resizable,
         )
 
     def on_click(self, callback) -> None:
-        """Register ``callback(x, y)`` for clicks in image coordinates."""
+        """Register ``callback(x, y)`` for clicks in axis coordinates."""
         self._canvas.on_click(lambda x, y, *_: callback(x, y))
 
+    def on_hover(self, callback) -> None:
+        """Register ``callback(x, y)`` for pointer motion in axis coordinates."""
+        self._canvas.on_mouse_move(callback)
+
+    def set_paint_handler(self, handler) -> None:
+        """Hand the left drag to ``handler(phase, x, y)``; ``None`` restores panning."""
+        self._canvas.set_paint_handler(handler)
+
+    @property
     def native(self) -> Any:
         """The canvas the view draws through."""
         return self._canvas
@@ -2351,9 +2718,3 @@ class EmtkBackend(base.Backend):
 
     def configure(self, **global_opts: Any) -> None:
         """Nothing process-wide to set: emtk draws through its own painter."""
-
-    def raw_module(self):
-        """Return emtk itself."""
-        import emtk
-
-        return emtk

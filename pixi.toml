@@ -44,7 +44,8 @@ click = "*"
 jsonschema = "*"
 qtpy = "<2.0"
 pyqt = "*"
-pyqtgraph = "0.13.*"
+# pyqtgraph was dropped (W8): chiplot draws with emtk, and nothing imports it
+# (test/test_pyqtgraph_seam.py).
 # matplotlib was dropped: colour tables are emtk.colormaps, static figures
 # emtk.figure (PNG/SVG/PDF), formulas emtk.tex. It stays a test oracle
 # ([feature.test]) and the console's optional inline plotting uses it when the

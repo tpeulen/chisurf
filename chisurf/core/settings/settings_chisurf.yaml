@@ -133,9 +133,9 @@ gui:
     - 350
   fit_progress_close_delay_ms: 200
   plot:
-    # Plotting backend: "emtk" (default, the native renderer) or "pyqtgraph"
-    # (for the few plot families emtk does not draw yet; they raise and say
-    # so). The env var CHISURF_PLOT_BACKEND overrides this at startup.
+    # Plotting backend: "emtk", the native renderer (the only one; the pyqtgraph
+    # backend was removed and naming it fails with a message saying so). The env
+    # var CHISURF_PLOT_BACKEND overrides this at startup.
     backend: emtk
     # Base point size for axis chrome (ticks, labels, title, legend). 0 derives
     # it from the application font, which is what keeps a plot from looking
@@ -165,6 +165,8 @@ gui:
     # appeared regardless; true keeps that behaviour now that it is honoured.
     label_axis: true
     line_width: 2.0
+    # The key keeps its historical name (saved settings use it); the values are
+    # handed to chiplot.configure().
     pyqtgraph_config:
       antialias: false
       background: k
@@ -394,6 +396,18 @@ optimization:
     steps: 1000
     substeps: 100
     thin: 1
+  # The model search behind the fit window's MCTS button (bff's native tree
+  # search). Dirichlet noise is never injected into a user's fit.
+  mcts:
+    n_simulations: 400
+    c_puct: 1.4
+    reward_scale: 1.0
+    dirichlet_alpha: 0.3
+    seed: 7
+    # Also search how each candidate structure is fitted (tolerances, start
+    # values, step bound), scored like the structures. More fits; use it when
+    # a structure does not converge from its declared start.
+    search_fit_settings: false
 parameter:
   bounds_on: false
   decimals: 3

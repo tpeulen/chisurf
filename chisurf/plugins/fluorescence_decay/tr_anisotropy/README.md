@@ -25,7 +25,7 @@ tr_anisotropy/
   gui/tool.py                 AutoForm host (AnisotropyWizard / ChisurfWizard alias)
   gui/app.py                  native emtk window (make_app); form in gui/anisotropy_emtk.view.json
   gui/model.py                Qt-free NativeAnisotropyModel (readers, linked fits, spectra tables)
-  gui/irf_widget.py           embedded interactive IRF region selector (pyqtgraph)
+  gui/irf_widget.py           embedded interactive IRF region selector (chiplot)
   gui/components_widget.py    embedded lifetime/rotation spectrum tables
   anisotropy.view.json        declarative wizard layout (AutoForm)
   cli/main.py                 `anisotropy irf-correct` / `anisotropy spectrum`

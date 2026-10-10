@@ -716,7 +716,23 @@ window pays on every settings change, tab switch and resize.
 QT_QPA_PLATFORM=offscreen pixi run python test/benchmarks/benchmark_burst_plots.py
 ```
 
-**Environment** — Apple M1 Pro, macOS 26.5.1 (arm64), Python 3.12.13,
+**Since 2026-10-10 the script times chiplot's emtk backend**, the only backend left.
+emtk draws the samples it is given, so viewport decimation, antialiasing and pen
+width (the pyqtgraph knobs below) no longer exist and the caller thins the data.
+Same machine, Python 3.12.13:
+
+| points | log y | s/repaint |
+|---:|:---:|---:|
+| 66,000 | no | 0.022 |
+| 66,000 | yes | 0.018 |
+| 660,000 | no | 0.181 |
+| 660,000 | yes | 0.223 |
+
+The table and the three paragraphs after it are the **history of the retired
+pyqtgraph backend**: they explain why the burst window thins its traces before
+plotting, which is still the lever.
+
+**Environment** (history table) — Apple M1 Pro, macOS 26.5.1 (arm64), Python 3.12.13,
 pyqtgraph on Qt5. Measured 2026-08-07.
 
 | points | pen width | antialias | viewport decimation | log y | s/repaint |

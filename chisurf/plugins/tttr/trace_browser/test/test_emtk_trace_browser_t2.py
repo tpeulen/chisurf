@@ -15,8 +15,8 @@ import time
 import pytest
 from emtk.testing import RecordingPainter
 
-from chisurf.plugins.tttr.trace_browser.test.conftest import ALEX
 from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.tttr.trace_browser.test.conftest import ALEX
 
 HERE = pathlib.Path(__file__).parent
 GUI = HERE.parent / "gui"
@@ -653,40 +653,35 @@ def test_port_is_qt_free():
     assert result["ok"], result["output"]
 
 
-# 15. the Qt widget and the emtk app list the same rows for the same folder
+# 15. the app lists the rows the retired Qt widget listed for the same folder
+#     (recorded 2026-10-10 from ``TraceBrowser._open_folder`` + the filter combo + the Subfolders box on
+#     the ``fake_dir`` above with the Overlap setup; key = (include_subfolders, filter index))
+QT_ROWS = {
+    (False, 0): [("a.ptu", 3), ("b.PTU", 2), ("c.spc", 0)],
+    (False, 1): [("a.ptu", 3), ("b.PTU", 2)],
+    (False, 2): [("a.ptu", 3), ("b.PTU", 2)],
+    (False, 3): [("a.ptu", 3)],
+    (False, 4): [("c.spc", 0)],
+    (True, 0): [("a.ptu", 3), ("b.PTU", 2), ("c.spc", 0), ("sub/e.ht3", 1)],
+    (True, 1): [("a.ptu", 3), ("b.PTU", 2), ("sub/e.ht3", 1)],
+    (True, 2): [("a.ptu", 3), ("b.PTU", 2)],
+    (True, 3): [("a.ptu", 3)],
+    (True, 4): [("c.spc", 0)],
+}
+
+
 @pytest.mark.parametrize("recursive", [False, True])
 @pytest.mark.parametrize("idx", range(5))
-def test_qt_widget_and_emtk_app_agree_on_the_rows(
-    qapp, qtbot, fake_dir, recursive, idx, monkeypatch
-):
-    pytest.importorskip("pyqtgraph")
-    from chisurf.plugins.tttr.trace_browser import TraceBrowser
+def test_the_app_lists_the_rows_the_qt_widget_listed(fake_dir, recursive, idx):
     from chisurf.plugins.tttr.trace_browser.gui.model import FILTER_LABELS
-    from chisurf.plugins.tttr.trace_browser.test.conftest import OVERLAP
 
-    widget = TraceBrowser()
-    qtbot.addWidget(widget)
-    # the Qt page starts on its built-in SPC-130 detectors; take a file type of Auto, as the app has
-    widget.detector_page.set_settings(json.loads(json.dumps(OVERLAP)))
-    widget._on_continue()
-    # the trace of the selected row is card T3's business: do not compute it in this comparison
-    monkeypatch.setattr(widget, "_plot_file", lambda *a, **k: None)
-    monkeypatch.setattr(widget, "_precompute_all_traces", lambda *a, **k: None)
-    widget.chk_subfolders.setChecked(recursive)
-    widget.filter_combo.setCurrentIndex(idx)
-    widget._open_folder(fake_dir)
-    visible = [
-        (widget.table.item(r, 0).text(), widget.table.cellWidget(r, 1).rating())
-        for r in range(widget.table.rowCount())
-        if not widget.table.isRowHidden(r)
-    ]
     app = make_app()
     try:
         commit(app, "include_subfolders", recursive)
         commit(app, "rating_filter", FILTER_LABELS[idx])
         app.model.request("open_folder", fake_dir)
         settle(app)
-        assert names(app.model.rows) == sorted(visible)
+        assert names(app.model.rows) == sorted(QT_ROWS[(recursive, idx)])
     finally:
         app.close()
 

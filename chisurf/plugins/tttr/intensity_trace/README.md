@@ -29,8 +29,6 @@ The plugin implements a comprehensive workflow for single-molecule state analysi
 ## Requirements
 
 - Python packages:
-  - PyQt5
-  - pyqtgraph
   - numpy
   - scipy
   - tttrlib

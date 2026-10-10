@@ -13,9 +13,9 @@ from chisurf.gui import chiplot as cp
 from chisurf.gui.chiplot import backends
 
 
-@pytest.fixture(params=["pyqtgraph", "emtk"])
+@pytest.fixture(params=["emtk"])
 def plot(request: Any, qapp: Any) -> Iterator[cp.Plot]:
-    """Exercise both real renderers while restoring the process backend."""
+    """Exercise the real renderer while restoring the process backend."""
     previous = backends._active
     previous_env = os.environ.get("CHISURF_PLOT_BACKEND")
     backends.set_backend(request.param)
@@ -34,9 +34,6 @@ def plot(request: Any, qapp: Any) -> Iterator[cp.Plot]:
 def _metadata(panel: cp.Plot, side: str) -> tuple[str, str]:
     """Read the owning backend's actual axis metadata."""
     canvas: Any = panel._canvas
-    if backends.get_backend().name == "pyqtgraph":
-        axis = canvas._pi.getAxis(side)
-        return axis.labelText, axis.labelUnits
     return canvas._labels.get(side, ""), canvas._units.get(side, "")
 
 
@@ -111,13 +108,12 @@ def test_real_frames_si_ticks_do_not_rescale_data(
     plot.set_log(y=log)
     canvas: Any = plot._canvas
     texts: list[str] = []
-    if backends.get_backend().name == "emtk":
-        draw_axes = canvas._draw_axes
+    draw_axes = canvas._draw_axes
 
-        def record(painter: Any, *args: Any) -> None:
-            draw_axes(_RecordingPainter(painter, texts), *args)
+    def record(painter: Any, *args: Any) -> None:
+        draw_axes(_RecordingPainter(painter, texts), *args)
 
-        monkeypatch.setattr(canvas, "_draw_axes", record)
+    monkeypatch.setattr(canvas, "_draw_axes", record)
     plot.resize(800, 450)
     plot.show()
     for enabled, unit_label in [(False, "Hz"), (True, "kHz"), (False, "Hz")]:
@@ -126,20 +122,10 @@ def test_real_frames_si_ticks_do_not_rescale_data(
         plot.set_labels(left="Count rate")
         qapp.processEvents()
         assert not plot.grab().isNull()
-        if backends.get_backend().name == "pyqtgraph":
-            axis = canvas._pi.getAxis("left")
-            assert f"({unit_label})" in axis.label.toPlainText()
-            assert axis.autoSIPrefixScale == pytest.approx(0.001 if enabled else 1.0)
-            tick_text = axis.tickStrings([4.0 if log else 10000.0], axis.autoSIPrefixScale, 1.0)[0]
-            if log:
-                assert tick_text == ("10¹" if enabled else "10⁴")
-            else:
-                assert float(tick_text) == (10.0 if enabled else 10000.0)
-        else:
-            assert f"Count rate ({unit_label})" in texts
-            assert "Duration (ms)" in texts
-            # A real tick lies at 10,000 Hz: label 10, not 10000, when SI is enabled.
-            assert ("10" if enabled else "10000") in texts
+        assert f"Count rate ({unit_label})" in texts
+        assert "Duration (ms)" in texts
+        # A real tick lies at 10,000 Hz: label 10, not 10000, when SI is enabled.
+        assert ("10" if enabled else "10000") in texts
         np.testing.assert_array_equal(curve.get_data()[0], x)
         np.testing.assert_array_equal(curve.get_data()[1], y)
 
@@ -160,7 +146,7 @@ def test_plain_labels_and_unit_only_bottom(plot: cp.Plot, qapp: Any) -> None:
 def test_real_bottom_si_prefix_preserves_seconds(
     plot: cp.Plot, qapp: Any, monkeypatch: Any
 ) -> None:
-    """Millisecond tick display keeps original second-valued samples on both backends."""
+    """Millisecond tick display keeps original second-valued samples."""
     canvas: Any = plot._canvas
     texts: list[str] = []
     if backends.get_backend().name == "emtk":
@@ -179,14 +165,8 @@ def test_real_bottom_si_prefix_preserves_seconds(
     plot.show()
     qapp.processEvents()
     assert not plot.grab().isNull()
-    if backends.get_backend().name == "pyqtgraph":
-        axis = canvas._pi.getAxis("bottom")
-        assert "Time (ms)" == axis.label.toPlainText()
-        assert axis.autoSIPrefixScale == pytest.approx(1000.0)
-        assert float(axis.tickStrings([0.002], axis.autoSIPrefixScale, 0.0005)[0]) == 2.0
-    else:
-        assert "Time (ms)" in texts
-        assert "2.0" in texts
+    assert "Time (ms)" in texts
+    assert "2.0" in texts
     np.testing.assert_array_equal(curve.get_data()[0], x)
 
 

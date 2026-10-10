@@ -37,7 +37,7 @@ def test_widget_constructs(qapp):
 
     w = PlotSettingsWidget()
     assert w.windowTitle() == "Plot Settings"
-    assert w.backend_combo.count() >= 2
+    assert w.backend_combo.count() >= 1
 
 
 def test_backend_combo_lists_all_backends(qapp):
@@ -86,7 +86,7 @@ def test_loading_does_not_overwrite_what_it_is_reading(qapp):
     from chisurf.plugins.core.plot_settings.gui.tool import PlotSettingsWidget
 
     known = {
-        "backend": "pyqtgraph",
+        "backend": "emtk",
         "line_width": 2.0,
         "font_size": 9,
         "enable_grid": True,
@@ -163,9 +163,23 @@ def test_apply_settings_updates_cs_settings(qapp):
     from chisurf.plugins.core.plot_settings.gui.tool import PlotSettingsWidget
 
     w = PlotSettingsWidget()
-    w.backend_combo.setCurrentText("pyqtgraph")
+    w.backend_combo.setCurrentText("emtk")
     w._apply_settings()
-    assert css.cs_settings["gui"]["plot"]["backend"] == "pyqtgraph"
+    assert css.cs_settings["gui"]["plot"]["backend"] == "emtk"
+
+
+def test_a_stale_pyqtgraph_setting_is_shown_as_the_one_backend(qapp):
+    """A settings file from before the backend was removed must not offer a choice that fails."""
+    import chisurf.core.settings as css
+    from chisurf.plugins.core.plot_settings.gui.tool import PlotSettingsWidget
+
+    previous = css.cs_settings.get("gui", {}).get("plot")
+    css.cs_settings.setdefault("gui", {})["plot"] = {"backend": "pyqtgraph"}
+    try:
+        assert PlotSettingsWidget()._collect_settings()["backend"] == "emtk"
+    finally:
+        if previous is not None:
+            css.cs_settings["gui"]["plot"] = previous
 
 
 def test_grab_non_null(qapp):

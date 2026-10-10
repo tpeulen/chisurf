@@ -16,7 +16,9 @@ import shutil
 import pytest
 from emtk import im_widgets
 from emtk.keys import KEY_DELETE
+from emtk.view_form import icon_caption
 
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.tttr.trace_browser.test.conftest import ALEX
 from chisurf.plugins.tttr.trace_browser.test.test_emtk_trace_browser_t2 import (
     BH132,
@@ -37,9 +39,6 @@ from chisurf.plugins.tttr.trace_browser.test.test_emtk_trace_browser_t3b import 
     SUMS,
     settle_all,
 )
-from emtk.view_form import icon_caption
-
-from chisurf.plugins.emtk_layout import action_caption
 
 REPO = next(p for p in pathlib.Path(__file__).parents if (p / "pyproject.toml").exists())
 BUTTONS = ["Select all", action_caption("export"), "CSV", "DOCX", "Delete", "HMM", "TW", "NDX"]
@@ -395,34 +394,23 @@ def test_csv_falls_back_to_the_local_export_when_the_rpc_gives_nothing(work, tmp
     assert [int(sum(float(r[i]) for r in rows[1:])) for i in (1, 2, 3)] == SUMS
 
 
-def test_the_qt_widget_and_the_emtk_app_export_the_same_csv(
-    qapp, qtbot, work, tmp_path, monkeypatch
-):
-    """The Qt tool's *CSV* handler and the app write the same bytes for the same file."""
-    pytest.importorskip("pyqtgraph")
-    from qtpy.QtWidgets import QFileDialog
+#: What the retired Qt tool's *CSV* handler wrote for ``m000.spc`` with the ALEX setup (recorded 2026-10-10).
+QT_CSV = {
+    "name": "m000_trace.csv",
+    "sha256": "00f3385dcabc2b149a2e5237a486bb39f95a75b3aa81aa5dda6b41365a3757ec",
+    "size": 129458,
+}
 
-    from chisurf.plugins.tttr.trace_browser import widget as widget_module
+
+def test_the_emtk_app_exports_the_csv_the_qt_widget_wrote(work, tmp_path):
+    """The app writes the same name and the same bytes for the same file as the Qt tool did."""
+    import hashlib
 
     only = tmp_path / "only"
     only.mkdir()
     shutil.copy(work / "m000.spc", only / "m000.spc")
-    qt_out, app_out = tmp_path / "qt_out", tmp_path / "app_out"
-    qt_out.mkdir()
+    app_out = tmp_path / "app_out"
     app_out.mkdir()
-
-    widget = widget_module.TraceBrowser()
-    qtbot.addWidget(widget)
-    widget.detector_page.set_settings(json.loads(json.dumps(ALEX)))
-    widget._on_continue()
-    monkeypatch.setattr(widget, "_plot_file", lambda *a, **k: None)
-    monkeypatch.setattr(widget, "_precompute_all_traces", lambda *a, **k: None)
-    widget._open_folder(only)
-    monkeypatch.setattr(QFileDialog, "getExistingDirectory", lambda *a, **k: str(qt_out))
-    monkeypatch.setattr(widget_module.dialogs, "information", lambda *a, **k: None)
-    widget._on_export_csv()
-    qt_files = sorted(p.name for p in qt_out.glob("*.csv"))
-    assert qt_files == ["m000_trace.csv"]
 
     app = make_app()
     try:
@@ -430,9 +418,11 @@ def test_the_qt_widget_and_the_emtk_app_export_the_same_csv(
         written = app.model.export_csv_files(app_out, [only / "m000.spc"])
     finally:
         app.close()
-    assert [pathlib.Path(w).name for w in written] == qt_files
-    assert (app_out / qt_files[0]).read_bytes() == (qt_out / qt_files[0]).read_bytes()
-    assert len(rows_of(app_out / qt_files[0])) - 1 == BINS_10MS
+    assert [pathlib.Path(w).name for w in written] == [QT_CSV["name"]]
+    data = (app_out / QT_CSV["name"]).read_bytes()
+    assert len(data) == QT_CSV["size"]
+    assert hashlib.sha256(data).hexdigest() == QT_CSV["sha256"]
+    assert len(rows_of(app_out / QT_CSV["name"])) - 1 == BINS_10MS
 
 
 # ---- DOCX -----------------------------------------------------------------------------------------
@@ -941,13 +931,10 @@ def test_settings_round_trip_has_no_selection_or_request_state(work):
 
 
 # ---- manifest, Qt-free ----------------------------------------------------------------------------------
-def test_the_manifest_declares_the_emtk_entry_and_keeps_the_qt_one():
+def test_the_manifest_declares_the_emtk_entry_and_no_qt_one():
     manifest = json.loads((GUI.parent / "manifest.json").read_text())
     assert manifest["entrypoints"]["emtk"] == ENTRY
-    assert (
-        manifest["entrypoints"]["gui"]
-        == "chisurf.plugins.tttr.trace_browser.gui.tool:TraceBrowserTool"
-    )
+    assert "gui" not in manifest["entrypoints"], "the Qt tool was retired"
     module, attribute = manifest["entrypoints"]["emtk"].split(":")
     import importlib
 

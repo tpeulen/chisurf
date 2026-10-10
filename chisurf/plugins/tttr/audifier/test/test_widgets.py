@@ -3,14 +3,13 @@ from qtpy import QtWidgets
 
 
 def test_waterfall_plot_widget_creation(qapp, qtbot):
-    pytest.importorskip("pyqtgraph")
     # moved to a shared widget; the plugin path still re-exports it
     from chisurf.gui.widgets.waterfall_plot import WaterfallPlotWidget
 
     widget = WaterfallPlotWidget()
     qtbot.addWidget(widget)
     assert isinstance(widget, QtWidgets.QWidget)
-    assert hasattr(widget, "plot")  # chiplot Plot (migrated from pyqtgraph)
+    assert hasattr(widget, "plot")  # a chiplot Plot
     assert hasattr(widget, "waterfall_img")
     assert hasattr(widget, "position_line")
 
@@ -22,7 +21,6 @@ def test_general_waterfall_section_registered():
 
 
 def test_audifier_tool_builds_with_autoform(qapp, qtbot):
-    pytest.importorskip("pyqtgraph")
     pytest.importorskip("tttrlib")
     from chisurf.gui.autoform import AutoForm
     from chisurf.gui.autoform.sections.registry import get_section_factory

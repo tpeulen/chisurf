@@ -140,7 +140,7 @@ requirements:
     - wgpu-py
     - rendercanvas
     - glfw
-    - pyqtgraph
+    # pyqtgraph removed: chiplot draws with emtk and nothing imports it.
     # matplotlib removed: emtk.colormaps / emtk.figure / emtk.tex replace it.
     # scikit-image was dropped: regionprops lives in chisurf.core.roi.props and
     # the five segmentation primitives the imaging tools used (gaussian,
@@ -160,7 +160,7 @@ requirements:
     # are read and written by code_editor/ipynb.py.
     - pyopengl
     # guidata/guiqwt removed: guiqwt's users (global_tcspc, surfaceplot) were
-    # ported to pyqtgraph, and guidata's DataFrameEditor was replaced by the
+    # ported to chiplot, and guidata's DataFrameEditor was replaced by the
     # in-tree chitable widget family. No third-party GUI toolkit remains.
     - python-docx
     # scikit-learn and hdbscan removed: chisurf.core.ml holds every estimator

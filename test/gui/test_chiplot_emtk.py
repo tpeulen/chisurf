@@ -55,7 +55,6 @@ def test_the_backend_is_selectable_by_name(qapp):
     """``CHISURF_PLOT_BACKEND=emtk`` reaches this backend."""
     backend = _backends.get_backend()
     assert backend.name == "emtk"
-    assert backend.raw_module().__name__ == "emtk"
 
 
 def test_a_curve_survives_the_redraw_it_is_drawn_by(plot):
@@ -201,7 +200,7 @@ def test_an_image_places_itself_in_data_coordinates(plot):
 def test_an_image_has_to_be_two_dimensional(plot):
     """Said plainly, rather than by a reshape nobody asked for."""
     with pytest.raises(ValueError, match="2-D"):
-        plot.image(np.zeros((4, 4, 3)))
+        plot.image(np.zeros((4, 4, 2)))  # (4, 4, 3) and (4, 4, 4) are RGB / RGBA, which are fine
 
 
 def _paint(plot, width=300, height=200):

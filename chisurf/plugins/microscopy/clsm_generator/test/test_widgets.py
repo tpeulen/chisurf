@@ -88,7 +88,6 @@ def test_generate_and_save_roundtrip(tmp_path):
 
 
 def test_tool_creation(qapp, qtbot):
-    pytest.importorskip("pyqtgraph")
     from chisurf.plugins.microscopy.clsm_generator.gui.tool import ClsmGeneratorTool
 
     widget = ClsmGeneratorTool()

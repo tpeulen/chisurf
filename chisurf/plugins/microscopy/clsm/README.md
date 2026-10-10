@@ -48,7 +48,7 @@ csc clsm decay data.ptu --setup "Leica SP5" -c 0,1 --threshold 0.5 -o decay.txt
 ## Requirements
 
 - Python packages:
-  - PyQt5, pyqtgraph
+  - PyQt5
   - numpy, scipy
   - scikit-image (ROI mask import/export)
   - tttrlib (for TTTR/CLSM file handling)

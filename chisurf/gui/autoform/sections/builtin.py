@@ -10,7 +10,7 @@ from __future__ import annotations
 import math
 
 from emtk.view_form import icon_caption
-from qtpy import QtCore, QtGui, QtWidgets
+from qtpy import QtCore, QtWidgets
 
 import chisurf as cs
 import chisurf.core.math.datatools
@@ -1719,8 +1719,8 @@ class PlotWidget(QtWidgets.QWidget):
     def _thin_log_ticks(self) -> None:
         """Label a log axis once per decade while it spans several decades.
 
-        pyqtgraph labels every minor tick (1, 2, 3 … 9 per decade) whenever it
-        believes there is room, and its width estimate is wrong for the
+        The previous plotting backend labelled every minor tick (1, 2, 3 … 9 per
+        decade) whenever it believed there was room, and its width estimate is wrong for the
         ``n·10^k`` strings: across three decades the ~27 labels overlap into an
         unreadable smear. Ticking once per decade is readable and is the natural
         unit of a log axis.
@@ -2027,21 +2027,15 @@ IMAGE_COLORMAPS = ["viridis", "magma", "inferno", "plasma", "cividis", "turbo", 
 
 
 def apply_colormap(image_view, name: str) -> None:
-    """Apply a (matplotlib) colormap by name to a pyqtgraph ImageView, best-effort.
+    """Apply a colormap by name to a :class:`~chisurf.gui.chiplot.ImageView`, best-effort.
 
-    Reusable by any pyqtgraph image plot (AutoForm or not) so the colour handling is
+    Reusable by any chiplot image plot (AutoForm or not) so the colour handling is
     consistent across tools (2D-FLC, RICS, PDA, ...).
     """
     try:
-        import pyqtgraph as pg
-
-        try:
-            cmap = pg.colormap.get(name, source="matplotlib")
-        except Exception:
-            cmap = pg.colormap.get(name)
-        image_view.setColorMap(cmap)
+        image_view.set_colormap(name)
     except Exception:  # pragma: no cover - colormap optional
-        pass
+        logging.debug(f"apply_colormap: {name!r} not applied", exc_info=True)
 
 
 class ImageMapWidget(QtWidgets.QWidget):
@@ -2056,7 +2050,7 @@ class ImageMapWidget(QtWidgets.QWidget):
          "options": {"colormap": true, "colormap_attr": "colormap"}}
 
     The image source may be 2D ``(y, x)`` or 3D ``(z, y, x)``; a 3D array is shown
-    with pyqtgraph's built-in z-slider (axis 0 = slice) and the current slice is
+    with the view's frame slider (axis 0 = slice) and the current slice is
     preserved across refreshes.
 
     The colour control lives *in the plot* (a small combo above the image), so it is
@@ -2082,7 +2076,6 @@ class ImageMapWidget(QtWidgets.QWidget):
     * ``movie`` (bool) — show play/pause + loop + stop buttons and an fps selector
       (default ``False``). The controls auto-disable when the current image is 2D.
     * ``movie_fps`` (int) — initial playback speed (default ``10``).
-      ``False`` keeps the ``{x:2, y:1}`` mapping the PSF stack picker relies on).
 
     Brush / draw ``options`` turn the dock into a paintable pixel selector (e.g. for
     CLSM pixel selection, FLIM masks, ROI painting). Brush mode is enabled when
@@ -2137,12 +2130,10 @@ class ImageMapWidget(QtWidgets.QWidget):
       probability and a nanosecond has no reason to be square, and locking it
       renders the map as a narrow strip in an otherwise empty panel.
     * ``axes_visible`` (bool) — draw ticks and labels (default ``False``). The
-      renderer's image view has no axes at all by default, which is fine for a
-      picture of a detector and useless for a map whose axes carry the quantities
-      being fitted.
+      image view has no axes at all by default, which is fine for a picture of a
+      detector and useless for a map whose axes carry the quantities being fitted.
     * ``x_label`` / ``y_label`` (str) — axis labels, used with ``axes_visible``.
     """
-
     #: marker so :meth:`AutoForm.refresh_plots` re-reads this widget.
     AUTOFORM_REFRESH = True
 
@@ -2183,7 +2174,8 @@ class ImageMapWidget(QtWidgets.QWidget):
         self._target = target
         self._cmap_attr = colormap_attr
         self._cmap = default_colormap
-        self._image = None
+        self._view = None
+        self._data = None
         self._combo = None
         # detector-channel / window selector (in-plot combo)
         self._channel_source = channel_source
@@ -2193,21 +2185,16 @@ class ImageMapWidget(QtWidgets.QWidget):
         # movie / frame playback (for 3D stacks)
         self._movie = bool(movie)
         self._movie_fps = int(movie_fps)
-        # When True, a 3D stack uses the SAME axis mapping as the 2D path, so a
-        # movie dock and its sibling 2D map docks render at identical orientation
-        # (the default {x:2,y:1} transposes the frame vs the 2D default {x:0,y:1}).
         self._play_btn = None
         self._loop_btn = None
         self._stop_btn = None
         self._fps_spin = None
         self._playing = False
-        self._play_timer = None  # looping playback timer (wrap-around)
         # brush state
         self._selection_attr = selection_attr
         self._brush_kernel_source = brush_kernel_source
         self._on_draw = on_draw
         self._live_attr = live_attr
-        self._overlay = None
         # point-pick / overlay state
         self._select_attr = select_attr
         self._on_pick = on_pick
@@ -2219,7 +2206,6 @@ class ImageMapWidget(QtWidgets.QWidget):
         self._label_items = []
         self._roi_item = None
         self._extent_source = extent_source
-        self._applied_extent = None
         # interactive rectangle gate
         self._region_call = region_call
         self._region_source = region_source
@@ -2231,60 +2217,33 @@ class ImageMapWidget(QtWidgets.QWidget):
         lay.setSpacing(2)
         if colormap or self._channel_source or self._movie:
             lay.addLayout(self._build_bar(colormap))
-        try:
-            import pyqtgraph as pg
+        from chisurf.gui import chiplot
 
-            # A plot needs readable axes. ``pg.ImageView`` defaults to a bare
-            # ViewBox, which has none — fine for a picture of a detector, useless
-            # for a 2-D histogram whose axes carry the quantities being fitted.
-            # Hosting a ``PlotItem`` gives it ticks and labels; the rest of this
-            # widget works against ``getView()`` either way.
-            self._image = pg.ImageView(view=pg.PlotItem()) if axes_visible else pg.ImageView()
-            # pyqtgraph's default for a 2-D array maps axis 0 to *x*, i.e. it
-            # draws the transpose of what numpy holds — while everything else in
-            # this widget is written the other way round: markers are placed at
-            # ``(x, y) = (col, row)``, clicks are bounds-checked against
-            # ``shape[:2]`` as ``(ny, nx)``, the rectangle gate builds a
-            # ``RectangleROI`` whose x is a column, and the 3-D path already
-            # passes ``axes={'x': 2, 'y': 1}``. Only the 2-D display disagreed,
-            # so markers and picks landed transposed on every 2-D map. Row-major
-            # makes the widget agree with itself, with numpy and with the ROI
-            # subsystem.
-            self._image.getImageItem().setOpts(axisOrder="row-major")
-            self._image.ui.roiBtn.hide()
-            self._image.ui.menuBtn.hide()
-            if not invert_y:
-                # Plot-like images (2-D histograms) read bottom-up, not top-down.
-                self._image.getView().invertY(False)
-            if axes_visible:
-                view = self._image.getView()
-                if x_label:
-                    view.setLabel("bottom", x_label)
-                if y_label:
-                    view.setLabel("left", y_label)
-                for side in ("bottom", "left"):
-                    axis = view.getAxis(side)
-                    if axis is not None:
-                        # A ratio and a nanosecond have no unit to prefix, so an
-                        # automatic SI prefix relabels a 0-to-1 axis "(x0.001)".
-                        axis.enableAutoSIPrefix(False)
-            if not aspect_locked:
-                # A picture of something has square pixels; a *plot* does not. A
-                # 2-D histogram whose axes are a probability (0 to 1) and a
-                # nanosecond (0 to 8) drawn with a locked aspect comes out as a
-                # narrow vertical strip in the middle of an empty panel.
-                self._image.getView().setAspectLocked(False)
-            lay.addWidget(self._image, 1)
-            if self._selection_attr:
-                self._setup_brush(pg)
-            if self._select_attr or self._on_pick:
-                self._image.getView().scene().sigMouseClicked.connect(self._on_clicked)
-            if self._region_call:
-                self._setup_rect_roi(pg)
-            if self._markers_source or self._roi_source or self._labels_source:
-                self._connect_slice_changed()
-        except Exception:  # pragma: no cover - pyqtgraph optional
-            lay.addWidget(QtWidgets.QLabel("pyqtgraph not available"))
+        view = chiplot.ImageView()
+        # A plot needs readable axes. The default view is a bare picture — fine
+        # for a detector, useless for a 2-D histogram whose axes carry the
+        # quantities being fitted.
+        view.set_axes_visible(axes_visible)
+        if axes_visible and (x_label or y_label):
+            view.set_labels(bottom=x_label or None, left=y_label or None)
+        # Plot-like images (2-D histograms) read bottom-up, not top-down, and a
+        # picture of something has square pixels where a *plot* does not: a
+        # histogram of a probability against a nanosecond locked square comes out
+        # as a narrow strip in an otherwise empty panel.
+        view.invert_y(invert_y)
+        view.set_aspect_locked(aspect_locked)
+        self._view = view
+        lay.addWidget(view, 1)
+        if self._selection_attr:
+            view.enable_brush(self._brush_kernel, on_stroke=self._on_stroke)
+            view.on_hover(self._hover_event)
+        if self._select_attr or self._on_pick:
+            view.clicked.connect(self._on_clicked)
+        if self._region_call:
+            self._setup_rect_roi()
+        if self._markers_source or self._roi_source or self._labels_source or self._select_attr:
+            view.frame_changed.connect(self._redraw_overlays)
+        view.playing_changed.connect(self._on_playing_changed)
 
     # ── top control bar (channel selector · movie · colormap) ──────────
     def _build_bar(self, colormap: bool) -> QtWidgets.QHBoxLayout:
@@ -2312,6 +2271,7 @@ class ImageMapWidget(QtWidgets.QWidget):
             self._loop_btn.setCheckable(True)
             self._loop_btn.setChecked(True)  # loop by default
             self._loop_btn.setToolTip("Loop playback (wrap around at the end)")
+            self._loop_btn.toggled.connect(self._on_loop)
             bar.addWidget(self._loop_btn)
             self._stop_btn = QtWidgets.QToolButton()
             self._stop_btn.setText("⏹")
@@ -2339,6 +2299,11 @@ class ImageMapWidget(QtWidgets.QWidget):
             self._combo.currentTextChanged.connect(self._on_cmap)
             bar.addWidget(self._combo)
         return bar
+
+    @property
+    def view(self):
+        """The :class:`~chisurf.gui.chiplot.ImageView` that draws the map."""
+        return self._view
 
     # ── detector-channel / window selector ─────────────────────────────
     def _channel_names(self) -> list[str]:
@@ -2407,58 +2372,38 @@ class ImageMapWidget(QtWidgets.QWidget):
     def _on_stop_clicked(self) -> None:
         """Stop playback and return to the first frame."""
         self._stop_play()
-        if self._image is not None:
-            try:
-                self._image.setCurrentIndex(0)
-            except Exception:  # pragma: no cover - pyqtgraph optional
-                pass
+        if self._view is not None:
+            self._view.stop()
 
     def _start_play(self) -> None:
-        # Own timer (not ImageView.play) so playback loops (wrap-around) instead
-        # of stopping at the last frame.
-        if self._image is None:
+        # The view owns the timer, so playback loops (wrap-around) instead of
+        # stopping at the last frame whenever the loop button is down.
+        if self._view is None:
             return
         fps = int(self._fps_spin.value()) if self._fps_spin else self._movie_fps
         if fps <= 0:
             return
-        if self._play_timer is None:
-            self._play_timer = QtCore.QTimer(self)
-            self._play_timer.timeout.connect(self._advance_frame)
-        self._play_timer.start(int(1000 / max(fps, 1)))
-        self._playing = True
-        if self._play_btn is not None:
-            self._play_btn.setText("⏸")
-
-    def _advance_frame(self) -> None:
-        """Advance one frame; wrap to the start when Loop is on, else stop at the end."""
-        if self._image is None:
-            return
-        try:
-            data = getattr(self._image, "image", None)
-            n = int(data.shape[0]) if data is not None and getattr(data, "ndim", 0) >= 3 else 0
-            if n <= 1:
-                return
-            idx = int(self._image.currentIndex) + 1
-            loop = self._loop_btn.isChecked() if self._loop_btn is not None else True
-            if idx >= n:
-                if not loop:
-                    self._stop_play()
-                    return
-                idx = 0
-            self._image.setCurrentIndex(idx)
-        except Exception:  # pragma: no cover - pyqtgraph optional
-            pass
+        loop = self._loop_btn.isChecked() if self._loop_btn is not None else True
+        self._view.play(fps, loop=loop)
 
     def _stop_play(self) -> None:
-        if self._play_timer is not None:
-            self._play_timer.stop()
-        self._playing = False
+        if self._view is not None:
+            self._view.pause()
+        self._on_playing_changed(False)
+
+    def _on_playing_changed(self, playing: bool) -> None:
+        """Follow the view: a non-looping stack stops by itself at its last frame."""
+        self._playing = bool(playing)
         if self._play_btn is not None:
-            self._play_btn.setText("▶")
+            self._play_btn.setText("⏸" if playing else "▶")
+
+    def _on_loop(self, loop: bool) -> None:
+        if self._view is not None:
+            self._view.set_loop(loop)
 
     def _on_fps(self, value: int) -> None:
-        if self._playing:
-            self._start_play()  # restart at the new rate
+        if self._view is not None:
+            self._view.set_fps(value)
 
     # ── colormap ───────────────────────────────────────────────────────
     def _current_cmap(self) -> str:
@@ -2470,26 +2415,12 @@ class ImageMapWidget(QtWidgets.QWidget):
         self._cmap = name
         if self._cmap_attr and hasattr(self._model, self._cmap_attr):
             setattr(self._model, self._cmap_attr, name)
-        if self._image is not None:
-            apply_colormap(self._image, name)
+        if self._view is not None:
+            apply_colormap(self._view, name)
 
     # ── brush / draw ───────────────────────────────────────────────────
-    def _setup_brush(self, pg) -> None:
-        """Add a paintable selection overlay on top of the image."""
-        self._overlay = pg.ImageItem()
-        # Same axis order as the image underneath, or a stroke would land on the
-        # transposed pixel. The mask handed to ``selection_attr`` is the item's
-        # own array either way, so its ``(row, col)`` meaning is unchanged.
-        self._overlay.setOpts(axisOrder="row-major")
-        self._overlay.setCompositionMode(QtGui.QPainter.CompositionMode_Plus)
-        self._image.getView().addItem(self._overlay)
-        self._overlay.hoverEvent = self._hover_event
-        self._overlay.mouseDragEvent = self._draw_event
-        self._apply_kernel()
-
-    def _apply_kernel(self) -> None:
-        if self._overlay is None:
-            return
+    def _brush_kernel(self):
+        """The model's draw kernel, read at the start of every stroke."""
         import numpy as np
 
         kernel = None
@@ -2500,39 +2431,30 @@ class ImageMapWidget(QtWidgets.QWidget):
                     kernel = np.asarray(fn())
                 except Exception:  # pragma: no cover - defensive
                     kernel = None
-        if kernel is None:
-            kernel = np.ones((1, 1))
-        cx, cy = kernel.shape[0] // 2, kernel.shape[1] // 2
-        self._overlay.setDrawKernel(kernel, mask=kernel, center=(cx, cy), mode="add")
+        return np.ones((1, 1)) if kernel is None else kernel
 
     def _live(self) -> bool:
         if self._live_attr:
             return bool(getattr(self._model, self._live_attr, True))
         return True
 
-    def _hover_event(self, event) -> None:
-        if self._image is None:
+    def _hover_event(self, x: float, y: float) -> None:
+        """Tell the pixel under the pointer (and its value) in the tooltip."""
+        pixel = self._view.pixel_at(x, y)
+        data = self._data
+        if pixel is None or data is None:
+            self._view.setToolTip("")
             return
-        base = self._image.getImageItem().image
-        if base is None or event.isExit():
-            self._image.getView().setToolTip("")
-            return
-        pos = event.pos()
-        i = int(max(0, min(pos.y(), base.shape[0] - 1)))
-        j = int(max(0, min(pos.x(), base.shape[1] - 1)))
-        self._image.getView().setToolTip(f"pixel ({i}, {j}) = {base[i, j]:g}")
+        i, j = pixel
+        frame = data[self._view.frame] if data.ndim == 3 else data
+        self._view.setToolTip(f"pixel ({i}, {j}) = {frame[i, j]:g}")
 
-    def _draw_event(self, event) -> None:
-        if event.button() != QtCore.Qt.LeftButton:
+    def _on_stroke(self, mask, phase: str) -> None:
+        """A brush stamp: hand the mask to the model and let it recompute."""
+        if phase == "end":
             return
-        event.accept()
-        if event.isStart():
-            self._apply_kernel()
-        self._overlay.drawAt(event.pos(), event)
         if self._selection_attr:
-            import numpy as np
-
-            setattr(self._model, self._selection_attr, np.asarray(self._overlay.image))
+            setattr(self._model, self._selection_attr, mask)
         if self._on_draw and self._live():
             fn = getattr(self._model, self._on_draw, None)
             if callable(fn):
@@ -2541,42 +2463,25 @@ class ImageMapWidget(QtWidgets.QWidget):
     # ── point pick / overlays ──────────────────────────────────────────
     def _current_z(self) -> int:
         """Return the currently displayed slice index (0 for a 2D image)."""
-        if self._ndim < 3 or self._image is None:
+        if self._ndim < 3 or self._view is None:
             return 0
         try:
-            return int(self._image.currentIndex)
+            return int(self._view.frame)
         except Exception:
             return 0
 
-    def _connect_slice_changed(self) -> None:
-        """Redraw per-slice markers/ROI when the z-slider moves."""
-        try:
-            self._image.timeLine.sigPositionChanged.connect(self._redraw_overlays)
-        except Exception:
-            try:
-                self._image.sigTimeChanged.connect(self._redraw_overlays)
-            except Exception:
-                pass
-
-    def _on_clicked(self, event) -> None:
+    def _on_clicked(self, x: float, y: float) -> None:
         """Left-click in the image → write ``(z, y, x)`` and call ``on_pick``."""
-        if self._image is None:
+        if self._view is None:
             return
-        item = self._image.getImageItem()
-        scene_pos = event.scenePos()
-        if not item.sceneBoundingRect().contains(scene_pos):
+        pixel = self._view.pixel_at(x, y)
+        if pixel is None:
             return
-        point = item.mapFromScene(scene_pos)
-        x, y = int(point.x()), int(point.y())
+        row, col = pixel
         z = self._current_z()
-        base = item.image
-        if base is not None:
-            ny, nx = base.shape[:2]
-            if not (0 <= x < nx and 0 <= y < ny):
-                return
         if self._select_attr:
             try:
-                setattr(self._model, self._select_attr, (z, y, x))
+                setattr(self._model, self._select_attr, (z, row, col))
             except Exception:  # pragma: no cover - defensive
                 logging.warning(f"ImageMapWidget: could not set {self._select_attr!r}")
         if self._on_pick:
@@ -2588,19 +2493,27 @@ class ImageMapWidget(QtWidgets.QWidget):
                     logging.warning(f"ImageMapWidget: on_pick {self._on_pick!r} failed")
         self._redraw_overlays()
 
+    def _clear_overlays(self) -> None:
+        """Take down every marker, label and circle drawn by the last redraw."""
+        for item in (*self._marker_items, *self._label_items):
+            item.remove()
+        self._marker_items = []
+        self._label_items = []
+        for attr in ("_pick_marker", "_roi_item"):
+            item = getattr(self, attr)
+            if item is not None:
+                item.remove()
+                setattr(self, attr, None)
+
     def _redraw_overlays(self, *args) -> None:
         """Redraw pick marker, per-slice detected-point markers and the ROI circle."""
-        if self._image is None:
+        if self._view is None:
             return
-        import pyqtgraph as pg
-
-        view = self._image.getView()
+        view = self._view
         z = self._current_z()
+        self._clear_overlays()
 
         # detected-point markers (green squares) on the current slice
-        for m in self._marker_items:
-            view.removeItem(m)
-        self._marker_items = []
         if self._markers_source:
             fn = getattr(self._model, self._markers_source, None)
             pts = fn() if callable(fn) else None
@@ -2608,22 +2521,13 @@ class ImageMapWidget(QtWidgets.QWidget):
                 xs = [int(p[2]) for p in pts if int(p[0]) == z]
                 ys = [int(p[1]) for p in pts if int(p[0]) == z]
                 if xs:
-                    marker = pg.ScatterPlotItem(
-                        xs,
-                        ys,
-                        pen=pg.mkPen("g", width=1),
-                        brush=pg.mkBrush(0, 255, 0, 120),
-                        size=8,
-                        symbol="s",
+                    self._marker_items.append(
+                        view.marks(
+                            xs, ys, symbol="s", size=8, pen="g", brush=(0, 255, 0, 120), z=5
+                        )
                     )
-                    marker.setZValue(5)
-                    view.addItem(marker)
-                    self._marker_items.append(marker)
 
         # free text labels (e.g. mosaic tile names) on the current slice
-        for m in self._label_items:
-            view.removeItem(m)
-        self._label_items = []
         if self._labels_source:
             fn = getattr(self._model, self._labels_source, None)
             labels = fn() if callable(fn) else None
@@ -2637,53 +2541,30 @@ class ImageMapWidget(QtWidgets.QWidget):
                     lz, ly, lx, text = 0, float(lab[0]), float(lab[1]), str(lab[2])
                 if lz != z:
                     continue
-                item = pg.TextItem(text=text, color=(255, 255, 255))
-                item.setAnchor((0, 0))
-                item.setPos(lx, ly)
-                item.setZValue(6)
-                view.addItem(item)
-                self._label_items.append(item)
+                self._label_items.append(view.label(text, lx, ly, color="w"))
 
         # selected-point marker (red circle)
-        if self._pick_marker is not None:
-            view.removeItem(self._pick_marker)
-            self._pick_marker = None
         if self._select_attr:
             sel = getattr(self._model, self._select_attr, None)
             if sel is not None and int(sel[0]) == z:
-                self._pick_marker = pg.ScatterPlotItem(
-                    [int(sel[2])],
-                    [int(sel[1])],
-                    pen=pg.mkPen("r", width=2),
-                    brush=None,
-                    size=15,
-                    symbol="o",
+                self._pick_marker = view.marks(
+                    [int(sel[2])], [int(sel[1])], symbol="o", size=15, pen="r", width=2, z=9
                 )
-                self._pick_marker.setZValue(9)
-                view.addItem(self._pick_marker)
 
         # fitted lateral-FWHM circle (yellow)
-        if self._roi_item is not None:
-            view.removeItem(self._roi_item)
-            self._roi_item = None
         if self._roi_source:
             fn = getattr(self._model, self._roi_source, None)
             roi = fn() if callable(fn) else None
             if roi and int(roi.get("z", z)) == z:
                 r = float(roi["r"])
                 cx, cy = float(roi["x"]), float(roi["y"])
-                try:
-                    self._roi_item = pg.CircleROI(
-                        [cx - r, cy - r],
-                        [2 * r, 2 * r],
-                        pen=pg.mkPen("y", width=2),
-                        movable=False,
-                        resizable=False,
-                    )
-                    self._roi_item.setZValue(10)
-                    view.addItem(self._roi_item)
-                except Exception:  # pragma: no cover - CircleROI optional
-                    self._roi_item = None
+                self._roi_item = view.add_roi(
+                    kind="ellipse",
+                    pos=(cx - r, cy - r),
+                    size=(2 * r, 2 * r),
+                    pen="y",
+                    movable=False,
+                )
 
     def _apply_extent(self) -> None:
         """Place the image on real axes when the model supplies an extent.
@@ -2692,9 +2573,10 @@ class ImageMapWidget(QtWidgets.QWidget):
         reads in bin indices and anything overlaid on it — a gate, a cursor —
         has to be converted bin-by-bin at every call site. Given
         ``extent_source`` the axes carry the quantity itself, and a region drawn
-        on the plane is in the same units the analysis gates with.
+        on the plane is in the same units the analysis gates with. The view
+        re-ranges when the span changes and otherwise keeps the user's zoom.
         """
-        if self._image is None or not self._extent_source:
+        if self._view is None or not self._extent_source:
             return
         fn = getattr(self._model, self._extent_source, None)
         extent = fn() if callable(fn) else fn
@@ -2703,29 +2585,7 @@ class ImageMapWidget(QtWidgets.QWidget):
         x0, x1, y0, y1 = (float(v) for v in extent)
         if x1 <= x0 or y1 <= y0:
             return
-        self._image.getImageItem().setRect(QtCore.QRectF(x0, y0, x1 - x0, y1 - y0))
-        # Range to it only when the span itself changed. The view is still in
-        # pixel coordinates until something tells it otherwise — the image lands
-        # in a corner and everything drawn on it looks like a speck — but
-        # re-ranging on every refresh would undo the user's zoom.
-        # Re-range when the span changed, and also when the view is no longer on
-        # it at all. ``setImage`` resets the view to the image's *pixel* box, so
-        # swapping the displayed array — a channel selector switching between a
-        # measured map and a residual, say — left the axes reading 0 to 41 with the
-        # image a speck in the corner, even though its rect was correct.
-        view = self._image.getView()
-        changed = extent != getattr(self, "_applied_extent", None)
-        off_extent = False
-        if not changed:
-            try:
-                (vx0, vx1), (vy0, vy1) = view.viewRange()
-                span_x, span_y = x1 - x0, y1 - y0
-                off_extent = vx1 - vx0 > 10.0 * span_x or vy1 - vy0 > 10.0 * span_y
-            except Exception:
-                off_extent = False
-        if changed or off_extent:
-            self._applied_extent = tuple(extent)
-            view.autoRange()
+        self._view.set_extent((x0, x1, y0, y1))
 
     # ── surface for the shared region overlay ──────────────────────────
     def add_roi(
@@ -2744,9 +2604,7 @@ class ImageMapWidget(QtWidgets.QWidget):
         This is the whole surface
         :class:`~chisurf.gui.widgets.roi.overlay.RegionOverlay` needs, so any
         tool whose canvas is this section can show and edit a shared region
-        collection on it. Implemented here rather than in chiplot because this
-        widget owns the pyqtgraph image view; handing the raw view out would put
-        the coupling somewhere it could rot unnoticed.
+        collection on it.
 
         Parameters
         ----------
@@ -2770,43 +2628,36 @@ class ImageMapWidget(QtWidgets.QWidget):
         Raises
         ------
         RuntimeError
-            If there is no image view (pyqtgraph missing).
+            If there is no image view.
         """
-        if self._image is None:
+        if self._view is None:
             raise RuntimeError("no image view to draw a region on")
-        from chisurf.gui.chiplot import style as S
-        from chisurf.gui.chiplot.backends import pyqtgraph_backend as B
-
-        # Through the backend's own constructor, not `__new__`: building the
-        # canvas by hand skipped `__init__` and therefore every attribute it
-        # sets, which broke the moment the canvas started tracking what it had
-        # added. (This whole method reaches past the chiplot seam; it belongs
-        # on a chiplot canvas this widget owns — see the chiplot concept.)
-        surface = B._PgImageView.wrap(self._image)
-        return surface.add_roi(
+        return self._view.add_roi(
             kind=kind,
             pos=tuple(pos),
             size=tuple(size),
-            pen=S.to_pen(pen),
+            pen=pen,
             movable=movable,
             rotatable=rotatable,
             points=points,
         )
 
-    # ── refresh ────────────────────────────────────────────────────────
     # ── interactive rectangle gate ────────────────────────────────────
-    def _setup_rect_roi(self, pg) -> None:
+    def _setup_rect_roi(self) -> None:
         """Add the draggable/resizable rectangle used as an image gate."""
-        pen = pg.mkPen((80, 170, 255), width=2)
-        roi = pg.RectROI([0, 0], [1, 1], pen=pen, hoverPen=pg.mkPen((120, 200, 255), width=3))
-        roi.addScaleHandle([1, 1], [0, 0])
-        roi.addScaleHandle([0, 0], [1, 1])
-        roi.setZValue(20)
-        self._image.getView().addItem(roi)
-        roi.sigRegionChangeFinished.connect(self._on_rect_roi)
+        roi = self._view.add_roi(
+            kind="rect",
+            pos=(0.0, 0.0),
+            size=(1.0, 1.0),
+            pen=(80, 170, 255),
+            movable=True,
+            resizable=True,
+        )
+        roi.z = 20
+        roi.on_change(self._on_rect_roi, final=True)
         self._rect_roi = roi
 
-    def _on_rect_roi(self) -> None:
+    def _on_rect_roi(self, *_args) -> None:
         """Report the drawn rectangle to the model as a region."""
         if self._rect_roi is None or not self._region_call:
             return
@@ -2815,11 +2666,10 @@ class ImageMapWidget(QtWidgets.QWidget):
             return
         from chisurf.core.roi import RectangleROI
 
-        pos = self._rect_roi.pos()
-        size = self._rect_roi.size()
-        x0, y0 = float(pos.x()), float(pos.y())
+        x0, y0 = self._rect_roi.pos
+        w, h = self._rect_roi.size
         try:
-            fn(RectangleROI(x0, y0, x0 + float(size.x()), y0 + float(size.y()), name="gate"))
+            fn(RectangleROI(x0, y0, x0 + float(w), y0 + float(h), name="gate"))
         except Exception:
             logging.debug("region callback failed", exc_info=True)
 
@@ -2837,7 +2687,7 @@ class ImageMapWidget(QtWidgets.QWidget):
         if region is None:
             if self._rect_placed:
                 return
-            nx, ny = float(data.shape[0]), float(data.shape[1])
+            nx, ny = float(data.shape[1]), float(data.shape[0])
             rect = (0.25 * nx, 0.25 * ny, 0.75 * nx, 0.75 * ny)
         else:
             # Analytic regions bound themselves exactly; anything else is
@@ -2848,15 +2698,14 @@ class ImageMapWidget(QtWidgets.QWidget):
                 return
             rect = tuple(float(v) for v in found)
         x0, y0, x1, y1 = (float(v) for v in rect)
-        self._rect_roi.blockSignals(True)
-        self._rect_roi.setPos(x0, y0)
-        self._rect_roi.setSize((max(x1 - x0, 1e-9), max(y1 - y0, 1e-9)))
-        self._rect_roi.blockSignals(False)
+        self._rect_roi.set_pos(x0, y0)
+        self._rect_roi.set_size(max(x1 - x0, 1e-9), max(y1 - y0, 1e-9))
         self._rect_placed = True
 
+    # ── refresh ────────────────────────────────────────────────────────
     def refresh(self) -> None:
         """Re-read the model image (and selection) and redraw with the colormap."""
-        if self._image is None:
+        if self._view is None:
             return
         import numpy as np
 
@@ -2877,36 +2726,26 @@ class ImageMapWidget(QtWidgets.QWidget):
         if self._channel_combo is not None:
             self._reload_channels()
         data = np.asarray(img, dtype=float)
+        self._data = data
         self._ndim = data.ndim
         # movie controls are meaningful only for a 3D (frame, y, x) stack
         if self._movie:
             self._set_movie_enabled(data.ndim == 3)
-        if data.ndim == 3:
-            # Preserve the current slice across refreshes. The frame is
-            # ``(row, column)`` like any 2-D map, so x is the last axis and y the
-            # middle one; the opposite mapping renders every frame 90° off from
-            # the 2-D map docked beside it, which is what the removed ``match_2d``
-            # flag did while claiming the reverse.
-            try:
-                prev = int(self._image.currentIndex)
-            except Exception:
-                prev = 0
-            axes = {"t": 0, "x": 2, "y": 1}
-            self._image.setImage(data, autoLevels=True, axes=axes)
-            if 0 <= prev < data.shape[0]:
-                self._image.setCurrentIndex(prev)
-        else:
-            self._image.setImage(data, autoLevels=True)
+        # A stack is ``(frame, row, column)`` like any 2-D map, so a frame is
+        # drawn exactly as the same array is in a 2-D dock beside it. The current
+        # slice is preserved across refreshes.
+        prev = self._view.frame if data.ndim == 3 else 0
+        self._view.set_image(data, auto_levels=True)
+        if data.ndim == 3 and 0 < prev < data.shape[0]:
+            self._view.set_frame(prev)
         self._apply_extent()
-        apply_colormap(self._image, self._current_cmap())
-        if self._overlay is not None and self._selection_attr:
+        apply_colormap(self._view, self._current_cmap())
+        if self._selection_attr:
+            plane = data.shape[-2:]
             sel = getattr(self._model, self._selection_attr, None)
-            sel = (
-                np.zeros_like(data)
-                if sel is None or np.shape(sel) != data.shape
-                else np.asarray(sel)
+            self._view.set_brush_mask(
+                None if sel is None or np.shape(sel) != plane else np.asarray(sel)
             )
-            self._overlay.setImage(sel)
         if self._rect_roi is not None and data.ndim == 2:
             self._place_rect_roi(data)
         if self._markers_source or self._roi_source or self._select_attr or self._labels_source:

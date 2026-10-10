@@ -814,6 +814,9 @@ class PlotAPI:
         neither pan/zoom nor a context menu.
         """
         self._canvas.set_interactive(mouse=mouse, menu=menu)
+        # A backend with no menu of its own leaves it to chiplot's: honour the flag there too,
+        # or a "static preview" plot still pops a context menu on right-click.
+        self.set_menu_enabled(menu)
         return self
 
     def invert_y(self, invert=True) -> Plot:
@@ -941,49 +944,6 @@ class PlotAPI:
     def native(self):
         """The backend plot object (escape hatch; avoid in new code)."""
         return self._canvas.native
-
-    def __getattr__(self, name: str):
-        """Proxy unknown attributes to the native plot object, flagged.
-
-        Only invoked when normal lookup fails, so it never shadows chiplot's own
-        API. Lets a migrated ``Plot`` still answer pyqtgraph-only calls
-        (``setLogMode``, ``getViewBox``, …) while recording each as a migration
-        gap via :func:`~chisurf.gui.chiplot.passthrough_gaps`.
-
-        Parameters
-        ----------
-        name : str
-            Attribute not found on this :class:`Plot`.
-
-        Two objects are consulted, in order: the backend's plot object (a
-        pyqtgraph ``PlotItem``) and then the widget hosting it (a
-        ``PlotWidget``). pyqtgraph splits its API across the two — ``setLogMode``
-        and ``getViewBox`` live on the item, ``getPlotItem`` and ``plotItem``
-        only on the widget — and a migrated call site that reaches through the
-        widget-level half would otherwise get an ``AttributeError`` from a seam
-        whose whole purpose is to keep working.
-
-        Raises
-        ------
-        AttributeError
-            During construction (before the canvas exists) or if neither the
-            native plot object nor its host widget has ``name``.
-        """
-        if name.startswith("__") or name == "_canvas":
-            raise AttributeError(name)
-        from chisurf.gui.chiplot._passthrough import record_and_warn
-
-        widget = (
-            self._canvas.existing_widget()
-            if hasattr(self._canvas, "existing_widget")
-            else self._canvas.widget()
-        )
-        for target in (self._canvas.native, widget):
-            if hasattr(target, name):
-                record_and_warn("Plot", name)
-                return getattr(target, name)
-        raise AttributeError(name)
-
 
 class Plot(PlotAPI, QtWidgets.QWidget):
     """A single plot panel with a verb-first drawing API.
@@ -1234,33 +1194,6 @@ class Grid(QtWidgets.QWidget):
         """The backend grid object (escape hatch; avoid in new code)."""
         return self._grid.native
 
-    def __getattr__(self, name: str):
-        """Proxy unknown attributes to the native grid widget, flagged.
-
-        Gives pyqtgraph parity for ``GraphicsLayoutWidget`` methods chiplot does
-        not model natively (``addItem``, ``ci``, …).
-
-        Parameters
-        ----------
-        name : str
-            Attribute not found on this :class:`Grid`.
-
-        Raises
-        ------
-        AttributeError
-            During construction or if the native grid also lacks ``name``.
-        """
-        if name.startswith("__") or name == "_grid":
-            raise AttributeError(name)
-        from chisurf.gui.chiplot._passthrough import record_and_warn
-
-        native = self._grid.native
-        if hasattr(native, name):
-            record_and_warn("Grid", name)
-            return getattr(native, name)
-        raise AttributeError(name)
-
-
 class VolumeView(QtWidgets.QWidget):
     """3-D volume viewer: orbit a translucent ``(nz, ny, nx)`` scalar volume.
 
@@ -1339,6 +1272,12 @@ class ImageView(QtWidgets.QWidget):
     #: or not the fit converged — a refusal carries its reason and is worth
     #: showing, where a silently dropped click is not.
     picked = QtCore.Signal(object)
+    #: Emitted with the new index whenever the shown frame of a stack changes,
+    #: whether by the slider, :meth:`set_frame` or playback.
+    frame_changed = QtCore.Signal(int)
+    #: Emitted with ``True`` when playback starts and ``False`` when it stops,
+    #: including when a non-looping stack reaches its last frame by itself.
+    playing_changed = QtCore.Signal(bool)
 
     def __init__(self, parent=None, **backend_opts):
         super().__init__(parent)
@@ -1348,11 +1287,35 @@ class ImageView(QtWidgets.QWidget):
         self._pick_window = 9
         self._pick_image = None
         self._last_image = None
+        self._extent = None
+        self._brush = None
+        self._play_timer = None
+        self._play_loop = True
+        self._fps = 10
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-        layout.addWidget(self._iv.widget())
+        row = QtWidgets.QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(0)
+        row.addWidget(self._iv.widget(), 1)
+        layout.addLayout(row, 1)
+        self._row = row
+        self._ramp = None
+        # The frame stepper: shown only while a stack is on screen.
+        self._frame_bar = QtWidgets.QWidget(self)
+        bar = QtWidgets.QHBoxLayout(self._frame_bar)
+        bar.setContentsMargins(4, 0, 4, 0)
+        self._slider = QtWidgets.QSlider(QtCore.Qt.Horizontal, self._frame_bar)
+        self._slider.setToolTip("Frame of the stack")
+        self._frame_label = QtWidgets.QLabel("", self._frame_bar)
+        bar.addWidget(self._slider, 1)
+        bar.addWidget(self._frame_label)
+        layout.addWidget(self._frame_bar)
+        self._frame_bar.setVisible(False)
+        self._slider.valueChanged.connect(self._on_slider)
         self._iv.on_click(lambda x, y: self.clicked.emit(x, y))
+        self._iv.on_frame_changed(self._frame_moved)
 
     def set_image(self, data, *, auto_levels=True, axes=None) -> None:
         """Show a 2-D image or a 3-D ``(t, y, x)`` stack.
@@ -1371,6 +1334,334 @@ class ImageView(QtWidgets.QWidget):
         # having to hand the same array over twice.
         self._last_image = data
         self._iv.set_image(data, auto_levels=auto_levels, axes=axes)
+        count = int(self._iv.frame_count)
+        self._slider.blockSignals(True)
+        self._slider.setRange(0, max(count - 1, 0))
+        self._slider.setValue(0)
+        self._slider.blockSignals(False)
+        self._frame_bar.setVisible(count > 1)
+        self._frame_label.setText(f"1/{count}" if count > 1 else "")
+        if count <= 1:
+            self.stop()
+        ramp = self._iv.colorbar_widget()
+        if ramp is not None and ramp is not self._ramp:
+            self._row.addWidget(ramp)
+            self._ramp = ramp
+
+    # -- frames and playback ----------------------------------------------
+    @property
+    def frame_count(self) -> int:
+        """Number of frames of the shown stack (``1`` for a single image)."""
+        return int(self._iv.frame_count)
+
+    @property
+    def frame(self) -> int:
+        """Index of the frame being shown."""
+        return int(self._iv.frame)
+
+    def set_frame(self, index: int) -> None:
+        """Show frame *index* of the stack (wrapping); a no-op for one image."""
+        self._iv.set_frame(index)
+
+    def _frame_moved(self, index: int) -> None:
+        """The backend changed frame: follow it with the slider and announce it."""
+        self._slider.blockSignals(True)
+        self._slider.setValue(index)
+        self._slider.blockSignals(False)
+        count = self.frame_count
+        self._frame_label.setText(f"{index + 1}/{count}" if count > 1 else "")
+        self.frame_changed.emit(index)
+
+    def _on_slider(self, value: int) -> None:
+        self._iv.set_frame(value)
+
+    @property
+    def playing(self) -> bool:
+        """Whether the stack is being played."""
+        return self._play_timer is not None and self._play_timer.isActive()
+
+    def play(self, fps: int | None = None, *, loop: bool | None = None) -> None:
+        """Step through the stack at *fps* frames per second.
+
+        Parameters
+        ----------
+        fps : int, optional
+            Frames per second; the last value is kept when omitted.
+        loop : bool, optional
+            Wrap round at the end (default) or stop on the last frame.
+        """
+        if self.frame_count <= 1:
+            return
+        if fps is not None:
+            self._fps = max(int(fps), 1)
+        if loop is not None:
+            self._play_loop = bool(loop)
+        if self._play_timer is None:
+            self._play_timer = QtCore.QTimer(self)
+            self._play_timer.timeout.connect(self._advance)
+        self._play_timer.start(int(1000 / self._fps))
+        self.playing_changed.emit(True)
+
+    def set_fps(self, fps: int) -> None:
+        """Change the playback speed, taking effect at once while playing."""
+        self._fps = max(int(fps), 1)
+        if self.playing:
+            self._play_timer.start(int(1000 / self._fps))
+
+    def set_loop(self, loop: bool) -> None:
+        """Wrap round at the end of the stack (``True``) or stop on the last frame."""
+        self._play_loop = bool(loop)
+
+    def pause(self) -> None:
+        """Stop playing, staying on the current frame."""
+        was = self.playing
+        if self._play_timer is not None:
+            self._play_timer.stop()
+        if was:
+            self.playing_changed.emit(False)
+
+    def stop(self) -> None:
+        """Stop playing and return to the first frame."""
+        self.pause()
+        if self.frame_count > 1:
+            self.set_frame(0)
+
+    def _advance(self) -> None:
+        """One playback step: next frame, wrapping or stopping at the end."""
+        nxt = self.frame + 1
+        if nxt >= self.frame_count:
+            if not self._play_loop:
+                self.pause()
+                return
+            nxt = 0
+        self.set_frame(nxt)
+
+    # -- placing the picture ----------------------------------------------
+    def set_extent(self, extent) -> None:
+        """Put the picture on real axes ``(x0, x1, y0, y1)``.
+
+        ``None`` returns to pixel indices. The view re-ranges to the new span
+        when it changes, and otherwise keeps the user's zoom.
+        """
+        self._extent = None if extent is None else tuple(float(v) for v in extent)
+        self._iv.set_extent(self._extent)
+
+    def set_labels(self, *, bottom: str | None = None, left: str | None = None) -> None:
+        """Title the axes and show them (a bare picture has none)."""
+        self._iv.set_axes_visible(True)
+        self._iv.set_labels(bottom=bottom, left=left)
+
+    def set_axes_visible(self, visible: bool) -> None:
+        """Show or hide tick numbers and axis titles."""
+        self._iv.set_axes_visible(bool(visible))
+
+    def invert_y(self, invert: bool = True) -> None:
+        """Row 0 at the top (``True``, a picture) or the bottom (a plot)."""
+        self._iv.invert_y(invert)
+
+    def set_aspect_locked(self, lock: bool = True) -> None:
+        """Square pixels (``True``) or fill the panel."""
+        self._iv.set_aspect_locked(lock)
+
+    def auto_range(self) -> None:
+        """Fit the view to the picture."""
+        self._iv.auto_range()
+
+    def view_range(self):
+        """The visible ``((x0, x1), (y0, y1))`` in axis units."""
+        return self._iv.view_range()
+
+    def pixel_at(self, x: float, y: float) -> tuple[int, int] | None:
+        """Convert axis coordinates to ``(row, column)`` of the shown picture.
+
+        Returns ``None`` outside the picture. With an extent the axes carry the
+        quantity, so a click or a stroke is mapped back to the pixel under it.
+        """
+        image = self._last_image
+        if image is None:
+            return None
+        ny, nx = image.shape[-2:]
+        if self._extent is not None:
+            x0, x1, y0, y1 = self._extent
+            col = (x - x0) / (x1 - x0) * nx
+            row = (y - y0) / (y1 - y0) * ny
+        else:
+            col, row = x, y
+        row, col = int(np.floor(row)), int(np.floor(col))
+        if 0 <= row < ny and 0 <= col < nx:
+            return row, col
+        return None
+
+    # -- symbols and labels over the picture ------------------------------
+    def marks(
+        self, x, y, *, symbol="o", size=7.0, pen=None, brush=None, width=1.0, z=None
+    ) -> H.Scatter:
+        """Draw a set of symbols over the picture, in axis coordinates.
+
+        Parameters
+        ----------
+        x, y : array-like
+            Positions (``x`` a column, ``y`` a row for an image without extent).
+        symbol : str
+            ``"o"``, ``"s"``, ``"t"``, ``"d"``, ``"+"`` or ``"x"``.
+        size : float
+            Symbol size in pixels.
+        pen, brush : color-like, optional
+            Outline and fill; ``None`` leaves the symbol hollow / flat.
+        width : float
+            Outline width in pixels.
+        z : float, optional
+            Stacking order among the marks.
+
+        Returns
+        -------
+        handles.Scatter
+        """
+        style = {
+            "symbol": symbol,
+            "size": size,
+            "pen": None if pen is None else S.to_pen(pen),
+            "brush": None if brush is None else S.to_brush(brush),
+            "width": width,
+        }
+        marks = self._iv.add_marks(np.asarray(x, dtype=float), np.asarray(y, dtype=float), **style)
+        if z is not None:
+            marks.z = float(z)
+        return marks
+
+    def label(self, text: str, x: float, y: float, *, color="w", anchor=(0.0, 0.0)) -> H.Text:
+        """Write *text* at axis position ``(x, y)`` over the picture."""
+        return self._iv.add_text(str(text), (x, y), color=S.to_color(color), anchor=anchor)
+
+    # -- painting ----------------------------------------------------------
+    def enable_brush(self, kernel=None, *, on_stroke=None, color=(255, 255, 255)) -> None:
+        """Make the picture paintable with a brush, on a layer of its own.
+
+        The left drag stamps *kernel* onto a mask the size of the picture and
+        shows it as a translucent layer; a drag that starts on a shape still
+        moves the shape. Values accumulate (a stroke over painted pixels adds)
+        and are floored at zero, so a negative kernel erases. The mask is read
+        with :meth:`brush_mask`, replaced with :meth:`set_brush_mask`.
+
+        Parameters
+        ----------
+        kernel : array-like or callable, optional
+            2-D weights stamped at each pixel (centred on it), or a callable
+            returning them, read at the start of every stroke so a tool can
+            change brush size between strokes. Default a single pixel.
+        on_stroke : callable, optional
+            ``on_stroke(mask, phase)`` after every stamp, ``phase`` one of
+            ``"start"``, ``"move"`` or ``"end"``; ``mask`` is a copy.
+        color : color-like
+            Colour of the painted layer.
+        """
+        tint = S.to_color(color)
+        lut = np.zeros((256, 4), dtype=np.uint8)
+        lut[:, :3] = (tint.r, tint.g, tint.b)
+        lut[:, 3] = np.linspace(0, 170, 256).astype(np.uint8)
+        self._brush = {
+            "kernel": kernel,
+            "on_stroke": on_stroke,
+            "lut": lut,
+            "layer": None,
+            "mask": None,
+            "last": None,
+            "active": None,
+        }
+        self._iv.set_paint_handler(self._paint)
+        if self._last_image is not None:
+            self.set_brush_mask(None)
+
+    def disable_brush(self) -> None:
+        """Remove the brush and its layer; the drag pans again."""
+        if self._brush is None:
+            return
+        if self._brush["layer"] is not None:
+            self._brush["layer"].remove()
+        self._iv.set_paint_handler(None)
+        self._brush = None
+
+    def brush_mask(self) -> np.ndarray | None:
+        """A copy of the painted mask, or ``None`` before an image is shown."""
+        if self._brush is None or self._brush["mask"] is None:
+            return None
+        return self._brush["mask"].copy()
+
+    def set_brush_mask(self, mask) -> None:
+        """Replace the painted mask (``None`` clears it) and redraw the layer.
+
+        A mask whose shape is not the picture's is dropped for an empty one:
+        painting on a stale mask would stamp onto pixels that no longer exist.
+        """
+        brush = self._brush
+        if brush is None or self._last_image is None:
+            return
+        shape = self._last_image.shape[-2:]
+        if mask is None or np.shape(mask) != shape:
+            mask = np.zeros(shape, dtype=float)
+        brush["mask"] = np.array(mask, dtype=float)
+        if brush["layer"] is None or brush["layer"].get_image().shape != shape:
+            if brush["layer"] is not None:
+                brush["layer"].remove()
+            brush["layer"] = self._iv.add_overlay(brush["mask"], colormap=brush["lut"])
+            brush["layer"].set_levels(0.0, 1.0)
+        else:
+            brush["layer"].set_image(brush["mask"])
+
+    def _stamp(self, row: int, col: int) -> None:
+        """Add the kernel to the mask, centred on ``(row, col)``, clipped to it."""
+        brush = self._brush
+        kernel = brush["active"]
+        mask = brush["mask"]
+        kh, kw = kernel.shape
+        top, left = row - kh // 2, col - kw // 2
+        r0, c0 = max(top, 0), max(left, 0)
+        r1, c1 = min(top + kh, mask.shape[0]), min(left + kw, mask.shape[1])
+        if r1 <= r0 or c1 <= c0:
+            return
+        window = mask[r0:r1, c0:c1] + kernel[r0 - top : r1 - top, c0 - left : c1 - left]
+        mask[r0:r1, c0:c1] = np.maximum(window, 0.0)
+
+    def _paint(self, phase: str, x: float, y: float) -> None:
+        """The backend's drag, in axis coordinates: stamp along the stroke."""
+        brush = self._brush
+        if brush is None:
+            return
+        if brush["mask"] is None or brush["mask"].shape != self._last_image.shape[-2:]:
+            self.set_brush_mask(None)
+        if phase == "start":
+            source = brush["kernel"]
+            kernel = source() if callable(source) else source
+            kernel = np.ones((1, 1)) if kernel is None else np.atleast_2d(np.asarray(kernel, float))
+            brush["active"] = kernel
+            brush["last"] = None
+        if phase != "end":
+            pixel = self.pixel_at(x, y)
+            if pixel is not None and brush["active"] is not None:
+                last = brush["last"]
+                if last is None or last == pixel:
+                    steps = [pixel]
+                else:
+                    # A fast drag skips pixels: walk the straight line between
+                    # the last stamp and this one so the stroke has no gaps.
+                    n = max(abs(pixel[0] - last[0]), abs(pixel[1] - last[1]))
+                    steps = [
+                        (
+                            int(round(last[0] + (pixel[0] - last[0]) * k / n)),
+                            int(round(last[1] + (pixel[1] - last[1]) * k / n)),
+                        )
+                        for k in range(1, n + 1)
+                    ]
+                for row, col in steps:
+                    self._stamp(row, col)
+                brush["last"] = pixel
+                brush["layer"].set_image(brush["mask"])
+        if brush["on_stroke"] is not None:
+            brush["on_stroke"](brush["mask"].copy(), phase)
+
+    def on_hover(self, callback) -> None:
+        """Call ``callback(x, y)`` as the pointer moves over the picture."""
+        self._iv.on_hover(callback)
 
     def set_colormap(self, name, source="matplotlib") -> None:
         """Apply a named colormap.
@@ -1386,7 +1677,14 @@ class ImageView(QtWidgets.QWidget):
 
     def clear(self) -> None:
         """Clear the image and overlays."""
+        self.stop()
         self._iv.clear()
+        self._last_image = None
+        self._ramp = None
+        self._frame_bar.setVisible(False)
+        if self._brush is not None:
+            self._brush["layer"] = None
+            self._brush["mask"] = None
 
     def set_histogram_width(self, width) -> None:
         """Constrain (int) or free (``None``) the LUT histogram panel width."""
@@ -1426,6 +1724,7 @@ class ImageView(QtWidgets.QWidget):
         rotatable=False,
         points=None,
         angle=0.0,
+        resizable=False,
     ) -> H.Roi:
         """Add a region-of-interest shape over the image.
 
@@ -1452,6 +1751,9 @@ class ImageView(QtWidgets.QWidget):
         angle : float, optional
             Rotation of an ellipse, in **radians**, about its own centre —
             the unit :class:`chisurf.core.roi.EllipseROI` carries.
+        resizable : bool, optional
+            Give an upright rectangle or ellipse a grip on two opposite corners
+            that resizes it.
 
         Returns
         -------
@@ -1466,6 +1768,7 @@ class ImageView(QtWidgets.QWidget):
             rotatable=rotatable,
             points=points,
             angle=np.degrees(float(angle)),
+            resizable=resizable,
         )
 
     def add_region(self, region, *, pen="y", movable=False, name: str = "") -> H.Roi:
@@ -1585,30 +1888,6 @@ class ImageView(QtWidgets.QWidget):
     def native(self):
         """The backend image-view object (escape hatch; avoid in new code)."""
         return self._iv.native
-
-    def __getattr__(self, name: str):
-        """Proxy unknown attributes to the native image view, flagged.
-
-        Parameters
-        ----------
-        name : str
-            Attribute not found on this :class:`ImageView`.
-
-        Raises
-        ------
-        AttributeError
-            During construction or if the native image view also lacks ``name``.
-        """
-        if name.startswith("__") or name == "_iv":
-            raise AttributeError(name)
-        from chisurf.gui.chiplot._passthrough import record_and_warn
-
-        native = self._iv.native
-        if hasattr(native, name):
-            record_and_warn("ImageView", name)
-            return getattr(native, name)
-        raise AttributeError(name)
-
 
 class PanelPlot(Plot):
     """A :class:`Plot` bound to an existing grid-panel canvas.

@@ -403,7 +403,8 @@ def test_reset_restores_the_active_settings():
 
 def test_backend_choice_and_hint():
     model = make_model()
-    assert model.backend == "pyqtgraph" and model.backends == ("emtk", "pyqtgraph")
+    # SEEDED names the removed pyqtgraph backend, as an old settings file does: it loads as emtk
+    assert model.backend == "emtk" and model.backends == ("emtk",)
     backend = find_field("backend")
     assert backend["type"] == "choice" and backend["options_source"] == "backends"
     hint = "Changes apply on next application start or when a new plot is created."
@@ -411,10 +412,9 @@ def test_backend_choice_and_hint():
     assert hint in texts
     app = make_app()
     assert hint in draw(app).strings
-    model.backend = "emtk"
-    assert model.dirty
+    assert not model.dirty, "the stale value is normalized on load, not left as a pending edit"
     model.apply()
-    assert live()["backend"] == "emtk"
+    assert live()["backend"] == "emtk", "Apply writes the normalized value back"
 
 
 def test_preview_sample_curves_are_deterministic_styling_samples():

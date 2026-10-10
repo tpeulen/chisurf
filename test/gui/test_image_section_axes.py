@@ -1,6 +1,6 @@
 """The reusable AutoForm ``image`` section draws a 2-D array the numpy way.
 
-pyqtgraph's default maps a 2-D array's axis 0 to *x* — it draws the transpose.
+A renderer that maps a 2-D array's axis 0 to *x* draws the transpose.
 Every other part of :class:`ImageMapWidget` is written the other way round:
 markers are placed at ``(x, y) = (col, row)``, clicks are bounds-checked against
 ``shape[:2]`` read as ``(ny, nx)``, the rectangle gate builds a ``RectangleROI``
@@ -43,12 +43,13 @@ def test_a_2d_array_is_drawn_the_way_numpy_holds_it(qtbot):
 
     widget = _image_widget(qtbot, Host(), markers_source="markers")
 
-    rect = widget._image.getImageItem().boundingRect()
-    assert (rect.width(), rect.height()) == (60.0, 20.0)
+    image = widget.view.native._entries[0].state
+    assert image["rect"] == (0.0, 0.0, 60.0, 20.0)
 
     (marker,) = widget._marker_items
-    xs, ys = marker.getData()
+    xs, ys = marker.get_data()
     assert (xs[0], ys[0]) == (45.0, 6.0)  # on the bright block, not beside it
+    assert widget.view.pixel_at(45.5, 6.5) == (6, 45)
 
 
 def test_a_three_dimensional_stack_keeps_the_same_orientation(qtbot):
@@ -58,8 +59,8 @@ def test_a_three_dimensional_stack_keeps_the_same_orientation(qtbot):
         img = np.zeros((3, 20, 60))
 
     widget = _image_widget(qtbot, Host())
-    rect = widget._image.getImageItem().boundingRect()
-    assert (rect.width(), rect.height()) == (60.0, 20.0)
+    image = widget.view.native._entries[0].state
+    assert image["rect"] == (0.0, 0.0, 60.0, 20.0)
 
 
 def test_a_region_drawn_on_the_section_lands_on_its_own_pixels(qtbot):

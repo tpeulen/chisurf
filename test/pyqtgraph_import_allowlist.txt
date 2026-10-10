@@ -1,6 +1,0 @@
-# Files still importing pyqtgraph directly (PRD-64 migration tracker).
-# The sanctioned backend chisurf/gui/chiplot/backends/pyqtgraph_backend.py
-# is NOT listed. Remove a path here as it migrates to chisurf.gui.chiplot;
-# adding a NEW path is a test failure. Goal: empty (bar the ChiMOL GL file).
-chisurf/gui/autoform/sections/builtin.py
-chisurf/plugins/tttr/intensity_trace/qt_tool.py

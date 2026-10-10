@@ -6,7 +6,7 @@ import pytest
 
 @contextmanager
 def close_created_plots():
-    """Close new plots and remove only deleted Qt view registry entries."""
+    """Close the plots a test created, so Qt owns nothing the test forgot."""
     from qtpy.QtWidgets import QApplication
 
     from chisurf.gui.chiplot.canvas import Plot
@@ -27,16 +27,6 @@ def close_created_plots():
                     plot.deleteLater()
                 except RuntimeError:
                     continue
-        try:
-            from PyQt5 import sip
-            from pyqtgraph.graphicsItems.ViewBox import ViewBox
-        except ImportError:
-            sip = None
-        if sip is not None:
-            for view in [v for v in ViewBox.AllViews if sip.isdeleted(v)]:
-                ViewBox.AllViews.pop(view, None)
-            for name in [n for n, v in ViewBox.NamedViews.items() if sip.isdeleted(v)]:
-                ViewBox.NamedViews.pop(name, None)
 
 
 @pytest.fixture(autouse=True)

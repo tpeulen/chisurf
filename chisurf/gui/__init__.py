@@ -1222,9 +1222,9 @@ def get_win(app: QtWidgets.QApplication) -> cs.gui.main.Main:
 
     from chisurf.gui import chiplot as cp
 
-    # Configuring the backend also loads it, which applies the pyqtgraph
-    # autoRangeEnabled compat shim (see the chiplot pyqtgraph backend).
-    cp.configure(useOpenGL=False)  # Disable OpenGL in the plotting backend
+    # Configuring the backend also loads it (and fails early, with the reason, when a stale
+    # setting names a backend that no longer exists).
+    cp.configure(useOpenGL=False)
 
     import pathlib
 

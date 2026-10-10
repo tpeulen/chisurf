@@ -67,7 +67,6 @@ def test_compute_requires_files_and_channels():
 
 def test_widget_creation(qapp, qtbot):
     """The AutoForm tool constructs and registers its custom sections."""
-    pytest.importorskip("pyqtgraph")
     pytest.importorskip("tttrlib")
     from qtpy import QtWidgets
 

@@ -16,7 +16,6 @@ import pytest
 from chisurf.core.datastore import store_from_rows
 
 pytest.importorskip("qtpy")
-pytest.importorskip("pyqtgraph")
 
 
 @pytest.fixture(scope="module")

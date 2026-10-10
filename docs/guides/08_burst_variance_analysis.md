@@ -62,7 +62,7 @@ SPC-132 dsDNA measurements (1130 bursts, 1118 with enough photons for at least
 one slice; 10 photons per slice). Red: the static (shot-noise) line; cyan: the
 mean slice standard deviation per proximity-ratio column. The donor-only spot
 near 0 sits on the line; the FRET population around 0.3–0.7 lies above it.
-Rendered with `CHISURF_PLOT_BACKEND=pyqtgraph` — see *Known defects*.
+Rendered with the emtk plot backend.
 ```
 
 ```{figure} figures/bva_native_primary_window.png
@@ -141,10 +141,4 @@ Burst Variance Analysis.
 
 ## Known defects
 
-- **The BVA plot is blank under the default plot backend.** The emtk backend's
-  generic `set_data` (`chisurf/gui/chiplot/backends/emtk_backend.py`, the
-  handle's `set_data`) replaces `x`/`y` of an error-bar item but ignores `top`
-  and `bottom`, so the profile's error bars keep zero-length extents while their
-  `x` grows; `_draw_errorbars` then raises `IndexError` on every paint and the
-  heat map and axes are never drawn — only the two lines appear. Workaround:
-  start ChiSurf with `CHISURF_PLOT_BACKEND=pyqtgraph`.
+- *(none against the plot backend: the blank BVA plot an earlier emtk build gave — error-bar `set_data` ignoring `top`/`bottom` — is fixed, and pinned by `test_error_bars_can_be_updated_to_a_new_length`.)*

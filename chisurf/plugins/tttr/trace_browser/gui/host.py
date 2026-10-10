@@ -7,15 +7,14 @@ here because the adapter only *hosts* the other tools' windows; it is imported l
 :func:`~chisurf.plugins.tttr.trace_browser.gui.app.make_app`, and only when a Qt application runs),
 never by ``gui.app`` or ``gui.model`` at import time.
 
-The three requests open what the Qt Trace Browser (``widget.py``) opened:
+The three requests open what the retired Qt Trace Browser opened:
 
-* ``open_intensity_trace``: a new :class:`~chisurf.plugins.tttr.intensity_trace.IntensityTrace`
-  window set up as ``_on_transfer_to_analysis`` does (title, file, bin window, detector setup,
-  file loaded, plot updated);
+* ``open_intensity_trace``: a new native Intensity Trace window
+  (:class:`~chisurf.plugins.tttr.intensity_trace.gui.app.IntensityTraceApp` hosted in a Qt window)
+  with its title, bin window and detector setup set, the file loaded and binned;
 * ``open_time_window``: a new
   :class:`~chisurf.plugins.tttr.tttr_time_windows.gui.tool.TTTRTimeWindowTool` (the Time Window
-  tool; ``widget.py`` still drives its pre-emtk ``TTTRTimeWindowWizard`` attributes, which no
-  longer exist) holding the file and the bin window;
+  tool) holding the file and the bin window;
 * ``open_ndxplorer``: ChiSurf's ndX window
   (:func:`~chisurf.plugins.ndxplorer.window.build_ndxplorer_window`) on the burst-analysis folder
   the model wrote.
@@ -87,20 +86,31 @@ def open_intensity_trace(payload: dict) -> QtWidgets.QWidget:
     payload : dict
         ``file``, ``window_ms`` and ``setup_settings`` of the model's request (``selected_channels``
         is part of it; the Qt tool computed it and only logged it, so it is not applied here either).
+
+    Returns
+    -------
+    QtWidgets.QWidget
+        The window, holding the native app as ``window.app``; the file is read and binned on the
+        app's worker (``window.app.wait()`` joins it).
     """
-    from chisurf.plugins.tttr.intensity_trace import IntensityTrace
+    from emtk.qt_host import ControlHost
+
+    from chisurf.plugins.tttr.intensity_trace.gui.app import make_app
 
     path = _file(payload)
-    window = IntensityTrace()
-    window.setWindowTitle(f"Intensity Trace Analysis - {path.name}")
-    window.file_label.setText(f"Selected file: {path}")
-    window.window_spin.setValue(float(payload["window_ms"]))
+    app = make_app()
+    app.model.window_ms = float(payload["window_ms"])
     setup = payload.get("setup_settings")
     if setup:
-        window._detector_settings = setup
-        window._refresh_detector_checkboxes()
-    window.load_file(file_path=str(path))
-    window.update_plot()
+        app.model.setup = setup
+        app.model.selected = []
+        app.setup_name = str(setup.get("setup_name") or "Edited setup")
+    app.open_file(str(path))
+    window = ControlHost(app)
+    window.app = app
+    window.setWindowTitle(f"Intensity Trace Analysis - {path.name}")
+    width, height = app.window_size
+    window.resize(int(width), int(height))
     return _keep(window)
 
 

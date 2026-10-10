@@ -2,8 +2,7 @@
 
 Construction tests only prove nothing crashed. What these add is the seam checks
 that a screenshot cannot automate: that the experiment registers *additively*, that
-the models appear only where they apply, that nothing falls through the chiplot
-seam to pyqtgraph, and that the model refuses to report uncertainties its own
+the models appear only where they apply, that the plot draws through chiplot alone, and that the model refuses to report uncertainties its own
 scoring source cannot support.
 """
 
@@ -440,20 +439,17 @@ def test_view_specs_load(fit, dataset):
 # ──────────────────────────────────────────────────────────────────────────────
 # The plot
 # ──────────────────────────────────────────────────────────────────────────────
-def test_the_plot_draws_with_nothing_falling_through_the_chiplot_seam(fit, qapp):
-    """Pyqtgraph is a backend behind chiplot, and a passthrough is a silent bug.
+def test_the_plot_draws_through_chiplot_alone(fit, qapp):
+    """The plot is built from chiplot verbs only: drawing it reaches no renderer attribute.
 
-    Anything chiplot lacks falls *through* to pyqtgraph with a warning rather than
-    failing, so the migration only finishes if new code is held to producing none.
+    chiplot has no passthrough to a backing library any more, so a spelling it does not
+    offer is an ``AttributeError`` here rather than a silent fall-through.
     """
-    from chisurf.gui import chiplot as cp
     from chisurf.gui.plots.mfd_2d import Mfd2DPlot
 
-    cp.reset_gaps()
     plot = Mfd2DPlot(fit)
     plot.update_all()
     qapp.processEvents()
-    assert sorted(cp.passthrough_gaps()) == []
 
 
 def test_the_marginal_plot_spans_the_axes_the_histogram_was_binned_on(fit, qapp):

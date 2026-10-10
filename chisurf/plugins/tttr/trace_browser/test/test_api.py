@@ -34,11 +34,10 @@ def test_the_ndxplorer_integration_is_actually_wired():
     pytest.importorskip("ndxplorer")
     from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
 
-    # The Qt workspace moved from the package ``__init__`` (now a lazy, Qt-free shim)
-    # to ``widget.py``; the wiring is pinned where the code is.
-    from chisurf.plugins.tttr.trace_browser import widget as trace_browser
+    # The Qt workspace is gone; the wiring is the host adapter of the native app.
+    from chisurf.plugins.tttr.trace_browser.gui import host
 
     assert "path" in inspect.signature(build_ndxplorer_window).parameters
-    source = inspect.getsource(trace_browser)
-    assert "build_ndxplorer_window(analysis_dir)" in source
+    source = inspect.getsource(host)
+    assert "build_ndxplorer_window(folder)" in source
     assert "NDXplorer(" not in source

@@ -105,7 +105,7 @@ def test_selecting_entry_updates_model_and_canvas(qapp):
     assert model.current == "c"
     assert model.picked[-1] == "c"
     # The canvas re-read the model's current image (all-2s).
-    img = browser._canvas._image.getImageItem().image
+    img = browser._canvas.view.native._entries[0].state["data"]
     assert img is not None and float(np.asarray(img).max()) == 2.0
 
 

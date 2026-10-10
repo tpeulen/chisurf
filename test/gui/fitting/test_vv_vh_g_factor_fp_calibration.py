@@ -6,7 +6,6 @@ import numpy as np
 import pytest
 
 pytest.importorskip("qtpy")
-pytest.importorskip("pyqtgraph")
 
 _MODULE_PATH = (
     Path(__file__).resolve().parents[3] / "chisurf" / "plugins" / "vv_vh_g_factor" / "__init__.py"

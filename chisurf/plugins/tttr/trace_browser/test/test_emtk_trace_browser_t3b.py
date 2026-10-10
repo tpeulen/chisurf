@@ -8,7 +8,6 @@ of 10 ms with the per-detector sums ``[22443, 56257, 0]`` for ``green``, ``red``
 """
 
 import json
-import pathlib
 import shutil
 import time
 
@@ -772,28 +771,16 @@ def test_settings_round_trip_includes_the_precompute_toggle(alex_dir):
         app.close()
 
 
-def test_the_qt_widget_and_the_emtk_app_show_the_same_series(alex_dir, qapp, qtbot, monkeypatch):
-    """Same file, same setup: the legacy Qt plot and the emtk trace area draw the same series and sums."""
-    pytest.importorskip("pyqtgraph")
-    from chisurf.plugins.tttr.trace_browser import TraceBrowser
-
-    widget = TraceBrowser()
-    qtbot.addWidget(widget)
-    widget.detector_page.set_settings(json.loads(json.dumps(ALEX)))
-    widget._on_continue()
-    monkeypatch.setattr(widget, "_precompute_all_traces", lambda *a, **k: None)
-    widget._open_folder(alex_dir)
-    widget._plot_file(alex_dir / "m000.spc")
-    qt_series = {}
-    for trace_plot, _ in widget.plot.plots:
-        item = trace_plot.listDataItems()[0]
-        qt_series[item.name()] = float(np.sum(item.yData))
+def test_the_emtk_app_shows_the_series_the_qt_widget_plotted(alex_dir):
+    """Same file, same setup: the series and sums the retired Qt plot drew (recorded 2026-10-10)."""
+    qt_series = {"green": 22443.0, "red": 56257.0, "yellow": 0.0, "Sum": 78700.0}
     app = make_alex_app()
     try:
         open_and_show(app, alex_dir)
         emtk_series = {e["label"]: e["total"] for e in app._view.series}
         assert set(qt_series) == set(emtk_series) == set(LABELS) | {"Sum"}
         assert [qt_series[k] for k in LABELS] == [float(v) for v in SUMS]
+        assert qt_series["Sum"] == float(sum(SUMS))
         for label in qt_series:
             assert emtk_series[label] == pytest.approx(qt_series[label])
     finally:

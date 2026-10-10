@@ -27,7 +27,7 @@ GUI layers:
 
 - **3D Stack Visualization**
   - Load TIFF image stacks (single-channel or multi-channel).
-  - Browse z-slices using `pyqtgraph.ImageView`.
+  - Browse z-slices with the chiplot image view (frame slider, colour ramp).
   - Histogram-based intensity adjustment.
 
 - **Manual Bead Selection**
@@ -82,7 +82,6 @@ GUI layers:
 
 - `numpy`
 - `scipy` (for `least_squares` fitting)
-- `pyqtgraph` (for 3D visualization)
 - `tttrlib` (TIFF loading, via `chisurf.core.fio.image`)
 - `qtpy` (Qt bindings)
 

@@ -310,8 +310,8 @@ def test_a_stack_frame_renders_like_the_2d_map(qtbot):
         a[0, :] = 1.0
         return a
 
-    stored = lambda w: np.asarray(w._image.getImageItem().image)  # noqa: E731
-    drawn = lambda w: w._image.getImageItem().boundingRect()  # noqa: E731
+    stored = lambda w: np.asarray(w.view.native._entries[0].state["data"])  # noqa: E731
+    drawn = lambda w: w.view.native._entries[0].state["rect"]  # noqa: E731
 
     ref = ImageMapWidget(_M(base()), "the")
     qtbot.addWidget(ref)
@@ -323,8 +323,8 @@ def test_a_stack_frame_renders_like_the_2d_map(qtbot):
     assert stored(movie).shape == stored(ref).shape
     assert np.allclose(stored(movie), stored(ref))
     # Same pixels is not enough: the drawn extent is what a rotation shows up in.
-    assert drawn(movie).width() == drawn(ref).width() == 14
-    assert drawn(movie).height() == drawn(ref).height() == 6
+    assert drawn(movie)[2] == drawn(ref)[2] == 14
+    assert drawn(movie)[3] == drawn(ref)[3] == 6
 
 
 @_needs_data

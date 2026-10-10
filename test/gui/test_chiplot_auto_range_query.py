@@ -17,7 +17,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from chisurf.gui.chiplot import backends as _backends  # noqa: E402
 
 
-@pytest.fixture(params=["emtk", "pyqtgraph"])
+@pytest.fixture(params=["emtk"])
 def plot(request, qapp):
     previous, previous_env = _backends._active, os.environ.get("CHISURF_PLOT_BACKEND")
     os.environ["CHISURF_PLOT_BACKEND"] = request.param
@@ -44,7 +44,6 @@ def test_axes_follow_the_data_until_a_range_is_set(plot):
     assert plot.is_auto_range() == (False, True)
     plot.set_range(y=(1.0, 100.0))
     assert plot.is_auto_range() == (False, False)
-    # Continuous autoscale is following the data again on every backend (a one-shot
-    # fit holds its result on pyqtgraph, which is_auto_range reports truthfully).
+    # Continuous autoscale is following the data again.
     plot.autoscale(continuous=True)
     assert plot.is_auto_range() == (True, True)

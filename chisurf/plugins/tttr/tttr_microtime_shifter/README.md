@@ -30,7 +30,6 @@ curves from different detectors are properly aligned for subsequent analysis.
 
 - Python packages:
   - PyQt5
-  - pyqtgraph
   - numpy
   - tttrlib
   - chisurf core modules

@@ -56,8 +56,7 @@ E = 0.28 and 0.72, 500 donor-only and 500 acceptor-only bursts; true
 measurement. Recovered: α = 0.0800, δ = 0.0589, γ = 0.658, β = 1.389, with
 488 donor-only and 487 acceptor-only bursts found. The corrected $E$–$S$ plot
 puts the FRET populations at $S \approx 0.5$, donor-only at $S \to 1$ and
-acceptor-only at $S \to 0$. Rendered with `CHISURF_PLOT_BACKEND=pyqtgraph` —
-see *Known defects*.
+acceptor-only at $S \to 0$. Rendered with the emtk plot backend.
 ```
 
 ### Headless
@@ -104,12 +103,7 @@ Multi-parameter E–S histogram.
 
 ## Known defects
 
-- **Scatter plots are joined by lines under the default plot backend.** The
-  AutoForm plot section draws markers-only series with a transparent pen
-  (`chisurf/gui/autoform/sections/builtin.py`, `no_line` →
-  `pen=(0, 0, 0, 0)`); the emtk backend drops the alpha and draws a black
-  polyline through every population, and the legend swatches come out black.
-  Workaround: `CHISURF_PLOT_BACKEND=pyqtgraph`.
+- *(the scatter plots joined by black lines, from a transparent pen losing its alpha, are fixed and pinned by `test_a_transparent_pen_with_markers_draws_no_line`.)*
 - **Choosing a dye does nothing.** Opening the tool logs *bound control commit
   failed (Donor): AccurateFretViewModel.apply_dye_selection() takes 1
   positional argument but 2 were given* (and the same for Acceptor): the

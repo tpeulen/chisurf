@@ -25,7 +25,6 @@ def test_view_spec_loads():
 
 
 def test_tttr_image_browser_creation(qapp, qtbot):
-    pytest.importorskip("pyqtgraph")
     try:
         from chisurf.gui.autoform.sections.image_browser_section import ImageBrowserWidget
         from chisurf.plugins.tttr.tttr_image_browser import TTTRImageBrowser
@@ -47,7 +46,6 @@ def _make_tool(qtbot):
     *raises* is the defect these smoke tests exist to catch, and a blanket
     ``except Exception`` would report it as a skip.
     """
-    pytest.importorskip("pyqtgraph")
     try:
         from chisurf.plugins.tttr.tttr_image_browser.gui.tool import TTTRImageBrowserTool
     except ImportError:

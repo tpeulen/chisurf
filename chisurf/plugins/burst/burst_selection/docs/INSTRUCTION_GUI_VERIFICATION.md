@@ -16,7 +16,7 @@ the retained modern Qt surface; native controls have their own measured receipt.
 Visual verification complements the bounded source/binding tests. Several
 classes of issue need actual rendered states:
 
-- Plot rendering (pyqtgraph)
+- Plot rendering (chiplot)
 - Layout overflow / clipping
 - Missing signal connections
 - Button/text visibility

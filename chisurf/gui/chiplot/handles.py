@@ -6,8 +6,8 @@ the handle to update or remove that element later.
 
 These are :class:`typing.Protocol` classes: they document the behaviour every
 backend's concrete handles must provide, without forcing inheritance. The
-pyqtgraph backend returns thin wrappers around pyqtgraph items that conform to
-these protocols; a future OpenGL backend returns its own conforming objects.
+emtk backend's display-list entries conform to these protocols; another backend
+returns its own conforming objects.
 
 The protocols are deliberately small and verb-oriented (``set_data``,
 ``remove``, ``value``) rather than mirroring pyqtgraph's item API, so the

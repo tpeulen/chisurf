@@ -26,7 +26,7 @@ import numpy as np
 #: The registered chiplot backends, sorted as chiplot's ``available_backends()`` returns
 #: them (that function lives in the Qt-dependent GUI package, which a Qt-free app must not
 #: import; a test keeps the two lists equal).
-BACKENDS = ("emtk", "pyqtgraph")
+BACKENDS = ("emtk",)
 
 #: Qt's pyqtgraph combos, in the Qt order.
 PG_BACKGROUNDS = ("k", "w", "default")
@@ -205,7 +205,10 @@ class PlotSettingsModel:
     def load(self, ps: dict) -> None:
         """Fill every field from a ``gui.plot`` dictionary, with the Qt defaults for missing keys."""
         colors = ps.get("colors", {}) or {}
-        self.backend = str(ps.get("backend", "emtk"))
+        # A settings file written before the pyqtgraph backend was removed still names it:
+        # show (and write back) the one renderer there is instead of a choice that fails.
+        stored = str(ps.get("backend", "emtk"))
+        self.backend = stored if stored in BACKENDS else "emtk"
         for key, attr, _ in COLOR_KEYS:
             self.set_value(attr, colors.get(key, "#ffffff"))
         self.set_value("region_alpha", int(colors.get("region_selector_alpha", 100)))

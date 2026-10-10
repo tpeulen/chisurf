@@ -3,7 +3,6 @@ from qtpy import QtWidgets
 
 
 def test_psf_determination_tool_creation(qapp, qtbot):
-    pytest.importorskip("pyqtgraph")
     from chisurf.plugins.microscopy.psf_determination.gui.tool import PsfDeterminationTool
 
     widget = PsfDeterminationTool()

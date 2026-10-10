@@ -1,5 +1,4 @@
 import pytest
-from pyqtgraph.graphicsItems.ViewBox import ViewBox
 from qtpy.QtWidgets import QApplication
 
 import chisurf.gui
@@ -69,26 +68,6 @@ def _close_plots_this_test_created():
             # the wrapper anything from here is what the fixture is trying to
             # prevent, so leave it alone.
             continue
-
-    # pyqtgraph keeps a registry of every ViewBox ever made, and a ViewBox that
-    # dies walks it: `destroyed` -> forgetView -> updateAllViewLists ->
-    # menu.setViewList for *each* entry (ViewBox.py 288/1772/1798, 0.14.0).
-    # One stale entry whose menu Qt has already deleted turns that into
-    # "wrapped C/C++ object of type QComboBox has been deleted" -- raised
-    # inside a C++ destructor, which aborts the process rather than failing a
-    # test. The registry is bookkeeping for views linked *by name*, which
-    # nothing in this suite does. Only the entries Qt has already deleted are
-    # dropped: emptying the registry outright releases the last reference to
-    # every live ViewBox at once, and destroying that many at a stroke inside
-    # a fixture teardown is its own crash (SIGBUS).
-    try:
-        from PyQt5 import sip
-    except ImportError:  # pragma: no cover - a non-PyQt binding
-        return
-    for view in [v for v in ViewBox.AllViews if sip.isdeleted(v)]:
-        ViewBox.AllViews.pop(view, None)
-    for name in [n for n, v in ViewBox.NamedViews.items() if sip.isdeleted(v)]:
-        ViewBox.NamedViews.pop(name, None)
 
 
 #: The session's QApplication, held for the life of the process. Held only by

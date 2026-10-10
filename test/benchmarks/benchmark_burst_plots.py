@@ -1,4 +1,4 @@
-"""What a burst-diagnostic repaint costs, and which knob actually moves it.
+"""What a burst-diagnostic repaint costs on chiplot's emtk backend.
 
 The work unit is **one repaint of one plot widget** holding a raw per-photon
 series -- the delta-macro-time trace, the count-rate trace, the selection flag.
@@ -7,14 +7,13 @@ change, every tab switch and every resize, and because a burst-selection session
 is mostly repaints: the burst search over 1.8 M photons is 0.04 s, while the
 window that displays it was taking 0.29 s per frame.
 
-Three knobs are measured against each other on the same synthetic trace, because
-two of them look like the obvious answer and are not:
-
-* **point count** -- what "decimate the data" changes;
-* **viewport decimation** (``setDownsampling(auto, peak)`` + ``setClipToView``)
-  -- what makes the cost depend on the *visible* range instead of the array;
-* **pen width** -- a Qt pen wider than a pixel is not cosmetic, it strokes a
-  real outline.
+The knobs measured are the ones that remain on the emtk backend: **point count**
+(what "decimate the data" changes) and a **log y axis**. Viewport decimation,
+antialiasing and pen width were pyqtgraph knobs (``setDownsampling``,
+``setClipToView``, a wide Qt pen); the backend they belonged to is gone and
+emtk draws the samples it is given, so the caller thins the data. The numbers
+recorded in ``docs/development/benchmarks.md`` for those knobs were measured on
+the old backend and are kept there as history.
 
 Run it::
 
@@ -38,74 +37,52 @@ WIDGET_SIZE = (1500, 400)
 REPEATS = 3
 
 
-def _bench(n, width, antialias, downsample, log_y=False, repeats=REPEATS):
-    """Return seconds per repaint for one configuration."""
-    import pyqtgraph as pg
+def _bench(n, log_y=False, repeats=REPEATS):
+    """Return seconds per repaint of a chiplot plot holding *n* points."""
     from qtpy import QtWidgets
 
+    from chisurf.gui import chiplot as cp
+
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    widget = pg.PlotWidget()
-    widget.resize(*WIDGET_SIZE)
-    widget.show()
-    item = widget.getPlotItem()
-    item.setLogMode(False, log_y)
-    if downsample:
-        item.setDownsampling(auto=True, mode="peak")
-        item.setClipToView(True)
+    plot = cp.Plot()
+    plot.resize(*WIDGET_SIZE)
+    plot.show()
+    plot.set_log(y=log_y)
 
     rng = np.random.default_rng(0)
     x = np.arange(n, dtype=np.float64)
     y = np.abs(rng.standard_normal(n)) + 1e-4
-    widget.plot(x, y, pen=pg.mkPen((255, 255, 0), width=width), antialias=antialias)
+    plot.line(x, y, pen=(255, 255, 0), width=1)
     app.processEvents()
-    widget.grab()  # warm-up
+    plot.grab()  # warm-up
 
     start = time.perf_counter()
     for _ in range(repeats):
-        item.getViewBox().update()
-        widget.grab()
+        plot.update()
+        plot.grab()
     elapsed = (time.perf_counter() - start) / repeats
-    widget.close()
+    plot.close()
     return elapsed
 
 
-#: (points, pen width, antialias, viewport decimation, log y)
+#: (points, log y)
 CASES = (
-    (66_000, 1, False, False, False),
-    (66_000, 2, False, False, False),
-    (66_000, 1, True, False, False),
-    (66_000, 1, False, True, False),
-    (66_000, 2, False, True, False),
-    (66_000, 1, False, True, True),
-    (660_000, 1, False, False, False),
-    (660_000, 1, False, True, False),
-    (660_000, 2, False, True, False),
+    (66_000, False),
+    (66_000, True),
+    (660_000, False),
+    (660_000, True),
 )
 
 
 def run(cases=CASES):
     """Measure every case and print a markdown table."""
-    records = []
-    for n, width, antialias, downsample, log_y in cases:
-        records.append(
-            {
-                "points": n,
-                "pen_width": width,
-                "antialias": antialias,
-                "downsample": downsample,
-                "log_y": log_y,
-                "seconds": _bench(n, width, antialias, downsample, log_y),
-            }
-        )
-
-    print("| points | pen width | antialias | viewport decimation | log y | s/repaint |")
-    print("|---:|---:|:---:|:---:|:---:|---:|")
+    records = [
+        {"points": n, "log_y": log_y, "seconds": _bench(n, log_y)} for n, log_y in cases
+    ]
+    print("| points | log y | s/repaint |")
+    print("|---:|:---:|---:|")
     for r in records:
-        print(
-            f"| {r['points']:,} | {r['pen_width']} | {'yes' if r['antialias'] else 'no'} "
-            f"| {'yes' if r['downsample'] else 'no'} | {'yes' if r['log_y'] else 'no'} "
-            f"| {r['seconds']:.3f} |"
-        )
+        print(f"| {r['points']:,} | {'yes' if r['log_y'] else 'no'} | {r['seconds']:.3f} |")
     return records
 
 

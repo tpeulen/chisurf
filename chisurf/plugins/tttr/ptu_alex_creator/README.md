@@ -30,7 +30,6 @@ optimize ALEX period and shift parameters for specific experiments.
 
 - Python packages:
   - PyQt5
-  - pyqtgraph
   - numpy
   - tttrlib
   - chisurf core modules

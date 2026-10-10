@@ -51,7 +51,7 @@ python -m chisurf pch refit results.npz --components 3 --json
 
 - ttrolib (TTTR file I/O)
 - numpy, scipy (computation)
-- emtk (GUI); qtpy, pyqtgraph only for the legacy Qt tool
+- emtk (GUI); qtpy only for the legacy Qt tool
 - click (CLI)
 
 ## Author

@@ -26,8 +26,7 @@ seconds.
 log display, SI prefixes and downsampling. Clearing a curve returns two empty
 arrays.
 
-Both backends support left/bottom labels, units and SI tick display. The
-pyqtgraph backend also renders right/top axes. The emtk backend stores
+The emtk backend supports left/bottom labels, units and SI tick display. It stores
 right/top metadata but currently renders only left/bottom axes.
 
 Top Level

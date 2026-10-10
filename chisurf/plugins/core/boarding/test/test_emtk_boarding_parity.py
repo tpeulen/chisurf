@@ -226,7 +226,7 @@ def test_status_table_rows_equal_the_qt_html_rows(model):
         assert row["item"] in html and row["status"] in html
         assert row["detail"].replace("&", "&amp;") in html or not row["detail"]
     deps = model.deps_rows()
-    assert [r["module"] for r in deps] == ["tttrlib", "pyqtgraph", "markdown", "chimol"]
+    assert [r["module"] for r in deps] == ["tttrlib", "markdown", "chimol"]
     assert len(deps) == utils.build_deps_html().count("<tr>")
 
 

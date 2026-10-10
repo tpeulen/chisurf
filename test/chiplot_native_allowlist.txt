@@ -1,24 +1,10 @@
 # Files that reach the renderer through chiplot's ``.native`` escape hatch.
 #
-# ``.native`` is the *documented* way to the backing pyqtgraph object, which
-# makes it the invisible way: it couples a call site to the renderer without
-# importing it, so `pyqtgraph_import_allowlist.txt` never sees it.
+# EMPTY, and it stays empty: ``.native`` couples a call site to the backend's own
+# object (for emtk, its display list) without importing anything, so the import
+# guard never sees it. Check `chisurf/gui/chiplot/canvas.py` before concluding
+# chiplot lacks something -- most such reaches predate the API that covers them
+# (``set_si_prefix``, ``set_axis_visible``, ``set_tick_spacing``, ``legend``) --
+# and if it genuinely does, add the API to chiplot and use that.
 #
-# Most entries here are NOT gaps in chiplot. They predate the API that now
-# covers them — check `chisurf/gui/chiplot/canvas.py` before concluding anything
-# is missing. Three verbs cover most of the list:
-#
-#   set_si_prefix(x=/y=)        enableAutoSIPrefix
-#   set_axis_visible(left=…)    hideAxis / showAxis
-#   set_tick_spacing(side, …)   getAxis(…).setTickSpacing
-#
-# What is genuinely missing, and what the porter has to add first:
-#   * axis styling  — pen/text colour, height, tick-text offset
-#     (spectrum_view)
-#   * curve performance — setDownsampling / setClipToView
-#     (tttr_lut_tools, lineplot)
-#   * legend text colour (spectrum_view)
-#
-# This list only SHRINKS. When you touch one of these files, port it and strike
-# the line; adding a NEW line is a test failure, not a fix. Goal: empty.
 # See test/test_pyqtgraph_seam.py and okf/subsystems/chiplot.md.

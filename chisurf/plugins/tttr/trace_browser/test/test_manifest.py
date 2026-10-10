@@ -10,9 +10,8 @@ def test_manifest_loads():
     assert manifest.id == "trace_browser"
     assert manifest.version == "2.0.0"
     assert manifest.display_name == "Spectroscopy:Single-Molecule:Trace Browser"
-    assert (
-        manifest.entrypoints.gui == "chisurf.plugins.tttr.trace_browser.gui.tool:TraceBrowserTool"
-    )
+    assert manifest.entrypoints.gui is None, "the Qt tool was retired"
+    assert manifest.entrypoints.emtk == "chisurf.plugins.tttr.trace_browser.gui.app:make_app"
     assert manifest.entrypoints.cli == "trace-browser=chisurf.plugins.tttr.trace_browser.cli:cli"
     assert (
         manifest.entrypoints.services

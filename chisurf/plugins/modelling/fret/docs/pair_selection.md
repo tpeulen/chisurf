@@ -20,7 +20,7 @@ The core idea is:
 
 - `mdtraj` (trajectory loading, RMSD, distances)
 - `numpy`
-- `PyQt5` / `qtpy` / `pyqtgraph` (GUI)
+- `PyQt5` / `qtpy` (GUI)
 
 ## Inputs
 

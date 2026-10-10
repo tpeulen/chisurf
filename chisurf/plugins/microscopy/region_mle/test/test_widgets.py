@@ -175,7 +175,6 @@ def test_export_results_writes_combined_table(tmp_path):
 
 
 def test_tool_creation(qapp, qtbot):
-    pytest.importorskip("pyqtgraph")
     from chisurf.plugins.microscopy.region_mle.gui.tool import RegionMleTool
 
     widget = RegionMleTool()

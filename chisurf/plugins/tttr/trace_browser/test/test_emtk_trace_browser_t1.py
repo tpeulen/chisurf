@@ -12,8 +12,8 @@ from pathlib import Path
 import pytest
 from emtk.testing import RecordingPainter
 
-from chisurf.plugins.tttr.trace_browser.test.conftest import ALEX, OVERLAP  # noqa: E402
 from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.tttr.trace_browser.test.conftest import ALEX, OVERLAP  # noqa: E402
 
 HERE = Path(__file__).parent
 GUI = HERE.parent / "gui"
@@ -176,17 +176,37 @@ def test_continue_without_a_setup_auto_detects_channels(tmp_path):
         app.close()
 
 
-# 4. selected_channels and the labels: the Qt widget and the emtk app agree
-@pytest.mark.parametrize("setup, expected", [(ALEX, [0, 1]), (OVERLAP, [0, 1, 2, 3, 8, 9])])
-def test_qt_widget_and_emtk_app_derive_the_same_channels(qapp, qtbot, setup, expected, tmp_path):
-    pytest.importorskip("pyqtgraph")
-    from chisurf.plugins.tttr.trace_browser import TraceBrowser
+# 4. selected_channels and the labels, against the values the retired Qt widget derived
+#    (recorded 2026-10-10 from ``TraceBrowser._on_continue`` / ``_setup_filetype`` / ``_build_channel_labels``
+#    for ``every`` = the setup's channels plus the unnamed channel 5)
+QT_DERIVED = {
+    "ALEX": {
+        "setup": ALEX,
+        "selected": [0, 1],
+        "filetype": "PTO",
+        "labels": ["red, 616-3784 + yellow, 4278-7762", "green, 616-3784", "5"],
+    },
+    "Overlap": {
+        "setup": OVERLAP,
+        "selected": [0, 1, 2, 3, 8, 9],
+        "filetype": None,
+        "labels": [
+            "green, 0-4095",
+            "red, 0-2048 + yellow, 2048-4095",
+            "red, 0-2048 + yellow, 2048-4095",
+            "green, 0-4095",
+            "green, 0-4095",
+            "red, 0-2048 + yellow, 2048-4095",
+            "5",
+        ],
+    },
+}
 
-    widget = TraceBrowser()
-    qtbot.addWidget(widget)
-    widget.detector_page.set_settings(json.loads(json.dumps(setup)))
-    widget._on_continue()
 
+@pytest.mark.parametrize("key", sorted(QT_DERIVED))
+def test_the_app_derives_the_channels_the_qt_widget_derived(key, tmp_path):
+    case = QT_DERIVED[key]
+    setup = case["setup"]
     path = tmp_path / "setups.json"
     path.write_text(
         json.dumps({"setups": {setup["setup_name"]: setup}, "last_used": setup["setup_name"]})
@@ -195,12 +215,11 @@ def test_qt_widget_and_emtk_app_derive_the_same_channels(qapp, qtbot, setup, exp
     try:
         assert app.editor.model.current_name == setup["setup_name"]
         app.continue_to_browser()
-        assert widget.selected_channels == expected
-        assert app.model.selected_channels == widget.selected_channels
-        assert app.model.setup_filetype == widget._setup_filetype()
+        assert app.model.selected_channels == case["selected"]
+        assert app.model.setup_filetype == case["filetype"]
         every = sorted({c for d in setup["detectors"].values() for c in d["chs"]}) + [5]
-        assert app.model.build_channel_labels(every) == widget._build_channel_labels(every)
-        assert widget._build_channel_labels(every)[-1] == "5"  # an unnamed channel
+        assert app.model.build_channel_labels(every) == case["labels"]
+        assert app.model.build_channel_labels(every)[-1] == "5"  # an unnamed channel
     finally:
         app.close()
 

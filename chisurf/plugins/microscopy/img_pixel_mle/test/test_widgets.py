@@ -227,7 +227,6 @@ def test_run_settings_carry_the_selected_model(monkeypatch):
 
 
 def test_tool_creation(qapp, qtbot):
-    pytest.importorskip("pyqtgraph")
     from chisurf.plugins.microscopy.img_pixel_mle.gui.tool import ImgPixelMleTool
 
     widget = ImgPixelMleTool()

@@ -455,31 +455,71 @@ unexercised.
 
 # Where to pick this up — the emtk backend
 
-**W8 state (2026-10-10): the `.native` allow-list is empty; two importers remain.**
-`test/chiplot_native_allowlist.txt` has no entries (`spectrum_view`, `burst_background`,
-`fret_line` ported). New chiplot verbs, on both backends: `Plot.set_axis_style(line=, text=)`,
-`Plot.set_tick_labels(side, [(pos, text)])` (categorical axes), `Plot.set_legend_style(text=)`;
-the emtk backend now draws and drags **horizontal regions** (the dT gate of the photon filter;
-bounds are in axis units, i.e. log10 on a log axis). `set_downsampling` / `set_clip_to_view`
-already existed. `test/pyqtgraph_import_allowlist.txt` lost `burst_h2mm/gui/tool.py` (Qt tool
-and its `gui/app.py` deleted, parity per the functional-parity audit) and the whole
-`tttr_photonfilter` wizard (plots now chiplot). What blocks deleting the backend and the
-dependency, in order:
+**W8 state (2026-10-10, closed): pyqtgraph is gone.** No file under `chisurf/` imports it,
+the `pyqtgraph` backend and `_passthrough.py` are deleted, `pixi.toml` / `pyproject.toml` /
+`rattler-recipe/recipe.yaml` no longer declare it, and both allow-lists are retired
+(`test/pyqtgraph_import_allowlist.txt` deleted; `test/chiplot_native_allowlist.txt` stays, empty).
+`test/test_pyqtgraph_seam.py` now bans the import outright, checks the three manifests, and checks
+that `CHISURF_PLOT_BACKEND=pyqtgraph` / `gui.plot.backend: pyqtgraph` raises a `KeyError` saying
+the backend was removed. chiplot has **no passthrough**: an unknown attribute on `Plot`, `Grid`,
+`ImageView` or the package is an `AttributeError` where it is written, `chiplot.colormap` is a
+plain function, `Backend.raw_module` is gone.
 
-1. `chisurf/gui/autoform/sections/builtin.py` — `ImageMapWidget` (the Qt AutoForm `image`
-   section, ~800 lines: `pg.ImageView`, brush painting on an overlay `ImageItem`, markers via
-   `ScatterPlotItem`/`TextItem`/`CircleROI`, `RectROI` gate) and `apply_colormap`. Port to
-   `chiplot.ImageView` (has `set_image`, `add_overlay`, `add_roi`, `enable_picking`); brush
-   painting and the movie controls are the parts chiplot lacks.
-2. `chisurf/plugins/tttr/intensity_trace/qt_tool.py` — the audit lists no missing feature in the
-   native app, but the legacy `trace_browser/widget.py` (Qt oracle of ~10 test files, all
-   `importorskip("pyqtgraph")`) and `trace_browser/gui/host.py` still import `IntensityTrace` /
-   `IntensityPlotWidget` and poke `plot_widget.clear()/grab()` and `trace_plot.setYRange`.
-   Retire both together, or port `IntensityPlotWidget` to `chiplot.Grid` (the sideways
-   filled count histograms need a horizontal fill that chiplot lacks).
-3. `grep -rn pyqtgraph chisurf` still hits ~60 files (tests with `importorskip`, READMEs,
-   `settings_chisurf.yaml`, `backends/pyqtgraph_backend.py`, `_passthrough.py`); the backend is
-   opt-in (`CHISURF_PLOT_BACKEND=pyqtgraph`), emtk is the default.
+What W8 added to chiplot (emtk backend; the base contract names each so a backend that cannot do
+one raises by name):
+
+* `ImageView` is now a real image dock, so the AutoForm `image` section (`ImageMapWidget`, ~800
+  lines of `pg.ImageView`) is ~500 lines over it: frames (`frame_count`, `frame`, `set_frame`,
+  `frame_changed`, a slider shown only for stacks, `play(fps, loop=)` / `pause` / `stop` /
+  `set_fps` / `set_loop`, `playing_changed`; a stack keeps **one** colour scale across frames),
+  `set_extent((x0, x1, y0, y1))` + `pixel_at(x, y)` (axes carry the quantity; clicks map back
+  to a pixel), `set_labels`, `set_axes_visible`, `invert_y`, `set_aspect_locked` (equal pixels:
+  the plot box shrinks to the range's proportions), `auto_range`, `view_range`, `marks(x, y,
+  symbol=, size=, pen=, brush=)` and `label(text, x, y)` drawn **over** the picture, `on_hover`,
+  a colour ramp with draggable levels (`set_histogram_width`), `add_roi(..., resizable=True)`
+  (corner grips that keep the opposite corner fixed even when crossed), RGB(A) overlays, and
+  **brush painting**: `enable_brush(kernel, on_stroke=)` / `brush_mask` / `set_brush_mask` /
+  `disable_brush` (a kernel stamped along the stroke, interpolated so a fast drag leaves no gaps,
+  floored at zero so a negative kernel erases; the overlay layer is translucent; a drag that
+  starts on a shape still moves the shape). Backend side: `EmtkCanvas.set_paint_handler`,
+  `add_marks`, `set_aspect_locked`; images are blitted as an **underlay** now, so curves, marks and
+  shapes are no longer hidden behind the picture (they were: images used to be painted after
+  `plot.draw`); the post-plot drawing is clipped to the plot box so a panned picture cannot spill; ellipse, polygon and rotated shapes now draw a 1.5 px outline (they were a faint fill only, which hid the fitted circle's edge).
+* `Plot.set_interactive(menu=...)` now honours the flag on a backend with no menu of its own
+  (the "static preview" plots in the ICS preview still popped chiplot's right-click menu).
+* Differences from the pyqtgraph dock, deliberate: the LUT **histogram** became a colour ramp with
+  draggable levels (no histogram); a stroke on the brush layer is clipped at zero (pyqtgraph let an
+  erase push a pixel negative, which `selection_array` then had to special-case); the pick ring and
+  the detected-point markers follow the slice for a stack (the pick ring did not before); the
+  default gate rectangle is the central half of the *image* (x = a column) where it used the
+  transposed shape.
+
+Tests: `test/gui/test_chiplot_image_dock.py` (28, the view alone), `test/gui/test_image_section_features.py`
+(19, every option of the section through a model), `test/gui/test_image_section_axes.py`,
+`test/gui/test_chiplot_api.py` (the old pyqtgraph-pinned `test_chiplot.py` ported to emtk: 50
+tests, the ones that asserted pyqtgraph internals dropped), and the guard above.
+
+`tttr/intensity_trace/qt_tool.py` and the Trace Browser Qt oracle (`trace_browser/widget.py`,
+`gui/tool.py`, `test_widgets.py`) were **retired together**: the native apps have parity (functional
+parity audit); every test that compared against the Qt widget now compares against the values it
+produced (recorded 2026-10-10 in the test files: `QT_DERIVED`, `QT_ROWS`, `QT_CSV` with a sha256,
+the series totals); the hand-off `open_intensity_trace` opens the native app in a Qt host window.
+Both manifests dropped `"gui"`.
+
+**Where to pick this up**
+
+1. The Qt `plot_settings` tool and its emtk twin still carry an "Advanced: pyqtgraph Configuration"
+   section (antialias, left-button pan, background, foreground). Every one of those options is inert
+   now: the settings key is still named `pyqtgraph_config` (saved files use it) and is handed to
+   `chiplot.configure()`, which emtk ignores. Re-derive: `grep -rn pyqtgraph_config chisurf`. Decide
+   per option whether to give it an emtk meaning (background and foreground do: the preview follows
+   `background`) or drop it, rename the key with a settings migration, and re-translate the strings
+   (the `.ts` catalogues still hold the old sources; i18n is deferred).
+2. `okf/validation/release-readiness-w6g/plugin-inventory.md` is stale (the `plugin_inventory.py
+   --write` record): two plugins lost their Qt entry here, and other lanes' ports changed it too.
+3. Not tried / not done: an emtk **histogram** beside the colour ramp of `ImageView`; `Grid` image panels
+   with the new frame slider (only the standalone `ImageView` has one); the `image` section's `add_roi`
+   rotation (`rotatable` is accepted and ignored: emtk draws no rotation grip).
 
 **Current verified contract (2026-10-07):** the native backend already exists
 in `chisurf/gui/chiplot/backends/emtk_backend.py`; the older package-design

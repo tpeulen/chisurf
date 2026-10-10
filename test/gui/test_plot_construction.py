@@ -1,15 +1,11 @@
 """Plots must be constructible outside the full GUI startup path.
 
-Two defects found while building a headless harness that renders a fit's real
+A defect found while building a headless harness that renders a fit's real
 plot widgets:
 
 * ``ResidualPlot`` iterated its ``fit`` argument, so a plain :class:`Fit` (as
   opposed to a :class:`FitGroup`) raised ``TypeError: 'Fit' object is not
   iterable`` and the plot could not be built at all.
-* pyqtgraph >= 0.14 moved ``autoRangeEnabled`` from ``PlotWidget`` to
-  ``ViewBox``. chisurf ships a compat shim, but it was only applied from
-  ``get_win()`` -- so anything building a plot without full GUI startup hit a
-  swallowed ``AttributeError`` and took a degraded path.
 """
 
 import os
@@ -19,7 +15,6 @@ import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-pytest.importorskip("pyqtgraph")
 from qtpy import QtWidgets  # noqa: E402
 
 import chisurf.core.data  # noqa: E402
@@ -40,18 +35,6 @@ def single_fit():
     y = 1000 * np.exp(-x / 4.0) + 10
     data = chisurf.core.data.DataCurve(x=x, y=y, ey=np.sqrt(np.maximum(y, 1.0)))
     return Fit(model_class=lifetime_model.tcspc_lifetime, data=data, xmin=0, xmax=n - 1)
-
-
-def test_autorange_compat_is_applied_on_import():
-    """The shim must not depend on get_win() having run: loading the plot backend applies it."""
-    import pyqtgraph as pg
-
-    import chisurf.gui.chiplot.backends.pyqtgraph_backend  # noqa: F401
-
-    assert hasattr(pg.PlotWidget, "autoRangeEnabled"), (
-        "PlotWidget.autoRangeEnabled missing -- plots built outside GUI startup "
-        "will hit a swallowed AttributeError and take a degraded path"
-    )
 
 
 def test_residual_plot_accepts_a_plain_fit(app, single_fit):

@@ -2,10 +2,7 @@
 
 ## 2026-10-10
 
-- W7 click-all harness policy: awaited tour steps are driven through the plugin's demo (file/folder
-  pickers fed from `demo.make_demo` or a stub, modals confirmed, browser/network/process blocked as
-  `OSError`), action entrypoints classified as actions, region/dock-tab/drop-down reach. 92 of 123 native
-  plugins pass (45 before); owners in [release-readiness W7](validation/release-readiness-w7.md).
+- PRD-154 W8 closed, pyqtgraph retired. `chiplot.ImageView` became an image dock (frames + playback, extent, marks/labels over the picture, brush layer, resizable gate, RGBA overlays, colour ramp) and the AutoForm `image` section runs on it; `intensity_trace/qt_tool.py` and the Trace Browser Qt oracle (`widget.py`, `gui/tool.py`) were deleted with their oracle tests converted to recorded values; the pyqtgraph backend, `_passthrough.py`, `test/pyqtgraph_import_allowlist.txt` and the dependency were struck; `plot_settings` offers the one backend and normalizes a stale `pyqtgraph` value. Record: [chiplot](subsystems/chiplot.md).
 - W4 follow-up: burst MLE and burst FCS take a `.pto` (or `m000.pto/<run>`) with the Runs picker and
   write their results into the container (`mle <detector>`, `burst fcs`); legacy `.bur`/`.bst` inputs
   keep their folders. Open items in [burst companions](subsystems/burst-companions.md).

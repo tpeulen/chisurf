@@ -305,7 +305,6 @@ def build_status_html() -> str:
 #: The optional dependencies the wizard reports: ``(module, what it is for)``.
 OPTIONAL_DEPENDENCIES = (
     ("tttrlib", "TTTR reading and analysis"),
-    ("pyqtgraph", "Plotting in the GUI"),
     ("markdown", "Rendering Markdown docs in Help"),
     ("chimol", "3D molecular viewer"),
 )

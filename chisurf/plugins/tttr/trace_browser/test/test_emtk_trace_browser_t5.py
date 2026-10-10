@@ -1,7 +1,7 @@
 """The native Trace Browser, card T5: the host adapter that fulfils the HMM, TW and NDX hand-offs.
 
 ``gui/host.py`` (Qt allowed: it only hosts) opens the windows the Qt Trace Browser opened:
-``IntensityTrace`` for HMM, the Time Window tool for TW and ChiSurf's ndX window for NDX. The app finds it
+the native Intensity Trace app for HMM, the Time Window tool for TW and ChiSurf's ndX window for NDX. The app finds it
 through ``make_app()`` only when a Qt application already runs. Everything uses temporary COPIES of
 ``test/data/tttr/BH/132/BH_SPC132.spc`` (6233 bins of 10 ms for the ALEX setup, see the T3b/T4 tests) and an
 offscreen ``QApplication`` (the ``qapp`` fixture). The ndX window and the Time Window tool are real windows here
@@ -94,31 +94,33 @@ def close(window, qapp, host):
 
 
 # ---- the three windows ---------------------------------------------------------------------------
-def test_hmm_opens_an_intensity_trace_window_set_up_as_the_qt_tool_does(qapp, host, work):
-    from chisurf.plugins.tttr.intensity_trace import IntensityTrace
+def test_hmm_opens_a_native_intensity_trace_window_set_up_with_the_browsers_choices(
+    qapp, host, work
+):
+    from chisurf.plugins.tttr.intensity_trace.gui.app import IntensityTraceApp
 
     window = host.default_request_handler()(
         "open_intensity_trace", payload(work / "m001.spc", 10.0)
     )
-    assert type(window) is IntensityTrace
+    window.app.wait()
+    assert type(window.app) is IntensityTraceApp
     assert window.windowTitle() == "Intensity Trace Analysis - m001.spc"
-    assert window.file_path_edit.text() == str(work / "m001.spc")
-    assert window.window_spin.value() == 10.0
-    assert window._detector_settings == ALEX
-    assert sorted(window.detector_checkboxes) == ["green", "red", "yellow"]
+    model = window.app.model
+    assert model.path == str(work / "m001.spc")
+    assert model.window_ms == 10.0
+    assert model.setup == ALEX
+    assert sorted(model.choices()) == ["green", "red", "yellow"]
     # the file was loaded and processed: 10 ms bins of the 62.3 s measurement, the two routing channels
-    data = window.current_data
-    assert data["window_ms"] == 10.0 and data["padded"].shape[0] > 6000
-    assert data["padded"].shape[1] == len(data["channels"]) > 0
+    assert model.counts.shape[0] > 6000
+    assert model.counts.shape[1] == len(model.labels) > 0
     assert window.isVisible() and window in host.WINDOWS
 
 
 def test_hmm_follows_the_bin_window_of_the_browser(qapp, host, work):
     window = host.default_request_handler()("open_intensity_trace", payload(work / "m000.spc", 1.0))
-    assert window.window_spin.value() == 1.0
-    assert (
-        window.current_data["window_ms"] == 1.0 and window.current_data["padded"].shape[0] > 60000
-    )
+    window.app.wait()
+    assert window.app.model.window_ms == 1.0
+    assert window.app.model.counts.shape[0] > 60000
 
 
 def test_tw_opens_the_time_window_tool_holding_the_file_and_the_bin_window(qapp, host, work):
@@ -248,7 +250,6 @@ def test_make_app_with_a_qt_application_wires_the_default_handler_and_enables_th
 
 
 def test_pressing_hmm_and_tw_in_the_app_opens_the_windows(qapp, host, work, monkeypatch):
-    from chisurf.plugins.tttr.intensity_trace import IntensityTrace
     from chisurf.plugins.tttr.tttr_time_windows.gui.tool import TTTRTimeWindowTool
 
     app = make_hosted_app(qapp)
@@ -261,8 +262,10 @@ def test_pressing_hmm_and_tw_in_the_app_opens_the_windows(qapp, host, work, monk
                 frames(app, n=1)
             frames(app, n=2)
         kinds = [type(w) for w in host.WINDOWS]
-        assert kinds == [IntensityTrace, TTTRTimeWindowTool]
-        assert host.WINDOWS[0].file_path_edit.text() == str(work / "m001.spc")
+        assert len(kinds) == 2 and kinds[1] is TTTRTimeWindowTool
+        assert type(host.WINDOWS[0].app).__name__ == "IntensityTraceApp"
+        host.WINDOWS[0].app.wait()
+        assert host.WINDOWS[0].app.model.path == str(work / "m001.spc")
         assert [str(p) for p in host.WINDOWS[1]._file_paths] == [str(work / "m001.spc")]
         assert app.model.error_text == ""
         assert app.model.status_text.startswith("Sent m001.spc")

@@ -5,7 +5,7 @@ intensity trace of the selected file (one line per detector and their sum, plus 
 report on, delete or hand off the selection.
 
 * **Window**: an emtk app (`gui/app.py`, state and work in `gui/model.py`, form in `gui/trace_browser_emtk.view.json`);
-  the Qt tool (`gui/tool.py`, `widget.py`) is kept as the fallback. Help: `gui/help.md`, tour: `gui/guide.json`.
+  it is the only window (the Qt tool was retired). Help: `gui/help.md`, tour: `gui/guide.json`.
 * **Input**: a detector setup (setup page) and a folder of TTTR files. Ratings and notes are stored beside the data in
   `.trace_browser_meta.json`; traces are cached in `.tttr_trace_cache`.
 * **Output**: Export copies the selected files; CSV writes one `<stem>_trace.csv` per file (time, one column per
