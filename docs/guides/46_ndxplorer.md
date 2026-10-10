@@ -209,7 +209,9 @@ from the **Equation** list, and the apparent lifetimes are equations:
 - **FRET trajectory** — the donor quenched as $\tau_{DA} = \tau_0(1-E)$, $E$
   from 0 to 1, from the donor-only point to (1, 0); a donor-only fraction
   `x_DOnly` and a background fraction `bg` pull it inside the circle. Also
-  **FRET trajectory (distance)**, **(Gaussian distance)**, the
+  **FRET trajectory (distance)**, **(Gaussian distance)**, **(WLC distance)**
+  (worm-like chain: `t` is the contour length in Å, `lp` the persistence
+  length; exact Kratky-Porod distance distribution), the
   **Two-component mixing line**, the **Iso-phase line** and the
   **Iso-modulation arc**.
 
