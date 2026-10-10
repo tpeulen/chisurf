@@ -201,6 +201,20 @@ def _file_row(label: str, ok: bool, detail: str = "") -> str:
     return _cells_html(_file_cells(label, ok, detail))
 
 
+def _user_settings_cells(path) -> dict:
+    """The main settings file is optional: without it the release defaults apply.
+
+    The core reads ``settings_chisurf.yaml`` as overrides on top of the packaged
+    defaults, so "Create missing files" deliberately does not write it; a
+    missing file is reported as defaults in use, never as MISSING.
+    """
+    if path.is_file():
+        return _status_cells("settings_chisurf.yaml", "OK", _OK_COLOR, str(path))
+    return _status_cells(
+        "settings_chisurf.yaml", "defaults", _NEUTRAL_COLOR, "release defaults in use; no overrides yet"
+    )
+
+
 def _setups_cells(label: str, summary: dict) -> dict:
     """An MMFDB-aware row, as data, for a setup type.
 
@@ -242,11 +256,7 @@ def status_cells() -> list[dict]:
         _file_cells(
             "User settings directory", p["user_settings_dir"].exists(), str(p["user_settings_dir"])
         ),
-        _file_cells(
-            "settings_chisurf.yaml",
-            p["settings_chisurf_yaml"].is_file(),
-            str(p["settings_chisurf_yaml"]),
-        ),
+        _user_settings_cells(p["settings_chisurf_yaml"]),
         _file_cells(
             "settings_colors.yaml",
             p["settings_colors_yaml"].is_file(),

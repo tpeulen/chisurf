@@ -131,9 +131,8 @@ class BoardingViewModel:
     # ── completion booleans (complete_when) ────────────────────────────
     @property
     def settings_ok(self) -> bool:
-        """Whether the user settings folder and main settings file exist."""
-        p = utils.settings_paths()
-        return p["user_settings_dir"].exists() and p["settings_chisurf_yaml"].is_file()
+        """Whether the user settings folder exists; the main settings file is optional overrides."""
+        return utils.settings_paths()["user_settings_dir"].exists()
 
     @property
     def has_detector_setups(self) -> bool:

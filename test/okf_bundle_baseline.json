@@ -4384,15 +4384,6 @@
     {
       "rule": "KI",
       "path": "references/known-issues.md",
-      "line": 6416,
-      "message": "first nonblank line must be status: open|resolved DATE|withdrawn DATE",
-      "source": "## boarding wizard: \"Create missing files\" never creates `settings_chisurf.yaml` (found 2026-10-01)",
-      "owner": "W0b",
-      "acceptance": "Remove this finding and its baseline record; final baseline must be empty."
-    },
-    {
-      "rule": "KI",
-      "path": "references/known-issues.md",
       "line": 6429,
       "message": "first nonblank line must be status: open|resolved DATE|withdrawn DATE",
       "source": "## chimol: the toolkit-free host loads a PDB through a different route than the Qt window (found 2026-10-01)",

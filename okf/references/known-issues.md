@@ -4,6 +4,21 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## boarding wizard: "Create missing files" never creates `settings_chisurf.yaml` (found 2026-10-01)
+
+status: resolved 2026-10-10 — ruled: a missing user `settings_chisurf.yaml` means release defaults; the status row reads "defaults" and `settings_ok` needs only the settings folder, in both wizards (shared `utils`/`view_model`).
+
+**Measured** on a fresh temporary settings folder (`CHISURF_SETTINGS_DIR`), Qt wizard and emtk app alike
+(`okf/plugins/emtk-ports/boarding/before_populated_step2_settings.png`, `test_create_missing_writes_only_missing_files`):
+the Settings step lists `settings_chisurf.yaml` as **MISSING** and, because the step's check mark needs that file
+(`BoardingViewModel.settings_ok`), the step has no mark; pressing **Create missing files** changes nothing about it.
+*Cause:* `copy_settings_to_user_folder` skips `settings_chisurf.yaml` on purpose (the core reads it as defaults overlaid
+by the user's file); the wizard still treats it as required. Only **Restore defaults (overwrite)** writes it, which pins
+every default of the release, the thing the core avoids. *Not fixed here:* the emtk port must stay at parity with the
+Qt wizard, and the fix is a decision about the wizard's meaning (report a missing user file as "defaults in use", not
+MISSING, and drop it from `settings_ok`). Both wizards need the same change in `boarding/utils.py` and
+`boarding/view_model.py`.
+
 ## tttrlib dev build: `build/bin/tttr` links a libhdf5 the environment no longer has (found 2026-10-10)
 
 status: open
@@ -327,6 +342,7 @@ The host-size candidate preserves this pre-existing behavior, documents it and
 queues a bounded settings-file contract repair with custom-setup round-trip tests.
 Do not claim the current geometry-only native persistence restores a computed
 fit or a custom detector setup. Owner: W6g/W3 settings integration.
+
 ## Legacy emtk immediate table scroll flags are ignored (2026-10-08)
 
 status: open
@@ -6511,6 +6527,7 @@ and `test/test_prd_mentions.py::test_prd_mention_allowlist_has_no_stale_entries`
 (`calculator/kappa2_dist/gui/tool.py`,
 `tttr/tttr_time_windows/tests/test_construction_smoke.py` no longer name a
 PRD). Not edited under their owners. **Blocks:** nothing at run time.
+
 ## ndX menu/ribbon route vs manifest emtk entrypoint (found 2026-09-29)
 
 The ndxplorer manifest gained `entrypoints.emtk`
@@ -6590,19 +6607,6 @@ Measured while giving `setup_channel_definition` its own tests; evidence and rep
   microtime ranges reject `20:10`, `5:5` and `;` separators that Qt accepts; with a fixed File Type the reader accepts any
   bytes and overwrites the timing (`xfail` test); no "Configure LUTs" / visual "Adjust shifts" hand-off; the last-used
   setup is neither written on selection nor opened at start (`ChannelDefinition.refresh_setups` drops `last_used`).
-
-## boarding wizard: "Create missing files" never creates `settings_chisurf.yaml` (found 2026-10-01)
-
-**Measured** on a fresh temporary settings folder (`CHISURF_SETTINGS_DIR`), Qt wizard and emtk app alike
-(`okf/plugins/emtk-ports/boarding/before_populated_step2_settings.png`, `test_create_missing_writes_only_missing_files`):
-the Settings step lists `settings_chisurf.yaml` as **MISSING** and, because the step's check mark needs that file
-(`BoardingViewModel.settings_ok`), the step has no mark; pressing **Create missing files** changes nothing about it.
-*Cause:* `copy_settings_to_user_folder` skips `settings_chisurf.yaml` on purpose (the core reads it as defaults overlaid
-by the user's file); the wizard still treats it as required. Only **Restore defaults (overwrite)** writes it, which pins
-every default of the release, the thing the core avoids. *Not fixed here:* the emtk port must stay at parity with the
-Qt wizard, and the fix is a decision about the wizard's meaning (report a missing user file as "defaults in use", not
-MISSING, and drop it from `settings_ok`). Both wizards need the same change in `boarding/utils.py` and
-`boarding/view_model.py`.
 
 ## chimol: the toolkit-free host loads a PDB through a different route than the Qt window (found 2026-10-01)
 

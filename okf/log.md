@@ -2,6 +2,9 @@
 
 ## 2026-10-10
 
+- Boarding: a missing user `settings_chisurf.yaml` reads as release defaults and no longer blocks
+  the Settings step (both wizards).
+
 - W6f UI-debt sweep: 455 tooltip and 95 literal allowances closed in core/models, core/experiments,
   gui view specs, ai_settings and the clean plugins/core files (tooltips 1023→568, literals
   1144→1049). 259 core literals remain in files holding another instance's uncommitted edits.

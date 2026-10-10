@@ -184,8 +184,8 @@ def qt_marks(widget):
 def test_marks_equal_the_qt_nav_marks_fresh_and_after_create_missing(model, qt_wizard):
     wiz, widget = qt_wizard
     assert [model.step_complete(i) for i in range(8)] == qt_marks(widget)
-    # the fresh temporary folder has no settings_chisurf.yaml: the Settings step has no mark
-    assert qt_marks(widget)[1] is False
+    # no settings_chisurf.yaml yet means release defaults: the Settings step is complete
+    assert qt_marks(widget)[1] is True
     wiz.model.create_missing()
     model.create_missing()
     widget.refresh()
@@ -244,9 +244,10 @@ def test_create_missing_writes_only_missing_files(model, hermetic):
     target.write_text("kept: true\n")
     model.create_missing()
     assert target.read_text() == "kept: true\n"
-    # As in the Qt wizard: the main settings file is never copied by "Create missing files"
-    # (the core reads it as defaults overlaid by the user's file), so it stays MISSING there.
+    # The main settings file is never copied by "Create missing files" (the core reads it as
+    # overrides on the release defaults); its absence reads as defaults, not MISSING.
     assert not (hermetic / "settings_chisurf.yaml").exists()
+    assert {r["item"]: r["status"] for r in model.status_rows()}["settings_chisurf.yaml"] == "defaults"
 
 
 def test_restore_defaults_asks_and_declining_changes_nothing(model, hermetic):
@@ -263,7 +264,7 @@ def test_restore_defaults_asks_and_declining_changes_nothing(model, hermetic):
     assert model.confirm == "" and target.read_text() != "mine: 1\n"
     assert model.repair_ok and "overwrite" in model.repair_message
     assert "overwrite" in model.repair_status_html()
-    # only the overwrite path writes the main settings file; it is what gives the Settings step its mark
+    # only the overwrite path writes the main settings file
     assert (hermetic / "settings_chisurf.yaml").is_file() and model.step_complete(1) is True
 
 
@@ -296,9 +297,8 @@ def test_open_settings_folder_opens_the_user_folder(model, hermetic):
 
 
 def test_refresh_rereads_status_and_marks(model, hermetic):
-    assert model.step_complete(1) is False
+    assert {r["item"]: r["status"] for r in model.status_rows()}["settings_chisurf.yaml"] == "defaults"
     (hermetic / "settings_chisurf.yaml").write_text("a: 1\n")
-    assert model.step_complete(1) is False  # not re-read by itself
     model.refresh()
     assert model.step_complete(1) is True
     assert {r["item"]: r["status"] for r in model.status_rows()}["settings_chisurf.yaml"] == "OK"
