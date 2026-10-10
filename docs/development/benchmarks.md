@@ -761,6 +761,80 @@ bursts), with all three applied: a whole-window repaint went **0.293 s -> 0.023
 s**, five repaints 1.75 s -> 0.11 s, and "analyze then display" 2.23 s ->
 0.77 s.
 
+## UI frame times (emtk plugins)
+
+`python -m build_tools.dev_utils.plugin_frame_times` loads every plugin with an
+`emtk` entrypoint in its own hermetic subprocess (scratch settings, offscreen Qt),
+draws it at 1100x720 through `emtk.testing.Driver` and times the **first frame**,
+then (after letting worker-thread results land, up to 8 s) the **median of 20
+steady frames**. The numbers are UI-thread cost of building the frame with a
+recording painter; they exclude GPU rasterisation. Targets: first frame < 100 ms,
+steady frame < 16 ms. `--startup` prints the GUI startup stage timings.
+
+Measured on an Apple-silicon laptop, 122 of 123 plugins (`fcs_calculator`
+cannot construct without the MMFDB reference database in the scratch settings).
+
+**Steady frames: all 122 are under 16 ms** (before the fixes below: 6 were over,
+`psf_calculator` at 315 ms). **First frames: 26 are over 100 ms**; the cause
+in every one profiled is import and construction work done lazily on the first
+draw (a hub plugin importing the sub-app it embeds, `setup_store.get_db`, IMP.bff),
+not drawing:
+chimol 1634, setup 660, wizards 473, fret_docking 440, imaging_tools 438, lifetime_analysis 389, fcs_correlator 361, fcs_toolbox 357, structure_tools 354, alex_suite 327, burst_mle_analysis 302, tttr_toolbox 253, fcs_saturation 252, user_editor 240, calculators 226, boarding 215, burst_analysis 215, model_manager 191, setup_channel_definition 181, batch_analysis 177, traj_tools 176, games 171, switch_user 154, plugin_manager 143, lightpath_simulator 133, ndxplorer 108.
+
+The ten slowest steady frames after the fixes:
+
+| plugin | first ms | steady ms |
+|---|---:|---:|
+| games | 171 | 13.9 |
+| fcs_filter_calculator | 11 | 11.4 |
+| fcs_saturation | 252 | 10.2 |
+| calculators | 226 | 7.7 |
+| number_quest | 19 | 7.3 |
+| psf_calculator | 48 | 6.8 |
+| breakout | 15 | 5.9 |
+| fret_calculator | 11 | 5.6 |
+| phasor_calculator | 78 | 5.6 |
+| maxent_decay | 13 | 5.5 |
+
+GUI startup stages (`--startup`, splash phase, ms): gui_imports 582, load_tools 484,
+setup_style 199, startup_interface 177, init_setups 97, setup_ipython 58, the rest under 5.
+The `post_show` phase is not captured by this offscreen harness.
+
+### Fixes and their effect
+
+| plugin | first ms (before -> after) | steady ms (before -> after) |
+|---|---:|---:|
+| psf_calculator | 43 -> 48 | 315.3 -> 6.8 |
+| fcs_saturation | 516 -> 252 | 31.3 -> 10.2 |
+| batch_analysis | 176 -> 177 | 24.8 -> 1.3 |
+| setup | 818 -> 660 | 24.5 -> 2.4 |
+| boarding | 234 -> 215 | 22.7 -> 1.2 |
+| games | 180 -> 171 | 19.3 -> 13.9 |
+| fcs_filter_calculator | 34 -> 11 | 11.8 -> 11.4 |
+| model_manager | 452 -> 191 | 9.7 -> 2.7 |
+| phasor_calculator | 79 -> 78 | 8.4 -> 5.6 |
+| calculators | 291 -> 226 | 8.3 -> 7.7 |
+
+* **emtk font measurement** (`emtk/font_render.py`): `_face` casefolded every installed
+  family on every call and `text_width` was unmemoised; both are cached now. A markdown
+  or wrapped-text page re-measured its words each frame, so `batch_analysis` (help page),
+  `setup` and `boarding` fell from 23-25 ms to 1-2 ms steady, `model_manager` 9.7 -> 2.7 ms.
+* **fcs_saturation**: the dye combo queried the MMFDB repository every frame (5 ms of a
+  20 ms frame); the list is re-read at most once a second. 31 -> 10 ms.
+* **psf_calculator**: the 3-D view was an implot3d scatter of up to 6000 voxels in twelve
+  items (~300 ms a frame). It is now a chimol volume isosurface view that re-renders only when
+  chimol asks for a repaint: 315 -> 7 ms steady, and rotating a 64^3 volume costs about 15 ms
+  a frame (about 65 fps; chimol itself renders in 3.4 ms).
+
+### Still open
+
+* `games` (14 ms, a field of circles filled as Python triangle fans) is under budget but
+  close; `fcs_filter_calculator` (11 ms) and `calculators` (8 ms) are forms plus plots.
+* Heatmaps cost a Python loop per cell (`emtk.implot_items._render_heatmap`): about 6 ms for a
+  64 x 64 slice, which is what remains of the PSF window's idle frame.
+* The first-frame list above: prefetch the embedded sub-app and database imports after the
+  window is shown, instead of on the first draw.
+
 ## Adding a component
 
 A benchmark belongs here when a component is (a) on a path a user waits for, and

@@ -9,12 +9,15 @@ from __future__ import annotations
 
 import math
 import re
+import time
 
 from .model import SaturationModel
 
 #: The lowest power the logarithmic slider reaches (the Qt slider's lower end).
 POWER_FLOOR_MW = 0.001
 POWER_CEILING_MW = 100.0
+#: Seconds between re-reads of the dye list shown in the dye combo.
+DYE_REFRESH_S = 1.0
 #: Names of the plot tabs, in the order of the Qt tool's dock tabs after the state diagram.
 TABS = ("State diagram", "FCS curve", "Info", "Volume profile", "Volume(P)", "Diffusion time")
 #: Short row names of the Optics table, the symbols the Qt table shows.
@@ -74,8 +77,15 @@ class SaturationPanel:
 
     def dye_options(self) -> list:
         """The MMFDB dyes with an empty first choice (type the extinction by hand)."""
-        names = list(self.app.model.dye_names())
-        return [("", "(none, type the extinction)")] + [(n, n) for n in names if n]
+        # The repository query ran every frame (5 ms of a 20 ms frame); the dye list changes on a
+        # human time scale, so it is re-read at most once a second.
+        now = time.monotonic()
+        cached = getattr(self, "_dye_options", None)
+        if cached is None or now - cached[0] > DYE_REFRESH_S:
+            names = list(self.app.model.dye_names())
+            cached = (now, [("", "(none, type the extinction)")] + [(n, n) for n in names if n])
+            self._dye_options = cached
+        return list(cached[1])
 
     def enabled(self, name: str) -> bool:
         return True

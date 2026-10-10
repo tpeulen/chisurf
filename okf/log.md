@@ -2,6 +2,11 @@
 
 ## 2026-10-10
 
+- PRD-154 W11: `build_tools/dev_utils/plugin_frame_times.py` measures first/steady frame of every emtk plugin
+  (table in `docs/development/benchmarks.md`); steady frames all < 16 ms after fixes (emtk font-measure cache,
+  fcs_saturation dye list, PSF 3-D view); 26 first frames still > 100 ms (lazy imports, see
+  [GUI Startup](architecture/gui-startup.md)). PSF calculator 3-D view is now a chimol volume isosurface view
+  (`gui/volume_view.py`, `ChimolView(skip_idle_frames=True)`, chimol `Renderer.bare_view`); rotates 64^3 at ~65 fps.
 - PRD-154 W12 (imp.bff): `src/` split into 12 theme folders compiled
   through `src/ThemeSources.cpp`; model search lives in `src/search/`. Path
   references in [imp local build](workflows/imp-local-build.md) and

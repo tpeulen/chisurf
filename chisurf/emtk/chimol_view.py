@@ -48,12 +48,21 @@ class ChimolView:
         strip and panels for a desktop-size canvas and overprints below about 760x420.
     viewer_options : dict, optional
         Keyword options for chimol's Viewer, as a Qt host would construct it with.
+    skip_idle_frames : bool, optional
+        Re-use the last picture while chimol has not asked for a repaint (no camera move, no scene change) and the
+        size is unchanged. A still view then costs an emtk frame nothing; leave it off for a scene that animates or
+        lands background results without asking for a repaint.
     """
 
     def __init__(
-        self, min_size: tuple[int, int] = (760, 420), viewer_options: dict | None = None
+        self,
+        min_size: tuple[int, int] = (760, 420),
+        viewer_options: dict | None = None,
+        skip_idle_frames: bool = False,
     ) -> None:
         self.min_size = min_size
+        self.skip_idle_frames = skip_idle_frames
+        self._painted_update = None
         #: Passed to chimol's Viewer when it starts (``scale_factor=1.0`` for Angstrom coordinates, ...).
         self.viewer_options = dict(viewer_options or {})
         self.app: Any = None
@@ -128,9 +137,15 @@ class ChimolView:
         # Below the minimum, render larger by one factor on both axes, so the scaled-down picture keeps its aspect.
         k = max(1.0, self.min_size[0] / w, self.min_size[1] / h)
         self._resize(int(round(w * k)), int(round(h * k)))
-        frame = self.app.renderer.draw_frame()
-        if frame is not None:
-            self.frame = frame
+        renderer = self.app.renderer
+        update = getattr(renderer, "update_count", None)
+        if not (self.skip_idle_frames and self.frame is not None and update == self._painted_update):
+            frame = renderer.draw_frame()
+            if frame is not None:
+                self.frame = frame
+            # The count from before the draw: a repaint the draw itself asks for (progressive refinement, a
+            # texture upload) then differs and gets its own frame.
+            self._painted_update = update
         if self.frame is None:
             im.dummy(w, h)
         else:
@@ -153,6 +168,7 @@ class ChimolView:
                 logger.debug("chimol canvas did not resize", exc_info=True)
         renderer.on_resize(w, h, 1.0)
         self._render_size = (w, h)
+        self._painted_update = None
 
     def screen_points(self, coords) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Where points in Angstrom are on screen (emtk coordinates) in the last frame: ``(x, y, visible)``."""

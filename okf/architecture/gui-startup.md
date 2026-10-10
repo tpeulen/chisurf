@@ -9,6 +9,14 @@ timestamp: '2026-10-05T00:00:00Z'
 
 # Where to pick this up
 
+0. Measure: **26 of 122 emtk plugins draw a first frame over 100 ms** (steady frames are all under 16 ms).
+   Re-derive with `python -m build_tools.dev_utils.plugin_frame_times` (table in
+   `docs/development/benchmarks.md`); `--startup` gives the splash-phase stage timings. Trap: a plugin that
+   computes on a worker thread must be measured after its result lands (the script settles on `animating()`),
+   or the steady number is an empty placeholder. Cause of the slow first frames is lazy import/construct on
+   first draw (hub plugins `setup`, `wizards`, `calculators` build the embedded sub-app inside `select`;
+   `setup_store.get_db`; IMP.bff) -- prefetch after the window is shown. Not tried yet.
+
 1. Measure: **Embedded server ctor is ~2.2 s** (was 4.3 s on 2026-10-05). Measure with
    `python -X importtime -c "from chisurf.server.app import ChiSurfServer; ChiSurfServer(cmd_port=0, pub_port=0)"`
    and walk each heavy leaf (`scipy.*`, `matplotlib`, `fastapi`, `IMP.bff`, `mmfdb.models`)
