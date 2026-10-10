@@ -216,12 +216,6 @@ def test_ranges_are_defined_by_hand_in_the_table_and_redetect_restores_them(ui, 
     assert not any(r.get("edited") for r in ui.app.region_rows())
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="emtk defect: a one-line input field keeps the keyboard (nav focus) after a click elsewhere "
-    "(emtk/im_widgets.py input field clears only its click focus; text_editor clears both), so keys typed "
-    "into a table cell opened afterwards also land in the field",
-)
 def test_a_range_typed_after_typing_the_file_path_reaches_the_cell(ui, tmp_path):
     ui.type_into_name("input_file", str(planted_alex(tmp_path / "alex.spc")))
     settle(ui)

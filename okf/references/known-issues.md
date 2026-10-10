@@ -6,7 +6,7 @@ description: Open, resolved and withdrawn defects with their measurement, owner 
 
 ## emtk: a one-line field keeps the keyboard after a click elsewhere (found 2026-10-10)
 
-status: open
+status: resolved 2026-10-10 — emtk 6b5c637: input_text drops its nav focus on an outside click; the ALEX test is a normal test now.
 
 After typing in a one-line field (ALEX creator's file path or Period) and pressing Enter, a click on another control
 clears the field's click focus but not its keyboard focus, so a following double-click into a table cell sends the
