@@ -2,6 +2,10 @@
 
 ## 2026-10-10
 
+- Help browser and code editor regain their Qt-era shortcuts: Ctrl+F, Alt+Left/Right, Alt+Home,
+  Ctrl+Shift+A and zoom keys in help; F3/Shift+F3, F12, Ctrl+Space and a caret back/forward history
+  (Cmd+[ / Cmd+] on macOS) in the editor. emtk `fde732c` (TextEditor.find_previous) and `c5d80ed`
+  (Tab belongs to a focused text editor, which also fixes the two editor indent tests).
 - PRD-154 W8 closed, pyqtgraph retired. `chiplot.ImageView` became an image dock (frames + playback, extent, marks/labels over the picture, brush layer, resizable gate, RGBA overlays, colour ramp) and the AutoForm `image` section runs on it; `intensity_trace/qt_tool.py` and the Trace Browser Qt oracle (`widget.py`, `gui/tool.py`) were deleted with their oracle tests converted to recorded values; the pyqtgraph backend, `_passthrough.py`, `test/pyqtgraph_import_allowlist.txt` and the dependency were struck; `plot_settings` offers the one backend and normalizes a stale `pyqtgraph` value. Record: [chiplot](subsystems/chiplot.md).
 - W4 follow-up: burst MLE and burst FCS take a `.pto` (or `m000.pto/<run>`) with the Runs picker and
   write their results into the container (`mle <detector>`, `burst fcs`); legacy `.bur`/`.bst` inputs

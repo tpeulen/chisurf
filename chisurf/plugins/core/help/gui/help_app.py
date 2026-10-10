@@ -31,7 +31,7 @@ from chisurf.plugins.core.help.api import review as help_review
 from chisurf.plugins.core.help.api import toc as help_toc
 from chisurf.plugins.core.help.api.mathtext import _unicode_fallback, html_math, normalise_latex
 from chisurf.plugins.core.help.api.xref import document_reference, resolve_document, resolve_ref
-from chisurf.plugins.emtk_layout import action_button, window_size
+from chisurf.plugins.emtk_layout import SHORTCUT, action_button, window_size
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -1253,6 +1253,11 @@ class HelpModel:
                 _LOGGER.error(f"Error executing queued help event: {e}")
 
 
+def _with_shortcut(tooltip: str, key: str) -> str:
+    """*tooltip* followed by the translated ``Shortcut: <key>`` note."""
+    return f"{tooltip} {tr(SHORTCUT).format(key=key)}"
+
+
 class HelpGui:
     """EMTK immediate-mode rendering and interaction for the Help Browser."""
 
@@ -1261,6 +1266,7 @@ class HelpGui:
         self.texture_mgr = HelpTextureManager()
         self.provider_settings = None
         self.provider_settings_open = False
+        self._search_focus = False
 
         # Keep navigation and the assistant in tabs so the document has room to read.
         layout = Split("h", 0.24, Region("toc"), Region("document"))
@@ -1281,6 +1287,56 @@ class HelpGui:
         )
         self._reveal_keys: set[int] = set()
         self._revealed_for: pathlib.Path | None = None
+
+    # -- keyboard shortcuts ---------------------------------------------------
+
+    def focus_search(self) -> None:
+        """Move the keyboard to the documentation search field (Ctrl/Cmd+F)."""
+        self.docks.focus("toc")
+        self._search_focus = True
+
+    def show_ask(self) -> None:
+        """Bring the Ask Docs assistant to the front (Ctrl/Cmd+Shift+A)."""
+        self.docks.focus("ask")
+
+    def handle_key(self, key: int, text: str = "", modifiers: int = 0) -> bool:
+        """Run the browser shortcut *key* names, calling what its button calls.
+
+        Returns
+        -------
+        bool
+            Whether the key was a shortcut and has been handled.
+        """
+        from emtk.events import ALT_MODIFIER, CONTROL_MODIFIER, SHIFT_MODIFIER
+        from emtk.keys import KEY_HOME, KEY_LEFT, KEY_RIGHT, letter_of
+
+        model = self.model
+        if modifiers & ALT_MODIFIER and not modifiers & CONTROL_MODIFIER:
+            if key == KEY_LEFT:
+                model.go_back()
+            elif key == KEY_RIGHT:
+                model.go_forward()
+            elif key == KEY_HOME:
+                model.show_home()
+            else:
+                return False
+            return True
+        if not modifiers & CONTROL_MODIFIER:
+            return False
+        letter = letter_of(key, text)
+        if letter == "f":
+            self.focus_search()
+        elif letter == "a" and modifiers & SHIFT_MODIFIER:
+            self.show_ask()
+        elif letter == "0":
+            model.reset_zoom()
+        elif key in (ord("="), ord("+")) or text in ("=", "+"):
+            model.zoom(1)
+        elif key in (ord("-"), ord("_")) or text in ("-", "_"):
+            model.zoom(-1)
+        else:
+            return False
+        return True
 
     def draw(self, w: float = 0.0, h: float = 0.0) -> None:
         self.model.process_events()
@@ -1432,10 +1488,16 @@ class HelpGui:
                 self.model.review_filter = statuses[selected]
         # Search bar
         im.set_next_item_width(avail_w)
+        if self._search_focus:
+            from emtk.im_core import get_current_context
+
+            get_current_context().state(("focus",)).pop("id", None)
+            im.set_keyboard_focus_here()
+            self._search_focus = False
         changed, new_q = im.input_text(
             "##doc_search", self.model.search_query, hint=tr("Search documentation...")
         )
-        im.set_item_tooltip(tr("Search documentation titles and text"))
+        im.set_item_tooltip(_with_shortcut(tr("Search documentation titles and text"), "Ctrl/Cmd+F"))
         if changed:
             self.model.update_search(new_q)
 
@@ -1593,13 +1655,15 @@ class HelpGui:
         # Navigation toolbar with clear emoticons and tooltips
         if im.button(tr("Home")):
             self.model.show_home()
-        im.set_item_tooltip(tr("Show documentation start page"))
+        im.set_item_tooltip(_with_shortcut(tr("Show documentation start page"), "Alt+Home"))
         im.same_line()
         can_back = self.model.history_idx > 0
         im.begin_disabled(not can_back)
         if im.button(tr("Back")):
             self.model.go_back()
-        im.set_item_tooltip(tr("Return to the previous page in navigation history"))
+        im.set_item_tooltip(
+            _with_shortcut(tr("Return to the previous page in navigation history"), "Alt+Left")
+        )
         im.end_disabled()
 
         im.same_line()
@@ -1607,7 +1671,9 @@ class HelpGui:
         im.begin_disabled(not can_fwd)
         if im.button(tr("Fwd")):
             self.model.go_forward()
-        im.set_item_tooltip(tr("Advance to the next page in navigation history"))
+        im.set_item_tooltip(
+            _with_shortcut(tr("Advance to the next page in navigation history"), "Alt+Right")
+        )
         im.end_disabled()
 
         im.same_line()
@@ -1659,15 +1725,22 @@ class HelpGui:
         im.same_line()
         if im.small_button("A−"):
             self.model.zoom(-1)
-        im.set_item_tooltip(tr("Reduce document text by half a point"))
+        im.set_item_tooltip(_with_shortcut(tr("Reduce document text by half a point"), "Ctrl/Cmd+-"))
         im.same_line()
         if im.small_button("Reset zoom"):
             self.model.reset_zoom()
-        im.set_item_tooltip(tr("Restore the application font size", context="Help"))
+        im.set_item_tooltip(
+            _with_shortcut(tr("Restore the application font size", context="Help"), "Ctrl/Cmd+0")
+        )
         im.same_line()
         if im.small_button("A+"):
             self.model.zoom(1)
-        im.set_item_tooltip(tr("Increase document text by half a point; Ctrl/Command+wheel also zooms"))
+        im.set_item_tooltip(
+            _with_shortcut(
+                tr("Increase document text by half a point; Ctrl/Command+wheel also zooms"),
+                "Ctrl/Cmd+=",
+            )
+        )
         changed_authoring, authoring = im.checkbox(tr("Authoring tools"), self.model.authoring_mode)
         im.set_item_tooltip(
             tr("Show human and AI review sign-off actions, status filters and manual review summary")
@@ -2149,6 +2222,13 @@ class HelpApp(ImApp):
         self.model = HelpModel()
         self.help_gui = HelpGui(model=self.model)
         super().__init__(gui=self._render, continuous=False)
+
+    def key(self, key, text="", modifiers=0):
+        """Browser shortcuts: Ctrl/Cmd+F search, Alt+Left/Right history, Alt+Home, Ctrl/Cmd+Shift+A ask, zoom."""
+        if self.help_gui.handle_key(key, text, modifiers):
+            self.wants_frame = True
+            return True
+        return super().key(key, text, modifiers)
 
     def export_settings(self) -> dict:
         return {"font_size": self.model.font_size}

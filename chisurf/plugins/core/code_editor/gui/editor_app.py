@@ -38,7 +38,7 @@ from chisurf.plugins.core.code_editor.gui.notebook_app import SHELL_EXECUTION_LO
 from chisurf.plugins.core.code_editor.gui.process_tools import CancellableRuffRunner
 from chisurf.plugins.core.code_editor.ruff_runner import RuffRunner
 from chisurf.plugins.core.code_editor.symbols import extract_python_symbols
-from chisurf.plugins.emtk_layout import action_button, window_size
+from chisurf.plugins.emtk_layout import SHORTCUT, action_button, window_size
 
 from .editor_preferences import (
     COLOR_SCHEMES,
@@ -167,6 +167,9 @@ class EditorModel:
         self._lsp_documents: dict[str, EditorDocument] = {}
         self.completions: list[dict] = []
         self.hover_text = ""
+        # Cursor positions recorded on jumps (definition, find, outline, a click far away); Alt+Left/Right walk them.
+        self._nav: list[tuple[EditorDocument, int, int]] = []
+        self._nav_index = -1
         self._completion_document: EditorDocument | None = None
         self._completion_source = ""
         from chisurf.plugins.core.code_editor.backend.services import STORE
@@ -782,6 +785,7 @@ class EditorModel:
                         if uri and urlparse(uri).scheme == "file":
                             target_path = str(pathlib.Path(unquote(urlparse(uri).path)).resolve())
                             target = self._lsp_documents.get(target_path)
+                            mark = self.nav_mark()
                             if target is not None:
                                 self.active_index = self.documents.index(target)
                             else:
@@ -789,7 +793,8 @@ class EditorModel:
                             if target:
                                 target_lines = target.text.splitlines() or [""]
                                 number = max(0, min(position.get("line", 0), len(target_lines) - 1))
-                                self.goto_line(number + 1, self._lsp_index(target_lines[number], position.get("character", 0)))
+                                self.goto_line(number + 1, self._lsp_index(target_lines[number], position.get("character", 0)), record=False)
+                                self.nav_commit(mark)
                         else:
                             self.lsp_status = "No file definition location was returned"
                     else:
@@ -849,13 +854,76 @@ class EditorModel:
             doc._symbols_text = source
         return doc._symbols
 
-    def goto_line(self, line: int, column: int = 0) -> None:
+    def goto_line(self, line: int, column: int = 0, record: bool = True) -> None:
         from emtk.widgets.text_editor import Pos
         doc = self.active_doc
         if doc is not None:
+            mark = self.nav_mark()
             target = max(0, int(line) - 1)
             doc.editor.set_cursor(Pos(target, max(0, int(column))))
             doc.editor.scroll_to_line(target, align="middle")
+            if record:
+                self.nav_commit(mark)
+
+    # -- navigation history (Alt+Left / Alt+Right) ----------------------------------------------------------------- #
+    def nav_mark(self) -> tuple[EditorDocument, int, int] | None:
+        """The active caret as ``(document, line, column)``, taken before a jump."""
+        doc = self.active_doc
+        if doc is None or doc.notebook is not None:
+            return None
+        end = doc.editor.cursors.main.end
+        return (doc, end.line, end.index)
+
+    def nav_commit(self, mark: tuple[EditorDocument, int, int] | None) -> None:
+        """Record a jump from *mark* to where the caret is now; forward history is dropped."""
+        here = self.nav_mark()
+        if mark is None or here is None or (mark[0] is here[0] and mark[1] == here[1]):
+            return
+        del self._nav[self._nav_index + 1:]
+        if not self._nav or self._nav[-1] != mark:
+            self._nav.append(mark)
+        self._nav.append(here)
+        self._nav_index = len(self._nav) - 1
+
+    def _nav_goto(self, place: tuple[EditorDocument, int, int]) -> None:
+        from emtk.widgets.text_editor import Pos
+        doc, line, column = place
+        if doc not in self.documents:
+            return
+        self.active_index = self.documents.index(doc)
+        doc.editor.set_cursor(Pos(line, column))
+        doc.editor.scroll_to_line(line, align="middle")
+
+    @property
+    def can_nav_back(self) -> bool:
+        if self._nav_index > 0:
+            return True
+        here = self.nav_mark()
+        return bool(self._nav) and self._nav_index == len(self._nav) - 1 and here not in (None, self._nav[-1])
+
+    @property
+    def can_nav_forward(self) -> bool:
+        return self._nav_index < len(self._nav) - 1
+
+    def nav_back(self) -> bool:
+        """Return to the previous recorded caret position."""
+        here = self.nav_mark()
+        if self._nav and here is not None and self._nav_index == len(self._nav) - 1 and here != self._nav[-1]:
+            self._nav.append(here)  # the caret moved on since the last jump: keep that spot for Forward
+            self._nav_index += 1
+        if self._nav_index <= 0:
+            return False
+        self._nav_index -= 1
+        self._nav_goto(self._nav[self._nav_index])
+        return True
+
+    def nav_forward(self) -> bool:
+        """Go to the next recorded caret position after going back."""
+        if self._nav_index >= len(self._nav) - 1:
+            return False
+        self._nav_index += 1
+        self._nav_goto(self._nav[self._nav_index])
+        return True
 
     def _apply_ruff(self, doc: EditorDocument, original: str, result: dict, fix: bool) -> dict:
         if doc not in self.documents:
@@ -1022,6 +1090,22 @@ class EditorModel:
         threading.Thread(target=ensure_stopped, daemon=True).start()
 
 
+#: A click this many lines from the previous caret counts as a jump for Back / Forward.
+FAR_CLICK_LINES = 10
+
+
+def nav_shortcuts() -> tuple[str, str]:
+    """The back / forward key names: Alt+Left / Alt+Right, but Cmd+[ / Cmd+] on a Mac where Option+arrow moves by word."""
+    from emtk.keys import mac_behaviors
+
+    return ("Cmd+[", "Cmd+]") if mac_behaviors() else ("Alt+Left", "Alt+Right")
+
+
+def _with_shortcut(tooltip: str, key: str) -> str:
+    """*tooltip* followed by the translated ``Shortcut: <key>`` note."""
+    return f"{tooltip} {tr(SHORTCUT).format(key=key)}"
+
+
 class CodeEditorGui:
     """EMTK immediate-mode rendering and interaction for the multi-tab Code Editor."""
 
@@ -1054,6 +1138,7 @@ class CodeEditorGui:
         self.find_status = ""
         self._find_focus = False
         self.pending_actions: list[Callable[[], None]] = []
+        self._nav_seen: tuple[EditorDocument, int, int] | None = None
 
         # Dock layout:
         # files (left) | (editor top / output bottom) (center) | agent (right)
@@ -1147,8 +1232,24 @@ class CodeEditorGui:
         if editor is None or not self.find_text:
             return False
         editor.set_find_text(self.find_text, self.find_case, self.find_whole)
+        mark = self.model.nav_mark()
         found = editor.find_next()
         self.find_status = "" if found else "Not found"
+        if found:
+            self.model.nav_commit(mark)
+        return found
+
+    def find_previous(self) -> bool:
+        """Select the match before the selection (Shift+F3), wrapping to the last."""
+        editor = self._find_editor()
+        if editor is None or not self.find_text:
+            return False
+        editor.set_find_text(self.find_text, self.find_case, self.find_whole)
+        mark = self.model.nav_mark()
+        found = editor.find_previous()
+        self.find_status = "" if found else "Not found"
+        if found:
+            self.model.nav_commit(mark)
         return found
 
     def find_all(self) -> int:
@@ -1201,9 +1302,13 @@ class CodeEditorGui:
         if entered:
             self.find_next()
         im.same_line()
+        if im.button(tr("Prev")):
+            self.find_previous()
+        im.set_item_tooltip(_with_shortcut(tr("Select the previous match (wraps around at the start)"), "Shift+F3"))
+        im.same_line()
         if im.button(tr("Next")):
             self.find_next()
-        im.set_item_tooltip(tr("Select the next match (wraps around at the end)"))
+        im.set_item_tooltip(_with_shortcut(tr("Select the next match (wraps around at the end)"), "F3"))
         im.same_line()
         if im.button(tr("All")):
             self.find_all()
@@ -1534,8 +1639,17 @@ class CodeEditorGui:
                     self.docks.focus("editor_settings")
                 im.end_menu()
             if im.begin_menu("Edit"):
-                if im.menu_item("Find…"):
+                if im.menu_item("Find…", "Ctrl+F"):
                     self.open_find()
+                if im.menu_item("Find next", "F3"):
+                    self.find_next()
+                if im.menu_item("Find previous", "Shift+F3"):
+                    self.find_previous()
+                im.separator()
+                if im.menu_item("Go back", nav_shortcuts()[0], enabled=self.model.can_nav_back):
+                    self.model.nav_back()
+                if im.menu_item("Go forward", nav_shortcuts()[1], enabled=self.model.can_nav_forward):
+                    self.model.nav_forward()
                 im.end_menu()
             if im.begin_menu("Run"):
                 if self.model.is_running_script or notebook_running:
@@ -1710,6 +1824,13 @@ class CodeEditorGui:
             else:
                 im.text_editor(f"##editor_{id(active)}", active.editor, (avail_w, editor_h))
                 im.set_item_tooltip(tr("Edit the active document; use standard keyboard shortcuts for editing"))
+                # A click far from the previous caret is a jump: Back returns to where it was.
+                here = self.model.nav_mark()
+                seen = self._nav_seen
+                if (io.mouse_clicked[0] and here is not None and seen is not None and seen[0] is here[0]
+                    and abs(here[1] - seen[1]) >= FAR_CLICK_LINES):
+                    self.model.nav_commit(seen)
+                self._nav_seen = here
             im.pop_font_scale()
             im.pop_font()
 
@@ -1919,12 +2040,24 @@ class CodeEditorGui:
             if im.button(tr("Disable Python LSP")):
                 self.model.stop_lsp()
             im.set_item_tooltip(tr("Stop the language server and close its document sessions"))
-        for action, label, tip in [("completion", "Complete", "Ask for completions at the active editor cursor"),
-            ("definition", "Go to definition", "Open the Python definition at the active cursor"),
-            ("hover", "Documentation", "Show language-server documentation for the active cursor")]:
+        for action, label, tip, key in [
+            ("completion", "Complete", "Ask for completions at the active editor cursor", "Ctrl/Cmd+Space"),
+            ("definition", "Go to definition", "Open the Python definition at the active cursor", "F12"),
+            ("hover", "Documentation", "Show language-server documentation for the active cursor", None)]:
             if im.button(label):
                 self.model.request_lsp(action)
-            im.set_item_tooltip(tip)
+            im.set_item_tooltip(_with_shortcut(tip, key) if key else tip)
+        im.begin_disabled(not self.model.can_nav_back)
+        if im.button(tr("Back")):
+            self.model.nav_back()
+        im.set_item_tooltip(_with_shortcut(tr("Return to the previous caret position (after a jump to a definition, a match or a far click)"), nav_shortcuts()[0]))
+        im.end_disabled()
+        im.same_line()
+        im.begin_disabled(not self.model.can_nav_forward)
+        if im.button(tr("Forward")):
+            self.model.nav_forward()
+        im.set_item_tooltip(_with_shortcut(tr("Go forward again after going back"), nav_shortcuts()[1]))
+        im.end_disabled()
         if self.model.hover_text:
             im.markdown(self.model.hover_text, max_width=box[2])
         for index, item in enumerate(self.model.completions):
@@ -1958,15 +2091,32 @@ class CodeEditorApp(ImApp):
     def key(self, key, text="", modifiers=0):
         """Editor shortcuts (Ctrl, or Command on a Mac): S save, Shift+S save as, O open, N new, W close, F find; Escape closes find.
 
+        Also F3 / Shift+F3 find next / previous, F12 go to definition, Ctrl+Space completion and Alt+Left / Alt+Right (Cmd+[ / Cmd+] on a Mac)
+        back / forward through the caret positions recorded on jumps.
+
         The actions are queued and run in the next frame, inside the editor window, exactly where the buttons run them.
         """
-        from emtk.events import CONTROL_MODIFIER, SHIFT_MODIFIER
-        from emtk.keys import KEY_ESCAPE, letter_of
+        from emtk.events import ALT_MODIFIER, CONTROL_MODIFIER, SHIFT_MODIFIER
+        from emtk.keys import KEY_ESCAPE, KEY_F3, KEY_F12, KEY_LEFT, KEY_RIGHT, KEY_SPACE, letter_of, mac_behaviors
 
         gui = self.editor_gui
         doc = self.model.active_doc
         action = None
-        if modifiers & CONTROL_MODIFIER:
+        nav_key = None
+        if mac_behaviors():
+            if modifiers & CONTROL_MODIFIER and (key in (ord("["), ord("]")) or text in ("[", "]")):
+                nav_key = "back" if key == ord("[") or text == "[" else "forward"
+        elif modifiers & ALT_MODIFIER and not modifiers & CONTROL_MODIFIER and key in (KEY_LEFT, KEY_RIGHT):
+            nav_key = "back" if key == KEY_LEFT else "forward"
+        if key == KEY_F3 and doc is not None and doc.notebook is None:
+            action = gui.find_previous if modifiers & SHIFT_MODIFIER else gui.find_next
+        elif key == KEY_F12:
+            action = lambda: self.model.request_lsp("definition")  # noqa: E731
+        elif nav_key is not None:
+            action = self.model.nav_back if nav_key == "back" else self.model.nav_forward
+        elif modifiers & CONTROL_MODIFIER and key == KEY_SPACE:
+            action = lambda: self.model.request_lsp("completion")  # noqa: E731
+        elif modifiers & CONTROL_MODIFIER:
             letter = letter_of(key, text)
             if letter == "s" and doc is not None:
                 action = lambda: gui._request_save(doc, save_as=bool(modifiers & SHIFT_MODIFIER))  # noqa: E731

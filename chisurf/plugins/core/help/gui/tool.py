@@ -2020,9 +2020,9 @@ class HelpEmtkTool(ChisurfDockTool):
         from chisurf.plugins.core.help.gui.help_app import WINDOW_BG, HelpApp
 
         self.setWindowTitle(f"{Glyphs.BOOK} ChiSurf Help")
-        self.resize(*HelpApp.window_size)
-
         self.app = HelpApp()
+        self.resize(*self.app.window_size)
+
         self.model = self.app.model
         if path:
             self.model.open_page(path)

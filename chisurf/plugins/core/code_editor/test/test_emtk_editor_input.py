@@ -113,6 +113,11 @@ class Ed(Driver):
         self.app.key(key, text, modifiers)
         self.draw(2)
 
+    def show(self, line):
+        """Scroll so *line* is on screen, as the wheel would, and draw."""
+        self.editor.scroll_to_line(line, align="middle")
+        self.draw(3)
+
     def combo(self, letter, modifiers=CTRL):
         self.key(ord(letter.upper()), letter.lower(), modifiers)
 
@@ -670,3 +675,187 @@ def test_the_toolbar_wraps_and_every_control_and_the_status_line_stay_inside_the
     status = next(t for t in painter.texts if "Ln " in t[5] and "Col " in t[5])
     assert status[0] + status[2] <= size[0] + 1, "the status line is cut off"
     assert "Ln 1, Col 1" in status[5]
+
+
+# -- find next / previous, definition, completion and the navigation history -------------------------------------------------- #
+
+ALT = ALT_MODIFIER
+
+
+def press_back(ed):
+    """Back as this platform spells it: Alt+Left, or Cmd+[ where Option+arrow moves by word."""
+    from chisurf.plugins.core.code_editor.gui.editor_app import nav_shortcuts
+
+    if nav_shortcuts()[0] == "Cmd+[":
+        ed.key(ord("["), "[", CTRL)
+    else:
+        ed.key(keys.KEY_LEFT, "", ALT)
+
+
+def press_forward(ed):
+    from chisurf.plugins.core.code_editor.gui.editor_app import nav_shortcuts
+
+    if nav_shortcuts()[1] == "Cmd+]":
+        ed.key(ord("]"), "]", CTRL)
+    else:
+        ed.key(keys.KEY_RIGHT, "", ALT)
+
+
+def test_f3_and_shift_f3_select_the_next_and_previous_match(ed):
+    prepare_find(ed)
+    ed.type("foo")
+    gui = ed.app.editor_gui
+    assert gui.find_text == "foo"
+    ed.key(keys.KEY_F3)
+    assert ed.caret() == (0, 3)
+    ed.key(keys.KEY_F3)
+    assert ed.caret() == (0, 11)
+    ed.key(keys.KEY_F3, "", SHIFT)
+    assert ed.caret() == (0, 3) and ed.selected() == "foo"
+    ed.key(keys.KEY_F3, "", SHIFT)  # before the first match: wraps to the last one
+    assert ed.caret() == (2, 3)
+
+
+def test_the_prev_button_does_what_shift_f3_does(ed):
+    prepare_find(ed)
+    ed.type("foo")
+    ed.key(keys.KEY_F3)
+    ed.key(keys.KEY_F3)
+    ed.click_text("Prev")
+    assert ed.caret() == (0, 3)
+
+
+def test_the_edit_menu_lists_the_find_and_history_shortcuts(ed):
+    prepare_find(ed)
+    ed.type("foo")
+    ed.click_text("Edit")
+    ed.click_text("Find next")
+    assert ed.caret() == (0, 3)
+
+
+class LspEd(Ed):
+    """The editor with the fake language server of the LSP test running."""
+
+    def wait(self, done):
+        import time
+
+        deadline = time.monotonic() + 5
+        while not done() and time.monotonic() < deadline:
+            self.draw(1)
+            time.sleep(0.01)
+        assert done()
+
+
+@pytest.fixture
+def lsp_ed(tmp_path, board):
+    import sys
+
+    from chisurf.plugins.core.code_editor.test.test_emtk_editor import _fake_native_lsp_server
+
+    server = tmp_path / "fake_lsp.py"
+    _fake_native_lsp_server(server)
+    root = tmp_path / "lsp_proj"
+    root.mkdir()
+    driver = LspEd(make_editor_app(str(root)))
+    driver.draw(3)
+    model = driver.app.model
+    model.active_doc.text = "pri\n" + "\n".join(f"line {i}" for i in range(30)) + "\n"
+    assert model.start_lsp([sys.executable, str(server)])
+    driver.wait(lambda: model.lsp_client.is_ready)
+    driver.click_at(0, 3)
+    yield driver
+    driver.app.close()
+
+
+def test_ctrl_space_asks_for_completions_like_the_complete_button(lsp_ed):
+    lsp_ed.key(keys.KEY_SPACE, " ", CTRL)
+    lsp_ed.wait(lambda: lsp_ed.app.model.completions)
+    assert lsp_ed.app.model.completions[0]["label"] == "print"
+    assert lsp_ed.doc.text.startswith("pri\n")  # asking types nothing
+
+
+def test_f12_jumps_to_the_definition_and_back_returns(lsp_ed):
+    lsp_ed.click_at(5, 2)
+    assert lsp_ed.caret() == (5, 2)
+    lsp_ed.key(keys.KEY_F12)
+    lsp_ed.wait(lambda: lsp_ed.caret() == (0, 1))
+    press_back(lsp_ed)
+    assert lsp_ed.caret() == (5, 2)
+    press_forward(lsp_ed)
+    assert lsp_ed.caret() == (0, 1)
+
+
+def test_back_walks_over_a_find_jump_and_forward_returns_to_it(ed):
+    ed.doc.text = "needle\n" + "x\n" * 30 + "needle\n"
+    ed.draw(3)
+    ed.click_at(0, 0)
+    ed.combo("f")
+    ed.type("needle")
+    ed.key(keys.KEY_F3)  # (0, 6)
+    ed.key(keys.KEY_F3)  # (31, 6): a jump across the file
+    assert ed.caret() == (31, 6)
+    press_back(ed)
+    assert ed.caret() == (0, 6)
+    press_forward(ed)
+    assert ed.caret() == (31, 6)
+
+
+def test_a_click_far_away_is_a_jump_that_back_undoes_but_a_near_click_is_not(ed):
+    ed.doc.text = "\n".join(f"line {i}" for i in range(60)) + "\n"
+    ed.draw(3)
+    ed.click_at(1, 2)
+    ed.click_at(3, 2)  # two lines away: not a jump
+    assert ed.app.model._nav == []
+    ed.show(30)
+    ed.click_at(30, 1)
+    assert ed.caret() == (30, 1)
+    press_back(ed)
+    assert ed.caret() == (3, 2)
+    press_forward(ed)
+    assert ed.caret() == (30, 1)
+
+
+def test_back_remembers_where_the_caret_wandered_after_the_last_jump(ed):
+    ed.doc.text = "\n".join(f"line {i}" for i in range(60)) + "\n"
+    ed.draw(3)
+    ed.click_at(2, 0)
+    ed.show(40)
+    ed.click_at(40, 0)
+    ed.click_at(41, 0)  # walked on after the jump
+    press_back(ed)
+    assert ed.caret() == (40, 0)
+    press_back(ed)
+    assert ed.caret() == (2, 0)
+    press_forward(ed)
+    assert ed.caret() == (40, 0)
+
+
+def test_on_a_mac_option_arrow_stays_a_word_move_and_command_brackets_navigate(ed, monkeypatch):
+    import emtk.keys
+
+    monkeypatch.setattr(emtk.keys, "mac_behaviors", lambda: True)
+    ed.doc.text = "\n".join(f"line {i}" for i in range(60)) + "\n"
+    ed.draw(3)
+    ed.click_at(2, 3)
+    ed.show(40)
+    ed.click_at(40, 0)
+    ed.key(keys.KEY_LEFT, "", ALT)  # not history: the text editor moves the caret
+    assert ed.caret() != (2, 3)
+    ed.key(ord("["), "[", CTRL)  # back to the far click (the word move since is kept for Forward)
+    assert ed.caret() == (40, 0)
+    ed.key(ord("["), "[", CTRL)
+    assert ed.caret() == (2, 3)
+    ed.key(ord("]"), "]", CTRL)
+    assert ed.caret() == (40, 0)
+
+
+def test_the_back_button_does_what_alt_left_does(lsp_ed):
+    lsp_ed.click_at(8, 0)
+    lsp_ed.key(keys.KEY_F12)
+    lsp_ed.wait(lambda: lsp_ed.caret() == (0, 1))
+    model = lsp_ed.app.model
+    assert model.can_nav_back and not model.can_nav_forward
+    lsp_ed.app.editor_gui.docks.focus("language")
+    lsp_ed.draw(3)
+    lsp_ed.click_text("Back")
+    assert lsp_ed.caret() == (8, 0) and model.can_nav_forward

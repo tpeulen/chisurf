@@ -151,7 +151,7 @@ def test_help_emtk_tool_dock_integration(qapp, qtbot):
     qtbot.addWidget(tool)
 
     assert "Help" in tool.windowTitle()
-    assert (tool.width(), tool.height()) == HelpApp.window_size
+    assert (tool.width(), tool.height()) == tool.app.window_size
     assert hasattr(tool, "model")
     assert hasattr(tool, "app")
     assert hasattr(tool, "host")
@@ -812,11 +812,12 @@ def test_native_help_zoom_clamps_and_preferences_roundtrip():
     app.model.set_font_size(1)
     assert app.model.font_size == 7
     app.model.reset_zoom()
+    base = app.model.font_size
     app.model.zoom(2)
-    assert app.model.font_size == 13
+    assert app.model.font_size == base + 1
     settings = app.export_settings()
     fresh = make_help_app()
     fresh.restore_settings(settings)
-    assert fresh.model.font_size == 13
+    assert fresh.model.font_size == base + 1
     app.close()
     fresh.close()
