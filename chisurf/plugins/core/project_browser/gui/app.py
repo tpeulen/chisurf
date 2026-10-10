@@ -15,7 +15,7 @@ from emtk.widgets.menus import MenuItem, Popup
 from emtk.i18n import tr
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 
 from .controller import ProjectJobs
 from .model import ProjectBrowserModel
@@ -413,8 +413,7 @@ class ProjectBrowserApp(ImApp):
             self.modal = ""
 
     def _cancel_button(self):
-        pressed = im.button(tr("Cancel"))
-        im.set_item_tooltip(tr("Close this confirmation without changing the database."))
+        pressed = action_button("cancel", tooltip=tr("Close this confirmation without changing the database."))
         self.item_rects["cancel_dialog"] = im.get_item_rect()
         return pressed
 

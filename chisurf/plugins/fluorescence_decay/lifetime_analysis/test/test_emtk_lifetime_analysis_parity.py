@@ -14,6 +14,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+
+from chisurf.plugins.emtk_layout import action_caption
 from emtk import keys
 
 from chisurf.plugins.emtk_test_input import CTRL, SIZE, SMALL, Driver
@@ -338,7 +340,8 @@ def test_every_hub_control_has_a_tooltip(ui):
     hub = [
         r
         for r in inventory["interactive"]
-        if r["id"] in ("##search_tools", "Back", "Next", "Help", "Guide")
+        if r["id"] in ("##search_tools", "Back", "Next",
+                       f"{action_caption('help')}##help", f"{action_caption('guide')}##guide")
         or r["label"].startswith(("1.", "2.", "3.", "4.", "5."))
     ]
     assert hub and all(r.get("tooltip") for r in hub), [r for r in hub if not r.get("tooltip")]

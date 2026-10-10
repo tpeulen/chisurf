@@ -19,6 +19,7 @@
       "description": "Run the program over the listed structures; save or clear the results.",
       "buttons": [
         {"action": "run", "label": "Run",
+         "icon": "▶️",
          "description": "Run HYDROPRO / HYDRO++ once per listed structure. The parameters are checked first; the output pane shows the program's console while it runs."},
         {"action": "save_csv", "label": "Save CSV",
          "description": "Write the results (file and diffusion coefficient in cm²/s) to a CSV file. Available once a run has finished."},
@@ -75,6 +76,7 @@
         {"action": "save_log", "label": "Save Log…",
          "description": "Write the output log to a text file."},
         {"action": "cancel", "label": "Cancel",
+         "icon": "✕",
          "description": "Stop after the structure that is being computed has finished; the structures not yet started are skipped."}
       ]
     }

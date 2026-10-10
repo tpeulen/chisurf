@@ -12,7 +12,7 @@ from pathlib import Path
 from emtk import i18n, im
 from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RETURN, KEY_RIGHT, KEY_UP
 
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import sound_toggle, window_size
 from chisurf.plugins.misc.games._base import GameApp
 from chisurf.plugins.misc.games.gui.keys import blocked
 
@@ -258,15 +258,10 @@ class MinesweeperApp(GameApp):
         im.begin("##minesweeper", (x, y, w, h))
         draw = im.get_window_draw_list()
         draw.add_rect_filled((x, y), (x + w, y + h), (8, 9, 11, 255))
-        im.set_cursor_screen_pos((x + 4, y + 4))
-        im.begin_disabled(self.audio_callback is None)
-        changed, enabled = im.checkbox(tr("Sound") + "##sound", self.sound_enabled)
-        if changed:
-            self.sound_enabled = enabled
-            self.audio_callback("enabled", enabled)
-        im.set_item_tooltip(tr("Music and sound effects (off by default).") if self.audio_callback is not None
-                            else tr("No sound here: this window has no audio output."))
-        im.end_disabled()
+        im.set_cursor_screen_pos((x + 4, y + 2))
+        if sound_toggle(self.sound_enabled, available=self.audio_callback is not None, shortcut="M"):
+            self.sound_enabled = not self.sound_enabled
+            self.audio_callback("enabled", self.sound_enabled)
         width, height = self.game.columns * CELL, self.game.rows * CELL
         camera_h = max(height + 150, (width + 70) / 0.8)
         scale = min(h / camera_h, (w - 16) / (width + 70))

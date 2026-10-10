@@ -16,6 +16,8 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
+
+from chisurf.plugins.emtk_layout import action_caption
 from emtk import keys
 
 from chisurf.plugins.emtk_test_input import CTRL, SIZE, SMALL, Driver
@@ -227,7 +229,7 @@ def test_an_empty_window_asks_for_data_and_greys_the_actions(ui):
     m = ui.app.model
     ui.click_text("Run MEM")
     assert ui.app.jobs.process is None and m.result is None
-    ui.click_text("Save")
+    ui.click_text(action_caption("save"))
     ui.click_text("Sample")
     assert ui.app.dialog is None
 
@@ -549,7 +551,7 @@ def test_save_writes_the_result_folder_and_sample_writes_the_chains(fitted, tmp_
     ui.app.last_dir = str(tmp_path)
     out = tmp_path / "result"
     out.mkdir()
-    ui.click_text("Save")
+    ui.click_text(action_caption("save"))
     assert ui.app.dialog is not None
     ui.click_text("[result]")
     ui.click_text("Choose")
@@ -598,7 +600,7 @@ def test_the_json_editor_applies_valid_preferences_and_reports_invalid_ones(ui):
 
 
 def test_help_opens_with_live_links_and_closes(ui):
-    ui.click_text("Help")
+    ui.click_text(action_caption("help"))
     assert ui.app.help_window.open
     ui.click_text("Close")
     assert not ui.app.help_window.open
@@ -615,7 +617,7 @@ def test_the_tour_waits_for_refresh_run_and_lcurve(fitted, monkeypatch):
     monkeypatch.setattr(chisurf, "fits", [stub_fit()])
     monkeypatch.setattr(chisurf, "imported_datasets", [])
     ui = fitted
-    ui.click_text("Guide")
+    ui.click_text(action_caption("guide"))
     tour = ui.app.tour
     assert tour.active
     ui.click_text("Next ►")

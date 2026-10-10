@@ -20,6 +20,7 @@ from chisurf.plugins.calculator.rics_precision.test.test_emtk_rics_parity import
     QT_ROWS,
     QT_STATUS,
 )
+from chisurf.plugins.emtk_layout import action_caption
 
 
 @pytest.fixture
@@ -256,14 +257,14 @@ def test_panel_headers_fold_and_unfold(ui, title, field, open_at_first):
 
 # -- Guide and Help ------------------------------------------------------------------------------------------
 def test_help_button_opens_and_closes_the_help_window(ui):
-    ui.click("Help")
+    ui.click(action_caption("help"))
     assert ui.app.help_window.open and ui.drawn("Close Help")
     ui.click("Close Help")
     assert not ui.app.help_window.open
 
 
 def test_guide_button_starts_the_tour_and_it_waits_for_the_controls(ui):
-    ui.click("Guide")
+    ui.click(action_caption("guide"))
     assert ui.app.tour.active and ui.drawn("Step 1 of 6: The one tool here you use before the measurement")
     ui.app.tour.start(1)
     ui.frame(2)

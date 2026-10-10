@@ -17,7 +17,8 @@ from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import (
-    LabelColumn, button_row, group_by_width, labelled, layout_spec, window_size,
+    LabelColumn, action_caption, action_tooltip, button_row, group_by_width, labelled, layout_spec,
+    window_size,
 )
 
 from .controller import MEMJobs
@@ -200,10 +201,13 @@ class MaxentApp(ImApp):
                     "tip": "Run Q-MCMC sampling of the distribution and save chains, summaries and project metadata in a folder.",
                 },
                 {
-                    "label": "Save",
+                    "label": action_caption("save"),
                     "key": "save",
                     "enabled": idle and m.result is not None,
-                    "tip": "Export the distribution, observed and fitted curves, IRF, weighted residuals and metadata.",
+                    "tip": action_tooltip(
+                        "save",
+                        "Export the distribution, observed and fitted curves, IRF, weighted residuals and metadata.",
+                    ),
                 },
                 {
                     "label": "Cancel job",
@@ -257,16 +261,8 @@ class MaxentApp(ImApp):
                     "enabled": idle,
                     "tip": "Inspect and edit the declared preferences as JSON.",
                 },
-                {
-                    "label": "Help",
-                    "key": "help",
-                    "tip": "Explain maximum entropy, FRET priors and uncertainty.",
-                },
-                {
-                    "label": "Guide",
-                    "key": "guide",
-                    "tip": "Tour the real input, regularization and run controls.",
-                },
+                {"label": action_caption("help"), "key": "help", "tip": action_tooltip("help")},
+                {"label": action_caption("guide"), "key": "guide", "tip": action_tooltip("guide")},
             ]
         )
         if self.fits or self.datasets:

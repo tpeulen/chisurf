@@ -42,7 +42,7 @@
             ]},
             {"type": "button_row", "buttons": [
               {"label": "🧪 Generate", "action": "request_generate", "description": "Simulate the CLSM photon image from the loaded intensity + lifetime maps."},
-              {"label": "💾 Save", "action": "request_save", "description": "Save the generated photon stream (.npz / .ptu / .spc / .ht3) + an intensity TIFF."}
+              {"label": "Save", "icon": "💾", "action": "request_save", "description": "Save the generated photon stream (.npz / .ptu / .spc / .ht3) + an intensity TIFF."}
             ]}
           ]
         },

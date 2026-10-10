@@ -16,7 +16,13 @@ from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
-from chisurf.plugins.emtk_layout import button_row, layout_spec, window_size
+from chisurf.plugins.emtk_layout import (
+    action_caption,
+    action_tooltip,
+    button_row,
+    layout_spec,
+    window_size,
+)
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 
 from ..core import TTTRData, load_tttr_with_tttrlib
@@ -710,12 +716,8 @@ class AudifierApp(TourTarget, ImApp):
                     "key": "save_wav",
                     "tip": "Render selected channels and range to a 16-bit mono WAV file.",
                 },
-                {"label": "Guide", "key": "guide", "tip": "Step-by-step audification workflow."},
-                {
-                    "label": "Help",
-                    "key": "help",
-                    "tip": "Audio, lifetime and timing workflow reference.",
-                },
+                {"label": action_caption("guide"), "key": "guide", "tip": action_tooltip("guide")},
+                {"label": action_caption("help"), "key": "help", "tip": action_tooltip("help")},
             ],
             remember=self.remember,
         )

@@ -25,7 +25,7 @@ from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.jobs import SnapshotJob
-from chisurf.plugins.emtk_layout import layout_spec, window_size
+from chisurf.plugins.emtk_layout import action_button, layout_spec, window_size
 
 from .model import UpdaterModel
 from .package_app import PackagePanel
@@ -165,14 +165,12 @@ class UpdaterApp(ImApp):
 
     def _toolbar(self) -> None:
         """Help and Guide (a spec cannot draw the tour's entry points)."""
-        if im.button(tr("Help")):
+        if action_button("help"):
             self.help_window.show()
-        im.set_item_tooltip(tr("Explain the version list, the changelog and what Update Now does."))
         self.item_rects["help"] = im.get_item_rect()
         im.same_line()
-        if im.button(tr("Guide")):
+        if action_button("guide"):
             self.tour.start()
-        im.set_item_tooltip(tr("Walk through checking for an update and reading what changed."))
         self.item_rects["guide"] = im.get_item_rect()
         im.separator()
 

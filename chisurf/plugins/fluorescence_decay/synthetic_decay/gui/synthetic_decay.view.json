@@ -115,7 +115,7 @@
       "type": "button_row",
       "buttons": [
         {"label": "🧪 Generate", "action": "generate", "description": "Generate the decay and update the plot."},
-        {"label": "💾 Save", "action": "save", "description": "Save the generated decay (CSV / text / .npy / JSON). In VV/VH mode writes a VV/VH file whose footer carries g, l1, l2 and the mode."},
+        {"label": "Save", "icon": "💾", "action": "save", "description": "Save the generated decay (CSV / text / .npy / JSON). In VV/VH mode writes a VV/VH file whose footer carries g, l1, l2 and the mode."},
         {"label": "🔗 Fit group", "action": "send_to_fit", "description": "Add the generated data as a dataset and create a fit group with the Lifetime model — same route as a VV/VH data load: VV and VH become group members with vv/vh polarizations and g, l1, l2 are carried over from the simulation."}
       ]
     },

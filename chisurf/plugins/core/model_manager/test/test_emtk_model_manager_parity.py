@@ -16,6 +16,7 @@ import yaml
 from emtk.testing import RecordingPainter
 
 from chisurf.plugins.core.model_manager.api.records import ModelRow, collect_model_rows
+from chisurf.plugins.emtk_layout import action_caption
 
 HERE = Path(__file__).parent
 GUI = HERE.parent / "gui"
@@ -465,13 +466,13 @@ def test_app_draws_populated_and_empty_at_both_sizes(size, fake_registry, monkey
     for expected in (
         "Registered models",
         "Selected model",
-        "Save",
+        action_caption("save"),
         "Revert",
         "Rescan",
         "Drop stale",
         "Export CSV",
-        "Help",
-        "Guide",
+        action_caption("help"),
+        action_caption("guide"),
         "Show disabled models",
     ):
         assert expected in strings, expected

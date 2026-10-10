@@ -8,6 +8,7 @@ import pytest
 from emtk import i18n, im
 from emtk.keys import KEY_ESCAPE, KEY_RETURN
 from emtk.testing import Driver
+from emtk.view_form import icon_caption
 
 from .test_game_lifecycle_contract import (
     APPS,
@@ -169,7 +170,9 @@ def test_header_translation_preserves_single_row(monkeypatch):
     app = make_game("number")
     try:
         painter = Driver(app, NARROW["number"]).draw(2)
-        assert set(translations.values()) <= set(painter.strings)
+        captions = {icon_caption(b["icon"], translations[b["label"]])
+                    for b in app.header_spec["sections"][0]["buttons"]}
+        assert captions <= set(painter.strings)
         assert len({rect[1] for rect in app.header_form.rects.values()}) == 1
         assert all(rect[1] + rect[3] <= 34 for rect in app.header_form.rects.values())
     finally:
@@ -205,7 +208,7 @@ def test_actual_locales_keep_header_and_tooltip_reachable(name, locale):
         painter = driver.draw(2)
         buttons = app.header_spec["sections"][0]["buttons"]
         for button in buttons:
-            label = _base.tr(button["label"])
+            label = icon_caption(button["icon"], _base.tr(button["label"]))
             description = _base.tr(button["description"])
             assert label in painter.strings
             if locale != "en":

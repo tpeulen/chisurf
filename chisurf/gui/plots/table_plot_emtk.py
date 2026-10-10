@@ -669,6 +669,8 @@ class FitTablePlotEmtk(plotbase.Plot):
     def _draw_parameter_editor(self) -> None:
         from emtk import im
 
+        from chisurf.plugins.emtk_layout import action_button
+
         records, _params, table, message = self.parameter_editor
         im.text("Model parameters")
         if message:
@@ -681,9 +683,8 @@ class FitTablePlotEmtk(plotbase.Plot):
             self.apply_parameter_editor()
         im.set_item_tooltip("Write the edited values, bounds, fixes and links to the fit.")
         im.same_line()
-        if im.button("Cancel"):
+        if action_button("cancel", tooltip="Close the editor; nothing changes."):
             self.cancel_parameter_editor()
-        im.set_item_tooltip("Close the editor; nothing changes.")
 
     def _apply_parameter_table(self, table, param_dict) -> None:
         """Push an edited parameter table back through the fitting client.

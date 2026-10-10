@@ -36,6 +36,7 @@ from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import (
     NUMBER_WIDTH,
     LabelColumn,
+    action_button,
     cap_widths,
     group_by_width,
     icon_label,
@@ -426,14 +427,12 @@ class TrajToolApp(TourTarget, ImApp):
                 cancel()
 
     def _draw_main(self, box) -> None:
-        if im.button(icon_label("📖", "Guide")):
+        if action_button("guide"):
             self.start_guide()
-        im.set_item_tooltip(tr("A step-by-step walk through the tool, pointing at each control."))
         self.remember("guide")
         im.same_line()
-        if im.button(icon_label("❓", "Help")):
+        if action_button("help"):
             self.show_help()
-        im.set_item_tooltip(tr("What the tool does, what it writes, and the known limits."))
         self.remember("help")
         im.separator()
         self.form.rects.clear()

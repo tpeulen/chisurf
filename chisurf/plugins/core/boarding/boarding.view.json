@@ -142,8 +142,8 @@
             {
               "type": "button_row",
               "buttons": [
-                {"label": "❓ Open Help", "action": "open_help",
-                 "description": "Browse experiment-specific guides and built-in documentation."},
+                {"label": "Help", "icon": "❓", "action": "open_help",
+                 "description": "Open the help for this window."},
                 {"label": "🧩 Open Plugin Manager", "action": "open_plugin_manager",
                  "description": "Manage installed plugins."}
               ]

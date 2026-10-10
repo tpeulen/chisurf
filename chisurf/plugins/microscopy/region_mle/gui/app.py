@@ -33,7 +33,7 @@ from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.image_canvas import ImageCanvas
 from chisurf.emtk.jobs import SnapshotJob
 from chisurf.emtk.regions import RegionControls
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 
 from .model import PHOTON_FILE_FILTER, RegionMleModel
 
@@ -206,18 +206,12 @@ class RegionMleApp(ImApp):
                 self.item_rects[key] = rects[name]
 
     def _draw_analysis(self, box: Any) -> None:
-        if im.button(tr("Help")):
+        if action_button("help"):
             self.help_window.show()
-        im.set_item_tooltip(
-            tr("Explain what the fit does, what a region needs and how to read the decay.")
-        )
         self.item_rects["help"] = im.get_item_rect()
         im.same_line()
-        if im.button(tr("Guide")):
+        if action_button("guide"):
             self.tour.start()
-        im.set_item_tooltip(
-            tr("Walk through the demo: load it, preview the regions, run and read a decay.")
-        )
         self.item_rects["guide"] = im.get_item_rect()
         im.separator()
         # The analysis form: the panel of the first window, drawn in place.

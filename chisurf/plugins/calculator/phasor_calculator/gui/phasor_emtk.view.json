@@ -13,12 +13,14 @@
           {
             "action": "guide",
             "label": "Guide",
-            "description": "A step-by-step walk through the tool."
+            "icon": "📖",
+            "description": "Start a step-by-step tour that points at the real controls."
           },
           {
             "action": "help",
             "label": "Help",
-            "description": "The help page: reading the semicircle and every control."
+            "icon": "❓",
+            "description": "Open the help for this window."
           }
         ]
       }

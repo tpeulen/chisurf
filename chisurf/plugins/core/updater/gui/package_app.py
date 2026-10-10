@@ -25,7 +25,7 @@ from emtk.i18n import tr
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.jobs import SnapshotJob
-from chisurf.plugins.emtk_layout import layout_spec
+from chisurf.plugins.emtk_layout import action_button, layout_spec
 
 from .package_model import TABS, PackageManagerModel
 
@@ -246,14 +246,12 @@ class PackageApp(ImApp):
         im.set_next_window_pos(vp.pos, im.Cond.ALWAYS)
         im.set_next_window_size(vp.size, im.Cond.ALWAYS)
         if im.begin("ChiSurf Package Manager", box):
-            if im.button(tr("Help")):
+            if action_button("help"):
                 self.help_window.show()
-            im.set_item_tooltip(tr("Explain the four pages and what each button runs."))
             self.item_rects["help"] = im.get_item_rect()
             im.same_line()
-            if im.button(tr("Guide")):
+            if action_button("guide"):
                 self.tour.start()
-            im.set_item_tooltip(tr("Walk through finding and installing a package."))
             self.item_rects["guide"] = im.get_item_rect()
             im.separator()
             self.panel.draw_content()

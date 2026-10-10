@@ -58,6 +58,7 @@
             {"action": "login", "label": "Login",
              "description": "Authenticate against the MMFDB. On success the account and server are remembered and the window closes."},
             {"action": "cancel", "label": "Cancel",
+             "icon": "✕",
              "description": "Close without changing the active user."}
           ]
         },

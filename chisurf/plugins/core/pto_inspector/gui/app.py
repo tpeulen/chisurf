@@ -21,7 +21,7 @@ from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.node_editor.control import GraphControl, NodeContentRenderer
 from chisurf.emtk.node_editor.document import GraphDocument
 from chisurf.emtk.plugins import load_plugin
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import ACTIONS, action_button, action_caption, window_size
 
 from .translations import install, tr
 from .view_model import PtoInspectorViewModel
@@ -204,12 +204,18 @@ class PtoInspectorApp(ImApp):
             return None
 
     def button(self, title, tip, fn, enabled=True):
+        """Draw one action; a *title* that is a shared action key (``"open"``, ``"help"`` …) draws that
+        action's canonical button (chisurf.plugins.emtk_layout.ACTIONS)."""
         im.begin_disabled(not enabled)
-        if im.button(tr(title)):
+        if title in ACTIONS:
+            pressed = action_button(title, tooltip=None if ACTIONS[title].fixed_tooltip else tr(tip))
+        else:
+            pressed = im.button(tr(title))
+            im.set_item_tooltip(tr(tip))
+        if pressed:
             self.safe(fn)
             self.tour.notify_used(title)
         self.rects[title] = (*im.get_item_rect_min(), *im.get_item_rect_size())
-        im.set_item_tooltip(tr(tip))
         im.end_disabled()
 
     def choose_file(self, action):
@@ -308,20 +314,20 @@ class PtoInspectorApp(ImApp):
         available = im.get_content_region_avail()[0]
         used = 0
         for title, tip, fn, enabled in [
-            ("Open", "Open a photon container.", lambda: self.choose_file("open"), True),
+            ("open", "Open a photon container.", lambda: self.choose_file("open"), True),
             ("Database", "Choose a container from MMFDB.", self.open_database, True),
             ("Reload", "Read changes from disk.", self.model.reload, bool(self.model.filename)),
             ("Verify", "Check every stored checksum.", self.verify, bool(self.model.inspection)),
             (
-                "Export",
+                "export",
                 "Export the selected payload.",
                 lambda: self.choose_file("export"),
                 bool(self.model.selected),
             ),
-            ("Help", "Read the inspector help.", lambda: setattr(self.help, "open", True), True),
-            ("Guide", "Start the guided tour.", self.tour.start, True),
+            ("help", "Read the inspector help.", lambda: setattr(self.help, "open", True), True),
+            ("guide", "Start the guided tour.", self.tour.start, True),
         ]:
-            width = len(tr(title)) * 8 + 16
+            width = len(action_caption(title) if title in ACTIONS else tr(title)) * 8 + 16
             if used and used + width < available:
                 im.same_line()
             else:
@@ -506,11 +512,10 @@ class PtoInspectorApp(ImApp):
                     self.choose_pack_directory,
                 )
                 im.same_line()
-                self.button(
-                    "Cancel",
-                    "Cancel container creation.",
-                    lambda: setattr(self, "vendor_paths", []),
-                )
+                if action_button("cancel", tooltip=tr("Cancel container creation.")):
+                    self.safe(lambda: setattr(self, "vendor_paths", []))
+                    self.tour.notify_used("Cancel")
+                self.rects["Cancel"] = (*im.get_item_rect_min(), *im.get_item_rect_size())
                 if self.notice:
                     im.text_wrapped(self.notice)
             im.end()

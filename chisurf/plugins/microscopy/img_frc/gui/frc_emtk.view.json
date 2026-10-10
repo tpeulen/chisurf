@@ -44,7 +44,8 @@
           "buttons": [
             {
               "action": "open_file",
-              "label": "Browse",
+              "label": "Browse…",
+              "icon": "📂",
               "description": "Browse for an image stack or photon-stream file on disk."
             },
             {
@@ -102,7 +103,8 @@
           "buttons": [
             {
               "action": "open_second_file",
-              "label": "Browse",
+              "label": "Browse…",
+              "icon": "📂",
               "description": "Browse for the second acquisition of a two-file split."
             },
             {

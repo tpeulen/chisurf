@@ -23,6 +23,8 @@ from emtk.widgets.view_spec import load_view_spec
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import (
     LabelColumn,
+    action_caption,
+    action_tooltip,
     button_row,
     cap_widths,
     group_by_width,
@@ -220,14 +222,14 @@ class BurstGsGui:
                     else "Run a fit first; the results are then exported as CSV.",
                 },
                 {
-                    "label": icon_label("📖", "Guide"),
+                    "label": action_caption("guide"),
                     "key": "guide",
-                    "tip": "Start a step-by-step guided tour of this tool.",
+                    "tip": action_tooltip("guide"),
                 },
                 {
-                    "label": icon_label("❓", "Help"),
+                    "label": action_caption("help"),
                     "key": "help",
-                    "tip": "Open the help window with reference documentation.",
+                    "tip": action_tooltip("help"),
                 },
             ],
             remember=self.remember,

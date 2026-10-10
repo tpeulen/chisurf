@@ -22,7 +22,7 @@ from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 
 from .model import AnisotropyModel
 from .strings import tr
@@ -150,14 +150,12 @@ class AnisotropyApp(ImApp):
     def draw_controls(self, box: Any) -> None:
         """The top window: the parameter form, then Help and Guide."""
         draw_sections(self.panels["controls"]["sections"], self.model, self.form)
-        if im.button(tr("Guide")):
+        if action_button("guide"):
             self.tour.start()
-        im.set_item_tooltip(tr("A step-by-step walk through the tool."))
         self.item_rects["guide"] = im.get_item_rect()
         im.same_line()
-        if im.button(tr("Help")):
+        if action_button("help"):
             self.help_window.show()
-        im.set_item_tooltip(tr("The short help page."))
         self.item_rects["help"] = im.get_item_rect()
 
     def draw_decays(self, box: Any) -> None:

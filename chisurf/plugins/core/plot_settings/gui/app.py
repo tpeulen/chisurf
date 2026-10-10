@@ -15,10 +15,9 @@ from pathlib import Path
 from typing import Any
 
 from emtk import im, implot
-from emtk.i18n import tr
 from emtk.app import ImApp
 
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 from emtk.docking import DockManager, Region, Split
 from emtk.view_form import FormState, draw_sections
 
@@ -95,14 +94,12 @@ class PlotSettingsApp(ImApp):
     # ── windows ────────────────────────────────────────────────────────
     def draw_settings(self, box: Any) -> None:
         """The settings window: Help / Guide and the folding sections."""
-        if im.button(tr("Help")):
+        if action_button("help"):
             self.help_window.show()
-        im.set_item_tooltip(tr("Explain the sections, Apply, Save and Reset."))
         self.item_rects["help"] = im.get_item_rect()
         im.same_line()
-        if im.button(tr("Guide")):
+        if action_button("guide"):
             self.tour.start()
-        im.set_item_tooltip(tr("Walk through changing a colour and applying it."))
         self.item_rects["guide"] = im.get_item_rect()
         draw_sections(self.panels[_SETTINGS]["sections"], self.model, self.form, titles=False)
 

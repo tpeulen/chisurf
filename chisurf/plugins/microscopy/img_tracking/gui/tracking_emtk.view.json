@@ -23,7 +23,8 @@
             },
             {
               "action": "open_file",
-              "label": "Open",
+              "label": "Open…",
+              "icon": "📂",
               "description": "Choose an image stack or photon-stream file to track."
             },
             {

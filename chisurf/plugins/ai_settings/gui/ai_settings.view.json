@@ -128,12 +128,14 @@
           "description": "Check the endpoint responds to a /models request."
         },
         {
-          "label": "💾 Save",
+          "label": "Save",
+          "icon": "💾",
           "action": "save",
           "description": "Persist the current provider's settings to ~/.chisurf/ai_api_settings.json."
         },
         {
-          "label": "↺ Reset",
+          "label": "Reset",
+          "icon": "♻️",
           "action": "reset",
           "description": "Reset the current provider's fields to defaults (not saved until you press Save)."
         }

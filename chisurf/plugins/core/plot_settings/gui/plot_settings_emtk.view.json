@@ -350,11 +350,13 @@
             {
               "action": "save",
               "label": "Save",
+              "icon": "💾",
               "description": "Apply the edits and write them to settings_chisurf.yaml so they are kept for the next start."
             },
             {
               "action": "reset",
               "label": "Reset",
+              "icon": "♻️",
               "description": "Reload every control from the active settings, discarding edits that were not applied."
             }
           ]

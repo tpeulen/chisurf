@@ -18,7 +18,7 @@ from emtk.docking import DockManager, Region, Split
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.chimol_view import ChimolView
-from chisurf.plugins.emtk_layout import LabelColumn, layout_spec
+from chisurf.plugins.emtk_layout import LabelColumn, action_caption, action_tooltip, layout_spec
 from chisurf.plugins.emtk_layout import window_size as shared_window_size
 
 from .fps_model import (
@@ -621,9 +621,9 @@ class FpsJsonCard(CardShell):
                     "tip": "Open an fps.json labelling file (a dropped .json file does the same).",
                 },
                 {
-                    "label": "Save",
+                    "label": action_caption("save"),
                     "key": "save",
-                    "tip": "Save the whole configuration as an fps.json file.",
+                    "tip": action_tooltip("save", "Save the whole configuration as an fps.json file."),
                 },
                 {
                     "label": "Update",

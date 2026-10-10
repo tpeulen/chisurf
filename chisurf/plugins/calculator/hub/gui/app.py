@@ -16,7 +16,7 @@ from emtk.app import ImApp
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.plugin_icons import entry_icon
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 
 from ..core.registry import default_calculators
 from emtk.i18n import tr
@@ -166,14 +166,12 @@ class CalculatorHubApp(ImApp):
                     last[1] + last[3] - first[1],
                 )
             im.separator()
-            if im.button(tr("Guide")):
+            if action_button("guide"):
                 self.start_guide()
-            im.set_item_tooltip(tr("A short walk through the hub."))
             self.item_rects["guide"] = im.get_item_rect()
             im.same_line()
-            if im.button(tr("Help")):
+            if action_button("help"):
                 self.show_help()
-            im.set_item_tooltip(tr("What the hub is and how the embedded calculators are used."))
             self.item_rects["help"] = im.get_item_rect()
         im.end()
         entry = next((e for e in self.entries if e.id == self.selected), None)

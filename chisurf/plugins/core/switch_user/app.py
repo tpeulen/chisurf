@@ -16,7 +16,7 @@ from emtk import im
 from emtk.i18n import tr
 from emtk.app import ImApp
 
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 from emtk.dialog_window import DialogWindow
 from emtk.view_form import FormState, draw_sections
 
@@ -101,16 +101,12 @@ class SwitchUserApp(ImApp):
             im.same_line()
         im.heading("ChiSurf", level=1)
         im.text(tr("Sign in to the MMFDB workspace"))
-        if im.button(tr("Help")):
+        if action_button("help"):
             self.help_window.show()
-        im.set_item_tooltip(
-            tr("Explain the fields, the two remember options and what happens on Login.")
-        )
         self.item_rects["help"] = im.get_item_rect()
         im.same_line()
-        if im.button(tr("Guide")):
+        if action_button("guide"):
             self.tour.start()
-        im.set_item_tooltip(tr("Walk through signing in as another account."))
         self.item_rects["guide"] = im.get_item_rect()
         im.separator()
 

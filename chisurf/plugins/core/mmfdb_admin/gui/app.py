@@ -32,7 +32,7 @@ from emtk.i18n import tr
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.node_editor.control import GraphControl, NodeContentRenderer
 from chisurf.emtk.node_editor.document import GraphDocument
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, action_caption, window_size
 
 from .native.model import AdminModel
 from .native.runner import Runner
@@ -197,7 +197,7 @@ class MMFDBAdminApp(ImApp):
                      "Export the sample selected in Samples as an FLR CIF file (validated first)."),
                     ("Backup database...", model.backup_database,
                      "Write a backup copy of the active MMFDB database."),
-                    ("Reset", model.reset_database,
+                    (action_caption("reset"), model.reset_database,
                      "Replace the user database with the curated source (asks first; a backup is written)."),
                 ):
                     if im.menu_item(label, enabled=model.connected):
@@ -239,14 +239,12 @@ class MMFDBAdminApp(ImApp):
             im.new_line()
         draw_sections(self.shell["database_actions"]["sections"], model, self.form("database"), titles=False)
         im.same_line()
-        if im.button(tr("Help")):
+        if action_button("help"):
             self.help_window.show()
-        im.set_item_tooltip(tr("Read how MMFDB Admin works: the connection, the panels, editing and the dialogs."))
         self.remember_item("help")
         im.same_line()
-        if im.button(tr("Guide")):
+        if action_button("guide"):
             self.tour.start()
-        im.set_item_tooltip(tr("A step-by-step walk through signing in, picking a panel and editing a record."))
         self.remember_item("guide")
         self.top_h = max(48.0, float(im.get_cursor_screen_pos()[1]) + 4.0)
         im.end()

@@ -23,7 +23,7 @@ from emtk.app import ImApp
 from emtk.i18n import tr
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 
 PLUGINS = Path(__file__).resolve().parents[1] / "plugins"
 #: Height of the window naming the selected tool.
@@ -424,14 +424,12 @@ class ToolHubApp(ImApp):
         im.set_next_window_pos((0, 0), im.Cond.ALWAYS)
         im.set_next_window_size((left, height), im.Cond.ALWAYS)
         if im.begin(self.title, flags=im.WindowFlags.NO_RESIZE):
-            if im.button(tr("Help")):
+            if action_button("help"):
                 self.help.show()
-            im.set_item_tooltip(f"Read the {self.title} reference.")
             self.item_rects["help"] = im.get_item_rect()
             im.same_line()
-            if im.button(tr("Guide")):
+            if action_button("guide"):
                 self.tour.start()
-            im.set_item_tooltip(tr("A step-by-step walk through the tools, pointing at each control."))
             self.item_rects["guide"] = im.get_item_rect()
             _, self.filter = im.input_text(f"##Find {self.title}", self.filter, hint=tr("Search…"))
             im.set_item_tooltip(tr("Find tools by name or description."))
@@ -474,9 +472,8 @@ class ToolHubApp(ImApp):
             if self.panel:
                 im.text_unformatted(tr(self.panel["name"]))
                 im.same_line()
-                if im.button(tr("Tool help")):
+                if action_button("help", id="tool_help"):
                     self.show_child_help()
-                im.set_item_tooltip(tr("Read help for the selected tool."))
                 self.item_rects["tool_help"] = im.get_item_rect()
                 banners = [self.panel[flag + "_message"] for flag in MATURITY if self.panel.get(flag)]
                 if banners:

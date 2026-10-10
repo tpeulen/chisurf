@@ -18,7 +18,7 @@ from emtk.docking import DockManager, Region, Split
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.chimol_view import ChimolView
-from chisurf.plugins.emtk_layout import layout_spec
+from chisurf.plugins.emtk_layout import action_caption, action_tooltip, layout_spec
 
 from .docking_model import DockingSession
 from .shell import CardShell
@@ -235,10 +235,12 @@ class DockingCard(CardShell):
         running = s.running
         pressed = self.toolbar([
             {"label": "Project", "key": "project", "enabled": not running, "tip": "Load a docking project (.json): PDBs, fps.json and parameters."},
-            {"label": "Save", "key": "save", "enabled": not running, "tip": "Save the current inputs and parameters as a docking project."},
+            {"label": action_caption("save"), "key": "save", "enabled": not running,
+             "tip": action_tooltip("save", "Save the current inputs and parameters as a docking project.")},
             {"label": "fps.json", "key": "fps_pick", "enabled": not running, "tip": "Choose the labelling/distance fps.json (or FPS LPs .txt) file."},
             {"label": "Output", "key": "out_pick", "enabled": not running, "tip": "Choose the output directory."},
-            {"label": "Run", "key": "run", "enabled": not running, "tip": "Run the selected operation; results are appended to the table."},
+            {"label": action_caption("run"), "key": "run", "enabled": not running,
+             "tip": action_tooltip("run", "Run the selected operation; results are appended to the table.")},
             {"label": "Stop", "key": "stop", "enabled": running, "tip": "Stop the run (a docking process is terminated)."},
             {"label": "Clear", "key": "clear", "enabled": not running, "tip": "Clear the results table and the score plot."},
             *self.help_buttons(),

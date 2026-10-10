@@ -20,7 +20,7 @@ from emtk.view_form import FormState, draw_sections
 from emtk.widgets.text_editor import TextEditor
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
-from chisurf.plugins.emtk_layout import cap_widths, window_size
+from chisurf.plugins.emtk_layout import action_button, cap_widths, window_size
 
 from .model import PluginCheckModel
 
@@ -150,14 +150,12 @@ class PluginCheckApp(ImApp):
     # -- windows ---------------------------------------------------------------------- #
     def draw_plugins(self, box: Any) -> None:
         """The left window: Help / Guide, then the spec's actions, options, progress, status and table."""
-        if im.button(tr("Help")):
+        if action_button("help"):
             self.help_window.show()
-        im.set_item_tooltip(tr("Explain the table, the sweep and what a check proves."))
         self.item_rects["help"] = im.get_item_rect()
         im.same_line()
-        if im.button(tr("Guide")):
+        if action_button("guide"):
             self.tour.start()
-        im.set_item_tooltip(tr("Walk through a safe sweep and the details of a plugin."))
         self.item_rects["guide"] = im.get_item_rect()
         draw_sections(self.panels["checks"]["sections"], self.model, self.form, titles=False)
 

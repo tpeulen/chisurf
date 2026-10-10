@@ -53,6 +53,7 @@
             },
             {
               "label": "Cancel",
+              "icon": "✕",
               "action": "cancel_json",
               "description": "Close the editor without applying the draft."
             }

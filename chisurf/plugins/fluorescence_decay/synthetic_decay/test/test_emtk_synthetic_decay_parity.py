@@ -22,6 +22,7 @@ from chisurf.plugins.fluorescence_decay.synthetic_decay.core.algorithms import (
 )
 from chisurf.plugins.fluorescence_decay.synthetic_decay.gui.app import SyntheticDecayApp, make_app
 from chisurf.plugins.fluorescence_decay.synthetic_decay.gui.model import SyntheticDecayModel
+from chisurf.plugins.emtk_layout import action_caption
 
 HERE = Path(__file__).parent
 GUI = HERE.parent / "gui"
@@ -431,13 +432,16 @@ def test_the_photon_budget_is_drawn_as_a_whole_number(app):
 
 
 def test_no_emoji_in_the_native_labels(app):
+    """Only the shared action vocabulary carries pictograms; the tool's own labels stay plain."""
     strings = draw(app).strings
-    assert all(ord(ch) < 0x2190 or ch in "τΔρΣ" for text in strings for ch in text), [
-        t for t in strings if any(ord(ch) >= 0x2190 and ch not in "τΔρΣ" for ch in t)
+    shared = {action_caption(key) for key in ("save", "help", "guide")}
+    own = [t for t in strings if t not in shared]
+    assert all(ord(ch) < 0x2190 or ch in "τΔρΣ" for text in own for ch in text), [
+        t for t in own if any(ord(ch) >= 0x2190 and ch not in "τΔρΣ" for ch in t)
     ]
     labels = {text for text in strings}
-    assert {"Add", "Remove", "Load", "Generate", "Save", "Fit group"} <= labels
-    assert {"Browse IRF", "Help", "Guide"} <= labels
+    assert {"Add", "Remove", "Load", "Generate", action_caption("save"), "Fit group"} <= labels
+    assert {"Browse IRF", action_caption("help"), action_caption("guide")} <= labels
 
 
 # ── 4. tooltips, spec, guide, help ──────────────────────────────────────
@@ -475,11 +479,11 @@ def test_every_control_has_a_tooltip(app):
     labels = {row["label"] for row in populated["interactive"]}
     assert {
         "Generate",
-        "Save",
+        action_caption("save"),
         "Fit group",
         "Browse IRF",
-        "Help",
-        "Guide",
+        action_caption("help"),
+        action_caption("guide"),
         "Add",
         "Remove",
         "Load",

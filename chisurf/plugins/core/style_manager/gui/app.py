@@ -11,7 +11,7 @@ from emtk import im
 from emtk.i18n import tr
 from emtk.app import ImApp
 
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 from emtk.file_dialog import FileDialog
 from emtk.im_core import Style
 from emtk.widgets.text_editor import Language, TextEditor
@@ -342,18 +342,17 @@ class StyleManagerApp(ImApp):
                 self.new_visible = True
         im.set_item_tooltip(tr("Create a new QSS file without replacing an existing style"))
         im.same_line()
-        if im.button(tr("Open")):
+        if action_button(
+            "open",
+            tooltip=tr("Choose a style sheet from another directory; unsaved changes require confirmation"),
+        ):
             self.request_file("open")
-        im.set_item_tooltip(
-            tr("Choose a style sheet from another directory; unsaved changes require confirmation")
-        )
         im.same_line()
-        if im.button(tr("Save")):
+        if action_button("save", tooltip=tr("Save the current buffer without applying it")):
             if m.current_file:
                 m.save()
             else:
                 self.request_file("save")
-        im.set_item_tooltip(tr("Save the current buffer without applying it"))
         im.same_line()
         if im.button(tr("Save As")):
             self.request_file("save")

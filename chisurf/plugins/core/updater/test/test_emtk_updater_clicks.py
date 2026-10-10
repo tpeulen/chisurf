@@ -466,8 +466,8 @@ def test_the_check_on_opening_waits_a_moment_and_so_a_drawn_only_window_never_as
         ),
         ("development", "ChiSurf currently has no stable release"),
         ("selected_version", "The versions the update server lists"),
-        ("help", "Explain the version list"),
-        ("guide", "Walk through checking for an update"),
+        ("help", "Open the help for this window."),
+        ("guide", "Start a step-by-step tour"),
     ],
 )
 def test_resting_the_pointer_on_a_control_shows_its_tooltip(ui, name, text):

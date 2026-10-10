@@ -21,6 +21,8 @@ from emtk.file_dialog import FileDialog
 from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
+from chisurf.plugins.emtk_layout import action_caption
+
 from ..correlator_model import CorrelatorSettingsModel, apply_channel_key, preset_names
 from ..filter_model import FilterSettingsModel
 from ..workflow import FILE_EXTENSIONS, filter_step_allowed
@@ -215,7 +217,7 @@ class FilesStepApp(ImApp):
                 ("Folder...", "add_folder", "Add a folder: its TTTR files are correlated.", True,
                  lambda: self.dialogs.ask("Add a folder", "folder", "All files (*)", self.add_paths)),
                 ("Database", "database", "Add a TTTR dataset registered in the database.", True, self.open_database),
-                ("Example", "load_example", "Add a simulated FCS measurement (molecules crossing the focus in about "
+                (action_caption("example"), "load_example", "Add a simulated FCS measurement (molecules crossing the focus in about "
                  "0.25 ms) to try the workflow on data whose answer is known.", True, self.load_example),
                 ("All", "all", "Tick every file.", bool(self.paths), lambda: self.set_all(True)),
                 ("None", "none", "Untick every file.", bool(self.paths), lambda: self.set_all(False)),

@@ -26,6 +26,7 @@ from emtk.im_core import Col
 from qtpy import QtCore
 
 from chisurf.gui.widgets.tools.emtk_help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.plugins.emtk_layout import action_button
 
 if TYPE_CHECKING:
     from .tool import BurstAnalysisTool
@@ -205,10 +206,11 @@ class BurstAnalysisGui:
             im.same_line()
 
             # Fast Forward (Run Pipeline)
-            if im.button(tr("⏩ Run")):
+            if action_button(
+                "run", tooltip=tr("Fast-forward: run the remaining pipeline steps automatically.")
+            ):
                 self.track("fast_forward")
                 self.tool.fast_forward()
-            im.set_item_tooltip(tr("Fast-forward: run the remaining pipeline steps automatically."))
             self.remember("fast_forward")
 
             im.same_line()
@@ -216,15 +218,13 @@ class BurstAnalysisGui:
             im.same_line()
 
             # In-EMTK Guide & Help
-            if im.button(tr("Guide")):
+            if action_button("guide"):
                 self.start_guide()
-            im.set_item_tooltip(tr("Start a step-by-step guided tour of the workflow."))
             self.remember("guide")
 
             im.same_line()
-            if im.button(tr("? Help")):
+            if action_button("help"):
                 self.show_help()
-            im.set_item_tooltip(tr("Open the help window with reference documentation."))
             self.remember("help")
 
             im.end()
@@ -452,9 +452,10 @@ class BurstAnalysisGui:
 
                 if getattr(self.tool, "_status_cancel_visible", False):
                     im.same_line()
-                    if im.button(tr("Cancel") + "##task_cancel"):
+                    if action_button(
+                        "cancel", tooltip=tr("Cancel the running background task."), id="task_cancel"
+                    ):
                         active_task.cancel()
-                    im.set_item_tooltip(tr("Cancel the running background task."))
 
             # Right: summary chips
             ctx = self.tool.workflow_context

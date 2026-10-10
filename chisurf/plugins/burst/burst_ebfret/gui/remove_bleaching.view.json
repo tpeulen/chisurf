@@ -99,6 +99,7 @@
         {
           "description": "Close without applying changes.",
           "label": "Cancel",
+          "icon": "✕",
           "action": "cancel"
         }
       ]

@@ -20,6 +20,7 @@ import pytest
 from emtk.testing import PixelPainter, RecordingPainter
 
 from chisurf.plugins.core.f_test.gui.app import LOAD_TARGETS, FTestApp, make_app
+from chisurf.plugins.emtk_layout import action_caption
 
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
@@ -317,7 +318,7 @@ def test_draws_empty_and_populated(size):
     for _ in range(2):
         painter = RecordingPainter()
         app.draw(painter, 0, 0, *size)
-    assert {"From fit", "Guide", "?"} <= set(painter.strings)
+    assert {"From fit", action_caption("guide"), "?"} <= set(painter.strings)
     app = FTestApp(fit_provider=_fits)
     app.refresh_fits()
     for index, target in LOADS:

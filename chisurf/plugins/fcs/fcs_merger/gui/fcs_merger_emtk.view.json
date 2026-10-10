@@ -25,13 +25,15 @@
             },
             {
               "action": "request_guide",
-              "label": "📖 Guide",
-              "description": "Walk through screening the repeats and saving the merge."
+              "label": "Guide",
+              "icon": "📖",
+              "description": "Start a step-by-step tour that points at the real controls."
             },
             {
               "action": "request_help",
-              "label": "❓ Help",
-              "description": "Why repeats are screened before averaging, and what the merge assumes."
+              "label": "Help",
+              "icon": "❓",
+              "description": "Open the help for this window."
             }
           ]
         }
@@ -114,7 +116,8 @@
           "buttons": [
             {
               "action": "request_save",
-              "label": "💾 Save",
+              "label": "Save",
+              "icon": "💾",
               "description": "Write the merge of the ticked curves to the target file."
             },
             {

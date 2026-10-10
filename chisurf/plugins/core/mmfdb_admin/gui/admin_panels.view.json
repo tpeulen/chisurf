@@ -203,7 +203,7 @@
            {"type": "value", "kind": "str", "attr": "path", "label": "File", "elide": "start",
             "description": "The PDBx / PDB-IHM / FLR CIF file Import file reads (empty: it asks)."},
            {"type": "button_row", "weight": 0, "description": "Pick the file.",
-            "buttons": [{"action": "browse", "label": "Browse", "description": "Browse for the file."}]}
+            "buttons": [{"action": "browse", "label": "Browse…", "icon": "📂", "description": "Browse for the file."}]}
          ]},
         {"type": "button_row", "weight": 0, "description": "Import and export.",
          "buttons": [
@@ -274,7 +274,7 @@
            {"type": "value", "kind": "int", "attr": "remote_id", "label": "Remote ID", "minimum": 1, "maximum": 2147483647,
             "description": "The remote entry to update (only for update)."},
            {"type": "button_row", "description": "Export.",
-            "buttons": [{"action": "export_selected", "label": "Export", "description": "Export the experiment to eLabFTW."}]}
+            "buttons": [{"action": "export_selected", "label": "Export…", "icon": "📤", "description": "Export the experiment to eLabFTW."}]}
          ]},
         {"type": "info", "source": "status_text", "description": "The connection and the last result."}
       ]

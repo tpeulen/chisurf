@@ -27,7 +27,8 @@
        "type": "button_row",
        "buttons": [
         {
-         "label": "Browse...",
+         "label": "Browse…",
+         "icon": "📂",
          "action": "browse_output",
          "description": "Pick the standard output folder from a folder chooser."
         }

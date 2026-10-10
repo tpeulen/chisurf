@@ -24,6 +24,7 @@ from .test_emtk_fret_calculator_parity import (
     make_app,
     type_into,
 )
+from chisurf.plugins.emtk_layout import action_caption
 
 
 @pytest.fixture
@@ -268,7 +269,7 @@ def test_a_plot_redraws_with_the_curves_after_a_field_edit(app):
 
 
 def test_the_guide_button_starts_the_tour_and_close_tour_ends_it(app):
-    press_text(app, "Guide")
+    press_text(app, action_caption("guide"))
     assert app.tour.active and app.tour.step_idx == 0
     painter = draw(app)
     assert app.tour.awaiting and {"Next ►", "◄ Prev", "Close Tour"} <= set(painter.strings)
@@ -281,7 +282,7 @@ def test_the_guide_button_starts_the_tour_and_close_tour_ends_it(app):
 
 
 def test_the_tour_next_and_prev_buttons_can_be_clicked(app):
-    press_text(app, "Guide")
+    press_text(app, action_caption("guide"))
     type_into(app, "tau0", "3")
     click(app, text_rect(draw(app), "Next ►"))
     assert app.tour.step_idx == 1
@@ -291,7 +292,7 @@ def test_the_tour_next_and_prev_buttons_can_be_clicked(app):
 
 def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(app):
     """Every awaited control is operated with real clicks and typing; Next is clicked in test_the_tour_next_and_prev_buttons_can_be_clicked."""
-    press_text(app, "Guide")
+    press_text(app, action_caption("guide"))
     walked = 0
     while app.tour.active and walked < 3 * len(app.tour.steps):
         draw(app)
@@ -316,7 +317,7 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_
 
 
 def test_the_help_button_opens_a_window_with_working_buttons(app):
-    press_text(app, "Help")
+    press_text(app, action_caption("help"))
     assert app.help_window.open
     painter = draw(app)
     assert {"Start Guided Tour", "Close", "Close Help"} <= set(painter.strings)
@@ -324,13 +325,13 @@ def test_the_help_button_opens_a_window_with_working_buttons(app):
     click(app, text_rect(draw(app), "Start Guided Tour"))
     assert not app.help_window.open and app.tour.active
     app.tour.stop()
-    press_text(app, "Help")
+    press_text(app, action_caption("help"))
     click(app, text_rect(draw(app), "Close Help"))
     assert not app.help_window.open
-    press_text(app, "Help")
+    press_text(app, action_caption("help"))
     click(app, text_rect(draw(app), "Close", last=False))
     assert not app.help_window.open
-    press_text(app, "Help")
+    press_text(app, action_caption("help"))
     app.key(keys.KEY_ESCAPE, "")
     draw(app)
     assert not app.help_window.open
@@ -342,7 +343,7 @@ def test_the_help_button_opens_a_window_with_working_buttons(app):
     "the first never fires; see REPORT.md section 10",
 )
 def test_a_help_section_button_shows_only_that_section(app):
-    press_text(app, "Help")
+    press_text(app, action_caption("help"))
     click(app, text_rect(draw(app), "Plots"))
     shown = " ".join(draw(app).strings)
     assert (

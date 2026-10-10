@@ -26,7 +26,7 @@ from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.jobs import SnapshotJob
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 
 from .view_model import PrecisionViewModel
 
@@ -159,14 +159,12 @@ class RicsPrecisionApp(ImApp):
         im.begin_disabled(self.job.busy)
         draw_sections(self.panels["settings"]["sections"], self.model, self.form)
         im.end_disabled()
-        if im.button(tr("Guide") + "###Guide"):
+        if action_button("guide"):
             self.start_guide()
-        im.set_item_tooltip(tr("A step-by-step walk through the tool."))
         self.item_rects["guide"] = im.get_item_rect()
         im.same_line()
-        if im.button(tr("Help") + "###Help"):
+        if action_button("help"):
             self.show_help()
-        im.set_item_tooltip(tr("The short help page: reading the curve and what moves the answer."))
         self.item_rects["help"] = im.get_item_rect()
 
     def draw_plot(self, box: Any) -> None:

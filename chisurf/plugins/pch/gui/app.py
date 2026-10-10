@@ -21,7 +21,7 @@ from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.jobs import SnapshotJob
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 
 from .model import TTTR_FILE_FILTER, PchModel
 
@@ -113,14 +113,12 @@ class PchApp(ImApp):
     # ── windows ────────────────────────────────────────────────────────
     def draw_settings(self, box: Any) -> None:
         """The form window: Help/Guide, then the spec."""
-        if im.button(tr("Help")):
+        if action_button("help"):
             self.help_window.show()
-        im.set_item_tooltip(tr("Explain the photon counting histogram, the settings and the outputs."))
         self.item_rects["help"] = im.get_item_rect()
         im.same_line()
-        if im.button(tr("Guide")):
+        if action_button("guide"):
             self.tour.start()
-        im.set_item_tooltip(tr("Walk through loading a file, computing the histogram and fitting it."))
         self.item_rects["guide"] = im.get_item_rect()
         im.separator()
         draw_form(self.spec, self.model, self.form)

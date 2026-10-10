@@ -26,7 +26,7 @@ from emtk.view_form import FormState, draw_sections
 from emtk.widgets.view_spec import load_view_spec
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
-from chisurf.plugins.emtk_layout import cap_widths
+from chisurf.plugins.emtk_layout import action_button, cap_widths
 
 from . import fit_view
 from emtk.i18n import tr
@@ -173,15 +173,13 @@ class BurstMleGui(TourTarget):
         self.remember("toolAction_restart")
 
         im.same_line()
-        if im.button(tr("Guide")):
+        if action_button("guide"):
             self.start_guide()
-        im.set_item_tooltip(tr("Start a step-by-step guided tour of this tool."))
         self.remember("guide")
 
         im.same_line()
-        if im.button(tr("Help")):
+        if action_button("help"):
             self.show_help()
-        im.set_item_tooltip(tr("Open the help window with reference documentation."))
         self.remember("help")
 
         im.separator()

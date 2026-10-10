@@ -21,6 +21,7 @@ from emtk.testing import RecordingPainter
 from chisurf.plugins.calculator.hub.core.registry import CalculatorEntry, default_calculators
 from chisurf.plugins.calculator.hub.gui import app as hub_module
 from chisurf.plugins.calculator.hub.gui.app import FACTORIES, CalculatorHubApp, make_app
+from chisurf.plugins.emtk_layout import action_caption
 
 HERE = Path(__file__).parent
 GUI = HERE.parent / "gui"
@@ -492,8 +493,8 @@ def test_every_control_has_a_tooltip_and_the_port_is_qt_free():
     assert inventory["controls_without_tooltip"] == []
     labels = {row["label"] for row in inventory["interactive"]}
     assert {entry.label for entry in default_calculators()} <= labels and {
-        "Guide",
-        "Help",
+        action_caption("guide"),
+        action_caption("help"),
     } <= labels
     result = qt_free("calculators")
     assert result["ok"], result["output"]

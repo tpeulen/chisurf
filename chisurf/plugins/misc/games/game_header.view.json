@@ -7,18 +7,21 @@
       "buttons": [
         {
           "label": "Help",
+          "icon": "❓",
           "action": "open_help",
-          "description": "Explain the rules, controls and sound support for this game."
+          "description": "Open the help for this window."
         },
         {
           "label": "Restart",
+          "icon": "🔁",
           "action": "restart_game",
           "description": "Start a new round of the current game."
         },
         {
           "label": "Guide",
+          "icon": "📖",
           "action": "start_guide",
-          "description": "Walk through the real Restart and Help buttons without changing the round automatically."
+          "description": "Start a step-by-step tour that points at the real controls."
         }
       ]
     }

@@ -17,10 +17,9 @@ from pathlib import Path
 from typing import Any
 
 from emtk import im
-from emtk.i18n import tr
 from emtk.app import ImApp
 
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
@@ -138,14 +137,12 @@ class UserEditorApp(ImApp):
 
     def draw_account(self, box: Any) -> None:
         """The right window: Help / Guide, the details and the account form."""
-        if im.button(tr("Help")):
+        if action_button("help"):
             self.help_window.show()
-        im.set_item_tooltip(tr("Explain the table, the account form, passwords and deleting."))
         self.item_rects["help"] = im.get_item_rect()
         im.same_line()
-        if im.button(tr("Guide")):
+        if action_button("guide"):
             self.tour.start()
-        im.set_item_tooltip(tr("Walk through picking an account, editing it and saving."))
         self.item_rects["guide"] = im.get_item_rect()
         im.separator()
         draw_sections(self.panels[_ACCOUNT]["sections"], self.model, self.form, titles=False)

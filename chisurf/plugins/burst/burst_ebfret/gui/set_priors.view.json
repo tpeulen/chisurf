@@ -23,6 +23,6 @@
       {"type": "value", "attr": "count_tau", "label": "Dwell", "kind": "float", "minimum": 0,
        "description": "How many observations the dwell-time prior is worth."}
     ]},
-    {"type": "button_row", "buttons": [{"description": "Accept the settings and close.", "label": "Ok", "action": "ok"}, {"description": "Close without applying changes.", "label": "Cancel", "action": "cancel"}]}
+    {"type": "button_row", "buttons": [{"description": "Accept the settings and close.", "label": "Ok", "action": "ok"}, {"description": "Close without applying changes.", "label": "Cancel", "icon": "✕", "action": "cancel"}]}
   ]
 }

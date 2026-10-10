@@ -21,7 +21,7 @@ from emtk.app import ImApp
 from emtk.im_core import Col, get_current_context
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, action_caption, window_size
 
 from .view_model import TwoCdeViewModel
 from emtk.i18n import tr
@@ -173,27 +173,27 @@ class BurstTwoCdeGui:
         im.push_style_color(Col.BUTTON, ACCENT_GREEN)
         im.push_style_color(Col.BUTTON_HOVERED, (56, 180, 77, 255))
         im.push_style_color(Col.BUTTON_ACTIVE, (36, 140, 57, 255))
-        if im.button(tr("🚀 Run")):
+        if action_button(
+            "run", tooltip=tr("Compute the 2CDE metric for every burst and plot FRET efficiency vs 2CDE.")
+        ):
             self.track("toolAction_run")
             if not locked and callable(self.on_run):
                 self.on_run()
-        im.set_item_tooltip(
-            tr("Compute the 2CDE metric for every burst and plot FRET efficiency vs 2CDE.")
-        )
         self.remember("run")
         self.remember("toolAction_run")
         im.pop_style_color(3)
 
-        self._same_line_if_fits("🔄 Restart")
+        self._same_line_if_fits(action_caption("restart"))
         attention = bool(getattr(self.model, "restart_attention", False))
         if attention:  # the Qt tool's flag_attention: a skipped run points at Restart
             im.push_style_color(Col.BUTTON, (200, 120, 20, 255))
             im.push_style_color(Col.BUTTON_HOVERED, (220, 140, 40, 255))
-        if im.button(tr("🔄 Restart")):
+        if action_button(
+            "restart", tooltip=tr("Reset the analysis state and recompute the 2CDE values from scratch.")
+        ):
             self.track("toolAction_restart")
             if not self.model.is_running and callable(self.on_restart):
                 self.on_restart()
-        im.set_item_tooltip(tr("Reset the analysis state and recompute the 2CDE values from scratch."))
         self.remember("restart")
         self.remember("toolAction_restart")
         if attention:
@@ -222,19 +222,17 @@ class BurstTwoCdeGui:
         im.set_item_tooltip(tr("Browse for the folder containing the burst analysis files."))
         self.remember("folder")
 
-        self._same_line_if_fits("📖 Guide")
-        if im.button(tr("📖 Guide")):
+        self._same_line_if_fits(action_caption("guide"))
+        if action_button("guide"):
             self.track("guide")
             self.start_guide()
         self.remember("guide")
-        im.set_item_tooltip(tr("Start a step-by-step guided tour of this tool."))
 
-        self._same_line_if_fits("❓ Help")
-        if im.button(tr("❓ Help")):
+        self._same_line_if_fits(action_caption("help"))
+        if action_button("help"):
             self.track("help")
             self.show_help()
         self.remember("help")
-        im.set_item_tooltip(tr("Open the help window with reference documentation."))
 
     def _draw_folder_input(self, width: float) -> None:
         """Folder path input."""

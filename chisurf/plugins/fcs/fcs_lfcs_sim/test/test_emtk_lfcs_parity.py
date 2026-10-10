@@ -18,6 +18,8 @@ import numpy as np
 import pytest
 from emtk.testing import PixelPainter, RecordingPainter
 
+from chisurf.plugins.emtk_layout import action_caption
+
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 
@@ -277,7 +279,7 @@ def test_draws_empty_and_populated(size):
     app = _app()
     try:
         strings = _draw(app, size).strings
-        assert {"Simulate + Correlate", "Guide", "?", "lag time (ms)"} <= set(strings)
+        assert {"Simulate + Correlate", action_caption("guide"), action_caption("help"), "lag time (ms)"} <= set(strings)
         app.simulate()
         _settle(app)
         strings = _draw(app, size).strings

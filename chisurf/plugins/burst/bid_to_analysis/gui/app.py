@@ -12,6 +12,7 @@ from emtk.i18n import tr
 
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.plugins.emtk_layout import action_button
 
 from .. import _find_tttr_by_stem, convert_bid_file
 
@@ -209,12 +210,12 @@ class BidToAnalysisApp(ImApp, TourTarget):
 
     def draw_files(self, box):
         im.begin_disabled(self.running)
-        if im.button(tr("Load example")):
+        if action_button(
+            "example",
+            tooltip=tr("Queue a simulated photon stream with six known bursts and its BID selection."),
+        ):
             self.load_example()
             self.tour.notify_used("load_example")
-        im.set_item_tooltip(
-            tr("Queue a simulated photon stream with six known bursts and its BID selection.")
-        )
         self.remember("load_example")
         im.same_line()
         for label, tip, action, key in [
@@ -301,19 +302,17 @@ class BidToAnalysisApp(ImApp, TourTarget):
             if remove is not None:
                 self.rows.pop(remove)
         im.end_disabled()
-        self.button(
-            tr("Cancel"),
-            tr("Stop before the next file; let the current conversion finish consistently."),
-            self.cancel.set,
-        )
+        if action_button(
+            "cancel",
+            tooltip=tr("Stop before the next file; let the current conversion finish consistently."),
+        ):
+            self.cancel.set()
         im.same_line()
-        self.button(tr("Guide"), tr("A step-by-step walk through a conversion."), self.start_guide)
+        if action_button("guide"):
+            self.start_guide()
         im.same_line()
-        self.button(
-            tr("Help"),
-            tr("Explain input indices, detector setup, outputs and provenance."),
-            self.help_window.show,
-        )
+        if action_button("help"):
+            self.help_window.show()
         im.text_wrapped(self.status)
         self.remember("status")
 

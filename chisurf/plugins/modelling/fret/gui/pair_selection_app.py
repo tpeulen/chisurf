@@ -21,7 +21,7 @@ from emtk.docking import DockManager, Region, Split
 from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
-from chisurf.plugins.emtk_layout import LabelColumn, labelled, layout_spec
+from chisurf.plugins.emtk_layout import LabelColumn, action_caption, action_tooltip, labelled, layout_spec
 from chisurf.plugins.modelling.structure_tools.cards.shell import CardShell
 
 from ..core.pair_run import PairParams, PairResult, run_pair_selection
@@ -296,8 +296,8 @@ class PairSelectionCard(CardShell):
         pressed = self.toolbar([
             {"label": "Run selection", "key": "run", "enabled": not s.running,
              "tip": "Compute the efficiencies and choose the most informative pairs."},
-            {"label": "Export", "key": "export", "enabled": s.result is not None and not s.running,
-             "tip": "Write the chosen pairs and their <<RMSD>> to a text file."},
+            {"label": action_caption("export"), "key": "export", "enabled": s.result is not None and not s.running,
+             "tip": action_tooltip("export", "Write the chosen pairs and their <<RMSD>> to a text file.")},
             *self.help_buttons(),
         ])
         {None: lambda: None, "run": self.run, "export": self.export, "guide": self.start_guide,

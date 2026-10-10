@@ -28,7 +28,7 @@ from emtk.docking import DockManager, Region, Split
 from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 
 from .model import STEPS, BoardingModel
 from .strings import install_translations, tr
@@ -176,14 +176,12 @@ class BoardingApp(ImApp):
                 self.item_rects["nav_list"] = im.get_item_rect()
         im.separator()
         draw_sections(self.panels["navigation"]["sections"], self.model, self.form, titles=False)
-        if im.button(tr("Help")):
+        if action_button("help"):
             self.help_window.show()
-        im.set_item_tooltip(tr("Explain the steps of the wizard."))
         self.item_rects["help"] = im.get_item_rect()
         im.same_line()
-        if im.button(tr("Guide")):
+        if action_button("guide"):
             self.tour.start()
-        im.set_item_tooltip(tr("Walk through the wizard step by step."))
         self.item_rects["guide"] = im.get_item_rect()
 
     def draw_page(self, box: Any = None) -> None:

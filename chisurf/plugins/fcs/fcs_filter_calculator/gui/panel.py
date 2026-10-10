@@ -9,6 +9,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from chisurf.plugins.emtk_layout import action_item
+
 from ..gui_parts.instrument_options import (
     InstrumentViewModel,  # noqa: F401  (documented dependency of the rows below)
 )
@@ -901,7 +903,7 @@ def component_spec(source: dict) -> dict:
             "label": "Apply",
             "description": "Validate the definition and compute the filters.",
         },
-        {"action": "cancel", "label": "Cancel", "description": "Discard the edit."},
+        action_item("cancel", "cancel", "Discard the edit."),
     ]
     return {
         "sections": [

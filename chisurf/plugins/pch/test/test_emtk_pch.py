@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 from emtk.testing import RecordingPainter
+from chisurf.plugins.emtk_layout import action_caption
 
 HERE = Path(__file__).parent
 REPO = HERE.parents[3]
@@ -312,7 +313,7 @@ def test_every_control_has_a_tooltip():
     assert inv["controls_without_tooltip"] == []
     labelled = {row["label"] for row in inv["interactive"]}
     assert labelled == {
-        "Help", "Guide", "Load TTTR", "Compute PCH", "Fit Model", "Save Results",
+        action_caption("help"), action_caption("guide"), "Load TTTR", "Compute PCH", "Fit Model", "Save Results",
         "filename", "channels", "bin_time_us", "micro_time_min", "micro_time_max",
         "n_components",
     }

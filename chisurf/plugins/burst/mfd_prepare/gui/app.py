@@ -19,7 +19,7 @@ from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.jobs import SnapshotJob
-from chisurf.plugins.emtk_layout import button_row, layout_spec, window_size
+from chisurf.plugins.emtk_layout import action_caption, action_tooltip, button_row, layout_spec, window_size
 
 from .model import MfdPrepareModel
 
@@ -240,7 +240,7 @@ class MfdPrepareApp(TourTarget, ImApp):
         pressed = button_row(
             [
                 {
-                    "label": "Browse...",
+                    "label": action_caption("browse"),
                     "key": "browse",
                     "enabled": not busy,
                     "tip": "Choose the burst-analysis folder (the one holding bi4_bur and Info) in a folder chooser, or drop it on the window.",
@@ -253,8 +253,8 @@ class MfdPrepareApp(TourTarget, ImApp):
                     "tip": "Read the folder the way the MFD fit does: resolve the photon files, detect the photon-index convention and "
                     "recompute each detector's counts. Nothing is moved or rewritten. Choose a folder first.",
                 },
-                {"label": "Guide", "key": "guide", "tip": "A step-by-step walk through the tool."},
-                {"label": "Help", "key": "help", "tip": "Explain what the report says."},
+                {"label": action_caption("guide"), "key": "guide", "tip": action_tooltip("guide")},
+                {"label": action_caption("help"), "key": "help", "tip": action_tooltip("help")},
             ],
             remember=self.remember,
         )

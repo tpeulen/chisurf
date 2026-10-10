@@ -26,6 +26,7 @@ from emtk.im_core import Col
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.typed_field import typed_number_field
+from chisurf.plugins.emtk_layout import action_button
 
 from . import result_view
 from .plots import REGION_FILL, ResultPlots
@@ -235,12 +236,13 @@ class H2mmGui(TourTarget):
         im.pop_style_color(3)
 
         im.same_line()
-        if im.button(tr("Restart")):
+        if action_button(
+            "restart", tooltip=tr("Reset the fit state and re-run the optimization from scratch.")
+        ):
             self.track("toolAction_restart")
             self._sync_to_tool()
             if hasattr(self.tool, "btn_restart"):
                 self.tool.btn_restart.click()
-        im.set_item_tooltip(tr("Reset the fit state and re-run the optimization from scratch."))
         self.remember("toolAction_restart")
 
         self._next_row_if_clipped()
@@ -270,18 +272,16 @@ class H2mmGui(TourTarget):
         im.set_item_tooltip(tr("Scan the log-likelihood over state numbers to help choose the model."))
 
         self._next_row_if_clipped()
-        if im.button(tr("Guide")):
+        if action_button("guide"):
             self.track("guide")
             self.start_guide()
         self.remember("guide")
-        im.set_item_tooltip(tr("Start a step-by-step guided tour of this tool."))
 
         self._next_row_if_clipped()
-        if im.button(tr("Help")):
+        if action_button("help"):
             self.track("help")
             self.show_help()
         self.remember("help")
-        im.set_item_tooltip(tr("Open the help window with reference documentation."))
 
         im.separator()
 

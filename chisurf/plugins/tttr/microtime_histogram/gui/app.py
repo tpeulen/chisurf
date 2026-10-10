@@ -25,7 +25,14 @@ from chisurf.core.support.i18n import tr
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
-from chisurf.plugins.emtk_layout import LabelColumn, button_row, labelled, layout_spec, window_size
+from chisurf.plugins.emtk_layout import (
+    LabelColumn,
+    action_button,
+    button_row,
+    labelled,
+    layout_spec,
+    window_size,
+)
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 
 from .model import HistogramModel
@@ -552,19 +559,14 @@ class HistogramApp(TourTarget, ImApp):
 
     def draw_inputs(self, box):
         self.item_rects.clear()
-        self.button(
-            "📖  Guide",
-            "A walk through queueing files, choosing the detector, computing and exporting.",
-            self.start_guide,
-            key="guide",
-        )
-        im.same_line()
-        self.button(
-            "❓  Help",
-            "Histogram, burst-gate, shift and transfer conventions.",
-            self.help.show,
-            key="help",
-        )
+        for key, callback in (("guide", self.start_guide), ("help", self.help.show)):
+            if key == "help":
+                im.same_line()
+            pressed = action_button(key)
+            self.remember(key)
+            if pressed:
+                self.tour.notify_used(key)
+                callback()
         im.separator()
         im.text_wrapped(self.model.message or "Queue photon files, then Compute.")
         if self.job.running:

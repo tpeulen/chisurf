@@ -23,7 +23,7 @@ from emtk import im, implot, implot3d
 from emtk.docking import DockManager, Region, Split
 from emtk.view_form import FormState, draw_form
 
-from chisurf.plugins.emtk_layout import layout_spec
+from chisurf.plugins.emtk_layout import action_caption, action_tooltip, layout_spec
 
 from .fps_model import Rows
 from .shell import CardShell
@@ -464,10 +464,10 @@ class QuestCard(CardShell):
                     "tip": "Run the simulation: dye diffusion, PET quenching and (with FRET on) the donor decay.",
                 },
                 {
-                    "label": "Cancel",
+                    "label": action_caption("cancel"),
                     "key": "cancel",
                     "enabled": running,
-                    "tip": "Ask the run to stop; its result is discarded.",
+                    "tip": action_tooltip("cancel", "Ask the run to stop; its result is discarded."),
                 },
                 {
                     "label": "Load PDB...",

@@ -15,7 +15,9 @@ from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, _clean_html_text
-from chisurf.plugins.emtk_layout import LabelColumn, button_row, labelled, layout_spec, window_size
+from chisurf.plugins.emtk_layout import (
+    LabelColumn, action_button, button_row, labelled, layout_spec, window_size,
+)
 
 from .model import NativeAnisotropyModel
 from emtk.i18n import tr
@@ -184,15 +186,11 @@ class AnisotropyApp(ImApp):
 
     # -- navigation ---------------------------------------------------------------------------- #
     def navigation(self, box):
-        if im.button(tr("Help")):
+        if action_button("help"):
             self.help_window.show()
-        im.set_item_tooltip(
-            tr("Explain polarized decays, background correction and parameter linking.")
-        )
         im.same_line()
-        if im.button(tr("Guide")):
+        if action_button("guide"):
             self.tour.start()
-        im.set_item_tooltip(tr("Follow a guided tour through the real wizard controls."))
         im.separator()
         for index, step in enumerate(self.steps):
             mark = "[x]" if self.model.step_complete(index) else "[ ]"
@@ -237,9 +235,10 @@ class AnisotropyApp(ImApp):
                 if m.files_ready():
                     self.tour.notify_used("data_vv_path")
             im.same_line()
-            if im.button(f"Browse##browse_{attr}"):
+            if action_button(
+                "browse", tooltip=f"Choose the {label} file from disk.", id=f"browse_{attr}"
+            ):
                 self.choose(attr)
-            im.set_item_tooltip(f"Choose the {label} file from disk.")
             im.same_line()
             ok = bool(getattr(m, attr)) and Path(getattr(m, attr)).is_file()
             im.text("found" if ok else "missing")

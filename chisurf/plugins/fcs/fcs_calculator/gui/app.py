@@ -18,7 +18,7 @@ from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, action_caption, window_size
 
 from .model import ConfocalModel
 
@@ -160,33 +160,19 @@ class ConfocalApp(ImApp):
             state.rects["export_json" if save else "import_json"] = tuple(im.get_item_rect())
 
     def toolbar(self, width):
-        labels = (
-            (
-                "📖 Guide",
-                self.start_guide,
-                "Walk through the relations, the constraint and the calibration.",
-                "guide",
-            ),
-            (
-                "❓ Help",
-                self.help_window.show,
-                "What each quantity means, the formulas and their assumptions.",
-                "help",
-            ),
-        )
+        actions = (("guide", self.start_guide), ("help", self.help_window.show))
         widths = [
-            im.calc_text_size(tr(label))[0] + 2 * im.get_style().frame_padding[0]
-            for label, *_ in labels
+            im.calc_text_size(action_caption(key))[0] + 2 * im.get_style().frame_padding[0]
+            for key, _ in actions
         ]
         spacing = im.get_style().item_spacing[0]
         im.dummy(
             max(1.0, width - sum(widths) - 2 * spacing), 1.0
         )  # right-aligned, as the Qt toolbar
-        for label, action, tip, key in labels:
+        for key, action in actions:
             im.same_line()
-            if im.button(tr(label) + "##" + key):
+            if action_button(key):
                 action()
-            im.set_item_tooltip(tr(tip))
             self.item_rects[key] = tuple(im.get_item_rect())
 
     def render(self):

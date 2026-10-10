@@ -46,7 +46,8 @@
           "buttons": [
             {
               "action": "open_file",
-              "label": "Browse",
+              "label": "Browse…",
+              "icon": "📂",
               "description": "Browse for an image stack or photon-stream file on disk."
             },
             {

@@ -16,6 +16,7 @@
             {
               "action": "run_maps",
               "label": "Run",
+              "icon": "▶️",
               "description": "Compute the phasor (g, s) and the photon counts of every detector window, in the background. Nothing is recomputed when neither the file, the windows, the reference nor the settings changed."
             },
             {
@@ -56,7 +57,8 @@
           "buttons": [
             {
               "action": "open_file",
-              "label": "Browse",
+              "label": "Browse…",
+              "icon": "📂",
               "description": "Browse for a photon imaging file on disk."
             },
             {

@@ -22,6 +22,7 @@ from pathlib import Path
 import pytest
 import yaml
 from emtk.testing import RecordingPainter
+from chisurf.plugins.emtk_layout import action_caption
 
 HERE = Path(__file__).parent
 GUI = HERE.parent / "gui"
@@ -810,7 +811,7 @@ def test_icon_panel_draws_and_choose_opens_a_file_dialog(trio, tmp_path):
         "Provider",
         "Endpoint",
         "Image model",
-        "Close",
+        action_caption("close"),
         "no icon",
         "Icon — Alpha",
     ):
@@ -1118,7 +1119,7 @@ def test_app_draws_populated_and_empty_at_both_sizes(size, trio, monkeypatch):
     for expected in (
         "Installed plugins",
         "Selected plugin",
-        "Save",
+        action_caption("save"),
         "Revert",
         "Rescan",
         "Install…",
@@ -1128,8 +1129,8 @@ def test_app_draws_populated_and_empty_at_both_sizes(size, trio, monkeypatch):
         "Rename…",
         "Icon…",
         "Open folder",
-        "Help",
-        "Guide",
+        action_caption("help"),
+        action_caption("guide"),
         "Show disabled plugins",
         "Disabled",
         "Show in main toolbar",

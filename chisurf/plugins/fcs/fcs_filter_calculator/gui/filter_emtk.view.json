@@ -60,18 +60,21 @@
      },
      {
       "action": "example",
-      "label": "Example",
+      "label": "Load example",
+      "icon": "🧪",
       "description": "Restore the detector-convolved synthetic 70/30 example."
      },
      {
       "action": "guide",
       "label": "Guide",
-      "description": "A step-by-step walk through the built-in example."
+      "icon": "📖",
+      "description": "Start a step-by-step tour that points at the real controls."
      },
      {
       "action": "help",
       "label": "Help",
-      "description": "Read the lifetime filter workflow and the scientific assumptions."
+      "icon": "❓",
+      "description": "Open the help for this window."
      }
     ]
    }

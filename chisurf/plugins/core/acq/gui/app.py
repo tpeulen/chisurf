@@ -19,6 +19,7 @@ from emtk.flags import InputTextFlags
 from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.plugins.emtk_layout import action_button
 from chisurf.plugins.core.acq.gui.setup_models import (
     BH_PARAMETERS,
     BHSetupModel,
@@ -544,16 +545,12 @@ class AcquisitionApp(ImApp):
 
     def _toolbar(self) -> None:
         """Draw the native Help and Guide buttons with useful tooltips."""
-        if im.button(tr("Help")):
+        if action_button("help"):
             self.help_window.show()
-        im.set_item_tooltip(
-            tr("Explain device initialization, simulator configuration, output, and result tabs.")
-        )
         self.item_rects["help"] = im.get_item_rect()
         im.same_line()
-        if im.button(tr("Guide")):
+        if action_button("guide"):
             self.tour.start()
-        im.set_item_tooltip(tr("Guide the operator through physical or simulated acquisition."))
         self.item_rects["guide"] = im.get_item_rect()
         im.separator()
 
@@ -829,9 +826,14 @@ class AcquisitionApp(ImApp):
         im.set_item_tooltip(tr("Close device setup. Only settings already committed with Apply affect the device or acquisition."))
         self.item_rects["setup_ok"] = im.get_item_rect()
         im.same_line()
-        if im.button(tr("Cancel") + "##setup_cancel") or close == "close":
+        if action_button(
+            "cancel",
+            id="setup_cancel",
+            tooltip=tr(
+                "Close this card without applying pending device-setting edits; earlier Apply operations remain in effect."
+            ),
+        ) or close == "close":
             self._close_device_setup()
-        im.set_item_tooltip(tr("Close this card without applying pending device-setting edits; earlier Apply operations remain in effect."))
         self.item_rects["setup_cancel"] = im.get_item_rect()
         self.setup_window.end()
 

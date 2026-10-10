@@ -33,6 +33,7 @@ from chisurf.plugins.core.project_browser.test.driving import (
     draw_clip,
     layout_problems,
 )
+from chisurf.plugins.emtk_layout import action_caption
 
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
@@ -555,7 +556,7 @@ def test_every_control_has_a_tooltip():
     inventory = emtk_inventory(build_emtk_app("plugin_check"))
     assert inventory["controls_without_tooltip"] == [], inventory["controls_without_tooltip"]
     names = {c["name"] if isinstance(c, dict) else c for c in inventory.get("controls", [])}
-    assert {"Help", "Guide"} <= {str(n) for n in names} or inventory["controls"]
+    assert {action_caption("help"), action_caption("guide")} <= {str(n) for n in names} or inventory["controls"]
 
 
 def test_the_port_is_qt_free():

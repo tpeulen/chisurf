@@ -743,6 +743,8 @@ class StateSchemePlot(_plot_base()):
         """Preset bar, the diagram, and the rate field while one is typed."""
         from emtk import im
 
+        from chisurf.plugins.emtk_layout import action_button
+
         binding = self.binding
         if self._dialog is not None:
             self._draw_dialog()
@@ -762,9 +764,8 @@ class StateSchemePlot(_plot_base()):
                 im.set_item_tooltip("Load a kinetics scheme from a JSON file.")
             if binding.can_save():
                 im.same_line()
-                if im.small_button("💾 Save"):
+                if action_button("save", tooltip="Save this kinetics scheme to a JSON file."):
                     self.open_dialog(save=True)
-                im.set_item_tooltip("Save this kinetics scheme to a JSON file.")
             im.same_line()
         if im.small_button("Reset view"):
             self.canvas.reset_view()

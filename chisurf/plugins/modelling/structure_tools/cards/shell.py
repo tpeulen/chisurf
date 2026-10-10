@@ -20,7 +20,7 @@ from emtk.docking import DockManager, Region
 from emtk.file_dialog import FileDialog
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
-from chisurf.plugins.emtk_layout import button_row
+from chisurf.plugins.emtk_layout import action_caption, action_tooltip, button_row
 from emtk.i18n import tr
 
 
@@ -242,7 +242,8 @@ class CardShell(TourTarget, ImApp):
                     {"label": modal.get("no", "No"), "key": "no", "tip": "Leave everything as it is."}],
             "notify": [{"label": "OK", "key": "no", "tip": "Close this message."}],
             "prompt": [{"label": "OK", "key": "yes", "tip": "Accept the name."},
-                       {"label": "Cancel", "key": "no", "tip": "Close without adding anything."}],
+                       {"label": action_caption("cancel"), "key": "no",
+                        "tip": action_tooltip("cancel", "Close without adding anything.")}],
         }[modal["kind"]]
         choice = button_row(buttons, remember=lambda name: self.remember(f"modal_{name}"))
         self.modal_window.end()
@@ -272,8 +273,8 @@ class CardShell(TourTarget, ImApp):
 
     def help_buttons(self) -> list[dict]:
         return [
-            {"label": "Guide", "key": "guide", "tip": "A step-by-step walk through the tool, pointing at each control."},
-            {"label": "Help", "key": "help", "tip": "What the tool does, what it writes, and its limits."},
+            {"label": action_caption("guide"), "key": "guide", "tip": action_tooltip("guide")},
+            {"label": action_caption("help"), "key": "help", "tip": action_tooltip("help")},
         ]
 
     def status_line(self) -> None:

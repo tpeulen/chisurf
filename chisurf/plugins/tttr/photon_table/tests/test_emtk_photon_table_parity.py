@@ -19,6 +19,7 @@ from emtk.testing import RecordingPainter
 
 from chisurf.plugins.tttr.photon_table.gui.app import PhotonTableApp, make_app
 from chisurf.plugins.tttr.photon_table.gui.model import PhotonTableViewModel
+from chisurf.plugins.emtk_layout import action_caption
 
 HERE = Path(__file__).parent
 GUI = HERE.parent / "gui"
@@ -496,8 +497,8 @@ def test_the_populated_app_has_no_untooltipped_control_either(sample):
         "Prev",
         "Next",
         "Last",
-        "Guide",
-        "Help",
+        action_caption("guide"),
+        action_caption("help"),
     } <= labels
 
 

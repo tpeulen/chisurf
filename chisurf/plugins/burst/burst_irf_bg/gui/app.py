@@ -29,7 +29,16 @@ from emtk.im_core import get_current_context
 from emtk.view_form import FormState, draw_sections
 from emtk.widgets.view_spec import load_view_spec
 
-from chisurf.plugins.emtk_layout import LabelColumn, button_row, cap_widths, icon_label, labelled, window_size
+from chisurf.plugins.emtk_layout import (
+    LabelColumn,
+    action_caption,
+    action_tooltip,
+    button_row,
+    cap_widths,
+    icon_label,
+    labelled,
+    window_size,
+)
 
 from .view_model import IrfBackgroundViewModel
 from emtk.i18n import tr
@@ -291,14 +300,14 @@ class BurstIrfBackgroundGui:
                     else []
                 ),
                 {
-                    "label": icon_label("📖", "Guide"),
+                    "label": action_caption("guide"),
                     "key": "guide",
-                    "tip": "Start a step-by-step guided tour of this tool.",
+                    "tip": action_tooltip("guide"),
                 },
                 {
-                    "label": icon_label("❓", "Help"),
+                    "label": action_caption("help"),
                     "key": "help",
-                    "tip": "Open the help window with reference documentation.",
+                    "tip": action_tooltip("help"),
                 },
             ],
             remember=self.remember,

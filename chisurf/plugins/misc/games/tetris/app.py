@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from emtk import i18n, im
 from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RETURN, KEY_RIGHT, KEY_UP
 
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import sound_toggle, window_size
 from chisurf.plugins.misc.games._base import GameApp
 from chisurf.plugins.misc.games.gui.keys import blocked
 
@@ -191,15 +191,11 @@ class TetrisApp(GameApp):
         im.begin("##tetris", (x, y, w, h))
         draw = im.get_window_draw_list()
         draw.add_rect_filled((x, y), (x+w, y+h), (8, 9, 11, 255))
-        im.set_cursor_screen_pos((x+4, y+4))
+        im.set_cursor_screen_pos((x+4, y+2))
         # Greyed without an audio backend: emtk plays no sound (the Qt game's
         # chigame audio is QtMultimedia).
-        im.begin_disabled(self.audio is None)
-        if im.checkbox(tr("Sound")+"##sound", self.sound_enabled)[0]:
+        if sound_toggle(self.sound_enabled, available=self.audio is not None, shortcut="M"):
             self.set_sound()
-        im.end_disabled()
-        im.set_item_tooltip(tr("Music and sound effects (off by default).") if self.audio is not None
-                            else tr("No sound here: this window has no audio output."))
         scale = min(max(w, 1)/420, max(h-37, 1)/588)
         ox, oy = x+w/2-210*scale, y+37+(h-37-588*scale)/2+8*scale
         self.board = ox, oy, scale

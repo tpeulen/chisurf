@@ -14,6 +14,7 @@
           "description": "Save or revert the list of disabled models, read the registry again, drop dead entries, copy or export the table.",
           "buttons": [
             {"action": "save", "label": "Save",
+             "icon": "💾",
              "description": "Write the disabled-model list to your settings file. The model drop-down picks it up the next time you select a dataset."},
             {"action": "ask_revert", "label": "Revert",
              "description": "Discard every change made since the last save (asks first)."},
@@ -22,6 +23,7 @@
             {"action": "ask_drop_stale", "label": "Drop stale",
              "description": "Remove disabled entries that match no registered model (asks first)."},
             {"action": "request_copy", "label": "Copy",
+             "icon": "📋",
              "description": "Copy the rows the table shows now, with the column headers, to the clipboard as tab-separated text."},
             {"action": "request_export", "label": "Export CSV",
              "description": "Write the rows and columns the table shows now to a CSV file."}
@@ -109,7 +111,7 @@
           "description": "Confirm or cancel.",
           "buttons": [
             {"action": "confirm_yes", "label": "OK", "description": "Do it."},
-            {"action": "confirm_no", "label": "Cancel", "description": "Leave everything as it is."}
+            {"action": "confirm_no", "label": "Cancel", "icon": "✕", "description": "Leave everything as it is."}
           ]
         }
       ]

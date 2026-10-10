@@ -18,9 +18,11 @@
             "description": "Send the assigned LUTs and shifts to the detector setup that opened this tool.",
             "hidden_when": {"attr": "has_apply", "equals": false}},
            {"action": "show_help", "label": "Help",
-            "description": "What do the two tabs do? Read the LUT workflow and the scientific notes."},
+            "icon": "❓",
+            "description": "Open the help for this window."},
            {"action": "start_guide", "label": "Guide",
-            "description": "A short guided tour: load a file, pick the plateau, add all channels."}
+            "icon": "📖",
+            "description": "Start a step-by-step tour that points at the real controls."}
          ]},
         {"type": "choice", "attr": "stage_name", "label": "", "style": "radio_list",
          "options": ["Compute LUT", "settings.tttr.json (optional)"],

@@ -19,6 +19,7 @@ import pytest
 from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_UP
 from emtk.testing import RecordingPainter
 
+from chisurf.plugins.emtk_layout import SOUND_OFF_ICON, action_caption
 from chisurf.plugins.misc.games.pong.app import PongApp, make_app
 from chisurf.plugins.misc.games.pong.model import PongModel
 
@@ -128,7 +129,8 @@ def test_draws(size):
     for _ in range(2):
         painter = RecordingPainter()
         app.draw(painter, 0, 0, *size)
-    assert "Sound" in painter.strings
+    # The shared Sound toggle, off by default (chisurf.plugins.emtk_layout.sound_toggle).
+    assert action_caption("sound", SOUND_OFF_ICON) in painter.strings
 
 
 def test_port_is_qt_free():

@@ -21,6 +21,7 @@ from chisurf.plugins.vv_vh_anisotropy.gui.model import AnisotropyModel
 
 from chisurf.plugins.vv_vh_anisotropy.test.pointer import KEY_BACKSPACE, KEY_ESCAPE, Pointer
 from chisurf.plugins.vv_vh_anisotropy.test.test_emtk_vv_vh_parity import make
+from chisurf.plugins.emtk_layout import action_caption
 
 
 @pytest.fixture
@@ -245,14 +246,14 @@ def test_a_bad_file_through_the_dialog_is_a_status_line_not_a_crash(ui, files, t
 
 
 def test_help_button_opens_the_help_window_and_close_help_closes_it(ui, files):
-    ui.click("Help")
+    ui.click(action_caption("help"))
     assert ui.app.help_window.open and ui.drawn("Close Help")
     ui.click("Close Help")
     assert not ui.app.help_window.open
 
 
 def test_guide_button_starts_the_tour_which_waits_for_the_load_button(ui, files):
-    ui.click("Guide")
+    ui.click(action_caption("guide"))
     assert ui.app.tour.active and ui.drawn("Close Tour") and ui.drawn("Step 1 of 7: Load a VV/VH file")
     assert ui.app.tour.awaiting                                                   # step 1 waits for Load
     ui.click("Load VV/VH file…")                                                  # the awaited control
@@ -313,7 +314,7 @@ def open_batch(ui):
 
 def test_batch_button_opens_and_close_button_and_title_x_close_it(ui, files):
     open_batch(ui)
-    ui.click("Close")
+    ui.click(action_caption("close"))
     assert not ui.app.model.batch_open and not ui.drawn("Run Batch")
     open_batch(ui)
     x, y, w, h = ui.app.batch_window.box
@@ -406,7 +407,7 @@ def test_batch_uses_the_settings_current_when_it_was_opened(ui, files):
     set_field(ui, "g_factor", "1.1")
     ui.app.model.add_batch_paths([str(b)])
     open_batch(ui)
-    ui.click("Close")
+    ui.click(action_caption("close"))
     set_field(ui, "g_factor", "2.0")                                                  # edited after the snapshot
     ui.click("Batch files…")                                                          # opened again: new snapshot
     ui.click("Run Batch")

@@ -23,6 +23,7 @@ from emtk.i18n import tr
 from emtk.im_core import Col
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.plugins.emtk_layout import action_button
 
 if TYPE_CHECKING:
     from .tool import TagsEditor
@@ -131,11 +132,12 @@ class HeaderEditorGui(TourTarget):
     # ── the tags dock ─────────────────────────────────────────────────────
 
     def _draw_tags(self, box: tuple[float, float, float, float]) -> None:
-        if im.button(tr("📂 Open")):
+        if action_button(
+            "open", tooltip=tr("Open a TTTR file (PTU / HT3 / SPC / HDF5) and read its header.")
+        ):
             if callable(self.on_open):
                 self.on_open()
                 self.tour.notify_used("open")
-        im.set_item_tooltip(tr("Open a TTTR file (PTU / HT3 / SPC / HDF5) and read its header."))
         self.remember("open")
         im.same_line()
         if im.button(tr("➕ Add")):
@@ -145,17 +147,15 @@ class HeaderEditorGui(TourTarget):
         im.set_item_tooltip(tr("Append a new header tag with a placeholder name."))
         self.remember("add")
         im.same_line()
-        if im.button(tr("📖 Guide")):
+        if action_button("guide"):
             self.start_guide()
-        im.set_item_tooltip(tr("A step-by-step walk through the tool."))
         self.remember("guide")
         if im.get_line_avail() < 170.0:
             im.new_line()
         else:
             im.same_line()
-        if im.button(tr("❓ Help")):
+        if action_button("help"):
             self.show_help()
-        im.set_item_tooltip(tr("The short help page."))
         self.remember("help")
         if im.get_line_avail() < 170.0:
             im.new_line()

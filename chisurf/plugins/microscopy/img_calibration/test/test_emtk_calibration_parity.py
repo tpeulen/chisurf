@@ -28,6 +28,7 @@ from test.gui.emtk_port_parity import build_emtk_app, emtk_inventory, qt_free  #
 
 from chisurf.plugins.microscopy.img_calibration.gui.app import make_app  # noqa: E402
 from chisurf.plugins.tttr.tttr_microtime_shifter.tests.demo_data import build  # noqa: E402
+from chisurf.plugins.emtk_layout import action_caption
 # isort: on
 
 SETUP = {"detectors": {"green": {"chs": [0, 8], "ch_p": [0], "ch_s": [8]}}}
@@ -297,7 +298,7 @@ def test_draws_empty_and_populated(spc, size, monkeypatch):
         strings = _draw(empty, size).strings
         assert (
             "Configure detector windows in Imaging Tools" in " ".join(strings)
-            and "Guide" in strings
+            and action_caption("guide") in strings
         )
     finally:
         empty.close()

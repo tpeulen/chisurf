@@ -58,12 +58,14 @@
                 {
                   "action": "show_help",
                   "label": "Help",
-                  "description": "Explain the detector setup, the file list, the mosaic and the exports."
+                  "icon": "❓",
+                  "description": "Open the help for this window."
                 },
                 {
                   "action": "start_guide",
                   "label": "Guide",
-                  "description": "Walk through the browser step by step; each step waits for you to use the control it points at."
+                  "icon": "📖",
+                  "description": "Start a step-by-step tour that points at the real controls."
                 }
               ]
             },

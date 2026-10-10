@@ -13,10 +13,9 @@ from pathlib import Path
 from typing import Any
 
 from emtk import im
-from emtk.i18n import tr
 from emtk.app import ImApp
 
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 from emtk.docking import DockManager, Region
 from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_sections
@@ -100,14 +99,12 @@ class TttrToPtoApp(ImApp):
 
     def draw_conversion(self, box: Any) -> None:
         """The window: Help / Guide, the hint, the buttons, the status and the history."""
-        if im.button(tr("Guide")):
+        if action_button("guide"):
             self.tour.start()
-        im.set_item_tooltip(tr("Walk through packing, unpacking and sidecar handling."))
         self.item_rects["guide"] = im.get_item_rect()
         im.same_line()
-        if im.button(tr("Help")):
+        if action_button("help"):
             self.help_window.show()
-        im.set_item_tooltip(tr("Read the conversion rules and verification guarantees."))
         self.item_rects["help"] = im.get_item_rect()
         im.separator()
         draw_sections(self.sections, self.model, self.form, titles=False)

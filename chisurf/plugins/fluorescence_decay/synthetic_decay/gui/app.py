@@ -16,7 +16,7 @@ from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.datasets import register_synthetic_fit
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import ACTIONS, action_button, window_size
 
 from .model import SyntheticDecayModel
 
@@ -157,7 +157,7 @@ class SyntheticDecayApp(ImApp):
                 self.model.generate,
             ),
             (
-                "Save",
+                None,
                 "save",
                 "Save CSV, text, NumPy, JSON or a VV/VH file with detection calibration.",
                 self.model.save,
@@ -174,28 +174,25 @@ class SyntheticDecayApp(ImApp):
                 "Choose an optional instrument response to convolve with the ideal decay.",
                 self.browse_irf,
             ),
-            (
-                "Help",
-                "help",
-                "Explain lifetime spectra, anisotropy, convolution and noise.",
-                self.help_window.show,
-            ),
-            (
-                "Guide",
-                "guide",
-                "Walk through generation, export and creating a fit group.",
-                self.tour.start,
-            ),
+            (None, "help", None, self.help_window.show),
+            (None, "guide", None, self.tour.start),
         ]
+        # A None label is a shared action (name is its vocabulary key); its English label stays the
+        # alias the tour targets.
         for index, (label, name, tip, action) in enumerate(actions):
-            if im.button(label):
+            if label is None:
+                label = ACTIONS[name].label
+                pressed = action_button(name, tooltip=tip)
+            else:
+                pressed = im.button(label)
+                im.set_item_tooltip(tip)
+            if pressed:
                 try:
                     action()
                     self.tour.notify_used(name)
                     self.tour.notify_used(label)
                 except Exception as exc:
                     self.model.status = f"Error: {exc}"
-            im.set_item_tooltip(tip)
             self.item_rects[name] = im.get_item_rect()
             self.item_rects[label] = self.item_rects[name]
             if (index + 1) % 3 and index + 1 < len(actions):

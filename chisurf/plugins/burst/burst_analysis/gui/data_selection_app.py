@@ -25,7 +25,7 @@ from emtk.widgets.view_spec import load_view_spec
 
 from chisurf.core.fio.staging import TTTR_EXTENSIONS
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
-from chisurf.plugins.emtk_layout import button_row
+from chisurf.plugins.emtk_layout import action_caption, action_tooltip, button_row
 from emtk.i18n import tr
 
 HERE = Path(__file__).resolve().parent
@@ -461,8 +461,8 @@ class BurstDataSelectionApp(TourTarget, ImApp):
                  else "Select a file in the table first."},
                 {"label": "Clear", "key": "clear", "enabled": bool(paths),
                  "tip": "Remove every file from the list." if paths else "No files to remove."},
-                {"label": "Guide", "key": "guide", "tip": "A step-by-step walk through this step."},
-                {"label": "Help", "key": "help", "tip": "What this step does and what it hands on."},
+                {"label": action_caption("guide"), "key": "guide", "tip": action_tooltip("guide")},
+                {"label": action_caption("help"), "key": "help", "tip": action_tooltip("help")},
             ],
             remember=self.remember,
         )

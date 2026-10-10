@@ -57,6 +57,9 @@ focus releases held controls. These saved rounds are application preferences,
 not scientific provenance or analysis datasets.
 
 No audio device is opened by default. A supplied audio output is optional, and
-Sound remains unavailable where none is present. The guide does not activate
+Sound remains unavailable where none is present. Sound is one shared toggle in
+all five games, drawn like the Help, Restart and Guide buttons beside it: pressed
+with 🔊 while on, 🔇 while off, greyed without an audio output. Breakout has no
+audio backend but keeps its Sound preference switchable, as before. The guide does not activate
 playback. See the [game controls and sound behavior](../guides/95_games.md#2-keys-and-pointer)
 for the per-game actions.

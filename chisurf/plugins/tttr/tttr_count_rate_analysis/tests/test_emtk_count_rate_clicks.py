@@ -17,6 +17,7 @@ import pytest
 
 from chisurf.plugins.tttr.tttr_count_rate_analysis.gui.controller import create_app
 from chisurf.plugins.tttr.tttr_count_rate_analysis.tests.pointer import KEY_ESCAPE, Pointer
+from chisurf.plugins.emtk_layout import action_caption
 
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
@@ -179,12 +180,12 @@ def test_calculate_with_no_detector_channel_asks_for_a_setup(ui, monkeypatch):
 
 
 def test_save_button_before_and_after_a_calculation(ui, monkeypatch, folder):
-    ui.click("Save", nth=1)                                                      # the tool's (the editor's setup Save is drawn first)
+    ui.click(action_caption("save"), nth=1)                                           # the tool's
     assert ui.app.tool.message == "There is no data to save." and ui.app.tool.dialog is None
     real_state(ui, monkeypatch, folder)
     ui.click("Calculate")
     settle(ui)
-    ui.click("Save", nth=1)
+    ui.click(action_caption("save"), nth=1)
     assert ui.app.tool.dialog is not None
     ui.click("file name")
     ui.type("rates.txt")
@@ -221,7 +222,7 @@ def test_stop_analysis_button_discards_the_incomplete_run(folder):
 
 # -- Guide, Help, drops ------------------------------------------------------------------------------------------
 def test_help_button_opens_and_closes_the_help_window(ui):
-    ui.click("Help")
+    ui.click(action_caption("help"))
     assert ui.app.count_rate_gui.help_window.open and ui.drawn("Close Help")
     ui.click("Close Help")
     assert not ui.app.count_rate_gui.help_window.open
@@ -229,7 +230,7 @@ def test_help_button_opens_and_closes_the_help_window(ui):
 
 def test_guide_button_starts_the_tour_which_waits_for_each_awaited_button(ui):
     tour = ui.app.count_rate_gui.tour
-    ui.click("Guide")
+    ui.click(action_caption("guide"))
     assert tour.active and tour.awaiting and ui.drawn("Step 1 of 5: Queue the files")
     ui.click("Add files")                                                         # the awaited button
     assert not tour.awaiting
@@ -242,7 +243,7 @@ def test_guide_button_starts_the_tour_which_waits_for_each_awaited_button(ui):
     tour.start(4)
     ui.frame(2)
     assert tour.awaiting
-    ui.click("Save", nth=1)
+    ui.click(action_caption("save"), nth=1)
     assert not tour.awaiting
     ui.click("Close Tour")
     assert not tour.active

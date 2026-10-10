@@ -38,6 +38,7 @@ import json
 from qtpy import QtWidgets
 qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 from chisurf.plugins.tttr.filetools.gui.tool import FileToolsTool
+from chisurf.plugins.emtk_layout import action_caption
 w = FileToolsTool()
 rows = [w.nav_list.item(i).text() for i in range(w.nav_list.count())]
 print("FACTS" + json.dumps({"rows": rows}))
@@ -209,7 +210,7 @@ def test_draws(size):
     app = FileToolsApp()
     try:
         strings = _draw(app, size).strings
-        assert {"Guide", "Help"} <= set(strings) and caption(PANELS[0]) in strings
+        assert {action_caption("guide"), action_caption("help")} <= set(strings) and caption(PANELS[0]) in strings
         x, y, w, h = app.child_box
         assert x + w <= size[0] + 0.5 and y + h <= size[1] + 0.5
     finally:

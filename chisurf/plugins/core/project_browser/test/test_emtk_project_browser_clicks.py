@@ -21,6 +21,7 @@ from .driving import (
     layout_problems,
 )
 from .test_emtk_project_browser_parity import _app, _project
+from chisurf.plugins.emtk_layout import action_caption
 
 
 @pytest.fixture(autouse=True)
@@ -391,7 +392,7 @@ def test_cancel_in_the_save_dialog_changes_nothing(drv):
     drv.click("save")
     drv.draw(3)
     drv.type_into("name", "never saved")
-    drv.click_text("Cancel")
+    drv.click_text(action_caption("cancel"))
     drv.settle()
     assert drv.app.modal == "" and not any(
         p["project_name"] == "never saved" for p in drv.app.model.projects
@@ -463,7 +464,7 @@ def test_import_cancel_in_the_preview_changes_nothing(drv, tmp_path):
     drv.click_text("decay_export.cs.pto")
     drv.click_text("Open", last=True)
     drv.settle()
-    drv.click_text("Cancel")
+    drv.click_text(action_caption("cancel"))
     drv.settle()
     assert drv.app.modal == "" and _project(drv.app, "decay study")["version_count"] == 2
 
@@ -500,7 +501,7 @@ def test_delete_asks_first_cancel_keeps_the_version_and_confirm_removes_it(drv):
     drv.click("delete")
     assert drv.app.modal == "delete" and drv.app.modal_window.title == "Confirm Delete"
     assert any(s.startswith("Delete version 1 of 'decay study'") for s in drv.draw(2).strings)
-    drv.click_text("Cancel")
+    drv.click_text(action_caption("cancel"))
     drv.settle()
     assert _project(drv.app, "decay study")["version_count"] == 2
     drv.click("delete")

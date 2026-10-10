@@ -60,6 +60,7 @@
             {
               "action": "load_example",
               "label": "Load example",
+              "icon": "🧪",
               "description": "Replace the mixture and clear lines for the illustrative 4 ns, 52 Å Gaussian pair. Compute remains a separate action."
             },
             {

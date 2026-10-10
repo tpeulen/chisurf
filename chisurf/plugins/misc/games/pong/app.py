@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from emtk import i18n, im
 from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RETURN, KEY_RIGHT, KEY_UP
 
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import sound_toggle, window_size
 from chisurf.plugins.misc.games._base import GameApp
 from chisurf.plugins.misc.games.gui.keys import blocked
 
@@ -202,14 +202,9 @@ class PongApp(GameApp):
         draw.add_rect_filled((x, y), (x + w, y + h), (8, 9, 11, 255))
         im.set_cursor_screen_pos((x + 4, y + 2))
         # Greyed without an audio backend: emtk plays no sound (the Qt game's
-        # chigame audio is QtMultimedia); a switch that changes nothing must not
-        # look like one that works.
-        im.begin_disabled(self.audio is None)
-        if im.button(tr("Sound") + "##sound"):
+        # chigame audio is QtMultimedia).
+        if sound_toggle(self.sound_enabled, available=self.audio is not None, shortcut="N"):
             self.set_sound()
-        im.end_disabled()
-        im.set_item_tooltip(tr("Music and sound effects (off by default). N toggles mute.") if self.audio is not None
-                            else tr("No sound here: this window has no audio output."))
         scale = min(w / FIELD_W, max(h - 40, 1) / FIELD_H)
         ox, oy = x + (w - FIELD_W * scale) / 2, y + 40 + (h - 40 - FIELD_H * scale) / 2
         self.board = (ox, oy, scale)

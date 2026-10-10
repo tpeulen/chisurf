@@ -22,6 +22,7 @@ from chisurf.plugins.core.pto_inspector.gui.app import PtoInspectorApp, make_app
 from chisurf.plugins.core.pto_inspector.gui.view_model import PtoInspectorViewModel
 from chisurf.plugins.core.pto_inspector.test.test_core import PTU
 from chisurf.plugins.core.pto_inspector.test.test_core import container as _fixture
+from chisurf.plugins.emtk_layout import action_caption
 
 HERE = Path(__file__).parent
 GUI = HERE.parent / "gui"
@@ -487,13 +488,13 @@ def test_every_control_has_a_tooltip(shared_container):
         assert inventory["controls_without_tooltip"] == []
         labels = {row["label"] for row in inventory["interactive"]}
         assert {
-            "Open",
+            action_caption("open"),
             "Database",
             "Reload",
             "Verify",
-            "Export",
-            "Help",
-            "Guide",
+            action_caption("export"),
+            action_caption("help"),
+            action_caption("guide"),
             "Fit graph",
             "Open tool",
         } <= labels
@@ -516,15 +517,15 @@ def test_button_enabled_states_follow_the_state(shared_container, monkeypatch):
     try:
         draw(app, frames=1)
         assert (
-            seen["Open"],
+            seen["open"],
             seen["Reload"],
             seen["Verify"],
-            seen["Export"],
+            seen["export"],
             seen["Open tool"],
         ) == (True, False, False, False, False)
         app.model.set_filename(str(shared_container))  # fcs: no tool claims it
         draw(app, frames=1)
-        assert (seen["Reload"], seen["Verify"], seen["Export"], seen["Open tool"]) == (
+        assert (seen["Reload"], seen["Verify"], seen["export"], seen["Open tool"]) == (
             True,
             True,
             True,

@@ -8,7 +8,7 @@ from emtk import im
 from emtk.app import ImApp
 from emtk.i18n import tr
 from emtk.keys import KEY_ESCAPE
-from emtk.view_form import FormState, draw_sections
+from emtk.view_form import FormState, draw_sections, icon_caption
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 
@@ -118,7 +118,10 @@ class GameApp(ImApp):
             # Fit this row only; the existing Sound and canvas geometry never move.
             pad = im.get_style().frame_padding[0] * 2
             spacing = im.get_style().item_inner_spacing[0] * (len(buttons) - 1)
-            text_width = sum(im.calc_text_size(button["label"])[0] for button in buttons)
+            text_width = sum(
+                im.calc_text_size(icon_caption(button.get("icon", ""), button["label"]))[0]
+                for button in buttons
+            )
             available = box[2] - spacing - pad * len(buttons)
             scale = min(1.0, max(0.1, available / max(text_width, 1)))
             im.push_font_scale(scale)

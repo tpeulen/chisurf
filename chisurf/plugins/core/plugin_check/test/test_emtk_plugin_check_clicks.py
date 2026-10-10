@@ -24,6 +24,7 @@ from .test_emtk_plugin_check_parity import (  # noqa: F401  (hermetic is autouse
     hermetic,
     small_catalog,
 )
+from chisurf.plugins.emtk_layout import action_caption
 
 
 class Stub:
@@ -455,7 +456,7 @@ def test_the_divider_between_the_two_windows_can_be_dragged(drv):
 
 def test_help_button_opens_the_help_window_whose_buttons_work(drv):
     window = drv.app.help_window
-    drv.click_text("Help")
+    drv.click_text(action_caption("help"))
     assert window.open
     painter = drv.draw(2)
     assert {"Start Guided Tour", "Close", "Close Help"} <= set(painter.strings)
@@ -464,16 +465,16 @@ def test_help_button_opens_the_help_window_whose_buttons_work(drv):
     drv.app.tour.stop()
     drv.draw(2)
     for closer in ("Close Help", "Close"):
-        drv.click_text("Help")
+        drv.click_text(action_caption("help"))
         drv.click_text(closer, last=closer == "Close Help")
         assert not window.open, closer
-    drv.click_text("Help")
+    drv.click_text(action_caption("help"))
     drv.escape()
     assert not window.open
 
 
 def test_the_help_text_names_the_controls_and_its_links_are_live(drv):
-    drv.click_text("Help")
+    drv.click_text(action_caption("help"))
     shown = " ".join(drv.draw(2).strings)
     for word in (
         "Test all plugins",
@@ -487,7 +488,7 @@ def test_the_help_text_names_the_controls_and_its_links_are_live(drv):
 
 def test_guide_button_starts_the_tour_and_its_card_buttons_work(drv):
     tour = drv.app.tour
-    drv.click_text("Guide")
+    drv.click_text(action_caption("guide"))
     assert tour.active and not tour.awaiting
     drv.click_text("Next ►", last=True)
     assert tour.step_idx == 1
@@ -504,7 +505,7 @@ def test_guide_button_starts_the_tour_and_its_card_buttons_work(drv):
 def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_awaited_control(drv):
     install(drv)
     tour = drv.app.tour
-    drv.click_text("Guide")
+    drv.click_text(action_caption("guide"))
     seen = []
     for _ in range(30):
         if not tour.active:

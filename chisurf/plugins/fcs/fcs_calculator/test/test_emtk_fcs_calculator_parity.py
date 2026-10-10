@@ -20,6 +20,7 @@ from emtk.testing import RecordingPainter
 
 from chisurf.plugins.fcs.fcs_calculator.gui.app import ConfocalApp
 from chisurf.plugins.fcs.fcs_calculator.gui.model import ConfocalModel
+from chisurf.plugins.emtk_layout import action_caption
 
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
@@ -342,8 +343,8 @@ def test_draws_with_every_panel_open(size):
             "Export JSON",
             "Import JSON",
             "Apply with Temp/η scaling",
-            "\U0001f4d6 Guide",
-            "❓ Help",
+            action_caption("guide"),
+            action_caption("help"),
         ):
             assert text in strings, text
         for name in (

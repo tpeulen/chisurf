@@ -34,7 +34,7 @@ from emtk.widgets.data_table import TableBinding, draw_table
 from chisurf.core.datastore import column_names, column_values, is_missing
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.typed_field import typed_number_field
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 
 from ..view_model import BurstBrowserViewModel
 
@@ -175,18 +175,16 @@ class BurstBrowserGui:
         im.set_item_tooltip(tr("Open a single .bur burst file or .pto container."))
         self.remember("open_file")
 
-        if im.button(tr("📖 Guide"), (btn_w, 24.0)):
+        if action_button("guide", size=(btn_w, 24.0)):
             self.track("guide")
             self.start_guide()
         self.remember("guide")
-        im.set_item_tooltip(tr("Start a step-by-step guided tour of this tool."))
 
         im.same_line()
-        if im.button(tr("❓ Help"), (btn_w, 24.0)):
+        if action_button("help", size=(btn_w, 24.0)):
             self.track("help")
             self.show_help()
         self.remember("help")
-        im.set_item_tooltip(tr("Open the help window with reference documentation."))
 
         path = self.model.path_text
         if len(path) > 36:

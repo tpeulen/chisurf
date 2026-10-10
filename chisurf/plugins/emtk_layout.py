@@ -10,7 +10,13 @@ window and starts each group's fields at its own x. The helpers here work on the
 - :class:`LabelColumn` pads the captions of every field to the widest one, and gives the hand-drawn rows
   (file rows, matrices) the same label x;
 - :func:`button_row` draws actions in one row that wraps instead of stacking one button per line;
-- :func:`icon_label` sets a pictogram clear of its caption.
+- :func:`icon_label` sets a pictogram clear of its caption;
+- :data:`ACTIONS`, :func:`action_button` and :func:`sound_toggle` are the one UI vocabulary for the actions
+  every window shares (Help, Guide, Sound, Restart, Run, Save, Open, Browse, Export, Copy, Reset, Cancel,
+  Close, Load example): one icon, one English source label, one tooltip and one widget kind each, so the
+  same action looks the same in every app. Declared button rows take the same table through
+  :func:`action_item`. The vocabulary and its rationale: ``okf/subsystems/ui-vocabulary.md``; the guard
+  that keeps hand-drawn variants out: ``test/test_ui_vocabulary.py``.
 """
 
 from __future__ import annotations
@@ -25,9 +31,12 @@ APP_SECTION_KEYS = {
                        "log_x", "log_y", "legend"}),
 }
 
+from dataclasses import dataclass
 from typing import Any, Callable, Iterator, Sequence
 
 from emtk import im
+from emtk.i18n import tr
+from emtk.view_form import icon_caption
 
 #: Widest a number field / a choice / a free-text field is drawn (pixels): a stride is a few digits, not a window wide.
 NUMBER_WIDTH = 110.0
@@ -74,9 +83,167 @@ def icon_label(icon: str, text: str) -> str:
     """A button caption with its pictogram set clear of the text (``💾  Save``).
 
     A colour pictogram is drawn wider than the font measures it, so it takes two spaces; a plain geometric
-    glyph (the ▶ of a run button) one.
+    glyph (the ▶ of a run button) one. The same rule declared button rows apply to an entry's ``icon``
+    (:func:`emtk.view_form.icon_caption`).
     """
-    return f"{icon}{' ' if 0x25A0 <= ord(icon[0]) <= 0x25FF else ICON_GAP}{text}"
+    return icon_caption(icon, text)
+
+
+@dataclass(frozen=True)
+class Action:
+    """One shared action: how it looks and what its tooltip says, wherever it is drawn.
+
+    ``label`` and ``tooltip`` are English source text and go through ``tr()`` when drawn. ``kind`` is the
+    widget: ``"button"`` or ``"toggle"`` (a button that stays pressed while on). ``fixed_tooltip`` actions
+    mean the same thing in every window, so their tooltip cannot be replaced; the others name *what* is
+    run/saved/opened in that tool, so a caller may pass a tool-specific tooltip instead of the default.
+    """
+
+    icon: str
+    label: str
+    tooltip: str
+    kind: str = "button"
+    fixed_tooltip: bool = False
+
+
+#: The shared action vocabulary. Keys are stable identifiers, not captions. The icons are the canonical
+#: glyphs of :class:`chisurf.gui.glyphs.Glyphs`, so a Qt label and an emtk button agree; they are spelled
+#: out because importing ``chisurf.gui`` loads Qt, and ``test/test_ui_vocabulary.py`` pins them equal.
+ACTIONS: dict[str, Action] = {
+    "help": Action("❓", "Help", "Open the help for this window.", fixed_tooltip=True),
+    "guide": Action("📖", "Guide", "Start a step-by-step tour that points at the real controls.",
+                    fixed_tooltip=True),
+    "sound": Action("🔊", "Sound", "Music and sound effects (off by default).", kind="toggle",
+                    fixed_tooltip=True),
+    "restart": Action("🔁", "Restart", "Start over from the beginning."),
+    "close": Action("✕", "Close", "Close this window."),
+    "run": Action("▶\ufe0f", "Run", "Run with the current settings."),
+    "cancel": Action("✕", "Cancel", "Stop or dismiss without applying the change."),
+    "reset": Action("♻\ufe0f", "Reset", "Restore the default settings."),
+    "save": Action("💾", "Save", "Save the result to a file."),
+    "open": Action("📂", "Open…", "Open a file."),
+    "browse": Action("📂", "Browse…", "Choose a file or folder."),
+    "export": Action("📤", "Export…", "Export the result to a file."),
+    "copy": Action("📋", "Copy", "Copy to the clipboard."),
+    "example": Action("🧪", "Load example", "Load a built-in example to try this tool."),
+}
+#: The muted state of the Sound toggle, and its tooltip when the window has no audio output.
+SOUND_OFF_ICON = "🔇"
+SOUND_UNAVAILABLE = "No sound here: this window has no audio output."
+#: Appended to a tooltip that names its keyboard shortcut (``{key}`` is the key).
+SHORTCUT = "Shortcut: {key}"
+
+
+_catalogue_installed = False
+
+
+def _install_catalogue() -> None:
+    """Make the vocabulary's six-locale rows available, once, in apps that never install the shared ones."""
+    global _catalogue_installed
+    if not _catalogue_installed:
+        from chisurf.emtk.shared_i18n import install_shared_translations
+
+        install_shared_translations()
+        _catalogue_installed = True
+
+
+def action_caption(key: str, icon: str | None = None) -> str:
+    """The drawn caption of action *key*: its icon, then its translated label (``"❓  Help"``)."""
+    _install_catalogue()
+    action = ACTIONS[key]
+    return icon_label(action.icon if icon is None else icon, tr(action.label))
+
+
+def action_tooltip(key: str, tooltip: str | None = None, shortcut: str | None = None) -> str:
+    """The translated tooltip of action *key*: the canonical one, or *tooltip* where the action allows it.
+
+    *tooltip* is already translated by the caller. *shortcut* appends ``Shortcut: <key>``.
+
+    Raises
+    ------
+    ValueError
+        *tooltip* was given for an action whose tooltip is the same in every window.
+    """
+    _install_catalogue()
+    action = ACTIONS[key]
+    if tooltip and action.fixed_tooltip:
+        raise ValueError(f"the {key!r} tooltip is shared by every window and cannot be replaced")
+    text = tooltip or tr(action.tooltip)
+    if shortcut:
+        text = f"{text} {tr(SHORTCUT).format(key=shortcut)}"
+    return text
+
+
+def action_button(
+    key: str,
+    *,
+    tooltip: str | None = None,
+    shortcut: str | None = None,
+    id: str | None = None,
+    size: tuple[float, float] | None = None,
+    enabled: bool = True,
+) -> bool:
+    """Draw shared action *key* as its canonical button; True on the frame it is pressed.
+
+    Parameters
+    ----------
+    key : str
+        An :data:`ACTIONS` key (``"help"``, ``"guide"``, ``"save"`` …).
+    tooltip : str, optional
+        A translated, tool-specific tooltip for actions whose tooltip is not fixed.
+    shortcut : str, optional
+        The keyboard shortcut named at the end of the tooltip.
+    id : str, optional
+        The ImGui id suffix (default *key*); give one when the same action is drawn twice in a window.
+    size : tuple of float, optional
+        Explicit button size, as for ``im.button``.
+    enabled : bool
+        A disabled button is greyed and cannot be pressed.
+
+    Returns
+    -------
+    bool
+        Whether the button was pressed (never while disabled).
+    """
+    if ACTIONS[key].kind != "button":
+        raise ValueError(f"{key!r} is a {ACTIONS[key].kind}, not a button")
+    if not enabled:  # (begin_disabled(False) would re-enable inside a disabled parent)
+        im.begin_disabled(True)
+    pressed = im.button(f"{action_caption(key)}###{id or key}", size)
+    if not enabled:
+        im.end_disabled()
+    im.set_item_tooltip(action_tooltip(key, tooltip, shortcut))
+    return pressed and enabled
+
+
+def sound_toggle(enabled: bool, *, available: bool = True, shortcut: str | None = None) -> bool:
+    """Draw the shared Sound toggle; True on the frame it is clicked (the caller flips its own state).
+
+    The icon shows the state (🔊 on, 🔇 off) and the button stays pressed while sound is on. Without an
+    audio output (*available* False) it is greyed and says so: a switch that changes nothing must not look
+    like one that works.
+    """
+    icon = ACTIONS["sound"].icon if enabled else SOUND_OFF_ICON
+    if not available:
+        im.begin_disabled(True)
+    clicked, _ = im.toggle_button(f"{action_caption('sound', icon)}###sound", bool(enabled))
+    if not available:
+        im.end_disabled()
+    im.set_item_tooltip(action_tooltip("sound", shortcut=shortcut) if available else tr(SOUND_UNAVAILABLE))
+    return clicked and available
+
+
+def action_item(key: str, action: str, description: str | None = None) -> dict:
+    """A declared ``button_row`` entry for shared action *key* calling model method *action*.
+
+    The entry carries the canonical ``icon``, English ``label`` and ``description`` exactly as a
+    ``*.view.json`` file must spell them (the guard compares the files against this).
+    """
+    entry = ACTIONS[key]
+    if description and entry.fixed_tooltip:
+        raise ValueError(f"the {key!r} tooltip is shared by every window and cannot be replaced")
+    return {"action": action, "label": entry.label, "icon": entry.icon,
+            "description": description or entry.tooltip}
 
 
 def labelled(sections: Sequence[dict]) -> Iterator[dict]:
@@ -255,11 +422,17 @@ def button_row(
 
 
 __all__ = [
+    "ACTIONS",
+    "Action",
     "CHOICE_WIDTH",
     "ICON_GAP",
     "LabelColumn",
     "NUMBER_WIDTH",
     "TEXT_WIDTH",
+    "action_button",
+    "action_caption",
+    "action_item",
+    "action_tooltip",
     "button_row",
     "button_width",
     "cap_widths",
@@ -267,4 +440,5 @@ __all__ = [
     "icon_label",
     "labelled",
     "layout_spec",
+    "sound_toggle",
 ]

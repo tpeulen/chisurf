@@ -20,6 +20,8 @@ from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import (
     LabelColumn,
+    action_caption,
+    action_tooltip,
     button_row,
     labelled,
     layout_spec,
@@ -274,16 +276,8 @@ class GFactorApp(ImApp):
                     "enabled": self.job.running,
                     "tip": "Discard the pending result; an archival already running may finish.",
                 },
-                {
-                    "label": "Help",
-                    "key": "help",
-                    "tip": "Read the calibration conventions and the limits of the linked mixing estimate.",
-                },
-                {
-                    "label": "Guide",
-                    "key": "guide",
-                    "tip": "Walk through the fast and slow references, the tail region and the export.",
-                },
+                {"label": action_caption("help"), "key": "help", "tip": action_tooltip("help")},
+                {"label": action_caption("guide"), "key": "guide", "tip": action_tooltip("guide")},
             ],
             remember=lambda name: self.item_rects.__setitem__(name, im.get_item_rect()),
         )

@@ -24,7 +24,8 @@
               "buttons": [
                 {
                   "action": "request_open",
-                  "label": "Open",
+                  "label": "Open…",
+                  "icon": "📂",
                   "description": "Open TTTR photon stream file."
                 },
                 {
@@ -40,17 +41,20 @@
                 {
                   "action": "request_run",
                   "label": "Run",
+                  "icon": "▶️",
                   "description": "Build 2D-FDC and resolve lifetimes."
                 },
                 {
                   "action": "request_help",
                   "label": "Help",
-                  "description": "Explain what the map shows, how to read it and what to check first."
+                  "icon": "❓",
+                  "description": "Open the help for this window."
                 },
                 {
                   "action": "request_guide",
                   "label": "Guide",
-                  "description": "Walk through the demo: simulate a stream whose answer is known, run and read the map."
+                  "icon": "📖",
+                  "description": "Start a step-by-step tour that points at the real controls."
                 }
               ]
             }

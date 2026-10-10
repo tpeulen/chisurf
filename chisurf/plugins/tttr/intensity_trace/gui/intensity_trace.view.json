@@ -16,22 +16,26 @@
             },
             {
               "action": "load_example",
-              "label": "Example",
+              "label": "Load example",
+              "icon": "🧪",
               "description": "Load a simulated molecule switching between two FRET states (dwell 20 / 80 ms, two detectors): data whose answer is known, for trying the tool."
             },
             {
               "action": "request_help",
               "label": "Help",
-              "description": "What the trace, the histograms and the hidden Markov model show, and what Compute HMM writes."
+              "icon": "❓",
+              "description": "Open the help for this window."
             },
             {
               "action": "request_guide",
               "label": "Guide",
-              "description": "A step-by-step walk through the tool, pointing at each control."
+              "icon": "📖",
+              "description": "Start a step-by-step tour that points at the real controls."
             },
             {
               "action": "request_cancel",
               "label": "Cancel",
+              "icon": "✕",
               "description": "Stop an ongoing HMM fit or BIC scan after its current iteration; keep the previous results."
             }
           ]

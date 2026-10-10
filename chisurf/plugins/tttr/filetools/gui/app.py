@@ -20,7 +20,7 @@ from emtk.app import ImApp
 from chisurf.core.support.i18n import tr
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.plugin_icons import entry_icon
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 
 SPEC = json.loads(Path(__file__).with_name("panels.json").read_text())
 SPLITTER_FIELDS = (
@@ -154,18 +154,12 @@ class FileToolsApp(TourTarget, ImApp):
         im.set_next_window_pos((0, 0), im.Cond.ALWAYS)
         im.set_next_window_size((left, height), im.Cond.ALWAYS)
         if im.begin(tr("File tools"), flags=flags):
-            if im.button(tr("Guide")):
+            if action_button("guide"):
                 self.tour.start()
-            im.set_item_tooltip(
-                tr(
-                    "Walk through choosing a converter, inspecting a container and correcting metadata."
-                )
-            )
             self.remember("guide")
             im.same_line()
-            if im.button(tr("Help")):
+            if action_button("help"):
                 self.help.show()
-            im.set_item_tooltip(tr("Read the file-tools help and the workflow of every tool."))
             self.remember("help")
             im.set_next_item_width(-1)
             _, self.filter = im.input_text(

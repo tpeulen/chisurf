@@ -10,8 +10,9 @@
       "buttons": [
         {
           "label": "Help",
+          "icon": "❓",
           "action": "open_help",
-          "description": "Explain the version, developer and contact details shown here."
+          "description": "Open the help for this window."
         },
         {
           "label": "Copy details",
@@ -20,11 +21,13 @@
         },
         {
           "label": "Guide",
+          "icon": "📖",
           "action": "start_guide",
-          "description": "Follow the real Help, Copy details and Close controls."
+          "description": "Start a step-by-step tour that points at the real controls."
         },
         {
           "label": "Close",
+          "icon": "✕",
           "action": "close_about",
           "description": "Close the About ChiSurf window."
         }

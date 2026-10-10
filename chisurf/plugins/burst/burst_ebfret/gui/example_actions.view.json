@@ -6,18 +6,21 @@
       "buttons": [
         {
           "action": "load_example",
-          "label": "Load demo",
+          "label": "Load example",
+          "icon": "🧪",
           "description": "Load 40 synthetic donor/acceptor traces with four known FRET states. Analysis begins only after you press Run."
         },
         {
           "action": "start_guide",
           "label": "Guide",
-          "description": "Point at the actual controls in order and wait for your own actions."
+          "icon": "📖",
+          "description": "Start a step-by-step tour that points at the real controls."
         },
         {
           "action": "show_help",
           "label": "Help",
-          "description": "Explain the empirical-Bayes HMM, controls, input formats and workflow."
+          "icon": "❓",
+          "description": "Open the help for this window."
         }
       ]
     }

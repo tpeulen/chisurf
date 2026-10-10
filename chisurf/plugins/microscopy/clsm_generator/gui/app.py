@@ -19,7 +19,7 @@ from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.image_canvas import ImageCanvas
 from chisurf.emtk.jobs import SnapshotJob
-from chisurf.plugins.emtk_layout import button_row, layout_spec, window_size
+from chisurf.plugins.emtk_layout import action_caption, action_tooltip, button_row, layout_spec, window_size
 
 from .view_model import ClsmGeneratorViewModel
 
@@ -293,16 +293,8 @@ class ClsmGeneratorApp(ImApp):
     def controls(self, box):
         pressed = button_row(
             [
-                {
-                    "label": "Help",
-                    "key": "Help",
-                    "tip": "Explain detector maps, simulation units, cancellation and export formats.",
-                },
-                {
-                    "label": "Guide",
-                    "key": "Guide",
-                    "tip": "Walk through loading maps, generating and saving a photon image.",
-                },
+                {"label": action_caption("help"), "key": "Help", "tip": action_tooltip("help")},
+                {"label": action_caption("guide"), "key": "Guide", "tip": action_tooltip("guide")},
             ],
             remember=self.remember,
         )

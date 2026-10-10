@@ -33,6 +33,7 @@ from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import (
     NUMBER_WIDTH,
     LabelColumn,
+    action_button,
     icon_label,
     labelled,
     layout_spec,
@@ -705,19 +706,14 @@ class MicrotimeShifterApp(TourTarget, ImApp):
         self.item_rects.update({f"sample_{k}": v for k, v in self.sample_form.rects.items()})
 
     def draw_files(self, box):
-        self.button(
-            "📖  Guide",
-            "A walk through the tool, pointing at each control.",
-            self.start_guide,
-            key="guide",
-        )
-        im.same_line()
-        self.button(
-            "❓  Help",
-            "Shifts, alignment, what is written and the MMFDB archive.",
-            self.help.show,
-            key="help",
-        )
+        for key, callback in (("guide", self.start_guide), ("help", self.help.show)):
+            if key == "help":
+                im.same_line()
+            pressed = action_button(key)
+            self.remember(key)
+            if pressed:
+                self.tour.notify_used(key)
+                callback()
         im.separator()
         im.text_wrapped(self.message)
         if self.job.running:

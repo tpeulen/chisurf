@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from emtk import i18n, im
 from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RETURN, KEY_RIGHT, KEY_UP
 
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import sound_toggle, window_size
 from chisurf.plugins.misc.games._base import GameApp
 from chisurf.plugins.misc.games.gui.keys import blocked
 
@@ -215,9 +215,9 @@ class BreakoutApp(GameApp):
         draw = im.get_window_draw_list()
         draw.add_rect_filled((x, y), (x+w, y+h), (8, 9, 11, 255))
         im.set_cursor_screen_pos((x+4, y+2))
-        if im.button(tr("Sound")+"##sound"):
+        # The preference is kept although EMTK has no audio backend here; M mutes effects.
+        if sound_toggle(self.sound_enabled, shortcut="M"):
             self.sound_enabled = not self.sound_enabled
-        im.set_item_tooltip(tr("Sound state only: EMTK audio is unavailable. M toggles mute."))
         # Fit the same 800x650 board without clipping at narrow widths.
         scale = min(w/W, max(h-36, 1)/H)
         ox, oy = x+(w-W*scale)/2, y+36+(h-36-H*scale)/2

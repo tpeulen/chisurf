@@ -19,12 +19,11 @@ from typing import Any
 from emtk import im
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
-from emtk.i18n import tr
 from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.jobs import SnapshotJob
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 
 from .model import AISettingsModel, BackgroundCall, describe_error
 
@@ -99,14 +98,12 @@ class AISettingsApp(ImApp):
     # -- windows ----------------------------------------------------------- #
     def draw_settings(self, box: Any) -> None:
         """The settings window: Help / Guide and the folding sections."""
-        if im.button(tr("Help")):
+        if action_button("help"):
             self.help_window.show()
-        im.set_item_tooltip(tr("Explain the providers, the key, the models and the buttons."))
         self.item_rects["help"] = im.get_item_rect()
         im.same_line()
-        if im.button(tr("Guide")):
+        if action_button("guide"):
             self.tour.start()
-        im.set_item_tooltip(tr("Walk through choosing a provider, fetching models and testing it."))
         self.item_rects["guide"] = im.get_item_rect()
         draw_sections(self.panels[_SETTINGS]["sections"], self.model, self.form, titles=False)
 

@@ -24,6 +24,7 @@
                 {
                   "action": "run_coloc",
                   "label": "Run",
+                  "icon": "▶️",
                   "description": "Compute the colocalization coefficients for the selected channel pair, in the background."
                 },
                 {
@@ -57,7 +58,8 @@
           "buttons": [
             {
               "action": "open_file",
-              "label": "Browse",
+              "label": "Browse…",
+              "icon": "📂",
               "description": "Browse for a photon imaging file on disk."
             },
             {

@@ -22,6 +22,7 @@ import pytest
 from emtk.testing import RecordingPainter
 
 from chisurf.plugins.chimol.app import ChimolHostApp, make_app
+from chisurf.plugins.emtk_layout import action_caption
 
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
@@ -194,8 +195,8 @@ def test_app_draws_empty_and_populated(size):
             pytest.skip(app._chimol_error)
         empty = app._object_count()
         assert any(f"{empty} object(s)" in s for s in painter.strings)
-        assert any("Help" == s for s in painter.strings) and any(
-            "Guide" == s for s in painter.strings
+        assert any(action_caption("help") == s for s in painter.strings) and any(
+            action_caption("guide") == s for s in painter.strings
         )
         app._chimol.cmd.do(f"load {_demo_pdb()}")
         painter = _draw(app, size)

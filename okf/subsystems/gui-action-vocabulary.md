@@ -7,6 +7,10 @@ tags: [gui, qt, toolbar, icons, glyphs, conventions]
 timestamp: '2026-07-28T00:00:00Z'
 ---
 
+This is the legacy Qt toolbar vocabulary. The emtk apps share their own
+[emtk UI action vocabulary](ui-vocabulary.md), which draws its icons from the same
+glyph registry.
+
 # Why it exists
 
 Every plugin grew its own toolbar, so the same function looked different in each

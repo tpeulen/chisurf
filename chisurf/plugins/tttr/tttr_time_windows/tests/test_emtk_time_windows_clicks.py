@@ -18,6 +18,7 @@ from emtk.events import CONTROL_MODIFIER
 from chisurf.plugins.tttr.tttr_time_windows.gui.controller import create_app
 from chisurf.plugins.tttr.tttr_time_windows.tests.pointer import KEY_ESCAPE, Pointer
 from chisurf.plugins.tttr.tttr_time_windows.tests.test_emtk_time_windows_parity import _FakeClient
+from chisurf.plugins.emtk_layout import action_caption
 
 
 class _SlowClient(_FakeClient):
@@ -191,7 +192,7 @@ def test_output_folder_field_takes_typed_text(ui):
 
 
 def test_browse_button_chooses_an_output_folder(ui, folder):
-    ui.click("Browse…")
+    ui.click(action_caption("browse"))
     assert ui.app.tool.dialog is not None
     ui.click("Choose")
     assert ui.app.tool.output_dir_text == str(folder)
@@ -253,7 +254,7 @@ def test_stop_button_discards_the_running_job(folder):
 # -- Guide and Help -------------------------------------------------------------------------------------
 @pytest.mark.parametrize("nth", [0, 1])
 def test_each_help_button_opens_the_help_window(ui, nth):
-    ui.click("Help", nth)
+    ui.click(action_caption("help"), nth)
     assert ui.app.time_window_gui.help_window.open and ui.drawn("Close Help")
     ui.click("Close Help")
     assert not ui.app.time_window_gui.help_window.open
@@ -261,7 +262,7 @@ def test_each_help_button_opens_the_help_window(ui, nth):
 
 def test_guide_button_starts_the_tour_which_waits_for_each_control(ui):
     tour = ui.app.time_window_gui.tour
-    ui.click("Guide")
+    ui.click(action_caption("guide"))
     assert tour.active and ui.drawn("Step 1 of 5: Queue the files") and tour.awaiting
     ui.click("Files")                                                           # the awaited button
     assert not tour.awaiting

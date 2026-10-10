@@ -415,8 +415,8 @@ def test_the_wheel_scrolls_a_long_table(ui):
         ("ask_update_all", "Update every package"),
         ("installed_filter", "Show only the installed packages"),
         ("refresh_all", "Reload the installed packages, environments"),
-        ("help", "Explain the four pages"),
-        ("guide", "Walk through finding"),
+        ("help", "Open the help for this window."),
+        ("guide", "Start a step-by-step tour"),
     ],
 )
 def test_resting_the_pointer_on_a_control_shows_its_tooltip(ui, name, text):

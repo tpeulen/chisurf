@@ -12,6 +12,7 @@ import numpy as np
 import pytest
 from emtk import keys
 
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.fret_line.gui.app import FRETLineApp
 from chisurf.plugins.fret_line.gui.model import NO_NDX_WINDOW, FretLineModel
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
@@ -532,24 +533,24 @@ def test_the_divider_between_the_editor_and_the_left_window_can_be_dragged(drv):
 
 def test_help_button_opens_the_help_window_whose_buttons_work(drv):
     window = drv.app.help_window
-    drv.click_text("Help")
+    drv.click_text(action_caption("help"))
     assert window.open and {"Start Guided Tour", "Close", "Close Help"} <= set(drv.draw(2).strings)
     drv.click_text("Start Guided Tour")
     assert not window.open and drv.app.tour.active
     drv.app.tour.stop()
     drv.draw(2)
     for closer in ("Close Help", "Close"):
-        drv.click_text("Help")
+        drv.click_text(action_caption("help"))
         drv.click_text(closer, last=closer == "Close Help")
         assert not window.open, closer
-    drv.click_text("Help")
+    drv.click_text(action_caption("help"))
     drv.escape()
     assert not window.open
 
 
 def test_the_tour_is_walked_with_the_user_operating_each_awaited_control(drv):
     tour = drv.app.tour
-    drv.click_text("Guide")
+    drv.click_text(action_caption("guide"))
     seen = []
     for _ in range(30):
         if not tour.active:

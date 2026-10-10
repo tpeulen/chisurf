@@ -2,6 +2,11 @@
 
 ## 2026-10-10
 
+- One action vocabulary for every emtk app (`ACTIONS` in `chisurf/plugins/emtk_layout.py`):
+  Help, Guide, Sound, Restart, Run, Save, Open, Browse, Export, Copy, Reset, Cancel, Close and Load
+  example share icon, label, widget kind and tooltip; the five games draw one dark Sound toggle;
+  guard `test/test_ui_vocabulary.py` (held files listed, shrinking).
+
 - W0b closed: the OKF bundle lints clean (2332 findings at the start of the day → 0) and
   `test/okf_bundle_baseline.json` is empty; the board was cleaned in tttrlib.
 

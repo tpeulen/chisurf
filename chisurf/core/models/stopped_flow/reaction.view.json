@@ -74,7 +74,8 @@
               "description": "Drop the selected reaction (the last one when nothing is selected)."
             },
             {
-              "label": "↺ Reset",
+              "label": "Reset",
+              "icon": "♻️",
               "action": "clear_reactions",
               "description": "Return to the default two-species A ⇌ B scheme."
             }

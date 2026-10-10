@@ -19,6 +19,7 @@ import pytest
 from chisurf.plugins.core.setup_channel_definition.test import driver
 from chisurf.plugins.core.setup_channel_definition.test.driver import DATA, norm
 from chisurf.plugins.tttr.tttr_count_rate_analysis.tests.pointer import KEY_BACKSPACE, Pointer
+from chisurf.plugins.emtk_layout import action_caption
 
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
@@ -235,10 +236,10 @@ def test_question_mark_opens_the_help_and_the_close_button_closes_it(ui):
 
 
 def test_guide_and_help_buttons_of_the_host_strip(ui):
-    ui.click("Help")
+    ui.click(action_caption("help"))
     assert ui.app.help_window.open
     ui.app.help_window.hide()
-    ui.click("Guide")
+    ui.click(action_caption("guide"))
     assert ui.app.tour.active
 
 

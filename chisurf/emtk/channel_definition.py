@@ -41,6 +41,7 @@ from chisurf.emtk.channel_setup_bar import (
     UNSAVED,
     SetupToolbar,
 )
+from chisurf.plugins.emtk_layout import action_button, action_caption
 
 #: The File Type choices, in the Qt order: Auto, then every container tttrlib reads.
 FILE_TYPES = (
@@ -800,13 +801,13 @@ class ChannelDefinitionWidget:
         if changed:
             bar.select("" if picked == 0 else names[picked])
             self._used("setup_choice")
+        place(self._width(action_caption("save")))
+        tip = tr("Ask for a name and store the working definition as a saved setup.")
+        if action_button("save", tooltip=tip):
+            bar.request_save()
+            self._used("save")
+        self.item_rects["save"] = im.get_item_rect()
         for name, label, tip, action in (
-            (
-                "save",
-                "Save",
-                "Ask for a name and store the working definition as a saved setup.",
-                bar.request_save,
-            ),
             ("rename", "Rename", "Give the selected saved setup another name.", bar.request_rename),
             (
                 "delete",
@@ -2053,9 +2054,8 @@ class ChannelDefinitionWidget:
             self.shift_window.hide()
         im.set_item_tooltip(tr("Keep the shifts shown."))
         im.same_line()
-        if im.button(tr("Cancel") + "##shift_cancel"):
+        if action_button("cancel", tooltip=tr("Close without changing the shifts."), id="shift_cancel"):
             self.shift_window.hide()
-        im.set_item_tooltip(tr("Close without changing the shifts."))
 
     def _preview_body(self):
         from emtk import im

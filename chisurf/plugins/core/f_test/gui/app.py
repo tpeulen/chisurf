@@ -13,7 +13,7 @@ from emtk.docking import DockManager, Region, Split
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 
 from .model import _CHI2_2_ATTRS, _CHI2_MAX_ATTRS, _CONF_ATTRS, FTestModel
 
@@ -159,9 +159,8 @@ class FTestApp(ImApp):
         else:
             self.menu_open = False
         im.same_line()
-        if im.button(tr("Guide")):
+        if action_button("guide"):
             self.tour.start()
-        im.set_item_tooltip(tr("Walk through loading fit statistics and comparing nested models."))
         self.item_rects["guide"] = im.get_item_rect()
         im.same_line()
         if im.button("?"):

@@ -21,7 +21,7 @@ from chisurf.core.roi import RegionCollection
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.calculator.native_form import plain
-from chisurf.plugins.emtk_layout import button_row, layout_spec, window_size
+from chisurf.plugins.emtk_layout import action_caption, action_tooltip, button_row, layout_spec, window_size
 from chisurf.plugins.microscopy.psf_determination.gui.canvas import ImageCanvas
 from chisurf.plugins.microscopy.psf_determination.gui.jobs import SnapshotJob
 
@@ -399,16 +399,8 @@ class SpotFinderApp(ImApp):
     def controls(self, box):
         pressed = button_row(
             [
-                {
-                    "label": "Help",
-                    "key": "help",
-                    "tip": "Explain detection recipes, ROI restriction, picking and measurement-container outputs.",
-                },
-                {
-                    "label": "Guide",
-                    "key": "guide",
-                    "tip": "Work through the known-field demo with actual actions and image picking.",
-                },
+                {"label": action_caption("help"), "key": "help", "tip": action_tooltip("help")},
+                {"label": action_caption("guide"), "key": "guide", "tip": action_tooltip("guide")},
             ],
             remember=self.remember,
         )
@@ -522,7 +514,8 @@ class SpotFinderApp(ImApp):
         pressed = button_row(
             [
                 {
-                    "label": tr(self.demo_action["label"]) if l == "load_example" else l,
+                    "label": action_caption("example") if l == "load_example"
+                    else action_caption("export") if l == "Export" else l,
                     "key": l,
                     "keys": ("Load demo",) if l == "load_example" else (),
                     "tip": tr(t) if l == "load_example" else t,

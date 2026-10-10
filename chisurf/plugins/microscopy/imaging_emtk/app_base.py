@@ -24,7 +24,7 @@ from emtk.i18n import tr
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.jobs import SnapshotJob
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 
 from .views import ImagePanel, QuiverPanel, draw_series_plot
 
@@ -212,27 +212,23 @@ class ImagingToolApp(ImApp):
 
     def _toolbar(self) -> None:
         """Help and Guide (and Cancel), then the status line (what the Qt status bar showed)."""
-        if im.button(tr("Help")):
+        if action_button("help"):
             self.help_window.show()
-        im.set_item_tooltip(
-            f"Explain what {self.TITLE.lower()} measures, which settings decide the answer and what to check."
-        )
         self.item_rects["help"] = im.get_item_rect()
         im.same_line()
-        if im.button(tr("Guide")):
+        if action_button("guide"):
             self.tour.start()
-        im.set_item_tooltip(
-            tr("Walk through the tool step by step; each step waits for you to use the control it points at.")
-        )
         self.item_rects["guide"] = im.get_item_rect()
         if self.CANCELLABLE:
             im.same_line()
             im.begin_disabled(not (self.job.busy or self.model.busy))
-            if im.button(tr("Cancel")):
+            if action_button(
+                "cancel",
+                tooltip=tr(
+                    "Stop at the next checkpoint of the running calculation and discard the unfinished result."
+                ),
+            ):
                 self.model.cancel()
-            im.set_item_tooltip(
-                tr("Stop at the next checkpoint of the running calculation and discard the unfinished result.")
-            )
             self.item_rects["cancel"] = im.get_item_rect()
             im.end_disabled()
         message = (

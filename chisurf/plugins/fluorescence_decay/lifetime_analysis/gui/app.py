@@ -12,6 +12,7 @@ from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.plugin_icons import entry_icon
 from chisurf.emtk.plugins import load_plugin, manifests
 from chisurf.plugins.calculator.hub.gui.app import CalculatorHubApp
+from chisurf.plugins.emtk_layout import action_button
 from emtk.i18n import tr
 
 #: (plugin id, list label, icon (empty: the plugin's own manifest icon), description, tour alias)
@@ -197,14 +198,12 @@ class LifetimeAnalysisApp(CalculatorHubApp):
                 tr("Go to the next tool in the order the analyses depend on each other.")
             )
             self.item_rects["next"] = im.get_item_rect()
-            if im.button(tr("Help")):
+            if action_button("help"):
                 self.help_window.show()
-            im.set_item_tooltip(tr("Explain the complementary lifetime-analysis workflows."))
             self.item_rects["help"] = im.get_item_rect()
             im.same_line()
-            if im.button(tr("Guide")):
+            if action_button("guide"):
                 self.tour.start()
-            im.set_item_tooltip(tr("Walk through the real analysis panels and their purpose."))
             self.item_rects["guide"] = im.get_item_rect()
             im.separator()
             im.text_wrapped(self.status)

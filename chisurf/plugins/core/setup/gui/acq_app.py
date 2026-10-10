@@ -22,9 +22,9 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_sections
-from emtk.i18n import tr
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.plugins.emtk_layout import action_button
 
 HERE = Path(__file__).parent
 DEVICE_TYPES = ["Simulation", "Becker-Hickl", "PicoQuant", "BrickMic"]
@@ -246,16 +246,12 @@ class AcquisitionSettingsApp(ImApp):
         if im.begin(
             "Acquisition settings", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE
         ):
-            if im.button(tr("Help")):
+            if action_button("help"):
                 self.help_window.show()
-            im.set_item_tooltip(
-                tr("Explain the output folder, the chunk size, the device type and the simulator parameters.")
-            )
             self.item_rects["help"] = im.get_item_rect()
             im.same_line()
-            if im.button(tr("Guide")):
+            if action_button("guide"):
                 self.tour.start()
-            im.set_item_tooltip(tr("Walk through choosing the output folder and the device type."))
             self.item_rects["guide"] = im.get_item_rect()
             draw_sections(self.panels["settings"]["sections"], self.model, self.form, titles=False)
         im.end()

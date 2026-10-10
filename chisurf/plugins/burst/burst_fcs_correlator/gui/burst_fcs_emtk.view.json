@@ -21,18 +21,21 @@
      },
      {
       "action": "load_example",
-      "label": "Example",
+      "label": "Load example",
+      "icon": "🧪",
       "description": "Generate a small deterministic demonstration data set (photon stream and burst table) and add it."
      },
      {
       "action": "guide",
       "label": "Guide",
-      "description": "A step-by-step walk through the tool on the demonstration data."
+      "icon": "📖",
+      "description": "Start a step-by-step tour that points at the real controls."
      },
      {
       "action": "help",
       "label": "Help",
-      "description": "Explain burst-wise FCS, the settings and the fits."
+      "icon": "❓",
+      "description": "Open the help for this window."
      }
     ]
    }

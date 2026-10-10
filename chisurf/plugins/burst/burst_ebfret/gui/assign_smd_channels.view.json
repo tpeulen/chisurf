@@ -8,6 +8,6 @@
       {"type": "choice", "attr": "acceptor", "label": "Acceptor", "options_source": "column_labels", "description": "Column holding the acceptor intensity."},
       {"type": "choice", "attr": "fret", "label": "FRET", "options_source": "column_labels", "description": "Column holding the FRET signal."}
     ]},
-    {"type": "button_row", "buttons": [{"description": "Accept the settings and close.", "label": "Ok", "action": "ok"}, {"description": "Close without applying changes.", "label": "Cancel", "action": "cancel"}]}
+    {"type": "button_row", "buttons": [{"description": "Accept the settings and close.", "label": "Ok", "action": "ok"}, {"description": "Close without applying changes.", "label": "Cancel", "icon": "✕", "action": "cancel"}]}
   ]
 }

@@ -23,7 +23,7 @@ from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
-from chisurf.plugins.emtk_layout import button_row, window_size
+from chisurf.plugins.emtk_layout import action_button, button_row, window_size
 from chisurf.plugins.emtk_wizard import draw_steps
 
 from .model import BatchModel
@@ -137,14 +137,12 @@ class BatchAnalysisApp(ImApp):
         draw_steps(self.model, self.item_rects, on_pick=self._picked_step)
         im.separator()
         draw_sections(self.panels["navigation"]["sections"], self.model, self.form, titles=False)
-        if im.button(tr("Help")):
+        if action_button("help"):
             self.help_window.show()
-        im.set_item_tooltip(tr("Explain the steps of the batch analysis."))
         self.item_rects["help"] = im.get_item_rect()
         im.same_line()
-        if im.button(tr("Guide")):
+        if action_button("guide"):
             self.tour.start()
-        im.set_item_tooltip(tr("Walk through a batch step by step."))
         self.item_rects["guide"] = im.get_item_rect()
 
     def _picked_step(self, index: int) -> None:

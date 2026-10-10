@@ -16,6 +16,7 @@
             {
               "action": "run_maps",
               "label": "Run",
+              "icon": "▶️",
               "description": "Compute N, B, ε and n of every detector window with the stack corrections, detector corrections and moment smoothing set below, in the background. Nothing is recomputed when nothing changed."
             },
             {
@@ -46,7 +47,8 @@
           "buttons": [
             {
               "action": "load_example",
-              "label": "Demo",
+              "label": "Load example",
+              "icon": "🧪",
               "description": "Write and open a simulated scan whose answer is known: monomers on the left, dimers at the same intensity on the right, and compute it. The first time it simulates the scan."
             },
             {
@@ -72,7 +74,8 @@
           "buttons": [
             {
               "action": "open_file",
-              "label": "Browse",
+              "label": "Browse…",
+              "icon": "📂",
               "description": "Browse for a photon imaging file on disk."
             },
             {

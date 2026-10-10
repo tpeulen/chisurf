@@ -127,13 +127,15 @@ def test_declared_window_and_translated_actions_keep_identity(qapp, monkeypatch)
     """The small calculator declaration preserves action IDs across locale changes."""
     from emtk.im_core import split_label
 
+    from chisurf.plugins import emtk_layout
     from chisurf.plugins.calculator.rics_precision.gui import app as module
 
     app = module.RicsPrecisionApp()
     assert app.window_size == (640, 480)
     captions = []
     original = module.im.button
-    monkeypatch.setattr(module, "tr", lambda source: "Translated " + source)
+    # Guide and Help are the shared vocabulary buttons; their captions translate in emtk_layout.
+    monkeypatch.setattr(emtk_layout, "tr", lambda source: "Translated " + source)
 
     def remember(label, *args, **kwargs):
         captions.append(label)
@@ -142,8 +144,8 @@ def test_declared_window_and_translated_actions_keep_identity(qapp, monkeypatch)
     monkeypatch.setattr(module.im, "button", remember)
     app.draw(RecordingPainter(), 0.0, 0.0, 640.0, 480.0)
     own_actions = [label for label in captions if "###" in label]
-    assert [split_label(label)[1] for label in own_actions] == ["Guide", "Help"]
-    assert all(split_label(label)[0].startswith("Translated ") for label in own_actions)
+    assert [split_label(label)[1] for label in own_actions] == ["guide", "help"]
+    assert all("Translated " in split_label(label)[0] for label in own_actions)
 
 
 @_needs_qt

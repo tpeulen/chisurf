@@ -14,6 +14,7 @@ import pytest
 from chisurf.plugins.emtk_test_input import SMALL, Driver, assert_tour_card_clear
 
 from .native_support import admin_folder, app, client, seeded_template  # noqa: F401
+from chisurf.plugins.emtk_layout import action_caption
 
 
 @pytest.fixture
@@ -192,7 +193,9 @@ def test_everything_reachable_at_800x600(app):
 
 def test_the_menus_offer_every_qt_menu_action(driver, app):
     expected = {
-        "File": ["Import...", "Export selected sample...", "Backup database...", "Reset", "Close"],
+        "File": [
+            "Import...", "Export selected sample...", "Backup database...", action_caption("reset"), "Close",
+        ],
         "Settings": ["Reset window layout"],
         "Help": ["Help...", "Guide", "About mmfdb-admin"],
     }

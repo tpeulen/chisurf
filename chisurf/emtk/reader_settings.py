@@ -18,6 +18,7 @@ from emtk.view_form import SECTION_KEYS, FormState, draw_form
 from chisurf.core.dataspec import _SECTION_TYPES, ModelView, Section
 from chisurf.core.support.i18n import tr
 from chisurf.emtk.dataset_picker import DatasetPicker
+from chisurf.plugins.emtk_layout import action_item
 
 
 def native_reader_spec(view: ModelView | Mapping) -> dict:
@@ -81,8 +82,8 @@ class _DataSource:
         self.state = FormState(on_used=lambda name: app.request_frame())
         label = self.options.get("label") or tr("File")
         tip = self.options.get("description") or section.get("description") or tr("Input file.")
-        buttons = [{"label": tr("Browse"), "action": "browse",
-                    "description": tr("Choose an input from disk.")}]
+        browse = action_item("browse", "browse", tr("Choose an input from disk."))
+        buttons = [{**browse, "label": tr(browse["label"])}]
         if self.options.get("mmfdb", True) and self.options.get("mode") != "folder":
             buttons.append({"label": tr("Database"), "action": "database",
                             "description": tr("Choose a dataset from the database.")})

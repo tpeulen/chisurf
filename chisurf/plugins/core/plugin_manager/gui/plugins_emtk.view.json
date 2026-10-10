@@ -16,6 +16,7 @@
             {
               "action": "save",
               "label": "Save",
+              "icon": "💾",
               "description": "Write the plugin settings. Menu changes take effect after a restart."
             },
             {
@@ -72,6 +73,7 @@
             {
               "action": "request_copy",
               "label": "Copy",
+              "icon": "📋",
               "description": "Copy the rows the table shows now, with the column headers, to the clipboard as tab-separated text."
             },
             {
@@ -411,6 +413,7 @@
             {
               "action": "icon_close",
               "label": "Close",
+              "icon": "✕",
               "description": "Close the panel; a changed icon rescans the plugins."
             }
           ]

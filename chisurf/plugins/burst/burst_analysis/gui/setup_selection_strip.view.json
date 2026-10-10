@@ -1,8 +1,8 @@
 {
   "sections": [
     {"type": "button_row", "buttons": [
-      {"action": "start_guide", "label": "Guide", "description": "Walk through choosing, checking and saving this workflow's detector setup."},
-      {"action": "show_help", "label": "Help", "description": "What the detector setup decides for every later step."},
+      {"action": "start_guide", "label": "Guide", "icon": "📖", "description": "Start a step-by-step tour that points at the real controls."},
+      {"action": "show_help", "label": "Help", "icon": "❓", "description": "Open the help for this window."},
       {"action": "proceed", "label": "Proceed to Data Selection", "label_source": "proceed_label", "description": "Go to Data Selection after defining at least one detector."}
     ]},
     {"type": "info", "source": "setup_status", "description": "The named shared setup used by the workflow."}

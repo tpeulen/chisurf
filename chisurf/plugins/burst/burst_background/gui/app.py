@@ -30,7 +30,7 @@ from emtk import im, implot
 from emtk.app import ImApp
 from emtk.im_core import get_current_context
 
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 
 from ..view_model import BackgroundViewModel
 from emtk.i18n import tr
@@ -252,18 +252,16 @@ class BurstBackgroundGui:
 
         btn_half_w = max(50.0, (avail_w - 6.0) * 0.5)
         im.spacing()
-        if im.button(tr("📖 Guide"), (btn_half_w, 24.0)):
+        if action_button("guide", size=(btn_half_w, 24.0)):
             self.track("guide")
             self.start_guide()
         self.remember("guide")
-        im.set_item_tooltip(tr("Start a step-by-step guided tour of this tool."))
 
         im.same_line()
-        if im.button(tr("❓ Help"), (btn_half_w, 24.0)):
+        if action_button("help", size=(btn_half_w, 24.0)):
             self.track("help")
             self.show_help()
         self.remember("help")
-        im.set_item_tooltip(tr("Open the help window with reference documentation."))
 
         im.spacing()
         im.text_colored(ACCENT_GRAY, f"Files loaded: {len(self.model.files)}")

@@ -21,21 +21,13 @@ from emtk.app import ImApp
 from emtk.im_core import get_current_context
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 from emtk.i18n import tr
 
 if TYPE_CHECKING:
     from chimol.hosts.native.app import ChimolApp
 
 HERE = Path(__file__).parent
-
-#: Tooltips of the host's own controls. Everything else on the surface is
-#: chimol's chrome, which carries its own hints.
-TOOLTIPS = {
-    "help": "Explain the viewer: opening structures, the mouse, the command line and the object list.",
-    "guide": "Walk through opening a structure, moving it, and running a command.",
-}
-
 
 class ChimolHostApp(ImApp):
     """Run ChiMOL inside an EMTK surface."""
@@ -197,14 +189,12 @@ class ChimolHostApp(ImApp):
     def _toolbar(self, width: float) -> None:
         """Help and Guide, right-aligned in the status strip."""
         im.same_line(max(0.0, width - 130.0))
-        if im.button(tr("Help")):
+        if action_button("help"):
             self.help_window.show()
-        im.set_item_tooltip(TOOLTIPS["help"])
         self.item_rects["help"] = im.get_item_rect()
         im.same_line()
-        if im.button(tr("Guide")):
+        if action_button("guide"):
             self.tour.start()
-        im.set_item_tooltip(TOOLTIPS["guide"])
         self.item_rects["guide"] = im.get_item_rect()
 
     def _object_count(self) -> int:

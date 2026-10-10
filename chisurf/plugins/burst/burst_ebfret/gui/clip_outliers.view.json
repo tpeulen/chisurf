@@ -9,6 +9,6 @@
       {"type": "value", "attr": "max_outliers", "label": "Exclude when number of Outliers exceeds:", "kind": "int", "minimum": 0,
        "description": "A series with more points outside the range than this is excluded."}
     ]},
-    {"type": "button_row", "buttons": [{"description": "Accept the settings and close.", "label": "OK", "action": "ok"}, {"description": "Close without applying changes.", "label": "Cancel", "action": "cancel"}]}
+    {"type": "button_row", "buttons": [{"description": "Accept the settings and close.", "label": "OK", "action": "ok"}, {"description": "Close without applying changes.", "label": "Cancel", "icon": "✕", "action": "cancel"}]}
   ]
 }

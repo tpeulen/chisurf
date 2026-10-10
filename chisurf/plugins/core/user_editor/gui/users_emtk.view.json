@@ -14,6 +14,7 @@
           "description": "Save or revert the account being edited, fetch the list again, create or delete an account, set a password, copy or export the table.",
           "buttons": [
             {"action": "do_save", "label": "Save",
+             "icon": "💾",
              "description": "Write the edited account back to the database. A rename also moves your stored session token, so you stay signed in."},
             {"action": "ask_revert", "label": "Revert",
              "description": "Discard the edits to this account (asks first)."},
@@ -26,6 +27,7 @@
             {"action": "ask_password", "label": "Password...",
              "description": "Set or change this account's password. It is applied when you Save."},
             {"action": "request_copy", "label": "Copy",
+             "icon": "📋",
              "description": "Copy the rows the table shows now, with the column headers, to the clipboard as tab-separated text."},
             {"action": "request_export", "label": "Export CSV",
              "description": "Write the rows and columns the table shows now to a CSV file."}
@@ -166,6 +168,7 @@
             {"action": "password_set", "label": "Set password",
              "description": "Check the two entries and hold the password until you press Save. Administrators need at least Medium strength."},
             {"action": "password_cancel", "label": "Cancel",
+             "icon": "✕",
              "description": "Close this prompt and forget what was typed."}
           ]
         }
@@ -187,7 +190,7 @@
           "description": "Confirm or cancel.",
           "buttons": [
             {"action": "confirm_yes", "label": "OK", "description": "Do it."},
-            {"action": "confirm_no", "label": "Cancel", "description": "Leave everything as it is."}
+            {"action": "confirm_no", "label": "Cancel", "icon": "✕", "description": "Leave everything as it is."}
           ]
         }
       ]

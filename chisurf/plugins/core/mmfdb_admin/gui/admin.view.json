@@ -79,7 +79,7 @@
            {"action": "refresh", "label": "Refresh", "description": "Reload the MMFDB status and the open panel."},
            {"action": "import_file", "label": "Import", "description": "Import fluorescence, sample or project data (PDBx / PDB-IHM / FLR CIF) into the MMFDB."},
            {"action": "backup_database", "label": "Backup", "description": "Create a backup copy of the active MMFDB database."},
-           {"action": "reset_database", "label": "Reset", "description": "Reset the active MMFDB database to the curated source. A backup is created first (asks first)."}
+           {"action": "reset_database", "label": "Reset", "icon": "♻️", "description": "Reset the active MMFDB database to the curated source. A backup is created first (asks first)."}
          ]}
       ]
     },
@@ -142,7 +142,7 @@
         {"type": "button_row", "description": "Apply or cancel.",
          "buttons": [
            {"action": "ok", "label": "OK", "description": "Apply the value."},
-           {"action": "cancel", "label": "Cancel", "description": "Change nothing."}
+           {"action": "cancel", "label": "Cancel", "icon": "✕", "description": "Change nothing."}
          ]}
       ]
     },
@@ -157,7 +157,7 @@
         {"type": "button_row", "description": "Apply or cancel.",
          "buttons": [
            {"action": "ok", "label": "OK", "description": "Apply the value."},
-           {"action": "cancel", "label": "Cancel", "description": "Change nothing."}
+           {"action": "cancel", "label": "Cancel", "icon": "✕", "description": "Change nothing."}
          ]}
       ]
     },
@@ -172,7 +172,7 @@
         {"type": "button_row", "description": "Sign in or give up.",
          "buttons": [
            {"action": "ok", "label": "OK", "description": "Connect and sign in with these values."},
-           {"action": "cancel", "label": "Cancel", "description": "Close without signing in."}
+           {"action": "cancel", "label": "Cancel", "icon": "✕", "description": "Close without signing in."}
          ]}
       ]
     },
@@ -192,9 +192,9 @@
         {"type": "info", "source": "password_feedback", "description": "What the password still lacks, or why it was refused."},
         {"type": "button_row", "description": "Save, clear or cancel.",
          "buttons": [
-           {"action": "save", "label": "Save", "description": "Save the password."},
+           {"action": "save", "label": "Save", "icon": "💾", "description": "Save the password."},
            {"action": "clear", "label": "Clear", "description": "Remove the password: the user may then sign in without one (asks first; not for administrators)."},
-           {"action": "cancel", "label": "Cancel", "description": "Close and forget what was typed."}
+           {"action": "cancel", "label": "Cancel", "icon": "✕", "description": "Close and forget what was typed."}
          ]}
       ]
     },
@@ -215,7 +215,7 @@
         {"type": "button_row", "description": "Create or cancel.",
          "buttons": [
            {"action": "ok", "label": "Jump", "description": "Create the branch and make it the user's active branch."},
-           {"action": "cancel", "label": "Cancel", "description": "Change nothing."}
+           {"action": "cancel", "label": "Cancel", "icon": "✕", "description": "Change nothing."}
          ]}
       ]
     },
@@ -263,7 +263,7 @@
               ]}}
          ]},
         {"type": "button_row", "description": "Close the details.",
-         "buttons": [{"action": "close_dialog", "label": "Close", "description": "Close this window."}]}
+         "buttons": [{"action": "close_dialog", "label": "Close", "icon": "✕", "description": "Close this window."}]}
       ]
     },
     {
@@ -279,7 +279,7 @@
          "buttons": [
            {"action": "merge_selected", "label": "Merge Selected Group", "description": "Merge the group of the picked row into its primary."},
            {"action": "merge_checked", "label_source": "merge_caption", "label": "Merge Checked Groups", "description": "Merge every ticked group into its primary."},
-           {"action": "cancel_dialog", "label": "Cancel", "description": "Close without merging more."}
+           {"action": "cancel_dialog", "label": "Cancel", "icon": "✕", "description": "Close without merging more."}
          ]}
       ]
     }

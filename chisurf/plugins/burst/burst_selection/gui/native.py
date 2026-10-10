@@ -25,7 +25,15 @@ from emtk.widgets.view_spec import load_view_spec
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.jobs import SnapshotJob
-from chisurf.plugins.emtk_layout import LabelColumn, button_row, cap_widths, labelled, window_size
+from chisurf.plugins.emtk_layout import (
+    LabelColumn,
+    action_caption,
+    action_tooltip,
+    button_row,
+    cap_widths,
+    labelled,
+    window_size,
+)
 
 from .model import BurstSelectionModel
 from emtk.i18n import tr
@@ -397,7 +405,7 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
                     "tip": "Add every TTTR file of a folder (the Qt batch dialog).",
                 },
                 {
-                    "label": "Run",
+                    "label": action_caption("run"),
                     "key": "toolAction_run",
                     "enabled": has_files and not busy,
                     "tip": "Search the bursts of every file and write the burst tables."
@@ -405,7 +413,7 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
                     else "Add TTTR files first.",
                 },
                 {
-                    "label": "Restart",
+                    "label": action_caption("restart"),
                     "key": "toolAction_restart",
                     "enabled": has_files and not busy,
                     "tip": "Search again even though files and settings are unchanged.",
@@ -472,14 +480,14 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
                     "tip": "Read settings from a JSON file.",
                 },
                 {
-                    "label": "Guide",
+                    "label": action_caption("guide"),
                     "key": "guide",
-                    "tip": "Start a step-by-step guided tour of this tool.",
+                    "tip": action_tooltip("guide"),
                 },
                 {
-                    "label": "Help",
+                    "label": action_caption("help"),
                     "key": "help",
-                    "tip": "Open the help window with reference documentation.",
+                    "tip": action_tooltip("help"),
                 },
             ],
             remember=self.remember,

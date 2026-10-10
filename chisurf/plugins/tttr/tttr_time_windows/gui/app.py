@@ -23,7 +23,7 @@ from emtk.docking import DockManager, Region, Split
 from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, action_caption, window_size
 
 if TYPE_CHECKING:
     from .tool import TTTRTimeWindowTool
@@ -158,9 +158,8 @@ class TimeWindowGui(TourTarget):
         im.set_item_tooltip(tr("Empty the file queue and reset the preview and the log."))
         self.remember("clear")
         im.same_line()
-        if im.button(tr("Help")):
+        if action_button("help", id="queue_help"):
             self.show_help()
-        im.set_item_tooltip(tr("How this tool works: queue files, set the window, Process."))
         self.remember("help")
         im.separator()
 
@@ -223,17 +222,15 @@ class TimeWindowGui(TourTarget):
         )
         self.remember("process")
         im.same_line()
-        if im.button(tr("Guide")):
+        if action_button("guide"):
             self.start_guide()
-        im.set_item_tooltip(tr("A step-by-step walk through the tool."))
         self.remember("guide")
         if im.get_line_avail() < 140.0:
             im.new_line()
         else:
             im.same_line()
-        if im.button(tr("Help")):
+        if action_button("help"):
             self.show_help()
-        im.set_item_tooltip(tr("The short help page, also behind Help ▸ About."))
         self.remember("help")
         im.separator()
 
@@ -245,7 +242,7 @@ class TimeWindowGui(TourTarget):
 
         im.text(tr("Output folder:"))
         im.same_line()
-        browse_w = im.calc_text_size("Browse…")[0] + 24.0
+        browse_w = im.calc_text_size(action_caption("browse"))[0] + 24.0
         caption_w = max(im.get_line_avail() - browse_w - 8.0, 60.0)
         im.set_next_item_width(caption_w)
         _, hint = im.input_text_with_hint(
@@ -257,10 +254,9 @@ class TimeWindowGui(TourTarget):
         if hint != tool.output_dir_text:
             tool.output_dir_text = hint
         im.same_line()
-        if im.button(tr("Browse…")):
+        if action_button("browse", tooltip=tr("Choose the output folder manually.")):
             if callable(self.on_browse):
                 self.on_browse()
-        im.set_item_tooltip(tr("Choose the output folder manually."))
         self.remember("output")
         # The status line (the Qt window's status bar): what was loaded, done or failed.
         if tool.message:

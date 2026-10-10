@@ -127,6 +127,7 @@
           "buttons": [
             {
               "label": "Run",
+              "icon": "▶️",
               "action": "run",
               "description": "Start the empirical-Bayes analysis on the backend."
             },
@@ -137,6 +138,7 @@
             },
             {
               "label": "Reset",
+              "icon": "♻️",
               "action": "reset",
               "description": "Discard the result of All/Current and re-guess its prior."
             }

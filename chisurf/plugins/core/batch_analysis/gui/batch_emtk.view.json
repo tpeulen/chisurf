@@ -243,7 +243,8 @@
             "buttons": [
               {
                 "action": "browse_results",
-                "label": "Browse...",
+                "label": "Browse…",
+                "icon": "📂",
                 "description": "Choose where to save the results CSV."
               },
               {

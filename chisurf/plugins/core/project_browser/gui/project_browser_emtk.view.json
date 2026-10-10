@@ -45,12 +45,14 @@
           {
             "action": "guide",
             "label": "Guide",
-            "description": "Walk through finding, inspecting, restoring and saving projects."
+            "icon": "📖",
+            "description": "Start a step-by-step tour that points at the real controls."
           },
           {
             "action": "help",
             "label": "Help",
-            "description": "Explain project versions, restoration, permissions and archives."
+            "icon": "❓",
+            "description": "Open the help for this window."
           }
         ]
       }
@@ -286,6 +288,7 @@
           {
             "action": "cancel_dialog",
             "label": "Cancel",
+            "icon": "✕",
             "description": "Close this dialog without changing the database."
           }
         ]

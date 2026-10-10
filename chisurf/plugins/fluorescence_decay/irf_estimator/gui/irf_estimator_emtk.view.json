@@ -41,13 +41,15 @@
           "buttons": [
             {
               "action": "request_guide",
-              "label": "📖  Guide",
-              "description": "Walk through loading a decay, subtracting the background and estimating the IRF."
+              "label": "Guide",
+              "icon": "📖",
+              "description": "Start a step-by-step tour that points at the real controls."
             },
             {
               "action": "request_help",
-              "label": "❓  Help",
-              "description": "What blind IRF estimation does, its assumptions and its failure modes."
+              "label": "Help",
+              "icon": "❓",
+              "description": "Open the help for this window."
             }
           ]
         },

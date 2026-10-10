@@ -23,7 +23,7 @@ from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.jobs import SnapshotJob
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 
 from .model import TTTR_FILTERS, PhotonTableViewModel
 
@@ -101,14 +101,12 @@ class PhotonTableApp(ImApp):
     def draw_file(self, box: Any) -> None:
         """The left window: Open, Copy, Help, Guide and the file summary."""
         draw_sections(self.panels["file"]["sections"][:1], self.model, self.form, titles=False)
-        if im.button(tr("Guide")):
+        if action_button("guide"):
             self.tour.start()
-        im.set_item_tooltip(tr("A step-by-step walk through the tool."))
         self.item_rects["guide"] = im.get_item_rect()
         im.same_line()
-        if im.button(tr("Help")):
+        if action_button("help"):
             self.help_window.show()
-        im.set_item_tooltip(tr("The short help page."))
         self.item_rects["help"] = im.get_item_rect()
         im.separator()
         x0, y0 = im.get_cursor_screen_pos()

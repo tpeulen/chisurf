@@ -21,7 +21,7 @@ from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 
 from .model import LLTFModel
 from emtk.i18n import tr
@@ -189,16 +189,12 @@ class LLTFApp(TourTarget, ImApp):
 
     def controls(self, box):
         m = self.model
-        if im.button(tr("📖  Guide")):
+        if action_button("guide"):
             self.tour.start()
-        im.set_item_tooltip(tr("Walk through loading the inputs and running a real lifetime analysis."))
         self.remember("Guide")
         im.same_line()
-        if im.button(tr("❓  Help")):
+        if action_button("help"):
             self.help_window.show()
-        im.set_item_tooltip(
-            tr("What the fit decides by rule, what it reports, and what to check before believing it.")
-        )
         self.remember("help")
         im.separator()
         self.form.rects.clear()

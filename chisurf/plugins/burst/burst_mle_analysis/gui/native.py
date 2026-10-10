@@ -24,7 +24,15 @@ from chisurf.core.support.i18n import tr
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.jobs import SnapshotJob
-from chisurf.plugins.emtk_layout import LabelColumn, button_row, cap_widths, labelled, window_size
+from chisurf.plugins.emtk_layout import (
+    LabelColumn,
+    action_caption,
+    action_tooltip,
+    button_row,
+    cap_widths,
+    labelled,
+    window_size,
+)
 
 from . import fit_view
 from .model import MleViewModel
@@ -275,14 +283,14 @@ class MleNativeApp(TourTarget, ImApp):
                     "tip": "Read settings and detectors from a JSON file.",
                 },
                 {
-                    "label": "Guide",
+                    "label": action_caption("guide"),
                     "key": "guide",
-                    "tip": "Start a step-by-step guided tour of this tool.",
+                    "tip": action_tooltip("guide"),
                 },
                 {
-                    "label": "Help",
+                    "label": action_caption("help"),
                     "key": "help",
-                    "tip": "Open the help window with reference documentation.",
+                    "tip": action_tooltip("help"),
                 },
             ],
             remember=self.remember,

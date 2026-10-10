@@ -13,6 +13,7 @@ import pytest
 from emtk.testing import RecordingPainter
 
 from chisurf.plugins.tttr.trace_browser.test.conftest import ALEX, OVERLAP  # noqa: E402
+from chisurf.plugins.emtk_layout import action_caption
 
 HERE = Path(__file__).parent
 GUI = HERE.parent / "gui"
@@ -236,11 +237,11 @@ def test_every_control_has_a_tooltip(setups_file):
         inv = emtk_inventory(app)
         assert inv["controls_without_tooltip"] == []
         labels = {row["label"] for row in inv["interactive"]}
-        assert {"Continue", "Save", "Rename", "Delete", "Read", "Optical Setup..."} <= labels
+        assert {"Continue", action_caption("save"), "Rename", "Delete", "Read", "Optical Setup..."} <= labels
         app.continue_to_browser()
         inv = emtk_inventory(app)
         assert inv["controls_without_tooltip"] == []
-        assert {"← Select setup", "Open", "Clear", "Clear caches"} <= {
+        assert {"← Select setup", action_caption("open"), "Clear", "Clear caches"} <= {
             row["label"] for row in inv["interactive"]
         }
     finally:

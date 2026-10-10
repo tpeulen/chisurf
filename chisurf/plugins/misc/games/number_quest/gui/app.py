@@ -10,7 +10,7 @@ from pathlib import Path
 from emtk import i18n, im
 from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RETURN, KEY_RIGHT, KEY_UP
 
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import sound_toggle, window_size
 from chisurf.plugins.misc.games._base import GameApp
 from chisurf.plugins.misc.games.gui.keys import blocked
 
@@ -238,26 +238,11 @@ class NumberQuestApp(GameApp):
         im.begin("##number-quest", (x, y, w, h))
         draw = im.get_window_draw_list()
         draw.add_rect_filled((x, y), (x + w, y + h), (8, 9, 11, 255))
-        draw.add_rect_filled((x, y), (x + w, y + 34), (239, 239, 239, 255))
-        draw.add_rect_filled((x + 4, y + 2), (x + 82, y + 31), (173, 173, 173, 255), rounding=2)
-        draw.add_rect_filled((x + 5, y + 3), (x + 81, y + 30), (248, 248, 248, 255), rounding=2)
-        im.push_font_scale(1.4)
-        label = tr("Sound")
-        label_w, label_h = draw.calc_text_size(label)
-        # Greyed without an audio backend: emtk plays no sound (the Qt game's
-        # chigame audio is QtMultimedia), and a switch that changes nothing
-        # must not look like one that works.
-        ink = (0, 0, 0, 255) if self.audio is not None else (150, 150, 150, 255)
-        draw.add_text((x + 43 - label_w / 2, y + 16.5 - label_h / 2), ink, label)
-        im.pop_font_scale()
         im.set_cursor_screen_pos((x + 4, y + 2))
-        if im.invisible_button("##sound", (78, 29)) and self.audio is not None:
+        # Greyed without an audio backend: emtk plays no sound (the Qt game's
+        # chigame audio is QtMultimedia).
+        if sound_toggle(self.sound_enabled, available=self.audio is not None, shortcut="M"):
             self.set_sound()
-        im.set_item_tooltip(
-            tr("Music and sound effects (off by default).")
-            if self.audio is not None
-            else tr("No sound here: this window has no audio output.")
-        )
         scale = min(w / VIEW_W, max(h - 34, 1) / VIEW_H)
         ox, oy = x + (w - VIEW_W * scale) / 2, y + 34 + (h - 34 - VIEW_H * scale) / 2
         self.board = (ox, oy, scale)

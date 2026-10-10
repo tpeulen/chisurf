@@ -41,12 +41,14 @@
      {
       "action": "guide",
       "label": "Guide",
-      "description": "A step-by-step walk through a worked example: Rhodamine 6G at 488 nm."
+      "icon": "📖",
+      "description": "Start a step-by-step tour that points at the real controls."
      },
      {
       "action": "help",
       "label": "Help",
-      "description": "Explain saturation, the scheme matrices and how to read the curves."
+      "icon": "❓",
+      "description": "Open the help for this window."
      }
     ]
    }

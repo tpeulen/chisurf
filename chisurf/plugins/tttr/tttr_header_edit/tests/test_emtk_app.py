@@ -11,6 +11,7 @@ import json
 import os
 
 import pytest
+from chisurf.plugins.emtk_layout import action_caption
 
 try:
     from qtpy import QtWidgets
@@ -109,7 +110,7 @@ def test_a_frame_draws_actions_rows_and_json(tool, monkeypatch):
     tool.app.draw(painter, 0.0, 0.0, 900.0, 620.0)
 
     assert painter.ops > 120
-    assert "📂 Open" in painter.strings
+    assert action_caption("open") in painter.strings
     assert "💾 Save as PTU" in painter.strings
     # The sample header's tags are on screen…
     assert "File_GUID" in painter.strings

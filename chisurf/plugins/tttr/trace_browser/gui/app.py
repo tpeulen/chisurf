@@ -59,7 +59,7 @@ from chisurf.core.setup_channel_definition import ChannelDefinition
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.jobs import SnapshotJob
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 
 from .host_lookup import default_request_handler
 from .model import TraceBrowserModel
@@ -512,19 +512,12 @@ class TraceBrowserApp(ImApp):
 
     def _draw_help_buttons(self) -> None:
         """Help and Guide, at the top of both pages."""
-        if im.button(tr("Help")):
+        if action_button("help"):
             self.help_window.show()
-        im.set_item_tooltip(
-            tr("Explain the Trace Browser: the setup page, the file table, the trace plot, "
-            "exporting, deleting and the hand-offs to other tools.")
-        )
         self.item_rects["help"] = im.get_item_rect()
         im.same_line()
-        if im.button(tr("Guide")):
+        if action_button("guide"):
             self.tour.start()
-        im.set_item_tooltip(
-            tr("Walk through accepting a setup, opening a folder, selecting files and exporting them.")
-        )
         self.item_rects["guide"] = im.get_item_rect()
 
     def _tour_outcomes(self) -> None:
@@ -814,9 +807,10 @@ class TraceBrowserApp(ImApp):
             )
             self.item_rects["confirm_yes"] = im.get_item_rect()
             im.same_line()
-            if im.button(tr("Cancel") + "##confirm_no"):
+            if action_button(
+                "cancel", tooltip=tr("Keep the files where they are. Nothing changes."), id="confirm_no"
+            ):
                 self.model.confirm_no()
-            im.set_item_tooltip(tr("Keep the files where they are. Nothing changes."))
             self.item_rects["confirm_no"] = im.get_item_rect()
         im.end()
 

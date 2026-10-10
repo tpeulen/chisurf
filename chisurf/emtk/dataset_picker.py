@@ -9,6 +9,8 @@ from pathlib import Path
 from emtk.i18n import tr
 from typing import Any, Callable, Sequence
 
+from chisurf.plugins.emtk_layout import action_button
+
 DEFAULT_KINDS = ("raw_data", "raw_measurement", "external_reference")
 _SESSION_CLIENT: Any = None
 _EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="mmfdb-picker")
@@ -216,9 +218,12 @@ class DatasetPicker:
         if self._pending is not None:
             self._request_completion_frame()
             im.text_wrapped("Loading datasets…" if self._pending_kind == "browse" else "Opening dataset…")
-            if im.button(tr("Cancel") + "##dataset_pending_cancel") or pressed == "close":
+            if action_button(
+                "cancel",
+                tooltip=tr("Close the picker; the database operation can finish in the background."),
+                id="dataset_pending_cancel",
+            ) or pressed == "close":
                 self.close()
-            im.set_item_tooltip(tr("Close the picker; the database operation can finish in the background."))
             self._dialog.end()
             return
         for label, scope in (("Mine", "own"), ("Public", "public"), ("All", "all")):
@@ -277,9 +282,10 @@ class DatasetPicker:
         im.set_item_tooltip(tr("Open the selected dataset in this tool; remote objects are downloaded by MMFDB."))
         im.end_disabled()
         im.same_line()
-        if im.button(tr("Cancel") + "##dataset_cancel"):
+        if action_button(
+            "cancel", tooltip=tr("Close the picker without opening a dataset."), id="dataset_cancel"
+        ):
             self.close()
-        im.set_item_tooltip(tr("Close the picker without opening a dataset."))
         self._dialog.end()
         if pressed == "close":
             self.close()

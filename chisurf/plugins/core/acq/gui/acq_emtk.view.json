@@ -33,7 +33,7 @@
       {"type":"toggle","attr":"show_mcs","label":"MCS trace tab","description":"Show the pipeline MCS trace sample count."},
       {"type":"button_row","description":"Clear result data or restore native defaults.","buttons":[
         {"action":"clear","label":"Clear","description":"Clear displayed pipeline results without changing device selection."},
-        {"action":"reset","label":"Reset","description":"Restore native defaults without constructing or contacting a device."}]}]},
+        {"action":"reset","label":"Reset","icon":"♻️","description":"Restore native defaults without constructing or contacting a device."}]}]},
     {"type":"panel","title":"Pipeline results","description":"Result tabs contain values calculated by AcquisitionPipeline from actual device FIFO or simulator records.","sections":[{"type":"custom","key":"pipeline_results","description":"Native tabs for real pipeline-derived overview, decay, correlation, macrotime, and MCS state."}]}
   ]
 }

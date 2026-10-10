@@ -23,7 +23,8 @@
             },
             {
               "action": "load_example",
-              "label": "Load demo",
+              "label": "Load example",
+              "icon": "🧪",
               "description": "Simulate a scan whose flow profile is known, and load it, so the arrows can be checked against a number. The first time it simulates the scan, which takes about twenty seconds; later it reuses the file."
             },
             {
@@ -49,7 +50,8 @@
           "buttons": [
             {
               "action": "open_file",
-              "label": "Browse",
+              "label": "Browse…",
+              "icon": "📂",
               "description": "Browse for an image stack or photon-stream file on disk."
             },
             {

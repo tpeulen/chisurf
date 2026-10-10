@@ -22,6 +22,8 @@ from emtk.texture import Texture
 from emtk.widgets.text_editor import Language, TextEditor
 from emtk.i18n import tr
 
+from chisurf.plugins.emtk_layout import action_button
+
 from .html_output import html_blocks
 
 SHELL_EXECUTION_LOCK = threading.Lock()
@@ -694,9 +696,10 @@ class NativeNotebook:
                 self.add_cell("markdown")
             im.set_item_tooltip(tr("Append a Markdown cell"))
             im.same_line()
-            if im.button(tr("↻ Restart")):
+            if action_button(
+                "restart", tooltip=tr("Reset notebook variables; saved cell outputs remain")
+            ):
                 self.restart_shell()
-            im.set_item_tooltip(tr("Reset notebook variables; saved cell outputs remain"))
             im.same_line()
             if im.button(tr("Clear outputs")):
                 self.clear_outputs()

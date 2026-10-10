@@ -57,12 +57,14 @@
       "type": "button_row",
       "buttons": [
         {
-          "label": "💾 Save",
+          "label": "Save",
+          "icon": "💾",
           "action": "save",
           "description": "Save the channel-pair definitions for this detector setup."
         },
         {
-          "label": "✕ Close",
+          "label": "Close",
+          "icon": "✕",
           "action": "request_close",
           "description": "Close the editor."
         }

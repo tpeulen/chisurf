@@ -37,9 +37,12 @@ from chisurf.plugins.tttr.trace_browser.test.test_emtk_trace_browser_t3b import 
     SUMS,
     settle_all,
 )
+from emtk.view_form import icon_caption
+
+from chisurf.plugins.emtk_layout import action_caption
 
 REPO = next(p for p in pathlib.Path(__file__).parents if (p / "pyproject.toml").exists())
-BUTTONS = ["Select all", "Export", "CSV", "DOCX", "Delete", "HMM", "TW", "NDX"]
+BUTTONS = ["Select all", action_caption("export"), "CSV", "DOCX", "Delete", "HMM", "TW", "NDX"]
 
 
 # ---- helpers ---------------------------------------------------------------------------------
@@ -238,7 +241,8 @@ def test_a_subset_in_the_table_state_is_the_selection(work):
 
 def test_the_new_buttons_are_in_the_spec_in_order():
     spec = json.loads(SPEC.read_text())
-    labels = [b["label"] for s in all_sections(spec) for b in s.get("buttons", [])]
+    labels = [icon_caption(b.get("icon", ""), b["label"])
+              for s in all_sections(spec) for b in s.get("buttons", [])]
     assert labels[4:12] == BUTTONS  # after the first row of four
     from chisurf.plugins.tttr.trace_browser.gui.model import TraceBrowserModel
 
@@ -260,7 +264,7 @@ def test_export_copies_exactly_the_selected_files_with_equal_bytes(work, tmp_pat
     try:
         open_folder(app, work, subfolders=True)
         select(app, "m000.spc", "sub/m002.spc")
-        press(app, monkeypatch, "Export")
+        press(app, monkeypatch, action_caption("export"))
         assert app.dialog.title == "Select destination folder for the exported files"
         choose_destination(app, monkeypatch, dest)
         assert sorted(p.name for p in dest.iterdir()) == ["m000.spc", "m002.spc"]
@@ -279,7 +283,7 @@ def test_a_cancelled_export_dialog_copies_nothing(work, tmp_path, monkeypatch):
     app = make_app()
     try:
         open_folder(app, work)
-        press(app, monkeypatch, "Export")
+        press(app, monkeypatch, action_caption("export"))
         assert app.dialog is not None
         with pressing(monkeypatch, "Cancel"):
             frames(app, n=1)
@@ -324,14 +328,14 @@ def test_the_buttons_are_greyed_without_a_selection_or_a_host(work):
         open_folder(app, work)
         states = button_states(app)
         assert (
-            states["Select all"] is False and states["Export"] is False and states["CSV"] is False
+            states["Select all"] is False and states[action_caption("export")] is False and states["CSV"] is False
         )
         assert states["Delete"] is False
         assert states["HMM"] is True and states["TW"] is True and states["NDX"] is True  # no host
         app.model.set_selection([])
         app.model.multi_selection = []
         states = button_states(app)
-        assert states["Export"] is True and states["Delete"] is True and states["CSV"] is True
+        assert states[action_caption("export")] is True and states["Delete"] is True and states["CSV"] is True
     finally:
         app.close()
 
@@ -519,7 +523,7 @@ def test_delete_asks_first_then_moves_the_files_and_their_companions_to_trash(wo
         assert "Move to .trash?" in text and "Move to .trash" in text and "Cancel" in text
         assert "m000.set" in confirm["message"] and "m000.spc" in confirm["message"]
         assert (work / "m000.spc").exists()  # nothing moved before the answer
-        assert button_states(app)["Export"] is True  # the window is modal: others greyed
+        assert button_states(app)[action_caption("export")] is True  # the window is modal: others greyed
         with pressing(monkeypatch, "Move to .trash"):
             frames(app, n=1)
         settle_all(app)
@@ -549,7 +553,7 @@ def test_a_declined_delete_confirmation_changes_nothing(work, monkeypatch):
         select(app, "m000.spc", "m001.spc")
         press(app, monkeypatch, "Delete", n=1)
         assert app.model.confirm is not None
-        with pressing(monkeypatch, "Cancel"):
+        with pressing(monkeypatch, action_caption("cancel")):
             frames(app, n=1)
         settle_all(app)
         assert app.model.confirm is None and "no file was moved" in app.model.status_text
@@ -748,7 +752,7 @@ def test_the_help_window_opens_from_the_button_and_shows_the_help_text(work, mon
     try:
         open_folder(app, work)
         assert "The Trace Browser pages through" not in " | ".join(frames(app, n=1))
-        press(app, monkeypatch, "Help", n=2)
+        press(app, monkeypatch, action_caption("help"), n=2)
         text = " | ".join(frames(app, n=2))
         assert "Trace Browser" in text and "Selecting files" in text
         assert (GUI / "help.md").read_text().startswith("# Trace Browser")
@@ -853,7 +857,7 @@ def test_the_guide_and_help_buttons_start_the_tour_and_the_help(work, monkeypatc
     try:
         open_folder(app, work)
         assert not app.tour.active
-        press(app, monkeypatch, "Guide", n=2)
+        press(app, monkeypatch, action_caption("guide"), n=2)
         assert app.tour.active and app.tour.step_idx == 0
         text = " | ".join(frames(app, n=2))
         assert "Step 1 of" in text and "What this does" in text and "Close Tour" in text
@@ -895,15 +899,15 @@ def test_every_control_has_a_tooltip_with_the_new_controls(work, tmp_path):
         inv = emtk_inventory(app)
         assert inv["controls_without_tooltip"] == []
         labels = {row["label"] for row in inv["interactive"]}
-        assert set(BUTTONS) | {"Help", "Guide"} <= labels
+        assert set(BUTTONS) | {action_caption("help"), action_caption("guide")} <= labels
         app.model.delete_selected()  # the confirmation window's buttons
         inv = emtk_inventory(app)
         assert inv["controls_without_tooltip"] == []
-        assert {"Move to .trash", "Cancel"} <= {row["label"] for row in inv["interactive"]}
+        assert {"Move to .trash", action_caption("cancel")} <= {row["label"] for row in inv["interactive"]}
         app.model.confirm_no()
         app.model.back_to_setup()
         inv = emtk_inventory(app)  # Help and Guide on the setup page too
-        assert inv["controls_without_tooltip"] == [] and {"Help", "Guide"} <= {
+        assert inv["controls_without_tooltip"] == [] and {action_caption("help"), action_caption("guide")} <= {
             r["label"] for r in inv["interactive"]
         }
     finally:

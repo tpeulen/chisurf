@@ -16,6 +16,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+
+from chisurf.plugins.emtk_layout import action_caption
 from emtk import keys
 
 from chisurf.core.experiments.tcspc.reader import TCSPCReader
@@ -262,9 +264,9 @@ def test_browse_opens_the_file_dialog_and_a_clicked_file_fills_the_field(ui, fil
     ui.app.last_dir = str(Path(files["irf_vv"]).parent)
     index = ["irf_vv_path", "irf_vh_path", "data_vv_path", "data_vh_path"].index(attr)
     ui.click(
-        ui.text_rect(ui.draw(), "Browse", last=False)
+        ui.text_rect(ui.draw(), action_caption("browse"), last=False)
         if index == 0
-        else [t[:4] for t in ui.draw().texts if t[5] == "Browse"][index]
+        else [t[:4] for t in ui.draw().texts if t[5] == action_caption("browse")][index]
     )
     assert ui.app.dialog is not None
     name = Path(files[attr.replace("_path", "")]).name
@@ -278,7 +280,7 @@ def test_the_file_dialog_cancel_and_close_leave_the_path_unchanged(ui, files):
     m = go(ui, "Data")
     ui.app.last_dir = str(Path(files["irf_vv"]).parent)
     for closer in ("Cancel", "×"):
-        ui.click_text("Browse", last=False)
+        ui.click_text(action_caption("browse"), last=False)
         assert ui.app.dialog is not None
         ui.click_text(closer)
         assert ui.app.dialog is None
@@ -723,7 +725,7 @@ def test_create_fits_after_changing_the_reader_demands_a_reload(ui, files):
 
 
 def test_help_opens_a_window_with_live_links_and_closes(ui):
-    ui.click_text("Help")
+    ui.click_text(action_caption("help"))
     assert ui.app.help_window.open
     assert "Help" in " ".join(t[5] for t in ui.draw().texts)
     ui.click_text("Close")
@@ -742,7 +744,7 @@ def test_the_help_links_point_at_pages_that_exist():
 
 
 def test_the_tour_is_walked_with_the_real_controls_and_waits_at_each_await(ui, files, tmp_path):
-    ui.click_text("Guide")
+    ui.click_text(action_caption("guide"))
     tour = ui.app.tour
     assert tour.active and tour.step_idx == 0
     ui.click_text("Next ►")

@@ -16,7 +16,9 @@ from emtk.i18n import tr
 
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
-from chisurf.plugins.emtk_layout import LabelColumn, button_row, labelled, layout_spec, window_size
+from chisurf.plugins.emtk_layout import (
+    LabelColumn, action_caption, action_tooltip, button_row, labelled, layout_spec, window_size,
+)
 
 from .canvas import ImageCanvas
 from .jobs import SnapshotJob
@@ -314,16 +316,8 @@ class PsfDeterminationApp(ImApp):
                     "enabled": idle,
                     "tip": "Restore settings and reopen the stored source stack when available.",
                 },
-                {
-                    "label": "Help",
-                    "key": "help",
-                    "tip": "Explain how a bead stack gives the PSF and what to check.",
-                },
-                {
-                    "label": "Guide",
-                    "key": "guide",
-                    "tip": "Walk through loading, detection, fitting and the checks.",
-                },
+                {"label": action_caption("help"), "key": "help", "tip": action_tooltip("help")},
+                {"label": action_caption("guide"), "key": "guide", "tip": action_tooltip("guide")},
             ],
             remember=self.remember,
         )

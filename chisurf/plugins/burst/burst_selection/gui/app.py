@@ -42,6 +42,7 @@ from emtk.im_core import Col
 from chisurf.core.datastore import column_names, numeric_column, row_count
 from chisurf.core.fio.staging import TTTR_FILE_FILTER
 from chisurf.gui.widgets.tools.emtk_help_guide import EmTkHelpWindow, TourTarget
+from chisurf.plugins.emtk_layout import action_button
 from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
     load_detector_setups,
 )
@@ -569,14 +570,12 @@ class BurstSelectionGui:
         im.set_item_tooltip(tr("Send the current burst selection to ndXplorer."))
 
         im.same_line()
-        if im.button(tr("Guide")):
+        if action_button("guide"):
             self.start_guide()
-        im.set_item_tooltip(tr("Start a step-by-step guided tour of burst selection."))
 
         im.same_line()
-        if im.button(tr("Help")):
+        if action_button("help"):
             self.show_help()
-        im.set_item_tooltip(tr("Open the help window with reference documentation."))
 
         # Status text & active file summary
         files = getattr(self.tool, "_file_paths", [])

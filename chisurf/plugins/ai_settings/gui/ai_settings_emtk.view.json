@@ -252,11 +252,13 @@
                 },
                 {
                   "label": "Save",
+                  "icon": "💾",
                   "action": "save",
                   "description": "Persist the current provider's settings to ai_api_settings.json in the settings folder."
                 },
                 {
                   "label": "Reset",
+                  "icon": "♻️",
                   "action": "reset",
                   "description": "Reset the current provider's fields to defaults (not saved until you press Save)."
                 }

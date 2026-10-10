@@ -19,7 +19,15 @@ from emtk.app import ImApp
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
-from chisurf.plugins.emtk_layout import LabelColumn, button_row, labelled, layout_spec, window_size
+from chisurf.plugins.emtk_layout import (
+    LabelColumn,
+    action_caption,
+    action_tooltip,
+    button_row,
+    labelled,
+    layout_spec,
+    window_size,
+)
 
 from .native import SpectraState
 from .translations import LOCALES, TOOLTIPS, install, tr
@@ -459,8 +467,8 @@ class SpectraApp(TourTarget, ImApp):
             i18n.set_locale(LOCALES[index])
         pressed = button_row(
             [
-                {"label": tr("Guide"), "key": "guide", "tip": tr(TOOLTIPS.get("Guide", "Guide"))},
-                {"label": tr("Help"), "key": "help", "tip": tr(TOOLTIPS.get("Help", "Help"))},
+                {"label": action_caption("guide"), "key": "guide", "tip": action_tooltip("guide")},
+                {"label": action_caption("help"), "key": "help", "tip": action_tooltip("help")},
             ],
             width - 8,
             remember=lambda name: self.item_rects.__setitem__(name, im.get_item_rect()),

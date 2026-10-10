@@ -245,8 +245,9 @@
           "type": "button_row",
           "description": "Open Help or the Plugin Manager.",
           "buttons": [
-            {"action": "open_help", "label": "Open Help",
-             "description": "Browse experiment-specific guides and built-in documentation."},
+            {"action": "open_help", "label": "Help",
+             "icon": "❓",
+             "description": "Open the help for this window."},
             {"action": "open_plugin_manager", "label": "Open Plugin Manager",
              "description": "Manage installed plugins."}
           ]

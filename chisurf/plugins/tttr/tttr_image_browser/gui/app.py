@@ -38,7 +38,7 @@ from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.image_canvas import ImageCanvas
 from chisurf.emtk.jobs import SnapshotJob
-from chisurf.plugins.emtk_layout import cap_widths, group_by_width, window_size
+from chisurf.plugins.emtk_layout import action_button, cap_widths, group_by_width, window_size
 
 from .model import ImageBrowserModel, MosaicLoader
 
@@ -414,9 +414,8 @@ class TTTRImageBrowserApp(ImApp):
         )
         self.item_rects["use_setup"] = im.get_item_rect()
         im.same_line()
-        if im.button(tr("Help") + "##setup_help"):
+        if action_button("help", id="setup_help"):
             self.help_window.show()
-        im.set_item_tooltip(tr("Explain the detector setup and the browser."))
         self.item_rects["setup_help"] = im.get_item_rect()
         im.separator()
         assert self.editor is not None

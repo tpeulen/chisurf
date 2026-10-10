@@ -9,6 +9,7 @@ import numpy as np
 
 from chisurf.core.fio.lut_context import clear_active_setup_lut, get_active_setup_lut
 from chisurf.core.setup_channel_definition import ChannelDefinition
+from chisurf.plugins.emtk_layout import action_caption
 
 
 def definition(file_path=None, db=None):
@@ -368,7 +369,7 @@ def test_standalone_channel_editor_hover_help_and_populated_narrow_frame(tmp_pat
         app.io.delta_time = 0.01
         painter = RecordingPainter()
         app.draw(painter, 0.0, 0.0, 800.0, 600.0)
-        button = next(text for text in painter.texts if text[5] == "Save")
+        button = next(text for text in painter.texts if text[5] == action_caption("save"))
         app.hover(button[0] + button[2] / 2, button[1] + button[3] / 2)
         hovered = RecordingPainter()
         app.draw(hovered, 0.0, 0.0, 800.0, 600.0)

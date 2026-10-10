@@ -20,6 +20,7 @@ from emtk.im_core import Col
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.typed_field import typed_number_field
+from chisurf.plugins.emtk_layout import action_button
 
 if TYPE_CHECKING:
     from .tool import PhotonTableTool
@@ -114,17 +115,15 @@ class PhotonTableGui(TourTarget):
         self.remember("copy")
 
         im.same_line()
-        if im.button(tr("📖 Guide")):
+        if action_button("guide"):
             self.start_guide()
-        im.set_item_tooltip(tr("A step-by-step walk through the tool."))
         self.remember("guide")
         if im.get_line_avail() < 110.0:
             im.new_line()
         else:
             im.same_line()
-        if im.button(tr("❓ Help")):
+        if action_button("help"):
             self.show_help()
-        im.set_item_tooltip(tr("The short help page."))
         self.remember("help")
 
         im.separator()

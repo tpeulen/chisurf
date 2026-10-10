@@ -124,7 +124,8 @@
           "buttons": [
             {
               "action": "browse_output_folder",
-              "label": "📁  Browse…",
+              "label": "Browse…",
+              "icon": "📂",
               "description": "Choose the batch output directory."
             },
             {

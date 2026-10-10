@@ -16,7 +16,15 @@ from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.jobs import SnapshotJob
-from chisurf.plugins.emtk_layout import LabelColumn, button_row, labelled, layout_spec, window_size
+from chisurf.plugins.emtk_layout import (
+    LabelColumn,
+    action_caption,
+    action_tooltip,
+    button_row,
+    labelled,
+    layout_spec,
+    window_size,
+)
 
 from .strings import install_translations, tr
 from .view_model import HmmViewModel
@@ -181,16 +189,8 @@ class HmmApp(ImApp):
                     "enabled": idle and m.fit is not None,
                     "tip": "Write the last fit (states, transitions, dwell times) as JSON.",
                 },
-                {
-                    "label": "Help",
-                    "key": "help",
-                    "tip": "Explain the model, the state scan and what refutes a fit.",
-                },
-                {
-                    "label": "Guide",
-                    "key": "guide",
-                    "tip": "Walk through loading, the state count and the checks of a fit.",
-                },
+                {"label": action_caption("help"), "key": "help", "tip": action_tooltip("help")},
+                {"label": action_caption("guide"), "key": "guide", "tip": action_tooltip("guide")},
             ],
             remember=self.remember,
         )

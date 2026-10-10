@@ -27,7 +27,8 @@
             },
             {
               "action": "save",
-              "label": "💾  Save",
+              "label": "Save",
+              "icon": "💾",
               "description": "Write the current shifted cumulative VV/VH decay to Output."
             },
             {

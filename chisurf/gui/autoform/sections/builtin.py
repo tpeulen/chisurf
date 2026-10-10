@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import math
 
+from emtk.view_form import icon_caption
 from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf as cs
@@ -756,7 +757,8 @@ class ButtonRowWidget(QtWidgets.QWidget):
     """A horizontal row of action buttons for a :class:`ButtonRowSection`.
 
     Each button dict has keys ``label``, ``action`` (a zero-arg model method) and
-    optional ``description``. Lets tool toolbars be authored declaratively.
+    optional ``description`` and ``icon`` (drawn in front of the label, as the
+    native renderer does). Lets tool toolbars be authored declaratively.
     """
 
     is_form_field = False
@@ -772,7 +774,7 @@ class ButtonRowWidget(QtWidgets.QWidget):
         else:
             for item in section.buttons:
                 btn = QtWidgets.QToolButton()
-                btn.setText(item.get("label", ""))
+                btn.setText(icon_caption(item.get("icon", ""), item.get("label", "")))
                 desc = _wrap_tooltip(item.get("description", ""))
                 if desc:
                     btn.setToolTip(desc)
@@ -796,7 +798,7 @@ class ButtonRowWidget(QtWidgets.QWidget):
         menu = QtWidgets.QMenu(tool)
         menu.setToolTipsVisible(True)
         for item in section.buttons:
-            act = menu.addAction(item.get("label", ""))
+            act = menu.addAction(icon_caption(item.get("icon", ""), item.get("label", "")))
             desc = _wrap_tooltip(item.get("description", ""))
             if desc:
                 act.setToolTip(desc)

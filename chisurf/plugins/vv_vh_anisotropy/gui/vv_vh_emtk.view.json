@@ -113,6 +113,7 @@
             {"action": "request_save_batch", "label": "Save CSV…",
              "description": "Save the results table as CSV: filename, r_inf, region_min, region_max, bg_vv, bg_vh, g_factor, error."},
             {"action": "close_batch", "label": "Close",
+             "icon": "✕",
              "description": "Close the batch window; the queue and the results are kept."}
           ]
         },

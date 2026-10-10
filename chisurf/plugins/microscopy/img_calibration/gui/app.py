@@ -27,7 +27,7 @@ from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, action_caption, window_size
 
 from .view_model import CalibrationViewModel
 
@@ -190,13 +190,17 @@ class CalibrationApp(TourTarget, ImApp):
         """Buttons side by side, wrapping onto a new line rather than running off a narrow dock."""
         pad = 2 * im.get_style().frame_padding[0] + im.get_style().item_spacing[0]
         for i, (text, action, tip, key) in enumerate(buttons):
-            if i and im.get_line_avail() >= im.calc_text_size(label(text))[0] + pad:
+            caption = action_caption(key) if text is None else label(text)
+            if i and im.get_line_avail() >= im.calc_text_size(caption)[0] + pad:
                 im.same_line()
             self.button(text, action, tip, key=key)
 
     def button(self, text, action, tip=None, key=None):
-        pressed = im.button(label(text))
-        im.set_item_tooltip(label(tip or text))
+        if text is None:  # a shared action: *key* names it in the vocabulary
+            pressed = action_button(key)
+        else:
+            pressed = im.button(label(text))
+            im.set_item_tooltip(label(tip or text))
         if key:
             self.remember(key)
         if pressed:
@@ -207,13 +211,8 @@ class CalibrationApp(TourTarget, ImApp):
     def controls(self, box):
         self.remember("controls", tuple(box))  # the dock's box: what must hold the toolbar
         toolbar = (
-            ("Guide", self.start_guide, "A walk through calibrating one detector.", "guide"),
-            (
-                "Help",
-                self.help.show,
-                "What the windows and backgrounds mean, and where they go.",
-                "help",
-            ),
+            (None, self.start_guide, None, "guide"),
+            (None, self.help.show, None, "help"),
             (
                 "Open TTTR…",
                 lambda: self.choose("source"),

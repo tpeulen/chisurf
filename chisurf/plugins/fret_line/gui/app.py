@@ -21,7 +21,7 @@ from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.typed_field import typed_number_field
-from chisurf.plugins.emtk_layout import cap_widths, window_size
+from chisurf.plugins.emtk_layout import action_button, cap_widths, window_size
 
 from .model import FretLineModel, hex_rgba
 
@@ -164,14 +164,12 @@ class FRETLineApp(ImApp):
     def draw_actions(self, box: Any) -> None:
         draw_sections(self._sections("actions"), self.model, self.form, titles=False)
         im.same_line()
-        if im.button(tr("Help")):
+        if action_button("help"):
             self.help_window.show()
-        im.set_item_tooltip(tr("Explain static, dynamic, WLC and mixture FRET lines."))
         self.item_rects["help"] = im.get_item_rect()
         im.same_line()
-        if im.button(tr("Guide")):
+        if action_button("guide"):
             self.tour.start()
-        im.set_item_tooltip(tr("Walk through a static line and a two-state dynamic line."))
         self.item_rects["guide"] = im.get_item_rect()
 
     # -- requests of the model: the file chooser -------------------------------------------------- #

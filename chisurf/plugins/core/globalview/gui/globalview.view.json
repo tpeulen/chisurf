@@ -19,7 +19,8 @@
               "description": "Load a parameter network from a GraphML (.gml) file and apply its values, fixed flags and links to the fits."
             },
             {
-              "label": "Save…",
+              "label": "Save",
+              "icon": "💾",
               "action": "save_network",
               "description": "Save the current parameter network to a GraphML (.gml) file."
             },
@@ -76,8 +77,9 @@
           "buttons": [
             {
               "label": "Guide",
+              "icon": "📖",
               "action": "show_guide",
-              "description": "Walk through the window, one control at a time."
+              "description": "Start a step-by-step tour that points at the real controls."
             },
             {
               "label": "?",
@@ -357,6 +359,7 @@
                 },
                 {
                   "label": "Export…",
+                  "icon": "📤",
                   "action": "export_parameters",
                   "description": "Write the table, as shown, to a CSV file."
                 }

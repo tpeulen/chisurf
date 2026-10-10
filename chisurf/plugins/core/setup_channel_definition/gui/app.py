@@ -15,10 +15,9 @@ from pathlib import Path
 from typing import Any
 
 from emtk import im
-from emtk.i18n import tr
 from emtk.app import ImApp
 
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, action_caption, window_size
 from emtk.docking import DockManager, Region
 
 from chisurf.core.setup_channel_definition import ChannelDefinition
@@ -108,26 +107,22 @@ class SetupChannelDefinitionApp(ImApp):
         """The host's Guide and Help buttons, at the right above the page (as the Qt settings window has them)."""
         if not self.page.is_visible("help"):
             return
-        width = self._width("Guide") + self._width("Help") + im.get_style().item_spacing[0]
+        width = (
+            self._width(action_caption("guide"))
+            + self._width(action_caption("help"))
+            + im.get_style().item_spacing[0]
+        )
         im.dummy(
             max(im.get_content_region_avail()[0] - width - im.get_style().item_spacing[0], 0.0), 1.0
         )
         im.same_line()
-        if im.button(tr("Guide")):
+        if action_button("guide"):
             self.tour.start()
-        self._item("guide", "Walk through choosing, editing and saving a setup.")
+        self.item_rects["guide"] = im.get_item_rect()
         im.same_line()
-        if im.button(tr("Help")):
+        if action_button("help"):
             self.help_window.show()
-        self._item(
-            "help",
-            "Explain the page: setups, the reading routine, PIE windows, detectors, units of micro-time ranges and LUTs.",
-        )
-
-    def _item(self, name: str, tooltip: str) -> None:
-        """Tooltip and tour rectangle for the control just drawn."""
-        im.set_item_tooltip(tooltip)
-        self.item_rects[name] = im.get_item_rect()
+        self.item_rects["help"] = im.get_item_rect()
 
     @staticmethod
     def _width(label: str) -> float:

@@ -19,7 +19,7 @@ from emtk.app import ImApp
 from emtk.im_core import Col, ItemFlags, get_current_context
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
-from chisurf.plugins.emtk_layout import button_row, icon_label, window_size
+from chisurf.plugins.emtk_layout import action_caption, action_tooltip, button_row, icon_label, window_size
 
 from .view_model import BvaViewModel
 from emtk.i18n import tr
@@ -197,7 +197,7 @@ class BurstBvaGui:
         pressed = button_row(
             [
                 {
-                    "label": icon_label("🚀", "Run"),
+                    "label": action_caption("run"),
                     "key": "run",
                     "keys": ("toolAction_run",),
                     "enabled": not running,
@@ -205,7 +205,7 @@ class BurstBvaGui:
                     "tip": "Compute the per-burst standard deviation of the proximity ratio (BVA) for the loaded bursts.",
                 },
                 {
-                    "label": icon_label("🔄", "Restart"),
+                    "label": action_caption("restart"),
                     "key": "restart",
                     "keys": ("toolAction_restart",),
                     "enabled": not running,
@@ -286,14 +286,14 @@ class BurstBvaGui:
         pressed = button_row(
             [
                 {
-                    "label": icon_label("📖", "Guide"),
+                    "label": action_caption("guide"),
                     "key": "guide",
-                    "tip": "Start a step-by-step guided tour of this tool.",
+                    "tip": action_tooltip("guide"),
                 },
                 {
-                    "label": icon_label("❓", "Help"),
+                    "label": action_caption("help"),
                     "key": "help",
-                    "tip": "Open the help window with reference documentation.",
+                    "tip": action_tooltip("help"),
                 },
             ],
             remember=self.remember,

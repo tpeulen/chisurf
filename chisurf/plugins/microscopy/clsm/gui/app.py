@@ -22,7 +22,7 @@ from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.image_canvas import ImageCanvas
 from chisurf.emtk.jobs import SnapshotJob
 from chisurf.emtk.regions import RegionControls
-from chisurf.plugins.emtk_layout import button_row, layout_spec, window_size
+from chisurf.plugins.emtk_layout import action_caption, action_tooltip, button_row, layout_spec, window_size
 
 from ..core import imaging
 from .view_model import ClsmViewModel
@@ -331,16 +331,8 @@ class ClsmApp(ImApp):
         busy = self.job.busy or self.dialog is not None or self.picker.is_open
         pressed = button_row(
             [
-                {
-                    "label": "Help",
-                    "key": "help",
-                    "tip": "Explain marker reconstruction, intensity/lifetime representations and brush-selected decays.",
-                },
-                {
-                    "label": "Guide",
-                    "key": "guide",
-                    "tip": "Walk through loading a CLSM scan, building an image and painting a decay.",
-                },
+                {"label": action_caption("help"), "key": "help", "tip": action_tooltip("help")},
+                {"label": action_caption("guide"), "key": "guide", "tip": action_tooltip("guide")},
             ],
             remember=self.remember,
         )

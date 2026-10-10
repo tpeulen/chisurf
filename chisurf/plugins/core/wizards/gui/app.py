@@ -17,6 +17,7 @@ from chisurf.plugins.calculator.hub.gui.app import CalculatorHubApp
 
 from ..core.registry import default_wizards
 from .strings import install_translations, tr
+from chisurf.plugins.emtk_layout import action_button
 
 install_translations()
 
@@ -122,14 +123,12 @@ class WizardHubApp(CalculatorHubApp):
                     last[1] + last[3] - first[1],
                 )
             im.separator()
-            if im.button(tr("Guide")):
+            if action_button("guide"):
                 self.start_guide()
-            im.set_item_tooltip(tr("A short walk through the hub."))
             self.item_rects["guide"] = im.get_item_rect()
             im.same_line()
-            if im.button(tr("Help")):
+            if action_button("help"):
                 self.show_help()
-            im.set_item_tooltip(tr("What the hub is and how the embedded wizards are used."))
             self.item_rects["help"] = im.get_item_rect()
         im.end()
         entry = next((e for e in self.entries if e.id == self.selected), None)

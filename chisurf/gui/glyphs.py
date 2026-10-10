@@ -55,7 +55,7 @@ class Glyphs:
     PACKAGE = "📦"
     NOTE = "📝"
     DOCS = "📚"
-    BOOK = "📖"
+    BOOK = "📖"  # a guided tour (Guide)
 
     # -- Edit actions ------------------------------------------------------
     ADD = "➕"  # add / new row (non-destructive)
@@ -83,6 +83,7 @@ class Glyphs:
     ERROR = "❌"  # status: failed / error
     WARNING = "⚠" + VS16
     INFO = "ℹ" + VS16
+    HELP = "❓"  # open the help for a window (the "?" help)
     CHECK = "✓"  # inline tick (pass, in tables)
     CROSS = "✗"  # inline ballot-x (fail, in tables)
     CHECKBOX_ON = "☑" + VS16
@@ -127,6 +128,8 @@ class Glyphs:
     DNA = "🧬"
     WAVE = "🌊"
     ANTENNA = "📡"
+    SOUND = "🔊"  # sound on
+    MUTE = "🔇"  # sound off
     LOCK = "🔒"
     UNLOCK = "🔓"
     KEY = "🔑"

@@ -9,7 +9,8 @@
       "buttons": [
         {"action": "back_to_setup", "label": "← Select setup",
          "description": "Go back to the detector setup page. The accepted setup, the folder and the file list stay as they are."},
-        {"action": "choose_folder", "label": "Open",
+        {"action": "choose_folder", "label": "Open…",
+         "icon": "📂",
          "description": "Choose a folder with PTU/TTTR files. You can also drop a folder on the window."},
         {"action": "clear", "label": "Clear",
          "description": "Clear the file list, the selection and the shown trace. No file and no rating or note is changed."},
@@ -23,7 +24,8 @@
       "buttons": [
         {"action": "select_all_files", "label": "Select all",
          "description": "Select every listed file, so that Export, CSV, DOCX, Delete and the hand-offs work on all of them. Click a row to go back to one file."},
-        {"action": "export_selected", "label": "Export",
+        {"action": "export_selected", "label": "Export…",
+         "icon": "📤",
          "description": "Copy the selected files, unchanged, into a folder you choose. Click a row, or Select all, first."},
         {"action": "export_csv", "label": "CSV",
          "description": "Write the binned trace of each selected file as a CSV file (time and one column per series, at the current bin window) into a folder you choose."},

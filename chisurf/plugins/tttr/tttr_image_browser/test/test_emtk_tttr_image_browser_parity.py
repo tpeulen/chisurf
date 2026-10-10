@@ -21,6 +21,7 @@ import numpy as np
 import pytest
 
 from .conftest import REPO, two_detector_setup
+from chisurf.plugins.emtk_layout import action_caption
 
 HERE = pathlib.Path(__file__).resolve().parent
 pytestmark = pytest.mark.usefixtures("hermetic")
@@ -443,12 +444,12 @@ def test_every_qt_toolbar_action_is_a_drawn_emtk_button(qt):
         "TIFF": "TIFF",
         "DOCX": "DOCX",
         "Next": "Next → Intensity",
-        "Help": "Help",
+        "Help": action_caption("help"),
     }
     for text in qt["toolbar"]:
         word = next(w for w in mapping if w in text)
         assert mapping[word] in strings, (text, mapping[word])
-    assert "Include subfolders" in strings and "Guide" in strings
+    assert "Include subfolders" in strings and action_caption("guide") in strings
 
 
 # 7. enabled states --------------------------------------------------------------------------------------------------

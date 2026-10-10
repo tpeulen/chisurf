@@ -21,7 +21,7 @@ from emtk.im_core import Col, get_current_context
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 
 from .model import LifetimeFcsSimModel
 from .strings import install_translations
@@ -123,14 +123,12 @@ class LifetimeFcsSimApp(ImApp):
         self.item_rects["lfcs_sim_controls"] = im.get_item_rect()
         im.end_disabled()
         im.same_line()
-        if im.button(tr("Guide")):
+        if action_button("guide"):
             self.tour.start()
-        im.set_item_tooltip(tr("Walk through the simulator step by step."))
         self.item_rects["guide"] = im.get_item_rect()
         im.same_line()
-        if im.button("?"):
+        if action_button("help"):
             self.help_window.show()
-        im.set_item_tooltip(tr("What the simulation does, the formulas and their assumptions."))
         self.item_rects["help"] = im.get_item_rect()
         im.separator()
         im.begin_disabled(busy)

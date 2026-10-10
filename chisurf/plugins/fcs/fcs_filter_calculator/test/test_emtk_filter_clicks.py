@@ -14,6 +14,7 @@ import numpy as np
 import pytest
 from emtk import keys
 
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.fcs.fcs_filter_calculator.gui.app import create_app
 
 from .driving import BIG, SMALL, FilterDriver, hermetic_env
@@ -326,7 +327,7 @@ def test_the_definition_column_is_read_only(drv):
 def test_each_add_button_opens_the_form_of_its_model_and_apply_adds_the_component(drv, button, model_name):
     drv.click(button)
     assert drv.app.editor is not None and drv.app.editor["model"] == model_name
-    assert "Component name" in drv.draw(3).strings and {"Apply", "Cancel"} <= set(drv.painter.strings)
+    assert "Component name" in drv.draw(3).strings and {"Apply", action_caption("cancel")} <= set(drv.painter.strings)
     drv.click_text("Apply")
     drv.settle()
     assert len(model(drv).components) == 3 and drv.app.editor is None
@@ -350,7 +351,7 @@ def test_the_component_form_fields_are_typed_and_reach_the_pattern(drv):
 def test_the_component_form_cancel_and_the_close_button_discard_the_edit(drv):
     drv.click("add_lifetime")
     drv.draw(3)
-    drv.click_text("Cancel")
+    drv.click_text(action_caption("cancel"))
     assert drv.app.editor is None and len(model(drv).components) == 2
     drv.click("add_lifetime")
     drv.draw(3)
@@ -373,7 +374,7 @@ def test_select_a_component_then_edit_duplicate_and_remove_it(drv):
     drv.click("edit_component")
     assert drv.app.editor is not None and drv.app.editor["name"] == "Fast example" and drv.app.editor_index == 0
     drv.draw(3)
-    drv.click_text("Cancel")
+    drv.click_text(action_caption("cancel"))
     drv.click("duplicate_component")
     assert len(model(drv).components) == 3
     drv.settle()

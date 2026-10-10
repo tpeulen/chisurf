@@ -25,6 +25,7 @@ from chisurf.plugins.core.project_browser.test.driving import (
 )
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
 from chisurf.plugins.tttr.filetools.gui.app import FileToolsApp, caption
+from chisurf.plugins.emtk_layout import action_caption
 
 PANELS = None
 BIG, SMALL = (1200, 800), (800, 600)
@@ -229,24 +230,24 @@ def test_a_tool_without_a_native_declaration_says_pending_and_the_rest_works():
 
 def test_help_button_opens_the_help_window_whose_buttons_work(drv):
     window = drv.app.help
-    drv.click_text("Help")
+    drv.click_text(action_caption("help"))
     assert window.open and {"Start Guided Tour", "Close", "Close Help"} <= set(drv.draw(2).strings)
     drv.click_text("Start Guided Tour")
     assert not window.open and drv.app.tour.active
     drv.app.tour.stop()
     drv.draw(2)
     for closer in ("Close Help", "Close"):
-        drv.click_text("Help")
+        drv.click_text(action_caption("help"))
         drv.click_text(closer, last=closer == "Close Help")
         assert not window.open, closer
-    drv.click_text("Help")
+    drv.click_text(action_caption("help"))
     drv.escape()
     assert not window.open
 
 
 def test_the_tour_is_walked_with_the_user_operating_each_awaited_control(drv):
     tour = drv.app.tour
-    drv.click_text("Guide")
+    drv.click_text(action_caption("guide"))
     seen = []
     for _ in range(30):
         if not tour.active:
@@ -299,7 +300,7 @@ def test_the_hub_draws_without_clipped_or_overlapping_text_around_a_child(size):
     ]
     holder = type("P", (), {"visible_text_fragments": lambda _self: iter(hub)})()
     assert layout_problems(holder, size) == [] and clipped_texts(holder) == []
-    assert {"Guide", "Help"} <= set(painter.strings)
+    assert {action_caption("guide"), action_caption("help")} <= set(painter.strings)
     app.close()
 
 
@@ -345,6 +346,6 @@ def test_the_whole_flow_works_in_the_small_window_too():
     d.draw(3)
     d.click(d.rect("nav_tttr_header_edit"))
     assert app.selected == "tttr_header_edit"
-    d.click_text("Guide")
+    d.click_text(action_caption("guide"))
     assert app.tour.active
     app.close()

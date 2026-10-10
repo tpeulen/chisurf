@@ -20,12 +20,14 @@
           {
             "action": "guide",
             "label": "Guide",
-            "description": "A step-by-step walk through the tool."
+            "icon": "📖",
+            "description": "Start a step-by-step tour that points at the real controls."
           },
           {
             "action": "help",
             "label": "Help",
-            "description": "Explain the optical models, the polarization and how to read the volume."
+            "icon": "❓",
+            "description": "Open the help for this window."
           }
         ]
       }

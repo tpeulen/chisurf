@@ -14,7 +14,7 @@ from emtk.file_dialog import FileDialog
 from chisurf.core.support.i18n import tr
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.i18n import install
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 
 from .view_model import FCSChannelViewModel
 
@@ -120,6 +120,12 @@ class PresetApp(ImApp):
         im.set_item_tooltip(tr(tip))
         self.item_rects[label] = im.get_item_rect()
 
+    def action(self, key, rect_key, callback, tip=None):
+        """Draw shared action *key* through the vocabulary; its rectangle keeps the tour key *rect_key*."""
+        if action_button(key, tooltip=tr(tip) if tip else None):
+            self.run_action(callback)
+        self.item_rects[rect_key] = im.get_item_rect()
+
     def choice(self, label, value, options, tip):
         im.text(tr(label))
         options = options or [""]
@@ -180,7 +186,7 @@ class PresetApp(ImApp):
         )
         im.end_disabled()
         im.separator()
-        self.button("Save", "Validate and persist pairs for this detector setup.", self.save)
+        self.action("save", "Save", self.save, "Validate and persist pairs for this detector setup.")
         self.button(
             "Apply",
             "Save as the active preset and notify a connected correlator when provided.",
@@ -201,18 +207,13 @@ class PresetApp(ImApp):
             "Export the full library including this current editing draft.",
             lambda: self.browse("export"),
         )
-        self.button(
-            "Help",
-            "Explain logical channels, correlation pairs and per-pair settings.",
-            self.help.show,
-        )
-        self.button(
-            "Guide", "Walk through selecting a setup, creating pairs and saving.", self.tour.start
-        )
-        self.button(
+        self.action("help", "Help", self.help.show)
+        self.action("guide", "Guide", self.tour.start)
+        self.action(
+            "close",
             "Close",
-            "Close this native editor; exported host state preserves drafts.",
             self.request_close,
+            "Close this native editor; exported host state preserves drafts.",
         )
         if self.message:
             im.text_wrapped(tr(self.message))

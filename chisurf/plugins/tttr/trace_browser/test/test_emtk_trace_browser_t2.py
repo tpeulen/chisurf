@@ -16,6 +16,7 @@ import pytest
 from emtk.testing import RecordingPainter
 
 from chisurf.plugins.tttr.trace_browser.test.conftest import ALEX
+from chisurf.plugins.emtk_layout import action_caption
 
 HERE = pathlib.Path(__file__).parent
 GUI = HERE.parent / "gui"
@@ -251,7 +252,7 @@ def test_the_open_button_opens_a_folder_dialog_that_opens_the_folder(data_dir, m
     try:
         frames(app)
         assert app.dialog is None
-        with pressing(monkeypatch, "Open"):
+        with pressing(monkeypatch, action_caption("open")):
             frames(app, n=1)
         frames(app, n=1)
         assert app.dialog is not None and app.dialog.mode == "folder"
@@ -266,7 +267,7 @@ def test_the_open_button_opens_a_folder_dialog_that_opens_the_folder(data_dir, m
         text = " | ".join(settle(app))
         assert app.model.current_folder == data_dir and "m000.spc" in text
         # Cancel leaves the folder alone
-        with pressing(monkeypatch, "Open"):
+        with pressing(monkeypatch, action_caption("open")):
             frames(app, n=1)
         frames(app, n=2)
         assert app.dialog is not None
@@ -621,7 +622,7 @@ def test_every_control_has_a_tooltip(data_dir):
         inv = emtk_inventory(app)
         assert inv["controls_without_tooltip"] == []
         labels = {row["label"] for row in inv["interactive"]}
-        assert {"← Select setup", "Open", "Clear", "Clear caches", "Include subfolders"} <= labels
+        assert {"← Select setup", action_caption("open"), "Clear", "Clear caches", "Include subfolders"} <= labels
         app.model.request("open_folder", data_dir)
         settle(app)
         inv = emtk_inventory(app)

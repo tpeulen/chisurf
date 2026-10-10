@@ -24,7 +24,7 @@ from emtk.view_form import FormState, draw_sections
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.jobs import SnapshotJob
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 
 from .controller import COLORS
 from .model import LutToolModel
@@ -355,9 +355,8 @@ class LutToolsApp(ImApp):
         im.set_item_tooltip(tr("Copy the complete correction settings to the clipboard."))
         self.form.rects["copy_json"] = im.get_item_rect()
         im.same_line()
-        if im.button(tr("Close")):
+        if action_button("close", tooltip=tr("Close the JSON preview.")):
             pressed = "close"
-        im.set_item_tooltip(tr("Close the JSON preview."))
         self.form.rects["close_json"] = im.get_item_rect()
         avail = im.get_content_region_avail()
         im.begin_child(

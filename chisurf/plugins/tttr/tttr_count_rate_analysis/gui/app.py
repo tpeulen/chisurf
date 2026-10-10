@@ -24,7 +24,7 @@ from emtk.docking import DockManager, Region, Split
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, action_caption, window_size
 
 if TYPE_CHECKING:
     from .tool import CountRateAnalyzer
@@ -239,15 +239,13 @@ class CountRateGui(TourTarget):
                 self.on_clear()
         im.set_item_tooltip(tr("Drop the file queue and any computed results."))
         self.remember("clear")
-        if im.get_line_avail() >= im.calc_text_size("Help")[0] + 24:
+        if im.get_line_avail() >= im.calc_text_size(action_caption("help"))[0] + 24:
             im.same_line()
-        if im.button(tr("Help")):
+        if action_button("help"):
             self.show_help()
-        im.set_item_tooltip(tr("The short help page."))
         self.remember("help")
-        if im.button(tr("Guide")):
+        if action_button("guide"):
             self.start_guide()
-        im.set_item_tooltip(tr("Walk through inputs, detector gates, calculation and export."))
         self.remember("guide")
         im.separator()
 
@@ -432,11 +430,10 @@ class CountRateGui(TourTarget):
         im.set_item_tooltip(tr("Compute count rates for all queued files."))
         self.remember("calculate")
         im.same_line()
-        if im.button(tr("Save")):
+        if action_button("save", tooltip=tr("Save the results table as tab-separated text.")):
             self._used("save")
             if callable(self.on_save):
                 self.on_save()
-        im.set_item_tooltip(tr("Save the results table as tab-separated text."))
         self.remember("save")
         im.end_disabled()
         im.separator()

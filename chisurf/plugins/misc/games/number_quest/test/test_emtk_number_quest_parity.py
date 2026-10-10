@@ -18,6 +18,7 @@ import pytest
 from emtk.keys import KEY_ENTER, KEY_LEFT, KEY_RIGHT
 from emtk.testing import RecordingPainter
 
+from chisurf.plugins.emtk_layout import SOUND_OFF_ICON, action_caption
 from chisurf.plugins.misc.games.number_quest.gui.app import NumberQuestApp, make_app
 
 HERE = Path(__file__).parent
@@ -135,7 +136,8 @@ def test_draws(size):
     for _ in range(2):
         painter = RecordingPainter()
         app.draw(painter, 0, 0, *size)
-    assert "Sound" in painter.strings
+    # The shared Sound toggle, off by default (chisurf.plugins.emtk_layout.sound_toggle).
+    assert action_caption("sound", SOUND_OFF_ICON) in painter.strings
 
 
 # 6/7. no Qt, tooltips

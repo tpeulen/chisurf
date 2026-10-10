@@ -28,6 +28,7 @@ from chisurf.plugins.calculator.fret_calculator.gui.model import (
     HeteroFretModel,
     HomoFretModel,
 )
+from chisurf.plugins.emtk_layout import action_caption
 
 HERE = Path(__file__).parent
 GUI = HERE.parent / "gui"
@@ -605,11 +606,14 @@ def test_draws_after_every_edit_even_at_the_ends_of_the_ranges(app):
 
 
 def test_no_emoji_in_the_native_labels(app):
+    """No pictogram except the shared Help/Guide vocabulary (chisurf.plugins.emtk_layout.ACTIONS)."""
+    shared = {action_caption("guide"), action_caption("help")}
     for tab in (0, 1):
         app.select_tab(tab)
         strings = draw(app).strings
-        assert all(ord(ch) < 0x2190 or ch in "τΔρσΣχ" for text in strings for ch in text), strings
-        assert {"Guide", "Help"} <= set(strings)
+        own = [text for text in strings if text not in shared]
+        assert all(ord(ch) < 0x2190 or ch in "τΔρσΣχ" for text in own for ch in text), strings
+        assert shared <= set(strings)
 
 
 def test_every_control_has_a_tooltip(app):
@@ -619,8 +623,8 @@ def test_every_control_has_a_tooltip(app):
     assert inventory["controls_without_tooltip"] == []
     labels = {row["label"] for row in inventory["interactive"]}
     assert {
-        "Guide",
-        "Help",
+        action_caption("guide"),
+        action_caption("help"),
         "R",
         "E",
         "tau0",
