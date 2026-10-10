@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from chisurf.plugins.core.setup.test import seeded
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.emtk_test_input import Driver
 
 REPO = Path(__file__).parents[5]
@@ -304,7 +305,7 @@ def test_a_hosted_panels_own_close_button_does_not_close_the_window_and_says_so(
     hub.draw(3)
     painter = hub.draw(2)
     bx = hub.app.child_box[0]
-    close = [t for t in painter.texts if t[5] == "Close" and t[0] >= bx][-1]
+    close = [t for t in painter.texts if t[5] == action_caption("close") and t[0] >= bx][-1]
     hub.click(close[:4])
     assert hub.app.status == "Close the Settings window to leave this panel."
     assert hub.app.child.close_requested is False

@@ -1,5 +1,6 @@
 """Real help categories, links and close actions remain reachable in a small host."""
 
+from chisurf.plugins.emtk_layout import action_caption
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -104,5 +105,5 @@ def test_header_close_and_start_guide_remain_real_actions(size):
     assert starts == [True] and not window.open
     window.show()
     driver.frame(3)
-    driver.click("Close")
+    driver.click(action_caption("close"))
     assert not window.open

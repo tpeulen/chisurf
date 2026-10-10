@@ -459,12 +459,12 @@ def test_help_button_opens_the_help_window_whose_buttons_work(drv):
     drv.click_text(action_caption("help"))
     assert window.open
     painter = drv.draw(2)
-    assert {"Start Guided Tour", "Close", "Close Help"} <= set(painter.strings)
+    assert {"Start Guided Tour", action_caption("close"), "Close Help"} <= set(painter.strings)
     drv.click_text("Start Guided Tour")
     assert not window.open and drv.app.tour.active
     drv.app.tour.stop()
     drv.draw(2)
-    for closer in ("Close Help", "Close"):
+    for closer in ("Close Help", action_caption("close")):
         drv.click_text(action_caption("help"))
         drv.click_text(closer, last=closer == "Close Help")
         assert not window.open, closer

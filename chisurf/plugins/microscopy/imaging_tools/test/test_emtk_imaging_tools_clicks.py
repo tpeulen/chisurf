@@ -9,6 +9,8 @@ native children are drawn in the parity tests). The control -> test list is in
 
 from __future__ import annotations
 
+from chisurf.plugins.emtk_layout import action_caption
+
 import pytest
 from emtk import keys
 
@@ -233,12 +235,12 @@ def test_the_source_and_hdf5_lines_follow_the_shared_context(drv):
 def test_help_button_opens_the_help_window_whose_buttons_work(drv):
     window = drv.app.help
     drv.click_text("Help")
-    assert window.open and {"Start Guided Tour", "Close", "Close Help"} <= set(drv.draw(2).strings)
+    assert window.open and {"Start Guided Tour", action_caption("close"), "Close Help"} <= set(drv.draw(2).strings)
     drv.click_text("Start Guided Tour")
     assert not window.open and drv.app.tour.active
     drv.app.tour.stop()
     drv.draw(2)
-    for closer in ("Close Help", "Close"):
+    for closer in ("Close Help", action_caption("close")):
         drv.click_text("Help")
         drv.click_text(closer, last=closer == "Close Help")
         assert not window.open, closer

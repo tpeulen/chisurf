@@ -19,6 +19,7 @@ from chisurf.plugins.core.project_browser.test.driving import clipped_texts, lay
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver, MetricPainter
 
 from .test_emtk_calibration_parity import SETUP, _binned, _loaded
+from chisurf.plugins.emtk_layout import action_caption
 
 BIG, SMALL = (1200, 800), (800, 600)
 REAL_CHISURF = Path(os.path.expanduser("~")) / ".chisurf"
@@ -119,12 +120,12 @@ def test_refresh_bins_the_histograms_again(drv):
 def test_help_button_opens_the_help_window_whose_buttons_work(drv):
     window = drv.app.help
     drv.click(drv.rect("help"))
-    assert window.open and {"Start Guided Tour", "Close", "Close Help"} <= set(drv.draw(2).strings)
+    assert window.open and {"Start Guided Tour", action_caption("close"), "Close Help"} <= set(drv.draw(2).strings)
     drv.click_text("Start Guided Tour")
     assert not window.open and drv.app.tour.active
     drv.app.tour.stop()
     drv.draw(2)
-    for closer in ("Close Help", "Close"):
+    for closer in ("Close Help", action_caption("close")):
         drv.click(drv.rect("help"))
         drv.click_text(closer, last=closer == "Close Help")
         assert not window.open, closer
@@ -229,8 +230,9 @@ def test_database_button_opens_the_dataset_picker_and_cancel_closes_it(drv):
     drv.click(drv.rect("database_irf"))
     assert drv.app.dataset_picker.is_open if hasattr(drv.app.dataset_picker, "is_open") else True
     shown = drv.draw(3).strings
-    assert "Cancel" in shown or "Close" in shown
-    drv.click(drv.text_rect("Cancel" if "Cancel" in shown else "Close"))
+    cancel = action_caption("cancel")
+    assert cancel in shown or "Close" in shown
+    drv.click(drv.text_rect(cancel if cancel in shown else "Close"))
     drv.draw(2)
 
 
@@ -428,7 +430,13 @@ def test_draws_empty_and_populated_without_clipped_or_overlapping_text(spc, size
 
 
 def test_the_buttons_and_labels_carry_no_emoji(drv):
+    """Only the shared action vocabulary carries pictograms; the tool's own labels stay plain."""
+    from chisurf.plugins.emtk_layout import ACTIONS
+
+    shared = {action_caption(key) for key in ACTIONS}
     for text in drv.draw(2).strings:
+        if text in shared:
+            continue
         assert all(ord(ch) < 0x1F000 and not 0x2600 <= ord(ch) <= 0x27BF for ch in text), text
 
 

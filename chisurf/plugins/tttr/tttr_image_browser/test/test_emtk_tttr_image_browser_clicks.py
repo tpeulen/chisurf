@@ -5,6 +5,7 @@ reads the visible outcome (the model's answer to the input, the strings drawn, t
 Control -> test list: REPORT.md section 6a.
 """
 
+from chisurf.plugins.emtk_layout import action_caption
 import json
 import pathlib
 import time
@@ -299,8 +300,8 @@ def test_help_opens_the_help_window_and_closes(app, drv):
     drv.click("show_help")
     drv.draw(2)
     assert app.help_window.open
-    assert {"Start Guided Tour", "Close"} <= set(drv.draw(2).strings)
-    drv.click_text("Close")
+    assert {"Start Guided Tour", action_caption("close")} <= set(drv.draw(2).strings)
+    drv.click_text(action_caption("close"))
     assert not app.help_window.open
 
 

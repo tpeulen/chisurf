@@ -65,29 +65,7 @@ SYNONYMS = {
 }
 
 #: Files held by another lane while this vocabulary landed: path -> why it still differs.
-HELD = {
-    "chisurf/emtk/help_guide.py":
-        "held by the help/guide lane; its in-help 'Close' button moves to action_button('close')",
-    "chisurf/plugins/core/code_editor/gui/editor_app.py":
-        "held by the editor lane; toolbar '📂 Open', '✖ Close', '📋 Copy' move to action_button",
-    "chisurf/plugins/core/help/gui/help_app.py":
-        "held by the help-browser lane; its 'Copy' small_button moves to action_button('copy')",
-    "chisurf/plugins/core/setup/gui/app.py":
-        "held by the setup lane; its 'Guide' button moves to action_button('guide')",
-    "chisurf/plugins/core/lightpath_simulator/gui/app.py":
-        "held by the lightpath lane; its two 'Cancel' buttons move to action_button('cancel')",
-    "chisurf/plugins/core/lightpath_simulator/gui/lightpath.view.json":
-        "held with lightpath_simulator/gui/app.py by the lightpath lane; Help/Guide/Export entries "
-        "take the canonical icon and tooltip",
-    "chisurf/plugins/burst/alex_suite/gui/app.py":
-        "held by the ALEX audit lane; '❓ Help' x4 and '🧭 Guide' move to action_button",
-    "chisurf/plugins/burst/alex_suite/gui/step_apps.py":
-        "held by the ALEX audit lane; its 'Demo' button moves to action_button('example')",
-    "chisurf/plugins/tttr/ptu_alex_creator/gui/alex_emtk.view.json":
-        "held by the ALEX audit lane; its 'Open…' entry takes the canonical icon",
-    "chisurf/plugins/tttr/ptu_alex_creator/gui/app.py":
-        "held by the ALEX audit lane; its translated Help/Guide button-row dicts move to action_item",
-}
+HELD: dict[str, str] = {}
 
 _QT_ONLY = re.compile(r"^\s*(from|import) (qtpy|PyQt5|PySide)", re.M)
 _KEY = re.compile(r"^[a-z_][a-z0-9_]*$")

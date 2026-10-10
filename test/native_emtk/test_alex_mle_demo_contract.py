@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from chisurf.plugins.burst.alex_suite import demo as alex
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.burst.burst_mle_analysis import demo as mle
 
 
@@ -70,7 +71,7 @@ def test_alex_tour_starts_with_real_example_and_leaves_analysis_to_user(tmp_path
         assert app.tour.awaiting
         child = app.children["data"]
         assert not child.model.paths()
-        driver.click("Demo")
+        driver.click(action_caption("example"))
         driver.draw(3)
         assert not app.tour.awaiting
         assert child.model.paths() == [alex.demo_folder() / alex.STREAM_NAME]

@@ -7,6 +7,8 @@ the fits and the CSV of a run started from the native window must equal those of
 
 from __future__ import annotations
 
+from chisurf.plugins.emtk_layout import action_caption
+
 import json
 import os
 import pwd
@@ -273,7 +275,7 @@ def test_the_mmfdb_button_opens_the_dataset_picker_and_cancel_closes_it(ui):
     assert "Select MMFDB dataset" in [t[5] for t in ui.draw(3).texts]
     ui.click_name("load_stack")  # greyed while the picker is open
     assert ui.app.dialog is None
-    ui.click_text("Cancel")
+    ui.click_text(action_caption("cancel"))
     assert not ui.app.picker.is_open
 
 
@@ -508,7 +510,7 @@ def test_the_host_settings_seam_round_trips(demo):
 def test_help_opens_with_live_links_and_closes(ui):
     ui.click_name("help")
     assert ui.app.help_window.open
-    ui.click_text("Close")
+    ui.click_text(action_caption("close"))
     assert not ui.app.help_window.open
     repo = next(p for p in PLUGIN.parents if (p / "pyproject.toml").exists())
     links = re.findall(r"\]\((docs/[^)#]+)", (PLUGIN / "gui" / "help.md").read_text())

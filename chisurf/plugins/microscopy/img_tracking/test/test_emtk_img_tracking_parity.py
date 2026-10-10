@@ -8,6 +8,8 @@ same data, and (c) a written-out run of the core functions that does not go thro
 
 from __future__ import annotations
 
+from chisurf.plugins.emtk_layout import action_caption
+
 import importlib.util
 import json
 import sys
@@ -862,8 +864,8 @@ def test_the_tracks_table_header_sorts_by_value_and_a_row_click_changes_nothing(
 def test_help_button_opens_the_help_and_its_buttons_work(app, drv):
     drv.click("help")
     assert app.help_window.open
-    assert {"Start Guided Tour", "Close"} <= set(drv.draw(2).strings)
-    drv.click_text("Close", last=False)
+    assert {"Start Guided Tour", action_caption("close")} <= set(drv.draw(2).strings)
+    drv.click_text(action_caption("close"), last=False)
     drv.escape() if app.help_window.open else None
     assert not app.help_window.open
 

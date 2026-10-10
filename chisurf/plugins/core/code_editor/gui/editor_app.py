@@ -38,7 +38,7 @@ from chisurf.plugins.core.code_editor.gui.notebook_app import SHELL_EXECUTION_LO
 from chisurf.plugins.core.code_editor.gui.process_tools import CancellableRuffRunner
 from chisurf.plugins.core.code_editor.ruff_runner import RuffRunner
 from chisurf.plugins.core.code_editor.symbols import extract_python_symbols
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 
 from .editor_preferences import (
     COLOR_SCHEMES,
@@ -1586,22 +1586,19 @@ class CodeEditorGui:
             self.model.new_document()
         im.set_item_tooltip(tr("New — create an empty document"))
         self._same_line_or_wrap(box, im.calc_text_size("📂 Open")[0] + 14.0)
-        if im.button(tr("📂 Open")):
+        if action_button("open", tooltip=tr("Open… — choose files to open in the editor")):
             self._request_open()
-        im.set_item_tooltip(tr("Open… — choose files to open in the editor"))
         self._same_line_or_wrap(box, im.calc_text_size("💾 Save")[0] + 14.0)
-        if im.button(tr("💾 Save")):
+        if action_button("save", tooltip=tr("Save — save the active document to disk")):
             self._request_save(self.model.active_doc)
-        im.set_item_tooltip(tr("Save — save the active document to disk"))
         self._same_line_or_wrap(box, im.calc_text_size("📝 Save As")[0] + 14.0)
         if im.button(tr("📝 Save As")):
             self._request_save(self.model.active_doc, save_as=True)
         im.set_item_tooltip(tr("Save As… — save the active document under a chosen name"))
         if self.model.documents:
             self._same_line_or_wrap(box, im.calc_text_size("✖ Close")[0] + 14.0)
-            if im.button(tr("✖ Close")):
+            if action_button("close", tooltip=tr("Close — close the active document; ask before discarding changes")):
                 self._request_close(self.model.active_doc)
-            im.set_item_tooltip(tr("Close — close the active document; ask before discarding changes"))
         self._same_line_or_wrap(box, 70.0)
         if self.model.is_running_script or notebook_running:
             im.push_style_color(Col.BUTTON, (160, 60, 60, 255))
@@ -1611,9 +1608,8 @@ class CodeEditorGui:
             im.pop_style_color()
         else:
             im.push_style_color(Col.BUTTON, (46, 140, 67, 255))
-            if im.button(tr("▶ Run")):
+            if action_button("run", tooltip=tr("Run Script — run the active Python document and display its output")):
                 self.model.run_active_script()
-            im.set_item_tooltip(tr("Run Script — run the active Python document and display its output"))
             im.pop_style_color()
         self._same_line_or_wrap(box, 150.0)
         im.set_next_item_width(150.0)
@@ -1662,9 +1658,8 @@ class CodeEditorGui:
                     self.model.close_document(index)
                     im.close_current_popup()
                 im.set_item_tooltip(tr('Discard changes'))
-                if im.button(tr("Cancel")):
+                if action_button("cancel", id="cancel_close_doc"):
                     im.close_current_popup()
-                im.set_item_tooltip(tr('Cancel'))
             im.end_popup()
 
         if not self.model.documents:
@@ -1744,13 +1739,12 @@ class CodeEditorGui:
             self.model.output_logs.clear()
         im.set_item_tooltip(tr('🗑 Clear'))
         im.same_line()
-        if im.button(tr("📋 Copy")):
+        if action_button("copy", tooltip=tr("Copy the output log to the clipboard")):
             try:
                 from emtk.clipboard import set_clipboard_text
                 set_clipboard_text("\n".join(self.model.output_logs))
             except Exception:
                 pass
-        im.set_item_tooltip(tr('📋 Copy'))
         im.same_line()
         im.text_disabled(f"  {len(self.model.output_logs)} lines")
         im.separator()

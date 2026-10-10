@@ -8,6 +8,8 @@ statistics table, dialog, windows). The coverage list control -> test is in
 
 from __future__ import annotations
 
+from chisurf.plugins.emtk_layout import action_caption
+
 import numpy as np
 import pytest
 from emtk import keys
@@ -300,13 +302,13 @@ def test_help_button_opens_the_help_window_whose_buttons_work(app):
     window = app.kappa2_gui.help_window
     assert window.open
     painter = draw(app)
-    assert {"Start Guided Tour", "Close", "Close Help"} <= set(painter.strings)
+    assert {"Start Guided Tour", action_caption("close"), "Close Help"} <= set(painter.strings)
     click(app, text_rect(painter, "Start Guided Tour"))
     assert not window.open and app.kappa2_gui.tour.active
     app.kappa2_gui.tour.stop()
-    for closer in ("Close Help", "Close"):
+    for closer in ("Close Help", action_caption("close")):
         press_text(app, "Help")
-        click(app, text_rect(draw(app), closer, last=False if closer == "Close" else True))
+        click(app, text_rect(draw(app), closer, last=False if closer == action_caption("close") else True))
         assert not window.open, closer
     press_text(app, "Help")
     app.key(keys.KEY_ESCAPE, "")

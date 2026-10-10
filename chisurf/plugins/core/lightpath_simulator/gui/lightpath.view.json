@@ -35,18 +35,21 @@
           },
           {
             "action": "export_instrument",
-            "label": "Export",
+            "label": "Export…",
+            "icon": "📤",
             "description": "Export the simulated instrument setting as a JSON file. Greyed until a simulation has been calculated."
           },
           {
             "action": "guide",
             "label": "Guide",
-            "description": "A step-by-step walk through the tool."
+            "icon": "📖",
+            "description": "Start a step-by-step tour that points at the real controls."
           },
           {
             "action": "help",
             "label": "Help",
-            "description": "The help page: components, simulation, results and files."
+            "icon": "❓",
+            "description": "Open the help for this window."
           }
         ]
       }

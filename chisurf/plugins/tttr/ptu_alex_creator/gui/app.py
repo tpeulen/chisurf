@@ -27,7 +27,7 @@ from chisurf.core.settings.path_utils import get_path
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.i18n import install
-from chisurf.plugins.emtk_layout import LabelColumn, button_row, labelled, layout_spec, window_size
+from chisurf.plugins.emtk_layout import LabelColumn, action_caption, action_tooltip, button_row, labelled, layout_spec, window_size
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 
 from .. import core
@@ -581,14 +581,14 @@ class AlexApp(TourTarget, ImApp):
         pressed = button_row(
             [
                 {
-                    "label": tr("Guide"),
+                    "label": action_caption("guide"),
                     "key": "guide",
-                    "tip": tr("Walk through loading, timing and conversion."),
+                    "tip": action_tooltip("guide"),
                 },
                 {
-                    "label": tr("Help"),
+                    "label": action_caption("help"),
                     "key": "help",
-                    "tip": tr("Read ALEX conversion and batch workflow help."),
+                    "tip": action_tooltip("help"),
                 },
             ],
             remember=lambda name: self.remember(name),

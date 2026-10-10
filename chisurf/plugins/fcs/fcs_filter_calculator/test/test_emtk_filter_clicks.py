@@ -151,12 +151,12 @@ def test_stop_is_greyed_when_idle_and_a_click_does_nothing(drv):
 def test_guide_help_buttons_and_the_tour(drv):
     drv.click("help")
     window = drv.app.help
-    assert window.open and {"Start Guided Tour", "Close"} <= set(drv.draw(2).strings)
+    assert window.open and {"Start Guided Tour", action_caption("close")} <= set(drv.draw(2).strings)
     drv.click_text("Start Guided Tour")
     assert not window.open and drv.app.tour.active
     drv.app.tour.stop()
     drv.click("help")
-    drv.click_text("Close")
+    drv.click_text(action_caption("close"))
     assert not window.open
     drv.click("help")
     drv.escape()

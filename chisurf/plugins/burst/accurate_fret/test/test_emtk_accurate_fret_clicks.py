@@ -9,6 +9,8 @@ plots' series, the files written. The coverage list control -> test is in
 
 from __future__ import annotations
 
+from chisurf.plugins.emtk_layout import action_caption
+
 import time
 from pathlib import Path
 
@@ -549,11 +551,11 @@ def test_help_button_opens_the_help_window_whose_buttons_work(app):
     window = app.accurate_gui.help_window
     assert window.open
     painter = draw(app)
-    assert {"Start Guided Tour", "Close", "Close Help"} <= set(painter.strings)
+    assert {"Start Guided Tour", action_caption("close"), "Close Help"} <= set(painter.strings)
     click(app, text_rect(painter, "Start Guided Tour"))
     assert not window.open and app.accurate_gui.tour.active
     app.accurate_gui.tour.stop()
-    for closer, last in (("Close Help", True), ("Close", False)):
+    for closer, last in (("Close Help", True), (action_caption("close"), False)):
         click(app, rect_of(app, "help"))
         click(app, text_rect(draw(app), closer, last=last))
         assert not window.open, closer

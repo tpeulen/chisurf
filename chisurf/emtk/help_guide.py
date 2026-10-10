@@ -16,6 +16,7 @@ from typing import Any, Callable
 from emtk import im
 from emtk.dialog_window import DialogWindow
 from emtk.i18n import tr
+from chisurf.plugins.emtk_layout import action_button
 from emtk.im_core import Col
 from emtk.keys import KEY_ESCAPE
 
@@ -214,9 +215,8 @@ class EmTkHelpWindow:
             im.pop_style_color()
 
         place_button("Close")
-        if im.button(tr("Close") + "##help_top"):
+        if action_button("close", id="help_top", tooltip=tr("Close this help window.")):
             pressed = "close"
-        im.set_item_tooltip(tr("Close this help window."))
 
         im.separator()
 

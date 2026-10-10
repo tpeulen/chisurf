@@ -8,6 +8,8 @@ and (c) the drift written into the test stack, which is known exactly.
 
 from __future__ import annotations
 
+from chisurf.plugins.emtk_layout import action_caption
+
 import importlib.util
 import json
 from pathlib import Path
@@ -399,7 +401,7 @@ def test_the_database_picker_window_close_button_closes_it_and_loads_nothing(app
 
 def test_the_cancel_button_of_the_database_picker_can_be_pressed(app, drv, tiff):
     open_picker(app, drv, tiff)
-    drv.click_text("Cancel")
+    drv.click_text(action_caption("cancel"))
     assert not app.picker.is_open
 
 
@@ -813,7 +815,7 @@ def test_the_wheel_scrolls_the_settings_window_when_the_form_is_taller_than_it(a
 def test_help_button_opens_the_help_and_its_buttons_work(app, drv):
     drv.click("help")
     assert app.help_window.open
-    assert {"Start Guided Tour", "Close"} <= set(drv.draw(2).strings)
+    assert {"Start Guided Tour", action_caption("close")} <= set(drv.draw(2).strings)
     drv.click_text("Start Guided Tour")
     assert not app.help_window.open and app.tour.active
     app.tour.stop()

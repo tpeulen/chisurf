@@ -9,7 +9,7 @@ from pathlib import Path
 from emtk import im
 from emtk.app import ImApp
 
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, action_caption, button_width, window_size
 from emtk.dialog_window import DialogWindow
 from emtk.i18n import tr
 from emtk.file_dialog import FileDialog
@@ -642,10 +642,10 @@ class UnifiedSettingsApp(ImApp):
         if im.begin("Settings header", flags=flags):
             avail = im.get_content_region_avail()[0]
             cx = im.get_cursor_pos()[0]
-            im.set_cursor_pos_x(cx + max(0.0, avail - 96.0))
-            if im.button(tr("Guide") + "##settings_guide", size=(60, 0)):
+            reserved = button_width(action_caption("guide")) + im.get_style().item_spacing[0] + 28.0
+            im.set_cursor_pos_x(cx + max(0.0, avail - reserved))
+            if action_button("guide", id="settings_guide"):
                 self.tour.start()
-            im.set_item_tooltip(tr("Walk through searching, choosing a destination and the Back / Next buttons."))
             self.item_rects["guide"] = im.get_item_rect()
             im.same_line()
             if im.button(tr("?") + "##settings_help", size=(28, 0)):

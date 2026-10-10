@@ -1,5 +1,6 @@
 """Existing FCS Qt entry points host the real native workflow and navigation."""
 
+from chisurf.plugins.emtk_layout import action_caption
 import pytest
 
 
@@ -154,9 +155,9 @@ def test_actual_native_fcs_factory_help_and_guide_buttons_are_bound(tmp_path, mo
         driver.click("help")
         painter = driver.draw(3)
         visible = {call[6] for call in painter.calls if call[0] == "text"}
-        assert app.help.open and "Close" in visible
+        assert app.help.open and action_caption("close") in visible
         assert any("correl" in text.casefold() for text in visible)
-        driver.click("Close")
+        driver.click(action_caption("close"))
         assert not app.help.open
         driver.click("guide")
         painter = driver.draw(3)

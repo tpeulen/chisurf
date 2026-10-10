@@ -8,6 +8,8 @@ gets (the strings of the frame, the histogram's drawn lines, the shifted file). 
 
 from __future__ import annotations
 
+from chisurf.plugins.emtk_layout import action_caption
+
 import sys
 import time
 from pathlib import Path
@@ -239,7 +241,7 @@ def test_the_database_button_opens_the_dataset_picker_and_closes_again(ui):
     ui.click("add_database")
     assert ui.app.dataset_picker.is_open
     ui.draw(3)
-    ui.press_text("Cancel") if ui.shown("Cancel") else ui.press_text("Close")
+    ui.press_text(action_caption("cancel")) if ui.shown(action_caption("cancel")) else ui.press_text(action_caption("close"))
     assert not ui.app.dataset_picker.is_open
 
 

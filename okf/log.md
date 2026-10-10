@@ -2,6 +2,11 @@
 
 ## 2026-10-10
 
+- One action vocabulary, HELD emptied: the last ten files (help window, code editor, help browser,
+  setup, lightpath simulator, ALEX suite, ALEX creator) draw their Help/Guide/Close/Cancel/Save/Open
+  buttons through `action_button`; `test/test_ui_vocabulary.py` has no exemptions left. ~30 plugin tests
+  that clicked a literal "Close" now use `action_caption("close")`. Record:
+  [UI vocabulary](subsystems/ui-vocabulary.md).
 - PRD-154 W4: `.pto`-first burst workflow. Burst tools (BVA, 2CDE, fusion, H2MM, burst FCS) write
   runs into the measurement container instead of `<ending>4/` companion folders;
   `chisurf/core/fio/fluorescence/legacy_export.py` (`export_legacy`) re-creates the legacy burst-folder

@@ -7,6 +7,8 @@ taken when this module was imported; the session log files chisurf itself starts
 
 from __future__ import annotations
 
+from chisurf.plugins.emtk_layout import action_caption
+
 import csv
 import hashlib
 import json
@@ -699,7 +701,7 @@ def test_batch_queue_run_save_remove_and_clear_with_real_clicks(ui, files, tmp_p
 def test_help_opens_with_live_links_and_closes(ui):
     ui.click_name("help")
     assert ui.app.help.open
-    ui.click_text("Close")
+    ui.click_text(action_caption("close"))
     assert not ui.app.help.open
     import re
 

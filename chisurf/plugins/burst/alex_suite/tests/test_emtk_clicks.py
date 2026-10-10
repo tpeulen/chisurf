@@ -13,6 +13,7 @@ import pathlib
 import pytest
 
 from chisurf.plugins.burst.alex_suite.gui.app import make_app
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.emtk_test_input import Driver
 
 
@@ -116,7 +117,7 @@ def test_help_button_opens_the_help_window(app, drv):
     app.suite_gui.selected_tab = "export"
     drv.draw(2)
     assert not app.suite_gui.export_gui.help_window.open
-    drv.click_text("❓ Help")
+    drv.click_text(action_caption("help"))
     drv.draw(2)
     assert app.suite_gui.export_gui.help_window.open
 

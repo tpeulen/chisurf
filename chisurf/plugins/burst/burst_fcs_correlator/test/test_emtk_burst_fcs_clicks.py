@@ -8,6 +8,8 @@ for dialog buttons, tabs and list entries); the assertions read the visible outc
 
 from __future__ import annotations
 
+from chisurf.plugins.emtk_layout import action_caption
+
 import json
 import re
 import time
@@ -176,12 +178,12 @@ def test_a_failing_correlation_reports_instead_of_raising(drv, monkeypatch):
 def test_guide_and_help_buttons(drv):
     drv.click("help")
     window = drv.app.help_window
-    assert window.open and {"Start Guided Tour", "Close"} <= set(drv.draw(2).strings)
+    assert window.open and {"Start Guided Tour", action_caption("close")} <= set(drv.draw(2).strings)
     drv.click_text("Start Guided Tour")
     assert not window.open and drv.app.tour.active
     drv.app.tour.stop()
     drv.click("help")
-    drv.click_text("Close")
+    drv.click_text(action_caption("close"))
     drv.click("help")
     drv.escape()
     assert not window.open

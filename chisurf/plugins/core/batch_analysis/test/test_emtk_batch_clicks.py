@@ -8,6 +8,8 @@ The control -> test list is in ``okf/plugins/emtk-ports/batch_analysis/REPORT.md
 
 from __future__ import annotations
 
+from chisurf.plugins.emtk_layout import action_caption
+
 from pathlib import Path
 
 import pytest
@@ -446,13 +448,13 @@ def test_help_button_opens_the_help_window_whose_buttons_work(drv):
     drv.click_name("help")
     assert window.open
     painter = drv.draw(2)
-    assert {"Start Guided Tour", "Close"} <= set(painter.strings)
+    assert {"Start Guided Tour", action_caption("close")} <= set(painter.strings)
     drv.click_text("Start Guided Tour")
     assert not window.open and drv.app.tour.active
     drv.app.tour.stop()
     drv.draw(2)
     drv.click_name("help")
-    drv.click_text("Close", last=True)
+    drv.click_text(action_caption("close"), last=True)
     assert not window.open
     drv.click_name("help")
     drv.escape()

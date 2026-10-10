@@ -8,6 +8,8 @@ control -> test list is in ``okf/plugins/emtk-ports/fcs_saturation/REPORT.md``.
 
 from __future__ import annotations
 
+from chisurf.plugins.emtk_layout import action_caption
+
 import json
 import re
 from pathlib import Path
@@ -777,12 +779,12 @@ def test_help_click_opens_the_window_whose_buttons_and_escape_close_it(drv):
     drv.click("help")
     window = drv.app.help_window
     assert window.open
-    assert {"Start Guided Tour", "Close"} <= set(drv.draw(2).strings)
+    assert {"Start Guided Tour", action_caption("close")} <= set(drv.draw(2).strings)
     drv.click_text("Start Guided Tour")
     assert not window.open and drv.app.tour.active
     drv.app.tour.stop()
     drv.click("help")
-    drv.click_text("Close")
+    drv.click_text(action_caption("close"))
     assert not window.open
     drv.click("help")
     drv.escape()

@@ -8,6 +8,8 @@ the files written). The control -> test list is in ``okf/plugins/emtk-ports/burs
 
 from __future__ import annotations
 
+from chisurf.plugins.emtk_layout import action_caption
+
 import json
 import threading
 import time
@@ -756,12 +758,12 @@ def test_help_click_opens_the_window_whose_buttons_and_escape_close_it(app):
     window = app.fusion_gui.help_window
     assert window.open
     painter = draw(app)
-    assert {"Start Guided Tour", "Close"} <= set(painter.strings)
+    assert {"Start Guided Tour", action_caption("close")} <= set(painter.strings)
     click(app, text_rect(painter, "Start Guided Tour"))
     assert not window.open and app.fusion_gui.tour.active
     app.fusion_gui.tour.stop()
     press(app, "help")
-    click(app, text_rect(draw(app), "Close"))
+    click(app, text_rect(draw(app), action_caption("close")))
     assert not window.open
     press(app, "help")
     app.key(keys.KEY_ESCAPE, "")

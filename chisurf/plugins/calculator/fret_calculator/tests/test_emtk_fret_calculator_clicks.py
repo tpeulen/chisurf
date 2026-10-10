@@ -169,11 +169,6 @@ def test_a_clicked_field_takes_the_keyboard_and_a_read_only_one_ignores_typing(a
     assert app.model.homo.k_homo != 7.0 and "7" not in app.active.form.buffers.get("k_homo", "")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="emtk gap: a text field keeps the keyboard after a click on a checkbox or button, "
-    "so the next typed character lands in it; see REPORT.md section 10",
-)
 def test_clicking_a_checkbox_takes_the_keyboard_away_from_a_text_field(app):
     draw(app)
     click(app, app.active.form.rects["R0"], fx=0.3)
@@ -320,7 +315,7 @@ def test_the_help_button_opens_a_window_with_working_buttons(app):
     press_text(app, action_caption("help"))
     assert app.help_window.open
     painter = draw(app)
-    assert {"Start Guided Tour", "Close", "Close Help"} <= set(painter.strings)
+    assert {"Start Guided Tour", action_caption("close"), "Close Help"} <= set(painter.strings)
     assert "HeteroFRET links the donor-acceptor" in " ".join(painter.strings)
     click(app, text_rect(draw(app), "Start Guided Tour"))
     assert not app.help_window.open and app.tour.active
@@ -329,7 +324,7 @@ def test_the_help_button_opens_a_window_with_working_buttons(app):
     click(app, text_rect(draw(app), "Close Help"))
     assert not app.help_window.open
     press_text(app, action_caption("help"))
-    click(app, text_rect(draw(app), "Close", last=False))
+    click(app, text_rect(draw(app), action_caption("close"), last=False))
     assert not app.help_window.open
     press_text(app, action_caption("help"))
     app.key(keys.KEY_ESCAPE, "")

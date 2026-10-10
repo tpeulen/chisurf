@@ -17,6 +17,7 @@ from emtk import clipboard, keys
 from emtk.events import ALT_MODIFIER, CONTROL_MODIFIER, SHIFT_MODIFIER
 
 from chisurf.plugins.core.code_editor.gui.editor_app import make_editor_app
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.emtk_test_input import Driver
 
 REAL_HOME = Path(pwd.getpwuid(os.getuid()).pw_dir)
@@ -377,7 +378,7 @@ def test_the_caret_scrolls_into_view(ed):
 
 
 def test_open_button_lists_the_project_and_a_picked_file_opens_in_a_new_tab(ed, project):
-    ed.click_text("📂 Open")
+    ed.click_text(action_caption("open"))
     assert ed.app.editor_gui._file_dialog is not None
     assert ed.drawn("script.py") and ed.drawn("notes.txt")
     ed.click_text("script.py")
@@ -389,7 +390,7 @@ def test_open_button_lists_the_project_and_a_picked_file_opens_in_a_new_tab(ed, 
 
 def test_the_open_dialog_cancel_opens_nothing(ed):
     count = len(ed.app.model.documents)
-    ed.click_text("📂 Open")
+    ed.click_text(action_caption("open"))
     ed.click_text("Cancel")
     assert ed.app.editor_gui._file_dialog is None and len(ed.app.model.documents) == count
 
@@ -405,7 +406,7 @@ def test_editing_and_saving_writes_the_file(ed, project):
     ed.click_at(0, 5)
     ed.type("0")
     assert ed.doc.is_modified and "Modified" in ed.status()
-    ed.click_text("💾 Save")
+    ed.click_text(action_caption("save"))
     assert (project / "script.py").read_text() == "x = 10\nprint(x)\n"
     assert not ed.doc.is_modified and "Saved" in ed.status()
 
@@ -442,11 +443,11 @@ def test_save_over_an_existing_file_asks_before_replacing(ed, project):
 def test_closing_a_modified_document_asks_and_discard_or_cancel_work(ed):
     count = len(ed.app.model.documents)
     ed.type("zzz")
-    ed.click_text("✖ Close")
+    ed.click_text(action_caption("close"))
     assert ed.drawn("Discard changes")
-    ed.click_text("Cancel")
+    ed.click_text(action_caption("cancel"))
     assert len(ed.app.model.documents) == count
-    ed.click_text("✖ Close")
+    ed.click_text(action_caption("close"))
     ed.click_text("Discard changes")
     assert len(ed.app.model.documents) == count - 1
 
@@ -460,7 +461,7 @@ def test_new_and_close_without_changes(ed):
     for _ in range(4):
         ed.combo("z")
     assert ed.doc.text == ""
-    ed.click_text("✖ Close")
+    ed.click_text(action_caption("close"))
     assert len(ed.app.model.documents) == 1
 
 
@@ -604,7 +605,7 @@ def test_ctrl_n_makes_a_document_and_ctrl_w_closes_it_and_asks_when_modified(ed)
     ed.type("a")
     ed.combo("w")
     assert ed.drawn("Discard changes")
-    ed.click_text("Cancel")
+    ed.click_text(action_caption("cancel"))
     assert len(ed.app.model.documents) == 1
 
 
@@ -649,11 +650,11 @@ def test_the_toolbar_wraps_and_every_control_and_the_status_line_stay_inside_the
     painter = ed.draw(3)
     for label in (
         "➕ New",
-        "📂 Open",
-        "💾 Save",
+        action_caption("open"),
+        action_caption("save"),
         "📝 Save As",
-        "✖ Close",
-        "▶ Run",
+        action_caption("close"),
+        action_caption("run"),
         "🧹 Check",
         "🛠 Fix",
         "📓 Notebook",

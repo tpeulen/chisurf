@@ -23,6 +23,7 @@ from .app import AlexAlternationApp, LegacyExportApp, TitrationApp
 from .export_model import LegacyExportModel
 from .titration_view_model import TitrationViewModel
 from emtk.i18n import tr
+from chisurf.plugins.emtk_layout import action_button
 
 logger = logging.getLogger("chisurf.plugins.burst")
 
@@ -98,7 +99,7 @@ class AlexDataSelectionApp(BurstDataSelectionApp):
     def _draw_summary_extra(self) -> None:
         im.separator()
         im.text_wrapped(tr("No µs-ALEX measurement at hand?"))
-        if im.button(tr("Demo")):
+        if action_button("example"):
             self.track("load_example")
             try:
                 self.load_example()

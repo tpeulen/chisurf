@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from chisurf.plugins.emtk_layout import action_caption
+
 import pytest
 from emtk import keys
 
@@ -97,7 +99,7 @@ def test_the_wizard_keeps_working_through_the_hub_a_whole_batch(drv, tmp_path):
 def test_help_button_opens_the_help_window_and_its_buttons_work(drv):
     drv.click_name("help")
     assert drv.app.help_window.open
-    assert {"Start Guided Tour", "Close"} <= set(drv.draw(2).strings)
+    assert {"Start Guided Tour", action_caption("close")} <= set(drv.draw(2).strings)
     drv.click_text("Start Guided Tour")
     assert not drv.app.help_window.open and drv.app.tour.active
     drv.app.tour.stop()

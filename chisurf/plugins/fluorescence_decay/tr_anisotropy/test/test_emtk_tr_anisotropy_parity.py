@@ -728,7 +728,7 @@ def test_help_opens_a_window_with_live_links_and_closes(ui):
     ui.click_text(action_caption("help"))
     assert ui.app.help_window.open
     assert "Help" in " ".join(t[5] for t in ui.draw().texts)
-    ui.click_text("Close")
+    ui.click_text(action_caption("close"))
     assert not ui.app.help_window.open
 
 

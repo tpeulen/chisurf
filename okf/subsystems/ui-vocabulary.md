@@ -9,31 +9,24 @@ timestamp: '2026-10-10T00:00:00Z'
 
 # Where to pick this up
 
-1. Open: the files in `test/test_ui_vocabulary.py::HELD` still draw their own
-   variants (help_guide `Close`; code editor `📂 Open` / `✖ Close` / `📋 Copy`;
-   help browser `Copy` small button; setup `Guide`; lightpath `Cancel` ×2 and its
-   spec's Help/Guide/Export; ALEX suite `❓ Help` ×4, `🧭 Guide`, `Demo`;
-   PTU-ALEX creator Help/Guide dicts and two `Open…` entries). Their lanes have
-   released them: port each with `action_button` / `action_item`, then strike
-   its entry — `test_held_files_still_need_their_edit` fails until you do.
-2. Measure: `python -c "import sys; sys.path.insert(0,'test'); import
+1. Measure: `python -c "import sys; sys.path.insert(0,'test'); import
    test_ui_vocabulary as t; print(t.all_findings())"` lists every remaining
    hand-drawn shared action. Trap: a button row that leads with a key
    (`("Export", tip, lambda: …)`) is not recognised, because its key is often a
    tour target; such rows were ported by hand (spot_finder, channel_definition,
    fcs_correlator, synthetic_decay).
-3. Blocked: the emtk pin. `im.toggle_button` and the button-row `icon` live in
-   emtk `ed2f6f9`, `cda4a92`, `7f341f9` (local, unpushed). `pixi.lock` still
+2. Blocked: the emtk pin. `im.toggle_button` and the button-row `icon` live in
+   emtk `ed2f6f9`, `cda4a92`, `7f341f9`, `icon_caption` and later (local, unpushed; local HEAD ea91cb3). `pixi.lock` still
    names `3416806a`; the test/docs envs were reinstalled from the local commit.
    An env re-solved from the old pin raises `AttributeError: toggle_button` in
    all five games.
-4. Open: ndxplorer (`modules/ndxplorer`, its own repo) draws its own chrome and
+3. Open: ndxplorer (`modules/ndxplorer`, its own repo) draws its own chrome and
    is not scanned; port its Help/Guide/Export to the same table there.
-5. Open: the Qt legacy toolbar ([Toolbar action vocabulary](gui-action-vocabulary.md))
+4. Open: the Qt legacy toolbar ([Toolbar action vocabulary](gui-action-vocabulary.md))
    uses `ℹ️` for Help where emtk uses `❓`; align it when that toolbar is next
    touched. Compound captions (`Save JSON`, `Export CSV`, `Process`, `Start`)
    are distinct actions and stay free.
-6. Measure: the literal and tooltip allow-lists key findings by line; ported
+5. Measure: the literal and tooltip allow-lists key findings by line; ported
    files shifted lines, so `test/test_i18n_literals.py` and
    `test/test_tooltips.py` report relocated/stale keys until the root
    regenerates them (they only shrink: ported controls left the measurement).

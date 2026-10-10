@@ -9,6 +9,8 @@ not go through the shared view model.
 
 from __future__ import annotations
 
+from chisurf.plugins.emtk_layout import action_caption
+
 import importlib.util
 import json
 from pathlib import Path
@@ -971,7 +973,7 @@ def test_the_wheel_scrolls_the_settings_window_when_the_form_is_taller_than_it(a
 def test_help_button_opens_the_help_and_its_buttons_work(app, drv):
     drv.click("help")
     assert app.help_window.open
-    assert {"Start Guided Tour", "Close"} <= set(drv.draw(2).strings)
+    assert {"Start Guided Tour", action_caption("close")} <= set(drv.draw(2).strings)
     drv.click_text("Start Guided Tour")
     assert not app.help_window.open and app.tour.active
     app.tour.stop()

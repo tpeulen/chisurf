@@ -25,6 +25,7 @@ from emtk.im_core import Col
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.typed_field import typed_number_field
 from emtk.i18n import tr
+from chisurf.plugins.emtk_layout import action_button
 
 if TYPE_CHECKING:
     from .alternation import AlexAlternationPanel
@@ -202,10 +203,9 @@ class LegacyExportGui(TourTarget):
             self.remember("run")
 
             im.same_line()
-            if im.button(tr("❓ Help")):
+            if action_button("help"):
                 self.show_help()
             self.remember("help")
-            im.set_item_tooltip(tr("Open the help window with reference documentation."))
 
             im.spacing()
             im.separator()
@@ -351,10 +351,9 @@ class TitrationGui(TourTarget):
         im.set_item_tooltip(tr("Export the titration series and fit results to a CSV file."))
         self.remember("export")
         im.same_line()
-        if im.button(tr("❓ Help")):
+        if action_button("help"):
             self.show_help()
         self.remember("help")
-        im.set_item_tooltip(tr("Open the help window with reference documentation."))
 
         im.separator()
         rows = model.series_rows()
@@ -605,10 +604,9 @@ class AlexAlternationGui(TourTarget):
         im.set_item_tooltip(tr("Detect the alternation period without converting the data."))
         self.remember("detect_only")
         im.same_line()
-        if im.button(tr("❓ Help")):
+        if action_button("help"):
             self.show_help()
         self.remember("help")
-        im.set_item_tooltip(tr("Open the help window with reference documentation."))
 
         im.spacing()
         im.separator()
@@ -916,15 +914,13 @@ class AlexSuiteGui(TourTarget):
 
             im.separator()
             im.same_line()
-            if im.button(tr("🧭 Guide") + "##suite_guide"):
+            if action_button("guide", id="suite_guide"):
                 self.start_guide()
-            im.set_item_tooltip(tr("Start the guided tour of the ALEX Suite."))
             self.remember("guide_button")
 
             im.same_line()
-            if im.button(tr("❓ Help") + "##suite_help"):
+            if action_button("help", id="suite_help"):
                 self.show_help()
-            im.set_item_tooltip(tr("Open the help and reference documentation."))
             self.remember("help_button")
         im.end()
 

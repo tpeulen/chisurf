@@ -18,7 +18,7 @@ from chisurf.core.optical_configuration import _graph_to_config, extract_forster
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.node_editor.control import GraphControl
 from chisurf.emtk.optical_configuration import OpticalConfigurationWidget
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 
 from .controller import LightPathController
 from .emtk_view import BeampathContent
@@ -71,9 +71,8 @@ class TextInputDialog(_Modal):
             self.finished = True
         im.set_item_tooltip(tr("Use this name. An empty name does nothing."))
         im.same_line()
-        if im.button(tr("Cancel")):
+        if action_button("cancel", id="cancel_name", tooltip=tr("Close without doing anything.")):
             self.finished = True
-        im.set_item_tooltip(tr("Close without doing anything."))
 
 
 class OpticalGraphControl(GraphControl):
@@ -258,10 +257,9 @@ class SavedChooser(_Modal):
         im.set_item_tooltip(tr("Load the selected simulation: its graph and its numerical result."))
         im.end_disabled()
         im.same_line()
-        if im.button(tr("Cancel")):
+        if action_button("cancel", id="cancel_list", tooltip=tr("Close this list without loading anything.")):
             panel.want_list = False
             self.finished = True
-        im.set_item_tooltip(tr("Close this list without loading anything."))
 
 
 class FileChooser(_Modal):

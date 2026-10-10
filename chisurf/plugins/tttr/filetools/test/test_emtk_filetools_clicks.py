@@ -231,12 +231,12 @@ def test_a_tool_without_a_native_declaration_says_pending_and_the_rest_works():
 def test_help_button_opens_the_help_window_whose_buttons_work(drv):
     window = drv.app.help
     drv.click_text(action_caption("help"))
-    assert window.open and {"Start Guided Tour", "Close", "Close Help"} <= set(drv.draw(2).strings)
+    assert window.open and {"Start Guided Tour", action_caption("close"), "Close Help"} <= set(drv.draw(2).strings)
     drv.click_text("Start Guided Tour")
     assert not window.open and drv.app.tour.active
     drv.app.tour.stop()
     drv.draw(2)
-    for closer in ("Close Help", "Close"):
+    for closer in ("Close Help", action_caption("close")):
         drv.click_text(action_caption("help"))
         drv.click_text(closer, last=closer == "Close Help")
         assert not window.open, closer
@@ -333,8 +333,8 @@ def test_emoji_are_only_the_list_rows_icons(drv):
     strings = drv.draw(2).strings
     assert icons <= set(strings)
     for text in strings:
-        if text in icons:
-            continue
+        if text in icons or text in (action_caption("guide"), action_caption("help")):
+            continue  # the shared Help/Guide captions carry their vocabulary icon
         assert all(ord(ch) < 0x2190 or 0x2190 <= ord(ch) <= 0x21FF for ch in text), (
             text
         )  # arrows (the .pto caption) only

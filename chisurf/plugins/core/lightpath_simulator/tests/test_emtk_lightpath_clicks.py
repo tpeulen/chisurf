@@ -14,6 +14,8 @@ from pathlib import Path
 import pytest
 from emtk import keys
 
+from chisurf.plugins.emtk_layout import action_caption
+
 from .driving import BIG, SMALL, LPDriver
 from .test_emtk_lightpath_parity import in_process_client, load_catalogue, populated
 
@@ -64,7 +66,8 @@ def in_window(drv, name, label):
 
 
 def dialog_open(drv):
-    return "Cancel" in drv.draw(1).strings and drv.app.dialog is not None
+    strings = drv.draw(1).strings
+    return ("Cancel" in strings or action_caption("cancel") in strings) and drv.app.dialog is not None
 
 
 def message(drv):
@@ -211,7 +214,7 @@ def test_load_from_mmfdb_cancel_loads_nothing(drv):
     drv.click("load_mmfdb")
     drv.settle()
     drv.draw(3)
-    drv.click_text("Cancel")
+    drv.click_text(action_caption("cancel"))
     assert drv.app.dialog is None
 
 
@@ -406,10 +409,6 @@ def test_the_backend_panel_toggles_and_typed_fields(drv, tmp_path):
     assert c.probes == [] and c.status == "0 optical spectra available."
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="emtk gap: Enter on an emptied text field does not commit the empty text (see REPORT)",
-)
 def test_an_emptied_spectra_database_field_commits_on_enter(drv):
     drv.click_text("Backend")
     drv.draw(2)

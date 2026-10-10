@@ -602,7 +602,7 @@ def test_the_json_editor_applies_valid_preferences_and_reports_invalid_ones(ui):
 def test_help_opens_with_live_links_and_closes(ui):
     ui.click_text(action_caption("help"))
     assert ui.app.help_window.open
-    ui.click_text("Close")
+    ui.click_text(action_caption("close"))
     assert not ui.app.help_window.open
     import re
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from chisurf.plugins.emtk_layout import action_caption
+
 from pathlib import Path
 
 import pytest
@@ -96,7 +98,7 @@ def test_the_wheel_scrolls_the_list_in_a_short_window(drv):
 def test_help_button_opens_the_help_window_whose_buttons_work(drv):
     drv.click_name("help")
     assert drv.app.help_window.open
-    assert {"Start Guided Tour", "Close"} <= set(drv.draw(2).strings)
+    assert {"Start Guided Tour", action_caption("close")} <= set(drv.draw(2).strings)
     drv.click_text("Start Guided Tour")
     assert not drv.app.help_window.open and drv.app.tour.active
     drv.app.tour.stop()

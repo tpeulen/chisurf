@@ -31,7 +31,7 @@ from chisurf.plugins.core.help.api import review as help_review
 from chisurf.plugins.core.help.api import toc as help_toc
 from chisurf.plugins.core.help.api.mathtext import _unicode_fallback, html_math, normalise_latex
 from chisurf.plugins.core.help.api.xref import document_reference, resolve_document, resolve_ref
-from chisurf.plugins.emtk_layout import window_size
+from chisurf.plugins.emtk_layout import action_button, window_size
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -1648,9 +1648,8 @@ class HelpGui:
 
         if self.model.edit_mode:
             im.same_line()
-            if im.button(tr("Save")):
+            if action_button("save", tooltip=tr("Save changes to the current documentation source")):
                 self.model.save_current_page()
-            im.set_item_tooltip(tr("Save changes to the current documentation source"))
 
         im.same_line()
         # Review status badge with explicit icon
@@ -1955,14 +1954,13 @@ class HelpGui:
                 lang_tag = f" [{block.arg}]" if block.arg else ""
                 im.text_disabled(f"Code{lang_tag}")
                 im.same_line()
-                if im.small_button(f"Copy##cp_{idx}"):
+                if action_button("copy", id=f"cp_{idx}", tooltip=tr("Copy this code block to the clipboard")):
                     try:
                         from emtk.clipboard import set_clipboard_text
 
                         set_clipboard_text(block.text)
                     except Exception:
                         pass
-                im.set_item_tooltip(tr("Copy this code block to the clipboard"))
 
                 im.push_font("monospace")
                 im.push_style_color(Col.FRAME_BG, (20, 24, 30, 255))
