@@ -103,11 +103,14 @@ def press(app, name, size=SIZE):
     click(app, rect(app, name), size)
 
 
-def type_into(app, name, text, size=SIZE, enter=True):
+def type_into(app, name, text, size=SIZE, enter=True, greyed=False):
     """Click a spec field, select its content, type, press Enter."""
     draw(app, size)
     click(app, rect(app, name), size, fx=0.3)
-    assert app.io.want_capture_keyboard, f"{name} did not take the keyboard"
+    if greyed:  # a greyed field refuses the keyboard; the keys still go out and must change nothing
+        assert not app.io.want_capture_keyboard, f"{name} is greyed but took the keyboard"
+    else:
+        assert app.io.want_capture_keyboard, f"{name} did not take the keyboard"
     app.key(0x41, "a", CTRL_A)
     draw(app, size, frames=1)
     for ch in text:
@@ -249,7 +252,7 @@ def test_buttons_and_fields_are_inert_while_a_run_is_in_flight(app, monkeypatch)
     press(app, "toolAction_refresh")  # a second run is not started
     assert app.controller._future is future
     threshold = app.model.settings.threshold
-    type_into(app, "threshold", "0.9")  # typing into the greyed field is refused
+    type_into(app, "threshold", "0.9", greyed=True)  # typing into the greyed field is refused
     assert app.model.settings.threshold == threshold
     gate.set()
     settle(app)
@@ -502,9 +505,15 @@ def paste_into(app, area, text):
     assert app.io.want_capture_keyboard
     app.key(0x41, "a", CTRL_A)
     draw(app, frames=1)
-    clipboard.receive(text)
-    app.key(ord("V"), "v", CTRL_A)
-    draw(app, frames=2)
+    # A Qt host elsewhere in the same process (use_qt_clipboard) leaves its paste hook installed, and that hook
+    # outranks a received paste: hold the text in a hook of our own for the paste, then put the old one back.
+    saved = (clipboard._hook, clipboard._paste_hook)
+    clipboard.set_hook(lambda _text: None, lambda: text)
+    try:
+        app.key(ord("V"), "v", CTRL_A)
+        draw(app, frames=2)
+    finally:
+        clipboard.set_hook(*saved)
 
 
 # -- the file type and the detector definitions ---------------------------------------------------------------------------- #
@@ -688,11 +697,6 @@ def test_a_drag_pans_a_plot(app):
     assert tick_labels(draw(app, frames=2)) != before
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="emtk gap: the wheel never reaches an implot inside a DockManager window (works in a plain "
-    "im.begin window); see REPORT.md 'emtk gaps'",
-)
 def test_the_wheel_zooms_a_plot(app):
     x, y, w, h = open_proximity_plot(app)
     cx, cy = x + w / 2, y + h / 2

@@ -162,24 +162,10 @@ class BurstGsGui:
             self.help_window.draw((0.0, 0.0, w, h))
 
         if self.tour.active:
-            if self.tour.awaiting:
-                self.tour.draw(
-                    w, h
-                )  # the highlighted control must stay clickable: no overlay window over the docks
-            else:
-                # In a window of its own, over the docks: drawn into the root window the card's buttons sat under the dock
-                # windows (a button is hovered only when no other window is under the pointer), so Close Tour, Prev and
-                # most Next presses never arrived.
-                flags = (
-                    im.WindowFlags.NO_DECORATION
-                    | im.WindowFlags.NO_BACKGROUND
-                    | im.WindowFlags.NO_SAVED_SETTINGS
-                    | im.WindowFlags.NO_MOVE
-                    | im.WindowFlags.NO_NAV
-                )
-                im.begin("##gs_tour_overlay", (0.0, 0.0, float(w), float(h)), flags)
-                self.tour.draw(w, h)
-                im.end()
+            # The card is a bounded window of its own (see EmTkGuidedTour.draw), so it takes its own presses and
+            # leaves the highlighted control outside its rectangle clickable. A full-frame overlay window around it
+            # appeared on top of the card the moment a step stopped awaiting, and swallowed Close, Prev and Next.
+            self.tour.draw(w, h)
 
     def _render_controls_window(self, box=None) -> None:
 

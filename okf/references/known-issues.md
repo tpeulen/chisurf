@@ -53,13 +53,16 @@ hides the defect. Fix in the product (refresh link followers on a parameter edit
 
 ## Two click tests fail only when run after their neighbours (found 2026-10-10)
 
-status: open — owner: whoever next touches the burst_fusion or lightpath_simulator tests.
+status: resolved 2026-10-10 — both were leaked process-wide state, not test logic.
 
-`burst_fusion/tests/test_emtk_fusion_clicks.py::test_detector_definitions_expand_are_edited_applied_and_refused_when_invalid`
-(applied detectors come back `{}`) and `lightpath_simulator/tests/test_emtk_lightpath_clicks.py::test_load_from_mmfdb_with_nothing_saved_says_so`
-(no "No saved light path simulations" message) fail in a whole-directory run and pass alone (fusion re-run twice, lightpath once).
-Likely shared state: a detector-setup store / MMFDB written by an earlier test in the same process. Measure by
-running the file, then the single node id; bisect by node ids (memory: global-setting-test-isolation), not `-k`.
+Fusion: a Qt-hosted emtk window in an earlier test (`emtk.qt_host.use_qt_clipboard`) leaves a paste hook installed on
+`emtk.clipboard`, and that hook outranks `clipboard.receive`, so `paste_into` pasted the Qt clipboard (nothing) and the
+detector definitions came back `{}`. Bisected by node ids: any of `alex_suite`, `burst_analysis` plus the one node
+reproduced it; the node alone passed. `paste_into` now holds the text in a hook of its own for the paste and restores the old one.
+Lightpath: `mmfdb.config` keeps a process-wide runtime config that outranks `MMFDB_DATABASE_PATH`, so a test elsewhere that
+called `configure_runtime` without `reset_runtime_config` pointed the window at its database. The `hermetic` fixture
+(`lightpath_simulator/tests/test_emtk_lightpath_parity.py`) now resets it before and after. The lightpath failure could not be
+re-reproduced in a 3000-test `plugins/core` run, so that half is a hardening on the identified mechanism, not a measured fix.
 
 ## Guide screenshot scripts still import retired Qt calculator tools (found 2026-10-10)
 

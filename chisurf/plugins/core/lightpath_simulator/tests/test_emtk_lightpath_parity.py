@@ -28,6 +28,13 @@ def hermetic(tmp_path, monkeypatch):
     monkeypatch.setenv("MMFDB_DATABASE_PATH", str(tmp_path / "mmfdb.sqlite"))
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
     (tmp_path / "home").mkdir()
+    # The runtime config is process-wide and outranks the environment variables above: a test elsewhere that
+    # configured MMFDB (and did not reset it) would point this window at its database, not the empty one here.
+    from mmfdb.config import reset_runtime_config
+
+    reset_runtime_config()
+    yield
+    reset_runtime_config()
 
 
 @pytest.fixture

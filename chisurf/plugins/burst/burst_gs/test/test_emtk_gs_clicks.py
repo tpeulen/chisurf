@@ -106,10 +106,13 @@ def shown(app, size=SIZE):
     return " ".join(draw(app, size).strings)
 
 
-def type_into(app, name, text, size=SIZE, enter=True):
+def type_into(app, name, text, size=SIZE, enter=True, greyed=False):
     draw(app, size)
     click(app, rect(app, name), size, fx=0.3)
-    assert app.io.want_capture_keyboard, f"{name} did not take the keyboard"
+    if greyed:  # a greyed field refuses the keyboard; the keys still go out and must change nothing
+        assert not app.io.want_capture_keyboard, f"{name} is greyed but took the keyboard"
+    else:
+        assert app.io.want_capture_keyboard, f"{name} did not take the keyboard"
     app.key(0x41, "a", CTRL_A)
     draw(app, size, frames=1)
     for ch in text:
@@ -386,7 +389,7 @@ def test_the_buttons_and_fields_are_inert_while_a_fit_is_running(app, monkeypatc
     press_text(app, "Open BUR files")
     assert app.controller.dialog is None
     k = app.model.sim_k_forward
-    type_into(app, "sim_k_forward", "4000")
+    type_into(app, "sim_k_forward", "4000", greyed=True)
     assert app.model.sim_k_forward == k
     press(app, "fix_efficiencies")
     assert app.model.fix_efficiencies is False
@@ -623,11 +626,6 @@ def test_a_drag_pans_the_rates_plot(app):
     assert tick_labels(draw(app, frames=2)) != before
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="emtk gap: the wheel never reaches an implot inside a DockManager window (works in a plain "
-    "im.begin window); see REPORT.md 'emtk gaps'",
-)
 def test_the_wheel_zooms_the_rates_plot(app):
     small_fit(app)
     cx, cy = 900.0, 600.0

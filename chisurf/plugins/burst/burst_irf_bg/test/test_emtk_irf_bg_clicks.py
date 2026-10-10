@@ -112,10 +112,13 @@ def key_text(app, text, size=SIZE, enter=True):
         draw(app, size, frames=2)
 
 
-def type_into(app, name, text, size=SIZE, enter=True):
+def type_into(app, name, text, size=SIZE, enter=True, greyed=False):
     draw(app, size)
     click(app, rect(app, name), size, fx=0.3)
-    assert app.io.want_capture_keyboard, f"{name} did not take the keyboard"
+    if greyed:  # a greyed field refuses the keyboard; the keys still go out and must change nothing
+        assert not app.io.want_capture_keyboard, f"{name} is greyed but took the keyboard"
+    else:
+        assert app.io.want_capture_keyboard, f"{name} did not take the keyboard"
     key_text(app, text, size, enter)
 
 
@@ -213,7 +216,7 @@ def test_everything_is_inert_while_a_computation_runs(app, measurement, monkeypa
     press_text(app, "Open TTTR files")
     assert app.controller.dialog is None
     k = app.model.min_photons
-    type_into(app, "min_photons", "99")
+    type_into(app, "min_photons", "99", greyed=True)
     assert app.model.min_photons == k
     press_text(app, "Clear files")
     assert app.model.files == [str(measurement)]

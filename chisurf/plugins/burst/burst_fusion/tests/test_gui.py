@@ -225,4 +225,7 @@ def test_guided_tour_steps_point_at_real_widgets(tool):
 
     tour = GuidedTour(tool, steps)
     for step in steps:
+        if not step.target:  # the opening step introduces the tool and is centred by design
+            assert step is steps[0], f"only the opening step may have no target: {step.title}"
+            continue
         assert tour.resolve_target(step.target) is not None, step.title

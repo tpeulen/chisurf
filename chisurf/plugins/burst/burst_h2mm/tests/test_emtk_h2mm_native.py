@@ -262,11 +262,7 @@ def test_guide_targets_are_drawn_and_the_run_step_waits_for_the_press(app, sampl
         key = app.tour._target_key(step.get("target"))
         if key:
             assert key in app.item_rects or key in app.form.rects, key
-    app.start_guide()
-    app.tour.step_idx = next(
-        i for i, s in enumerate(steps) if s.get("await") and s["target"]["name"] == "toolAction_run"
-    )
-    configure(drv, sample)
+    configure(drv, sample)  # before the tour: its card would cover the fields being typed into
     app.start_guide()
     app.tour.step_idx = next(
         i for i, s in enumerate(steps) if s.get("await") and s["target"]["name"] == "toolAction_run"

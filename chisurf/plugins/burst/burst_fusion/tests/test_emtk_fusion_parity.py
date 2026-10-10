@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -161,7 +162,8 @@ def test_the_status_line_is_drawn_once():
         app.controller.estimate()
         _settle(app)
         strings = " ".join(_draw(app).strings)
-        assert strings.count("283 bursts") == 1  # the result once (the controller repeated it)
+        # the result once (the controller repeated it); the count itself follows the demo data
+        assert len(re.findall(r"\d+ → \d+ bursts", strings)) == 1
     finally:
         app.close()
 

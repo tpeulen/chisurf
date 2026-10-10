@@ -292,20 +292,9 @@ class MfdPrepareApp(TourTarget, ImApp):
         if self.help_window.open:
             self.help_window.draw(frame)
         if self.tour.active:
-            if self.tour.awaiting:
-                self.tour.draw(width, height)  # the highlighted control must stay clickable
-            else:
-                # A window of its own: drawn into the root window the card's Next / Prev presses also reached the buttons under it.
-                flags = (
-                    im.WindowFlags.NO_DECORATION
-                    | im.WindowFlags.NO_BACKGROUND
-                    | im.WindowFlags.NO_SAVED_SETTINGS
-                    | im.WindowFlags.NO_MOVE
-                    | im.WindowFlags.NO_NAV
-                )
-                im.begin("##mfd_prepare_tour", (0.0, 0.0, width, height), flags)
-                self.tour.draw(width, height)
-                im.end()
+            # The card is a bounded window of its own, so it takes its own presses and the highlighted control stays
+            # clickable; a full-frame overlay would sit on top of the card once a step stops awaiting.
+            self.tour.draw(width, height)
         if self.dialog is not None:
             closed = self.file_window.begin(frame) == "close"
             result = self.dialog.draw()
