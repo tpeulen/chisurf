@@ -1,7 +1,8 @@
 """Native calculator hub: the list of calculators on the left, the selected one built lazily and embedded on the right.
 
 The catalogue is Qt-free data (:mod:`..core.registry`). Each calculator is its own emtk app, constructed on its first
-selection and kept (with its state) afterwards; the hub forwards pointer, wheel, key and file-drop events to it and
+selection and kept (with its state) afterwards -- the one shown when the hub opens is made on a worker thread
+(:mod:`chisurf.emtk.background_build`) behind an "Opening" placeholder, so the hub's first frame does not import it; the hub forwards pointer, wheel, key and file-drop events to it and
 asks for a frame whenever the embedded app does.
 """
 
@@ -14,6 +15,7 @@ from pathlib import Path
 from emtk import im, keys
 from emtk.app import ImApp
 
+from chisurf.emtk.background_build import BackgroundBuild, draw_opening
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.plugin_icons import entry_icon
 from chisurf.plugins.emtk_layout import action_button, window_size
@@ -54,6 +56,7 @@ class CalculatorHubApp(ImApp):
         self.item_rects: dict[str, tuple] = {}
         self._painter = None
         self._pending_settings: dict[str, dict] = {}
+        self._builder = BackgroundBuild(wake=self.request_frame)
         self.help_window = EmTkHelpWindow(
             title="Calculators - Help",
             resource=HERE / "help.md",
@@ -70,29 +73,86 @@ class CalculatorHubApp(ImApp):
         super().__init__(self.render, continuous=False)
 
     # -- selection and children ----------------------------------------------------------------- #
+    def make_child(self, id):
+        """Construct the app of entry *id* (may run on a worker thread: no hub state, no drawing)."""
+        module, attr = FACTORIES[id].split(":")
+        return getattr(importlib.import_module(module), attr)()
+
+    def load_error(self, id, exc):
+        """The header text for an entry whose app could not be made."""
+        entry = next(e for e in self.entries if e.id == id)
+        return f"Could not load '{entry.label}': {exc}"
+
+    def adopt_child(self, id, child):
+        """Wire a made app into the hub (UI thread): its frame requests, its saved settings."""
+        setter = getattr(child, "set_frame_request_callback", None)
+        if callable(setter):
+            setter(self.request_frame)  # a worker thread of the child wakes the hub's host
+        self.children[id] = child
+        saved = self._pending_settings.pop(id, None)
+        if saved is not None and callable(getattr(child, "restore_settings", None)):
+            child.restore_settings(saved)
+
+    def ensure_child(self, id):
+        """The app of *id*, made now if it was not (joins a background build of it); ``None`` on failure."""
+        if self._builder.building(id):
+            self._collect_build(wait=True)
+        if id not in self.children:
+            try:
+                self.adopt_child(id, self.make_child(id))
+            except Exception as exc:  # noqa: BLE001 - shown in the header, as the Qt hub showed it in the page
+                self.error = self.load_error(id, exc)
+        return self.children.get(id)
+
+    def _collect_build(self, wait=False):
+        """Adopt a finished background build; whether the selected entry landed (or failed) with it."""
+        built = self._builder.collect(wait=wait)
+        if built is None:
+            return False
+        for id, (child, exc) in built.items():
+            if id in self.children:
+                continue
+            if exc is None:
+                try:
+                    self.adopt_child(id, child)
+                    continue
+                except Exception as adopt_exc:  # noqa: BLE001
+                    exc = adopt_exc
+            if id == self.selected:
+                self.error = self.load_error(id, exc)
+        return self.selected in built
+
+    @property
+    def building(self):
+        """Whether the shown entry's app is being made in the background."""
+        return self._builder.busy
+
     def select(self, id):
         """Select a calculator, building its app on first use; returns the app (``None`` when it could not be built)."""
         if id not in {entry.id for entry in self.entries}:
             raise ValueError("Unknown calculator: " + id)
         self.selected = id
         self.error = ""
-        if id not in self.children:
-            try:
-                module, attr = FACTORIES[id].split(":")
-                child = getattr(importlib.import_module(module), attr)()
-                setter = getattr(child, "set_frame_request_callback", None)
-                if callable(setter):
-                    setter(self.request_frame)  # a worker thread of the child wakes the hub's host
-                self.children[id] = child
-                saved = self._pending_settings.pop(id, None)
-                if saved is not None and callable(getattr(child, "restore_settings", None)):
-                    child.restore_settings(saved)
-            except Exception as exc:  # noqa: BLE001 - shown in the header, as the Qt hub showed it in the page
-                entry = next(e for e in self.entries if e.id == id)
-                self.error = f"Could not load '{entry.label}': {exc}"
-        return self.children.get(id)
+        return self.ensure_child(id)
+
+    def _first_frame_build(self):
+        """Per frame: adopt a finished build (then select it, for the subclass's bookkeeping); start one for a selected
+        entry that has no app yet. Returns whether a build is under way."""
+        if self._collect_build() and self.selected in self.children:
+            self.select(self.selected)
+        if self.selected and self.child is None and not self.error and not self.building:
+            self._builder.start({self.selected: lambda id=self.selected: self.make_child(id)},
+                                name=f"chisurf-hub-{self.selected}")
+        return self.building
+
+    def draw_opening(self):
+        """The "Opening" placeholder in the tool area, while the shown entry is made."""
+        if self.building and self.child is None:
+            entry = next((e for e in self.entries if e.id == self.selected), None)
+            draw_opening(entry.label if entry else str(self.selected), self.child_box, "Hub opening")
 
     def close(self):
+        self._collect_build(wait=True)
         for child in self.children.values():
             close = getattr(child, "close", None)
             if callable(close):
@@ -121,7 +181,7 @@ class CalculatorHubApp(ImApp):
 
     # -- frames --------------------------------------------------------------------------------- #
     def animating(self):
-        return super().animating() or bool(self.child is not None and self.child.animating())
+        return super().animating() or self.building or bool(self.child is not None and self.child.animating())
 
     def next_frame_in(self):
         own, child = (
@@ -133,8 +193,7 @@ class CalculatorHubApp(ImApp):
 
     def draw(self, painter, x, y, w, h):
         self._painter = painter
-        if self.selected and self.child is None and not self.error:
-            self.select(self.selected)
+        self._first_frame_build()
         super().draw(painter, x, y, w, h)
         self._painter = None
 
@@ -202,6 +261,7 @@ class CalculatorHubApp(ImApp):
         self.child_box = (left, header_h, max(1.0, width - left), max(1.0, height - header_h))
         if self.child is not None:
             self.draw_child(self._painter, self.child, *self.child_box, local_coordinates=True)
+        self.draw_opening()
         self.help_window.draw((0.0, 0.0, width, height))
         self.tour.draw(width, height)
 

@@ -133,6 +133,10 @@ class SaturationApp(TourTarget, ImApp):
         self.native_layouts = {"main": self.docks}
         super().__init__(self._render, continuous=False)
 
+    def animating(self) -> bool:
+        """Keep drawing while the dye list is read in the background, so the dye choice picks it up."""
+        return super().animating() or getattr(self.panel, "_dye_loading", False)
+
     def select_tab(self, label: str) -> None:
         """Show the result tab *label* (the guide and tests bring a tab forward this way)."""
         self.result_tab = label
@@ -509,6 +513,7 @@ class SaturationApp(TourTarget, ImApp):
 
     def close(self) -> None:
         """Persist the session as the Qt tool does when its window closes."""
+        self.panel.wait()
         self.model.save_user_settings()
 
 

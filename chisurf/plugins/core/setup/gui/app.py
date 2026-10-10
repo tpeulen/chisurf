@@ -15,6 +15,7 @@ from emtk.i18n import tr
 from emtk.file_dialog import FileDialog
 from emtk.keys import KEY_ENTER, KEY_RETURN
 
+from chisurf.emtk.background_build import BackgroundBuild, draw_opening
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.plugin_icons import entry_icon
 from chisurf.emtk.typed_field import parse_number, typed_number_field
@@ -446,6 +447,10 @@ class UnifiedSettingsApp(ImApp):
         self.routes = {}
         self.errors = {}
         self.pending_state = {}
+        #: The destination shown when the window opens is made on a worker thread (its app imports a database and
+        #: a dictionary); :meth:`_build` wires it in from here.
+        self._builder = BackgroundBuild(wake=self.request_frame)
+        self._prebuilt = {}
         self.error = ""
         self.status = READY
         self.filter = ""
@@ -488,6 +493,25 @@ class UnifiedSettingsApp(ImApp):
         return panel
 
     def _build(self, panel):
+        if self._builder.building(panel.key):
+            self._prebuilt.update(self._builder.collect(wait=True) or {})
+        if panel.key in self._prebuilt:
+            made, exc = self._prebuilt.pop(panel.key)
+            if exc is not None:
+                raise exc
+            child, route = made
+        else:
+            child, route = self._make(panel)
+        state = self.pending_state.pop(panel.key, None)
+        if state and callable(getattr(child, "restore_settings", None)):
+            try:
+                child.restore_settings(state)
+            except Exception:  # noqa: BLE001 - a stale saved state must not block the panel
+                pass
+        return child, route
+
+    def _make(self, panel):
+        """Construct a destination's app: ``(child, route)``. May run on the build thread (no hub state)."""
         if panel.key == FILE_EDITOR:
             child = ConfigurationApp(panel, self.settings_dir)
             route = "configuration"
@@ -500,12 +524,6 @@ class UnifiedSettingsApp(ImApp):
             takes_dir = "settings_dir" in inspect.signature(factory).parameters
             child = factory(settings_dir=self.settings_dir) if takes_dir else factory()
             route = "native"
-        state = self.pending_state.pop(panel.key, None)
-        if state and callable(getattr(child, "restore_settings", None)):
-            try:
-                child.restore_settings(state)
-            except Exception:  # noqa: BLE001 - a stale saved state must not block the panel
-                pass
         return child, route
 
     def select(self, key):
@@ -593,7 +611,12 @@ class UnifiedSettingsApp(ImApp):
     def draw(self, painter, x, y, w, h):
         self._painter = painter
         if self.child is None:
-            self.select(self.selected)
+            self._prebuilt.update(self._builder.collect() or {})
+            if self.selected in self._prebuilt:
+                self.select(self.selected)
+            elif not self._builder.busy:
+                panel = self.panel_of(self.selected)
+                self._builder.start({panel.key: lambda: self._make(panel)}, name="chisurf-settings-" + panel.key)
         super().draw(painter, x, y, w, h)
         self._painter = None
 
@@ -697,6 +720,8 @@ class UnifiedSettingsApp(ImApp):
         self.item_rects["panel"] = self.child_box
         if self.child is not None and self._painter is not None:
             self.draw_child(self._painter, self.child, *self.child_box, local_coordinates=True)
+        elif self._builder.busy:
+            draw_opening(tr(self.panel_of(self.selected).label), self.child_box, "Settings opening")
         if self.child is not None and getattr(self.child, "close_requested", False):
             # A hosted panel's own Close button: the window stays, the panel says so instead of doing nothing.
             self.child.close_requested = False
@@ -784,7 +809,8 @@ class UnifiedSettingsApp(ImApp):
 
     def animating(self):
         child = self.child
-        return super().animating() or self.fast_forward or (child is not None and child.animating())
+        return (super().animating() or self.fast_forward or self._builder.busy
+                or (child is not None and child.animating()))
 
     def next_frame_in(self):
         values = [super().next_frame_in(), getattr(self.child, "next_frame_in", lambda: None)()]
@@ -805,6 +831,11 @@ class UnifiedSettingsApp(ImApp):
         self.select(selected if selected in keys else DEFAULT_PANEL)
 
     def close(self):
+        self._prebuilt.update(self._builder.collect(wait=True) or {})
+        for made, _exc in self._prebuilt.values():  # made for the first frame, never shown
+            if made is not None and callable(getattr(made[0], "close", None)):
+                made[0].close()
+        self._prebuilt.clear()
         for child in self.children.values():
             if callable(getattr(child, "close", None)):
                 child.close()

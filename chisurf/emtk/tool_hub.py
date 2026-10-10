@@ -5,6 +5,10 @@ a factory: ``"factory"`` (a callable) or ``"plugin"`` (a plugin folder under ``c
 ``entrypoints.emtk`` is the factory). Children are made on first selection and kept, so a tool keeps its state while
 the user looks at another one. ``{"separator": true, "name": "Tools"}`` groups the rail under a caption.
 
+The tool shown when the hub opens is built on a worker thread (its imports and construction cost a few hundred ms,
+which the hub's first frame must not pay); the hub draws an "Opening" placeholder until it lands. Building a tool on
+demand (:meth:`ToolHubApp.ensure_child`, a click on the rail) stays synchronous and joins a build that is under way.
+
 A hub that is a *workflow* (the FCS correlator steps) overrides :meth:`ToolHubApp.panel_enabled` (a step that is
 switched off is grey and skipped by Back / Next) and :meth:`ToolHubApp.on_select` (hand the previous steps' results
 to the step being opened).
@@ -22,6 +26,7 @@ from emtk import im
 from emtk.app import ImApp
 from emtk.i18n import tr
 
+from chisurf.emtk.background_build import BackgroundBuild, draw_opening
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import action_button, window_size
 
@@ -130,6 +135,8 @@ class ToolHubApp(ImApp):
         #: Steps still to walk (fast-forward), and whether Next waits for the current step's run to end.
         self._ff_queue: list[str] = []
         self._pending_next = False
+        #: The tool shown when the hub opens, made off the UI thread (see :mod:`chisurf.emtk.background_build`).
+        self._builder = BackgroundBuild(wake=self.request_frame)
         self.help = EmTkHelpWindow(title=f"{title} — Help", resource=help_resource, owner=self)
         self.child_help = None
         self.tour = EmTkGuidedTour(
@@ -174,24 +181,67 @@ class ToolHubApp(ImApp):
                 layouts[role + "/" + name] = manager
         return layouts
 
+    def requires(self, role: str) -> tuple[str, ...]:
+        """The tools opening *role* builds (in order, *role* last). A workflow hub whose :meth:`on_select` reads an
+        earlier step (the FCS channel step) names it here, so the background build makes it too."""
+        return (role,)
+
+    def _construct(self, panel: dict) -> tuple[Any, str, str]:
+        """Make a tool: ``(child, route, error)``. Runs on the UI thread or on the build thread; touches no hub state."""
+        try:
+            factory, route = (plugin_factory(panel) if callable(panel.get("factory"))
+                              else self.resolver(panel))
+            if factory is None:
+                return None, route, "This tool has no native emtk app yet."
+            return factory(), route, ""
+        except Exception as exc:  # noqa: BLE001 - shown in place of the tool, with Retry
+            return None, "", f"{type(exc).__name__}: {exc}"
+
+    def _adopt(self, role: str, child: Any, route: str, error: str) -> None:
+        """Keep a made tool (UI thread): host the shared setup editor in it, or record why it is missing."""
+        if role in self.children or role in self.errors:
+            return
+        self.routes[role] = route
+        if error:
+            self.errors[role] = error
+            return
+        self.children[role] = child
+        if role in self.uses_setup:
+            try:
+                self._host_setup(role, child)
+            except Exception as exc:  # noqa: BLE001 - recorded as a synchronous build always did (the tool stays)
+                self.errors[role] = f"{type(exc).__name__}: {exc}"
+
+    def _start_build(self, role: str) -> None:
+        """Make *role* (and what it :meth:`requires`) on a worker thread; :meth:`_collect_build` adopts it."""
+        panels = [p for r in self.requires(role) for p in self.tools
+                  if p["role"] == r and r not in self.children and r not in self.errors]
+        self._builder.start({p["role"]: (lambda p=p: self._construct(p)) for p in panels},
+                            name=f"chisurf-hub-{role}")
+
+    def _collect_build(self, wait: bool = False) -> bool:
+        """Adopt a finished background build (with *wait*, finish it first); whether one was adopted."""
+        built = self._builder.collect(wait=wait)
+        if built is None:
+            return False
+        for role, (made, _exc) in built.items():  # _construct never raises: its error is in *made*
+            self._adopt(role, *made)
+        return True
+
+    @property
+    def building(self) -> bool:
+        """Whether a tool is being made in the background (the hub shows an "Opening" placeholder)."""
+        return self._builder.busy
+
     def ensure_child(self, role: str):
         """The child app of *role*, made now if it was not (``None`` if it cannot be; the reason is in :attr:`errors`)."""
         panel = next((p for p in self.tools if p["role"] == role), None)
         if panel is None:
             raise ValueError(f"Unknown {self.title} panel: {role}")
+        if self._builder.building(role):
+            self._collect_build(wait=True)
         if role not in self.children and role not in self.errors:
-            try:
-                factory, route = (plugin_factory(panel) if callable(panel.get("factory"))
-                                  else self.resolver(panel))
-                self.routes[role] = route
-                if factory is None:
-                    self.errors[role] = "This tool has no native emtk app yet."
-                else:
-                    self.children[role] = factory()
-                    if role in self.uses_setup:
-                        self._host_setup(role, self.children[role])
-            except Exception as exc:  # noqa: BLE001 - shown in place of the tool, with Retry
-                self.errors[role] = f"{type(exc).__name__}: {exc}"
+            self._adopt(role, *self._construct(panel))
         return self.children.get(role)
 
     def _make_setup_step(self):
@@ -411,8 +461,11 @@ class ToolHubApp(ImApp):
 
     def draw(self, painter, x, y, w, h):
         self._painter = painter
-        if self.selected and self.selected not in self.children and self.selected not in self.errors:
-            self.select(self.selected, by_user=False)
+        if self._collect_build() and self.selected in self.children:
+            self.select(self.selected, by_user=False)  # the tool landed: hand it the workflow, as a selection does
+        if (self.selected and self.selected not in self.children and self.selected not in self.errors
+                and not self.building):
+            self._start_build(self.selected)
         try:
             super().draw(painter, x, y, w, h)
         finally:
@@ -518,6 +571,8 @@ class ToolHubApp(ImApp):
         im.end()
         if self.child:
             self.draw_child(self._painter, self.child, *self.child_box, local_coordinates=True)
+        elif self.building and self.panel:
+            draw_opening(tr(self.panel["name"]), self.child_box, f"{self.title} opening")
         elif self.selected in self.errors:
             im.set_next_window_pos((left, HEADER), im.Cond.ALWAYS)
             im.set_next_window_size((width - left, height - HEADER - BAR), im.Cond.ALWAYS)
@@ -594,7 +649,7 @@ class ToolHubApp(ImApp):
         return super().key(key, text, modifiers)
 
     def animating(self):
-        return super().animating() or bool(self.child and self.child.animating())
+        return super().animating() or self.building or bool(self.child and self.child.animating())
 
     def next_frame_in(self):
         delays = [super().next_frame_in()]
@@ -662,6 +717,7 @@ class ToolHubApp(ImApp):
             self.select(state["selected"], by_user=False)
 
     def close(self):
+        self._collect_build(wait=True)
         for child in self.children.values():
             close = getattr(child, "close", None)
             if callable(close):

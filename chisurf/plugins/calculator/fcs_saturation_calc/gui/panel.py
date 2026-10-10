@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import math
 import re
+import threading
 import time
 
 from .model import SaturationModel
@@ -76,16 +77,43 @@ class SaturationPanel:
         return self.app.result_tab
 
     def dye_options(self) -> list:
-        """The MMFDB dyes with an empty first choice (type the extinction by hand)."""
-        # The repository query ran every frame (5 ms of a 20 ms frame); the dye list changes on a
-        # human time scale, so it is re-read at most once a second.
+        """The MMFDB dyes with an empty first choice (type the extinction by hand).
+
+        The dye list is a repository query (the first one opens the MMFDB: ~250 ms), so it is read on a worker
+        thread and at most once a second; until the first read lands the combo offers the current dye only.
+        """
         now = time.monotonic()
         cached = getattr(self, "_dye_options", None)
-        if cached is None or now - cached[0] > DYE_REFRESH_S:
-            names = list(self.app.model.dye_names())
-            cached = (now, [("", "(none, type the extinction)")] + [(n, n) for n in names if n])
-            self._dye_options = cached
+        if (cached is None or now - cached[0] > DYE_REFRESH_S) and not getattr(self, "_dye_loading", False):
+            self._dye_loading = True
+            from chisurf.emtk.background_build import track
+
+            self._dye_thread = track(threading.Thread(target=self._read_dyes, name="saturation-dyes", daemon=True))
+            self._dye_thread.start()
+        if cached is None:
+            current = str(self.app.model.dye or "")
+            return [("", "(loading dyes…)")] + ([(current, current)] if current else [])
         return list(cached[1])
+
+    def wait(self, timeout: float = 30.0) -> None:
+        """Let a dye-list read finish (called when the window closes)."""
+        thread = getattr(self, "_dye_thread", None)
+        if thread is not None:
+            thread.join(timeout)
+
+    def _read_dyes(self) -> None:
+        """Worker: re-read the dye list, then ask for a frame to show it."""
+        try:
+            names = list(self.app.model.dye_names())
+            self._dye_options = (time.monotonic(),
+                                 [("", "(none, type the extinction)")] + [(n, n) for n in names if n])
+        except Exception:  # noqa: BLE001 - no database: the combo keeps offering a typed-in extinction
+            self._dye_options = (time.monotonic(), [("", "(none, type the extinction)")])
+        finally:
+            self._dye_loading = False
+        request = getattr(self.app, "request_frame", None)
+        if callable(request):
+            request()
 
     def enabled(self, name: str) -> bool:
         return True

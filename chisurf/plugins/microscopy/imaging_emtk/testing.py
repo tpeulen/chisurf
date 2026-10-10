@@ -47,8 +47,11 @@ class Driver:
 
     # -- frames --------------------------------------------------------------- #
     def draw(self, frames: int = 2, size: tuple[int, int] | None = None) -> MetricPainter:
+        from chisurf.emtk.background_build import join_all
+
         w, h = size or self.size
         for _ in range(frames):
+            join_all()  # first-frame reads run in the background; a host draws again when they land
             self.painter = MetricPainter()
             self.app.draw(self.painter, 0, 0, w, h)
         return self.painter

@@ -27,7 +27,9 @@ def _computed_app():
     end = time.monotonic() + 120.0
     while time.monotonic() < end:
         app.draw(RecordingPainter(), 0, 0, 1200, 800)
-        if app.model.volume is not None and not app.busy and not app.model.is_stale:
+        # ... and the 3-D view's chimol has started (in the background, on the first frame with a volume)
+        if (app.model.volume is not None and not app.busy and not app.model.is_stale
+                and not app.volume_view.view.starting):
             break
         time.sleep(0.02)
     assert app.model.volume is not None, "the PSF was not computed"

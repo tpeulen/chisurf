@@ -44,11 +44,16 @@ class SetupStepApp(ImApp):
         """Poll the editor and draw its dock and existing floating windows."""
         if self.autoload:
             self.autoload = False
-            self.page.toolbar.reload(open_last=False)
+            self.page.toolbar.reload_async(open_last=False)
+        self.page.toolbar.poll()
         self.page.poll()
         frame = (0.0, 0.0, *im.get_main_viewport().size)
         self.docks.draw(frame)
         self.page.draw_dialogs(frame)
+
+    def animating(self):
+        """Keep drawing while the saved setups are read in the background."""
+        return super().animating() or self.page.toolbar.loading
 
     def export_settings(self):
         """Persist page geometry/state; the hub owns the shared definition."""

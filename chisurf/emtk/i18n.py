@@ -9,6 +9,10 @@ from chisurf.core.support import i18n as core_i18n
 
 SUPPORTED_LOCALES = ("en", "de", "fr", "es", "pt", "ru")
 _installed = False
+# Parsed catalogs keyed by (path, mtime_ns, size). install() runs once per tool, and a
+# hub installs again for every sub-app it embeds; re-parsing six ~3 MB XML files each
+# time was ~200 ms on the first frame of every hub.
+_parsed: dict[tuple[str, int, int], tuple[dict[str, dict[str, str]], dict[str, str]]] = {}
 
 
 def catalog_directory() -> Path:
@@ -40,6 +44,23 @@ def read_catalog(path: str | Path, *, include_unfinished: bool = False) -> dict[
     return contexts
 
 
+def _parsed_catalog(path: Path) -> tuple[dict[str, dict[str, str]], dict[str, str]]:
+    """Return a catalog's contexts and its ``default`` fallback mapping, parsed once per file version."""
+    stat = path.stat()
+    key = (str(path), stat.st_mtime_ns, stat.st_size)
+    cached = _parsed.get(key)
+    if cached is None:
+        contexts = read_catalog(path)
+        default: dict[str, str] = {}
+        for mapping in contexts.values():
+            # Use the catalog's generic ChiSurf context when a source is ambiguous.
+            for source, translation in mapping.items():
+                default.setdefault(source, translation)
+        default.update(contexts.get(core_i18n.DEFAULT_CONTEXT, {}))
+        cached = _parsed[key] = (contexts, default)
+    return cached
+
+
 def install(locale: str | None = None, directory: str | Path | None = None) -> str:
     """Install catalogs and bind data-driven ChiSurf labels to EMTK translation."""
     from emtk import i18n as toolkit_i18n
@@ -54,14 +75,9 @@ def install(locale: str | None = None, directory: str | Path | None = None) -> s
         path = directory / f"chisurf_{language}.ts"
         if not path.is_file():
             continue
-        contexts = read_catalog(path)
-        default: dict[str, str] = {}
+        contexts, default = _parsed_catalog(path)
         for context, mapping in contexts.items():
             toolkit_i18n.add_translations(language, mapping, context=context)
-            # Use the catalog's generic ChiSurf context when a source is ambiguous.
-            for source, translation in mapping.items():
-                default.setdefault(source, translation)
-        default.update(contexts.get(core_i18n.DEFAULT_CONTEXT, {}))
         toolkit_i18n.add_translations(language, default, context="default")
     # A language already switched live (set_locale, not persisted) must survive a child tool's install().
     live = toolkit_i18n.get_locale() != "en"

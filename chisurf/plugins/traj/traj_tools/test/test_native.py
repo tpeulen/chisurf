@@ -73,7 +73,13 @@ def test_native_state_roundtrip_with_pending_child_state():
 
 
 def test_native_renders_hub_and_first_child():
+    from chisurf.emtk.background_build import join_all
+
     app = make_app()
+    painter = RecordingPainter()
+    app.draw(painter, 0, 0, 900, 640)
+    assert app.building  # the first frame does not wait for the first tool: it is made in the background
+    join_all()
     painter = RecordingPainter()
     app.draw(painter, 0, 0, 900, 640)
     for expected in (

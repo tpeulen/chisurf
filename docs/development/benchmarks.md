@@ -782,35 +782,89 @@ s**, five repaints 1.75 s -> 0.11 s, and "analyze then display" 2.23 s ->
 `python -m build_tools.dev_utils.plugin_frame_times` loads every plugin with an
 `emtk` entrypoint in its own hermetic subprocess (scratch settings, offscreen Qt),
 draws it at 1100x720 through `emtk.testing.Driver` and times the **first frame**,
-then (after letting worker-thread results land, up to 8 s) the **median of 20
-steady frames**. The numbers are UI-thread cost of building the frame with a
-recording painter; they exclude GPU rasterisation. Targets: first frame < 100 ms,
-steady frame < 16 ms. `--startup` prints the GUI startup stage timings.
+the slowest of the **next five** frames, the slowest frame drawn while worker-thread
+results land (**settle**, up to 8 s while the app reports `animating()`), then the
+**median of 20 steady frames**. The numbers are UI-thread cost of building the frame
+with a recording painter; they exclude GPU rasterisation. Targets: first frame < 100 ms,
+steady frame < 16 ms; work moved off the first frame must not reappear in `next5` or
+`settle`. emtk's installed-font table is a per-user cache that the script warms once per
+run (as on every launch after the first; the cold scan costs ~250 ms once per font change).
+`--startup` prints the GUI startup stage timings.
 
-Measured on an Apple-silicon laptop, 122 of 123 plugins (`fcs_calculator`
-cannot construct without the MMFDB reference database in the scratch settings).
+Measured on an Apple-silicon laptop (load average 3-5), 122 of 123 plugins
+(`fcs_calculator` cannot construct without the MMFDB reference database in the scratch
+settings).
 
-**Steady frames: all 122 are under 16 ms** (before the fixes below: 6 were over,
-`psf_calculator` at 315 ms). **First frames: 26 are over 100 ms**; the cause
-in every one profiled is import and construction work done lazily on the first
-draw (a hub plugin importing the sub-app it embeds, `setup_store.get_db`, IMP.bff),
-not drawing:
-chimol 1634, setup 660, wizards 473, fret_docking 440, imaging_tools 438, lifetime_analysis 389, fcs_correlator 361, fcs_toolbox 357, structure_tools 354, alex_suite 327, burst_mle_analysis 302, tttr_toolbox 253, fcs_saturation 252, user_editor 240, calculators 226, boarding 215, burst_analysis 215, model_manager 191, setup_channel_definition 181, batch_analysis 177, traj_tools 176, games 171, switch_user 154, plugin_manager 143, lightpath_simulator 133, ndxplorer 108.
+**All 122 meet both targets**: first frame <= 85 ms (`ndxplorer`), next five frames
+<= 31 ms, settle <= 42 ms, steady <= 13.8 ms (`games`).
 
-The ten slowest steady frames after the fixes:
+### First frames (PRD-154 W11)
+
+Before: 26 plugins drew a first frame over 100 ms. Every one was import and construction
+done lazily on the first draw, never drawing itself. What moved, and where:
+
+* **Hubs build the tool they show on a worker thread** (`chisurf/emtk/background_build.py`):
+  the first frame draws the rail and an "Opening <tool>…" placeholder, a later frame adopts
+  the tool. Used by `ToolHubApp` (tttr_toolbox, fcs_correlator/fcs_toolbox, burst_analysis,
+  alex_suite), `CalculatorHubApp` (calculators, wizards, lifetime_analysis, traj_tools,
+  imaging_tools), the settings hub (`setup`) and `structure_tools`. A click or a restore
+  still builds synchronously and joins a build under way.
+* **chimol starts on a worker thread** (wgpu adapter, ~50 pipelines, the first frame):
+  the `chimol` window and every `ChimolView` (PSF 3-D view, structure cards) show
+  "Starting ChiMOL…" until it runs. This was also the PSF calculator's 1.3 s frame when its
+  first volume landed.
+* **Store and registry reads leave the first frame**: the saved detector setups
+  (`SetupToolbar.reload_async`, the MMFDB open is ~250 ms), the saturation calculator's
+  dye list, burst MLE's fit-model registry (IMP.bff import, `catalog.prefetch`).
+* **Caches**: emtk's installed-font scan persists per user (emtk `4132e91`, `b3400cd`);
+  emtk.implot builds colormap tables on first use (`63ce707`, ~50 ms per process);
+  ChiSurf translation catalogs are parsed once per process (was ~200 ms on every child
+  `install()`); the shipped plugin manifests are walked once per process (~100 ms).
+
+| plugin | first ms before | first ms after | next5 ms | settle ms | steady ms |
+|---|---:|---:|---:|---:|---:|
+| chimol | 1634 | 2 | 0 | 5 | 3.9 |
+| setup | 660 | 13 | 1 | 42 | 2.3 |
+| wizards | 473 | 2 | 0 | 2 | 1.0 |
+| fret_docking | 440 | 45 | 6 | 0 | 2.6 |
+| imaging_tools | 438 | 8 | 10 | 13 | 3.7 |
+| lifetime_analysis | 389 | 12 | 1 | 5 | 2.7 |
+| fcs_correlator | 361 | 4 | 1 | 1 | 0.9 |
+| fcs_toolbox | 357 | 4 | 1 | 2 | 1.1 |
+| structure_tools | 354 | 78 | 1 | 4 | 1.6 |
+| alex_suite | 327 | 6 | 1 | 9 | 2.4 |
+| burst_mle_analysis | 302 | 6 | 2 | 4 | 2.1 |
+| tttr_toolbox | 253 | 5 | 1 | 5 | 2.0 |
+| fcs_saturation | 252 | 47 | 26 | 22 | 9.9 |
+| user_editor | 240 | 78 | 2 | 3 | 1.4 |
+| calculators | 226 | 3 | 0 | 18 | 7.7 |
+| boarding | 215 | 43 | 1 | 0 | 1.2 |
+| burst_analysis | 215 | 5 | 1 | 5 | 2.4 |
+| model_manager | 191 | 57 | 3 | 3 | 2.4 |
+| setup_channel_definition | 181 | 14 | 2 | 2 | 1.7 |
+| batch_analysis | 177 | 50 | 1 | 0 | 1.1 |
+| traj_tools | 176 | 3 | 1 | 7 | 1.1 |
+| games | 171 | 45 | 14 | 0 | 13.8 |
+| switch_user | 154 | 38 | 1 | 3 | 0.8 |
+| plugin_manager | 143 | 31 | 3 | 11 | 2.9 |
+| lightpath_simulator | 133 | 26 | 5 | 6 | 4.7 |
+| ndxplorer | 108 | 85 | 31 | 0 | 4.3 |
+| psf_calculator | 48 (settle 1290) | 40 | 2 | 39 | 6.9 |
+
+The ten slowest steady frames:
 
 | plugin | first ms | steady ms |
 |---|---:|---:|
-| games | 171 | 13.9 |
-| fcs_filter_calculator | 11 | 11.4 |
-| fcs_saturation | 252 | 10.2 |
-| calculators | 226 | 7.7 |
-| number_quest | 19 | 7.3 |
-| psf_calculator | 48 | 6.8 |
+| games | 45 | 13.8 |
+| fcs_filter_calculator | 9 | 11.3 |
+| fcs_saturation | 47 | 9.9 |
+| calculators | 3 | 7.7 |
+| number_quest | 16 | 7.1 |
+| psf_calculator | 40 | 6.9 |
 | breakout | 15 | 5.9 |
 | fret_calculator | 11 | 5.6 |
-| phasor_calculator | 78 | 5.6 |
-| maxent_decay | 13 | 5.5 |
+| phasor_calculator | 71 | 5.4 |
+| maxent_decay | 10 | 4.7 |
 
 GUI startup stages (`--startup`, splash phase, ms): gui_imports 582, load_tools 484,
 setup_style 199, startup_interface 177, init_setups 97, setup_ipython 58, the rest under 5.

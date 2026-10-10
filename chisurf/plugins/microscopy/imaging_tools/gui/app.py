@@ -179,6 +179,8 @@ class ImagingToolsApp(CalculatorHubApp):
         self._ff_queue = []
         self._precompute_queue = []
         self._precomputing = False
+        #: Apps made by the background build of the first frame, waiting for :meth:`_build_child` to wire them.
+        self._prebuilt = {}
         self.help = self.help_window = EmTkHelpWindow(
             title="Imaging Tools - Help",
             resource=HERE / "help.md",
@@ -230,10 +232,8 @@ class ImagingToolsApp(CalculatorHubApp):
             self.status = self.error
             return False
 
-    def _build_child(self, role):
-        """Build the native app of *role* (once), wired to the hub; ``None`` when it has no native app."""
-        if role in self.children:
-            return self.children[role]
+    def _construct_child(self, role):
+        """Import and construct the native app of *role* (``None`` without one); may run on the build thread."""
         factory = self.factory(role)
         if factory is None:
             return None
@@ -245,7 +245,20 @@ class ImagingToolsApp(CalculatorHubApp):
             if role == "setup"
             else {"coordinator": self}
         )
-        child = factory(**kwargs)
+        return factory(**kwargs)
+
+    def _build_child(self, role):
+        """Build the native app of *role* (once), wired to the hub; ``None`` when it has no native app."""
+        if role in self.children:
+            return self.children[role]
+        if role in self._prebuilt:
+            child, exc = self._prebuilt.pop(role)
+            if exc is not None:
+                raise exc
+        else:
+            child = self._construct_child(role)
+        if child is None:
+            return None
         child.set_frame_request_callback(self.request_frame)
         child._coordinator = self
         child._pipeline_role = role
@@ -526,6 +539,11 @@ class ImagingToolsApp(CalculatorHubApp):
         self.goto_role(data.get("selected", "browser"))
 
     def close(self):
+        self._prebuilt.update(self._builder.collect(wait=True) or {})
+        for child, _exc in self._prebuilt.values():  # made for the first frame, never shown
+            if callable(getattr(child, "close", None)):
+                child.close()
+        self._prebuilt.clear()
         for child in self.children.values():
             model = getattr(child, "model", None)
             flush = getattr(model, "flush_to_hdf5", None)
@@ -540,9 +558,22 @@ class ImagingToolsApp(CalculatorHubApp):
         self.help.close()
 
     # -- frames -------------------------------------------------------------------------------------- #
+    def _prebuild(self):
+        """Make the tools the first frame opens (the setup when none is stored, and the selected tool) on a worker
+        thread; whether they are all ready to be wired in."""
+        built = self._builder.collect()
+        if built is not None:
+            self._prebuilt.update(built)
+        if self._builder.busy:
+            return False
+        roles = (["setup"] if not self.setup and "setup" not in self.children else []) + [self.selected]
+        missing = [r for r in dict.fromkeys(roles) if r not in self.children and r not in self._prebuilt]
+        return not self._builder.start({r: (lambda r=r: self._construct_child(r)) for r in missing},
+                                       name="chisurf-imaging-tools")
+
     def draw(self, painter, x, y, w, h):
         self._painter = painter
-        if self.child is None and not self.error:
+        if self.child is None and not self.error and self._prebuild():
             if not self.setup and "setup" not in self.children:
                 selected = self.selected
                 self.goto_role("setup")
@@ -683,6 +714,7 @@ class ImagingToolsApp(CalculatorHubApp):
         self.child_box = (left, header_h, max(1.0, width - left), max(1.0, height - header_h))
         if self.child:
             self.draw_child(self._painter, self.child, *self.child_box, local_coordinates=True)
+        self.draw_opening()
         self.help.draw((0, 0, width, height))
         self.tour.draw(width, height)
         self._fast_forward_tick()

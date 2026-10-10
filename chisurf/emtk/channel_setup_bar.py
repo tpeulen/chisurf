@@ -11,6 +11,7 @@ draws it and owns the instance as ``widget.toolbar``.
 from __future__ import annotations
 
 import copy
+import threading
 from typing import Any
 
 from chisurf.core.fio import setup_store
@@ -43,6 +44,10 @@ class SetupToolbar:
         self.name_text = ""
         #: A rename waiting for the overwrite confirmation.
         self._pending_name = ""
+        #: Whether :meth:`reload_async` is still reading the store.
+        self.loading = False
+        self._loaded: tuple | None = None
+        self._thread: threading.Thread | None = None
 
     # ------------------------------------------------------------------ state
     @property
@@ -100,6 +105,56 @@ class SetupToolbar:
                     self.select(name, remember=False)
         except Exception as exc:  # the store is unreachable: keep working on the definition
             self._say(f"Error: {exc}")
+
+    def reload_async(self, open_last: bool = False) -> None:
+        """:meth:`reload` with the store read on a worker thread; :meth:`poll` adopts the result.
+
+        Opening the MMFDB (its import and schema check) costs a few hundred ms, which a tool's first
+        frame must not pay. A borrowed database handle is bound to the thread that opened it, so a
+        definition with one is read synchronously.
+        """
+        if self.definition.db is not None:
+            self.reload(open_last)
+            return
+        generation = getattr(self.definition, "setups_generation", 0)
+        self.loading = True
+        self._say("Loading saved setups…")
+
+        def work() -> None:
+            try:
+                result = ("ok", self.definition.read_setups_payload())
+            except Exception as exc:  # noqa: BLE001 - reported by poll(), as reload() does
+                result = ("error", exc)
+            self._loaded = (generation, open_last, result)
+
+        from chisurf.emtk.background_build import track
+
+        self._thread = track(threading.Thread(target=work, name="chisurf-setup-store", daemon=True))
+        self._thread.start()
+
+    def wait(self, timeout: float = 60.0) -> None:
+        """Let a :meth:`reload_async` read finish (a closing window must not leave it touching the store)."""
+        if self._thread is not None:
+            self._thread.join(timeout)
+
+    def poll(self) -> None:
+        """Adopt a finished :meth:`reload_async` read (call once per frame)."""
+        loaded, self._loaded = self._loaded, None
+        if loaded is None:
+            return
+        self.loading = False
+        generation, open_last, (kind, value) = loaded
+        if generation != getattr(self.definition, "setups_generation", 0):
+            return  # the store was read again meanwhile (a save or rename): that read is newer
+        if kind == "error":
+            self._say(f"Error: {value}")
+            return
+        self.definition.apply_setups_payload(value)
+        self._say(f"{len(self.definition.setups)} setups available.")
+        if open_last:
+            name = self.definition.last_used
+            if name and name in self.definition.setups:
+                self.select(name, remember=False)
 
     def select(self, name: str, remember: bool = True) -> None:
         """Choose a saved setup, or ``""`` for none, as the Qt Setup combo does.

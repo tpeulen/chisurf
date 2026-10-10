@@ -11,6 +11,13 @@ Qt), drawn at 1100x720 through :class:`emtk.testing.Driver` and timed::
 Targets: first frame < 100 ms, steady frame (median of 20 further frames) < 16 ms.
 Draws are issued back to back, so a plugin that computes on its own worker thread
 is measured while that worker may still be busy; the number is the UI-thread cost.
+Work moved off the first frame must not land on a later one, so the five frames
+after the first (``next5``) and every frame drawn while worker results land
+(``settle``) are reported as maxima too.
+
+Persistent per-user caches (emtk's installed-font table) are shared by the whole
+run and warmed once before measuring, as on every launch after the first; each
+plugin still gets its own scratch settings and database.
 """
 from __future__ import annotations
 
@@ -33,6 +40,9 @@ TIMEOUT_S = 120
 SETTLE_S = 8.0
 
 
+FONT_CACHE = Path(tempfile.gettempdir()) / "chisurf-frames-emtk-cache"
+
+
 def _env(scratch: str) -> dict:
     """Environment for a hermetic worker."""
     env = dict(os.environ)
@@ -46,6 +56,7 @@ def _env(scratch: str) -> dict:
         MMFDB_DATABASE_PATH=str(Path(scratch) / "mmfdb.sqlite"),
         MMFDB_OBJECT_STORE_ROOT=str(Path(scratch) / "objects"),
         XDG_CACHE_HOME=str(Path(scratch) / "cache"), LUMIS_QUEST_HOME=str(Path(scratch) / "lumis"),
+        EMTK_CACHE_DIR=str(FONT_CACHE),
     )
     return env
 
@@ -66,19 +77,36 @@ def worker(plugin_id: str) -> dict:
     t = time.perf_counter()
     driver.frame()
     first = (time.perf_counter() - t) * 1000
+    following = []
+    for _ in range(5):
+        t = time.perf_counter()
+        driver.frame()
+        following.append((time.perf_counter() - t) * 1000)
     # Let worker-thread computations (debounced volumes, loads) land, so the steady
     # frames are drawn with their results on screen, not with an empty placeholder.
+    # The frame that picks a result up is timed too: deferred work must not hide there.
+    settle = [0.0]
     end = time.monotonic() + SETTLE_S
     while time.monotonic() < end and getattr(app, "animating", lambda: False)():
         time.sleep(0.02)
+        t = time.perf_counter()
         driver.frame()
+        settle.append((time.perf_counter() - t) * 1000)
     times = []
     for _ in range(STEADY_FRAMES):
         t = time.perf_counter()
         driver.frame()
         times.append((time.perf_counter() - t) * 1000)
     return {"plugin": plugin_id, "construct_ms": construct, "first_ms": first,
-            "steady_ms": statistics.median(times), "max_ms": max(times), "status": "ok"}
+            "next5_ms": max(following), "settle_ms": max(settle), "steady_ms": statistics.median(times),
+            "max_ms": max(times), "status": "ok"}
+
+
+def warm_caches() -> None:
+    """Fill the run-shared persistent caches once, so no plugin is charged for it."""
+    with tempfile.TemporaryDirectory(prefix="chisurf-frames-") as scratch:
+        subprocess.run([sys.executable, "-c", "from emtk.font_render import _faces; _faces()"], cwd=REPO,
+                       env=_env(scratch), capture_output=True, timeout=TIMEOUT_S)
 
 
 def run_plugin(plugin_id: str) -> dict:
@@ -135,13 +163,14 @@ def plugin_ids() -> list[str]:
 def table(rows: list[dict]) -> str:
     """Markdown table, slowest steady frame first."""
     ok = sorted((r for r in rows if r["status"] == "ok"), key=lambda r: -r["steady_ms"])
-    out = ["| plugin | construct ms | first ms | steady ms | max ms | first<100 | steady<16 |",
-           "|---|---:|---:|---:|---:|:-:|:-:|"]
+    out = ["| plugin | construct ms | first ms | next5 ms | settle ms | steady ms | max ms | first<100 | steady<16 |",
+           "|---|---:|---:|---:|---:|---:|---:|:-:|:-:|"]
     for r in ok:
-        out.append(f"| {r['plugin']} | {r['construct_ms']:.0f} | {r['first_ms']:.0f} | {r['steady_ms']:.1f} | "
+        out.append(f"| {r['plugin']} | {r['construct_ms']:.0f} | {r['first_ms']:.0f} | {r['next5_ms']:.0f} | "
+                   f"{r['settle_ms']:.0f} | {r['steady_ms']:.1f} | "
                    f"{r['max_ms']:.1f} | {'yes' if r['first_ms'] < FIRST_BUDGET_MS else 'NO'} | "
                    f"{'yes' if r['steady_ms'] < STEADY_BUDGET_MS else 'NO'} |")
-    out += [f"| {r['plugin']} | - | - | - | - | {r['status']} | |" for r in rows if r["status"] != "ok"]
+    out += [f"| {r['plugin']} | - | - | - | - | - | - | {r['status']} | |" for r in rows if r["status"] != "ok"]
     return "\n".join(out)
 
 
@@ -156,6 +185,7 @@ def main() -> None:
         for k, v in sorted(startup_stages().items(), key=lambda kv: -kv[1]):
             print(f"| {k} | {v * 1000:.0f} |")
         return
+    warm_caches()
     rows = [run_plugin(p) for p in (args.plugins or plugin_ids())]
     print(table(rows))
     if args.json:

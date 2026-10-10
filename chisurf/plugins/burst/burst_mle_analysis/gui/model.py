@@ -631,7 +631,15 @@ class MleViewModel(RunPickerMixin):
         return list(engine.fit_model_specs())
 
     def fit_model_choices(self) -> list[tuple[str, str]]:
-        """Pair canonical model values with the provider's human-readable labels."""
+        """Pair canonical model values with the provider's human-readable labels.
+
+        Until the compiled registries are read (on a worker thread: IMP.bff's import is ~200 ms of a first frame)
+        the choice offers the current model alone.
+        """
+        from chisurf.core.registry import catalog
+
+        if not catalog.prefetch():
+            return [(self.fit_model, str(self.fit_model))]
         return [
             (name, str(tr(spec.get("label", name))))
             for name, spec in engine.fit_model_specs().items()
@@ -639,6 +647,10 @@ class MleViewModel(RunPickerMixin):
 
     def model_availability(self) -> str:
         """Describe compatible models and the missing inputs of unavailable registry models."""
+        from chisurf.core.registry import catalog
+
+        if not catalog.prefetch():
+            return str(tr("Reading the model registry…"))
         return engine.model_availability()
 
     def model_result_text(self) -> str:
@@ -696,7 +708,12 @@ class MleViewModel(RunPickerMixin):
         return float(outcome.two_istar) if outcome is not None else float("nan")
 
     def parameter_records(self) -> list[dict]:
-        """Return the selected model's declared free parameters and their fitted values."""
+        """Return the selected model's declared free parameters and their fitted values (none until the model
+        registry has been read in the background)."""
+        from chisurf.core.registry import catalog
+
+        if not catalog.prefetch():
+            return []
         names, values, fixed = self.session.settings.parameter_state()
         outcome = self.session.outcome
         rows = []

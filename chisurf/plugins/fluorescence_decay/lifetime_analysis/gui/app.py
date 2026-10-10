@@ -108,26 +108,19 @@ class LifetimeAnalysisApp(CalculatorHubApp):
             raise ValueError("Unknown lifetime tool: " + id)
         self.selected = id
         self.error = ""
-        if id not in self.children:
-            try:
-                child = load_plugin(
-                    id, locale=get_locale(), persist=getattr(self, "_native_state_bound", False)
-                )
-                setter = getattr(child, "set_frame_request_callback", None)
-                if callable(setter):
-                    setter(self.request_frame)
-                self.children[id] = child
-                saved = self._pending_settings.pop(id, None)
-                if saved is not None and callable(getattr(child, "restore_settings", None)):
-                    child.restore_settings(saved)
-            except Exception as exc:  # noqa: BLE001
-                self.error = f"Native tool could not open: {exc}"
+        self.ensure_child(id)
         if notify:
             entry = next(entry for entry in self.entries if entry.id == id)
             self.tour.notify_used(entry.alias)
         entry = next(entry for entry in self.entries if entry.id == id)
         self.status = self.error or f"{entry.label}: ready."
         return self.children.get(id)
+
+    def make_child(self, id):
+        return load_plugin(id, locale=get_locale(), persist=getattr(self, "_native_state_bound", False))
+
+    def load_error(self, id, exc):
+        return f"Native tool could not open: {exc}"
 
     def step(self, direction):
         """Back / Next through the tools in their dependency order."""
@@ -239,6 +232,7 @@ class LifetimeAnalysisApp(CalculatorHubApp):
         self.child_box = (left, header_h, max(1.0, width - left), max(1.0, height - header_h))
         if self.child is not None:
             self.draw_child(self._painter, self.child, *self.child_box, local_coordinates=True)
+        self.draw_opening()
         self.help_window.draw((0.0, 0.0, width, height))
         self.tour.draw(width, height)
 

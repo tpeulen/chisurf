@@ -2,6 +2,12 @@
 
 ## 2026-10-10
 
+- PRD-154 W11 first frames: all 122 measurable emtk plugins draw their first frame in < 100 ms at
+  1100x720 (worst ndxplorer 85 ms; was 26 over, chimol 1634 ms). Hubs build the shown tool on a worker
+  (`chisurf/emtk/background_build.py`) behind an "Opening …" placeholder; chimol starts off-thread;
+  detector setups, the dye list and the MLE model registry load in the background; translation catalogs
+  and manifests are parsed once per process; emtk caches the font-face scan on disk and builds colormaps
+  lazily (emtk 4132e91, 63ce707, b3400cd). Record: [GUI startup](architecture/gui-startup.md).
 - W7 tours wired: boarding, globalview, lightpath simulator, setup channel definition, FCS merger, FCS
   channel preset, burst 2CDE, PTO inspector, ALEX suite, burst BVA, TTTR image browser, trace browser, plot
   settings and help pass the click-all (wrong notify ids, a toggle callback that raised before notifying,

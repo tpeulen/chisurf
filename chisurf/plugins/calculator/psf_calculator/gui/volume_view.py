@@ -78,9 +78,16 @@ class PSFVolumeView:
 
     # -- the scene ---------------------------------------------------------------------------------------- #
     def sync(self, model) -> bool:
-        """Bring the chimol scene up to date with *model*; ``False`` when chimol is unavailable."""
-        if not self.view.ensure():
-            return False
+        """Bring the chimol scene up to date with *model*; ``False`` when chimol is unavailable.
+
+        While chimol is still starting in the background this does nothing and answers ``True``; the frame after it
+        has started builds the scene.
+        """
+        if not self.view.ready():
+            if self.view.error:
+                return False
+            self.view.start()
+            return True
         renderer = self.view.app.renderer
         renderer.bare_view = True  # the picture alone: the window around it is emtk's
         volume = model.volume

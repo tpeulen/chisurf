@@ -134,7 +134,8 @@ class BurstSetupSelectionApp(SetupStepApp):
     def _render(self) -> None:
         if self.autoload:
             self.autoload = False
-            self.page.toolbar.reload(open_last=self.open_last_used)
+            self.page.toolbar.reload_async(open_last=self.open_last_used)
+        self.page.toolbar.poll()
         super()._render()
         vp = im.get_main_viewport()
         box = (float(vp.pos[0]), float(vp.pos[1]), float(vp.size[0]), float(vp.size[1]))

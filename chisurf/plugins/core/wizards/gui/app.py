@@ -49,31 +49,20 @@ class WizardHubApp(CalculatorHubApp):
         )
 
     # -- children: the entry names its own factory ----------------------------------------------------------------- #
+    def make_child(self, id):
+        entry = next(e for e in self.entries if e.id == id)
+        if not entry.emtk:
+            raise RuntimeError("it has no native window yet; the Qt wizard remains available")
+        module, attr = entry.emtk.split(":")
+        return getattr(importlib.import_module(module), attr)()
+
     def select(self, id):
         """Select a wizard, building its app on first use; returns the app (``None`` when it could not be built)."""
-        entry = next((e for e in self.entries if e.id == id), None)
-        if entry is None:
+        if not any(e.id == id for e in self.entries):
             raise ValueError("Unknown wizard: " + id)
         self.selected = id
         self.error = ""
-        if id not in self.children:
-            try:
-                if not entry.emtk:
-                    raise RuntimeError(
-                        "it has no native window yet; the Qt wizard remains available"
-                    )
-                module, attr = entry.emtk.split(":")
-                child = getattr(importlib.import_module(module), attr)()
-                setter = getattr(child, "set_frame_request_callback", None)
-                if callable(setter):
-                    setter(self.request_frame)
-                self.children[id] = child
-                saved = self._pending_settings.pop(id, None)
-                if saved is not None and callable(getattr(child, "restore_settings", None)):
-                    child.restore_settings(saved)
-            except Exception as exc:  # noqa: BLE001 - shown in the header, as the Qt hub showed it in the page
-                self.error = f"Could not load '{entry.label}': {exc}"
-        return self.children.get(id)
+        return self.ensure_child(id)
 
     def restore_settings(self, settings):
         """Restore the selection and the wizards' own settings; an unknown wizard or malformed entry is ignored."""
@@ -155,6 +144,7 @@ class WizardHubApp(CalculatorHubApp):
         self.child_box = (left, header_h, max(1.0, width - left), max(1.0, height - header_h))
         if self.child is not None:
             self.draw_child(self._painter, self.child, *self.child_box, local_coordinates=True)
+        self.draw_opening()
         self.help_window.draw((0.0, 0.0, width, height))
         self.tour.draw(width, height)
 

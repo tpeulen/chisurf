@@ -2227,6 +2227,7 @@ class ChannelDefinitionWidget:
 
     def close(self):
         self._closing = True
+        self.toolbar.wait()  # a background read of the setup store must not outlive the window
         self.calibration_cancel()
         self.cancel_read()
         self._executor.shutdown(wait=False, cancel_futures=True)

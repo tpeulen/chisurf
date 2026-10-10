@@ -30,7 +30,10 @@ from emtk.events import (
     RIGHT_BUTTON,
     SHIFT_MODIFIER,
 )
+from emtk.i18n import tr
 from emtk.im_core import get_current_context
+
+from chisurf.emtk.background_build import BackgroundBuild
 
 logger = logging.getLogger(__name__)
 
@@ -78,20 +81,58 @@ class ChimolView:
         #: press (and its release) from chimol, for a host that hit-tests overlays of its own (a sphere it placed).
         self.claim_click: Callable[[float, float], bool] | None = None
         self._claimed = False
+        #: Starting chimol (wgpu adapter, render pipelines, its first frame) costs over a second; :meth:`draw` starts
+        #: it on a worker thread and shows "Starting" in its place until it lands. :meth:`ensure` joins that start.
+        self._starter = BackgroundBuild()
 
     # ── lifecycle ─────────────────────────────────────────────────────────
 
+    def _make(self, warm: bool = False):
+        """Construct chimol (with *warm*, also render one frame, which compiles its pipelines). Thread-agnostic."""
+        # Before chimol.core.viewer is imported: with ChiSurf's Qt loaded, "auto" binds a QWidget base, and
+        # building one without a QApplication aborts. "none" is what chimol's toolkit-free host sets.
+        os.environ.setdefault("CHIMOL_TOOLKIT", "none")
+        from chimol.hosts.native.app import ChimolApp
+
+        app = ChimolApp(size=self.min_size, backend="offscreen", **self.viewer_options)
+        if warm:
+            app.renderer.draw_frame()
+        return app
+
+    def _adopt(self, wait: bool = False) -> None:
+        done = self._starter.collect(wait=wait)
+        if not done:
+            return
+        app, exc = done["chimol"]
+        if exc is not None:
+            self.error = f"{type(exc).__name__}: {exc}"
+            logger.warning("chimol view unavailable: %s", self.error)
+        else:
+            self.app = app
+
+    def start(self, wake: Callable[[], None] | None = None) -> None:
+        """Start chimol on a worker thread (no-op once started); *wake* is called when it has started."""
+        if self.app is None and not self.error and not self._starter.busy:
+            self._starter.wake = wake
+            self._starter.start({"chimol": lambda: self._make(warm=True)}, name="chisurf-chimol-view")
+
+    @property
+    def starting(self) -> bool:
+        """Whether chimol is being started in the background."""
+        return self._starter.busy
+
+    def ready(self) -> bool:
+        """Whether chimol runs now, never waiting for a start under way (for the frame path)."""
+        self._adopt()
+        return self.app is not None
+
     def ensure(self) -> bool:
-        """Start chimol once; ``False`` (with :attr:`error`) when it cannot run here."""
+        """Start chimol once (joins a background start); ``False`` (with :attr:`error`) when it cannot run here."""
+        self._adopt(wait=True)
         if self.app is not None or self.error:
             return self.app is not None
         try:
-            # Before chimol.core.viewer is imported: with ChiSurf's Qt loaded, "auto" binds a QWidget base, and
-            # building one without a QApplication aborts. "none" is what chimol's toolkit-free host sets.
-            os.environ.setdefault("CHIMOL_TOOLKIT", "none")
-            from chimol.hosts.native.app import ChimolApp
-
-            self.app = ChimolApp(size=self.min_size, backend="offscreen", **self.viewer_options)
+            self.app = self._make()
         except Exception as exc:  # noqa: BLE001 - shown in place of the view
             self.error = f"{type(exc).__name__}: {exc}"
             logger.warning("chimol view unavailable: %s", self.error)
@@ -113,6 +154,7 @@ class ChimolView:
                 logger.debug("chimol object list did not refresh", exc_info=True)
 
     def close(self) -> None:
+        self._adopt(wait=True)
         if self.app is not None:
             try:
                 self.app.close()
@@ -127,13 +169,23 @@ class ChimolView:
 
         Returns ``False`` when chimol is unavailable (the caller shows :attr:`error` and its fallback).
         *enabled* ``False`` draws the picture but gives chimol no input (a modal question is open).
+        The first call starts chimol in the background (:meth:`start`) and draws "Starting ChiMOL…" in its place
+        until it runs; keep frames coming while :attr:`starting`.
         """
-        if not self.ensure():
-            return False
         avail_w, avail_h = im.get_content_region_avail()
         w = avail_w if size[0] <= 0 else float(size[0])
         h = avail_h if size[1] <= 0 else float(size[1])
         w, h = max(w, 1.0), max(h, 1.0)
+        if not self.ready():
+            if self.error:
+                return False
+            self.start()
+            x, y = im.get_cursor_screen_pos()
+            im.text_disabled(tr("Starting ChiMOL…"))
+            im.set_cursor_screen_pos((x, y))
+            im.dummy(w, h)
+            self.rect = tuple(im.get_item_rect())
+            return True
         # Below the minimum, render larger by one factor on both axes, so the scaled-down picture keeps its aspect.
         k = max(1.0, self.min_size[0] / w, self.min_size[1] / h)
         self._resize(int(round(w * k)), int(round(h * k)))
@@ -173,7 +225,7 @@ class ChimolView:
     def screen_points(self, coords) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Where points in Angstrom are on screen (emtk coordinates) in the last frame: ``(x, y, visible)``."""
         empty = (np.zeros(0), np.zeros(0), np.zeros(0, dtype=bool))
-        viewer = self.viewer
+        viewer = self.app.viewer if self.ready() else None  # per frame: never waits for a start
         if viewer is None or self.rect is None or not hasattr(viewer, "world_to_screen"):
             return empty
         fx, fy, visible = viewer.world_to_screen(coords)

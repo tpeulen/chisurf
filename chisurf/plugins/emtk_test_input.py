@@ -33,8 +33,11 @@ class Driver:
 
     # -- frames --------------------------------------------------------------------------------- #
     def draw(self, frames: int = 2) -> RecordingPainter:
+        from chisurf.emtk.background_build import join_all
+
         painter = RecordingPainter()
         for _ in range(frames):
+            join_all()  # a host draws again when a background build lands; frames here come back to back
             painter = RecordingPainter()
             self.app.draw(painter, 0, 0, *self.size)
         return painter

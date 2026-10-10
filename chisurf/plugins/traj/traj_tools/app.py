@@ -82,24 +82,19 @@ class TrajectoryToolsHubApp(CalculatorHubApp):
             raise ValueError(f"Unknown tool: {name}")
         self.selected = name
         self.error = ""
-        if name not in self.children:
-            try:
-                module, attr = entry.emtk.split(":", 1)
-                child = getattr(importlib.import_module(module), attr)()
-                setter = getattr(child, "set_frame_request_callback", None)
-                if callable(setter):
-                    setter(self.request_frame)
-                self.children[name] = child
-                saved = self._pending_settings.pop(name, None)
-                if saved is not None and callable(getattr(child, "restore_settings", None)):
-                    child.restore_settings(saved)
-            except Exception as exc:  # noqa: BLE001 - surfaced in the header, as the Qt hub showed the child's error
-                self.error = f"{tr('Tool unavailable')}: {exc}"
+        self.ensure_child(name)
         self.status = f"Active tool: {name}"
         self.tour.notify_used("tool_list")
         self.tour.notify_used("entry:" + name)
         self.request_frame()
         return self.child
+
+    def make_child(self, name: str):
+        module, attr = self.entries_by_name[name].emtk.split(":", 1)
+        return getattr(importlib.import_module(module), attr)()
+
+    def load_error(self, name: str, exc) -> str:
+        return f"{tr('Tool unavailable')}: {exc}"
 
     def _tour_step(self, _index: int, step: dict) -> None:
         """The tour reached a card pointing at a tool of the list: show that tool."""
@@ -160,6 +155,8 @@ class TrajectoryToolsHubApp(CalculatorHubApp):
         self.child_box = (left, header_h, max(1.0, width - left), body_h)
         if self.child is not None:
             self.draw_child(self._painter, self.child, *self.child_box, local_coordinates=True)
+        elif self.building:
+            self.draw_opening()
         else:
             im.set_next_window_pos((left + 16, header_h + 8), im.Cond.ALWAYS)
             im.set_next_window_size(

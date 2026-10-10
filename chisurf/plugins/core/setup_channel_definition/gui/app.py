@@ -86,7 +86,8 @@ class SetupChannelDefinitionApp(ImApp):
     def _render(self) -> None:
         if self.autoload:
             self.autoload = False
-            self.toolbar.reload(open_last=self.open_last_used)
+            self.toolbar.reload_async(open_last=self.open_last_used)
+        self.toolbar.poll()
         vp = im.get_main_viewport()
         box = (float(vp.pos[0]), float(vp.pos[1]), float(vp.size[0]), float(vp.size[1]))
         self.docks.draw(box)

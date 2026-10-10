@@ -20,6 +20,7 @@ from emtk import im
 from emtk.app import ImApp
 from emtk.im_core import get_current_context
 
+from chisurf.emtk.background_build import BackgroundBuild
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import action_button, window_size
 from emtk.i18n import tr
@@ -42,8 +43,12 @@ class ChimolHostApp(ImApp):
         spec = json.loads((HERE / "window.view.json").read_text(encoding="utf-8"))
         self.window_size = window_size(spec, (1200, 800))
         self._chimol_size = size
-        self._chimol: ChimolApp | None = None
-        self._chimol_error = ""
+        #: The viewer once it is running; :attr:`_chimol` is the same, after joining a start under way.
+        self._chimol_app: ChimolApp | None = None
+        self._error = ""
+        #: Starting chimol (wgpu adapter, ~50 render pipelines, the first frame) costs over a second; the first
+        #: draw starts it on a worker thread and the window says "Starting" until it lands.
+        self._starter = BackgroundBuild(wake=self.request_frame)
         self._frame: np.ndarray | None = None
         self._surface = size
         self._viewport_h = float(size[1])
@@ -62,21 +67,76 @@ class ChimolHostApp(ImApp):
         super().__init__(self.render)
 
     # ── chimol lifecycle (lazy: keep plugin import toolkit- and wgpu-free) ──
-    def _ensure_chimol(self) -> bool:
-        if self._chimol is not None or self._chimol_error:
-            return self._chimol is not None
-        try:
-            # The choice has to precede chimol.core.viewer's import: with the
-            # default "auto" and ChiSurf's Qt already loaded, Viewer binds a
-            # QWidget base and building one without a QApplication aborts.
-            # "none" is exactly what chimol's own toolkit-free host sets.
-            os.environ.setdefault("CHIMOL_TOOLKIT", "none")
-            from chimol.hosts.native.app import ChimolApp
+    @property
+    def _chimol(self) -> ChimolApp | None:
+        """The running viewer (a start under way is finished first); ``None`` before the first draw or on error."""
+        self._adopt_start(wait=True)
+        return self._chimol_app
 
-            self._chimol = ChimolApp(size=self._chimol_size, backend="offscreen")
+    @_chimol.setter
+    def _chimol(self, value) -> None:
+        self._chimol_app = value
+
+    @property
+    def _chimol_error(self) -> str:
+        self._adopt_start(wait=True)
+        return self._error
+
+    @_chimol_error.setter
+    def _chimol_error(self, value: str) -> None:
+        self._error = value
+
+    @property
+    def starting(self) -> bool:
+        """Whether chimol is being started on the worker thread."""
+        return self._starter.busy
+
+    def _start(self, surface: tuple[int, int] | None = None):
+        """Construct chimol (and, with *surface*, render its first frame there): ``(app, frame)``. Runs on the
+        start thread or, from :meth:`_ensure_chimol`, on the caller's."""
+        # The choice has to precede chimol.core.viewer's import: with the
+        # default "auto" and ChiSurf's Qt already loaded, Viewer binds a
+        # QWidget base and building one without a QApplication aborts.
+        # "none" is exactly what chimol's own toolkit-free host sets.
+        os.environ.setdefault("CHIMOL_TOOLKIT", "none")
+        from chimol.hosts.native.app import ChimolApp
+
+        app = ChimolApp(size=self._chimol_size, backend="offscreen")
+        frame = None
+        if surface is not None:
+            # The first frame compiles the render pipelines: pay that here too, not on the UI thread.
+            self._resize(app, *surface)
+            frame = app.renderer.draw_frame()
+        return app, frame
+
+    def _adopt_start(self, wait: bool = False) -> None:
+        """Take over a finished start (with *wait*, finish it first)."""
+        done = self._starter.collect(wait=wait)
+        if not done:
+            return
+        made, exc = done["chimol"]
+        if exc is not None:
+            self._error = f"{type(exc).__name__}: {exc}"
+            return
+        self._chimol_app, frame = made
+        if frame is not None:
+            self._frame = frame
+        self._subscribe()
+
+    def _ensure_chimol(self) -> bool:
+        """Start chimol now if it is not running (joins a start under way); whether it runs."""
+        self._adopt_start(wait=True)
+        if self._chimol_app is not None or self._error:
+            return self._chimol_app is not None
+        try:
+            self._chimol_app, _frame = self._start()
         except Exception as exc:  # noqa: BLE001 - surface the load error inline
-            self._chimol_error = f"{type(exc).__name__}: {exc}"
+            self._error = f"{type(exc).__name__}: {exc}"
             return False
+        self._subscribe()
+        return True
+
+    def _subscribe(self) -> None:
         # A movie started from the console, a macro or a script runs no input
         # event, and chimol's own wake (`update()` -> `request_draw`) knocks on
         # the rendercanvas loop -- which is not running inside this embed. The
@@ -86,14 +146,18 @@ class ChimolHostApp(ImApp):
         # stale: wake the host (emtk.request_frame -> ControlHost.update) so
         # one paint happens, and that paint's animating() check takes over.
         try:
-            self._command_sub = self._chimol.viewer.bus.subscribe(
+            self._command_sub = self._chimol_app.viewer.bus.subscribe(
                 "command.executed",
                 self._on_command_executed,
                 owner="chisurf-emtk-host",
             )
         except Exception:  # noqa: BLE001 - a viewer without its bus still draws
             self._command_sub = None
-        return True
+
+    def _running(self) -> bool:
+        """Whether chimol takes input now; input during its start is dropped rather than blocking the UI."""
+        self._adopt_start()
+        return self._chimol_app is not None
 
     def _on_command_executed(self, _line=None) -> None:
         self.tour.notify_used("command_line")
@@ -108,17 +172,24 @@ class ChimolHostApp(ImApp):
             max(760, int(w)),
             max(420, int(h - self.STATUS_H)),
         )
-        if self._ensure_chimol() and self._chimol is not None:
-            self._resize_chimol(*self._surface)
-            frame = self._chimol.renderer.draw_frame()
+        self._adopt_start()
+        if self._chimol_app is None and not self._error and not self.starting:
+            surface = self._surface
+            self._starter.start({"chimol": lambda: self._start(surface)}, name="chisurf-chimol-start")
+        elif self._chimol_app is not None:
+            self._resize(self._chimol_app, *self._surface)
+            frame = self._chimol_app.renderer.draw_frame()
             if frame is not None:
                 self._frame = frame
         super().draw(painter, x, y, w, h)
 
     def _resize_chimol(self, w, h) -> None:
-        if self._chimol is None:
-            return
-        renderer = self._chimol.renderer
+        if self._chimol_app is not None:
+            self._resize(self._chimol_app, w, h)
+
+    @staticmethod
+    def _resize(chimol, w, h) -> None:
+        renderer = chimol.renderer
         canvas = renderer._canvas
         try:
             logical = canvas.get_logical_size()
@@ -147,8 +218,10 @@ class ChimolHostApp(ImApp):
         # (`canvas.frame()` -> `Playback.pump`) -- that is the whole clock an
         # embedded chimol has. Without this the movie ran only while the
         # pointer kept producing events, because those were the only frames.
-        if self._chimol is not None:
-            playback = getattr(self._chimol.viewer, "playback", None)
+        if self.starting:
+            return True
+        if self._chimol_app is not None:
+            playback = getattr(self._chimol_app.viewer, "playback", None)
             if playback is not None and getattr(playback, "running", False):
                 return True
         return super().animating()
@@ -157,9 +230,9 @@ class ChimolHostApp(ImApp):
         width, height = im.get_main_viewport().size
         box = (0, 0, width, height)
         im.begin("ChiMOL", box)
-        if self._chimol_error:
+        if self._error:
             im.heading("ChiMOL unavailable", level=2)
-            im.text_wrapped(self._chimol_error)
+            im.text_wrapped(self._error)
             im.end()
             return
         # Reserve a status strip: chimol's own viewport draws its command bar
@@ -169,7 +242,11 @@ class ChimolHostApp(ImApp):
         if self._frame is not None:
             im.image(self._frame, size=(width, viewport_h))
         else:
-            im.text_disabled(tr("Rendering…"))
+            # Keep the viewport's room, so the status strip sits where it will once the picture arrives.
+            x, y = im.get_cursor_screen_pos()
+            im.text_disabled(tr("Starting ChiMOL…") if self.starting else tr("Rendering…"))
+            im.set_cursor_screen_pos((x, y))
+            im.dummy(width, viewport_h)
         vx, vy, vw, vh = im.get_item_rect()
         self.item_rects["viewport"] = (vx, vy, vw, vh)
         self.item_rects["structure"] = (vx, vy, vw, vh)
@@ -198,13 +275,13 @@ class ChimolHostApp(ImApp):
         self.item_rects["guide"] = im.get_item_rect()
 
     def _object_count(self) -> int:
-        if self._chimol is None:
+        if self._chimol_app is None:  # drawn every frame: never waits for a start under way
             return 0
         # What the object list shows: `viewer.objects` also holds the empty
         # placeholder a fresh viewer starts with, which read as "1 object(s)"
         # before anything was loaded.
         try:
-            return len(self._chimol.viewer.list_objects())
+            return len(self._chimol_app.viewer.list_objects())
         except Exception:  # noqa: BLE001 - status is best-effort
             return 0
 
@@ -230,13 +307,13 @@ class ChimolHostApp(ImApp):
 
     def pointer_press(self, x, y, button, modifiers=0, clicks=1):
         super().pointer_press(x, y, button, modifiers, clicks)
-        if self._inside(x, y) and self._ensure_chimol():
+        if self._inside(x, y) and self._running():
             self._drag_from = (float(x), float(y))
             self._chimol.renderer.on_pointer_press(x, y, button, modifiers, double=clicks > 1)
 
     def pointer_move(self, x, y, buttons=0, modifiers=0):
         super().pointer_move(x, y, buttons, modifiers)
-        if (self._drag_from is not None or self._inside(x, y)) and self._ensure_chimol():
+        if (self._drag_from is not None or self._inside(x, y)) and self._running():
             self._chimol.renderer.on_pointer_move(x, y, buttons, modifiers)
             if buttons and self._drag_from is not None:
                 dx, dy = x - self._drag_from[0], y - self._drag_from[1]
@@ -246,18 +323,18 @@ class ChimolHostApp(ImApp):
     def pointer_release(self, x, y, button, modifiers=0):
         super().pointer_release(x, y, button, modifiers)
         # A drag that began on the viewer ends there, wherever it is released.
-        if (self._drag_from is not None or self._inside(x, y)) and self._ensure_chimol():
+        if (self._drag_from is not None or self._inside(x, y)) and self._running():
             self._chimol.renderer.on_pointer_release(x, y, button, modifiers)
         self._drag_from = None
 
     def wheel(self, x, y, steps, modifiers=0):
         super().wheel(x, y, steps, modifiers)
-        if self._inside(x, y) and self._ensure_chimol():
+        if self._inside(x, y) and self._running():
             self._chimol.renderer.on_wheel(x, y, steps, modifiers)
 
     def key(self, key, text="", modifiers=0):
         consumed = super().key(key, text, modifiers)
-        if self._ensure_chimol():
+        if self._running():
             # chimol keys on the typed character (emtk.keys' values pass through
             # its on_key_press as DOM text + modifiers).
             return self._chimol.renderer.on_key_press(key, text, modifiers) or consumed

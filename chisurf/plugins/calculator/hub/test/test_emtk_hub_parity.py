@@ -46,8 +46,11 @@ def app():
 
 
 def draw(app, size=SIZE, frames=3):
+    from chisurf.emtk.background_build import join_all
+
     painter = None
     for _ in range(frames):
+        join_all()  # the shown calculator is made in the background; a host draws again when it lands
         painter = RecordingPainter()
         app.draw(painter, 0, 0, *size)
     return painter

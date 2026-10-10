@@ -158,6 +158,7 @@ class PSFApp(TourTarget, ImApp):
             self.busy
             or (self.model.is_stale and not self.error and self.model.volume is None)
             or (self.model.is_stale and not self.error)
+            or self.volume_view.view.starting  # the 3-D view's chimol is starting in the background
         ):
             return True
         return super().animating()

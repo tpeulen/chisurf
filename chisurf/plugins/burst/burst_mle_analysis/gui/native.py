@@ -21,6 +21,7 @@ from emtk.im_core import get_current_context
 from emtk.view_form import FormState, draw_sections
 from emtk.widgets.view_spec import load_view_spec
 
+from chisurf.core.registry import catalog
 from chisurf.core.support.i18n import tr
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
@@ -586,7 +587,7 @@ class MleNativeApp(TourTarget, ImApp):
                 self.editor.load_definition(self.model.detector_editor_data)
                 self.model.detector_editor_data = None
                 self.model.status_text = status
-        if changed or self.job.busy:
+        if changed or self.job.busy or not catalog.ready():  # the model list is read in the background
             ctx = get_current_context()
             ctx.request_frame_at(ctx.io.now + 0.1)
         w, h = im.get_main_viewport().size
@@ -621,6 +622,10 @@ class MleNativeApp(TourTarget, ImApp):
         return bool(paths) and self.model.add_files(paths) > 0
 
     on_paths_dropped = files_dropped
+
+    def animating(self) -> bool:
+        """Keep drawing while the model registry is read in the background (the model list and table wait on it)."""
+        return super().animating() or not catalog.ready()
 
     def close(self) -> None:
         self.model.stop()

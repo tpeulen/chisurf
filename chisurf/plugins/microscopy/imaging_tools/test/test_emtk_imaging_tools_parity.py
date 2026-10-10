@@ -122,8 +122,11 @@ def fake_hub(**kw):
 
 
 def draw(app, size=BIG, frames=3):
+    from chisurf.emtk.background_build import join_all
+
     painter = None
     for _ in range(frames):
+        join_all()  # the first tools are made in the background; a host draws again when they land
         painter = RecordingPainter()
         app.draw(painter, 0, 0, *size)
     return painter

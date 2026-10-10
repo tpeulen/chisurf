@@ -26,7 +26,10 @@ class Pointer:
 
     # -- frames ---------------------------------------------------------------
     def frame(self, n: int = 1) -> RecordingPainter:
+        from chisurf.emtk.background_build import join_all
+
         for _ in range(n):
+            join_all()  # first-frame reads run in the background; a host draws again when they land
             self.painter = RecordingPainter()
             self.app.draw(self.painter, 0.0, 0.0, *self.size)
         return self.painter

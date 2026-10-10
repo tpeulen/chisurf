@@ -141,3 +141,37 @@ def test_native_qt_blocked_factory():
     # A clean headless machine may lack wgpu/rendercanvas; both a built viewer
     # and a recorded load error are acceptable, a Qt abort is not.
     assert "Must construct a QApplication" not in proc.stderr
+
+
+def test_first_draw_starts_chimol_off_the_ui_thread(monkeypatch):
+    """The first frame starts chimol on a worker thread and says so; it does not wait for the viewer.
+
+    Starting chimol (wgpu adapter, render pipelines, first frame) costs over a second; drawn on the UI thread
+    that was the plugin's first frame. Input during the start is dropped, never blocks.
+    """
+    import threading
+
+    gate = threading.Event()
+    app = make_app()
+    real = app._start
+
+    def slow_start(surface=None):
+        gate.wait(30)
+        return real(surface)
+
+    monkeypatch.setattr(app, "_start", slow_start)
+    painter = RecordingPainter()
+    app.draw(painter, 0, 0, 900, 620)
+    try:
+        assert app.starting and app.animating()
+        assert app._chimol_app is None
+        assert any("Starting ChiMOL" in s for s in painter.strings)
+        app.pointer_press(100, 100, 0)  # dropped, not a join
+        assert app.starting
+    finally:
+        gate.set()
+    if app._chimol_error:  # joins the start
+        pytest.skip(f"chimol unavailable: {app._chimol_error}")
+    assert app._chimol is not None and app._frame is not None
+    assert not app.starting
+    app.close()

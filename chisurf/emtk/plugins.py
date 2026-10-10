@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import importlib
 import json
 from pathlib import Path
@@ -9,8 +10,22 @@ from pathlib import Path
 _launch_options: dict = {}
 
 
+#: The shipped plugin tree's manifests, read once per process: walking ``chisurf/plugins`` costs ~100 ms, and a hub
+#: resolves a tool through :func:`load_plugin` on its first frame. User plugins live outside this tree.
+_shipped: dict[str, dict] | None = None
+
+
 def manifests(root: str | Path | None = None) -> dict[str, dict]:
-    root = Path(root) if root is not None else Path(__file__).resolve().parents[1] / "plugins"
+    """Every plugin manifest under *root* (default: the shipped ``chisurf/plugins``), by id; a fresh copy."""
+    global _shipped
+    if root is None:
+        if _shipped is None:
+            _shipped = _read_manifests(Path(__file__).resolve().parents[1] / "plugins")
+        return copy.deepcopy(_shipped)
+    return _read_manifests(Path(root))
+
+
+def _read_manifests(root: Path) -> dict[str, dict]:
     found = {}
     for path in sorted(root.rglob("manifest.json")):
         if "cookiecutter" in str(path):

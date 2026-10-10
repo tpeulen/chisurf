@@ -43,7 +43,10 @@ class Hub:
         self.draw(3)
 
     def draw(self, frames=2):
+        from chisurf.emtk.background_build import join_all
+
         for _ in range(frames):
+            join_all()  # the opening step is made in the background; a host draws again when it lands
             self.last = RecordingPainter()
             self.app.draw(self.last, 0, 0, *self.size)
         return self.last

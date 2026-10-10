@@ -89,6 +89,10 @@ class FcsHubApp(ToolHubApp):
             self.filter_model.set_tttr_objects({}, [])
         self._setup_seen = name
 
+    def requires(self, role: str) -> tuple[str, ...]:
+        # Opening a step reads the channel step's setup (refresh_setup): build both off the first frame.
+        return ("channel_def", role) if role in STEP_ROLES and role != "channel_def" else (role,)
+
     def panel_enabled(self, role: str) -> bool:
         files = self.children.get("files")
         if role == "filter":

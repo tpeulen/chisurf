@@ -23,6 +23,7 @@ from __future__ import annotations
 import copy
 import difflib
 import functools
+import threading
 import typing
 
 #: chisurf's own registrations: category -> {key: entry}, in registration order.
@@ -55,6 +56,29 @@ def _compiled() -> tuple[tuple[str, dict[str, dict[str, dict]]], ...]:
     except Exception:
         pass
     return tuple(out)
+
+
+_prefetch_thread: threading.Thread | None = None
+
+
+def ready() -> bool:
+    """Whether the compiled registries have been read in this process (a :func:`registry` call is then cheap)."""
+    return _compiled.cache_info().currsize > 0
+
+
+def prefetch() -> bool:
+    """Read the compiled registries on a worker thread (importing IMP.bff costs ~200 ms); whether they are ready.
+
+    A window that lists registry entries calls this from its draw and shows a placeholder while it returns
+    ``False``, instead of importing the libraries on the UI thread.
+    """
+    global _prefetch_thread
+    if ready():
+        return True
+    if _prefetch_thread is None or not _prefetch_thread.is_alive():
+        _prefetch_thread = threading.Thread(target=_compiled, name="chisurf-registry", daemon=True)
+        _prefetch_thread.start()
+    return False
 
 
 def refresh() -> None:

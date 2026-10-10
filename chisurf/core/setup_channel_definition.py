@@ -149,14 +149,22 @@ class ChannelDefinition:
         kwargs = setup_lut_open_kwargs(self.data)
         set_active_setup_lut(**kwargs)
 
-    def refresh_setups(self):
+    def read_setups_payload(self):
+        """Read the named setups from the store without changing the model (safe on a worker thread
+        when :attr:`db` is ``None``: the store then opens and closes its own handle)."""
         if self.db is not None:
-            payload = store.load_mmfdb_setups(self.db, CONFIG, row_to_data=_row_data)
-        else:
-            payload = store.load_setups(self.file_path, CONFIG, row_to_data=_row_data)
+            return store.load_mmfdb_setups(self.db, CONFIG, row_to_data=_row_data)
+        return store.load_setups(self.file_path, CONFIG, row_to_data=_row_data)
+
+    def apply_setups_payload(self, payload):
+        """Adopt a payload of :meth:`read_setups_payload`; bumps :attr:`setups_generation`."""
         self.setups = payload.get("setups") or {}
         self.last_used = str(payload.get("last_used") or "")
+        self.setups_generation = getattr(self, "setups_generation", 0) + 1
         return sorted(self.setups)
+
+    def refresh_setups(self):
+        return self.apply_setups_payload(self.read_setups_payload())
 
     def remember_last_used(self, name):
         """Store *name* as the last used setup, so the next start opens it (the Qt page does this on every choice)."""
