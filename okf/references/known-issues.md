@@ -4,6 +4,16 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## Two click tests fail only when run after their neighbours (found 2026-10-10)
+
+status: open — owner: whoever next touches the burst_fusion or lightpath_simulator tests.
+
+`burst_fusion/tests/test_emtk_fusion_clicks.py::test_detector_definitions_expand_are_edited_applied_and_refused_when_invalid`
+(applied detectors come back `{}`) and `lightpath_simulator/tests/test_emtk_lightpath_clicks.py::test_load_from_mmfdb_with_nothing_saved_says_so`
+(no "No saved light path simulations" message) fail in a whole-directory run and pass alone, three times each.
+Likely shared state: a detector-setup store / MMFDB written by an earlier test in the same process. Measure by
+running the file, then the single node id; bisect by node ids (memory: global-setting-test-isolation), not `-k`.
+
 ## Guide screenshot scripts still import retired Qt calculator tools (found 2026-10-10)
 
 status: open — owner W14 (docs screenshots move to the W7 e2e renders).
