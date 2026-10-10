@@ -1993,6 +1993,478 @@ p, li { white-space: pre-wrap; }
     <context>
         <name>chisurf</name>
         <message>
+            <source>A step-by-step walk through the tools, pointing at each control.</source>
+            <translation>Un parcours pas à pas des outils, qui désigne chaque commande.</translation>
+        </message>
+        <message>
+            <source>AND intersects, OR unions and XOR keeps pixels included by an odd number of enabled regions.</source>
+            <translation>ET fait l’intersection, OU fait l’union et XOR conserve les pixels inclus par un nombre impair de régions activées.</translation>
+        </message>
+        <message>
+            <source>Adjust this node setting.</source>
+            <translation>Ajuster ce réglage du nœud.</translation>
+        </message>
+        <message>
+            <source>Append regions from JSON, masks, label images or Cellpose segmentation files.</source>
+            <translation>Ajouter des régions depuis des fichiers JSON, des masques, des images d’étiquettes ou des segmentations Cellpose.</translation>
+        </message>
+        <message>
+            <source>Apply TAC linearization (LUT) when reading</source>
+            <translation>Appliquer la linéarisation TAC (LUT) à la lecture</translation>
+        </message>
+        <message>
+            <source>Automatic levels</source>
+            <translation>Niveaux automatiques</translation>
+        </message>
+        <message>
+            <source>Baum-Welch settings: iterations, tolerance, decoder, seed, acceleration.</source>
+            <translation>Réglages Baum-Welch : itérations, tolérance, décodeur, graine, accélération.</translation>
+        </message>
+        <message>
+            <source>Browse editable QSS files copied to your user settings directory</source>
+            <translation>Parcourir les fichiers QSS modifiables copiés dans le dossier de réglages utilisateur</translation>
+        </message>
+        <message>
+            <source>Browse the axial stack; image picks and bead overlays refer to this slice.</source>
+            <translation>Parcourir la pile axiale ; les sélections d’images et les superpositions de billes se rapportent à cette tranche.</translation>
+        </message>
+        <message>
+            <source>Build the tool again.</source>
+            <translation>Recompiler l’outil.</translation>
+        </message>
+        <message>
+            <source>Built-in template:</source>
+            <translation>Modèle intégré :</translation>
+        </message>
+        <message>
+            <source>Calibration:</source>
+            <translation>Étalonnage :</translation>
+        </message>
+        <message>
+            <source>Cancel calibration read</source>
+            <translation>Annuler la lecture de l’étalonnage</translation>
+        </message>
+        <message>
+            <source>Cancel change</source>
+            <translation>Annuler la modification</translation>
+        </message>
+        <message>
+            <source>Cancel new</source>
+            <translation>Annuler la création</translation>
+        </message>
+        <message>
+            <source>Cancel staged reading and keep previous calibration values.</source>
+            <translation>Annuler la lecture échelonnée et conserver les valeurs d’étalonnage précédentes.</translation>
+        </message>
+        <message>
+            <source>Choose a dichroic splitter or polarization splitter.</source>
+            <translation>Choisir un séparateur dichroïque ou un séparateur de polarisation.</translation>
+        </message>
+        <message>
+            <source>Choose a style sheet from another directory; unsaved changes require confirmation</source>
+            <translation>Choisir une feuille de style dans un autre dossier ; les modifications non enregistrées demandent confirmation</translation>
+        </message>
+        <message>
+            <source>Choose a value for this node setting.</source>
+            <translation>Choisir une valeur pour ce réglage du nœud.</translation>
+        </message>
+        <message>
+            <source>Choose another destination; existing files require replacement confirmation</source>
+            <translation>Choisir une autre destination ; les fichiers existants demandent confirmation avant remplacement</translation>
+        </message>
+        <message>
+            <source>Click a bead/spot to fit it. Drag to pan, scroll to zoom; blue handles edit analysis regions. Found and picked outlines are measured results.</source>
+            <translation>Cliquer sur une bille ou un spot pour l’ajuster. Glisser pour déplacer, molette pour zoomer ; les poignées bleues modifient les régions d’analyse. Les contours trouvés et choisis sont des résultats mesurés.</translation>
+        </message>
+        <message>
+            <source>Close the picker without opening a dataset.</source>
+            <translation>Fermer le sélecteur sans ouvrir de jeu de données.</translation>
+        </message>
+        <message>
+            <source>Close the picker; the database operation can finish in the background.</source>
+            <translation>Fermer le sélecteur ; l’opération de base de données peut se terminer en arrière-plan.</translation>
+        </message>
+        <message>
+            <source>Close this prompt; nothing changes.</source>
+            <translation>Fermer cette invite ; rien ne change.</translation>
+        </message>
+        <message>
+            <source>Close without changing the shifts.</source>
+            <translation>Fermer sans modifier les décalages.</translation>
+        </message>
+        <message>
+            <source>Color scale of the image; pixel values and fits remain unchanged.</source>
+            <translation>Échelle de couleurs de l’image ; les valeurs des pixels et les ajustements restent inchangés.</translation>
+        </message>
+        <message>
+            <source>Comma-separated excitation lines in nanometers with relative powers, for example 488:1.0, 640:1.0.</source>
+            <translation>Raies d’excitation en nanomètres séparées par des virgules, avec puissances relatives, par exemple 488:1.0, 640:1.0.</translation>
+        </message>
+        <message>
+            <source>Confirm deletion of user QSS files and restore packaged defaults</source>
+            <translation>Confirmer la suppression des fichiers QSS utilisateur et restaurer les valeurs par défaut fournies</translation>
+        </message>
+        <message>
+            <source>Confirm the requested operation; discarded content cannot be restored</source>
+            <translation>Confirmer l’opération demandée ; le contenu supprimé ne peut pas être restauré</translation>
+        </message>
+        <message>
+            <source>Copy the selected region including its enabled/inverted state.</source>
+            <translation>Copier la région sélectionnée, y compris son état activé / inversé.</translation>
+        </message>
+        <message>
+            <source>Create a new QSS file without replacing an existing style</source>
+            <translation>Créer un nouveau fichier QSS sans remplacer un style existant</translation>
+        </message>
+        <message>
+            <source>Create style</source>
+            <translation>Créer un style</translation>
+        </message>
+        <message>
+            <source>Create the file in your styles directory; existing names are preserved</source>
+            <translation>Créer le fichier dans votre dossier de styles ; les noms existants sont conservés</translation>
+        </message>
+        <message>
+            <source>Current version:</source>
+            <translation>Version actuelle :</translation>
+        </message>
+        <message>
+            <source>Define detectors or read a measurement to discover routing channels.</source>
+            <translation>Définir des détecteurs ou lire une mesure pour découvrir les canaux de routage.</translation>
+        </message>
+        <message>
+            <source>Delete the selected analysis region from the collection.</source>
+            <translation>Supprimer la région d’analyse sélectionnée de la collection.</translation>
+        </message>
+        <message>
+            <source>Duplicate region</source>
+            <translation>Dupliquer la région</translation>
+        </message>
+        <message>
+            <source>Edit QSS source with syntax highlighting, selection, clipboard and undo/redo</source>
+            <translation>Modifier la source QSS avec coloration syntaxique, sélection, presse-papiers et annuler/rétablir</translation>
+        </message>
+        <message>
+            <source>Enabled</source>
+            <translation>Activé</translation>
+        </message>
+        <message>
+            <source>Enter a file name; .qss is added automatically and directory components are rejected</source>
+            <translation>Saisir un nom de fichier ; .qss est ajouté automatiquement et les chemins de dossier sont refusés</translation>
+        </message>
+        <message>
+            <source>Explain the F-test, confidence threshold and chi-square upper limit.</source>
+            <translation>Expliquer le test F, le seuil de confiance et la limite supérieure du khi carré.</translation>
+        </message>
+        <message>
+            <source>Explain the fields, the two remember options and what happens on Login.</source>
+            <translation>Expliquer les champs, les deux options de mémorisation et ce qui se passe à la connexion.</translation>
+        </message>
+        <message>
+            <source>Explain the sections, Apply, Save and Reset.</source>
+            <translation>Expliquer les sections, Appliquer, Enregistrer et Réinitialiser.</translation>
+        </message>
+        <message>
+            <source>Explain the table, the Disabled switch and stale entries.</source>
+            <translation>Expliquer le tableau, le commutateur Désactivé et les entrées obsolètes.</translation>
+        </message>
+        <message>
+            <source>Explain the table, the account form, passwords and deleting.</source>
+            <translation>Expliquer le tableau, le formulaire du compte, les mots de passe et la suppression.</translation>
+        </message>
+        <message>
+            <source>Explain the table, the dependency columns and the switches.</source>
+            <translation>Expliquer le tableau, les colonnes de dépendance et les commutateurs.</translation>
+        </message>
+        <message>
+            <source>Explain the table, the sweep and what a check proves.</source>
+            <translation>Expliquer le tableau, le balayage et ce que prouve une vérification.</translation>
+        </message>
+        <message>
+            <source>Explain the version list, the changelog and what Update Now does.</source>
+            <translation>Expliquer la liste des versions, le journal des modifications et l’action de Mettre à jour maintenant.</translation>
+        </message>
+        <message>
+            <source>Find tools by name or description.</source>
+            <translation>Rechercher des outils par nom ou description.</translation>
+        </message>
+        <message>
+            <source>Geometric coordinate in image pixels; ellipse rotation is in radians.</source>
+            <translation>Coordonnée géométrique en pixels de l’image ; la rotation de l’ellipse est en radians.</translation>
+        </message>
+        <message>
+            <source>Horizontal image coordinate of this polygon vertex.</source>
+            <translation>Coordonnée horizontale de l’image de ce sommet du polygone.</translation>
+        </message>
+        <message>
+            <source>Include this region in detection; disabled entries remain available for later use.</source>
+            <translation>Inclure cette région dans la détection ; les entrées désactivées restent disponibles pour plus tard.</translation>
+        </message>
+        <message>
+            <source>Keep reading the channels without a LUT raw.</source>
+            <translation>Continuer à lire les canaux sans LUT en brut.</translation>
+        </message>
+        <message>
+            <source>Keep the current buffer and files</source>
+            <translation>Conserver le tampon et les fichiers actuels</translation>
+        </message>
+        <message>
+            <source>Keep the shifts shown.</source>
+            <translation>Conserver les décalages affichés.</translation>
+        </message>
+        <message>
+            <source>Laser lines wavelength:power:</source>
+            <translation>Raies laser longueur d’onde:puissance :</translation>
+        </message>
+        <message>
+            <source>Leave the current style unchanged</source>
+            <translation>Laisser le style actuel inchangé</translation>
+        </message>
+        <message>
+            <source>Lift dim structures with gamma above one; display changes do not affect detection or fitting.</source>
+            <translation>Éclaircir les structures sombres avec un gamma supérieur à un ; les changements d’affichage n’affectent ni la détection ni l’ajustement.</translation>
+        </message>
+        <message>
+            <source>Load a packaged instrument light-path template.</source>
+            <translation>Charger un modèle fourni de trajet lumineux de l’instrument.</translation>
+        </message>
+        <message>
+            <source>Load n_points / n_free / χ²r from an open fit.</source>
+            <translation>Charger n_points / n_free / χ²r depuis un ajustement ouvert.</translation>
+        </message>
+        <message>
+            <source>Load regions</source>
+            <translation>Charger les régions</translation>
+        </message>
+        <message>
+            <source>Map the minimum and maximum finite image values to the color range.</source>
+            <translation>Associer les valeurs minimale et maximale finies de l’image à la plage de couleurs.</translation>
+        </message>
+        <message>
+            <source>Name of the optical detector channel to add.</source>
+            <translation>Nom du canal de détecteur optique à ajouter.</translation>
+        </message>
+        <message>
+            <source>Name the selected region; names are kept unique when saved and restored.</source>
+            <translation>Nommer la région sélectionnée ; les noms restent uniques à l’enregistrement et à la restauration.</translation>
+        </message>
+        <message>
+            <source>Native widgets use palette roles; Qt selectors, images, dimensions and gradients cannot be applied verbatim</source>
+            <translation>Les widgets natifs utilisent les rôles de palette ; les sélecteurs, images, dimensions et dégradés Qt ne peuvent pas être appliqués tels quels</translation>
+        </message>
+        <message>
+            <source>New optical detector name:</source>
+            <translation>Nom du nouveau détecteur optique :</translation>
+        </message>
+        <message>
+            <source>No datasets match these filters.</source>
+            <translation>Aucun jeu de données ne correspond à ces filtres.</translation>
+        </message>
+        <message>
+            <source>No fit yet: press Fit.</source>
+            <translation>Pas encore d’ajustement : appuyez sur Ajuster.</translation>
+        </message>
+        <message>
+            <source>Open selected</source>
+            <translation>Ouvrir la sélection</translation>
+        </message>
+        <message>
+            <source>Open the LUT tools to compute a LUT now.</source>
+            <translation>Ouvrir les outils LUT pour calculer une LUT maintenant.</translation>
+        </message>
+        <message>
+            <source>Open the page in your browser.</source>
+            <translation>Ouvrir la page dans votre navigateur.</translation>
+        </message>
+        <message>
+            <source>Open the selected dataset in this tool; remote objects are downloaded by MMFDB.</source>
+            <translation>Ouvrir le jeu de données sélectionné dans cet outil ; MMFDB télécharge les objets distants.</translation>
+        </message>
+        <message>
+            <source>Optical Setup...</source>
+            <translation>Configuration optique...</translation>
+        </message>
+        <message>
+            <source>PIE Windows</source>
+            <translation>Fenêtres PIE</translation>
+        </message>
+        <message>
+            <source>Parameter used in the Förster-radius calculation for the selected fluorophores.</source>
+            <translation>Paramètre utilisé dans le calcul du rayon de Förster pour les fluorophores sélectionnés.</translation>
+        </message>
+        <message>
+            <source>Plot</source>
+            <translation>Graphique</translation>
+        </message>
+        <message>
+            <source>Read</source>
+            <translation>Lire</translation>
+        </message>
+        <message>
+            <source>Read a measurement to see the micro-time decay of every routing channel.</source>
+            <translation>Lire une mesure pour voir le décroissement en microtemps de chaque canal de routage.</translation>
+        </message>
+        <message>
+            <source>Read help for the selected tool.</source>
+            <translation>Lire l’aide de l’outil sélectionné.</translation>
+        </message>
+        <message>
+            <source>Read the conversion rules and verification guarantees.</source>
+            <translation>Lire les règles de conversion et les garanties de vérification.</translation>
+        </message>
+        <message>
+            <source>Reload datasets with the current scope, search, kind and format filters.</source>
+            <translation>Recharger les jeux de données avec la portée, la recherche, le type et les filtres de format actuels.</translation>
+        </message>
+        <message>
+            <source>Remove region</source>
+            <translation>Supprimer la région</translation>
+        </message>
+        <message>
+            <source>Reset styles</source>
+            <translation>Réinitialiser les styles</translation>
+        </message>
+        <message>
+            <source>Restore the full-image view after zooming or panning.</source>
+            <translation>Restaurer la vue complète de l’image après un zoom ou un déplacement.</translation>
+        </message>
+        <message>
+            <source>Restrict detection to named regions; empty or disabled regions use the entire frame.</source>
+            <translation>Restreindre la détection aux régions nommées ; les régions vides ou désactivées utilisent toute l’image.</translation>
+        </message>
+        <message>
+            <source>Routing channel whose LUT is computed, assigned, exported or removed.</source>
+            <translation>Canal de routage dont la LUT est calculée, affectée, exportée ou supprimée.</translation>
+        </message>
+        <message>
+            <source>Routing channel:</source>
+            <translation>Canal de routage :</translation>
+        </message>
+        <message>
+            <source>Save As</source>
+            <translation>Enregistrer sous</translation>
+        </message>
+        <message>
+            <source>Save all regions as JSON with flags, or export their raster labels as TIFF/NumPy.</source>
+            <translation>Enregistrer toutes les régions en JSON avec leurs indicateurs, ou exporter leurs étiquettes raster en TIFF/NumPy.</translation>
+        </message>
+        <message>
+            <source>Save and apply supported palette rules to this native window; Qt-only rules remain in the file</source>
+            <translation>Enregistrer et appliquer les règles de palette prises en charge à cette fenêtre native ; les règles propres à Qt restent dans le fichier</translation>
+        </message>
+        <message>
+            <source>Save regions</source>
+            <translation>Enregistrer les régions</translation>
+        </message>
+        <message>
+            <source>Save the current buffer without applying it</source>
+            <translation>Enregistrer le tampon actuel sans l’appliquer</translation>
+        </message>
+        <message>
+            <source>Search dataset names and metadata; press Refresh to apply.</source>
+            <translation>Rechercher dans les noms et métadonnées des jeux de données ; appuyez sur Actualiser pour appliquer.</translation>
+        </message>
+        <message>
+            <source>Select a plugin to inspect its details.</source>
+            <translation>Sélectionner un module pour en examiner les détails.</translation>
+        </message>
+        <message>
+            <source>Select this analysis region for renaming, geometry edits, duplication or removal.</source>
+            <translation>Sélectionner cette région d’analyse pour la renommer, modifier sa géométrie, la dupliquer ou la supprimer.</translation>
+        </message>
+        <message>
+            <source>Set the lower display level without changing stored pixel values.</source>
+            <translation>Régler le niveau d’affichage inférieur sans modifier les valeurs de pixels enregistrées.</translation>
+        </message>
+        <message>
+            <source>Set the upper display level without changing stored pixel values.</source>
+            <translation>Régler le niveau d’affichage supérieur sans modifier les valeurs de pixels enregistrées.</translation>
+        </message>
+        <message>
+            <source>Show the next page of datasets.</source>
+            <translation>Afficher la page suivante de jeux de données.</translation>
+        </message>
+        <message>
+            <source>Show the previous page of datasets.</source>
+            <translation>Afficher la page précédente de jeux de données.</translation>
+        </message>
+        <message>
+            <source>Sign in to the MMFDB workspace</source>
+            <translation>Se connecter à l’espace de travail MMFDB</translation>
+        </message>
+        <message>
+            <source>TTTR Reading Routine:</source>
+            <translation>Routine de lecture TTTR :</translation>
+        </message>
+        <message>
+            <source>The name the setup is stored under.</source>
+            <translation>Le nom sous lequel la configuration est enregistrée.</translation>
+        </message>
+        <message>
+            <source>The range of state counts the scan scores.</source>
+            <translation>La plage des nombres d’états évaluée par le balayage.</translation>
+        </message>
+        <message>
+            <source>Toggle this node setting.</source>
+            <translation>Basculer ce réglage du nœud.</translation>
+        </message>
+        <message>
+            <source>Tool help</source>
+            <translation>Aide de l’outil</translation>
+        </message>
+        <message>
+            <source>Transitions</source>
+            <translation>Transitions</translation>
+        </message>
+        <message>
+            <source>Use pixels outside this region instead of inside it.</source>
+            <translation>Utiliser les pixels situés hors de cette région plutôt qu’à l’intérieur.</translation>
+        </message>
+        <message>
+            <source>Vertical image coordinate of this polygon vertex.</source>
+            <translation>Coordonnée verticale de l’image de ce sommet du polygone.</translation>
+        </message>
+        <message>
+            <source>Walk through a safe sweep and the details of a plugin.</source>
+            <translation>Parcourir un balayage sûr et les détails d’un module.</translation>
+        </message>
+        <message>
+            <source>Walk through changing a colour and applying it.</source>
+            <translation>Parcourir le changement d’une couleur et son application.</translation>
+        </message>
+        <message>
+            <source>Walk through checking for an update and reading what changed.</source>
+            <translation>Parcourir la recherche d’une mise à jour et la lecture des changements.</translation>
+        </message>
+        <message>
+            <source>Walk through loading fit statistics and comparing nested models.</source>
+            <translation>Parcourir le chargement des statistiques d’ajustement et la comparaison de modèles imbriqués.</translation>
+        </message>
+        <message>
+            <source>Walk through packing, unpacking and sidecar handling.</source>
+            <translation>Parcourir l’empaquetage, le dépaquetage et la gestion des fichiers associés.</translation>
+        </message>
+        <message>
+            <source>Walk through picking a model, disabling it and saving.</source>
+            <translation>Parcourir la sélection d’un modèle, sa désactivation et son enregistrement.</translation>
+        </message>
+        <message>
+            <source>Walk through picking a plugin, switching it off and saving.</source>
+            <translation>Parcourir la sélection d’un module, sa désactivation et son enregistrement.</translation>
+        </message>
+        <message>
+            <source>Walk through picking an account, editing it and saving.</source>
+            <translation>Parcourir la sélection d’un compte, sa modification et son enregistrement.</translation>
+        </message>
+        <message>
+            <source>Walk through signing in as another account.</source>
+            <translation>Parcourir la connexion avec un autre compte.</translation>
+        </message>
+        <message>
+            <source>no icon</source>
+            <translation>aucune icône</translation>
+        </message>
+        <message>
             <source>   1. Vary the threshold by a factor of 2 — real populations persist.</source>
             <translation>   1. Modifiez le seuil d’un facteur 2 : les vraies populations persistent.</translation>
         </message>
@@ -7259,478 +7731,6 @@ p, li { white-space: pre-wrap; }
         <message>
             <source>🧭 Guide</source>
             <translation>🧭 Guide</translation>
-        </message>
-        <message>
-            <source>A step-by-step walk through the tools, pointing at each control.</source>
-            <translation>Un parcours pas à pas des outils, qui désigne chaque commande.</translation>
-        </message>
-        <message>
-            <source>AND intersects, OR unions and XOR keeps pixels included by an odd number of enabled regions.</source>
-            <translation>ET fait l’intersection, OU fait l’union et XOR conserve les pixels inclus par un nombre impair de régions activées.</translation>
-        </message>
-        <message>
-            <source>Adjust this node setting.</source>
-            <translation>Ajuster ce réglage du nœud.</translation>
-        </message>
-        <message>
-            <source>Append regions from JSON, masks, label images or Cellpose segmentation files.</source>
-            <translation>Ajouter des régions depuis des fichiers JSON, des masques, des images d’étiquettes ou des segmentations Cellpose.</translation>
-        </message>
-        <message>
-            <source>Apply TAC linearization (LUT) when reading</source>
-            <translation>Appliquer la linéarisation TAC (LUT) à la lecture</translation>
-        </message>
-        <message>
-            <source>Automatic levels</source>
-            <translation>Niveaux automatiques</translation>
-        </message>
-        <message>
-            <source>Baum-Welch settings: iterations, tolerance, decoder, seed, acceleration.</source>
-            <translation>Réglages Baum-Welch : itérations, tolérance, décodeur, graine, accélération.</translation>
-        </message>
-        <message>
-            <source>Browse editable QSS files copied to your user settings directory</source>
-            <translation>Parcourir les fichiers QSS modifiables copiés dans le dossier de réglages utilisateur</translation>
-        </message>
-        <message>
-            <source>Browse the axial stack; image picks and bead overlays refer to this slice.</source>
-            <translation>Parcourir la pile axiale ; les sélections d’images et les superpositions de billes se rapportent à cette tranche.</translation>
-        </message>
-        <message>
-            <source>Build the tool again.</source>
-            <translation>Recompiler l’outil.</translation>
-        </message>
-        <message>
-            <source>Built-in template:</source>
-            <translation>Modèle intégré :</translation>
-        </message>
-        <message>
-            <source>Calibration:</source>
-            <translation>Étalonnage :</translation>
-        </message>
-        <message>
-            <source>Cancel calibration read</source>
-            <translation>Annuler la lecture de l’étalonnage</translation>
-        </message>
-        <message>
-            <source>Cancel change</source>
-            <translation>Annuler la modification</translation>
-        </message>
-        <message>
-            <source>Cancel new</source>
-            <translation>Annuler la création</translation>
-        </message>
-        <message>
-            <source>Cancel staged reading and keep previous calibration values.</source>
-            <translation>Annuler la lecture échelonnée et conserver les valeurs d’étalonnage précédentes.</translation>
-        </message>
-        <message>
-            <source>Choose a dichroic splitter or polarization splitter.</source>
-            <translation>Choisir un séparateur dichroïque ou un séparateur de polarisation.</translation>
-        </message>
-        <message>
-            <source>Choose a style sheet from another directory; unsaved changes require confirmation</source>
-            <translation>Choisir une feuille de style dans un autre dossier ; les modifications non enregistrées demandent confirmation</translation>
-        </message>
-        <message>
-            <source>Choose a value for this node setting.</source>
-            <translation>Choisir une valeur pour ce réglage du nœud.</translation>
-        </message>
-        <message>
-            <source>Choose another destination; existing files require replacement confirmation</source>
-            <translation>Choisir une autre destination ; les fichiers existants demandent confirmation avant remplacement</translation>
-        </message>
-        <message>
-            <source>Click a bead/spot to fit it. Drag to pan, scroll to zoom; blue handles edit analysis regions. Found and picked outlines are measured results.</source>
-            <translation>Cliquer sur une bille ou un spot pour l’ajuster. Glisser pour déplacer, molette pour zoomer ; les poignées bleues modifient les régions d’analyse. Les contours trouvés et choisis sont des résultats mesurés.</translation>
-        </message>
-        <message>
-            <source>Close the picker without opening a dataset.</source>
-            <translation>Fermer le sélecteur sans ouvrir de jeu de données.</translation>
-        </message>
-        <message>
-            <source>Close the picker; the database operation can finish in the background.</source>
-            <translation>Fermer le sélecteur ; l’opération de base de données peut se terminer en arrière-plan.</translation>
-        </message>
-        <message>
-            <source>Close this prompt; nothing changes.</source>
-            <translation>Fermer cette invite ; rien ne change.</translation>
-        </message>
-        <message>
-            <source>Close without changing the shifts.</source>
-            <translation>Fermer sans modifier les décalages.</translation>
-        </message>
-        <message>
-            <source>Color scale of the image; pixel values and fits remain unchanged.</source>
-            <translation>Échelle de couleurs de l’image ; les valeurs des pixels et les ajustements restent inchangés.</translation>
-        </message>
-        <message>
-            <source>Comma-separated excitation lines in nanometers with relative powers, for example 488:1.0, 640:1.0.</source>
-            <translation>Raies d’excitation en nanomètres séparées par des virgules, avec puissances relatives, par exemple 488:1.0, 640:1.0.</translation>
-        </message>
-        <message>
-            <source>Confirm deletion of user QSS files and restore packaged defaults</source>
-            <translation>Confirmer la suppression des fichiers QSS utilisateur et restaurer les valeurs par défaut fournies</translation>
-        </message>
-        <message>
-            <source>Confirm the requested operation; discarded content cannot be restored</source>
-            <translation>Confirmer l’opération demandée ; le contenu supprimé ne peut pas être restauré</translation>
-        </message>
-        <message>
-            <source>Copy the selected region including its enabled/inverted state.</source>
-            <translation>Copier la région sélectionnée, y compris son état activé / inversé.</translation>
-        </message>
-        <message>
-            <source>Create a new QSS file without replacing an existing style</source>
-            <translation>Créer un nouveau fichier QSS sans remplacer un style existant</translation>
-        </message>
-        <message>
-            <source>Create style</source>
-            <translation>Créer un style</translation>
-        </message>
-        <message>
-            <source>Create the file in your styles directory; existing names are preserved</source>
-            <translation>Créer le fichier dans votre dossier de styles ; les noms existants sont conservés</translation>
-        </message>
-        <message>
-            <source>Current version:</source>
-            <translation>Version actuelle :</translation>
-        </message>
-        <message>
-            <source>Define detectors or read a measurement to discover routing channels.</source>
-            <translation>Définir des détecteurs ou lire une mesure pour découvrir les canaux de routage.</translation>
-        </message>
-        <message>
-            <source>Delete the selected analysis region from the collection.</source>
-            <translation>Supprimer la région d’analyse sélectionnée de la collection.</translation>
-        </message>
-        <message>
-            <source>Duplicate region</source>
-            <translation>Dupliquer la région</translation>
-        </message>
-        <message>
-            <source>Edit QSS source with syntax highlighting, selection, clipboard and undo/redo</source>
-            <translation>Modifier la source QSS avec coloration syntaxique, sélection, presse-papiers et annuler/rétablir</translation>
-        </message>
-        <message>
-            <source>Enabled</source>
-            <translation>Activé</translation>
-        </message>
-        <message>
-            <source>Enter a file name; .qss is added automatically and directory components are rejected</source>
-            <translation>Saisir un nom de fichier ; .qss est ajouté automatiquement et les chemins de dossier sont refusés</translation>
-        </message>
-        <message>
-            <source>Explain the F-test, confidence threshold and chi-square upper limit.</source>
-            <translation>Expliquer le test F, le seuil de confiance et la limite supérieure du khi carré.</translation>
-        </message>
-        <message>
-            <source>Explain the fields, the two remember options and what happens on Login.</source>
-            <translation>Expliquer les champs, les deux options de mémorisation et ce qui se passe à la connexion.</translation>
-        </message>
-        <message>
-            <source>Explain the sections, Apply, Save and Reset.</source>
-            <translation>Expliquer les sections, Appliquer, Enregistrer et Réinitialiser.</translation>
-        </message>
-        <message>
-            <source>Explain the table, the Disabled switch and stale entries.</source>
-            <translation>Expliquer le tableau, le commutateur Désactivé et les entrées obsolètes.</translation>
-        </message>
-        <message>
-            <source>Explain the table, the account form, passwords and deleting.</source>
-            <translation>Expliquer le tableau, le formulaire du compte, les mots de passe et la suppression.</translation>
-        </message>
-        <message>
-            <source>Explain the table, the dependency columns and the switches.</source>
-            <translation>Expliquer le tableau, les colonnes de dépendance et les commutateurs.</translation>
-        </message>
-        <message>
-            <source>Explain the table, the sweep and what a check proves.</source>
-            <translation>Expliquer le tableau, le balayage et ce que prouve une vérification.</translation>
-        </message>
-        <message>
-            <source>Explain the version list, the changelog and what Update Now does.</source>
-            <translation>Expliquer la liste des versions, le journal des modifications et l’action de Mettre à jour maintenant.</translation>
-        </message>
-        <message>
-            <source>Find tools by name or description.</source>
-            <translation>Rechercher des outils par nom ou description.</translation>
-        </message>
-        <message>
-            <source>Geometric coordinate in image pixels; ellipse rotation is in radians.</source>
-            <translation>Coordonnée géométrique en pixels de l’image ; la rotation de l’ellipse est en radians.</translation>
-        </message>
-        <message>
-            <source>Horizontal image coordinate of this polygon vertex.</source>
-            <translation>Coordonnée horizontale de l’image de ce sommet du polygone.</translation>
-        </message>
-        <message>
-            <source>Include this region in detection; disabled entries remain available for later use.</source>
-            <translation>Inclure cette région dans la détection ; les entrées désactivées restent disponibles pour plus tard.</translation>
-        </message>
-        <message>
-            <source>Keep reading the channels without a LUT raw.</source>
-            <translation>Continuer à lire les canaux sans LUT en brut.</translation>
-        </message>
-        <message>
-            <source>Keep the current buffer and files</source>
-            <translation>Conserver le tampon et les fichiers actuels</translation>
-        </message>
-        <message>
-            <source>Keep the shifts shown.</source>
-            <translation>Conserver les décalages affichés.</translation>
-        </message>
-        <message>
-            <source>Laser lines wavelength:power:</source>
-            <translation>Raies laser longueur d’onde:puissance :</translation>
-        </message>
-        <message>
-            <source>Leave the current style unchanged</source>
-            <translation>Laisser le style actuel inchangé</translation>
-        </message>
-        <message>
-            <source>Lift dim structures with gamma above one; display changes do not affect detection or fitting.</source>
-            <translation>Éclaircir les structures sombres avec un gamma supérieur à un ; les changements d’affichage n’affectent ni la détection ni l’ajustement.</translation>
-        </message>
-        <message>
-            <source>Load a packaged instrument light-path template.</source>
-            <translation>Charger un modèle fourni de trajet lumineux de l’instrument.</translation>
-        </message>
-        <message>
-            <source>Load n_points / n_free / χ²r from an open fit.</source>
-            <translation>Charger n_points / n_free / χ²r depuis un ajustement ouvert.</translation>
-        </message>
-        <message>
-            <source>Load regions</source>
-            <translation>Charger les régions</translation>
-        </message>
-        <message>
-            <source>Map the minimum and maximum finite image values to the color range.</source>
-            <translation>Associer les valeurs minimale et maximale finies de l’image à la plage de couleurs.</translation>
-        </message>
-        <message>
-            <source>Name of the optical detector channel to add.</source>
-            <translation>Nom du canal de détecteur optique à ajouter.</translation>
-        </message>
-        <message>
-            <source>Name the selected region; names are kept unique when saved and restored.</source>
-            <translation>Nommer la région sélectionnée ; les noms restent uniques à l’enregistrement et à la restauration.</translation>
-        </message>
-        <message>
-            <source>Native widgets use palette roles; Qt selectors, images, dimensions and gradients cannot be applied verbatim</source>
-            <translation>Les widgets natifs utilisent les rôles de palette ; les sélecteurs, images, dimensions et dégradés Qt ne peuvent pas être appliqués tels quels</translation>
-        </message>
-        <message>
-            <source>New optical detector name:</source>
-            <translation>Nom du nouveau détecteur optique :</translation>
-        </message>
-        <message>
-            <source>No datasets match these filters.</source>
-            <translation>Aucun jeu de données ne correspond à ces filtres.</translation>
-        </message>
-        <message>
-            <source>No fit yet: press Fit.</source>
-            <translation>Pas encore d’ajustement : appuyez sur Ajuster.</translation>
-        </message>
-        <message>
-            <source>Open selected</source>
-            <translation>Ouvrir la sélection</translation>
-        </message>
-        <message>
-            <source>Open the LUT tools to compute a LUT now.</source>
-            <translation>Ouvrir les outils LUT pour calculer une LUT maintenant.</translation>
-        </message>
-        <message>
-            <source>Open the page in your browser.</source>
-            <translation>Ouvrir la page dans votre navigateur.</translation>
-        </message>
-        <message>
-            <source>Open the selected dataset in this tool; remote objects are downloaded by MMFDB.</source>
-            <translation>Ouvrir le jeu de données sélectionné dans cet outil ; MMFDB télécharge les objets distants.</translation>
-        </message>
-        <message>
-            <source>Optical Setup...</source>
-            <translation>Configuration optique...</translation>
-        </message>
-        <message>
-            <source>PIE Windows</source>
-            <translation>Fenêtres PIE</translation>
-        </message>
-        <message>
-            <source>Parameter used in the Förster-radius calculation for the selected fluorophores.</source>
-            <translation>Paramètre utilisé dans le calcul du rayon de Förster pour les fluorophores sélectionnés.</translation>
-        </message>
-        <message>
-            <source>Plot</source>
-            <translation>Graphique</translation>
-        </message>
-        <message>
-            <source>Read</source>
-            <translation>Lire</translation>
-        </message>
-        <message>
-            <source>Read a measurement to see the micro-time decay of every routing channel.</source>
-            <translation>Lire une mesure pour voir le décroissement en microtemps de chaque canal de routage.</translation>
-        </message>
-        <message>
-            <source>Read help for the selected tool.</source>
-            <translation>Lire l’aide de l’outil sélectionné.</translation>
-        </message>
-        <message>
-            <source>Read the conversion rules and verification guarantees.</source>
-            <translation>Lire les règles de conversion et les garanties de vérification.</translation>
-        </message>
-        <message>
-            <source>Reload datasets with the current scope, search, kind and format filters.</source>
-            <translation>Recharger les jeux de données avec la portée, la recherche, le type et les filtres de format actuels.</translation>
-        </message>
-        <message>
-            <source>Remove region</source>
-            <translation>Supprimer la région</translation>
-        </message>
-        <message>
-            <source>Reset styles</source>
-            <translation>Réinitialiser les styles</translation>
-        </message>
-        <message>
-            <source>Restore the full-image view after zooming or panning.</source>
-            <translation>Restaurer la vue complète de l’image après un zoom ou un déplacement.</translation>
-        </message>
-        <message>
-            <source>Restrict detection to named regions; empty or disabled regions use the entire frame.</source>
-            <translation>Restreindre la détection aux régions nommées ; les régions vides ou désactivées utilisent toute l’image.</translation>
-        </message>
-        <message>
-            <source>Routing channel whose LUT is computed, assigned, exported or removed.</source>
-            <translation>Canal de routage dont la LUT est calculée, affectée, exportée ou supprimée.</translation>
-        </message>
-        <message>
-            <source>Routing channel:</source>
-            <translation>Canal de routage :</translation>
-        </message>
-        <message>
-            <source>Save As</source>
-            <translation>Enregistrer sous</translation>
-        </message>
-        <message>
-            <source>Save all regions as JSON with flags, or export their raster labels as TIFF/NumPy.</source>
-            <translation>Enregistrer toutes les régions en JSON avec leurs indicateurs, ou exporter leurs étiquettes raster en TIFF/NumPy.</translation>
-        </message>
-        <message>
-            <source>Save and apply supported palette rules to this native window; Qt-only rules remain in the file</source>
-            <translation>Enregistrer et appliquer les règles de palette prises en charge à cette fenêtre native ; les règles propres à Qt restent dans le fichier</translation>
-        </message>
-        <message>
-            <source>Save regions</source>
-            <translation>Enregistrer les régions</translation>
-        </message>
-        <message>
-            <source>Save the current buffer without applying it</source>
-            <translation>Enregistrer le tampon actuel sans l’appliquer</translation>
-        </message>
-        <message>
-            <source>Search dataset names and metadata; press Refresh to apply.</source>
-            <translation>Rechercher dans les noms et métadonnées des jeux de données ; appuyez sur Actualiser pour appliquer.</translation>
-        </message>
-        <message>
-            <source>Select a plugin to inspect its details.</source>
-            <translation>Sélectionner un module pour en examiner les détails.</translation>
-        </message>
-        <message>
-            <source>Select this analysis region for renaming, geometry edits, duplication or removal.</source>
-            <translation>Sélectionner cette région d’analyse pour la renommer, modifier sa géométrie, la dupliquer ou la supprimer.</translation>
-        </message>
-        <message>
-            <source>Set the lower display level without changing stored pixel values.</source>
-            <translation>Régler le niveau d’affichage inférieur sans modifier les valeurs de pixels enregistrées.</translation>
-        </message>
-        <message>
-            <source>Set the upper display level without changing stored pixel values.</source>
-            <translation>Régler le niveau d’affichage supérieur sans modifier les valeurs de pixels enregistrées.</translation>
-        </message>
-        <message>
-            <source>Show the next page of datasets.</source>
-            <translation>Afficher la page suivante de jeux de données.</translation>
-        </message>
-        <message>
-            <source>Show the previous page of datasets.</source>
-            <translation>Afficher la page précédente de jeux de données.</translation>
-        </message>
-        <message>
-            <source>Sign in to the MMFDB workspace</source>
-            <translation>Se connecter à l’espace de travail MMFDB</translation>
-        </message>
-        <message>
-            <source>TTTR Reading Routine:</source>
-            <translation>Routine de lecture TTTR :</translation>
-        </message>
-        <message>
-            <source>The name the setup is stored under.</source>
-            <translation>Le nom sous lequel la configuration est enregistrée.</translation>
-        </message>
-        <message>
-            <source>The range of state counts the scan scores.</source>
-            <translation>La plage des nombres d’états évaluée par le balayage.</translation>
-        </message>
-        <message>
-            <source>Toggle this node setting.</source>
-            <translation>Basculer ce réglage du nœud.</translation>
-        </message>
-        <message>
-            <source>Tool help</source>
-            <translation>Aide de l’outil</translation>
-        </message>
-        <message>
-            <source>Transitions</source>
-            <translation>Transitions</translation>
-        </message>
-        <message>
-            <source>Use pixels outside this region instead of inside it.</source>
-            <translation>Utiliser les pixels situés hors de cette région plutôt qu’à l’intérieur.</translation>
-        </message>
-        <message>
-            <source>Vertical image coordinate of this polygon vertex.</source>
-            <translation>Coordonnée verticale de l’image de ce sommet du polygone.</translation>
-        </message>
-        <message>
-            <source>Walk through a safe sweep and the details of a plugin.</source>
-            <translation>Parcourir un balayage sûr et les détails d’un module.</translation>
-        </message>
-        <message>
-            <source>Walk through changing a colour and applying it.</source>
-            <translation>Parcourir le changement d’une couleur et son application.</translation>
-        </message>
-        <message>
-            <source>Walk through checking for an update and reading what changed.</source>
-            <translation>Parcourir la recherche d’une mise à jour et la lecture des changements.</translation>
-        </message>
-        <message>
-            <source>Walk through loading fit statistics and comparing nested models.</source>
-            <translation>Parcourir le chargement des statistiques d’ajustement et la comparaison de modèles imbriqués.</translation>
-        </message>
-        <message>
-            <source>Walk through packing, unpacking and sidecar handling.</source>
-            <translation>Parcourir l’empaquetage, le dépaquetage et la gestion des fichiers associés.</translation>
-        </message>
-        <message>
-            <source>Walk through picking a model, disabling it and saving.</source>
-            <translation>Parcourir la sélection d’un modèle, sa désactivation et son enregistrement.</translation>
-        </message>
-        <message>
-            <source>Walk through picking a plugin, switching it off and saving.</source>
-            <translation>Parcourir la sélection d’un module, sa désactivation et son enregistrement.</translation>
-        </message>
-        <message>
-            <source>Walk through picking an account, editing it and saving.</source>
-            <translation>Parcourir la sélection d’un compte, sa modification et son enregistrement.</translation>
-        </message>
-        <message>
-            <source>Walk through signing in as another account.</source>
-            <translation>Parcourir la connexion avec un autre compte.</translation>
-        </message>
-        <message>
-            <source>no icon</source>
-            <translation>aucune icône</translation>
         </message>
         <message>
             <source>&lt;b&gt;Max pairs&lt;/b&gt; says how many pairs to choose and &lt;b&gt;Expected E error&lt;/b&gt; how precisely you can measure an efficiency. Press &lt;b&gt;Run selection&lt;/b&gt;.</source>
@@ -55527,6 +55527,132 @@ presets) into a single left-navigation tool. Built on the reusable
             <translation type="unfinished" />
         </message>
     <message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="2181" />
+            <source>E Range:</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="3871" />
+            <source>Lower FRET-efficiency gate; bursts below it are hidden.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="3896" />
+            <source>Lower stoichiometry gate; bursts below it are hidden.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4045" />
+            <source>Measured burst records on the current gated page. Select rows for the histogram; scroll to inspect every column.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="5626" />
+            <source>Recorded {column} value for this burst.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6047" />
+            <source>S Range:</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="7998" />
+            <source>Upper FRET-efficiency gate; bursts above it are hidden.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8027" />
+            <source>Upper stoichiometry gate; bursts above it are hidden.</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="3520" />
+            <source>LLTF fit completed with an optimizer warning.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="3521" />
+            <source>LLTF fit completed.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4671" />
+            <source>Optimization did not converge.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4672" />
+            <source>Optimizer converged.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4673" />
+            <source>Optimizer warning: {message}</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="7976" />
+            <source>Unnormalized amplitudes of the decay basis; these coefficients reconstruct the fitted signal.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8662" />
+            <source>default uniform</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="3223" />
+            <source>IRF and background loaded for {detector}; {count} burst file(s)</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4293" />
+            <source>No IRF and background for {detector} yet; {count} burst file(s)</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8979" />
+            <source>the detector</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8994" />
+            <source>unassigned</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8654" />
+            <source>data + optics prior</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8655" />
+            <source>data estimate</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8744" />
+            <source>given</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8844" />
+            <source>not identified; retained value</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8855" />
+            <source>optics prior</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8946" />
+            <source>source not reported</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8959" />
+            <source>stoichiometry assumption (1:1 labelling)</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="2522" />
+            <source>FCS channel pairs: a pair of routing-channel lists, optionally gated in raw micro-time channels. A start:end window includes the lower bound and excludes the upper bound; an empty gate list imposes no micro-time restriction. Equal sides make an auto-correlation.</source>
+            <translation type="unfinished" />
+        </message>
+<message>
+            <location filename="_autogen.py" line="3287" />
+            <source>Import into the local MMFDB SQLite file selected below.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="3295" />
+            <source>Import through the configured MMFDB ZMQ server using the current session.</source>
+            <translation type="unfinished" />
+        </message><message>
+            <location filename="_autogen.py" line="6362" />
+            <source>Server connection and authentication settings; passwords remain session-only.</source>
+            <translation type="unfinished" />
+        </message>
+<message>
             <location filename="_autogen.py" line="723" />
             <source>Apply dye pair</source>
             <translation type="unfinished" />
@@ -55709,156 +55835,6 @@ presets) into a single left-navigation tool. Built on the reusable
         </message><message>
             <location filename="_autogen.py" line="8604" />
             <source>Your dyes</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="2181" />
-            <source>E Range:</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="3871" />
-            <source>Lower FRET-efficiency gate; bursts below it are hidden.</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="3896" />
-            <source>Lower stoichiometry gate; bursts below it are hidden.</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4045" />
-            <source>Measured burst records on the current gated page. Select rows for the histogram; scroll to inspect every column.</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="5626" />
-            <source>Recorded {column} value for this burst.</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6047" />
-            <source>S Range:</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="7998" />
-            <source>Upper FRET-efficiency gate; bursts above it are hidden.</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8027" />
-            <source>Upper stoichiometry gate; bursts above it are hidden.</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="3223" />
-            <source>IRF and background loaded for {detector}; {count} burst file(s)</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4293" />
-            <source>No IRF and background for {detector} yet; {count} burst file(s)</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8654" />
-            <source>data + optics prior</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8655" />
-            <source>data estimate</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8744" />
-            <source>given</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8844" />
-            <source>not identified; retained value</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8855" />
-            <source>optics prior</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8946" />
-            <source>source not reported</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8959" />
-            <source>stoichiometry assumption (1:1 labelling)</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8986" />
-            <source>the detector</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="9001" />
-            <source>unassigned</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="3520" />
-            <source>LLTF fit completed with an optimizer warning.</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="3521" />
-            <source>LLTF fit completed.</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4671" />
-            <source>Optimization did not converge.</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4672" />
-            <source>Optimizer converged.</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4673" />
-            <source>Optimizer warning: {message}</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="7976" />
-            <source>Unnormalized amplitudes of the decay basis; these coefficients reconstruct the fitted signal.</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8662" />
-            <source>default uniform</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="2522" />
-            <source>FCS channel pairs: a pair of routing-channel lists, optionally gated in raw micro-time channels. A start:end window includes the lower bound and excludes the upper bound; an empty gate list imposes no micro-time restriction. Equal sides make an auto-correlation.</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="_autogen.py" line="3287" />
-            <source>Import into the local MMFDB SQLite file selected below.</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="_autogen.py" line="3295" />
-            <source>Import through the configured MMFDB ZMQ server using the current session.</source>
-            <translation type="unfinished" />
-        </message>
-<message>
-            <location filename="_autogen.py" line="6362" />
-            <source>Server connection and authentication settings; passwords remain session-only.</source>
             <translation type="unfinished" />
         </message>
 <message>

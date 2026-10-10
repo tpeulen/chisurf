@@ -12,7 +12,7 @@
     },
     {
       "title": "Read the controls",
-      "text": "Hold Left/Right to move, then use Space or Enter to launch. P pauses; R restarts. The Help panel explains lives, colours and the remaining controls.",
+      "text": "Hold Left/Right (or Down/Up) to move, then use Space or Enter to launch. P pauses; R or Esc restarts. The Help panel explains lives, colours and the remaining controls.",
       "target": {
         "name": "open_help"
       },

@@ -8,7 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from emtk import i18n, im
-from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_RETURN, KEY_UP
+from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RETURN, KEY_RIGHT, KEY_UP
 
 from chisurf.plugins.emtk_layout import window_size
 from chisurf.plugins.misc.games._base import GameApp
@@ -51,9 +51,12 @@ class PongApp(GameApp):
 
     BINDINGS = (
         (KEY_UP, ('up', False)),
+        (KEY_LEFT, ('up', False)),
         (KEY_DOWN, ('down', False)),
+        (KEY_RIGHT, ('down', False)),
         ('w', ('up', True)),
         ('s', ('down', True)),
+        (KEY_ESCAPE, ('cancel', False)),
         ('p', ('menu', False)),
         ('r', ('cancel', False)),
         ('m', ('shoulder_l', False)),

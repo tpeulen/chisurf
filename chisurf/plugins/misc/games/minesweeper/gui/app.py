@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 
 from emtk import i18n, im
-from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_LEFT, KEY_RETURN, KEY_RIGHT, KEY_UP
+from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RETURN, KEY_RIGHT, KEY_UP
 
 from chisurf.plugins.emtk_layout import window_size
 from chisurf.plugins.misc.games._base import GameApp
@@ -82,9 +82,11 @@ class MinesweeperApp(GameApp):
         (32, 'reveal'),
         (' ', 'reveal'),
         ('f', 'flag'),
+        (KEY_ESCAPE, 'restart'),
         ('r', 'restart'),
         ('q', 'previous_difficulty'),
         ('e', 'next_difficulty'),
+        ('m', 'sound'),
     )
 
     def __init__(self, game=None, audio_callback=None, clock=time.monotonic):
@@ -160,6 +162,10 @@ class MinesweeperApp(GameApp):
             self.restart()
         elif action in {"previous_difficulty", "next_difficulty"}:
             self.change_difficulty(1 if action == "next_difficulty" else -1)
+        elif action == "sound":
+            self.sound_enabled = not self.sound_enabled
+            if self.audio_callback:
+                self.audio_callback("enabled", self.sound_enabled)
         else:
             return False
         self.request_frame()
@@ -171,7 +177,12 @@ class MinesweeperApp(GameApp):
             return True
         action = self.binding(key, "")
         step = action if isinstance(action, tuple) else None
-        return self.held.pop(step, None) is not None if step is not None else False
+        if step is not None:
+            return self.held.pop(step, None) is not None
+        letter = (text or (chr(key) if 32 <= key < 127 else "")).lower()
+        if key in {KEY_ENTER, KEY_RETURN, KEY_ESCAPE, 32} or letter in {" ", "f", "r", "q", "e", "m"}:
+            return True
+        return False
 
     def advance(self, dt):
         """Step held directions, as the Qt view's _move_cursor does."""

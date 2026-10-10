@@ -12,7 +12,7 @@
     },
     {
       "title": "Read the controls",
-      "text": "Use Left/Right to move, Down to descend faster, Up to rotate and Space to drop. P pauses. Help describes the saved round, score and optional sound.",
+      "text": "Use Left/Right to move, Down to descend faster, Up or Enter to rotate and Space to drop. P pauses; R or Esc restarts; M mutes. Help describes the saved round, score and optional sound.",
       "target": {
         "name": "open_help"
       },

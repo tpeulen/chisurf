@@ -45,6 +45,24 @@ that was never what the code did.
 (`*.view.json`) instead of hand-built Qt widgets. This is part of the PRD-40
 model/UI split, backed by data specs in `chisurf/core/dataspec/`.
 
+## Model-port constraint: AutoForm now, emtk later
+
+For the current model/state port, reuse AutoForm and its data specs; do not turn a later emtk migration into an immediate renderer rewrite or create a parallel framework. Keep configuration, validation, computation and actions in toolkit-neutral model objects. Declare ordinary controls and tables with existing generic spec sections and bind them through stable data paths/model methods. Serialize explicit scientific state and plain presentation data, never widgets, Qt item/index objects, signals, connections or callbacks. Do not retain old widget-model compatibility when the port explicitly drops it.
+
+AutoForm is extensible, not a restriction on model capabilities. If a required interaction is missing, enhance its existing spec, binding or section machinery with the smallest concrete capability needed, sharing it across models where appropriate. Do not simplify the science, omit controls or replace a necessary interactive editor with inert labels to fit today's forms. Rich scientific viewers/editors can be named custom sections whose data, actions and saved state are toolkit-neutral; keep that contract separate from drawing so an emtk renderer can implement it later without changing the model or persistence schema.
+
+Require a concrete unsupported interaction and a failing regression before extending the framework. Test the data/binding/state contract independently, then drive the actual renderer with legitimate inputs. Do not put domain behavior in Qt slots or make QObject names/layout introspection the model persistence schema. Keep matched before/after screenshots, direct visual inspection, interaction checks and numerical/fresh-file parity as acceptance gates.
+
+### Where to pick this up
+
+The current before-only catalogue capture covers all 42 configured entries with 196 PNGs, source hashes, exact scientific snapshots and control inventories in `scratch/autoform-migration-20261004/before-matrix.json`; all native/Qt children exited zero and rendering left their scientific snapshots/outputs unchanged. These are current Qt-AutoForm editor baselines, not deleted per-model widgets, after-pairs, full-window/plot coverage or migration approval. Initial direct image inspection found constrained-width clipping and compressed numeric fields. Preserve the baseline, follow the [shared project/model acceptance plan](/plans/2026-10-04-full-scientific-session-history.md), and require matched after evidence before closing a model row. No GUI production code was changed by the baseline/constraint recording.
+
+The shared `rate_matrix` enhancement is now narrowly accepted: live addressed-cell commits and toolkit-neutral parameter/notification binding, refreshed fixed/link/bounds metadata and range warnings, minimum cell widths and reachable horizontal scrolling. Parent 25/25 unique focused passes, exact five reviewed hashes, matched 620×900/360×600 images directly inspected, measured-FCS keyboard edit plus canonical `.cs.pto` fresh readback with MMFDB/original source reads blocked; independent SPEC PASS followed by quality PASS. [Contract](../../docs/development/autoform_matrix_contract.md); receipt `scratch/autoform-migration-20261004/rate-binding/parent-accepted-evidence.json`. This does not accept all model modes or replace full application gates.
+
+The shared scientific Main probe now recognizes a real rich rate control rather than requiring every parameter to appear in a flat table. Parent helper/binding/renderer union 28/28 and actual FCS kinetics Main lifecycle 1/1 (107.347 s), all six stage outcomes zero and ordinary API/macro save/readbacks exact. The real `k3_1` keyboard edit changes 500→750, predictions and relaxation modes, then survives fresh edited reload with original sources/MMFDB blocked. Normal/constrained six-tab before/restored contact sheets were directly inspected. Matrix scrolling, vertically hidden lower sections and overflow tab arrows remain part of full usability gates; a constructed idle scan tab is not an executed scan. Caught single-Fit sampling/`scale_x` fallback diagnostics remain. Probe independent SPEC then quality passed on exact two hashes; receipt `scratch/autoform-migration-20261004/rate-binding/rich-probe-accepted-evidence.json`. The complete-budget native/UID/owner/public/legacy regression now passes139/139 in241.451s, superseding earlier undersized240/150s timeouts. Fresh TCSPC/GeneralFCS Main reruns still fail the exact table-control ownership gate after successful public load and snapshot/science comparison; TCSPC grouped restoration independently fails on `rotation.amplitude.0`. Diagnose canonical inactive ports and scalar/output display bindings separately before changing production or loosening assertions. All42 full model rows remain pending.
+
+### Declarable graph and store sections
+
 Two general sections make a *graph* and a *store* declarable, and both were
 added for the [PTO inspector](/plugins/core-tools.md) while belonging to nobody
 in particular:
@@ -1196,6 +1214,64 @@ Audifier andMicrotimeShifter read1100×720 beforeprocessingrawprimaryspecs. Shif
 ALEXCreator andmanualFileTools hostread1100×720 primarydeclarations withsavedgeometryretained. Splitterprogress/status staysinsideexistingIOdock; InspectorDatausesdeclared130pxminimum/horizontalnavigation forwideburstschemas. [Pairacceptance](../validation/release-readiness-w6g/alex-filetools-window-acceptance.json) recordsactual7childscientificoutputs,propertyfactorytypingrepair,realnativePNG/readability, exactownedsource andMFDpersistencequalification. Foreignconcept/modelportnotes remainunadopted.
 
 PTOInspector andChiMOLhost read1200×800 primarydeclarations andretainstoredviewer geometry. PTOcontainer/data/curve/provenance readback isbyte/numerically unchanged; Chimolcoordinates/atom/secondary/state andactualrenderedframes remainexact. [Vieweracceptance](../validation/release-readiness-w6g/pto-chimol-window-acceptance.json) recordsrealstandalonebeforeafter/nativecontrol/tab/hash/test evidence andlazytyping/persistence/provider qualifications, withforeignhunks excluded.
+
+Burst Browser’s native presentation now uses the existing declarative DataTable
+for the paged37-column measurement vocabulary, with typed numeric sort keys,
+original source row selection and horizontal navigation. The initial1200×800
+primary declaration retains saved geometry/dock precedence. E/S sliders include
+actual measured/current limits beyond[0,1], without altering scientific masks.
+[Verified uncommitted acceptance](../validation/release-readiness-w6g/burst-browser-window-acceptance.json)
+records real data, before/after inventory, static/targeted checks, paired docs and
+permissions that currently prevent canonical Git/board publication. No SDK sorting
+workaround, new dependency or scientific algorithm was introduced.
+
+The FCS Merger and Filter Calculator candidates read1100×720 from their raw
+primaries, with saved host geometry taking precedence. Filter plots bound legend
+captions to160logical pixels and show the full original scientific identity on
+native hover; curve visibility remains stable across resize. Actual736×552 host
+clamping and control scrolling are measured separately from authored dimensions.
+[Pair acceptance](../validation/release-readiness-w6g/fcs-pair-window-acceptance.json)
+records exact measured-repeat/filter/Project/export parity, correct canonical test
+isolation, poor-reference-fit and native-persistence qualifications. Canonical
+publication is pending read-only Git/board permissions; full manual tour gates
+remain part of W6.
+
+IRF Estimator and Synthetic Decay candidates now consume1100×720 rawprimary
+metadata before their layout/controls adaptations. The native generator stacks
+Mode options to preserve full captions on736×552; actual scroll and per-option
+scientific tooltips are verified. Its owner text loader retains columns for a
+one-row time/count IRF rather than interleaving the time value as a count.
+[Decay pair acceptance](../validation/release-readiness-w6g/decay-pair-window-acceptance.json)
+records common corrected-core before/after proof, unchanged normal measuredIRF,
+raw fresh-UUID provenance, real exports/fits/renderings and physical/nativestate
+limits. Canonical publication remains pending current read-only permissions.
+
+LLTF and MaxEnt candidates consume1100×720 rawprimaries beforepanel adaptation.
+LLTF surfacesactualoptimizerstatus/iteration-limit warnings throughGUI/CLI/JSON
+while preservingnumericalfits; its nested-selectionowner nowretainsfixed/seed/
+exactembedding semantics. MEMrawamplitude/defaultuniform labels andFRET/sampling
+checkbox layout aretruthful/reachable. Its samplingowner reconstructsSDKscaled
+entropy/objective andpriorconvention, retains countunits andhonorspartialsteps.
+[Lifetimepair acceptance](../validation/release-readiness-w6g/lifetime-pair-window-acceptance.json)
+records realcommonobjective/worker/export/GUIproof, stochastic/method/persistence
+limits andexplicitinheritedtyping debt. Canonicalpublication remainspermission-
+blocked; this doesnotmarktheprogrammecomplete.
+
+Burst MLE and Accurate FRET candidates consume1100×720 rawprimary metadata.
+MLEerror/readiness prose wraps; model choices remainthe shippedFit23/24/25.
+AccuratelegacyBUR input useslogicalrows/companions, unassignedrecords carry−3,
+andthefactor table usesdeclaredidentification/prior provenance. Actualnarrow
+long-cell text remainsreachablethroughnativehover. [Pair acceptance](../validation/release-readiness-w6g/burst-calibration-window-acceptance.json)
+separates theseverifiedsurfaces fromOS-IPC batchvalidation andread-onlySDKReport/
+Gitpublication gates; nofullprogrammecompletionclaim.
+
+BVA now consumes a1100×720 host-only primary declaration; existing controls
+andresponsiveviewport sizing remain. Its owner reader discovers BUR andmatching
+ending4 companion files beforetextdecode, preservingbinaryPTOcache andallrow/
+sentinel identities. [Acceptance](../validation/release-readiness-w6g/bva-window-acceptance.json)
+records actual152burst/SPCvariance/static/profile/nativeexport/companionparity,
+independentphotonreference,32PNGinspection, typedoptionalcallbacks andexplicit
+settings/type/publication limits. This isnot a fullAutoFormcontrolmigration.
 
 ## Reachable section help — 2026-10-09
 

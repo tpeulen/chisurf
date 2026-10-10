@@ -56,10 +56,12 @@ def expected_binding(name, key, text):
     """Express the existing user contract, including conflicting key/text priority."""
     letter = (text or (chr(key) if 32 <= key < 127 else "")).lower()
     if name == "pong":
-        if key in (keys.KEY_UP, keys.KEY_DOWN):
-            return ("up" if key == keys.KEY_UP else "down", False)
+        if key in (keys.KEY_UP, keys.KEY_LEFT, keys.KEY_DOWN, keys.KEY_RIGHT):
+            return ("up" if key in (keys.KEY_UP, keys.KEY_LEFT) else "down", False)
         if letter in ("w", "s"):
             return ("up" if letter == "w" else "down", True)
+        if key == keys.KEY_ESCAPE:
+            return "cancel", False
         action = {
             "p": "menu",
             "r": "cancel",
@@ -73,14 +75,26 @@ def expected_binding(name, key, text):
     directions = {keys.KEY_LEFT: "left", keys.KEY_RIGHT: "right"}
     if name == "tetris":
         directions.update({keys.KEY_DOWN: "down", keys.KEY_UP: "confirm"})
+    else:
+        # Breakout and Number Quest: Down is an alias of Left, Up of Right.
+        directions.update({keys.KEY_DOWN: "left", keys.KEY_UP: "right"})
+    # Physical keys outrank any text, so these are resolved before the letter table.
+    if key in (keys.KEY_ENTER, keys.KEY_RETURN):
+        directions[key] = "confirm"
+    if key == keys.KEY_ESCAPE:
+        directions[key] = "restart" if name == "number" else "cancel"
     if key in directions:
         return directions[key]
-    if name != "tetris" and key in (keys.KEY_ENTER, keys.KEY_RETURN):
-        return "confirm"
     return {
         "breakout": {" ": "confirm", "p": "menu", "r": "cancel", "m": "shoulder_r"},
-        "tetris": {"p": "menu", "r": "cancel", " ": "shoulder_r"},
-        "number": {"q": "coarse_left", "e": "coarse_right", "r": "restart", " ": "confirm"},
+        "tetris": {"p": "menu", "r": "cancel", " ": "shoulder_r", "m": "shoulder_l"},
+        "number": {
+            "q": "coarse_left",
+            "e": "coarse_right",
+            "r": "restart",
+            " ": "confirm",
+            "m": "sound",
+        },
     }[name].get(letter)
 
 
@@ -163,7 +177,8 @@ def test_minefield_physical_priority_and_text_recognition_use_real_rules():
         expected = (
             direction is not None
             or key in (keys.KEY_ENTER, keys.KEY_RETURN, 32)
-            or letter in {" ", "f", "r", "q", "e"}
+            or key == keys.KEY_ESCAPE
+            or letter in {" ", "f", "r", "q", "e", "m"}
         )
         assert handled is expected, (key, text)
         if direction is not None:

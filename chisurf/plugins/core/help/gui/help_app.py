@@ -38,12 +38,32 @@ _LOGGER = logging.getLogger(__name__)
 WINDOW_BG = (28, 30, 36, 255)
 
 START_PAGES = [
-    ("docs/getting_started/index.md", "Getting Started", "Install, launch, and find your way around"),
-    ("docs/manual/data_import.md", "Data Import", "Import TTTR / photon data and setup your workspace"),
-    ("docs/manual/fit_interface.md", "Fitting Interface", "ChiSurf fitting interface parameter guide"),
+    (
+        "docs/getting_started/index.md",
+        "Getting Started",
+        "Install, launch, and find your way around",
+    ),
+    (
+        "docs/manual/data_import.md",
+        "Data Import",
+        "Import TTTR / photon data and setup your workspace",
+    ),
+    (
+        "docs/manual/fit_interface.md",
+        "Fitting Interface",
+        "ChiSurf fitting interface parameter guide",
+    ),
     ("docs/guides/index.md", "Workflow Guides", "Step-by-step guides for burst and decay analysis"),
-    ("docs/concepts/accurate_fret.md", "Accurate FRET", "Correction factors, FRET lines and photophysics"),
-    ("docs/concepts/bva.md", "Burst Variance Analysis", "Diagnosing dynamic FRET from burst variance"),
+    (
+        "docs/concepts/accurate_fret.md",
+        "Accurate FRET",
+        "Correction factors, FRET lines and photophysics",
+    ),
+    (
+        "docs/concepts/bva.md",
+        "Burst Variance Analysis",
+        "Diagnosing dynamic FRET from burst variance",
+    ),
 ]
 
 QUICK_QUESTIONS = [
@@ -92,7 +112,9 @@ class HelpTextureManager:
         self._fig_cache: dict[str, Texture | None] = {}
         self._math_cache: dict[tuple[str, str, float], Texture | None] = {}
 
-    def get_figure_texture(self, rel_path: str, doc_path: pathlib.Path | None = None) -> Texture | None:
+    def get_figure_texture(
+        self, rel_path: str, doc_path: pathlib.Path | None = None
+    ) -> Texture | None:
         if not rel_path:
             return None
         arg = rel_path.strip()
@@ -107,17 +129,19 @@ class HelpTextureManager:
         cands = []
         if doc_path is not None:
             cands.append(doc_path.parent / arg)
-        cands.extend([
-            d_root / arg.lstrip("/"),
-            r_root / arg.lstrip("/"),
-            d_root / re.sub(r"^(\.\./|docs/)+", "", arg),
-            r_root / "docs" / re.sub(r"^(\.\./|docs/)+", "", arg),
-            d_root / "guides" / "figures" / pathlib.Path(arg).name,
-            d_root / "concepts" / "figures" / pathlib.Path(arg).name,
-            d_root / "manual" / "pic" / pathlib.Path(arg).name,
-            d_root / "manual" / "_images" / pathlib.Path(arg).name,
-            d_root / "manual" / "figures" / pathlib.Path(arg).name,
-        ])
+        cands.extend(
+            [
+                d_root / arg.lstrip("/"),
+                r_root / arg.lstrip("/"),
+                d_root / re.sub(r"^(\.\./|docs/)+", "", arg),
+                r_root / "docs" / re.sub(r"^(\.\./|docs/)+", "", arg),
+                d_root / "guides" / "figures" / pathlib.Path(arg).name,
+                d_root / "concepts" / "figures" / pathlib.Path(arg).name,
+                d_root / "manual" / "pic" / pathlib.Path(arg).name,
+                d_root / "manual" / "_images" / pathlib.Path(arg).name,
+                d_root / "manual" / "figures" / pathlib.Path(arg).name,
+            ]
+        )
 
         for c in cands:
             try:
@@ -141,7 +165,6 @@ class HelpTextureManager:
             _LOGGER.warning("Failed to load figure %s: %s", target_file, e)
             self._fig_cache[cache_key] = None
             return None
-
 
     def get_math_texture(
         self,
@@ -205,7 +228,9 @@ def _split_directive_body(body_lines: list[str]) -> tuple[dict[str, str], str]:
     return options, caption
 
 
-def parse_markdown_blocks(raw_text: str, base_dir: pathlib.Path | None = None) -> list[MarkdownBlock]:
+def parse_markdown_blocks(
+    raw_text: str, base_dir: pathlib.Path | None = None
+) -> list[MarkdownBlock]:
     """Parse Markdown or reStructuredText into immediate-mode renderable blocks."""
     blocks: list[MarkdownBlock] = []
     lines = raw_text.splitlines()
@@ -253,7 +278,9 @@ def parse_markdown_blocks(raw_text: str, base_dir: pathlib.Path | None = None) -
             continue
 
         # 2. MyST Directive Fence (``` {directive} or ::: {directive})
-        d_match = re.match(r"^(?P<fence>`{3,}|~{3,}|:{3,})\{(?P<name>[\w.-]+)\}\s*(?P<arg>.*)$", stripped)
+        d_match = re.match(
+            r"^(?P<fence>`{3,}|~{3,}|:{3,})\{(?P<name>[\w.-]+)\}\s*(?P<arg>.*)$", stripped
+        )
         if d_match:
             flush_p()
             fence = d_match.group("fence")
@@ -265,7 +292,11 @@ def parse_markdown_blocks(raw_text: str, base_dir: pathlib.Path | None = None) -
             while i < n:
                 sub = lines[i].strip()
                 c_match = re.match(r"^(?P<fence>`{3,}|~{3,}|:{3,})\s*$", sub)
-                if c_match and c_match.group("fence")[0] == marker and len(c_match.group("fence")) >= len(fence):
+                if (
+                    c_match
+                    and c_match.group("fence")[0] == marker
+                    and len(c_match.group("fence")) >= len(fence)
+                ):
                     i += 1
                     break
                 body_lines.append(lines[i])
@@ -288,16 +319,56 @@ def parse_markdown_blocks(raw_text: str, base_dir: pathlib.Path | None = None) -
                     )
                 )
             elif name == "math":
-                add_block(MarkdownBlock(kind="math", text="\n".join(body_lines).strip(), anchors=dir_anchors))
+                add_block(
+                    MarkdownBlock(
+                        kind="math", text="\n".join(body_lines).strip(), anchors=dir_anchors
+                    )
+                )
             elif name in ("code-block", "code", "sourcecode"):
-                add_block(MarkdownBlock(kind="code", text="\n".join(body_lines).rstrip(), arg=arg, anchors=dir_anchors))
-            elif name in ("note", "warning", "tip", "important", "caution", "danger", "error", "hint", "seealso", "admonition", "details", "dropdown"):
+                add_block(
+                    MarkdownBlock(
+                        kind="code",
+                        text="\n".join(body_lines).rstrip(),
+                        arg=arg,
+                        anchors=dir_anchors,
+                    )
+                )
+            elif name in (
+                "note",
+                "warning",
+                "tip",
+                "important",
+                "caution",
+                "danger",
+                "error",
+                "hint",
+                "seealso",
+                "admonition",
+                "details",
+                "dropdown",
+            ):
                 title = arg or opts.get("title", "") or name.capitalize()
-                add_block(MarkdownBlock(kind="admonition", text=body_text, arg=name, items=[title], anchors=dir_anchors))
+                add_block(
+                    MarkdownBlock(
+                        kind="admonition",
+                        text=body_text,
+                        arg=name,
+                        items=[title],
+                        anchors=dir_anchors,
+                    )
+                )
             elif name in ("toctree", "contents", "index", "meta", "raw", "only"):
                 pass
             else:
-                add_block(MarkdownBlock(kind="admonition", text=body_text, arg="note", items=[arg or name.capitalize()], anchors=dir_anchors))
+                add_block(
+                    MarkdownBlock(
+                        kind="admonition",
+                        text=body_text,
+                        arg="note",
+                        items=[arg or name.capitalize()],
+                        anchors=dir_anchors,
+                    )
+                )
             continue
 
         # 3. RST Directive: .. name:: arg
@@ -314,7 +385,9 @@ def parse_markdown_blocks(raw_text: str, base_dir: pathlib.Path | None = None) -
                 # sometimes indented by two spaces rather than three, and
                 # stopping short leaked them into the text as literal
                 # ":align: center" (the bug that motivated this branch).
-                if cur_line.strip() and not (cur_line.startswith((" ", "\t")) or cur_line.startswith("..")):
+                if cur_line.strip() and not (
+                    cur_line.startswith((" ", "\t")) or cur_line.startswith("..")
+                ):
                     break
                 body_lines.append(cur_line.strip())
                 i += 1
@@ -335,11 +408,30 @@ def parse_markdown_blocks(raw_text: str, base_dir: pathlib.Path | None = None) -
                     )
                 )
             elif name == "math":
-                add_block(MarkdownBlock(kind="math", text="\n".join(body_lines).strip(), anchors=dir_anchors))
+                add_block(
+                    MarkdownBlock(
+                        kind="math", text="\n".join(body_lines).strip(), anchors=dir_anchors
+                    )
+                )
             elif name in ("code-block", "sourcecode"):
-                add_block(MarkdownBlock(kind="code", text="\n".join(body_lines).rstrip(), arg=arg, anchors=dir_anchors))
+                add_block(
+                    MarkdownBlock(
+                        kind="code",
+                        text="\n".join(body_lines).rstrip(),
+                        arg=arg,
+                        anchors=dir_anchors,
+                    )
+                )
             elif name in ("note", "warning", "tip", "important", "seealso", "admonition"):
-                add_block(MarkdownBlock(kind="admonition", text=body_text, arg=name, items=[name.capitalize()], anchors=dir_anchors))
+                add_block(
+                    MarkdownBlock(
+                        kind="admonition",
+                        text=body_text,
+                        arg=name,
+                        items=[name.capitalize()],
+                        anchors=dir_anchors,
+                    )
+                )
             elif name in ("toctree", "contents", "index"):
                 pass
             else:
@@ -388,7 +480,14 @@ def parse_markdown_blocks(raw_text: str, base_dir: pathlib.Path | None = None) -
         img_match = re.match(r"^!\[(.*?)\]\((.*?)\)\s*$", stripped)
         if img_match:
             flush_p()
-            add_block(MarkdownBlock(kind="figure", text="", arg=img_match.group(2).strip(), items=[img_match.group(1).strip(), ""]))
+            add_block(
+                MarkdownBlock(
+                    kind="figure",
+                    text="",
+                    arg=img_match.group(2).strip(),
+                    items=[img_match.group(1).strip(), ""],
+                )
+            )
             i += 1
             continue
 
@@ -420,7 +519,9 @@ def parse_markdown_blocks(raw_text: str, base_dir: pathlib.Path | None = None) -
             while i < n and lines[i].strip().startswith(">"):
                 b_lines.append(lines[i].strip().lstrip(">").strip())
                 i += 1
-            add_block(MarkdownBlock(kind="admonition", text=" ".join(b_lines), arg=adm_k, items=[adm_t]))
+            add_block(
+                MarkdownBlock(kind="admonition", text=" ".join(b_lines), arg=adm_k, items=[adm_t])
+            )
             continue
 
         # Regular blockquote: > text
@@ -431,7 +532,11 @@ def parse_markdown_blocks(raw_text: str, base_dir: pathlib.Path | None = None) -
             while i < n and lines[i].strip().startswith(">"):
                 b_lines.append(lines[i].strip().lstrip(">").strip())
                 i += 1
-            add_block(MarkdownBlock(kind="admonition", text=" ".join(b_lines), arg="quote", items=["Quote"]))
+            add_block(
+                MarkdownBlock(
+                    kind="admonition", text=" ".join(b_lines), arg="quote", items=["Quote"]
+                )
+            )
             continue
 
         # 9. Markdown table: | cell | cell |
@@ -479,7 +584,9 @@ def parse_markdown_blocks(raw_text: str, base_dir: pathlib.Path | None = None) -
                 char = next_strip[0]
                 kind = "h1" if char == "=" else ("h2" if char == "-" else "h3")
                 r_slug = slugify(stripped)
-                add_block(MarkdownBlock(kind=kind, text=stripped, anchors=[r_slug, stripped.lower()]))
+                add_block(
+                    MarkdownBlock(kind=kind, text=stripped, anchors=[r_slug, stripped.lower()])
+                )
                 i += 2
                 continue
 
@@ -508,7 +615,13 @@ def parse_markdown_blocks(raw_text: str, base_dir: pathlib.Path | None = None) -
                     or next_s in ("---", "***", "___", "====")
                 ):
                     break
-                if i + 1 < n and lines[i + 1].strip() and len(lines[i + 1].strip()) >= 3 and all(c == lines[i + 1].strip()[0] for c in lines[i + 1].strip()) and lines[i + 1].strip()[0] in ("=", "-", "~", "^", '"'):
+                if (
+                    i + 1 < n
+                    and lines[i + 1].strip()
+                    and len(lines[i + 1].strip()) >= 3
+                    and all(c == lines[i + 1].strip()[0] for c in lines[i + 1].strip())
+                    and lines[i + 1].strip()[0] in ("=", "-", "~", "^", '"')
+                ):
                     break
                 item_lines.append(next_s)
                 i += 1
@@ -654,7 +767,10 @@ class HelpModel:
 
     def _record_history(self, path: pathlib.Path | None, anchor: str | None) -> None:
         if self.history_idx >= 0:
-            if self.history[self.history_idx] == path and self._history_anchors[self.history_idx] == anchor:
+            if (
+                self.history[self.history_idx] == path
+                and self._history_anchors[self.history_idx] == anchor
+            ):
                 return
         self.history = self.history[: self.history_idx + 1]
         self._history_anchors = self._history_anchors[: self.history_idx + 1]
@@ -686,8 +802,14 @@ class HelpModel:
             "",
         ]
         for stem, description in self.START_HERE:
-            path = next((root / f"{stem}{ext}" for ext in (".md", ".rst")
-                         if (root / f"{stem}{ext}").is_file()), None)
+            path = next(
+                (
+                    root / f"{stem}{ext}"
+                    for ext in (".md", ".rst")
+                    if (root / f"{stem}{ext}").is_file()
+                ),
+                None,
+            )
             if path is None:
                 continue
             title = help_toc.page_title(path) or path.stem
@@ -707,9 +829,12 @@ class HelpModel:
             if names:
                 lines.append(" · ".join(names) + ("…" if len(section.children) > 6 else ""))
                 lines.append("")
-        lines += ["---", "",
-                  "Search every page from the box above the tree, or use the tree on the left. "
-                  "Every plugin's **?** button opens its own help here."]
+        lines += [
+            "---",
+            "",
+            "Search every page from the box above the tree, or use the tree on the left. "
+            "Every plugin's **?** button opens its own help here.",
+        ]
         return "\n".join(lines)
 
     def breadcrumb(self) -> list[str]:
@@ -735,7 +860,9 @@ class HelpModel:
         self.current_anchor = clean if clean else None
         self.target_anchor = self.current_anchor
 
-    def open_source(self, path: str | pathlib.Path, line: int | None = None, symbol: str = "") -> bool:
+    def open_source(
+        self, path: str | pathlib.Path, line: int | None = None, symbol: str = ""
+    ) -> bool:
         """Display a source code file with syntax highlighting in the embedded reader."""
         resolved = pathlib.Path(path).resolve()
         if not resolved.is_file():
@@ -746,7 +873,7 @@ class HelpModel:
                 return False
 
         try:
-            with open(resolved, "r", encoding="utf-8") as f:
+            with open(resolved, encoding="utf-8") as f:
                 code = f.read()
             self.source_path = resolved
             self.source_line = line
@@ -754,7 +881,11 @@ class HelpModel:
             from emtk.widgets.text_editor import Language, Pos
 
             ext = resolved.suffix.lower()
-            lang = Language.python() if ext in (".py", ".pyx", ".pyi") else (Language.json() if ext == ".json" else Language.c_plus_plus())
+            lang = (
+                Language.python()
+                if ext in (".py", ".pyx", ".pyi")
+                else (Language.json() if ext == ".json" else Language.c_plus_plus())
+            )
             self.source_editor.language = lang
             self.source_editor.set_text(code)
             if line:
@@ -767,7 +898,9 @@ class HelpModel:
             _LOGGER.error(f"Failed to open source file {resolved}: {e}")
             return False
 
-    def open_page(self, path: str | pathlib.Path, anchor: str | None = None, add_history: bool = True) -> bool:
+    def open_page(
+        self, path: str | pathlib.Path, anchor: str | None = None, add_history: bool = True
+    ) -> bool:
         path_str = str(path).strip()
         if "#" in path_str:
             clean_path, _, hash_anchor = path_str.partition("#")
@@ -806,7 +939,7 @@ class HelpModel:
         try:
             content = help_io.read_doc(str(resolved))
             if content is None:
-                with open(resolved, "r", encoding="utf-8") as f:
+                with open(resolved, encoding="utf-8") as f:
                     content = f.read()
 
             self.current_path = resolved
@@ -865,7 +998,9 @@ class HelpModel:
     def set_review_status(self, status: str) -> bool:
         path = self.current_path
         if path is None or not help_review.is_tracked(path):
-            self.navigation_error = "Review sign-off is available only for tracked documentation pages."
+            self.navigation_error = (
+                "Review sign-off is available only for tracked documentation pages."
+            )
             return False
         if self.editor.text != self.current_content:
             self.navigation_error = "Save source changes before recording review status."
@@ -893,7 +1028,10 @@ class HelpModel:
     def address_suggestions(self, query: str) -> list[str]:
         if query.startswith("cite:"):
             from chisurf.plugins.core.help.api.bibliography import bibliography
-            return [f"cite:{key}" for key in bibliography() if key.lower().startswith(query[5:].lower())][:8]
+
+            return [
+                f"cite:{key}" for key in bibliography() if key.lower().startswith(query[5:].lower())
+            ][:8]
         options = []
         for node in self.order:
             if not node.path:
@@ -916,18 +1054,22 @@ class HelpModel:
         base = self.current_path.parent if self.current_path else None
         if text.startswith(("http://", "https://", "ftp://", "doi:", "mailto:")):
             from chisurf.emtk.doc_links import open_link
+
             return open_link(text, base)
         if text.startswith("cite:"):
             from chisurf.emtk.doc_links import open_link
             from chisurf.plugins.core.help.api.bibliography import bibliography, entry_url
+
             entry = bibliography().get(text[5:].strip())
             if entry is not None:
                 return open_link(entry_url(entry), base)
             self.navigation_error = f"Unknown citation: {text[5:]}"
             return False
         from chisurf.plugins.core.help.api.source_links import is_source_path
+
         if text.startswith(("src:", "source:", "code:")) or is_source_path(text):
             from chisurf.emtk.code_links import open_source
+
             if open_source(text, base, prefer_emtk=True):
                 return True
             self.navigation_error = f"Source target was not found: {text}"
@@ -971,7 +1113,9 @@ class HelpModel:
             if target is None:
                 self.show_home(add_history=False)
             else:
-                self.open_page(target, anchor=self._history_anchors[self.history_idx], add_history=False)
+                self.open_page(
+                    target, anchor=self._history_anchors[self.history_idx], add_history=False
+                )
 
     def go_forward(self) -> None:
         if self.history_idx < len(self.history) - 1:
@@ -980,7 +1124,9 @@ class HelpModel:
             if target is None:
                 self.show_home(add_history=False)
             else:
-                self.open_page(target, anchor=self._history_anchors[self.history_idx], add_history=False)
+                self.open_page(
+                    target, anchor=self._history_anchors[self.history_idx], add_history=False
+                )
 
     def go_prev_order(self) -> None:
         if not self.current_path or not self.order:
@@ -1029,7 +1175,9 @@ class HelpModel:
         self.is_asking = True
 
         self._ask_generation += 1
-        threading.Thread(target=self._run_ask_thread, args=(clean_q, self._ask_generation), daemon=True).start()
+        threading.Thread(
+            target=self._run_ask_thread, args=(clean_q, self._ask_generation), daemon=True
+        ).start()
 
     def cancel_ask(self) -> None:
         self._ask_generation += 1
@@ -1050,7 +1198,11 @@ class HelpModel:
 
     def _queue_ask_event(self, generation: int, callback: Callable[[], None]) -> None:
         if not self._closed:
-            self.event_queue.put(lambda: callback() if not self._closed and generation == self._ask_generation else None)
+            self.event_queue.put(
+                lambda: (
+                    callback() if not self._closed and generation == self._ask_generation else None
+                )
+            )
 
     def _run_ask_thread(self, question: str, generation: int | None = None) -> None:
         generation = self._ask_generation if generation is None else generation
@@ -1067,14 +1219,19 @@ class HelpModel:
                         doc_path = p.get("document", "")
                         resp_text += f"\n- [{title}]({doc_path})"
 
-                self._queue_ask_event(generation, lambda: self.chat_history.add_message("assistant", resp_text))
+                self._queue_ask_event(
+                    generation, lambda: self.chat_history.add_message("assistant", resp_text)
+                )
             else:
                 err_msg = answer.error or "Failed to retrieve an answer."
-                self._queue_ask_event(generation, lambda: self.chat_history.add_message("error", f"Assistant error: {err_msg}"))
+                self._queue_ask_event(
+                    generation,
+                    lambda: self.chat_history.add_message("error", f"Assistant error: {err_msg}"),
+                )
         except Exception as err:
             error_text = f"Could not answer from docs: {err}"
-            self._queue_ask_event(generation,
-                lambda: self.chat_history.add_message("error", error_text)
+            self._queue_ask_event(
+                generation, lambda: self.chat_history.add_message("error", error_text)
             )
         finally:
             self._queue_ask_event(generation, self._finish_ask)
@@ -1108,9 +1265,20 @@ class HelpGui:
         # Keep navigation and the assistant in tabs so the document has room to read.
         layout = Split("h", 0.24, Region("toc"), Region("document"))
         self.docks = DockManager(layout)
-        self.docks.add_window("toc", "Documentation", self._draw_toc_pane, dock="toc", closable=True, scrollable=False)
-        self.docks.add_window("document", "Document", self._draw_document_pane, dock="document", closable=True, scrollable=False)
-        self.docks.add_window("ask", "Ask Docs", self._draw_ask_pane, dock="toc", closable=True, scrollable=False)
+        self.docks.add_window(
+            "toc", "Documentation", self._draw_toc_pane, dock="toc", closable=True, scrollable=False
+        )
+        self.docks.add_window(
+            "document",
+            "Document",
+            self._draw_document_pane,
+            dock="document",
+            closable=True,
+            scrollable=False,
+        )
+        self.docks.add_window(
+            "ask", "Ask Docs", self._draw_ask_pane, dock="toc", closable=True, scrollable=False
+        )
         self._reveal_keys: set[int] = set()
         self._revealed_for: pathlib.Path | None = None
 
@@ -1144,7 +1312,10 @@ class HelpGui:
                 clean_body = body.strip()
                 caption = ""
                 if "<" in clean_body and clean_body.endswith(">"):
-                    caption, clean_body = clean_body[: clean_body.index("<")].strip(), clean_body[clean_body.index("<") + 1 : -1]
+                    caption, clean_body = (
+                        clean_body[: clean_body.index("<")].strip(),
+                        clean_body[clean_body.index("<") + 1 : -1],
+                    )
                 resolved = source_links.resolve(clean_body, base_dir)
                 label = caption or source_links.link_label(clean_body, resolved)
                 target = f"src:{clean_body}"
@@ -1243,17 +1414,27 @@ class HelpGui:
             self._reveal_keys = self._ancestors_of_current()
 
         if self.model.authoring_mode:
-            statuses = ["all", help_review.STATUS_UNREVIEWED, help_review.STATUS_AI_REVIEWED,
-                help_review.STATUS_REVIEWED, help_review.STATUS_STALE]
+            statuses = [
+                "all",
+                help_review.STATUS_UNREVIEWED,
+                help_review.STATUS_AI_REVIEWED,
+                help_review.STATUS_REVIEWED,
+                help_review.STATUS_STALE,
+            ]
             im.set_next_item_width(avail_w)
-            changed_filter, selected = im.combo("##review_filter", statuses.index(self.model.review_filter),
-                ["All pages", "Unreviewed", "AI-reviewed", "Human-reviewed", "Stale"])
+            changed_filter, selected = im.combo(
+                "##review_filter",
+                statuses.index(self.model.review_filter),
+                ["All pages", "Unreviewed", "AI-reviewed", "Human-reviewed", "Stale"],
+            )
             im.set_item_tooltip("Filter tracked documentation by its review status")
             if changed_filter:
                 self.model.review_filter = statuses[selected]
         # Search bar
         im.set_next_item_width(avail_w)
-        changed, new_q = im.input_text("##doc_search", self.model.search_query, hint="Search documentation...")
+        changed, new_q = im.input_text(
+            "##doc_search", self.model.search_query, hint="Search documentation..."
+        )
         im.set_item_tooltip("Search documentation titles and text")
         if changed:
             self.model.update_search(new_q)
@@ -1278,7 +1459,10 @@ class HelpGui:
                     path_str = res.get("path", "")
                     excerpt = res.get("excerpt", "")
 
-                    active = bool(self.model.current_path and pathlib.Path(path_str).resolve() == self.model.current_path)
+                    active = bool(
+                        self.model.current_path
+                        and pathlib.Path(path_str).resolve() == self.model.current_path
+                    )
                     if im.selectable(title, active):
                         self.model.open_page(path_str)
                     im.set_item_tooltip("Open this documentation item")
@@ -1304,8 +1488,11 @@ class HelpGui:
             return True
         if node.children:
             return any(self._matches_review_filter(child) for child in node.children)
-        return (not node.path or not help_review.is_tracked(node.path)
-            or self.model.review_status_for(node.path) == self.model.review_filter)
+        return (
+            not node.path
+            or not help_review.is_tracked(node.path)
+            or self.model.review_status_for(node.path) == self.model.review_filter
+        )
 
     def _draw_toc_node(self, node: help_toc.Node, key: str) -> None:
         if not self._matches_review_filter(node):
@@ -1336,9 +1523,17 @@ class HelpGui:
                 and str(pathlib.Path(node.path).resolve()) == str(self.model.current_path)
             )
             label = node.title
-            status = self.model.review_status_for(node.path) if self.model.authoring_mode and node.path and help_review.is_tracked(node.path) else None
-            colors = {help_review.STATUS_REVIEWED: (130, 220, 140, 255), help_review.STATUS_AI_REVIEWED: (110, 190, 255, 255),
-                help_review.STATUS_STALE: (235, 185, 95, 255), help_review.STATUS_UNREVIEWED: (225, 125, 125, 255)}
+            status = (
+                self.model.review_status_for(node.path)
+                if self.model.authoring_mode and node.path and help_review.is_tracked(node.path)
+                else None
+            )
+            colors = {
+                help_review.STATUS_REVIEWED: (130, 220, 140, 255),
+                help_review.STATUS_AI_REVIEWED: (110, 190, 255, 255),
+                help_review.STATUS_STALE: (235, 185, 95, 255),
+                help_review.STATUS_UNREVIEWED: (225, 125, 125, 255),
+            }
             if status in colors:
                 im.push_style_color(Col.TEXT, colors[status])
             if im.selectable(label, is_active):
@@ -1356,24 +1551,29 @@ class HelpGui:
             return
         if im.menu_item("Open document"):
             self.model.open_page(path)
-        im.set_item_tooltip('Open document')
+        im.set_item_tooltip("Open document")
         if im.menu_item("View source"):
             if self.model.open_page(path):
                 self.model.edit_mode = True
-        im.set_item_tooltip('View source')
+        im.set_item_tooltip("View source")
         if im.menu_item("Copy path"):
             im.set_clipboard_text(str(pathlib.Path(path).resolve()))
-        im.set_item_tooltip('Copy path')
+        im.set_item_tooltip("Copy path")
         im.end_popup()
 
     # -- Center Pane: Document Reader & Editor --------------------------------
 
     def _draw_document_pane(self, box: tuple[float, float, float, float]) -> None:
         im.set_next_item_width(max(100.0, box[2] - 64.0))
-        changed, address = im.input_text("##doc_address", self.model.address_text,
-            hint="docs/page.md#anchor, src:path#symbol, cite:key, URL or search")
+        changed, address = im.input_text(
+            "##doc_address",
+            self.model.address_text,
+            hint="docs/page.md#anchor, src:path#symbol, cite:key, URL or search",
+        )
         self.model.address_text = address
-        im.set_item_tooltip("Enter a document, source symbol, citation key or web address; press Enter or Go")
+        im.set_item_tooltip(
+            "Enter a document, source symbol, citation key or web address; press Enter or Go"
+        )
         entered = im.is_item_active() and im.is_key_pressed(im.Key.ENTER)
         if changed and self.model.address_suggestions(address):
             im.open_popup("address_suggestions")
@@ -1393,13 +1593,13 @@ class HelpGui:
         # Navigation toolbar with clear emoticons and tooltips
         if im.button("Home"):
             self.model.show_home()
-        im.set_item_tooltip('Show documentation start page')
+        im.set_item_tooltip("Show documentation start page")
         im.same_line()
         can_back = self.model.history_idx > 0
         im.begin_disabled(not can_back)
         if im.button("Back"):
             self.model.go_back()
-        im.set_item_tooltip('Return to the previous page in navigation history')
+        im.set_item_tooltip("Return to the previous page in navigation history")
         im.end_disabled()
 
         im.same_line()
@@ -1407,20 +1607,21 @@ class HelpGui:
         im.begin_disabled(not can_fwd)
         if im.button("Fwd"):
             self.model.go_forward()
-        im.set_item_tooltip('Advance to the next page in navigation history')
+        im.set_item_tooltip("Advance to the next page in navigation history")
         im.end_disabled()
 
         im.same_line()
         if im.button("Prev"):
             self.model.go_prev_order()
-        im.set_item_tooltip('Open the previous document in the table of contents')
+        im.set_item_tooltip("Open the previous document in the table of contents")
         im.same_line()
         if im.button("Next"):
             self.model.go_next_order()
-        im.set_item_tooltip('Open the next document in the table of contents')
+        im.set_item_tooltip("Open the next document in the table of contents")
 
         im.dummy(0.0, 2.0)
         import webbrowser
+
         if im.button("Online docs"):
             from chisurf.core.info import help_url
 
@@ -1429,7 +1630,7 @@ class HelpGui:
         im.same_line()
         if im.button("Videos"):
             webbrowser.open_new("https://www.peulen.xyz/tutorial/")
-        im.set_item_tooltip('Open tutorial videos in your web browser')
+        im.set_item_tooltip("Open tutorial videos in your web browser")
 
         im.same_line()
         im.text_disabled("|")
@@ -1440,14 +1641,16 @@ class HelpGui:
         im.begin_disabled(self.model.current_path is None)
         if im.button(mode_btn_label):
             self.model.edit_mode = not self.model.edit_mode
-        im.set_item_tooltip("Switch between reading the document and editing its source; the virtual Home page has no source file")
+        im.set_item_tooltip(
+            "Switch between reading the document and editing its source; the virtual Home page has no source file"
+        )
         im.end_disabled()
 
         if self.model.edit_mode:
             im.same_line()
             if im.button("Save"):
                 self.model.save_current_page()
-            im.set_item_tooltip('Save changes to the current documentation source')
+            im.set_item_tooltip("Save changes to the current documentation source")
 
         im.same_line()
         # Review status badge with explicit icon
@@ -1467,7 +1670,9 @@ class HelpGui:
             self.model.zoom(1)
         im.set_item_tooltip("Increase document text by half a point; Ctrl/Command+wheel also zooms")
         changed_authoring, authoring = im.checkbox("Authoring tools", self.model.authoring_mode)
-        im.set_item_tooltip("Show human and AI review sign-off actions, status filters and manual review summary")
+        im.set_item_tooltip(
+            "Show human and AI review sign-off actions, status filters and manual review summary"
+        )
         if changed_authoring:
             self.model.authoring_mode = authoring
             if authoring:
@@ -1477,16 +1682,25 @@ class HelpGui:
         if self.model.authoring_mode:
             im.same_line()
             changed_dev, include_dev = im.checkbox("Developer docs", self.model.include_development)
-            im.set_item_tooltip("Also list architecture notes and the bundled modules' documentation.")
+            im.set_item_tooltip(
+                "Also list architecture notes and the bundled modules' documentation."
+            )
             if changed_dev:
                 self.model.set_include_development(include_dev)
-            tracked = self.model.current_path is not None and help_review.is_tracked(self.model.current_path)
+            tracked = self.model.current_path is not None and help_review.is_tracked(
+                self.model.current_path
+            )
             if tracked:
-                for label, status in [("Mark human reviewed", help_review.STATUS_REVIEWED),
-                    ("Mark AI reviewed", help_review.STATUS_AI_REVIEWED), ("Clear review", help_review.STATUS_UNREVIEWED)]:
+                for label, status in [
+                    ("Mark human reviewed", help_review.STATUS_REVIEWED),
+                    ("Mark AI reviewed", help_review.STATUS_AI_REVIEWED),
+                    ("Clear review", help_review.STATUS_UNREVIEWED),
+                ]:
                     if im.small_button(label):
                         self.model.set_review_status(status)
-                    im.set_item_tooltip("Record this saved page's review status; later edits make the sign-off stale")
+                    im.set_item_tooltip(
+                        "Record this saved page's review status; later edits make the sign-off stale"
+                    )
                     im.same_line()
                 im.text_disabled("")
             else:
@@ -1512,7 +1726,9 @@ class HelpGui:
             im.same_line()
             sym_str = f" :: {self.model.source_symbol}" if self.model.source_symbol else ""
             line_str = f" (Line {self.model.source_line})" if self.model.source_line else ""
-            im.text_colored((140, 205, 255, 255), f"{self.model.source_path.name}{sym_str}{line_str}")
+            im.text_colored(
+                (140, 205, 255, 255), f"{self.model.source_path.name}{sym_str}{line_str}"
+            )
 
             im.same_line()
             im.text_disabled("|")
@@ -1535,7 +1751,9 @@ class HelpGui:
             # Source Editor mode
             im.text_editor("##doc_source_editor", self.model.editor, (avail_w, avail_h))
             self.model.is_modified = self.model.editor.text != self.model.current_content
-            im.set_item_tooltip("Edit the documentation source; Save writes your changes to the document")
+            im.set_item_tooltip(
+                "Edit the documentation source; Save writes your changes to the document"
+            )
         else:
             # Formatted Reader view
             self._draw_markdown_reader(avail_w, avail_h)
@@ -1757,7 +1975,11 @@ class HelpGui:
                 adm_color = (
                     (110, 190, 255, 255)
                     if block.arg in ("note", "tip", "hint", "seealso")
-                    else ((235, 185, 95, 255) if block.arg in ("warning", "caution", "attention") else (245, 110, 110, 255))
+                    else (
+                        (235, 185, 95, 255)
+                        if block.arg in ("warning", "caution", "attention")
+                        else (245, 110, 110, 255)
+                    )
                 )
                 adm_title = block.items[0] if block.items else block.arg.capitalize()
                 clean_body, adm_links = self._expand_inline_markup(block.text)
@@ -1792,13 +2014,30 @@ class HelpGui:
                 rows = [item.split("\t") for item in block.items]
                 cols = max(len(r) for r in rows) if rows else 1
                 im.dummy(0.0, 4.0)
-                column_widths = [max(im.calc_text_size(self._expand_inline_markup(row[column] if column < len(row) else "")[0])[0]
-                    for row in rows) + 24.0 for column in range(cols)]
+                column_widths = [
+                    max(
+                        im.calc_text_size(
+                            self._expand_inline_markup(row[column] if column < len(row) else "")[0]
+                        )[0]
+                        for row in rows
+                    )
+                    + 24.0
+                    for column in range(cols)
+                ]
                 table_width = min(width, sum(column_widths))
                 scale = table_width / max(1.0, sum(column_widths))
-                if im.begin_table(f"tbl_{idx}", cols, flags=im.TableFlags.BORDERS | im.TableFlags.ROW_BG, size=(table_width, 0.0)):
+                if im.begin_table(
+                    f"tbl_{idx}",
+                    cols,
+                    flags=im.TableFlags.BORDERS | im.TableFlags.ROW_BG,
+                    size=(table_width, 0.0),
+                ):
                     for column, column_width in enumerate(column_widths):
-                        im.table_setup_column(str(column), flags=im.TableColumnFlags.WIDTH_FIXED, init_width_or_weight=column_width * scale)
+                        im.table_setup_column(
+                            str(column),
+                            flags=im.TableColumnFlags.WIDTH_FIXED,
+                            init_width_or_weight=column_width * scale,
+                        )
                     for r_idx, row in enumerate(rows):
                         im.table_next_row()
                         for c_idx in range(cols):
@@ -1816,12 +2055,13 @@ class HelpGui:
 
             elif block.kind == "list_item":
                 clean_item, item_links = self._expand_inline_markup(block.text)
-                bullet = block.arg if block.arg and not block.arg.startswith(("-", "*", "+")) else "•"
+                bullet = (
+                    block.arg if block.arg and not block.arg.startswith(("-", "*", "+")) else "•"
+                )
                 im.text_wrapped(f"  {bullet}  {clean_item}")
                 if item_links:
                     self._draw_link_chips(item_links, f"llnk_{idx}")
                 im.dummy(0.0, 1.0)
-
 
             elif block.kind == "hr":
                 im.dummy(0.0, 4.0)
@@ -1842,7 +2082,10 @@ class HelpGui:
             if im.button("Close provider settings"):
                 self.provider_settings_open = False
             im.set_item_tooltip("Close the shared provider configuration form")
-            im.begin_child((*im.get_cursor_screen_pos(), *im.get_content_region_avail()), child_id="help_provider_fields")
+            im.begin_child(
+                (*im.get_cursor_screen_pos(), *im.get_content_region_avail()),
+                child_id="help_provider_fields",
+            )
             self.provider_settings.draw()
             im.end_child()
         im.end()
@@ -1857,9 +2100,12 @@ class HelpGui:
         if im.small_button("Provider settings…"):
             if self.provider_settings is None:
                 from chisurf.plugins.ai_settings.gui.app import AISettingsGui
+
                 self.provider_settings = AISettingsGui()
             self.provider_settings_open = True
-        im.set_item_tooltip("Configure the shared API provider, masked credential, models and sampling")
+        im.set_item_tooltip(
+            "Configure the shared API provider, masked credential, models and sampling"
+        )
         im.separator()
 
         # Quick question prompt buttons
@@ -1922,9 +2168,14 @@ class HelpApp(ImApp):
     def animating(self) -> bool:
         if self.model._closed:
             return False
-        return (super().animating() or self.model.is_asking
+        return (
+            super().animating()
+            or self.model.is_asking
             or not self.model.event_queue.empty()
-            or (self.help_gui.provider_settings is not None and self.help_gui.provider_settings.busy))
+            or (
+                self.help_gui.provider_settings is not None and self.help_gui.provider_settings.busy
+            )
+        )
 
     def _render(self) -> None:
         self.help_gui.draw()

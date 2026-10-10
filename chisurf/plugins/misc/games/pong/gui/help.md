@@ -6,12 +6,12 @@ analysis result. The game supplies the court and round without external data.
 
 ## Controls
 
-- Hold Up/Down to move the first paddle.
+- Hold Up/Down (or Left/Right) to move the first paddle.
 - Press M to switch between the computer opponent and two-player mode. In
   two-player mode, W/S moves the second paddle.
 - Drag inside the appropriate half of the court to move that paddle; the second
   paddle is controlled this way only in two-player mode.
-- P pauses or resumes; R restarts. After a winner is declared, Enter or Space
+- P pauses or resumes; R or Esc restarts (Esc discards the current round, like R). After a winner is declared, Enter or Space
   starts another round.
 - N changes the game's mute flag. Sound in the header controls a supplied audio
   output, when one is available.

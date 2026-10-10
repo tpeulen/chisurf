@@ -30,6 +30,7 @@ from emtk.file_dialog import FileDialog
 from emtk.im_core import Col
 from emtk.widgets.text_editor import Language, TextEditor
 
+from chisurf.emtk.typed_field import typed_number_field
 from chisurf.plugins.core.code_editor.gui.chat_app import ChatGui, ChatModel
 from chisurf.plugins.core.code_editor.gui.native_lsp import NativeLspClient
 from chisurf.plugins.core.code_editor.gui.notebook_app import SHELL_EXECUTION_LOCK, NativeNotebook
@@ -1037,6 +1038,8 @@ class CodeEditorGui:
         self._pending_reload: EditorDocument | None = None
         self.settings_open = False
         self.settings_status = ""
+        self._number_buffers: dict[str, str] = {}
+        self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.save_preferences: Callable[[], bool] | None = None
         self._displayed_doc: EditorDocument | None = None
         self._pending_close: EditorDocument | None = None
@@ -1887,10 +1890,18 @@ class CodeEditorGui:
         im.begin_disabled(self.model.enable_rpc)
         _, self.model.rpc_host = im.input_text("RPC host", self.model.rpc_host)
         im.set_item_tooltip("Loopback host for the editor's optional JSON-RPC service")
-        _, self.model.rpc_cmd_port = im.input_int("RPC command port", self.model.rpc_cmd_port)
-        im.set_item_tooltip("Command port used by editor RPC clients")
-        _, self.model.rpc_pub_port = im.input_int("RPC event port", self.model.rpc_pub_port)
-        im.set_item_tooltip("Event port used by editor RPC clients")
+        for name, label, tip in (
+            ("rpc_cmd_port", "RPC command port", "Command port used by editor RPC clients"),
+            ("rpc_pub_port", "RPC event port", "Event port used by editor RPC clients"),
+        ):
+            # Typed, in the Qt preferences' range of unprivileged ports.
+            port, _ = typed_number_field(
+                name, getattr(self.model, name), self._number_buffers, minimum=1024, maximum=65535, label=label
+            )
+            self.item_rects[name] = im.get_item_rect()
+            im.set_item_tooltip(tip)
+            if port is not None:
+                setattr(self.model, name, port)
         im.end_disabled()
         changed, enabled = im.checkbox("Enable editor RPC", self.model.enable_rpc)
         im.set_item_tooltip("Expose open-buffer operations through the existing local ZeroMQ service")
@@ -1943,6 +1954,11 @@ class CodeEditorApp(ImApp):
         super().__init__(gui=self._render, continuous=False)
         self.model.request_frame = self.request_frame
         self.editor_gui.save_preferences = self.save_preferences
+
+    @property
+    def item_rects(self) -> dict[str, tuple[float, float, float, float]]:
+        """Rectangles of the named controls the editor drew last frame."""
+        return self.editor_gui.item_rects
 
     def key(self, key, text="", modifiers=0):
         """Editor shortcuts (Ctrl, or Command on a Mac): S save, Shift+S save as, O open, N new, W close, F find; Escape closes find.

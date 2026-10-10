@@ -10,9 +10,10 @@ and needs no acquisition file.
 - Use the arrow keys to move the selected cell; held directions repeat.
 - Enter or Space reveals the selected cell. F toggles its flag.
 - Left-click a cell to reveal it; right-click it to toggle a flag.
+- M toggles the sound preference (audible only with an effects callback).
 - Q/E selects the previous or next board preset. Clicking the preset name also
   cycles the difficulty. Changing the preset starts a new board.
-- R or Restart in the header resets the round. There is no pause control in
+- R, Esc or Restart in the header resets the round (the board is discarded). There is no pause control in
   this turn-based game.
 
 ## Reading the round

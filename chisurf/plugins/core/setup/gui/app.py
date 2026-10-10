@@ -16,6 +16,7 @@ from emtk.keys import KEY_ENTER, KEY_RETURN
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.plugin_icons import entry_icon
+from chisurf.emtk.typed_field import parse_number, typed_number_field
 
 from .model import (
     DEFAULT_PANEL,
@@ -57,6 +58,9 @@ class ConfigurationApp(ImApp):
         self.source_mode = False
         self.setting_filter = ""
         self._drafts = {}
+        #: In-progress text of the typed number fields, by setting name (committed on Enter / click-away).
+        self._number_buffers = {}
+        self._number_paths = {}
         self._invalid_fields = {}
         self._draft_source = self.document.text
         self.item_rects = {}
@@ -75,20 +79,11 @@ class ConfigurationApp(ImApp):
 
     def set_language(self, code):
         """Store the UI language in the document and switch the native catalogue at once (Save persists it)."""
-        import json
-
-        import yaml
-
         data = self.document.parse()
         if not isinstance(data, dict):
             raise ValueError("The settings file does not hold a mapping.")
         data.setdefault("gui", {})["language"] = code
-        self.document.text = (
-            json.dumps(data, indent=2) + "\n"
-            if self.document.path.suffix == ".json"
-            else yaml.safe_dump(data, sort_keys=False)
-        )
-        self._draft_source = self.document.text
+        self._store(data)
         try:
             from chisurf.emtk.i18n import set_locale
 
@@ -128,6 +123,7 @@ class ConfigurationApp(ImApp):
 
     def save(self, path=None):
         try:
+            self.commit_typed_numbers()
             if self._invalid_fields and not self.source_mode:
                 raise ValueError(
                     "Repair invalid setting fields before saving: "
@@ -194,15 +190,23 @@ class ConfigurationApp(ImApp):
             im.set_item_tooltip(
                 "Switch between typed setting fields and the complete YAML/JSON source."
             )
+            # The status line stays below the body; two lines leave room for a wrapped error.
+            status_h = 2.0 * im.get_text_line_height_with_spacing()
             if self.source_mode:
+                avail_h = im.get_content_region_avail()[1]
                 _, self.document.text = im.input_text_multiline(
-                    "##Configuration", self.document.text, size=(-1, max(150, vp.size[1] - 230))
+                    "##Configuration", self.document.text, size=(-1, max(150.0, avail_h - status_h))
                 )
                 im.set_item_tooltip(
                     "YAML or JSON source. Comments and exact string/list types are preserved when saving. Invalid content cannot replace the existing file."
                 )
             else:
+                self.draw_search()
+                # A window does not scroll in emtk, a child does: the fields scroll with the wheel and a scrollbar.
+                avail_w, avail_h = im.get_content_region_avail()
+                im.begin_child("##settings_body", (float(avail_w), max(60.0, float(avail_h) - status_h)))
                 self.structured_fields()
+                self.item_rects["settings_body"] = im.end_child()
             im.text_wrapped(self.error or self.status)
         im.end()
         self.help.draw((0, 0, *vp.size))
@@ -225,16 +229,54 @@ class ConfigurationApp(ImApp):
                 self.dialog_window = None
             window.end()
 
-    def structured_fields(self):
-        import json
-
-        import yaml
-
+    def draw_search(self):
+        im.align_text_to_frame_padding()
         im.text_unformatted("Find a setting")
+        im.same_line()
+        im.set_next_item_width(-1)
         _, self.setting_filter = im.input_text("##Setting search", self.setting_filter)
         im.set_item_tooltip(
             "Search full setting names; matching entries retain their parent section names."
         )
+        self.item_rects["setting_search"] = im.get_item_rect()
+
+    def _store(self, data):
+        """Write *data* back into the document text in its own format (JSON or YAML)."""
+        import json
+
+        import yaml
+
+        self.document.text = (
+            json.dumps(data, indent=2) + "\n"
+            if self.document.path.suffix == ".json"
+            else yaml.safe_dump(data, sort_keys=False)
+        )
+        self._draft_source = self.document.text
+
+    def commit_typed_numbers(self):
+        """Apply number fields typed but not yet committed (Save is pressed before the field sees the click-away)."""
+        if not self._number_buffers or self.source_mode:
+            return
+        data = self.document.parse()
+        for label, text in list(self._number_buffers.items()):
+            path = self._number_paths.get(label)
+            if not path:
+                continue
+            parent = data
+            for key in path[:-1]:
+                parent = parent[key]
+            try:
+                parent[path[-1]] = parse_number(text, integer=isinstance(parent[path[-1]], int))
+            except ValueError:
+                self._invalid_fields[label] = f"{text!r} is not a number"
+                continue
+            self._invalid_fields.pop(label, None)
+            del self._number_buffers[label]
+        self._store(data)
+
+    def structured_fields(self):
+        import yaml
+
         try:
             data = self.document.parse()
         except Exception as exc:
@@ -246,9 +288,25 @@ class ConfigurationApp(ImApp):
             return
         if self._draft_source != self.document.text:
             self._drafts.clear()
+            self._number_buffers.clear()
             self._invalid_fields.clear()
             self._draft_source = self.document.text
         edited = False
+        # One row per setting: its key in a label column, the field beside it (a label above every field halved how
+        # many settings fit). The column is as wide as the longest key that is shown, at most 40% of the room.
+        indent = 12.0
+
+        def keys(value, depth=0):
+            if isinstance(value, dict):
+                for key, item in value.items():
+                    if isinstance(item, dict):
+                        yield from keys(item, depth + 1)
+                    else:
+                        yield depth, str(key)
+
+        room = im.get_content_region_avail()[0]
+        widest = max((im.calc_text_size(k)[0] + indent * d for d, k in keys(data)), default=80.0)
+        column = min(widest + 16.0, max(120.0, room * 0.4))
 
         def draw_values(value, prefix=()):
             nonlocal edited
@@ -263,13 +321,26 @@ class ConfigurationApp(ImApp):
                     if self.setting_filter.casefold() not in label.casefold():
                         continue
                     im.push_id(label)
-                    im.text_unformatted(label)
+                    depth = len(prefix)
+                    if depth:
+                        im.indent(indent * depth)
+                    im.align_text_to_frame_padding()
+                    im.text_unformatted(str(key))
+                    if depth:
+                        im.unindent(indent * depth)
+                    im.set_item_tooltip(label)
+                    im.same_line(column)
+                    im.set_next_item_width(-1)
                     if isinstance(item, bool):
                         changed, new = im.checkbox("##Value", item)
-                    elif isinstance(item, int):
-                        changed, new = im.input_int("##Value", item)
-                    elif isinstance(item, float):
-                        changed, new = im.input_float("##Value", item)
+                    elif isinstance(item, (int, float)):
+                        self._number_paths[label] = path
+                        new, problem = typed_number_field(
+                            label, item, self._number_buffers, integer=isinstance(item, int)
+                        )
+                        changed = new is not None
+                        if problem:
+                            self.error = label + ": " + problem
                     else:
                         text = (
                             yaml.safe_dump(item, default_flow_style=True).strip()
@@ -290,6 +361,7 @@ class ConfigurationApp(ImApp):
                                 self.error = label + ": " + str(exc)
                                 self._invalid_fields[label] = str(exc)
                                 changed = False
+                    self.item_rects["field:" + label] = im.get_item_rect()
                     im.set_item_tooltip(
                         label
                         + " ("
@@ -308,12 +380,7 @@ class ConfigurationApp(ImApp):
 
         draw_values(data)
         if edited:
-            self.document.text = (
-                json.dumps(data, indent=2) + "\n"
-                if self.document.path.suffix == ".json"
-                else yaml.safe_dump(data, sort_keys=False)
-            )
-            self._draft_source = self.document.text
+            self._store(data)
             self.error = (
                 ""
                 if not self._invalid_fields

@@ -12,7 +12,7 @@
     },
     {
       "title": "Read the controls",
-      "text": "Left/Right changes the estimate, Q/E changes it by ten and Enter or Space submits. You can also click the plot and lower footer. Help explains the turns, hints and sound.",
+      "text": "The arrow keys change the estimate, Q/E changes it by ten and Enter or Space submits. You can also click the plot and lower footer. Help explains the turns, hints and sound.",
       "target": {
         "name": "open_help"
       },

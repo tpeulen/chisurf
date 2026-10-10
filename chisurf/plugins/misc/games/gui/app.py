@@ -46,6 +46,8 @@ class GamesHubApp(ImApp):
         entry = next((item for item in self.entries if item["name"] == name), None)
         if entry is None:
             raise ValueError(f"Unknown game: {name}")
+        if self.child is not None and callable(getattr(self.child, "focus_lost", None)):
+            self.child.focus_lost()
         self.selected = name
         self.error = ""
         factory = entry["emtk"]
@@ -55,6 +57,8 @@ class GamesHubApp(ImApp):
                 self.children[name] = getattr(importlib.import_module(module), attr)()
             except Exception as exc:
                 self.error = f"{tr('Game unavailable')}: {exc}"
+        if self.child is not None and callable(getattr(self.child, "focus_lost", None)):
+            self.child.focus_lost()
         self.request_frame()
         return self.child
 
@@ -172,11 +176,30 @@ class GamesHubApp(ImApp):
             self.child.wheel(*self._child_xy(x, y), steps, modifiers)
 
     def key(self, key, text="", modifiers=0):
-        return self.child.key(key, text, modifiers) if self.child else super().key(key, text, modifiers)
+        if self.child and self.child.key(key, text, modifiers):
+            return True
+        from emtk import keys as k
+        if not modifiers:
+            if key in {k.KEY_1, k.KEY_2, k.KEY_3, k.KEY_4, k.KEY_5}:
+                idx = key - k.KEY_1
+                if 0 <= idx < len(self.entries):
+                    self.select(self.entries[idx]["name"])
+                    return True
+            if key == k.KEY_TAB:
+                cur_idx = next((i for i, item in enumerate(self.entries) if item["name"] == self.selected), 0)
+                next_idx = (cur_idx + 1) % len(self.entries)
+                self.select(self.entries[next_idx]["name"])
+                return True
+        return super().key(key, text, modifiers)
 
     def key_release(self, key, text="", modifiers=0):
         release = getattr(self.child, "key_release", None)
-        return release(key, text, modifiers) if callable(release) else False
+        if callable(release) and release(key, text, modifiers):
+            return True
+        from emtk import keys as k
+        if not modifiers and (key in {k.KEY_1, k.KEY_2, k.KEY_3, k.KEY_4, k.KEY_5, k.KEY_TAB}):
+            return True
+        return False
 
     def focus_lost(self):
         """The host lost focus mid-press: the game must not keep a key held."""

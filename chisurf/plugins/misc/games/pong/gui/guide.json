@@ -12,7 +12,7 @@
     },
     {
       "title": "Read the controls",
-      "text": "Up/Down moves your paddle; M changes the opponent mode and W/S controls the second player. P pauses. Open Help for the complete controls and sound behavior.",
+      "text": "Up/Down (or Left/Right) moves your paddle; M changes the opponent mode and W/S controls the second player. P pauses. Open Help for the complete controls and sound behavior.",
       "target": {
         "name": "open_help"
       },

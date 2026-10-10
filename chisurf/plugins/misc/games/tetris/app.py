@@ -8,7 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from emtk import i18n, im
-from emtk.keys import KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_UP
+from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RETURN, KEY_RIGHT, KEY_UP
 
 from chisurf.plugins.emtk_layout import window_size
 from chisurf.plugins.misc.games._base import GameApp
@@ -42,6 +42,9 @@ class TetrisApp(GameApp):
     HELP_DIR = Path(__file__).parent / "gui"
 
     BINDINGS = (
+        (KEY_ENTER, 'confirm'),
+        (KEY_RETURN, 'confirm'),
+        (KEY_ESCAPE, 'cancel'),
         (KEY_LEFT, 'left'),
         (KEY_RIGHT, 'right'),
         (KEY_DOWN, 'down'),
@@ -49,6 +52,7 @@ class TetrisApp(GameApp):
         ('p', 'menu'),
         ('r', 'cancel'),
         (' ', 'shoulder_r'),
+        ('m', 'shoulder_l'),
     )
     FIELDS = ('shape', 'x', 'y', 'score', 'lines', 'level', 'paused', 'muted', 'over', '_fall_timer')
 
@@ -91,6 +95,10 @@ class TetrisApp(GameApp):
         action = self.binding(key, text)
         if action is None:
             return False
+        if action == "shoulder_l":
+            self.set_sound()
+            self.request_frame()
+            return True
         if key not in self.keys.held:
             self.keys.pressed.add(action)
         self.keys.held[key] = action
@@ -237,10 +245,10 @@ class TetrisApp(GameApp):
             im.set_cursor_screen_pos(at(38,224))
             if im.invisible_button("##restart-overlay",(224*scale,96*scale)):
                 self.control("confirm")
-            im.set_item_tooltip(tr("Restart after game over (Up or R)."))
+            im.set_item_tooltip(tr("Restart after game over (Enter/Space, Up or R)."))
         controls = (
-            (528,"Move  Confirm rotate  Down soft  R drop","Left/Right: move. Up: rotate. Down: soft drop. Space: hard drop."),
-            (544,"Menu hold  Cancel reset","P: pause/resume. R: restart."),
+            (528,"Move  Confirm rotate  Down soft  R drop","Left/Right: move. Up/Enter: rotate. Down: soft drop. Space: hard drop."),
+            (544,"Menu hold  Cancel reset","P: pause/resume. R: restart. M: mute."),
         )
         for yy,label,tip in controls:
             text(label,180,yy,11,dim,max_width=w-16)
@@ -249,7 +257,7 @@ class TetrisApp(GameApp):
             im.set_item_tooltip(tr(tip))
         im.set_cursor_screen_pos(at(37,27))
         im.invisible_button("##well",(226*scale,490*scale))
-        im.set_item_tooltip(tr("Left/Right: move. Up: rotate. Down: soft drop. Space: hard drop."))
+        im.set_item_tooltip(tr("Left/Right: move. Up/Enter: rotate. Down: soft drop. Space: hard drop."))
         im.end()
 
 

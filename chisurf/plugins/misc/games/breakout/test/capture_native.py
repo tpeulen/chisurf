@@ -1,6 +1,7 @@
 """Capture genuine native GPU frames at normal and narrow dimensions."""
-from pathlib import Path
+
 import random
+from pathlib import Path
 
 import numpy as np
 from emtk.native import NativeHost
@@ -23,7 +24,7 @@ def populate(app, mode):
         g.bricks[0].hp = 1
         g.spawn_particles(437, 216, g.bricks[65].nm, 12)
         for p in g.particles:
-            p.update(.1)
+            p.update(0.1)
         if mode == "paused":
             g.paused = True
         if mode == "gameover":
@@ -34,12 +35,12 @@ def populate(app, mode):
 def main():
     out = Path(__file__).parent / "renders"
     out.mkdir(exist_ok=True)
-    for width, height, name in ((820,690,"normal"),(480,690,"narrow")):
-        for mode in ("serve","rally","paused","gameover"):
+    for width, height, name in ((820, 690, "normal"), (480, 690, "narrow")):
+        for mode in ("serve", "rally", "paused", "gameover"):
             app = make_app()
-            populate(app,mode)
-            host = NativeHost(app,size=(width,height),backend="offscreen")
-            Image.fromarray(np.asarray(host.draw_frame())).save(out/f"native-{name}-{mode}.png")
+            populate(app, mode)
+            host = NativeHost(app, size=(width, height), backend="offscreen")
+            Image.fromarray(np.asarray(host.draw_frame())).save(out / f"native-{name}-{mode}.png")
             host.close()
 
 

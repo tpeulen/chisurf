@@ -7,10 +7,10 @@ external data is needed.
 
 ## Controls
 
-- Hold Left/Right to move the paddle. Release the key to stop movement.
+- Hold Left/Right (or Down/Up) to move the paddle. Release the key to stop movement.
 - Press Space or Enter to launch a ball that is resting on the paddle.
 - Drag inside the playfield to move the paddle; a resting ball moves with it.
-- Press P to pause or resume, R to restart, and M to change the game's mute flag.
+- Press P to pause or resume, R or Esc to restart (both discard the current round), and M to change the game's mute flag.
 - Restart in the header starts a fresh round through the same reset behavior.
 
 ## Reading the round

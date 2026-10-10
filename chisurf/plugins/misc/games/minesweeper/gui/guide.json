@@ -12,7 +12,7 @@
     },
     {
       "title": "Read the controls",
-      "text": "Move with the arrow keys, reveal with Enter or Space, and flag with F. Mouse buttons reveal or flag cells. Help explains difficulty changes and the board rules.",
+      "text": "Move with the arrow keys, reveal with Enter or Space, flag with F, and restart with R or Esc. Mouse buttons reveal or flag cells. Help explains difficulty changes and the board rules.",
       "target": {
         "name": "open_help"
       },

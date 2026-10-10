@@ -166,7 +166,7 @@ class TetrisModel:
             self.restart()
             return
         if self.over:
-            if keys.just_pressed('confirm'):
+            if keys.just_pressed('confirm') or keys.just_pressed('shoulder_r'):
                 self.restart()
             return
         if self.paused:

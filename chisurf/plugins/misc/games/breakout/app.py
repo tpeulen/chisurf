@@ -8,7 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from emtk import i18n, im
-from emtk.keys import KEY_ENTER, KEY_LEFT, KEY_RETURN, KEY_RIGHT
+from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RETURN, KEY_RIGHT, KEY_UP
 
 from chisurf.plugins.emtk_layout import window_size
 from chisurf.plugins.misc.games._base import GameApp
@@ -58,9 +58,12 @@ class BreakoutApp(GameApp):
 
     BINDINGS = (
         (KEY_LEFT, 'left'),
+        (KEY_DOWN, 'left'),
         (KEY_RIGHT, 'right'),
+        (KEY_UP, 'right'),
         (KEY_ENTER, 'confirm'),
         (KEY_RETURN, 'confirm'),
+        (KEY_ESCAPE, 'cancel'),
         (' ', 'confirm'),
         ('p', 'menu'),
         ('r', 'cancel'),

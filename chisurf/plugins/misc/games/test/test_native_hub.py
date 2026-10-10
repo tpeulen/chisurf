@@ -53,9 +53,11 @@ def test_render_pending_and_populated_child_with_tooltips(monkeypatch):
 
 
 def test_child_input_is_local_and_selection_preserves_state(monkeypatch):
+    from emtk.keys import KEY_RIGHT
+
     app = make_app()
     child = app.select("Number Quest")
-    assert app.key(0, "d") is True
+    assert app.key(KEY_RIGHT, "") is True
     assert child.estimate == 51
     app.select("Pong")
     assert app.select("Number Quest") is child
@@ -102,3 +104,28 @@ assert not any(m.split('.')[0] in {'qtpy', 'PyQt5', 'PyQt6', 'PySide2', 'PySide6
 """
     result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
+
+
+def test_switching_games_clears_held_keys():
+    from emtk import keys as k
+
+    app = make_app()
+    app.select("Tetris")
+    app.key(k.KEY_LEFT, "")
+    assert app.child.keys.held
+    app.select("Pong")
+    app.select("Tetris")
+    assert not app.child.keys.held, "keys remained stuck held after switching games"
+
+
+def test_hub_keyboard_game_switching():
+    from emtk import keys as k
+
+    app = make_app()
+    assert app.selected == "Number Quest"
+    assert app.key(k.KEY_TAB, "") is True
+    assert app.selected == "Minesweeper"
+    assert app.key(k.KEY_3, "3") is True
+    assert app.selected == "Tetris"
+    assert app.key(k.KEY_ENTER, "") is True   # Enter lands in Tetris!
+    assert app.key_release(k.KEY_ENTER, "") is True
