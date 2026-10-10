@@ -1616,7 +1616,7 @@ Now `[1:lint_imax]`: all 6443 brute-force pairs kept at factors 2, 3, 5 (were
 0.98 → 0.99997 (the "fix" of 2026-08-11 that dropped it to 0.9695 changed the size,
 not the offset). The call-site parity fixture's linear matrices were re-recorded;
 the reference anchor is `flc_2d/test/test_bootstrap.py` (Octave fixture). tttrlib's
-own MATLAB test was right all along — it slices `[1:n+1]`. Two consequences worth
+own the numerical computing environment test was right all along — it slices `[1:n+1]`. Two consequences worth
 announcing: the linearly-binned decay (`one_d_fdc`, `create_1d_fdc`) and `mat_lin`
 moved by one bin (4 ps × factor) and regained their last bin; and a photon at
 exactly `tMax` is now counted at factor 1, as in the reference.
@@ -2200,7 +2200,7 @@ for the docs: `chimol_objects_panel.png` and `chimol_groups_panel.png` in guide
 44 show the **retired** Qt dock. They were deliberately *not* regenerated from
 the overlay — that would swap two figures that show the old UI correctly for two
 that show the new UI wrongly. The guide's prose around them (rows carrying
-PyMOL's five **A S H L C** menus) still describes what the overlay draws, so it
+the reference viewer's five **A S H L C** menus) still describes what the overlay draws, so it
 is not misleading, only dated.
 
 ## The ray tracer draws a mesh contour as streaks
@@ -2416,7 +2416,7 @@ another instance active in it; none is fixed.
 
 status: open
 
-`MolView.handle_mouse_click` documents PyMOL's rule -- *"left-clicking away
+`MolView.handle_mouse_click` documents the reference viewer's rule -- *"left-clicking away
 from any atom should deactivate the selection"* -- and says that with nothing
 picked it falls through to a `set` of no indices. It does not: a selection
 survives a click on an empty point **inside** the viewport.
@@ -2721,11 +2721,11 @@ Var = size(Mat_2DFDC_lin) - 1 ;
 Mat_2DFDC_lin = Mat_2DFDC_lin(1:Var, 1:Var) ;
 ```
 
-MATLAB is 1-based over bins `1..lint_Imax`, so that is exactly ChiSurf's
+The numerical computing environment is 1-based over bins `1..lint_Imax`, so that is exactly ChiSurf's
 `[:lint_imax - 1]`. The shortfall is the **published method's** behaviour.
 
 **What produced the wrong conclusion**, worth recording because it is cheap to
-repeat: I asserted "the MATLAB does no such trim" after reading the reference's
+repeat: I asserted "the numerical computing environment does no such trim" after reading the reference's
 *construction* (lines 38-42) and not its *return* (170-172). Two reads of the
 same file, one of them stopping early. The fix I wrote made things measurably
 worse — `test_one_d_fdc_matches_microtime_histogram` fell from 0.98 to 0.9695
@@ -2742,7 +2742,7 @@ it in the builder's favour.
 
 ### 🐛 On the ruling that this is a bug — the premise does not hold, verbatim
 
-A ruling was relayed (2026-08-11) that this trim is a defect because *"the MATLAB
+A ruling was relayed (2026-08-11) that this trim is a defect because *"the numerical computing environment
 returns `Mat_2DFDC_lin` whole"*. **It does not.** `TK_Create2DFDC_04.m`, lines
 170-172, unmodified:
 
@@ -2752,9 +2752,9 @@ Mat_2DFDC_lin = Mat_2DFDC_lin(1:Var, 1:Var) ;
 Mat_2DFDC_lint = Mat_2DFDC_lint(1:Var) ;
 ```
 
-The rule *"MATLAB is authoritative, fix ChiSurf to match"* is not in dispute and
+The rule *"the numerical computing environment is authoritative, fix ChiSurf to match"* is not in dispute and
 is why this entry was withdrawn: applied to this trim it says **keep it**,
-because ChiSurf's `[:lint_imax - 1]` already is it (MATLAB being 1-based over
+because ChiSurf's `[:lint_imax - 1]` already is it (the numerical computing environment being 1-based over
 bins `1..lint_Imax`).
 
 This is recorded rather than silently obeyed because the fix was already written
@@ -2768,8 +2768,8 @@ deliberate divergence from the reference and should be recorded as one, not as
 alignment with it.
 
 **The tttrlib session's part in this, recorded because it is the reusable
-lesson.** I (`opus-5/ac9f6757`) took "the MATLAB does no such trim" from a
-message, wrote it into a `🐛 BUG` block here on the user's *MATLAB is
+lesson.** I (`opus-5/ac9f6757`) took "the numerical computing environment does no such trim" from a
+message, wrote it into a `🐛 BUG` block here on the user's *the numerical computing environment is
 authoritative* ruling, and repeated it in tttrlib's PRD-036 and on the agent
 board — in the same message where I said I was reading the reference
 first-hand rather than a paraphrase. I had read its *construction* (lines
@@ -2782,7 +2782,7 @@ it *should* is now back with the user as a deliberate-divergence question.
 status: open
 
 **Found 2026-08-11**, from an observation by the tttrlib session porting these
-kernels, then confirmed against the original MATLAB.
+kernels, then confirmed against the original the numerical computing environment.
 
 `flc_2d` has two entry points that both produce a log-binned 2D-FDC matrix, and
 they build the log axis from **different** `t_imax`:
@@ -2811,8 +2811,8 @@ different log bins, not lost.
    is not. tttrlib's `fdc_scan_log` (PRD-036) followed the scan, so the C++
    inherits the deviation.
 
-**Settled 2026-08-11 (user: "the matlab is the authoritative code, if
-discrepancy matlab wins, override chisurf, fix chisurf, stay close to matlab").**
+**Settled 2026-08-11 (user: "the numerical computing environment is the authoritative code, if
+discrepancy the numerical computing environment wins, override chisurf, fix chisurf, stay close to the numerical computing environment").**
 The scan kernel now takes `lint_bin_factor` (default 1, where the rule collapses
 to `span + 1`, so no existing caller's numbers move) and derives `t_imax` the
 reference's way, so the two entry points agree at every factor. Pinned by
@@ -2833,7 +2833,7 @@ different above it.
 ### 🐛 BUG — the open question is closed; the scan is wrong, ruled 2026-08-11
 
 Not "whoever decides should say which" any more. The user has ruled that the
-**MATLAB is authoritative**, so the coupling is the method and the *scan* is the
+**The numerical computing environment is authoritative**, so the coupling is the method and the *scan* is the
 deviation: `_fdc_scan_log_kernel`'s unconditional `t_imax = span + 1` matches the
 reference only at `lint_bin_factor = 1`. `TK_Create2DFDC_04.m:38-40`:
 
@@ -2861,7 +2861,7 @@ still match a simulation with a known answer, at `lint_bin_factor > 1` where the
 axis actually moved. A fixture regenerated against the new axis will agree with
 itself by construction and prove nothing about that.
 
-One trap for the fixture work: the MATLAB keeps its log edges in floating point
+One trap for the fixture work: the numerical computing environment keeps its log edges in floating point
 and compares `(tauI*tStep) <= Mat_2DFDC_logt(T)`, while both ports round edges
 to integer ticks. A single-pair disagreement at a bin boundary is that, not a
 port error.
@@ -2975,7 +2975,7 @@ constant, which is why they looked like three separate defects.
 The width now comes from the baked glyph atlas -- the thing that actually draws
 the text -- via `internal_gui.char_width()`.
 
-A second, independent bug surfaced with it: `column_width` starts at PyMOL's
+A second, independent bug surfaced with it: `column_width` starts at the reference viewer's
 `internal_gui_width` of 220 and **only the splitter drag consulted
 `minimum_column_width()`**, so until someone dragged it the mouse-mode block was
 laid out wider than the column that positions it. `layout()` now holds the
@@ -3017,7 +3017,7 @@ The Chrome tools cannot reach a locally served page on this machine.
 status: open
 
 **Found 2026-08-11** from a user screenshot: selected atoms draw as red dots of
-wildly varying size scattered through the cartoon, where PyMOL draws even pink
+wildly varying size scattered through the cartoon, where the reference viewer draws even pink
 markers of a fixed pixel size.
 
 `core/viewer.py` sets `meta["px_mode"] = True` in **three** places — the
@@ -3028,7 +3028,7 @@ indicator (`:8942`) — and `px_mode` appears **nowhere** in `wgpu_backend.py` o
 pixel-mode markers gets whatever that pair happens to mean. Size varying with
 depth is what world-radius spheres do and what pixel-mode markers must not do,
 which matches the screenshot. `_selection_marker_width` computes its value in
-**pixels**, clamped to PyMOL's 3–10 band, so the units are certain at the
+**pixels**, clamped to the reference viewer's 3–10 band, so the units are certain at the
 producing end.
 
 **Not fixed, and not diagnosed past this point.** The open question is what the
@@ -3093,7 +3093,7 @@ shown as cartoon the mode is consumed at `core/viewer.py:9287`, which builds
 by-element mode has nothing to vary over and the ribbon does not turn CPK. What
 the user sees instead is the previous per-residue colouring, unchanged.
 
-**3 — the CNOS menu is missing.** PyMOL's C > "by element" is not one entry, it
+**3 — the CNOS menu is missing.** the reference viewer's C > "by element" is not one entry, it
 is 49 (`junk/pymol-open-source/modules/pymol/menu.py:404`, `by_elem`):
 
 - the first entry, `util.cnc(sele)` — the **CNOS** case the user asked for:
@@ -3128,7 +3128,7 @@ the Sequence strip shows two rows — `1f5n` and a second row labelled
 `sele`. The extra row persists after the wizard has finished.
 
 `mutation` is a real object by design: `cmd/interactions.py:621`
-`_wizard_show_states` creates it (PyMOL's `do_library` does the same, one state
+`_wizard_show_states` creates it (the reference viewer's `do_library` does the same, one state
 per rotamer) and `PREVIEW_OBJECT = "mutation"`. The sequence view builds one row
 per entry in `_object_store` (`hosts/qt/window.py:1178`), so while the
 preview exists a `mutation` row is expected.
@@ -3167,7 +3167,7 @@ staleness above.
 status: resolved 2026-08-11
 
 **Found 2026-08-11, user-reported** ("missing feature selection of CA, atoms,
-currently only residues work"). PyMOL's mouse block carries a selection *level*
+currently only residues work"). The reference viewer's mouse block carries a selection *level*
 — Atoms / Residues / Chains / Segments / Objects / Molecules — and clicking the
 word cycles it. chimol paints the line and stops there:
 
@@ -3206,7 +3206,7 @@ line *more* misleading than a constant, not less.
 
 status: resolved 2026-08-11
 
-**Found 2026-08-11, user-requested** ("add measurement feat, like in pymol, meas
+**Found 2026-08-11, user-requested** ("add measurement feat, like in the reference viewer, meas
 distance with mouse and clicking").
 
 Both halves already exist and are simply not joined:
@@ -3224,7 +3224,7 @@ Both halves already exist and are simply not joined:
   depend on the selection-level work.
 
 What is missing is a `wizard measurement` that collects picked atoms and, at
-two/three/four picks, calls the existing command. PyMOL's modes are the spec:
+two/three/four picks, calls the existing command. The reference viewer's modes are the spec:
 distance, angle, dihedral, plus its "no wizard" reset.
 
 **Watch for:** the picked index is into `_all_atom_coords`, whereas the
@@ -3318,7 +3318,7 @@ All five are the same shape of fault, which is why they are recorded together:
 * **The sequence strip ran every chain into one row** named after the object.
   Residue numbers restart per chain, so the same number appeared several times
   with nothing to say which chain it belonged to. Now one row per chain,
-  labelled in PyMOL's slash syntax (`1f5n/A`), each carrying
+  labelled in the reference viewer's slash syntax (`1f5n/A`), each carrying
   `residue_indices` — the map back to the object's residue indices.
 
 **The trap in the last one**, and the reason it needed care: a per-chain row's
@@ -3421,16 +3421,16 @@ what follows is the starting point so the next session does not begin at zero.
 
 ### Density maps are slow
 
-The instruction is explicit: **learn from ChimeraX how it does this.** That is
-the right reference — ChimeraX's volume viewer is interactive on maps chimol
+The instruction is explicit: **learn from the reference volume viewer how it does this.** That is
+the right reference — the reference volume viewer's volume viewer is interactive on maps chimol
 struggles with, and the techniques are documented rather than folklore. What to
 look for, in the order they usually matter:
 
-* **Multi-resolution / step.** ChimeraX draws a map at a *step* (2, 4, …) and
+* **Multi-resolution / step.** the reference volume viewer draws a map at a *step* (2, 4, …) and
   re-contours at full resolution only when asked. chimol has
   `stride_for_limit()` for the point cloud but the **isosurface contours the
   full grid every time** — a 180³ map is 5.8 M cells per level per rebuild.
-* **Region cropping.** ChimeraX contours a sub-box, not the whole map.
+* **Region cropping.** the reference volume viewer contours a sub-box, not the whole map.
 * **Caching the surface per (level, step)** so re-showing a level is free —
   chimol re-runs marching cubes.
 * Its `Volume`/`GridData` split is worth reading directly: the data source, the
@@ -4539,7 +4539,7 @@ Not caused by the ray-image change (it is the same before and after, and the
 panel is a fixed-width column either way), and not chased there because the fix
 is a layout question for the panel: either the block measures its own text and
 the column takes the wider of the two demands, or the mode names abbreviate.
-PyMOL sizes the internal-GUI column from the text. Reproduce with the composer
+The reference viewer sizes the internal-GUI column from the text. Reproduce with the composer
 in `chisurf/plugins/chimol/test/test_ray_keeps_the_panel.py` — paint
 `paint_screen_space` onto a `QImage` and read the bottom-right corner.
 
@@ -4646,8 +4646,8 @@ somewhere else -- so the three symptoms it presented as (offset backbone,
 detached rings, stray spokes) were **one** fault.
 
 The fault is a category error, not arithmetic. The nucleic trace was passed
-through PyMOL-style `RepCartoonSmoothLoops` control-point averaging, which
-PyMOL applies to **loops** -- because a moving average over points on a HELIX
+through reference-viewer-style `RepCartoonSmoothLoops` control-point averaging, which
+the reference viewer applies to **loops** -- because a moving average over points on a HELIX
 is not a smoothing but a **contraction toward the helix axis**. A duplex C4'
 trace is a helix of radius ~9 A; the shipped two 3-point passes moved it a
 measured 1.68 A (max 2.43 A) off the atoms, against a tube radius of 0.4. It is
@@ -5397,7 +5397,7 @@ colouring, a representation change, a label, a bond edit and **every `set`** all
 trigger. Measured on 148L: `zoom resi 20-26` puts the camera distance at
 **1.26**, and the next `set` of *anything at all* puts it back to **5.0**. So
 framing a binding site and then adjusting a stick radius loses the framing — in
-a viewer, which is a serious thing to get wrong. PyMOL moves the camera only for
+a viewer, which is a serious thing to get wrong. The reference viewer moves the camera only for
 a camera command (`zoom`/`orient`/`center`/`reset`) or a load (`auto_zoom`).
 
 **Attempted and reverted**: flipping the default to `False` and passing `True`
@@ -5668,7 +5668,7 @@ full run, and identically at `HEAD` with no working-tree changes:
 the expected one (41429 against 1381), which points at a scale factor — chimol
 scales coordinates by `_scale_factor` (default 10) — rather than at the framing
 rule. Recorded here because it was found while working on something else and is
-not that change's to fix; the assertions encode PyMOL's
+not that change's to fix; the assertions encode the reference viewer's
 `d = R / tan(fov/2)` and are worth keeping.
 
 ---

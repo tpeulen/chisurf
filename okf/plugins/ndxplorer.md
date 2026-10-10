@@ -4,7 +4,7 @@ title: ndX multidimensional explorer
 description: The interactive explorer for burst and image parameter tables — projection, gating, curve overlays, and playing a measurement back along one of its own columns.
 resource: modules/ndxplorer/
 tags: [plugins, ndxplorer, bursts, gating, playback]
-timestamp: '2026-08-06T00:00:00Z'
+timestamp: '2026-10-10T00:00:00Z'
 ---
 
 ndX is ChiSurf's interactive explorer for wide numeric tables: burst data (E, S,
@@ -69,6 +69,30 @@ the cal1 `.pto`, 44 270 bursts).
 Tests: `chisurf/plugins/ndxplorer/tests/test_window_routes.py` (both routes
 host the app with the client and publish/withdraw the constants; From MMFDB
 opens a picked selection with the session client, and says why without one).
+
+## A ChiSurf project opens its stored chains
+
+`ndxplorer.io.loading.kind_for_paths` maps `*.cs.pto` to the `cs_project` importer
+(**File › Import › ChiSurf project**, a drop, `--file`). `ndxplorer.io.project_reader`
+lists the PTO objects of kind `chisurf.project-entry` named `sampling/*.er4` --
+`list_stores(path) -> [{name, rows, columns}]` -- and `read_store(path, store=None)`
+reads one (a `ValueError` naming the stores when more than one and none chosen).
+`reader_for`/`read`/`load` carry `store`. With several stores the io feature shows
+`StoreChoice` (spec `features/io/store_choice.view.json`). `NdxApp.open_path` routes a
+`.cs.pto` through the io feature, so a drop asks too. ChiSurf's *Chain diagnostics* page
+opens the live project here through `chisurf.plugins.ndxplorer.gui.app.open_in_ndx`
+(reuses a live app from `frame.live_apps()`, else `load_and_show_plugin`).
+
+## The status bar
+
+`frame.STATUS_H` (22 px) along the bottom, always drawn: the docks get
+`h - MENU_H - STATUS_H`; the bar is `theme.WINDOW_BG` with a 1-px `style.BORDER` top rule,
+`show_status` text left-aligned and end-cut with "…" (`_elide_end`, painter-measured), and
+`axis_readout()` at the right (the axes, or the data point under the pointer on the map,
+`plots.hover`). Loading reports through it ("Loading …", "Loaded N rows from …",
+"Loading failed: …"). The old right-aligned status in the menu bar's row (`STATUS_GAP`) is
+gone. Before/after PNGs: `/tmp/w3-shots/ndx_before_head.png`, `ndx_after.png` (scratch;
+`render_ndx.py` there renders either tree).
 
 ## The calibration button asks what it may determine
 
@@ -320,6 +344,17 @@ decides only whether its range filters.
 
 ## Where to pick this up
 
+0. Measure: **`.cs.pto` import and the status bar** (2026-10-10): `pytest
+   modules/ndxplorer/ndxplorer/tests/test_app/test_io_loading.py
+   modules/ndxplorer/ndxplorer/tests/test_app/test_emtk_app.py` (17 + 38 passed), run from the
+   chisurf root. The ndX test builds its `.cs.pto` with tttrlib alone (ndX must not import
+   ChiSurf); the ChiSurf side cross-checks a project it saved
+   (`test/project/test_sampling_roundtrip.py::test_ndx_reads_the_saved_chain_without_chisurf`).
+   Open: `list_stores` only lists sampling chains; other embedded tables (datasets, burst
+   companions a project may carry later) would need their own entry-name rule.
+   Open: the axis readout shows the map's pointer position only; marginals and the z plot
+   report nothing. Tried and reverted: putting the readout through `show_status` -- it
+   overwrote every message on each pointer move, so it is a separate right-hand field.
 1. Open: **Leakage through compound derived columns in the gate-separation ranking.**
    Gating on `Tau (green)` excludes it and every column monotone in it
    (Spearman |ρ| ≥ 0.98: `E_tau`), but `(1-E)*E_tau` still carries τ and tops

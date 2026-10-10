@@ -466,7 +466,7 @@
 
 - **2026-10-06 · W5 release-readiness native roots landed:** Driver shipped first (`5de4c87`), final emtk `a1398e0`; keyboard/zoom/frame/grid/host roots and ChiSurf state/font/game-key follow-ups verified (327 emtk, 88 ChiSurf targeted passes; final Driver/frame 21). Fixed the sibling-build prefix bug; preserved viewport sizing after AST measurement. [Evidence and W7 handoff](validation/release-readiness-w5.md).
 
-- **PRD-154: the release-readiness programme is written down as executable workstreams** (tpeulen: "chisurf must come to release ready state … make a super good plan, the implementation will be handled by less capable agents … the plan must be in .md file in okf"). `okf/prds/prd-154.md` holds Part A (agent protocol, Definition of Done, repo map, measured baselines), Part B (W0 OKF hygiene + lint, W1 tree hygiene, W2 autosave/undo, W3 sampling persisted + ndX `.cs.pto` + status bar, W4 `.pto`-first burst workflow with run picker and Seidel/Margarita export, W5 emtk root fixes incl. keyboard nav / node zoom / frames / grid layouts / `Driver`, W6 plugin uniformity, W7 e2e click-all + CI + red suites, W8 pyqtgraph retirement, W9 Qt retirement plugins-first, W10 MCTS, W11 snappiness + PSF on chimol, W12 imp.bff modularity, W13 mmfdb/flrCIF, W14 docs), Part C (path-claim matrix for parallel agents), Part D (programme verification) and Appendix A (generated per-plugin inventory: 130 plugins, 34 without view.json, 19 without help, 19 without guide, 118 with a Qt entrypoint, 110 importing Qt, 22 forcing window size, 25 instantiating their own setup page, 3 with `.ui`, 9 with a demo). Owner decisions recorded in it: take over the PROJECT-LIFECYCLE/INTEGRATION/STORAGE board claims; merge then remove the `chisurf-fix-wt` / `chisurf-lint-check` worktrees; Wave 1 = W0+W1+W5+W6+W7; Qt retirement focuses on plugins before the shell; the whole stack (emtk, chimol, tttrlib, imp.bff, mmfdb) is in scope and fixed at the root. Baselines measured today: `test/test_ui_schemas.py` 102 failed / 543 passed; mmfdb 845 passed; emtk green; OKF audit (120 open known issues, 55 broken links, 165 concepts without frontmatter, 907 untracked files, 81 ✅ tickets still in the board's Active). Nothing implemented yet; the resume point is the PRD's top section.
+- **PRD-154: the release-readiness programme is written down as executable workstreams** (tpeulen: "chisurf must come to release ready state … make a super good plan, the implementation will be handled by less capable agents … the plan must be in .md file in okf"). `okf/prds/prd-154.md` holds Part A (agent protocol, Definition of Done, repo map, measured baselines), Part B (W0 OKF hygiene + lint, W1 tree hygiene, W2 autosave/undo, W3 sampling persisted + ndX `.cs.pto` + status bar, W4 `.pto`-first burst workflow with run picker and Seidel/legacy-reader export, W5 emtk root fixes incl. keyboard nav / node zoom / frames / grid layouts / `Driver`, W6 plugin uniformity, W7 e2e click-all + CI + red suites, W8 pyqtgraph retirement, W9 Qt retirement plugins-first, W10 MCTS, W11 snappiness + PSF on chimol, W12 imp.bff modularity, W13 mmfdb/flrCIF, W14 docs), Part C (path-claim matrix for parallel agents), Part D (programme verification) and Appendix A (generated per-plugin inventory: 130 plugins, 34 without view.json, 19 without help, 19 without guide, 118 with a Qt entrypoint, 110 importing Qt, 22 forcing window size, 25 instantiating their own setup page, 3 with `.ui`, 9 with a demo). Owner decisions recorded in it: take over the PROJECT-LIFECYCLE/INTEGRATION/STORAGE board claims; merge then remove the `chisurf-fix-wt` / `chisurf-lint-check` worktrees; Wave 1 = W0+W1+W5+W6+W7; Qt retirement focuses on plugins before the shell; the whole stack (emtk, chimol, tttrlib, imp.bff, mmfdb) is in scope and fixed at the root. Baselines measured today: `test/test_ui_schemas.py` 102 failed / 543 passed; mmfdb 845 passed; emtk green; OKF audit (120 open known issues, 55 broken links, 165 concepts without frontmatter, 907 untracked files, 81 ✅ tickets still in the board's Active). Nothing implemented yet; the resume point is the PRD's top section.
 
 - **Long status lines fixed globally, not per hub; emtk 0.1.5** (tpeulen: "fix long status lines, ideally no specific workarounds but global fixes"). Root cause in emtk (`cb9bc3c`): an item without an id (text, label, image) claimed HoveredId with its box as key, so any long text drawn before buttons on the same row owned the pointer over them; ImGui's `ItemAdd(id=0)` never claims it, and now neither does emtk (the text still answers `is_item_hovered` for its tooltip). New `im.text_ellipsis(text, max_width)` cuts a line to its room with the whole text as tooltip; `ToolHubApp` draws every hub's status with it, so it never runs under Back / >> / Next. ALEX's private `_fit` workaround is deleted. Guards: emtk `tests/test_text_does_not_claim_hover.py`, chisurf `test/gui/test_tool_hub_status.py`; hub suites (ALEX, Burst Analysis, TTTR Tools, FCS workflow) 165 passed; full emtk suite green. emtk bumped to 0.1.5 (pyproject and `__version__` had drifted to 0.1.4 / 0.1.3), tagged `v0.1.5`, pushed; `pixi.lock` pins `3f6e87d`.
 
@@ -1269,12 +1269,12 @@
   the other 17 are not reached by attribute, so they were really unused. Checked with a
   headless `get_app()` screenshot.
 
-* **ebFRET's MATLAB GUI ported onto emtk as the `burst_ebfret` plugin.** A plain port of `junk/ebFRET`: the MainWindow's panels, menus (File/Analysis/View incl. Export), dialogs and defaults in an emtk window (`gui/app.py`, controls and dialogs declared in `gui/*.view.json`, Qt only hosting it with Load demo, Guide and ?), the callbacks as `core/session.py`, the analysis transcribed from `+analysis/+hmm` and `+dist` (`core/hmm.py`, `core/dist.py`, `core/ebayes.py`, `core/plots.py`) and run in a backend thread behind `burst_ebfret.session.*` RPC methods, ebFRET's formats in `io.py` (session .mat, raw .dat, SF-Tracer .tsv, SMD .mat/.json/.json.gz, summary .csv, traces). A/B: ≤1e-11 against ebFRET under Octave, ≤1.9e-8 against MATLAB's saved lower bounds, traces export byte-identical to ebFRET's. The old reinterpreted core (`vbem.py`, `viterbi.py`, quantile priors) is gone. The prior-mixture path is not ported: nothing in the GUI reaches it and it calls functions missing upstream. emtk gained dashed lines, marker styles, tick-label flags, a file dialog, `view_form` and two fixes (emtk 88b00f7, 0a2f840, 2eb8919, 5de0258). `reference_coverage` counts `.m` files now. Record and resume point: [plugins/burst-ebfret.md](plugins/burst-ebfret.md).
+* **ebFRET's numerical computing environment GUI ported onto emtk as the `burst_ebfret` plugin.** A plain port of `junk/ebFRET`: the MainWindow's panels, menus (File/Analysis/View incl. Export), dialogs and defaults in an emtk window (`gui/app.py`, controls and dialogs declared in `gui/*.view.json`, Qt only hosting it with Load demo, Guide and ?), the callbacks as `core/session.py`, the analysis transcribed from `+analysis/+hmm` and `+dist` (`core/hmm.py`, `core/dist.py`, `core/ebayes.py`, `core/plots.py`) and run in a backend thread behind `burst_ebfret.session.*` RPC methods, ebFRET's formats in `io.py` (session .mat, raw .dat, SF-Tracer .tsv, SMD .mat/.json/.json.gz, summary .csv, traces). A/B: ≤1e-11 against ebFRET under Octave, ≤1.9e-8 against the numerical computing environment's saved lower bounds, traces export byte-identical to ebFRET's. The old reinterpreted core (`vbem.py`, `viterbi.py`, quantile priors) is gone. The prior-mixture path is not ported: nothing in the GUI reaches it and it calls functions missing upstream. emtk gained dashed lines, marker styles, tick-label flags, a file dialog, `view_form` and two fixes (emtk 88b00f7, 0a2f840, 2eb8919, 5de0258). `reference_coverage` counts `.m` files now. Record and resume point: [plugins/burst-ebfret.md](plugins/burst-ebfret.md).
 
-* **ndX ranks the views: Orange3's VizRank ported as *Find informative
+* **ndX ranks the views: the data-mining suite's VizRank ported as *Find informative
   projections*.** ndxplorer repo: Qt-free framework (`analysis/vizrank.py`),
   scores (`analysis/projection_scores.py` — kNN class separation and correlation
-  transcribed from Orange3 with its test expectations, SigClust 2-means
+  transcribed from the data-mining suite with its test expectations, SigClust 2-means
   population structure added), an emtk panel declared in `ui/vizrank.view.json`
   over `ui/vizrank_panel.py`, buttons under the x/y and z pickers
   (`ui/projection_rank.py`). Runs on `chisurf/gui/task.py` rather than a second
@@ -1282,7 +1282,7 @@
   the MFD folder: flags, clumps < 5 %, columns monotone in a gated parameter.
   Docs: concept *ranking the views*, guide 46 *Find the informative
   projections*. Record: [ndX](plugins/ndxplorer.md),
-  [Orange3 adopted §4](references/orange3-adopted.md); mining note marked done.
+  [the data-mining suite adopted §4](references/orange3-adopted.md); mining note marked done.
   ndxplorer commit `3d5bd43` (gitlink not bumped: unpushed). Fixed there too:
   every ndX GUI load raised `AttributeError` (`reader.DataLoadWorker` gone since
   the reader became Qt-free); loads go through `async_loader.run_task`.
@@ -1290,7 +1290,7 @@
 * **2D-FLCS harvest, part 2: the reference's basis, MEM ramp, IRF-rise scan and
   average are ported; `TK_DisIntLife2Dmap` is SKIPPED.** `flc_2d/fit/exp_curve.py`
   (`TK_CreateExpCurve`: IRF placed by rise points, basis summed over the linear/log
-  bins; Octave A/B <= 4e-14 on four gates, reproducing MATLAB's one-row `sum` quirk
+  bins; Octave A/B <= 4e-14 on four gates, reproducing the numerical computing environment's one-row `sum` quirk
   that corrupts the last linear bin at the reference's default gate),
   `fit/minimize_q.py` (`MinimizeQ_09`/`GFitF_MinimizeQ_04` schedule and objective,
   `mi_ModelFunction` A/B 5e-16, start values A/B 3e-14; L-BFGS-B with an analytic
@@ -1365,7 +1365,7 @@
   missing widgets are added to emtk. Turns the [GUI/AutoForm](subsystems/gui-autoform.md)
   long-term direction into the rule for new work.
 
-* **2D-FLCS: the MATLAB harvest is finished and `junk/2D-FLC-code` can go.** The last
+* **2D-FLCS: the numerical computing environment harvest is finished and `junk/2D-FLC-code` can go.** The last
   two unported pieces of the original code (T. Kondo; audit table in tttrlib
   PRD-036) are ported and A/B'd in Octave with recorded fixtures: the four
   `Reproduct` functions as `flc_2d/fit/reproduct.py` (`api.reproduce_1d_fdc`,
@@ -1373,7 +1373,7 @@
   the fits now evaluate its `decay_model`/`fdc_model`), and the per-molecule
   split-data bootstrap driver as `flc_2d/bootstrap.py` (`api.separate_data_2d_fdc`,
   `bootstrap_2d_fdc`, CLI `flc-2d bootstrap`; bit-identical over three draws). The
-  MATLAB draws one replicate per run; the port adds the replicate loop and
+  the numerical computing environment draws one replicate per run; the port adds the replicate loop and
   per-element std, calibrated on simulation (4930 vs 5570 spread over 16 data
   sets). The A/B exposed a one-bin offset of the linear 2D-FDC matrix and
   double-counted same-tick pairs in the 1D-FDC (both fixed; see
@@ -1381,22 +1381,22 @@
   kept every 2D-FDC build single-chunk. The six data-driven `flc_2d` tests had been
   **silently skipping** (they looked for `thirdparty/2D-FLC-code/simulated_data.mat`);
   they now simulate that data set from a seed, with the reference IRF as a 14 KB
-  fixture, and pass on seeds 1/2/3/7 — after matching two MATLAB simulator details
+  fixture, and pass on seeds 1/2/3/7 — after matching two numerical computing environment simulator details
   that otherwise flip the species cross-correlation. Docs: `filtered_fcs` concept
-  and guide 17, plugin README and help. Open items (four MATLAB pieces the table
+  and guide 17, plugin README and help. Open items (four numerical computing environment pieces the table
   over-claimed or omitted; L-curve fragility; library same-tick semantics) in
   [filtered-fcs-2dflcs-theory](references/filtered-fcs-2dflcs-theory.md) "Where to
   pick this up". `test/repro/compare_matlab_implementation.py` (dead: imports a
   module that no longer exists, reads a path that never did) is left for deletion
   until the tree-wide format sweep that touches it lands.
 
-* **chimol reads PyMOL command lines; PyMOL source harvested into chimol OKF.**
-  chimol `db07093`: PyMOL's keyword table + signatures generated from
+* **chimol reads the reference viewer command lines; the reference viewer source harvested into chimol OKF.**
+  chimol `db07093`: the reference viewer's keyword table + signatures generated from
   `junk/pymol-open-source` (`tools/gen/make_pymol_keywords.py`); arguments bind by
-  PyMOL's names (LEGACY `set a=b`, `quiet`, unsupported-arg-at-default rule), Python
+  the reference viewer's names (LEGACY `set a=b`, `quiet`, unsupported-arg-at-default rule), Python
   lines/blocks, `alias`, `run`, `extend`, `?`, and a prefix guard (`fit` ran
   `fitmap`). `load file, object` / `fetch code, name, type=` fixed. Probe of 110
-  PyMOL lines: 45 → 22 failing. Seven read-only passes wrote 12 reference pages to
+  the reference viewer lines: 45 → 22 failing. Seven read-only passes wrote 12 reference pages to
   `~/dev/chimol/okf/references/pymol/` and ~140 `CHISURF-REVIEWED` headers; resume
   point is that index (pointer added to `okf/plugins/pymol-parity.md`).
 
@@ -1602,7 +1602,7 @@
 * **...and then the voxelisation followed it** (owner: "if mrc is already in
   bff should not be in chisurf"). `fps_json_editor/core/mrc.py` is **deleted**.
   It still held `_voxelize_points` and `_mrc_path` -- the rounding convention,
-  the origin, the extent and the suffix rule -- and those are format
+  the zero point, the extent and the suffix rule -- and those are format
   questions, so they moved to `IMP.bff.write_points_mrc` (imp.bff `c2ea396`),
   which takes the cloud and returns the path it wrote. The two callers, the
   RPC service and the position panel, each make one call now; nothing in
@@ -1962,7 +1962,7 @@
   and pulling that thread found three more, every one of which produces a wrong
   *picture* rather than an exception:
   - the title bar covered the first body row -- imnodes' `EndNodeTitleBar`
-    moves the cursor to the content origin and the port only measured;
+    moves the cursor to the content zero point and the port only measured;
   - fixing that exposed `set_cursor_screen_pos` routing through `Layout.reset`,
     the *frame* reset, which discards the accumulated extents: a group holding
     a cursor move measured only what came after it, so a node came out narrower
@@ -2883,7 +2883,7 @@ front, not this).
   ([PRD-104](prds/prd-104.md), [chimol-emtk](plugins/chimol-emtk.md)). A
   reference screenshot showed the earlier `ImViewGuizmo` port (below, same
   date) targeted the wrong widget entirely; `emtk/gizmo.py` rewritten outright
-  as the Blender/3ds Max/ChimeraX ViewCube — a projected cube (8 corners, the
+  as the Blender/3ds Max/reference volume viewer ViewCube — a projected cube (8 corners, the
   same `_view` projection generalised from 6 axis directions), up to 3
   visible faces drawn back-to-front and labelled, a small RGB axis indicator
   at the nearest corner. `_orientation_for_direction` generalises the old
@@ -3040,12 +3040,12 @@ front, not this).
   the Qt backend, so "automatic" means Qt on any machine that has it.
 
 * **chimol: polish round — window bounds, own colours, the eye, tooltips
-  everywhere, and the hierarchy fix** ([pymol-parity](plugins/pymol-parity.md);
+  everywhere, and the hierarchy fix** ([reference-viewer-parity](plugins/pymol-parity.md);
   seven user asks). (1) Windows stop **above the prompt/status band**
   (`_bottom_chrome_height` feeds the layout clamp, the snap and the
   anchors), so a bottom-anchored window parks on the band's top edge.
   (2) The mouse block wears **chimol's own palette** (accent blue / warm
-  amber / greys) instead of PyMOL's green-salmon-blue; chrome baselines
+  amber / greys) instead of the reference viewer's green-salmon-blue; chrome baselines
   re-captured. (3) **Hover tooltips across the chrome**: a `_tooltip` set in
   `mouse_move` and painted last; window bodies explain their own controls
   via a new `GuiWindow.on_tooltip` (the density panel does); mouse-binding
@@ -3069,7 +3069,7 @@ front, not this).
 
 * **chimol: six user asks in one sweep — file dialogs, own status bar,
   strippable chrome, the atom-selection bug, molecule export surfaced, and
-  the Build menu** ([pymol-parity](plugins/pymol-parity.md)). (1) Menu saves
+  the Build menu** ([reference-viewer-parity](plugins/pymol-parity.md)). (1) Menu saves
   go through a **real file dialog** now (`MenuEntry.file_prompt` →
   `QFileDialog`; the CLI keeps taking paths as text): Save Molecule As…,
   Save Image As…, and the three Export entries — a filename typed into a
@@ -3089,18 +3089,18 @@ front, not this).
   levels. (5) **Molecule export existed** (`save x.pdb/.cif [, sel]`) —
   now reachable as File ▸ Save Molecule As…. (6) **Structure editing
   existed and was hidden**: bond/unbond with orders, remove, alter,
-  pseudoatom, h_add, mutagenesis, undo/redo at PyMOL's own
+  pseudoatom, h_add, mutagenesis, undo/redo at the reference viewer's own
   coordinate-snapshot scope — but Edit ▸ Undo/Redo were *disabled* saying
   "no undo stack" and Build was omitted as "no structure editing", both
-  long stale. Undo/Redo are wired, and a **Build menu** (PyMOL's position)
-  carries the tools. Structural undo *beyond* PyMOL's scope (topology
+  long stale. Undo/Redo are wired, and a **Build menu** (the reference viewer's position)
+  carries the tools. Structural undo *beyond* the reference viewer's scope (topology
   snapshots for remove/bond) remains open in the parity tracker. **Known,
   not mine:** `test_density_window.py::test_a_press_outside_the_palette…`
   started failing inside the concurrent panel-compaction session's edits
   (their test comment, their geometry); flagged on the board.
 
 * **chimol: the scene exports as a 3-D model — STL, WRL and glTF, glTF being
-  the PowerPoint one** ([pymol-parity](plugins/pymol-parity.md); user ask
+  the PowerPoint one** ([reference-viewer-parity](plugins/pymol-parity.md); user ask
   "support wrl, stl, glTF — label with for pptx; add in file menu submenu
   export"). New `chimol/io/mesh_export.py` (numpy-only, no deps):
   `scene_mesh_objects` collects the scene **as drawn** — indexed triangle
@@ -3123,10 +3123,10 @@ front, not this).
   green.
 
 * **chimol: the chrome became windows that snap, anchor and remember
-  themselves** ([pymol-parity](plugins/pymol-parity.md); user asks: object
+  themselves** ([reference-viewer-parity](plugins/pymol-parity.md); user asks: object
   ctrl → "Object List" window, mouse settings → separate window, snap to
   corners/sides, remember states between restarts, close buttons everywhere,
-  density panel per-map eye/close). The PyMOL object column and the
+  density panel per-map eye/close). The reference viewer object column and the
   mouse-mode block are `GuiWindow`s now (`objects`/`mouse`), auto-sized to
   content, anchored top-right/bottom-right until dragged; **docked mode
   remains but is off by default** (`self.docked = False`; the splitter tests
@@ -3219,7 +3219,7 @@ front, not this).
   uncommitted file, so the compaction is in the tree and lands with it.)
 
 * **chimol: Hide Dust and the Gaussian filter are ported, under a new Tools
-  menu** ([pymol-parity](plugins/pymol-parity.md); user ask "port useful map
+  menu** ([reference-viewer-parity](plugins/pymol-parity.md); user ask "port useful map
   tools like dust remover, fold into menu; make tools menu with submenus").
   `chimol/geometry/dust.py`: connected components by minimum-label
   propagation with pointer jumping (plain NumPy, no graph library), pieces
@@ -3233,7 +3233,7 @@ front, not this).
   `volume_gaussian` adds it beside the original. The **Tools** menu (Map /
   Measure / Panels submenus, every entry a typeable command) is a declared
   chimol extra: `EXTRA_MENUS` in `menu_bar.py` lets the ordering test hold
-  PyMOL's menus to PyMOL's order while allowing Demo and Tools. **Closed
+  the reference viewer's menus to the reference viewer's order while allowing Demo and Tools. **Closed
   board ticket T-20260811-12 on the way**: the menu tests now expect 'Mouse'
   among the omitted menus, and the stale `__special__`-entry test exercises
   the marker dispatch directly ("Edit All..." became a plain command in the
@@ -3253,7 +3253,7 @@ front, not this).
   builds that model by **walking the live `_DISPLAY_CONFIG`** — 270 rows across
   28 sections — rather than listing rows by hand, so a setting added by a new
   version appears with no code written. A registered `SettingSpec` supplies the
-  PyMOL name and its line of documentation, and registered settings are
+  the reference viewer name and its line of documentation, and registered settings are
   addressed *by name* so their transforms run (`transparency` edits as
   transparency, is stored as `surface.alpha`). Slider tracks come from
   `RANGES`, matched by key **suffix**, so one rule covers every `*_radius`.
@@ -3281,7 +3281,7 @@ front, not this).
   the manifest hid it.
 
 * **chimol: map surfaces have quality presets — the reference viewer's
-  rendering options, ported and named** ([pymol-parity](plugins/pymol-parity.md);
+  rendering options, ported and named** ([reference-viewer-parity](plugins/pymol-parity.md);
   user report "the surface qual does not look good, chimera has different
   quality modes"). New `chimol/geometry/refine.py`: NumPy transcriptions of
   the reference's `smooth.cpp` (`smooth_vertex_positions` — per iteration
@@ -3305,7 +3305,7 @@ front, not this).
   variance-drop with shape-hold, preset triangle counts, panel row).
 
 * **chimol: the map mesh was drawing random chords — the line pipeline
-  ignored indices** ([pymol-parity](plugins/pymol-parity.md); user report
+  ignored indices** ([reference-viewer-parity](plugins/pymol-parity.md); user report
   "the mesh is broken, use chimera to fix"). Root cause was not the mesh at
   all: `WgpuMeshRenderer.interleave_lines` packed `positions` as a
   non-indexed line list and the draw call counted vertices, so
@@ -3353,7 +3353,7 @@ front, not this).
   menu does, and screenshots re-taken for both settings tabs.
 
 * **chimol: `solid` is real volume rendering now, not a wall of cubes**
-  ([pymol-parity](plugins/pymol-parity.md), "0-ante-ante"; user report with
+  ([reference-viewer-parity](plugins/pymol-parity.md), "0-ante-ante"; user report with
   screenshot: "voxel like this make no sense, do it like chimera"). The
   `voxel` style drew a lit opaque box per sample — from any angle an
   impenetrable cube wall. Replaced with the reference viewer's *image/solid*
@@ -3380,7 +3380,7 @@ front, not this).
   `shading.wgsl` + `wgpu_backend.py` which are cleanly separable.
 
 * **chimol: the density controls behave like Chimera's volume panel, and the
-  colour picker works** ([pymol-parity](plugins/pymol-parity.md),
+  colour picker works** ([reference-viewer-parity](plugins/pymol-parity.md),
   "0-ante-ante"; user report "the color picker still does not work"). It
   could not work: the well cycled five presets indexed by *marker number* —
   pressing it repeatedly picked the same colour forever — and the well and
@@ -3403,9 +3403,9 @@ front, not this).
 ## 2026-08-11
 
 * **chimol: density-map contouring is 5–10× faster and the level drag is
-  live** ([pymol-parity](plugins/pymol-parity.md), "0-ante-ante"; user ask
-  "make density plots more performant, look at ChimeraX"). Three habits taken
-  from the ChimeraX checkout (its `contour.cpp` and `arrays.py`, both now
+  live** ([reference-viewer-parity](plugins/pymol-parity.md), "0-ante-ante"; user ask
+  "make density plots more performant, look at the reference volume viewer"). Three habits taken
+  from the reference volume viewer checkout (its `contour.cpp` and `arrays.py`, both now
   carrying `CHISURF-*` headers): the NumPy marching cubes reads the grid in
   its own precision with `uint8` corner cases and samples normals **only at
   surface vertices** (each welded vertex sits on one grid edge, so the
@@ -3413,7 +3413,7 @@ front, not this).
   the crossing fraction — bit-compatible with the old full-grid
   `np.gradient`, pinned by a float64-parity test); `VolumeGrid` memoises
   everything derived from its immutable samples (range, histograms,
-  default levels, the strided copy, the last 4 contours — ChimeraX's
+  default levels, the strided copy, the last 4 contours — the reference volume viewer's
   `matrix_stats` idea); and the drag trades quality for following
   (preview contours under a 2 M-voxel budget, throttled and self-disabling,
   full quality once on release). `set_volume_levels` now swaps only the
@@ -3482,8 +3482,8 @@ front, not this).
   for the grab; `ray` never saw chrome. 12 tests, every decoration
   hit-tested.
 
-* **chimol: C ▸ by element is PyMOL's, and the direction for the UI is set.**
-  `cnc` / `cba` / `cbh` are commands and the submenu is PyMOL's **49** entries,
+* **chimol: C ▸ by element is the reference viewer's, and the direction for the UI is set.**
+  `cnc` / `cba` / `cbh` are commands and the submenu is the reference viewer's **49** entries,
   not one. The old leaf issued `color byelement`, a colour *mode* — a property
   of an **object** — so selecting a side chain repainted the whole protein and
   cleared every per-atom override on the way; reported twice before it was
@@ -3530,7 +3530,7 @@ front, not this).
   segment produced no dashes still drew its number; a measurement's first pick
   drew nothing, and picked atoms now carry the selection marker through
   `set_pick_markers` (not the selection — they never reach `sele`); and the
-  **sequence strip is one row per chain**, labelled in PyMOL's slash syntax
+  **sequence strip is one row per chain**, labelled in the reference viewer's slash syntax
   (`1f5n/A`), because residue numbers restart per chain. The trap in the last
   one: a per-chain row's columns are not the object's residue indices, so the
   rows carry `residue_indices` and are matched by `object_id`, not by label.
@@ -3541,7 +3541,7 @@ front, not this).
 
 * **chimol: click-to-measure, selection levels, and two defects the work
   uncovered.**
-  - **Measurement wizard** ([`wizards.py`](../chisurf/plugins/chimol/chimol/wizards.py)
+  - **Measurement wizard** (`wizards.py`
     `MeasurementWizard`, Wizard ▸ Measurement): click atoms, every 2/3/4 become
     a distance/angle/dihedral. `MolView` gained **one** seam for it — a
     `_wizard_pick` callable that consumes the click — rather than any knowledge
@@ -3549,7 +3549,7 @@ front, not this).
   - **Selection levels** — `mouse_selection_mode` (Atoms / Residues / Chains /
     Objects), cycled by the block's **Selecting** row. That row and
     `MolView.selection_mode` had both been constants: the word was painted and
-    read by nothing. PyMOL's *Segments* and *Molecules* are omitted rather than
+    read by nothing. The reference viewer's *Segments* and *Molecules* are omitted rather than
     faked (no segi is parsed; no molecule exists apart from its object).
   - **`distance` reported scene units** — 258.450 for a 25.845 Å pair, the
     `_scale_factor` of 10 — **and drew its dashes in the wrong place**, because
@@ -3566,7 +3566,7 @@ front, not this).
   Details for all four in [known-issues](references/known-issues.md);
   `docs/guides/44_molecular_viewer.md` documents both features.
 
-* **chimol: the PyMOL/Chimol drag-style toggle removed** at the user's request.
+* **chimol: the reference viewer/Chimol drag-style toggle removed** at the user's request.
   It was already inert — `rotation_delta_multiplier` and
   `pan_delta_multiplier` had **no caller in the tree**, so the toolbar button
   wrote a string into `CameraState._mouse_mode` that was stored and never read,
@@ -3591,7 +3591,7 @@ front, not this).
   it repaints the whole molecule, clears existing per-atom overrides, and on a
   cartoon varies over CA elements (all carbon), so nothing turns CPK. The
   per-atom path that would work, `cmd/presets.py:252` `_color_by_element`,
-  already exists and the menu does not use it; PyMOL's own submenu is **49
+  already exists and the menu does not use it; the reference viewer's own submenu is **49
   entries** (`util.cnc` = CNOS, plus 48 carbon/hydrogen variants), chimol has
   one. (2) The mutagenesis wizard leaves a stale `mutation` row in the Sequence
   strip: `_wizard_finish` refreshes the sequence view *inside* `_wizard_commit`,
@@ -4797,7 +4797,7 @@ front, not this).
   non-GL backends share it. **Two of those tests were measuring the OpenGL
   widget's accidental geometry rather than the framing rule** — an unshown
   `QOpenGLWidget` reports 100x30, so the aspect guard read "no window" and
-  PyMOL's portrait correction never ran; they now construct the case they claim
+  the reference viewer's portrait correction never ran; they now construct the case they claim
   to cover, and the fixture is given a real landscape viewport.
 
   Landed with it: **3-D labels** (`kind == "text"`, painted into the composited
@@ -5140,7 +5140,7 @@ front, not this).
   allocates a target and reads it back. So a picture verified against the GL
   baseline is *the* picture the window shows. Everything a renderer holds
   rather than draws moved to `renderer/camera_state.py`, shared with
-  `SceneSink`; PyMOL's trackball went with it and `qtgl` delegates, because two
+  `SceneSink`; the reference viewer's trackball went with it and `qtgl` delegates, because two
   viewers whose drags turn the molecule by different amounts are two different
   programs and no screenshot comparison catches that -- every frame is
   individually correct.
@@ -5440,7 +5440,7 @@ front, not this).
 
   **Two constants had been transcribed between backends rather than shared, and
   both are now single-sourced** — the hunt found them even though neither was the
-  cause. `renderer/depth_cue.py` holds PyMOL's `SceneSetFog` planes, and
+  cause. `renderer/depth_cue.py` holds the reference viewer's `SceneSetFog` planes, and
   `renderer/lighting.py` holds the light rig; `qtgl` and `wgpu_backend` both read
   them. The WebGPU backend had been carrying a hand-written `DEFAULT_LIGHTING`
   dict described as "matching the OpenGL backend's defaults" that matched nothing:
@@ -5810,7 +5810,7 @@ front, not this).
 
 * **[PRD-87](prds/prd-87.md) closed: HDBSCAN is in the tree, and scikit-learn is out of every manifest.**
   The last of the six estimators — the only one that was genuinely new work — is
-  [`chisurf/core/ml/cluster/_hdbscan.py`](../chisurf/core/ml/cluster/_hdbscan.py): core distances, the
+  `chisurf/core/ml/cluster/_hdbscan.py`: core distances, the
   mutual-reachability minimum spanning tree, the condensed tree and the excess-of-mass selection, with the
   estimator surface scikit-learn spells (`labels_`, `probabilities_`, `cluster_persistence_`) plus the
   standalone package's `prediction_data`, accepted and ignored so no call site had to change. The
@@ -6859,32 +6859,32 @@ front, not this).
 
   The Burst Browser was screenshotted on the ten-measurement `bh_spc132_sm_dna` folder: 2980 bursts, 36 columns, photon indices still `int64` in the table rather than widened to float, and a FRET histogram with the donor-only peak at 0 and the population at ~0.4. The grab also showed the gating panel **clipping "E max" and "Size max"** off its right edge — four spin boxes at their own size hint overflow the panel and the overflow lands on the labels — fixed by capping them.
 
-* **Bond orders for the standard residues, and the second line they draw** ([pymol-parity](plugins/pymol-parity.md)). The first two thirds of valence display, landed and tested but **not yet wired to anything a user sees**. `analysis/bond_orders.py` is the bond-order half of PyMOL's `assign_pdb_known_residue`, transcribed the same way its formal-charge half was earlier today: C=O for any protein residue, ARG CZ=NH1 with CZ-NH2 forced back to single (PYMOL-5019), one oxygen of each carboxylate, both histidine tautomers keyed on the residue name, the aromatic rings Kekulé, the nucleobases and P=O1P. 258 doubles of 1384 bonds on 148L in 4 ms; 3564 of 18434 on 1RTD in 50 ms. A ligand gets none, and PyMOL is in the same position — for a PDB ligand it has orders only from a format that carries them.
-  `geometry/wireframe.py` gained `valence_offsets()` and an `orders=` argument on `bond_line_segments`: a second line *beside* each double bond, offset towards the rest of the molecule so it lands **inside** a ring, which is PyMOL's `valence_mode 1` and is what makes it read as a Kekulé structure rather than two rails. Verified inward on a benzene; a diatomic with no plane to choose falls back to any perpendicular rather than drawing on top of itself. 13 tests; the existing wireframe suites are unchanged because passing no orders takes the original path byte for byte.
-  **What is left is the wiring** — where the orders get computed and stored, a `valence` setting (PyMOL uses a per-bond `set_bond`, which chimol has no equivalent of), `_update_lines` passing them through, sticks as well as lines, and striking the two `DISABLED_ENTRIES`. Written up as step 0-bis of the parity resume point, with the order to do it in.
+* **Bond orders for the standard residues, and the second line they draw** ([reference-viewer-parity](plugins/pymol-parity.md)). The first two thirds of valence display, landed and tested but **not yet wired to anything a user sees**. `analysis/bond_orders.py` is the bond-order half of the reference viewer's `assign_pdb_known_residue`, transcribed the same way its formal-charge half was earlier today: C=O for any protein residue, ARG CZ=NH1 with CZ-NH2 forced back to single (reference-viewer-5019), one oxygen of each carboxylate, both histidine tautomers keyed on the residue name, the aromatic rings Kekulé, the nucleobases and P=O1P. 258 doubles of 1384 bonds on 148L in 4 ms; 3564 of 18434 on 1RTD in 50 ms. A ligand gets none, and the reference viewer is in the same position — for a PDB ligand it has orders only from a format that carries them.
+  `geometry/wireframe.py` gained `valence_offsets()` and an `orders=` argument on `bond_line_segments`: a second line *beside* each double bond, offset towards the rest of the molecule so it lands **inside** a ring, which is the reference viewer's `valence_mode 1` and is what makes it read as a Kekulé structure rather than two rails. Verified inward on a benzene; a diatomic with no plane to choose falls back to any perpendicular rather than drawing on top of itself. 13 tests; the existing wireframe suites are unchanged because passing no orders takes the original path byte for byte.
+  **What is left is the wiring** — where the orders get computed and stored, a `valence` setting (the reference viewer uses a per-bond `set_bond`, which chimol has no equivalent of), `_update_lines` passing them through, sticks as well as lines, and striking the two `DISABLED_ENTRIES`. Written up as step 0-bis of the parity resume point, with the order to do it in.
 
-* **`h_add`, `donors`/`acceptors` and `byring` — three refusals for work that was already done** ([pymol-parity](plugins/pymol-parity.md), [molecular viewer guide](../docs/guides/44_molecular_viewer.md)). Continuing the sweep that found `origin`, `cell` and `symexp`: `A ▸ hydrogens ▸ add` was disabled as "no structure editing" while `h_add` sat in `cmd/editing.py` (1325 hydrogens on 148L in 0.6 s, with the six untemplated ligands reported); `donors`/`acceptors` were refused as "needing assigned chemistry" that `analysis.hbonds.type_atoms` had been assigning all along for every polar-contact search — 278 and 261 on 148L; and `byring` was refused for want of a ring finder that the pi-interaction work had written hours earlier.
-  `byring` uses **every** ring, not the planar ones: it is a question about connectivity, and a proline is as much a ring as a phenylalanine. One trap taken from the source — PyMOL *clears* the mask before its ring finder runs (`std::fill_n` in `SELE_RING`), so an atom in no ring is dropped: `byring (name CA)` is 15 atoms (the prolines), not 177.
+* **`h_add`, `donors`/`acceptors` and `byring` — three refusals for work that was already done** ([reference-viewer-parity](plugins/pymol-parity.md), [molecular viewer guide](../docs/guides/44_molecular_viewer.md)). Continuing the sweep that found `origin`, `cell` and `symexp`: `A ▸ hydrogens ▸ add` was disabled as "no structure editing" while `h_add` sat in `cmd/editing.py` (1325 hydrogens on 148L in 0.6 s, with the six untemplated ligands reported); `donors`/`acceptors` were refused as "needing assigned chemistry" that `analysis.hbonds.type_atoms` had been assigning all along for every polar-contact search — 278 and 261 on 148L; and `byring` was refused for want of a ring finder that the pi-interaction work had written hours earlier.
+  `byring` uses **every** ring, not the planar ones: it is a question about connectivity, and a proline is as much a ring as a phenylalanine. One trap taken from the source — the reference viewer *clears* the mask before its ring finder runs (`std::fill_n` in `SELE_RING`), so an atom in no ring is dropped: `byring (name CA)` is 15 atoms (the prolines), not 177.
   The pattern in all six is the same: **capability and surface land separately and nothing pairs them up again.** The command or the analysis arrives; the menu entry or the parser branch keeps its refusal, and the refusal is what the user sees. `DISABLED_ENTRIES` pins the menu half; `_UNSUPPORTED_FLAGS` in `cmd/sele_parser.py` is the same list for the selector and is worth re-reading whenever that area is touched. 147 selection tests, 284 across the menu and chemistry suites.
 
-* **Correction: the missing ligand ring is not a gap against PyMOL** ([pymol-parity](plugins/pymol-parity.md), [molecular viewer guide](../docs/guides/44_molecular_viewer.md)). Earlier today the pi-interaction work recorded "an untemplated ligand's aromatic ring is not found; PyMOL, with its chemistry pass, does find those". Checking the source afterwards shows that is wrong in both halves. `ObjectMoleculeGetAtomGeometry` runs its cross products only for **three** neighbours — two neighbours detect *linear* and nothing else — and `InferChemFromBonds` consumes bond orders that a PDB ligand does not carry, so PyMOL misses the same rings for the same reason.
+* **Correction: the missing ligand ring is not a gap against the reference viewer** ([reference-viewer-parity](plugins/pymol-parity.md), [molecular viewer guide](../docs/guides/44_molecular_viewer.md)). Earlier today the pi-interaction work recorded "an untemplated ligand's aromatic ring is not found; the reference viewer, with its chemistry pass, does find those". Checking the source afterwards shows that is wrong in both halves. `ObjectMoleculeGetAtomGeometry` runs its cross products only for **three** neighbours — two neighbours detect *linear* and nothing else — and `InferChemFromBonds` consumes bond orders that a PDB ligand does not carry, so the reference viewer misses the same rings for the same reason.
   What actually decides it is **hydrogens**. Measured on built geometry: two stacked benzenes give 0 planar atoms and no stacking without them, 12 planar atoms and a face-to-face pair with them — three neighbours is what makes flatness measurable. So the answer for a user is to load the hydrogenated structure, and the real open item is `h_add`, which chimol does not have (`A ▸ hydrogens ▸ add` is one of the 22 disabled entries). Guide, concept and the test comment corrected; `test_a_ligand_ring_needs_its_hydrogens` measures both halves so the claim cannot rot again.
 
-* **Three menu entries were disabled with reasons that had stopped being true, and one of them hid a real bug** ([pymol-parity](plugins/pymol-parity.md)). A greyed-out entry with a reason is the honest way to show a gap, but only while the reason holds — and nothing re-checks them. Sweeping the 26 disabled leaves found `origin`, `generate ▸ symmetry mates` and `S/H ▸ cell` all claiming capabilities chimol had: `symexp` has been in `cmd/symmetry.py` under 53 tests the whole time.
+* **Three menu entries were disabled with reasons that had stopped being true, and one of them hid a real bug** ([reference-viewer-parity](plugins/pymol-parity.md)). A greyed-out entry with a reason is the honest way to show a gap, but only while the reason holds — and nothing re-checks them. Sweeping the 26 disabled leaves found `origin`, `generate ▸ symmetry mates` and `S/H ▸ cell` all claiming capabilities chimol had: `symexp` has been in `cmd/symmetry.py` under 53 tests the whole time.
   `cell` was worse than stale — the command existed and **did not work**. It tested `state.symmetry` directly rather than going through `_symmetry_for`, the resolver that falls back to the file's `CRYST1` record and then the space-group table, so it only ever drew after an explicit `set_symmetry` while `symexp` on the same object expanded straight from the file. Two paths to one answer, and the wrong one reported the record missing while it sat in the file on screen. Fixed by resolving and writing the result back, since the renderer reads `state.symmetry` too; two regression tests in `test_symmetry.py` (55 pass).
   `DISABLED_ENTRIES` in `test_menu_coverage.py` now pins the set at 22 leaves and fails both ways: a new disabled entry has to be added deliberately, and one that gains a command has to be struck. The menu-action sweep also grew a *narrow* exemption — matched on the message "carries no unit cell", not on the entry — because its fixture is a solvated fragment with no CRYST1 and refusing with a reason is the correct answer there. 268 pass across the menu suites.
 
-* **Contacts between chains, disulfides, and an `origin` entry that was lying** ([pymol-parity](plugins/pymol-parity.md), [molecular viewer guide](../docs/guides/44_molecular_viewer.md)). `interchain_distances` is PyMOL's `util.interchain_distances`: a distance search over every pair of chains, collected under one name — 28 pairs and 141 contacts on 1RTD at 4 Å, 190 polar. It required splitting `_distance_set` into `_distance_segments`, since PyMOL accumulates into a named distance object across calls while chimol's named measurements replace, so the accumulation has to happen before the drawing. Typing the molecule once instead of once per chain pair took the polar mode from **5.4 s to 2.4 s** — 28 passes over 17784 atoms for an answer that cannot change between them.
-  `disulfides` is PyMOL's expression verbatim (`byres` over `SG` atoms `bound_to` another `SG`, narrowed to `CA+CB+SG`), which chimol's selector already answers.
+* **Contacts between chains, disulfides, and an `origin` entry that was lying** ([reference-viewer-parity](plugins/pymol-parity.md), [molecular viewer guide](../docs/guides/44_molecular_viewer.md)). `interchain_distances` is the reference viewer's `util.interchain_distances`: a distance search over every pair of chains, collected under one name — 28 pairs and 141 contacts on 1RTD at 4 Å, 190 polar. It required splitting `_distance_set` into `_distance_segments`, since the reference viewer accumulates into a named distance object across calls while chimol's named measurements replace, so the accumulation has to happen before the drawing. Typing the molecule once instead of once per chain pair took the polar mode from **5.4 s to 2.4 s** — 28 passes over 17784 atoms for an answer that cannot change between them.
+  `disulfides` is the reference viewer's expression verbatim (`byres` over `SG` atoms `bound_to` another `SG`, narrowed to `CA+CB+SG`), which chimol's selector already answers.
   The third is a different kind of defect: **`origin` was disabled with a reason that had stopped being true**. The command has existed in `rendering.py` for some time and the menu still said it was not implemented. A disabled entry is only honest while its reason holds, and nothing re-checks them — worth a sweep, not just this fix. Four more tests (26 in `test_interaction_finders.py`; the commit message says 30, which was a miscount), 290 pass across the menu and measurement suites.
 
-* **Halogen bonds, salt bridges and pi interactions — the three disabled `find` entries are closed** ([pymol-parity](plugins/pymol-parity.md), [molecular viewer guide](../docs/guides/44_molecular_viewer.md)). The A-list called `layer3/Interactions.h` "one small file that closes three menu entries" and that was accurate: the criteria are literals and each algorithm is about a page. They are reached the way PyMOL reaches them — `distance ... mode=9` / `mode=10` / `mode=5,6,7` and the `pi_interactions` command — so the menu entries carry PyMOL's own command strings.
-  The load-bearing part is none of the three finders but **formal charge**: a salt bridge is "two heavy atoms of opposite formal charge within 5 Å" and a PDB file carries no charges. PyMOL fills them in from nomenclature (`assign_pdb_known_residue`) and the table is transcribed with its asymmetries intact, because they *are* the correctness — one oxygen of a carboxylate, one nitrogen of a guanidinium (`NH2` explicitly pinned to zero), and **a plain `HIS` is neutral** since only `HIP`/`HISP`/`HISH` are charged. Charging both halves of a carboxylate double-counts every bridge; guessing histidine's protonation is a decision PyMOL declines to make.
+* **Halogen bonds, salt bridges and pi interactions — the three disabled `find` entries are closed** ([reference-viewer-parity](plugins/pymol-parity.md), [molecular viewer guide](../docs/guides/44_molecular_viewer.md)). The A-list called `layer3/Interactions.h` "one small file that closes three menu entries" and that was accurate: the criteria are literals and each algorithm is about a page. They are reached the way the reference viewer reaches them — `distance ... mode=9` / `mode=10` / `mode=5,6,7` and the `pi_interactions` command — so the menu entries carry the reference viewer's own command strings.
+  The load-bearing part is none of the three finders but **formal charge**: a salt bridge is "two heavy atoms of opposite formal charge within 5 Å" and a PDB file carries no charges. The reference viewer fills them in from nomenclature (`assign_pdb_known_residue`) and the table is transcribed with its asymmetries intact, because they *are* the correctness — one oxygen of a carboxylate, one nitrogen of a guanidinium (`NH2` explicitly pinned to zero), and **a plain `HIS` is neutral** since only `HIP`/`HISP`/`HISH` are charged. Charging both halves of a carboxylate double-counts every bridge; guessing histidine's protonation is a decision the reference viewer declines to make.
   Measured: 148L gives 10 salt bridges (2.8–4.8 Å), 1RTD gives 129 plus 71 pi interactions of which 17 are face-to-face — consecutive and cross-strand DNA bases at 3.5–4.2 Å, which is base stacking and is the check that the pi arm works. 148L has no pi-pi at all (its closest aromatic pair is 5.9 Å, past the 5.5 Å bound), so zero there is the right answer.
   Two things to keep. The **vector conventions are a silent trap**: `TestHalogenBondDonor` takes X→A and X→D, both pointing away from the atom whose angle is measured, and reversing either measures 180 minus the angle meant — which passes a bent geometry, rejects a straight one, and reads perfectly plausibly. It was caught only because the test built its geometry from the angle it wanted. And **a ring is planar because a template says so**: chimol has no bond orders and a two-neighbour carbon carries no angle that separates sp2 from sp3, so every aromatic side chain and nucleobase is found (18 rings in 148L, counting each TRP's two) but an untemplated **ligand's** aromatic ring is not. That is the next gap here and the fix is bond orders, not a wider ring finder.
   22 tests in `chisurf/plugins/chimol/test/test_interaction_finders.py`; 294 more pass across the menu and measurement suites. The menu was screenshotted: both entries are live and the pi submenu opens beside its parent.
 
-* **`ray` framed the widget instead of the viewport** ([pymol-parity](plugins/pymol-parity.md), [molecular viewer guide](../docs/guides/44_molecular_viewer.md)). Standing item 0c, open since 2026-08-06 and inherited by every headless screenshot of chimol: `orient` then `ray` put the molecule off-centre and small. Neither the camera nor the tracer was wrong — `ray` with no size defaulted to the **whole GL widget**, while the viewport draws the scene into what is left after the panel's column and the sequence viewer's band. The trace therefore covered a wider field than the screen and centred the molecule in it. Measured on a 998x583 widget: **59 %** of the traced width against **70 %** on screen, displaced towards the panel. PyMOL's default is taken "from the current viewpoint", which is that rectangle; its second rule was also wrong here — given one dimension the other must "preserve the current aspect ratio", and chimol used a fixed 4:3. `MolView.scene_pixel_size()` now answers it in device pixels, so a default trace and a screenshot match on a retina display. After the fix the traced bounding box agrees with the viewport's to **0.003 of the frame** in every direction.
+* **`ray` framed the widget instead of the viewport** ([reference-viewer-parity](plugins/pymol-parity.md), [molecular viewer guide](../docs/guides/44_molecular_viewer.md)). Standing item 0c, open since 2026-08-06 and inherited by every headless screenshot of chimol: `orient` then `ray` put the molecule off-centre and small. Neither the camera nor the tracer was wrong — `ray` with no size defaulted to the **whole GL widget**, while the viewport draws the scene into what is left after the panel's column and the sequence viewer's band. The trace therefore covered a wider field than the screen and centred the molecule in it. Measured on a 998x583 widget: **59 %** of the traced width against **70 %** on screen, displaced towards the panel. The reference viewer's default is taken "from the current viewpoint", which is that rectangle; its second rule was also wrong here — given one dimension the other must "preserve the current aspect ratio", and chimol used a fixed 4:3. `MolView.scene_pixel_size()` now answers it in device pixels, so a default trace and a screenshot match on a retina display. After the fix the traced bounding box agrees with the viewport's to **0.003 of the frame** in every direction.
   A trap for whoever measures this next: use a **colour** mask, not a brightness threshold. The viewport grab contains the panel's chrome, which is bright and reaches the edges, so a `> 25` mask reports the molecule's box as the whole image and the two framings look identical when they are not.
   Two tests in `chisurf/plugins/chimol/test/test_ray_command.py`; 56 pass across the ray and export suites.
 
@@ -7034,10 +7034,10 @@ front, not this).
 
   **The bug the tests found is the more useful half.** `FileUID` is the one element rewritten in place — when an object outgrows its room it is written afresh with a new uid and the old one written back over it — and it was written at the *minimal* width for its value. A narrower replacement left the tail of the old element behind, so `PtoKind` and `PtoEncoding` were then read from the wrong offset and the object came back with an empty encoding. Narrowing uids to 53 bits for the JavaScript and R bindings made it *more* likely, not less: about 3% of relocations. It surfaced once in a full-file run and passed on every rerun. Fixed by writing `FileUID` at a fixed eight octets, pinned by a test that walks the EBML rather than scanning for the id — an eighteen-megabyte payload contains every two-byte sequence.
 
-* **The mutagenesis wizard previews rotamers as *states*, PyMOL's way, and that is what made it fast** ([pymol-parity](plugins/pymol-parity.md), [molecular viewer guide](../docs/guides/44_molecular_viewer.md)). The wizard's first form rebuilt the residue inside the source object on every step: correct, undoable, and **2.2 s per step** on a 1363-atom protein, because rebuilding a residue runs `set_structure` over the whole molecule and re-bakes ambient occlusion for 1349 atoms that did not move. The reported symptom was "super slow", and the suggested fix was numba; the profile says the arithmetic was never the cost — building all 81 rotamers of the largest residue is **28 ms** and scoring them **97 ms**. PyMOL's `do_library` removes the cost by design: one object called `mutation`, `cmd.create(obj, frag, 1, state)` per rotamer, and stepping is a state change. Ported: **build a target 2881 → 320 ms, step a rotamer 2172 → 32 ms**, same Python. `Clear`/`Done` became a delete instead of a restore, since the source is never touched.
-  Three chimol-specific faults had to be fixed for a separate object to work, none visible in PyMOL's model: the preview must share the source's frame (`set_frames(..., share_frame_with=)`) or a 14-atom residue is drawn at the centre of the scene; its states must be **its own** (`_select_state_frame` on the preview) because chimol's timeline is global and asking the whole scene for state 7 re-derives the scene bounds from the 14-atom object; and the **camera must be held** across every wizard action (`get_view_state`/`set_view_state`), which PyMOL needs only `auto_zoom 0` for.
+* **The mutagenesis wizard previews rotamers as *states*, the reference viewer's way, and that is what made it fast** ([reference-viewer-parity](plugins/pymol-parity.md), [molecular viewer guide](../docs/guides/44_molecular_viewer.md)). The wizard's first form rebuilt the residue inside the source object on every step: correct, undoable, and **2.2 s per step** on a 1363-atom protein, because rebuilding a residue runs `set_structure` over the whole molecule and re-bakes ambient occlusion for 1349 atoms that did not move. The reported symptom was "super slow", and the suggested fix was numba; the profile says the arithmetic was never the cost — building all 81 rotamers of the largest residue is **28 ms** and scoring them **97 ms**. The reference viewer's `do_library` removes the cost by design: one object called `mutation`, `cmd.create(obj, frag, 1, state)` per rotamer, and stepping is a state change. Ported: **build a target 2881 → 320 ms, step a rotamer 2172 → 32 ms**, same Python. `Clear`/`Done` became a delete instead of a restore, since the source is never touched.
+  Three chimol-specific faults had to be fixed for a separate object to work, none visible in the reference viewer's model: the preview must share the source's frame (`set_frames(..., share_frame_with=)`) or a 14-atom residue is drawn at the centre of the scene; its states must be **its own** (`_select_state_frame` on the preview) because chimol's timeline is global and asking the whole scene for state 7 re-derives the scene bounds from the 14-atom object; and the **camera must be held** across every wizard action (`get_view_state`/`set_view_state`), which reference viewer needs only `auto_zoom 0` for.
   That last one cost an hour to the wrong diagnosis and is recorded as a standing correction: successive screenshots looked **dark**, which reads as a lighting or occlusion regression, so that is what was instrumented — and the instrumentation proved the scene data byte-identical across steps. The molecule was receding. A frame that dims after an interaction is a **camera** report first.
-  Also from looking at the picture: a clash was drawn as a line from atom centre to atom centre, and in a crowded site that is a scribble across the whole residue. PyMOL's `SculptCGOBump` draws a short mark about the **contact point** — the position dividing the pair in proportion to their radii — with its *radius* carrying the depth of the overlap. Transcribed as `clashes.bump_geometry`.
+  Also from looking at the picture: a clash was drawn as a line from atom centre to atom centre, and in a crowded site that is a scribble across the whole residue. The reference viewer's `SculptCGOBump` draws a short mark about the **contact point** — the position dividing the pair in proportion to their radii — with its *radius* carrying the depth of the overlap. Transcribed as `clashes.bump_geometry`.
   29 tests in `chisurf/plugins/chimol/test/test_interactions.py`, including a new one that asserts the view state is unchanged across `wizard target` and two `wizard rotamer, next` — the guardrail for the fault that was misread as darkness.
 
 * **The documentation assistant, measured against a real model — and the four things that only showed there** ([LLM agent](subsystems/llm-agent.md), [documentation browser](subsystems/documentation-browser.md)).
@@ -7066,19 +7066,19 @@ front, not this).
 
   Deferred with the fix written down: embedding still reads the file into memory, because tttrlib exposes no streaming `add_file` ([known issues](references/known-issues.md)). The seam already prefers it when present.
 
-* **Hydrogen-bond networks, a clash check and residue mutation** ([PyMOL parity](plugins/pymol-parity.md)).
+* **Hydrogen-bond networks, a clash check and residue mutation** ([reference-viewer parity](plugins/pymol-parity.md)).
 
-  Three requests, three different relationships to PyMOL.
+  Three requests, three different relationships to the reference viewer.
 
-  **Networks are not PyMOL's at all.** It finds polar contacts and draws them as one undifferentiated bundle; which of them belong together is left to the eye, and the eye is what misses a four-bond water-mediated path. The contacts are unchanged — the transcribed finder, same settings — and `hbond_network` adds the grouping: connected components over "these two bonds share an atom", each in its own colour, each described by what it spans. Water may bridge two halves, be excluded, or be the whole question (the wire). ChimeraX does not name a network either.
+  **Networks are not the reference viewer's at all.** It finds polar contacts and draws them as one undifferentiated bundle; which of them belong together is left to the eye, and the eye is what misses a four-bond water-mediated path. The contacts are unchanged — the transcribed finder, same settings — and `hbond_network` adds the grouping: connected components over "these two bonds share an atom", each in its own colour, each described by what it spans. Water may bridge two halves, be excluded, or be the whole question (the wire). The reference volume viewer does not name a network either.
 
-  **The clash check is PyMOL's, and it is not a command there** — it is the bump check inside the mutagenesis wizard. Transcribed from `Sculpt.cpp`: the hb-overlap allowances (without which every hydrogen bond reports as a clash), the exclusion arms (1-2 and 1-3 out, a 1-4 pair scored but *never drawn* — `SculptCGOBump` is called only in the unexcluded arm), and the green-to-red colour. The radii are PyMOL's `ElementTable`, not the reader's force-field radii: on 148L that is 15 deep overlaps against 862, which is the measurement that decided the design.
+  **The clash check is the reference viewer's, and it is not a command there** — it is the bump check inside the mutagenesis wizard. Transcribed from `Sculpt.cpp`: the hb-overlap allowances (without which every hydrogen bond reports as a clash), the exclusion arms (1-2 and 1-3 out, a 1-4 pair scored but *never drawn* — `SculptCGOBump` is called only in the unexcluded arm), and the green-to-red colour. The radii are the reference viewer's `ElementTable`, not the reader's force-field radii: on 148L that is 15 deep overlaps against 862, which is the measurement that decided the design.
 
-  **Mutation is PyMOL's loop with PyMOL's data.** `do_library` — fragment onto the backbone, one state per rotamer, bump-check each, start on the least strained — with the fragments and the rotamer library *generated* from the reference checkout rather than re-derived, the same pattern the 547 space groups use. The fit residual is absorbed as a translation onto CA so it lands in the N-CA-CB angle instead of stretching the CA-CB bond, and the side chain is scored with its own bonds or a tryptophan strains 60 before touching anything. Validated by the identity rebuild: every residue of 148L mutated into itself, the library's best rotamer landing **0.50 Å** from the deposited side chain on average, 31 of 33 within 1 Å.
+  **Mutation is the reference viewer's loop with the reference viewer's data.** `do_library` — fragment onto the backbone, one state per rotamer, bump-check each, start on the least strained — with the fragments and the rotamer library *generated* from the reference checkout rather than re-derived, the same pattern the 547 space groups use. The fit residual is absorbed as a translation onto CA so it lands in the N-CA-CB angle instead of stretching the CA-CB bond, and the side chain is scored with its own bonds or a tryptophan strains 60 before touching anything. Validated by the identity rebuild: every residue of 148L mutated into itself, the library's best rotamer landing **0.50 Å** from the deposited side chain on average, 31 of 33 within 1 Å.
 
   All three are in the A ▸ find submenu and the viewer guide.
 
-  **And mutation got PyMOL's simplest GUI**: the wizard panel. `Wizard.get_panel()` is rows of `[code, label, action]` — a banner, buttons, pop-ups — drawn under the object list, with the prompt in the top-left of the scene; three codes, and every wizard PyMOL ships is built from them. That vocabulary is transcribed, and the mutagenesis wizard is its first user, because choosing a rotamer means looking at each one. It previews **in place** rather than as states of a separate object (milliseconds per rebuild, one fewer object to explain) and keeps a copy of the original rows so `Clear` and `Done` put the residue back atom for atom. The prompt sits below the sequence strip: at the window's own top edge it lands on the residue numbers, which only a screenshot shows. Open: the backbone-dependent rotamer library (written, not shipped), and PyMOL's other four wizards, which is why the Wizard menu lists one entry rather than five with four disabled.
+  **And mutation got the reference viewer's simplest GUI**: the wizard panel. `Wizard.get_panel()` is rows of `[code, label, action]` — a banner, buttons, pop-ups — drawn under the object list, with the prompt in the top-left of the scene; three codes, and every wizard the reference viewer ships is built from them. That vocabulary is transcribed, and the mutagenesis wizard is its first user, because choosing a rotamer means looking at each one. It previews **in place** rather than as states of a separate object (milliseconds per rebuild, one fewer object to explain) and keeps a copy of the original rows so `Clear` and `Done` put the residue back atom for atom. The prompt sits below the sequence strip: at the window's own top edge it lands on the residue numbers, which only a screenshot shows. Open: the backbone-dependent rotamer library (written, not shipped), and the reference viewer's other four wizards, which is why the Wizard menu lists one entry rather than five with four disabled.
 
 * **The documentation is now a corpus the assistant can navigate, and it can be asked questions** ([documentation browser](subsystems/documentation-browser.md), [LLM agent](subsystems/llm-agent.md)).
 
@@ -7118,11 +7118,11 @@ front, not this).
 
 * **`@njit(nopython=True)` warned on every start.** `njit` *is* `jit(nopython=True)`, so numba emits `RuntimeWarning: nopython is set for njit and is ignored` — twice in a normal startup, from `core/fluorescence/burst/bocpd.py` and `chimol/analysis/ss.py` (5 decorators). Argument dropped; the kernels recompile and still give the same answers (`_logsumexp` against `np.log(np.exp(x).sum())`, `_model_hydrogen_nb` on a known triangle). The `nb.jit(nopython=True, …)` sites elsewhere are correct as written and untouched — the warning is specific to `njit`.
 
-* **A long menu scrolls; it stopped wrapping into columns** ([PyMOL parity](plugins/pymol-parity.md)).
+* **A long menu scrolls; it stopped wrapping into columns** ([reference-viewer parity](plugins/pymol-parity.md)).
 
   Reported as "the arrangement of the menu does not make sense", against a small window where the Action menu had broken into two columns. A column break lands wherever the window height happens to put it, so the entries read as one list snapped in an arbitrary place — and the separators were dropped on top of that to keep the columns aligned, which removes the grouping that is most of what the order says. It also detached the submenus: the child was placed beside the *menu*, so a row in the second column opened its child far to the left of itself.
 
-  PyMOL never wraps — `CPopUp::release` takes the scroll buttons and translates the pop-up, one column always — and neither does chimol now, with two deliberate improvements: the wheel scrolls by a **row** (PyMOL's ten pixels is not a multiple of the row height, so every notch sliced the rows at both edges), snapped to the nearest entry boundary because a five-pixel separator puts everything below it off the row grid; and the title row carries `▴▾` when there is more in that direction, since a menu silently cut off at the window edge is the fault the wrapping was trying to answer. The menu height is a whole number of rows for the same reason. Verified on a 638×374 viewport: one column, groups intact, `preset` opening beside its own row.
+  The reference viewer never wraps — `CPopUp::release` takes the scroll buttons and translates the pop-up, one column always — and neither does chimol now, with two deliberate improvements: the wheel scrolls by a **row** (the reference viewer's ten pixels is not a multiple of the row height, so every notch sliced the rows at both edges), snapped to the nearest entry boundary because a five-pixel separator puts everything below it off the row grid; and the title row carries `▴▾` when there is more in that direction, since a menu silently cut off at the window edge is the fault the wrapping was trying to answer. The menu height is a whole number of rows for the same reason. Verified on a 638×374 viewport: one column, groups intact, `preset` opening beside its own row.
 
 * **Every table now enters HDF5 as columns, and the frame writers are gone** ([PRD-82](prds/prd-82.md), [columnar store](subsystems/columnar-store.md), [known issues](references/known-issues.md)).
 
@@ -7138,17 +7138,17 @@ front, not this).
 
   Compression is dropped rather than probed: gzip costs roughly thirty times the write to save eight percent of the size, on files written once per analysis and read repeatedly. The sampling guide's "four times smaller, compressed" claim was re-measured and corrected to three times, uncompressed.
 
-* **The PyMOL checkout is now a ranked worklist, and three selection faults are fixed** ([PyMOL parity](plugins/pymol-parity.md), [reference checkouts](workflows/reference-checkouts.md)).
+* **The reference viewer checkout is now a ranked worklist, and three selection faults are fixed** ([reference-viewer parity](plugins/pymol-parity.md), [reference checkouts](workflows/reference-checkouts.md)).
 
   Reported as "middle mouse too sensitive", "the rect select does not show the selection", and "selection in seq and view must correspond — always".
 
-  **The marker.** PyMOL's indicator is three concentric filled squares at every selected *atom* — pink `(1.0, 0.2, 0.6)` at the full width, black at half, white in the middle — sized by `selection_width_scale * stick_radius / vScale` clamped to 3..10 px. chimol drew a thin ring at each *residue* in the shipped config's yellow, argued for as Chimera's outline: the middle of a ring is only covered when the marker is depth-tested against the geometry it hugs, this one is an overlay, and one point per residue had nothing to hug. Transcribed as one shader pass with PyMOL's own ratios, and carried to existing installs by display-config migration 10 — the default alone would have reached nobody, because a user's `chimol_display.json` is written once and never refreshed.
+  **The marker.** the reference viewer's indicator is three concentric filled squares at every selected *atom* — pink `(1.0, 0.2, 0.6)` at the full width, black at half, white in the middle — sized by `selection_width_scale * stick_radius / vScale` clamped to 3..10 px. chimol drew a thin ring at each *residue* in the shipped config's yellow, argued for as Chimera's outline: the middle of a ring is only covered when the marker is depth-tested against the geometry it hugs, this one is an overlay, and one point per residue had nothing to hug. Transcribed as one shader pass with the reference viewer's own ratios, and carried to existing installs by display-config migration 10 — the default alone would have reached nobody, because a user's `chimol_display.json` is written once and never refreshed.
 
   **Correspondence.** `refresh_selection_highlight` filtered scene objects on `id != "selection"` while every object is prefixed with its object id, so the stale marker was never removed and a fresh unprefixed one was appended beside it; deselecting left the markers on screen and a second molecule's selection was never drawn at all. And `set_selected_residues` — what both sequence views call — assigned state and emitted nothing, so the viewport strip and the docked list showed different selections of one molecule. Both now go through `_apply_selection_indices`, the one place the selection changes.
 
-  **Panning.** PyMOL's `cButModeTransXY` translates by `delta * vScale` with the *same* scale on both axes (`SceneGetScreenVertexScale` = `depth·2tan(fov/2)/Height`). chimol multiplied the horizontal scale by the aspect ratio on top of that — the aspect counted twice — so horizontal panning ran 1.7× the cursor on the reporting viewport.
+  **Panning.** the reference viewer's `cButModeTransXY` translates by `delta * vScale` with the *same* scale on both axes (`SceneGetScreenVertexScale` = `depth·2tan(fov/2)/Height`). chimol multiplied the horizontal scale by the aspect ratio on top of that — the aspect counted twice — so horizontal panning ran 1.7× the cursor on the reporting viewport.
 
-  **The survey.** Reading a reference file is expensive and *deciding what to read* was more so, because nothing recorded it: 25 of 480 files read, and no way to tell which of the remaining 455 would repay it. The whole PyMOL preset is now triaged — each file carries `CHISURF-SURVEYED` and `CHISURF-VALUE: <rank> <facets> -- …`, ranked A–D **for ChiSurf** across ux/gui/feature/render/data/perf. 36 are rank A. `reference_coverage` counts the two depths separately (a survey must not inflate the one number that says whether a source is exhausted) and prints the worklist; `reference_annotate` is the new tool that digests a directory and writes the headers. Header only: `git diff` inside the checkout is 2593 insertions, **0 deletions**, across 464 files.
+  **The survey.** Reading a reference file is expensive and *deciding what to read* was more so, because nothing recorded it: 25 of 480 files read, and no way to tell which of the remaining 455 would repay it. The whole the reference viewer preset is now triaged — each file carries `CHISURF-SURVEYED` and `CHISURF-VALUE: <rank> <facets> -- …`, ranked A–D **for ChiSurf** across ux/gui/feature/render/data/perf. 36 are rank A. `reference_coverage` counts the two depths separately (a survey must not inflate the one number that says whether a source is exhausted) and prints the worklist; `reference_annotate` is the new tool that digests a directory and writes the headers. Header only: `git diff` inside the checkout is 2593 insertions, **0 deletions**, across 464 files.
 
 * **Spanish and Portuguese join the shipped locales** ([i18n](subsystems/i18n.md)).
 
@@ -7210,19 +7210,19 @@ front, not this).
 
   `docs-html` warning-free; render + crosslinks 251 passed.
 
-* **The in-viewport panel had no mouse tracking, so every hover behaviour was dead** ([PyMOL parity](plugins/pymol-parity.md)).
+* **The in-viewport panel had no mouse tracking, so every hover behaviour was dead** ([reference-viewer parity](plugins/pymol-parity.md)).
 
   Reported as "submenus overlap and don't collapse when the mouse leaves", plus "rect select does not work" and "show the side menu even with nothing loaded". The first two were each several faults deep.
 
-  **Menus.** Qt delivers a mouse move to a widget without `setMouseTracking(True)` only while a button is held, and the GL widget never set it — so no row highlight, no menu-entry highlight, and no hover-open. A submenu could only be opened by *clicking* it, and nothing ever told the panel the cursor had left, so they piled up. `InternalGui.mouse_move` was covered by tests and correct; the tests call it directly, and nothing called it in the app. On top of that, placement clamped a submenu into the window instead of flipping it to the other side — with the panel docked against the right edge, that put every submenu on top of its own parent. Both halves are now PyMOL's (`layer4/PopUp.cpp`, `layer1/Pop.cpp`): `PopPlaceChild`'s try-preferred-side-then-flip with an inherited `PlacementAffinity`, the child's first entry aligned with the row it hangs off, and the child freed as soon as the cursor is on another row. One deliberate difference: PyMOL waits `cChildDelay` (0.25 s) before closing, for sloppy mousing; chimol closes immediately, which is affordable only because the child sits adjacent to the row.
+  **Menus.** Qt delivers a mouse move to a widget without `setMouseTracking(True)` only while a button is held, and the GL widget never set it — so no row highlight, no menu-entry highlight, and no hover-open. A submenu could only be opened by *clicking* it, and nothing ever told the panel the cursor had left, so they piled up. `InternalGui.mouse_move` was covered by tests and correct; the tests call it directly, and nothing called it in the app. On top of that, placement clamped a submenu into the window instead of flipping it to the other side — with the panel docked against the right edge, that put every submenu on top of its own parent. Both halves are now the reference viewer's (`layer4/PopUp.cpp`, `layer1/Pop.cpp`): `PopPlaceChild`'s try-preferred-side-then-flip with an inherited `PlacementAffinity`, the child's first entry aligned with the row it hangs off, and the child freed as soon as the cursor is on another row. One deliberate difference: the reference viewer waits `cChildDelay` (0.25 s) before closing, for sloppy mousing; chimol closes immediately, which is affordable only because the child sits adjacent to the row.
 
   **Box select.** Three independent faults. The release ended a box only for the *left* button, and `-Box` is shift-middle in every three-button mode — so that drag never completed and `_drag_selecting` stayed set, turning every later drag of the session into a box that could not be finished either. `handle_rect_selection` never redrew (`handle_mouse_click` did), so a box updated the sequence strip and left the molecule showing no selection rings; the redraw moved into `_apply_selection_indices`, the one place the selection changes. And the band was a `QRubberBand` child of the GL widget, invisible to `grab()` — it is drawn in the overlay painter now, so a screenshot of a box select contains the box.
 
-  **The empty panel.** The overlay pass was gated on the panel having rows while `scene_width` gives the column away to a merely visible panel, so an empty window had a black stripe instead of a panel; and `sync_internal_gui` ran only when an object arrived. It is called once at startup now, `all` and `sele` in it, as PyMOL's is.
+  **The empty panel.** The overlay pass was gated on the panel having rows while `scene_width` gives the column away to a merely visible panel, so an empty window had a black stripe instead of a panel; and `sync_internal_gui` ran only when an object arrived. It is called once at startup now, `all` and `sele` in it, as the reference viewer's is.
 
   Verified by driving a real window and reading the framebuffer grabs: empty window, the C menu with `reds` open to the left of it, a three-level `Action > find > polar contacts` chain, the collapse, and a box select before/after with the rings visible. Suites: 344 + 120 passed (menus, panel, selection, viewport chrome).
 
-* **`ray` took PyMOL's object panel off the screen with it** ([PyMOL parity](plugins/pymol-parity.md)).
+* **`ray` took the reference viewer's object panel off the screen with it** ([reference-viewer parity](plugins/pymol-parity.md)).
 
   Reported as "after ray the menu disappears — it should never disappear, only shouldn't be on screenshot", which names the distinction the implementation had lost. The traced image was shown in a `QLabel` laid over the viewport, and the object panel is drawn **in** the viewport rather than beside it — so the label covered the A/S/H/L/C menus, the mouse-mode block and the sequence strip along with the scene. The panel is the only way to switch a representation back on, so it vanished exactly when it was next needed; and the click that dismissed the overlay was *swallowed* (`return True` in the event filter) rather than reaching the button it landed on, so the first click after `ray` did nothing.
 
@@ -7354,7 +7354,7 @@ front, not this).
 
   Verified through the model-editor path: view-spec + boundary 15, integration + renderer 47 (own process, offscreen), compute regression 3, new suites 12 + 31; `docs-html` warning-free; the editor grabbed offscreen and read.
 
-* **`fetch` was not the fault: a rung-drawing block had been pasted into the protein cartoon builder** ([PyMOL parity](plugins/pymol-parity.md)).
+* **`fetch` was not the fault: a rung-drawing block had been pasted into the protein cartoon builder** ([reference-viewer parity](plugins/pymol-parity.md)).
 
   Reported as `fetch 1f5n` failing with *"the cached 1f5n would not load (name 'rungs' is not defined); delete it and try again"*, and the reporter's reading was that the command bar must be dispatching to Python before checking its own commands. It is not — `fetch` was dispatched correctly, loaded the cached file correctly, and then **the cartoon builder raised**, with the loader's `except` turning a rendering bug into a message about the cache. Advice to delete a file that was never the problem.
 
@@ -7372,7 +7372,7 @@ front, not this).
 
   One thing the GUI copy did not need and the REPLs do: `is_incomplete_python`. At a prompt where Enter can *continue* a block, `for i in range(3):` does not compile and would be swallowed as a command, after which the body can never be typed. The Qt console submits whole cells and never sees a partial block. A guardrail test fails on any prompt that compiles the line itself.
 
-* **`show cartoon, chain A` was showing every chain** ([PyMOL parity](plugins/pymol-parity.md)).
+* **`show cartoon, chain A` was showing every chain** ([reference-viewer parity](plugins/pymol-parity.md)).
 
   Found while photographing the cartoon fix: the nucleic-only render came back with the whole protein in it. Two independent faults, either of which alone produces the same picture.
 
@@ -7477,7 +7477,7 @@ front, not this).
   three symptoms (offset backbone, detached rings, stray spokes) were one fault.
 
   A category error rather than an arithmetic one: the trace went through
-  PyMOL-style `RepCartoonSmoothLoops` control-point averaging, which PyMOL
+  reference-viewer-style `RepCartoonSmoothLoops` control-point averaging, which reference viewer
   applies to **loops**, because a moving average over points on a HELIX is not a
   smoothing but a contraction toward the helix axis. Measured on 1RTD's duplex,
   the shipped two 3-point passes moved the tube **1.68 A (max 2.43 A)** off the
@@ -7529,9 +7529,9 @@ front, not this).
 
   Before/after captured under `/tmp/chisurf-migration/ndx-playback.*`; the deliberate differences are the six recorded in the concept (the play buttons are no longer checkable, since a `button_row` has no such thing — pressing play again stops it instead). Coverage: `ndxplorer/tests/test_playback_controller.py` (25), `tests/test_ui/test_playback_panel.py` (20, clicking the real buttons), `tests/test_ui/test_open_image_hdf5.py` (5, end-to-end through `window.value_mask`), `test/gui/test_autoform_value_kinds.py` (10). Full suites green: 747 + 160 ndX-side. **The ndX half is on disk and uncommitted**: the `ndxplorer` submodule is mid-refactor by another working instance (a staged set of deletions, ~20 modified files, and untracked new test files), and this change is interleaved with it in ten of them — including two untracked test files that are theirs and now carry my tests. Committing there would sweep their work in, so it is left for whoever owns that refactor. ChiSurf carries the AutoForm fix, the docs and the concept.
 
-* **Every no-argument command was unreachable from the console** ([chimol](plugins/chimol.md), [chinsole](subsystems/chinsole.md)).
+* **Every no-argument command was unreachable from the console** ([chimol](plugins/chimol.md), chinsole).
 
-  Reported as "`split_chains` not working, all pymol cmds must work" with a
+  Reported as "`split_chains` not working, all reference viewer cmds must work" with a
   transcript in which `fetch 1f5n` succeeded and `ray` and `split_chains` both
   answered `NameError: name 'ray' is not defined`. The console takes its own
   commands *and* Python, and the rule was "a known command that is also valid
@@ -7629,13 +7629,13 @@ front, not this).
 
   **`:src:` was reaching the reader raw.** The role was registered for Markdown and forgotten for reStructuredText, so the manual's sampling page showed `` :src:`sample_fit <...>` `` as its own source text — visible to any reader and to no assertion, because the leak test only looked at the pages it already knew about. Both `src` and `cite` are now registered for the manual too, and the guardrail runs over **every** page in the tree in both languages, checking for any surviving role or fence rather than three known markers.
 
-* **The atomic-mass table, transcribed -- and `measure_weight` with it** ([pymol parity](plugins/pymol-parity.md)).
+* **The atomic-mass table, transcribed -- and `measure_weight` with it** ([reference-viewer parity](plugins/pymol-parity.md)).
 
-  The blocker named earlier today is gone. `chempy.atomic_mass` is PyMOL's own IUPAC table; `analysis/make_elements.py` transcribes it into `analysis/elements.py` (109 symbols), never hand-entered and never a new dependency -- the same arrangement as the 547 space groups, and for the same reason: the transcription can be **redone and diffed** rather than trusted.
+  The blocker named earlier today is gone. `chempy.atomic_mass` is the reference viewer's own IUPAC table; `analysis/make_elements.py` transcribes it into `analysis/elements.py` (109 symbols), never hand-entered and never a new dependency -- the same arrangement as the 547 space groups, and for the same reason: the transcription can be **redone and diffed** rather than trusted.
 
-  Three things it turned on. PyMOL lists every symbol **twice**, cased and upper (`He` and `HE`), and that duplication is the useful part rather than noise: a PDB element column is written both ways, and a table that knows one spelling drops every metal in half the files there are -- to *nothing*, not to an error. An unknown symbol returns `None` and is **counted**, never defaulted, because a weight quietly missing a metal is the kind of wrong number that gets published. And the table is verified by **properties plus its size**: a truncated extraction is self-consistent and passes every spot check that falls inside it, so the count is asserted alongside the IUPAC values *and* a check that masses rise across a period -- which is what catches a dropped row pairing symbols with their neighbours' masses.
+  Three things it turned on. The reference viewer lists every symbol **twice**, cased and upper (`He` and `HE`), and that duplication is the useful part rather than noise: a PDB element column is written both ways, and a table that knows one spelling drops every metal in half the files there are -- to *nothing*, not to an error. An unknown symbol returns `None` and is **counted**, never defaulted, because a weight quietly missing a metal is the kind of wrong number that gets published. And the table is verified by **properties plus its size**: a truncated extraction is self-consistent and passes every spot check that falls inside it, so the count is asserted alongside the IUPAC values *and* a check that masses rise across a period -- which is what catches a dropped row pairing symbols with their neighbours' masses.
 
-  `measure_weight` lands, and `measure_inertia` is **mass-weighted** as ChimeraX's is rather than reporting itself unweighted. Checked by hand where a reader can follow it: residue 1 of 148L is a methionine whose eight heavy atoms (N + 5 C + O + S) come to **122.13 Da**, and the whole polymer to **17.3 kDa** -- the hydrogen-less weight an X-ray structure should have, against ~18.7 kDa with hydrogens. That leaves four of ChimeraX's eight `measure_*` commands, of which `measure_correlation` is next.
+  `measure_weight` lands, and `measure_inertia` is **mass-weighted** as the reference volume viewer's is rather than reporting itself unweighted. Checked by hand where a reader can follow it: residue 1 of 148L is a methionine whose eight heavy atoms (N + 5 C + O + S) come to **122.13 Da**, and the whole polymer to **17.3 kDa** -- the hydrogen-less weight an X-ray structure should have, against ~18.7 kDa with hydrogens. That leaves four of the reference volume viewer's eight `measure_*` commands, of which `measure_correlation` is next.
 
 * **The documentation becomes maintainable: addresses, code links, registers, and a written refresh procedure** ([documentation browser](subsystems/documentation-browser.md)).
 
@@ -7645,31 +7645,31 @@ front, not this).
 
   **Guided tours can point at the literature.** A step may carry `{"cite": …}`, `{"doc": …}`, `{"src": …}` or `{"url": …}`; the tour still says *which control to press* and the link hands over to why, instead of the bubble growing into an essay. The 2CDE tour's first step now links its paper and its concept page.
 
-  **Three registers, and they are the point of the exercise.** `docs/reference/figures.md` lists all 202 images with caption, page and **origin**; `tables.md` all 464 tables; `code.md` all 383 blocks with the verification each is subject to. Provenance lives in `docs/references/figures.yaml` — 194 images traced automatically to the function that draws them, the manual's legacy screenshots marked as showing an interface that no longer exists, five still unrecorded and listed as the worklist. A recipe must name the tool, the data and the state, and a test fails on one shorter than eight words: "screenshot of the tool" is not a recipe anybody can follow.
+  **Three registers, and they are the point of the exercise.** `docs/reference/figures.md` lists all 202 images with caption, page and **source**; `tables.md` all 464 tables; `code.md` all 383 blocks with the verification each is subject to. Provenance lives in `docs/references/figures.yaml` — 194 images traced automatically to the function that draws them, the manual's legacy screenshots marked as showing an interface that no longer exists, five still unrecorded and listed as the worklist. A recipe must name the tool, the data and the state, and a test fails on one shorter than eight words: "screenshot of the tool" is not a recipe anybody can follow.
 
   **Code in the documentation is now tested.** Every Python block is parsed, every `chisurf.…` name it uses must resolve, and a block marked ```` ```python run ```` is executed in a temporary directory. It immediately found four broken snippets — an unbalanced parenthesis, a positional argument after a keyword, an IPython magic claiming to be Python, and a signature sketch that never was — on top of the two moved modules the earlier manual check caught.
 
   **And the whole procedure is written down for an agent** (`docs/development/documentation_maintenance.md`): a standing prompt to paste into a fresh session, the order the checks run in, what counts as evidence (open the PNG and read it — "the test passed" is not evidence), and the rule that an agent records `--ai` and never a human sign-off. A test asserts that the instruction still contains its own essential clauses, because a procedure nobody can find is a procedure nobody runs.
 
-* **Parity: ChimeraX's measurement suite, three of eight** ([pymol parity](plugins/pymol-parity.md)).
+* **Parity: the reference volume viewer's measurement suite, three of eight** ([reference-viewer parity](plugins/pymol-parity.md)).
 
-  ChimeraX is the authority on functionality and its `measure_*` family was the largest thing it had that ChiMOL had nothing of -- eight commands against ChiMOL's distance, angle and dihedral. `measure_buriedarea`, `measure_center` and `measure_inertia` are in.
+  The reference volume viewer is the authority on functionality and its `measure_*` family was the largest thing it had that ChiMOL had nothing of -- eight commands against ChiMOL's distance, angle and dihedral. `measure_buriedarea`, `measure_center` and `measure_inertia` are in.
 
   **Buried area is the one worth having**, and two details decide whether it is an interface area or just a difference of numbers. Each set's own area is computed with **only that set present** rather than by masking a crowded surface -- an atom in neither set must not occlude. And it is always the **solvent-accessible** surface whatever `dot_solvent` says, because a buried van der Waals area is not the quantity anyone means, and silently answering a different question because a global flag was off is this plugin's most repeated failure. On T4 lysozyme the two halves bury 950 A^2.
 
-  `measure_inertia` transcribes `moments_of_inertia` (second moments over the weight, parallel-axis shift, `eigh`, ascending eigenvalues, right-handed flip) and reports itself **unweighted**: ChimeraX weights by atomic mass, ChiMOL has no mass table, and the difference for a protein is small but not nothing. Saying so beats a number whose weighting nobody can see -- the same blocker shape as `valence`, and the reason `measure_weight` is not among the three.
+  `measure_inertia` transcribes `moments_of_inertia` (second moments over the weight, parallel-axis shift, `eigh`, ascending eigenvalues, right-handed flip) and reports itself **unweighted**: the reference volume viewer weights by atomic mass, ChiMOL has no mass table, and the difference for a protein is small but not nothing. Saying so beats a number whose weighting nobody can see -- the same blocker shape as `valence`, and the reason `measure_weight` is not among the three.
 
   **How to test a number with no reference to check it against**, which is the transferable part: pin *properties*, not a value. Buried area is symmetric under swapping the sets, is zero for two residues at opposite ends of the fold, grows with the probe radius, is refused for overlapping selections, and does not move when `dot_solvent` changes. A single hand-computed value can be matched by an implementation that is wrong everywhere else. 10 tests; the fixture is module-scoped after a window-per-test made the file take 110 s instead of 29.
 
-* **Annotating what has been mined is now a rule for all of `junk/`, and the two references have been surveyed to their new jobs** ([reference checkouts](workflows/reference-checkouts.md), [pymol parity](plugins/pymol-parity.md)).
+* **Annotating what has been mined is now a rule for all of `junk/`, and the two references have been surveyed to their new jobs** ([reference checkouts](workflows/reference-checkouts.md), [reference-viewer parity](plugins/pymol-parity.md)).
 
-  **The rule generalised.** The `CHIMOL-REVIEWED` marker introduced earlier today applies to every reference checkout, not to the viewer's two -- `junk/` holds ~40 of them and the read-and-transcribe rule is tree-wide. It is `CHISURF-REVIEWED` / `-TAKEN` / `-SKIPPED` / `-RECORD` now, renamed across the 31 files already stamped; the tool moved out of the plugin to `build_tools/dev_utils/reference_coverage.py` and grew `--all`, which prints one line per checkout so the whole shelf answers *"is this exhausted?"* at once. Today: PyMOL **14/468**, ChimeraX **10/116**, the other 38 checkouts **0**. The rule is in `CLAUDE.md` and owned by a new workflow concept.
+  **The rule generalised.** The `CHIMOL-REVIEWED` marker introduced earlier today applies to every reference checkout, not to the viewer's two -- `junk/` holds ~40 of them and the read-and-transcribe rule is tree-wide. It is `CHISURF-REVIEWED` / `-TAKEN` / `-SKIPPED` / `-RECORD` now, renamed across the 31 files already stamped; the tool moved out of the plugin to `build_tools/dev_utils/reference_coverage.py` and grew `--all`, which prints one line per checkout so the whole shelf answers *"is this exhausted?"* at once. Today: the reference viewer **14/468**, the reference volume viewer **10/116**, the other 38 checkouts **0**. The rule is in `CLAUDE.md` and owned by a new workflow concept.
 
-  **The two references have different jobs, by user instruction: PyMOL is the authority on the GUI and the UX, ChimeraX on functionality.** Both were surveyed to that split and the findings written into the tracker.
+  **The two references have different jobs, by user instruction: the reference viewer is the authority on the GUI and the UX, the reference volume viewer on functionality.** Both were surveyed to that split and the findings written into the tracker.
 
-  *ChimeraX for functionality:* `std_commands` holds **71** commands, **36** already covered by a ChiMOL command under PyMOL's spelling (`cofr` is `origin`, `zonesel` is `select … within`, `sym` is `symexp`), **35 not**. The gap is dominated by an entire **measurement suite** ChiMOL has nothing of -- `measure_buriedarea`, `measure_center`, `measure_convexity`, `measure_correlation`, `measure_inertia`, `measure_weight` -- of which buried area and map-to-model correlation are the two a structural biologist reaches for daily, and both are computable from what ChiMOL already holds. Then `defattr` (per-atom attributes from a file), `tile` (lay every structure on a grid, the cheapest big win for comparing models) and `perframe`.
+  *The reference volume viewer for functionality:* `std_commands` holds **71** commands, **36** already covered by a ChiMOL command under the reference viewer's spelling (`cofr` is `origin`, `zonesel` is `select … within`, `sym` is `symexp`), **35 not**. The gap is dominated by an entire **measurement suite** ChiMOL has nothing of -- `measure_buriedarea`, `measure_center`, `measure_convexity`, `measure_correlation`, `measure_inertia`, `measure_weight` -- of which buried area and map-to-model correlation are the two a structural biologist reaches for daily, and both are computable from what ChiMOL already holds. Then `defattr` (per-atom attributes from a file), `tile` (lay every structure on a grid, the cheapest big win for comparing models) and `perframe`.
 
-  *PyMOL for the GUI and the UX:* `modules/pmg_qt` is **6812 lines** across a dozen widgets. Surveyed and recorded: the volume ramp editor, editable keyboard shortcuts, a per-atom property inspector, a scene thumbnail strip -- none built. **The standout was arithmetic:** ChiMOL had **85 registered settings** and the only way to reach one was to know its name and type `set`. PyMOL answers that in 92 lines, and ChiMOL now has the same thing: **View ▸ Settings**, a filterable table of name / value / description, written through the *same* `set_setting` the command uses so it is a window onto one store rather than a second one.
+  *The reference viewer for the GUI and the UX:* `modules/pmg_qt` is **6812 lines** across a dozen widgets. Surveyed and recorded: the volume ramp editor, editable keyboard shortcuts, a per-atom property inspector, a scene thumbnail strip -- none built. **The standout was arithmetic:** ChiMOL had **85 registered settings** and the only way to reach one was to know its name and type `set`. The reference viewer answers that in 92 lines, and ChiMOL now has the same thing: **View ▸ Settings**, a filterable table of name / value / description, written through the *same* `set_setting` the command uses so it is a window onto one store rather than a second one.
 
   **The screenshot earned its keep again.** The first version added a filter box and a status label on top of chitable -- which already has both -- so the window came out with **two search boxes and two row counters** stacked above one table. Construction tests all passed. 6 tests on the table, 6 on the coverage reader.
 
@@ -7683,19 +7683,19 @@ front, not this).
 
   **The `?` modal now renders like the browser.** It used Qt's own `setMarkdown`, which knows no MyST — so a plugin's help page showed `:::{note}`, `` {cite}`key` `` and raw LaTeX as literal text: precisely the defects fixed in the browser, in the window most readers actually open. One entry point (`chisurf/gui/widgets/tools/help_render.py`) now serves every widget that displays a help page — the `?` modal, AutoForm `info` sections, the LUT tool's README dialog — and falls back to Qt's Markdown only when rendering genuinely fails. Found by putting citations into the plugin help pages and then checking what the modal did with them, which is the only way this kind of gap surfaces.
 
-* **Which parts of the reference sources have been mined, and when they are exhausted** ([pymol parity](plugins/pymol-parity.md)).
+* **Which parts of the reference sources have been mined, and when they are exhausted** ([reference-viewer parity](plugins/pymol-parity.md)).
 
-  ChiMOL is built by reading PyMOL's source and transcribing it -- the rule that has been right every time it was followed -- but nothing in the tree could say *which parts had already been read*. So the same file gets re-read by the next session, and "is the source exhausted?" had no answer. It does now: **14 files of 461** (3.0 %) across the layers the parity work actually reads. Nowhere near.
+  ChiMOL is built by reading the reference viewer's source and transcribing it -- the rule that has been right every time it was followed -- but nothing in the tree could say *which parts had already been read*. So the same file gets re-read by the next session, and "is the source exhausted?" had no answer. It does now: **14 files of 461** (3.0 %) across the layers the parity work actually reads. Nowhere near.
 
-  **Editing the reference checkouts is now sanctioned, for the header only.** A `CHIMOL-REVIEWED` / `CHIMOL-TAKEN` / `CHIMOL-SKIPPED` / `CHIMOL-RECORD` block goes at the top of each file that has been read, so it is found by whoever opens the file rather than by whoever thinks to search the knowledge base. Never the code: a `git diff` inside the checkout must show insertions and **zero deletions**, which is what the 14 PyMOL files and 2 ChimeraX files stamped here do (87 insertions, 0 deletions).
+  **Editing the reference checkouts is now sanctioned, for the header only.** A `CHIMOL-REVIEWED` / `CHIMOL-TAKEN` / `CHIMOL-SKIPPED` / `CHIMOL-RECORD` block goes at the top of each file that has been read, so it is found by whoever opens the file rather than by whoever thinks to search the knowledge base. Never the code: a `git diff` inside the checkout must show insertions and **zero deletions**, which is what the 14 reference viewer files and 2 reference volume viewer files stamped here do (87 insertions, 0 deletions).
 
-  **`SKIPPED` is the half that pays.** "Read and deliberately not taken, for this reason" is the expensive knowledge -- without it the next session re-reads the file, reaches the same conclusion and pays again, which is exactly what `valence` cost. The markers carry, among others: `RepValence` blocked on bond orders, `ribbon_color` having no separate representation here, ChimeraX's shadow maps unbuilt, and its GL abstraction rejected in favour of driving PyOpenGL directly.
+  **`SKIPPED` is the half that pays.** "Read and deliberately not taken, for this reason" is the expensive knowledge -- without it the next session re-reads the file, reaches the same conclusion and pays again, which is exactly what `valence` cost. The markers carry, among others: `RepValence` blocked on bond orders, `ribbon_color` having no separate representation here, the reference volume viewer's shadow maps unbuilt, and its GL abstraction rejected in favour of driving PyOpenGL directly.
 
-  **The markers are an index; this concept is the record.** `junk/` is gitignored and re-clonable, so a re-clone loses every marker and nothing else -- which is why each one points back at the OKF concept, and why the tool reports a fresh checkout as 0 %. `analysis/reference_coverage.py` measures it, with the denominator restricted to the directories that matter (PyMOL is ~3000 files, mostly build glue). 6 tests, which build their own miniature checkout so they run without the 132 MB one.
+  **The markers are an index; this concept is the record.** `junk/` is gitignored and re-clonable, so a re-clone loses every marker and nothing else -- which is why each one points back at the OKF concept, and why the tool reports a fresh checkout as 0 %. `analysis/reference_coverage.py` measures it, with the denominator restricted to the directories that matter (the reference viewer is ~3000 files, mostly build glue). 6 tests, which build their own miniature checkout so they run without the 132 MB one.
 
-* **Correction, and why `valence` is not next** ([pymol parity](plugins/pymol-parity.md)).
+* **Correction, and why `valence` is not next** ([reference-viewer parity](plugins/pymol-parity.md)).
 
-  **The PyMOL checkout was never deleted.** The previous entry recorded that `junk/pymol-open-source` -- the tracker's stated authority on behaviour -- had been removed during this session. It had not: the directory was unreadable for a few minutes (most likely while another instance re-cloned it, and `clone.sh` skips what is already there) and is present and complete, `layer2/`, `modules/pymol/util.py` and all 819 records of `SettingInfo.h`. Corrected in the tracker, because a false statement in the durable layer is worse than no statement: the next session would have re-cloned 132 MB or, worse, transcribed from memory.
+  **The reference viewer checkout was never deleted.** The previous entry recorded that `junk/pymol-open-source` -- the tracker's stated authority on behaviour -- had been removed during this session. It had not: the directory was unreadable for a few minutes (most likely while another instance re-cloned it, and `clone.sh` skips what is already there) and is present and complete, `layer2/`, `modules/pymol/util.py` and all 819 records of `SettingInfo.h`. Corrected in the tracker, because a false statement in the durable layer is worse than no statement: the next session would have re-cloned 132 MB or, worse, transcribed from memory.
 
   **`valence` is blocked on data, not on drawing.** It is high on the appearance ranking and the algorithm transcribes cleanly -- `RepValence` builds a local frame from the bond direction and a *prioritized third atom* for planarity, then draws the centre line plus one inset parallel line (`valence_mode 1`), or two symmetric lines when that mode is off, with a triple doubling the offset. What stops it is that **chimol has no bond orders**: `bond_order` returns 1 for everything except a bond made by hand with the `bond` command, because bonds are inferred from distance and a distance carries no order. `set valence, on` would therefore leave every deposited structure looking exactly as it does -- the accepted-and-inert failure the settings table exists to prevent. Unblocking it is a *reader* change: mmCIF's `chem_comp_bond` carries orders for ligands, a PDB's `CONECT` does not, and perception from geometry is the third option.
 
@@ -7711,23 +7711,23 @@ front, not this).
 
   **Review tracking now covers what the browser serves**: `concepts`, `guides`, `getting_started`, `reference` and `references` join `manual`. That is deliberately uncomfortable — `0 reviewed, 79 AI-reviewed, 230 unreviewed` — because the 230 have had an automated audit (stubs, holes in sentences, dead links and cross-references, missing images, markup leaks, formulas rendered as images) but not a reading for correctness, and the tally is the worklist rather than a score.
 
-* **`cell` draws the unit cell -- and drawing it showed that `symexp` had never worked** ([pymol parity](plugins/pymol-parity.md)).
+* **`cell` draws the unit cell -- and drawing it showed that `symexp` had never worked** ([reference-viewer parity](plugins/pymol-parity.md)).
 
   The box is not transcribed from anywhere: a cell is fully determined by its six parameters and `UnitCell.frac_to_real` already exists, so the twelve edges are that matrix applied to the corners of the unit cube. `cell [selection [, on|off|toggle]]`, per object because two structures in a scene can come from different crystals, with `cell_color` beside the three representation overrides.
 
-  **What it exposed is the real find.** `symexp` builds the crystallographic mates around a molecule; every command reported success, the objects appeared in the panel, the atom coordinates were right -- and the picture was **one molecule**. Each object is drawn centred on its own centroid, so every mate was re-centred onto itself and landed at the render origin: six mates with six distinct centroids in Angstrom, all drawn at `(0, 0, 0)`, stacked on the original. `symexp` exists to show how molecules pack, so this removed the feature entirely while looking like it worked. `create`/`extract` had already solved it (`_reframe_to` moves the render arrays into the parent's frame and leaves the stored coordinates alone); the mates never got the call.
+  **What it exposed is the real find.** `symexp` builds the crystallographic mates around a molecule; every command reported success, the objects appeared in the panel, the atom coordinates were right -- and the picture was **one molecule**. Each object is drawn centred on its own centroid, so every mate was re-centred onto itself and landed at the render zero point: six mates with six distinct centroids in Angstrom, all drawn at `(0, 0, 0)`, stacked on the original. `symexp` exists to show how molecules pack, so this removed the feature entirely while looking like it worked. `create`/`extract` had already solved it (`_reframe_to` moves the render arrays into the parent's frame and leaves the stored coordinates alone); the mates never got the call.
 
   **Why it went unnoticed is the lesson, and it is this file's recurring one.** The symmetry work was verified through the *operators* -- 7658 of them, closure modulo lattice translations, det ±1, one identity -- and through the mates' **coordinates**. Both were correct. Nothing looked at where they were **drawn**. A test that a transform is right is not a test that its result is visible in the right place, and it took giving the scene something with an absolute position, the cell box, for the two to disagree out loud. The guard compares the distances as drawn against the distances in Angstrom.
 
-  Also recorded there: the `junk/pymol-open-source` checkout -- the tracker's stated authority on PyMOL behaviour -- was removed during this session, and `junk/clone.sh` restores it. 6 tests.
+  Also recorded there: the `junk/pymol-open-source` checkout -- the tracker's stated authority on the reference viewer behaviour -- was removed during this session, and `junk/clone.sh` restores it. 6 tests.
 
-* **The first three appearance settings, which are one mechanism under three names** ([pymol parity](plugins/pymol-parity.md)).
+* **The first three appearance settings, which are one mechanism under three names** ([reference-viewer parity](plugins/pymol-parity.md)).
 
-  With the two-stores blocker cleared, the measured worklist starts: `stick_color`, `cartoon_color` and `surface_color`. PyMOL implements all three with the same line repeated in each representation -- `c != cColorDefault ? c : ai->color` (`RepCylBond.cpp`, `RepSurface.cpp`, `RepRibbon.cpp`) -- so there is one rule here too, read by each representation as it assembles its colours. The sentinel is stored as `None` rather than PyMOL's -1, because a negative number is not a colour and a config full of -1 says nothing to whoever reads it; `-1`, `default`, `none` and `atom` all clear an override.
+  With the two-stores blocker cleared, the measured worklist starts: `stick_color`, `cartoon_color` and `surface_color`. The reference viewer implements all three with the same line repeated in each representation -- `c != cColorDefault ? c : ai->color` (`RepCylBond.cpp`, `RepSurface.cpp`, `RepRibbon.cpp`) -- so there is one rule here too, read by each representation as it assembles its colours. The sentinel is stored as `None` rather than the reference viewer's -1, because a negative number is not a colour and a config full of -1 says nothing to whoever reads it; `-1`, `default`, `none` and `atom` all clear an override.
 
   **Two things the implementation turned on.** The override must be read where the representation builds its colours, *not* folded into the shared per-residue array -- that array feeds the cartoon **and** the trace, so one fold would colour both. And the colour parser had to move: it lived in the command layer, which the renderer cannot call, so `colors.as_rgba` is the shared reader now (names, hex, sequences) while the command layer keeps the part that is session state, the colours defined with `set_color`.
 
-  `ribbon_color` is **deliberately not registered**: chimol has no separate ribbon representation -- `show ribbon` already aliases the cartoon -- so the name would colour something other than what a PyMOL user means by it.
+  `ribbon_color` is **deliberately not registered**: chimol has no separate ribbon representation -- `show ribbon` already aliases the cartoon -- so the name would colour something other than what a reference viewer user means by it.
 
   8 tests, checking the three things that separate a setting that works from one that is merely registered: the override reaches the geometry it names, reaches **only** that one, and clearing it puts the atoms' colours back. They read the built scene rather than pixels, since shading is applied on top and an exact colour comparison would be a test of the ambient occlusion. Verified in a real window as a figure: sky-blue cartoon, orange ligand sticks, translucent pale-green surface over residues 1-40.
 
@@ -7737,13 +7737,13 @@ front, not this).
 
   **The icons were removed for the wrong reason.** They had to leave the row's *text* — an emoji there makes Qt fall back to a colour font for the whole item and the fallback's metrics restyle the row — but that was an argument about where they live, not about whether they should exist. They are painted into a pixmap and set as the item's **icon** now: the sections have their glyphs back, the review badge rides in the same slot on a page row while authoring, and the label is still the application's own font.
 
-* **The settings blocker is cleared: a key can change section now, and three settings stopped having two stores** ([pymol parity](plugins/pymol-parity.md)).
+* **The settings blocker is cleared: a key can change section now, and three settings stopped having two stores** ([reference-viewer parity](plugins/pymol-parity.md)).
 
   The tracker's item 1a said *do this before registering anything else*, because a name registered against a store the renderer re-reads only at construction is accepted, echoed and **inert** -- which is what `surface_quality` turned out to be, four times over. It was three settings, not two.
 
-  `depth_cue` / `fog` / `fog_start` are PyMOL's and are **global**: both renderers read them. They were registered under `ray.*` from when only the tracer honoured them, so the prefix said something untrue. Moving them needed the loader extension the tracker predicted -- `DISPLAY_CONFIG_MIGRATIONS` can only change a *value* -- so `DISPLAY_CONFIG_KEY_MOVES` sits beside it, and **its rule is the mirror image**, which is the part worth remembering: a value migration moves what the user did *not* choose (it still equals the old default), a key move carries across what they *did*, and drops the old key either way so the section it left keeps no stale twin. They are `depth_cue.enabled` / `.start` / `.intensity`; config version 8 -> 9. Six tests, including one that asserts every move's destination is a key the package actually ships -- a move to a key that is not there writes a value nothing reads, which is worse than not moving it.
+  `depth_cue` / `fog` / `fog_start` are the reference viewer's and are **global**: both renderers read them. They were registered under `ray.*` from when only the tracer honoured them, so the prefix said something untrue. Moving them needed the loader extension the tracker predicted -- `DISPLAY_CONFIG_MIGRATIONS` can only change a *value* -- so `DISPLAY_CONFIG_KEY_MOVES` sits beside it, and **its rule is the mirror image**, which is the part worth remembering: a value migration moves what the user did *not* choose (it still equals the old default), a key move carries across what they *did*, and drops the old key either way so the section it left keeps no stale twin. They are `depth_cue.enabled` / `.start` / `.intensity`; config version 8 -> 9. Six tests, including one that asserts every move's destination is a key the package actually ships -- a move to a key that is not there writes a value nothing reads, which is worse than not moving it.
 
-  With 1a closed the appearance worklist (228 names PyMOL's own Python layer references) is unblocked, and the pattern every one of them must follow is `_fog_planes`: **read the configuration where the value is used**, never at construction.
+  With 1a closed the appearance worklist (228 names the reference viewer's own Python layer references) is unblocked, and the pattern every one of them must follow is `_fog_planes`: **read the configuration where the value is used**, never at construction.
 
 * **Startup died in the dynamic loader because an IDE had source-rooted another environment** ([environment & build](workflows/build-and-env.md)).
 
@@ -7761,7 +7761,7 @@ front, not this).
 
   **The shim it left behind was not merely unnecessary, it was the bug.** `self.opts` mirrored `fov` and `center` under the comment *"Compatibility with picking helpers"*, beside a `cameraPosition()` returning a `QVector3D` — pyqtgraph's `GLViewWidget` camera API. `opts["center"]` was maintained by `_update_center_opt` from **seven** call sites and read by **nothing**, while the real value was recomputed on demand in `_build_matrices`; `opts["fov"]` was a second copy of `self._fov`. And the picking helper the shim existed for read that `QVector3D` straight into `numpy.asarray`, which raises — so **every click in the viewport raised**, silently. A compatibility layer nobody re-checks becomes a second store of a derived value, and here it broke its own only consumer. Shim, mirror and module are gone; the allow-list is 15 → **14**, struck rather than edited.
 
-* **Clicking a residue in the viewport did not work, in four ways at once** ([pymol parity](plugins/pymol-parity.md)).
+* **Clicking a residue in the viewport did not work, in four ways at once** ([reference-viewer parity](plugins/pymol-parity.md)).
 
   The most-used thing in a molecular viewer, and nothing exercised it. (1) The picker projected atoms with a camera basis built from `view.cameraPosition()` and a `view.opts` dictionary -- **pyqtgraph's** `GLViewWidget` API, left behind when the renderer was replaced; the renderer kept an `opts` shim "for compatibility with picking helpers" whose `center` is a `QVector3D`, which the helper handed to `numpy.asarray`. Every click **raised**. (2) The raise was swallowed by `except Exception: pass`, so there was no message and no traceback. (3) The whole block was gated on `getattr(self, "_gl_enabled", False)` and **no code anywhere sets `_gl_enabled`** -- a dead attribute name in front of the feature. (4) A picked atom mapped to no residue: `set_coordinates`, which is what `apply_payload` (*"the single route from a file into the viewer"*) calls, cleared `_all_atom_res_ids` and never refilled it although `set_structure` fills it from the same field -- so for **RMF, mmCIF and every bead model** the pick succeeded and then had nothing to select.
 
@@ -7773,7 +7773,7 @@ front, not this).
 
   19 tests, including one that walks **every cell of the block** and asserts the press starts the gesture the cell names. Verified in a real window: a shift-drag box takes 53 residues, highlighted in the 3-D view and in the sequence strip.
 
-* **`silhouette` had two stores, so `set silhouette, on` could not exist** ([pymol parity](plugins/pymol-parity.md)). The settings lived on the renderer's `PostProcess` object *and* in `_DISPLAY_CONFIG["silhouette"]`, read exactly once in `QtGLRenderer.__init__` -- so `lighting silhouette=on` moved the picture without touching the configuration, and the configuration was a start-up default no live change could reach. Registering the name against that store would have produced exactly the accepted-and-inert setting `surface_quality` turned out to be four times over. `PostProcess` reads the section through properties now: one store, read where it is used, so an already-constructed renderer sees a `set`. With that true the names are safe to register, and `silhouette`, `silhouette_thickness`, `depth_jump` and `silhouette_color` are.
+* **`silhouette` had two stores, so `set silhouette, on` could not exist** ([reference-viewer parity](plugins/pymol-parity.md)). The settings lived on the renderer's `PostProcess` object *and* in `_DISPLAY_CONFIG["silhouette"]`, read exactly once in `QtGLRenderer.__init__` -- so `lighting silhouette=on` moved the picture without touching the configuration, and the configuration was a start-up default no live change could reach. Registering the name against that store would have produced exactly the accepted-and-inert setting `surface_quality` turned out to be four times over. `PostProcess` reads the section through properties now: one store, read where it is used, so an already-constructed renderer sees a `set`. With that true the names are safe to register, and `silhouette`, `silhouette_thickness`, `depth_jump` and `silhouette_color` are.
 
 * **"An agent read this page" is now a tracked state, and the whole manual is in it** ([documentation browser](subsystems/documentation-browser.md)).
 
@@ -7995,7 +7995,7 @@ front, not this).
 
   **Two traps worth naming, because both read as success.** `pixi run build-tttrlib | tail` reports the exit status of `tail` — a failed build looks green, and I read it that way once. And a failed build is not fatal to anything visible: the previously built library stays installed and importable, so a C++ change appears rebuilt when it is not. The only honest check is to assert the new behaviour from Python.
 
-* **A frame carries more than coordinates: chimol plays a simulation, not just a trajectory** ([pymol parity](plugins/pymol-parity.md), [chimol spec](specs/chimol.md)).
+* **A frame carries more than coordinates: chimol plays a simulation, not just a trajectory** ([reference-viewer parity](plugins/pymol-parity.md), [chimol spec](specs/chimol.md)).
 
   **The use that forced it:** open a growing biofilm from the agent-simulation framework beside ChiSurf. An MD trajectory moves the same atoms for the whole file; a colony does not — cells appear, grow, and change what they are doing where they stand. RMF has always stored a **radius and a colour per frame**, and chimol read neither: radii were taken once *after* the frame loop, so they came from whichever frame the walk left current, and `ColoredConstFactory` was built in the loader and **never asked**, so a file stating its own colours was drawn in the viewer's defaults. Both are read per frame now and collapsed to one array when they do not vary, so a static model grows no time axis.
 
@@ -8009,7 +8009,7 @@ front, not this).
 
   **`bg_color` and `ray` were two stores for one setting** — the command writes to the renderer, the tracer read the startup config — so `bg_color white; ray` gave a white viewport and a black picture, in every figure ever traced. Fixed while making the guide figure. Trap: the renderer keeps **RGBA** and the tracer's parser accepted only a three-long sequence, so the live value fell through to the black fallback and the fix looked inert.
 
-  **The camera was following the frame, and only a growing structure showed it.** `_select_state_frame` recomputed the object's centre and radius from the frame on show, so the camera chased the current frame's centroid -- the scene centre swung 0 -> -21 -> +52 scene units over the biofilm's run and the substratum slid about beneath a film that was supposed to be growing off it. On a molecule the extent barely changes and it reads as a gentle wander, which is why it survived; it was also hiding half of what the trajectory demo teaches, since following the centroid removes exactly the translational drift `intra_fit` is there to remove. Not deleted, because for a molecule wandering across a box that behaviour is the useful one: it is `movie_recenter` (`camera.recenter_on_frame`), on by default, read from the config **where it is used** so a live `set` reaches an open viewer and there is no second store to leave stale. `set` is global as it is in PyMOL, so each demo that cares now states the value it wants. The first version of the test passed **vacuously** -- the centre is computed over all rows, not the visible ones, so a fixture whose particles never move cannot exercise re-centring at all; it needed a drift term.
+  **The camera was following the frame, and only a growing structure showed it.** `_select_state_frame` recomputed the object's centre and radius from the frame on show, so the camera chased the current frame's centroid -- the scene centre swung 0 -> -21 -> +52 scene units over the biofilm's run and the substratum slid about beneath a film that was supposed to be growing off it. On a molecule the extent barely changes and it reads as a gentle wander, which is why it survived; it was also hiding half of what the trajectory demo teaches, since following the centroid removes exactly the translational drift `intra_fit` is there to remove. Not deleted, because for a molecule wandering across a box that behaviour is the useful one: it is `movie_recenter` (`camera.recenter_on_frame`), on by default, read from the config **where it is used** so a live `set` reaches an open viewer and there is no second store to leave stale. `set` is global as it is in the reference viewer, so each demo that cares now states the value it wants. The first version of the test passed **vacuously** -- the centre is computed over all rows, not the visible ones, so a fixture whose particles never move cannot exercise re-centring at all; it needed a drift term.
 
   **Shipped:** `Demo > Biofilm growth`, whose material is **generated on first use** (~3 s) and cached rather than checked in, so the demo is a result and not a picture of one; a concept page ([biofilm growth](../docs/concepts/biofilm_growth.md)) stating what the model does *not* do — no solute field, no mechanical relaxation, no detachment, thresholds chosen for visibility rather than measured; and the guide section on reading a per-frame radius and colour. Tests: 7 new in chimol (`test_rmf_frame_appearance.py`), 7 in the simulator (`tests/swarm/test_visual_runner.py`), one guardrail on the traced background; 31 demo tests, 70 RMF/bead/animation/session tests green.
 
@@ -8043,10 +8043,10 @@ front, not this).
 
 * **PRD-80 closed: the last of the retired-library debris, and the seam a DCD needs to be usable** ([PRD-80](prds/prd-80.md), [chimol](plugins/chimol.md)). Eight dependencies are gone this session; this is what walking the tree afterwards turned up.
   **A format list in two places drifts, and the only symptom is noise.** chimol states which files are trajectories in three spots — the loader, the caller deciding whether to skip the structure reader, and the file dialog. The loader was moved on to DCD/XTC; the other two went on naming the old library's `.h5`/`.gro`/`.g96`. Nothing failed. The dialog offered a format nothing could open, and the skip-the-structure-reader rule — added *specifically* to stop a spurious warning-plus-traceback — fired for exactly the files it should not have and not for the two it should, so every DCD that opened perfectly wrote a stack trace to the log. One `TRAJECTORY_SUFFIXES` constant now, both sites reading it, and a guard test that fails on the pre-fix state (checked by reverting it). The dead `MdtrajNotAvailableError` — never raised since the port, so its `except` clause let an unreadable format fall through to the *structure* reader's complaint, whose message points back at the trajectory loader — is now `TrajectoryFormatError` and is actually raised.
-  **`load_traj`, because a DCD alone is not a molecule.** DCD and XTC store coordinates and nothing else, so loaded on their own they arrive as a bare point cloud and everything keyed on atom identity degrades *without erroring*: the cartoon splines through all 5235 atoms instead of the CA trace, no selection resolves, the sequence view is empty. chimol now has PyMOL's `load_traj <file>[, object]` — the same split the `traj` tools make with their topology picker — with an atom-count check, because a mismatch is otherwise silent and draws a plausible, entirely wrong molecule.
+  **`load_traj`, because a DCD alone is not a molecule.** DCD and XTC store coordinates and nothing else, so loaded on their own they arrive as a bare point cloud and everything keyed on atom identity degrades *without erroring*: the cartoon splines through all 5235 atoms instead of the CA trace, no selection resolves, the sequence view is empty. chimol now has the reference viewer's `load_traj <file>[, object]` — the same split the `traj` tools make with their topology picker — with an atom-count check, because a mismatch is otherwise silent and draws a plausible, entirely wrong molecule.
   **The shipped `trajectory` demo had been dead since the port** and no test said so: it loaded the `.h5`. It is two files now (`load topol.pdb` + `load_traj hgbp1_transition.dcd`) and runs clean — 464 frames, 5235 atoms, 570 residues, SS assigned H=332/E=65/C=173, no errors, verified headlessly. The demo path resolver only knew the verb `load`, so `load_traj` failed on a file sitting right beside it; it is table-driven now.
   **The fixture is DCD, and the near-miss is worth recording.** `hgbp1_transition.h5` was converted to DCD (exact round-trip, max abs error 0.0) and retired, and `trajectory/h5-file/` — a directory name that had stopped being true — is now `trajectory/hgbp1/`. There is a *second*, 3-frame `hgbp1_transition.dcd` under `trajectory/dcd/`: the codec A/B fixture. Same name, different length. chimol's demo search path briefly held both and resolved by directory order, so a demo that should show a 464-frame movie would have shown three and still passed every assertion. Only `trajectory/hgbp1/` is on that path.
-  **`set diffuse` had been doing nothing.** Walking past the settings table, two guard tests were red: `direct` was registered *twice*, once against `ray.direct` and once against `ray.diffuse`. They are different PyMOL settings and the raytracer reads both (`exporting.py` pulls `diffuse` and `direct` separately), so one name owned two config paths and the other name owned none — `set diffuse, 0.8` was accepted, echoed *"diffuse set to 0.8"*, and wrote nowhere. Renamed; both now land on their own key, verified by driving `set` through the real command layer and reading the live config back.
+  **`set diffuse` had been doing nothing.** Walking past the settings table, two guard tests were red: `direct` was registered *twice*, once against `ray.direct` and once against `ray.diffuse`. They are different the reference viewer settings and the raytracer reads both (`exporting.py` pulls `diffuse` and `direct` separately), so one name owned two config paths and the other name owned none — `set diffuse, 0.8` was accepted, echoed *"diffuse set to 0.8"*, and wrote nowhere. Renamed; both now land on their own key, verified by driving `set` through the real command layer and reading the live config back.
   **`fret_trajectory` was the seventh traj tool and had the same gap** — no topology input at all, so it read the topology *out of the trajectory*, which a DCD does not carry. It has `topology_filename` now, threaded through the engine (`iterload(top=…)`) and the CLI (`--topology`), and its test fixtures build a DCD+PDB with ChiSurf's own writers. Those fixtures were guarded by `importorskip("mdtraj")`, **which did not skip**: the test environment still has the package installed even though the tree no longer reads what it writes, so the guard passed and the test failed on the file. A skip guard on a retired dependency is worse than none — it reads as "covered".
   **One thing found and left, deliberately:** that suite reports `11 passed [100%]` and then dies with `Bus error` during interpreter shutdown. It is *not* the port — a detached worktree at the pre-port commit crashes the same way, and it does not reproduce outside pytest. Measurement, traps and one tried-and-reverted fix are in [known issues](references/known-issues.md).
   **Also fixed while passing:** `test_traj_opening` and six doctests across `structure/` named a `reading_routine=` parameter that no longer exists and a `test/data/modelling/` path that does not either — stale twice over, and never executed. They are corrected and were run. Convert's Format combo offered `.xtc` and `.h5`, neither writable, from a literal list in `view.json` that was a second copy of `ENDINGS` and had drifted from it — now an `options_source` method, verified by rendering the form and reading the combo. Convert's log says what it wrote (`Wrote 15 frames of 5235 atoms`); "Conversion done" over a zero-frame output read exactly like a good run.
@@ -8170,9 +8170,9 @@ front, not this).
   **The fix is one numba pass.** The decoding was never the cost — a DCD payload is already `float32` — the per-frame seek, read and three strided assignments in Python were. Reading the whole payload once and de-interleaving X/Y/Z into `(frame, atom, 3)` in a single `prange` kernel gives, on the same repeated measurement: 200f×2500a **1.10×**, 464f×5235a **1.69×**, 2000f×500a **3.37×**, 50f×20000a **1.08×**. The biggest win is the many-frames case, which is where the old shape hurt most.
   **The A/B also produced the strongest correctness result available**, and it needs no other library at test time: reading the coordinates out of an mdtraj-written DCD and writing them back reproduces its coordinate records **byte for byte** — 1392 of 1392 on the full 464-frame trajectory, same md5. That says the reader and writer are exact *inverses* of the reference implementation's, which no tolerance comparison can say. It also explains the one apparent discrepancy: comparing against mdtraj's own array shows ~7.6e-06, which is **mdtraj's** Å→nm→Å conversion, not our error. That byte-for-byte check is now a committed test.
 
-* **ChiSurf reads and writes DCD itself, and it is faster than the C plugin** ([PRD-80](prds/prd-80.md)). First step of retiring mdtraj: `chisurf/core/fio/trajectory/dcd.py`, ported from VMD's `dcdplugin.c` — the **permissively licensed** (UIUC) C reference, not mdtraj's LGPL `.pyx` wrapper — to NumPy rather than a compiled extension, since ChiSurf is Cython-free. A frame is three contiguous `float32` blocks, so reading one is a `np.frombuffer`. On 2500 atoms × 200 frames: **write 22 ms and read 5 ms, against mdtraj's 34 ms and 14 ms** — one read plus a `frombuffer` per frame beats a `fread` per record.
+* **ChiSurf reads and writes DCD itself, and it is faster than the C plugin** ([PRD-80](prds/prd-80.md)). First step of retiring mdtraj: `chisurf/core/fio/trajectory/dcd.py`, ported from the reference molecular viewer's `dcdplugin.c` — the **permissively licensed** (UIUC) C reference, not mdtraj's LGPL `.pyx` wrapper — to NumPy rather than a compiled extension, since ChiSurf is Cython-free. A frame is three contiguous `float32` blocks, so reading one is a `np.frombuffer`. On 2500 atoms × 200 frames: **write 22 ms and read 5 ms, against mdtraj's 34 ms and 14 ms** — one read plus a `frombuffer` per frame beats a `fread` per record.
   **The parity fixtures are committed, not generated, and that is the point.** A self-round-trip proves almost nothing about a binary interchange format: a reader and writer that share a misunderstanding — wrong endianness, a missed record marker, the cell fields in the wrong order — agree perfectly with each other and with nobody else. So `test/data/atomic_coordinates/trajectory/dcd/` now holds real DCD files written by mdtraj from this project's own test trajectory, with mdtraj's own coordinates alongside as the oracle, so the check outlives mdtraj. The triclinic fixture has three unequal lengths and three non-90 angles on purpose — an orthogonal cell hides an ordering mistake.
-  **The unit cell is where this format bites.** Six values stored interleaved as `(A, gamma, B, beta, alpha, C)`, and as *cosines* in CHARMM/NAMD > 2.5 but as *degrees* in NAMD 2.5, with no flag to say which — a reader tells them apart by whether all three fall inside [-1, 1]. Both paths are covered, and the decodings were **mutation-tested**: swapping alpha/gamma, taking the lengths as values 0–2, and skipping the cosine branch are each caught. (A fourth mutation, `arccos` for `90 − asin`, is *not* caught and should not be — the two are the same identity; VMD prefers the latter only for its rounding at exactly 90°.)
+  **The unit cell is where this format bites.** Six values stored interleaved as `(A, gamma, B, beta, alpha, C)`, and as *cosines* in CHARMM/NAMD > 2.5 but as *degrees* in NAMD 2.5, with no flag to say which — a reader tells them apart by whether all three fall inside [-1, 1]. Both paths are covered, and the decodings were **mutation-tested**: swapping alpha/gamma, taking the lengths as values 0–2, and skipping the cosine branch are each caught. (A fourth mutation, `arccos` for `90 − asin`, is *not* caught and should not be — the two are the same identity; the reference molecular viewer prefers the latter only for its rounding at exactly 90°.)
   Also handled because real files use them: 64-bit record markers (CHARMM `-i8`), opposite-endian files, and the X-PLOR header variant. Refused loudly rather than mis-read: fixed-atom files, which store every atom only in frame 0 and would otherwise return the wrong coordinates silently. Units are **Ångström as stored** — nothing rescaled, because the other convention here is nanometres and a silent factor of ten in a FRET distance looks plausible.
   `.h5` trajectories are dropped outright rather than converted: they were an artefact of `TrajectoryFile` writing everything to HDF5, not a format anyone chose. XTC and TRR are next; mdtraj is cloned into `junk/` and recorded in `clone.sh` as the port source.
 
@@ -8183,10 +8183,10 @@ front, not this).
   **Storing trajectories as RMF3 was the plan, and the measurement killed it.** On 2500 atoms x 200 frames: DCD writes in 34 ms and reads in **14 ms**; RMF3 writes in 4.0 s and reads in **10.5 s** through RMF's own `ParticleFactory` — 41.6 s through an IMP hierarchy — in a *larger* file. Bypassing IMP still costs 10.5 s, so this is RMF's per-node key model, not IMP overhead: right for a coarse-grained integrative model with richly annotated particles, wrong for a dense all-atom coordinate block. So **DCD holds frames and RMF3 holds hierarchies**. One good thing confirmed on the way: RMF3 is Avro-backed, not HDF5 (`Obj\x01…av`; `rmf-hdf5` is a separate deprecated suffix), so using it does not drag the HDF5 stack back in. And mdtraj *writes* DCD, which makes both the migration converter and the independent-reader test fixtures nearly free.
   Two open questions are recorded rather than assumed away: **IMP is imported 34 times but declared in no manifest** (allowlisted as a sibling project, with one *module-level* `IMP.cgmol` import), so whether a packaged install may depend on it decides whether the PRD is viable at all; and the eventual package saving must be **measured, not asserted** — an attempt during this investigation produced unusable output and was abandoned rather than reported.
 
-* **`ray` was far darker than the viewport: a missing term, not a missing setting** ([PyMOL parity](plugins/pymol-parity.md)). Reported as "way too dark, and the lighting does not correspond to the live view" — one fault, not two. PyMOL's traced brightness has **two** diffuse terms: `bright = ambient + direct*direct_cmp + lreflect*reflect_cmp`, where `direct_cmp = pow(surfnormal[2], power)` is the normal's z in *camera* space — so `direct` is a **headlight**, lighting whatever faces the viewer regardless of the lamps. chimol had only the lamp term, so its ceiling was `ambient + diffuse` = **0.59** against PyMOL's ~1.0. (The averaging over lights was already right: `lreflect` carries `reflect_scale`, commented in the source as "divide up the reflected light component over all lights".) Measured on 148L's cartoon against the GL viewport, same scene and camera: mean lit **35.5 → 50.3**, viewport **51.1** — from 30 % below it to within 2 %. `direct` (0.45) and `power` (1.0) registered under PyMOL's names and defaults (`SettingInfo.h` 8, 11); new config keys, so no migration.
+* **`ray` was far darker than the viewport: a missing term, not a missing setting** ([reference-viewer parity](plugins/pymol-parity.md)). Reported as "way too dark, and the lighting does not correspond to the live view" — one fault, not two. The reference viewer's traced brightness has **two** diffuse terms: `bright = ambient + direct*direct_cmp + lreflect*reflect_cmp`, where `direct_cmp = pow(surfnormal[2], power)` is the normal's z in *camera* space — so `direct` is a **headlight**, lighting whatever faces the viewer regardless of the lamps. chimol had only the lamp term, so its ceiling was `ambient + diffuse` = **0.59** against the reference viewer's ~1.0. (The averaging over lights was already right: `lreflect` carries `reflect_scale`, commented in the source as "divide up the reflected light component over all lights".) Measured on 148L's cartoon against the GL viewport, same scene and camera: mean lit **35.5 → 50.3**, viewport **51.1** — from 30 % below it to within 2 %. `direct` (0.45) and `power` (1.0) registered under the reference viewer's names and defaults (`SettingInfo.h` 8, 11); new config keys, so no migration.
   **Not established and left as a lead:** whether the two also disagree about *framing*. A first look suggested the traced molecule sits smaller, but the viewport capture includes the panel and mouse-mode text drawn inside the GL widget and a brightness threshold counts those as molecule — the measurement was measuring chrome. Redo masked to the scene column, comparing silhouette boxes.
 
-* **`ray` looked slow, and it was compiling, not tracing** ([PyMOL parity](plugins/pymol-parity.md)). Reported as "1f5n takes more than 10 s". The trace is **0.4–0.6 s** for that structure at 638×291 2×2, and 0.46 s end-to-end through the command, thread and PNG write in a fresh process. The 10–33 s is **numba compiling the tracer**, cached under `~/.chisurf/cache/<module>_<contenthash>/` — and the hash is over the source, so *every* edit to `raytracer.py` or `bvh.py` discards the cache and the next `ray` pays a full recompile. Measured: **33.5 s** immediately after a kernel signature changed, **0.46 s** in the next fresh process; a fresh install pays it once. With nothing said that reads as "ray is slow", and the number reported back is the compile — so `ray` now announces the compile when `_jit_trace` has no signatures yet, and reports elapsed time in its "wrote" message either way.
+* **`ray` looked slow, and it was compiling, not tracing** ([reference-viewer parity](plugins/pymol-parity.md)). Reported as "1f5n takes more than 10 s". The trace is **0.4–0.6 s** for that structure at 638×291 2×2, and 0.46 s end-to-end through the command, thread and PNG write in a fresh process. The 10–33 s is **numba compiling the tracer**, cached under `~/.chisurf/cache/<module>_<contenthash>/` — and the hash is over the source, so *every* edit to `raytracer.py` or `bvh.py` discards the cache and the next `ray` pays a full recompile. Measured: **33.5 s** immediately after a kernel signature changed, **0.46 s** in the next fresh process; a fresh install pays it once. With nothing said that reads as "ray is slow", and the number reported back is the compile — so `ray` now announces the compile when `_jit_trace` has no signatures yet, and reports elapsed time in its "wrote" message either way.
 
 * **Fitted Gaussian ellipses vanished a moment after being drawn — the 2-D overlay is one surface with three producers** ([PRD-56](prds/prd-56.md)). The companion tool's `overlay_plot` is a single painter widget; the equation curves, the Gaussian ellipses and the server-fed LineSets all paint onto it, and only the equation curves cleared it — unqualified. `_redraw_gaussian_overlays_from_table` then closed the loop itself: it drew the ellipses and scheduled a full `update_plots` **1 ms later** ("Trigger resize / otherwise plot flipped ? - Ugly fix"), which redrew the equation overlays, which cleared the whole surface. Measured on a two-blob fixture: 6 curves after the redraw, **0** after one turn of the event loop.
   **Curves now carry a layer** (`equations`, `gaussian`, `server:<tag>`) and `clear_curves(layer)` removes only that producer's work; a bare `clear_curves()` still means "everything" and stays for `clear_plots`. The LineSet store drops its per-tuple bookkeeping (it removed by value, and a tuple holding arrays cannot be compared — the removal would have silently stopped working) in favour of dropping its layer.
@@ -8204,33 +8204,33 @@ front, not this).
   Both join the retired-dependency guardrail, and **writing the negative test is what earned its keep**: the packaging check matched only the *wheel* spelling, so a conda recipe re-declaring `pyarrow-core` would have sailed straight past it. Distribution aliases are now checked alongside the primary name. The guardrail deliberately does **not** read the manifests under `modules/` — those are sibling checkouts this repository does not pin, so asserting on them would make the result depend on which revision of a neighbour happens to be on disk; each of those projects guards its own.
   Worth knowing for the next removal: the `bh.` in the Becker-Hickl readers is a block-header local, not `boost_histogram`. A name-based sweep flags it and the import regex must not.
 
-* **A cartoon casts a shadow now, and the WebGL viewer is read out** ([PyMOL parity](plugins/pymol-parity.md)). `ray_shadow` did nothing on the display chimol and PyMOL both start with: the shadow query walked a **sphere-only** tree, so a cartoon — zero spheres — reported every point fully lit, and a helix lying across another did not darken it. PyMOL shadows every primitive. The second tree was an optimisation from when a shadow ray cost a sweep of the whole scene; with the BVH it is one more descent of a tree that already exists, **so the fix deletes code rather than adding it** — one tree for both ray kinds, and `skip` becomes the hit primitive's unified index, finally correct for a triangle as well as a sphere. Cost on 148L at 320×240 2×2: cartoon 0.05 → 0.07 s, sticks 0.04 → 0.08 s, surface 0.07 → 0.12 s — 40–70 % more, from a base 100× faster than this morning. Checked for self-shadow acne, the failure mode this class of change has: none, and the difference sits in the crevices between surface lobes and under the ribbons, which is where a cast shadow belongs. 91 passed.
+* **A cartoon casts a shadow now, and the WebGL viewer is read out** ([reference-viewer parity](plugins/pymol-parity.md)). `ray_shadow` did nothing on the display chimol and the reference viewer both start with: the shadow query walked a **sphere-only** tree, so a cartoon — zero spheres — reported every point fully lit, and a helix lying across another did not darken it. The reference viewer shadows every primitive. The second tree was an optimisation from when a shadow ray cost a sweep of the whole scene; with the BVH it is one more descent of a tree that already exists, **so the fix deletes code rather than adding it** — one tree for both ray kinds, and `skip` becomes the hit primitive's unified index, finally correct for a triangle as well as a sphere. Cost on 148L at 320×240 2×2: cartoon 0.05 → 0.07 s, sticks 0.04 → 0.08 s, surface 0.07 → 0.12 s — 40–70 % more, from a base 100× faster than this morning. Checked for self-shadow acne, the failure mode this class of change has: none, and the difference sits in the crevices between surface lobes and under the ribbons, which is where a cast shadow belongs. 91 passed.
 
-* **The WebGL viewer (`junk/ngl`) is read out, and its checkout is deleted.** Surveyed the whole tree, not only the shaders. What it was consulted for is captured: the five shader techniques are transcribed into the tracker, and one of the five was **measured and rejected** (impostors buy ~1 ms on an ordinary molecule). Everything else duplicates an authority chimol already has and the authority is better — its representations (`rocket`, `unitcell`, `slice`, `hyperball`), colour schemes (hydrophobicity, occupancy, partial charge, B-factor) and measurements all exist in PyMOL under names chimol is *required* to match, so taking them from NGL would mean implementing the right feature under the wrong name and defaults. Two things neither PyMOL nor ChimeraX has are written down so dropping the checkout does not lose them: an EDT-based solvent-excluded surface (a third algorithm again — PyMOL's is the one to match), and a flat spatial hash that `geometry/neighbors.py` already implements. **PyMOL stays the authority on behaviour, ChimeraX on rendering quality; NGL was only ever the third opinion on shaders.** The 1.0 GB checkout is **deleted**, and two things were done so the deletion sticks and costs nothing: the tracker now carries the upstream URL and the exact commit everything was read from (`60be69b5`), since the shader notes cite paths inside it; and `junk/clone.sh` — which re-clones every reference tree and would have silently restored it on the next run — carries the decision instead of the clone line.
+* **The WebGL viewer (`junk/ngl`) is read out, and its checkout is deleted.** Surveyed the whole tree, not only the shaders. What it was consulted for is captured: the five shader techniques are transcribed into the tracker, and one of the five was **measured and rejected** (impostors buy ~1 ms on an ordinary molecule). Everything else duplicates an authority chimol already has and the authority is better — its representations (`rocket`, `unitcell`, `slice`, `hyperball`), colour schemes (hydrophobicity, occupancy, partial charge, B-factor) and measurements all exist in the reference viewer under names chimol is *required* to match, so taking them from NGL would mean implementing the right feature under the wrong name and defaults. Two things neither the reference viewer nor the reference volume viewer has are written down so dropping the checkout does not lose them: an EDT-based solvent-excluded surface (a third algorithm again — the reference viewer's is the one to match), and a flat spatial hash that `geometry/neighbors.py` already implements. **The reference viewer stays the authority on behaviour, the reference volume viewer on rendering quality; NGL was only ever the third opinion on shaders.** The 1.0 GB checkout is **deleted**, and two things were done so the deletion sticks and costs nothing: the tracker now carries the upstream URL and the exact commit everything was read from (`60be69b5`), since the shader notes cite paths inside it; and `junk/clone.sh` — which re-clones every reference tree and would have silently restored it on the next run — carries the decision instead of the clone line.
 
-* **The viewport had no depth cue, and PyMOL's settings for it were pointed at the tracer** ([PyMOL parity](plugins/pymol-parity.md)). `depth_cue`, `fog` and `fog_start` are *global* in PyMOL — `SceneSetFog` applies them to the viewport and the tracer follows unless `ray_trace_fog`/`ray_trace_fog_start` override, which is why those two names exist. chimol registered all three against `ray.*` and applied them only to the tracer, so the interactive view had **no depth cue at all** and the traced image disagreed with the viewport it reproduces. The shader was already written for it: `fogDensity`, `fogColor`, the uniform lookup and the fragment `mix` were all in place, and `self._fog_density = 0.0` in `__init__` was **the only assignment in the tree** — a complete feature held off by one initialiser, and the fourth thing this session that was built and unreachable.
-  Both halves transcribed rather than invented. **Shape:** PyMOL's fog is *linear between two planes*, `fog = (g_Fog_end + eye_pos.z) * g_Fog_scale` in `data/shaders/default.vs`, a **visibility** with scale `1/(end − start)`; chimol's shader had `1 − exp(−density·|viewPos|)`, a different curve that makes `fog_start` mean nothing. **Planes:** `FogStart = (back − front)·fog_start + front`, `FogEnd = FogStart + (back − FogStart)/fog` for `fog` in (0,1) else `back`, with front/back fitted **around the scene** (camera distance ± target radius) rather than the camera's far plane — the identical distinction the tracer's fog fix turned on, where getting it wrong fogged every pixel 24–69 % with none left unfogged. Defaults are PyMOL's: `depth_cue` on, `fog` 1.0, `fog_start` 0.45.
+* **The viewport had no depth cue, and the reference viewer's settings for it were pointed at the tracer** ([reference-viewer parity](plugins/pymol-parity.md)). `depth_cue`, `fog` and `fog_start` are *global* in the reference viewer — `SceneSetFog` applies them to the viewport and the tracer follows unless `ray_trace_fog`/`ray_trace_fog_start` override, which is why those two names exist. chimol registered all three against `ray.*` and applied them only to the tracer, so the interactive view had **no depth cue at all** and the traced image disagreed with the viewport it reproduces. The shader was already written for it: `fogDensity`, `fogColor`, the uniform lookup and the fragment `mix` were all in place, and `self._fog_density = 0.0` in `__init__` was **the only assignment in the tree** — a complete feature held off by one initialiser, and the fourth thing this session that was built and unreachable.
+  Both halves transcribed rather than invented. **Shape:** the reference viewer's fog is *linear between two planes*, `fog = (g_Fog_end + eye_pos.z) * g_Fog_scale` in `data/shaders/default.vs`, a **visibility** with scale `1/(end − start)`; chimol's shader had `1 − exp(−density·|viewPos|)`, a different curve that makes `fog_start` mean nothing. **Planes:** `FogStart = (back − front)·fog_start + front`, `FogEnd = FogStart + (back − FogStart)/fog` for `fog` in (0,1) else `back`, with front/back fitted **around the scene** (camera distance ± target radius) rather than the camera's far plane — the identical distinction the tracer's fog fix turned on, where getting it wrong fogged every pixel 24–69 % with none left unfogged. Defaults are the reference viewer's: `depth_cue` on, `fog` 1.0, `fog_start` 0.45.
   Measured on 148L as spheres: **91.6 % of lit pixels unfogged**, recessed ones down to 0.48. The guardrail asserts **both halves of that pair** — something fogged *and* something not — because a dimmer passes either one alone, which is precisely how the tracer's fog failure survived a single-number check. `_fog_planes` reads the config every frame rather than caching onto the renderer, so `set depth_cue, off` cannot leave a stale copy — the failure the silhouette settings still have. 128 passed across the render and settings tests.
   Recorded and not done: the config path is still `ray.depth_cue` / `ray.fog_start` / `ray.fog_intensity`, which reads wrong for settings governing both renderers. Moving them is a **key move** and the migration table only knows how to update a *default*, so it needs a small loader extension — worth doing together with `silhouette`'s two-store problem.
 
-* **Silhouettes were built and unusable: switching them on deleted the sequence strip and moved the molecule** ([PyMOL parity](plugins/pymol-parity.md)). The tracker named the render-to-texture scaffolding as the *next task*; it has been there for some time with silhouettes on top of it — another stated gap with a shelf life. What was true is that nobody could have used it. Three defects, all where the offscreen pass meets the rest of the frame, all invisible to the suite because nothing rendered a *window* with an effect on: (1) `_render_overlay` paints with QPainter, which targets the **widget's** framebuffer rather than the bound one, and it ran *before* the composite, so the blit erased the chrome — the strip lost **53 %** of its ink (the two early-return paths in `paintGL` already had the right order; only the path that draws a molecule did not); (2) the offscreen buffer took the window's full height while the direct path reserves a band for the strip, so the scene rendered centred in a taller frame and visibly shifted, and the blit covered the band too; (3) a window that has not been laid out built a **1-pixel-wide** framebuffer — the same `scene_width` floor that once told the camera the window was thirty times taller than wide — so the composite blitted a one-pixel column and **the molecule disappeared**. The effect passes now decline below `_MIN_MEASURABLE_SCENE`.
+* **Silhouettes were built and unusable: switching them on deleted the sequence strip and moved the molecule** ([reference-viewer parity](plugins/pymol-parity.md)). The tracker named the render-to-texture scaffolding as the *next task*; it has been there for some time with silhouettes on top of it — another stated gap with a shelf life. What was true is that nobody could have used it. Three defects, all where the offscreen pass meets the rest of the frame, all invisible to the suite because nothing rendered a *window* with an effect on: (1) `_render_overlay` paints with QPainter, which targets the **widget's** framebuffer rather than the bound one, and it ran *before* the composite, so the blit erased the chrome — the strip lost **53 %** of its ink (the two early-return paths in `paintGL` already had the right order; only the path that draws a molecule did not); (2) the offscreen buffer took the window's full height while the direct path reserves a band for the strip, so the scene rendered centred in a taller frame and visibly shifted, and the blit covered the band too; (3) a window that has not been laid out built a **1-pixel-wide** framebuffer — the same `scene_width` floor that once told the camera the window was thirty times taller than wide — so the composite blitted a one-pixel column and **the molecule disappeared**. The effect passes now decline below `_MIN_MEASURABLE_SCENE`.
   **The metric lied before the picture did.** The first measurement read "10.28 % of pixels changed — the setting works." It did change the picture: it was deleting the strip and moving the molecule. A real outline moves **0.15 %**, and that ratio is now the assertion, because here *more* change is the failure. Same lesson the two-sided-lighting work recorded, reached from the opposite direction.
   Guardrails in `test_lighting.py`, which already renders real framebuffers; both checked against the old code and they do fail there. The strip one asserts **ink coverage** rather than pixel equality — painting after a composite leaves QPainter different GL state and shifts glyph antialiasing by up to 12/255 (mean 0.38) with the crops indistinguishable, while erasure takes the ink to nearly nothing. The third defect caught the *test* before the code: a window restored from a persisted dock layout handed the 3-D widget 109×350, under the panel's own 220-pixel column, so the helper forces a viewport and **asserts** it got one instead of skipping.
-  Recorded and not done: `set silhouette, on` is not a registered setting, so the feature is reachable only via the ChimeraX-style `lighting silhouette=on`; and `set_lighting` writes `_post` directly while `_DISPLAY_CONFIG["silhouette"]` is read only at construction — two stores for one state, so registering the name means fixing that first or shipping one more setting that stores and does nothing.
+  Recorded and not done: `set silhouette, on` is not a registered setting, so the feature is reachable only via the reference-volume-viewer-style `lighting silhouette=on`; and `set_lighting` writes `_post` directly while `_DISPLAY_CONFIG["silhouette"]` is read only at construction — two stores for one state, so registering the name means fixing that first or shipping one more setting that stores and does nothing.
 
-* **Every ChiMOL frame rebuilt the whole scene, through a colour query: surface 82 ms → 4.25 ms** ([PyMOL parity](plugins/pymol-parity.md)). `paintGL` → `_render_overlay` → `_refresh_gui_state` → `get_residue_colors` → **`_build_scene_for_current_object`**. The sequence strip has no signal telling it that `color`/`spectrum`/`ss` ran, so it re-reads the residue colours every frame — reasonable — but the only way to get them ran the entire scene builder: with a surface shown, a density grid, marching cubes, gradients and ambient occlusion **sixty times a second**. 148L at 1280×860: surface **82.12 → 4.25 ms** (12 → 235 fps), cartoon 28.34 → 4.12, spheres 17.34 → 4.94, sticks 11.61 → 3.91. The colour half is split out as `_recompute_colors_per_ca`, which is all `get_residue_colors` calls now.
+* **Every ChiMOL frame rebuilt the whole scene, through a colour query: surface 82 ms → 4.25 ms** ([reference-viewer parity](plugins/pymol-parity.md)). `paintGL` → `_render_overlay` → `_refresh_gui_state` → `get_residue_colors` → **`_build_scene_for_current_object`**. The sequence strip has no signal telling it that `color`/`spectrum`/`ss` ran, so it re-reads the residue colours every frame — reasonable — but the only way to get them ran the entire scene builder: with a surface shown, a density grid, marching cubes, gradients and ambient occlusion **sixty times a second**. 148L at 1280×860: surface **82.12 → 4.25 ms** (12 → 235 fps), cartoon 28.34 → 4.12, spheres 17.34 → 4.94, sticks 11.61 → 3.91. The colour half is split out as `_recompute_colors_per_ca`, which is all `get_residue_colors` calls now.
   **The measurement is the transferable part.** Frame time was *flat against pixel count* — 8× the pixels, same milliseconds — which rules out fill work and vertex work in one experiment and says the cost is fixed CPU work per frame. That is what redirected the search from the shaders to the profiler. **Ask a frame to scale before assuming what it spends on.** The call site carried the comment *"Reading them back is a cached array copy, which costs nothing beside drawing the molecule itself"* — it was the most expensive thing in the frame, and that comment is why nobody looked. **A comment asserting a cost is a claim with a shelf life.**
   One hazard the split introduced and the fix closes: `get_residue_colors` sized its array from `self._coords.shape[0]`, which on a **trajectory** is the frame count, not the residue count. The old code got away with it because the rebuild set the array correctly and a shape check then rejected the *return value*; computing it directly would have stored a wrongly-sized array on the viewer for the renderer to read. `_ca_coords_2d` is now the one definition, and is read-only so a colour query cannot advance a trajectory. Guardrail is structural, not timed, and was checked against the old code to confirm it fails there.
   **This also settles the impostor question rather than leaving it open.** With the rebuild gone, 210 240 vertices cost 0.9 ms more per frame than 5 536, so cylinder/sphere impostors have about a millisecond to win on an ordinary molecule against a ~3.9 ms floor that is the sequence strip's *text*. They stay right above `impostor_min_atoms` (20 000), which is what they were added for. Where a cylinder primitive would still pay is the **ray tracer**, replacing the tessellated 8-sided shafts with an exact primitive — the trade `meta["spheres"]` already makes for balls.
 
-* **The system-info overlay moves to the bottom left, and is off by default** ([PyMOL parity](plugins/pymol-parity.md)). The top left of the viewport is where the sequence strip and the object panel already put text, and a framed structure sits centre-high, so an overlay anchored there competed with both. **`MolView._info_visible` already started `False`** — the toolbar button was constructed `checked=True` and switched it back on at startup, so the shipped default was the opposite of the one the viewer declared. Nothing tested either fact; two guardrails added in `test_panel_layout.py`, measuring the anchor rather than asking whether the widget exists.
+* **The system-info overlay moves to the bottom left, and is off by default** ([reference-viewer parity](plugins/pymol-parity.md)). The top left of the viewport is where the sequence strip and the object panel already put text, and a framed structure sits centre-high, so an overlay anchored there competed with both. **`MolView._info_visible` already started `False`** — the toolbar button was constructed `checked=True` and switched it back on at startup, so the shipped default was the opposite of the one the viewer declared. Nothing tested either fact; two guardrails added in `test_panel_layout.py`, measuring the anchor rather than asking whether the widget exists.
   Two things measured on the way. `info_overlay.full_height` **has no effect**: `addWidget` is given an alignment, so the widget takes its size hint rather than the cell, and the row span the flag controls changes nothing (192 px tall in a 631 px container either way) — left alone rather than changed, since changing a shipped default costs a config migration and this one buys nothing. And the screenshot helper **pastes the GL framebuffer over the widget area**, which hides any overlay child sitting on the 3-D view: a whole-window grab showed no info panel at all while it was plainly visible. Grabbing the container instead shows both.
 
-* **Shader techniques surveyed from a WebGL viewer, none taken yet** ([PyMOL parity](plugins/pymol-parity.md)). `junk/ngl/src/shader/` read for *how* while PyMOL stays the authority on *what*. The headline: ChiMOL draws spheres as impostors only past 20 000 atoms, so an ordinary molecule gets tessellated sticks — **33 216 triangles on 148L** for what is a few hundred capped cylinders — where a cylinder impostor ray-casts them exactly from one quad, faster and without facets at any zoom. Four smaller ones, each a handful of lines: interior colouring so a clipped surface reads as solid rather than hollow (the same `gl_FrontFacing` hook `two_sided_lighting` already added), opaque back faces as the cheap half of order-independent transparency, SDF glyphs for labels that survive zoom, and a matrix-scale helper so an impostor radius survives a scaled transform. Recorded with what each buys, in the rendering section.
+* **Shader techniques surveyed from a WebGL viewer, none taken yet** ([reference-viewer parity](plugins/pymol-parity.md)). `junk/ngl/src/shader/` read for *how* while the reference viewer stays the authority on *what*. The headline: ChiMOL draws spheres as impostors only past 20 000 atoms, so an ordinary molecule gets tessellated sticks — **33 216 triangles on 148L** for what is a few hundred capped cylinders — where a cylinder impostor ray-casts them exactly from one quad, faster and without facets at any zoom. Four smaller ones, each a handful of lines: interior colouring so a clipped surface reads as solid rather than hollow (the same `gl_FrontFacing` hook `two_sided_lighting` already added), opaque back faces as the cheap half of order-independent transparency, SDF glyphs for labels that survive zoom, and a matrix-scale helper so an impostor radius survives a scaled transform. Recorded with what each buys, in the rendering section.
 
-* **`ray` was 143–651× slower than it needed to be; every ray tested every primitive** ([PyMOL parity](plugins/pymol-parity.md)). The tracer had no acceleration structure: each sample intersected every sphere and every triangle in the scene, for every transparency layer. A cartoon is 39 252 triangles and a solvent surface 51 748, so a publication-sized render — 1024×768, 2×2 samples — cost **195 s**. It now costs **0.30 s**. Measured on 148L at 320×240 2×2: cartoon 19.12 s → 0.126 s (151×), sticks 8.96 → 0.062 (144×), surface 35.00 → 0.198 (177×), lines 51.11 → 0.152 (337×). A binned-SAH BVH in `renderer/bvh.py`, with spheres and triangles in one index space so a mixed scene is one tree and one descent.
+* **`ray` was 143–651× slower than it needed to be; every ray tested every primitive** ([reference-viewer parity](plugins/pymol-parity.md)). The tracer had no acceleration structure: each sample intersected every sphere and every triangle in the scene, for every transparency layer. A cartoon is 39 252 triangles and a solvent surface 51 748, so a publication-sized render — 1024×768, 2×2 samples — cost **195 s**. It now costs **0.30 s**. Measured on 148L at 320×240 2×2: cartoon 19.12 s → 0.126 s (151×), sticks 8.96 → 0.062 (144×), surface 35.00 → 0.198 (177×), lines 51.11 → 0.152 (337×). A binned-SAH BVH in `renderer/bvh.py`, with spheres and triangles in one index space so a mixed scene is one tree and one descent.
   **The earlier 380× sphere-mesh fix was the same bug seen through a keyhole.** Trading 210 240 triangles for 1363 spheres worked because cost was linear in the primitive count per ray — which meant it could not generalise to any representation whose triangles are not secretly spheres. `spheres` gains least here (5.6×) precisely because it was the one case already treated. **A speedup that large is rarely a property of the geometry; it is usually the complexity class.**
-  **The picture is unchanged, and that was differenced rather than assumed.** cartoon, sticks and surface are **bit-identical**, every pixel. `spheres` (3.6 % of pixels) and `lines` (0.03 %) differ because the tree exposed a defect it did not cause: the shadow query returned **whichever occluder came first in the array**, so contact-shadow softness depended on scene build order. PyMOL takes the nearest, and only when the decay is on — `nearest_shadow = (shadow_decay != _0)`, `layer1/Ray.cpp` — because the decay is a function of occluder distance. All 2 788 changed pixels are **brighter, none darker**, which is what the nearest occluder implies under `occlusion = 1 − exp(−(t − decay_range)·decay)` and is how the change was confirmed to be that one change alone. A second defect fell out beside it: the hit primitive was passed as the sphere to skip **without checking it was a sphere**, so a triangle hit stopped one sphere from casting — invisible except on a mixed scene, which is what a wireframe is.
+  **The picture is unchanged, and that was differenced rather than assumed.** cartoon, sticks and surface are **bit-identical**, every pixel. `spheres` (3.6 % of pixels) and `lines` (0.03 %) differ because the tree exposed a defect it did not cause: the shadow query returned **whichever occluder came first in the array**, so contact-shadow softness depended on scene build order. The reference viewer takes the nearest, and only when the decay is on — `nearest_shadow = (shadow_decay != _0)`, `layer1/Ray.cpp` — because the decay is a function of occluder distance. All 2 788 changed pixels are **brighter, none darker**, which is what the nearest occluder implies under `occlusion = 1 − exp(−(t − decay_range)·decay)` and is how the change was confirmed to be that one change alone. A second defect fell out beside it: the hit primitive was passed as the sphere to skip **without checking it was a sphere**, so a triangle hit stopped one sphere from casting — invisible except on a mixed scene, which is what a wireframe is.
   **Two traps, both of which draw a plausible wrong picture rather than failing.** A cartoon is full of exactly axis-aligned triangles whose bounding box is exactly flat, and a ray in that plane computes `0 × inf`; the NaN loses every comparison and the triangle silently leaves the image, so bounds are padded at build time. And a traversal stack that overflows drops geometry, so the build caps depth and forces an over-full leaf instead — slow is the right way for that to fail.
   **The guardrail that matters is the cost one.** Every correctness test in `test/test_bvh.py` passes just as well against an exhaustive search, so removing the tree would leave a green suite; cost is asserted separately, at a resolution where the trace and not the (linear) tree build dominates. Benchmark: `test/benchmarks/benchmark_chimol_ray.py`.
   Recorded and not fixed: **nothing but a sphere casts a shadow** — the shadow tree holds spheres only, so on a cartoon-only display `ray_shadow` does nothing at all. Unaffordable before, affordable now, and a rendering decision rather than a performance one; the seam and what it would change are in the parity concept.
@@ -8243,7 +8243,7 @@ front, not this).
   **Two defects found on the way, both silent.** `skimage.io` reads through an imageio plugin, so two `except ImportError` fallbacks to it would have become dead paths rather than errors — the guardrail test now bans `skimage.io` by name alongside the three packages. And tttrlib's own `CLSMSuperRes._read_tiff` still imported `tifffile` and raised "needs the 'tifffile' package" on installations that had TIFF support compiled in all along.
   Not fixed here and written down instead: `img_flow`'s demo PTU reconstructs **29 of its 30 frames** — 30 frame markers and 1920/1920 line markers are all present in the stream. Unrelated to this change, and invisible to the default suite because the test is marked `slow`; measurement and where the frame goes are in [known issues](references/known-issues.md).
 
-* **Numba is required across ChiMOL; the unexercised NumPy twins are gone** ([PyMOL parity](plugins/pymol-parity.md)). Ten modules carried `_HAVE_NUMBA` with a pure-NumPy sibling behind it. Nothing ran those siblings while numba was installed -- which is exactly how the ray tracer's twin came to be **silently broken**: the transparency work landed in both, the NumPy one referenced a parameter it did not take, and every test still passed. A fallback nobody runs is not a safety net but an untested branch. ~600 lines removed, along with the `except Exception: pass` handlers that quietly downgraded a jit failure to a slower path.
+* **Numba is required across ChiMOL; the unexercised NumPy twins are gone** ([reference-viewer parity](plugins/pymol-parity.md)). Ten modules carried `_HAVE_NUMBA` with a pure-NumPy sibling behind it. Nothing ran those siblings while numba was installed -- which is exactly how the ray tracer's twin came to be **silently broken**: the transparency work landed in both, the NumPy one referenced a parameter it did not take, and every test still passed. A fallback nobody runs is not a safety net but an untested branch. ~600 lines removed, along with the `except Exception: pass` handlers that quietly downgraded a jit failure to a slower path.
   Three kinds of code needed telling apart, and mixing them up was the easy mistake: **tests of the deleted branch** were removed (two in `test_trajectory_performance.py` that forced `_HAVE_NUMBA = False`); **tests merely guarded by the flag** kept their assertions and lost the guard (the cell-list-vs-brute-force AO comparison); and **NumPy code used as a test oracle** stayed (`_occlusion_from_spheres_numpy`, the only independent check on that kernel). `bonds.py` kept its NumPy path too -- its guard was `_HAVE_NUMBA and nb is not None and n > 1`, where `n > 1` is a real condition.
   **Two self-inflicted process lessons.** A bulk regex edit with `re.S` matched from each file's *first* `try:`, which in `cartoon.py` was the sibling-import block, not the numba one -- so three imports vanished and every cartoon test failed with a `NameError` far from the cause. The verification that caught it had to compare **every name the module binds, imports included**; an earlier scan over top-level *definitions* reported clean and was wrong. And twice a long suite run was invalidated by editing the tree while it ran: a running suite makes the tree read-only.
 
@@ -8253,20 +8253,20 @@ front, not this).
   `test_integration_lifecycle.py`: **51 failed / 23 passed → 43 failed / 31 passed**. The remainder is a *test-isolation* problem rather than 43 separate faults — the file shares one module-scoped server and resets only datasets and fits, and `TestErrorBoundary` passes **12/12 alone** but fails 3 in the full file. Resume point and the traps in measuring it: [headless server](architecture/server.md); the port pattern for the stale `{"ok": False}` contract is in [known issues](references/known-issues.md).
   **A correction worth keeping**: this suite was first reported as *deadlocked*, on the strength of a stack sample showing `zmq_ctx_destroy`. The sample was accurate and the conclusion was not — the block was real only while fits could not be created. The file now runs to completion; its 13.5 minutes are repeated client timeouts. A sampled stack says where a process is, not that it is stuck: check whether CPU time is advancing.
 
-* **`ray` walks through a translucent surface** ([PyMOL parity](plugins/pymol-parity.md)). Each ray now composites front to back instead of stopping at the nearest hit, so the traced image shows the cartoon inside a glass shell exactly as the viewport does. **Free when unused**: on 148L at 300x220, opaque renders in 3.60 s with four layers allowed against 3.83 s with one, because the walk ends at the first solid hit; translucent is 9.06 s, 2.4x rather than 4x, because it also stops once the remaining transmittance cannot change a byte.
+* **`ray` walks through a translucent surface** ([reference-viewer parity](plugins/pymol-parity.md)). Each ray now composites front to back instead of stopping at the nearest hit, so the traced image shows the cartoon inside a glass shell exactly as the viewport does. **Free when unused**: on 148L at 300x220, opaque renders in 3.60 s with four layers allowed against 3.83 s with one, because the walk ends at the first solid hit; translucent is 9.06 s, 2.4x rather than 4x, because it also stops once the remaining transmittance cannot change a byte.
   **The pure-NumPy twin is deleted, and it had already rotted.** `trace()` kept a second implementation of the same tracer behind `if _HAVE_NUMBA` plus an `except Exception` fallback. Nothing ran it while numba was installed -- so transparency went into it *wrong* (referencing `max_layers` without taking the parameter) and every test still passed. A fallback nobody runs is not a safety net but an untested branch. numba is a hard import now; `_trace_numpy` and its three helpers are gone and the file is ~380 lines lighter.
   Two process notes: a bulk regex deletion ("from this `def` to the next") also swallowed two constants sitting between functions -- diffing the *set of top-level names* against HEAD is what proved the repair complete. And the first test asserted the wrong thing: colouring the molecule red and comparing redness fails because `color red` reddens the *surface* too, so the opaque case scores redder. Replaced with two spheres driven through `trace()` directly, where red can only reach the centre pixel through the shell, plus the converse that an opaque shell must not leak it.
 
-* **(superseded the same day) `ray` traces a translucent surface opaque, and now says so** ([PyMOL parity](plugins/pymol-parity.md)). The tracer takes the nearest hit along a ray and slices the colour to RGB, so a surface at `transparency 0.6` comes out solid: measured against the viewport on 148L, the GL view shows a glass shell with the cartoon inside and `ray` an opaque grey blob with no cartoon at all. Worth recording only now, because before `cbc9291b7` the two agreed by both being wrong.
+* **(superseded the same day) `ray` traces a translucent surface opaque, and now says so** ([reference-viewer parity](plugins/pymol-parity.md)). The tracer takes the nearest hit along a ray and slices the colour to RGB, so a surface at `transparency 0.6` comes out solid: measured against the viewport on 148L, the GL view shows a glass shell with the cartoon inside and `ray` an opaque grey blob with no cartoon at all. Worth recording only now, because before `cbc9291b7` the two agreed by both being wrong.
   **This gap fails differently from the label one, and worse.** A label the tracer cannot draw is simply absent, so the picture is visibly incomplete; a translucent surface *is* traced and merely comes out solid, and an opaque blob looks like a correct render of something else. Nothing in the image says the setting was ignored -- which is exactly when it has to be said out loud, so `ray` reports `transparency not applied: <n> mesh` and points at `png`. The real fix is multi-hit accumulation along the ray in both the numpy path and the compiled kernel; a layered re-trace fits the current structure without rewriting the kernel and is the cheaper route to try first. Not started, recorded with the reproduction.
 
-* **`surface_quality` was three defects wearing one name** ([PyMOL parity](plugins/pymol-parity.md)). Flagged as a units wart -- PyMOL takes a level, chimol a grid spacing -- and each measurement found something worse underneath. **It is not a different quantity**: `RepSurfaceSetSettings` shows the level *selects* a point separation in Angstrom, which is what chimol stores; the eight levels and four base separations are transcribed, the bases registered because the table reads them. **Then the level did nothing** -- levels -3 to 1 moved 148L from 26 286 to 27 238 vertices, 3.6 % across an eightfold request, because `max_dim` caps the grid at 96 samples/axis and *rescales the spacing to fit*. **Then the reason turned out to be worse**: `_all_atom_coords` is in scene units (Angstrom x 10) and the spacing was passed through as if it were too, so `0.8` asked for **0.08 A** and the cap clamped it back. The spacing had never had a measurable effect; `max_dim` was making the whole decision. `add_volume` already converts -- one path forgot what its neighbour remembers.
-  Fixed: 2 446 / 13 654 / 25 876 / 105 922 vertices at levels -3 / -1 / 0 / 1 (43x, monotone, and visibly different). The shipped default moves 0.8 -> 0.5 A by config migration 7 -> 8, which **changes the number without changing the picture**: honest 0.8 would have made every existing surface coarser than users see, while 0.5 is PyMOL's own `surface_normal`, is `surface_quality 0`, and reproduces today's appearance. 74 registered settings; `preset ligand_sites` now performs all four of PyMOL's steps with nothing skipped.
+* **`surface_quality` was three defects wearing one name** ([reference-viewer parity](plugins/pymol-parity.md)). Flagged as a units wart -- the reference viewer takes a level, chimol a grid spacing -- and each measurement found something worse underneath. **It is not a different quantity**: `RepSurfaceSetSettings` shows the level *selects* a point separation in Angstrom, which is what chimol stores; the eight levels and four base separations are transcribed, the bases registered because the table reads them. **Then the level did nothing** -- levels -3 to 1 moved 148L from 26 286 to 27 238 vertices, 3.6 % across an eightfold request, because `max_dim` caps the grid at 96 samples/axis and *rescales the spacing to fit*. **Then the reason turned out to be worse**: `_all_atom_coords` is in scene units (Angstrom x 10) and the spacing was passed through as if it were too, so `0.8` asked for **0.08 A** and the cap clamped it back. The spacing had never had a measurable effect; `max_dim` was making the whole decision. `add_volume` already converts -- one path forgot what its neighbour remembers.
+  Fixed: 2 446 / 13 654 / 25 876 / 105 922 vertices at levels -3 / -1 / 0 / 1 (43x, monotone, and visibly different). The shipped default moves 0.8 -> 0.5 A by config migration 7 -> 8, which **changes the number without changing the picture**: honest 0.8 would have made every existing surface coarser than users see, while 0.5 is the reference viewer's own `surface_normal`, is `surface_quality 0`, and reproduces today's appearance. 74 registered settings; `preset ligand_sites` now performs all four of the reference viewer's steps with nothing skipped.
   **And a fourth, from the same thread:** `solvent_radius` was registered **twice**, onto two different config keys -- `surface.probe_radius` (which the surface mesh reads) and `surface.solvent_radius` (which `get_area` reads). The later entry silently shadows the earlier, so `set solvent_radius` moved the number the area calculation used and left the surface on screen untouched: one quantity, two storages, disagreeing quietly. Collapsed onto one key; the probe now moves the surface (34 770 / 30 744 / 25 260 vertices at 1.0 / 1.4 / 2.5 A). Two guardrails added -- no name registered twice, no one name writing several config entries (the reverse stays legal, since `cartoon_side_chain_helper` and `ribbon_side_chain_helper` are deliberately one setting).
   **Worth carrying: "the setting is registered" and "the setting works" are different claims.** Four defects sat behind one flagged wart -- wrong type, no effect, 10x units, two homes -- and each had a live config path, a passing test and a correct-looking name. Only measuring the output caught them.
 
-* **ChiMOL sees through a surface: `transparency` and `two_sided_lighting`** ([PyMOL parity](plugins/pymol-parity.md)). The first and fourth names on the settings worklist, and the two `preset ligand_sites` had been reporting as skipped. **PyMOL counts transparency where chimol stores alpha, and they run opposite ways** -- `transparency 0` is opaque, `alpha 1` is -- so `SettingSpec` gained `stored`/`shown` transforms and the complement is declared once rather than kept as two numbers that must agree. A guardrail asserts every transforming spec round-trips. `unset transparency` restores chimol's shipped 0.15, not PyMOL's 0: `unset` restores *the* default, and changing what this program ships is a config migration, not a settings entry. 70 registered settings, each read by code.
-  **The picture caught what the tests could not.** Wiring the setting to the existing `twoSided` uniform passed every test and drew the wrong thing: that uniform flips the normal toward the *light* (written for flat nucleic base plates), while PyMOL's two-sided lighting flips a back face toward the *viewer*. Fixed with `gl_FrontFacing`, with the caveat recorded that on a closed surface the two criteria mostly coincide, so the measured difference is negligible -- a correctness fix for the failure mode it removes, not for a number.
+* **ChiMOL sees through a surface: `transparency` and `two_sided_lighting`** ([reference-viewer parity](plugins/pymol-parity.md)). The first and fourth names on the settings worklist, and the two `preset ligand_sites` had been reporting as skipped. **The reference viewer counts transparency where chimol stores alpha, and they run opposite ways** -- `transparency 0` is opaque, `alpha 1` is -- so `SettingSpec` gained `stored`/`shown` transforms and the complement is declared once rather than kept as two numbers that must agree. A guardrail asserts every transforming spec round-trips. `unset transparency` restores chimol's shipped 0.15, not the reference viewer's 0: `unset` restores *the* default, and changing what this program ships is a config migration, not a settings entry. 70 registered settings, each read by code.
+  **The picture caught what the tests could not.** Wiring the setting to the existing `twoSided` uniform passed every test and drew the wrong thing: that uniform flips the normal toward the *light* (written for flat nucleic base plates), while the reference viewer's two-sided lighting flips a back face toward the *viewer*. Fixed with `gl_FrontFacing`, with the caveat recorded that on a closed surface the two criteria mostly coincide, so the measured difference is negligible -- a correctness fix for the failure mode it removes, not for a number.
   **And the first metric was wrong**, which is the part worth carrying. Mean brightness *fell* 7.6 % when two-sided lighting came on and that read as a bug; it is not, because the newly lit back faces are mid-grey and veil brighter cartoon pixels. Only the side-by-side images settled it. A scalar over the whole frame cannot tell "back faces now lit" from "bright cartoon now obscured", and picking the metric before looking is how a correct change gets reverted.
 
 * **Session close: the `?` + **Guide** pass, where it stands and what stopped it** ([help buttons and guided tours](subsystems/gui-help-and-guides.md), [known issues](references/known-issues.md)). Ten commits took the shrinking allow-list from **105 → 81** of the 109 plugins declaring a GUI entrypoint: the shared seam and its guard, the QA harness, and twenty tours written with real content — the burst pipeline, the whole FCS group, two of the decay group, four imaging tools, the RICS planner and the binned HMM.
@@ -8300,7 +8300,7 @@ front, not this).
   **Finding: an inline `help` section had disguised a plugin as finished.** `core/hmm` declares `{"type": "custom", "key": "help"}` in its view spec and ships `help.md`, so it read as done — and the harness reported *no Guide button*, because nothing had ever added a toolbar to put one on. An AutoForm `help` section answers what a control means; it cannot answer which one to touch first, and it leaves the tour nowhere to live. The tool now gets the same hairline strip as the other toolbar-less ones.
   Suites: 78(+9 skipped); both tours walk clean (5 steps each); ruff clean.
 
-* **ChiMOL's camera stays where you put it** ([PyMOL parity](plugins/pymol-parity.md)). Every scene rebuild refitted it, and a rebuild is what colouring, a representation change, a label, a bond edit and **every** `set` all trigger. Measured on 148L: `zoom resi 20-26` frames at distance 357 and **12 of 12** ordinary commands put it straight back to 1730. `_update_view(fit_camera=...)` now defaults to `False`, with the three load paths passing `True` — PyMOL's `auto_zoom`, and nothing else.
+* **ChiMOL's camera stays where you put it** ([reference-viewer parity](plugins/pymol-parity.md)). Every scene rebuild refitted it, and a rebuild is what colouring, a representation change, a label, a bond edit and **every** `set` all trigger. Measured on 148L: `zoom resi 20-26` frames at distance 357 and **12 of 12** ordinary commands put it straight back to 1730. `_update_view(fit_camera=...)` now defaults to `False`, with the three load paths passing `True` — the reference viewer's `auto_zoom`, and nothing else.
   **This was recorded as attempted-and-reverted, and the recorded reason was a symptom seen through another defect.** The note said the flip was insufficient because `ray` then traced an empty image for every representation. It was not insufficient: the empty images were the `_aspect()` defect fixed earlier the same day — a never-shown window has no viewport, so the camera went 30x too far — and refitting on every rebuild hid it because the last rebuild landed after the widget had a size. With that fixed, the same flip passes `test_ray_command.py` untouched. **When an attempt fails, record what was measured, not what was concluded.**
   Two things it needed on top, both found by measuring: `_rebuild_after_coordinate_change` reuses `set_structure` — the *load* path — to re-derive after an edit, so `h_add` on a zoomed-in residue still jumped out until `set_structure`/`set_coordinates` grew a `fit_camera` argument; and nothing re-derived the distance on a **resize**, which the old behaviour had been covering by accident, so `resizeGL` re-frames when the viewport's shape changes (distance only — the clips carry a user's `clip` adjustments). That correction **scales** the distance rather than recomputing it: the scroll wheel moves the camera without touching what was framed, so recomputing would snap a hand-zoomed view back to the last `zoom`. The rule itself is now one `portrait_factor` in `view_state.py` read by both callers instead of written twice, and the seven call sites previously patched to `fit_camera=False` one at a time are gone with the default. 0 of 12 after; `test_camera_persistence.py` pins both halves. Verified by screenshot: zoom a site, colour a residue, thicken the sticks, add a sphere — the frame is pixel-identical and only the intended changes appear.
 
@@ -8323,12 +8323,12 @@ front, not this).
   **A fourth silent-degradation mode in the tour, again found only in the render.** When a tall bubble, a short window and a full-width target leave *no* candidate position clear of the target, some overlap is unavoidable — and minimum overlap alone then picks arbitrarily among near-equal choices. On the calculator it picked the half holding the dye combo the step was explaining. `_place` now buckets the overlap area and breaks the tie toward the **bottom right**, because a form fills left to right and top to bottom: the label, the editor and the first control all live at the target's top left, so that corner is what must survive. Regression test with a 420×550 bubble against a full-width row in an 800-tall window.
   Suites: 79(+8 skipped) across the three guards; both tours walk clean (7 and 5 steps); ruff findings identical to HEAD on every file touched.
 
-* **The framing correction ran on a window that did not exist** ([PyMOL parity](plugins/pymol-parity.md)). Five tests in `test_camera_framing.py` were red at HEAD, every one by a factor of **exactly 30**. `scene_width()` subtracts the internal panel's 220-pixel column and clamps the remainder to 1, so a never-laid-out `MolView` (100x30) reported an aspect of **1/30** — and PyMOL's portrait correction, given a window "thirty times taller than wide", put the camera thirty times too far away. `_aspect()` now returns 1.0 below a 16-pixel viewport: an aspect measured off a one-pixel column is not a measurement, and there is nothing to correct until there is a window. Two guardrail tests, one for each direction — the unlaid-out case frames square, a genuine 400x900 portrait still corrects. Found while running the suite for the polar-contact work; unrelated to it, fixed in the same change.
+* **The framing correction ran on a window that did not exist** ([reference-viewer parity](plugins/pymol-parity.md)). Five tests in `test_camera_framing.py` were red at HEAD, every one by a factor of **exactly 30**. `scene_width()` subtracts the internal panel's 220-pixel column and clamps the remainder to 1, so a never-laid-out `MolView` (100x30) reported an aspect of **1/30** — and the reference viewer's portrait correction, given a window "thirty times taller than wide", put the camera thirty times too far away. `_aspect()` now returns 1.0 below a 16-pixel viewport: an aspect measured off a one-pixel column is not a measurement, and there is nothing to correct until there is a window. Two guardrail tests, one for each direction — the unlaid-out case frames square, a genuine 400x900 portrait still corrects. Found while running the suite for the polar-contact work; unrelated to it, fixed in the same change.
 
-* **Polar contacts in ChiMOL: `distance ... mode=2`** ([PyMOL parity](plugins/pymol-parity.md)). One missing piece was behind three visible symptoms: `preset technical` and `preset ligands` both reported drawing no polar contacts, and the object menu's **A ▸ find** submenu was disabled outright. `chimol/analysis/hbonds.py` transcribes `ObjectMoleculeTestHBond`, `FindBestDonorH`, `GetCheckHBond`, `GetAvgHBondVector` and `CoordSetFindOpenValenceVector`.
-  **The cutoff is a curve, not a number** — the donor-acceptor limit slides with the A-D-H angle from `h_bond_cutoff_center` (3.6 Å head-on) to `h_bond_cutoff_edge` (3.2 Å at 63°), and the two names read backwards from what they do. Two more details invisible without the C++: the virtual hydrogen sits at **1.0 Å**, not the real X-H bond length (`FindBestDonorH` adds a *unit* vector), and an atom with no neighbours aims its hydrogen **straight at the acceptor**, which is how PyMOL finds water-mediated contacts in a hydrogen-less PDB rather than a bug to fix.
-  Donors and acceptors need bond orders a PDB does not carry. PyMOL fills that with a hard-coded double-bond table for standard residues plus valence arithmetic for the rest; chimol already had the equivalent of the first in the `h_add` residue template, so a templated atom is typed from it (which is what keeps a backbone carbonyl an acceptor and not a donor) and an untemplated one from expected valence with geometry read off its bond angles. **Measured against reality**: on the fully hydrogenated `hGBP1_closed.pdb`, asking with and without hydrogens gives 735 vs 803 contacts sharing 729 pairs — **99.2 % recall** with every hydrogen invented. On 148L, 234 contacts in 0.02 s, over 40 of them the i→i−4 bonds that define an α-helix. One deliberate deviation: PyMOL invents an amide hydrogen for **proline**, which has none.
-  With it: `distance` gained PyMOL's full signature and modes 0–4 (all pairs / bonded / polar / exclusion / centroids) with `label`/`quiet`/`reset`; measurements became multi-segment and **dashed** (`dash_length`/`dash_gap`/`dash_width`/`dash_color`); the **A ▸ find ▸ polar contacts** submenu is transcribed from `menu.py::polar`, with halogen/salt-bridge/π left visible-and-disabled rather than dropped. **55 → 68 registered settings**, every one read by code. 20 new tests in `test_hbonds.py`; verified in a real GL window, not offscreen — the first pass drew 1-pixel dashes because `dash_width` was registered and read by nothing, which only the screenshot showed.
+* **Polar contacts in ChiMOL: `distance ... mode=2`** ([reference-viewer parity](plugins/pymol-parity.md)). One missing piece was behind three visible symptoms: `preset technical` and `preset ligands` both reported drawing no polar contacts, and the object menu's **A ▸ find** submenu was disabled outright. `chimol/analysis/hbonds.py` transcribes `ObjectMoleculeTestHBond`, `FindBestDonorH`, `GetCheckHBond`, `GetAvgHBondVector` and `CoordSetFindOpenValenceVector`.
+  **The cutoff is a curve, not a number** — the donor-acceptor limit slides with the A-D-H angle from `h_bond_cutoff_center` (3.6 Å head-on) to `h_bond_cutoff_edge` (3.2 Å at 63°), and the two names read backwards from what they do. Two more details invisible without the C++: the virtual hydrogen sits at **1.0 Å**, not the real X-H bond length (`FindBestDonorH` adds a *unit* vector), and an atom with no neighbours aims its hydrogen **straight at the acceptor**, which is how the reference viewer finds water-mediated contacts in a hydrogen-less PDB rather than a bug to fix.
+  Donors and acceptors need bond orders a PDB does not carry. The reference viewer fills that with a hard-coded double-bond table for standard residues plus valence arithmetic for the rest; chimol already had the equivalent of the first in the `h_add` residue template, so a templated atom is typed from it (which is what keeps a backbone carbonyl an acceptor and not a donor) and an untemplated one from expected valence with geometry read off its bond angles. **Measured against reality**: on the fully hydrogenated `hGBP1_closed.pdb`, asking with and without hydrogens gives 735 vs 803 contacts sharing 729 pairs — **99.2 % recall** with every hydrogen invented. On 148L, 234 contacts in 0.02 s, over 40 of them the i→i−4 bonds that define an α-helix. One deliberate deviation: the reference viewer invents an amide hydrogen for **proline**, which has none.
+  With it: `distance` gained the reference viewer's full signature and modes 0–4 (all pairs / bonded / polar / exclusion / centroids) with `label`/`quiet`/`reset`; measurements became multi-segment and **dashed** (`dash_length`/`dash_gap`/`dash_width`/`dash_color`); the **A ▸ find ▸ polar contacts** submenu is transcribed from `menu.py::polar`, with halogen/salt-bridge/π left visible-and-disabled rather than dropped. **55 → 68 registered settings**, every one read by code. 20 new tests in `test_hbonds.py`; verified in a real GL window, not offscreen — the first pass drew 1-pixel dashes because `dash_width` was registered and read by nothing, which only the screenshot showed.
 
 * **`.native` is the other way past the chiplot seam, and now it is guarded** ([chiplot](subsystems/chiplot.md)). An `import pyqtgraph` is loud; `Plot.native` is not. It hands back the renderer object directly, so a call site is exactly as coupled as an importer while `pyqtgraph_import_allowlist.txt` sees nothing at all. `test/test_pyqtgraph_seam.py` gained two checks against a second **shrinking** list, `test/chiplot_native_allowlist.txt`, seeded with the **12** files that do it.
   **Most of them are not gaps, which is the finding.** Each was written with a comment calling itself a migration gap — and that is how an assumption survives being wrong. `fcs_lfcs_sim` reached through `.native` to call `enableAutoSIPrefix(False)`; `Plot.set_si_prefix(x=False)` had existed the whole time. Ported in this change, so the list starts at 12 rather than 13. Two more verbs cover much of the rest: `set_axis_visible` for `hideAxis`, `set_tick_spacing` for `getAxis(…).setTickSpacing`.
@@ -8403,7 +8403,7 @@ front, not this).
   The loop said to append to this log and stopped there — but the log records
   *what happened*, newest-first by date, and cannot answer "what next" without
   reading every entry and inferring. The chimol round proved the cost: the most
-  useful thing measured (which of PyMOL's 735 unregistered settings are actually
+  useful thing measured (which of the reference viewer's 735 unregistered settings are actually
   *used*) existed only in an agent's private notes, which the next session cannot
   read. Step 7 of the loop is now **leave a resume point** — a "Where to pick
   this up" section at the *top* of the concept that owns the area, before the
@@ -8455,11 +8455,11 @@ front, not this).
   blocks two presets and the whole `A ▸ find` menu, the camera defect, the
   ray-tracer's double-shaded meshes, and the Tier 2 leftovers.
 
-* **The presets wore PyMOL's labels and made a different picture.**
+* **The presets wore the reference viewer's labels and made a different picture.**
   ([chimol parity](plugins/pymol-parity.md),
   [molecular viewer guide](../docs/guides/44_molecular_viewer.md))
   A preset is the one-click path from "loaded" to "looks like a figure" and the
-  busiest entry in PyMOL's object menu. chimol's were **four hand-rolled lines**
+  busiest entry in the reference viewer's object menu. chimol's were **four hand-rolled lines**
   — `hide everything, {sele}; show cartoon, {sele}` — under the labels *simple*,
   *ball and stick*, *ligand sites* and *technical*. Same words, different
   picture, which is worse than not having them, because the label is a promise.
@@ -8471,13 +8471,13 @@ front, not this).
   measures between two picked atoms), `pretty` reports the three cartoon
   settings chimol's cartoon does not implement, and the surface variants that
   differ only by `surface_type`/transparency are shown disabled with the reason.
-  Two divergences are stated once rather than left to be discovered: PyMOL
+  Two divergences are stated once rather than left to be discovered: the reference viewer
   scopes a setting to a selection while chimol's are one global config, and
-  PyMOL's `ribbon` is thinner than its cartoon while chimol draws one for both.
+  the reference viewer's `ribbon` is thinner than its cartoon while chimol draws one for both.
   **The chain colour cycle had to come first**, since `util.cbc` is what four of
   the presets colour with: chimol had **eight invented colours assigned in
-  first-seen order** against PyMOL's 40-entry `_color_cycle` walked in
-  `get_chains` (sorted) order, so every multi-chain figure differed from PyMOL —
+  first-seen order** against the reference viewer's 40-entry `_color_cycle` walked in
+  `get_chains` (sorted) order, so every multi-chain figure differed from the reference viewer —
   and differed again depending on how the file was written. Transcribed as
   `colors.CHAIN_COLOR_CYCLE`; chain A is the carbon green. Each preset was run
   and **photographed** on 148L, which is the only thing that judges a preset:
@@ -8485,13 +8485,13 @@ front, not this).
   `technical` a chain rainbow under element-coloured lines, `classified` cartoon
   + sticks + a zinc sphere. `test_presets.py` (26). Also re-measured against
   `SettingInfo.h`: **790** settings, not the 769 recorded, of which chimol
-  registers 53 — and of the 737 missing, **228** are referenced by PyMOL's own
+  registers 53 — and of the 737 missing, **228** are referenced by the reference viewer's own
   Python layer, which is the worklist that number should have been all along.
 
-* **A selection was one object's, and PyMOL's is every object's.**
+* **A selection was one object's, and the reference viewer's is every object's.**
   ([chimol parity](plugins/pymol-parity.md),
   [molecular viewer guide](../docs/guides/44_molecular_viewer.md))
-  PyMOL's selector runs over one atom table spanning every loaded object; chimol
+  the reference viewer's selector runs over one atom table spanning every loaded object; chimol
   evaluated against the *active* one. Three silent consequences: a **group name
   selected nothing** (`count_atoms ligands` said `0`, and the object panel's
   group rows emit exactly the commands that therefore did nothing), a plain
@@ -8502,7 +8502,7 @@ front, not this).
   the command layer; the singular resolver stays for the commands that want one
   object and prefers the active one. Name resolution follows `SelectorSelect0`
   in its order — object, stored selection, group, then `Invalid selection name`
-  — with PyMOL's `?name` escape, which needed a tokenizer change or the one
+  — with the reference viewer's `?name` escape, which needed a tokenizer change or the one
   spelling that suppresses the error would have raised it. `MolView.zoom`/
   `center`/`orient` take a `selections` list, since framing one member of a
   group and reporting success is the failure that looks like it worked.
@@ -9030,13 +9030,13 @@ front, not this).
 
 ## 2026-08-03
 
-* **ChiMOL's window, measured against PyMOL's layout rules rather than against
+* **ChiMOL's window, measured against the reference viewer's layout rules rather than against
   memory.** ([parity tracker](plugins/pymol-parity.md),
   [viewer guide](../docs/guides/44_molecular_viewer.md)) Photographed the window
-  in a realistic state and read the rules from PyMOL's source. The *panel* was a
+  in a realistic state and read the rules from the reference viewer's source. The *panel* was a
   faithful clone — object list with A/S/H/L/C, mouse-mode block, sequence strip.
   The window around it was not, in three ways no construction test can see:
-  - **The movie transport showed for a molecule with one state.** PyMOL's
+  - **The movie transport showed for a molecule with one state.** the reference viewer's
     `MovieGetPanelHeight` (`layer1/Movie.cpp`) returns zero unless a movie exists
     or `SceneGetNFrame(G) > 1`; in chimol `mset` sets the frame count, so the two
     collapse into one condition. Ours drew a full-width salmon scrubber and a
@@ -9045,10 +9045,10 @@ front, not this).
     property, so a click where the transport used to be falls through instead of
     running a movie command.
   - **The command prompt was a background tab.** `internal_prompt` and
-    `internal_feedback` are both on by default and PyMOL draws them at the bottom
+    `internal_feedback` are both on by default and the reference viewer draws them at the bottom
     of the viewport, because typing commands *is* how it is driven. Ours had a
     console with output, history and completion, docked fifth in a side stack
-    whose first tab was showing — so the first thing a PyMOL user reaches for was
+    whose first tab was showing — so the first thing a reference viewer user reaches for was
     invisible until found. It is the row under the view now, full width.
   - **An empty panel is worse than no panel:** it reads as a broken layout. The
     Hierarchy, RMF and Map panels held a third of the window showing a filter box
@@ -9132,7 +9132,7 @@ front, not this).
   ([parity tracker](plugins/pymol-parity.md), [viewer guide](../docs/guides/44_molecular_viewer.md))
   `render_scene` has handled triangle meshes for a while, and a cartoon *is* a
   triangle mesh — but `ray` decided what to do from the count of visible
-  **spheres**, which a cartoon-only display (PyMOL's default and chimol's) leaves
+  **spheres**, which a cartoon-only display (the reference viewer's default and chimol's) leaves
   at zero. So it returned early with "the ray tracer draws spheres, and cannot
   yet trace the cartoon", fifty lines above the scene path that could have drawn
   it. The capability existed and nobody could reach it; the one test covering the
@@ -9140,7 +9140,7 @@ front, not this).
   bundle repeated the sentence as documentation. **A stated limitation is a claim
   with a shelf life** — when one is lifted elsewhere in the tree, every sentence
   asserting it is a call site.
-  - **Lines are traced the way PyMOL traces them.** A segment becomes a *sausage*
+  - **Lines are traced the way the reference viewer traces them.** A segment becomes a *sausage*
     (`ray->sausage3fv`, `layer1/CGO.cpp` `CGO_LINE`), split at its midpoint into
     two capped cylinders so each half keeps its own atom's colour
     (`CGO_SPLITLINE`). No cylinder primitive exists, so the shaft is tessellated
@@ -9151,7 +9151,7 @@ front, not this).
     ray image was dark.** The fog fraction was `best_t / far_clip` — distance from
     the *camera*, over a far plane fitted to nothing. On 148L the camera sits 1730
     units out with a far plane at 2442, so the molecule occupied 0.58–0.83 of the
-    range and every pixel was fogged 24–69 %: a dimmer, not a depth cue. PyMOL
+    range and every pixel was fogged 24–69 %: a dimmer, not a depth cue. The reference viewer
     normalises over its object-fitted front-to-back clipping range
     (`(front - dist) * invFrontMinusBack`, `layer1/Ray.cpp`); `trace` now takes
     `fog_front`/`fog_back` and `render_scene` derives them from the scene's
@@ -9184,7 +9184,7 @@ front, not this).
     private route. 83 inline lines deleted; `_build_balls_mesh` takes the bake as
     an argument and is now the one builder.
   - Three defects found by *using* the feature rather than testing it, all fixed
-    here: **`label` stored the text and showed nothing** (PyMOL's
+    here: **`label` stored the text and showed nothing** (the reference viewer's
     `ExecutiveLabel` follows the text with `OMOP_VISI(cRepLabelBit, cVis_SHOW)`,
     so labelling turns the representation on — chimol's reported "Labelled 11
     atoms" over an unchanged view); **`ray` raised before casting a ray whenever
@@ -9228,7 +9228,7 @@ front, not this).
     later step and it survives the context refresh a step change performs. The
     guard was checked negatively — with the flag removed, merely pressing Next
     fuses and redirects the pipeline.
-  - The `?` help gained the method's origin: the full RASP citation (Hoffmann et
+  - The `?` help gained the method's provenance: the full RASP citation (Hoffmann et
     al., *PCCP* 13, 1857, 2011, DOI-linked) and, more useful than the citation,
     *when not to fuse* — that paper reads the same curve to **correlate**
     recurring bursts and measure slow dynamics, and fusing those would destroy
@@ -9491,7 +9491,7 @@ front, not this).
     the wire when it genuinely is not. Measured on the same fit: **571 progress
     reports reaching 100%**, against 148 and a dead transport before.
   - The remote case keeps the deadline and the frozen window; recorded in
-    [known-issues](../references/known-issues.md) rather than guessed at, because
+    [known-issues](references/known-issues.md) rather than guessed at, because
     this tree has no remote server to test a fix against. The shape is almost
     certainly a `JobManager` job with progress over the event bus, which sampling
     already does.
@@ -9759,10 +9759,10 @@ front, not this).
 
 ## 2026-08-02
 
-* **ChiMOL viewport mouse parity: PyMOL-action click/box selection, a pinned `sele` object, and Seeker multi-select in the sequence strip.** Three user-requested gaps closed in `chisurf/plugins/chimol`, each matched to PyMOL's own source rather than to an approximation:
-  - **Click and box select carry PyMOL's *action*, not a modifier.** `view.py` gained `_apply_selection_indices(indices, modifiers, mode)` which merges by action code — `toggle` (`+/-`), `add` (`+Box`), `subtract` (`-Box`), `set` (`Sele`), `pick` (`PkAt`) — and `handle_mouse_click`/`handle_rect_selection` now take the action. `mouse_modes.py::click_action_of` resolves the `single_*` cells, because PyMOL distinguishes the press action (`l,none` → `rota`) from the click action (`single_left,none` → `+/-`). `qtgl.py` therefore records the press and decides on release: a click toggles the picked residue, `sele` sets, `pkat` picks without touching the selection, and an empty-space click leaves the selection alone (PyMOL's "no atom found nearby"). Tests: `test/test_mouse_selection.py` (7) plus the mouse-mode table tests.
-  - **`sele` is a real, always-last object entry.** It is pinned to the bottom of the in-viewport object panel (PyMOL draws its selection object below every molecule and the `all` header), has no on/off state of its own, and its A/S/H/L/C menus address `sele`. Because PyMOL's `sele` *always exists and is what the mouse writes to*, `cmd/selection.py` resolves the bare name to the viewer's live residue selection (`_selected_residues_atom_mask`) whenever no stored entry exists, so `show sticks, sele` reaches exactly the clicked/boxed residues; a stored entry still wins. Named selections now also resolve as atoms inside expressions (`sele_parser.Evaluator(named_selections=...)`), so `mysel and resi 10` is meaningful.
-  - **The sequence strip is PyMOL's Seeker.** A click toggles a residue, shift-click extends the previous drag gesture additively, ctrl-click toggles and keeps the rest, a ctrl-drag merges the range, and a double-click on blank sequence area clears the selection. `internal_gui.py` threads `modifiers`/`double` through `mouse_press`, keeps a `_seq_anchor` for the shift continuation, and emits the whole selected set because the mirror into the 3-D view replaces rather than merges. Tests in `test_internal_gui.py` (toggle, shift-extend, ctrl-merge, ctrl-drag, blank double-click, `sele` row pinned/no-on-off/buttons-address-`sele`).
+* **ChiMOL viewport mouse parity: reference-viewer-action click/box selection, a pinned `sele` object, and Seeker multi-select in the sequence strip.** Three user-requested gaps closed in `chisurf/plugins/chimol`, each matched to the reference viewer's own source rather than to an approximation:
+  - **Click and box select carry the reference viewer's *action*, not a modifier.** `view.py` gained `_apply_selection_indices(indices, modifiers, mode)` which merges by action code — `toggle` (`+/-`), `add` (`+Box`), `subtract` (`-Box`), `set` (`Sele`), `pick` (`PkAt`) — and `handle_mouse_click`/`handle_rect_selection` now take the action. `mouse_modes.py::click_action_of` resolves the `single_*` cells, because the reference viewer distinguishes the press action (`l,none` → `rota`) from the click action (`single_left,none` → `+/-`). `qtgl.py` therefore records the press and decides on release: a click toggles the picked residue, `sele` sets, `pkat` picks without touching the selection, and an empty-space click leaves the selection alone (the reference viewer's "no atom found nearby"). Tests: `test/test_mouse_selection.py` (7) plus the mouse-mode table tests.
+  - **`sele` is a real, always-last object entry.** It is pinned to the bottom of the in-viewport object panel (the reference viewer draws its selection object below every molecule and the `all` header), has no on/off state of its own, and its A/S/H/L/C menus address `sele`. Because the reference viewer's `sele` *always exists and is what the mouse writes to*, `cmd/selection.py` resolves the bare name to the viewer's live residue selection (`_selected_residues_atom_mask`) whenever no stored entry exists, so `show sticks, sele` reaches exactly the clicked/boxed residues; a stored entry still wins. Named selections now also resolve as atoms inside expressions (`sele_parser.Evaluator(named_selections=...)`), so `mysel and resi 10` is meaningful.
+  - **The sequence strip is the reference viewer's Seeker.** A click toggles a residue, shift-click extends the previous drag gesture additively, ctrl-click toggles and keeps the rest, a ctrl-drag merges the range, and a double-click on blank sequence area clears the selection. `internal_gui.py` threads `modifiers`/`double` through `mouse_press`, keeps a `_seq_anchor` for the shift continuation, and emits the whole selected set because the mirror into the 3-D view replaces rather than merges. Tests in `test_internal_gui.py` (toggle, shift-extend, ctrl-merge, ctrl-drag, blank double-click, `sele` row pinned/no-on-off/buttons-address-`sele`).
   - Also in this uncommitted batch from the same viewer session: toolbar representation buttons were removed in favour of the `as` submenu (every rep `show`/`hide` understands), and the RF-318/319/320 `lighting` shader + `argparse2` keyword-binding fixes reach a pixel (logged under 2026-07-31 below). Committed as one focused local commit because the tree is shared with a parallel instance working in the same files.
 
 * **FRET wiring, fast mode, and brightness-to-amplitude for the FCS kinetics model specified as PRDs 73–75** (documentation only, nothing implemented). The three related asks from a design discussion are now registered so the next session starts from decisions, not a blank page:
@@ -10284,7 +10284,7 @@ front, not this).
   `test_model_slice_width_is_the_imsd` is flagged for rename: it pins a property of
   the model, not the method — the conflation in test form.
   **The real gap is the layer above the carpet**, specified against the reference
-  Matlab ICS package vendored at `junk/Image-Correlation-Spectroscopy/` (ICS
+  the numerical computing environment ICS package vendored at `junk/Image-Correlation-Spectroscopy/` (ICS
   Analysis v1.0, 2006, open-sourced with the authors' permission): the
   immobile-population Fourier filter (`immfilter.m` — a *pre-processing* step on
   the stack, **not** the same thing as the `N_imm` fit term ChiSurf already has),
@@ -10295,7 +10295,7 @@ front, not this).
   the standalone TICS decay models (`difffit`/`diffusion3d`/`diffflowfit`/`flowfit`),
   and ROI-picked white-noise correction (`wnCorr.m`). Its
   `tutorial/ICSTutorial.html` is a usable regression fixture.
-  **The Matlab structure is explicitly not to be ported** — it is one script per
+  **The numerical computing environment structure is explicitly not to be ported** — it is one script per
   method with GUI handles (`gcbf`, `waitbar`, `ginput`) wired into the numerics;
   `velocity.m` picks the linear region by *clicking*, so the port needs a headless
   criterion with the interactive picker demoted to an override. Its vendor TIFF/RAW
@@ -10893,7 +10893,7 @@ front, not this).
     ctrl or shift; testing ctrl first swallows it and the combination silently
     behaves as plain ctrl.
   - Wheel bindings are exposed the same way (`wheel_action_of`) and asserted
-    against the table -- plain wheel is `Slab` in PyMOL, which chimol still
+    against the table -- plain wheel is `Slab` in the reference viewer, which chimol still
     spends on zooming. That divergence is now visible in one place rather than
     implied by two.
 
@@ -10942,13 +10942,13 @@ front, not this).
     so every pixel-sized point came out half its size on this display. The same
     device-ratio trap as the viewport, in a third place.
 
-* **The mode line cycles PyMOL's ring, and the block gained two things PyMOL
+* **The mode line cycles the reference viewer's ring, and the block gained two things the reference viewer
   does not have.**
   - `MODE_RINGS` is transcribed from `pymol.controlling.ring_dict` and checked
     against it by a test. Cycling every mode chimol knows would walk someone
     through editing, lights and maestro modes they never asked for; a viewing
     ring steps viewing -> editing -> viewing, which is the point of a ring.
-  - **Stride and averaging**, on their own line under the state. PyMOL has
+  - **Stride and averaging**, on their own line under the state. The reference viewer has
     neither, and both are what a real trajectory needs: a long one is otherwise
     watched at whatever rate it was written, and a noisy one jitters so much
     that the motion everyone is looking for is buried in it. Clicking steps
@@ -10983,13 +10983,13 @@ front, not this).
   a fixed 150 px pane, 31 s with no progress, no hand-off into ChiSurf);
   RF-877..RF-884 filed.
 
-* **The transport was missing three of PyMOL's buttons, the block wasted its
+* **The transport was missing three of the reference viewer's buttons, the block wasted its
   space, and a switched-off object looked identical to a live one.**
   - `S`, `▼` and `F` are back: the sequence, rocking and full screen. Two of
     them had nothing to call, so `rock` and `full_screen` are new commands.
-    `rock` oscillates rather than spinning -- PyMOL's does, and a full spin
+    `rock` oscillates rather than spinning -- the reference viewer's does, and a full spin
     keeps turning the far side towards you, which reads as motion for its own
-    sake. The transport glyphs are PyMOL's order and shapes.
+    sake. The transport glyphs are the reference viewer's order and shapes.
   - The block's labels are right-aligned against their columns with a one-
     character gutter, and the line height is tighter than a panel row: it is a
     dense reference table and should read as one thing. Two traps on the way --
@@ -11065,7 +11065,7 @@ front, not this).
   - **The letters take their colour from the structure.** A sequence in one flat
     colour is a different picture from the molecule it indexes: colouring by
     chain or by spectrum means nothing if the strip does not show it.
-  - **The selection marker is a hollow square, not a sphere**, and PyMOL's own:
+  - **The selection marker is a hollow square, not a sphere**, and the reference viewer's own:
     `selection_round_points` is off, `sele` is (1.0, 0.63, 0.0), and the width
     comes from `selection_width` x `selection_width_scale` clamped by
     `selection_width_max`. The point of a marker is to *frame* an atom; a solid
@@ -11076,13 +11076,13 @@ front, not this).
     why a residue picked in the 3-D view lights up in the sequence.
 
 * **The sequence is in the viewport now, and selecting in it selects in the
-  molecule.** Built to PyMOL's model, read off its own settings rather than
+  molecule.** Built to the reference viewer's model, read off its own settings rather than
   guessed: one-letter codes (`seq_view_format 0`), a residue number every fifth
   column (`seq_view_label_mode 2`, `seq_view_label_spacing 5`), the strip at the
   top (`seq_view_location 0`), and -- the part that matters -- **not** an
   overlay (`seq_view_overlay off`). It takes a band off the scene instead of
   covering it, because a sequence drawn over the molecule hides the thing it is
-  indexing. GL's origin is bottom-left, so a shorter viewport leaves exactly
+  indexing. GL's zero point is bottom-left, so a shorter viewport leaves exactly
   that band free.
   - Clicking a residue selects it and dragging selects a range, through
     `set_selected_residues` -- the same path the docked widget uses, so a
@@ -11137,7 +11137,7 @@ front, not this).
   use `scene_width()` now. Reported as "squishing ugly", which is exactly what
   it was.
   - The block's columns were also too wide -- six characters of gap is a lot of
-    empty panel -- and the column is PyMOL's own `internal_gui_width` (220)
+    empty panel -- and the column is the reference viewer's own `internal_gui_width` (220)
     rather than a number I picked.
   - A disabled object keeps its A/S/H/L/C boxes: only the name greys out. The
     controls are how you switch it back on, so hiding them with the object would
@@ -11146,7 +11146,7 @@ front, not this).
 * **The in-viewport panel is a column with a splitter now, not an overlay.**
   Drawn on top, the panel hides the molecule it is describing -- and the part it
   hides is the part you just moved out from under it. So the scene renders into
-  the width the column does not take, as PyMOL's does, and the boundary is
+  the width the column does not take, as the reference viewer's does, and the boundary is
   draggable between a floor and 60% of the window.
   - The viewport is set **every frame**, not only on resize: dragging the
     splitter changes how much width the scene has without the widget being
@@ -11157,17 +11157,17 @@ front, not this).
     in the panel.
 
 * **The mouse-mode block and the movie transport are in the viewport too, and
-  the table is PyMOL's own.** The block in the bottom-right corner is reference
+  the table is the reference viewer's own.** The block in the bottom-right corner is reference
   material -- someone reads it to find out what ctrl-shift-middle does -- so a
   table that is nearly right is worse than none. `chimol/mouse_modes.py` is
   therefore **generated from `pymol.controlling.mode_dict`**, the way the object
   menus were taken from its `menu.py`, and a test compares the two wherever
-  PyMOL is installed, so the transcription cannot drift silently.
-  - PyMOL stores the bindings as a list applied in order and one mode rebinds a
+  the reference viewer is installed, so the transcription cannot drift silently.
+  - The reference viewer stores the bindings as a list applied in order and one mode rebinds a
     cell (`three_button_motions` sets double-left to `menu`, then `torf`). The
     later binding wins; keeping both in a dict literal would have relied on the
     same rule by accident.
-  - The action labels are PyMOL's own casing -- `MovZ`, `PkAt`, `MvSZ`, `Pk1` --
+  - The action labels are the reference viewer's own casing -- `MovZ`, `PkAt`, `MvSZ`, `Pk1` --
     which no rule recovers from the codes, so that map is written out.
   - Clicking the mode line cycles modes, the transport runs `frame`/`mplay`/
     `mstop`, and clicking the table itself is swallowed rather than passed to
@@ -11297,7 +11297,7 @@ front, not this).
   its synthetic burst pairs with an exclusive stop and was corrected in the same
   change rather than left frozen to the bug.
 
-* **The object panel is drawn inside the viewport now, PyMOL-style, menus and
+* **The object panel is drawn inside the viewport now, reference-viewer-style, menus and
   all** (first half of moving the internal GUI into GL; the sequence strip is
   the other half and is not done yet). A panel docked beside the view is a
   second widget with its own font, its own metrics and its own idea of how much
@@ -11314,10 +11314,10 @@ front, not this).
   - Rows carry the `all` header, each molecule's name (green when on, grey when
     off) and the five A/S/H/L/C boxes, flush. Clicking a name toggles it,
     clicking a box opens that menu **in the viewport**, and right-clicking a
-    name opens the action menu, as PyMOL's does. Entries chimol has no
+    name opens the action menu, as the reference viewer's does. Entries chimol has no
     equivalent for stay visible and greyed, and clicking one does nothing rather
     than guessing.
-  - Long menus **wrap into columns**. PyMOL's Action menu is two dozen entries,
+  - Long menus **wrap into columns**. The reference viewer's Action menu is two dozen entries,
     taller than a viewport that shares its height with a console: entries that
     run off the bottom are unreachable and nothing says they are there. The item
     rectangles remain the single source of truth for drawing *and* hit testing,
@@ -14192,7 +14192,7 @@ front, not this).
   no-selection fallback draws a **sparse sampling of 50 points**. It drew fifty
   dots. One spoke 4.3 s → 0.36 s, eight spokes 430 s / ~11 GB → 1.6 s / 0.7 GB.
   Recorded in [specs/chimol.md](/specs/chimol.md) as a second carve-out from
-  PyMOL authority, and closed in
+  the reference viewer authority, and closed in
   [references/known-issues.md](/references/known-issues.md).
 
 * **chimol: the test suite poisoned numba's on-disk cache and broke ordinary
@@ -14843,12 +14843,12 @@ front, not this).
   2026-07-06 [lessons](/references/orange3-lessons.md) over its data model and
   the [mining note](/references/orange3-mining.md) over everything else — and
   neither answers the question that will be asked later: *why does ChiSurf do it
-  this way?* [What ChiSurf took from Orange3](/references/orange3-adopted.md) is
+  this way?* [What ChiSurf took from the data-mining suite](/references/orange3-adopted.md) is
   that record. Three ideas: data that cannot be written by accident, one contract
   for work that runs off the GUI thread, and conditions declared rather than
   fired. For each: what was borrowed, where it lives now, why it was worth
   taking, and — the part worth writing down — **where ChiSurf deliberately
-  departs**, because all three ended up different from their origin.
+  departs**, because all three ended up different from their source.
   The departures are the useful content. The lock **copies** a non-owning array
   on the way in where the reference merely refuses to unlock one, because the
   CSV reader hands out rows of a throwaway buffer and the refusal made the
@@ -14882,7 +14882,7 @@ front, not this).
   exist (map object with a full 3x3 transform — a confocal z step is not its xy
   step; in-memory construction, since AVs and CLSM stacks are already arrays in
   this process; isosurface/mesh/direct volume rendering; colour by value; the
-  PyMOL command names) and the constraint that a map uploads once rather than
+  the reference viewer command names) and the constraint that a map uploads once rather than
   per frame. The Tier 4 bullet now points at it.
 
 * **`match_2d` did the opposite of what it said, in six shipped image panels.**
@@ -15566,7 +15566,7 @@ front, not this).
   without error while doing nothing. The guard test now reads the actions, checks
   every demo has an entry, and rebuilds the bar to prove the menu survives it.
 
-  Built after the bar instead, so it sits at the end where PyMOL's own menus stop.
+  Built after the bar instead, so it sits at the end where the reference viewer's own menus stop.
   Verified in a real window: **Demo ▸ Cartoon and colour** loads and draws.
   Documented in [guide 44](../docs/guides/44_molecular_viewer.md), including
   running the same scripts as `@demos/cartoon.pml`.
@@ -15799,7 +15799,7 @@ front, not this).
   representation, lighting presets, the publication look, the trajectory, and
   measuring. They are **ChiMOL scripts, not Python**, one command per line, run
   exactly as `@file.pml` does — which makes them a test of *language parity with
-  PyMOL* rather than of the internals, and documentation that runs. Each starts
+  the reference viewer* rather than of the internals, and documentation that runs. Each starts
   with `delete all`, or the seventh demo shows a pile of seven molecules.
   "Edit a demo" opens chisurf's code editor when chisurf is there and a small
   shipped editor when it is not, so the entry is never dead in a standalone
@@ -16107,20 +16107,20 @@ front, not this).
 
 * **chimol: every button swept; three representations were menu-unreachable and
   the plane was a grey sheet.** Asked to check all the GUI buttons and to look at
-  the representations chimol has beyond PyMOL's.
+  the representations chimol has beyond the reference viewer's.
 
   Clicking all 17 named buttons on the main window, watching the scene after
   each: **`trace`, `nonbonded` and `metaball` were reachable only from the
   toolbar.** A menu-driven session could not get at them, which defeats the point
-  of the menus, and `metaball` is the clearest case — PyMOL has no equivalent, so
-  a PyMOL user has no reason to go looking for it. All three now appear in the S
+  of the menus, and `metaball` is the clearest case — the reference viewer has no equivalent, so
+  a reference viewer user has no reason to go looking for it. All three now appear in the S
   and H menus with a note saying what they are, and each is checked to actually
   draw.
 
-  That collided with a test asserting the menus are **exactly** PyMOL's. The
-  target settles it — extensions are *additive* — so the test now asserts PyMOL's
-  entries are a **prefix**, in PyMOL's order, with additions after them and no
-  duplication. The familiar part of the menu stays where a PyMOL user expects it.
+  That collided with a test asserting the menus are **exactly** the reference viewer's. The
+  target settles it — extensions are *additive* — so the test now asserts the reference viewer's
+  entries are a **prefix**, in the reference viewer's order, with additions after them and no
+  duplication. The familiar part of the menu stays where a reference viewer user expects it.
 
   **The reference plane was unusable.** `_grid_spacing` is 1.0 in *scene* units
   while a protein's radius is a couple of hundred, so `show plane` drew ~415 lines
@@ -16147,7 +16147,7 @@ front, not this).
   schema objects, data-only settings migration. What was left unmined was the
   larger half: the widget framework, the concurrency and messaging contracts,
   the testing harness, and the presentation conventions. Recorded as
-  [Orange3 mining](/references/orange3-mining.md) — a path index of ~30 areas
+  [the data-mining suite mining](/references/orange3-mining.md) — a path index of ~30 areas
   with a chisurf equivalent, verdict and 1–5 value for each, following the
   [QuickFit3 mining](/references/quickfit3-mining.md) format; patterns are
   documented prior art for independent reimplementation, never GPL code copies.
@@ -16508,18 +16508,18 @@ front, not this).
   `chisurf/plugins/pch/tests/test_algorithms.py`, plus a γ₂ guard for the widget
   copy in `test/gui/test_pch_models_resolve.py`. 28 tests green.
 
-* **chimol: a `lighting` command with ChimeraX's presets.** Second item on the
+* **chimol: a `lighting` command with the reference volume viewer's presets.** Second item on the
   rendering roadmap, on the scaffolding from the previous commit.
 
-  The shader gained ChimeraX's model — a **key light, a fill light and an ambient
+  The shader gained the reference volume viewer's model — a **key light, a fill light and an ambient
   term**, each with its own intensity — replacing one hard-coded direction. With
   key 1, fill 0 and ambient at the old value the formula is unchanged, so the
   default look does not move. That is what lets `soft` (all ambient, no key
-  light) and `flat` exist at all; they are the presets that give a ChimeraX
+  light) and `flat` exist at all; they are the presets that give a reference volume viewer
   figure its appearance.
 
   All six presets transcribed from `std_commands/src/lighting.py`, with the
-  parameter names kept as ChimeraX spells them, so a preset is a dict of them and
+  parameter names kept as the reference volume viewer spells them, so a preset is a dict of them and
   the command layer needs no translation table.
 
   **What it cannot do, it names.** `shadows` and `multishadow` need shadow maps,
@@ -16527,7 +16527,7 @@ front, not this).
   which two parts it skipped — a preset that quietly does three of its five
   things is worse than one that reports, because `full` without shadows is a
   different look. For the same reason `soft` and `gentle` are currently
-  *identical*: in ChimeraX they differ only in shadow-map size and depth bias. A
+  *identical*: in the reference volume viewer they differ only in shadow-map size and depth bias. A
   test pins that equality, so when multishadow lands the test fails and forces
   the difference to become real.
 
@@ -16625,7 +16625,7 @@ front, not this).
   form; rows of other loops are skipped without being split, so the scan costs
   nothing on an `atom_site` loop. Nine tests pin all four layouts — the function
   previously had none, which is why none of this showed. See
-  [pymol-parity](/plugins/pymol-parity.md).
+  [reference-viewer-parity](/plugins/pymol-parity.md).
 
 * **chimol: render-to-texture scaffolding, and silhouettes on top of it.** The
   first thing from the [ChiMOL target](/specs/chimol.md)'s rendering roadmap.
@@ -16692,12 +16692,12 @@ front, not this).
   and the E–S tab renders empty axes with no explanation when I_AA is unmapped
   (RF-310).
 
-* **ChiMOL target: the rendering design, and what else ChimeraX is worth reading
+* **ChiMOL target: the rendering design, and what else the reference volume viewer is worth reading
   for.** Two additions to [specs/chimol](/specs/chimol.md) and
-  [pymol-parity](/plugins/pymol-parity.md), both surveys rather than
+  [reference-viewer-parity](/plugins/pymol-parity.md), both surveys rather than
   implementations — recorded so the next round starts from the design.
 
-  **Silhouettes, transcribed but not built.** From ChimeraX's
+  **Silhouettes, transcribed but not built.** From the reference volume viewer's
   `USE_DEPTH_OUTLINE` shader and `Silhouette._draw_depth_outline`: a full-screen
   pass that takes the minimum depth over a disc around each fragment and draws
   where the gap exceeds a threshold. The part that is not guessable is the
@@ -16715,13 +16715,13 @@ front, not this).
   the second and third expensive. Not started: it rewrites the one function that
   draws everything, and it can only be verified in a real window.
 
-  **Beyond rendering**, on the user's steer that ChimeraX's UI and plugin system
+  **Beyond rendering**, on the user's steer that reference volume viewer's UI and plugin system
   are worth taking from:
 
   - **typed command arguments** (`core/src/commands/cli.py`): each argument is an
     `Annotation` that parses itself and says what went wrong. ChiMOL's layer takes
     strings and does ad-hoc conversion with a hand-written message per site.
-    Compatible with keeping PyMOL's syntax — the grammar stays, the diagnostics
+    Compatible with keeping the reference viewer's syntax — the grammar stays, the diagnostics
     improve;
   - **the bundle system**: 193 bundles declaring **Providers against named
     Managers**, so a capability is declared and discovered rather than registered
@@ -16731,12 +16731,12 @@ front, not this).
     deliberately.
 
 * **The ChiMOL target, written down.** New target spec
-  [specs/chimol](/specs/chimol.md): a PyMOL clone that is **command-compatible
-  with PyMOL and better than it**, built by reading both sources. The two answer
-  different questions and the distinction is the point — **PyMOL**
+  [specs/chimol](/specs/chimol.md): a reference viewer clone that is **command-compatible
+  with the reference viewer and better than it**, built by reading both sources. The two answer
+  different questions and the distinction is the point — **the reference viewer**
   (`junk/pymol-open-source`) is the authority on *behaviour*, so when ChiMOL and
-  PyMOL disagree about what `orient` means PyMOL is right by definition;
-  **ChimeraX** (`junk/ChimeraX`, already checked out) is the reference for *how to
+  the reference viewer disagree about what `orient` means the reference viewer is right by definition;
+  **The reference volume viewer** (`junk/ChimeraX`, already checked out) is the reference for *how to
   do it well*, and explicitly not the compatibility authority.
 
   The spec carries the principles this effort has actually paid for: read the
@@ -16744,18 +16744,18 @@ front, not this).
   its size*; no external library where a source read will do; one table, one seam;
   a gap that is shown beats a gap that is hidden.
 
-  It also carries the rendering roadmap, surveyed from ChimeraX's
+  It also carries the rendering roadmap, surveyed from the reference volume viewer's
   `graphics/src/opengl.py`, `fragmentShader.txt` and
   `std_commands/src/lighting.py`. Its model is key/fill/ambient intensities, a
   directional shadow map, **multishadow** (N shadow maps over a sphere of
   directions — real ambient occlusion rather than a per-vertex estimate),
   depth-buffer **silhouettes**, and depth cue, exposed as *named looks*
-  (`simple`, `full`, `soft`, `gentle`, `flat`). PyMOL has no equivalent outside
-  its ray tracer, so this is the axis on which "better than PyMOL" is won. Order
-  of work: silhouettes, a `lighting` command with ChimeraX's preset names,
+  (`simple`, `full`, `soft`, `gentle`, `flat`). The reference viewer has no equivalent outside
+  its ray tracer, so this is the axis on which "better than the reference viewer" is won. Order
+  of work: silhouettes, a `lighting` command with the reference volume viewer's preset names,
   multishadow occlusion, depth cue.
 
-  [pymol-parity](/plugins/pymol-parity.md) keeps its job — the measured gap, the
+  [Reference-viewer-parity](/plugins/pymol-parity.md) keeps its job — the measured gap, the
   tier list and the findings — and now points at the target rather than restating
   it.
 
@@ -16831,11 +16831,11 @@ front, not this).
 * **chimol: `split_chains` left the source drawn on top of every chain.** Reported
   as "after split chains cartoons look weird", and it was two bugs.
 
-  PyMOL's `split_chains` ends with `_self.disable(model)` — it **hides the
+  The reference viewer's `split_chains` ends with `_self.disable(model)` — it **hides the
   source** after making the per-chain copies. chimol did not, so the whole
   structure stayed drawn over every chain: two cartoons per residue in the same
-  place, fighting for the depth buffer. Hidden rather than deleted, as PyMOL does:
-  re-enabling it is how the split is undone. Also added PyMOL's `group` argument,
+  place, fighting for the depth buffer. Hidden rather than deleted, as the reference viewer does:
+  re-enabling it is how the split is undone. Also added the reference viewer's `group` argument,
   which puts the copies straight into a group.
 
   **The second bug has reach well beyond this command.** Hiding the source did not
@@ -16926,7 +16926,7 @@ front, not this).
   (RF-078).** The renderer keeps `(xyz - raw_center) * scale` beside the Angstrom
   atom array, so a scene-space rotation pivots on the molecule's centre.
   `apply_transform_to_object` rotated the atom array about the PDB coordinate
-  origin instead, leaving the two 53 Å apart on 148L after `rotate z, 90` — the
+  zero point instead, leaving the two 53 Å apart on 148L after `rotate z, 90` — the
   picture said one thing and `get_area`, `alter_state`, `save` and every `within`
   selection said another. The pivot is now applied, and the method's scene-unit
   contract is written down rather than inferred. The same fix exposed the mirror
@@ -16937,13 +16937,13 @@ front, not this).
   `test_transform_sync.py` — rather than the centred-distance comparison that let
   it through.
 
-* **chimol: the space-group operators now come from PyMOL's own table, not a hand
+* **chimol: the space-group operators now come from the reference viewer's own table, not a hand
   table.** Yesterday's symmetry commit shipped 27 groups entered by hand, on the
   reasoning that no crystallography library is installed. That was the wrong trade
   for a parity project: a hand table covers the common cases and diverges from
-  PyMOL everywhere else.
+  the reference viewer everywhere else.
 
-  PyMOL keeps the data in `modules/pymol/xray.py` as `sym_base` — a dict from a
+  The reference viewer keeps the data in `modules/pymol/xray.py` as `sym_base` — a dict from a
   *tuple of operator strings* to the names sharing them — plus `space_group_map`
   for alternative spellings. Transcribed into `analysis/space_groups.py` by
   `make_space_groups.py`, checked in beside it so the extraction can be redone and
@@ -17180,7 +17180,7 @@ front, not this).
 
 * **Dynamic PDA's moment match was matched on the wrong support (RF-258).** The
   Szabo–Gopich route in
-  [`chisurf/core/fluorescence/kinetics.py`](chisurf/core/fluorescence/kinetics.py)
+  [`chisurf/core/fluorescence/kinetics.py`](../chisurf/core/fluorescence/kinetics.py)
   fitted its beta on `[0, 1]` — the interval a green probability is *defined* on.
   But the observable is a **time average** of a piecewise-constant quantity, i.e.
   a convex combination of the state values, so it can only reach
@@ -17205,7 +17205,7 @@ front, not this).
   `two_state_occupation_quadrature`; `test_pda_time_binned.py`'s moment-match
   test asserted the *old* failure and now asserts the agreement. Narrowed
   guidance follows into `dynamic_mc.py` and
-  [`docs/concepts/pda.md`](docs/concepts/pda.md). See
+  `docs/concepts/pda.md`. See
   [prds/prd-50.md](/prds/prd-50.md).
 
 * **chimol: `sort` and `mask`/`unmask`.** The priority table is transcribed from
@@ -17213,14 +17213,14 @@ front, not this).
   already drawn from data. My first rule folded the branch digit into the priority
   and disagreed with **both** hydrogenated structures checked — 10% of atoms in
   148L, 2% in hGBP1 — which I initially read as "these files are non-canonical".
-  They are not: PyMOL's priority depends **only on the Greek letter**, so `CG2`
+  They are not: the reference viewer's priority depends **only on the Greek letter**, so `CG2`
   and `OG1` both score 5 and the *name* comparison settles them, giving `CG2`
   first, exactly as deposited files have it. The rule was wrong, not the files.
 
-  The second surprise: a one-character `C` or `O` scores 997/998, so PyMOL's
+  The second surprise: a one-character `C` or `O` scores 997/998, so the reference viewer's
   canonical order is `N, CA, CB, ..., C, O, OXT` — side chain *before* the
   carbonyl, which is not PDB write order. Sorting a freshly loaded file therefore
-  moves 74% of its atoms, and matching PyMOL means accepting that.
+  moves 74% of its atoms, and matching the reference viewer means accepting that.
 
   **The consequence, not the ordering, is the dangerous part.** A reorder
   invalidates every array indexed by atom and every bond index. The atom-indexed
@@ -17302,7 +17302,7 @@ front, not this).
   number of states; `ends` is a **four-way** choice rather than a boolean (skip
   one / skip none / skip a half-window / wrap the trajectory); the average divides
   by the number of states actually **found**, not the window width — dividing by
-  the width pulls states near an end towards the origin, which reads as the
+  the width pulls states near an end towards the zero point, which reads as the
   trajectory collapsing; and `cutoff` stops the window extending across a jump,
   padding with the last good position so an atom crossing a periodic boundary is
   not averaged with its own image.
@@ -17346,8 +17346,8 @@ front, not this).
   any plot drawn beside its image needs. And the whole panel exists at all
   because looking at it is how the layout got fixed.
 
-  Docs: [concepts/particle_tracking](docs/concepts/particle_tracking.md) and
-  [guide 50](docs/guides/50_particle_tracking.md), both with real screenshots of
+  Docs: [concepts/particle_tracking](../docs/concepts/particle_tracking.md) and
+  [guide 50](../docs/guides/50_particle_tracking.md), both with real screenshots of
   a simulation with a **known** D — the figure shows 8 particles at
   D = 0.5 px²/frame recovered as 0.504 ± 0.1, and the tool still printing a
   "Read with care" note because eight tracks is not many. 20 plugin tests.
@@ -17442,14 +17442,14 @@ front, not this).
   Measured on `hGBP1_closed.pdb` (4671 deposited hydrogens),
   `valence(element) - heavy neighbours` is wrong for **41.6% of atoms** — it puts
   a hydrogen on every carbonyl carbon, every carboxyl oxygen and every aromatic
-  carbon. PyMOL warns about exactly this in `h_add`'s help. Standard residues
+  carbon. The reference viewer warns about exactly this in `h_add`'s help. Standard residues
   therefore use a template, which is exact for proteins.
 
   Validated by stripping that protein's hydrogens and putting them back:
   **99.78% of counts correct** (4634/4644), **median position error 0.10 Å**,
   97.8% within 1.0 Å, and no clash below 0.8 Å. The 2.8% beyond 1 Å are *all*
   rotatable terminal groups — hydroxyls, thiols, amide and guanidinium NH₂ —
-  whose torsion the geometry does not fix and which PyMOL also places
+  whose torsion the geometry does not fix and which reference viewer also places
   arbitrarily. A test pins that set, so a backbone atom appearing there fails
   rather than being absorbed into the tolerance.
 
@@ -17532,7 +17532,7 @@ front, not this).
   files are being edited elsewhere.
 
 * **chimol: sessions.** `session_save` / `session_load` / `session_info`, with
-  `save x.pse` and `load x.pse` routed by extension because that is what a PyMOL
+  `save x.pse` and `load x.pse` routed by extension because that is what a reference viewer
   user types. Everything comes back: objects, representations, per-atom colours,
   manual bonds and their orders, group collapse state, named scenes, display
   settings and the camera down to its clip planes. Verified by comparing two real
@@ -17559,15 +17559,15 @@ front, not this).
   - **`get_view` is a command, not a viewer method** (`get_view_state` is), so the
     first version stored a null view behind an `except` clause.
 
-  Deliberately **not** PyMOL-compatible: a `.pse` is a pickle of PyMOL's C
+  Deliberately **not** reference-viewer-compatible: a `.pse` is a pickle of the reference viewer's C
   structures. chimol writes a zip of `manifest.json` + `arrays.npz` — readable
   without chimol, and loading one cannot execute code (`allow_pickle=False`),
   because a format people exchange should not be a code-execution path. Writing to
-  `.pse` says so, and a real PyMOL session handed to `session_load` is named as
+  `.pse` says so, and a real the reference viewer session handed to `session_load` is named as
   such rather than reported as corrupt. Anything a session cannot carry is named
   in the message rather than dropped.
 
-  21 tests, a new guide section, and [pymol-parity](/plugins/pymol-parity.md)
+  21 tests, a new guide section, and [reference-viewer-parity](/plugins/pymol-parity.md)
   updated — sessions were a Tier 1 gap.
 
 * **Ratio-FRET maps: a hole no longer votes on its neighbours (RF-036).** The
@@ -17586,11 +17586,11 @@ front, not this).
   parity, hole handling); 20 in the file and 819 in `test/core` green.
 
 * **chimol: bond editing, and a test fixture that could not exist.** `bond`,
-  `unbond` and `get_bonds` transcribed from PyMOL's `editing.py`/`querying.py`.
+  `unbond` and `get_bonds` transcribed from the reference viewer's `editing.py`/`querying.py`.
   `bond` takes exactly one atom from each selection in the same object and
   re-bonding a pair sets its *order*; `unbond` removes every bond running between
   two selections; `get_bonds` returns `(atm1, atm2, order)` where the indices are
-  0-based **positions within the selection**, not `index` — PyMOL warns about that
+  0-based **positions within the selection**, not `index` — the reference viewer warns about that
   in capitals, and the two coincide for `all`, so a test that checks only `all`
   cannot tell the difference.
 
@@ -17700,7 +17700,7 @@ front, not this).
   but **linking had no prior art at all** — `linear_sum_assignment` appeared
   nowhere in the tree — so there was no path from spots to transport. New
   Qt-free core
-  [`chisurf/core/fluorescence/imaging/tracking.py`](chisurf/core/fluorescence/imaging/tracking.py):
+  [`chisurf/core/fluorescence/imaging/tracking.py`](../chisurf/core/fluorescence/imaging/tracking.py):
   à-trous/quantile detection, exact frame-to-frame assignment under a maximum
   linking distance, gap closing, time-averaged MSD, and a fit of `D` and the
   anomalous exponent — plus `simulate_particle_movie`, since the existing CLSM
@@ -17854,7 +17854,7 @@ front, not this).
   [subsystems/gui-autoform.md](/subsystems/gui-autoform.md).
 
 * **chimol: object groups, and three ways to get a hierarchy wrong.** All eleven
-  of PyMOL's `group` actions plus `ungroup` and `order`, with group header rows
+  of the reference viewer's `group` actions plus `ungroup` and `order`, with group header rows
   in the objects panel — a disclosure marker, the same five A/S/H/L/C menus an
   object row carries, and indented members that collapse away without unloading
   anything.
@@ -17877,15 +17877,15 @@ front, not this).
     command. It only looked correct because the names are usually already in
     panel order.
   - **The second argument means members *or* an action.** `group kinases, close`
-    is how PyMOL's own menu writes it and how every example in its help text is
+    is how the reference viewer's own menu writes it and how every example in its help text is
     written; reading the word as an object name reports a missing object for all
     of them.
 
   A group used as a menu target expands to one command per member, which is
-  PyMOL's documented behaviour. Not yet supported: a group name inside an *atom
+  the reference viewer's documented behaviour. Not yet supported: a group name inside an *atom
   selection* (`show cartoon, ligands`), because the resolver returns a single
   `(object_id, mask)` pair — noted in the guide and in
-  [pymol-parity](/plugins/pymol-parity.md).
+  [reference-viewer-parity](/plugins/pymol-parity.md).
 
   33 tests, a regenerated `chimol_groups_panel.png` figure, and a new section in
   [guide 44](../docs/guides/44_molecular_viewer.md).
@@ -17953,7 +17953,7 @@ front, not this).
     that array is finalised. The sequence strip was a *third* copy, refreshed by
     `color` and not by `spectrum`.
   - **`nonbonded_size` was applied to non-polymers rather than to unbonded
-    atoms.** PyMOL shrinks waters and free ions; chimol was quartering every
+    atoms.** the reference viewer shrinks waters and free ions; chimol was quartering every
     bonded ligand, so `show cartoon, polymer` + `show spheres, organic` drew the
     ligand as a scatter of dots. Now derived from the inferred bond list, so it
     agrees with the `nonbonded` selection keyword.
@@ -17970,7 +17970,7 @@ front, not this).
   dominated by centre spread. It is glaring on screen and easy to sleep through
   in an assertion — the first threshold written for it passed the bug.
 
-  Updated [pymol-parity](/plugins/pymol-parity.md), including a correction to
+  Updated [reference-viewer-parity](/plugins/pymol-parity.md), including a correction to
   its capture notes: offscreen `grabFramebuffer` is black, so offscreen proves
   geometry and cannot prove shading, representation flags, or anything the scene
   builder decides.
@@ -18111,7 +18111,7 @@ front, not this).
   2CDE) and fit them in *discrete* time (H2MM), but nothing in the tree computed
   `exp(K dt)` — so there was no way to get a rate constant in s^-1 without first
   choosing a tick. New Qt-free core
-  [`chisurf/core/fluorescence/burst/gopich_szabo.py`](chisurf/core/fluorescence/burst/gopich_szabo.py):
+  [`chisurf/core/fluorescence/burst/gopich_szabo.py`](../chisurf/core/fluorescence/burst/gopich_szabo.py):
   spectral propagation of the photon-by-photon likelihood with per-photon
   rescaling, an arbitrary `(n_states, n_colors)` emission matrix (so 2- and
   3-colour are one code path), a multi-dataset form that lets two excitation
@@ -18143,10 +18143,10 @@ front, not this).
   spans two or more decades, restoring automatic spacing when zoomed in closer.
 
   Also promoted the burst photon extractor to
-  [`chisurf/core/fluorescence/burst/photons.py`](chisurf/core/fluorescence/burst/photons.py)
+  [`chisurf/core/fluorescence/burst/photons.py`](../chisurf/core/fluorescence/burst/photons.py)
   (it was reachable only by importing the H2MM plugin), and added
-  [concepts/photon_by_photon_kinetics](docs/concepts/photon_by_photon_kinetics.md)
-  + [guide 49](docs/guides/49_photon_by_photon_kinetics.md) with real screenshots.
+  [concepts/photon_by_photon_kinetics](../docs/concepts/photon_by_photon_kinetics.md)
+  + [guide 49](../docs/guides/49_photon_by_photon_kinetics.md) with real screenshots.
   Tests: 30 core + 24 plugin, plus 50 H2MM and 21 AutoForm green after the moves.
 
 * **The analysis region was Python-only, and three unlabelled boxes were the
@@ -18599,7 +18599,7 @@ front, not this).
   [known-issues](/references/known-issues.md).
 
 * **A `.pqres` file could not be loaded, and three layers had to be wrong for
-  that.** The PicoQuant SymPhoTime result format is binary (`PQRESLT\0` magic)
+  that.** The PicoQuant time-resolved acquisition-software result format is binary (`PQRESLT\0` magic)
   and it was being handed to `np.loadtxt`, which died on byte 0xff. The reason
   was not the parser. `FCS.read()` **accepted a `reader_name` argument and
   dropped it**: every call used the reader's configured `experiment_reader`
@@ -19087,7 +19087,7 @@ front, not this).
 
 * **RF-099: a parameter that never moved is no longer graded by floating-point
   luck.** `_ess_1d` in
-  [chisurf/core/fitting/diagnostics.py](chisurf/core/fitting/diagnostics.py)
+  [chisurf/core/fitting/diagnostics.py](../chisurf/core/fitting/diagnostics.py)
   guarded the constant-parameter case on the pooled *variance*, which the FFT
   autocovariance returns as a ~1e-31 rounding residual rather than an exact zero
   — so `np.full((4, 2000), v)`, a parameter bit-identical in all 8000 draws, gave
@@ -19109,7 +19109,7 @@ front, not this).
   [PRD-69](prds/prd-69.md).
 
 * **RF-168: one BVA static line, with a docstring that is actually reachable.**
-  `compute_static_bva_line` in [chisurf/core/fluorescence/burst/bva.py](chisurf/core/fluorescence/burst/bva.py)
+  `compute_static_bva_line` in [chisurf/core/fluorescence/burst/bva.py](../chisurf/core/fluorescence/burst/bva.py)
   opened with a one-line summary, then `import pandas as pd`, and only then its
   28-line NumPy docstring — which, following a statement, was a discarded string
   expression rather than `__doc__`, so every parameter description was invisible
@@ -19126,7 +19126,7 @@ front, not this).
   vectorized form genuinely needs. `test/fluorescence/test_bva_static_line.py`
   pins the docstring, the single-implementation identity, agreement with the
   binomial shot-noise limit `sqrt(E(1-E)/n)`, and the zero-photon edge case.
-  Recorded in [known-issues](okf/references/known-issues.md): two
+  Recorded in [known-issues](references/known-issues.md): two
   `test/plugins/burst/test_background_gui.py` failures met on the way are stale
   against the AutoForm conversion of the Burst Background tool (`iht_plot`,
   `_det_color`), pre-existing and unrelated.
@@ -19476,7 +19476,7 @@ front, not this).
     *from* the name the user typed;
   - **by element / by chain** — the menu writes `byelement`, `color` only knew
     `by_element`;
-  - **tints > yellowtint** — not a PyMOL colour at all; the menu invented it. PyMOL's
+  - **tints > yellowtint** — not a reference viewer colour at all; the menu invented it. The reference viewer's
     eight real tints are now listed.
 
   Why they survived: every structure in the test data was a protein with **no waters
@@ -19598,10 +19598,10 @@ front, not this).
   Now transcribed from `is_distance_bonded` (`layer2/ObjectMolecule2.cpp`):
   `|v1−v2| − (vdw1+vdw2)/2 ≤ connect_cutoff + adjustment`, with 0.35 as the cutoff,
   +0.2 for sulfur, −0.2 for hydrogen and never between two hydrogens. The radii come
-  from the atom array, so this needed no new data — only reading PyMOL's rule instead
+  from the atom array, so this needed no new data — only reading the reference viewer's rule instead
   of guessing a number.
 
-  A test caught one omission from the first transcription: PyMOL's `R_SMALL4` guard,
+  A test caught one omission from the first transcription: the reference viewer's `R_SMALL4` guard,
   without which two atoms at the same coordinates are the *shortest* distance of all
   and so always bond.
 
@@ -19969,7 +19969,7 @@ front, not this).
   check runs first and by itself never reaches the rollback path. The backlog row
   is marked fixed and its stale location corrected; the table's own tally was two
   findings behind reality and is recounted. See
-  [assessment DATA-04](assessment.md#data-04).
+  [assessment DATA-04](specs/assessment.md#data-04).
 
 * **Skills compose, and smFRET became a family rather than a monolith.** The
   burst-to-distance procedure landed earlier the same day as one large skill,
@@ -20022,7 +20022,7 @@ front, not this).
   translation is exact.
 
 * **Scenes.** `scene` stores the camera, object activity, representations and
-  colours, with PyMOL's per-aspect flags so one scene can carry a viewpoint and
+  colours, with the reference viewer's per-aspect flags so one scene can carry a viewpoint and
   another a colour scheme. Two behaviours are chimol-specific, both because the
   camera is stored *relative to the scene centre*, which moves when what is drawn
   changes: the view is restored **last** (restoring it first lets the rebuild undo
@@ -20277,7 +20277,7 @@ front, not this).
   the only way to capture the 3D view headlessly. All recorded in the tracker; the
   guide figure is a window grab cropped afterwards with PIL.
 
-  Tracker: [plugins/pymol-parity.md](/plugins/pymol-parity.md) — the documentation
+  Tracker: [reference-viewer parity](/plugins/pymol-parity.md) — the documentation
   gap recorded earlier today is closed.
 
 * **An unreadable ALV file failed like a `KeyboardInterrupt`, and the ALV
@@ -20539,7 +20539,7 @@ front, not this).
   and the user-facing docs are not supposed to reach into the knowledge bundle at
   all. Rather than repoint it, the material it was borrowing is now stated where
   the reader needs it: the parity metric is the symmetric mean surface distance
-  between chimol's and PyMOL's cartoon meshes, both programs must be fed the
+  between chimol's and the reference viewer's cartoon meshes, both programs must be fed the
   *same* secondary structure first, and on the full RCSB 148L that distance is
   0.428 Å with cross-sections agreeing to ~0.1 Å. Removing it exposed a second
   warning it had been sharing the build with: `plugin_architecture.md` had a
@@ -20749,7 +20749,7 @@ front, not this).
   Transcribed from `RepDotDoNew` (`layer2/RepDot.cpp`) in `cRepDotAreaType` mode.
   Two details a generic Shrake–Rupley gets wrong, both of which change the answer:
   the sample points are an **icosahedral geodesic** — `dot_density` 0–4 giving
-  12/42/162/642/2562 points, reproduced exactly and checked against PyMOL's
+  12/42/162/642/2562 points, reproduced exactly and checked against the reference viewer's
   `Sphere_nDot` — and each point carries **its own** solid angle from the spherical
   excess of its incident triangles rather than `4π/N`. The twelve original
   icosahedron vertices have five neighbours where every later vertex has six, so
@@ -20769,7 +20769,7 @@ front, not this).
   Every atom occludes even when a selection is reported, which is the point: the
   area of a residue *in* a protein is not its area in isolation. `load_b` writes
   per-atom areas into the b-factor, so `spectrum b` then colours by accessibility.
-  New settings `dot_solvent`, `dot_density` and `solvent_radius`, with PyMOL's
+  New settings `dot_solvent`, `dot_density` and `solvent_radius`, with the reference viewer's
   defaults.
 
   Docs: new concept page `docs/concepts/molecular_surfaces.md` — the two surfaces
@@ -20952,14 +20952,14 @@ front, not this).
   - **`alter` corrupted the geometry.** It assigned raw Angstrom into
     `all_atom_coords`, which is scaled by ten and centred, so *every* `alter` —
     even one that only touched a b-factor — shrank the molecule tenfold and moved
-    it off centre. Properties and coordinates are now separated as PyMOL separates
+    it off centre. Properties and coordinates are now separated as the reference viewer separates
     them, which is what `alter` versus `alter_state` is for.
   - **`spectrum` discarded all three of its arguments.** The body was
     `self.color("spectrum")`: expression, palette and selection ignored, a global
     colour mode set instead. Now ramps the property across the palette per
     `spectrumany`, honours the selection, takes an explicit range, and enumerates
     non-numeric values so `spectrum resn` works. New `analysis/spectrum.py` carries
-    PyMOL's palette table.
+    the reference viewer's palette table.
   - **`pseudoatom` crashed** and left a half-built object active, breaking every
     later selection — it invented a fifth atom dtype incompatible with every
     reader.
@@ -20984,7 +20984,7 @@ front, not this).
   **a second copy of a table always drifts, and the drift is silent because the
   feature keeps answering.**
 
-  Tracker: [plugins/pymol-parity.md](/plugins/pymol-parity.md).
+  Tracker: [reference-viewer parity](/plugins/pymol-parity.md).
 
 * **Phasor cursors are regions now — so a cluster that is not an ellipse can be
   gated.** `plugins/microscopy/img_pixel_phasor`. The plugin had
@@ -21224,8 +21224,8 @@ front, not this).
   full re-optimisation per query, and in canonical form it is a Schur complement.
   Recorded as the next thing to take, not yet taken.
 
-* **Undo/redo, at PyMOL's scope — Tier 1 of the chimol parity tracker is closed.**
-  PyMOL's `undo` is much narrower than the word suggests, and matching that scope
+* **Undo/redo, at the reference viewer's scope — Tier 1 of the chimol parity tracker is closed.**
+  the reference viewer's `undo` is much narrower than the word suggests, and matching that scope
   mattered more than extending it: it stores *coordinate* snapshots, per object, in a
   ring of sixteen (`cUndoMask = 0xF` in `layer2/ObjectMolecule.h`), and refuses to
   restore one once the atom count has changed. It does not undo a colour, a
@@ -21248,9 +21248,9 @@ front, not this).
   a restore refused for a changed atom count is not.
 
   New in `renderer/undo.py` with `undo`/`redo`/`push_undo` commands.
-  Tracker: [plugins/pymol-parity.md](/plugins/pymol-parity.md).
+  Tracker: [reference-viewer parity](/plugins/pymol-parity.md).
 
-* **`origin` was a camera-model gap, not a one-line command.** PyMOL's view tuple
+* **`origin` was a camera-model gap, not a one-line command.** the reference viewer's view tuple
   defines two points — slots 12-14 the pivot in world space, slots 9-11 a
   camera-space offset applied after the rotation — and chimol had collapsed them into
   a single orbit target. They agree until something separates them, and `origin` is
@@ -21261,25 +21261,25 @@ front, not this).
 
   `pack_view_state`/`unpack_view_state` and the GL camera now carry both, with the
   compensation transcribed from `SceneOriginSet` (the model-space difference rotated
-  into camera space, added to the view offset). Framing resets the offset, as PyMOL's
+  into camera space, added to the view offset). Framing resets the offset, as the reference viewer's
   does. Verified on 148L: the projection matrix is unchanged by `origin` to 1e-5, the
   pivot lands on the NAG centroid, and a 40° turn afterwards leaves that centroid at
   the same screen position while the control case moves it.
 
   Adding a non-zero slot 9 broke the loader's layout discriminator, which keyed on
-  "slot 9 is zero" to tell a PyMOL tuple from chimol's two older ones — so a saved
+  "slot 9 is zero" to tell a reference viewer tuple from chimol's two older ones — so a saved
   view with an offset would have loaded as a completely different camera, silently.
   One corner is genuinely ambiguous (an identity rotation with a negative slot 11
   could be either format, and nothing in the eighteen floats distinguishes them);
-  resolved in PyMOL's favour and documented in the tests, since a legacy azimuth is
+  resolved in the reference viewer's favour and documented in the tests, since a legacy azimuth is
   periodic and such a view is recoverable by writing 315 rather than -45.
 
-  `origin` takes PyMOL's arguments: a selection, or `position=[x,y,z]` in Angstrom
+  `origin` takes the reference viewer's arguments: a selection, or `position=[x,y,z]` in Angstrom
   which overrides it. The centre of a selection is the centroid, since
   `ExecutiveOrigin` averages a *weighted* extent — the same rule that frames `zoom`.
   The `[x,y,z]` parsing `translate` had inline is now one shared helper.
 
-  Tracker: [plugins/pymol-parity.md](/plugins/pymol-parity.md) — Tier 1 now has only
+  Tracker: [reference-viewer parity](/plugins/pymol-parity.md) — Tier 1 now has only
   undo/redo left.
 
 * **`resn NAG` matched nothing, and the reason was structural.** The chimol
@@ -21292,7 +21292,7 @@ front, not this).
   leading word was a keyword or an object name.
 
   Fixed by giving the vocabulary one home: `cmd/sele_keywords.py`, transcribed from
-  `Keyword[]` in PyMOL's `layer3/Selector.cpp` — 85 canonical keywords, 169
+  `Keyword[]` in the reference viewer's `layer3/Selector.cpp` — 85 canonical keywords, 169
   spellings including the `c.`-style abbreviations and the deprecated `;` forms.
   Parser and evaluator both read it; so do all three call sites. Arity and fixity
   come from the `STYP_` suffix of each `SELE_` code, and reading the stack reducer
@@ -21324,7 +21324,7 @@ front, not this).
   from *which atoms are present*, so a modified residue or an unusual ligand lands
   in the right class with no name table to maintain, and a residue named `ALA`
   missing its backbone does not pretend to be polymer. `metals` is by proton count
-  per `AtomInfoType::isMetal`. One deviation is documented in the module: PyMOL also
+  per `AtomInfoType::isMetal`. One deviation is documented in the module: the reference viewer also
   requires a peptide or phosphodiester bond, which needs connectivity not carried
   at that level, so an isolated free amino acid classifies as protein.
 
@@ -21342,7 +21342,7 @@ front, not this).
 
 * **`create` / `extract` landed, and `save` was writing the wrong object.** A
   selection can now be split into its own object. The child is drawn in its
-  parent's frame — otherwise a subset jumps to the scene origin — while its stored
+  parent's frame — otherwise a subset jumps to the scene zero point — while its stored
   coordinates stay true, so `save` writes where the atoms really are; the older
   `split_chains` shifts stored coordinates instead, which looks identical on screen
   and writes a wrong file. Creating an object no longer steals the active one,
@@ -21351,7 +21351,7 @@ front, not this).
   against another, so `save out.pdb, sugars` raised a length mismatch — and would
   have written the wrong atoms silently had the two objects matched in size.
 
-  Tracker: [plugins/pymol-parity.md](/plugins/pymol-parity.md) — Tier 1 now has
+  Tracker: [reference-viewer parity](/plugins/pymol-parity.md) — Tier 1 now has
   `origin` and undo/redo left.
 
 * **Magic-angle fits were computing an anisotropy they then threw away.**
@@ -21479,14 +21479,14 @@ front, not this).
   image readers, `Do_FRET` (a ratiometric acceptor/donor *time trace* — small,
   ~49 lines), and `Calibration`. See [imaging plugins](/plugins/imaging.md).
 
-* **chimol: `label`, with PyMOL's expression language rather than templates.**
+* **chimol: `label`, with the reference viewer's expression language rather than templates.**
   The whole `L` menu was greyed out because chimol had no labels at all.
   **The important part is that `cmd.label` does not take a template string** -- it
   takes a **Python expression** evaluated once per atom with that atom's
-  properties in scope, which is why PyMOL's own Label menu is full of entries like
+  properties in scope, which is why the reference viewer's own Label menu is full of entries like
   `"%s-%s" % (resn, resi)` and `'%1.2f' % b`. A template engine would not be the
   same feature: half the usefulness of labels is *computing* them. So
-  `analysis/labels.py` implements the expression namespace with PyMOL's names
+  `analysis/labels.py` implements the expression namespace with the reference viewer's names
   (`name`, `resn`, `resi`, `chain`, `segi`, `elem`, `b`, `q`, `vdw`, `index`,
   `oneletter`, `x`/`y`/`z`), and the fifteen menu expressions are transcribed
   verbatim from `pymol/menu.py:mol_labels` so menu and command language cannot
@@ -21499,7 +21499,7 @@ front, not this).
   structure with no B-factors gives 0.0) rather than failing every expression that
   mentions it; one atom whose expression raises is **skipped** rather than
   aborting the other thousand; but a **syntax error is raised**, because that is
-  wrong for every atom rather than one. `resi` is a string, as in PyMOL, because
+  wrong for every atom rather than one. `resi` is a string, as in the reference viewer, because
   insertion codes exist and `oneletter + resi` depends on it.
   Labels render as `kind="text"` overlays so they survive depth-testing against
   the geometry they annotate, and `hide labels` keeps the text -- you turn labels
@@ -21601,17 +21601,17 @@ front, not this).
   36 tools, 11 skills, 38 tests in `test/agent/test_codebase_tools.py`.
 
 * **chimol: `save` -- structures can leave the viewer again.** The largest hole in
-  replacing PyMOL, ahead of any representation: chimol could show a structure but
+  replacing the reference viewer, ahead of any representation: chimol could show a structure but
   not hand one back, so every transform, deleted water and renumbering was trapped
   inside it.
   New `io/export.py` writes **PDB and mmCIF**, and deliberately serialises *what
   the viewer holds* rather than the source file -- re-exporting the input would
   discard exactly the work worth keeping. Format follows the extension with
-  PyMOL's own fallback ("if the file format is not recognized, then a PDB file is
+  the reference viewer's own fallback ("if the file format is not recognized, then a PDB file is
   written by default"), so a mistyped extension still leaves a usable file. mmCIF
   is there for one concrete reason: PDB has four columns for a residue number and
   mmCIF has none, so a large-numbered structure survives.
-  **Verified by loading the output back into PyMOL**, which is the only test of a
+  **Verified by loading the output back into the reference viewer**, which is the only test of a
   writer that means anything: 1363 atoms, both chains E and S, 163 CA, 63 hetero
   atoms, and `dss` finds H/L/S on it -- so the backbone ordering is intact. PDB
   and mmCIF agree to 0.0000 A. Round-trip through chimol's own reader is exact.
@@ -21620,12 +21620,12 @@ front, not this).
   writing those into a PDB gives a file that loads at the wrong size and place.
   And a test asserting a transform reaches the file caught that **`translate` was
   off by the scale factor** -- `translate [100,0,0]` moved the molecule **10 A**,
-  because PyMOL's translate is in Angstrom while
+  because the reference viewer's translate is in Angstrom while
   `apply_transform_to_object` works on the renderer's scene-unit arrays. Invisible
   on screen, obvious the moment anything was written out. Fixed and pinned; the
   parity tracker now carries "any new command taking a length must convert" as a
   rule.
-  Also recorded: PyMOL keeps every **altloc** as a separate atom (148L 1385) where
+  Also recorded: the reference viewer keeps every **altloc** as a separate atom (148L 1385) where
   chimol keeps only the first (1363), so atom counts will not agree on structures
   with altlocs.
   33 new tests. Suite: 427 passed, 1 skipped.
@@ -21751,18 +21751,18 @@ front, not this).
   frame-lag correlation before correction and a flat one after. Full touched-area
   run 109 + 15 pass. See [regions of interest](/subsystems/roi.md).
 
-* **chimol: `lines` and `nonbonded`, the two representations PyMOL shows by
+* **chimol: `lines` and `nonbonded`, the two representations the reference viewer shows by
   default -- and a parity tracker for the rest.** Scope changed from "match the
-  cartoon" to "replace PyMOL", so the gap was measured rather than guessed:
-  PyMOL is **515 823 lines of C++ plus 52 154 of Python, 303 commands, 769
+  cartoon" to "replace the reference viewer", so the gap was measured rather than guessed:
+  the reference viewer is **515 823 lines of C++ plus 52 154 of Python, 303 commands, 769
   settings, 16 representations**; chimol is 29 442 lines, 79 commands, 44
   registered settings, 8 representations -- about **5 % by volume**. New
   [parity tracker](/plugins/pymol-parity.md) records that, tiers the remaining
-  work by whether it actually blocks replacing PyMOL, and states the working
+  work by whether it actually blocks replacing the reference viewer, and states the working
   rules that keep coming up (read the C++ first; transcribe rather than
   approximate; pin it with a test that names the function).
   **`lines` was not just missing, it was wrong.** chimol mapped `lines` to the
-  alpha-carbon trace, so `show lines` gave a smoothed backbone where a PyMOL user
+  alpha-carbon trace, so `show lines` gave a smoothed backbone where a reference viewer user
   expects every bond. Now `geometry/wireframe.py` implements `RepWireBond`
   properly: one segment per bond **split at the midpoint**, so each half carries
   its own atom's colour -- a red-to-blue bond is half red and half blue, which is
@@ -21770,9 +21770,9 @@ front, not this).
   keep the old behaviour under their own names.
   **`nonbonded`** (`RepNonbonded`) marks atoms in no bond with a small three-axis
   cross at `nonbonded_size`: a lone water draws no line and would otherwise be
-  invisible in a wireframe, which is exactly why PyMOL pairs `auto_show_nonbonded`
+  invisible in a wireframe, which is exactly why the reference viewer pairs `auto_show_nonbonded`
   with `auto_show_lines`. `as lines` brings both, and replaces the other
-  representations rather than adding to them, as PyMOL's `as` does. On 1DG3:
+  representations rather than adding to them, as the reference viewer's `as` does. On 1DG3:
   17 712 line vertices for 4428 bonds plus 2046 for the 341 waters.
   Both are flat primitives, not meshes -- which is the point of them, since they
   are what you switch to when a surface is too heavy to rotate.
@@ -21954,7 +21954,7 @@ front, not this).
   `LaplaceEngine`, `ProfileEngine`, `SamplingEngine`, `StoredEngine` and
   `AutoEngine` behind it. Answers are `Marginal` / `Joint` dataclasses carrying
   the method that produced them, so a report or a plot consumes one without
-  knowing its origin. Only declared targets are computed — a profile scan of one
+  knowing its source. Only declared targets are computed — a profile scan of one
   parameter should not scan the other nine. Each engine still refuses to claim
   more than it knows: a profile scan has no joint answer and no evidence because
   it maximises rather than integrates, and a sampled marginal from a chain that
@@ -22062,8 +22062,8 @@ front, not this).
   source's value. 30 tools, 10 skills.
 
 * **chimol: `cartoon_smooth_loops` implemented, and the whole curve exposed as
-  settings.** The last unimplemented step of PyMOL's cartoon pipeline is in, so
-  nothing in the chain is missing now. It is **off by default as in PyMOL** --
+  settings.** The last unimplemented step of the reference viewer's cartoon pipeline is in, so
+  nothing in the chain is missing now. It is **off by default as in the reference viewer** --
   rounding the coil pulls it away from the real backbone -- but a setting that
   silently does nothing is worse than one that is off.
   Two details separate it from the sheet pass, both from `RepCartoonSmoothLoops`:
@@ -22072,7 +22072,7 @@ front, not this).
   renormalised but **not** re-orthogonalised against the tangent, since a loop
   has no face to keep flat. Verified on a kinked coil between two helices: second
   difference along the loop 30.0 -> 2.0, with both helices untouched.
-  **Seven more PyMOL settings registered** -- `cartoon_throw`, `cartoon_power`,
+  **Seven more the reference viewer settings registered** -- `cartoon_throw`, `cartoon_power`,
   `cartoon_power_b`, `cartoon_refine_tips`, `cartoon_refine_normals`,
   `cartoon_smooth_loops`, `cartoon_smooth_cycles` -- so the curve and the
   guide-frame conditioning are reachable as `set cartoon_throw, 2.0` rather than
@@ -22112,7 +22112,7 @@ front, not this).
   radius -- so the "vdW-related" reading from the earlier session was also wrong,
   since a `vdw=5` pair shows no residual at all.
   **The cause is the `weighted` flag** `ExecutiveWindowZoom` passes to
-  `ExecutiveGetExtent`. With it set, PyMOL averages the atom coordinates and
+  `ExecutiveGetExtent`. With it set, the reference viewer averages the atom coordinates and
   rebuilds the box **symmetric about that centroid**::
 
       op2.v1 /= op2.i1;                  // centroid
@@ -22127,7 +22127,7 @@ front, not this).
   box, which is what made the two disagree.
   Both the radius **and the zoom centre** were wrong in chimol. Now
   `view_state.framing_centre` returns the centroid and `framing_radius` measures
-  the centroid-symmetric half-width. Against PyMOL: 148L **24.4661 vs 24.4662**,
+  the centroid-symmetric half-width. Against the reference viewer: 148L **24.4661 vs 24.4662**,
   1DG3 **79.4825 vs 79.4825**, 148L `complete` **30.4871 vs 30.487** -- exact,
   where before 1DG3 was off by 11.6 A.
   6 new tests, including the lopsided-mass case that makes the rule visible.
@@ -22135,7 +22135,7 @@ front, not this).
 
 * **chimol: cast shadows in the interactive viewport.** Ambient occlusion says
   how *enclosed* a point is; a cast shadow says whether anything stands between
-  it and the light. They are different cues, and PyMOL has the second only when
+  it and the light. They are different cues, and the reference viewer has the second only when
   raytracing -- so this is the live view going further rather than matching.
   `geometry/ambient.py:directional_occlusion` casts a ray from each vertex toward
   the light and asks every nearby sphere how close it comes to that ray: one the
@@ -22146,7 +22146,7 @@ front, not this).
   against 4700 atoms in **0.175 s**, and the whole 148L cartoon rebuild goes
   0.48 s -> 0.64 s.
   **The light is deliberately off-axis.** A headlight casts almost nothing the
-  camera can see, so the default shadow direction is PyMOL's own `light`
+  camera can see, so the default shadow direction is the reference viewer's own `light`
   (-0.4, -0.4, -1) negated, since that setting is the direction light *travels*
   while the shadow ray runs toward the source. The shadow is also folded into the
   occlusion channel the GL shader damps its non-surface lighting by, so a
@@ -22221,14 +22221,14 @@ front, not this).
   the skill instructs. The live suite passes against Mistral (8/8) as well as
   OpenRouter.
 
-* **chimol: PyMOL's cartoon curve, which is not a spline.** chimol interpolated
+* **chimol: the reference viewer's cartoon curve, which is not a spline.** chimol interpolated
   between guide residues with Catmull-Rom plus a tension knob. That is a
-  reasonable spline and it is *not* the curve PyMOL draws -- no tension reaches
+  reasonable spline and it is *not* the curve the reference viewer draws -- no tension reaches
   it. From `CartoonGenerateSample`:
   `P = f1*P0 + f0*P1 + f4*(f3*T0 - f2*T1)` with `f4 = cartoon_throw * |P1-P0| *
-  f2 * f3`, the `f` terms all passed through PyMOL's own easing
+  f2 * f3`, the `f` terms all passed through the reference viewer's own easing
   `smooth(x, p)` (`layer0/Vector.cpp`).
-  Two properties are what make it read as PyMOL, and neither is reachable with a
+  Two properties are what make it read as the reference viewer, and neither is reachable with a
   tension parameter: **the throw scales with the segment length**, so a long step
   bulges proportionally more than a short one; and **the `f2*f3` envelope
   vanishes at both ends**, so the curve passes exactly through every guide
@@ -22236,14 +22236,14 @@ front, not this).
   wherever a guide frame exists -- which is also what makes the strand-tip
   re-aiming visible, since the curve is thrown along those tangents. Catmull-Rom
   stays as the fallback for raw-coordinate objects with no orientation data.
-  Defaults are PyMOL's, read from a running instance: `cartoon_power` 2,
+  Defaults are the reference viewer's, read from a running instance: `cartoon_power` 2,
   `cartoon_power_b` 0.52, `cartoon_throw` 1.35.
   **A test caught a real trap in the transcription.** The orientation blend
   `f1*(O0*f2) + f0*(O1*f3)` **vanishes at both endpoints** -- at `u = 0` the pair
   is `(1*0, 0*1)` -- which is why the C++ special-cases them with its two
   `copy3f(... "starter...")` lines instead of evaluating the formula. Transcribed
   literally it gives a zero ribbon normal at *every* residue; the endpoints now
-  take the raw guide orientations as PyMOL's do.
+  take the raw guide orientations as the reference viewer's do.
   Colour is interpolated with the same eased parameter the geometry uses, so a
   residue boundary lands in the same place for colour as for shape.
   16 new tests. Suite: 359 passed, 1 skipped.
@@ -22289,8 +22289,8 @@ front, not this).
   and only the three derived optical factors stay fixed, because
   `update_factors` overwrites them.
 
-* **chimol: the cartoon gets PyMOL's per-residue guide-frame stage.** The two
-  conditioning steps PyMOL runs before any sampling could not be patched in --
+* **chimol: the cartoon gets the reference viewer's per-residue guide-frame stage.** The two
+  conditioning steps the reference viewer runs before any sampling could not be patched in --
   chimol derived its tangents from the *finished spline*, so there was nowhere to
   put them. New `geometry/guide_frames.py` is that stage, transcribing
   `RepCartoonComputeDifferencesAndNormals`, `RepCartoonComputeTangents`,
@@ -22315,7 +22315,7 @@ front, not this).
   The sampled spline still supplies the smooth interior tangent; the guide frame
   overrides it where it is defined, and the up-vectors are re-squared against the
   result so the profile is not sheared.
-  20 new tests, one per pass, plus the degenerate cases PyMOL guards (a zero-length
+  20 new tests, one per pass, plus the degenerate cases the reference viewer guards (a zero-length
   step copies the previous direction; a segment break zeroes it).
   Suite: 343 passed, 1 skipped.
 
@@ -22401,17 +22401,17 @@ front, not this).
   as `csc accurate-fret --simulate <file>`.
 
 * **chimol: flat sheets ported from `RepCartoonFlattenSheets`, and the cartoon
-  pipeline mapped.** With PyMOL's source to hand the cartoon can be compared step
+  pipeline mapped.** With the reference viewer's source to hand the cartoon can be compared step
   for step instead of by matching rendered meshes.
-  **The flat-sheet pass was approximated three ways.** PyMOL averages a strand
+  **The flat-sheet pass was approximated three ways.** the reference viewer averages a strand
   position with its two neighbours **uniformly** (`scale3f(t0, 1/(f*2+1))` with
   `f = 1`); chimol used a weighted `(1, 2, 1)/4` kernel, which converges more
-  slowly and leaves a visible pleat after the four cycles PyMOL runs. PyMOL
+  slowly and leaves a visible pleat after the four cycles the reference viewer runs. The reference viewer
   smooths the **orientation vectors** in the same loop; chimol smoothed only the
-  path, so half the pleat survived as ribbon twist. And PyMOL then
+  path, so half the pleat survived as ribbon twist. And the reference viewer then
   **re-orthogonalises** each orientation against `normalize(p[b+1] - p[b-1])`, so
   the ribbon's face stays perpendicular to the path it now follows. All three
-  fixed, with the run's own end points anchored as PyMOL anchors them
+  fixed, with the run's own end points anchored as the reference viewer anchors them
   (`first+f .. last-f`), and each pinned by a test.
   **The pipeline is now written down** in the profile with its settings and
   defaults, along with the two remaining divergences and why they are not
@@ -22422,11 +22422,11 @@ front, not this).
   stale: `tv` is written by `RepCartoonComputeTangents`. `cartoon_smooth_loops`
   is off by default, so its absence costs nothing.
   Measured on 148L, mean distance from the strand ribbon to its strand CAs:
-  PyMOL 1.56 A, chimol 1.66 A -- not exactly comparable, since PyMOL's `dss`
+  the reference viewer 1.56 A, chimol 1.66 A -- not exactly comparable, since the reference viewer's `dss`
   calls 12 residues strand there where the deposited records call 14.
   Suite: 323 passed, 1 skipped (3 new).
 
-* **chimol: the framing rule confirmed against PyMOL's C++, and two gaps it
+* **chimol: the framing rule confirmed against the reference viewer's C++, and two gaps it
   exposed.** With the source checkout available (`junk/pymol-open-source`) the
   camera rules could be *read* rather than inferred, and the ones derived
   empirically hold exactly. `layer1/Scene.cpp:SceneWindowSphere`:
@@ -22439,12 +22439,12 @@ front, not this).
   **Two things were missing.** `SceneWindowSphere` also has
   `if (Height > Width) dist *= Height/Width` — a **portrait-viewport
   correction**, since the field of view is vertical and a tall window makes the
-  horizontal extent binding. Verified against PyMOL at 640x480, 480x640, 800x800
+  horizontal extent binding. Verified against the reference viewer at 640x480, 480x640, 800x800
   and 400x800: the factor is exact. And `ExecutiveWindowZoom` floors the radius
   at `MAX_VDW` (2.5 A, `layer0/Base.h`), so a single atom cannot put the camera
   inside itself; applied here in scene units, since chimol does not work in
   Angstrom.
-  **Still unattributed**: PyMOL's zoom radius on 148L runs +0.700 A over the
+  **Still unattributed**: the reference viewer's zoom radius on 148L runs +0.700 A over the
   extent it reports through `get_extent`. The offset is *additive* (identical at
   buffer 0, 1 and 5), independent of viewport, and exactly **zero** for
   pseudoatoms with `vdw=0`, so it is van-der-Waals-related — but
@@ -22453,16 +22453,16 @@ front, not this).
   Recorded rather than guessed at.
   Suite: 320 passed, 1 skipped (8 new).
 
-* **chimol: PyMOL's main menu bar.** Completes the GUI pass. PyMOL's bar is
+* **chimol: the reference viewer's main menu bar.** Completes the GUI pass. The reference viewer's bar is
   File / Edit / Build / Movie / Display / Setting / Scene / Mouse / Wizard /
-  Plugin / Help (`pymol/_gui.py:get_menudata`), and a PyMOL user looks for things
-  by that grouping, so the menus chimol can fill keep PyMOL's name, position and
+  Plugin / Help (`pymol/_gui.py:get_menudata`), and a reference viewer user looks for things
+  by that grouping, so the menus chimol can fill keep the reference viewer's name, position and
   wording.
   **Whole menus are omitted rather than shown empty** — Build, Movie, Scene,
   Wizard and Plugin have no chimol equivalent at all, and an empty menu on the
   bar is a promise with nothing behind it. That is the opposite call from the
   per-object menus, where individual entries stay visible and disabled so the
-  menu keeps PyMOL's *shape*; a top-level menu has no shape to preserve. Both
+  menu keeps the reference viewer's *shape*; a top-level menu has no shape to preserve. Both
   rules are pinned by tests, as is the reason attached to each omission.
   Display and Setting are wired to the settings layer built earlier, so the bar
   is where the ambient occlusion, cartoon, rendering and perspective knobs became
@@ -22471,26 +22471,26 @@ front, not this).
   is echoed, so clicking teaches the command.
   Three tests keep it honest: every wired verb must be a registered chimol
   command, every `set <name>` must name a setting that resolves, and every
-  disabled entry must carry a reason. A fourth re-reads PyMOL's own bar from its
+  disabled entry must carry a reason. A fourth re-reads the reference viewer's own bar from its
   source so the reference list cannot drift.
   Suite: 312 passed, 1 skipped (9 new).
 
 * **chimol: the object menus are per-molecule, and the panel looks like
-  PyMOL's.** The first cut put one shared A/S/H/L/C row above the list, acting on
-  whatever was selected. That is wrong in a way that matters: in PyMOL **the
+  the reference viewer's.** The first cut put one shared A/S/H/L/C row above the list, acting on
+  whatever was selected. That is wrong in a way that matters: in the reference viewer **the
   buttons live on the row**, so they act on *that* molecule, and a shared row
-  silently retargets every action. Rebuilt as PyMOL has it — a permanent grey
+  silently retargets every action. Rebuilt as the reference viewer has it — a permanent grey
   `all` header row whose buttons act on everything, then one row per molecule
-  carrying its own five buttons, its visibility box, its name, and PyMOL's
+  carrying its own five buttons, its visibility box, its name, and the reference viewer's
   `current/total` state counter.
   Implemented as a Qt item widget per list row, so the item keeps its check state
   and every existing handler (`itemChanged`, selection, delete) still fires;
   Qt's own check indicator is hidden and the item's text blanked, or both would
   render underneath the row widget.
-  **The look follows PyMOL too**, since being recognisable at a glance is the
+  **The look follows the reference viewer too**, since being recognisable at a glance is the
   whole point: black panel, monospace, enabled names in green and disabled ones
   greyed, the grey `all` header, periwinkle buttons with a rainbow `C`, dark
-  menus. Destructive entries carry PyMOL's own tint, computed from its escape
+  menus. Destructive entries carry the reference viewer's own tint, computed from its escape
   rather than guessed: `del_col`/`rem_col` are `\933`, i.e. RGB (9,3,3) on a 0-9
   scale, which is `#ff5555`.
   Tests now assert every molecule has its own five buttons, that a row's menu
@@ -22521,18 +22521,18 @@ front, not this).
   files (factors recovered from simulated bursts; ndX's own efficiency column
   moves) and in a real offscreen ndX window.
 
-* **chimol: PyMOL's object-panel A/S/H/L/C menus, transcribed 1:1.** The object
-  panel is how most people actually drive PyMOL, so the five per-molecule menus
+* **chimol: the reference viewer's object-panel A/S/H/L/C menus, transcribed 1:1.** The object
+  panel is how most people actually drive the reference viewer, so the five per-molecule menus
   are now reproduced entry for entry in `app/object_menus.py` -- same entries,
   same order, same separators, same labels, including the ones with a stray
   trailing space (`"by ss  "`) or odd abbreviation (`"assign sec. struc."`).
-  **Taken from PyMOL's source, not from a screenshot.** (`screencapture` is
+  **Taken from the reference viewer's source, not from a screenshot.** (`screencapture` is
   blocked without macOS Screen Recording permission, which turned out not to
   matter.) `pymol/menu.py`'s own builders `mol_action`/`mol_show`/`mol_hide`/
   `mol_labels`/`mol_color` were *called* and their nested tables dumped, so the
-  transcription is mechanical. A test re-dumps them from a live PyMOL when it is
+  transcription is mechanical. A test re-dumps them from a live the reference viewer when it is
   importable and asserts the labels and order still match, so the copy cannot
-  drift; when PyMOL is absent it compares against the transcription instead.
+  drift; when the reference viewer is absent it compares against the transcription instead.
   **Unsupported entries are shown, disabled, and explained** rather than dropped.
   Dropping them would change the menu's shape and hide the gap; wiring them to
   something approximate would lie about what happened. So `drag matrix`, `clean`,
@@ -22625,17 +22625,17 @@ front, not this).
 
 * **chimol: `hide water` does what you meant, and `solvent`/`polymer`/`hetatm`
   mean what they say.** `hide water` reported "Unsupported representation".
-  **PyMOL rejects it too** -- `hide water` there is `Error: unknown
-  representation: 'water'`, and `water` is not even a valid PyMOL selection name
-  (only `solvent` is). But PyMOL's own object-panel **H** menu carries a
+  **The reference viewer rejects it too** -- `hide water` there is `Error: unknown
+  representation: 'water'`, and `water` is not even a valid the reference viewer selection name
+  (only `solvent` is). But the reference viewer's own object-panel **H** menu carries a
   first-class *waters* entry running `hide("(solvent and (sele))")`, so hiding
   solvent is an everyday action that simply has an awkward spelling. Rather than
   reproduce the error, `show`/`hide` now check whether an unknown representation
   names a **non-empty** selection and, if so, act on it as
-  `everything, <selection>` while printing the PyMOL spelling, so the idiom is
+  `everything, <selection>` while printing the reference viewer spelling, so the idiom is
   still learned. A name that selects nothing is left to fail as an unknown
   representation, which is the more useful message for a typo.
-  `everything` is now a real representation keyword, as in PyMOL.
+  `everything` is now a real representation keyword, as in the reference viewer.
   **The selection keywords were stubs.** `polymer` returned *all* atoms
   ("For now, return all since we don't have polymer flags parsed") and `solvent`
   matched only HOH/WAT. Now `hetatm`/`hetero`/`organic` use the same
@@ -22797,7 +22797,7 @@ front, not this).
   Suite: 271 passed, 1 skipped (3 new).
 
 * **tcPDA A/B against the incumbent suite — and it found a real bug (PRD-65).**
-  New `test/models/test_pda3c_pam_ab.py` transcribes the incumbent's MATLAB
+  New `test/models/test_pda3c_pam_ab.py` transcribes the incumbent's numerical computing environment
   expressions verbatim and asserts equality against ChiSurf's three-colour
   physics over randomised distances and correction sets, following the
   [fcs-pam-port](/references/fcs-pam-port.md) / `test_fcs_pam_ab.py` precedent.
@@ -22829,8 +22829,8 @@ front, not this).
   this only concerns what the burst-size distribution means, and each is
   self-consistent.
   **Then the reference's own C kernel was executed, not just transcribed.** The
-  surrounding MATLAB has no callable entry point and the shipped MEX binaries are
-  x86_64 MATLAB-ABI objects, but the kernel itself is a self-contained MEX
+  surrounding the numerical computing environment has no callable entry point and the shipped MEX binaries are
+  x86_64 numerical-computing-environment-ABI objects, but the kernel itself is a self-contained MEX
   function with a plain numeric signature — so Octave's `mkoctfile` compiles it
   from source on arm64 and it can be driven directly.
   `test/models/test_pda3c_octave_ab.py` does that and finds ChiSurf's factorised
@@ -22892,7 +22892,7 @@ front, not this).
   idle filter pass does no row walk, a real filter still applies). 15 passed.
 
 * **chimol: real ambient occlusion, in the interactive viewport, without
-  raytracing.** PyMOL has no ambient occlusion at all, so this is the first place
+  raytracing.** the reference viewer has no ambient occlusion at all, so this is the first place
   chimol is deliberately ahead rather than at parity.
   **What was there measured the wrong thing.** `_estimate_ambient_occlusion`
   counts neighbours inside a radius and never looks at the surface normal, so it
@@ -23185,24 +23185,24 @@ front, not this).
   falling off an `nmax`-truncated grid, not a model discrepancy.)
   See [prds/prd-65.md](/prds/prd-65.md).
 
-* **chimol: `zoom` frames the molecule the way PyMOL frames it, and a degraded
+* **chimol: `zoom` frames the molecule the way the reference viewer frames it, and a degraded
   load says so.** Two follow-ups to the camera work, both measured against a
-  running PyMOL.
+  running the reference viewer.
   **The framing radius.** chimol fitted the bounding *sphere* of the CA trace;
-  PyMOL's default (`complete=0`) fits the largest half-extent of the axis-aligned
+  the reference viewer's default (`complete=0`) fits the largest half-extent of the axis-aligned
   bounding *box* over every atom, and `complete=1` fits the sphere. New
-  `view_state.framing_radius` implements both, and `zoom` gained PyMOL's
-  `complete` argument (its `buffer` default also moves 2.0 -> 0.0, PyMOL's).
+  `view_state.framing_radius` implements both, and `zoom` gained the reference viewer's
+  `complete` argument (its `buffer` default also moves 2.0 -> 0.0, the reference viewer's).
   **The box is measured on the world axes, not the camera's** — which looks like
   an oversight and is not: it makes the zoom level independent of orientation, so
   turning the molecule does not make it breathe. Established by zooming a 30x5 A
-  bar at 0/30/45/90 degrees of roll, where PyMOL returns the same distance every
+  bar at 0/30/45/90 degrees of roll, where the reference viewer returns the same distance every
   time while the camera-space extent falls to 21 A at 45 degrees.
   **`zoom` now fits every atom**, not the CA trace: the side chains reaching
   furthest out are exactly the ones a trace omits, which framed 148L ~7 % large.
   End to end on 148L the camera distance/radius ratio is now exactly
-  `1/tan(fov/2)` in both modes, and the radius lands within 3 % of PyMOL
-  (23.77 vs 24.47 A box, 29.30 vs 30.49 A sphere). The residual is PyMOL
+  `1/tan(fov/2)` in both modes, and the radius lands within 3 % of the reference viewer
+  (23.77 vs 24.47 A box, 29.30 vs 30.49 A sphere). The residual is the reference viewer
   measuring the extent of the *rendered representation* rather than of the atom
   centres; that padding is representation-dependent and is not modelled.
   **The silent fallback is no longer silent.** When the structure reader gives
@@ -23389,7 +23389,7 @@ front, not this).
   defect assertions cannot see: fields wrapping into nonsensical two-column
   pairs, a status box swallowing the panel, a table floating mid-dock, nested
   dock tab bars overlapping their content (they settle only after the first real
-  resize), and a joint histogram drawn upside-down because an image's origin is
+  resize), and a joint histogram drawn upside-down because an image's zero point is
   top-left while a plot's is bottom-left. Caveats recorded with the rule: the
   offscreen platform refuses a GL context (grab GL viewports under `cocoa` with
   an offscreen surface), and interactive behaviour is verified by emitting the
@@ -23772,8 +23772,8 @@ front, not this).
   (order-dependent — passes in a full-file run, fails alone, on HEAD as well).
 
 * **chimol: the deposited model arrives whole, and what no cartoon draws is
-  shown.** Prompted by a side-by-side against PyMOL on 1DG3: chimol's picture was
-  missing every water PyMOL rendered as a red dot.
+  shown.** Prompted by a side-by-side against the reference viewer on 1DG3: chimol's picture was
+  missing every water the reference viewer rendered as a red dot.
   **Root cause, in the core reader.** `read_coordinates` selects with
   `NonWaterPDBSelector` and `convert_atoms` drops non-standard residues, so
   waters, ions, ligands and sugars never reached the viewer at all — 1DG3 lost
@@ -23784,10 +23784,10 @@ front, not this).
   predate the arguments. A test pins that the core default still drops them.
   **Then show them.** `MolView._hetero_atom_mask` marks every atom whose residue
   never enters the backbone trace and switches the atom representation on, which
-  is what PyMOL's `auto_show_nonbonded` (on by default, confirmed from its own
+  is what the reference viewer's `auto_show_nonbonded` (on by default, confirmed from its own
   settings) does there. They are drawn at their element's CPK colour — so a water
   oxygen reads red rather than as an anonymous grey ball — and scaled by a new
-  `nonbonded_size` setting (0.25, PyMOL's value) instead of their van-der-Waals
+  `nonbonded_size` setting (0.25, the reference viewer's value) instead of their van-der-Waals
   radius, because a shell of full-size water spheres buries the molecule inside
   it. Defining the mask by absence from the trace rather than by a residue-name
   table also catches incomplete polymer residues: 148L's chain E ends on a lone
@@ -23797,11 +23797,11 @@ front, not this).
   admitted only a mask of *residue* length, while its body handled both, so any
   per-atom selection silently fell through to a coarse every-tenth-CA sampling —
   54 points instead of the selected atoms. Fixed to accept either length.
-  **Also measured while there** (not yet matched): PyMOL's `zoom` defaults to
+  **Also measured while there** (not yet matched): the reference viewer's `zoom` defaults to
   `complete=0`, framing on the largest half-extent of the bounding box (148L:
   implied R 24.47 vs max half-extent 23.77); `complete=1` frames on the bounding
   sphere (30.49 vs 29.30). chimol frames on the bounding sphere, so its default
-  `zoom` behaves like PyMOL's `complete=1`.
+  `zoom` behaves like the reference viewer's `complete=1`.
   Suite: 225 passed, 1 skipped (11 new). The `expectedFailure`
   `test/fluorescence/test_structure.py::test_labeled_structure` reports
   "unexpected success" — verified pre-existing in a clean worktree at HEAD.
@@ -23987,40 +23987,40 @@ front, not this).
   *apparent* (uncorrected), local-optima/label-permutation caveats, and burst
   truncation biasing dwell times short.
 
-* **chimol: the PyMOL settings namespace, and two camera facts measured from
-  PyMOL rather than assumed.** Three parity gaps, all verified against a running
-  PyMOL rather than against its documentation.
+* **chimol: the reference viewer settings namespace, and two camera facts measured from
+  the reference viewer rather than assumed.** Three parity gaps, all verified against a running
+  the reference viewer rather than against its documentation.
   **`set` reached almost nothing.** It recognised a hand-written list of ~10
   cartoon keys plus `metaball.*`, and the config carried a *second, flat* copy of
-  ~36 PyMOL setting names (`cartoon_loop_radius`, `ray_shadow`, `specular`, ...)
+  ~36 reference viewer setting names (`cartoon_loop_radius`, `ray_shadow`, `specular`, ...)
   that **no code read at all** — writing them was inert. New `chimol/settings.py`
-  is one table mapping each PyMOL name onto the nested config path the renderer
+  is one table mapping each reference viewer name onto the nested config path the renderer
   actually reads, with `set` / `get` / `unset` / `toggle` / `help_setting` in a new
   `cmd/settings.py` mixin (`set` moved out of `selection.py`, where it did not
   belong). Resolution accepts an exact name, an unambiguous prefix
   (`cartoon_oval_w` -> `cartoon_oval_width`, ambiguous prefixes list the
-  candidates), or a dotted path (`metaball.alpha`) for entries with no PyMOL name.
+  candidates), or a dotted path (`metaball.alpha`) for entries with no reference viewer name.
   36 settings registered; the dead flat block is deleted from both the defaults
   and `chimol_display.json` (`_version` 2 -> 3). A test walks every entry and
   fails if its path is absent from the config, so a dead setting cannot be added
   back; another fails if the flat namespace reappears.
-  **The sign of view-tuple slot 17 was backwards.** PyMOL writes a **negative**
+  **The sign of view-tuple slot 17 was backwards.** the reference viewer writes a **negative**
   field of view for its *perspective* camera and a positive one for orthoscopic —
   the opposite of what the code and its docstring claimed. Measured directly:
   `orthoscopic off` -> `-20.0`, `on` -> `+20.0`, and again at `field_of_view 35`.
-  A view copied from PyMOL was therefore read as orthoscopic. Fixed in
-  `pack_view_state`/`unpack_view_state`, with the rule confined to the PyMOL
+  A view copied from the reference viewer was therefore read as orthoscopic. Fixed in
+  `pack_view_state`/`unpack_view_state`, with the rule confined to the reference viewer
   branch since the older chimol layouts always wrote a positive value and meant
   nothing by it. Pinned by a test carrying a real `cmd.get_view()` tuple.
   **Framing ignored the lens.** `fit_to_radius` used `distance = 3 x radius`, and
-  the field of view was a hardcoded 45 in three places. PyMOL's actual rule,
+  the field of view was a hardcoded 45 in three places. The reference viewer's actual rule,
   recovered by zooming pseudoatom pairs of known size: `d = radius / tan(fov/2)`,
   exact to 5 significant figures for radii 5/10/20 A at 20 and 45 degrees. Now
   `view_state.distance_for_radius`, used by `fit_to_radius`; the field of view is
   a real per-renderer value fed by the `field_of_view` setting, defaulting to
-  PyMOL's **20** (was 45), so `set field_of_view` changes perspective while
+  the reference viewer's **20** (was 45), so `set field_of_view` changes perspective while
   keeping the molecule the same size on screen. Also measured but *not* yet
-  matched: PyMOL frames on the largest half-extent of the bounding box, chimol on
+  matched: the reference viewer frames on the largest half-extent of the bounding box, chimol on
   the bounding-sphere radius, so chimol still zooms ~26 % looser.
   **`dss`** added (`MolView.recompute_secondary_structure`), completing the pair
   with the deposited-record support: a load adopts `HELIX`/`SHEET`, `dss` throws
@@ -24528,16 +24528,16 @@ front, not this).
   the reliable form for intra-page links — the same convention the concept pages
   already use. Build is back to zero warnings.
 
-* **ChiMOL honours deposited `HELIX`/`SHEET` records, and PyMOL's `dss` is not
+* **ChiMOL honours deposited `HELIX`/`SHEET` records, and the reference viewer's `dss` is not
   the target — [ChiMOL profile](/plugins/profiles/chimol.md).** chimol ignored a
   PDB's own secondary-structure annotation and always recomputed;
   `io/structure.parse_pdb_secondary_structure` now reads it and
-  `MolView._apply_deposited_secondary_structure` prefers it, matching PyMOL,
+  `MolView._apply_deposited_secondary_structure` prefers it, matching the reference viewer,
   which only recomputes when asked with `dss` or when the file has no records.
   On the full RCSB 148L this reproduces the depositor's annotation exactly — 10
   helix runs, 3 strand runs, **zero mismatches**.
   **This corrects the entry below.** The in-tree `148l.pdb` is header-stripped,
-  so PyMOL was running `dss` on it, and the earlier note treated that output as
+  so the reference viewer was running `dss` on it, and the earlier note treated that output as
   ground truth. It is not: `dss` puts the strands at 18-20 / 23-27 / 31-34 and
   the first helix at 3-7, while the depositors say **14-19 / 25-28 / 31-34** and
   3-11 — which is what chimol's own hydrogen-bond assignment already produced.
@@ -24550,9 +24550,9 @@ front, not this).
   place the chain and sequence number in different columns, so test fixtures use
   records copied verbatim from 148L rather than hand-typed ones.
 
-* **ChiMOL cartoon + `ray` + view tuple brought to PyMOL parity on 148L —
+* **ChiMOL cartoon + `ray` + view tuple brought to reference-viewer parity on 148L —
   [ChiMOL profile](/plugins/profiles/chimol.md).** Ground truth came from the
-  installed PyMOL itself: its cartoon was exported as OBJ under an identity view
+  installed the reference viewer itself: its cartoon was exported as OBJ under an identity view
   (so the vertices land in PDB Ångström), rendered back through *chimol's own*
   raytracer with the same camera, and compared numerically. Symmetric mean
   surface distance between the two cartoon meshes went **0.50 Å → 0.45 Å**, and
@@ -24563,7 +24563,7 @@ front, not this).
     `_extrude_shape` maps a profile's y to `side` and z to `up`, but
     `_make_oval_shape`/`_make_rectangle_shape` put the *broad* extent on z. Every
     helix was therefore extruded with its 2.7 Å face pointing radially instead of
-    along the helix axis: measured radial spread 0.75–4.23 Å against PyMOL's
+    along the helix axis: measured radial spread 0.75–4.23 Å against the reference viewer's
     1.47–2.90 Å.
   - **The anti-twist sign propagation flipped every helix residue.** Inside an α
     helix the ribbon normal is radial and genuinely turns ~100°/residue, so
@@ -24576,24 +24576,24 @@ front, not this).
     carries a large radial component and degrades at run ends (40–60° error).
     Replaced by the exact local bisector, with run ends *extrapolated* by the
     run's own twist rather than copied.
-  - **No round-helix pass on the path.** PyMOL's `cartoon_round_helices` (on by
+  - **No round-helix pass on the path.** the reference viewer's `cartoon_round_helices` (on by
     default) is not only about orientation: measured on 148L its centerline stays
     at radius 2.17 Å midway between residues whose CAs are at 2.23 Å, and drops to
     1.88 Å with the setting off. chimol's spline sagged to 1.06 Å, pinching every
     turn. `_round_helix_path` now interpolates on the actual helical arc.
-  - **No flat-sheet pass on the path.** `cartoon_flat_sheets` moves PyMOL's strand
+  - **No flat-sheet pass on the path.** `cartoon_flat_sheets` moves the reference viewer's strand
     ribbon 1.3 Å off the pleated CAs (0.4 Å with it off); chimol splined the raw
     ±1.9 Å pleat, so strands had to writhe. `_flatten_sheet_path` de-pleats them.
   - **Arrowheads never came to a point.** The profile widened to 1.5× at the
     arrow *base* and tapered back to 1.0× at the tip, scaling thickness too.
-    PyMOL's measured profile is body ~1.0 Å → base ~2.2 Å → tip ~0.3 Å, so the
+    The reference viewer's measured profile is body ~1.0 Å → base ~2.2 Å → tip ~0.3 Å, so the
     extruder now takes an anisotropic `(side, up)` scale and the arrow spans
     `arrow_sampling` **residues** rather than that many spline samples.
 
 * **`_sample_path` dropped every interior control point.** It skipped `j == 0`
   for each segment after the first as a "duplicate knot", but a segment covers
   `t ∈ [0, 1)` and so never emits its end point — the skip deleted the knots
-  instead. The cartoon ran ~0.3 Å off the CA trace (PyMOL: ~0.1 Å) and the
+  instead. The cartoon ran ~0.3 Å off the CA trace (the reference viewer: ~0.1 Å) and the
   residue→sample mapping the SS block boundaries rely on was only approximate;
   it is now exact (`residue i → sample i * subdivisions`). The vectorisation
   parity test had frozen the bug into its reference loop, so that was corrected
@@ -24601,20 +24601,20 @@ front, not this).
 
 * **Secondary structure is tidied before it is drawn
   ([ss.py](/plugins/profiles/chimol.md)).** The raw H-bond assignment gave 148L
-  seven strand fragments, three of them single residues, where PyMOL's `dss`
+  seven strand fragments, three of them single residues, where the reference viewer's `dss`
   gives three strands; the cartoon drew detached slivers with no room for an
   arrowhead. `tidy_ss_runs` bridges one-residue gaps **in strands only** (a
-  one-residue break between two helices is a real kink — PyMOL keeps 93-106 and
+  one-residue break between two helices is a real kink — the reference viewer keeps 93-106 and
   108-113 apart) and drops runs below a per-type minimum. Agreement with `dss`
   is 88%, with 3 strand runs and 10 helix runs on both sides.
 
-* **The view tuple is now genuinely interchangeable with PyMOL — new
-  [`renderer/view_state.py`](/plugins/profiles/chimol.md).** PyMOL's `get_view`
+* **The view tuple is now genuinely interchangeable with the reference viewer — new
+  [`renderer/view_state.py`](/plugins/profiles/chimol.md).** the reference viewer's `get_view`
   keeps the camera basis in the matrix **columns**; chimol read it as rows, which
   is the inverse rotation and renders the molecule **mirrored**. Proved with a
   marker scene (+X red, +Y green, +Z blue) rendered under the same lopsided view
   in both programs. One Qt-free module now owns pack/unpack for the GL widget,
-  the raytracer and `get_view`/`set_view`; it emits PyMOL's exact 18-float layout
+  the raytracer and `get_view`/`set_view`; it emits the reference viewer's exact 18-float layout
   (including `(0, 0, -distance)` and the orthoscopic sign on the field of view)
   and still accepts chimol's older row-major and elevation/azimuth tuples, which
   are unambiguous by their slot 9/11 pattern. `ray` also honours the tuple's
@@ -25500,25 +25500,25 @@ front, not this).
 
 * **Channel-definition micro-time decay preview now applies the LUT (was reading raw).** The editor's decay preview read via a bare `tttrlib.TTTR` (`tttr_channel_definition_tttr_io.py::read_from_tttr_file`), so after configuring a LUT the preview still showed the *raw* decay — it looked like the LUT did nothing. `_update_microtime_preview` now applies the setup's per-channel LUTs/shifts (`_apply_setup_lut_to_tttr`, tttrlib `apply_channel_luts`/`apply_luts_and_shifts` with the same fixed dither seed as the reading seam) before histogramming both the all-channel and per-channel decays. Because users read the calibration file *before* computing/assigning LUTs, added `DetectorWizardPage._refresh_preview_lut()` (re-reads the stored file and redraws with the current LUT) wired to the `apply_lut` toggle, per-channel Assign, and the LUT-Tools pull — so the preview updates live and reverts to raw when the gate is off. Headless: `test/gui/test_channel_definition_lut_box.py` +1 (preview changes with the LUT, reverts off) — 5 pass. See [subsystems/data-io.md](/subsystems/data-io.md).
 
-* **LUT Tools: one click computes + assigns a LUT for ALL routing channels.** Following up the per-channel LUT work, the default action now computes a LUT for **every** routing channel in the loaded file and assigns them all: `LutComputeViewModel.compute_all_channels()` builds one LUT per used channel (region auto-detected each, honoring the currently previewed channel's hand-tuned region), and **➡ Add all channels to setup** assigns each to its channel (the channel-def editor pulls them on close). The channel dropdown is relabeled **Preview channel** (inspect/tune one) and now **updates the plot** on change — the fix was adding `call: update` to the AutoForm `choice` section and letting `update(*_)` accept the value the hook passes. Header/help/README updated to the all-channels flow. Also fixed a headless test hang: the old bridge test set `current_table` with no data so the new all-channels bridge hit a modal `QMessageBox`; the test now loads a real SPC file and asserts all channels are assigned. `tttr_lut_tools/tests` **14 pass**; tutorial 37 screenshot regenerated. See [subsystems/plugins.md](/subsystems/plugins.md).
+* **LUT Tools: one click computes + assigns a LUT for ALL routing channels.** Following up the per-channel LUT work, the default action now computes a LUT for **every** routing channel in the loaded file and assigns them all: `LutComputeViewModel.compute_all_channels()` builds one LUT per used channel (region auto-detected each, honoring the currently previewed channel's hand-tuned region), and **➡ Add all channels to setup** assigns each to its channel (the channel-def editor pulls them on close). The channel dropdown is relabeled **Preview channel** (inspect/tune one) and now **updates the plot** on change — the fix was adding `call: update` to the AutoForm `choice` section and letting `update(*_)` accept the value the hook passes. Header/help/README updated to the all-channels flow. Also fixed a headless test hang: the old bridge test set `current_table` with no data so the new all-channels bridge hit a modal `QMessageBox`; the test now loads a real SPC file and asserts all channels are assigned. `tttr_lut_tools/tests` **14 pass**; tutorial 37 screenshot regenerated. See [specs/plugins.md](/specs/plugins.md).
 
 * **H2MM results split into per-plot docks + experimental flag removed.** Two H2MM asks. (1) **De-crammed the Results panel** — the seven burstH2MM-style plots were packed into one `GraphicsLayoutWidget` grid in a single "Results" dock, so each was tiny. Each plot is now its **own dock** (`_build_plot_docks`: individual `pg.PlotWidget`s, `_p_*` = their `getPlotItem()`; the state-path plot keeps its ◀/▶ nav bar in its dock) added to the tool's `DockArea`, arriving in a default two-column layout that mirrors the old dashboard (`_apply_default_plot_layout` via `DockArea.set_layout_state`, graceful tab fallback) but every plot is independently resizable / tabbable / maximisable / draggable, and the arrangement persists (`DockArea.enable_persistence("burst_h2mm")`). `_save_plot` now grabs the active plot dock (per-plot filename). (2) **Removed the experimental flag** from the H2MM step: dropped `experimental`/`experimental_message` from `BURST_PANELS` (`burst_analysis`) and `burst_h2mm/manifest.json`, and the "⚠️ experimental" window-title suffix — no more nav ⚠️ / red banner. Headless: offscreen screenshot verified the docked grid; `burst_h2mm/tests/test_gui.py` **6 pass** (updated for per-plot docks), `burst_analysis/tests/test_workflow.py` **15 pass** (experimental test inverted), full burst_h2mm + burst_analysis suites **66 pass**, manifest validation **24 pass**. See [plugins/burst.md](/plugins/burst.md).
 
-* **Burst Background Estimation plugin gained diagnostic plots (inter-photon-time tail fit + rate bars).** The plugin previously showed only a results *table* of background rates. Added a **Diagnostics** tab (pyqtgraph): the per-detector **inter-photon-time distribution** (log–log points) overlaid with the **fitted exponential background tail**, and a **per-detector background-rate bar chart** — the same view the [background tutorial](../../docs/tutorials/15_background_rates.md) illustrates, so the fit can be judged visually. Core: `background.py` refactored to share one Poisson-MLE tail fit (`_fit_exponential_tail`) between the rate estimator and a new `interphoton_time_diagnostics` / `background_diagnostics_from_bursts` returning a `BackgroundDiagnostics` (histogram + model + tail mask + rate) — the estimator's rate is unchanged (bit-identical). Detector colours are semantic (green/red/yellow → their colours) and identity-stable. Headless coverage: `test/plugins/burst/test_background_diagnostics.py` **4 pass** (diagnostics-vs-estimator identity, known-rate recovery, per-detector) and `test/plugins/burst/test_background_gui.py` **2 pass** (plots build/render/clear, screenshot-verified). See [plugins/burst.md](/plugins/burst.md).
+* **Burst Background Estimation plugin gained diagnostic plots (inter-photon-time tail fit + rate bars).** The plugin previously showed only a results *table* of background rates. Added a **Diagnostics** tab (pyqtgraph): the per-detector **inter-photon-time distribution** (log–log points) overlaid with the **fitted exponential background tail**, and a **per-detector background-rate bar chart** — the same view the [background tutorial](../docs/guides/15_background_rates.md) illustrates, so the fit can be judged visually. Core: `background.py` refactored to share one Poisson-MLE tail fit (`_fit_exponential_tail`) between the rate estimator and a new `interphoton_time_diagnostics` / `background_diagnostics_from_bursts` returning a `BackgroundDiagnostics` (histogram + model + tail mask + rate) — the estimator's rate is unchanged (bit-identical). Detector colours are semantic (green/red/yellow → their colours) and identity-stable. Headless coverage: `test/plugins/burst/test_background_diagnostics.py` **4 pass** (diagnostics-vs-estimator identity, known-rate recovery, per-detector) and `test/plugins/burst/test_background_gui.py` **2 pass** (plots build/render/clear, screenshot-verified). See [plugins/burst.md](/plugins/burst.md).
 
-* **LUT Tools: per-routing-channel LUTs + "Add to Detector setup" as the default action.** TAC differential non-linearity is *per routing channel*, so a LUT must be computed per channel, not pooled. The api gained per-channel loading (`io.load_microtimes(..., channel=)`, `io.load_micro_and_routing`), `compute.compute_lut_from_files(..., channel=)`, a `channel` CLI option + rpc param. The ① Compute view-model loads all channels once, exposes a **Routing channel** selector (AutoForm `choice` bound to `channels_options`), and re-histograms/re-computes per selected channel (switching channel yields a different LUT). The ①→② bridge auto-assigns the per-channel LUT to its channel (`receive_computed_lut(..., channel=)` sets `channel_luts[ch]`). **UX reframed around the user's confusion**: the primary/default action is now a bold **➡ Add to Detector setup** (assigns each per-channel LUT; the channel-def editor pulls them on close), **saving a LUT/settings file is explicitly optional** (right-aligned "Optional:" buttons), and the second tab is relabeled **"② settings.tttr.json (optional)"** with header/help/README making clear ① is the tool and ② is optional file interchange (README leads with a two-row comparison table). Headless: `tttr_lut_tools/tests` **18 pass** (+ per-channel LUT-differs test); tutorial 37 screenshot regenerated (channel selector). See [subsystems/plugins.md](/subsystems/plugins.md).
+* **LUT Tools: per-routing-channel LUTs + "Add to Detector setup" as the default action.** TAC differential non-linearity is *per routing channel*, so a LUT must be computed per channel, not pooled. The api gained per-channel loading (`io.load_microtimes(..., channel=)`, `io.load_micro_and_routing`), `compute.compute_lut_from_files(..., channel=)`, a `channel` CLI option + rpc param. The ① Compute view-model loads all channels once, exposes a **Routing channel** selector (AutoForm `choice` bound to `channels_options`), and re-histograms/re-computes per selected channel (switching channel yields a different LUT). The ①→② bridge auto-assigns the per-channel LUT to its channel (`receive_computed_lut(..., channel=)` sets `channel_luts[ch]`). **UX reframed around the user's confusion**: the primary/default action is now a bold **➡ Add to Detector setup** (assigns each per-channel LUT; the channel-def editor pulls them on close), **saving a LUT/settings file is explicitly optional** (right-aligned "Optional:" buttons), and the second tab is relabeled **"② settings.tttr.json (optional)"** with header/help/README making clear ① is the tool and ② is optional file interchange (README leads with a two-row comparison table). Headless: `tttr_lut_tools/tests` **18 pass** (+ per-channel LUT-differs test); tutorial 37 screenshot regenerated (channel selector). See [specs/plugins.md](/specs/plugins.md).
 
 * **Burst Analysis workflow fixes: MLE load crash, 2CDE folder hand-off, BVA recompute coalescing + unified progress.** Four issues in the integrated `burst_analysis` shell. (1) **MLE-Lifetime failed to load** with `'PathListWidget' object has no attribute 'count'` — `burst_files_list` migrated to the shared `PathListWidget`-backed factory (which has `paths()`, not `count()`); `_apply_context_to_mle` now guards on `len(file_list.paths()) == 0`. (2) **2CDE never received the analysis folder** — added `_apply_context_to_2cde` (mirrors BVA: `widget.set_folder(burst_folder)`, side-effect-free), registered the `two_cde` role in `_apply_context_to_panel` and the downstream apply loop. (3) **BVA recomputed too many times when switching to it / window busy** — applying context touched the detector table, donor/acceptor combos and folder, each firing a synchronous full read/compute/plot. `BVATool` now coalesces param changes via a zero-delay single-shot `QTimer` (`_on_param_changed` just marks pending + schedules `_flush_recompute`) plus a `suspend_recompute()` batch guard the shell wraps `_apply_context_to_bva` in → a single recompute per entry. (4) **Unified BVA progress bars** — read/compute/write phases now share one `_ProgressDialog` (via `_begin_progress`/`_phase` retargeting) instead of flashing a new dialog per phase. Headless: `burst_analysis/tests/test_workflow.py` **15 pass** (+4 new: MLE paths-not-count contract, MLE prepopulate, 2CDE folder, BVA coalescing); burst_bva + burst_2cde + mle dock suites green. See [plugins/burst.md](/plugins/burst.md).
 
 * **LUT Tools ① Compute panel rewritten as AutoForm (`view.json` + view_model + custom sections).** The 773-line hand-built `TACLinearizationPanel` is now a thin `AutoForm` host over a Qt-free `LutComputeViewModel` (`gui/view_model.py`, math delegated to `api`). Layout is declarative `gui/lut_compute.view.json`: a `?` **help** modal, the unified **`path_list`** file loader (bound to `model.files`; `update()` reloads on change), the interactive raw/after TAC plots with the draggable **linear region** + offset/threshold lines as a custom `lut_compute_plot` section (`gui/sections.py`), a live info label, a 2-col **Parameters** panel + a collapsible **Advanced** panel (every field a `value`/`toggle` with a `description` → tooltip, `call:update`), and a `lut_compute_actions` custom section (Auto-detect / Save LUT / Export with file dialogs). A dragged plot item updates the model and re-syncs the value fields via `AutoForm.sync_fields()`. `current_table` stays a property so the ①→② bridge and tests are unaffected. (Dropped the niche manual zero-brush / left-right cut cleanup in the rewrite.) Headless: `tttr_lut_tools/tests/test_gui.py` **14 pass** (+ AutoForm-host + view-model load/region/recompute) and the channel-def transfer test still green; offscreen screenshot verified. This closes the deferred AutoForm item for the plugin. See [subsystems/gui-autoform.md](/subsystems/gui-autoform.md).
 
-* **Tutorial 37 — TAC linearization / microtime LUTs (usage + concepts, screenshots + matplotlib).** Added `docs/tutorials/37_tttr_microtime_lut.md`: part 1 **Usage** walks the ①-compute → ②-assign → setup → LUT-aware-read flow with real **GUI screenshots** (the LUT Tools workspace with a bridged LUT, and the channel-definition LUT-handling box) plus CLI/API snippets; part 2 **Concepts** explains TAC differential non-linearity and the Felekyan cumulative-LUT construction with a **matplotlib** figure (raw-vs-linearized flat-light histogram + the LUT vs the linear ideal). Screenshots are regenerated headlessly from the real widgets via a new `docs/tutorials/make_screenshots.py` (offscreen `QWidget.grab()`); the concept figure via a new `fig_lut()` in `make_figures.py` using the plugin's own `api`. Listed in `index.md` (+ a note on the screenshot script). See [subsystems/plugins.md](/subsystems/plugins.md).
+* **Tutorial 37 — TAC linearization / microtime LUTs (usage + concepts, screenshots + matplotlib).** Added `docs/tutorials/37_tttr_microtime_lut.md`: part 1 **Usage** walks the ①-compute → ②-assign → setup → LUT-aware-read flow with real **GUI screenshots** (the LUT Tools workspace with a bridged LUT, and the channel-definition LUT-handling box) plus CLI/API snippets; part 2 **Concepts** explains TAC differential non-linearity and the Felekyan cumulative-LUT construction with a **matplotlib** figure (raw-vs-linearized flat-light histogram + the LUT vs the linear ideal). Screenshots are regenerated headlessly from the real widgets via a new `docs/tutorials/make_screenshots.py` (offscreen `QWidget.grab()`); the concept figure via a new `fig_lut()` in `make_figures.py` using the plugin's own `api`. Listed in `index.md` (+ a note on the screenshot script). See [specs/plugins.md](/specs/plugins.md).
 
-* **LUT Tools GUI: explain the two stages + one-click ①→② transfer.** The two tabs confused users ("what is the difference?"). Added a header toolbar with a one-line **flow explanation** (① Compute from uniform light → ② Assign to channels & export → Configure LUTs… in the Detector setup applies it at read time), numbered/tooltipped tabs (**① Compute LUT** / **② Assign / Export**), and a **`?` help modal** rendering the consolidated README (the crisp "what's the difference / how it transfers" answer). Removed the friction of Save-LUT-then-Load-LUT with a **①→② in-memory bridge**: a "→ Use in ② Assign" button hands the LUT just computed straight to the Assign panel (new `TTTRSettingsPanel.receive_computed_lut`) and switches tabs. `TTRLutToolsWidget` keeps its name + `.settings_panel`/`.tac_panel` attributes so the channel-definition editor's `_pull_luts_from_panel` transfer is unaffected. Headless: `tttr_lut_tools/tests/test_gui.py` **3 pass** + offscreen screenshot verified. (Full AutoForm view.json rewrite of the interactive compute plot remains a follow-up.) See [subsystems/plugins.md](/subsystems/plugins.md).
+* **LUT Tools GUI: explain the two stages + one-click ①→② transfer.** The two tabs confused users ("what is the difference?"). Added a header toolbar with a one-line **flow explanation** (① Compute from uniform light → ② Assign to channels & export → Configure LUTs… in the Detector setup applies it at read time), numbered/tooltipped tabs (**① Compute LUT** / **② Assign / Export**), and a **`?` help modal** rendering the consolidated README (the crisp "what's the difference / how it transfers" answer). Removed the friction of Save-LUT-then-Load-LUT with a **①→② in-memory bridge**: a "→ Use in ② Assign" button hands the LUT just computed straight to the Assign panel (new `TTTRSettingsPanel.receive_computed_lut`) and switches tabs. `TTRLutToolsWidget` keeps its name + `.settings_panel`/`.tac_panel` attributes so the channel-definition editor's `_pull_luts_from_panel` transfer is unaffected. Headless: `tttr_lut_tools/tests/test_gui.py` **3 pass** + offscreen screenshot verified. (Full AutoForm view.json rewrite of the interactive compute plot remains a follow-up.) See [specs/plugins.md](/specs/plugins.md).
 
-* **Removed the two deprecated LUT plugin siblings (duplication).** `tttr_microtime_lut/` and `tttr_settings_generator/` were byte-for-byte duplicates of `tttr_lut_tools`' compute and settings logic (both `deprecated`, `menu_hidden`, manifest-less). Consolidated their documentation into a single `tttr_lut_tools/README.md` that crisply explains the **two stages** (① Compute = *make* a LUT from a uniform-illumination measurement; ② Create Settings = *apply* LUTs to channels + export `settings.tttr.json`) and **how a LUT reaches a setup** (the channel-def "Configure LUTs…" button pulls `channel_luts` on close → reader linearizes via `staging.open_tttr`). Repointed the Info dialog (`settings_panel.py`) to the new README and deleted both sibling directories (no remaining references). See [subsystems/plugins.md](/subsystems/plugins.md).
+* **Removed the two deprecated LUT plugin siblings (duplication).** `tttr_microtime_lut/` and `tttr_settings_generator/` were byte-for-byte duplicates of `tttr_lut_tools`' compute and settings logic (both `deprecated`, `menu_hidden`, manifest-less). Consolidated their documentation into a single `tttr_lut_tools/README.md` that crisply explains the **two stages** (① Compute = *make* a LUT from a uniform-illumination measurement; ② Create Settings = *apply* LUTs to channels + export `settings.tttr.json`) and **how a LUT reaches a setup** (the channel-def "Configure LUTs…" button pulls `channel_luts` on close → reader linearizes via `staging.open_tttr`). Repointed the Info dialog (`settings_panel.py`) to the new README and deleted both sibling directories (no remaining references). See [specs/plugins.md](/specs/plugins.md).
 
-* **`tttr_lut_tools` promoted to a first-class api/cli/rpc plugin (GUI + tutorial follow).** Split the monolithic plugin into layers: **`api/`** — pure, Qt-free logic (`lut.py` the Felekyan math with the old `click`/`tttrlib`/`SystemExit` coupling removed, `io.py` file/tttrlib IO incl. `load_lut_file`/`save_lut`, `compute.py` the load→histogram→autodetect→build orchestration, `settings.py` `settings.tttr.json` build/load + `apply_luts_to_tttr`/`corrected_histogram` reusing the Phase-1 `staging.open_tttr` seam, `contract.py` `METHOD_*` + JSON-Schemas whose `description`s become AutoForm tooltips); **`backend/services.py`** — `register_services(dispatcher)` exposing `lut.autodetect_region`/`compute`/`apply_preview`/`settings_build`/`settings_load` as guarded `{ok,result|error}` handlers; **`cli/main.py`** — a `lut-tools` click group (`compute`/`apply`/`settings`) calling `api/` directly. `manifest.json` gained `entrypoints.cli`/`entrypoints.services` + `rpc_methods[]`. `core/tac_lut.py` is now a thin back-compat shim re-exporting `api` (existing imports, incl. the Phase-1 staging test, unaffected). Headless coverage: `tttr_lut_tools/tests/{test_api,test_services}.py` **9 pass** (compute determinism/monotonicity, settings + LUT-file round-trips, service registration + error envelope + build/load, CLI compute+settings). Remaining in this task: AutoForm GUI + help/tooltips clarifying the two stages, remove the duplicate deprecated siblings, and a usage/concepts tutorial with screenshots. See [subsystems/plugins.md](/subsystems/plugins.md).
+* **`tttr_lut_tools` promoted to a first-class api/cli/rpc plugin (GUI + tutorial follow).** Split the monolithic plugin into layers: **`api/`** — pure, Qt-free logic (`lut.py` the Felekyan math with the old `click`/`tttrlib`/`SystemExit` coupling removed, `io.py` file/tttrlib IO incl. `load_lut_file`/`save_lut`, `compute.py` the load→histogram→autodetect→build orchestration, `settings.py` `settings.tttr.json` build/load + `apply_luts_to_tttr`/`corrected_histogram` reusing the Phase-1 `staging.open_tttr` seam, `contract.py` `METHOD_*` + JSON-Schemas whose `description`s become AutoForm tooltips); **`backend/services.py`** — `register_services(dispatcher)` exposing `lut.autodetect_region`/`compute`/`apply_preview`/`settings_build`/`settings_load` as guarded `{ok,result|error}` handlers; **`cli/main.py`** — a `lut-tools` click group (`compute`/`apply`/`settings`) calling `api/` directly. `manifest.json` gained `entrypoints.cli`/`entrypoints.services` + `rpc_methods[]`. `core/tac_lut.py` is now a thin back-compat shim re-exporting `api` (existing imports, incl. the Phase-1 staging test, unaffected). Headless coverage: `tttr_lut_tools/tests/{test_api,test_services}.py` **9 pass** (compute determinism/monotonicity, settings + LUT-file round-trips, service registration + error envelope + build/load, CLI compute+settings). Remaining in this task: AutoForm GUI + help/tooltips clarifying the two stages, remove the duplicate deprecated siblings, and a usage/concepts tutorial with screenshots. See [specs/plugins.md](/specs/plugins.md).
 
 * **Single-molecule tutorials with headless-generated figures (`docs/tutorials/`).** Seven self-contained markdown tutorials for the new single-molecule analyses — FRET/ALEX-2CDE burst dynamics, recurrence (RASP), polymer distance distributions (SAW-ν + Ising), FIDA/PCH, Enderlein MDF & two-focus FCS, ns-FCS second-order g⁽³⁾, and RCM detection calibration — each with theory, a runnable ChiSurf snippet, and a real figure. `docs/tutorials/make_figures.py` regenerates all figures headlessly (matplotlib Agg) by running the actual analysis functions on synthetic data (`PYTHONPATH=. python docs/tutorials/make_figures.py`), so the plots are genuine output. `docs/tutorials/index.md` links them. See [subsystems/fitting.md](/subsystems/fitting.md).
 
@@ -25594,7 +25594,7 @@ front, not this).
 
 * **AutoForm file list gained checkable + folder-expander support; FCS + burst-FCS correlators migrated (no special file-list widgets left there).** To migrate the two correlators without a bespoke widget, `PathListWidget` (the `path_list` section) grew two general capabilities: (1) **`checkable`** — per-entry tick boxes (default *checked*, state tracked as an `_unchecked` set so it survives the widget's full-list refreshes), ☑ All / ☐ None buttons, a `checked_paths()` accessor and a `checkChanged(list[str])` signal; and (2) a **`folder_expander`** hook — an optional `callable(Path)->list[str]` that replaces the default recursive extension-filtered scan when a folder is added. With these, `fcs_correlator`'s wizard page dropped its hand-rolled checkable `FileListWidget` (drag-drop + per-item checkboxes + context menu + `all_files`/`checked_files`) for a `checkable` `PathListWidget` bound via a `_FileListModel`; its BST-aware step-availability logic now rides the `checkChanged` signal. `burst_fcs_correlator` dropped its `BurstFileListWidget(FileListWidget)` subclass entirely — the burstwise-folder→BUR/BST resolution is now a plain `expand_burst_folder()` function passed as the `folder_expander`, via a thin `make_burst_file_list()` factory used by both its wizard and dock tool. Both custom `QListWidget` subclasses are deleted; both correlators gain MMFDB file selection for free. Tests: new checkable-mode case in `test_path_list_section.py`, fcs test updated to `add_paths`; path_list + fcs + burst-FCS suites **22 pass**; fcs wizard shed 9 ruff findings (removed unused Qt/typing imports). See [subsystems/gui-autoform.md](/subsystems/gui-autoform.md).
 
-* **Rebuilt the ChiMOL `cmd` layer as a declarative, signature-driven command language (PyMOL-parity architecture).** Ported PyMOL's four-piece design to Python introspection: a `@command` decorator + `collect_commands` registry with a minimal-unique-prefix `Shortcut` index (`registry.py`), and a central comma/keyword/bracket/quote-aware tokenizer + `inspect.signature` binder with annotation-driven coercion and `raw1`/`raw2` verbatim-tail modes (`argparse2.py`, `selection_types.Selection`). Migrated **every** command mixin (loader/rendering/selection/measurements/editing/animation/exporting/lifecycle + base `help`/`quit`/`exit`) from the old `_cmd_x(args: List[str])` + `_mixin_commands()` handlers to typed `@command` methods, so adding a command is now writing one annotated method and parsing/keyword-args/coercion/Python-API come free (`align a, b, cutoff=3, cycles=10` binds natively). Removed the dual-dispatch adapter — `base.py:do()` resolves solely through the registry — and deleted the dead `cmd/core.py` (2556-line legacy monolith) and never-registered `cmd/rmf.py`. External callers (`cli.py`, `command_dock.py`) now read the command list via the new `Cmd.command_names()`. Added `count_atoms` and `set_name` as the payoff. **Fixed a latent Python-3.11+ bug** in `sele_parser.py`: the per-token patterns carried inline `(?i)` flags that, once joined with `|`, landed mid-expression and made `TOKEN_REGEX` fail to compile — silently breaking every selection evaluation (color/select/alter/remove/align on real structures); hoisted to a single `re.IGNORECASE`. Full chimol suite now green with **nothing excluded** (136 passed), where alignment/editing/selection-grammar previously had to be skipped. See [plugins/profiles/chimol.md](/plugins/profiles/chimol.md).
+* **Rebuilt the ChiMOL `cmd` layer as a declarative, signature-driven command language (reference-viewer-parity architecture).** Ported the reference viewer's four-piece design to Python introspection: a `@command` decorator + `collect_commands` registry with a minimal-unique-prefix `Shortcut` index (`registry.py`), and a central comma/keyword/bracket/quote-aware tokenizer + `inspect.signature` binder with annotation-driven coercion and `raw1`/`raw2` verbatim-tail modes (`argparse2.py`, `selection_types.Selection`). Migrated **every** command mixin (loader/rendering/selection/measurements/editing/animation/exporting/lifecycle + base `help`/`quit`/`exit`) from the old `_cmd_x(args: List[str])` + `_mixin_commands()` handlers to typed `@command` methods, so adding a command is now writing one annotated method and parsing/keyword-args/coercion/Python-API come free (`align a, b, cutoff=3, cycles=10` binds natively). Removed the dual-dispatch adapter — `base.py:do()` resolves solely through the registry — and deleted the dead `cmd/core.py` (2556-line legacy monolith) and never-registered `cmd/rmf.py`. External callers (`cli.py`, `command_dock.py`) now read the command list via the new `Cmd.command_names()`. Added `count_atoms` and `set_name` as the payoff. **Fixed a latent Python-3.11+ bug** in `sele_parser.py`: the per-token patterns carried inline `(?i)` flags that, once joined with `|`, landed mid-expression and made `TOKEN_REGEX` fail to compile — silently breaking every selection evaluation (color/select/alter/remove/align on real structures); hoisted to a single `re.IGNORECASE`. Full chimol suite now green with **nothing excluded** (136 passed), where alignment/editing/selection-grammar previously had to be skipped. See [plugins/profiles/chimol.md](/plugins/profiles/chimol.md).
 
 * **Parameter tables can hide their Lo/Hi/Bounds columns behind a per-panel "bounds" toggle.** To keep the Lifetime editor's tables narrow (bounds are also editable in the parameter details popup), both table widgets — `ParameterGroupTableWidget` and the paired `PairedParameterTableWidget` — gained `has_bounds_columns()` + `set_bounds_visible()` that show/hide the `bounds_lo`/`bounds_hi`/`bounds_on` columns (respecting the section's `columns` whitelist; the paired widget re-applies the choice across add/remove rebuilds). A `panel` view-spec section with `bounds_toggle:true` (new `PanelSection` field) puts a small checkable "bounds" `QToolButton` in its fold-box header that toggles every bounds-capable table in the panel at once, starting **hidden**. `CollapsibleBox` gained `add_header_widget()` (header restructured into an HBox) so the toggle sits on the existing header row at **zero extra vertical cost**; wired in `auto_form.py`'s `_build_panel` via `_add_bounds_toggle`. `lifetime.view.json` sets `bounds_toggle:true` on all five panels. Verified headlessly (bounds hidden by default; toggling all five reveals Lo/Hi/Bounds in every table); extended the integration test to assert the toggle exists, columns start hidden, and `set_bounds_visible` flips them. See [subsystems/gui-autoform.md](/subsystems/gui-autoform.md).
 
@@ -25628,7 +25628,7 @@ front, not this).
 
 * **Light-path simulator: node view auto-fits on load, and Easy Mode no longer disappears when the spectra catalogue fails to load.** Two fixes in `chisurf/plugins/core/lightpath_simulator/gui/tool.py`. (1) Every graph-load path (`_on_load_graph`, `_on_load_from_mmfdb`, `load_graph_from_dict`, and the saved-graph restore in `_setup_default_path`) now calls a new `_fit_view()` that defers `NodeView.fit_all()` (zoom-to-fit-all-items, already used by the scene's right-click "Fit") to the next event-loop tick, replacing the hardcoded `centerOn(550, 200)` — so a freshly loaded scene is framed to the viewport instead of appearing off-screen or half-visible. (2) The "Easy Mode" tab was built only in `_on_probes_loaded`; the failure path `_on_probe_load_failed` (hit when MMFDB probe metadata can't load) never called `_build_easy_mode_tab`, so Easy Mode silently vanished — it now builds the tab too (with an empty probe list), so Easy Mode is always present. See [plugins/core-tools.md](/plugins/core-tools.md).
 
-* **ChiMOL `cmd` gained PyMOL's core viewing/transform commands.** Added `turn`, `move`, `clip`, `rotate` and `translate` (RenderingMixin), the most-used PyMOL commands that were missing and that complement the new trackball navigation. Camera commands go cmd → `MolView` → `qtgl` renderer, all built on the rotation-matrix camera: `turn <x|y|z>, <angle>` left-multiplies the view rotation about a screen axis (Rodrigues); `move <x|y|z>, <dist>` pans (x/y) or dollies (z); `clip <near|far|slab|move>, <dist>` shifts the clip planes. `rotate <x|y|z>, <angle> [, sel]` and `translate [x,y,z] [, sel]` build a rigid transform and call `apply_transform_to_object` — verified `rotate x, 90` gives PyMOL's +90° ((0,1,0)→(0,0,1)) on the real `arr @ R^T` convention; fixed `MockViewer.apply_transform_to_object` (was `arr @ R`, missing the transpose) to match and gave it `turn`/`move`/`clip` stubs so the commands are testable headless. New `test_cmd_viewing.py` (**4**): registration, rotate/translate math, and camera-command dispatch. Chimol suite **89 passed**; lint net down (`cmd/rendering.py` 34→0 via cleanup, `qtgl`/`view` unchanged). More of PyMOL's surface (`create`, `set_name`, `dss`, `origin`, `count_atoms`, `save`, `run`) remains for follow-up. See [plugins/profiles/chimol.md](/plugins/profiles/chimol.md).
+* **ChiMOL `cmd` gained the reference viewer's core viewing/transform commands.** Added `turn`, `move`, `clip`, `rotate` and `translate` (RenderingMixin), the most-used the reference viewer commands that were missing and that complement the new trackball navigation. Camera commands go cmd → `MolView` → `qtgl` renderer, all built on the rotation-matrix camera: `turn <x|y|z>, <angle>` left-multiplies the view rotation about a screen axis (Rodrigues); `move <x|y|z>, <dist>` pans (x/y) or dollies (z); `clip <near|far|slab|move>, <dist>` shifts the clip planes. `rotate <x|y|z>, <angle> [, sel]` and `translate [x,y,z] [, sel]` build a rigid transform and call `apply_transform_to_object` — verified `rotate x, 90` gives the reference viewer's +90° ((0,1,0)→(0,0,1)) on the real `arr @ R^T` convention; fixed `MockViewer.apply_transform_to_object` (was `arr @ R`, missing the transpose) to match and gave it `turn`/`move`/`clip` stubs so the commands are testable headless. New `test_cmd_viewing.py` (**4**): registration, rotate/translate math, and camera-command dispatch. Chimol suite **89 passed**; lint net down (`cmd/rendering.py` 34→0 via cleanup, `qtgl`/`view` unchanged). More of the reference viewer's surface (`create`, `set_name`, `dss`, `origin`, `count_atoms`, `save`, `run`) remains for follow-up. See [plugins/profiles/chimol.md](/plugins/profiles/chimol.md).
 
 * **Burst-MLE fit page now displays the per-detector G factor / l1 / l2 — and a latent l1/l2-swap corruption is fixed.** The polarisation corrections (`g_factor`/`l1`/`l2`) are per-detector calibration constants on the detector definition and feed the fit's anisotropy, but the MLE fit page never showed them, and inside the embedded `burst_analysis` workflow the Detector Definition tab is hidden — so there was no way to see what the fit used. Added a read-only **G factor / l1 / l2** row to the fit page's "Shift · scatter · G/l1/l2" section (`wizard.py::_build_ui`), refreshed on every detector switch by `_sync_polarization_widgets` (and kept in step by `_set_polarization_display` on any programmatic change). While wiring this up, found the values were **corrupting on detector switches**: `_ensure_channel_state(det)` seeded the transient per-detector cache from `self.g_factor` (the *current* detector, not `det`), and `_apply_ui_state` then wrote g/l1/l2 back through setters that poke the definition's table cells by row/column — which mis-targeted and **swapped one detector's l1/l2 onto another** on repeated switches, so the fit silently ran with the wrong corrections. Fixes: seed `_ensure_channel_state` from the specific detector's own definition (`channel_definer.detectors[det]`), and stop `_apply_ui_state` restoring g/l1/l2 at all — they are owned by the definition and read live via the getters, so nothing needs restoring (the display fields are read-only; edit in the setup/Channels step). Verified headlessly: green/red display their own g/l1/l2 stably across repeated switches with the definition intact. Regression test `test_fit_page_displays_per_detector_g_factor_l1_l2`; MLE + workflow suites **39 pass**. See [plugins/burst.md](/plugins/burst.md).
 
@@ -25640,13 +25640,13 @@ front, not this).
 
 * **Burst-MLE auto IRF: Gaussian is now *fitted* to the extracted prompt, with a Gaussian/Skewed/Experimental switch.** The one-click auto-IRF built a Gaussian by crude peak + half-max-width placement — deterministic, never fitted — and there was no way to fall back to the measured prompt. Reworked `chisurf/core/fluorescence/burst/irf_bg.py`: `irf_model="gaussian"` now **least-squares fits** a Gaussian to the baseline-subtracted non-burst prompt over a window around the peak (Poisson counting weights, `scipy.optimize.curve_fit`, analytic peak/FWHM pulse as fallback). Because a Gaussian cannot follow the slow *fluorescent* tail the non-burst prompt rides on, the fit locks onto the sharp scatter peak and sheds that tail — the artifact that biased recovered lifetimes ~2× short — while still tracking the measured prompt (verified on real BH SPC-130: far-past-peak IRF mass drops from 0.39 raw to 0.043 fitted). Added `irf_model="skewed"` (a skew-normal `erf`-tail fit for an asymmetric detector response) and `"experimental"`/`"raw"` (the measured prompt); the symmetric Gaussian formerly inlined here now goes through the shared `tcspc.irf.synthetic_irf`. New `irf_shape` arg controls skewness. UI: the Burst-MLE fit page gained an **IRF-model combo** (`comboBox_irf_model`: Gaussian (fitted) / Skewed Gaussian / Experimental) next to the ✨ Auto IRF/BG button; changing it re-runs the extraction, and `auto_extract_irf_bg` passes the choice through. Test: `test_mle_irf_model_gaussian_fit_suppresses_fluorescent_tail` in `test/plugins/burst/test_irf_background.py` pins that the fitted Gaussian carries <½ the far-tail mass of the experimental prompt and that the three modes differ (suite **7 pass**), lint clean. See [plugins/burst.md](/plugins/burst.md).
 
-* **ChiMOL navigation now matches PyMOL: virtual trackball + PyMOL button mapping.** The camera was a turntable (fixed azimuth/elevation about world Z/X), so it couldn't roll or rotate about an arbitrary screen axis and felt unlike PyMOL. Extracted PyMOL's `SceneMouse.cpp` behaviour via subagent and reimplemented in `qtgl.py`: the camera orientation is now a 3×3 world→camera rotation matrix; **left-drag is a virtual trackball** (project prev/cur cursor onto a sphere of radius `0.45·min(W,H)`, rotate about `cross(n_prev,n_cur)` with `mouse_scale`=1.3 and roll-damping `1/(1+|axis.z|)`, left-multiply the rotation, SVD re-orthonormalise to prevent drift); **middle-drag pans** (unchanged, already the correct `depth·2tan(fov/2)/H` pixel→world scale); **right-drag dollies** (`Δ = dy/400·max(5,distance)`) while a right-*click* still opens the context menu. Camera right/up/forward now come straight from the rotation rows, and the 18-float view state stores the rotation in slots 0–8 (PyMOL's convention) with a legacy fallback that reads the old elevation/azimuth in slots 10–11; `raytracer._camera_from_view_state` decodes the same, so the offscreen raytrace and the GL view stay consistent (verified: GL camera origin/forward derivation matches the raytracer's exactly, and a default-view raytrace of 148L renders upright). `reset_view(distance,elevation,azimuth)` keeps its signature (builds the matrix internally) so callers are unchanged. Trackball math unit-checked (orthonormal, ~0.4°/px, no drift over 200 drags); chimol suite **85 passed**; no new lint (`qtgl.py` 56→56, `raytracer.py` 23→23). The GL feel (rotation direction) can't be verified headlessly; it follows PyMOL's formula. See [plugins/profiles/chimol.md](/plugins/profiles/chimol.md).
+* **ChiMOL navigation now matches the reference viewer: virtual trackball + the reference viewer button mapping.** The camera was a turntable (fixed azimuth/elevation about world Z/X), so it couldn't roll or rotate about an arbitrary screen axis and felt unlike the reference viewer. Extracted the reference viewer's `SceneMouse.cpp` behaviour via subagent and reimplemented in `qtgl.py`: the camera orientation is now a 3×3 world→camera rotation matrix; **left-drag is a virtual trackball** (project prev/cur cursor onto a sphere of radius `0.45·min(W,H)`, rotate about `cross(n_prev,n_cur)` with `mouse_scale`=1.3 and roll-damping `1/(1+|axis.z|)`, left-multiply the rotation, SVD re-orthonormalise to prevent drift); **middle-drag pans** (unchanged, already the correct `depth·2tan(fov/2)/H` pixel→world scale); **right-drag dollies** (`Δ = dy/400·max(5,distance)`) while a right-*click* still opens the context menu. Camera right/up/forward now come straight from the rotation rows, and the 18-float view state stores the rotation in slots 0–8 (the reference viewer's convention) with a legacy fallback that reads the old elevation/azimuth in slots 10–11; `raytracer._camera_from_view_state` decodes the same, so the offscreen raytrace and the GL view stay consistent (verified: GL camera position/forward derivation matches the raytracer's exactly, and a default-view raytrace of 148L renders upright). `reset_view(distance,elevation,azimuth)` keeps its signature (builds the matrix internally) so callers are unchanged. Trackball math unit-checked (orthonormal, ~0.4°/px, no drift over 200 drags); chimol suite **85 passed**; no new lint (`qtgl.py` 56→56, `raytracer.py` 23→23). The GL feel (rotation direction) can't be verified headlessly; it follows the reference viewer's formula. See [plugins/profiles/chimol.md](/plugins/profiles/chimol.md).
 
 * **Fluorophore staging DB: spectra quality assessed and duplicate probes merged (2288 → 2141 live probes).** Added `chisurf/plugins/spectra_downloader/download/dedupe_spectra.py`, a headless curation utility for the scraper staging `spectra.db`. It (1) **assesses spectra quality** — decodes every live `spectra` BLOB (float64) and flags empty, length-mismatched, non-monotonic, non-finite, all-zero or negative-intensity curves — and (2) **merges duplicate probes**, reusing MMFDB's exact grouping model (`mmfdb.admin.backend.duplicate_grouping.group_duplicates`) and the same union-merge as `fluorophores.merge_probes` (copy each duplicate's missing spectra/optical-properties into the richest probe via `INSERT OR IGNORE` on the `UNIQUE` constraints, keep the longest name, soft-delete the duplicates). Because MMFDB compares probes only *within* a category, a `--cross-category` pass merges exact-normalized-name matches across categories too (the same fluorophore ingested as an fpbase `protein` and a chroma `organic_dye`, carrying complementary absorption/excitation spectra), guarded to **skip optical filters** (any `transmission` spectrum or `filter` category) so filter sets named after a dye are never fused into the dye. It also (3) **highlights potential duplicates** with a self-contained **Bayesian classifier** (`duplicate_probability` — a naive-Bayes posterior over normalized-name similarity + absorption/emission maxima, with same-source curated pairs down-weighted): `--candidates` reports borderline pairs the automatic merge does *not* touch, ranked by posterior, split into a `strong` and a human-review band (report-only, never writes). Runs read-only by default; `--apply` makes a timestamped, non-overwriting `.backup` first. Assessment on the live DB: 2868 spectra, 121 flagged (114 negative-intensity — almost all benign `transmission` filter-baseline noise — and 7 non-monotonic wavelengths). Applied: 116 within-category + 31 cross-category duplicate probes merged (147 total, all fpbase/atto kept over chroma), e.g. EGFP now carries the union `absorption,emission,excitation`. Post-merge `PRAGMA integrity_check` = ok, `foreign_key_check` empty, 0 orphaned live spectra, no duplicate names remain, and the Bayesian classifier flags **0** remaining pairs above the 0.5 review threshold (the top residual near-name-twins — mono/di/tri-carbocyanines, Star 635 vs 635p, rsEGFP vs rsEGFP2 — are correctly scored ~0.09 because their maxima disagree); three incremental backups retained. The `spectra.db` is gitignored (staging data, not committed); new `test_dedupe_spectra.py` (**4**) covers the quality flags, the union-merge/soft-delete semantics and the Bayesian classifier ranking on an in-memory DB. See [plugins/sample-spectra.md](/plugins/sample-spectra.md).
 
 * **The fit2x batch kernel is now general (fit23/24/25/26), and `Fit2x.fit_many` follows.** The batch fit (`fit_matrix` — fit a whole matrix of decays in one GIL-released C++ call, the path that makes threaded fitting scale) existed **only** for `DecayFit23`; fit24/25/26 could only be fit one row at a time from Python. tttrlib (`~/dev/tttrlib`, uncommitted for the author): added a model-agnostic engine `DecayFit::fit_matrix_generic(fitfn, …)` in `DecayFit.cpp`/`.h` — it threads over row-chunks (shared `decay_batch_threads` heuristic), gives each thread a private `DecayFitData`, copies the caller's full packed start vector per row, calls the model's scalar `fit`, and writes `[params…, 2I*]`; thin `DecayFit24/25/26::fit_matrix` wrappers pass their `fit` fn + parameter count (5/5/1). SWIG bindings (`DecayFit24/25/26.i`) expose them with the same numpy typemaps + GIL-release exception as fit23. Verified **bit-exact** parity: batch `fit_matrix` == per-row scalar `fit` (max|Δ| = 0.0) for fit24/25/26 (`test/python/decayfit/test_batch_fit_matrix.py`, 3 tests); cross-language + DecayFit23 suites unchanged (13). chisurf: `Fit2x.fit_many` (`core/fluorescence/mle/fit2x.py`) dropped its `NotImplementedError` fit23-only guard — it now dispatches per model, packing the free params + estimator-specific input slots (fit25's r0) + the BIFL-scatter flag into the full start vector via a small `_BATCH_LAYOUT` table, and returns `[free params…, 2I*]`. Test `test_fit_many_is_general_and_matches_scalar_fits` (fit2x suite **9 pass**). NB the imaging/burst callers still use fit23; this generalises the engine so fit24/25 batch fits are available. Registry-driven fit-type population (advertise the estimators + parameter schemas from tttrlib, like the burst-search registry) is the next piece.
 
-* **ChiMOL cartoon no longer twists — PyMOL-style ribbon orientation.** The cartoon rendered helices as jagged "twisted tape" because the ribbon orientation used the raw per-residue carbonyl direction (`C - O`), which is noisy and, in a helix, spins around the axis with each residue. Rebuilt the orientation pipeline against PyMOL's `RepCartoon.cpp` (extracted via subagent): (1) `_build_trace_ups` now uses the **peptide-plane normal** `normalize((N−C)×(N−O))` (PyMOL's `RepCartoonGeneratePASS1`) instead of `C−O`; (2) a new `_refine_orientations` applies PyMOL's three anti-twist passes before spline sampling — **round helices** (helix orientation = `normalize(axis × tangent)` with `axis` a running CA-difference sum, so the oval circles a smooth axis), **flat sheets** (4-cycle 3-point box average of orientations across each β-strand so it shares one up-vector), and **refine-normals** (force ⊥ tangent, propagate sign forward to kill 180° flips). Verified by offscreen raytraced renders of 148L (helices go from broken twisted tape to smooth spiralling ribbons) and 1rtd (proper mixed α/β). Cross-section dimensions already matched PyMOL (oval 0.25×1.35, rect 0.4×1.4, loop r=0.2). `test_geometry_vectorized` + fallback-render suites **12 passed**; `cartoon.py` lint unchanged (43→43). See [plugins/profiles/chimol.md](/plugins/profiles/chimol.md).
+* **ChiMOL cartoon no longer twists — reference-viewer-style ribbon orientation.** The cartoon rendered helices as jagged "twisted tape" because the ribbon orientation used the raw per-residue carbonyl direction (`C - O`), which is noisy and, in a helix, spins around the axis with each residue. Rebuilt the orientation pipeline against the reference viewer's `RepCartoon.cpp` (extracted via subagent): (1) `_build_trace_ups` now uses the **peptide-plane normal** `normalize((N−C)×(N−O))` (the reference viewer's `RepCartoonGeneratePASS1`) instead of `C−O`; (2) a new `_refine_orientations` applies the reference viewer's three anti-twist passes before spline sampling — **round helices** (helix orientation = `normalize(axis × tangent)` with `axis` a running CA-difference sum, so the oval circles a smooth axis), **flat sheets** (4-cycle 3-point box average of orientations across each β-strand so it shares one up-vector), and **refine-normals** (force ⊥ tangent, propagate sign forward to kill 180° flips). Verified by offscreen raytraced renders of 148L (helices go from broken twisted tape to smooth spiralling ribbons) and 1rtd (proper mixed α/β). Cross-section dimensions already matched the reference viewer (oval 0.25×1.35, rect 0.4×1.4, loop r=0.2). `test_geometry_vectorized` + fallback-render suites **12 passed**; `cartoon.py` lint unchanged (43→43). See [plugins/profiles/chimol.md](/plugins/profiles/chimol.md).
 
 * **F-test tool rebuilt on AutoForm — the 500-line hand-built widget compressed to a declarative model + view.** `chisurf/plugins/core/f_test` was a legacy `f_calculator.py`: a `FTestWidget(QWidget)` that hand-assembled two `QGridLayout` sections, wired eight spin boxes with per-widget slots, exposed ~25 boilerplate property getter/setters (`n1`/`n2`/`chi2_1`/…), and built three separate `>`-button menus to load values from open fits. Replaced with (1) a tiny `_FTestModel` holding the ten fields (`chi2_1`, `n1`, `chi2_2`, `n2`, `conf_level`; `chi2_min`, `npars`, `dof`, `conf_level_2`, `chi2_max`) plus three `recompute_*` methods carrying the exact legacy F-distribution formulas (`F.cdf`/`F.isf` and `chi2_max`), (2) `gui/ftest.view.json` — two AutoForm panels binding those fields (χ² max `read_only`) with short labels + tooltips and a `?` help modal, and (3) `FTestTool(QMainWindow)` that binds each `ValueWidget.editor` to a single `_on_field_edited(attr)` dispatcher (edited-attr → which recompute) and collapses the three fit-loader menus into one compact **📊 From fit ▾** toolbar button (one submenu per open fit → model 1 / model 2 / χ²-min). Added a `manifest.json` (id `f_test`, v2.0.0, categories Tools/Statistics) so the tool is manifest-discovered like the other calculators, registered it as a sixth entry in the calculators hub, and deleted `f_calculator.py`. `FTestWidget` is kept as an alias of `FTestTool`; `__init__`/`__main__` repointed. Verified headlessly: view spec binds exactly the ten fields, the recompute methods reproduce the reference numbers (χ²max = 1.464759 matches the documented example), the tool builds and a confidence edit recomputes the χ²(2) threshold; new `f_test/test/test_widgets.py` (**3**) + hub-registry suite pass, all files lint-clean. See [plugins/calculator.md](/plugins/calculator.md).
 
@@ -25740,7 +25740,7 @@ front, not this).
 
 * **Parameter popup closed on the interactions it exists for; prior selector de-duplicated.** Three fixes to `FittingParameterDetailPopup`. (1) **Dismissal**: both `focusOutEvent` and the event filter hid the popup on *any* `FocusOut` — but a widget receives one whenever a **child** takes focus, so clicking the value spin box or a radio button dismissed the popup mid-edit. Verified empirically: focusing `sb_value` sends exactly one `FocusOut` to the popup. The check is now deferred to the event loop (the incoming focus widget is only settled after the transition) and hides only when `QApplication.focusWidget()` is neither the popup nor a descendant; `WindowDeactivate` still hides immediately, and a new `mousePressEvent` dismisses on clicks outside the rectangle (`Qt.Popup` grabs the mouse, so they arrive at the popup). (2) **One prior selector instead of two**: a radio row (Box/Gaussian/Log-normal/Custom…) sat above a "Distribution" combo listing seven families, so Gaussian and Log-normal were shown in both and five families were reachable only through "Custom…". Now a single `Prior:` combo lists Box plus all seven; a prior this editor cannot express (callback, product) is reported through a read-only "Other" entry that is added and removed on demand and never overwrites the attached prior. Popup width **414 -> 282 px**. Folded the two default-seeding paths into one — a Gaussian's σ now defaults to a tenth of the parameter's magnitude rather than a flat 1.0, which the radio path did and the combo path did not. (3) Link/unlink buttons carry 🔗/✂️ icons and tooltips. Tests: `test/gui/test_parameter_prior_widget.py` grew from 12 to 25 — the family combo (all eight reachable, seeding, switching, "other" not clobbering a script prior) and five dismissal tests, including the child-focus regression. The two focus tests assert on the deferred check rather than on a second window stealing focus, because an offscreen `Qt::Popup` holds the keyboard grab and a real hand-off is not reproducible headlessly. `test_popup_edit_repaints_the_row_without_dispatching` still fails — **pre-existing test-order pollution**, passes alone, unrelated.
 
-* **Parameter detail popup made compact: 650x520 -> 414x120 px.** `FittingParameterDetailPopup` laid every control on its own full-width row, so a popup meant to sit next to the parameter it edits covered most of the fit window. Rows are now merged where they read together — name + link state + Link…/Unlink in the header, Value + Fixed on one row, Enable-bounds + Low + High on one row — the `Prior` group box became an inline `Prior:` label + radio row (one less frame and two less rows of padding), the redundant "Click outside to close" hint is gone (the popup is a `Qt.Popup`; that is its documented behaviour), spin boxes are width-capped, and spacing dropped 4 -> 2 px. A long "Linked to: name (group / local)" string used to stretch the popup arbitrarily; the label now shows `→ name` with the full origin in its tooltip, matching the short-label/tooltip rule. Verified by an offscreen `QWidget.grab()` render. No behaviour change — every widget attribute the handlers and the existing tests use is unchanged (`test_parameter_prior_widget.py` + `test_parameter_table_actions.py`: 24 passed; the one failure, `test_popup_edit_repaints_the_row_without_dispatching`, is **pre-existing test-order pollution** — it passes alone and fails identically with this change stashed).
+* **Parameter detail popup made compact: 650x520 -> 414x120 px.** `FittingParameterDetailPopup` laid every control on its own full-width row, so a popup meant to sit next to the parameter it edits covered most of the fit window. Rows are now merged where they read together — name + link state + Link…/Unlink in the header, Value + Fixed on one row, Enable-bounds + Low + High on one row — the `Prior` group box became an inline `Prior:` label + radio row (one less frame and two less rows of padding), the redundant "Click outside to close" hint is gone (the popup is a `Qt.Popup`; that is its documented behaviour), spin boxes are width-capped, and spacing dropped 4 -> 2 px. A long "Linked to: name (group / local)" string used to stretch the popup arbitrarily; the label now shows `→ name` with the full source in its tooltip, matching the short-label/tooltip rule. Verified by an offscreen `QWidget.grab()` render. No behaviour change — every widget attribute the handlers and the existing tests use is unchanged (`test_parameter_prior_widget.py` + `test_parameter_table_actions.py`: 24 passed; the one failure, `test_popup_edit_repaints_the_row_without_dispatching`, is **pre-existing test-order pollution** — it passes alone and fails identically with this change stashed).
 
 * **`Lifetime.lifetimes` getter no longer writes on every read (23% faster in isolation, no end-to-end effect).** The getter computed `math.sqrt(x.value ** 2)` per lifetime and then wrote every value back to its parameter — the same getter-performs-writes anti-pattern fixed earlier in `Parameter.value`. Now reads each parameter once, takes `abs()`, and writes back only where the sign actually flipped (normally never, since lifetimes are positive). Sign-flip semantics verified preserved: a negative lifetime still reads back positive *and* is persisted. Controlled best-of-3: `L.lifetimes` **6.918 -> 5.354 us**. **But `update_model` is unchanged (0.0787 -> 0.0785 ms, best-of-5)** — 1.5 us saved in an ~79 us evaluation is below this harness's resolution. Kept as cleanup, not claimed as a speedup. A first attempt guarded the write with `if p.value != v`, which re-read the parameter and made it *slower* (7.14 -> 9.39 us) now that writes are cheap; restructuring to read once fixed that. **Assessment: the fit path is at diminishing returns.** Of a ~117 us `get_wres`, the remaining items are convolve 26 us (already the C SIMD kernel), `anisotropy.get_decay` ~11 us, cached `irf` 11 us, `convolve.scale` 11 us, `lifetime_spectrum` 13 us and `parameter_values` 12 us — no single dominant target left, and the last several attempts have landed at or below measurement noise.
 
@@ -25864,7 +25864,7 @@ front, not this).
 
 * **Reusable `image_browser` AutoForm section + adopted by the molecule-MLE tool and the TTTR image browser.** Factored the "pick one of many, show its image" workspace shape into a shared custom section `chisurf/gui/autoform/sections/image_browser_section.py` (`ImageBrowserWidget`): a left entry list (from an `entries_source`; each entry a string or `{id,label,badge,rating}`) with an optional text filter, editable star-rating row (`rating_call`), read-only info panel (`info_source`) and editable per-entry note (`note_source`/`note_call`), plus optional drag-drop (`on_drop`) and single/multi-select — beside the existing `image` canvas (`ImageMapWidget`), which it composes so browsers inherit colormap/z-slider/movie/markers/ROI/pixel-pick for free. Also extended `ImageMapWidget` with `labels_source` (on-image text overlays, e.g. mosaic tile names). Registered under key `image_browser`; the section `target` is the current entry's image and selection routes through one `_commit` that fires `select_call` only on a real change. **Adopted in two tools.** (1) `sm_image_mle` GUI now browses molecules with it (list of `Mol N` + τ badge, canvas marks the selected molecule via `current_molecule_marker`, info panel shows the Fit23 result) — replacing the earlier single image + table. (2) **Refactored `tttr_image_browser` onto AutoForm**: its ~825-line hand-built `QWidget` (file `QTableWidget` with star cells + pyqtgraph mosaic + annotation) became a Qt-free `gui/view_model.py::ImageBrowserViewModel` + `gui/browser.view.json` driving the shared section — file list with size + ★ badges, the per-file intensity mosaic as the canvas with per-tile channel/micro-time labels (`labels_source`), editable annotations (`note_call`→metadata.json), a rating-filter `choice`, and folder drag-drop — over the *unchanged* Qt-free core + RPC client; the toolbar shell (Open/Clear/Caches/Export/TIFF/DOCX/Next), detector-setup page and coordinator/pipeline handoff are preserved (selection now flows via a view-model observer instead of the old table signal). Tests: `test/gui/test_autoform_image_browser.py` (5: populate/select, canvas update, filter, rating write-back, refresh), rewritten `sm_image_mle`/`tttr_image_browser` widget tests — 21 pass, ruff clean (arm64), both tools headless-screenshot-verified. See [subsystems/gui-autoform.md](/subsystems/gui-autoform.md), [plugins/imaging.md](/plugins/imaging.md), [plugins/tttr.md](/plugins/tttr.md).
 
-* **Pixel-wise FLIM MLE: C++ batch fit + threaded dispatch makes fitting scale (in-process, ~4×).** Superseded the earlier fork-multiprocessing approach after finding the real bottleneck. Per-fit threading did not scale (flat 1.0× on 2–8 threads) even with the GIL released around `DecayFit23::fit`: each fit releases the GIL for <1 ms, and the **per-fit GIL-handoff convoy** serialises the threads. Ruled out the macOS nano allocator (`MallocNanoZone=0` unchanged) and `thread_local`/TLS (plain `static` unchanged); a BLAS `np.dot` control thread-scales 4× in the same process, so it was the fit, not the environment. Fix: a new tttrlib batch entry point **`DecayFit23::fit_matrix`** (committed in tttrlib `1650cf67`) fits a whole `(n_rows × 2·n_ch)` matrix in one C++ call with the GIL released for the *entire* loop; rebuild the arm64 editable install per [[tttrlib-editable-rebuild]] (note the SWIG-regen gotcha recorded there — `touch ext/python/tttrlib.i` after editing an included `.i`). ChiSurf side: `Fit2x.fit_many` wraps it, and `chisurf/core/fluorescence/mle/parallel.py::fit_matrix_threaded` splits rows across a `ThreadPoolExecutor` (each thread its own `Fit2x`) — **no multiprocessing**, so no fork/spawn fragility and safe inside the Qt GUI. `img_pixel_mle/core/pixel_mle.py` now dispatches through it (`n_workers` control, `_MIN_ROWS_FOR_THREADS` gate). Measured: batch threading 2t 1.95× / 4t 3.74× / 8t 4.63×, bit-identical to single-fit; end-to-end A/B on `beads.ptu` baseline→+fast 1.15×→+threaded(7w) **4.08×**, results identical. Tests updated (`test_threaded_matches_serial`); benchmark `test/benchmarks/benchmark_pixel_mle.py`. Replaces the fork-MP `fit_matrix_parallel`. See [plugins/imaging.md](/plugins/imaging.md) and the `fit2x` harness in [subsystems/fitting.md](/subsystems/fitting.md).
+* **Pixel-wise FLIM MLE: C++ batch fit + threaded dispatch makes fitting scale (in-process, ~4×).** Superseded the earlier fork-multiprocessing approach after finding the real bottleneck. Per-fit threading did not scale (flat 1.0× on 2–8 threads) even with the GIL released around `DecayFit23::fit`: each fit releases the GIL for <1 ms, and the **per-fit GIL-handoff convoy** serialises the threads. Ruled out the macOS nano allocator (`MallocNanoZone=0` unchanged) and `thread_local`/TLS (plain `static` unchanged); a BLAS `np.dot` control thread-scales 4× in the same process, so it was the fit, not the environment. Fix: a new tttrlib batch entry point **`DecayFit23::fit_matrix`** (committed in tttrlib `1650cf67`) fits a whole `(n_rows × 2·n_ch)` matrix in one C++ call with the GIL released for the *entire* loop; rebuild the arm64 editable install per `tttrlib-editable-rebuild` (note the SWIG-regen gotcha recorded there — `touch ext/python/tttrlib.i` after editing an included `.i`). ChiSurf side: `Fit2x.fit_many` wraps it, and `chisurf/core/fluorescence/mle/parallel.py::fit_matrix_threaded` splits rows across a `ThreadPoolExecutor` (each thread its own `Fit2x`) — **no multiprocessing**, so no fork/spawn fragility and safe inside the Qt GUI. `img_pixel_mle/core/pixel_mle.py` now dispatches through it (`n_workers` control, `_MIN_ROWS_FOR_THREADS` gate). Measured: batch threading 2t 1.95× / 4t 3.74× / 8t 4.63×, bit-identical to single-fit; end-to-end A/B on `beads.ptu` baseline→+fast 1.15×→+threaded(7w) **4.08×**, results identical. Tests updated (`test_threaded_matches_serial`); benchmark `test/benchmarks/benchmark_pixel_mle.py`. Replaces the fork-MP `fit_matrix_parallel`. See [plugins/imaging.md](/plugins/imaging.md) and the `fit2x` harness in [subsystems/fitting.md](/subsystems/fitting.md).
 
 * **fit2x fit itself ~5× faster (Brent 1-D + objective hoist), bit-close.** Two tttrlib changes to the fit23 estimator (commits `1650cf67`/`f133e231`/`96924906` there). (1) **Objective hoist** — `targetf` recomputed the data-only signal integrals (`Sp/Ss/B`) on every objective evaluation, but they are constant during a fit (only the soft-BIFL `Bexpected` depends on parameters); recompute only when soft-BIFL is active → ~10% faster, **max\|Δτ\|=0** over 120 real decays vs the unmodified build. (2) **Brent 1-D minimiser** — when only τ is free (γ/r0/ρ fixed: the pixel-wise FLIM / burst-lifetime case) the fit is 1-D, so a bounded derivative-free Brent minimiser replaces the general BFGS-with-numerical-gradients engine (~5× fewer objective evaluations). Verified on real FLIM decays: same MLE minimum to 6 sig-figs (max\|Δτ\|=5e-5, rel 6e-6 — far below lifetime measurement precision), **0.88 → 0.18 ms/fit (~4.9×)**; BFGS unchanged for all other free-parameter combinations. (3) **NEON 2-channel convolution** (commit `eee0eebf`) — the fit23 model convolves parallel/perpendicular channels that share lifetimes; the per-channel recurrence is latency-bound and un-vectorisable *within* a channel, but the two channels run together in `float64x2` lanes (`fconv_per_cs_2ch`, scalar two-call fallback off-ARM) → another **~1.5×** (0.18 → 0.12 ms), numerically identical (median τ matches the scalar path to full precision). So the fit itself is **~7.3×** (0.88 → 0.12 ms) and, with the batch/threaded dispatch, **≈33× throughput** on the pixel-MLE fit vs the original per-fit BFGS+scalar-convolution path. Tried but dropped: `-ffast-math -mcpu=native` gave only ~6% (the recurrence dominates and can't reassociate) — not worth global FP-semantics changes. float32 would help little here (working set is L1-resident and the 2 channels already fill the NEON register), so not pursued.
 
@@ -25884,7 +25884,7 @@ front, not this).
 
 * **Calibration: general excitation/emission crosstalk-matrix correction (Hellenkamp is the 2-colour special case) (continuation 3).** Per the steer that the scalar α/β/γ/δ are only a special case and the general excitation/emission crosstalk matrices must still work, added the general matrix correction. New `es.py::corrected_es_general(intensity, excitation, emission)` corrects straight from the two light-path matrices — **excitation** `X[l,k]` (laser→chromophore) and **emission** `D[k,m]` (chromophore→detector) — in three steps: (1) un-mix emission `e[l,:] = I[l,:] @ D⁻¹` (removes *all* spectral crosstalk incl. acceptor↔acceptor bleed, and folds the detection/QY ratio into the `D` diagonal so **no explicit γ** appears), (2) subtract direct excitation `F[l,k] = e[l,k] − (X[l,k]/X[k,k])·e[k,k]`, (3) coupled donor budget `E[l,k] = F[l,k]/(e[l,l] + Σ_a F[l,a])`. It reduces **algebraically** to `corrected_es` for two colours (`D=[[1,α],[0,γ]]`, `X=[[1,δ],[0,1]]`) and recovers exact E for ≥3 chromophores with inter-acceptor leakage the scalar path cannot express. `calibration.py::crosstalk_matrices_from_lightpath` builds `X`,`D` from a `get_crosstalk_matrices()` payload (folding QY/detection efficiency into `D`), and `general_correction_from_lightpath` wraps the whole path. This resolves the previously-deferred "multi-acceptor cross-leakage" item; `corrected_es_matrix` stays as the scalar fast path when there is no inter-acceptor bleed. Tests: `test/fitting/test_general_correction.py` (8: 2-colour reduction == `corrected_es`, 3-colour with acceptor↔acceptor bleed exact, scalar-path-is-biased contrast, light-path-payload path) — 43 calibration/crosstalk tests pass, ruff clean (arm64). Docs: `docs/FRET calibration.md` gains a "The general case: crosstalk matrices" section (scalar factors reframed as the two-colour reduction); OKF [references/fret-calibration.md](/references/fret-calibration.md) updated (general-form bullet; cross-leakage moved from "missing" to done). **Stable un-mixing follow-up:** the emission un-mix (step 1, `I[l,:] @ D⁻¹`) is the numerically delicate part — for strong spectral overlap `D` is ill-conditioned, so the plain pseudo-inverse amplifies shot noise and returns unphysical **negative** emissions. Added a selectable `unmix` argument to `corrected_es_general`/`general_correction_from_lightpath`: `"naive"` (fast vectorized pinv, default) vs `"stable"` (**non-negative least squares** per burst — enforces `e≥0`, robust to overlap), plus an optional `ridge` (Tikhonov) damping usable with either. Both share `crosstalk.invert_mixing`, which was extended with a `ridge` Tikhonov parameter (closed form for the linear solve, augmented-system for NNLS) — also available to the phasor-FLIM unmix. Method choice follows the standard fluorescence-microscopy unmixing literature (NNLS/fully-constrained LU for positivity; Tikhonov to fix ill-conditioning). Tests grew to 13 (naive==stable on clean data; NNLS non-negative where pinv goes negative on ill-conditioned noisy data; ridge lowers burst-to-burst E variance; invalid-method guard) — 48 calibration/crosstalk tests pass, ruff clean (arm64). Docs gain a "Naive vs. stable un-mixing" subsection. **Photon-statistics + ndx follow-up:** (checked the user-supplied `nishio-laboratory/lambda_split` repo — it is an unrelated LLM/diffusion inference-splitting project, not the fluorescence "λSplit" spectral-unmixing paper; removed from junk.) (1) **Integer, statistics-preserving un-mixing** `crosstalk.photon_shuffle_unmix(counts, matrix, *, abundances, seed)` — reassigns each detected photon to a source by a multinomial draw (`P(k|m) ∝ a_k·B[k,m]`, `B`=row-normalised emission spectral shape, `a_k`=NNLS abundance prior), giving a non-negative **integer** per-source photon stream that preserves the total count exactly and the Poisson shot-noise (multinomial thinning of Poisson is Poisson) — for BVA/MLE/burst-variance downstream; expectation == the continuous Richardson–Lucy/EM unmix (unbiased). Vectorised over bursts by a binomial chain. `test_photon_shuffle.py` (5). (2) **ndx stable/shuffle injection** — ndx corrects FRET with scalar string-equations and exposes **no compute hook** (confirmed by exploring the in-tree `modules/ndxplorer` submodule), so `push_unmixed_columns_to_ndx(ndx, *, emission, channel_columns, source_labels, unmix="stable"|"shuffle", seed, rate_columns)` reads the measured per-channel count columns, un-mixes them (NNLS default / integer shuffle) with the light-path emission matrix, and injects leakage-free per-source photon+rate columns back as **new** columns (native ndx columns/equations untouched → no double-correction). Per user steer, **no hard-coded detector names** — caller supplies the emission matrix + column names + source labels (from `crosstalk_matrices_from_lightpath`), general to any N-colour setup. `test_calibration_ndx_bridge.py` grew +3. Total 56 calibration/crosstalk tests pass, ruff clean (arm64). Docs gain "Preserving photon-counting statistics" + "ndxplorer: stable / shuffle un-mixing" sections; OKF [references/fret-calibration.md](/references/fret-calibration.md) updated. **Headless real-engine ndx test (per steer "make it possible to drive tests headless"):** the stub-only ndx coverage is now complemented by `test/fio/test_ndxplorer_unmix_headless.py`, which drives ndx's **actual** `DataSource` + real `mfd.equations.yaml`/`mfd.constants.json` with **no Qt window / no display** — it self-adds the in-tree `modules/ndxplorer` submodule to `sys.path`, sets `QT_QPA_PLATFORM=offscreen`, `importorskip`s when absent (mirrors the existing `test/fio/test_ndxplorer_rpc_bridge.py` pattern), and asserts (a) a pushed `gamma` genuinely changes the engine-computed `FRET efficiency` column, (b) injected unmixed columns are computable by ndx's own equation engine, (c) shuffle columns are integer + count-preserving through the real `DataSource`. 3 headless tests pass (arm64, offscreen).
 
-* **Pixel-wise FLIM MLE throughput: vectorised extraction + multiprocessing fits + GIL release (A/B benchmarked).** Two optimisations to `img_pixel_mle/core/pixel_mle.py`, both A/B-verified to give **identical** per-pixel lifetimes. (1) **Vectorised extraction** — replaced the per-pixel Python `tttr_indices`+`np.bincount` loop with one `CLSMImage.get_fluorescence_decay` C++ call building the whole per-pixel histogram stack (matches bincount exactly; the returned uint8 is guarded — saturation auto-falls-back to the exact bincount engine). An `engine` switch (`"auto"`/`"fast"`/`"loop"`) selects it. (2) **Multiprocessing fits** — the per-pixel `Fit23` calls (the dominant cost) now run across worker processes over a shared-memory copy of the histogram matrix, via a new reusable, Qt-free helper `chisurf/core/fluorescence/mle/parallel.py::fit_matrix_parallel` (built on the `fit2x` harness). It uses the **fork** start method so workers inherit the parent's imports — avoiding a hang where `spawn` re-imports the deep plugin/GUI package chain in a subprocess — with a serial fallback on any failure and an `n_workers` control. **Investigation & tttrlib change:** per the "let it release GIL" steer, added GIL release around `DecayFit{23,24,25,26}::fit` in tttrlib (`ext/python/DecayFit*.i`, committed there `bebd7bb9`; rebuild the arm64 editable install per [[tttrlib-editable-rebuild]]). Threaded fits are now **bit-identical** to serial (the fit's per-call state is `static thread_local`), but in-process threading still does **not scale** on macOS (the fit serialises on an internal per-thread-state access path; a BLAS `np.dot` control thread-scales 4× in the same env, so it is the fit, not the environment) — hence multiprocessing for throughput. The GIL release is kept as the correct, safe precondition (helps latency/GUI-responsiveness; enables future threading if the C++ serialiser is removed). **A/B benchmark** `test/benchmarks/benchmark_pixel_mle.py` on real FLIM `tttr-data/imaging/pq/Microtime200_HH400/beads.ptu`: baseline (loop, serial) → +fast extraction 1.13× → +parallel (7 workers) **2.58×**, results identical. Tests: `img_pixel_mle/test/test_pixel_mle_core.py` gains fast-vs-loop and MP-vs-serial equivalence (6 pass); benchmark has a `slow` equivalence+speedup test. See [plugins/imaging.md](/plugins/imaging.md) and the `fit2x` harness in [subsystems/fitting.md](/subsystems/fitting.md).
+* **Pixel-wise FLIM MLE throughput: vectorised extraction + multiprocessing fits + GIL release (A/B benchmarked).** Two optimisations to `img_pixel_mle/core/pixel_mle.py`, both A/B-verified to give **identical** per-pixel lifetimes. (1) **Vectorised extraction** — replaced the per-pixel Python `tttr_indices`+`np.bincount` loop with one `CLSMImage.get_fluorescence_decay` C++ call building the whole per-pixel histogram stack (matches bincount exactly; the returned uint8 is guarded — saturation auto-falls-back to the exact bincount engine). An `engine` switch (`"auto"`/`"fast"`/`"loop"`) selects it. (2) **Multiprocessing fits** — the per-pixel `Fit23` calls (the dominant cost) now run across worker processes over a shared-memory copy of the histogram matrix, via a new reusable, Qt-free helper `chisurf/core/fluorescence/mle/parallel.py::fit_matrix_parallel` (built on the `fit2x` harness). It uses the **fork** start method so workers inherit the parent's imports — avoiding a hang where `spawn` re-imports the deep plugin/GUI package chain in a subprocess — with a serial fallback on any failure and an `n_workers` control. **Investigation & tttrlib change:** per the "let it release GIL" steer, added GIL release around `DecayFit{23,24,25,26}::fit` in tttrlib (`ext/python/DecayFit*.i`, committed there `bebd7bb9`; rebuild the arm64 editable install per `tttrlib-editable-rebuild`). Threaded fits are now **bit-identical** to serial (the fit's per-call state is `static thread_local`), but in-process threading still does **not scale** on macOS (the fit serialises on an internal per-thread-state access path; a BLAS `np.dot` control thread-scales 4× in the same env, so it is the fit, not the environment) — hence multiprocessing for throughput. The GIL release is kept as the correct, safe precondition (helps latency/GUI-responsiveness; enables future threading if the C++ serialiser is removed). **A/B benchmark** `test/benchmarks/benchmark_pixel_mle.py` on real FLIM `tttr-data/imaging/pq/Microtime200_HH400/beads.ptu`: baseline (loop, serial) → +fast extraction 1.13× → +parallel (7 workers) **2.58×**, results identical. Tests: `img_pixel_mle/test/test_pixel_mle_core.py` gains fast-vs-loop and MP-vs-serial equivalence (6 pass); benchmark has a `slow` equivalence+speedup test. See [plugins/imaging.md](/plugins/imaging.md) and the `fit2x` harness in [subsystems/fitting.md](/subsystems/fitting.md).
 
 * **ALEX analysis of Shimon Weiss lab `.sm` files: auto window-split + end-to-end test/example (chisurf and tttrlib).** Shimon Weiss lab single-molecule `.sm` files (tttrlib `SM` container, record type 11) store only a macro-time and a routing channel — no TCSPC micro-time. Micro-second ALEX encodes the green/red laser alternation in the macro-time clock, so `TTTR.alex_to_microtime(period, shift)` folds it into a synthetic micro-time (`micro = (macro − shift) % period`) that recovers the excitation window by gating, exactly like PIE. Added **automatic green/red window detection** to the ALEX plugin core (`chisurf/plugins/tttr/ptu_alex_creator/core`): `auto_alex_windows(...)` histograms the folded phase, finds the two laser-on plateaus as the two largest occupied runs (circular `_contiguous_runs`), **guard-bands each edge** (default 6%) to drop the laser rise/fall photons (some photon loss is intended — ~88% retention), and labels the donor-brighter window "green"; `alex_stream_masks(...)` returns the DD/DA/AA/AD boolean masks. It raises `ValueError` on continuous-wave data (single fully-occupied period). Verified the full smFRET path works with `.sm` input: load → `apply_alex` → auto-split → all-photon burst search → per-burst DD/DA/AA counting → apparent/corrected E and S via [`burst/es.py`](/subsystems/fluorescence-domain.md) (`apparent_es`/`corrected_es`). Because the shipped reference `tttr-data/sm/data.sm` is a continuous-wave, donor-dominated file (60 s, ch0≫ch1, no alternation — confirmed by FFT/fold-contrast analysis showing no laser-alternation frequency), tests use a **synthetic ground-truth ALEX stream with realistic laser windows (interior plateaus + rise/fall gaps + edge smear) round-tripped through the `.sm` container** (set `MeasDesc_GlobalResolution` tag so the written file reads back at 12.5 ns) to check window recovery + E/S recovery, and additionally load the real file to prove reading + burst search. Auto-split recovers windows inside the true laser bounds and two injected populations (600 bursts, E≈0.20/0.80, S≈0.55). New: `test/fitting/test_alex_sm.py` (7), `examples/alex_sm_es.py`; and in tttrlib `test/python/burstfilter/test_alex_sm.py` (7, with a standalone copy of the auto-split helper) + `examples/single_molecule/plot_alex_sm.py` (sphinx-gallery, phase histogram with detected windows + E-S 2D histogram). Only new core code is the `auto_alex_windows`/`alex_stream_masks` helpers; the ALEX/.sm folding + es capability already existed.
 
@@ -25908,11 +25908,11 @@ front, not this).
 
 * **Maximum-likelihood (2I*) fitting: shared tttrlib `fit2x` harness + first-class in-core Poisson objective.** Two coupled changes that make MLE a proper part of ChiSurf's fitting infrastructure instead of siloed plugin boilerplate. (1) New Qt-free harness `chisurf/core/fluorescence/mle/` (`fit2x.py`): `Fit2xSettings` (dt/period/IRF/background/polarisation), a reusable `Fit2x` fitter (builds the tttrlib `Fit23`/`Fit24`/`Fit25` once, fits many decays), a typed `Fit2xResult` with named accessors (`tau`/`gamma`/`r_scatter`/`r_experimental`, `as_dict`), and `assemble_vv_vh` for the parallel|perpendicular layout. It is the single seam around tttrlib's Maus-2001 `2I*` MLE — the estimator itself is already good C++; only ChiSurf's harness around it was poor (the raw `tttrlib.Fit23(dt=…, p2s_twoIstar_flag=…)` construction + `res['x']`/`res['twoIstar']` parsing was copy-pasted across four call sites). Migrated the burst-MLE batch worker (`burst_mle_analysis/_mp_worker.py`), the wizard's batch pass, and `microscopy/sm_image_mle` onto the harness; the wizard interactive-preview and the `img_pixel_mle` monolith still call raw `Fit23` and are the next consumers to move. (2) Added a selectable `noise_model` on `Fit`: `"default"` keeps weighted-least-squares (Neyman) exactly as before; `"poisson"` (aliases `mle`/`2istar`) returns the **signed Poisson deviance residuals** `sign(μ−y)·√(2·(μ−y+y·ln(y/μ)))` from the new `deviance_residuals` helper, so `Σr²=2I*` and the *existing* `leastsqbound` LM engine, `chi2`/`chi2r`, covariance, F-test and residual plots all minimise the Poisson likelihood unchanged (Laurence & Chromy 2010) — the correct estimator for low-count TCSPC/FLIM/burst decays. Threaded `Fit.noise_model → Model.get_wres → calculate_weighted_residuals`; PDA models and every default fit are byte-unchanged. Tests: `test/fluorescence/test_mle_fit2x.py` (harness: VV/VH assembly, settings validation, `Fit23` lifetime recovery, fitter reuse) and `test/fitting/test_poisson_mle.py` (deviance≡2I* identity, zero/perfect-bin handling, selector plumbing, WLS back-compat, Poisson fit recovers params with reduced 2I*≈1) — 12 pass (arm64). No regressions (the 4 pre-existing `test_fit.py` standalone-invocation failures fail identically on baseline). Docs updated: [subsystems/fitting.md](/subsystems/fitting.md), [plugins/burst.md](/plugins/burst.md). This is phase 1 of a larger effort (H2MM/FRETBursts benchmarks in docs; FRET-2CDE + DCBS-in-tttrlib feeding ndxplorer) — see the `mle-fretbursts-benchmark-resume` memory.
 
-* **FCS model catalogue expansion (PAM port, A/B-verified) + FLCS filter fixes.** Ported PAM's (Schrimpf 2018) FCS fit-model catalogue into `chisurf/core/models/fcs/models.yaml` as 13 absolute-`D`, physically-parametrised models (x in s; D µm²/s; w µm; tau µs): `FCS_D`, `FCS_D_2Component`, `FCS_D_2exp`, `FCS_TauD`, `FCS_TauD_anomalous`, `FCS_flow`, `FCS_D_Background`, `FCS_D_afterpulsing`, `FCS_TauD_Bleaching`, `FCS_2Focus_D` (two-focus absolute `D`), `FCS_FRETFCCS` (2-state kinetics), `nsFCS_ab_cd_triplet`, `FCS_Scanning`. Each carries the γ=1/√8 prefactor and triplet term. **A/B-verified**: `test/fitting/test_fcs_pam_ab.py` transcribes each PAM MATLAB `fit` lambda verbatim (keeping the `1e-12`/`1e-6` SI factors, which cancel in the diffusion terms → reduced `4·D·x/w²`) and asserts equality to the ChiSurf equation over random parameters (evaluated through the real `ParseModel` scanner). This replaced the initial hand-rolled `w0/s` two-focus entries. A catalogue-wide parse test also caught and fixed **3 pre-existing broken entries** (`3D Gauss, 1 exp. bunch, 1 stretched exp. bunch` — unbalanced parens + missing `a1`/`td1`; `Autocorrelation with biexponential anisotropy term` — `td`→`td1`; `1x2D Gauss, 1x3D Gauss, 1 bunching + 5 anti-correlation` — missing `s`), whose equations referenced parameters absent from their `initial:` blocks. **FLCS filters** (`chisurf/core/fluorescence/fcs/filtered.py`, PAM `Calc_fFCS_Filters` as reference): the weighted-pseudo-inverse algebra was already correct; added `rcond`/`tikhonov` conditioning + `filter_condition_number` diagnostic (for near-collinear/similar-lifetime patterns), `uniform_pattern` (flat afterpulsing/dark-count species → afterpulse-free FLCS), and `photon_filter_weights` (per-photon micro-time→filter weight, the core for wiring filters into a weighted correlator); fixed the legacy `calc_lifetime_filter` divide-by-zero (zero-bin guard) and removed its nonstandard global renormalisation that broke the `Σ_t R_k(t)·p_j(t)=δ_kj` relation. Tests: `test/fitting/test_fcs_pam_ab.py`, `test_fcs_2ffcs.py`, `test_fcs_filters.py` — 31 pass (arm64 env). Remaining gaps (correlator wiring of filters, channel-aware par/perp weighting, scatter/IRF & model-generated pattern species, non-Gaussian Dertinger MDF, and the pCF/SCCF/MIA models) documented in the new OKF concept [references/fcs-pam-port.md](/references/fcs-pam-port.md); [references/two-focus-fcs.md](/references/two-focus-fcs.md) and [plugins/fcs.md](/plugins/fcs.md) updated. PAM cloned under `junk/PAM` as reference.
+* **FCS model catalogue expansion (PAM port, A/B-verified) + FLCS filter fixes.** Ported PAM's (Schrimpf 2018) FCS fit-model catalogue into `chisurf/core/models/fcs/models.yaml` as 13 absolute-`D`, physically-parametrised models (x in s; D µm²/s; w µm; tau µs): `FCS_D`, `FCS_D_2Component`, `FCS_D_2exp`, `FCS_TauD`, `FCS_TauD_anomalous`, `FCS_flow`, `FCS_D_Background`, `FCS_D_afterpulsing`, `FCS_TauD_Bleaching`, `FCS_2Focus_D` (two-focus absolute `D`), `FCS_FRETFCCS` (2-state kinetics), `nsFCS_ab_cd_triplet`, `FCS_Scanning`. Each carries the γ=1/√8 prefactor and triplet term. **A/B-verified**: `test/fitting/test_fcs_pam_ab.py` transcribes each PAM the numerical computing environment `fit` lambda verbatim (keeping the `1e-12`/`1e-6` SI factors, which cancel in the diffusion terms → reduced `4·D·x/w²`) and asserts equality to the ChiSurf equation over random parameters (evaluated through the real `ParseModel` scanner). This replaced the initial hand-rolled `w0/s` two-focus entries. A catalogue-wide parse test also caught and fixed **3 pre-existing broken entries** (`3D Gauss, 1 exp. bunch, 1 stretched exp. bunch` — unbalanced parens + missing `a1`/`td1`; `Autocorrelation with biexponential anisotropy term` — `td`→`td1`; `1x2D Gauss, 1x3D Gauss, 1 bunching + 5 anti-correlation` — missing `s`), whose equations referenced parameters absent from their `initial:` blocks. **FLCS filters** (`chisurf/core/fluorescence/fcs/filtered.py`, PAM `Calc_fFCS_Filters` as reference): the weighted-pseudo-inverse algebra was already correct; added `rcond`/`tikhonov` conditioning + `filter_condition_number` diagnostic (for near-collinear/similar-lifetime patterns), `uniform_pattern` (flat afterpulsing/dark-count species → afterpulse-free FLCS), and `photon_filter_weights` (per-photon micro-time→filter weight, the core for wiring filters into a weighted correlator); fixed the legacy `calc_lifetime_filter` divide-by-zero (zero-bin guard) and removed its nonstandard global renormalisation that broke the `Σ_t R_k(t)·p_j(t)=δ_kj` relation. Tests: `test/fitting/test_fcs_pam_ab.py`, `test_fcs_2ffcs.py`, `test_fcs_filters.py` — 31 pass (arm64 env). Remaining gaps (correlator wiring of filters, channel-aware par/perp weighting, scatter/IRF & model-generated pattern species, non-Gaussian Dertinger MDF, and the pCF/SCCF/MIA models) documented in the new OKF concept [references/fcs-pam-port.md](/references/fcs-pam-port.md); [references/two-focus-fcs.md](/references/two-focus-fcs.md) and [plugins/fcs.md](/plugins/fcs.md) updated. PAM cloned under `junk/PAM` as reference.
 
 * **Two-focus FCS (2fFCS) model functions + status doc.** Added two absolute-diffusion model functions to `chisurf/core/models/fcs/models.yaml` — `2f-FCS auto-correlation (absolute D)` and `2f-FCS cross-correlation (absolute D)` — written in the `D`/`w0` parametrisation (Dertinger 2007). The cross-correlation carries the known inter-focus distance `d` in an `exp(-d²/(w0²+4Dx))` term, so a global fit sharing `D`/`w0`/`s` (with `d` fixed) yields an **absolute** diffusion coefficient without a separately calibrated volume; it correctly peaks at a finite lag and reduces exactly to the auto-correlation at `d=0`. Verified through the real `ParseModel` scanner (params resolve to `N,D,w0,s,d,b`); headless test `test/fitting/test_fcs_2ffcs.py` (5 tests) asserts the physics. Documented what's implemented vs missing in a new OKF concept [references/two-focus-fcs.md](/references/two-focus-fcs.md) (missing: Dertinger's non-Gaussian modified detection function, which needs `erf` — unavailable in the string-equation evaluator's NumPy-only scope, so it needs an `erf` binding or a coded FCS model class; plus focus-distance calibration, a dedicated 2f channel-pairing preset, a guided global-fit GUI, triplet/multi-component variants, and an end-to-end absolute-`D` recovery test). Linked from [plugins/fcs.md](/plugins/fcs.md) and the references index.
 
-* **New plugin `burst_ebfret` — binned-trajectory smFRET HMM (ebFRET port).** Closes the one confocal/TIRF gap the burst group lacked: analysis of **binned intensity-vs-time FRET traces** (wide-field/camera data) rather than photon streams. Added `chisurf/plugins/burst/burst_ebfret/` — a Qt-free, NumPy/SciPy-only port of ebFRET (van de Meent et al.; a re-implementation of vbFRET): `core/vbem.py` (per-trace variational-Bayes EM over a univariate Gaussian-emission HMM — Dirichlet priors on initial/transition, Normal-Gamma emission prior in ebFRET's `(m,β,a,b)` form, linear-scaled forward-backward), `core/ebayes.py` (empirical-Bayes outer loop with conjugate h-step prior updates ported from ebFRET's `+dist/{dirichlet,normgamma}/h_step.m` — Dirichlet Newton + Normal-Gamma moment-matching), `core/viterbi.py`, `core/analysis.py` (K-scan + evidence selection + dwell/transition decoding), `io.py` (ebFRET stacked `.dat` loader), `api/models.py`, `backend/services.py` (`burst_ebfret.jobs.compute` RPC), `cli/main.py` (`ebfret compute`). **Validated against ebFRET's own `simulated-K04-N350` fixture** (vendored under `tests/data/`, 350 traces / 39,595 frames): at K=4 the port recovers `[0.03, 0.34, 0.51, 0.62]`, the two well-separated interior states within 0.05 of ebFRET's fitted `[0.33, 0.516]` — endpoints differ only because this port fits the uncorrected proximity ratio `A/(D+A)` whereas ebFRET fits a background-subtracted signal (donor-only near 0). Tests: 7 fast synthetic unit tests + 4 recovery/integration tests (3 `slow`) all pass (arm64 env; pixi env solve is currently broken on an unrelated `msgpack` candidate). Porting this one algorithm covers the functionality of four MATLAB-only TIRF tools on fret.community (**ebFRET, vbFRET, HaMMy, SMACKS**). Scope: single-prior D=1 path; prior-mixture subpopulations, SMD/session I/O, and a GUI tool are follow-ups. Marked `experimental`/`menu_hidden`. Grew out of a fret.community/software gap analysis vs ChiSurf (repos cloned into `junk/`). Other gaps assessed (not built): diffusion-FRET photon simulation is already substantially in **tttrlib** (`~/dev/tttrlib`, PRD-005 Burbulator port — 3D Brownian + PSF + FRET + TCSPC + CLSM, SPC-132 byte-exact; remaining: periodic/mirror BCs, Photon-HDF5 write, single-molecule throughput) and needs only surfacing via chisurf **PRD-53**; rFRET ratiometric + FLIM crosstalk correction can reuse the existing forward crosstalk-matrix builder (`plugins/core/lightpath_simulator/backend/simulator.py::get_crosstalk_matrices`), which is currently never inverted to correct measured data; wide-field camera-movie TIRF (spot localization/trace extraction) remains a genuine large gap but is pure-intensity and off ChiSurf's photon-centric path (only PAM's TIFF-stack phasor-FLIM ingest is FLIM-relevant). See [plugins/burst.md](/plugins/burst.md).
+* **New plugin `burst_ebfret` — binned-trajectory smFRET HMM (ebFRET port).** Closes the one confocal/TIRF gap the burst group lacked: analysis of **binned intensity-vs-time FRET traces** (wide-field/camera data) rather than photon streams. Added `chisurf/plugins/burst/burst_ebfret/` — a Qt-free, NumPy/SciPy-only port of ebFRET (van de Meent et al.; a re-implementation of vbFRET): `core/vbem.py` (per-trace variational-Bayes EM over a univariate Gaussian-emission HMM — Dirichlet priors on initial/transition, Normal-Gamma emission prior in ebFRET's `(m,β,a,b)` form, linear-scaled forward-backward), `core/ebayes.py` (empirical-Bayes outer loop with conjugate h-step prior updates ported from ebFRET's `+dist/{dirichlet,normgamma}/h_step.m` — Dirichlet Newton + Normal-Gamma moment-matching), `core/viterbi.py`, `core/analysis.py` (K-scan + evidence selection + dwell/transition decoding), `io.py` (ebFRET stacked `.dat` loader), `api/models.py`, `backend/services.py` (`burst_ebfret.jobs.compute` RPC), `cli/main.py` (`ebfret compute`). **Validated against ebFRET's own `simulated-K04-N350` fixture** (vendored under `tests/data/`, 350 traces / 39,595 frames): at K=4 the port recovers `[0.03, 0.34, 0.51, 0.62]`, the two well-separated interior states within 0.05 of ebFRET's fitted `[0.33, 0.516]` — endpoints differ only because this port fits the uncorrected proximity ratio `A/(D+A)` whereas ebFRET fits a background-subtracted signal (donor-only near 0). Tests: 7 fast synthetic unit tests + 4 recovery/integration tests (3 `slow`) all pass (arm64 env; pixi env solve is currently broken on an unrelated `msgpack` candidate). Porting this one algorithm covers the functionality of four numerical-computing-environment-only TIRF tools on fret.community (**ebFRET, vbFRET, HaMMy, SMACKS**). Scope: single-prior D=1 path; prior-mixture subpopulations, SMD/session I/O, and a GUI tool are follow-ups. Marked `experimental`/`menu_hidden`. Grew out of a fret.community/software gap analysis vs ChiSurf (repos cloned into `junk/`). Other gaps assessed (not built): diffusion-FRET photon simulation is already substantially in **tttrlib** (`~/dev/tttrlib`, PRD-005 Burbulator port — 3D Brownian + PSF + FRET + TCSPC + CLSM, SPC-132 byte-exact; remaining: periodic/mirror BCs, Photon-HDF5 write, single-molecule throughput) and needs only surfacing via chisurf **PRD-53**; rFRET ratiometric + FLIM crosstalk correction can reuse the existing forward crosstalk-matrix builder (`plugins/core/lightpath_simulator/backend/simulator.py::get_crosstalk_matrices`), which is currently never inverted to correct measured data; wide-field camera-movie TIRF (spot localization/trace extraction) remains a genuine large gap but is pure-intensity and off ChiSurf's photon-centric path (only PAM's TIFF-stack phasor-FLIM ingest is FLIM-relevant). See [plugins/burst.md](/plugins/burst.md).
 
 * **Extracted MMFDB into a self-contained sibling repository.** `modules/mmfdb` (178 in-tree files) was moved out to `~/dev/mmfdb` as a standalone, independently versioned package destined for `github.com/Fluorescence-Tools/mmfdb`, and chisurf now consumes it via a **symlink** `modules/mmfdb -> ../../mmfdb` (the established `imp-tricks` pattern). This leaned on chisurf being pre-wired for the split: the `sys.path` bootstrap (`chisurf/_bundled_packages.py`) resolves `modules/mmfdb/src` through the symlink unchanged, `pyproject.toml` already declares `mmfdb==0.1.0` and excludes it from `packages.find`, and `test/core/test_mmfdb_vendor_package.py` still passes (8/8). **New repo** (`~/dev/mmfdb`, `git init`, 202 files, 631 tests pass, docs build `-W` clean): dropped `EXTRACTION.md` + the stray `examples/None`; added own `.gitignore`, `MANIFEST.in`, `.github/workflows/ci.yml`, an `examples` extra (`tttrlib`/`fretbursts`/`phconvert`) and moved `test_min_client.py` into `tests/`; reframed `README.md` and fixed all `modules/mmfdb/…` doc paths to package-relative; host-neutrality still guarded by `tests/test_architecture.py`. **chisurf side:** removed `test/plugins/mmfdb/` (moved) and the redundant root `docker-compose.mmfdb.yml`; added an mmfdb sibling-clone/install step to `rattler-recipe/{build.sh,build.bat}` and the three CI workflows (closes the prior gap where the packaged app installed every local module *except* mmfdb); synced the `mmfdb_admin` manifest (added the pre-existing-undeclared `fluorophores.import_default_set`). Verified end-to-end through the symlink: vendor boundary, burst-workflow facade, H2MM-simulation, and notebook discovery all pass. **Examples decision:** the 8 chisurf-based notebooks stay in mmfdb with chisurf as an optional extra; docs render them non-executed (`nb_execution_mode="off"`), so the mmfdb doc build needs no chisurf. Nothing pushed — creating/pushing `Fluorescence-Tools/mmfdb` and the coordinated chisurf commit are left to the user.
 
@@ -26010,7 +26010,7 @@ front, not this).
 
 * **MMFDB — routed the demo seeder `admin/seed_example.py` through the DAO (PRD-26 burn-down).** The example-smFRET seeder is the last non-query module carrying scattered CRUD; it holds an `MFDatabase` handle throughout, so `db.dao` is in scope. Converted every existence-check-then-insert helper: the probe/experiment-type/poly-probe-position lookups (`SELECT … WHERE <non-PK/UNIQUE>` → `db.dao.list(filters=…, limit=1)`), the user/device/entity/assembly/condition/artifact/operation existence probes (`SELECT 1 WHERE <pk>` → `db.dao.get(...) is None`), and the raw inserts for `entities` + `entity_poly_seq`, `flr_entity_assembly`, `flr_sample_condition`, and `flr_poly_probe_position` → `db.dao.insert` (the last returning the autoincrement `id` via lastrowid). The `probe_types` `INSERT OR IGNORE`+SELECT-back collapsed into `dao.upsert(conflict=["type_name"])` + `dao.list`. **Correction to a documented "DAO limitation":** the two `INSERT OR REPLACE INTO mmfdb_operation_artifact` writes on the **4-column composite-PK junction** also went onto the DAO — `dao.upsert(conflict=["operation_id","artifact_id","direction","role"])` targets the full composite PK, and since the values *are* exactly those 4 columns the upsert is an idempotent `DO NOTHING` (identity-preserving, unlike the delete-and-reinsert of `INSERT OR REPLACE`). So `seed_example.py` is now **zero raw SQL**; composite-PK junctions are convertible whenever you can name the full PK as the conflict target (only *keyless* tables with no targetable UNIQUE remain a genuine limitation). Verified by **running the seeder twice** against temp DBs (both the flr-tables path and, with fabricated `.spc` fixtures, the artifact/operation/product path) — idempotent, all rows land. Standalone suite **420 passed, 1 skipped**. Audit: `seed_example.py` 13 select · 8 insert → 0/0/0; totals select 254 → 241, insert 77 → 69. **The non-query-module scattered CRUD is now fully eliminated.** Advances [PRD-26](/prds/prd-26.md)/[INC-05](/specs/assessment.md#inc-05).
 
-* **OKF — codified the change-tracking loop as a workflow concept.** Added [workflows/change-tracking.md](/workflows/change-tracking.md), the durable statement of the process rule the root `CLAUDE.md` and per-area change policy already point at: for **every material change** → update the matching OKF concept + any burn-down table/DoD, append a dated bullet to [okf/log.md](/log.md), mark done, and commit (locally only — [[feedback-no-push]]). It also spells out *how changes stay traceable* (log = running narrative, `specs/*-audit.md` = running totals, git = small self-describing verified commits, `HANDOVER.md` = the start-fresh brief with an explicit *what's next*). Linked it from [workflows/index.md](/workflows/index.md), pointed the root `CLAUDE.md` "Working practices" and `HANDOVER.md` at it, and folded "then commit" into the CLAUDE.md track-every-edit rule.
+* **OKF — codified the change-tracking loop as a workflow concept.** Added [workflows/change-tracking.md](/workflows/change-tracking.md), the durable statement of the process rule the root `CLAUDE.md` and per-area change policy already point at: for **every material change** → update the matching OKF concept + any burn-down table/DoD, append a dated bullet to [okf/log.md](/log.md), mark done, and commit (locally only — `feedback-no-push`). It also spells out *how changes stay traceable* (log = running narrative, `specs/*-audit.md` = running totals, git = small self-describing verified commits, `HANDOVER.md` = the start-fresh brief with an explicit *what's next*). Linked it from [workflows/index.md](/workflows/index.md), pointed the root `CLAUDE.md` "Working practices" and `HANDOVER.md` at it, and folded "then commit" into the CLAUDE.md track-every-edit rule.
 
 * **MMFDB — removed the last scattered reads in `api.py` + `adapters/chinet.py` (PRD-26).** `api.py`'s two `SELECT 1 FROM mmfdb_object_acl …` ACL-existence probes now reuse the already-DAO-backed `security.auth._get_object_acl` (DRY — the ACL lookup lives in one place); `adapters/chinet.py`'s `flr_experiment` existence check → `db.dao.get(..., include_deleted=True)`. Both non-query modules are now SQL-free. (The `provenance/lineage.py` label reads stay raw — that module is bespoke graph traversal: DISTINCT/`IN`/recursive lineage the DAO can't express.) Standalone suite **420 passed, 1 skipped**. Audit: select 257 → 254. Advances [PRD-26](/prds/prd-26.md)/[INC-05](/specs/assessment.md#inc-05).
 
@@ -26052,7 +26052,7 @@ front, not this).
 
 * **CLAUDE.md refresh + AGENTS.md folded in.** Added a "Working practices" policy — *mark work done in its tracker* (PRD `status:`/DoD, index glyph, assessment row) and *track every edit in OKF* (update the matching concept + append to this log). Folded the durable parts of the removed root `AGENTS.md` into CLAUDE.md (change policy, Qt/`--no-deps`/`python -m chisurf`/`PYTHONPATH` gotchas, docs build, testing & rendering conventions, imp-tricks split pointer, client-server plugin standard, object-store pointer to [architecture/mmfdb.md](/architecture/mmfdb.md)); stale bits were redirected to OKF rather than copied, and `overhaul/` references in CLAUDE.md were repointed at `okf/prds/`.
 
-* **Notes integration**: Folded the loose top-level `notes/` working files into the bundle so their durable knowledge is curated rather than lost. New concepts: [ChiMOL viewer profile](/plugins/profiles/chimol.md) (PyMOL-style `cmd` surface + Qt-free renderer / ImGui-migration constraints, from the moview→chimol cmd-parity notes) and [Known issues & gotchas](/references/known-issues.md) (still-open functional bugs + recurring engineering pitfalls distilled from two working bug logs). Enriched existing concepts: [MMFDB](/architecture/mmfdb.md) gained an object-store & provenance-aware-reader section; [MMFDB Admin](/plugins/profiles/mmfdb-admin.md) gained the dictionary-driven `EntityDock` architecture; [Modelling](/plugins/modelling.md) gained durable FRET-engine facts (AV backends, `fps.json` keys, evaluators, OLGA reuse) + the superset roadmap pointer; [GUI & AutoForm](/subsystems/gui-autoform.md) gained the shared node-editor widget (versioned JSON graph schema + DAG); [Light Path Simulator](/plugins/profiles/lightpath-simulator.md) gained a preset-format / graph-normalization / macOS-combobox gotchas section. Verified against the tree first — the object store, mmfdb-admin `EntityDock`, chimol `sele_parser`, and FRET evaluators have all landed; the node editor now lives at `chisurf/gui/widgets/node_editor`. Fixed-bug play-by-play and already-resolved TODOs were treated as archive and not copied.
+* **Notes integration**: Folded the loose top-level `notes/` working files into the bundle so their durable knowledge is curated rather than lost. New concepts: [ChiMOL viewer profile](/plugins/profiles/chimol.md) (reference-viewer-style `cmd` surface + Qt-free renderer / ImGui-migration constraints, from the moview→chimol cmd-parity notes) and [Known issues & gotchas](/references/known-issues.md) (still-open functional bugs + recurring engineering pitfalls distilled from two working bug logs). Enriched existing concepts: [MMFDB](/architecture/mmfdb.md) gained an object-store & provenance-aware-reader section; [MMFDB Admin](/plugins/profiles/mmfdb-admin.md) gained the dictionary-driven `EntityDock` architecture; [Modelling](/plugins/modelling.md) gained durable FRET-engine facts (AV backends, `fps.json` keys, evaluators, OLGA reuse) + the superset roadmap pointer; [GUI & AutoForm](/subsystems/gui-autoform.md) gained the shared node-editor widget (versioned JSON graph schema + DAG); [Light Path Simulator](/plugins/profiles/lightpath-simulator.md) gained a preset-format / graph-normalization / macOS-combobox gotchas section. Verified against the tree first — the object store, mmfdb-admin `EntityDock`, chimol `sele_parser`, and FRET evaluators have all landed; the node editor now lives at `chisurf/gui/widgets/node_editor`. Fixed-bug play-by-play and already-resolved TODOs were treated as archive and not copied.
 
 * **MMFDB Admin packaging**: Moved the MMFDB Admin application into the MMFDB package as `mmfdb.admin` (backend, GUI, CLI, and JSON view specs). The ChiSurf `core/mmfdb_admin` plugin now points its manifest and wrappers at `mmfdb.admin`, and root package discovery no longer includes `modules/mmfdb_admin/src` as a separate package source.
 
@@ -26172,7 +26172,7 @@ front, not this).
 
 * **Migration**: Moved the former top-level `SPECS/` target specs into the OKF bundle as the [specs](/specs/index.md) group — `overview`, `core`, `rpc`, `mmfdb`, `plugins`, the [assessment](/specs/assessment.md) backlog, and the [template](/specs/template.md). Converted each to an OKF concept (frontmatter + bundle-relative links) and cross-linked the target specs to their current-state concepts. Removed `SPECS/`.
 
-* **Initialization**: Created the ChiSurf OKF bundle — root [index](/index.md), [overview](/overview.md), and the `architect
+* **Initialization**: Created the ChiSurf OKF bundle — root [index](/index.md), [overview](/overview.md), and the `architecture/`, `subsystems/`, `workflows/`, and `references/` groups.
 * **An isotropic sample was reading r = +0.167.** `LifetimeModel._tcspc_rt_curves`
   — the r(t) curve shown for a VV/VH fit — computed `(VV - VH) / (g VV + 2 VH)`:
   the denominator G-corrected, the numerator raw. That agrees with the truth only
@@ -26370,7 +26370,7 @@ front, not this).
   without error while doing nothing. The guard test now reads the actions, checks
   every demo has an entry, and rebuilds the bar to prove the menu survives it.
 
-  Built after the bar instead, so it sits at the end where PyMOL's own menus stop.
+  Built after the bar instead, so it sits at the end where the reference viewer's own menus stop.
   Verified in a real window: **Demo ▸ Cartoon and colour** loads and draws.
   Documented in [guide 44](../docs/guides/44_molecular_viewer.md), including
   running the same scripts as `@demos/cartoon.pml`.
@@ -26698,7 +26698,7 @@ front, not this).
   representation, lighting presets, the publication look, the trajectory, and
   measuring. They are **ChiMOL scripts, not Python**, one command per line, run
   exactly as `@file.pml` does — which makes them a test of *language parity with
-  PyMOL* rather than of the internals, and documentation that runs. Each starts
+  the reference viewer* rather than of the internals, and documentation that runs. Each starts
   with `delete all`, or the seventh demo shows a pile of seven molecules.
   "Edit a demo" opens chisurf's code editor when chisurf is there and a small
   shipped editor when it is not, so the entry is never dead in a standalone
@@ -26909,20 +26909,20 @@ front, not this).
 
 * **chimol: every button swept; three representations were menu-unreachable and
   the plane was a grey sheet.** Asked to check all the GUI buttons and to look at
-  the representations chimol has beyond PyMOL's.
+  the representations chimol has beyond the reference viewer's.
 
   Clicking all 17 named buttons on the main window, watching the scene after
   each: **`trace`, `nonbonded` and `metaball` were reachable only from the
   toolbar.** A menu-driven session could not get at them, which defeats the point
-  of the menus, and `metaball` is the clearest case — PyMOL has no equivalent, so
-  a PyMOL user has no reason to go looking for it. All three now appear in the S
+  of the menus, and `metaball` is the clearest case — the reference viewer has no equivalent, so
+  a reference viewer user has no reason to go looking for it. All three now appear in the S
   and H menus with a note saying what they are, and each is checked to actually
   draw.
 
-  That collided with a test asserting the menus are **exactly** PyMOL's. The
-  target settles it — extensions are *additive* — so the test now asserts PyMOL's
-  entries are a **prefix**, in PyMOL's order, with additions after them and no
-  duplication. The familiar part of the menu stays where a PyMOL user expects it.
+  That collided with a test asserting the menus are **exactly** the reference viewer's. The
+  target settles it — extensions are *additive* — so the test now asserts the reference viewer's
+  entries are a **prefix**, in the reference viewer's order, with additions after them and no
+  duplication. The familiar part of the menu stays where a reference viewer user expects it.
 
   **The reference plane was unusable.** `_grid_spacing` is 1.0 in *scene* units
   while a protein's radius is a couple of hundred, so `show plane` drew ~415 lines
@@ -26949,7 +26949,7 @@ front, not this).
   schema objects, data-only settings migration. What was left unmined was the
   larger half: the widget framework, the concurrency and messaging contracts,
   the testing harness, and the presentation conventions. Recorded as
-  [Orange3 mining](/references/orange3-mining.md) — a path index of ~30 areas
+  [the data-mining suite mining](/references/orange3-mining.md) — a path index of ~30 areas
   with a chisurf equivalent, verdict and 1–5 value for each, following the
   [QuickFit3 mining](/references/quickfit3-mining.md) format; patterns are
   documented prior art for independent reimplementation, never GPL code copies.
@@ -27293,18 +27293,18 @@ front, not this).
   correctly rejects that draw, so asserting on it tested the noise rather than
   the model.
 
-* **chimol: a `lighting` command with ChimeraX's presets.** Second item on the
+* **chimol: a `lighting` command with the reference volume viewer's presets.** Second item on the
   rendering roadmap, on the scaffolding from the previous commit.
 
-  The shader gained ChimeraX's model — a **key light, a fill light and an ambient
+  The shader gained the reference volume viewer's model — a **key light, a fill light and an ambient
   term**, each with its own intensity — replacing one hard-coded direction. With
   key 1, fill 0 and ambient at the old value the formula is unchanged, so the
   default look does not move. That is what lets `soft` (all ambient, no key
-  light) and `flat` exist at all; they are the presets that give a ChimeraX
+  light) and `flat` exist at all; they are the presets that give a reference volume viewer
   figure its appearance.
 
   All six presets transcribed from `std_commands/src/lighting.py`, with the
-  parameter names kept as ChimeraX spells them, so a preset is a dict of them and
+  parameter names kept as the reference volume viewer spells them, so a preset is a dict of them and
   the command layer needs no translation table.
 
   **What it cannot do, it names.** `shadows` and `multishadow` need shadow maps,
@@ -27312,7 +27312,7 @@ front, not this).
   which two parts it skipped — a preset that quietly does three of its five
   things is worse than one that reports, because `full` without shadows is a
   different look. For the same reason `soft` and `gentle` are currently
-  *identical*: in ChimeraX they differ only in shadow-map size and depth bias. A
+  *identical*: in the reference volume viewer they differ only in shadow-map size and depth bias. A
   test pins that equality, so when multishadow lands the test fails and forces
   the difference to become real.
 
@@ -27433,7 +27433,7 @@ front, not this).
   form; rows of other loops are skipped without being split, so the scan costs
   nothing on an `atom_site` loop. Nine tests pin all four layouts — the function
   previously had none, which is why none of this showed. See
-  [pymol-parity](/plugins/pymol-parity.md).
+  [reference-viewer-parity](/plugins/pymol-parity.md).
 
 * **chimol: render-to-texture scaffolding, and silhouettes on top of it.** The
   first thing from the [ChiMOL target](/specs/chimol.md)'s rendering roadmap.
@@ -27500,12 +27500,12 @@ front, not this).
   and the E–S tab renders empty axes with no explanation when I_AA is unmapped
   (RF-310).
 
-* **ChiMOL target: the rendering design, and what else ChimeraX is worth reading
+* **ChiMOL target: the rendering design, and what else the reference volume viewer is worth reading
   for.** Two additions to [specs/chimol](/specs/chimol.md) and
-  [pymol-parity](/plugins/pymol-parity.md), both surveys rather than
+  [reference-viewer-parity](/plugins/pymol-parity.md), both surveys rather than
   implementations — recorded so the next round starts from the design.
 
-  **Silhouettes, transcribed but not built.** From ChimeraX's
+  **Silhouettes, transcribed but not built.** From the reference volume viewer's
   `USE_DEPTH_OUTLINE` shader and `Silhouette._draw_depth_outline`: a full-screen
   pass that takes the minimum depth over a disc around each fragment and draws
   where the gap exceeds a threshold. The part that is not guessable is the
@@ -27523,13 +27523,13 @@ front, not this).
   the second and third expensive. Not started: it rewrites the one function that
   draws everything, and it can only be verified in a real window.
 
-  **Beyond rendering**, on the user's steer that ChimeraX's UI and plugin system
+  **Beyond rendering**, on the user's steer that reference volume viewer's UI and plugin system
   are worth taking from:
 
   - **typed command arguments** (`core/src/commands/cli.py`): each argument is an
     `Annotation` that parses itself and says what went wrong. ChiMOL's layer takes
     strings and does ad-hoc conversion with a hand-written message per site.
-    Compatible with keeping PyMOL's syntax — the grammar stays, the diagnostics
+    Compatible with keeping the reference viewer's syntax — the grammar stays, the diagnostics
     improve;
   - **the bundle system**: 193 bundles declaring **Providers against named
     Managers**, so a capability is declared and discovered rather than registered
@@ -27539,12 +27539,12 @@ front, not this).
     deliberately.
 
 * **The ChiMOL target, written down.** New target spec
-  [specs/chimol](/specs/chimol.md): a PyMOL clone that is **command-compatible
-  with PyMOL and better than it**, built by reading both sources. The two answer
-  different questions and the distinction is the point — **PyMOL**
+  [specs/chimol](/specs/chimol.md): a reference viewer clone that is **command-compatible
+  with the reference viewer and better than it**, built by reading both sources. The two answer
+  different questions and the distinction is the point — **the reference viewer**
   (`junk/pymol-open-source`) is the authority on *behaviour*, so when ChiMOL and
-  PyMOL disagree about what `orient` means PyMOL is right by definition;
-  **ChimeraX** (`junk/ChimeraX`, already checked out) is the reference for *how to
+  the reference viewer disagree about what `orient` means the reference viewer is right by definition;
+  **The reference volume viewer** (`junk/ChimeraX`, already checked out) is the reference for *how to
   do it well*, and explicitly not the compatibility authority.
 
   The spec carries the principles this effort has actually paid for: read the
@@ -27552,18 +27552,18 @@ front, not this).
   its size*; no external library where a source read will do; one table, one seam;
   a gap that is shown beats a gap that is hidden.
 
-  It also carries the rendering roadmap, surveyed from ChimeraX's
+  It also carries the rendering roadmap, surveyed from the reference volume viewer's
   `graphics/src/opengl.py`, `fragmentShader.txt` and
   `std_commands/src/lighting.py`. Its model is key/fill/ambient intensities, a
   directional shadow map, **multishadow** (N shadow maps over a sphere of
   directions — real ambient occlusion rather than a per-vertex estimate),
   depth-buffer **silhouettes**, and depth cue, exposed as *named looks*
-  (`simple`, `full`, `soft`, `gentle`, `flat`). PyMOL has no equivalent outside
-  its ray tracer, so this is the axis on which "better than PyMOL" is won. Order
-  of work: silhouettes, a `lighting` command with ChimeraX's preset names,
+  (`simple`, `full`, `soft`, `gentle`, `flat`). The reference viewer has no equivalent outside
+  its ray tracer, so this is the axis on which "better than the reference viewer" is won. Order
+  of work: silhouettes, a `lighting` command with the reference volume viewer's preset names,
   multishadow occlusion, depth cue.
 
-  [pymol-parity](/plugins/pymol-parity.md) keeps its job — the measured gap, the
+  [Reference-viewer-parity](/plugins/pymol-parity.md) keeps its job — the measured gap, the
   tier list and the findings — and now points at the target rather than restating
   it.
 
@@ -27639,11 +27639,11 @@ front, not this).
 * **chimol: `split_chains` left the source drawn on top of every chain.** Reported
   as "after split chains cartoons look weird", and it was two bugs.
 
-  PyMOL's `split_chains` ends with `_self.disable(model)` — it **hides the
+  The reference viewer's `split_chains` ends with `_self.disable(model)` — it **hides the
   source** after making the per-chain copies. chimol did not, so the whole
   structure stayed drawn over every chain: two cartoons per residue in the same
-  place, fighting for the depth buffer. Hidden rather than deleted, as PyMOL does:
-  re-enabling it is how the split is undone. Also added PyMOL's `group` argument,
+  place, fighting for the depth buffer. Hidden rather than deleted, as the reference viewer does:
+  re-enabling it is how the split is undone. Also added the reference viewer's `group` argument,
   which puts the copies straight into a group.
 
   **The second bug has reach well beyond this command.** Hiding the source did not
@@ -27734,7 +27734,7 @@ front, not this).
   (RF-078).** The renderer keeps `(xyz - raw_center) * scale` beside the Angstrom
   atom array, so a scene-space rotation pivots on the molecule's centre.
   `apply_transform_to_object` rotated the atom array about the PDB coordinate
-  origin instead, leaving the two 53 Å apart on 148L after `rotate z, 90` — the
+  zero point instead, leaving the two 53 Å apart on 148L after `rotate z, 90` — the
   picture said one thing and `get_area`, `alter_state`, `save` and every `within`
   selection said another. The pivot is now applied, and the method's scene-unit
   contract is written down rather than inferred. The same fix exposed the mirror
@@ -27745,13 +27745,13 @@ front, not this).
   `test_transform_sync.py` — rather than the centred-distance comparison that let
   it through.
 
-* **chimol: the space-group operators now come from PyMOL's own table, not a hand
+* **chimol: the space-group operators now come from the reference viewer's own table, not a hand
   table.** Yesterday's symmetry commit shipped 27 groups entered by hand, on the
   reasoning that no crystallography library is installed. That was the wrong trade
   for a parity project: a hand table covers the common cases and diverges from
-  PyMOL everywhere else.
+  the reference viewer everywhere else.
 
-  PyMOL keeps the data in `modules/pymol/xray.py` as `sym_base` — a dict from a
+  The reference viewer keeps the data in `modules/pymol/xray.py` as `sym_base` — a dict from a
   *tuple of operator strings* to the names sharing them — plus `space_group_map`
   for alternative spellings. Transcribed into `analysis/space_groups.py` by
   `make_space_groups.py`, checked in beside it so the extraction can be redone and
@@ -28021,7 +28021,7 @@ front, not this).
   whose reader and six models no longer exist. Findings RF-263..RF-268.
 * **Dynamic PDA's moment match was matched on the wrong support (RF-258).** The
   Szabo–Gopich route in
-  [`chisurf/core/fluorescence/kinetics.py`](chisurf/core/fluorescence/kinetics.py)
+  [`chisurf/core/fluorescence/kinetics.py`](../chisurf/core/fluorescence/kinetics.py)
   fitted its beta on `[0, 1]` — the interval a green probability is *defined* on.
   But the observable is a **time average** of a piecewise-constant quantity, i.e.
   a convex combination of the state values, so it can only reach
@@ -28046,7 +28046,7 @@ front, not this).
   `two_state_occupation_quadrature`; `test_pda_time_binned.py`'s moment-match
   test asserted the *old* failure and now asserts the agreement. Narrowed
   guidance follows into `dynamic_mc.py` and
-  [`docs/concepts/pda.md`](docs/concepts/pda.md). See
+  `docs/concepts/pda.md`. See
   [prds/prd-50.md](/prds/prd-50.md).
 
 * **chimol: `sort` and `mask`/`unmask`.** The priority table is transcribed from
@@ -28054,14 +28054,14 @@ front, not this).
   already drawn from data. My first rule folded the branch digit into the priority
   and disagreed with **both** hydrogenated structures checked — 10% of atoms in
   148L, 2% in hGBP1 — which I initially read as "these files are non-canonical".
-  They are not: PyMOL's priority depends **only on the Greek letter**, so `CG2`
+  They are not: the reference viewer's priority depends **only on the Greek letter**, so `CG2`
   and `OG1` both score 5 and the *name* comparison settles them, giving `CG2`
   first, exactly as deposited files have it. The rule was wrong, not the files.
 
-  The second surprise: a one-character `C` or `O` scores 997/998, so PyMOL's
+  The second surprise: a one-character `C` or `O` scores 997/998, so the reference viewer's
   canonical order is `N, CA, CB, ..., C, O, OXT` — side chain *before* the
   carbonyl, which is not PDB write order. Sorting a freshly loaded file therefore
-  moves 74% of its atoms, and matching PyMOL means accepting that.
+  moves 74% of its atoms, and matching the reference viewer means accepting that.
 
   **The consequence, not the ordering, is the dangerous part.** A reorder
   invalidates every array indexed by atom and every bond index. The atom-indexed
@@ -28143,7 +28143,7 @@ front, not this).
   number of states; `ends` is a **four-way** choice rather than a boolean (skip
   one / skip none / skip a half-window / wrap the trajectory); the average divides
   by the number of states actually **found**, not the window width — dividing by
-  the width pulls states near an end towards the origin, which reads as the
+  the width pulls states near an end towards the zero point, which reads as the
   trajectory collapsing; and `cutoff` stops the window extending across a jump,
   padding with the last good position so an atom crossing a periodic boundary is
   not averaged with its own image.
@@ -28176,14 +28176,14 @@ front, not this).
   Measured on `hGBP1_closed.pdb` (4671 deposited hydrogens),
   `valence(element) - heavy neighbours` is wrong for **41.6% of atoms** — it puts
   a hydrogen on every carbonyl carbon, every carboxyl oxygen and every aromatic
-  carbon. PyMOL warns about exactly this in `h_add`'s help. Standard residues
+  carbon. The reference viewer warns about exactly this in `h_add`'s help. Standard residues
   therefore use a template, which is exact for proteins.
 
   Validated by stripping that protein's hydrogens and putting them back:
   **99.78% of counts correct** (4634/4644), **median position error 0.10 Å**,
   97.8% within 1.0 Å, and no clash below 0.8 Å. The 2.8% beyond 1 Å are *all*
   rotatable terminal groups — hydroxyls, thiols, amide and guanidinium NH₂ —
-  whose torsion the geometry does not fix and which PyMOL also places
+  whose torsion the geometry does not fix and which reference viewer also places
   arbitrarily. A test pins that set, so a backbone atom appearing there fails
   rather than being absorbed into the tolerance.
 
@@ -28309,7 +28309,7 @@ front, not this).
   transposes a scheme when it is read the other way round.
 
 * **chimol: sessions.** `session_save` / `session_load` / `session_info`, with
-  `save x.pse` and `load x.pse` routed by extension because that is what a PyMOL
+  `save x.pse` and `load x.pse` routed by extension because that is what a reference viewer
   user types. Everything comes back: objects, representations, per-atom colours,
   manual bonds and their orders, group collapse state, named scenes, display
   settings and the camera down to its clip planes. Verified by comparing two real
@@ -28336,15 +28336,15 @@ front, not this).
   - **`get_view` is a command, not a viewer method** (`get_view_state` is), so the
     first version stored a null view behind an `except` clause.
 
-  Deliberately **not** PyMOL-compatible: a `.pse` is a pickle of PyMOL's C
+  Deliberately **not** reference-viewer-compatible: a `.pse` is a pickle of the reference viewer's C
   structures. chimol writes a zip of `manifest.json` + `arrays.npz` — readable
   without chimol, and loading one cannot execute code (`allow_pickle=False`),
   because a format people exchange should not be a code-execution path. Writing to
-  `.pse` says so, and a real PyMOL session handed to `session_load` is named as
+  `.pse` says so, and a real the reference viewer session handed to `session_load` is named as
   such rather than reported as corrupt. Anything a session cannot carry is named
   in the message rather than dropped.
 
-  21 tests, a new guide section, and [pymol-parity](/plugins/pymol-parity.md)
+  21 tests, a new guide section, and [reference-viewer-parity](/plugins/pymol-parity.md)
   updated — sessions were a Tier 1 gap.
 
 * **Molecule-wise MLE takes the shared region GUI, and a five-year-old
@@ -28422,11 +28422,11 @@ front, not this).
   parity, hole handling); 20 in the file and 819 in `test/core` green.
 
 * **chimol: bond editing, and a test fixture that could not exist.** `bond`,
-  `unbond` and `get_bonds` transcribed from PyMOL's `editing.py`/`querying.py`.
+  `unbond` and `get_bonds` transcribed from the reference viewer's `editing.py`/`querying.py`.
   `bond` takes exactly one atom from each selection in the same object and
   re-bonding a pair sets its *order*; `unbond` removes every bond running between
   two selections; `get_bonds` returns `(atm1, atm2, order)` where the indices are
-  0-based **positions within the selection**, not `index` — PyMOL warns about that
+  0-based **positions within the selection**, not `index` — the reference viewer warns about that
   in capitals, and the two coincide for `all`, so a test that checks only `all`
   cannot tell the difference.
 
@@ -28660,7 +28660,7 @@ front, not this).
   [subsystems/gui-autoform.md](/subsystems/gui-autoform.md).
 
 * **chimol: object groups, and three ways to get a hierarchy wrong.** All eleven
-  of PyMOL's `group` actions plus `ungroup` and `order`, with group header rows
+  of the reference viewer's `group` actions plus `ungroup` and `order`, with group header rows
   in the objects panel — a disclosure marker, the same five A/S/H/L/C menus an
   object row carries, and indented members that collapse away without unloading
   anything.
@@ -28683,15 +28683,15 @@ front, not this).
     command. It only looked correct because the names are usually already in
     panel order.
   - **The second argument means members *or* an action.** `group kinases, close`
-    is how PyMOL's own menu writes it and how every example in its help text is
+    is how the reference viewer's own menu writes it and how every example in its help text is
     written; reading the word as an object name reports a missing object for all
     of them.
 
   A group used as a menu target expands to one command per member, which is
-  PyMOL's documented behaviour. Not yet supported: a group name inside an *atom
+  the reference viewer's documented behaviour. Not yet supported: a group name inside an *atom
   selection* (`show cartoon, ligands`), because the resolver returns a single
   `(object_id, mask)` pair — noted in the guide and in
-  [pymol-parity](/plugins/pymol-parity.md).
+  [reference-viewer-parity](/plugins/pymol-parity.md).
 
   33 tests, a regenerated `chimol_groups_panel.png` figure, and a new section in
   [guide 44](../docs/guides/44_molecular_viewer.md).
@@ -28881,8 +28881,8 @@ front, not this).
   any plot drawn beside its image needs. And the whole panel exists at all
   because looking at it is how the layout got fixed.
 
-  Docs: [concepts/particle_tracking](docs/concepts/particle_tracking.md) and
-  [guide 50](docs/guides/50_particle_tracking.md), both with real screenshots of
+  Docs: [concepts/particle_tracking](../docs/concepts/particle_tracking.md) and
+  [guide 50](../docs/guides/50_particle_tracking.md), both with real screenshots of
   a simulation with a **known** D — the figure shows 8 particles at
   D = 0.5 px²/frame recovered as 0.504 ± 0.1, and the tool still printing a
   "Read with care" note because eight tracks is not many. 20 plugin tests.
@@ -28931,14 +28931,14 @@ front, not this).
   Measured on `hGBP1_closed.pdb` (4671 deposited hydrogens),
   `valence(element) - heavy neighbours` is wrong for **41.6% of atoms** — it puts
   a hydrogen on every carbonyl carbon, every carboxyl oxygen and every aromatic
-  carbon. PyMOL warns about exactly this in `h_add`'s help. Standard residues
+  carbon. The reference viewer warns about exactly this in `h_add`'s help. Standard residues
   therefore use a template, which is exact for proteins.
 
   Validated by stripping that protein's hydrogens and putting them back:
   **99.78% of counts correct** (4634/4644), **median position error 0.10 Å**,
   97.8% within 1.0 Å, and no clash below 0.8 Å. The 2.8% beyond 1 Å are *all*
   rotatable terminal groups — hydroxyls, thiols, amide and guanidinium NH₂ —
-  whose torsion the geometry does not fix and which PyMOL also places
+  whose torsion the geometry does not fix and which reference viewer also places
   arbitrarily. A test pins that set, so a backbone atom appearing there fails
   rather than being absorbed into the tolerance.
 
@@ -29021,7 +29021,7 @@ front, not this).
   files are being edited elsewhere.
 
 * **chimol: sessions.** `session_save` / `session_load` / `session_info`, with
-  `save x.pse` and `load x.pse` routed by extension because that is what a PyMOL
+  `save x.pse` and `load x.pse` routed by extension because that is what a reference viewer
   user types. Everything comes back: objects, representations, per-atom colours,
   manual bonds and their orders, group collapse state, named scenes, display
   settings and the camera down to its clip planes. Verified by comparing two real
@@ -29048,15 +29048,15 @@ front, not this).
   - **`get_view` is a command, not a viewer method** (`get_view_state` is), so the
     first version stored a null view behind an `except` clause.
 
-  Deliberately **not** PyMOL-compatible: a `.pse` is a pickle of PyMOL's C
+  Deliberately **not** reference-viewer-compatible: a `.pse` is a pickle of the reference viewer's C
   structures. chimol writes a zip of `manifest.json` + `arrays.npz` — readable
   without chimol, and loading one cannot execute code (`allow_pickle=False`),
   because a format people exchange should not be a code-execution path. Writing to
-  `.pse` says so, and a real PyMOL session handed to `session_load` is named as
+  `.pse` says so, and a real the reference viewer session handed to `session_load` is named as
   such rather than reported as corrupt. Anything a session cannot carry is named
   in the message rather than dropped.
 
-  21 tests, a new guide section, and [pymol-parity](/plugins/pymol-parity.md)
+  21 tests, a new guide section, and [reference-viewer-parity](/plugins/pymol-parity.md)
   updated — sessions were a Tier 1 gap.
 
 * **Ratio-FRET maps: a hole no longer votes on its neighbours (RF-036).** The
@@ -29075,11 +29075,11 @@ front, not this).
   parity, hole handling); 20 in the file and 819 in `test/core` green.
 
 * **chimol: bond editing, and a test fixture that could not exist.** `bond`,
-  `unbond` and `get_bonds` transcribed from PyMOL's `editing.py`/`querying.py`.
+  `unbond` and `get_bonds` transcribed from the reference viewer's `editing.py`/`querying.py`.
   `bond` takes exactly one atom from each selection in the same object and
   re-bonding a pair sets its *order*; `unbond` removes every bond running between
   two selections; `get_bonds` returns `(atm1, atm2, order)` where the indices are
-  0-based **positions within the selection**, not `index` — PyMOL warns about that
+  0-based **positions within the selection**, not `index` — the reference viewer warns about that
   in capitals, and the two coincide for `all`, so a test that checks only `all`
   cannot tell the difference.
 
@@ -29189,7 +29189,7 @@ front, not this).
   but **linking had no prior art at all** — `linear_sum_assignment` appeared
   nowhere in the tree — so there was no path from spots to transport. New
   Qt-free core
-  [`chisurf/core/fluorescence/imaging/tracking.py`](chisurf/core/fluorescence/imaging/tracking.py):
+  [`chisurf/core/fluorescence/imaging/tracking.py`](../chisurf/core/fluorescence/imaging/tracking.py):
   à-trous/quantile detection, exact frame-to-frame assignment under a maximum
   linking distance, gap closing, time-averaged MSD, and a fit of `D` and the
   anomalous exponent — plus `simulate_particle_movie`, since the existing CLSM
@@ -29343,7 +29343,7 @@ front, not this).
   [subsystems/gui-autoform.md](/subsystems/gui-autoform.md).
 
 * **chimol: object groups, and three ways to get a hierarchy wrong.** All eleven
-  of PyMOL's `group` actions plus `ungroup` and `order`, with group header rows
+  of the reference viewer's `group` actions plus `ungroup` and `order`, with group header rows
   in the objects panel — a disclosure marker, the same five A/S/H/L/C menus an
   object row carries, and indented members that collapse away without unloading
   anything.
@@ -29366,15 +29366,15 @@ front, not this).
     command. It only looked correct because the names are usually already in
     panel order.
   - **The second argument means members *or* an action.** `group kinases, close`
-    is how PyMOL's own menu writes it and how every example in its help text is
+    is how the reference viewer's own menu writes it and how every example in its help text is
     written; reading the word as an object name reports a missing object for all
     of them.
 
   A group used as a menu target expands to one command per member, which is
-  PyMOL's documented behaviour. Not yet supported: a group name inside an *atom
+  the reference viewer's documented behaviour. Not yet supported: a group name inside an *atom
   selection* (`show cartoon, ligands`), because the resolver returns a single
   `(object_id, mask)` pair — noted in the guide and in
-  [pymol-parity](/plugins/pymol-parity.md).
+  [reference-viewer-parity](/plugins/pymol-parity.md).
 
   33 tests, a regenerated `chimol_groups_panel.png` figure, and a new section in
   [guide 44](../docs/guides/44_molecular_viewer.md).
@@ -29442,7 +29442,7 @@ front, not this).
     that array is finalised. The sequence strip was a *third* copy, refreshed by
     `color` and not by `spectrum`.
   - **`nonbonded_size` was applied to non-polymers rather than to unbonded
-    atoms.** PyMOL shrinks waters and free ions; chimol was quartering every
+    atoms.** the reference viewer shrinks waters and free ions; chimol was quartering every
     bonded ligand, so `show cartoon, polymer` + `show spheres, organic` drew the
     ligand as a scatter of dots. Now derived from the inferred bond list, so it
     agrees with the `nonbonded` selection keyword.
@@ -29459,7 +29459,7 @@ front, not this).
   dominated by centre spread. It is glaring on screen and easy to sleep through
   in an assertion — the first threshold written for it passed the bug.
 
-  Updated [pymol-parity](/plugins/pymol-parity.md), including a correction to
+  Updated [reference-viewer-parity](/plugins/pymol-parity.md), including a correction to
   its capture notes: offscreen `grabFramebuffer` is black, so offscreen proves
   geometry and cannot prove shading, representation flags, or anything the scene
   builder decides.
@@ -29599,7 +29599,7 @@ front, not this).
   2CDE) and fit them in *discrete* time (H2MM), but nothing in the tree computed
   `exp(K dt)` — so there was no way to get a rate constant in s^-1 without first
   choosing a tick. New Qt-free core
-  [`chisurf/core/fluorescence/burst/gopich_szabo.py`](chisurf/core/fluorescence/burst/gopich_szabo.py):
+  [`chisurf/core/fluorescence/burst/gopich_szabo.py`](../chisurf/core/fluorescence/burst/gopich_szabo.py):
   spectral propagation of the photon-by-photon likelihood with per-photon
   rescaling, an arbitrary `(n_states, n_colors)` emission matrix (so 2- and
   3-colour are one code path), a multi-dataset form that lets two excitation
@@ -29631,10 +29631,10 @@ front, not this).
   spans two or more decades, restoring automatic spacing when zoomed in closer.
 
   Also promoted the burst photon extractor to
-  [`chisurf/core/fluorescence/burst/photons.py`](chisurf/core/fluorescence/burst/photons.py)
+  [`chisurf/core/fluorescence/burst/photons.py`](../chisurf/core/fluorescence/burst/photons.py)
   (it was reachable only by importing the H2MM plugin), and added
-  [concepts/photon_by_photon_kinetics](docs/concepts/photon_by_photon_kinetics.md)
-  + [guide 49](docs/guides/49_photon_by_photon_kinetics.md) with real screenshots.
+  [concepts/photon_by_photon_kinetics](../docs/concepts/photon_by_photon_kinetics.md)
+  + [guide 49](../docs/guides/49_photon_by_photon_kinetics.md) with real screenshots.
   Tests: 30 core + 24 plugin, plus 50 H2MM and 21 AutoForm green after the moves.
 
 * **A gated selection in the explorer can now become a full ChiSurf fit, and the
@@ -29918,7 +29918,7 @@ front, not this).
     that array is finalised. The sequence strip was a *third* copy, refreshed by
     `color` and not by `spectrum`.
   - **`nonbonded_size` was applied to non-polymers rather than to unbonded
-    atoms.** PyMOL shrinks waters and free ions; chimol was quartering every
+    atoms.** the reference viewer shrinks waters and free ions; chimol was quartering every
     bonded ligand, so `show cartoon, polymer` + `show spheres, organic` drew the
     ligand as a scatter of dots. Now derived from the inferred bond list, so it
     agrees with the `nonbonded` selection keyword.
@@ -29935,7 +29935,7 @@ front, not this).
   dominated by centre spread. It is glaring on screen and easy to sleep through
   in an assertion — the first threshold written for it passed the bug.
 
-  Updated [pymol-parity](/plugins/pymol-parity.md), including a correction to
+  Updated [reference-viewer-parity](/plugins/pymol-parity.md), including a correction to
   its capture notes: offscreen `grabFramebuffer` is black, so offscreen proves
   geometry and cannot prove shading, representation flags, or anything the scene
   builder decides.
@@ -30067,7 +30067,7 @@ front, not this).
   [known-issues](/references/known-issues.md).
 
 * **A `.pqres` file could not be loaded, and three layers had to be wrong for
-  that.** The PicoQuant SymPhoTime result format is binary (`PQRESLT\0` magic)
+  that.** The PicoQuant time-resolved acquisition-software result format is binary (`PQRESLT\0` magic)
   and it was being handed to `np.loadtxt`, which died on byte 0xff. The reason
   was not the parser. `FCS.read()` **accepted a `reader_name` argument and
   dropped it**: every call used the reader's configured `experiment_reader`
@@ -30614,7 +30614,7 @@ front, not this).
 
 * **RF-099: a parameter that never moved is no longer graded by floating-point
   luck.** `_ess_1d` in
-  [chisurf/core/fitting/diagnostics.py](chisurf/core/fitting/diagnostics.py)
+  [chisurf/core/fitting/diagnostics.py](../chisurf/core/fitting/diagnostics.py)
   guarded the constant-parameter case on the pooled *variance*, which the FFT
   autocovariance returns as a ~1e-31 rounding residual rather than an exact zero
   — so `np.full((4, 2000), v)`, a parameter bit-identical in all 8000 draws, gave
@@ -30636,7 +30636,7 @@ front, not this).
   [PRD-69](prds/prd-69.md).
 
 * **RF-168: one BVA static line, with a docstring that is actually reachable.**
-  `compute_static_bva_line` in [chisurf/core/fluorescence/burst/bva.py](chisurf/core/fluorescence/burst/bva.py)
+  `compute_static_bva_line` in [chisurf/core/fluorescence/burst/bva.py](../chisurf/core/fluorescence/burst/bva.py)
   opened with a one-line summary, then `import pandas as pd`, and only then its
   28-line NumPy docstring — which, following a statement, was a discarded string
   expression rather than `__doc__`, so every parameter description was invisible
@@ -30653,7 +30653,7 @@ front, not this).
   vectorized form genuinely needs. `test/fluorescence/test_bva_static_line.py`
   pins the docstring, the single-implementation identity, agreement with the
   binomial shot-noise limit `sqrt(E(1-E)/n)`, and the zero-photon edge case.
-  Recorded in [known-issues](okf/references/known-issues.md): two
+  Recorded in [known-issues](references/known-issues.md): two
   `test/plugins/burst/test_background_gui.py` failures met on the way are stale
   against the AutoForm conversion of the Burst Background tool (`iht_plot`,
   `_det_color`), pre-existing and unrelated.
@@ -31001,7 +31001,7 @@ front, not this).
     *from* the name the user typed;
   - **by element / by chain** — the menu writes `byelement`, `color` only knew
     `by_element`;
-  - **tints > yellowtint** — not a PyMOL colour at all; the menu invented it. PyMOL's
+  - **tints > yellowtint** — not a reference viewer colour at all; the menu invented it. The reference viewer's
     eight real tints are now listed.
 
   Why they survived: every structure in the test data was a protein with **no waters
@@ -31123,10 +31123,10 @@ front, not this).
   Now transcribed from `is_distance_bonded` (`layer2/ObjectMolecule2.cpp`):
   `|v1−v2| − (vdw1+vdw2)/2 ≤ connect_cutoff + adjustment`, with 0.35 as the cutoff,
   +0.2 for sulfur, −0.2 for hydrogen and never between two hydrogens. The radii come
-  from the atom array, so this needed no new data — only reading PyMOL's rule instead
+  from the atom array, so this needed no new data — only reading the reference viewer's rule instead
   of guessing a number.
 
-  A test caught one omission from the first transcription: PyMOL's `R_SMALL4` guard,
+  A test caught one omission from the first transcription: the reference viewer's `R_SMALL4` guard,
   without which two atoms at the same coordinates are the *shortest* distance of all
   and so always bond.
 
@@ -31510,7 +31510,7 @@ front, not this).
   check runs first and by itself never reaches the rollback path. The backlog row
   is marked fixed and its stale location corrected; the table's own tally was two
   findings behind reality and is recounted. See
-  [assessment DATA-04](assessment.md#data-04).
+  [assessment DATA-04](specs/assessment.md#data-04).
 
 * **Skills compose, and smFRET became a family rather than a monolith.** The
   burst-to-distance procedure landed earlier the same day as one large skill,
@@ -31563,7 +31563,7 @@ front, not this).
   translation is exact.
 
 * **Scenes.** `scene` stores the camera, object activity, representations and
-  colours, with PyMOL's per-aspect flags so one scene can carry a viewpoint and
+  colours, with the reference viewer's per-aspect flags so one scene can carry a viewpoint and
   another a colour scheme. Two behaviours are chimol-specific, both because the
   camera is stored *relative to the scene centre*, which moves when what is drawn
   changes: the view is restored **last** (restoring it first lets the rebuild undo
@@ -31817,7 +31817,7 @@ front, not this).
   the only way to capture the 3D view headlessly. All recorded in the tracker; the
   guide figure is a window grab cropped afterwards with PIL.
 
-  Tracker: [plugins/pymol-parity.md](/plugins/pymol-parity.md) — the documentation
+  Tracker: [reference-viewer parity](/plugins/pymol-parity.md) — the documentation
   gap recorded earlier today is closed.
 
 * **An unreadable ALV file failed like a `KeyboardInterrupt`, and the ALV
@@ -32077,7 +32077,7 @@ front, not this).
   and the user-facing docs are not supposed to reach into the knowledge bundle at
   all. Rather than repoint it, the material it was borrowing is now stated where
   the reader needs it: the parity metric is the symmetric mean surface distance
-  between chimol's and PyMOL's cartoon meshes, both programs must be fed the
+  between chimol's and the reference viewer's cartoon meshes, both programs must be fed the
   *same* secondary structure first, and on the full RCSB 148L that distance is
   0.428 Å with cross-sections agreeing to ~0.1 Å. Removing it exposed a second
   warning it had been sharing the build with: `plugin_architecture.md` had a
@@ -32287,7 +32287,7 @@ front, not this).
   Transcribed from `RepDotDoNew` (`layer2/RepDot.cpp`) in `cRepDotAreaType` mode.
   Two details a generic Shrake–Rupley gets wrong, both of which change the answer:
   the sample points are an **icosahedral geodesic** — `dot_density` 0–4 giving
-  12/42/162/642/2562 points, reproduced exactly and checked against PyMOL's
+  12/42/162/642/2562 points, reproduced exactly and checked against the reference viewer's
   `Sphere_nDot` — and each point carries **its own** solid angle from the spherical
   excess of its incident triangles rather than `4π/N`. The twelve original
   icosahedron vertices have five neighbours where every later vertex has six, so
@@ -32307,7 +32307,7 @@ front, not this).
   Every atom occludes even when a selection is reported, which is the point: the
   area of a residue *in* a protein is not its area in isolation. `load_b` writes
   per-atom areas into the b-factor, so `spectrum b` then colours by accessibility.
-  New settings `dot_solvent`, `dot_density` and `solvent_radius`, with PyMOL's
+  New settings `dot_solvent`, `dot_density` and `solvent_radius`, with the reference viewer's
   defaults.
 
   Docs: new concept page `docs/concepts/molecular_surfaces.md` — the two surfaces
@@ -32489,14 +32489,14 @@ front, not this).
   - **`alter` corrupted the geometry.** It assigned raw Angstrom into
     `all_atom_coords`, which is scaled by ten and centred, so *every* `alter` —
     even one that only touched a b-factor — shrank the molecule tenfold and moved
-    it off centre. Properties and coordinates are now separated as PyMOL separates
+    it off centre. Properties and coordinates are now separated as the reference viewer separates
     them, which is what `alter` versus `alter_state` is for.
   - **`spectrum` discarded all three of its arguments.** The body was
     `self.color("spectrum")`: expression, palette and selection ignored, a global
     colour mode set instead. Now ramps the property across the palette per
     `spectrumany`, honours the selection, takes an explicit range, and enumerates
     non-numeric values so `spectrum resn` works. New `analysis/spectrum.py` carries
-    PyMOL's palette table.
+    the reference viewer's palette table.
   - **`pseudoatom` crashed** and left a half-built object active, breaking every
     later selection — it invented a fifth atom dtype incompatible with every
     reader.
@@ -32521,7 +32521,7 @@ front, not this).
   **a second copy of a table always drifts, and the drift is silent because the
   feature keeps answering.**
 
-  Tracker: [plugins/pymol-parity.md](/plugins/pymol-parity.md).
+  Tracker: [reference-viewer parity](/plugins/pymol-parity.md).
 
 * **Phasor cursors are regions now — so a cluster that is not an ellipse can be
   gated.** `plugins/microscopy/img_pixel_phasor`. The plugin had
@@ -32759,8 +32759,8 @@ front, not this).
   full re-optimisation per query, and in canonical form it is a Schur complement.
   Recorded as the next thing to take, not yet taken.
 
-* **Undo/redo, at PyMOL's scope — Tier 1 of the chimol parity tracker is closed.**
-  PyMOL's `undo` is much narrower than the word suggests, and matching that scope
+* **Undo/redo, at the reference viewer's scope — Tier 1 of the chimol parity tracker is closed.**
+  the reference viewer's `undo` is much narrower than the word suggests, and matching that scope
   mattered more than extending it: it stores *coordinate* snapshots, per object, in a
   ring of sixteen (`cUndoMask = 0xF` in `layer2/ObjectMolecule.h`), and refuses to
   restore one once the atom count has changed. It does not undo a colour, a
@@ -32783,9 +32783,9 @@ front, not this).
   a restore refused for a changed atom count is not.
 
   New in `renderer/undo.py` with `undo`/`redo`/`push_undo` commands.
-  Tracker: [plugins/pymol-parity.md](/plugins/pymol-parity.md).
+  Tracker: [reference-viewer parity](/plugins/pymol-parity.md).
 
-* **`origin` was a camera-model gap, not a one-line command.** PyMOL's view tuple
+* **`origin` was a camera-model gap, not a one-line command.** the reference viewer's view tuple
   defines two points — slots 12-14 the pivot in world space, slots 9-11 a
   camera-space offset applied after the rotation — and chimol had collapsed them into
   a single orbit target. They agree until something separates them, and `origin` is
@@ -32796,25 +32796,25 @@ front, not this).
 
   `pack_view_state`/`unpack_view_state` and the GL camera now carry both, with the
   compensation transcribed from `SceneOriginSet` (the model-space difference rotated
-  into camera space, added to the view offset). Framing resets the offset, as PyMOL's
+  into camera space, added to the view offset). Framing resets the offset, as the reference viewer's
   does. Verified on 148L: the projection matrix is unchanged by `origin` to 1e-5, the
   pivot lands on the NAG centroid, and a 40° turn afterwards leaves that centroid at
   the same screen position while the control case moves it.
 
   Adding a non-zero slot 9 broke the loader's layout discriminator, which keyed on
-  "slot 9 is zero" to tell a PyMOL tuple from chimol's two older ones — so a saved
+  "slot 9 is zero" to tell a reference viewer tuple from chimol's two older ones — so a saved
   view with an offset would have loaded as a completely different camera, silently.
   One corner is genuinely ambiguous (an identity rotation with a negative slot 11
   could be either format, and nothing in the eighteen floats distinguishes them);
-  resolved in PyMOL's favour and documented in the tests, since a legacy azimuth is
+  resolved in the reference viewer's favour and documented in the tests, since a legacy azimuth is
   periodic and such a view is recoverable by writing 315 rather than -45.
 
-  `origin` takes PyMOL's arguments: a selection, or `position=[x,y,z]` in Angstrom
+  `origin` takes the reference viewer's arguments: a selection, or `position=[x,y,z]` in Angstrom
   which overrides it. The centre of a selection is the centroid, since
   `ExecutiveOrigin` averages a *weighted* extent — the same rule that frames `zoom`.
   The `[x,y,z]` parsing `translate` had inline is now one shared helper.
 
-  Tracker: [plugins/pymol-parity.md](/plugins/pymol-parity.md) — Tier 1 now has only
+  Tracker: [reference-viewer parity](/plugins/pymol-parity.md) — Tier 1 now has only
   undo/redo left.
 
 * **`resn NAG` matched nothing, and the reason was structural.** The chimol
@@ -32827,7 +32827,7 @@ front, not this).
   leading word was a keyword or an object name.
 
   Fixed by giving the vocabulary one home: `cmd/sele_keywords.py`, transcribed from
-  `Keyword[]` in PyMOL's `layer3/Selector.cpp` — 85 canonical keywords, 169
+  `Keyword[]` in the reference viewer's `layer3/Selector.cpp` — 85 canonical keywords, 169
   spellings including the `c.`-style abbreviations and the deprecated `;` forms.
   Parser and evaluator both read it; so do all three call sites. Arity and fixity
   come from the `STYP_` suffix of each `SELE_` code, and reading the stack reducer
@@ -32859,7 +32859,7 @@ front, not this).
   from *which atoms are present*, so a modified residue or an unusual ligand lands
   in the right class with no name table to maintain, and a residue named `ALA`
   missing its backbone does not pretend to be polymer. `metals` is by proton count
-  per `AtomInfoType::isMetal`. One deviation is documented in the module: PyMOL also
+  per `AtomInfoType::isMetal`. One deviation is documented in the module: the reference viewer also
   requires a peptide or phosphodiester bond, which needs connectivity not carried
   at that level, so an isolated free amino acid classifies as protein.
 
@@ -32877,7 +32877,7 @@ front, not this).
 
 * **`create` / `extract` landed, and `save` was writing the wrong object.** A
   selection can now be split into its own object. The child is drawn in its
-  parent's frame — otherwise a subset jumps to the scene origin — while its stored
+  parent's frame — otherwise a subset jumps to the scene zero point — while its stored
   coordinates stay true, so `save` writes where the atoms really are; the older
   `split_chains` shifts stored coordinates instead, which looks identical on screen
   and writes a wrong file. Creating an object no longer steals the active one,
@@ -32886,7 +32886,7 @@ front, not this).
   against another, so `save out.pdb, sugars` raised a length mismatch — and would
   have written the wrong atoms silently had the two objects matched in size.
 
-  Tracker: [plugins/pymol-parity.md](/plugins/pymol-parity.md) — Tier 1 now has
+  Tracker: [reference-viewer parity](/plugins/pymol-parity.md) — Tier 1 now has
   `origin` and undo/redo left.
 
 * **Magic-angle fits were computing an anisotropy they then threw away.**
@@ -33013,14 +33013,14 @@ front, not this).
   image readers, `Do_FRET` (a ratiometric acceptor/donor *time trace* — small,
   ~49 lines), and `Calibration`. See [imaging plugins](/plugins/imaging.md).
 
-* **chimol: `label`, with PyMOL's expression language rather than templates.**
+* **chimol: `label`, with the reference viewer's expression language rather than templates.**
   The whole `L` menu was greyed out because chimol had no labels at all.
   **The important part is that `cmd.label` does not take a template string** -- it
   takes a **Python expression** evaluated once per atom with that atom's
-  properties in scope, which is why PyMOL's own Label menu is full of entries like
+  properties in scope, which is why the reference viewer's own Label menu is full of entries like
   `"%s-%s" % (resn, resi)` and `'%1.2f' % b`. A template engine would not be the
   same feature: half the usefulness of labels is *computing* them. So
-  `analysis/labels.py` implements the expression namespace with PyMOL's names
+  `analysis/labels.py` implements the expression namespace with the reference viewer's names
   (`name`, `resn`, `resi`, `chain`, `segi`, `elem`, `b`, `q`, `vdw`, `index`,
   `oneletter`, `x`/`y`/`z`), and the fifteen menu expressions are transcribed
   verbatim from `pymol/menu.py:mol_labels` so menu and command language cannot
@@ -33033,7 +33033,7 @@ front, not this).
   structure with no B-factors gives 0.0) rather than failing every expression that
   mentions it; one atom whose expression raises is **skipped** rather than
   aborting the other thousand; but a **syntax error is raised**, because that is
-  wrong for every atom rather than one. `resi` is a string, as in PyMOL, because
+  wrong for every atom rather than one. `resi` is a string, as in the reference viewer, because
   insertion codes exist and `oneletter + resi` depends on it.
   Labels render as `kind="text"` overlays so they survive depth-testing against
   the geometry they annotate, and `hide labels` keeps the text -- you turn labels
@@ -33135,17 +33135,17 @@ front, not this).
   36 tools, 11 skills, 38 tests in `test/agent/test_codebase_tools.py`.
 
 * **chimol: `save` -- structures can leave the viewer again.** The largest hole in
-  replacing PyMOL, ahead of any representation: chimol could show a structure but
+  replacing the reference viewer, ahead of any representation: chimol could show a structure but
   not hand one back, so every transform, deleted water and renumbering was trapped
   inside it.
   New `io/export.py` writes **PDB and mmCIF**, and deliberately serialises *what
   the viewer holds* rather than the source file -- re-exporting the input would
   discard exactly the work worth keeping. Format follows the extension with
-  PyMOL's own fallback ("if the file format is not recognized, then a PDB file is
+  the reference viewer's own fallback ("if the file format is not recognized, then a PDB file is
   written by default"), so a mistyped extension still leaves a usable file. mmCIF
   is there for one concrete reason: PDB has four columns for a residue number and
   mmCIF has none, so a large-numbered structure survives.
-  **Verified by loading the output back into PyMOL**, which is the only test of a
+  **Verified by loading the output back into the reference viewer**, which is the only test of a
   writer that means anything: 1363 atoms, both chains E and S, 163 CA, 63 hetero
   atoms, and `dss` finds H/L/S on it -- so the backbone ordering is intact. PDB
   and mmCIF agree to 0.0000 A. Round-trip through chimol's own reader is exact.
@@ -33154,12 +33154,12 @@ front, not this).
   writing those into a PDB gives a file that loads at the wrong size and place.
   And a test asserting a transform reaches the file caught that **`translate` was
   off by the scale factor** -- `translate [100,0,0]` moved the molecule **10 A**,
-  because PyMOL's translate is in Angstrom while
+  because the reference viewer's translate is in Angstrom while
   `apply_transform_to_object` works on the renderer's scene-unit arrays. Invisible
   on screen, obvious the moment anything was written out. Fixed and pinned; the
   parity tracker now carries "any new command taking a length must convert" as a
   rule.
-  Also recorded: PyMOL keeps every **altloc** as a separate atom (148L 1385) where
+  Also recorded: the reference viewer keeps every **altloc** as a separate atom (148L 1385) where
   chimol keeps only the first (1363), so atom counts will not agree on structures
   with altlocs.
   33 new tests. Suite: 427 passed, 1 skipped.
@@ -33285,18 +33285,18 @@ front, not this).
   frame-lag correlation before correction and a flat one after. Full touched-area
   run 109 + 15 pass. See [regions of interest](/subsystems/roi.md).
 
-* **chimol: `lines` and `nonbonded`, the two representations PyMOL shows by
+* **chimol: `lines` and `nonbonded`, the two representations the reference viewer shows by
   default -- and a parity tracker for the rest.** Scope changed from "match the
-  cartoon" to "replace PyMOL", so the gap was measured rather than guessed:
-  PyMOL is **515 823 lines of C++ plus 52 154 of Python, 303 commands, 769
+  cartoon" to "replace the reference viewer", so the gap was measured rather than guessed:
+  the reference viewer is **515 823 lines of C++ plus 52 154 of Python, 303 commands, 769
   settings, 16 representations**; chimol is 29 442 lines, 79 commands, 44
   registered settings, 8 representations -- about **5 % by volume**. New
   [parity tracker](/plugins/pymol-parity.md) records that, tiers the remaining
-  work by whether it actually blocks replacing PyMOL, and states the working
+  work by whether it actually blocks replacing the reference viewer, and states the working
   rules that keep coming up (read the C++ first; transcribe rather than
   approximate; pin it with a test that names the function).
   **`lines` was not just missing, it was wrong.** chimol mapped `lines` to the
-  alpha-carbon trace, so `show lines` gave a smoothed backbone where a PyMOL user
+  alpha-carbon trace, so `show lines` gave a smoothed backbone where a reference viewer user
   expects every bond. Now `geometry/wireframe.py` implements `RepWireBond`
   properly: one segment per bond **split at the midpoint**, so each half carries
   its own atom's colour -- a red-to-blue bond is half red and half blue, which is
@@ -33304,9 +33304,9 @@ front, not this).
   keep the old behaviour under their own names.
   **`nonbonded`** (`RepNonbonded`) marks atoms in no bond with a small three-axis
   cross at `nonbonded_size`: a lone water draws no line and would otherwise be
-  invisible in a wireframe, which is exactly why PyMOL pairs `auto_show_nonbonded`
+  invisible in a wireframe, which is exactly why the reference viewer pairs `auto_show_nonbonded`
   with `auto_show_lines`. `as lines` brings both, and replaces the other
-  representations rather than adding to them, as PyMOL's `as` does. On 1DG3:
+  representations rather than adding to them, as the reference viewer's `as` does. On 1DG3:
   17 712 line vertices for 4428 bonds plus 2046 for the 341 waters.
   Both are flat primitives, not meshes -- which is the point of them, since they
   are what you switch to when a surface is too heavy to rotate.
@@ -33492,7 +33492,7 @@ front, not this).
   `LaplaceEngine`, `ProfileEngine`, `SamplingEngine`, `StoredEngine` and
   `AutoEngine` behind it. Answers are `Marginal` / `Joint` dataclasses carrying
   the method that produced them, so a report or a plot consumes one without
-  knowing its origin. Only declared targets are computed — a profile scan of one
+  knowing its source. Only declared targets are computed — a profile scan of one
   parameter should not scan the other nine. Each engine still refuses to claim
   more than it knows: a profile scan has no joint answer and no evidence because
   it maximises rather than integrates, and a sampled marginal from a chain that
@@ -33603,8 +33603,8 @@ front, not this).
   source's value. 30 tools, 10 skills.
 
 * **chimol: `cartoon_smooth_loops` implemented, and the whole curve exposed as
-  settings.** The last unimplemented step of PyMOL's cartoon pipeline is in, so
-  nothing in the chain is missing now. It is **off by default as in PyMOL** --
+  settings.** The last unimplemented step of the reference viewer's cartoon pipeline is in, so
+  nothing in the chain is missing now. It is **off by default as in the reference viewer** --
   rounding the coil pulls it away from the real backbone -- but a setting that
   silently does nothing is worse than one that is off.
   Two details separate it from the sheet pass, both from `RepCartoonSmoothLoops`:
@@ -33613,7 +33613,7 @@ front, not this).
   renormalised but **not** re-orthogonalised against the tangent, since a loop
   has no face to keep flat. Verified on a kinked coil between two helices: second
   difference along the loop 30.0 -> 2.0, with both helices untouched.
-  **Seven more PyMOL settings registered** -- `cartoon_throw`, `cartoon_power`,
+  **Seven more the reference viewer settings registered** -- `cartoon_throw`, `cartoon_power`,
   `cartoon_power_b`, `cartoon_refine_tips`, `cartoon_refine_normals`,
   `cartoon_smooth_loops`, `cartoon_smooth_cycles` -- so the curve and the
   guide-frame conditioning are reachable as `set cartoon_throw, 2.0` rather than
@@ -33653,7 +33653,7 @@ front, not this).
   radius -- so the "vdW-related" reading from the earlier session was also wrong,
   since a `vdw=5` pair shows no residual at all.
   **The cause is the `weighted` flag** `ExecutiveWindowZoom` passes to
-  `ExecutiveGetExtent`. With it set, PyMOL averages the atom coordinates and
+  `ExecutiveGetExtent`. With it set, the reference viewer averages the atom coordinates and
   rebuilds the box **symmetric about that centroid**::
 
       op2.v1 /= op2.i1;                  // centroid
@@ -33668,7 +33668,7 @@ front, not this).
   box, which is what made the two disagree.
   Both the radius **and the zoom centre** were wrong in chimol. Now
   `view_state.framing_centre` returns the centroid and `framing_radius` measures
-  the centroid-symmetric half-width. Against PyMOL: 148L **24.4661 vs 24.4662**,
+  the centroid-symmetric half-width. Against the reference viewer: 148L **24.4661 vs 24.4662**,
   1DG3 **79.4825 vs 79.4825**, 148L `complete` **30.4871 vs 30.487** -- exact,
   where before 1DG3 was off by 11.6 A.
   6 new tests, including the lopsided-mass case that makes the rule visible.
@@ -33676,7 +33676,7 @@ front, not this).
 
 * **chimol: cast shadows in the interactive viewport.** Ambient occlusion says
   how *enclosed* a point is; a cast shadow says whether anything stands between
-  it and the light. They are different cues, and PyMOL has the second only when
+  it and the light. They are different cues, and the reference viewer has the second only when
   raytracing -- so this is the live view going further rather than matching.
   `geometry/ambient.py:directional_occlusion` casts a ray from each vertex toward
   the light and asks every nearby sphere how close it comes to that ray: one the
@@ -33687,7 +33687,7 @@ front, not this).
   against 4700 atoms in **0.175 s**, and the whole 148L cartoon rebuild goes
   0.48 s -> 0.64 s.
   **The light is deliberately off-axis.** A headlight casts almost nothing the
-  camera can see, so the default shadow direction is PyMOL's own `light`
+  camera can see, so the default shadow direction is the reference viewer's own `light`
   (-0.4, -0.4, -1) negated, since that setting is the direction light *travels*
   while the shadow ray runs toward the source. The shadow is also folded into the
   occlusion channel the GL shader damps its non-surface lighting by, so a
@@ -33762,14 +33762,14 @@ front, not this).
   the skill instructs. The live suite passes against Mistral (8/8) as well as
   OpenRouter.
 
-* **chimol: PyMOL's cartoon curve, which is not a spline.** chimol interpolated
+* **chimol: the reference viewer's cartoon curve, which is not a spline.** chimol interpolated
   between guide residues with Catmull-Rom plus a tension knob. That is a
-  reasonable spline and it is *not* the curve PyMOL draws -- no tension reaches
+  reasonable spline and it is *not* the curve the reference viewer draws -- no tension reaches
   it. From `CartoonGenerateSample`:
   `P = f1*P0 + f0*P1 + f4*(f3*T0 - f2*T1)` with `f4 = cartoon_throw * |P1-P0| *
-  f2 * f3`, the `f` terms all passed through PyMOL's own easing
+  f2 * f3`, the `f` terms all passed through the reference viewer's own easing
   `smooth(x, p)` (`layer0/Vector.cpp`).
-  Two properties are what make it read as PyMOL, and neither is reachable with a
+  Two properties are what make it read as the reference viewer, and neither is reachable with a
   tension parameter: **the throw scales with the segment length**, so a long step
   bulges proportionally more than a short one; and **the `f2*f3` envelope
   vanishes at both ends**, so the curve passes exactly through every guide
@@ -33777,14 +33777,14 @@ front, not this).
   wherever a guide frame exists -- which is also what makes the strand-tip
   re-aiming visible, since the curve is thrown along those tangents. Catmull-Rom
   stays as the fallback for raw-coordinate objects with no orientation data.
-  Defaults are PyMOL's, read from a running instance: `cartoon_power` 2,
+  Defaults are the reference viewer's, read from a running instance: `cartoon_power` 2,
   `cartoon_power_b` 0.52, `cartoon_throw` 1.35.
   **A test caught a real trap in the transcription.** The orientation blend
   `f1*(O0*f2) + f0*(O1*f3)` **vanishes at both endpoints** -- at `u = 0` the pair
   is `(1*0, 0*1)` -- which is why the C++ special-cases them with its two
   `copy3f(... "starter...")` lines instead of evaluating the formula. Transcribed
   literally it gives a zero ribbon normal at *every* residue; the endpoints now
-  take the raw guide orientations as PyMOL's do.
+  take the raw guide orientations as the reference viewer's do.
   Colour is interpolated with the same eased parameter the geometry uses, so a
   residue boundary lands in the same place for colour as for shape.
   16 new tests. Suite: 359 passed, 1 skipped.
@@ -33828,8 +33828,8 @@ front, not this).
   instead — nothing optimizes a registered group until something links to it —
   and only the three derived optical factors stay fixed, because
   `update_factors` overwrites them.
-* **chimol: the cartoon gets PyMOL's per-residue guide-frame stage.** The two
-  conditioning steps PyMOL runs before any sampling could not be patched in --
+* **chimol: the cartoon gets the reference viewer's per-residue guide-frame stage.** The two
+  conditioning steps the reference viewer runs before any sampling could not be patched in --
   chimol derived its tangents from the *finished spline*, so there was nowhere to
   put them. New `geometry/guide_frames.py` is that stage, transcribing
   `RepCartoonComputeDifferencesAndNormals`, `RepCartoonComputeTangents`,
@@ -33854,7 +33854,7 @@ front, not this).
   The sampled spline still supplies the smooth interior tangent; the guide frame
   overrides it where it is defined, and the up-vectors are re-squared against the
   result so the profile is not sheared.
-  20 new tests, one per pass, plus the degenerate cases PyMOL guards (a zero-length
+  20 new tests, one per pass, plus the degenerate cases the reference viewer guards (a zero-length
   step copies the previous direction; a segment break zeroes it).
   Suite: 343 passed, 1 skipped.
 
@@ -33939,17 +33939,17 @@ front, not this).
   a few per cent and the efficiencies to ~0.01 across seeds. Reachable head-less
   as `csc accurate-fret --simulate <file>`.
 * **chimol: flat sheets ported from `RepCartoonFlattenSheets`, and the cartoon
-  pipeline mapped.** With PyMOL's source to hand the cartoon can be compared step
+  pipeline mapped.** With the reference viewer's source to hand the cartoon can be compared step
   for step instead of by matching rendered meshes.
-  **The flat-sheet pass was approximated three ways.** PyMOL averages a strand
+  **The flat-sheet pass was approximated three ways.** the reference viewer averages a strand
   position with its two neighbours **uniformly** (`scale3f(t0, 1/(f*2+1))` with
   `f = 1`); chimol used a weighted `(1, 2, 1)/4` kernel, which converges more
-  slowly and leaves a visible pleat after the four cycles PyMOL runs. PyMOL
+  slowly and leaves a visible pleat after the four cycles the reference viewer runs. The reference viewer
   smooths the **orientation vectors** in the same loop; chimol smoothed only the
-  path, so half the pleat survived as ribbon twist. And PyMOL then
+  path, so half the pleat survived as ribbon twist. And the reference viewer then
   **re-orthogonalises** each orientation against `normalize(p[b+1] - p[b-1])`, so
   the ribbon's face stays perpendicular to the path it now follows. All three
-  fixed, with the run's own end points anchored as PyMOL anchors them
+  fixed, with the run's own end points anchored as the reference viewer anchors them
   (`first+f .. last-f`), and each pinned by a test.
   **The pipeline is now written down** in the profile with its settings and
   defaults, along with the two remaining divergences and why they are not
@@ -33960,11 +33960,11 @@ front, not this).
   stale: `tv` is written by `RepCartoonComputeTangents`. `cartoon_smooth_loops`
   is off by default, so its absence costs nothing.
   Measured on 148L, mean distance from the strand ribbon to its strand CAs:
-  PyMOL 1.56 A, chimol 1.66 A -- not exactly comparable, since PyMOL's `dss`
+  the reference viewer 1.56 A, chimol 1.66 A -- not exactly comparable, since the reference viewer's `dss`
   calls 12 residues strand there where the deposited records call 14.
   Suite: 323 passed, 1 skipped (3 new).
 
-* **chimol: the framing rule confirmed against PyMOL's C++, and two gaps it
+* **chimol: the framing rule confirmed against the reference viewer's C++, and two gaps it
   exposed.** With the source checkout available (`junk/pymol-open-source`) the
   camera rules could be *read* rather than inferred, and the ones derived
   empirically hold exactly. `layer1/Scene.cpp:SceneWindowSphere`:
@@ -33977,12 +33977,12 @@ front, not this).
   **Two things were missing.** `SceneWindowSphere` also has
   `if (Height > Width) dist *= Height/Width` — a **portrait-viewport
   correction**, since the field of view is vertical and a tall window makes the
-  horizontal extent binding. Verified against PyMOL at 640x480, 480x640, 800x800
+  horizontal extent binding. Verified against the reference viewer at 640x480, 480x640, 800x800
   and 400x800: the factor is exact. And `ExecutiveWindowZoom` floors the radius
   at `MAX_VDW` (2.5 A, `layer0/Base.h`), so a single atom cannot put the camera
   inside itself; applied here in scene units, since chimol does not work in
   Angstrom.
-  **Still unattributed**: PyMOL's zoom radius on 148L runs +0.700 A over the
+  **Still unattributed**: the reference viewer's zoom radius on 148L runs +0.700 A over the
   extent it reports through `get_extent`. The offset is *additive* (identical at
   buffer 0, 1 and 5), independent of viewport, and exactly **zero** for
   pseudoatoms with `vdw=0`, so it is van-der-Waals-related — but
@@ -33991,16 +33991,16 @@ front, not this).
   Recorded rather than guessed at.
   Suite: 320 passed, 1 skipped (8 new).
 
-* **chimol: PyMOL's main menu bar.** Completes the GUI pass. PyMOL's bar is
+* **chimol: the reference viewer's main menu bar.** Completes the GUI pass. The reference viewer's bar is
   File / Edit / Build / Movie / Display / Setting / Scene / Mouse / Wizard /
-  Plugin / Help (`pymol/_gui.py:get_menudata`), and a PyMOL user looks for things
-  by that grouping, so the menus chimol can fill keep PyMOL's name, position and
+  Plugin / Help (`pymol/_gui.py:get_menudata`), and a reference viewer user looks for things
+  by that grouping, so the menus chimol can fill keep the reference viewer's name, position and
   wording.
   **Whole menus are omitted rather than shown empty** — Build, Movie, Scene,
   Wizard and Plugin have no chimol equivalent at all, and an empty menu on the
   bar is a promise with nothing behind it. That is the opposite call from the
   per-object menus, where individual entries stay visible and disabled so the
-  menu keeps PyMOL's *shape*; a top-level menu has no shape to preserve. Both
+  menu keeps the reference viewer's *shape*; a top-level menu has no shape to preserve. Both
   rules are pinned by tests, as is the reason attached to each omission.
   Display and Setting are wired to the settings layer built earlier, so the bar
   is where the ambient occlusion, cartoon, rendering and perspective knobs became
@@ -34009,26 +34009,26 @@ front, not this).
   is echoed, so clicking teaches the command.
   Three tests keep it honest: every wired verb must be a registered chimol
   command, every `set <name>` must name a setting that resolves, and every
-  disabled entry must carry a reason. A fourth re-reads PyMOL's own bar from its
+  disabled entry must carry a reason. A fourth re-reads the reference viewer's own bar from its
   source so the reference list cannot drift.
   Suite: 312 passed, 1 skipped (9 new).
 
 * **chimol: the object menus are per-molecule, and the panel looks like
-  PyMOL's.** The first cut put one shared A/S/H/L/C row above the list, acting on
-  whatever was selected. That is wrong in a way that matters: in PyMOL **the
+  the reference viewer's.** The first cut put one shared A/S/H/L/C row above the list, acting on
+  whatever was selected. That is wrong in a way that matters: in the reference viewer **the
   buttons live on the row**, so they act on *that* molecule, and a shared row
-  silently retargets every action. Rebuilt as PyMOL has it — a permanent grey
+  silently retargets every action. Rebuilt as the reference viewer has it — a permanent grey
   `all` header row whose buttons act on everything, then one row per molecule
-  carrying its own five buttons, its visibility box, its name, and PyMOL's
+  carrying its own five buttons, its visibility box, its name, and the reference viewer's
   `current/total` state counter.
   Implemented as a Qt item widget per list row, so the item keeps its check state
   and every existing handler (`itemChanged`, selection, delete) still fires;
   Qt's own check indicator is hidden and the item's text blanked, or both would
   render underneath the row widget.
-  **The look follows PyMOL too**, since being recognisable at a glance is the
+  **The look follows the reference viewer too**, since being recognisable at a glance is the
   whole point: black panel, monospace, enabled names in green and disabled ones
   greyed, the grey `all` header, periwinkle buttons with a rainbow `C`, dark
-  menus. Destructive entries carry PyMOL's own tint, computed from its escape
+  menus. Destructive entries carry the reference viewer's own tint, computed from its escape
   rather than guessed: `del_col`/`rem_col` are `\933`, i.e. RGB (9,3,3) on a 0-9
   scale, which is `#ff5555`.
   Tests now assert every molecule has its own five buttons, that a row's menu
@@ -34058,18 +34058,18 @@ front, not this).
   guessing separately. Verified against ndX's **real** DataSource and equation
   files (factors recovered from simulated bursts; ndX's own efficiency column
   moves) and in a real offscreen ndX window.
-* **chimol: PyMOL's object-panel A/S/H/L/C menus, transcribed 1:1.** The object
-  panel is how most people actually drive PyMOL, so the five per-molecule menus
+* **chimol: the reference viewer's object-panel A/S/H/L/C menus, transcribed 1:1.** The object
+  panel is how most people actually drive the reference viewer, so the five per-molecule menus
   are now reproduced entry for entry in `app/object_menus.py` -- same entries,
   same order, same separators, same labels, including the ones with a stray
   trailing space (`"by ss  "`) or odd abbreviation (`"assign sec. struc."`).
-  **Taken from PyMOL's source, not from a screenshot.** (`screencapture` is
+  **Taken from the reference viewer's source, not from a screenshot.** (`screencapture` is
   blocked without macOS Screen Recording permission, which turned out not to
   matter.) `pymol/menu.py`'s own builders `mol_action`/`mol_show`/`mol_hide`/
   `mol_labels`/`mol_color` were *called* and their nested tables dumped, so the
-  transcription is mechanical. A test re-dumps them from a live PyMOL when it is
+  transcription is mechanical. A test re-dumps them from a live the reference viewer when it is
   importable and asserts the labels and order still match, so the copy cannot
-  drift; when PyMOL is absent it compares against the transcription instead.
+  drift; when the reference viewer is absent it compares against the transcription instead.
   **Unsupported entries are shown, disabled, and explained** rather than dropped.
   Dropping them would change the menu's shape and hide the gap; wiring them to
   something approximate would lie about what happened. So `drag matrix`, `clean`,
@@ -34162,17 +34162,17 @@ front, not this).
 
 * **chimol: `hide water` does what you meant, and `solvent`/`polymer`/`hetatm`
   mean what they say.** `hide water` reported "Unsupported representation".
-  **PyMOL rejects it too** -- `hide water` there is `Error: unknown
-  representation: 'water'`, and `water` is not even a valid PyMOL selection name
-  (only `solvent` is). But PyMOL's own object-panel **H** menu carries a
+  **The reference viewer rejects it too** -- `hide water` there is `Error: unknown
+  representation: 'water'`, and `water` is not even a valid the reference viewer selection name
+  (only `solvent` is). But the reference viewer's own object-panel **H** menu carries a
   first-class *waters* entry running `hide("(solvent and (sele))")`, so hiding
   solvent is an everyday action that simply has an awkward spelling. Rather than
   reproduce the error, `show`/`hide` now check whether an unknown representation
   names a **non-empty** selection and, if so, act on it as
-  `everything, <selection>` while printing the PyMOL spelling, so the idiom is
+  `everything, <selection>` while printing the reference viewer spelling, so the idiom is
   still learned. A name that selects nothing is left to fail as an unknown
   representation, which is the more useful message for a typo.
-  `everything` is now a real representation keyword, as in PyMOL.
+  `everything` is now a real representation keyword, as in the reference viewer.
   **The selection keywords were stubs.** `polymer` returned *all* atoms
   ("For now, return all since we don't have polymer flags parsed") and `solvent`
   matched only HOH/WAT. Now `hetatm`/`hetero`/`organic` use the same
@@ -34334,7 +34334,7 @@ front, not this).
   Suite: 271 passed, 1 skipped (3 new).
 
 * **tcPDA A/B against the incumbent suite — and it found a real bug (PRD-65).**
-  New `test/models/test_pda3c_pam_ab.py` transcribes the incumbent's MATLAB
+  New `test/models/test_pda3c_pam_ab.py` transcribes the incumbent's numerical computing environment
   expressions verbatim and asserts equality against ChiSurf's three-colour
   physics over randomised distances and correction sets, following the
   [fcs-pam-port](/references/fcs-pam-port.md) / `test_fcs_pam_ab.py` precedent.
@@ -34366,8 +34366,8 @@ front, not this).
   this only concerns what the burst-size distribution means, and each is
   self-consistent.
   **Then the reference's own C kernel was executed, not just transcribed.** The
-  surrounding MATLAB has no callable entry point and the shipped MEX binaries are
-  x86_64 MATLAB-ABI objects, but the kernel itself is a self-contained MEX
+  surrounding the numerical computing environment has no callable entry point and the shipped MEX binaries are
+  x86_64 numerical-computing-environment-ABI objects, but the kernel itself is a self-contained MEX
   function with a plain numeric signature — so Octave's `mkoctfile` compiles it
   from source on arm64 and it can be driven directly.
   `test/models/test_pda3c_octave_ab.py` does that and finds ChiSurf's factorised
@@ -34429,7 +34429,7 @@ front, not this).
   idle filter pass does no row walk, a real filter still applies). 15 passed.
 
 * **chimol: real ambient occlusion, in the interactive viewport, without
-  raytracing.** PyMOL has no ambient occlusion at all, so this is the first place
+  raytracing.** the reference viewer has no ambient occlusion at all, so this is the first place
   chimol is deliberately ahead rather than at parity.
   **What was there measured the wrong thing.** `_estimate_ambient_occlusion`
   counts neighbours inside a radius and never looks at the surface normal, so it
@@ -34722,24 +34722,24 @@ front, not this).
   falling off an `nmax`-truncated grid, not a model discrepancy.)
   See [prds/prd-65.md](/prds/prd-65.md).
 
-* **chimol: `zoom` frames the molecule the way PyMOL frames it, and a degraded
+* **chimol: `zoom` frames the molecule the way the reference viewer frames it, and a degraded
   load says so.** Two follow-ups to the camera work, both measured against a
-  running PyMOL.
+  running the reference viewer.
   **The framing radius.** chimol fitted the bounding *sphere* of the CA trace;
-  PyMOL's default (`complete=0`) fits the largest half-extent of the axis-aligned
+  the reference viewer's default (`complete=0`) fits the largest half-extent of the axis-aligned
   bounding *box* over every atom, and `complete=1` fits the sphere. New
-  `view_state.framing_radius` implements both, and `zoom` gained PyMOL's
-  `complete` argument (its `buffer` default also moves 2.0 -> 0.0, PyMOL's).
+  `view_state.framing_radius` implements both, and `zoom` gained the reference viewer's
+  `complete` argument (its `buffer` default also moves 2.0 -> 0.0, the reference viewer's).
   **The box is measured on the world axes, not the camera's** — which looks like
   an oversight and is not: it makes the zoom level independent of orientation, so
   turning the molecule does not make it breathe. Established by zooming a 30x5 A
-  bar at 0/30/45/90 degrees of roll, where PyMOL returns the same distance every
+  bar at 0/30/45/90 degrees of roll, where the reference viewer returns the same distance every
   time while the camera-space extent falls to 21 A at 45 degrees.
   **`zoom` now fits every atom**, not the CA trace: the side chains reaching
   furthest out are exactly the ones a trace omits, which framed 148L ~7 % large.
   End to end on 148L the camera distance/radius ratio is now exactly
-  `1/tan(fov/2)` in both modes, and the radius lands within 3 % of PyMOL
-  (23.77 vs 24.47 A box, 29.30 vs 30.49 A sphere). The residual is PyMOL
+  `1/tan(fov/2)` in both modes, and the radius lands within 3 % of the reference viewer
+  (23.77 vs 24.47 A box, 29.30 vs 30.49 A sphere). The residual is the reference viewer
   measuring the extent of the *rendered representation* rather than of the atom
   centres; that padding is representation-dependent and is not modelled.
   **The silent fallback is no longer silent.** When the structure reader gives
@@ -34920,7 +34920,7 @@ front, not this).
   defect assertions cannot see: fields wrapping into nonsensical two-column
   pairs, a status box swallowing the panel, a table floating mid-dock, nested
   dock tab bars overlapping their content (they settle only after the first real
-  resize), and a joint histogram drawn upside-down because an image's origin is
+  resize), and a joint histogram drawn upside-down because an image's zero point is
   top-left while a plot's is bottom-left. Caveats recorded with the rule: the
   offscreen platform refuses a GL context (grab GL viewports under `cocoa` with
   an offscreen surface), and interactive behaviour is verified by emitting the
@@ -35287,8 +35287,8 @@ front, not this).
   `test_parameter_prior_widget.py::test_focus_moving_to_a_child_keeps_the_popup_open`
   (order-dependent — passes in a full-file run, fails alone, on HEAD as well).
 * **chimol: the deposited model arrives whole, and what no cartoon draws is
-  shown.** Prompted by a side-by-side against PyMOL on 1DG3: chimol's picture was
-  missing every water PyMOL rendered as a red dot.
+  shown.** Prompted by a side-by-side against the reference viewer on 1DG3: chimol's picture was
+  missing every water the reference viewer rendered as a red dot.
   **Root cause, in the core reader.** `read_coordinates` selects with
   `NonWaterPDBSelector` and `convert_atoms` drops non-standard residues, so
   waters, ions, ligands and sugars never reached the viewer at all — 1DG3 lost
@@ -35299,10 +35299,10 @@ front, not this).
   predate the arguments. A test pins that the core default still drops them.
   **Then show them.** `MolView._hetero_atom_mask` marks every atom whose residue
   never enters the backbone trace and switches the atom representation on, which
-  is what PyMOL's `auto_show_nonbonded` (on by default, confirmed from its own
+  is what the reference viewer's `auto_show_nonbonded` (on by default, confirmed from its own
   settings) does there. They are drawn at their element's CPK colour — so a water
   oxygen reads red rather than as an anonymous grey ball — and scaled by a new
-  `nonbonded_size` setting (0.25, PyMOL's value) instead of their van-der-Waals
+  `nonbonded_size` setting (0.25, the reference viewer's value) instead of their van-der-Waals
   radius, because a shell of full-size water spheres buries the molecule inside
   it. Defining the mask by absence from the trace rather than by a residue-name
   table also catches incomplete polymer residues: 148L's chain E ends on a lone
@@ -35312,11 +35312,11 @@ front, not this).
   admitted only a mask of *residue* length, while its body handled both, so any
   per-atom selection silently fell through to a coarse every-tenth-CA sampling —
   54 points instead of the selected atoms. Fixed to accept either length.
-  **Also measured while there** (not yet matched): PyMOL's `zoom` defaults to
+  **Also measured while there** (not yet matched): the reference viewer's `zoom` defaults to
   `complete=0`, framing on the largest half-extent of the bounding box (148L:
   implied R 24.47 vs max half-extent 23.77); `complete=1` frames on the bounding
   sphere (30.49 vs 29.30). chimol frames on the bounding sphere, so its default
-  `zoom` behaves like PyMOL's `complete=1`.
+  `zoom` behaves like the reference viewer's `complete=1`.
   Suite: 225 passed, 1 skipped (11 new). The `expectedFailure`
   `test/fluorescence/test_structure.py::test_labeled_structure` reports
   "unexpected success" — verified pre-existing in a clean worktree at HEAD.
@@ -35498,40 +35498,40 @@ front, not this).
   *apparent* (uncorrected), local-optima/label-permutation caveats, and burst
   truncation biasing dwell times short.
 
-* **chimol: the PyMOL settings namespace, and two camera facts measured from
-  PyMOL rather than assumed.** Three parity gaps, all verified against a running
-  PyMOL rather than against its documentation.
+* **chimol: the reference viewer settings namespace, and two camera facts measured from
+  the reference viewer rather than assumed.** Three parity gaps, all verified against a running
+  the reference viewer rather than against its documentation.
   **`set` reached almost nothing.** It recognised a hand-written list of ~10
   cartoon keys plus `metaball.*`, and the config carried a *second, flat* copy of
-  ~36 PyMOL setting names (`cartoon_loop_radius`, `ray_shadow`, `specular`, ...)
+  ~36 reference viewer setting names (`cartoon_loop_radius`, `ray_shadow`, `specular`, ...)
   that **no code read at all** — writing them was inert. New `chimol/settings.py`
-  is one table mapping each PyMOL name onto the nested config path the renderer
+  is one table mapping each reference viewer name onto the nested config path the renderer
   actually reads, with `set` / `get` / `unset` / `toggle` / `help_setting` in a new
   `cmd/settings.py` mixin (`set` moved out of `selection.py`, where it did not
   belong). Resolution accepts an exact name, an unambiguous prefix
   (`cartoon_oval_w` -> `cartoon_oval_width`, ambiguous prefixes list the
-  candidates), or a dotted path (`metaball.alpha`) for entries with no PyMOL name.
+  candidates), or a dotted path (`metaball.alpha`) for entries with no reference viewer name.
   36 settings registered; the dead flat block is deleted from both the defaults
   and `chimol_display.json` (`_version` 2 -> 3). A test walks every entry and
   fails if its path is absent from the config, so a dead setting cannot be added
   back; another fails if the flat namespace reappears.
-  **The sign of view-tuple slot 17 was backwards.** PyMOL writes a **negative**
+  **The sign of view-tuple slot 17 was backwards.** the reference viewer writes a **negative**
   field of view for its *perspective* camera and a positive one for orthoscopic —
   the opposite of what the code and its docstring claimed. Measured directly:
   `orthoscopic off` -> `-20.0`, `on` -> `+20.0`, and again at `field_of_view 35`.
-  A view copied from PyMOL was therefore read as orthoscopic. Fixed in
-  `pack_view_state`/`unpack_view_state`, with the rule confined to the PyMOL
+  A view copied from the reference viewer was therefore read as orthoscopic. Fixed in
+  `pack_view_state`/`unpack_view_state`, with the rule confined to the reference viewer
   branch since the older chimol layouts always wrote a positive value and meant
   nothing by it. Pinned by a test carrying a real `cmd.get_view()` tuple.
   **Framing ignored the lens.** `fit_to_radius` used `distance = 3 x radius`, and
-  the field of view was a hardcoded 45 in three places. PyMOL's actual rule,
+  the field of view was a hardcoded 45 in three places. The reference viewer's actual rule,
   recovered by zooming pseudoatom pairs of known size: `d = radius / tan(fov/2)`,
   exact to 5 significant figures for radii 5/10/20 A at 20 and 45 degrees. Now
   `view_state.distance_for_radius`, used by `fit_to_radius`; the field of view is
   a real per-renderer value fed by the `field_of_view` setting, defaulting to
-  PyMOL's **20** (was 45), so `set field_of_view` changes perspective while
+  the reference viewer's **20** (was 45), so `set field_of_view` changes perspective while
   keeping the molecule the same size on screen. Also measured but *not* yet
-  matched: PyMOL frames on the largest half-extent of the bounding box, chimol on
+  matched: the reference viewer frames on the largest half-extent of the bounding box, chimol on
   the bounding-sphere radius, so chimol still zooms ~26 % looser.
   **`dss`** added (`MolView.recompute_secondary_structure`), completing the pair
   with the deposited-record support: a load adopts `HELIX`/`SHEET`, `dss` throws
@@ -36039,16 +36039,16 @@ front, not this).
 
 
 
-* **ChiMOL honours deposited `HELIX`/`SHEET` records, and PyMOL's `dss` is not
+* **ChiMOL honours deposited `HELIX`/`SHEET` records, and the reference viewer's `dss` is not
   the target — [ChiMOL profile](/plugins/profiles/chimol.md).** chimol ignored a
   PDB's own secondary-structure annotation and always recomputed;
   `io/structure.parse_pdb_secondary_structure` now reads it and
-  `MolView._apply_deposited_secondary_structure` prefers it, matching PyMOL,
+  `MolView._apply_deposited_secondary_structure` prefers it, matching the reference viewer,
   which only recomputes when asked with `dss` or when the file has no records.
   On the full RCSB 148L this reproduces the depositor's annotation exactly — 10
   helix runs, 3 strand runs, **zero mismatches**.
   **This corrects the entry below.** The in-tree `148l.pdb` is header-stripped,
-  so PyMOL was running `dss` on it, and the earlier note treated that output as
+  so the reference viewer was running `dss` on it, and the earlier note treated that output as
   ground truth. It is not: `dss` puts the strands at 18-20 / 23-27 / 31-34 and
   the first helix at 3-7, while the depositors say **14-19 / 25-28 / 31-34** and
   3-11 — which is what chimol's own hydrogen-bond assignment already produced.
@@ -36060,9 +36060,9 @@ front, not this).
   confirming that residual was assignment, not geometry. `HELIX` and `SHEET`
   place the chain and sequence number in different columns, so test fixtures use
   records copied verbatim from 148L rather than hand-typed ones.
-* **ChiMOL cartoon + `ray` + view tuple brought to PyMOL parity on 148L —
+* **ChiMOL cartoon + `ray` + view tuple brought to reference-viewer parity on 148L —
   [ChiMOL profile](/plugins/profiles/chimol.md).** Ground truth came from the
-  installed PyMOL itself: its cartoon was exported as OBJ under an identity view
+  installed the reference viewer itself: its cartoon was exported as OBJ under an identity view
   (so the vertices land in PDB Ångström), rendered back through *chimol's own*
   raytracer with the same camera, and compared numerically. Symmetric mean
   surface distance between the two cartoon meshes went **0.50 Å → 0.45 Å**, and
@@ -36073,7 +36073,7 @@ front, not this).
     `_extrude_shape` maps a profile's y to `side` and z to `up`, but
     `_make_oval_shape`/`_make_rectangle_shape` put the *broad* extent on z. Every
     helix was therefore extruded with its 2.7 Å face pointing radially instead of
-    along the helix axis: measured radial spread 0.75–4.23 Å against PyMOL's
+    along the helix axis: measured radial spread 0.75–4.23 Å against the reference viewer's
     1.47–2.90 Å.
   - **The anti-twist sign propagation flipped every helix residue.** Inside an α
     helix the ribbon normal is radial and genuinely turns ~100°/residue, so
@@ -36086,42 +36086,42 @@ front, not this).
     carries a large radial component and degrades at run ends (40–60° error).
     Replaced by the exact local bisector, with run ends *extrapolated* by the
     run's own twist rather than copied.
-  - **No round-helix pass on the path.** PyMOL's `cartoon_round_helices` (on by
+  - **No round-helix pass on the path.** the reference viewer's `cartoon_round_helices` (on by
     default) is not only about orientation: measured on 148L its centerline stays
     at radius 2.17 Å midway between residues whose CAs are at 2.23 Å, and drops to
     1.88 Å with the setting off. chimol's spline sagged to 1.06 Å, pinching every
     turn. `_round_helix_path` now interpolates on the actual helical arc.
-  - **No flat-sheet pass on the path.** `cartoon_flat_sheets` moves PyMOL's strand
+  - **No flat-sheet pass on the path.** `cartoon_flat_sheets` moves the reference viewer's strand
     ribbon 1.3 Å off the pleated CAs (0.4 Å with it off); chimol splined the raw
     ±1.9 Å pleat, so strands had to writhe. `_flatten_sheet_path` de-pleats them.
   - **Arrowheads never came to a point.** The profile widened to 1.5× at the
     arrow *base* and tapered back to 1.0× at the tip, scaling thickness too.
-    PyMOL's measured profile is body ~1.0 Å → base ~2.2 Å → tip ~0.3 Å, so the
+    The reference viewer's measured profile is body ~1.0 Å → base ~2.2 Å → tip ~0.3 Å, so the
     extruder now takes an anisotropic `(side, up)` scale and the arrow spans
     `arrow_sampling` **residues** rather than that many spline samples.
 * **`_sample_path` dropped every interior control point.** It skipped `j == 0`
   for each segment after the first as a "duplicate knot", but a segment covers
   `t ∈ [0, 1)` and so never emits its end point — the skip deleted the knots
-  instead. The cartoon ran ~0.3 Å off the CA trace (PyMOL: ~0.1 Å) and the
+  instead. The cartoon ran ~0.3 Å off the CA trace (the reference viewer: ~0.1 Å) and the
   residue→sample mapping the SS block boundaries rely on was only approximate;
   it is now exact (`residue i → sample i * subdivisions`). The vectorisation
   parity test had frozen the bug into its reference loop, so that was corrected
   too.
 * **Secondary structure is tidied before it is drawn
   ([ss.py](/plugins/profiles/chimol.md)).** The raw H-bond assignment gave 148L
-  seven strand fragments, three of them single residues, where PyMOL's `dss`
+  seven strand fragments, three of them single residues, where the reference viewer's `dss`
   gives three strands; the cartoon drew detached slivers with no room for an
   arrowhead. `tidy_ss_runs` bridges one-residue gaps **in strands only** (a
-  one-residue break between two helices is a real kink — PyMOL keeps 93-106 and
+  one-residue break between two helices is a real kink — the reference viewer keeps 93-106 and
   108-113 apart) and drops runs below a per-type minimum. Agreement with `dss`
   is 88%, with 3 strand runs and 10 helix runs on both sides.
-* **The view tuple is now genuinely interchangeable with PyMOL — new
-  [`renderer/view_state.py`](/plugins/profiles/chimol.md).** PyMOL's `get_view`
+* **The view tuple is now genuinely interchangeable with the reference viewer — new
+  [`renderer/view_state.py`](/plugins/profiles/chimol.md).** the reference viewer's `get_view`
   keeps the camera basis in the matrix **columns**; chimol read it as rows, which
   is the inverse rotation and renders the molecule **mirrored**. Proved with a
   marker scene (+X red, +Y green, +Z blue) rendered under the same lopsided view
   in both programs. One Qt-free module now owns pack/unpack for the GL widget,
-  the raytracer and `get_view`/`set_view`; it emits PyMOL's exact 18-float layout
+  the raytracer and `get_view`/`set_view`; it emits the reference viewer's exact 18-float layout
   (including `(0, 0, -distance)` and the orthoscopic sign on the field of view)
   and still accepts chimol's older row-major and elevation/azimuth tuples, which
   are unambiguous by their slot 9/11 pattern. `ray` also honours the tuple's
@@ -37029,16 +37029,16 @@ front, not this).
 * **Shared `apply_setup_lut` helper + reader-control preview LUT fix (prevent the raw-decay-preview class of bug).** Extracted the LUT/shift application out of `staging.open_tttr` into a reusable `chisurf/core/fio/staging.py::apply_setup_lut(tttr, channel_luts, channel_shifts, apply_lut=, lut_seed=)` — the single sanctioned one-liner to LUT-correct a raw `tttrlib.TTTR` you already hold (decay previews that open raw for the header then histogram). The channel-def preview now delegates to it, and the **TCSPC reader-control decay preview** (`tcspc_tttr_reader_control_widget.py::_load_preview_from_file`) — which opened a bare `tttrlib.TTTR` and so showed the raw decay even though the reader carries the LUTs — now opens through `staging.open_tttr` with the reader's `channel_luts`/`apply_lut`. Guardrail: `test/fio/test_staging.py::test_apply_setup_lut_in_place` (no-op when gated off, in-place correction matching `open_tttr` when on) — 12 staging tests pass. **Remaining candidates that produce a micro-time histogram from a raw open and consume a setup** (tracked, fix with `apply_setup_lut`): `microtime_histogram` plugin (`wizard.py:1022/1467`), `tttr_photon_filter` decay preview, `burst_selection` preview (`tool.py:2314`), `burst_mle_analysis`, `sm_image_mle`, `burst/irf_bg`. A blanket `tttrlib.TTTR` monkeypatch is unsafe (no per-file setup context; inspection tools must see raw; SWIG-fragile) — the shared helper + routing analysis reads through `staging.open_tttr` is the systemic fix. See [subsystems/data-io.md](/subsystems/data-io.md).
 * **Fixed H2MM dock crash (`wrapped C/C++ object of type PlotWidget has been deleted`) + hardened DockArea.** Re-showing a closed H2MM plot dock via the context menu crashed: the results docks used `DockArea.enable_persistence`, whose **`showEvent`-time restore** fought the embedded burst-analysis navigation lifecycle and left a deleted plot widget registered in `_all_widgets`, so a later `showTab`/menu action called into a dead C++ object. Two fixes. (1) **H2MM** now persists its dock layout the proven **BVA way** — synchronously in `__init__` (`_restore_dock_layout` restores the saved arrangement or applies the default two-column grid with `emit_change=False`; `_save_dock_layout` on `layoutChanged` + `closeEvent`), never on `showEvent`; dropped `enable_persistence`. (2) **DockArea hardening** (helps every tool): a `_is_deleted(widget)` probe (sip/shiboken/last-resort) + `_prune_deleted()` called from `showTab` and `_add_dock_visibility_actions`, so a C/C++-deleted page is skipped/pruned instead of crashing. Headless: reproduced the exact crash (force-delete a registered plot widget, then build menu + `showTab`) and confirmed it now returns cleanly and prunes the entry; clean-first-run default grid + embedded save→rebuild→hide/show lifecycle both verified by offscreen screenshot; `burst_h2mm` + `burst_analysis` suites **66 pass**. See [plugins/burst.md](/plugins/burst.md).
 * **Channel-definition micro-time decay preview now applies the LUT (was reading raw).** The editor's decay preview read via a bare `tttrlib.TTTR` (`tttr_channel_definition_tttr_io.py::read_from_tttr_file`), so after configuring a LUT the preview still showed the *raw* decay — it looked like the LUT did nothing. `_update_microtime_preview` now applies the setup's per-channel LUTs/shifts (`_apply_setup_lut_to_tttr`, tttrlib `apply_channel_luts`/`apply_luts_and_shifts` with the same fixed dither seed as the reading seam) before histogramming both the all-channel and per-channel decays. Because users read the calibration file *before* computing/assigning LUTs, added `DetectorWizardPage._refresh_preview_lut()` (re-reads the stored file and redraws with the current LUT) wired to the `apply_lut` toggle, per-channel Assign, and the LUT-Tools pull — so the preview updates live and reverts to raw when the gate is off. Headless: `test/gui/test_channel_definition_lut_box.py` +1 (preview changes with the LUT, reverts off) — 5 pass. See [subsystems/data-io.md](/subsystems/data-io.md).
-* **LUT Tools: one click computes + assigns a LUT for ALL routing channels.** Following up the per-channel LUT work, the default action now computes a LUT for **every** routing channel in the loaded file and assigns them all: `LutComputeViewModel.compute_all_channels()` builds one LUT per used channel (region auto-detected each, honoring the currently previewed channel's hand-tuned region), and **➡ Add all channels to setup** assigns each to its channel (the channel-def editor pulls them on close). The channel dropdown is relabeled **Preview channel** (inspect/tune one) and now **updates the plot** on change — the fix was adding `call: update` to the AutoForm `choice` section and letting `update(*_)` accept the value the hook passes. Header/help/README updated to the all-channels flow. Also fixed a headless test hang: the old bridge test set `current_table` with no data so the new all-channels bridge hit a modal `QMessageBox`; the test now loads a real SPC file and asserts all channels are assigned. `tttr_lut_tools/tests` **14 pass**; tutorial 37 screenshot regenerated. See [subsystems/plugins.md](/subsystems/plugins.md).
+* **LUT Tools: one click computes + assigns a LUT for ALL routing channels.** Following up the per-channel LUT work, the default action now computes a LUT for **every** routing channel in the loaded file and assigns them all: `LutComputeViewModel.compute_all_channels()` builds one LUT per used channel (region auto-detected each, honoring the currently previewed channel's hand-tuned region), and **➡ Add all channels to setup** assigns each to its channel (the channel-def editor pulls them on close). The channel dropdown is relabeled **Preview channel** (inspect/tune one) and now **updates the plot** on change — the fix was adding `call: update` to the AutoForm `choice` section and letting `update(*_)` accept the value the hook passes. Header/help/README updated to the all-channels flow. Also fixed a headless test hang: the old bridge test set `current_table` with no data so the new all-channels bridge hit a modal `QMessageBox`; the test now loads a real SPC file and asserts all channels are assigned. `tttr_lut_tools/tests` **14 pass**; tutorial 37 screenshot regenerated. See [specs/plugins.md](/specs/plugins.md).
 * **H2MM results split into per-plot docks + experimental flag removed.** Two H2MM asks. (1) **De-crammed the Results panel** — the seven burstH2MM-style plots were packed into one `GraphicsLayoutWidget` grid in a single "Results" dock, so each was tiny. Each plot is now its **own dock** (`_build_plot_docks`: individual `pg.PlotWidget`s, `_p_*` = their `getPlotItem()`; the state-path plot keeps its ◀/▶ nav bar in its dock) added to the tool's `DockArea`, arriving in a default two-column layout that mirrors the old dashboard (`_apply_default_plot_layout` via `DockArea.set_layout_state`, graceful tab fallback) but every plot is independently resizable / tabbable / maximisable / draggable, and the arrangement persists (`DockArea.enable_persistence("burst_h2mm")`). `_save_plot` now grabs the active plot dock (per-plot filename). (2) **Removed the experimental flag** from the H2MM step: dropped `experimental`/`experimental_message` from `BURST_PANELS` (`burst_analysis`) and `burst_h2mm/manifest.json`, and the "⚠️ experimental" window-title suffix — no more nav ⚠️ / red banner. Headless: offscreen screenshot verified the docked grid; `burst_h2mm/tests/test_gui.py` **6 pass** (updated for per-plot docks), `burst_analysis/tests/test_workflow.py` **15 pass** (experimental test inverted), full burst_h2mm + burst_analysis suites **66 pass**, manifest validation **24 pass**. See [plugins/burst.md](/plugins/burst.md).
-* **Burst Background Estimation plugin gained diagnostic plots (inter-photon-time tail fit + rate bars).** The plugin previously showed only a results *table* of background rates. Added a **Diagnostics** tab (pyqtgraph): the per-detector **inter-photon-time distribution** (log–log points) overlaid with the **fitted exponential background tail**, and a **per-detector background-rate bar chart** — the same view the [background tutorial](../../docs/tutorials/15_background_rates.md) illustrates, so the fit can be judged visually. Core: `background.py` refactored to share one Poisson-MLE tail fit (`_fit_exponential_tail`) between the rate estimator and a new `interphoton_time_diagnostics` / `background_diagnostics_from_bursts` returning a `BackgroundDiagnostics` (histogram + model + tail mask + rate) — the estimator's rate is unchanged (bit-identical). Detector colours are semantic (green/red/yellow → their colours) and identity-stable. Headless coverage: `test/plugins/burst/test_background_diagnostics.py` **4 pass** (diagnostics-vs-estimator identity, known-rate recovery, per-detector) and `test/plugins/burst/test_background_gui.py` **2 pass** (plots build/render/clear, screenshot-verified). See [plugins/burst.md](/plugins/burst.md).
-* **LUT Tools: per-routing-channel LUTs + "Add to Detector setup" as the default action.** TAC differential non-linearity is *per routing channel*, so a LUT must be computed per channel, not pooled. The api gained per-channel loading (`io.load_microtimes(..., channel=)`, `io.load_micro_and_routing`), `compute.compute_lut_from_files(..., channel=)`, a `channel` CLI option + rpc param. The ① Compute view-model loads all channels once, exposes a **Routing channel** selector (AutoForm `choice` bound to `channels_options`), and re-histograms/re-computes per selected channel (switching channel yields a different LUT). The ①→② bridge auto-assigns the per-channel LUT to its channel (`receive_computed_lut(..., channel=)` sets `channel_luts[ch]`). **UX reframed around the user's confusion**: the primary/default action is now a bold **➡ Add to Detector setup** (assigns each per-channel LUT; the channel-def editor pulls them on close), **saving a LUT/settings file is explicitly optional** (right-aligned "Optional:" buttons), and the second tab is relabeled **"② settings.tttr.json (optional)"** with header/help/README making clear ① is the tool and ② is optional file interchange (README leads with a two-row comparison table). Headless: `tttr_lut_tools/tests` **18 pass** (+ per-channel LUT-differs test); tutorial 37 screenshot regenerated (channel selector). See [subsystems/plugins.md](/subsystems/plugins.md).
+* **Burst Background Estimation plugin gained diagnostic plots (inter-photon-time tail fit + rate bars).** The plugin previously showed only a results *table* of background rates. Added a **Diagnostics** tab (pyqtgraph): the per-detector **inter-photon-time distribution** (log–log points) overlaid with the **fitted exponential background tail**, and a **per-detector background-rate bar chart** — the same view the [background tutorial](../docs/guides/15_background_rates.md) illustrates, so the fit can be judged visually. Core: `background.py` refactored to share one Poisson-MLE tail fit (`_fit_exponential_tail`) between the rate estimator and a new `interphoton_time_diagnostics` / `background_diagnostics_from_bursts` returning a `BackgroundDiagnostics` (histogram + model + tail mask + rate) — the estimator's rate is unchanged (bit-identical). Detector colours are semantic (green/red/yellow → their colours) and identity-stable. Headless coverage: `test/plugins/burst/test_background_diagnostics.py` **4 pass** (diagnostics-vs-estimator identity, known-rate recovery, per-detector) and `test/plugins/burst/test_background_gui.py` **2 pass** (plots build/render/clear, screenshot-verified). See [plugins/burst.md](/plugins/burst.md).
+* **LUT Tools: per-routing-channel LUTs + "Add to Detector setup" as the default action.** TAC differential non-linearity is *per routing channel*, so a LUT must be computed per channel, not pooled. The api gained per-channel loading (`io.load_microtimes(..., channel=)`, `io.load_micro_and_routing`), `compute.compute_lut_from_files(..., channel=)`, a `channel` CLI option + rpc param. The ① Compute view-model loads all channels once, exposes a **Routing channel** selector (AutoForm `choice` bound to `channels_options`), and re-histograms/re-computes per selected channel (switching channel yields a different LUT). The ①→② bridge auto-assigns the per-channel LUT to its channel (`receive_computed_lut(..., channel=)` sets `channel_luts[ch]`). **UX reframed around the user's confusion**: the primary/default action is now a bold **➡ Add to Detector setup** (assigns each per-channel LUT; the channel-def editor pulls them on close), **saving a LUT/settings file is explicitly optional** (right-aligned "Optional:" buttons), and the second tab is relabeled **"② settings.tttr.json (optional)"** with header/help/README making clear ① is the tool and ② is optional file interchange (README leads with a two-row comparison table). Headless: `tttr_lut_tools/tests` **18 pass** (+ per-channel LUT-differs test); tutorial 37 screenshot regenerated (channel selector). See [specs/plugins.md](/specs/plugins.md).
 * **Burst Analysis workflow fixes: MLE load crash, 2CDE folder hand-off, BVA recompute coalescing + unified progress.** Four issues in the integrated `burst_analysis` shell. (1) **MLE-Lifetime failed to load** with `'PathListWidget' object has no attribute 'count'` — `burst_files_list` migrated to the shared `PathListWidget`-backed factory (which has `paths()`, not `count()`); `_apply_context_to_mle` now guards on `len(file_list.paths()) == 0`. (2) **2CDE never received the analysis folder** — added `_apply_context_to_2cde` (mirrors BVA: `widget.set_folder(burst_folder)`, side-effect-free), registered the `two_cde` role in `_apply_context_to_panel` and the downstream apply loop. (3) **BVA recomputed too many times when switching to it / window busy** — applying context touched the detector table, donor/acceptor combos and folder, each firing a synchronous full read/compute/plot. `BVATool` now coalesces param changes via a zero-delay single-shot `QTimer` (`_on_param_changed` just marks pending + schedules `_flush_recompute`) plus a `suspend_recompute()` batch guard the shell wraps `_apply_context_to_bva` in → a single recompute per entry. (4) **Unified BVA progress bars** — read/compute/write phases now share one `_ProgressDialog` (via `_begin_progress`/`_phase` retargeting) instead of flashing a new dialog per phase. Headless: `burst_analysis/tests/test_workflow.py` **15 pass** (+4 new: MLE paths-not-count contract, MLE prepopulate, 2CDE folder, BVA coalescing); burst_bva + burst_2cde + mle dock suites green. See [plugins/burst.md](/plugins/burst.md).
 * **LUT Tools ① Compute panel rewritten as AutoForm (`view.json` + view_model + custom sections).** The 773-line hand-built `TACLinearizationPanel` is now a thin `AutoForm` host over a Qt-free `LutComputeViewModel` (`gui/view_model.py`, math delegated to `api`). Layout is declarative `gui/lut_compute.view.json`: a `?` **help** modal, the unified **`path_list`** file loader (bound to `model.files`; `update()` reloads on change), the interactive raw/after TAC plots with the draggable **linear region** + offset/threshold lines as a custom `lut_compute_plot` section (`gui/sections.py`), a live info label, a 2-col **Parameters** panel + a collapsible **Advanced** panel (every field a `value`/`toggle` with a `description` → tooltip, `call:update`), and a `lut_compute_actions` custom section (Auto-detect / Save LUT / Export with file dialogs). A dragged plot item updates the model and re-syncs the value fields via `AutoForm.sync_fields()`. `current_table` stays a property so the ①→② bridge and tests are unaffected. (Dropped the niche manual zero-brush / left-right cut cleanup in the rewrite.) Headless: `tttr_lut_tools/tests/test_gui.py` **14 pass** (+ AutoForm-host + view-model load/region/recompute) and the channel-def transfer test still green; offscreen screenshot verified. This closes the deferred AutoForm item for the plugin. See [subsystems/gui-autoform.md](/subsystems/gui-autoform.md).
-* **Tutorial 37 — TAC linearization / microtime LUTs (usage + concepts, screenshots + matplotlib).** Added `docs/tutorials/37_tttr_microtime_lut.md`: part 1 **Usage** walks the ①-compute → ②-assign → setup → LUT-aware-read flow with real **GUI screenshots** (the LUT Tools workspace with a bridged LUT, and the channel-definition LUT-handling box) plus CLI/API snippets; part 2 **Concepts** explains TAC differential non-linearity and the Felekyan cumulative-LUT construction with a **matplotlib** figure (raw-vs-linearized flat-light histogram + the LUT vs the linear ideal). Screenshots are regenerated headlessly from the real widgets via a new `docs/tutorials/make_screenshots.py` (offscreen `QWidget.grab()`); the concept figure via a new `fig_lut()` in `make_figures.py` using the plugin's own `api`. Listed in `index.md` (+ a note on the screenshot script). See [subsystems/plugins.md](/subsystems/plugins.md).
-* **LUT Tools GUI: explain the two stages + one-click ①→② transfer.** The two tabs confused users ("what is the difference?"). Added a header toolbar with a one-line **flow explanation** (① Compute from uniform light → ② Assign to channels & export → Configure LUTs… in the Detector setup applies it at read time), numbered/tooltipped tabs (**① Compute LUT** / **② Assign / Export**), and a **`?` help modal** rendering the consolidated README (the crisp "what's the difference / how it transfers" answer). Removed the friction of Save-LUT-then-Load-LUT with a **①→② in-memory bridge**: a "→ Use in ② Assign" button hands the LUT just computed straight to the Assign panel (new `TTTRSettingsPanel.receive_computed_lut`) and switches tabs. `TTRLutToolsWidget` keeps its name + `.settings_panel`/`.tac_panel` attributes so the channel-definition editor's `_pull_luts_from_panel` transfer is unaffected. Headless: `tttr_lut_tools/tests/test_gui.py` **3 pass** + offscreen screenshot verified. (Full AutoForm view.json rewrite of the interactive compute plot remains a follow-up.) See [subsystems/plugins.md](/subsystems/plugins.md).
-* **Removed the two deprecated LUT plugin siblings (duplication).** `tttr_microtime_lut/` and `tttr_settings_generator/` were byte-for-byte duplicates of `tttr_lut_tools`' compute and settings logic (both `deprecated`, `menu_hidden`, manifest-less). Consolidated their documentation into a single `tttr_lut_tools/README.md` that crisply explains the **two stages** (① Compute = *make* a LUT from a uniform-illumination measurement; ② Create Settings = *apply* LUTs to channels + export `settings.tttr.json`) and **how a LUT reaches a setup** (the channel-def "Configure LUTs…" button pulls `channel_luts` on close → reader linearizes via `staging.open_tttr`). Repointed the Info dialog (`settings_panel.py`) to the new README and deleted both sibling directories (no remaining references). See [subsystems/plugins.md](/subsystems/plugins.md).
-* **`tttr_lut_tools` promoted to a first-class api/cli/rpc plugin (GUI + tutorial follow).** Split the monolithic plugin into layers: **`api/`** — pure, Qt-free logic (`lut.py` the Felekyan math with the old `click`/`tttrlib`/`SystemExit` coupling removed, `io.py` file/tttrlib IO incl. `load_lut_file`/`save_lut`, `compute.py` the load→histogram→autodetect→build orchestration, `settings.py` `settings.tttr.json` build/load + `apply_luts_to_tttr`/`corrected_histogram` reusing the Phase-1 `staging.open_tttr` seam, `contract.py` `METHOD_*` + JSON-Schemas whose `description`s become AutoForm tooltips); **`backend/services.py`** — `register_services(dispatcher)` exposing `lut.autodetect_region`/`compute`/`apply_preview`/`settings_build`/`settings_load` as guarded `{ok,result|error}` handlers; **`cli/main.py`** — a `lut-tools` click group (`compute`/`apply`/`settings`) calling `api/` directly. `manifest.json` gained `entrypoints.cli`/`entrypoints.services` + `rpc_methods[]`. `core/tac_lut.py` is now a thin back-compat shim re-exporting `api` (existing imports, incl. the Phase-1 staging test, unaffected). Headless coverage: `tttr_lut_tools/tests/{test_api,test_services}.py` **9 pass** (compute determinism/monotonicity, settings + LUT-file round-trips, service registration + error envelope + build/load, CLI compute+settings). Remaining in this task: AutoForm GUI + help/tooltips clarifying the two stages, remove the duplicate deprecated siblings, and a usage/concepts tutorial with screenshots. See [subsystems/plugins.md](/subsystems/plugins.md).
+* **Tutorial 37 — TAC linearization / microtime LUTs (usage + concepts, screenshots + matplotlib).** Added `docs/tutorials/37_tttr_microtime_lut.md`: part 1 **Usage** walks the ①-compute → ②-assign → setup → LUT-aware-read flow with real **GUI screenshots** (the LUT Tools workspace with a bridged LUT, and the channel-definition LUT-handling box) plus CLI/API snippets; part 2 **Concepts** explains TAC differential non-linearity and the Felekyan cumulative-LUT construction with a **matplotlib** figure (raw-vs-linearized flat-light histogram + the LUT vs the linear ideal). Screenshots are regenerated headlessly from the real widgets via a new `docs/tutorials/make_screenshots.py` (offscreen `QWidget.grab()`); the concept figure via a new `fig_lut()` in `make_figures.py` using the plugin's own `api`. Listed in `index.md` (+ a note on the screenshot script). See [specs/plugins.md](/specs/plugins.md).
+* **LUT Tools GUI: explain the two stages + one-click ①→② transfer.** The two tabs confused users ("what is the difference?"). Added a header toolbar with a one-line **flow explanation** (① Compute from uniform light → ② Assign to channels & export → Configure LUTs… in the Detector setup applies it at read time), numbered/tooltipped tabs (**① Compute LUT** / **② Assign / Export**), and a **`?` help modal** rendering the consolidated README (the crisp "what's the difference / how it transfers" answer). Removed the friction of Save-LUT-then-Load-LUT with a **①→② in-memory bridge**: a "→ Use in ② Assign" button hands the LUT just computed straight to the Assign panel (new `TTTRSettingsPanel.receive_computed_lut`) and switches tabs. `TTRLutToolsWidget` keeps its name + `.settings_panel`/`.tac_panel` attributes so the channel-definition editor's `_pull_luts_from_panel` transfer is unaffected. Headless: `tttr_lut_tools/tests/test_gui.py` **3 pass** + offscreen screenshot verified. (Full AutoForm view.json rewrite of the interactive compute plot remains a follow-up.) See [specs/plugins.md](/specs/plugins.md).
+* **Removed the two deprecated LUT plugin siblings (duplication).** `tttr_microtime_lut/` and `tttr_settings_generator/` were byte-for-byte duplicates of `tttr_lut_tools`' compute and settings logic (both `deprecated`, `menu_hidden`, manifest-less). Consolidated their documentation into a single `tttr_lut_tools/README.md` that crisply explains the **two stages** (① Compute = *make* a LUT from a uniform-illumination measurement; ② Create Settings = *apply* LUTs to channels + export `settings.tttr.json`) and **how a LUT reaches a setup** (the channel-def "Configure LUTs…" button pulls `channel_luts` on close → reader linearizes via `staging.open_tttr`). Repointed the Info dialog (`settings_panel.py`) to the new README and deleted both sibling directories (no remaining references). See [specs/plugins.md](/specs/plugins.md).
+* **`tttr_lut_tools` promoted to a first-class api/cli/rpc plugin (GUI + tutorial follow).** Split the monolithic plugin into layers: **`api/`** — pure, Qt-free logic (`lut.py` the Felekyan math with the old `click`/`tttrlib`/`SystemExit` coupling removed, `io.py` file/tttrlib IO incl. `load_lut_file`/`save_lut`, `compute.py` the load→histogram→autodetect→build orchestration, `settings.py` `settings.tttr.json` build/load + `apply_luts_to_tttr`/`corrected_histogram` reusing the Phase-1 `staging.open_tttr` seam, `contract.py` `METHOD_*` + JSON-Schemas whose `description`s become AutoForm tooltips); **`backend/services.py`** — `register_services(dispatcher)` exposing `lut.autodetect_region`/`compute`/`apply_preview`/`settings_build`/`settings_load` as guarded `{ok,result|error}` handlers; **`cli/main.py`** — a `lut-tools` click group (`compute`/`apply`/`settings`) calling `api/` directly. `manifest.json` gained `entrypoints.cli`/`entrypoints.services` + `rpc_methods[]`. `core/tac_lut.py` is now a thin back-compat shim re-exporting `api` (existing imports, incl. the Phase-1 staging test, unaffected). Headless coverage: `tttr_lut_tools/tests/{test_api,test_services}.py` **9 pass** (compute determinism/monotonicity, settings + LUT-file round-trips, service registration + error envelope + build/load, CLI compute+settings). Remaining in this task: AutoForm GUI + help/tooltips clarifying the two stages, remove the duplicate deprecated siblings, and a usage/concepts tutorial with screenshots. See [specs/plugins.md](/specs/plugins.md).
 * **Single-molecule tutorials with headless-generated figures (`docs/tutorials/`).** Seven self-contained markdown tutorials for the new single-molecule analyses — FRET/ALEX-2CDE burst dynamics, recurrence (RASP), polymer distance distributions (SAW-ν + Ising), FIDA/PCH, Enderlein MDF & two-focus FCS, ns-FCS second-order g⁽³⁾, and RCM detection calibration — each with theory, a runnable ChiSurf snippet, and a real figure. `docs/tutorials/make_figures.py` regenerates all figures headlessly (matplotlib Agg) by running the actual analysis functions on synthetic data (`PYTHONPATH=. python docs/tutorials/make_figures.py`), so the plots are genuine output. `docs/tutorials/index.md` links them. See [subsystems/fitting.md](/subsystems/fitting.md).
 * **Ising two-state chain FRET distance distribution (tractable Ising-WLC).** Adds `rdf.ising_chain(r, N, bS, bU, J, h)` — the folded/unfolded heteropolymer P(R) behind Fretica's compiled `FIsingWLCFRET*`, in its tractable Gaussian-segment form: every residue is structured or unstructured under a nearest-neighbour Ising Hamiltonian (cooperativity J, field h), each contributing a Gaussian bond (RMS bS/bU). Because the characteristic function factorises per residue, φ(k) is an **exact 2×2 transfer-matrix product** in Fourier space, inverted by the isotropic transform `P(R)=(2R/π)∫k·sin(kR)·φ(k)dk`; reduces to `gaussian_chain` when bS=bU. Wired as a TCSPC FRET model `IsingChainModel` ("FRET: FD (Ising two-state chain)") + `IsingChainModelWidget`, registered in `experiment_configs.yaml` alongside SAW-ν/WLC/Gaussian. Headless: `test/test_rdf_ising.py` **4 pass** (normalisation, Gaussian-chain limit, field-driven compaction, cooperativity). NB: the residue-resolved full Ising-WLC and the TRBP register correlation remain in Fretica's compiled backend (no portable source) — not reimplemented. See [subsystems/fitting.md](/subsystems/fitting.md).
 * **burst_2cde GUI panel + workflow step (completes the 2CDE feature).** The deferred bespoke Qt tool for FRET-2CDE/ALEX-2CDE (`burst_2cde/gui/tool.py`, `BurstTwoCdeTool`): a folder selector, settings form (variant/kernel/τ/donor/acceptor/file-type), a Compute button driving `core.compute_2cde`, and a pyqtgraph E-vs-2CDE scatter that visibly separates static (~10) from dynamic (~40) bursts. Wired into the `burst_analysis` navigation shell as step **4. 2CDE** (`_burst_2cde` factory; MLE/H2MM/Browser renumbered 5/6/7, separator index 6→7) and exposed via the manifest `gui` entrypoint. Headless-verified with an offscreen `QWidget.grab()` screenshot (inspected) + `chisurf/plugins/burst/burst_2cde/tests/test_gui.py` (**2 pass**: build/compute/grab + workflow-factory wired); `burst_analysis` workflow tests updated for the new step (**11 pass**). See [plugins/burst.md](/plugins/burst.md).
@@ -37077,7 +37077,7 @@ front, not this).
 * **TTTR Time-Windows migrated onto the unified file list; AutoForm file drop gained a `path_filter` hook.** `tttr_time_windows` was Tier-B — it used the bare `PathDropListWidget` plus a hand-rolled `_add_paths`/`_refresh_file_list` (which also mirrored the list into a preview combo) and *separate* toolbar 📂 Add / 🗄 Database actions + a File-menu Add. Replaced the list with the shared `PathListWidget` bound via a `_FileListModel` adapter over the tool's canonical `_file_paths`; the combo-mirror + preview logic moved to an `_on_files_changed` handler driven by the model's `update()`. The redundant toolbar Add/Database actions and the File-menu Add are removed (the list's own ➕ Files / 📁 Folder / 🗄 Database buttons replace them); 🕐 Process / 🗑️ Clear (reset-all: now `file_list.clear()` + result/plot/log reset) / ℹ️ Help stay. To preserve acceptance of compressed `*.ptu.gz` TTTR files (which a plain suffix test misses), `PathListWidget` gained a general **`path_filter`** option — a `callable(str)->bool` predicate that overrides the extension check in both drop-acceptance and folder expansion — and the tool passes its existing `_is_supported_path`. Removed `_add_paths`/`_refresh_file_list`/`_add_files_dialog`/`_add_from_mmfdb`; obsolete tests rewritten to the unified API + a new `path_filter` case in `test_path_list_section.py`; time-windows + path_list suites **11 pass**. Seventh plugin (after shifter, vv_vh ×2, fcs ×2, tttr_lut_tools). See [subsystems/gui-autoform.md](/subsystems/gui-autoform.md).
 * **TTTR LUT Tools file list migrated onto the unified AutoForm file list.** `tttr_lut_tools`' settings panel (`gui/settings_panel.py`) dropped its hand-rolled `FileListWidget(QListWidget)` (own drag/drop + `add_files`/`current_paths`/`clear_files` + `filesChanged` signal) and the separate 📂 Add / 🧹 Clear buttons for the shared `PathListWidget` (drag-drop + Files/Folder/**Database** MMFDB/Remove/Clear), bound via a small `_FileListModel` adapter whose `update()` drives the existing `_files_changed` reload. The custom widget class is deleted; consumers now read `file_list.paths()`. Its `LUTListWidget` is left as-is — a *single*-LUT drop target (emits `lutDropped`, `break` after the first file), which is the single-file-drop pattern, not a file list. The near-identical `tttr_settings_generator` was intentionally **not** migrated: it is `deprecated=True` / menu-hidden ("Use TTTR:LUT Tools instead"). Panel builds and the list works (MMFDB button present); no plugin tests exist there; lint unchanged. Sixth plugin in the file-list unification (after shifter, vv_vh ×2, fcs ×2). See [subsystems/gui-autoform.md](/subsystems/gui-autoform.md).
 * **AutoForm file list gained checkable + folder-expander support; FCS + burst-FCS correlators migrated (no special file-list widgets left there).** To migrate the two correlators without a bespoke widget, `PathListWidget` (the `path_list` section) grew two general capabilities: (1) **`checkable`** — per-entry tick boxes (default *checked*, state tracked as an `_unchecked` set so it survives the widget's full-list refreshes), ☑ All / ☐ None buttons, a `checked_paths()` accessor and a `checkChanged(list[str])` signal; and (2) a **`folder_expander`** hook — an optional `callable(Path)->list[str]` that replaces the default recursive extension-filtered scan when a folder is added. With these, `fcs_correlator`'s wizard page dropped its hand-rolled checkable `FileListWidget` (drag-drop + per-item checkboxes + context menu + `all_files`/`checked_files`) for a `checkable` `PathListWidget` bound via a `_FileListModel`; its BST-aware step-availability logic now rides the `checkChanged` signal. `burst_fcs_correlator` dropped its `BurstFileListWidget(FileListWidget)` subclass entirely — the burstwise-folder→BUR/BST resolution is now a plain `expand_burst_folder()` function passed as the `folder_expander`, via a thin `make_burst_file_list()` factory used by both its wizard and dock tool. Both custom `QListWidget` subclasses are deleted; both correlators gain MMFDB file selection for free. Tests: new checkable-mode case in `test_path_list_section.py`, fcs test updated to `add_paths`; path_list + fcs + burst-FCS suites **22 pass**; fcs wizard shed 9 ruff findings (removed unused Qt/typing imports). See [subsystems/gui-autoform.md](/subsystems/gui-autoform.md).
-* **Rebuilt the ChiMOL `cmd` layer as a declarative, signature-driven command language (PyMOL-parity architecture).** Ported PyMOL's four-piece design to Python introspection: a `@command` decorator + `collect_commands` registry with a minimal-unique-prefix `Shortcut` index (`registry.py`), and a central comma/keyword/bracket/quote-aware tokenizer + `inspect.signature` binder with annotation-driven coercion and `raw1`/`raw2` verbatim-tail modes (`argparse2.py`, `selection_types.Selection`). Migrated **every** command mixin (loader/rendering/selection/measurements/editing/animation/exporting/lifecycle + base `help`/`quit`/`exit`) from the old `_cmd_x(args: List[str])` + `_mixin_commands()` handlers to typed `@command` methods, so adding a command is now writing one annotated method and parsing/keyword-args/coercion/Python-API come free (`align a, b, cutoff=3, cycles=10` binds natively). Removed the dual-dispatch adapter — `base.py:do()` resolves solely through the registry — and deleted the dead `cmd/core.py` (2556-line legacy monolith) and never-registered `cmd/rmf.py`. External callers (`cli.py`, `command_dock.py`) now read the command list via the new `Cmd.command_names()`. Added `count_atoms` and `set_name` as the payoff. **Fixed a latent Python-3.11+ bug** in `sele_parser.py`: the per-token patterns carried inline `(?i)` flags that, once joined with `|`, landed mid-expression and made `TOKEN_REGEX` fail to compile — silently breaking every selection evaluation (color/select/alter/remove/align on real structures); hoisted to a single `re.IGNORECASE`. Full chimol suite now green with **nothing excluded** (136 passed), where alignment/editing/selection-grammar previously had to be skipped. See [plugins/profiles/chimol.md](/plugins/profiles/chimol.md).
+* **Rebuilt the ChiMOL `cmd` layer as a declarative, signature-driven command language (reference-viewer-parity architecture).** Ported the reference viewer's four-piece design to Python introspection: a `@command` decorator + `collect_commands` registry with a minimal-unique-prefix `Shortcut` index (`registry.py`), and a central comma/keyword/bracket/quote-aware tokenizer + `inspect.signature` binder with annotation-driven coercion and `raw1`/`raw2` verbatim-tail modes (`argparse2.py`, `selection_types.Selection`). Migrated **every** command mixin (loader/rendering/selection/measurements/editing/animation/exporting/lifecycle + base `help`/`quit`/`exit`) from the old `_cmd_x(args: List[str])` + `_mixin_commands()` handlers to typed `@command` methods, so adding a command is now writing one annotated method and parsing/keyword-args/coercion/Python-API come free (`align a, b, cutoff=3, cycles=10` binds natively). Removed the dual-dispatch adapter — `base.py:do()` resolves solely through the registry — and deleted the dead `cmd/core.py` (2556-line legacy monolith) and never-registered `cmd/rmf.py`. External callers (`cli.py`, `command_dock.py`) now read the command list via the new `Cmd.command_names()`. Added `count_atoms` and `set_name` as the payoff. **Fixed a latent Python-3.11+ bug** in `sele_parser.py`: the per-token patterns carried inline `(?i)` flags that, once joined with `|`, landed mid-expression and made `TOKEN_REGEX` fail to compile — silently breaking every selection evaluation (color/select/alter/remove/align on real structures); hoisted to a single `re.IGNORECASE`. Full chimol suite now green with **nothing excluded** (136 passed), where alignment/editing/selection-grammar previously had to be skipped. See [plugins/profiles/chimol.md](/plugins/profiles/chimol.md).
 * **Parameter tables can hide their Lo/Hi/Bounds columns behind a per-panel "bounds" toggle.** To keep the Lifetime editor's tables narrow (bounds are also editable in the parameter details popup), both table widgets — `ParameterGroupTableWidget` and the paired `PairedParameterTableWidget` — gained `has_bounds_columns()` + `set_bounds_visible()` that show/hide the `bounds_lo`/`bounds_hi`/`bounds_on` columns (respecting the section's `columns` whitelist; the paired widget re-applies the choice across add/remove rebuilds). A `panel` view-spec section with `bounds_toggle:true` (new `PanelSection` field) puts a small checkable "bounds" `QToolButton` in its fold-box header that toggles every bounds-capable table in the panel at once, starting **hidden**. `CollapsibleBox` gained `add_header_widget()` (header restructured into an HBox) so the toggle sits on the existing header row at **zero extra vertical cost**; wired in `auto_form.py`'s `_build_panel` via `_add_bounds_toggle`. `lifetime.view.json` sets `bounds_toggle:true` on all five panels. Verified headlessly (bounds hidden by default; toggling all five reveals Lo/Hi/Bounds in every table); extended the integration test to assert the toggle exists, columns start hidden, and `set_bounds_visible` flips them. See [subsystems/gui-autoform.md](/subsystems/gui-autoform.md).
 * **Added tail-fitting to tttrlib's multi-exponential decay fitter (for FRET sensitised emission).** `DecayFitNExp` (the bounded multi-exponential Poisson reconvolution fit, `FitNExp`) gained a `tail_start` option in `DecayFitNExpOptions` (`~/dev/tttrlib`). When `tail_start >= 0` the fit becomes a **tail fit**: each exponential component is a pure decay `exp(-(i - tail_start)·dt/tau)` from that channel (no IRF reconvolution — the IRF shape is bypassed), and the pre-tail channels (the rise/prompt) are excluded from the likelihood by zeroing their pooled counts (the EM/NLL already skip `counts <= 0`). This is the standard treatment for sensitised-emission decays, whose rise is not a simple instrument response. Implemented as a branch in `convolved_component` (pure exponential from `tail_start`) plus a count mask in `DecayFitNExp::fit`; `-1` (default) keeps the normal reconvolution fit, so existing callers are unchanged. Verified on a synthetic decay (a non-IRF prompt bump + a τ=3 ns tail): the tail fit recovers **2.99 ns** while the un-masked fit is pulled to **6.76 ns** by the prompt. Test `test_tail_fit_recovers_lifetime_ignoring_the_prompt` in `test_DecayFitNExp.py`; full decayfit suite **57 pass / 1 skip** (no regression). Surfacing it in the burst-MLE UI is a separate step — `DecayFitNExp` is a different fitter family from the fit2x estimators (different construction/call), so it needs its own path rather than the fit2x selector.
 * **Burst-analysis Data Selection migrated onto the unified AutoForm `path_list`; dead standalone-Channels code removed.** The workflow's step-1 `BurstDataSelectionWidget` had a hand-rolled panel — a `PathDropListWidget` plus its own Import files… / Import folder… / Select from MMFDB… / Clear buttons, a custom `add_paths` (folder expansion + dedup), and a bespoke `MmfdbDatasetPickerDialog` path (`_select_mmfdb_dataset` / `_open_mmfdb_dataset`). Replaced with the shared `PathListWidget` (`path_list` section: drag-drop + ➕ Files / 📁 Folder / 🗄 Database / ➖ Remove / 🗑 Clear + first-class MMFDB), bound via a nested `_FileListModel` adapter (`paths: list[str]` + `update()` — kept a separate object so `update` doesn't shadow `QWidget.update`). The adapter's `_on_paths_committed` rebuilds the canonical `list[Path]`, imports newly-added local files to MMFDB (`_import_path_to_mmfdb`, preserved) and notifies the workflow; `paths()` / `mmfdb_payload()` / `add_paths()` / `clear()` stay as the stable external API. MMFDB dataset resolution now lives in the shared picker (`picker.pick_local_paths`), so the per-panel `_open_mmfdb_dataset` and the `selections` provenance dict are dropped (the old code re-imported picked files anyway). Separately, the standalone **Channels step** — already gone from `BURST_PANELS` (channels come from the detector setup the Burst Selection step picks) — had its dead plumbing removed: the `_channel_selection` factory, the `role == "channels"` bind branch, `_bind_channel_panel`, `_on_channel_definitions_changed`, and the channels-panel path in `_sync_channel_context` (now sources only from `_channel_settings_from_selection`). Tests: `test_data_selection_uses_the_shared_path_list_widget` (+ updated import test), the panel-order test already asserts no `channels` role; all 8 workflow panels load; burst_analysis + selection suites **42 pass**. See [plugins/burst.md](/plugins/burst.md).
@@ -37094,16 +37094,16 @@ front, not this).
 * **Burst-MLE fit page: resizable controls↔plot splitter + compact labels; plus a registry-driven fit-model form ready to embed.** The MLE-Lifetime page packed the controls and the two plots into one grid where horizontal space was scarce. Reworked the page (`burst_mle_analysis/wizard.py`) so the controls (left) and the plots (right) live in a horizontal `QSplitter` (`_mle_splitter`, non-collapsible, plots stretch) — the user can now give either side more room. Shortened the space-hungry labels and moved the detail to tooltips: "Fit Start/Stop"→"Range", "Minimum Photons:"→"Min photons", "Shift (VV/VH)"→"Shift", "Scatter Countrate [Hz]"→"Scatter [Hz]", "G factor"→"G", and the fit-parameter rows to the Greek symbols "τ [ns]/γ/r₀/ρ [ns]". Verified by an offscreen render (controls left, residual+intensity plots right, labels compact). Separately, the fit-model selection the burst- and pixel-MLE panels lacked is now available as a reusable registry-driven widget: `chisurf/gui/widgets/fit_model_form.py` `FitModelForm` renders tttrlib's `fit` registry (fit23/24/25/26) into a model chooser + AutoForm, mirroring `BurstSearchForm` (see the earlier registry log entry). Embedding it into the wizard's fit-parameter panel — replacing the hardcoded τ/γ/r₀/ρ rows and generalising the fit23-coupled execution — is the remaining step. See [subsystems/mle-lifetime-fitting.md](/subsystems/mle-lifetime-fitting.md).
 * **AutoForm image-browser now fills its panel vertically.** `ImageBrowserWidget` (the `image_browser` section) set only `AUTOFORM_REFRESH` and no size policy, so when nested inside a `panel` (the TTTR image browser, `tttr_image_browser/gui/browser.view.json`) AutoForm's panel builder found no expanding child and appended a trailing `addStretch(1)` that ate the leftover height, pinning the browser to its size hint (the "unused vertical space" the user saw). It looked fine only where it is a direct `dock_area` child (clsm_generator, sm_image_mle), which the dock masks. Fix (`chisurf/gui/autoform/sections/image_browser_section.py`): mark the widget `_autoform_expanding = True` and give it an `Expanding/Expanding` size policy, mirroring the `waterfall`/`phasor`/`path_list` sections — the panel loop now assigns it `setStretch(row, 1)` instead of the space-eating trailing stretch. See [subsystems/gui-autoform.md](/subsystems/gui-autoform.md).
 * **Light-path simulator: node view auto-fits on load, and Easy Mode no longer disappears when the spectra catalogue fails to load.** Two fixes in `chisurf/plugins/core/lightpath_simulator/gui/tool.py`. (1) Every graph-load path (`_on_load_graph`, `_on_load_from_mmfdb`, `load_graph_from_dict`, and the saved-graph restore in `_setup_default_path`) now calls a new `_fit_view()` that defers `NodeView.fit_all()` (zoom-to-fit-all-items, already used by the scene's right-click "Fit") to the next event-loop tick, replacing the hardcoded `centerOn(550, 200)` — so a freshly loaded scene is framed to the viewport instead of appearing off-screen or half-visible. (2) The "Easy Mode" tab was built only in `_on_probes_loaded`; the failure path `_on_probe_load_failed` (hit when MMFDB probe metadata can't load) never called `_build_easy_mode_tab`, so Easy Mode silently vanished — it now builds the tab too (with an empty probe list), so Easy Mode is always present. See [plugins/core-tools.md](/plugins/core-tools.md).
-* **ChiMOL `cmd` gained PyMOL's core viewing/transform commands.** Added `turn`, `move`, `clip`, `rotate` and `translate` (RenderingMixin), the most-used PyMOL commands that were missing and that complement the new trackball navigation. Camera commands go cmd → `MolView` → `qtgl` renderer, all built on the rotation-matrix camera: `turn <x|y|z>, <angle>` left-multiplies the view rotation about a screen axis (Rodrigues); `move <x|y|z>, <dist>` pans (x/y) or dollies (z); `clip <near|far|slab|move>, <dist>` shifts the clip planes. `rotate <x|y|z>, <angle> [, sel]` and `translate [x,y,z] [, sel]` build a rigid transform and call `apply_transform_to_object` — verified `rotate x, 90` gives PyMOL's +90° ((0,1,0)→(0,0,1)) on the real `arr @ R^T` convention; fixed `MockViewer.apply_transform_to_object` (was `arr @ R`, missing the transpose) to match and gave it `turn`/`move`/`clip` stubs so the commands are testable headless. New `test_cmd_viewing.py` (**4**): registration, rotate/translate math, and camera-command dispatch. Chimol suite **89 passed**; lint net down (`cmd/rendering.py` 34→0 via cleanup, `qtgl`/`view` unchanged). More of PyMOL's surface (`create`, `set_name`, `dss`, `origin`, `count_atoms`, `save`, `run`) remains for follow-up. See [plugins/profiles/chimol.md](/plugins/profiles/chimol.md).
+* **ChiMOL `cmd` gained the reference viewer's core viewing/transform commands.** Added `turn`, `move`, `clip`, `rotate` and `translate` (RenderingMixin), the most-used the reference viewer commands that were missing and that complement the new trackball navigation. Camera commands go cmd → `MolView` → `qtgl` renderer, all built on the rotation-matrix camera: `turn <x|y|z>, <angle>` left-multiplies the view rotation about a screen axis (Rodrigues); `move <x|y|z>, <dist>` pans (x/y) or dollies (z); `clip <near|far|slab|move>, <dist>` shifts the clip planes. `rotate <x|y|z>, <angle> [, sel]` and `translate [x,y,z] [, sel]` build a rigid transform and call `apply_transform_to_object` — verified `rotate x, 90` gives the reference viewer's +90° ((0,1,0)→(0,0,1)) on the real `arr @ R^T` convention; fixed `MockViewer.apply_transform_to_object` (was `arr @ R`, missing the transpose) to match and gave it `turn`/`move`/`clip` stubs so the commands are testable headless. New `test_cmd_viewing.py` (**4**): registration, rotate/translate math, and camera-command dispatch. Chimol suite **89 passed**; lint net down (`cmd/rendering.py` 34→0 via cleanup, `qtgl`/`view` unchanged). More of the reference viewer's surface (`create`, `set_name`, `dss`, `origin`, `count_atoms`, `save`, `run`) remains for follow-up. See [plugins/profiles/chimol.md](/plugins/profiles/chimol.md).
 * **Burst-MLE fit page now displays the per-detector G factor / l1 / l2 — and a latent l1/l2-swap corruption is fixed.** The polarisation corrections (`g_factor`/`l1`/`l2`) are per-detector calibration constants on the detector definition and feed the fit's anisotropy, but the MLE fit page never showed them, and inside the embedded `burst_analysis` workflow the Detector Definition tab is hidden — so there was no way to see what the fit used. Added a read-only **G factor / l1 / l2** row to the fit page's "Shift · scatter · G/l1/l2" section (`wizard.py::_build_ui`), refreshed on every detector switch by `_sync_polarization_widgets` (and kept in step by `_set_polarization_display` on any programmatic change). While wiring this up, found the values were **corrupting on detector switches**: `_ensure_channel_state(det)` seeded the transient per-detector cache from `self.g_factor` (the *current* detector, not `det`), and `_apply_ui_state` then wrote g/l1/l2 back through setters that poke the definition's table cells by row/column — which mis-targeted and **swapped one detector's l1/l2 onto another** on repeated switches, so the fit silently ran with the wrong corrections. Fixes: seed `_ensure_channel_state` from the specific detector's own definition (`channel_definer.detectors[det]`), and stop `_apply_ui_state` restoring g/l1/l2 at all — they are owned by the definition and read live via the getters, so nothing needs restoring (the display fields are read-only; edit in the setup/Channels step). Verified headlessly: green/red display their own g/l1/l2 stably across repeated switches with the definition intact. Regression test `test_fit_page_displays_per_detector_g_factor_l1_l2`; MLE + workflow suites **39 pass**. See [plugins/burst.md](/plugins/burst.md).
 * **Games consolidated into the Games hub; Minesweeper playfield now configurable.** Moved the standalone `misc/pong_game`, `misc/tetris_game` and `misc/breakout_game` plugins under the `misc/games/` hub as hidden sub-plugins (`games/pong`, `games/tetris`, `games/breakout` — `menu_hidden: true`, display names under `Tools:Miscellaneous:Games:*`), so the navigation-panel Games hub is the single menu entry offering Number Quest, Minesweeper, Tetris, Pong and Breakout. The three arcade windows now accept a `parent` and no longer self-`show()`, so they embed cleanly in the hub shell (hub enlarged to fit their fixed 800×650 boards). Minesweeper gained playfield selection: core `DIFFICULTIES` presets (Beginner 9×9/10, Intermediate 16×16/40, Expert 16×30/99) plus a `MinesweeperGame.configure()` API and a GUI row with a preset combo and custom rows/cols/mines spin boxes (mine count clamped to cells−1; board rebuilt in a scroll area). Tests: minesweeper core configure/preset tests, hidden-manifest tests for pong/tetris/breakout; legacy macro-test paths updated. 17 games-plugin tests pass; headless hub screenshot verified.
 * **MLE fit models are now populated from tttrlib's registry (fit23/24/25/26), mirroring the burst-search picker.** tttrlib already advertises its lifetime estimators in its machine-readable registry — a `fit` category (from `FitRegistry.cpp`, surfaced by `tttrlib.registry("fit")`) where each of fit23/24/25/26 carries a label, summary, description and a JSON-Schema `params_schema` giving every optimisable parameter's type, default, range, unit and `fixed_default`, plus a `setup` link to the shared `fit_setup`/`fit2x` construction inputs. Wired the **chisurf** side: added `FIT_MODEL = "fit"` / `FIT_SETUP = "fit_setup"` category constants to `chisurf/core/tttrlib_registry.py`; a thin `chisurf/core/fluorescence/mle/registry.py` (`fit_models()`/`is_available()`) view onto that category (mirrors `burst.tttrlib_search.algorithms()`); and a new registry-driven widget `chisurf/gui/widgets/fit_model_form.py` `FitModelForm` — a model chooser + an `AutoForm` generated from the schema via the existing `tttrlib_registry.entry_form_view_auto`, exactly as `BurstSearchForm` does for burst searches. Switching the model reflows the whole parameter set from the registry (fit23 → tau/gamma/r0/rho; fit24 → tau1/gamma/tau2/A2/offset; fit25 → the four-lifetime selector), so a fit model added in tttrlib appears in the GUI on upgrade with no chisurf change. Tests: `test/gui/test_fit_model_form.py` (5) pin that the combo offers every registry model, defaults come from the schema, switching reflows params, saved state restores, and the change signal fires; lint clean. Remaining: embed `FitModelForm` in the burst-MLE wizard's fit-parameter panel (whose fit execution currently hardcodes fit23's four parameters) so the user can actually pick fit24/25 there. See [subsystems/mle-lifetime-fitting.md](/subsystems/mle-lifetime-fitting.md).
 * **Delta-macro-time interval is now a real photon-stream pre-filter on the burst search (it had no effect before).** In `burst_selection`, the min/max dMT interval (`DeltaMacroTimeFilterSettings`) was AND-ed onto the burst-search *result* inside `apply_photon_filters` — but burst photons already have a small inter-photon gap, so the interval never removed any of them and the control did nothing (a documented-`xfail` "Unresolved" test captured exactly this: the bound "moves the wrong way / selects ~94%"). Reworked `api/selection.py` so the interval gates the photons the search *sees*: extracted the per-mode search dispatch into `_run_burst_search(tttr, …)`, added `_delta_macro_time_mask` and `_search_on_delta_filtered_stream`, which builds the reduced stream with **tttrlib** (`tttr.get_tttr_by_selection(idx.astype(np.int32))`), runs the search on it, and maps the detected photons back to the original index space. Semantics are **exclude-from-search-only**: a photon the interval drops can no longer seed or extend a burst, but a burst that spans it still counts it (bursts are found over the original photons, so the returned mask stays length = n photons and downstream `.bur`/summary are unchanged). Both the live GUI preview (`gui/client.py`) and the backend service (`backend/services.py`) go through `apply_photon_filters`, so the wizard's dMT controls now move the selection. When no search runs (`filter_active=False`) the interval is the selection directly, byte-identical to before; channels/micro-time pre-filters are unchanged. Verified on real BH SPC-130: with a count-rate search the selected fraction now tracks `dT_max` (0.042 @ 0.02 ms → 0.076 @ 0.05 → 0.086 @ 0.15) where before it was a fixed no-op. Removed the now-passing stale `xfail`; added `test_delta_macro_time_prefilters_the_burst_search` + `_keeps_bursts_in_original_index_space`; burst_selection suite **178 pass**. See [plugins/burst.md](/plugins/burst.md).
 * **Burst-MLE auto IRF: Gaussian is now *fitted* to the extracted prompt, with a Gaussian/Skewed/Experimental switch.** The one-click auto-IRF built a Gaussian by crude peak + half-max-width placement — deterministic, never fitted — and there was no way to fall back to the measured prompt. Reworked `chisurf/core/fluorescence/burst/irf_bg.py`: `irf_model="gaussian"` now **least-squares fits** a Gaussian to the baseline-subtracted non-burst prompt over a window around the peak (Poisson counting weights, `scipy.optimize.curve_fit`, analytic peak/FWHM pulse as fallback). Because a Gaussian cannot follow the slow *fluorescent* tail the non-burst prompt rides on, the fit locks onto the sharp scatter peak and sheds that tail — the artifact that biased recovered lifetimes ~2× short — while still tracking the measured prompt (verified on real BH SPC-130: far-past-peak IRF mass drops from 0.39 raw to 0.043 fitted). Added `irf_model="skewed"` (a skew-normal `erf`-tail fit for an asymmetric detector response) and `"experimental"`/`"raw"` (the measured prompt); the symmetric Gaussian formerly inlined here now goes through the shared `tcspc.irf.synthetic_irf`. New `irf_shape` arg controls skewness. UI: the Burst-MLE fit page gained an **IRF-model combo** (`comboBox_irf_model`: Gaussian (fitted) / Skewed Gaussian / Experimental) next to the ✨ Auto IRF/BG button; changing it re-runs the extraction, and `auto_extract_irf_bg` passes the choice through. Test: `test_mle_irf_model_gaussian_fit_suppresses_fluorescent_tail` in `test/plugins/burst/test_irf_background.py` pins that the fitted Gaussian carries <½ the far-tail mass of the experimental prompt and that the three modes differ (suite **7 pass**), lint clean. See [plugins/burst.md](/plugins/burst.md).
-* **ChiMOL navigation now matches PyMOL: virtual trackball + PyMOL button mapping.** The camera was a turntable (fixed azimuth/elevation about world Z/X), so it couldn't roll or rotate about an arbitrary screen axis and felt unlike PyMOL. Extracted PyMOL's `SceneMouse.cpp` behaviour via subagent and reimplemented in `qtgl.py`: the camera orientation is now a 3×3 world→camera rotation matrix; **left-drag is a virtual trackball** (project prev/cur cursor onto a sphere of radius `0.45·min(W,H)`, rotate about `cross(n_prev,n_cur)` with `mouse_scale`=1.3 and roll-damping `1/(1+|axis.z|)`, left-multiply the rotation, SVD re-orthonormalise to prevent drift); **middle-drag pans** (unchanged, already the correct `depth·2tan(fov/2)/H` pixel→world scale); **right-drag dollies** (`Δ = dy/400·max(5,distance)`) while a right-*click* still opens the context menu. Camera right/up/forward now come straight from the rotation rows, and the 18-float view state stores the rotation in slots 0–8 (PyMOL's convention) with a legacy fallback that reads the old elevation/azimuth in slots 10–11; `raytracer._camera_from_view_state` decodes the same, so the offscreen raytrace and the GL view stay consistent (verified: GL camera origin/forward derivation matches the raytracer's exactly, and a default-view raytrace of 148L renders upright). `reset_view(distance,elevation,azimuth)` keeps its signature (builds the matrix internally) so callers are unchanged. Trackball math unit-checked (orthonormal, ~0.4°/px, no drift over 200 drags); chimol suite **85 passed**; no new lint (`qtgl.py` 56→56, `raytracer.py` 23→23). The GL feel (rotation direction) can't be verified headlessly; it follows PyMOL's formula. See [plugins/profiles/chimol.md](/plugins/profiles/chimol.md).
+* **ChiMOL navigation now matches the reference viewer: virtual trackball + the reference viewer button mapping.** The camera was a turntable (fixed azimuth/elevation about world Z/X), so it couldn't roll or rotate about an arbitrary screen axis and felt unlike the reference viewer. Extracted the reference viewer's `SceneMouse.cpp` behaviour via subagent and reimplemented in `qtgl.py`: the camera orientation is now a 3×3 world→camera rotation matrix; **left-drag is a virtual trackball** (project prev/cur cursor onto a sphere of radius `0.45·min(W,H)`, rotate about `cross(n_prev,n_cur)` with `mouse_scale`=1.3 and roll-damping `1/(1+|axis.z|)`, left-multiply the rotation, SVD re-orthonormalise to prevent drift); **middle-drag pans** (unchanged, already the correct `depth·2tan(fov/2)/H` pixel→world scale); **right-drag dollies** (`Δ = dy/400·max(5,distance)`) while a right-*click* still opens the context menu. Camera right/up/forward now come straight from the rotation rows, and the 18-float view state stores the rotation in slots 0–8 (the reference viewer's convention) with a legacy fallback that reads the old elevation/azimuth in slots 10–11; `raytracer._camera_from_view_state` decodes the same, so the offscreen raytrace and the GL view stay consistent (verified: GL camera position/forward derivation matches the raytracer's exactly, and a default-view raytrace of 148L renders upright). `reset_view(distance,elevation,azimuth)` keeps its signature (builds the matrix internally) so callers are unchanged. Trackball math unit-checked (orthonormal, ~0.4°/px, no drift over 200 drags); chimol suite **85 passed**; no new lint (`qtgl.py` 56→56, `raytracer.py` 23→23). The GL feel (rotation direction) can't be verified headlessly; it follows the reference viewer's formula. See [plugins/profiles/chimol.md](/plugins/profiles/chimol.md).
 * **Fluorophore staging DB: spectra quality assessed and duplicate probes merged (2288 → 2141 live probes).** Added `chisurf/plugins/spectra_downloader/download/dedupe_spectra.py`, a headless curation utility for the scraper staging `spectra.db`. It (1) **assesses spectra quality** — decodes every live `spectra` BLOB (float64) and flags empty, length-mismatched, non-monotonic, non-finite, all-zero or negative-intensity curves — and (2) **merges duplicate probes**, reusing MMFDB's exact grouping model (`mmfdb.admin.backend.duplicate_grouping.group_duplicates`) and the same union-merge as `fluorophores.merge_probes` (copy each duplicate's missing spectra/optical-properties into the richest probe via `INSERT OR IGNORE` on the `UNIQUE` constraints, keep the longest name, soft-delete the duplicates). Because MMFDB compares probes only *within* a category, a `--cross-category` pass merges exact-normalized-name matches across categories too (the same fluorophore ingested as an fpbase `protein` and a chroma `organic_dye`, carrying complementary absorption/excitation spectra), guarded to **skip optical filters** (any `transmission` spectrum or `filter` category) so filter sets named after a dye are never fused into the dye. It also (3) **highlights potential duplicates** with a self-contained **Bayesian classifier** (`duplicate_probability` — a naive-Bayes posterior over normalized-name similarity + absorption/emission maxima, with same-source curated pairs down-weighted): `--candidates` reports borderline pairs the automatic merge does *not* touch, ranked by posterior, split into a `strong` and a human-review band (report-only, never writes). Runs read-only by default; `--apply` makes a timestamped, non-overwriting `.backup` first. Assessment on the live DB: 2868 spectra, 121 flagged (114 negative-intensity — almost all benign `transmission` filter-baseline noise — and 7 non-monotonic wavelengths). Applied: 116 within-category + 31 cross-category duplicate probes merged (147 total, all fpbase/atto kept over chroma), e.g. EGFP now carries the union `absorption,emission,excitation`. Post-merge `PRAGMA integrity_check` = ok, `foreign_key_check` empty, 0 orphaned live spectra, no duplicate names remain, and the Bayesian classifier flags **0** remaining pairs above the 0.5 review threshold (the top residual near-name-twins — mono/di/tri-carbocyanines, Star 635 vs 635p, rsEGFP vs rsEGFP2 — are correctly scored ~0.09 because their maxima disagree); three incremental backups retained. The `spectra.db` is gitignored (staging data, not committed); new `test_dedupe_spectra.py` (**4**) covers the quality flags, the union-merge/soft-delete semantics and the Bayesian classifier ranking on an in-memory DB. See [plugins/sample-spectra.md](/plugins/sample-spectra.md).
 * **The fit2x batch kernel is now general (fit23/24/25/26), and `Fit2x.fit_many` follows.** The batch fit (`fit_matrix` — fit a whole matrix of decays in one GIL-released C++ call, the path that makes threaded fitting scale) existed **only** for `DecayFit23`; fit24/25/26 could only be fit one row at a time from Python. tttrlib (`~/dev/tttrlib`, uncommitted for the author): added a model-agnostic engine `DecayFit::fit_matrix_generic(fitfn, …)` in `DecayFit.cpp`/`.h` — it threads over row-chunks (shared `decay_batch_threads` heuristic), gives each thread a private `DecayFitData`, copies the caller's full packed start vector per row, calls the model's scalar `fit`, and writes `[params…, 2I*]`; thin `DecayFit24/25/26::fit_matrix` wrappers pass their `fit` fn + parameter count (5/5/1). SWIG bindings (`DecayFit24/25/26.i`) expose them with the same numpy typemaps + GIL-release exception as fit23. Verified **bit-exact** parity: batch `fit_matrix` == per-row scalar `fit` (max|Δ| = 0.0) for fit24/25/26 (`test/python/decayfit/test_batch_fit_matrix.py`, 3 tests); cross-language + DecayFit23 suites unchanged (13). chisurf: `Fit2x.fit_many` (`core/fluorescence/mle/fit2x.py`) dropped its `NotImplementedError` fit23-only guard — it now dispatches per model, packing the free params + estimator-specific input slots (fit25's r0) + the BIFL-scatter flag into the full start vector via a small `_BATCH_LAYOUT` table, and returns `[free params…, 2I*]`. Test `test_fit_many_is_general_and_matches_scalar_fits` (fit2x suite **9 pass**). NB the imaging/burst callers still use fit23; this generalises the engine so fit24/25 batch fits are available. Registry-driven fit-type population (advertise the estimators + parameter schemas from tttrlib, like the burst-search registry) is the next piece.
-* **ChiMOL cartoon no longer twists — PyMOL-style ribbon orientation.** The cartoon rendered helices as jagged "twisted tape" because the ribbon orientation used the raw per-residue carbonyl direction (`C - O`), which is noisy and, in a helix, spins around the axis with each residue. Rebuilt the orientation pipeline against PyMOL's `RepCartoon.cpp` (extracted via subagent): (1) `_build_trace_ups` now uses the **peptide-plane normal** `normalize((N−C)×(N−O))` (PyMOL's `RepCartoonGeneratePASS1`) instead of `C−O`; (2) a new `_refine_orientations` applies PyMOL's three anti-twist passes before spline sampling — **round helices** (helix orientation = `normalize(axis × tangent)` with `axis` a running CA-difference sum, so the oval circles a smooth axis), **flat sheets** (4-cycle 3-point box average of orientations across each β-strand so it shares one up-vector), and **refine-normals** (force ⊥ tangent, propagate sign forward to kill 180° flips). Verified by offscreen raytraced renders of 148L (helices go from broken twisted tape to smooth spiralling ribbons) and 1rtd (proper mixed α/β). Cross-section dimensions already matched PyMOL (oval 0.25×1.35, rect 0.4×1.4, loop r=0.2). `test_geometry_vectorized` + fallback-render suites **12 passed**; `cartoon.py` lint unchanged (43→43). See [plugins/profiles/chimol.md](/plugins/profiles/chimol.md).
+* **ChiMOL cartoon no longer twists — reference-viewer-style ribbon orientation.** The cartoon rendered helices as jagged "twisted tape" because the ribbon orientation used the raw per-residue carbonyl direction (`C - O`), which is noisy and, in a helix, spins around the axis with each residue. Rebuilt the orientation pipeline against the reference viewer's `RepCartoon.cpp` (extracted via subagent): (1) `_build_trace_ups` now uses the **peptide-plane normal** `normalize((N−C)×(N−O))` (the reference viewer's `RepCartoonGeneratePASS1`) instead of `C−O`; (2) a new `_refine_orientations` applies the reference viewer's three anti-twist passes before spline sampling — **round helices** (helix orientation = `normalize(axis × tangent)` with `axis` a running CA-difference sum, so the oval circles a smooth axis), **flat sheets** (4-cycle 3-point box average of orientations across each β-strand so it shares one up-vector), and **refine-normals** (force ⊥ tangent, propagate sign forward to kill 180° flips). Verified by offscreen raytraced renders of 148L (helices go from broken twisted tape to smooth spiralling ribbons) and 1rtd (proper mixed α/β). Cross-section dimensions already matched the reference viewer (oval 0.25×1.35, rect 0.4×1.4, loop r=0.2). `test_geometry_vectorized` + fallback-render suites **12 passed**; `cartoon.py` lint unchanged (43→43). See [plugins/profiles/chimol.md](/plugins/profiles/chimol.md).
 * **F-test tool rebuilt on AutoForm — the 500-line hand-built widget compressed to a declarative model + view.** `chisurf/plugins/core/f_test` was a legacy `f_calculator.py`: a `FTestWidget(QWidget)` that hand-assembled two `QGridLayout` sections, wired eight spin boxes with per-widget slots, exposed ~25 boilerplate property getter/setters (`n1`/`n2`/`chi2_1`/…), and built three separate `>`-button menus to load values from open fits. Replaced with (1) a tiny `_FTestModel` holding the ten fields (`chi2_1`, `n1`, `chi2_2`, `n2`, `conf_level`; `chi2_min`, `npars`, `dof`, `conf_level_2`, `chi2_max`) plus three `recompute_*` methods carrying the exact legacy F-distribution formulas (`F.cdf`/`F.isf` and `chi2_max`), (2) `gui/ftest.view.json` — two AutoForm panels binding those fields (χ² max `read_only`) with short labels + tooltips and a `?` help modal, and (3) `FTestTool(QMainWindow)` that binds each `ValueWidget.editor` to a single `_on_field_edited(attr)` dispatcher (edited-attr → which recompute) and collapses the three fit-loader menus into one compact **📊 From fit ▾** toolbar button (one submenu per open fit → model 1 / model 2 / χ²-min). Added a `manifest.json` (id `f_test`, v2.0.0, categories Tools/Statistics) so the tool is manifest-discovered like the other calculators, registered it as a sixth entry in the calculators hub, and deleted `f_calculator.py`. `FTestWidget` is kept as an alias of `FTestTool`; `__init__`/`__main__` repointed. Verified headlessly: view spec binds exactly the ten fields, the recompute methods reproduce the reference numbers (χ²max = 1.464759 matches the documented example), the tool builds and a confidence edit recomputes the χ²(2) threshold; new `f_test/test/test_widgets.py` (**3**) + hub-registry suite pass, all files lint-clean. See [plugins/calculator.md](/plugins/calculator.md).
 * **κ²-distribution calculator moved under the calculators group and embedded in the Calculators hub.** `chisurf/plugins/kappa2_dist` → `chisurf/plugins/calculator/kappa2_dist` (`git mv`), so the FRET orientation-factor calculator lives beside the FRET/homoFRET, phasor and FCS calculators rather than at the plugin root. All dotted paths `chisurf.plugins.kappa2_dist` → `chisurf.plugins.calculator.kappa2_dist` were rewritten across the manifest entrypoints/rpc, the plugin's own back-compat shims (`k2dfun`/`k2dgui`), and every external importer (`structure_tools`, `kappa2_helpers`, four GUI/fitting tests). Registered a new `kappa2_dist` `CalculatorEntry` in `calculator/hub/core/registry.py` (icon 🎯) so the hub now embeds it as the fifth calculator; `Kappa2Dist(kappa2=0.667)` already constructs with no required args, so it is hub-embeddable as-is. Also removed a core→plugin coupling: `chisurf/core/models/anisotropy_to_kappa.py` now imports `kappasq`/`s2delta` directly from `chisurf.core.fluorescence.anisotropy.kappa2` (the shim's own source) instead of via the plugin. Verified: all five hub widget paths resolve, the plugin/shim/model import clean, and kappa2 + hub-registry + anisotropy-to-kappa suites **5 pass**. See [plugins/calculator.md](/plugins/calculator.md).
 * **Embedded Burst-MLE wizard no longer crashes ("wrapped C/C++ object of type MLELifetimeAnalysisWizard has been deleted") when its optimise buttons are clicked.** The burst-analysis workflow embeds the MLE panel by `takeCentralWidget()`-ing the `MLELifetimeAnalysisWizard` (a QMainWindow) and hosting only that central widget — the wizard object is kept alive as the workflow's `"mle"` logic panel (macOS swallows clicks on an embedded QMainWindow, so only its content is embedded). But the factory left the *wizard* parented to the workflow window while `central` — which holds every fit button, each wired to a `wizard` slot — lived in the navigation stack's branch: two branches, two lifetimes. A window/child cleanup pass could destroy the zombie QMainWindow while `central` and its buttons survived, so a later `Start hyperparameter optimization` / `⚡ Auto-optimize` click fired a slot on the deleted C++ object (the crash the user hit; the `except` then double-faulted trying to `QMessageBox.critical(self, …)` on the same dead wizard). Root-cause fix in `_burst_mle` (`chisurf/plugins/burst/burst_analysis/gui/tool.py`): after taking the central widget, `wizard.setParent(central, Qt.Widget)` + `wizard.hide()` — the wizard is now a **hidden child of the widget that is actually embedded**, so it shares exactly one lifetime with its own content (can neither outlive nor predecease it, and no button can outlive it). It must be reparented as `Qt.Widget`, **not** `Qt.Window`: a first cut used `Qt.Window`, which stays a top-level widget that macOS actually shows — an empty little traffic-light window floating over the panel, whose close deletes the wizard and re-triggers the crash. A hidden non-window child never renders (no QMainWindow-as-child click-swallow) and is not a closeable window. Verified headlessly: the wizard is a descendant of `central`, is not a stray workflow child, `isWindow()`/`isVisible()` are False and it is absent from `topLevelWidgets()`, and `sip.delete(central)` takes the wizard and its buttons with it. Regression test `test_mle_wizard_shares_lifetime_with_embedded_widget` in `burst_analysis/tests/test_workflow.py` pins these invariants; burst_analysis workflow (**11**) + MLE dock-shell/end-to-end suites pass. See [plugins/burst.md](/plugins/burst.md).
@@ -37152,7 +37152,7 @@ front, not this).
 * **Parameter popup still dismissed itself — the prior drop-down was the second cause.** The previous fix handled focus moving to a *child widget*, but clicking the prior combo still closed the popup. Reproduced headlessly by clicking each control in turn (`sb_value`, `cb_fixed`, `cb_bounds_on` fine; `cb_prior_family` closed it). Root cause: a combo's drop-down is its **own top-level window**, and `QWidget.isAncestorOf` is documented as confined to a single window, so the ownership test reported the drop-down's `QListView` as foreign even though its parent chain is `QListView -> QFrame -> QComboBox -> popup`. Ownership is now decided by walking `parentWidget()`, which does cross the window boundary. Opening the drop-down also *deactivates* the popup's window, so the two dismissal paths were split rather than merged: `FocusOut` hides unless focus is on a widget the popup owns, `WindowDeactivate` hides unless one of the popup's own windows is visible — deliberately **not** consulting the focus widget, because Qt keeps that pointing into the popup while the application is in the background, which would leave it open after the user switched away. Both checks are deferred to the event loop, since neither the new focus owner nor the drop-down's window exists until the transition settles. Tests: 8 more in `test_parameter_prior_widget.py` (33 total) — every control click parametrised, the drop-down opened *and* used, the deactivation/child-window distinction, and `_owns` across window boundaries. Two of them had to close the drop-down in a `finally`: leaving that window open **segfaults** qtbot's teardown.
 * **FCS Filter Calculator auto-fit: fit range, IRF shift/skew, nuisance fractions, stacked filters, Instrument + Info docks.** Second pass over the auto-fit landed with the PAM-referenced fFCS work ([references/fcs-pam-port.md](/references/fcs-pam-port.md)). **Core** (`chisurf/core/fluorescence/decay_fit.py`, `fit_lifetime_components`): the synthetic IRF's **width, center/shift and skew** are now all free parameters (previously width only — the shift and skew were pinned at `2·FWHM` and 0, which left an antisymmetric residual at the rising edge); `include_scatter` (IRF-shaped column) and `include_background` (constant afterpulse column) fit the nuisance **fractions jointly** with the lifetimes so the lifetimes no longer have to absorb the prompt/baseline; and a `period` argument threads periodic convolution through `_basis`/`synthetic_decay` so the previous-pulse tail wraps into the window instead of showing up as a residual ramp. **GUI** (`fcs_filter_calculator`): the fit window is a draggable `LinearRegionItem` synced to spinboxes and overridable **per detector** (Info-dock table); fFCS filters are solved over that window (`_ranged_filters`) and a range change re-zeros from a cached un-zeroed copy, so dragging replots **without a refit**; residuals are masked to the range; a per-detector **Shift** column (ns) applies to measured *and* synthetic IRFs and persists in projects; a **Global (stacked)** multi-detector mode concatenates detectors onto one axis so the FRET-species inter-detector brightness ratios constrain the unmix; new **Instrument** dock (AutoForm: α/β/γ/δ, G, l₁/l₂, R₀, laser period) and **Info** dock. Scatter now reuses the detector's own IRF (`_detector_irf`) rather than an independent coarse re-fit, so scatter, component convolution and auto-fit share one IRF — `_synthetic_scatter_fits` survives only as the no-usable-IRF fallback (and is now initialised in `__init__`; it was created lazily, so two tests hit `AttributeError` on the attribute never existing). Validated on real `bh_spc132_sm_dna/m00*.spc` green (ch 0/1, 599–3274): **χ²ᵣ 1.48 → 1.05**. Tests: `test/test_decay_fit.py` (9, +3 for periodic convolution, joint width/shift/skew, and scatter/background fractions) and `fcs_filter_calculator/test/` (56 = 18 core + 38 widget), all green. **Known pre-existing defect, not from this change:** running the widget suite as one process aborts in Qt teardown (`libc++abi: Pure virtual function called!`); every test passes individually, and the abort reproduces identically with this change stashed. See [plugins/fcs.md](/plugins/fcs.md).
 * **Parameter popup closed on the interactions it exists for; prior selector de-duplicated.** Three fixes to `FittingParameterDetailPopup`. (1) **Dismissal**: both `focusOutEvent` and the event filter hid the popup on *any* `FocusOut` — but a widget receives one whenever a **child** takes focus, so clicking the value spin box or a radio button dismissed the popup mid-edit. Verified empirically: focusing `sb_value` sends exactly one `FocusOut` to the popup. The check is now deferred to the event loop (the incoming focus widget is only settled after the transition) and hides only when `QApplication.focusWidget()` is neither the popup nor a descendant; `WindowDeactivate` still hides immediately, and a new `mousePressEvent` dismisses on clicks outside the rectangle (`Qt.Popup` grabs the mouse, so they arrive at the popup). (2) **One prior selector instead of two**: a radio row (Box/Gaussian/Log-normal/Custom…) sat above a "Distribution" combo listing seven families, so Gaussian and Log-normal were shown in both and five families were reachable only through "Custom…". Now a single `Prior:` combo lists Box plus all seven; a prior this editor cannot express (callback, product) is reported through a read-only "Other" entry that is added and removed on demand and never overwrites the attached prior. Popup width **414 -> 282 px**. Folded the two default-seeding paths into one — a Gaussian's σ now defaults to a tenth of the parameter's magnitude rather than a flat 1.0, which the radio path did and the combo path did not. (3) Link/unlink buttons carry 🔗/✂️ icons and tooltips. Tests: `test/gui/test_parameter_prior_widget.py` grew from 12 to 25 — the family combo (all eight reachable, seeding, switching, "other" not clobbering a script prior) and five dismissal tests, including the child-focus regression. The two focus tests assert on the deferred check rather than on a second window stealing focus, because an offscreen `Qt::Popup` holds the keyboard grab and a real hand-off is not reproducible headlessly. `test_popup_edit_repaints_the_row_without_dispatching` still fails — **pre-existing test-order pollution**, passes alone, unrelated.
-* **Parameter detail popup made compact: 650x520 -> 414x120 px.** `FittingParameterDetailPopup` laid every control on its own full-width row, so a popup meant to sit next to the parameter it edits covered most of the fit window. Rows are now merged where they read together — name + link state + Link…/Unlink in the header, Value + Fixed on one row, Enable-bounds + Low + High on one row — the `Prior` group box became an inline `Prior:` label + radio row (one less frame and two less rows of padding), the redundant "Click outside to close" hint is gone (the popup is a `Qt.Popup`; that is its documented behaviour), spin boxes are width-capped, and spacing dropped 4 -> 2 px. A long "Linked to: name (group / local)" string used to stretch the popup arbitrarily; the label now shows `→ name` with the full origin in its tooltip, matching the short-label/tooltip rule. Verified by an offscreen `QWidget.grab()` render. No behaviour change — every widget attribute the handlers and the existing tests use is unchanged (`test_parameter_prior_widget.py` + `test_parameter_table_actions.py`: 24 passed; the one failure, `test_popup_edit_repaints_the_row_without_dispatching`, is **pre-existing test-order pollution** — it passes alone and fails identically with this change stashed).
+* **Parameter detail popup made compact: 650x520 -> 414x120 px.** `FittingParameterDetailPopup` laid every control on its own full-width row, so a popup meant to sit next to the parameter it edits covered most of the fit window. Rows are now merged where they read together — name + link state + Link…/Unlink in the header, Value + Fixed on one row, Enable-bounds + Low + High on one row — the `Prior` group box became an inline `Prior:` label + radio row (one less frame and two less rows of padding), the redundant "Click outside to close" hint is gone (the popup is a `Qt.Popup`; that is its documented behaviour), spin boxes are width-capped, and spacing dropped 4 -> 2 px. A long "Linked to: name (group / local)" string used to stretch the popup arbitrarily; the label now shows `→ name` with the full source in its tooltip, matching the short-label/tooltip rule. Verified by an offscreen `QWidget.grab()` render. No behaviour change — every widget attribute the handlers and the existing tests use is unchanged (`test_parameter_prior_widget.py` + `test_parameter_table_actions.py`: 24 passed; the one failure, `test_popup_edit_repaints_the_row_without_dispatching`, is **pre-existing test-order pollution** — it passes alone and fails identically with this change stashed).
 * **`Lifetime.lifetimes` getter no longer writes on every read (23% faster in isolation, no end-to-end effect).** The getter computed `math.sqrt(x.value ** 2)` per lifetime and then wrote every value back to its parameter — the same getter-performs-writes anti-pattern fixed earlier in `Parameter.value`. Now reads each parameter once, takes `abs()`, and writes back only where the sign actually flipped (normally never, since lifetimes are positive). Sign-flip semantics verified preserved: a negative lifetime still reads back positive *and* is persisted. Controlled best-of-3: `L.lifetimes` **6.918 -> 5.354 us**. **But `update_model` is unchanged (0.0787 -> 0.0785 ms, best-of-5)** — 1.5 us saved in an ~79 us evaluation is below this harness's resolution. Kept as cleanup, not claimed as a speedup. A first attempt guarded the write with `if p.value != v`, which re-read the parameter and made it *slower* (7.14 -> 9.39 us) now that writes are cheap; restructuring to read once fixed that. **Assessment: the fit path is at diminishing returns.** Of a ~117 us `get_wres`, the remaining items are convolve 26 us (already the C SIMD kernel), `anisotropy.get_decay` ~11 us, cached `irf` 11 us, `convolve.scale` 11 us, `lifetime_spectrum` 13 us and `parameter_values` 12 us — no single dominant target left, and the last several attempts have landed at or below measurement noise.
 * **TCSPC periodic convolution switched from the numba reimplementation to tttrlib's C kernel.** Safe now that the two agree to 1e-15 (see the off-by-one fixes above). One-identifier change at the call site; the tttrlib wrapper already existed with an identical signature. Verified end-to-end: chi2r **1.012636 before and after**, the model curve agrees to **8.3e-16**, and the fixture still recovers tau 4.0087/1.2003. Gains: the **~110 ms numba JIT compile on first `update_model()` is gone** (165.7 -> 54.4 ms) and a model evaluation is **~5% faster** (0.0824 -> 0.0779 ms). **Not the 2.2-2.7x I had implied** — that was the convolution kernel measured in isolation, but it is only ~8 us of an ~80 us model evaluation, so a 2.2x there is worth ~5% of the whole. Iteration counts shift chaotically because a 1e-15 model change perturbs the finite-difference Jacobian and the amplitude parameterisation is near-degenerate: on the single convergence fixture tttrlib took 405 evals vs numba's 230 (looking 59% *slower*), but across six starting points it was **875 evals / 135.2 ms vs 1050 / 166.8 ms** — the single-fixture result was path luck, and neither number is a property of the kernel. Both always reach the same chi2r. No regressions across decay conv/fit, convolution reference, TCSPC convergence, fit, models, IRF and priors.
 * **Import hygiene: `scipy.stats` removed from the TCSPC import graph — but NO measurable speedup.** I predicted a large win here and did not get one; recording the negative result. `-X importtime` attributed ~0.9 s to `scipy.stats` when importing a lifetime model, reached three ways: a **dead** `import scipy.stats` in `models/tcspc/nusiance.py` (the file uses scipy nowhere), another **dead** one in `core/fitting/fit.py` (only `scipy.linalg` is used), `core/math/rand` via eager submodule imports in `core/math/__init__.py`, and `core/fluorescence/tcspc/__init__.py` eagerly importing `irf_estimation` -> `scipy.signal` -> `scipy.stats`. Removed both dead imports, deferred `scipy.stats` in `math/signal.py` to its single call site, made `core.math` submodules lazy (PEP 562, matching the existing `fio`/`fluorescence` treatment), and made `IRFEstimator`/`irf_estimation` lazy. Verified: `scipy.stats` and `scipy.signal` are no longer imported at all, and all four changes are needed — reverting the lazy `core.math` alone brings `scipy.stats` back. **But best-of-5 import time is unchanged (1891 ms vs 1864 ms baseline).** The reason: `import scipy.stats` costs 688 ms *standalone*, but almost all of that is scipy's shared core, and ChiSurf loads `scipy.optimize` (406 ms) and `scipy.linalg` (227 ms) anyway for the optimiser — so only a thin top layer was skipped. `-X importtime`'s cumulative column credits shared subtrees to whichever importer reaches them first, which is what made the 0.9 s look addressable. Kept as dependency hygiene (two dead imports gone, a rare module no longer loaded by every model, smaller graph), explicitly **not** as a performance change. numba (290 ms) remains and is genuinely required by the convolution kernels.
@@ -37218,7 +37218,7 @@ front, not this).
 * **IRF + background from the non-burst photons of a single-molecule measurement.** New Qt-free core `chisurf/core/fluorescence/burst/irf_bg.py` (`extract_irf_background`, `non_burst_mask`, `DetectorIrfBackground`, re-exported from `chisurf.core.fluorescence.burst`). A confocal sm measurement is mostly empty focus, so the photons a sliding-window burst search *rejects* are the built-in scatter/background: `extract_irf_background` inverts the burst search and, per detector, (a) fits the non-burst interphoton-time tail for the background rate (kHz, reusing `background.estimate_background_from_interphoton_times`) and (b) histograms the non-burst micro-times over the full laser period, subtracts a robust flat dark-count floor (low quantile) and normalises the remainder to a scatter-derived IRF. IRF is per detector (each colour has its own response; PIE micro-time gating is applied to the background but *not* the IRF, which would clip the prompt). Removes the need for a separate scatter/buffer acquisition. Integrated into the guided facade `burst_analysis/api/workflow.py`: new `IrfBackground` result (`.background_khz`, `.table`, `.irf(name)`, `.plot()`), a `Bursts.irf_background()` method (reuses the selection's burst-search params, pools non-burst photons across all loaded files — `Bursts` now carries `_search`), and a one-line `BurstWorkflow.estimate_irf_background(dataset, setup=…)`. Tests: `test/plugins/burst/test_irf_background.py` (6, on real BH-SPC sm-DNA data + demo-MMFDB workflow step). Example: `examples/burst_irf_background.py`. See [subsystems/fluorescence-domain.md](/subsystems/fluorescence-domain.md), [plugins/burst.md](/plugins/burst.md).
 * **Lifetime-FCS (FLCS) simulator: end-to-end simulate → filter → correlate, wired into the FCS toolbox.** Added a Qt-free lifetime-FCS simulation core `chisurf/core/fluorescence/fcs/simulate.py` (`simulate_lifetime_fcs`) that drives the photon simulator to generate a confocal stream of several **diffusing** species with distinct fluorescence lifetimes and an optional symmetric interconversion rate matrix. It reconstructs the absolute macro-time from the engine window index + within-window arrival offset and reads native micro-times (a simpler/faster path than the `to_tttr` SPC round-trip, keeping the decay on the exact simulated TAC axis; `to_tttr` is itself faithful and gives equally well-conditioned filters, cond ~3.3). Feeding `filtered.py::calc_ffcs_filters` + `species_filtered_correlation` recovers the physics: static species separate by diffusion time, interconverting states reveal a cross-correlation exchange peak. New AutoForm GUI tool `chisurf/plugins/fcs/fcs_lfcs_sim/` (`LifetimeFcsSimWidget`, `lfcs_sim.view.json`, `manifest.json`, experimental) — a parameter form + species-correlation plot with a "Simulate + Correlate" button — registered as a panel in the `fcs_toolbox` meta-tool. Worked examples: `examples/lifetime_fcs.py` (chisurf) and `examples/correlation/plot_lifetime_fcs.py` (photon-simulator gallery). Tests: `test/fitting/test_lifetime_fcs_sim.py` (4: labelled stream, well-conditioned filters, static diffusion-time separation, interconversion cross-peak) + `fcs_lfcs_sim/test/test_widgets.py` (3, headless, screenshot-verified) — 17 pass with the existing FLCS suites. See [plugins/fcs.md](/plugins/fcs.md).
 * **Reusable `image_browser` AutoForm section + adopted by the molecule-MLE tool and the TTTR image browser.** Factored the "pick one of many, show its image" workspace shape into a shared custom section `chisurf/gui/autoform/sections/image_browser_section.py` (`ImageBrowserWidget`): a left entry list (from an `entries_source`; each entry a string or `{id,label,badge,rating}`) with an optional text filter, editable star-rating row (`rating_call`), read-only info panel (`info_source`) and editable per-entry note (`note_source`/`note_call`), plus optional drag-drop (`on_drop`) and single/multi-select — beside the existing `image` canvas (`ImageMapWidget`), which it composes so browsers inherit colormap/z-slider/movie/markers/ROI/pixel-pick for free. Also extended `ImageMapWidget` with `labels_source` (on-image text overlays, e.g. mosaic tile names). Registered under key `image_browser`; the section `target` is the current entry's image and selection routes through one `_commit` that fires `select_call` only on a real change. **Adopted in two tools.** (1) `sm_image_mle` GUI now browses molecules with it (list of `Mol N` + τ badge, canvas marks the selected molecule via `current_molecule_marker`, info panel shows the Fit23 result) — replacing the earlier single image + table. (2) **Refactored `tttr_image_browser` onto AutoForm**: its ~825-line hand-built `QWidget` (file `QTableWidget` with star cells + pyqtgraph mosaic + annotation) became a Qt-free `gui/view_model.py::ImageBrowserViewModel` + `gui/browser.view.json` driving the shared section — file list with size + ★ badges, the per-file intensity mosaic as the canvas with per-tile channel/micro-time labels (`labels_source`), editable annotations (`note_call`→metadata.json), a rating-filter `choice`, and folder drag-drop — over the *unchanged* Qt-free core + RPC client; the toolbar shell (Open/Clear/Caches/Export/TIFF/DOCX/Next), detector-setup page and coordinator/pipeline handoff are preserved (selection now flows via a view-model observer instead of the old table signal). Tests: `test/gui/test_autoform_image_browser.py` (5: populate/select, canvas update, filter, rating write-back, refresh), rewritten `sm_image_mle`/`tttr_image_browser` widget tests — 21 pass, ruff clean (arm64), both tools headless-screenshot-verified. See [subsystems/gui-autoform.md](/subsystems/gui-autoform.md), [plugins/imaging.md](/plugins/imaging.md), [plugins/tttr.md](/plugins/tttr.md).
-* **Pixel-wise FLIM MLE: C++ batch fit + threaded dispatch makes fitting scale (in-process, ~4×).** Superseded the earlier fork-multiprocessing approach after finding the real bottleneck. Per-fit threading did not scale (flat 1.0× on 2–8 threads) even with the GIL released around `DecayFit23::fit`: each fit releases the GIL for <1 ms, and the **per-fit GIL-handoff convoy** serialises the threads. Ruled out the macOS nano allocator (`MallocNanoZone=0` unchanged) and `thread_local`/TLS (plain `static` unchanged); a BLAS `np.dot` control thread-scales 4× in the same process, so it was the fit, not the environment. Fix: a new tttrlib batch entry point **`DecayFit23::fit_matrix`** (committed in tttrlib `1650cf67`) fits a whole `(n_rows × 2·n_ch)` matrix in one C++ call with the GIL released for the *entire* loop; rebuild the arm64 editable install per [[tttrlib-editable-rebuild]] (note the SWIG-regen gotcha recorded there — `touch ext/python/tttrlib.i` after editing an included `.i`). ChiSurf side: `Fit2x.fit_many` wraps it, and `chisurf/core/fluorescence/mle/parallel.py::fit_matrix_threaded` splits rows across a `ThreadPoolExecutor` (each thread its own `Fit2x`) — **no multiprocessing**, so no fork/spawn fragility and safe inside the Qt GUI. `img_pixel_mle/core/pixel_mle.py` now dispatches through it (`n_workers` control, `_MIN_ROWS_FOR_THREADS` gate). Measured: batch threading 2t 1.95× / 4t 3.74× / 8t 4.63×, bit-identical to single-fit; end-to-end A/B on `beads.ptu` baseline→+fast 1.15×→+threaded(7w) **4.08×**, results identical. Tests updated (`test_threaded_matches_serial`); benchmark `test/benchmarks/benchmark_pixel_mle.py`. Replaces the fork-MP `fit_matrix_parallel`. See [plugins/imaging.md](/plugins/imaging.md) and the `fit2x` harness in [subsystems/fitting.md](/subsystems/fitting.md).
+* **Pixel-wise FLIM MLE: C++ batch fit + threaded dispatch makes fitting scale (in-process, ~4×).** Superseded the earlier fork-multiprocessing approach after finding the real bottleneck. Per-fit threading did not scale (flat 1.0× on 2–8 threads) even with the GIL released around `DecayFit23::fit`: each fit releases the GIL for <1 ms, and the **per-fit GIL-handoff convoy** serialises the threads. Ruled out the macOS nano allocator (`MallocNanoZone=0` unchanged) and `thread_local`/TLS (plain `static` unchanged); a BLAS `np.dot` control thread-scales 4× in the same process, so it was the fit, not the environment. Fix: a new tttrlib batch entry point **`DecayFit23::fit_matrix`** (committed in tttrlib `1650cf67`) fits a whole `(n_rows × 2·n_ch)` matrix in one C++ call with the GIL released for the *entire* loop; rebuild the arm64 editable install per `tttrlib-editable-rebuild` (note the SWIG-regen gotcha recorded there — `touch ext/python/tttrlib.i` after editing an included `.i`). ChiSurf side: `Fit2x.fit_many` wraps it, and `chisurf/core/fluorescence/mle/parallel.py::fit_matrix_threaded` splits rows across a `ThreadPoolExecutor` (each thread its own `Fit2x`) — **no multiprocessing**, so no fork/spawn fragility and safe inside the Qt GUI. `img_pixel_mle/core/pixel_mle.py` now dispatches through it (`n_workers` control, `_MIN_ROWS_FOR_THREADS` gate). Measured: batch threading 2t 1.95× / 4t 3.74× / 8t 4.63×, bit-identical to single-fit; end-to-end A/B on `beads.ptu` baseline→+fast 1.15×→+threaded(7w) **4.08×**, results identical. Tests updated (`test_threaded_matches_serial`); benchmark `test/benchmarks/benchmark_pixel_mle.py`. Replaces the fork-MP `fit_matrix_parallel`. See [plugins/imaging.md](/plugins/imaging.md) and the `fit2x` harness in [subsystems/fitting.md](/subsystems/fitting.md).
 * **fit2x fit itself ~5× faster (Brent 1-D + objective hoist), bit-close.** Two tttrlib changes to the fit23 estimator (commits `1650cf67`/`f133e231`/`96924906` there). (1) **Objective hoist** — `targetf` recomputed the data-only signal integrals (`Sp/Ss/B`) on every objective evaluation, but they are constant during a fit (only the soft-BIFL `Bexpected` depends on parameters); recompute only when soft-BIFL is active → ~10% faster, **max\|Δτ\|=0** over 120 real decays vs the unmodified build. (2) **Brent 1-D minimiser** — when only τ is free (γ/r0/ρ fixed: the pixel-wise FLIM / burst-lifetime case) the fit is 1-D, so a bounded derivative-free Brent minimiser replaces the general BFGS-with-numerical-gradients engine (~5× fewer objective evaluations). Verified on real FLIM decays: same MLE minimum to 6 sig-figs (max\|Δτ\|=5e-5, rel 6e-6 — far below lifetime measurement precision), **0.88 → 0.18 ms/fit (~4.9×)**; BFGS unchanged for all other free-parameter combinations. (3) **NEON 2-channel convolution** (commit `eee0eebf`) — the fit23 model convolves parallel/perpendicular channels that share lifetimes; the per-channel recurrence is latency-bound and un-vectorisable *within* a channel, but the two channels run together in `float64x2` lanes (`fconv_per_cs_2ch`, scalar two-call fallback off-ARM) → another **~1.5×** (0.18 → 0.12 ms), numerically identical (median τ matches the scalar path to full precision). So the fit itself is **~7.3×** (0.88 → 0.12 ms) and, with the batch/threaded dispatch, **≈33× throughput** on the pixel-MLE fit vs the original per-fit BFGS+scalar-convolution path. Tried but dropped: `-ffast-math -mcpu=native` gave only ~6% (the recurrence dominates and can't reassociate) — not worth global FP-semantics changes. float32 would help little here (working set is L1-resident and the 2 channels already fill the NEON register), so not pursued.
 * **IRF scatter is now fitted per detector and the first-run example uses the full forward model.** The Filter Calculator's AutoForm selects an independent measured IRF for each detector. Missing entries invoke the shared TCSPC synthetic-IRF path: prompt position and FWHM are searched against that detector's mixed decay while molecular, constant-afterpulse, and IRF-scatter amplitudes are constrained non-negative; parallel/perpendicular decays receive separate fitted patterns. The preloaded fast/slow patterns are now convolved with detector-distinct synthetic IRFs, and each 100,000-photon detector mixture includes both IRF scatter and constant afterpulse counts. Per-detector IRF paths, synthetic starting parameters, and inline example decays persist in projects. Verification: 33 focused tests pass, including synthetic-IRF recovery and distinct detector patterns/mixtures.
 * **FCS Filter Calculator gained explicit afterpulse and IRF-scatter nuisance rejection.** Added shared Qt-free nuisance bases in `chisurf.core.fluorescence.decay`: a normalized constant microtime pattern for afterpulsing/dark counts and a validated normalized IRF pattern for scattered excitation. Filter calculation and non-negative unmixing now include enabled nuisance components, report their fitted counts independently, draw stable diagnostic filter colors, and preserve them in projects/results. Correlation-facing exports slice nuisance rows when rejection is enabled, so nuisance photons are absorbed without becoming molecular correlation species. AutoForm exposes compact `▤ Afterpulse`, `⚡ Scatter`, and `⌫ Nuisance` controls plus the scatter-IRF file field. Verification: 31 focused tests pass, including exact species/nuisance recovery, serialization, and GUI species-only export coverage.
@@ -37228,7 +37228,7 @@ front, not this).
 * **FCS Filter Calculator now uses AutoForm tables, ChiSurf docks, and a useful first-run state.** Extended the shared AutoForm `TableSection` with opt-in editable-cell dispatch (`editable` + `update_call`) and moved the synthetic amplitude/lifetime spectrum editor to a Qt-free view-model plus authored `synthetic_editor.view.json`; add/remove/import controls are AutoForm tool buttons. Replaced the calculator's fixed `QTabWidget`/splitter/sidebar buttons with one persistent ChiSurf `DockArea` (decay sources, detector setup, lifetime filters, reconstruction, weighted residuals) and a compact toolbar/menu surface for measured input, components, unmixing, projects, and export. The GUI starts with a replaceable 70/30 mixture of 1.2 ns and 4.0 ns components and immediately computes detector-aware filters. Focused verification: 20 FCS tests plus shared AutoForm editable-table coverage pass; compileall clean; visual verdict recorded separately.
 * **Central intensity/decay computation is now an explicit design objective; FCS Filter Calculator begins the convergence.** Documented the north-star in [Fluorescence Domain](/subsystems/fluorescence-domain.md): detector-resolved intensities, TCSPC decays, and reusable patterns should have one Qt-free computation path owning IRF, polarization, pile-up, background/scatter, detector response, excitation/emission mixing, and crosstalk; fits, simulators, FCS/FLCS, imaging, and exporters consume it instead of duplicating forward models. Added `chisurf/core/fluorescence/decay.py` as an incremental adapter over the established fit/model stack (`lifetime_spectrum_from_model`, `compute_model_decay`, `compute_detector_patterns_from_fit`). The FCS Filter Calculator now edits component lifetime spectra in an amplitude/lifetime table, reads effective spectra from existing lifetime/FRET/distance-distribution fits, asks every grouped detector model to recompute its corrected pattern, snapshots detector/routing patterns for project persistence, and feeds them into non-negative unmixing, lifetime filters, and existing correlation weights. Plugin-local ideal/distribution generation remains a headless fallback, reusing ChiSurf's existing FRET distance/rate functions. Focused verification: 18 tests pass; critical Ruff checks, compileall, diff checks, and table-dialog visual verdict pass.
 * **Calibration: general excitation/emission crosstalk-matrix correction (Hellenkamp is the 2-colour special case) (continuation 3).** Per the steer that the scalar α/β/γ/δ are only a special case and the general excitation/emission crosstalk matrices must still work, added the general matrix correction. New `es.py::corrected_es_general(intensity, excitation, emission)` corrects straight from the two light-path matrices — **excitation** `X[l,k]` (laser→chromophore) and **emission** `D[k,m]` (chromophore→detector) — in three steps: (1) un-mix emission `e[l,:] = I[l,:] @ D⁻¹` (removes *all* spectral crosstalk incl. acceptor↔acceptor bleed, and folds the detection/QY ratio into the `D` diagonal so **no explicit γ** appears), (2) subtract direct excitation `F[l,k] = e[l,k] − (X[l,k]/X[k,k])·e[k,k]`, (3) coupled donor budget `E[l,k] = F[l,k]/(e[l,l] + Σ_a F[l,a])`. It reduces **algebraically** to `corrected_es` for two colours (`D=[[1,α],[0,γ]]`, `X=[[1,δ],[0,1]]`) and recovers exact E for ≥3 chromophores with inter-acceptor leakage the scalar path cannot express. `calibration.py::crosstalk_matrices_from_lightpath` builds `X`,`D` from a `get_crosstalk_matrices()` payload (folding QY/detection efficiency into `D`), and `general_correction_from_lightpath` wraps the whole path. This resolves the previously-deferred "multi-acceptor cross-leakage" item; `corrected_es_matrix` stays as the scalar fast path when there is no inter-acceptor bleed. Tests: `test/fitting/test_general_correction.py` (8: 2-colour reduction == `corrected_es`, 3-colour with acceptor↔acceptor bleed exact, scalar-path-is-biased contrast, light-path-payload path) — 43 calibration/crosstalk tests pass, ruff clean (arm64). Docs: `docs/FRET calibration.md` gains a "The general case: crosstalk matrices" section (scalar factors reframed as the two-colour reduction); OKF [references/fret-calibration.md](/references/fret-calibration.md) updated (general-form bullet; cross-leakage moved from "missing" to done). **Stable un-mixing follow-up:** the emission un-mix (step 1, `I[l,:] @ D⁻¹`) is the numerically delicate part — for strong spectral overlap `D` is ill-conditioned, so the plain pseudo-inverse amplifies shot noise and returns unphysical **negative** emissions. Added a selectable `unmix` argument to `corrected_es_general`/`general_correction_from_lightpath`: `"naive"` (fast vectorized pinv, default) vs `"stable"` (**non-negative least squares** per burst — enforces `e≥0`, robust to overlap), plus an optional `ridge` (Tikhonov) damping usable with either. Both share `crosstalk.invert_mixing`, which was extended with a `ridge` Tikhonov parameter (closed form for the linear solve, augmented-system for NNLS) — also available to the phasor-FLIM unmix. Method choice follows the standard fluorescence-microscopy unmixing literature (NNLS/fully-constrained LU for positivity; Tikhonov to fix ill-conditioning). Tests grew to 13 (naive==stable on clean data; NNLS non-negative where pinv goes negative on ill-conditioned noisy data; ridge lowers burst-to-burst E variance; invalid-method guard) — 48 calibration/crosstalk tests pass, ruff clean (arm64). Docs gain a "Naive vs. stable un-mixing" subsection. **Photon-statistics + ndx follow-up:** (checked the user-supplied `nishio-laboratory/lambda_split` repo — it is an unrelated LLM/diffusion inference-splitting project, not the fluorescence "λSplit" spectral-unmixing paper; removed from junk.) (1) **Integer, statistics-preserving un-mixing** `crosstalk.photon_shuffle_unmix(counts, matrix, *, abundances, seed)` — reassigns each detected photon to a source by a multinomial draw (`P(k|m) ∝ a_k·B[k,m]`, `B`=row-normalised emission spectral shape, `a_k`=NNLS abundance prior), giving a non-negative **integer** per-source photon stream that preserves the total count exactly and the Poisson shot-noise (multinomial thinning of Poisson is Poisson) — for BVA/MLE/burst-variance downstream; expectation == the continuous Richardson–Lucy/EM unmix (unbiased). Vectorised over bursts by a binomial chain. `test_photon_shuffle.py` (5). (2) **ndx stable/shuffle injection** — ndx corrects FRET with scalar string-equations and exposes **no compute hook** (confirmed by exploring the in-tree `modules/ndxplorer` submodule), so `push_unmixed_columns_to_ndx(ndx, *, emission, channel_columns, source_labels, unmix="stable"|"shuffle", seed, rate_columns)` reads the measured per-channel count columns, un-mixes them (NNLS default / integer shuffle) with the light-path emission matrix, and injects leakage-free per-source photon+rate columns back as **new** columns (native ndx columns/equations untouched → no double-correction). Per user steer, **no hard-coded detector names** — caller supplies the emission matrix + column names + source labels (from `crosstalk_matrices_from_lightpath`), general to any N-colour setup. `test_calibration_ndx_bridge.py` grew +3. Total 56 calibration/crosstalk tests pass, ruff clean (arm64). Docs gain "Preserving photon-counting statistics" + "ndxplorer: stable / shuffle un-mixing" sections; OKF [references/fret-calibration.md](/references/fret-calibration.md) updated. **Headless real-engine ndx test (per steer "make it possible to drive tests headless"):** the stub-only ndx coverage is now complemented by `test/fio/test_ndxplorer_unmix_headless.py`, which drives ndx's **actual** `DataSource` + real `mfd.equations.yaml`/`mfd.constants.json` with **no Qt window / no display** — it self-adds the in-tree `modules/ndxplorer` submodule to `sys.path`, sets `QT_QPA_PLATFORM=offscreen`, `importorskip`s when absent (mirrors the existing `test/fio/test_ndxplorer_rpc_bridge.py` pattern), and asserts (a) a pushed `gamma` genuinely changes the engine-computed `FRET efficiency` column, (b) injected unmixed columns are computable by ndx's own equation engine, (c) shuffle columns are integer + count-preserving through the real `DataSource`. 3 headless tests pass (arm64, offscreen).
-* **Pixel-wise FLIM MLE throughput: vectorised extraction + multiprocessing fits + GIL release (A/B benchmarked).** Two optimisations to `img_pixel_mle/core/pixel_mle.py`, both A/B-verified to give **identical** per-pixel lifetimes. (1) **Vectorised extraction** — replaced the per-pixel Python `tttr_indices`+`np.bincount` loop with one `CLSMImage.get_fluorescence_decay` C++ call building the whole per-pixel histogram stack (matches bincount exactly; the returned uint8 is guarded — saturation auto-falls-back to the exact bincount engine). An `engine` switch (`"auto"`/`"fast"`/`"loop"`) selects it. (2) **Multiprocessing fits** — the per-pixel `Fit23` calls (the dominant cost) now run across worker processes over a shared-memory copy of the histogram matrix, via a new reusable, Qt-free helper `chisurf/core/fluorescence/mle/parallel.py::fit_matrix_parallel` (built on the `fit2x` harness). It uses the **fork** start method so workers inherit the parent's imports — avoiding a hang where `spawn` re-imports the deep plugin/GUI package chain in a subprocess — with a serial fallback on any failure and an `n_workers` control. **Investigation & tttrlib change:** per the "let it release GIL" steer, added GIL release around `DecayFit{23,24,25,26}::fit` in tttrlib (`ext/python/DecayFit*.i`, committed there `bebd7bb9`; rebuild the arm64 editable install per [[tttrlib-editable-rebuild]]). Threaded fits are now **bit-identical** to serial (the fit's per-call state is `static thread_local`), but in-process threading still does **not scale** on macOS (the fit serialises on an internal per-thread-state access path; a BLAS `np.dot` control thread-scales 4× in the same env, so it is the fit, not the environment) — hence multiprocessing for throughput. The GIL release is kept as the correct, safe precondition (helps latency/GUI-responsiveness; enables future threading if the C++ serialiser is removed). **A/B benchmark** `test/benchmarks/benchmark_pixel_mle.py` on real FLIM `tttr-data/imaging/pq/Microtime200_HH400/beads.ptu`: baseline (loop, serial) → +fast extraction 1.13× → +parallel (7 workers) **2.58×**, results identical. Tests: `img_pixel_mle/test/test_pixel_mle_core.py` gains fast-vs-loop and MP-vs-serial equivalence (6 pass); benchmark has a `slow` equivalence+speedup test. See [plugins/imaging.md](/plugins/imaging.md) and the `fit2x` harness in [subsystems/fitting.md](/subsystems/fitting.md).
+* **Pixel-wise FLIM MLE throughput: vectorised extraction + multiprocessing fits + GIL release (A/B benchmarked).** Two optimisations to `img_pixel_mle/core/pixel_mle.py`, both A/B-verified to give **identical** per-pixel lifetimes. (1) **Vectorised extraction** — replaced the per-pixel Python `tttr_indices`+`np.bincount` loop with one `CLSMImage.get_fluorescence_decay` C++ call building the whole per-pixel histogram stack (matches bincount exactly; the returned uint8 is guarded — saturation auto-falls-back to the exact bincount engine). An `engine` switch (`"auto"`/`"fast"`/`"loop"`) selects it. (2) **Multiprocessing fits** — the per-pixel `Fit23` calls (the dominant cost) now run across worker processes over a shared-memory copy of the histogram matrix, via a new reusable, Qt-free helper `chisurf/core/fluorescence/mle/parallel.py::fit_matrix_parallel` (built on the `fit2x` harness). It uses the **fork** start method so workers inherit the parent's imports — avoiding a hang where `spawn` re-imports the deep plugin/GUI package chain in a subprocess — with a serial fallback on any failure and an `n_workers` control. **Investigation & tttrlib change:** per the "let it release GIL" steer, added GIL release around `DecayFit{23,24,25,26}::fit` in tttrlib (`ext/python/DecayFit*.i`, committed there `bebd7bb9`; rebuild the arm64 editable install per `tttrlib-editable-rebuild`). Threaded fits are now **bit-identical** to serial (the fit's per-call state is `static thread_local`), but in-process threading still does **not scale** on macOS (the fit serialises on an internal per-thread-state access path; a BLAS `np.dot` control thread-scales 4× in the same env, so it is the fit, not the environment) — hence multiprocessing for throughput. The GIL release is kept as the correct, safe precondition (helps latency/GUI-responsiveness; enables future threading if the C++ serialiser is removed). **A/B benchmark** `test/benchmarks/benchmark_pixel_mle.py` on real FLIM `tttr-data/imaging/pq/Microtime200_HH400/beads.ptu`: baseline (loop, serial) → +fast extraction 1.13× → +parallel (7 workers) **2.58×**, results identical. Tests: `img_pixel_mle/test/test_pixel_mle_core.py` gains fast-vs-loop and MP-vs-serial equivalence (6 pass); benchmark has a `slow` equivalence+speedup test. See [plugins/imaging.md](/plugins/imaging.md) and the `fit2x` harness in [subsystems/fitting.md](/subsystems/fitting.md).
 * **ALEX analysis of Shimon Weiss lab `.sm` files: auto window-split + end-to-end test/example (chisurf and tttrlib).** Shimon Weiss lab single-molecule `.sm` files (tttrlib `SM` container, record type 11) store only a macro-time and a routing channel — no TCSPC micro-time. Micro-second ALEX encodes the green/red laser alternation in the macro-time clock, so `TTTR.alex_to_microtime(period, shift)` folds it into a synthetic micro-time (`micro = (macro − shift) % period`) that recovers the excitation window by gating, exactly like PIE. Added **automatic green/red window detection** to the ALEX plugin core (`chisurf/plugins/tttr/ptu_alex_creator/core`): `auto_alex_windows(...)` histograms the folded phase, finds the two laser-on plateaus as the two largest occupied runs (circular `_contiguous_runs`), **guard-bands each edge** (default 6%) to drop the laser rise/fall photons (some photon loss is intended — ~88% retention), and labels the donor-brighter window "green"; `alex_stream_masks(...)` returns the DD/DA/AA/AD boolean masks. It raises `ValueError` on continuous-wave data (single fully-occupied period). Verified the full smFRET path works with `.sm` input: load → `apply_alex` → auto-split → all-photon burst search → per-burst DD/DA/AA counting → apparent/corrected E and S via [`burst/es.py`](/subsystems/fluorescence-domain.md) (`apparent_es`/`corrected_es`). Because the shipped reference `tttr-data/sm/data.sm` is a continuous-wave, donor-dominated file (60 s, ch0≫ch1, no alternation — confirmed by FFT/fold-contrast analysis showing no laser-alternation frequency), tests use a **synthetic ground-truth ALEX stream with realistic laser windows (interior plateaus + rise/fall gaps + edge smear) round-tripped through the `.sm` container** (set `MeasDesc_GlobalResolution` tag so the written file reads back at 12.5 ns) to check window recovery + E/S recovery, and additionally load the real file to prove reading + burst search. Auto-split recovers windows inside the true laser bounds and two injected populations (600 bursts, E≈0.20/0.80, S≈0.55). New: `test/fitting/test_alex_sm.py` (7), `examples/alex_sm_es.py`; and in tttrlib `test/python/burstfilter/test_alex_sm.py` (7, with a standalone copy of the auto-split helper) + `examples/single_molecule/plot_alex_sm.py` (sphinx-gallery, phase histogram with detected windows + E-S 2D histogram). Only new core code is the `auto_alex_windows`/`alex_stream_masks` helpers; the ALEX/.sm folding + es capability already existed.
 * **Molecule-wise MLE (`sm_image_mle`): reworked onto a Qt-free core + AutoForm GUI, verified against tttrlib-simulated CLSM images.** The plugin's real algorithm (segment single molecules from a CLSM intensity image, build a per-molecule VV/VH histogram, fit each by Fit23 Poisson MLE) lived in a ~790-line monolithic `click` script `sm_image_mle.py`, and the "API layer" (`api/molecule_mle.py`) shelled out to that script **as a subprocess per PTU file** — so every consumer re-parsed CLI args, and the GUI was an old-style `QMainWindow` (drag-drop `FileListWidget` + `Worker(QThread)` running the subprocess + a `BrowserWidget` reading PNGs off disk). Extracted the computation into a new Qt-free `chisurf/plugins/microscopy/sm_image_mle/core/molecule_mle.py` — `MoleculeMleSettings`, `MoleculeMleResult`, `segment_molecules` (watershed), `build_irf_vv_vh`/`compute_g_factor`, `fit_molecules(tttr, settings, clsm=…)` / `fit_molecules_from_files` — built on the shared [`fit2x` harness](/subsystems/fitting.md) (`Fit2x`/`assemble_vv_vh`), returning a per-molecule DataFrame + label/intensity images + centroids (no more matplotlib PNG dumps or TSV writes in the compute layer). `api/molecule_mle.py::analyze_request` now runs the core **in-process** (loop files → per-file `molecule_data.tsv` + merged `joint_output.tsv`), mirroring the pixel-wise sibling. Replaced the whole old GUI with an **AutoForm view.json** (`gui/molecule_mle.view.json`) over a Qt-free `MoleculeMleViewModel` (`path_list` file/IRF inputs, value/toggle settings, a `▶ Run` `button_row` launched on a `QThreadPool` worker, an `image` dock showing the segmentation with green molecule-centroid markers, and a `table` of per-molecule fits); `gui/tool.py::SmImageMleTool` is now a thin `AutoForm`-hosting `QWidget`. Deleted the monolith `sm_image_mle.py` and the dead `cli.py` shim (the `cli/` package shadowed it); fixed `cli/__init__.py` to actually export `cli`. **Verified against tttrlib-simulated CLSM images** (`SimEngine`/`SimScanner` raster of two immobile fluorophores with τ=1.0/3.5 ns → segment → fit recovers τ≈1.0/3.55 ns), and the GUI headless-screenshot-verified (image + markers + table render the simulated result). Tests (arm64): new `test/test_molecule_mle_core.py` (simulate→segment→fit, 3), `test/test_api_orchestration.py` (per-file + joint TSV, warnings, 2), rewritten `test/test_widgets.py` (view-model bindings, view-spec load, AutoForm tool, 3) — 8 pass. Manifest bumped to 2.1.0. See [plugins/imaging.md](/plugins/imaging.md) and the `fit2x` harness in [subsystems/fitting.md](/subsystems/fitting.md).
 * **Calibration: reference-sample α/δ + multi-chromophore N-cube + confirmed GUI parameter-link (continuation 2).** Completed the calibration methodology and generalised it beyond two colours. (1) **Reference-sample estimators** (`chisurf/core/fluorescence/fret/calibration.py`): `leakage_from_donor_only` (α from a donor-only sample), `direct_excitation_from_acceptor_only` (δ from an acceptor-only sample), and `calibrate_from_samples` orchestrating the full Hellenkamp procedure (α from donor-only, δ from acceptor-only, γ/β from the FRET E-S fit, optional prior-regularized refine) — α/δ are now data-driven, not only the light-path prior (`test_calibration_samples.py`, recovers known α=0.08/δ=0.05/γ=1.4). (2) **Multi-chromophore (N-cube) correction** `es.py::corrected_es_matrix(intensity, gamma, alpha, delta, …)` — generalises the three-cube to an N×N `I_ij` matrix using the **coupled donor budget** `E_ij = (F_ij/γ_ij)/(F_ii + Σ_k F_ik/γ_ik)`, recovering each pairwise efficiency exactly when one donor is quenched by several acceptors (the naive pairwise formula biases `E_ij → E_ij/(1−E_ik)`); reduces exactly to `corrected_es` for two chromophores (`test_multi_chromophore.py`: N=2 reduction + 3-color exact recovery + documents the bias). (3) **GUI parameter-link auto-wired** — confirmed `ChiSurfAPI.list_fits()` serializes the registered `CalibrationFit` with its factors (the same source the parameter-link menu reads), so the shared calibration appears as a link target with no extra Qt (`test_calibration_shared.py`). 37 calibration/crosstalk tests pass, ruff clean (arm64). Only remaining: a one-click ndx toolbar push button and per-pixel/FLIM reuse (headless cores + ndx bridge already cover the substance) — see [references/fret-calibration.md](/references/fret-calibration.md). Added a **user-facing docs page** `docs/FRET calibration.md` (Sphinx toctree in `docs/index.rst`) — theory (Hellenkamp α/β/γ/δ, I_ij channels, E/S formulas), the two factor-sourcing routes (light-path prior→posterior; donor-only/acceptor-only reference samples), the multi-chromophore coupled-budget correction, global-analysis linking + ndx push, and simulation-based validation, with code examples and references (Hellenkamp 2018, Lee 2005).
@@ -37243,9 +37243,9 @@ front, not this).
 ## 2026-07-15
 * **FCS batch 2 (6 more PAM models) + PCF experiment type + channel-aware FLCS correlator + general crosstalk core.** Continuation of the PAM-referenced FCS work, all A/B-verified against PAM at PAM's own default parameters (the "examples from PAM"; real dataset also cloned to `junk/PAM-sampledata`). (1) **6 more FCS models** in `models.yaml` (`test_fcs_pam_ab.py`, now 27 tests): `FCS_TauD_Background`, the three `FCS_SCCF_*_TauD_anomalous` (anomalous diffusion + 1/2/3 signed relaxation terms via a fixed `isCCF` sign switch for species cross-correlation dips), and `fullFCS_sum`/`fullFCS_product` (antibunching × bunching × triplet × diffusion, mixed ns/µs units). (2) **New PCF experiment type** — pair-correlation-function distribution fits, previously missing entirely. Registered in `experiment_configs.yaml` (`experiment_types.pcf` + a `pcf:` block reusing the generic CSV curve reader), with a core catalogue `chisurf/core/models/pcf/{parse.py (ParsePCFModel),models.yaml}` (`PCF_LogNormal`/`LogGaussian`/`Gamma`, the gamma model folding PAM's x-independent `1/gamma(alpha)` normaliser into the amplitude since the parser has no `gamma`) and a GUI catalogue widget `chisurf/gui/widgets/models/pcf/ParsePCFWidget`. Tests `test_pcf_pam_ab.py` (A/B incl. gamma-shape) + `test_pcf_experiment.py` (registration/reader). (3) **Channel-aware FLCS filtered correlation** — Qt-free core `chisurf/core/fluorescence/fcs/filtered.py::species_filtered_correlation`/`species_weight_streams` builds per-photon weights from a 2-D `(n_species,n_bins)` matrix, a 3-D `(n_channels,n_species,n_bins)` table, or a `{channel: matrix}` map (par/perp/per-detector, via `correlate.get_weights`), then correlates every species auto/cross pair with `tttrlib.Correlator`; `FilterResult.to_channel_filters` / `FilterResultMFD.to_channel_filters(par,perp)` produce the channel table; a plugin entrypoint `fcs_correlator/core.py::filtered_correlation_datasets/_from_tttr` emits correlator dataset dicts, and `CorrelatorSettingsModel.set_lifetime_filters` + a `correlate_data` branch wire it into the GUI model (mirrors `tttrlib.Correlator.set_filter`, which the user noted exists but whose 0.27 SWIG binding is fiddly to marshal). Tests `test_flcs_correlation.py` (5, incl. photon-level filter orthogonality + channel-aware==single-axis) and `fcs_correlator/test/test_filtered_core.py` (3). (4) **General spectral-crosstalk core** `chisurf/core/fluorescence/crosstalk.py` — the shared linear-mixing utility the user flagged as general (light-path calculator forward matrix, ratiometric/sensitized-emission FRET, phasor unmixing, DDEM): `matrix_from_payload` (build ordered numpy `M` from a `get_crosstalk_matrices()` payload), `apply_mixing`/`invert_mixing` (forward + pinv/nnls inverse, pixel-broadcasting), `correct_three_cube` (Gordon/Nagy 3-cube rFRET: `Fc = IDA − d·IDD − a·IAA`, recovers known E) and `three_cube_fret_efficiency`; plus a **bug fix** to `chisurf/core/fluorescence/intensity.py::nusiance` (Python-2 `func_globals` → `__globals__`, which had made the entire scalar FRET-correction API raise `AttributeError` at call time). Tests `test_crosstalk.py` (11, incl. mixing round-trip, 3-cube E recovery, decorator fix). Full new-feature suite: **66 pass** (arm64). Remaining (documented, not built): the `correlator.view.json` lifetime-filter file-picker UI, an `img_pixel_rfret` microscopy plugin consuming PIE green/red/yellow maps, refactoring `img_pixel_phasor.phasor_unmix` to reuse `invert_mixing`, DDEM sensitized-emission wiring onto the crosstalk core, and porting `fullFCS_pulsed_linear` (needs a coded pulse-train model). See [references/fcs-pam-port.md](/references/fcs-pam-port.md) and the new [references/crosstalk.md](/references/crosstalk.md).
 * **Maximum-likelihood (2I*) fitting: shared tttrlib `fit2x` harness + first-class in-core Poisson objective.** Two coupled changes that make MLE a proper part of ChiSurf's fitting infrastructure instead of siloed plugin boilerplate. (1) New Qt-free harness `chisurf/core/fluorescence/mle/` (`fit2x.py`): `Fit2xSettings` (dt/period/IRF/background/polarisation), a reusable `Fit2x` fitter (builds the tttrlib `Fit23`/`Fit24`/`Fit25` once, fits many decays), a typed `Fit2xResult` with named accessors (`tau`/`gamma`/`r_scatter`/`r_experimental`, `as_dict`), and `assemble_vv_vh` for the parallel|perpendicular layout. It is the single seam around tttrlib's Maus-2001 `2I*` MLE — the estimator itself is already good C++; only ChiSurf's harness around it was poor (the raw `tttrlib.Fit23(dt=…, p2s_twoIstar_flag=…)` construction + `res['x']`/`res['twoIstar']` parsing was copy-pasted across four call sites). Migrated the burst-MLE batch worker (`burst_mle_analysis/_mp_worker.py`), the wizard's batch pass, and `microscopy/sm_image_mle` onto the harness; the wizard interactive-preview and the `img_pixel_mle` monolith still call raw `Fit23` and are the next consumers to move. (2) Added a selectable `noise_model` on `Fit`: `"default"` keeps weighted-least-squares (Neyman) exactly as before; `"poisson"` (aliases `mle`/`2istar`) returns the **signed Poisson deviance residuals** `sign(μ−y)·√(2·(μ−y+y·ln(y/μ)))` from the new `deviance_residuals` helper, so `Σr²=2I*` and the *existing* `leastsqbound` LM engine, `chi2`/`chi2r`, covariance, F-test and residual plots all minimise the Poisson likelihood unchanged (Laurence & Chromy 2010) — the correct estimator for low-count TCSPC/FLIM/burst decays. Threaded `Fit.noise_model → Model.get_wres → calculate_weighted_residuals`; PDA models and every default fit are byte-unchanged. Tests: `test/fluorescence/test_mle_fit2x.py` (harness: VV/VH assembly, settings validation, `Fit23` lifetime recovery, fitter reuse) and `test/fitting/test_poisson_mle.py` (deviance≡2I* identity, zero/perfect-bin handling, selector plumbing, WLS back-compat, Poisson fit recovers params with reduced 2I*≈1) — 12 pass (arm64). No regressions (the 4 pre-existing `test_fit.py` standalone-invocation failures fail identically on baseline). Docs updated: [subsystems/fitting.md](/subsystems/fitting.md), [plugins/burst.md](/plugins/burst.md). This is phase 1 of a larger effort (H2MM/FRETBursts benchmarks in docs; FRET-2CDE + DCBS-in-tttrlib feeding ndxplorer) — see the `mle-fretbursts-benchmark-resume` memory.
-* **FCS model catalogue expansion (PAM port, A/B-verified) + FLCS filter fixes.** Ported PAM's (Schrimpf 2018) FCS fit-model catalogue into `chisurf/core/models/fcs/models.yaml` as 13 absolute-`D`, physically-parametrised models (x in s; D µm²/s; w µm; tau µs): `FCS_D`, `FCS_D_2Component`, `FCS_D_2exp`, `FCS_TauD`, `FCS_TauD_anomalous`, `FCS_flow`, `FCS_D_Background`, `FCS_D_afterpulsing`, `FCS_TauD_Bleaching`, `FCS_2Focus_D` (two-focus absolute `D`), `FCS_FRETFCCS` (2-state kinetics), `nsFCS_ab_cd_triplet`, `FCS_Scanning`. Each carries the γ=1/√8 prefactor and triplet term. **A/B-verified**: `test/fitting/test_fcs_pam_ab.py` transcribes each PAM MATLAB `fit` lambda verbatim (keeping the `1e-12`/`1e-6` SI factors, which cancel in the diffusion terms → reduced `4·D·x/w²`) and asserts equality to the ChiSurf equation over random parameters (evaluated through the real `ParseModel` scanner). This replaced the initial hand-rolled `w0/s` two-focus entries. A catalogue-wide parse test also caught and fixed **3 pre-existing broken entries** (`3D Gauss, 1 exp. bunch, 1 stretched exp. bunch` — unbalanced parens + missing `a1`/`td1`; `Autocorrelation with biexponential anisotropy term` — `td`→`td1`; `1x2D Gauss, 1x3D Gauss, 1 bunching + 5 anti-correlation` — missing `s`), whose equations referenced parameters absent from their `initial:` blocks. **FLCS filters** (`chisurf/core/fluorescence/fcs/filtered.py`, PAM `Calc_fFCS_Filters` as reference): the weighted-pseudo-inverse algebra was already correct; added `rcond`/`tikhonov` conditioning + `filter_condition_number` diagnostic (for near-collinear/similar-lifetime patterns), `uniform_pattern` (flat afterpulsing/dark-count species → afterpulse-free FLCS), and `photon_filter_weights` (per-photon micro-time→filter weight, the core for wiring filters into a weighted correlator); fixed the legacy `calc_lifetime_filter` divide-by-zero (zero-bin guard) and removed its nonstandard global renormalisation that broke the `Σ_t R_k(t)·p_j(t)=δ_kj` relation. Tests: `test/fitting/test_fcs_pam_ab.py`, `test_fcs_2ffcs.py`, `test_fcs_filters.py` — 31 pass (arm64 env). Remaining gaps (correlator wiring of filters, channel-aware par/perp weighting, scatter/IRF & model-generated pattern species, non-Gaussian Dertinger MDF, and the pCF/SCCF/MIA models) documented in the new OKF concept [references/fcs-pam-port.md](/references/fcs-pam-port.md); [references/two-focus-fcs.md](/references/two-focus-fcs.md) and [plugins/fcs.md](/plugins/fcs.md) updated. PAM cloned under `junk/PAM` as reference.
+* **FCS model catalogue expansion (PAM port, A/B-verified) + FLCS filter fixes.** Ported PAM's (Schrimpf 2018) FCS fit-model catalogue into `chisurf/core/models/fcs/models.yaml` as 13 absolute-`D`, physically-parametrised models (x in s; D µm²/s; w µm; tau µs): `FCS_D`, `FCS_D_2Component`, `FCS_D_2exp`, `FCS_TauD`, `FCS_TauD_anomalous`, `FCS_flow`, `FCS_D_Background`, `FCS_D_afterpulsing`, `FCS_TauD_Bleaching`, `FCS_2Focus_D` (two-focus absolute `D`), `FCS_FRETFCCS` (2-state kinetics), `nsFCS_ab_cd_triplet`, `FCS_Scanning`. Each carries the γ=1/√8 prefactor and triplet term. **A/B-verified**: `test/fitting/test_fcs_pam_ab.py` transcribes each PAM the numerical computing environment `fit` lambda verbatim (keeping the `1e-12`/`1e-6` SI factors, which cancel in the diffusion terms → reduced `4·D·x/w²`) and asserts equality to the ChiSurf equation over random parameters (evaluated through the real `ParseModel` scanner). This replaced the initial hand-rolled `w0/s` two-focus entries. A catalogue-wide parse test also caught and fixed **3 pre-existing broken entries** (`3D Gauss, 1 exp. bunch, 1 stretched exp. bunch` — unbalanced parens + missing `a1`/`td1`; `Autocorrelation with biexponential anisotropy term` — `td`→`td1`; `1x2D Gauss, 1x3D Gauss, 1 bunching + 5 anti-correlation` — missing `s`), whose equations referenced parameters absent from their `initial:` blocks. **FLCS filters** (`chisurf/core/fluorescence/fcs/filtered.py`, PAM `Calc_fFCS_Filters` as reference): the weighted-pseudo-inverse algebra was already correct; added `rcond`/`tikhonov` conditioning + `filter_condition_number` diagnostic (for near-collinear/similar-lifetime patterns), `uniform_pattern` (flat afterpulsing/dark-count species → afterpulse-free FLCS), and `photon_filter_weights` (per-photon micro-time→filter weight, the core for wiring filters into a weighted correlator); fixed the legacy `calc_lifetime_filter` divide-by-zero (zero-bin guard) and removed its nonstandard global renormalisation that broke the `Σ_t R_k(t)·p_j(t)=δ_kj` relation. Tests: `test/fitting/test_fcs_pam_ab.py`, `test_fcs_2ffcs.py`, `test_fcs_filters.py` — 31 pass (arm64 env). Remaining gaps (correlator wiring of filters, channel-aware par/perp weighting, scatter/IRF & model-generated pattern species, non-Gaussian Dertinger MDF, and the pCF/SCCF/MIA models) documented in the new OKF concept [references/fcs-pam-port.md](/references/fcs-pam-port.md); [references/two-focus-fcs.md](/references/two-focus-fcs.md) and [plugins/fcs.md](/plugins/fcs.md) updated. PAM cloned under `junk/PAM` as reference.
 * **Two-focus FCS (2fFCS) model functions + status doc.** Added two absolute-diffusion model functions to `chisurf/core/models/fcs/models.yaml` — `2f-FCS auto-correlation (absolute D)` and `2f-FCS cross-correlation (absolute D)` — written in the `D`/`w0` parametrisation (Dertinger 2007). The cross-correlation carries the known inter-focus distance `d` in an `exp(-d²/(w0²+4Dx))` term, so a global fit sharing `D`/`w0`/`s` (with `d` fixed) yields an **absolute** diffusion coefficient without a separately calibrated volume; it correctly peaks at a finite lag and reduces exactly to the auto-correlation at `d=0`. Verified through the real `ParseModel` scanner (params resolve to `N,D,w0,s,d,b`); headless test `test/fitting/test_fcs_2ffcs.py` (5 tests) asserts the physics. Documented what's implemented vs missing in a new OKF concept [references/two-focus-fcs.md](/references/two-focus-fcs.md) (missing: Dertinger's non-Gaussian modified detection function, which needs `erf` — unavailable in the string-equation evaluator's NumPy-only scope, so it needs an `erf` binding or a coded FCS model class; plus focus-distance calibration, a dedicated 2f channel-pairing preset, a guided global-fit GUI, triplet/multi-component variants, and an end-to-end absolute-`D` recovery test). Linked from [plugins/fcs.md](/plugins/fcs.md) and the references index.
-* **New plugin `burst_ebfret` — binned-trajectory smFRET HMM (ebFRET port).** Closes the one confocal/TIRF gap the burst group lacked: analysis of **binned intensity-vs-time FRET traces** (wide-field/camera data) rather than photon streams. Added `chisurf/plugins/burst/burst_ebfret/` — a Qt-free, NumPy/SciPy-only port of ebFRET (van de Meent et al.; a re-implementation of vbFRET): `core/vbem.py` (per-trace variational-Bayes EM over a univariate Gaussian-emission HMM — Dirichlet priors on initial/transition, Normal-Gamma emission prior in ebFRET's `(m,β,a,b)` form, linear-scaled forward-backward), `core/ebayes.py` (empirical-Bayes outer loop with conjugate h-step prior updates ported from ebFRET's `+dist/{dirichlet,normgamma}/h_step.m` — Dirichlet Newton + Normal-Gamma moment-matching), `core/viterbi.py`, `core/analysis.py` (K-scan + evidence selection + dwell/transition decoding), `io.py` (ebFRET stacked `.dat` loader), `api/models.py`, `backend/services.py` (`burst_ebfret.jobs.compute` RPC), `cli/main.py` (`ebfret compute`). **Validated against ebFRET's own `simulated-K04-N350` fixture** (vendored under `tests/data/`, 350 traces / 39,595 frames): at K=4 the port recovers `[0.03, 0.34, 0.51, 0.62]`, the two well-separated interior states within 0.05 of ebFRET's fitted `[0.33, 0.516]` — endpoints differ only because this port fits the uncorrected proximity ratio `A/(D+A)` whereas ebFRET fits a background-subtracted signal (donor-only near 0). Tests: 7 fast synthetic unit tests + 4 recovery/integration tests (3 `slow`) all pass (arm64 env; pixi env solve is currently broken on an unrelated `msgpack` candidate). Porting this one algorithm covers the functionality of four MATLAB-only TIRF tools on fret.community (**ebFRET, vbFRET, HaMMy, SMACKS**). Scope: single-prior D=1 path; prior-mixture subpopulations, SMD/session I/O, and a GUI tool are follow-ups. Marked `experimental`/`menu_hidden`. Grew out of a fret.community/software gap analysis vs ChiSurf (repos cloned into `junk/`). Other gaps assessed (not built): diffusion-FRET photon simulation is already substantially in **tttrlib** (`~/dev/tttrlib`, PRD-005 Burbulator port — 3D Brownian + PSF + FRET + TCSPC + CLSM, SPC-132 byte-exact; remaining: periodic/mirror BCs, Photon-HDF5 write, single-molecule throughput) and needs only surfacing via chisurf **PRD-53**; rFRET ratiometric + FLIM crosstalk correction can reuse the existing forward crosstalk-matrix builder (`plugins/core/lightpath_simulator/backend/simulator.py::get_crosstalk_matrices`), which is currently never inverted to correct measured data; wide-field camera-movie TIRF (spot localization/trace extraction) remains a genuine large gap but is pure-intensity and off ChiSurf's photon-centric path (only PAM's TIFF-stack phasor-FLIM ingest is FLIM-relevant). See [plugins/burst.md](/plugins/burst.md).
+* **New plugin `burst_ebfret` — binned-trajectory smFRET HMM (ebFRET port).** Closes the one confocal/TIRF gap the burst group lacked: analysis of **binned intensity-vs-time FRET traces** (wide-field/camera data) rather than photon streams. Added `chisurf/plugins/burst/burst_ebfret/` — a Qt-free, NumPy/SciPy-only port of ebFRET (van de Meent et al.; a re-implementation of vbFRET): `core/vbem.py` (per-trace variational-Bayes EM over a univariate Gaussian-emission HMM — Dirichlet priors on initial/transition, Normal-Gamma emission prior in ebFRET's `(m,β,a,b)` form, linear-scaled forward-backward), `core/ebayes.py` (empirical-Bayes outer loop with conjugate h-step prior updates ported from ebFRET's `+dist/{dirichlet,normgamma}/h_step.m` — Dirichlet Newton + Normal-Gamma moment-matching), `core/viterbi.py`, `core/analysis.py` (K-scan + evidence selection + dwell/transition decoding), `io.py` (ebFRET stacked `.dat` loader), `api/models.py`, `backend/services.py` (`burst_ebfret.jobs.compute` RPC), `cli/main.py` (`ebfret compute`). **Validated against ebFRET's own `simulated-K04-N350` fixture** (vendored under `tests/data/`, 350 traces / 39,595 frames): at K=4 the port recovers `[0.03, 0.34, 0.51, 0.62]`, the two well-separated interior states within 0.05 of ebFRET's fitted `[0.33, 0.516]` — endpoints differ only because this port fits the uncorrected proximity ratio `A/(D+A)` whereas ebFRET fits a background-subtracted signal (donor-only near 0). Tests: 7 fast synthetic unit tests + 4 recovery/integration tests (3 `slow`) all pass (arm64 env; pixi env solve is currently broken on an unrelated `msgpack` candidate). Porting this one algorithm covers the functionality of four numerical-computing-environment-only TIRF tools on fret.community (**ebFRET, vbFRET, HaMMy, SMACKS**). Scope: single-prior D=1 path; prior-mixture subpopulations, SMD/session I/O, and a GUI tool are follow-ups. Marked `experimental`/`menu_hidden`. Grew out of a fret.community/software gap analysis vs ChiSurf (repos cloned into `junk/`). Other gaps assessed (not built): diffusion-FRET photon simulation is already substantially in **tttrlib** (`~/dev/tttrlib`, PRD-005 Burbulator port — 3D Brownian + PSF + FRET + TCSPC + CLSM, SPC-132 byte-exact; remaining: periodic/mirror BCs, Photon-HDF5 write, single-molecule throughput) and needs only surfacing via chisurf **PRD-53**; rFRET ratiometric + FLIM crosstalk correction can reuse the existing forward crosstalk-matrix builder (`plugins/core/lightpath_simulator/backend/simulator.py::get_crosstalk_matrices`), which is currently never inverted to correct measured data; wide-field camera-movie TIRF (spot localization/trace extraction) remains a genuine large gap but is pure-intensity and off ChiSurf's photon-centric path (only PAM's TIFF-stack phasor-FLIM ingest is FLIM-relevant). See [plugins/burst.md](/plugins/burst.md).
 * **Extracted MMFDB into a self-contained sibling repository.** `modules/mmfdb` (178 in-tree files) was moved out to `~/dev/mmfdb` as a standalone, independently versioned package destined for `github.com/Fluorescence-Tools/mmfdb`, and chisurf now consumes it via a **symlink** `modules/mmfdb -> ../../mmfdb` (the established `imp-tricks` pattern). This leaned on chisurf being pre-wired for the split: the `sys.path` bootstrap (`chisurf/_bundled_packages.py`) resolves `modules/mmfdb/src` through the symlink unchanged, `pyproject.toml` already declares `mmfdb==0.1.0` and excludes it from `packages.find`, and `test/core/test_mmfdb_vendor_package.py` still passes (8/8). **New repo** (`~/dev/mmfdb`, `git init`, 202 files, 631 tests pass, docs build `-W` clean): dropped `EXTRACTION.md` + the stray `examples/None`; added own `.gitignore`, `MANIFEST.in`, `.github/workflows/ci.yml`, an `examples` extra (`tttrlib`/`fretbursts`/`phconvert`) and moved `test_min_client.py` into `tests/`; reframed `README.md` and fixed all `modules/mmfdb/…` doc paths to package-relative; host-neutrality still guarded by `tests/test_architecture.py`. **chisurf side:** removed `test/plugins/mmfdb/` (moved) and the redundant root `docker-compose.mmfdb.yml`; added an mmfdb sibling-clone/install step to `rattler-recipe/{build.sh,build.bat}` and the three CI workflows (closes the prior gap where the packaged app installed every local module *except* mmfdb); synced the `mmfdb_admin` manifest (added the pre-existing-undeclared `fluorophores.import_default_set`). Verified end-to-end through the symlink: vendor boundary, burst-workflow facade, H2MM-simulation, and notebook discovery all pass. **Examples decision:** the 8 chisurf-based notebooks stay in mmfdb with chisurf as an optional extra; docs render them non-executed (`nb_execution_mode="off"`), so the mmfdb doc build needs no chisurf. Nothing pushed — creating/pushing `Fluorescence-Tools/mmfdb` and the coordinated chisurf commit are left to the user.
 * **MMFDB slop cleanup.** Removed AI-generated cruft from `modules/mmfdb`: deleted a stray 950 KB SQLite DB accidentally written to `examples/None`; trimmed docstring puffery ("comprehensive parser" in `schema/pdbx_metadata.py`, "first-class read service" in `provenance/lineage.py`); and deleted six provably-dead legacy getters on `SampleDefinition` in `src/mmfdb/models.py` that had zero callers repo-wide.
 * **MMFDB: drop the dual-field legacy sample model (pre-release, no back-compat needed).** Removed the entire flat/structured legacy layer that duplicated the flrCIF/PRD-02 model. `ProbeDefinition` lost `position`/`position_label`/`chain_id`/`residue_name` (and their `__post_init__` mapping to `seq_id`/`comp_id`/`asym_id`/`auth_name`); callers now pass flrCIF fields directly. `SampleDefinition` lost `entity_name`/`entity_sequence`/`entity_type`, the flat `donor_probe_name`/`donor_position`/`donor_position_label` (+ acceptor equivalents), and the deprecated structured `donor`/`acceptor` `ProbeDefinition` fields — everything now goes through `entities`/`probes`/`fret_pairs`. `_validate_vocabulary` validates each entity's `entity_type` (still hard-rejects unknowns with the same "Invalid entity_type" message) instead of a flat field. Migrated consumers: `samples/sample_manager.py` (`_metadata_from_definition`, `_collect_all_probes`, `_insert_entity`, `_derive_fluorophore_types`, `_get_probe_description`, `_sample_type`/key-values now read the first entity's type; probe `description` sources `auth_name` not `position_label`), `samples/sample_requests.py` (`SampleCreateRequest`/`SampleUpdateRequest` de-legacied), `admin/backend/services.py` `_normalize_probe_payload` (still accepts `residue_number`/`residue_name`/`chain_id`/`position` input aliases, emits only flrCIF keys), and `chisurf/gui/widgets/sample_picker.py` (builds `probes=[ProbeDefinition(...)]` + a `FretPairDefinition` from the donor/acceptor dye fields instead of the flat kwargs — dyes are now recorded as real sample probes with correct donor/acceptor roles). Updated `test/fio/test_sample_manager.py` and `modules/mmfdb/tests/test_prd19_collapse.py` to the new API. Verified: mmfdb standalone suite **628 passed / 2 skipped**, `test/fio/test_sample_manager.py` **21 passed**, mmfdb_admin plugin tests green, plus an end-to-end round-trip (FRET sample → DB → correct donor/acceptor roles, `residue_number`/`asym_id`/`residue_name` positions, conditions). Three `test/fio/test_dataset_browser.py` failures are pre-existing (auth/object-store env, fail on baseline without these changes). See [architecture/mmfdb.md](/architecture/mmfdb.md).
@@ -37300,7 +37300,7 @@ front, not this).
 * **MMFDB — swept the trivial single-table SELECTs in `queries/*.py` onto the DAO (PRD-26).** With the scattered-CRUD migration complete, converted the *trivial* reads in the centralized query mixins — single-table select-by-PK and equality-filter reads → `db.dao.get`/`db.dao.list` — across all 13 query files (users, parameters, experiments, branches, protocols, samples, studies, analysis, setups, probes, artifacts; objects/lifecycle had none convertible). Also folded a handful of coupled raw writes that a SELECT hung off (e.g. `add_experiment_data`'s `INSERT`+`last_insert_rowid()` → `dao.insert`). **Deliberately left raw** (the legitimate centralized home): JOINs, `DISTINCT`/`COUNT`/`MAX` aggregates, `LIKE` search, `json_extract` filters, `IN (…)`/`OR` predicates, `sqlite_master`/`PRAGMA` introspection, subquery/latest-per-group, compound `ORDER BY` (the DAO's `list` is single-column), reads on the external source `spectra.db` connection, and the `consolidate_probes` merge (dynamic `probe_id`/`item_id` key columns). **Lessons that shaped the sweep:** (1) `dao.get` needs an explicit `pk_column` when the dictionary schema doesn't mark the PK and the `<table>_id`/`id`/`uuid` fallback misses (`mmfdb_protocol.protocol_id`, `mmfdb_study.study_id`, `spectra.spectrum_id` — the last has a *separate* autoincrement `id`, so the fallback would silently query the wrong column); (2) `dao.list`/`get` return plain dicts, so any caller doing positional `row[0]`/tuple-unpacking had to be checked first (only `studies.backfill` and a couple of projections kept their raw form for that reason); (3) reads with **no** `deleted_at` guard were preserved with `include_deleted=True`; (4) converting `find_or_add_probe`'s refetch to a dict incidentally fixed a latent `sqlite3.Row.get()` call. Verified after every file — standalone **420 passed, 1 skipped** throughout; `test/fio` **236 passed** (1 pre-existing `ndxplorer` fail). Audit: select **241 → 175**; `probes.py` reads reclassified into bespoke (JOIN/aggregate/source/merge), so bespoke rose 68 → 87 as an accuracy correction, not new raw SQL. This was the optional item-3 cleanup in `HANDOVER.md`; the remaining `queries/` SELECTs are all the sanctioned bespoke home. Advances [PRD-26](/prds/prd-26.md)/[INC-05](/specs/assessment.md#inc-05).
 * **MMFDB — converted the last `INSERT OR REPLACE` in `queries/` (`add_operation_artifact`) to a composite-PK upsert (PRD-26).** The earlier "clear the remaining `INSERT OR REPLACE`/`IGNORE` in `queries/`" pass had left `ArtifactOpsMixin.add_operation_artifact` raw because `mmfdb_operation_artifact`'s 4-column composite PK was believed un-targetable by the DAO. Having disproven that (see the `seed_example` bullet below), routed it onto `db.dao.upsert(conflict=["operation_id","artifact_id","direction","role"])` — the `role`/`direction` are conflict columns and `created_at`/`updated_at`/`deleted_at` are the update set, so on re-add it refreshes the timestamps and **resurrects** a soft-deleted link (`deleted_at → NULL`) in place, identity-preserving where `INSERT OR REPLACE` would delete-and-reinsert. Verified the insert / soft-delete / re-add cycle keeps a single row with `deleted_at=NULL`. The two `INSERT OR IGNORE INTO mmfdb_group_member` writes in `schema.py`'s `bootstrap_*` stay `# raw` — they run on a **bare `sqlite3.Connection`** with no `dao` in scope (the documented bootstrap-seeder pattern). Standalone suite **420 passed, 1 skipped**. Audit: `queries/artifacts.py` insert 6 → 5; total insert 69 → 68. Advances [PRD-26](/prds/prd-26.md)/[INC-05](/specs/assessment.md#inc-05).
 * **MMFDB — routed the demo seeder `admin/seed_example.py` through the DAO (PRD-26 burn-down).** The example-smFRET seeder is the last non-query module carrying scattered CRUD; it holds an `MFDatabase` handle throughout, so `db.dao` is in scope. Converted every existence-check-then-insert helper: the probe/experiment-type/poly-probe-position lookups (`SELECT … WHERE <non-PK/UNIQUE>` → `db.dao.list(filters=…, limit=1)`), the user/device/entity/assembly/condition/artifact/operation existence probes (`SELECT 1 WHERE <pk>` → `db.dao.get(...) is None`), and the raw inserts for `entities` + `entity_poly_seq`, `flr_entity_assembly`, `flr_sample_condition`, and `flr_poly_probe_position` → `db.dao.insert` (the last returning the autoincrement `id` via lastrowid). The `probe_types` `INSERT OR IGNORE`+SELECT-back collapsed into `dao.upsert(conflict=["type_name"])` + `dao.list`. **Correction to a documented "DAO limitation":** the two `INSERT OR REPLACE INTO mmfdb_operation_artifact` writes on the **4-column composite-PK junction** also went onto the DAO — `dao.upsert(conflict=["operation_id","artifact_id","direction","role"])` targets the full composite PK, and since the values *are* exactly those 4 columns the upsert is an idempotent `DO NOTHING` (identity-preserving, unlike the delete-and-reinsert of `INSERT OR REPLACE`). So `seed_example.py` is now **zero raw SQL**; composite-PK junctions are convertible whenever you can name the full PK as the conflict target (only *keyless* tables with no targetable UNIQUE remain a genuine limitation). Verified by **running the seeder twice** against temp DBs (both the flr-tables path and, with fabricated `.spc` fixtures, the artifact/operation/product path) — idempotent, all rows land. Standalone suite **420 passed, 1 skipped**. Audit: `seed_example.py` 13 select · 8 insert → 0/0/0; totals select 254 → 241, insert 77 → 69. **The non-query-module scattered CRUD is now fully eliminated.** Advances [PRD-26](/prds/prd-26.md)/[INC-05](/specs/assessment.md#inc-05).
-* **OKF — codified the change-tracking loop as a workflow concept.** Added [workflows/change-tracking.md](/workflows/change-tracking.md), the durable statement of the process rule the root `CLAUDE.md` and per-area change policy already point at: for **every material change** → update the matching OKF concept + any burn-down table/DoD, append a dated bullet to [okf/log.md](/log.md), mark done, and commit (locally only — [[feedback-no-push]]). It also spells out *how changes stay traceable* (log = running narrative, `specs/*-audit.md` = running totals, git = small self-describing verified commits, `HANDOVER.md` = the start-fresh brief with an explicit *what's next*). Linked it from [workflows/index.md](/workflows/index.md), pointed the root `CLAUDE.md` "Working practices" and `HANDOVER.md` at it, and folded "then commit" into the CLAUDE.md track-every-edit rule.
+* **OKF — codified the change-tracking loop as a workflow concept.** Added [workflows/change-tracking.md](/workflows/change-tracking.md), the durable statement of the process rule the root `CLAUDE.md` and per-area change policy already point at: for **every material change** → update the matching OKF concept + any burn-down table/DoD, append a dated bullet to [okf/log.md](/log.md), mark done, and commit (locally only — `feedback-no-push`). It also spells out *how changes stay traceable* (log = running narrative, `specs/*-audit.md` = running totals, git = small self-describing verified commits, `HANDOVER.md` = the start-fresh brief with an explicit *what's next*). Linked it from [workflows/index.md](/workflows/index.md), pointed the root `CLAUDE.md` "Working practices" and `HANDOVER.md` at it, and folded "then commit" into the CLAUDE.md track-every-edit rule.
 * **MMFDB — removed the last scattered reads in `api.py` + `adapters/chinet.py` (PRD-26).** `api.py`'s two `SELECT 1 FROM mmfdb_object_acl …` ACL-existence probes now reuse the already-DAO-backed `security.auth._get_object_acl` (DRY — the ACL lookup lives in one place); `adapters/chinet.py`'s `flr_experiment` existence check → `db.dao.get(..., include_deleted=True)`. Both non-query modules are now SQL-free. (The `provenance/lineage.py` label reads stay raw — that module is bespoke graph traversal: DISTINCT/`IN`/recursive lineage the DAO can't express.) Standalone suite **420 passed, 1 skipped**. Audit: select 257 → 254. Advances [PRD-26](/prds/prd-26.md)/[INC-05](/specs/assessment.md#inc-05).
 * **MMFDB — cleared the remaining `INSERT OR REPLACE`/`INSERT OR IGNORE` writes in `queries/{users,probes,artifacts}.py` (PRD-26).** `UserDeviceMixin.ensure_user` and `add_artifact_owner` (`INSERT OR IGNORE` → existence-check + `dao.insert`, faithful to ignore-on-conflict); `ProbeMixin.add_probe` both branches (plain `INSERT` → `dao.insert`; the dynamic-column `INSERT OR REPLACE` → a built `values` dict + `dao.upsert` keyed on `probe_id`) and its `probe_types` `INSERT OR IGNORE`+SELECT-back collapsed into a `dao.list`/`dao.insert` reuse-or-create; `ArtifactOpsMixin.add_edge`'s `INSERT OR REPLACE INTO mmfdb_edge` (only unique is the autoincrement `edge_id`, never supplied → a plain `dao.insert`) plus the `record_operation` active-branch/head writes (`flr_sample_users.active_branch_uuid`, `mmfdb_branch` create/head-update → `dao.update`/`dao.insert`). Left flagged `# raw`: the probe-merge synonym `INSERT OR IGNORE` (dynamic key column `prop_key`) inside the bespoke dedup routine. Dropped an unused `_utc_now` import in `users.py`. Standalone suite **420 passed, 1 skipped**. Audit: insert 85 → 77, update 50 → 48, bespoke 67 → 68. Advances [PRD-26](/prds/prd-26.md)/[INC-05](/specs/assessment.md#inc-05).
 * **MMFDB — replaced two `INSERT OR REPLACE` writes in `queries/` with identity-preserving upserts (PRD-26).** `ProbeMixin.add_spectrum` (`spectra`, `conflict=["probe_id","spectrum_type"]`) and `SampleMixin.add_sample_probe` (`flr_sample_probe`, `conflict=["sample_id","probe_id","poly_probe_position_id"]`) now use `db.dao.upsert` instead of `INSERT OR REPLACE`. This preserves the row's surrogate `id`/`sample_probe_id` and any FK references on update (the delete-and-reinsert of `INSERT OR REPLACE` rotates the PK and can cascade), while still clearing `deleted_at` on re-add. Verified each table's UNIQUE constraint before choosing the conflict target. Standalone suite **420 passed, 1 skipped**. Audit: insert 87 → 85. Advances [PRD-26](/prds/prd-26.md)/[INC-05](/specs/assessment.md#inc-05).
@@ -37322,7 +37322,7 @@ front, not this).
 * **MMFDB simplification — Merge 1 (of 3) landed: one fewer access layer.** Started the MMFDB de-monolith program (finishing [PRD-19](/prds/prd-19.md)/[PRD-26](/prds/prd-26.md)/[PRD-24](/prds/prd-24.md); target [specs/mmfdb.md](/specs/mmfdb.md); backlog [INC-05](/specs/assessment.md#inc-05)). (1) Tracked the previously-untracked `modules/mmfdb/` tree (source + `.dic`/`spectra.db` data assets) in git so the package is versioned. (2) Added a public API for the private helpers callers reached into — `utc_now`, `json_loads`, `get_active_database`, `session_token_registry`, `hash_token` (private names kept as-is; purely additive). (3) **Deleted the SQLAlchemy `orm/` layer** (`orm/{base,models,sample_repository,sync}.py` + `test_orm.py`, ~2,700 lines): it duplicated the raw-SQL repository over the same tables and existed mainly to be kept in sync with it. Its one production consumer (`get_sample_full_description`'s ORM branch) already had a complete raw-SQL fallback, now the sole path; the three parallel access styles are now two. Remaining (Merge 2/3): standardise on the dictionary-driven `DictionaryDao` engine, add `DictionaryDao.upsert`, split the 7,322-line `MFDatabase` god-class into per-concern mixins, make the schema fully `.dic`-generated, unify the three import paths, drop the `base.py` ABC. mmfdb-core test gate green throughout (103→118 passed). Pre-existing reds noted: 3 test files carry stale `chisurf.plugins.core.mmfdb.admin.*` imports (→ fix in the import-unification merge).
 * **PRDs fully migrated into OKF; `overhaul/` retired.** The `okf/prds/` group is now the **self-contained** home for every PRD: all 61 concepts were expanded from thin summaries to carry the full design text folded from their `overhaul/` sources (and companion docs — PRD-02 summary/completion/review, PRD-03/04 code reviews & punch-lists, PRD-10 bug note, PRD-31 pyqtgraph-migration), with curated frontmatter/status preserved (OKF wins on conflict), `# Source` sections dropped, `resource:` repointed at code, external products kept role-based, and no `overhaul/` links. Added two new PRDs from the retired working notes — [PRD-57 (ChiMOL command parity + renderer migration)](/prds/prd-57.md) and [PRD-58 (FRET FPS+OLGA superset)](/prds/prd-58.md) — plus the authoritative [PRD Implementation Order](/prds/master-order.md). Durable non-PRD `overhaul/` docs were rehomed as references: [MMFDB architecture ideas](/references/mmfdb-architecture-ideas.md), [MMFDB LIMS diagnosis](/references/mmfdb-lims-diagnosis.md), [node/workflow-toolkit lessons](/references/orange3-lessons.md), [modelling/ProteinMC roadmap](/references/modelling-roadmap.md); the MMFDB dictionary programming rules folded into [architecture/mmfdb.md](/architecture/mmfdb.md), IDEA-01 (structure-aware sample definer) into [modelling](/plugins/modelling.md), and the background-estimation upgrade into [burst](/plugins/burst.md). Updated the prds/references/root indexes, `overview.md`, and `roadmap-prds.md` to drop `overhaul/` pointers, then deleted the `overhaul/` folder. Ephemeral `overhaul/` files (README/START_HERE/TODO/completion reports, superseded plans) were dropped as archive.
 * **CLAUDE.md refresh + AGENTS.md folded in.** Added a "Working practices" policy — *mark work done in its tracker* (PRD `status:`/DoD, index glyph, assessment row) and *track every edit in OKF* (update the matching concept + append to this log). Folded the durable parts of the removed root `AGENTS.md` into CLAUDE.md (change policy, Qt/`--no-deps`/`python -m chisurf`/`PYTHONPATH` gotchas, docs build, testing & rendering conventions, imp-tricks split pointer, client-server plugin standard, object-store pointer to [architecture/mmfdb.md](/architecture/mmfdb.md)); stale bits were redirected to OKF rather than copied, and `overhaul/` references in CLAUDE.md were repointed at `okf/prds/`.
-* **Notes integration**: Folded the loose top-level `notes/` working files into the bundle so their durable knowledge is curated rather than lost. New concepts: [ChiMOL viewer profile](/plugins/profiles/chimol.md) (PyMOL-style `cmd` surface + Qt-free renderer / ImGui-migration constraints, from the moview→chimol cmd-parity notes) and [Known issues & gotchas](/references/known-issues.md) (still-open functional bugs + recurring engineering pitfalls distilled from two working bug logs). Enriched existing concepts: [MMFDB](/architecture/mmfdb.md) gained an object-store & provenance-aware-reader section; [MMFDB Admin](/plugins/profiles/mmfdb-admin.md) gained the dictionary-driven `EntityDock` architecture; [Modelling](/plugins/modelling.md) gained durable FRET-engine facts (AV backends, `fps.json` keys, evaluators, OLGA reuse) + the superset roadmap pointer; [GUI & AutoForm](/subsystems/gui-autoform.md) gained the shared node-editor widget (versioned JSON graph schema + DAG); [Light Path Simulator](/plugins/profiles/lightpath-simulator.md) gained a preset-format / graph-normalization / macOS-combobox gotchas section. Verified against the tree first — the object store, mmfdb-admin `EntityDock`, chimol `sele_parser`, and FRET evaluators have all landed; the node editor now lives at `chisurf/gui/widgets/node_editor`. Fixed-bug play-by-play and already-resolved TODOs were treated as archive and not copied.
+* **Notes integration**: Folded the loose top-level `notes/` working files into the bundle so their durable knowledge is curated rather than lost. New concepts: [ChiMOL viewer profile](/plugins/profiles/chimol.md) (reference-viewer-style `cmd` surface + Qt-free renderer / ImGui-migration constraints, from the moview→chimol cmd-parity notes) and [Known issues & gotchas](/references/known-issues.md) (still-open functional bugs + recurring engineering pitfalls distilled from two working bug logs). Enriched existing concepts: [MMFDB](/architecture/mmfdb.md) gained an object-store & provenance-aware-reader section; [MMFDB Admin](/plugins/profiles/mmfdb-admin.md) gained the dictionary-driven `EntityDock` architecture; [Modelling](/plugins/modelling.md) gained durable FRET-engine facts (AV backends, `fps.json` keys, evaluators, OLGA reuse) + the superset roadmap pointer; [GUI & AutoForm](/subsystems/gui-autoform.md) gained the shared node-editor widget (versioned JSON graph schema + DAG); [Light Path Simulator](/plugins/profiles/lightpath-simulator.md) gained a preset-format / graph-normalization / macOS-combobox gotchas section. Verified against the tree first — the object store, mmfdb-admin `EntityDock`, chimol `sele_parser`, and FRET evaluators have all landed; the node editor now lives at `chisurf/gui/widgets/node_editor`. Fixed-bug play-by-play and already-resolved TODOs were treated as archive and not copied.
 * **MMFDB Admin packaging**: Moved the MMFDB Admin application into the MMFDB package as `mmfdb.admin` (backend, GUI, CLI, and JSON view specs). The ChiSurf `core/mmfdb_admin` plugin now points its manifest and wrappers at `mmfdb.admin`, and root package discovery no longer includes `modules/mmfdb_admin/src` as a separate package source.
 * **MMFDB dictionary relocation**: Confirmed MMFDB dictionary files (`*.dic`) live under `modules/mmfdb/src/mmfdb/data/`; the old `chisurf/core/mmfdb/data` dictionary copy has been removed.
 * **MMFDB extraction**: Removed the ChiSurf `DataCurve` import from `mmfdb.payload_models`; `GenericCurve` now serializes curve-like arrays and returns plain curve kwargs. Added boundary coverage so `payload_models`, `result_registry`, runtime config, and session/database resolution stay free of ChiSurf imports.
@@ -37593,7 +37593,7 @@ front, not this).
 - **2026-08-11 — chimol has two command lines, and the browser can be typed at.**
   An *internal* prompt drawn in the viewport as quads (`renderer/ui/command_line.py`,
   keys via `host/keys.py`, laid out and painted by `InternalGui`) beside the docked
-  console, both running one command layer — PyMOL's split. Qt feeds it from
+  console, both running one command layer — the reference viewer's split. Qt feeds it from
   `keyPressEvent`, the browser from a `window` `keydown` in `boot.js`;
   `web/commands.py` is the browser's command set until `Cmd` stops needing a Qt
   window. Focus is explicit, or the bare-letter shortcuts die silently.
@@ -37602,7 +37602,7 @@ front, not this).
   [chimol-web](/plugins/chimol-web.md).
 
 - **2026-08-11 — chimol selections are engine code, and the marker is a marker.**
-  `renderer/markers.py` holds PyMOL's width rule, the indicator geometry and the
+  `renderer/markers.py` holds the reference viewer's width rule, the indicator geometry and the
   column→residue→atom mapping, so the browser gets selections and the two viewers
   cannot disagree. The "scattered dots" report was **not** `px_mode`: pixel mode is
   the default and worked. It was (a) `meta["glyph"]` read by nobody, so markers went
@@ -37738,7 +37738,7 @@ front, not this).
 - **2026-08-11 — chimol's spheres and sticks stopped being meshes.** Both are analytic
   impostors now: `show spheres` on 148L was 124,704 triangles from 94 ms of NumPy and is
   0 from none (`_build_balls_mesh` chooses, `impostor_min_atoms` 20000 → 1, migration 15);
-  `show sticks` was 33,216 vertices and is 2,768 (`wgsl/cylinder.wgsl`, capped, with PyMOL's
+  `show sticks` was 33,216 vertices and is 2,768 (`wgsl/cylinder.wgsl`, capped, with the reference viewer's
   midpoint colour split). The ray tracer was taught both in the same change — `cylinders`
   joined `TRACEABLE_KINDS` and draws as its round-capped sausages — because a rasteriser
   primitive it does not know is a `ray` that refuses the representation. Also: `as X` was
@@ -37872,8 +37872,8 @@ front, not this).
   broke the geometry; it is two defects, separated by rendering the second structure *alone*.
   Every object was centred on **itself** — scene coordinates are `(xyz - raw_center) * scale` and
   `raw_center` is per-object state — so `148L` (centre `8.4, 45.3, 34.6`) and `2f5n` (centre
-  `-11.9, 52.6, 19.2`) were both drawn on the origin, interpenetrating. `_adopt_scene_frame` makes
-  the first object define the origin and later ones borrow it, PyMOL's rule, re-measuring the radius
+  `-11.9, 52.6, 19.2`) were both drawn on the zero point, interpenetrating. `_adopt_scene_frame` makes
+  the first object define the zero point and later ones borrow it, the reference viewer's rule, re-measuring the radius
   about the borrowed centre so the camera still frames them. The *spikes* in the same screenshot are
   a separate cartoon defect that reproduces with `2f5n` loaded alone — filed, not fixed. **(2)** A
   grey `Command line` box sat over the viewport's toolbar row: panels that used to live in the dock
@@ -37885,7 +37885,7 @@ front, not this).
   `help`. Also fixed on the way past: `cbh` delegated to `color …, elem H and (…)`, which resolves to
   nothing on the majority of crystal structures that carry no hydrogens, so all eight *set 6/H* menu
   entries answered *"Selection did not resolve to an object"*; it writes per-atom overrides now and
-  does nothing quietly when there are no hydrogens, as PyMOL's `util.cbh` does. See
+  does nothing quietly when there are no hydrogens, as the reference viewer's `util.cbh` does. See
   [PRD-101](prds/prd-101.md).
 
 - **2026-08-11 — Lumis Quest leaves prototype stage: dark-ruin salvage, battle backdrops, keepers read their pages.**
@@ -37967,7 +37967,7 @@ front, not this).
   footer hint no longer clips ("click adds" ran under the frame edge) and
   drops the `·` separators the chrome atlas cannot draw; the menubar
   open-index test derives Display's index instead of hardcoding the
-  pre-Build-menu `2`. Tracker: [pymol-parity](plugins/pymol-parity.md).
+  pre-Build-menu `2`. Tracker: [reference-viewer-parity](plugins/pymol-parity.md).
 
 - **2026-08-12 — chimol: Qt becomes an option, and four defects the toolkit was
   hiding.** User asks: *"make it possible to run chimol without qt … the default
@@ -38153,7 +38153,7 @@ front, not this).
   Also verified on this adapter: `draw_indirect` works and a compute frustum-cull
   over 8 M particles takes 2.81 ms bit-exact against NumPy; but there is **no
   multi-draw-indirect on Metal** and **no conservative depth**, the latter
-  costing a measured 1.2-1.9x on impostors. Licences checked: **ChimeraX is
+  costing a measured 1.2-1.9x on impostors. Licences checked: **the reference volume viewer is
   off-limits for code** (non-commercial, no redistribution), cellVIEW is
   unlicensed or GPL-3.0, cellPACK's MIT is contaminated by GPL headers —
   **Mol\* (MIT) is the only prior art here that can be borrowed as code**, and
@@ -38371,7 +38371,7 @@ front, not this).
   nothing had ever asked the view how big it was. It asks the *renderer* first
   now, and `ray` with no arguments traces the scene rectangle exactly.
   Also: **the `png` file no longer contains the chrome.** That was the stated
-  intent in the code -- *"PyMOL's own output carries no GUI either"* -- but the
+  intent in the code -- *"the reference viewer's own output carries no GUI either"* -- but the
   only mechanism was hiding the in-viewport *windows*, so the menu bar, the
   sequence strip, the info panel and the status line all landed in the file.
   `grab_image(chrome=False)` already existed for exactly this.
@@ -38437,7 +38437,7 @@ front, not this).
   that grey towards black. Every other spectrum path in chimol already ramps
   through `rainbow`, which is why the same molecule looked right the moment
   anyone typed `spectrum count`. The default is now that same palette, which is
-  also what PyMOL shows on load; `start`/`end` still work when no palette is
+  also what the reference viewer shows on load; `start`/`end` still work when no palette is
   named.
   Ruled out first, by A/B: this was **not** a regression from the colour-revision
   change -- the drawn pixels were identical with the revision skip defeated.
@@ -38519,10 +38519,10 @@ front, not this).
   `test/toolkit_free.py::probe`, which runs a script with `open_app` and `emit`
   in scope and returns what it emitted.
 
-- **2026-08-12 — chimol: VMD's cartoon, read for the algorithm -- one half taken,
+- **2026-08-12 — chimol: the reference molecular viewer's cartoon, read for the algorithm -- one half taken,
   the other measured and rejected.** Source at `vmd-1.9.4a57`,
   `src/DrawMolItemRibbons.C`.
-  **Taken: orthogonalise the orientation against the backbone tangent.** VMD
+  **Taken: orthogonalise the orientation against the backbone tangent.** the reference molecular viewer
   forms it as `(A x B) x A` with `A` the CA-to-CA step, which is `B` with its
   along-chain component removed. A peptide-plane normal is only *roughly*
   perpendicular to the backbone, and the part lying along the chain contributes
@@ -38530,21 +38530,21 @@ front, not this).
   that defined it. Small but consistent: frame-to-frame twist change improved in
   **every** class (helix 0.72 -> 0.69 deg, sheet 0.69 -> 0.64, coil 1.40 -> 1.37,
   SS boundary 1.06 -> 1.03).
-  **Rejected after measuring: VMD's along-chain low-pass.** VMD stores a running
+  **Rejected after measuring: the reference molecular viewer's along-chain low-pass.** the reference molecular viewer stores a running
   `e_i = normalize(e_{i-1} + d_i)` rather than the per-residue vector, and it
   looked like the load-bearing piece. Implemented, it made the flicker **much
   worse** -- helix 0.69 -> **2.86** deg, coil 1.37 -> **3.55**. The reason is
   structural: infinite memory down the chain couples every residue to the chain
   start, so the next frame's accumulation diverges from this one's everywhere at
-  once. It buys smoothness *along* the chain within a frame, which is what VMD
-  wants -- VMD keeps **no** frame-to-frame state at all -- and that is the wrong
+  once. It buys smoothness *along* the chain within a frame, which is what the reference molecular viewer
+  wants -- the reference molecular viewer keeps **no** frame-to-frame state at all -- and that is the wrong
   dependency for temporal stability. Removed, with the numbers recorded at the
   function.
-  Also confirmed from the source, and matching what chimol already does: VMD
+  Also confirmed from the source, and matching what chimol already does: the reference molecular viewer
   computes secondary structure **once** and latches it (`did_secondary_structure`),
   and smooths **coordinates only**, deriving everything else from them -- which
   is what the earlier fix here arrived at independently. Two details worth
-  copying later: VMD **clamps** rather than shrinks the averaging window at
+  copying later: the reference molecular viewer **clamps** rather than shrinks the averaging window at
   trajectory ends, so smoothing strength stays constant, and its averaging is
   PBC-aware.
 
@@ -38572,7 +38572,7 @@ front, not this).
 
 - **2026-08-12 — chimol did not handle periodic boundaries, and the box was
   discarded one line after being read.** tpeulen asked whether chimol handles
-  PBC, with VMD as the reference. It did not, and the evidence is compact:
+  PBC, with the reference molecular viewer as the reference. It did not, and the evidence is compact:
   `load_trajectory_frames` ends `xyz, _, _ = read_dcd(path)` -- the DCD reader
   parses the per-frame unit cell perfectly well and nothing downstream ever saw
   it. There is no `pbc`, `wrap` or `unwrap` among the 180 commands; the only
@@ -38580,7 +38580,7 @@ front, not this).
   thing entirely.
   Fixed: the box is carried from the reader through `set_frames` onto the state,
   and the **trajectory averaging is minimum-imaged** against the frame being
-  shown -- which is what VMD does and why. An atom that steps over a wall
+  shown -- which is what the reference molecular viewer does and why. An atom that steps over a wall
   reappears a whole cell away, so a plain mean of "this side, this side, the
   other side" puts it in the **middle of the box**: measured on a synthetic
   wobble across a 30 A wall, the naive average lands at **x = 16.6** where the
@@ -38616,7 +38616,7 @@ front, not this).
   `frames[max(0, i-half) : min(n, i+half+1)]` narrows the window near either end
   of a trajectory, so the first and last frames come out jitterier than the
   middle -- which reads as the setting not working there. Repeating the end
-  frame keeps the width that was asked for, as VMD does.
+  frame keeps the width that was asked for, as the reference molecular viewer does.
   Left undone and recorded: nothing unwraps a molecule for *display* -- a
   protein straddling a wall is still drawn in two pieces -- and `zoom` frames
   the atoms rather than the cell, so a box much larger than its contents runs
@@ -38663,7 +38663,7 @@ front, not this).
 
 - **2026-08-12 — chimol: `gyrate`, and a census of what a viewer usually has.**
   Radius of gyration was computed for the info panel and had **no command**, so
-  it could not be scripted or taken over a selection. `gyrate` (PyMOL's name,
+  it could not be scripted or taken over a selection. `gyrate` (the reference viewer's name,
   aliased `measure_rgyr`) gives the mass-weighted RMS distance from the centre
   of mass -- the number compared against a SAXS or FRET measurement -- with
   `off` for the unweighted geometric value that an equal-bead coarse-grained
@@ -38675,12 +38675,12 @@ front, not this).
   bitten by from the other direction earlier, reading a radius **off** the
   scaled coordinates.
   Census of what is still missing, for whoever picks this up: **fit a structure
-  into a density map** (ChimeraX `fitmap`, the biggest scientific gap),
+  into a density map** (the reference volume viewer `fitmap`, the biggest scientific gap),
   ramachandran, per-atom SASA, a contacts/interfaces command, sequence
   alignment, morph between states, symmetry averaging of a map, and clustering
   trajectory frames. Already present and better than expected: a real
   Kabsch-Sander DSSP in `analysis/ss.py`, `measure_inertia` (already transcribed
-  from ChimeraX), rms/super/align, clashes, hbond_network, buried_area.
+  from the reference volume viewer), rms/super/align, clashes, hbond_network, buried_area.
 - 2026-08-12 — chimol: secondary structure became chain-aware. DSSP ran down one
   flat backbone array for the whole structure, so chain junctions manufactured
   helices, proline donated hydrogen bonds it cannot donate, and a residue missing
@@ -38691,21 +38691,21 @@ front, not this).
   fragment of 148L scored 15.964 Å against its own parent instead of zero.
   Pairing is now by chain and residue number, then residue number, then
   Needleman-Wunsch, with all-atom `rms` matching atoms by name inside each paired
-  residue. See [plugins/pymol-parity](plugins/pymol-parity.md).
+  residue. See [plugins/reference-viewer-parity](plugins/pymol-parity.md).
 - 2026-08-12 — chimol: `molmap` simulates a density map from a model and `fitmap`
-  puts a model back into one, closing what the earlier ChimeraX census called the
+  puts a model back into one, closing what the earlier the reference volume viewer census called the
   biggest scientific gap. 148L displaced 5.9 A RMSD is recovered to 0.014 A. The
   trap worth carrying: the per-atom fit score (atom weight against map value)
   prefers the *wrong* answer -- -0.030 at the true position, -0.014 four angstrom
   away -- so fit quality is reported as a map-to-map correlation against the
   model's own simulated density instead. The optimiser recovers 45 degrees but
-  traps at 90. See [plugins/pymol-parity](plugins/pymol-parity.md).
+  traps at 90. See [plugins/reference-viewer-parity](plugins/pymol-parity.md).
 - 2026-08-13 — chimol: guided tours drawn in the viewport. A step rings a real
   painted control and waits for the command it asks for, observed at the single
   funnel every menu entry, toolbar button and typed line passes through — so it
   advances whichever route the user takes, and nothing is pressed on their
   behalf. Two tours ship on paired real data: EMD-3061 with PDB 5A63, and
-  1DG3/1F5N. See [plugins/pymol-parity](plugins/pymol-parity.md).
+  1DG3/1F5N. See [plugins/reference-viewer-parity](plugins/pymol-parity.md).
 - 2026-08-13 — chisurf: the AutoForm view spec and the guided tour have a
   declared scheme, generated from the loaders' own dataclasses, and every shipped
   file is asserted against it (128 specs, 38 tours). Both loaders silently drop
@@ -38773,7 +38773,7 @@ front, not this).
   The font is chosen per character from its cmap — a font draws a tofu box for a
   character it lacks, so 'did it render?' picks the wrong one every time — and an
   uncoverable character draws a visible placeholder rather than vanishing.
-- 2026-08-13 — chimol: object names are unique, with PyMOL's own `_2` suffix and
+- 2026-08-13 — chimol: object names are unique, with the reference viewer's own `_2` suffix and
   its `auto_rename_duplicate_objects` setting (default flipped, since chimol has
   no state stacking to fall back on); two objects sharing a name made the second
   unreachable by every command that takes one. And the guided tours can be
@@ -38884,7 +38884,7 @@ front, not this).
   every frame. `GuiWindow` gained `on_key`, so a window whose body hosts
   something typable receives keystrokes — which is what makes the Widgets tab
   more than a picture. The chimol README now says what the viewer is: an
-  opinionated ChimeraX/PyMOL/ImGui borrower, built for a Pyodide-capable,
+  opinionated the reference volume viewer/reference viewer/ImGui borrower, built for a Pyodide-capable,
   compile-free, embeddable viewer that scales to integrative models, and not
   trying to replace anything.
 
@@ -39039,7 +39039,7 @@ front, not this).
   tour ship as `demos/labelling.cml` and `demos/tours/labelling.json`,
   walked end-to-end by the tour tests (typed *and* Run-button paths).
   Demo scripts renamed `.pml` -> `.cml` (chimol's own language: close to
-  PyMOL, not identical — noted in the compatibility contract,
+  the reference viewer, not identical — noted in the compatibility contract,
   okf/specs/chimol.md) and the DEMOS catalog is now *auto-populated* from
   the scripts' `# title:` / `# note:` headers, only the order curated.
   Dependency reversal removed: `app/demos.py` no longer imports chisurf
@@ -39212,7 +39212,7 @@ front, not this).
   menu one level down (a wrapping first draft drew a submenu one level
   deeper than the config reads; caught by the include test). A broken
   config fails loudly at import. All 382 existing menu tests pass
-  unchanged -- including the PyMOL-order, every-command-registered and
+  unchanged -- including the reference-viewer-order, every-command-registered and
   every-setting-real guardrails -- and new `test_menus_json.py` (10) pins
   the loading contract: JSON-is-the-bar, add-an-entry-needs-no-code,
   loud-failure, splicing semantics, and that the Dye Labelling wizard is
@@ -39524,9 +39524,9 @@ front, not this).
   cannot route doubles to bodies so nothing at HEAD misses them.
 
 - 2026-08-17 — AV strip: the FPS convention in real selection syntax, and
-  no escalation. chimol's selection parser is at PyMOL parity for open
+  no escalation. chimol's selection parser is at reference-viewer parity for open
   ranges (`100:`, `:100`, `10-`, leading `-20` reads as `:20`), verified
-  A/B against real PyMOL on 148L (both-reject counts as agree); PyMOL
+  A/B against real the reference viewer on 148L (both-reject counts as agree); the reference viewer
   rejects space-separated value lists and so does chimol, so every fps
   document now spells them `+`-separated (olga_t4l 33 masks, imp.bff
   examples 43). The strip itself: default removes the attachment residue's
@@ -39741,7 +39741,7 @@ front, not this).
   fix. The editorial rule is unchanged and now the binding one: importing is
   permitted, writing is still better.
 
-### The section panel was closing itself
+**The section panel was closing itself.**
 
 Reported that the slice window vanishes on a click. It was built with
 `transient=True`, and `GuiWindow.transient` is documented for exactly this
@@ -39771,7 +39771,7 @@ side of the line.
   future bibliography growth is page-driven, not dump-driven. Also landed: five
   bibliography entries found uncommitted in the tree (four already cited by
   `deconvolution.md`; `kondo2019` now cited from the 2D-FLCS page as the
-  application the `flc_2d` plugin's MATLAB code was written for), and the
+  application the `flc_2d` plugin's numerical computing environment code was written for), and the
   generator note that `pixi run -e docs --frozen` is what works while the
   `build` env fails to solve on `wgpu`.
 
@@ -41580,8 +41580,8 @@ side of the line.
   a faded surface kept a 0.56 rim (`5df67ff`). The card: 3D View beside the tables by default, Fetch PDB...,
   ◀ Residue / Residue ▶, selected volume in front with the rest muted, camera follows a row pick, sphere click
   selects, atom click starts or moves a position. emtk `d94a5a9` (`TableColumn.min_width`), `f3391ee` (stale name
-  map since `cb9bc3c`). PyMOL leftovers removed: boarding's optional `pymol` row (now `chimol`), the unread
-  `mol_viewer` setting, pymol in two dependency allow-lists. [report](plugins/emtk-ports/fps_json_editor/REPORT.md).
+  map since `cb9bc3c`). The reference viewer leftovers removed: boarding's optional `pymol` row (now `chimol`), the unread
+  `mol_viewer` setting, the reference viewer in two dependency allow-lists. [report](plugins/emtk-ports/fps_json_editor/REPORT.md).
 - **2026-10-06** — Manual screenshots retaken from the current GUI (owner: "update screenshots"): 65 new figures in `docs/manual/figures/` made by `docs/guides/screenshots/manual_{fcs,anisotropy,general,fitting}.py` and `fit_window_emtk.py` with bundled data (IBH sample decays, Confocor3 A488 FCS, the stacked VV/VH recording), 95 legacy images removed (some became code blocks or were dropped as obsolete Windows/Word views), captions and UI sentences rewritten against the code (menu paths, ribbon, Global View, FCS hub). Legacy screenshots left are fits of data not in the repository, worked-calculation spreadsheets and plots of external data -- each with its reason in `okf/validation/manual-screenshots/*.json` (`not_replaced`). Found on the way and fixed in `1182fe7ea`: the global-fit editor's actions, unnamed background/lin-table copies.
 - 2026-10-06 · emtk: **tool hub: fast-forward only for step hubs; plugin icons; disabled reason per hub** (asked by
   the ribbon session for TTTR Tools). `ToolHubApp(steps=True)` shows `>>` (FCS correlator); a plugin panel without an

@@ -368,7 +368,7 @@ nothing is active. Any `QMainWindow` gets it lazily on its first message, so
 `ChisurfDockTool` subclasses opt in by declaring a message; a plain `QWidget`
 calls `install_message_bar(layout)`. First consumer: the PCH tool, whose six
 modal boxes became six declared conditions. Pattern taken from an established
-visual dataflow toolkit — see [Orange3 mining](/references/orange3-mining.md).
+visual dataflow toolkit — see [the data-mining suite mining](/references/orange3-mining.md).
 
 `chisurf/gui/progress.py` — `ChiSurfProgress`. The constructor takes the widget
 the work was started from and resolves the display nearest-first: an inline
@@ -423,7 +423,7 @@ batch, the burst-wise FCS wizard, BVA and H2MM all drive their loop **on the GUI
 thread** behind a window-modal progress dialog, so moving them means splitting a
 loop that interleaves with model state, not deleting a worker class. Pattern
 taken from an established visual dataflow toolkit — see
-[Orange3 mining](/references/orange3-mining.md).
+[the data-mining suite mining](/references/orange3-mining.md).
 
 The `progress` **AutoForm section** (`{"type": "custom", "key": "progress"}`) is
 what makes this wiring-free: the widget itself is a progress host, so a run

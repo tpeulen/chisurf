@@ -827,9 +827,14 @@ def names(bundle: Bundle, fix: bool) -> list[Finding]:
             continue
         findings.extend(
             bundle.finding("NAMES", path, m.start(), "use a software role instead of: " + m[0])
-            for m in pattern.finditer(_prose(text))
+            for m in pattern.finditer(_link_destinations_masked(_prose(text)))
         )
     return findings
+
+
+def _link_destinations_masked(prose: str) -> str:
+    """Blank Markdown link destinations: a file name is a path, not a sentence naming a product."""
+    return re.sub(r"(\]\()([^)\s]*)", lambda m: m[1] + _spaces(m[2]), prose)
 
 
 def pickup(bundle: Bundle, fix: bool) -> list[Finding]:

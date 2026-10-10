@@ -281,6 +281,14 @@ def test_convention_exempt_key_silences_names_rule(bundle: Path) -> None:
     assert not findings(bundle, "NAMES")
 
 
+def test_names_ignore_link_destinations_but_not_link_text(bundle: Path) -> None:
+    """A file name in a link target is a path; the visible link text is still prose."""
+    write(bundle, "references/a.md", page("# A\n\nSee [the parity index](../plugins/pymol-parity.md).\n"))
+    assert not findings(bundle, "NAMES")
+    write(bundle, "references/b.md", page("# B\n\nSee [PyMOL parity](../plugins/pymol-parity.md).\n"))
+    assert findings(bundle, "NAMES")
+
+
 def test_pickup_requires_action_prefixes_and_bounded_list(bundle: Path) -> None:
     """Resume sections reject history and more than twelve actionable bullets."""
     path = write(

@@ -4,10 +4,32 @@ title: Project Persistence
 description: Canonical scientific snapshots, transactional restoration and optional real-MMFDB storage.
 resource: chisurf/core/project/
 tags: [core, project, persistence, archive]
-timestamp: '2026-10-03T00:00:00Z'
+timestamp: '2026-10-10T00:00:00Z'
 ---
 
 # Project persistence
+
+## Where to pick this up — sampling runs in the project (2026-10-10)
+
+A fit member's `sampling_chain` / `sampling_diagnostics` are captured into the
+`.cs.pto` (see [Sampling runs](#sampling-runs) below). Open front:
+
+1. Measure: `QT_QPA_PLATFORM=offscreen pixi run -e test python -m pytest
+   test/project/test_sampling_roundtrip.py test/gui/test_sampling_diagnostics_reasons.py
+   test/project/test_scientific_state_roundtrip.py -q -p no:cacheprovider` (5 + 6 + 15 passed
+   on 2026-10-10). Trap: `add_fit` makes a `FitGroup` even for one dataset; the run lives on
+   `fit.selected_fit`, not on the group (capture walks members) -- a test that sets the
+   chain on the group captures nothing.
+2. Open: only the **member** gets the run back on restore; the group object
+   (`FitGroup.sampling_chain`, which `sample_fit` also sets) does not. The Chain-diagnostics
+   page falls back to the selected member; `fit_posterior`/`reweight_prior` over RPC read
+   `fit.sampling_chain` of whatever `_resolve_fit` returns -- check them on a reopened group.
+3. Open: the external sampling-folder chains (`sampling/<timestamp>/chains/*.er4`) are not
+   imported into a project; only the in-memory run of the last `sample_fit` is. A
+   "Load chain from folder" action would turn the page's `external` state into `ok`.
+4. Measure: capture serialises a chain once per (chain object, diagnostics object) identity
+   (`fit_state._SAMPLING_CACHE`, 8 entries); a new `sample_fit` makes new objects. If a profile
+   still shows chain formatting on autosave ticks, the identity is changing per tick.
 
 ## Where to pick this up — autosave and undo (2026-10-10)
 
@@ -29,12 +51,30 @@ below). Open front, in order:
    start_autosave`); the tick (`ProjectMixin._autosave_tick`, `lifecycle.Autosave.run`) is
    Qt-free so a frame clock can drive it instead. Settings changes apply at the next start.
 4. Measure: each tick that is due captures the full live project to fingerprint it
-   (`snapshot_fingerprint` base64-encodes resource entries). Large embedded resources
-   (sampling chains) make every tick cost a hash of all bytes — hash names+lengths for
-   such entries if a tick shows up in profiles.
+   (`snapshot_fingerprint` base64-encodes resource entries). Sampling chain entries
+   (`sampling/*.er4`) are now hashed by name+length, never encoded (2026-10-10); other
+   large embedded resources still cost a hash of all bytes per tick.
 5. Open: headless `macros.core_fit.add_fit` leaves `fit_range == (0, 0)`, so `fit.run()`
    fails with "0 residuals" until the range is set (the fit window sets it in the GUI);
    the e2e test sets it explicitly and records `fit.range.set`.
+
+## Sampling runs
+
+`chisurf/core/project/fit_state.py` `sampling_entries(member_uid, chain, diagnostics)`
+returns a stub `{"chain", "diagnostics", "burn_in", "parameter_names"}` and named bytes:
+`sampling/<uid>/chain.er4` (tab-separated, one row per draw, parameter columns then
+`chain`/`draw` -- the layout `sample_fit` writes and ndX's sampling reader parses;
+repeated parameter names get `#2` suffixes) and `sampling/<uid>/diagnostics.json`
+(strict JSON; a non-finite statistic is stored as `null`). `sampling_from_entries` is the
+inverse, bit-exact for the draws. `session.capture_session` puts the stub under the member
+record's `"sampling"` and the bytes into `project.resources`; any `sampling/` entry an
+existing resource context still holds (restored curves keep the loaded resources) is a
+previous capture's and is dropped, since the live fit is the authority.
+`restore_session` rebuilds the run on the member after its dependencies; a payload validated
+alone (`pto._validate_project_payload`, no resource entries) skips it. `snapshot_fingerprint`
+hashes chain entries by name+length; a new run still changes the digest through its
+diagnostics report. ndX reads the entries without ChiSurf (`ndxplorer.io.project_reader`,
+see [ndX](../plugins/ndxplorer.md)).
 
 ## Where to pick this up — October 5, 2026 (latest; supersedes the Oct 4 list below)
 

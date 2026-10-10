@@ -26,6 +26,19 @@ scripts): `okf/validation/fit-window-settings/`.
 
 Open, in order:
 
+0. Measure: **Chain diagnostics redraws when a sampling job ends** (2026-10-10):
+   `fit_controller._watch_sampling_job._poll` calls `self.fit.update()` on completion and on
+   failure -- `fit.updated` -> `Main._refresh_fit_display` -> `refresh_current_plot` is the only
+   path that redraws a page. The server's `SessionState.fits` *is* `cs.fits`
+   (`server.startup.session_state_from_live_chisurf`), so the chain the job wrote is on the
+   GUI's fit object. The page's `_load` returns `ok|none|external|short` and an empty page
+   says which (`test/gui/test_sampling_diagnostics_reasons.py`); both panels' right-click menus
+   carry **Open in ndX** (`cp.Panel.add_menu_action`: the fit window reads a panel's
+   `_extra_menu_actions`, not the page's). Evidence PNGs: `/tmp/w3-shots/chain_*.png`
+   (scratch; rerun `/tmp/w3-shots/render_chain_page.py` -- HEAD vs tree after
+   `sample_fit(steps=50)`). Open: no test drives `_watch_sampling_job` through a real job
+   (needs a Qt event loop and the RPC server); re-derive by running Sample in a real `Main`
+   and watching the page fill without switching tabs.
 1. Open: **Saved state compatibility is by key, not tested on old projects.** Every
    page's `get_settings_state` keeps its old controller's keys (stored under
    `"controller"`), so a project saved before 2026-10-06 should restore; only
