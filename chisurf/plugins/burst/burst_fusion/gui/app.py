@@ -476,6 +476,11 @@ class BurstFusionApp(ImApp):
         self.fusion_gui.controller = self.controller
         super().__init__(gui=self._render)
 
+    @property
+    def busy(self) -> bool:
+        """Whether a fusion, estimate or demo worker is running (what ``Driver.settle`` waits on)."""
+        return bool(self.controller.running)
+
     def start_guide(self) -> None:
         """Start guided tour inside EMTK."""
         self.fusion_gui.start_guide()

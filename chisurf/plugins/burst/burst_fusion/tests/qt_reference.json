@@ -1,0 +1,68 @@
+{
+ "_note": "Recorded from the retired Qt BurstFusionTool on the plugin demo.",
+ "out": "burstwise_demo_fused_p0.50",
+ "files": [
+  "analysis.json",
+  "burst_fusion_demo.bur",
+  "burst_fusion_demo.mti",
+  "fusion.json"
+ ],
+ "status": "Fused bursts written to /tmp/bf_qt/demos/burst_fusion/burstwise_demo_fused_p0.50",
+ "summary": [
+  {
+   "quantity": "Bursts",
+   "before": "419",
+   "after": "280"
+  },
+  {
+   "quantity": "PR mean",
+   "before": "0.4488",
+   "after": "0.4499"
+  },
+  {
+   "quantity": "PR width (std)",
+   "before": "0.04159",
+   "after": "0.03036"
+  },
+  {
+   "quantity": "Photons (mean)",
+   "before": "188.8",
+   "after": "292.3"
+  },
+  {
+   "quantity": "Photons (med)",
+   "before": "145",
+   "after": "273"
+  },
+  {
+   "quantity": "Duration (ms)",
+   "before": "1.352",
+   "after": "2.386"
+  },
+  {
+   "quantity": "Rate (kHz)",
+   "before": "142.4",
+   "after": "130.9"
+  },
+  {
+   "quantity": "Fused groups",
+   "before": "\u2014",
+   "after": "121"
+  },
+  {
+   "quantity": "Largest fused",
+   "before": "\u2014",
+   "after": "3 frag."
+  },
+  {
+   "quantity": "Bursts fused",
+   "before": "\u2014",
+   "after": "62.1 %"
+  },
+  {
+   "quantity": "Window, ms",
+   "before": "2.745",
+   "after": "2.745"
+  }
+ ]
+}

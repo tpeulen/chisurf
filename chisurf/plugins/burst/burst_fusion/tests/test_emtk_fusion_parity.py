@@ -2,17 +2,14 @@
 
 Both hosts draw the same ``BurstFusionApp``. The Qt tool loads the demo and fuses
 synchronously (``load_demo``, ``process_bursts``); the emtk app does both on the
-controller's worker. The Qt tool runs in a subprocess (this process stays Qt-free)
-on the plugin's own demo, whose molecule count is declared, and the results are
-compared.
+controller's worker. The Qt tool's results on the plugin's own demo (molecule count declared) are
+recorded in ``qt_reference.json``, and the native app's are compared with them.
 """
 
 from __future__ import annotations
 
 import json
-import os
 import re
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -56,39 +53,9 @@ def _demo(app):
     return app
 
 
-_QT = r"""
-import json, pathlib, sys
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-from chisurf.plugins.burst.burst_fusion.gui.tool import BurstFusionTool
-w = BurstFusionTool()
-w.load_demo()
-out = w.process_bursts()
-print("FACTS" + json.dumps({"out": pathlib.Path(out).name, "files": sorted(p.name for p in pathlib.Path(out).rglob("*") if p.is_file()),
-                            "status": w.model._status, "summary": w.model.summary_rows()}, default=str))
-"""
-
-
-def _qt_facts(settings_dir):
-    pytest.importorskip("qtpy")
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen", CHISURF_SETTINGS_DIR=str(settings_dir))
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT],
-        capture_output=True,
-        text=True,
-        timeout=600,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and (
-        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
-    ):
-        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
-    # Any other failure is the Qt tool's own: skipping it hid a broken Qt host.
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS") :])
+def _qt_facts(settings_dir=None):
+    """What the retired Qt BurstFusionTool produced on the plugin demo (recorded before it was removed)."""
+    return json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
 
 
 # 1. the demo fused: the Qt tool's result and files, and towards the declared molecule count
@@ -97,7 +64,7 @@ def test_the_demo_fuses_as_in_the_qt_tool(tmp_path, monkeypatch):
 
     from chisurf.plugins.burst.burst_fusion import demo
 
-    qt = _qt_facts(tmp_path / "qt_settings")
+    qt = _qt_facts()
     # A demo of its own: the cached one already holds fused folders from earlier runs, and the
     # writer then picks a new name ("…_0") instead of overwriting.
     monkeypatch.setattr(
@@ -114,7 +81,7 @@ def test_the_demo_fuses_as_in_the_qt_tool(tmp_path, monkeypatch):
         # The status names the written folder, under each side's own settings folder (the demo is
         # cached there; this process resolved its settings folder at import).
         assert app.model._status.replace(str(out.parent), "<demo>") == qt["status"].replace(
-            str(tmp_path / "qt_settings" / "demos" / "burst_fusion"), "<demo>"
+            "/tmp/bf_qt/demos/burst_fusion", "<demo>"
         )
         assert json.loads(json.dumps(app.model.summary_rows(), default=str)) == qt["summary"]
         stats = app.model.analysis.statistics

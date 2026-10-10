@@ -2,10 +2,6 @@
 # plugin half of the Qt retirement (test/test_plugin_qt_free.py). Strike a path when its
 # plugin moves to emtk; adding a path is a test failure. Goal: empty.
 chisurf/plugins/__init__.py
-chisurf/plugins/burst/burst_fusion/gui/sections.py
-chisurf/plugins/burst/burst_fusion/gui/tool.py
-chisurf/plugins/burst/burst_fusion/tests/test_emtk_fusion_parity.py
-chisurf/plugins/burst/burst_fusion/tests/test_gui.py
 chisurf/plugins/burst/burst_mle_analysis/gui/app.py
 chisurf/plugins/burst/burst_mle_analysis/tests/conftest.py
 chisurf/plugins/burst/burst_mle_analysis/tests/test_dock_shell.py
@@ -222,9 +218,6 @@ chisurf/plugins/core/updater/test/test_emtk_updater_parity.py
 chisurf/plugins/fret_line/__main__.py
 chisurf/plugins/fret_line/gui/tool.py
 chisurf/plugins/icon_utils.py
-chisurf/plugins/microscopy/clsm/__init__.py
-chisurf/plugins/microscopy/clsm/gui/tool.py
-chisurf/plugins/microscopy/clsm/test/test_clsm.py
 chisurf/plugins/microscopy/imaging_emtk/pixel_checks.py
 chisurf/plugins/microscopy/img_drift/test/test_emtk_img_drift_parity.py
 chisurf/plugins/microscopy/img_flow/test/conftest.py

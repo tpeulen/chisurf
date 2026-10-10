@@ -801,18 +801,16 @@ def _grab_chimol_biofilm():
 def _grab_region_editor():
     """The shared region GUI on the CLSM tool: the list and the shapes.
 
-    Real widgets, a synthetic confocal frame, and one region of every kind the
-    editor can hold — a painted mask, a drawn ellipse (inverted) and a
-    rectangle switched off — so the guide shows what the columns mean.
+    The real emtk app, a synthetic confocal frame, and one region of every kind the
+    editor can hold -- a painted mask, a drawn ellipse (inverted) and a
+    rectangle switched off -- so the guide shows what the columns mean.
     """
-    from qtpy import QtWidgets
+    from screenshots.emtk_shot import app_from, render
 
     from chisurf.core.roi import EllipseROI, RectangleROI
-    from chisurf.gui.widgets.roi import RegionEditor
-    from chisurf.plugins.microscopy.clsm.gui.tool import CLSMPixelSelect
 
-    tool = CLSMPixelSelect()
-    model = tool.model
+    app = app_from("clsm")
+    model = app.model
 
     ny = nx = 128
     yy, xx = np.mgrid[0:ny, 0:nx]
@@ -831,27 +829,12 @@ def _grab_region_editor():
     model.regions.add(RectangleROI(5, 100, 40, 122, name="empty patch"), enabled=False)
     model.regions.combine = "and"
 
-    editor = tool.auto_form.findChild(RegionEditor)
-    editor.refresh()
-    tool.region_overlay.refresh()
-    editor.select("nucleus")
-    tool.region_overlay.select("nucleus")
-
-    def raise_tab(title):
-        for bar in tool.findChildren(QtWidgets.QTabBar):
-            for i in range(bar.count()):
-                if bar.tabText(i) == title:
-                    bar.setCurrentIndex(i)
-
-    tool.resize(1020, 780)
-    tool.show()
-    QApplication.instance().processEvents()
-    raise_tab("Image")
-    QApplication.instance().processEvents()
-    _grab(tool, "regions_overlay.png")
-    raise_tab("Regions")
-    QApplication.instance().processEvents()
-    _grab(tool, "regions_list.png")
+    driver = render(app, "regions_overlay.png", size=(1020, 780))
+    driver.click("Brush & Decay.fold")  # make room, then open the collapsed region panel
+    driver.frame(4)
+    driver.click((100, 372, 40, 10))  # the "Analysis regions" header (it has no id of its own)
+    driver.frame(3)
+    render(app, "regions_list.png", driver=driver)
 
 
 def _grab_hmm_tool():
@@ -888,27 +871,14 @@ def _grab_burst_fusion_tool():
     Uses the plugin's demo rather than a fixture, so the screenshot in the guide
     shows the same numbers a reader gets by pressing the same button.
     """
-    from chisurf.plugins.burst.burst_fusion.gui.tool import BurstFusionTool
+    from screenshots.emtk_shot import app_from, render
 
-    tool = BurstFusionTool()
-    tool.resize(1250, 800)
-    tool.show()
-    QApplication.instance().processEvents()
-    tool.load_demo()
-    tool.model.threshold = 0.7
-    tool.model.fuse()
-    QApplication.instance().processEvents()
-    _grab(tool, "burst_fusion_curve.png")
-
-    # The proximity-ratio comparison is the payoff, so it gets its own figure.
-    from qtpy.QtWidgets import QTabBar
-
-    for bar in tool.findChildren(QTabBar):
-        for index in range(bar.count()):
-            if bar.tabText(index) == "Proximity ratio":
-                bar.setCurrentIndex(index)
-                QApplication.instance().processEvents()
-                _grab(tool, "burst_fusion_proximity.png")
+    app = app_from("burst_fusion")
+    app.model.load_demo()
+    app.model.threshold = 0.7
+    app.model.fuse()
+    render(app, "burst_fusion_curve.png", size=(1250, 800))
+    render(app, "burst_fusion_proximity.png", size=(1250, 800))
 
 
 def _grab_ndx_gaussian_panel():

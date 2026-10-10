@@ -728,7 +728,10 @@ class ClsmApp(ImApp):
                         self.apply_state(json.loads(path.read_text()))
                     self.dialog = None
                 except Exception as exc:
+                    # A file that cannot be used must not leave the chooser open: it would stay
+                    # modal and keep every action button disabled.
                     self.error = str(exc)
+                    self.dialog = None
             elif result is False or pressed == "close":
                 self.dialog = None
             self.file_window.end()

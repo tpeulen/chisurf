@@ -496,13 +496,10 @@ def _grab_23_fps_editor():
 # ---------------------------------------------------------------- guide 24
 def _grab_24_clsm_draw():
     """CLSM-Draw on the Leica SP8 test image: intensity, a brushed region, its decay."""
-    from chisurf.plugins.microscopy.clsm.gui.tool import CLSMPixelSelect
+    from emtk_shot import app_from, render
 
-    tool = CLSMPixelSelect()
-    tool.resize(1400, 860)
-    tool.show()
-    _settle()
-    m = tool.model
+    app = app_from("clsm")
+    m = app.model
     m.apply_preset("Leica SP8")
     m.load_file(str(pathlib.Path("test/data/clsm/Leica_SP8.ptu").resolve()))
     m.setup.channels_text = os.environ.get("CLSM_CH", "0,1")
@@ -517,29 +514,9 @@ def _grab_24_clsm_draw():
     print("decay photons", float(np.sum(d["counts"])))
     m.add_roi("bright patch")
     print("summary:", m.region_summary("bright patch"))
-    try:
-        tool.auto_form.sync_fields()
-    except Exception:
-        pass
-    _settle(30)
-    if os.environ.get("SHOT_PROBE"):
-        _probe_tabs(tool, "24")
-    # The docks share one tab group; show Image and Decay side by side.
-    from qtpy.QtCore import QRect
-
-    tool.resize(760, 700)
-    _settle()
-    shots = []
-    for tab in ("Image", "Decay"):
-        _raise_tab(tool, tab)
-        shots.append(tool.grab())
-    _compose(shots, "24_clsm_draw.png")
-    _raise_tab(tool, "Regions")
-    tool.resize(900, 600)
-    _settle()
-    tool.grab(QRect(0, 0, 900, 130)).save(str(FIG / "24_clsm_draw_rois.png"))
-    print("wrote 24_clsm_draw_rois.png")
-    return tool
+    render(app, "24_clsm_draw.png", size=(1400, 860))
+    render(app, "24_clsm_draw_rois.png", size=(900, 600))
+    return app
 
 
 # ---------------------------------------------------------------- guide 25

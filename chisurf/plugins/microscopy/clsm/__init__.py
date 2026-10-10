@@ -12,13 +12,12 @@ Architecture (mirrors the other ``microscopy`` plugins):
 - ``backend/`` — ``register_services`` wiring ``clsm.*`` RPC methods.
 - ``client.py``— transport-agnostic :class:`ClsmClient` (local or ZMQ).
 - ``cli/``     — ``csc clsm …`` Click commands.
-- ``gui/``     — AutoForm-driven settings panels plus the interactive
-  image/brush/decay canvas (registered as custom AutoForm sections).
+- ``gui/``     — the native emtk app: view-spec panels plus the interactive
+  image/brush/decay canvas.
 
 Importing this package is intentionally light: nothing here pulls in Qt or
-``tttrlib`` so the CLI and headless services stay fast. The GUI is loaded only
-when the plugin is launched (``__name__ == "plugin"``) or via the manifest
-``gui`` entrypoint.
+``tttrlib`` so the CLI and headless services stay fast. The GUI is the native
+emtk app (``gui/app.py``), loaded through the manifest ``emtk`` entrypoint.
 """
 
 from __future__ import annotations
@@ -34,21 +33,6 @@ cli_entrypoint = "clsm=chisurf.plugins.microscopy.clsm.cli:cli"
 
 
 if __name__ == "__main__":
-    import sys
+    from chisurf.emtk.__main__ import main as _launch
 
-    from qtpy.QtWidgets import QApplication
-
-    from chisurf.plugins.microscopy.clsm.gui.tool import CLSMPixelSelect
-
-    app = QApplication(sys.argv)
-    win = CLSMPixelSelect()
-    win.show()
-    sys.exit(app.exec())
-
-if __name__ == "plugin":
-    from chisurf.gui.misc_helpers import persist_plugin_state
-    from chisurf.plugins.microscopy.clsm.gui.tool import CLSMPixelSelect
-
-    CLSMDrawWidget = persist_plugin_state("clsm_draw")(CLSMPixelSelect)
-    clsm = CLSMDrawWidget()
-    clsm.show()
+    _launch(["--plugin", "clsm"])

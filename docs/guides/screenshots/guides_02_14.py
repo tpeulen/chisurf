@@ -170,20 +170,18 @@ def _grab_08_bva_tool(folder: pathlib.Path | None = None) -> None:
 
 def _grab_02_rasp_p_same(work: pathlib.Path | None = None) -> None:
     """Burst Fusion's P_same curve over the bundled ten-file burst folder."""
-    from chisurf.plugins.burst.burst_fusion.gui.tool import BurstFusionTool
+    try:
+        from screenshots.emtk_shot import app_from, render
+    except ImportError:  # run standalone from this folder
+        from emtk_shot import app_from, render
 
     work = work or _sm_dna_copy()
-    tool = BurstFusionTool()
-    tool.resize(1250, 800)
-    tool.show()
-    _pump(0.5)
-    tool.set_folder(str(work / "burstwise_All 0.1000#15"))
-    tool.model.threshold = 0.5
-    tool.model.analyze()  # estimate + preview only; writing needs a reading manifest
-    _pump(1)
-    _front_tab(tool, "Same-molecule probability")
-    _grab(tool, "02_rasp_p_same.png")
-    tool.close()
+    app = app_from("burst_fusion")
+    app.set_folder(str(work / "burstwise_All 0.1000#15"))
+    app.model.threshold = 0.5
+    app.model.analyze()  # estimate + preview only; writing needs a reading manifest
+    render(app, "02_rasp_p_same.png", size=(1250, 800))
+    app.close()
 
 
 # ── guide 03: polymer distance distributions ────────────────────────────

@@ -1,21 +1,17 @@
-"""Offscreen-Qt tests for the Burst Fusion tool.
+"""Tests for the Burst Fusion tool (Qt-free view model and native emtk app).
 
-Construction only proves it does not crash, so these also drive the tool into a
-realistic state (a real burst folder analysed and written) and assert on what
+These drive the tool into a realistic state (a real burst folder analysed and written) and assert on what
 the panels would *show* — the series the plots draw and the rows the summary
 table lists.
 """
 
 from __future__ import annotations
 
-import os
 import pathlib
 import shutil
 
 import numpy as np
 import pytest
-
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 DATA = (
     pathlib.Path(__file__).resolve().parents[2]
@@ -31,15 +27,6 @@ DETECTORS = {
 }
 
 
-@pytest.fixture(scope="module")
-def qapp():
-    try:
-        from qtpy import QtWidgets
-    except Exception as exc:  # pragma: no cover
-        pytest.skip(f"qtpy unavailable: {exc}")
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-
 @pytest.fixture
 def folder(tmp_path):
     if not DATA.is_dir():
@@ -49,17 +36,27 @@ def folder(tmp_path):
     return target / ANALYSIS
 
 
+class _Tool:
+    """The view model with the workflow hand-off the retired Qt tool exposed."""
+
+    def __init__(self, folder):
+        from chisurf.plugins.burst.burst_fusion.gui.view_model import FusionViewModel
+
+        self.model = FusionViewModel()
+        self.model.detectors = dict(DETECTORS)
+        self.model.windows = {"prompt": [0, 2048]}
+        self.model.set_folder(str(folder))
+
+    def output_folder(self):
+        return self.model.written_folder
+
+
 @pytest.fixture
-def tool(qapp, folder):
-    from chisurf.plugins.burst.burst_fusion.gui.tool import BurstFusionTool
-
-    widget = BurstFusionTool()
-    widget.set_channel_settings({"detectors": DETECTORS, "windows": {"prompt": [0, 2048]}})
-    widget.set_folder(str(folder))
-    return widget
+def tool(folder):
+    return _Tool(folder)
 
 
-def test_view_spec_binds_every_source_it_names(qapp):
+def test_view_spec_binds_every_source_it_names():
     """A ``source`` that is not a model *method* renders blank with no error."""
     from chisurf.plugins.burst.burst_fusion.gui.view_model import FusionViewModel
 
@@ -77,34 +74,52 @@ def test_view_spec_binds_every_source_it_names(qapp):
         assert attribute() is not None
 
 
-def test_tool_constructs_with_help_and_guide(tool):
-    """Both are in-EMTK buttons now: the app carries a tour and help content."""
-    gui = tool.app.fusion_gui
-    assert gui.tour.steps, "the plugin must ship a guided tour"
-    assert gui.help_window.sections, "the plugin must ship help content"
+def test_tool_constructs_with_help_and_guide():
+    """Both are in-EMTK buttons: the app carries a tour and help content."""
+    from chisurf.plugins.burst.burst_fusion.gui.app import create_app
+
+    app = create_app()
+    try:
+        gui = app.fusion_gui
+        assert gui.tour.steps, "the plugin must ship a guided tour"
+        assert gui.help_window.sections, "the plugin must ship help content"
+    finally:
+        app.close()
 
 
-def test_the_run_button_is_the_one_that_fuses(tool, qapp):
+def _wait(app, timeout=120.0):
+    import time
+
+    end = time.monotonic() + timeout
+    while app.controller.running or app.controller._future is not None:
+        assert time.monotonic() < end, "the worker did not finish"
+        time.sleep(0.01)
+        app.controller.poll()
+
+
+def test_the_run_button_is_the_one_that_fuses(folder):
     """Running a step must produce its output, not a preview of it.
 
-    The shell drives a step through the canonical ``toolAction_run``; if that
-    only estimated, a user who ran the step and moved on would be analysing the
-    un-fused bursts with nothing saying so.
+    The controller's ``run`` is what *Run (Fuse)* and the workflow's run action
+    call; if that only estimated, a user who ran the step and moved on would be
+    analysing the un-fused bursts with nothing saying so.
     """
-    from qtpy import QtWidgets
+    from chisurf.plugins.burst.burst_fusion.gui.app import create_app
 
-    run = tool.findChild(QtWidgets.QToolButton, "toolAction_run")
-    estimate = tool.findChild(QtWidgets.QToolButton, "toolAction_refresh")
-    assert run is not None and estimate is not None
+    app = create_app()
+    try:
+        app.set_channel_settings({"detectors": DETECTORS, "windows": {"prompt": [0, 2048]}})
+        app.set_folder(str(folder))
+        app.controller.estimate()
+        _wait(app)
+        assert app.model.has_analysis()
+        assert app.model.written_folder == "", "estimating must write nothing"
 
-    estimate.click()
-    qapp.processEvents()
-    assert tool.model.has_analysis()
-    assert tool.output_folder() == "", "estimating must write nothing"
-
-    run.click()
-    qapp.processEvents()
-    assert pathlib.Path(tool.output_folder()).is_dir(), "running must write the folder"
+        app.controller.run()
+        _wait(app)
+        assert pathlib.Path(app.model.written_folder).is_dir(), "running must write the folder"
+    finally:
+        app.close()
 
 
 def test_analyze_populates_every_plot_and_the_summary(tool):
@@ -182,15 +197,16 @@ def test_reapplying_the_same_folder_keeps_the_analysis(tool):
     assert tool.model.has_analysis()
 
 
-def test_loading_the_demo_selects_a_folder_with_a_known_answer(qapp, monkeypatch, tmp_path):
-    from chisurf.plugins.burst.burst_fusion.gui.tool import BurstFusionTool
+def test_loading_the_demo_selects_a_folder_with_a_known_answer(monkeypatch, tmp_path):
+    from chisurf.plugins.burst.burst_fusion.gui.view_model import FusionViewModel
 
-    widget = BurstFusionTool()
+    widget = _Tool.__new__(_Tool)
+    widget.model = FusionViewModel()
     monkeypatch.setattr(
         "chisurf.plugins.burst.burst_fusion.demo.demo_folder",
         lambda: tmp_path / "demo",
     )
-    widget.load_demo()
+    widget.model.load_demo()
 
     assert pathlib.Path(widget.model.folder).is_dir()
     assert widget.model.demo is not None
@@ -205,27 +221,10 @@ def test_loading_the_demo_selects_a_folder_with_a_known_answer(qapp, monkeypatch
     assert statistics["n_bursts_after"] < statistics["n_bursts_before"]
 
 
-def test_running_without_a_folder_reports_instead_of_raising(qapp):
+def test_running_without_a_folder_reports_instead_of_raising():
     from chisurf.plugins.burst.burst_fusion.gui.view_model import FusionViewModel
 
     model = FusionViewModel()
     assert model.can_run() == "Select a burst-analysis folder first."
     with pytest.raises(ValueError):
         model.analyze()
-
-
-def test_guided_tour_steps_point_at_real_widgets(tool):
-    """A tour step whose target does not resolve is shown centred and useless."""
-    from chisurf.gui.widgets.tools.guided_tour import GuidedTour, load_tour
-    from chisurf.plugins.burst.burst_fusion.gui import view_model
-
-    guide = pathlib.Path(view_model.__file__).parent / "guide.json"
-    steps = load_tour(guide)
-    assert steps, "the plugin must ship a guided tour"
-
-    tour = GuidedTour(tool, steps)
-    for step in steps:
-        if not step.target:  # the opening step introduces the tool and is centred by design
-            assert step is steps[0], f"only the opening step may have no target: {step.title}"
-            continue
-        assert tour.resolve_target(step.target) is not None, step.title

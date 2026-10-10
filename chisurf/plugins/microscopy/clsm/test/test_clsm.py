@@ -348,16 +348,15 @@ def test_selection_array_accepts_a_region_or_an_array():
     assert from_array.sum() == 4
 
 
-# ── gui smoke (Qt) ──────────────────────────────────────────────────────────
+# ── gui smoke (native app) ──────────────────────────────────────────────────
 
 
-def test_tool_widget_creation(qapp, qtbot):
-    from qtpy import QtWidgets
+def test_native_app_creation():
+    from chisurf.plugins.microscopy.clsm.gui.app import ClsmApp
 
-    from chisurf.plugins.microscopy.clsm.gui.tool import CLSMPixelSelect
-
-    widget = CLSMPixelSelect()
-    qtbot.addWidget(widget)
-    assert isinstance(widget, QtWidgets.QWidget)
-    assert widget.model is not None
-    assert widget.auto_form is not None
+    app = ClsmApp()
+    try:
+        assert app.model is not None
+        assert app.tour.steps
+    finally:
+        app.close()
