@@ -277,11 +277,12 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         action = self.dialog_action
         try:
             if action in ("add_files", "add_folder"):
-                if not self.model.add_paths([Path(p) for p in result]):
+                if self.model.add_paths([Path(p) for p in result]):
+                    self._diag_due = time.monotonic()
+                else:  # keep the message on screen: a preview would overwrite it
                     self.model.status_text = (
                         "Nothing new to add (already listed, or no TTTR files)."
                     )
-                self._diag_due = time.monotonic()
             elif action == "save_bur":
                 self.model.save_bur(result[0])
             elif action == "export_bur":

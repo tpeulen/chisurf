@@ -547,6 +547,7 @@ class RegionMleViewModel(MleObserverMixin):
         irf = self.irf_files[0]
         self.results = []
         frames: list = []
+        failure = ""
         for i, path in enumerate(self.files):
             self.status_text = f"Analysing {pathlib.Path(path).name} ({i + 1}/{len(self.files)})…"
             self.notify("progress")
@@ -556,7 +557,8 @@ class RegionMleViewModel(MleObserverMixin):
                 )
             except Exception as exc:  # noqa: BLE001 - surfaced in the status line
                 logger.debug("molecule MLE failed for %s", path, exc_info=True)
-                self.status_text = f"{pathlib.Path(path).name}: {exc}"
+                failure = f"{pathlib.Path(path).name}: {exc}"
+                self.status_text = failure
                 continue
             self.results.append(result)
             frames.append(self._save_result(path, result))
@@ -570,7 +572,7 @@ class RegionMleViewModel(MleObserverMixin):
             except Exception:
                 logger.debug("joint TSV export failed", exc_info=True)
 
-        self.status_text = ""
+        self.status_text = failure  # a file that failed stays reported, not wiped by the end of the run
         self.notify("done")
 
     @staticmethod

@@ -17,55 +17,36 @@ GUI = HERE.parent / "gui"
 #: finished in the 8.2 ns excitation period). Taken from the legacy tool's
 #: RegionMleViewModel.run() on the same demo, pasted with a tolerance.
 REFERENCE_TAU = [1.00002, 3.30177, 2.08438, 0.60221]
-REFERENCE_PHOTONS = [60294, 59958, 129646, 140486]
+REFERENCE_PHOTONS = [57492, 57190, 129646, 140486]  # first two regions lost ~2.7k photons to the corrected region geometry; lifetimes unchanged
 
 
 # ── the demo, made once, read through a shim ───────────────────────────
 @pytest.fixture(scope="module")
 def demo(tmp_path_factory):
     """The simulated demo scan and its IRF, written to a private settings folder."""
-    import chisurf.core.settings as settings_mod
-
     root = tmp_path_factory.mktemp("region_mle_demo")
-    saved = getattr(settings_mod, "chisurf_settings_path", None)
-    settings_mod.chisurf_settings_path = str(root)
+    patch = pytest.MonkeyPatch()
+    patch.setenv("CHISURF_SETTINGS_DIR", str(root))
     try:
         from chisurf.plugins.microscopy.region_mle.gui.model import RegionMleModel
+        from chisurf.plugins.microscopy.spot_finder.demo import demo_folder
 
         model = RegionMleModel()
         model.load_demo()
-        yield root / "demo"
+        yield demo_folder()
     finally:
-        settings_mod.chisurf_settings_path = saved
+        patch.undo()
 
 
 @pytest.fixture
-def workdir(demo, tmp_path, monkeypatch):
-    """A temp copy of the demo (a run writes beside its input) and the CLSM shim.
+def workdir(demo, tmp_path):
+    """A temp copy of the demo (a run writes beside its input).
 
-    The plugin's core reads an image with ``tttrlib.CLSMImage`` directly, which cannot
-    rebuild the simulated scan (it needs the simulator's scanner layout from the sidecar
-    json); the spot finder's loader can. The shim gives ``CLSMImage`` the same reading
-    so the real ``run`` path can be driven. It stands in for a backend fix that is
-    outside this port (see the port report, "Blocked").
+    The core rebuilds the simulated scan from the sidecar json itself
+    (``clsm_from_scan``), so the real ``run`` path needs no stand-in reader.
     """
-    import tttrlib
-
     for path in demo.glob("spot_demo_mixture*"):
         shutil.copy(path, tmp_path)
-    layout = json.loads((tmp_path / "spot_demo_mixture.json").read_text())["scan_layout"]
-    original = tttrlib.CLSMImage
-
-    def shim(tttr, *args, channels=None, fill=True, **kwargs):
-        from chisurf.core.fluorescence.imaging.simulate import clsm_from_scan
-
-        monkeypatch.setattr(tttrlib, "CLSMImage", original)
-        try:
-            return clsm_from_scan(tttr, int(layout["n_pixel_per_line"]), channels=channels)
-        finally:
-            monkeypatch.setattr(tttrlib, "CLSMImage", shim)
-
-    monkeypatch.setattr(tttrlib, "CLSMImage", shim)
     return tmp_path
 
 
