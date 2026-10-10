@@ -188,7 +188,7 @@ def test_selecting_a_row_in_the_series_list_shows_that_series(window, tmp_path):
 
 
 def test_the_guided_tour_points_at_real_controls(window, tmp_path):
-    from chisurf.plugins.burst.burst_ebfret.gui.tool import ANCHORS
+    from chisurf.plugins.burst.burst_ebfret.gui.app import TOUR_TARGETS as ANCHORS
 
     window.load_demo(tmp_path)
     guide = json.loads((GUI_DIR / "guide.json").read_text())

@@ -409,10 +409,7 @@ def test_precision_is_not_a_panel_of_the_imaging_pipeline():
     The Back/Next walk carries a recorded dataset from panel to panel, and this
     tool takes none — it answers before the recording exists.
     """
-    from chisurf.plugins.microscopy.imaging_tools.gui.tool import (
-        IMAGING_PANELS,
-        ImagingToolsTool,
-    )
+    from chisurf.plugins.microscopy.imaging_tools.gui.app import PANELS, ImagingToolsApp
 
-    assert "precision" not in [p.get("role") for p in IMAGING_PANELS]
-    assert "precision" not in ImagingToolsTool.PIPELINE_ORDER
+    assert "precision" not in [row[0] for row in PANELS]
+    assert "precision" not in ImagingToolsApp.PIPELINE_ORDER

@@ -1,4 +1,4 @@
-"""The native FCS hub: the correlator workflow and, below it, the optional FCS tools, as the Qt ``FcsTool``.
+"""The native FCS hub: the correlator workflow and, below it, the optional FCS tools.
 
 The workflow is :class:`chisurf.plugins.fcs.fcs_correlator.gui.app.FcsHubApp`; this adds the tools, each its plugin's
 own emtk app.

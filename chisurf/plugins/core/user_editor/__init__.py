@@ -1,3 +1,8 @@
+"""User editor: the accounts registered in the MMFDB.
+
+The window is the native emtk app in :mod:`.gui.app`; importing this package needs no Qt binding.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -10,12 +15,3 @@ if _manifest is not None:
     name = _manifest.display_name
 else:
     name = "Setup:User Editor"
-
-# When the plugin is loaded, this code will be executed
-if __name__ == "plugin":
-    from chisurf.plugins.core.user_editor.gui.tool import UserEditorWidget
-
-    # Create an instance of the UserEditorWidget class
-    window = UserEditorWidget()
-    # Show the window
-    window.show()

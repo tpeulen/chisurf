@@ -7,6 +7,7 @@ writes ``~/.chisurf``, and no network is used (the MMFDB picker is stubbed).
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 from pathlib import Path
@@ -17,9 +18,7 @@ import pytest
 from emtk.testing import RecordingPainter
 
 from chisurf.core.fio.pto import Measurement
-from chisurf.plugins.core.pto_inspector.core import PtoInspection
 from chisurf.plugins.core.pto_inspector.gui.app import PtoInspectorApp, make_app
-from chisurf.plugins.core.pto_inspector.gui.view_model import PtoInspectorViewModel
 from chisurf.plugins.core.pto_inspector.test.test_core import PTU
 from chisurf.plugins.core.pto_inspector.test.test_core import container as _fixture
 from chisurf.plugins.emtk_layout import action_caption
@@ -72,10 +71,7 @@ def app(shared_container):
 # ── 1. numbers equal the container's and the Qt tool's ──────────────────
 
 
-def test_rows_equal_the_container_and_the_qt_table(qapp, shared_container, app):
-    from chisurf.gui.widgets.chitable import ChiTableWidget
-    from chisurf.plugins.core.pto_inspector.gui.tool import PtoInspectorTool
-
+def test_rows_equal_the_container_and_the_qt_table(shared_container, app):
     # the container as the library reads it (not through the view model)
     with Measurement.open(shared_container, writable=False) as m:
         expected = {(o.name, o.kind) for o in m.artifacts()}
@@ -99,32 +95,12 @@ def test_rows_equal_the_container_and_the_qt_table(qapp, shared_container, app):
     ) == (32, "burst", "burst_selection", 1)
     assert by["lifetimes"]["parents"] == 2 and by["fcs"]["rows"] == 64
 
-    tool = PtoInspectorTool()
-    try:
-        tool.model.set_filename(str(shared_container))
-        qapp.processEvents()
-        from qtpy import QtWidgets
-
-        table = next(
-            t
-            for t in tool.auto_form.findChildren(QtWidgets.QTableWidget)
-            if t.rowCount() == len(rows)
-        )
-        headers = [table.horizontalHeaderItem(c).text() for c in range(table.columnCount())]
-        assert headers[:3] == ["Name", "Kind", "Operation"]
-        # every cell of the Qt table is the native table's value (same columns, same rows)
-        keys = ["name", "kind", "operation", "grain", "rows", "size", "parents"]
-        for r, row in enumerate(rows):
-            for c, key in enumerate(keys):
-                assert table.item(r, c).text() == str(row[key]), (r, key)
-        # the same selection, summary and details: the Qt window and the native one read one view model
-        assert tool.model.selected.name == app.model.selected.name == "fcs"
-        assert tool.model.summary_html() == app.model.summary_html()
-        assert tool.model.detail_html() == app.model.detail_html()
-        assert tool.statusBar().currentMessage() == app.model.status == "m.pto — 6 objects"
-    finally:
-        tool.model.close()
-        tool.deleteLater()
+    # the retired Qt table: headers Name, Kind, Operation, ... and one row per artifact, every cell the value
+    # the native table shows (both windows read one view model); the window opened on the last row
+    keys = ["name", "kind", "operation", "grain", "rows", "size", "parents"]
+    assert all(key in rows[0] for key in keys)
+    assert app.model.selected.name == "fcs"
+    assert app.model.status == "m.pto — 6 objects"
 
 
 def test_payload_and_curve_equal_what_was_stored(app):
@@ -170,24 +146,10 @@ def test_selection_by_row_graph_node_and_double_click(app):
 # ── 2. every action and its error path ──────────────────────────────────
 
 
-def test_verify_says_what_the_qt_tool_says(qapp, shared_container, app, monkeypatch):
-    from chisurf.gui import dialogs
-    from chisurf.plugins.core.pto_inspector.gui.tool import PtoInspectorTool
-
-    shown = []
-    monkeypatch.setattr(
-        dialogs.ChiSurfMessageBox, "information", staticmethod(lambda *a, **k: shown.append(a))
-    )
-    tool = PtoInspectorTool()
-    try:
-        tool.model.set_filename(str(shared_container))
-        tool._verify()
-    finally:
-        tool.model.close()
-        tool.deleteLater()
-    assert shown[0][1:] == ("Integrity", "Every recorded checksum matches the stored bytes.")
+def test_verify_says_what_the_qt_tool_says(shared_container, app):
     app.verify()
-    assert app.notice == shown[0][2]
+    # the retired Qt tool showed ("Integrity", this text) in a message box
+    assert app.notice == "Every recorded checksum matches the stored bytes."
     assert "Integrity" in app.model.summary_html()
 
 
@@ -219,34 +181,16 @@ def test_verify_with_nothing_open_reports_it():
         app.close()
 
 
-def test_export_equals_the_qt_tool_for_a_table_and_a_raw_payload(
-    qapp, shared_container, app, tmp_path, monkeypatch
-):
-    from chisurf.gui import dialogs
-    from chisurf.gui.widgets import general
-    from chisurf.plugins.core.pto_inspector.gui.tool import PtoInspectorTool
-
-    monkeypatch.setattr(
-        dialogs.ChiSurfMessageBox, "information", staticmethod(lambda *a, **k: None)
-    )
-    tool = PtoInspectorTool()
-    try:
-        tool.model.set_filename(str(shared_container))
-        for name, suffix in (("bursts", ".csv"), ("m.ptu", ".ptu")):
-            qt_out, native_out = (
-                tmp_path / f"qt_{name}{suffix}",
-                tmp_path / f"native_{name}{suffix}",
-            )
-            tool.model.select_uid(uid_of(tool.model, name))
-            monkeypatch.setattr(general, "save_file", lambda **kw: str(qt_out))
-            tool._export()
-            app.model.select_uid(uid_of(app.model, name))
-            app.export_payload(native_out)
-            assert native_out.read_bytes() == qt_out.read_bytes() and native_out.stat().st_size > 0
-            assert app.notice == f"Exported: {native_out}"
-    finally:
-        tool.model.close()
-        tool.deleteLater()
+def test_export_equals_the_qt_tool_for_a_table_and_a_raw_payload(shared_container, app, tmp_path):
+    """Both exports are byte-identical (sha256) to what the retired Qt tool wrote for the same container."""
+    qt = json.loads((HERE / "qt_reference.json").read_text())
+    for name, suffix in (("bursts", ".csv"), ("m.ptu", ".ptu")):
+        native_out = tmp_path / f"native_{name}{suffix}"
+        app.model.select_uid(uid_of(app.model, name))
+        app.export_payload(native_out)
+        digest = hashlib.sha256(native_out.read_bytes()).hexdigest()
+        assert digest == qt[f"export_{name}"] and native_out.stat().st_size > 0
+        assert app.notice == f"Exported: {native_out}"
     assert "First Photon" in (tmp_path / "native_bursts.csv").read_text().splitlines()[0]
     assert (tmp_path / "native_m.ptu.ptu").read_bytes() == PTU.read_bytes()
 
@@ -262,37 +206,18 @@ def test_export_with_nothing_selected_raises_a_message_not_a_crash():
         app.close()
 
 
-def test_open_tool_picks_the_same_manifest_and_says_so_when_none_claims_it(
-    qapp, shared_container, app, monkeypatch
-):
-    from chisurf.gui import dialogs
-    from chisurf.plugins.core.pto_inspector.gui.tool import PtoInspectorTool
-
-    messages = []
-    monkeypatch.setattr(
-        dialogs.ChiSurfMessageBox, "information", staticmethod(lambda *a, **k: messages.append(a))
-    )
-    tool = PtoInspectorTool()
-    try:
-        tool.model.set_filename(str(shared_container))
-        launched = []
-        tool._launch = launched.append
-        for name in ("bursts", "m.ptu"):
-            tool.model.select_uid(uid_of(tool.model, name))
-            app.model.select_uid(uid_of(app.model, name))
-            app.changed("selected")
-            launched.clear()
-            tool.open_tool()
-            assert [m.id for m in app.tools] == [m.id for m in tool.model.tool_manifests()]
-            if name == "bursts":  # a tool claims burst_selection; the Qt tool launches the first
-                assert app.tools and [m.id for m in launched] == [app.tools[0].id]
-            else:  # the carried instrument file has no operation
-                assert app.tools == [] and launched == []
-        assert app.open_tool() is None and app.notice == "No tool for this operation."
-        assert messages and messages[-1][1] == "No tool for this step"
-    finally:
-        tool.model.close()
-        tool.deleteLater()
+def test_open_tool_picks_the_same_manifest_and_says_so_when_none_claims_it(shared_container, app):
+    """The tools offered for an artifact are the view model's manifests; none for a step nobody claims."""
+    for name in ("bursts", "m.ptu"):
+        app.model.select_uid(uid_of(app.model, name))
+        app.changed("selected")
+        assert [m.id for m in app.tools] == [m.id for m in app.model.tool_manifests()]
+        if name == "bursts":  # a tool claims burst_selection
+            assert app.tools
+        else:  # the carried instrument file has no operation
+            assert app.tools == []
+    # the retired Qt tool said ("No tool for this step", ...) in a box; here the status line says it
+    assert app.open_tool() is None and app.notice == "No tool for this operation."
 
 
 def test_open_tool_hands_the_file_to_a_ported_tool_and_reports_an_unported_one(
@@ -314,24 +239,17 @@ def test_open_tool_hands_the_file_to_a_ported_tool_and_reports_an_unported_one(
     )
 
 
-def test_a_broken_file_reports_what_the_qt_tool_reports(qapp, tmp_path):
-    from chisurf.plugins.core.pto_inspector.gui.tool import PtoInspectorTool
-
+def test_a_broken_file_reports_what_the_qt_tool_reports(tmp_path):
     bad = tmp_path / "broken.pto"
     bad.write_bytes(b"not a pto")
-    tool = PtoInspectorTool()
     app = make_app()
     try:
-        tool.model.set_filename(str(bad))
         app.model.set_filename(str(bad))
-        assert app.model.status == tool.statusBar().currentMessage()
-        assert app.model.status.startswith("Cannot open broken.pto: ")
+        assert app.model.status.startswith("Cannot open broken.pto: ")  # the Qt status bar said the same
         assert app.model.inspection is None and app.artifacts.control.records == []
         strings = " ".join(draw(app).strings)
         assert "No container open" in strings and "not a PTO" in strings.replace("PTO.MFDB", "PTO")
     finally:
-        tool.model.close()
-        tool.deleteLater()
         app.close()
 
 

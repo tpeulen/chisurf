@@ -1,0 +1,17 @@
+{
+ "_note": "Recorded from the retired Qt BurstBackgroundEstimator on the demo measurement.",
+ "rates": {
+  "green": 2.085551358187174,
+  "red": 1.0636704211037797,
+  "yellow": 0.0
+ },
+ "window": [
+  1.9565625000000004,
+  3.3143308000000062
+ ],
+ "api": [
+  "tttr_files",
+  "_add_tttr_files",
+  "detector_wizard_page"
+ ]
+}

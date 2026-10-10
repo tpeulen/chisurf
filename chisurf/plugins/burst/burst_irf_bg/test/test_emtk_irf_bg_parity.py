@@ -1,17 +1,14 @@
-"""The native burst IRF & background tool at parity with the Qt BurstIrfBackgroundTool.
+"""The native burst IRF & background tool at parity with the retired Qt BurstIrfBackgroundTool.
 
-Both hosts draw the same ``BurstIrfBackgroundApp``. The Qt tool computes
-synchronously and hands the patterns to the workflow shell it is embedded in; the
-emtk app computes on the controller's worker and hands them to an ``mle_receiver``.
-The Qt tool runs in a subprocess on the same demo measurement (this process stays
-Qt-free) and the results are compared, and both against the IRF the demo was made with.
+Both hosts drew the same ``BurstIrfBackgroundApp``. The Qt tool computed synchronously and handed the patterns
+to the workflow shell it was embedded in; the emtk app computes on the controller's worker and hands them to
+an ``mle_receiver``. The Qt tool's results on the same demo measurement were recorded (``qt_reference.json``)
+and are compared, and both against the IRF the demo was made with.
 """
 
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -63,52 +60,10 @@ def _computed(app, path):
     return app
 
 
-_QT = r"""
-import json, sys
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-from chisurf.plugins.burst.burst_irf_bg.gui.tool import BurstIrfBackgroundTool
-
-class Shell(QtWidgets.QWidget):
-    received = None
-    def apply_irf_background_to_mle(self, patterns):
-        Shell.received = sorted(patterns)
-        return len(patterns)
-
-shell = Shell()
-w = BurstIrfBackgroundTool(parent=shell)
-w.model.channels_provider = lambda: json.loads(sys.argv[2])
-w._send_to_mle()
-early = w.gui.status_text
-w.model.add_files([sys.argv[1]])
-w._compute()
-w._send_to_mle()
-print("FACTS" + json.dumps({"rows": w.model.results_rows(), "sent": w.gui.status_text, "early": early,
-                            "received": Shell.received}))
-"""
-
-
 @pytest.fixture(scope="module")
-def qt(measurement):
-    pytest.importorskip("qtpy")
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT, str(measurement), json.dumps(DETECTORS)],
-        capture_output=True,
-        text=True,
-        timeout=300,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and (
-        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
-    ):
-        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
-    # Any other failure is the Qt tool's own: skipping it hid a broken Qt host.
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS") :])
+def qt():
+    """What the retired Qt BurstIrfBackgroundTool reported on the demo measurement (qt_reference.json)."""
+    return json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
 
 
 # 1. the Qt tool's results, and the IRF the demo was made with

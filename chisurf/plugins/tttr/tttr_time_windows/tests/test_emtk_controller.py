@@ -85,7 +85,7 @@ def test_pure_apps_render_with_file_choosers():
     from chisurf.plugins.tttr.tttr_splitter.gui.controller import create_app as splitter
     from chisurf.plugins.tttr.tttr_time_windows.gui.controller import create_app
 
-    from .test_construction_smoke import RecordingPainter
+    from emtk.testing import RecordingPainter
 
     for factory, picker in (
         (create_app, "_add_files_dialog"),
@@ -95,7 +95,7 @@ def test_pure_apps_render_with_file_choosers():
         getattr(app.tool, picker)()
         painter = RecordingPainter()
         app.draw(painter, 0, 0, 1000, 700)
-        assert painter.ops > 60
+        assert len(painter.strings) > 5
         assert app.tool.dialog is not None
 
 

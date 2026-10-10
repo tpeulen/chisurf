@@ -206,12 +206,10 @@ def test_every_bound_attribute_exists_on_the_model():
     assert not missing, "view spec binds to missing attributes:\n  " + "\n  ".join(missing)
 
 
-def test_model_manager_widget_creation(qapp, qtbot):
-    """The panel builds and shows the registry."""
-    from chisurf.plugins.core.model_manager import ModelManagerWidget
+def test_model_manager_model_shows_the_registry():
+    """The editor's model reads the real registry and its table lists the visible rows."""
+    from chisurf.plugins.core.model_manager.gui.model import ModelManagerModel
 
-    widget = ModelManagerWidget()
-    qtbot.addWidget(widget)
-    assert "Model" in widget.windowTitle()
-    assert widget.model.rows, "no models reached the panel"
-    assert len(widget.model.model_rows()) == len(widget.model.visible_rows())
+    model = ModelManagerModel(settings_block={"disabled_models": []})
+    assert model.rows, "no models reached the panel"
+    assert len(model.model_rows()) == len(model.visible_rows())

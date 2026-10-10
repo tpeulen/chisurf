@@ -1,5 +1,1 @@
-"""GUI adapter package for Time Window Bins."""
-
-from .adapter import settings_from_controls
-
-__all__ = ["settings_from_controls"]
+"""GUI of the Time Window Bins plugin: the native emtk app (:mod:`.app`)."""

@@ -28,24 +28,4 @@ if _manifest_path.exists():
     _manifest = _json.loads(_manifest_path.read_text(encoding="utf-8"))
     name = _manifest.get("display_name", name)
 
-
-def __getattr__(attr_name: str):
-    """Lazy Qt gate for the GUI entrypoint (keeps the package import Qt-free)."""
-    if attr_name == "HmmTool":
-        from .gui.tool import HmmTool as _cls
-
-        globals()["HmmTool"] = _cls
-        return _cls
-    raise AttributeError(f"module {__name__!r} has no attribute {attr_name!r}")
-
-
-def run():
-    """Open the hidden-Markov-model tool (standalone window)."""
-    from .gui.tool import HmmTool
-
-    tool = HmmTool()
-    tool.show()
-    return tool
-
-
-__all__ = ["HmmTool", "run"]
+__all__ = ["name", "cli_entrypoint"]

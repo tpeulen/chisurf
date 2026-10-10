@@ -2,6 +2,16 @@
 
 ## 2026-10-10
 
+- PRD-154 W9 phase 1 (plugins): five parallel lanes retired the Qt tools of ~80 plugins across burst,
+  microscopy, tttr/vv-vh/pch, fcs/decay/calculators and core/modelling/traj; each recorded the Qt tool's
+  values first (`qt_reference.json` beside its tests) and checked control inventories. `plugin_qt_allowlist.txt`
+  505 → ~290 lines; the rest are Qt hosts (globalview, lightpath, help, code editor, project dialogs,
+  mmfdb_admin, acq device dialogs, chimol/ndX hosts) or skipped with reasons (clsm, burst_fusion,
+  burst_selection, burst_mle). New shell hooks so Qt only hosts emtk apps: `chisurf/gui/{plugin_window,
+  updater_window,plugin_toolbar,password_dialog}.py`, `chisurf/gui/widgets/emtk_embed.py`. Part D gate 3:
+  `test/e2e/test_release_scenario.py` (13 steps pass, run picker xfail); it found and fixed a `.pto` parsed
+  as raw SPC in `staging.open_tttr`, a sub-ensemble decay never registered as a dataset, and a doubled
+  "Save changes?" prompt.
 - Core plugin tests no longer write the developer's real `~/.chisurf`: `chisurf/plugins/core/conftest.py`
   redirects the settings dirs at import; lightpath easy mode and pda2c used `Path.home()/".chisurf"` and
   now use `get_path("settings")`. About's wrapped button row (German, 320 px) clipped Close; its height now

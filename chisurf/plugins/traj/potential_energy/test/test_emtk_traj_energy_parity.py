@@ -8,13 +8,12 @@ come from a subprocess; this process stays Qt-free. IMP-backed potentials need
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 import sys
 import time
 from pathlib import Path
 
 import pytest
+from chisurf.plugins.traj.traj_save_topology.test.qt_recorded import load_reference, same_coordinates
 from emtk.testing import RecordingPainter
 
 from chisurf.plugins.traj.potential_energy.app import make_app
@@ -26,27 +25,6 @@ HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 POTENTIALS = [("Radius of Gyration", 1.0), ("Clash potential", 0.5)]
 
-_QT = r"""
-import json, sys
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-import chisurf.gui.widgets
-from chisurf.plugins.traj.potential_energy.widget import PotentialEnergyWidget
-from chisurf.plugins.traj.potential_energy.potential_specs import make_potential
-dcd, pdb, out, potentials = sys.argv[1], sys.argv[2], sys.argv[3], json.loads(sys.argv[4])
-w = PotentialEnergyWidget()
-w.model.set_trajectory(dcd); w.model.set_topology(pdb)
-for name, weight in potentials:
-    w.model.add_potential(make_potential(name, {}), weight, name=name)
-w.model.process(out)
-editors = chisurf.gui.widgets.structure.potentialDict
-files = {}
-# the path each editor shows in its file field (its `potential` property is the loaded table)
-for name, field in (("H-Bond", "lineEdit_3"), ("Iso-UNRES", "lineEdit"), ("Miyazawa-Jernigan", "lineEdit")):
-    editor = editors[name](structure=None, parent=None)
-    files[name] = getattr(editor, field).text()
-print("FACTS" + json.dumps({"energies": open(out).read(), "files": files}))
-"""
 
 
 @pytest.fixture(scope="module")
@@ -59,27 +37,9 @@ def trajectory(tmp_path_factory):
 
 
 @pytest.fixture(scope="module")
-def qt(trajectory):
-    pytest.importorskip("qtpy")
-    dcd, pdb, tmp = trajectory
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT, dcd, pdb, str(tmp / "qt.txt"), json.dumps(POTENTIALS)],
-        capture_output=True,
-        text=True,
-        timeout=300,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and (
-        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
-    ):
-        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
-    # Any other failure is the Qt widget's own: skipping it hid a broken Qt host.
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS") :])
+def qt():
+    """The retired Qt widget's answers, recorded before it was deleted (qt_reference.json)."""
+    return load_reference(HERE)
 
 
 def _wait(app, timeout=60.0):
@@ -117,7 +77,7 @@ def test_potential_files_match_the_qt_editors(qt):
         params = {p.attr: p for p in get_spec(name).params if p.kind == "file"}
         assert params, name
         (param,) = params.values()
-        assert Path(param.default) == Path(path), name
+        assert Path(param.default) == REPO / path, name
 
 
 # 3. the browse buttons and the save dialog Process opens

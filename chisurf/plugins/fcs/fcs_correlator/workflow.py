@@ -1,8 +1,7 @@
 """The FCS correlator workflow, Qt-free: what each step hands the next.
 
-Channel definitions → files → (photon/burst filter) → correlator → (merger). The Qt navigation tool
-(:class:`.tool.FcsCorrelatorTool`) and the native hub (:mod:`chisurf.plugins.fcs.fcs_toolbox.gui.app`) both keep one
-:class:`FcsWorkflow` and call it when a step is opened; neither re-implements the hand-over.
+Channel definitions → files → (photon/burst filter) → correlator → (merger). The native hubs (:mod:`chisurf.plugins.fcs.fcs_correlator.gui.app`, :mod:`chisurf.plugins.fcs.fcs_toolbox.gui.app`)
+keep one :class:`FcsWorkflow` and call it when a step is opened; neither re-implements the hand-over.
 """
 
 from __future__ import annotations

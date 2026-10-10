@@ -66,13 +66,6 @@ def test_project_browser_loads_when_shown_too(app):
     tool.close()
 
 
-def test_maxent_decay_constructs(app):
-    """The MaxEnt window builds on the shared base."""
-    from chisurf.plugins.fluorescence_decay.maxent_decay.gui.gui import MaxentDecayWidget
-
-    _assert_is_tool(MaxentDecayWidget())
-
-
 def test_chimol_window_constructs(app):
     """The molecular viewer window builds on the shared base."""
     pytest.importorskip("OpenGL")

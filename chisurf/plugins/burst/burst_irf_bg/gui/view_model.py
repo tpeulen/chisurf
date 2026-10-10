@@ -6,10 +6,9 @@ the **non-burst** photons via
 :func:`chisurf.core.fluorescence.burst.extract_irf_background` (display) and
 :func:`chisurf.core.fluorescence.burst.extract_mle_irf_background` (the vv_vh-
 stacked patterns the burst MLE consumes). Non-burst photons of several files are
-pooled per detector. The channel definition comes from the (Qt)
-``DetectorWizardPage`` via an injected ``channels_provider`` callable, keeping
-this model Qt-free and headlessly testable. The GUI (``gui.tool`` +
-``gui.sections``) owns Qt concerns.
+pooled per detector. The channel definition comes from the detector editor via an injected
+``channels_provider`` callable, keeping this model Qt-free and headlessly
+testable. The emtk app (``gui.app``) owns the drawing.
 
 Mirrors :class:`chisurf.plugins.tttr.tttr_count_rate_analysis.gui.view_model.CountRateViewModel`.
 """

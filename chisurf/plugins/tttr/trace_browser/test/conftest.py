@@ -8,7 +8,6 @@ author's saved "ALEX Suite (auto)" setup.
 """
 
 import importlib
-import json
 import sys
 
 import pytest

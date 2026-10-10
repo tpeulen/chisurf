@@ -7,13 +7,21 @@
       "target": {}
     },
     {
+      "title": "Start with data whose answer you know",
+      "text": "<b>Load example</b> fills in four simulated files: a decay with <b>one lifetime of 4 ns</b> and <b>one rotation of 2 ns</b> with r₀ = 0.38, the two instrument responses, matching reader settings, and component start values that are near but not at the answer. At the end the global fit must give those numbers back.",
+      "target": {
+        "name": "load_example",
+        "action": "Load example"
+      },
+      "await": {
+        "hint": "Press <b>Load example</b>."
+      }
+    },
+    {
       "title": "Four files, and they must be the same measurement",
       "text": "An IRF and a decay for each polarisation. All four are read on the same time axis, and the fit assumes they were taken under the same conditions.<br/><br/>The one to watch: <b>a timing shift between the VV and VH channels mimics a fast rotational component</b>, because the early part of the decay is exactly where photoselection shows. If the two detectors have different cable lengths or different IRF positions, that difference arrives as physics.",
       "target": {
         "name": "data_vv_path"
-      },
-      "await": {
-        "hint": "Type or browse to the four polarisation-resolved files (or drop them on the window)."
       }
     },
     {

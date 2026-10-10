@@ -19,14 +19,10 @@ cli_entrypoint = (
 
 
 def load():
-    """Return the standalone MaxEnt MEM widget."""
-    from .gui.gui import MaxentDecayWidget
+    """Return the standalone MaxEnt MEM emtk app."""
+    from .gui.app import make_app
 
-    return MaxentDecayWidget()
+    return make_app()
 
-
-if __name__ == "plugin":
-    widget = load()
-    widget.show()
 
 __all__ = ["name", "cli_entrypoint", "load"]

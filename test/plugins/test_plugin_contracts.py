@@ -189,7 +189,7 @@ def test_trajectory_manifests_drive_plugin_discovery():
         assert info["plugin_name"] == display_name
         # The whole family is menu-hidden, ``traj_tools`` included: it is reached
         # as the *Trajectory Tools* panel of the Structure Tools hub
-        # (``modelling/structure_tools/gui/tool.py``), not from a menu of its own.
+        # (the ``structure_tools`` hub), not from a menu of its own.
         assert info["menu_hidden"]
         assert not info["cli_only"]
         assert info["module_path"].startswith("chisurf.plugins.traj.")

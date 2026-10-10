@@ -1,4 +1,4 @@
-"""File tools — combined NavigationPanelTool plugin.
+"""File tools — hub of native emtk apps.
 
 A single unified window (left navigation, right panel) hosting the tools that
 act on a *file* rather than on the physics inside it: converting between
@@ -13,7 +13,7 @@ wrote.
 - PTO Inspector            (pto_inspector)
 - TTTR header editor       (tttr_header_edit)
 
-Each sub-tool is embedded as-is; this plugin only provides the shared shell.
+Each sub-tool opens as its own emtk app; this plugin only provides the shared hub.
 The individual tools stay importable and standalone-launchable but are hidden
 from the ribbon menu (``menu_hidden``) so they appear only inside File tools.
 """
@@ -29,22 +29,3 @@ _manifest = (
 )
 name = _manifest.get("display_name", "File:Data:File tools")
 
-
-def __getattr__(attr_name: str):
-    """Lazy Qt import gate (no Qt import as a package side effect)."""
-    if attr_name == "FileToolsTool":
-        from .gui.tool import FileToolsTool as _cls
-
-        globals()["FileToolsTool"] = _cls
-        return _cls
-    raise AttributeError(f"module {__name__!r} has no attribute {attr_name!r}")
-
-
-if __name__ == "plugin":
-    from .gui.tool import FileToolsTool
-
-    window = FileToolsTool()
-    window.show()
-
-
-__all__ = ["FileToolsTool"]

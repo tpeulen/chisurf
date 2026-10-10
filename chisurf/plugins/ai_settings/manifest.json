@@ -19,7 +19,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.ai_settings.gui.tool:AISettingsWidget",
     "emtk": "chisurf.plugins.ai_settings.gui.app:make_ai_settings_app"
   }
 }

@@ -17,25 +17,3 @@ if _manifest is not None:
 # Aggregated into the TTTR Tools toolbox (tttr_toolbox); hidden as a top-level
 # menu entry (also set in manifest.json) but still standalone-launchable.
 menu_hidden = True
-
-__all__ = ["MicrotimeShifterTool", "menu_hidden"]
-
-
-def __getattr__(name: str):
-    """Lazily import the GUI tool (PRD-23: no Qt import as a package side effect).
-
-    Keeps ``from ...tttr_microtime_shifter import MicrotimeShifterTool`` working
-    while the Qt-free ``api``/``cli`` submodules can be imported headlessly.
-    """
-    if name == "MicrotimeShifterTool":
-        from .gui.tool import MicrotimeShifterTool
-
-        return MicrotimeShifterTool
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-
-if __name__ == "plugin":
-    from .gui.tool import MicrotimeShifterTool
-
-    window = MicrotimeShifterTool()
-    window.show()

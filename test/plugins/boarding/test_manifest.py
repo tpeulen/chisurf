@@ -25,7 +25,8 @@ def test_boarding_manifest_loads_and_hides_from_menu():
     assert manifest is not None
     assert manifest.id == "boarding"
     assert manifest.display_name == "Help:Boarding Wizard"
-    assert manifest.entrypoints.gui == "chisurf.plugins.core.boarding.wizard:WelcomeToChiSurfWizard"
+    assert manifest.entrypoints.emtk == "chisurf.plugins.core.boarding.app:make_app"
+    assert manifest.entrypoints.gui is None
     assert manifest.menu_hidden is True
 
 

@@ -1,21 +1,20 @@
-import glob
 import pathlib
 
 import pytest
-from qtpy.QtCore import Qt
 
 TOPDIR = pathlib.Path(__file__).parent.parent
 import utils
 
 utils.set_search_paths(TOPDIR)
 
-from chisurf.plugins.calculator.kappa2_dist.k2dgui import Kappa2Dist
+from chisurf.plugins.calculator.kappa2_dist.gui.app import make_app
 
 
 @pytest.fixture
-def kappa2_form(qtbot):
-    form = Kappa2Dist()
-    qtbot.addWidget(form)
+def kappa2_form():
+    app = make_app()
+    form = app.tool
+    form.compute_now = app.compute_now
     return form
 
 
@@ -31,9 +30,8 @@ def test_kappa2_defaults(kappa2_form):
     assert kappa2_form._model.r_ADinf == 0.005
 
 
-def test_kappa2_calculation_1(kappa2_form, qtbot):
-    ok_button = kappa2_form.pushButton
-    qtbot.mouseClick(ok_button, Qt.LeftButton)
+def test_kappa2_calculation_1(kappa2_form):
+    kappa2_form.compute_now()
 
     # The cone model samples orientations, so these carry a tolerance rather
     # than a rounded equality. RappSD is ~0.051 -- a real 5% distance
@@ -44,11 +42,10 @@ def test_kappa2_calculation_1(kappa2_form, qtbot):
     assert kappa2_form._model.RappSD == pytest.approx(0.051, abs=0.01)
 
 
-def test_kappa2_calculation_2(kappa2_form, qtbot):
+def test_kappa2_calculation_2(kappa2_form):
     kappa2_form._model.rAD_known = True
 
-    ok_button = kappa2_form.pushButton
-    qtbot.mouseClick(ok_button, Qt.LeftButton)
+    kappa2_form.compute_now()
 
     # The cone model samples orientations, so these carry a tolerance rather
     # than a rounded equality. RappSD is ~0.051 -- a real 5% distance

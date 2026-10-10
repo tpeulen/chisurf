@@ -8,10 +8,8 @@ sides are seeded identically before every computation; the numbers must then agr
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import re
-import tempfile
 import time
 from pathlib import Path
 
@@ -25,7 +23,6 @@ from chisurf.plugins.calculator.kappa2_dist.gui.app import INPUT_FIELDS, Kappa2A
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
-BASELINE = REPO / "okf/plugins/emtk-ports/kappa2_dist/pre-upgrade/qt_original_tool.py.txt"
 SIZE = (1200, 800)
 SMALL = (800, 600)
 RESULTS = ("k2_mean", "k2_sd", "Rapp_mean", "RappSD", "delta_deg")
@@ -104,56 +101,9 @@ def model_state(model):
     return {k: getattr(model, k) for k in (*INPUT_FIELDS, *RESULTS)}
 
 
-# -- the Qt tool, built from the committed source ---------------------------------------------- #
+# -- the numbers the Qt tool produced, recorded before it was retired (qt_reference.json) ------- #
 
-
-@pytest.fixture
-def qt_tool():
-    QtWidgets = pytest.importorskip("qtpy.QtWidgets")
-    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    source = BASELINE.read_text(encoding="utf-8").replace(
-        "pathlib.Path(__file__).parent\n", f"pathlib.Path({str(PLUGIN / 'gui')!r})\n"
-    )
-    path = Path(tempfile.mkdtemp()) / "qt_tool.py"
-    path.write_text(source, encoding="utf-8")
-    spec = importlib.util.spec_from_file_location(
-        "chisurf.plugins.calculator.kappa2_dist.gui.qt_original", path
-    )
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    np.random.seed(7)
-    tool = module.Kappa2Dist()
-    tool._qapp, tool._module = qapp, module
-    from chisurf.gui.autoform.sections.builtin import ToggleWidget, ValueWidget
-
-    tool._editors = {
-        vw._section.attr: vw.editor
-        for vw in tool._form.findChildren(ValueWidget)
-        if getattr(vw, "_section", None)
-    }
-    tool._toggles = {tw._section.attr: tw.checkbox for tw in tool._form.findChildren(ToggleWidget)}
-    by_text = {b.text(): b for b in tool._form.findChildren(QtWidgets.QRadioButton)}
-    tool._radios = {
-        "cone": by_text["WIC (Cone)"],
-        "diffusion": by_text["DWT (Diffusion)"],
-        "isotropic": by_text["Isotropic"],
-    }
-    yield tool
-    tool.close()
-
-
-def qt_edit(tool, attr, value, seed=7):
-    if attr == "model_type":
-        tool._radios[value].click()
-    elif attr == "rAD_known":
-        tool._toggles[attr].setChecked(bool(value))
-    else:
-        tool._editors[attr].setValue(value)
-        tool._editors[attr].editingFinished.emit()
-    np.random.seed(seed)
-    tool._compute_timer.stop()
-    tool._do_compute()
-    tool._qapp.processEvents()
+QT_REFERENCE = json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
 
 
 # ── 1. every scenario equals the Qt tool, edited through the real fields ------------------------- #
@@ -205,16 +155,14 @@ def assert_same(native, qt, what):
             )
 
 
-def test_defaults_and_every_edit_equal_the_qt_tool(app, qt_tool):
-    assert_same(model_state(app.tool._model), model_state(qt_tool._model), "construction")
-    for attr, value in EDITS:
-        qt_edit(qt_tool, attr, value)
+def test_defaults_and_every_edit_equal_the_recorded_qt_tool(app):
+    assert_same(model_state(app.tool._model), QT_REFERENCE["construction"], "construction")
+    for (attr, value), recorded in zip(EDITS, QT_REFERENCE["edits"]):
+        assert (recorded["attr"], recorded["value"]) == (attr, value)
         apply_native(app, attr, value)
-        assert_same(
-            model_state(app.tool._model), model_state(qt_tool._model), f"after {attr}={value}"
-        )
-    np.testing.assert_allclose(app.tool._model._k2hist, qt_tool._model._k2hist, equal_nan=True)
-    np.testing.assert_allclose(app.tool._model._k2scale, qt_tool._model._k2scale)
+        assert_same(model_state(app.tool._model), recorded["state"], f"after {attr}={value}")
+    np.testing.assert_allclose(app.tool._model._k2hist, QT_REFERENCE["k2hist"], equal_nan=True)
+    np.testing.assert_allclose(app.tool._model._k2scale, QT_REFERENCE["k2scale"])
 
 
 def test_the_numbers_the_qt_window_showed_are_pinned(app):
@@ -352,7 +300,7 @@ def run_save(app, target, size=SIZE):
     return draw(app, size)
 
 
-def test_save_writes_the_csv_the_qt_tool_wrote_and_says_so(app, qt_tool, tmp_path):
+def test_save_writes_the_csv_the_qt_tool_wrote_and_says_so(app, tmp_path):
     np.random.seed(7)
     app.tool._model.compute(
         __import__("types").SimpleNamespace(
@@ -364,20 +312,9 @@ def test_save_writes_the_csv_the_qt_tool_wrote_and_says_so(app, qt_tool, tmp_pat
     target = tmp_path / "k2.csv"
     app.write_csv(target)
     assert app.tool.status == f"Saved to k2.csv ({tmp_path})"
-    qt_target = tmp_path / "qt.csv"
-    qt_tool._module.QtWidgets.QFileDialog.getSaveFileName = staticmethod(
-        lambda *a, **k: (str(qt_target), "")
-    )
-    shown = {}
-    qt_tool._module.dialogs.information = lambda parent, title, text: shown.update(
-        info=(title, text)
-    )
-    np.random.seed(7)
-    qt_tool._do_compute()
-    qt_tool._on_save()
-    assert shown["info"][0] == "Save Successful"
+    assert QT_REFERENCE["save_title"] == "Save Successful"
     assert (
-        target.read_text() == qt_target.read_text()
+        target.read_text() == QT_REFERENCE["csv"]
     )  # header, bins and probabilities, byte for byte
 
 

@@ -1,4 +1,4 @@
-"""Keep every test of this plugin away from the user's real settings: HOME, the chisurf and MMFDB folders, QSettings."""
+"""Keep every test of this plugin away from the user's real settings: HOME, the chisurf and MMFDB folders."""
 
 import pytest
 
@@ -18,18 +18,6 @@ def hermetic_user_state(tmp_path_factory, monkeypatch):
         import chisurf.core.settings as settings
 
         monkeypatch.setattr(settings, "chisurf_settings_path", tmp_path / "settings", raising=False)
-    except Exception:  # pragma: no cover
-        pass
-    try:
-        from qtpy import QtCore
-
-        QtCore.QSettings.setDefaultFormat(QtCore.QSettings.IniFormat)
-        QtCore.QSettings.setPath(
-            QtCore.QSettings.IniFormat, QtCore.QSettings.UserScope, str(tmp_path / "qt")
-        )
-        QtCore.QSettings.setPath(
-            QtCore.QSettings.IniFormat, QtCore.QSettings.SystemScope, str(tmp_path / "qt")
-        )
     except Exception:  # pragma: no cover
         pass
     yield

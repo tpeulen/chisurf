@@ -98,6 +98,7 @@ class PchModel:
         self.pending_path = ""
         # -- data settings ------------------------------------------------
         self.filename = ""
+        self.example_folder: Path | None = None  # None: the plugin's demo cache
         self.channels = "0,2"
         self.bin_time_us = 100.0
         self.micro_time_min = 0
@@ -209,6 +210,28 @@ class PchModel:
     def load(self) -> None:
         """Ask the app to show the open-file dialog."""
         self.dialog = "open"
+
+    def load_example(self) -> None:
+        """Load the simulated one-species stream (off the draw thread when the app has a job)."""
+        self.error_text = ""
+        self._run("load_example_now")
+
+    def load_example_now(self) -> None:
+        """Worker: write or reuse the demo stream, load it and set the matching detector and bin time."""
+        from ..demo import DEMO, expected_brightness, make_demo
+
+        try:
+            path = make_demo(self.example_folder)
+        except Exception as exc:
+            self._fail(f"Cannot build the example: {exc}")
+            return
+        if self.load_path(str(path)):
+            self.channels = "0"
+            self.bin_time_us = float(DEMO["bin_time_us"])
+            self.status_text += (
+                f". Simulated brightness: epsilon = {expected_brightness():.1f} counts per molecule "
+                "per bin. Press Compute PCH."
+            )
 
     def compute(self) -> None:
         """Bin the loaded file into the histogram (off the draw thread when the app has a job)."""

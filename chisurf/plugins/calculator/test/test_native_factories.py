@@ -127,16 +127,16 @@ def test_confocal_constraints_occupancy_and_settings():
     app.edited("num_mols")
     assert app.model.invN == pytest.approx(0.5)
     old_D = app.model.D_um2_s
-    app.constraint = "V"
-    app.compute()
+    app.model.constraint = "V"
+    app.model.recompute()
     assert app.model.D_um2_s == pytest.approx(old_D)
     snapshot = app.settings()
     app.model.tau_us = 100
-    app.apply_settings(snapshot)
+    app.model.apply_settings(snapshot)
     assert app.model.tau_us == 70
     app.shape = 0
-    app.shape_size = 2
-    app.apply_shape()
+    app.model.shape_size_nm = 2
+    app.model.apply_shape()
     assert app.model.rh_nm == pytest.approx(1.0)
 
 

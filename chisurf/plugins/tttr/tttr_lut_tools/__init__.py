@@ -13,20 +13,3 @@ if _manifest is not None:
 else:
     name = "TTTR:LUT Tools"
     cli_entrypoint = ""
-
-__all__ = ["TTRLutToolsWidget"]
-
-
-def __getattr__(name):
-    if name == "TTRLutToolsWidget":
-        from .gui.tool import TTRLutToolsWidget
-
-        return TTRLutToolsWidget
-    raise AttributeError(name)
-
-
-if __name__ == "plugin":
-    from .gui.tool import TTRLutToolsWidget
-
-    window = TTRLutToolsWidget()
-    window.show()

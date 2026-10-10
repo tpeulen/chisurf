@@ -10,7 +10,6 @@
     "Help"
   ],
   "entrypoints": {
-    "script": "__init__.py",
     "emtk": "chisurf.plugins.core.about.gui.app:make_app"
   }
 }

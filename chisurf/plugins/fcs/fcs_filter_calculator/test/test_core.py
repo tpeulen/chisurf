@@ -58,16 +58,6 @@ def test_cli_compute_and_info(tmp_path):
     assert out.exists()
 
 
-def test_widget_routes_through_client(qapp, qtbot):
-    from chisurf.plugins.fcs.fcs_filter_calculator.gui import FcsFilterCalculatorWidget
-
-    w = FcsFilterCalculatorWidget()
-    qtbot.addWidget(w)
-    total, species = _synthetic()
-    res = w._compute_filters_rpc(total, species)
-    assert res.n_species == 2
-
-
 def test_synthetic_decay_supports_lifetime_spectra_and_irf():
     from chisurf.plugins.fcs.fcs_filter_calculator.api import synthetic_decay
 

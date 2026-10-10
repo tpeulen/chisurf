@@ -209,6 +209,19 @@ class FpsEditor:
         self._changed(schedule_all=True)
         return True
 
+    def load_payload(self, payload: dict) -> None:
+        """Show an fps.json document that is already in memory (a host handed it over, e.g. chimol's ``load``)."""
+        self.doc.fps_json_payload = dict(payload)
+        self.pos_drafts.clear()
+        self.dist_drafts.clear()
+        self.selected_pos = self.selected_dist = ""
+        self.dirty = False
+        self.av_cache.clear()
+        self.av_signatures.clear()
+        self.av_state.clear()
+        self.say("Loaded the document handed over by the host.")
+        self._changed(schedule_all=True)
+
     def save(self, path: str) -> bool:
         """Write the document (the Qt tool wrote ``sort_keys`` JSON with four spaces)."""
         try:

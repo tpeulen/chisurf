@@ -157,58 +157,32 @@ def test_go_to_clamps_and_clears_the_notice(model):
 
 
 # ------------------------------------------- marks equal the Qt wizard's marks
-@pytest.fixture
-def qt_wizard(tmp_path):
-    pytest.importorskip("qtpy")
-    from qtpy import QtCore, QtWidgets
-
-    QtCore.QSettings.setDefaultFormat(QtCore.QSettings.IniFormat)
-    QtCore.QSettings.setPath(
-        QtCore.QSettings.IniFormat, QtCore.QSettings.UserScope, str(tmp_path / "qt")
-    )
-    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    from chisurf.gui.autoform.sections.wizard_section import WizardWidget
-    from chisurf.plugins.core.boarding.wizard import WelcomeToChiSurfWizard
-
-    wiz = WelcomeToChiSurfWizard()
-    widget = wiz.assistant.auto_form.findChildren(WizardWidget)[0]
-    yield wiz, widget
-    wiz.close()
-    qapp.processEvents()
+QT = json.loads((Path(__file__).parent / "qt_reference.json").read_text())
 
 
-def qt_marks(widget):
-    return [widget.nav_list.item(i).text().startswith("✓") for i in range(widget.nav_list.count())]
-
-
-def test_marks_equal_the_qt_nav_marks_fresh_and_after_create_missing(model, qt_wizard):
-    wiz, widget = qt_wizard
-    assert [model.step_complete(i) for i in range(8)] == qt_marks(widget)
+def test_marks_equal_the_qt_nav_marks_fresh_and_after_create_missing(model):
+    """The retired Qt nav list marked steps complete with a check; the native marks are the same (recorded)."""
+    assert [model.step_complete(i) for i in range(8)] == QT["marks_fresh"]
     # no settings_chisurf.yaml yet means release defaults: the Settings step is complete
-    assert qt_marks(widget)[1] is True
-    wiz.model.create_missing()
+    assert QT["marks_fresh"][1] is True
     model.create_missing()
-    widget.refresh()
-    assert [model.step_complete(i) for i in range(8)] == qt_marks(widget)
+    assert [model.step_complete(i) for i in range(8)] == QT["marks_created"]
 
 
-def test_marks_equal_the_qt_nav_marks_with_a_saved_detector_setup(model, app, qt_wizard):
-    wiz, widget = qt_wizard
+def test_marks_equal_the_qt_nav_marks_with_a_saved_detector_setup(model, app):
     app.detector_editor().toolbar.save("lab")
     model.refresh_completion()
-    widget.refresh()
     assert model.step_complete(5) is True
-    assert [model.step_complete(i) for i in range(8)] == qt_marks(widget)
+    assert [model.step_complete(i) for i in range(8)] == QT["marks_detector"]
 
 
-def test_back_and_next_enabled_states_equal_qt(model, qt_wizard):
-    wiz, widget = qt_wizard
+def test_back_and_next_enabled_states_equal_qt(model):
     for index in range(8):
-        widget.nav_list.setCurrentRow(index)
         model.go_to(index)
-        assert model.enabled("go_back") == widget.back_btn.isEnabled()
-        assert (not model.is_last) == (not widget.next_btn.isHidden())
-        assert model.is_last == (not widget.finish_btn.isHidden())
+        back, next_shown, finish_shown = QT["nav"][str(index)]
+        assert model.enabled("go_back") == back
+        assert (not model.is_last) == next_shown
+        assert model.is_last == finish_shown
 
 
 def test_status_table_rows_equal_the_qt_html_rows(model):

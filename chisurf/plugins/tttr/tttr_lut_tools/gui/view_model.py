@@ -2,9 +2,8 @@
 
 Holds the compute state (loaded micro-times, histogram, current LUT table) and
 the AutoForm-bound parameters, and delegates all math to the pure ``..api``
-layer. The interactive plots live in a custom AutoForm section
-(:mod:`.sections`) that drives this model; parameter fields live declaratively in
-``lut_compute.view.json``. Mirrors
+layer. The native app (:mod:`.app`) draws the plots from this model; parameter
+fields live declaratively in ``lut_compute.view.json``. Mirrors
 :class:`chisurf.plugins.tttr.ptu_alex_creator.gui.view_model.AlexViewModel`.
 """
 

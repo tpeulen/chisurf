@@ -53,8 +53,8 @@ def test_the_runs_table_lists_the_container_of_the_file_on_show(model):
 
 
 def test_decay_from_selected_bursts_writes_the_decay_beside_the_run(model):
-    from chisurf.core.fio.analysis_path import read_tables
     from chisurf.core.datastore import numeric_column
+    from chisurf.core.fio.analysis_path import read_tables
 
     verdict = model.write_decay()
     assert verdict.startswith("Decay of "), verdict
@@ -69,3 +69,39 @@ def test_without_a_container_there_is_no_run_to_take_a_decay_from(tmp_path):
     m = BurstSelectionModel(client=object())
     assert m.run_rows() == []
     assert "No run to take a decay from" in m.write_decay()
+
+
+def test_the_decay_is_registered_with_the_running_session(model, monkeypatch):
+    """With a main window up, the decay becomes a dataset; there is no `chisurf.api` to ask.
+
+    `_register_decay` used to look only for a `chisurf.api` attribute, which
+    nothing sets, so in the real app "registered as a dataset" never happened.
+    """
+    import chisurf
+    import chisurf.core.api as api_module
+
+    loaded = []
+
+    class LocalApi:
+        def __init__(self, mode="local"):
+            assert mode == "local"
+
+        def load_dataset(self, dataset=None, name=""):
+            loaded.append(name)
+            chisurf.imported_datasets.append(dataset)
+            return {"ok": True}
+
+    monkeypatch.setattr(api_module, "ChiSurfAPI", LocalApi)
+    monkeypatch.setattr(chisurf, "cs", object(), raising=False)
+    monkeypatch.delattr(chisurf, "api", raising=False)
+    monkeypatch.setattr(chisurf, "imported_datasets", [])
+    verdict = model.write_decay()
+    assert verdict.endswith("registered as a dataset"), verdict
+    assert loaded == ["m000 sub-ensemble decay"]
+
+
+def test_without_a_session_nothing_is_registered(model, monkeypatch):
+    import chisurf
+
+    monkeypatch.setattr(chisurf, "cs", None, raising=False)
+    assert "registered" not in model.write_decay()

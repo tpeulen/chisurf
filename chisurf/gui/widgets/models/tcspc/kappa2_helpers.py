@@ -550,7 +550,9 @@ def open_experimental_k2_dialog(
     Slow mode: use full k2 distribution as orientation spectrum.
     """
     try:
-        from chisurf.plugins.calculator.kappa2_dist import Kappa2Dist
+        from emtk.qt_host import ControlHost
+
+        from chisurf.plugins.calculator.kappa2_dist.gui.app import WINDOW_BG, make_app
     except Exception:
         dialogs.error(
             parent,
@@ -571,35 +573,15 @@ def open_experimental_k2_dialog(
     dialog.setWindowTitle("Experimental k2 (orientation factor distribution)")
     layout = QtWidgets.QVBoxLayout(dialog)
 
-    # Initialize plugin widget with current scalar k2 as starting value
+    # Start from the current scalar k2; the emtk app is the calculator, Qt only hosts it.
     try:
         k2_start = float(getattr(fret_model.fret_parameters, "kappa2", 0.666))
     except Exception:
         k2_start = 0.666
 
-    plugin_widget = Kappa2Dist(kappa2=k2_start, parent=dialog)
-    layout.addWidget(plugin_widget)
-
-    # Ensure the embedded plugin widget is visible and has a valid default model
-    try:
-        # If neither model radio button is checked, select a sensible default ("cone")
-        rb_cone = getattr(plugin_widget, "radioButton_2", None)
-        rb_diff = getattr(plugin_widget, "radioButton", None)
-        if rb_cone is not None and rb_diff is not None:
-            if not rb_cone.isChecked() and not rb_diff.isChecked():
-                rb_cone.setChecked(True)
-
-        # Compute an initial histogram so the user sees a distribution immediately
-        plugin_widget.onUpdateHist()
-    except Exception:
-        # Best-effort only; the user can still interact with the plugin and press its compute button
-        pass
-
-    # The plugin hides itself in its constructor; make sure it is shown inside our dialog
-    try:
-        plugin_widget.show()
-    except Exception:
-        pass
+    app = make_app(kappa2=k2_start)
+    host = ControlHost(app, background=WINDOW_BG[:3])
+    layout.addWidget(host)
 
     button_box = QtWidgets.QDialogButtonBox(
         QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel
@@ -611,11 +593,13 @@ def open_experimental_k2_dialog(
     if dialog.exec_() != QtWidgets.QDialog.Accepted:
         return
 
-    # Extract distribution and mean from plugin
+    # Extract distribution and mean from the calculator (computed for the inputs as they stand).
     try:
-        k2scale_raw = np.asarray(getattr(plugin_widget, "k2scale", []), dtype=float)
-        k2hist = np.asarray(getattr(plugin_widget, "k2hist", []), dtype=float)
-        k2_mean = float(getattr(plugin_widget, "k2_mean", np.nan))
+        app.compute_now()
+        model = app.tool._model
+        k2scale_raw = np.asarray(model._k2scale, dtype=float)
+        k2hist = np.asarray(model._k2hist, dtype=float)
+        k2_mean = float(model.k2_mean)
     except Exception:
         k2scale_raw = np.array([], dtype=float)
         k2hist = np.array([], dtype=float)

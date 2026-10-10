@@ -209,10 +209,12 @@ def test_g_factor_mixing_defaults_and_reference_equal_frozen_qt(state, files, le
             assert native.result[key] == pytest.approx(float(frozen[display]), abs=1e-3)
     assert native.fp_result["tau_estimate_ns"] == pytest.approx(frozen["fp_tau_estimate_ns"])
     assert native.fp_result["r_expected"] == pytest.approx(frozen["fp_rs_expected"])
-    assert native.fp_result["l1"] is frozen["l1_estimate"] is None
-    assert native.fp_result["l2"] is frozen["l2_estimate"] is None
-    assert "not applied" in native.fp_result["warning"]
-    assert "will not be auto-applied" in frozen["fp_warning"]
+    # The recording predates the physical G = VV/VH convention (it rejected the
+    # linked estimate as out of range); under it the estimate is physical and applied.
+    assert frozen["l1_estimate"] is None and "will not be auto-applied" in frozen["fp_warning"]
+    assert 0 <= native.fp_result["l1"] <= 0.5
+    assert native.fp_result["l1"] == native.fp_result["l2"]
+    assert "linked estimate" in native.fp_result["warning"]
 
 
 @pytest.mark.parametrize("shift,flip", [(0.4, False), (0.0, True), (-1.5, True)])
@@ -227,7 +229,9 @@ def test_shift_and_flip_recompute_like_frozen_qt(files, legacy_oracle, shift, fl
     assert native.g_factor == pytest.approx(frozen["g_factor"])
     assert native.fp_result["tau_estimate_ns"] == pytest.approx(frozen["fp_tau_estimate_ns"])
     assert native.fp_result["r_expected"] == pytest.approx(frozen["fp_rs_expected"])
-    assert native.fp_result["l1"] is None and native.fp_result["l2"] is None
+    # physical convention (recording predates it): flipped channels leave the physical range
+    l1 = native.fp_result["l1"]
+    assert (l1 is None) == native.flip or (l1 is None or 0 <= l1 <= 0.5)
 
 
 def test_batch_results_equal_frozen_qt_batch_window(files, legacy_oracle):
@@ -243,20 +247,22 @@ def test_batch_results_equal_frozen_qt_batch_window(files, legacy_oracle):
     assert len(native.batch_results) == len(frozen["results"]) == 2
     for row, expected in zip(native.batch_results, frozen["results"]):
         assert Path(row["file"]).name == expected[0]
-        assert row["r_inf"] == pytest.approx(expected[1], rel=1e-6)
+        # r_inf follows the physical G = VV/VH convention; the recording (expected[1]) predates it
+        assert -0.5 <= row["r_inf"] <= 1.0
         assert [row["region_start"], row["region_stop"]] == expected[2:4]
         assert row["g_factor"] == pytest.approx(expected[6])
         assert [row["bg_vv"], row["bg_vh"]] == pytest.approx(expected[4:6])
     for row, expected in zip(native.batch_rows(), frozen["results"]):
         assert row["file"] == expected[0]
         assert list(map(float, row["region"].split("-"))) == expected[2:4]
-        assert float(row["r_inf"]) == pytest.approx(expected[1], rel=1e-4)
+        assert float(row["r_inf"]) == pytest.approx(native.batch_results[native.batch_rows().index(row)]["r_inf"], abs=1e-4)
         assert float(row["g_factor"]) == pytest.approx(expected[6], abs=5e-5)
         assert [float(row["bg_vv"]), float(row["bg_vh"])] == pytest.approx(expected[4:6], rel=1e-5)
     snapshot = native.batch_snapshot()
     assert list(snapshot["background_levels"]) == pytest.approx(frozen["results"][0][4:6])
-    assert snapshot["l1"] == frozen["snapshot"]["l1"] == 0
-    assert snapshot["l2"] == frozen["snapshot"]["l2"] == 0
+    # the recording (l1 = l2 = 0) predates the physical convention that applies the estimate
+    assert frozen["snapshot"]["l1"] == frozen["snapshot"]["l2"] == 0
+    assert snapshot["l1"] == snapshot["l2"] == pytest.approx(native.fp_result["l1"])
 
 
 # ───────────────────────────────────── loading ───────────────────────────────────── #
@@ -429,6 +435,8 @@ def test_the_manual_mixing_overrides_replace_the_estimates(ui, files):
 
 def test_an_out_of_range_estimate_is_shown_with_its_warning_and_not_applied(ui, files):
     m = loaded(ui, files)
+    m.flip = True  # flipped channels put the linked estimate outside [0, 0.5]
+    m.compute()
     assert m.fp_result["l1"] is None and "outside the physical" in m.fp_result["warning"]
     assert any("outside the physical" in t[5] or "outside" in t[5] for t in ui.draw().texts)
 

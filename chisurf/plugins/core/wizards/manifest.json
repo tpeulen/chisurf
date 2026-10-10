@@ -16,7 +16,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.core.wizards.gui.tool:WizardHub",
     "emtk": "chisurf.plugins.core.wizards.gui.app:make_app"
   },
   "rpc_methods": [],

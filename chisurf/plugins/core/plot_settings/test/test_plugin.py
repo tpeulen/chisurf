@@ -1,90 +1,37 @@
-"""Tests for the plot settings plugin."""
+"""Tests for the plot settings plugin (manifest and the settings the model reads and writes)."""
 
 from __future__ import annotations
 
-import os
+from pathlib import Path
 
-import pytest
+import chisurf.core.settings as css
+from chisurf.core.plugin import load_manifest
+from chisurf.plugins.core.plot_settings.gui.model import PlotSettingsModel
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-
-pytestmark = pytest.mark.gui
-
-pytest.importorskip("qtpy")
-
-from qtpy import QtWidgets  # noqa: E402
+MANIFEST = Path(__file__).parent.parent / "manifest.json"
 
 
-@pytest.fixture(scope="module")
-def qapp():
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    yield app
+def test_manifest_loads_with_only_the_native_entrypoint():
+    m = load_manifest(MANIFEST)
+    assert m is not None and m.id == "plot_settings"
+    assert m.entrypoints.emtk and not m.entrypoints.gui
 
 
-def test_manifest_loads():
-    from pathlib import Path
-
-    from chisurf.core.plugin import load_manifest
-
-    m = load_manifest(Path(__file__).parent.parent / "manifest.json")
-    assert m is not None
-    assert m.id == "plot_settings"
-    assert "gui" in m.entrypoints.__dict__ or m.entrypoints.gui
+def test_manifest_menu_hidden():
+    """The plugin is menu-hidden: it is opened from Settings, not as a standalone tool."""
+    assert load_manifest(MANIFEST).menu_hidden is True
 
 
-def test_widget_constructs(qapp):
-    from chisurf.plugins.core.plot_settings.gui.tool import PlotSettingsWidget
-
-    w = PlotSettingsWidget()
-    assert w.windowTitle() == "Plot Settings"
-    assert w.backend_combo.count() >= 1
-
-
-def test_backend_combo_lists_all_backends(qapp):
-    from chisurf.gui.chiplot import available_backends
-    from chisurf.plugins.core.plot_settings.gui.tool import PlotSettingsWidget
-
-    w = PlotSettingsWidget()
-    items = {w.backend_combo.itemText(i) for i in range(w.backend_combo.count())}
-    assert items == set(available_backends())
+def test_the_model_collects_the_color_and_values_it_was_given():
+    model = PlotSettingsModel(load=False)
+    model.line_width = 3.0
+    model.enable_grid = False
+    settings = model.collect()
+    assert settings["line_width"] == 3.0 and settings["enable_grid"] is False
 
 
-def test_color_buttons_exist(qapp):
-    from chisurf.plugins.core.plot_settings.gui.tool import PlotSettingsWidget
-
-    w = PlotSettingsWidget()
-    for key in ("data", "model", "irf", "residuals", "auto_corr", "region_selector"):
-        assert key in w._color_buttons
-        btn = w._color_buttons[key]
-        assert btn.color.startswith("#")
-
-
-def test_collect_settings_round_trip(qapp):
-    from chisurf.plugins.core.plot_settings.gui.tool import PlotSettingsWidget
-
-    w = PlotSettingsWidget()
-    w._color_buttons["data"].color = "#ff0000"
-    w.line_width.setValue(3.0)
-    w.enable_grid.setChecked(False)
-    settings = w._collect_settings()
-    assert settings["colors"]["data"] == "#ff0000"
-    assert settings["line_width"] == 3.0
-    assert settings["enable_grid"] is False
-
-
-def test_loading_does_not_overwrite_what_it_is_reading(qapp):
-    """Every control comes back with the value the settings held.
-
-    Each ``setChecked``/``setValue`` emits, and the handler applied the *whole*
-    dialog to the settings — the same dict the loader was reading, not a copy.
-    So the first control to emit wrote every not-yet-loaded control's default
-    over the real value: the panel opened with everything unchecked and the
-    sliders at zero, and pressing Save then persisted that. This is how a
-    settings file ends up with a black foreground on a black background.
-    """
-    import chisurf.core.settings as css
-    from chisurf.plugins.core.plot_settings.gui.tool import PlotSettingsWidget
-
+def test_loading_does_not_overwrite_what_it_is_reading():
+    """Every control comes back with the value the settings held, not a default."""
     known = {
         "backend": "emtk",
         "line_width": 2.0,
@@ -119,7 +66,7 @@ def test_loading_does_not_overwrite_what_it_is_reading(qapp):
     previous = css.cs_settings.get("gui", {}).get("plot")
     css.cs_settings.setdefault("gui", {})["plot"] = dict(known)
     try:
-        got = PlotSettingsWidget()._collect_settings()
+        got = PlotSettingsModel().collect()
         for key, value in known.items():
             if isinstance(value, dict):
                 for sub, expected in value.items():
@@ -131,16 +78,9 @@ def test_loading_does_not_overwrite_what_it_is_reading(qapp):
             css.cs_settings["gui"]["plot"] = previous
 
 
-def test_every_plot_setting_the_dialog_writes_is_reachable(qapp):
-    """The dialog covers the settings the plots read.
-
-    A setting the plots honour but the dialog cannot reach is one a user can
-    only change by editing YAML — which is how the grid opacity, the per-panel
-    grids and the fit-range selector sat unreachable.
-    """
-    from chisurf.plugins.core.plot_settings.gui.tool import PlotSettingsWidget
-
-    written = set(PlotSettingsWidget()._collect_settings())
+def test_every_plot_setting_the_editor_writes_is_reachable():
+    """A setting the plots honour but the editor cannot reach can only be changed in YAML."""
+    written = set(PlotSettingsModel(load=False).collect())
     for key in (
         "backend",
         "font_size",
@@ -158,80 +98,10 @@ def test_every_plot_setting_the_dialog_writes_is_reachable(qapp):
         assert key in written, key
 
 
-def test_apply_settings_updates_cs_settings(qapp):
-    import chisurf.core.settings as css
-    from chisurf.plugins.core.plot_settings.gui.tool import PlotSettingsWidget
-
-    w = PlotSettingsWidget()
-    w.backend_combo.setCurrentText("emtk")
-    w._apply_settings()
-    assert css.cs_settings["gui"]["plot"]["backend"] == "emtk"
-
-
-def test_a_stale_pyqtgraph_setting_is_shown_as_the_one_backend(qapp):
-    """A settings file from before the backend was removed must not offer a choice that fails."""
-    import chisurf.core.settings as css
-    from chisurf.plugins.core.plot_settings.gui.tool import PlotSettingsWidget
-
+def test_apply_settings_updates_cs_settings():
     previous = css.cs_settings.get("gui", {}).get("plot")
-    css.cs_settings.setdefault("gui", {})["plot"] = {"backend": "pyqtgraph"}
-    try:
-        assert PlotSettingsWidget()._collect_settings()["backend"] == "emtk"
-    finally:
-        if previous is not None:
-            css.cs_settings["gui"]["plot"] = previous
-
-
-def test_grab_non_null(qapp):
-    from chisurf.plugins.core.plot_settings.gui.tool import PlotSettingsWidget
-
-    w = PlotSettingsWidget()
-    pm = w.grab()
-    assert not pm.isNull()
-    assert pm.width() > 0
-
-
-def test_plots_panel_in_settings_navigation(qapp):
-    """The Plots panel is registered in the Settings navigation host."""
-    from chisurf.plugins.core.setup.gui.tool import SETTINGS_PANELS
-
-    names = [p["name"] for p in SETTINGS_PANELS]
-    assert "Plots" in names
-    plots = [p for p in SETTINGS_PANELS if p["name"] == "Plots"][0]
-    assert plots["class_path"] == "chisurf.plugins.core.plot_settings.gui.tool"
-    assert plots["class_name"] == "PlotSettingsWidget"
-
-
-def test_manifest_menu_hidden(qapp):
-    """The plugin is menu-hidden (opened via Settings, not as standalone)."""
-    from pathlib import Path
-
-    from chisurf.core.plugin import load_manifest
-
-    m = load_manifest(Path(__file__).parent.parent / "manifest.json")
-    assert m.menu_hidden is True
-
-
-def test_settings_tool_loads_plots_panel(qapp):
-    """Selecting the Plots row in Settings shows PlotSettingsWidget."""
-    from chisurf.plugins.core.setup.gui.tool import UnifiedSettingsTool
-
-    tool = UnifiedSettingsTool()
-    tool.show()
-    qapp.processEvents()
-    # Find the Plots row
-    row = None
-    for i in range(tool.nav_list.count()):
-        if "Plots" in tool.nav_list.item(i).text():
-            row = i
-            break
-    assert row is not None, "Plots row not found in settings nav"
-    tool.nav_list.setCurrentRow(row)
-    qapp.processEvents()
-    qapp.processEvents()
-    from chisurf.plugins.core.plot_settings.gui.tool import PlotSettingsWidget
-
-    psw = tool.stacked_widget.findChild(PlotSettingsWidget)
-    assert psw is not None, "PlotSettingsWidget did not load"
-    assert psw.isVisible()
-    tool.close()
+    model = PlotSettingsModel()
+    model.apply()
+    assert css.cs_settings["gui"]["plot"]["backend"] == "emtk"
+    if previous is not None:
+        css.cs_settings["gui"]["plot"] = previous

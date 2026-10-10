@@ -1,9 +1,8 @@
-"""The window renders, the panels follow the selection, and the jump resolves.
+"""The panels follow the selection, and the tool jump resolves.
 
 Construction only proves it did not crash, so these check the wiring that a
-screenshot cannot: that clicking a row moves every dependent view, that the graph
-is *not* rebuilt when only the selection changed (rebuilding reset the zoom on
-every click), and that the tool jump resolves to a real, importable class.
+screenshot cannot: that selecting an object moves every dependent view of the view
+model, and that the tool jump resolves to a real, importable factory.
 """
 
 from __future__ import annotations
@@ -16,7 +15,6 @@ import pytest
 
 from chisurf.core.fio.pto import Measurement
 
-pytest.importorskip("qtpy")
 
 DATA = Path(__file__).resolve().parents[4].parent / "test" / "data"
 PTU = DATA / "clsm" / "Leica_SP5.ptu"
@@ -149,92 +147,15 @@ def test_lineage_html_keeps_its_indentation(model):
     assert model.lineage_html().startswith("<pre")
 
 
-# -- widget-level ------------------------------------------------------------
+# -- the tool jump -----------------------------------------------------------
 
 
-@pytest.fixture
-def tool(qapp, container: Path):
-    from chisurf.plugins.core.pto_inspector.gui.tool import PtoInspectorTool
-
-    widget = PtoInspectorTool()
-    widget.resize(1400, 900)
-    widget.model.set_filename(str(container))
-    qapp.processEvents()
-    yield widget
-    widget.model.close()
-    widget.deleteLater()
-
-
-def test_the_window_builds_every_declared_section(tool):
-    """A section the renderer cannot resolve is logged and skipped, not raised."""
-    from chisurf.gui.autoform.sections.node_graph_section import NodeGraphSectionWidget
-    from chisurf.gui.autoform.sections.store_table_section import StoreTableSectionWidget
-
-    assert tool.auto_form.findChildren(NodeGraphSectionWidget)
-    assert tool.auto_form.findChildren(StoreTableSectionWidget)
-
-
-def test_the_graph_is_not_rebuilt_when_only_the_selection_changed(tool, qapp):
-    """Rebuilding reset the zoom and recentred the view on every single click."""
-    from chisurf.gui.autoform.sections.node_graph_section import NodeGraphSectionWidget
-
-    section = tool.auto_form.findChildren(NodeGraphSectionWidget)[0]
-    before = section._last
-    bursts = next(i for i in tool.model.inspection.infos() if i.name == "bursts")
-    tool.model.select_uid(bursts.uid)
-    qapp.processEvents()
-    assert section._last is before, "the structure did not change, so nothing should reload"
-
-
-def test_the_graph_shows_one_node_per_object(tool):
-    from chisurf.gui.autoform.sections.node_graph_section import NodeGraphSectionWidget
-
-    section = tool.auto_form.findChildren(NodeGraphSectionWidget)[0]
-    nodes = section.viewer.document.nodes
-    assert len(nodes) == len(tool.model.inspection.infos())
-
-
-def test_the_table_headers_carry_the_stored_units(qapp, container: Path):
-    """The store states the unit; a header that drops it invites a misread."""
-    from chisurf.gui.widgets.chitable import ChiTableWidget
-
-    with Measurement.open(container, writable=True) as m:
-        m.put_table(
-            "timed",
-            {"duration": np.linspace(0.5, 5.0, 8)},
-            artifact_kind="analysis_result",
-            operation_type="analysis",
-            row_grain="burst",
-            units={"duration": "milliseconds"},
-        )
-    from chisurf.plugins.core.pto_inspector.core import PtoInspection
-
-    with PtoInspection(container) as insp:
-        timed = next(i for i in insp.infos() if i.name == "timed")
-        table = ChiTableWidget()
-        table.set_store(insp.store(timed.uid))
-        labels = [spec.label for spec in table.table_model.source.column_specs()]
-    assert "duration [ms]" in labels
-
-
-def test_the_open_tool_button_tracks_whether_a_tool_exists(tool, qapp):
-    bursts = next(i for i in tool.model.inspection.infos() if i.name == "bursts")
-    tool.model.select_uid(bursts.uid)
-    qapp.processEvents()
-    assert tool._a_tool.isEnabled()
-
-    decay = next(i for i in tool.model.inspection.infos() if i.name == "decay")
-    tool.model.select_uid(decay.uid)
-    qapp.processEvents()
-    assert not tool._a_tool.isEnabled()
-
-
-def test_the_jump_resolves_to_an_importable_class(tool):
+def test_the_jump_resolves_to_an_importable_class(model):
     """The button must open something; a bad entry point is invisible otherwise."""
     import importlib
 
-    bursts = next(i for i in tool.model.inspection.infos() if i.name == "bursts")
-    tool.model.select_uid(bursts.uid)
-    manifest = tool.model.tool_manifests()[0]
-    module_path, attr = manifest.entrypoints.gui.rsplit(":", 1)
+    bursts = next(i for i in model.inspection.infos() if i.name == "bursts")
+    model.select_uid(bursts.uid)
+    manifest = model.tool_manifests()[0]
+    module_path, attr = manifest.entrypoints.emtk.rsplit(":", 1)
     assert getattr(importlib.import_module(module_path), attr) is not None

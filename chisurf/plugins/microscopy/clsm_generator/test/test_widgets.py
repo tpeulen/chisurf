@@ -85,13 +85,3 @@ def test_generate_and_save_roundtrip(tmp_path):
     with np.load(out) as data:
         assert "macro_times" in data
         assert len(data["macro_times"]) > 0
-
-
-def test_tool_creation(qapp, qtbot):
-    from chisurf.plugins.microscopy.clsm_generator.gui.tool import ClsmGeneratorTool
-
-    widget = ClsmGeneratorTool()
-    qtbot.addWidget(widget)
-    assert widget.windowTitle() == "CLSM Generator"
-    assert hasattr(widget, "auto_form")
-    assert hasattr(widget, "model")

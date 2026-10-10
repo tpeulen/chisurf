@@ -41,7 +41,7 @@ def pump(app, seconds=60.0):
 
 # 1. the model does the science without any GUI
 def test_model_produces_the_reference_result():
-    # Reference numbers: the legacy Qt tool (PCHApp) on the same file with
+    # Reference numbers: the retired Qt tool (PCHApp) on the same file with
     # channels 0,8, bin time 50 us, starting values eps=2 and N=3 per species,
     # region 0-24; taken from its fit results and status line on 2026-09-30.
     model = make_model()
@@ -87,39 +87,6 @@ def test_model_produces_the_reference_result():
     assert float(summary[2]) == pytest.approx(1018.399056377842, rel=1e-4)
     assert float(summary[6]) == pytest.approx(1018.399056377842 / 21, rel=1e-4)
     assert int(summary[9]) == 21
-
-
-def test_model_matches_the_qt_tool(qapp):
-    """The same file through the legacy Qt tool gives the numbers the model gives."""
-    from chisurf.plugins.pch.gui.tool import PCHApp
-
-    class Task:
-        def set_text(self, *args):
-            pass
-
-    widget = PCHApp()
-    try:
-        widget._load_path(str(DATA))
-        qt_result = widget._compute(
-            Task(),
-            filename=str(DATA),
-            channels=[0, 8],
-            bin_time_us=50.0,
-            micro_time_min=0,
-            micro_time_max=65535,
-        )
-        widget._computed(qt_result)
-        widget._on_fit()
-        model = make_model()
-        model.load_path(str(DATA))
-        model.compute_now()
-        model.fit_now()
-        assert model.result.hist_counts == qt_result.hist_counts
-        assert model.fit_result.epsilons == pytest.approx(widget._fit_result.epsilons)
-        assert model.fit_result.avg_Ns == pytest.approx(widget._fit_result.avg_Ns)
-        assert model.results_text == widget.results_edit.toPlainText()
-    finally:
-        widget.close()
 
 
 # 2. the model's actions
@@ -313,7 +280,7 @@ def test_every_control_has_a_tooltip():
     assert inv["controls_without_tooltip"] == []
     labelled = {row["label"] for row in inv["interactive"]}
     assert labelled == {
-        action_caption("help"), action_caption("guide"), "Load TTTR", "Compute PCH", "Fit Model", "Save Results",
+        action_caption("help"), action_caption("guide"), action_caption("example"), "Load TTTR", "Compute PCH", "Fit Model", "Save Results",
         "filename", "channels", "bin_time_us", "micro_time_min", "micro_time_max",
         "n_components",
     }
@@ -359,11 +326,14 @@ def test_settings_round_trip():
 
 
 # guide: every step points at a control that is on screen, and awaits are released by the app
-def test_guide_targets_are_drawn_and_awaits_release():
+def test_guide_targets_are_drawn_and_awaits_release(tmp_path):
+    from emtk.testing import Driver
+
     from chisurf.plugins.pch.gui.app import make_app
 
     app = make_app()
     model = app.model
+    model.example_folder = tmp_path
     model.channels, model.bin_time_us = "0,8", 50.0
     for _ in range(3):
         app.draw(RecordingPainter(), 0, 0, 1200, 800)
@@ -375,20 +345,24 @@ def test_guide_targets_are_drawn_and_awaits_release():
 
     app.tour.start(1)
     assert app.tour.awaiting
-    app.draw(RecordingPainter(), 0, 0, 1200, 800)
-    assert app.tour.awaiting  # opening the dialog is not the outcome
+    Driver(app, (1200, 800)).click("load_example")  # the real button, not the model call
+    pump(app)
+    assert model.filename.endswith("pch_demo.ptu") and not app.tour.awaiting
+
+    app.tour.start(2)  # your own file: informational, the dialog is not an outcome
+    assert not app.tour.awaiting
     app.on_paths_dropped([str(DATA)])
     pump(app)
-    assert not app.tour.awaiting
+    assert model.filename == str(DATA)
 
-    app.tour.start(4)
+    app.tour.start(5)
     assert app.tour.awaiting
     model.compute()
     pump(app)
     assert not app.tour.awaiting
     assert not [k for k in keys if k and not app.tour.get_target_rect(k)]
 
-    app.tour.start(7)
+    app.tour.start(8)
     assert app.tour.awaiting
     model.fit()
     pump(app)

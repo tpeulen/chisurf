@@ -67,24 +67,14 @@ def table(app):
 # ── 1. results equal the Qt tool's ──────────────────────────────────────
 
 
+QT = json.loads((Path(__file__).parent / "qt_reference.json").read_text(encoding="utf-8"))
+
+
 @needs_data
-def test_pack_and_unpack_equal_the_qt_tool(qapp, tmp_path):
-    """Same input in two folders: the Qt drop tool and the native app write and recover the same."""
-    from chisurf.plugins.core.tttr_to_pto.gui.tool import TttrToPtoTool
-
-    qt_dir, native_dir = tmp_path / "qt", tmp_path / "native"
-    originals = make_folder(qt_dir)
-    make_folder(native_dir)
-
-    tool = TttrToPtoTool()
-    try:
-        tool._on_dropped([str(qt_dir / "m001.spc"), str(qt_dir / "m000.spc")])
-        qt_pack = tool._list.item(0).text()
-        tool._on_dropped([str(qt_dir / "m000.pto")])
-        qt_unpack = tool._list.item(1).text()
-        qt_bytes = {p.name: p.read_bytes() for p in qt_dir.iterdir()}
-    finally:
-        tool.close()
+def test_pack_and_unpack_equal_the_qt_tool(tmp_path):
+    """The native app writes and recovers what the retired Qt drop tool did (rows and files recorded)."""
+    native_dir = tmp_path / "native"
+    originals = make_folder(native_dir)
 
     app = make_app()
     try:
@@ -96,44 +86,37 @@ def test_pack_and_unpack_equal_the_qt_tool(qapp, tmp_path):
     finally:
         app.close()
 
-    # the rows say what the Qt list says
-    assert qt_pack == f"{pack['files']} → {pack['result']}" == "m000.spc, m001.spc → m000.pto"
-    assert qt_unpack == f"m000.pto → {unpack['result']}"
+    # the rows say what the Qt list said
+    assert QT["pack_row"] == f"{pack['files']} → {pack['result']}" == "m000.spc, m001.spc → m000.pto"
+    assert QT["unpack_row"] == f"m000.pto → {unpack['result']}"
     assert (pack["status"], pack["action"], unpack["status"], unpack["action"]) == (
         "Verified",
         "Pack",
         "Verified",
         "Unpack",
     )
-    # the same files exist, byte for byte, and equal the originals; the sidecar rode along
+    # the same files exist as the Qt tool left, byte for byte equal to the originals; the sidecar rode along
     native_bytes = {p.name: p.read_bytes() for p in native_dir.iterdir()}
-    assert sorted(native_bytes) == sorted(qt_bytes)
+    assert sorted(native_bytes) == QT["names"]
     for name, payload in originals.items():
-        assert native_bytes[name] == payload and qt_bytes[name] == payload
-    for folder in (qt_dir, native_dir):
-        with Measurement.open(folder / "m000.pto", writable=False) as m:
-            assert m.verify() == []
+        assert native_bytes[name] == payload
+    with Measurement.open(native_dir / "m000.pto", writable=False) as m:
+        assert m.verify() == []
 
 
 @needs_data
-def test_an_unreadable_container_fails_with_the_text_the_qt_tool_shows(qapp, tmp_path):
-    from chisurf.plugins.core.tttr_to_pto.gui.tool import TttrToPtoTool
-
+def test_an_unreadable_container_fails_with_the_text_the_qt_tool_shows(tmp_path):
     bad = tmp_path / "bad.pto"
     bad.write_bytes(b"not a PTO")
-    tool = TttrToPtoTool()
-    try:
-        tool._on_dropped([str(bad)])
-        qt_text = tool._list.item(0).text()
-    finally:
-        tool.close()
     app = make_app()
     try:
         assert app.add_paths([bad])
         finish(app)
         record = app.model.records[0]
         assert (record["status"], record["action"]) == ("Failed", "Unpack")
-        assert qt_text == f"bad.pto: could not unpack ({record['result']})"
+        assert QT["bad_row"].format(result=record["result"]) == (
+            f"bad.pto: could not unpack ({record['result']})"
+        )
         assert "not an EBML file" in record["result"]
         assert bad.read_bytes() == b"not a PTO"
     finally:
@@ -141,16 +124,12 @@ def test_an_unreadable_container_fails_with_the_text_the_qt_tool_shows(qapp, tmp
 
 
 @needs_data
-def test_the_accept_rule_equals_the_qt_filter(qapp, tmp_path):
-    from chisurf.plugins.core.tttr_to_pto.gui.tool import TttrToPtoTool
-
+def test_the_accept_rule_equals_the_qt_filter(tmp_path):
     make_folder(tmp_path)
     (tmp_path / "x.pto").write_bytes(b"x")
     (tmp_path / "notes.txt").write_text("hi")
     for name in ("m000.spc", "m000.set", "x.pto", "notes.txt"):
-        assert TttrToPtoModel.accepts(tmp_path / name) == TttrToPtoTool._accepts(
-            str(tmp_path / name)
-        ), name
+        assert TttrToPtoModel.accepts(tmp_path / name) == QT["accepts"][name], name
     assert not TttrToPtoModel.accepts(
         tmp_path / "missing.ptu"
     )  # the Qt drop only offers existing paths

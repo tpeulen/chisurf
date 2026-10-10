@@ -63,26 +63,3 @@ def test_compute_requires_files_and_channels():
     assert m.can_compute() == "Please load TTTR files first."
     m.add_files(["/does/not/matter.spc"])
     assert "detectors" in (m.can_compute() or "")
-
-
-def test_widget_creation(qapp, qtbot):
-    """The AutoForm tool constructs and registers its custom sections."""
-    pytest.importorskip("tttrlib")
-    from qtpy import QtWidgets
-
-    from chisurf.gui.autoform import AutoForm
-    from chisurf.gui.autoform.sections.registry import get_section_factory
-    from chisurf.plugins.burst.burst_irf_bg.gui.tool import BurstIrfBackgroundTool
-
-    widget = BurstIrfBackgroundTool()
-    qtbot.addWidget(widget)
-    assert isinstance(widget, QtWidgets.QWidget)
-    assert "IRF" in widget.windowTitle()
-    assert isinstance(widget.auto_form, AutoForm)
-    for key in ("irf_bg_channels", "irf_bg_run", "irf_bg_results", "path_list"):
-        assert get_section_factory(key) is not None
-
-    widget.show()
-    widget.resize(800, 600)
-    qapp.processEvents()
-    assert widget.host.grab().width() > 0

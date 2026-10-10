@@ -124,15 +124,15 @@ def test_hmm_follows_the_bin_window_of_the_browser(qapp, host, work):
 
 
 def test_tw_opens_the_time_window_tool_holding_the_file_and_the_bin_window(qapp, host, work):
-    from chisurf.plugins.tttr.tttr_time_windows.gui.tool import TTTRTimeWindowTool
+    from emtk.qt_host import host_class
 
     window = host.default_request_handler()(
         "open_time_window", {"files": [str(work / "m001.spc")], "window_ms": 5.0}
     )
-    assert type(window) is TTTRTimeWindowTool
+    assert isinstance(window, host_class())
     assert window.windowTitle() == "Time Window BID Generation: m001.spc"
-    assert [str(p) for p in window._file_paths] == [str(work / "m001.spc")]
-    assert window.time_window_ms == 5.0
+    assert [str(p) for p in window.controller._file_paths] == [str(work / "m001.spc")]
+    assert window.controller.time_window_ms == 5.0
     assert window.isVisible() and window in host.WINDOWS
 
 
@@ -196,7 +196,7 @@ def test_every_request_adds_its_own_window(qapp, host, work):
     first = handle("open_time_window", {"files": [str(work / "m000.spc")], "window_ms": 10.0})
     second = handle("open_time_window", {"files": [str(work / "m001.spc")], "window_ms": 20.0})
     assert first is not second and host.WINDOWS == [first, second]
-    assert second.time_window_ms == 20.0 and first.time_window_ms == 10.0
+    assert second.controller.time_window_ms == 20.0 and first.controller.time_window_ms == 10.0
 
 
 # ---- failures raise: the app shows them ------------------------------------------------------------------
@@ -250,7 +250,7 @@ def test_make_app_with_a_qt_application_wires_the_default_handler_and_enables_th
 
 
 def test_pressing_hmm_and_tw_in_the_app_opens_the_windows(qapp, host, work, monkeypatch):
-    from chisurf.plugins.tttr.tttr_time_windows.gui.tool import TTTRTimeWindowTool
+    from emtk.qt_host import host_class
 
     app = make_hosted_app(qapp)
     try:
@@ -262,11 +262,11 @@ def test_pressing_hmm_and_tw_in_the_app_opens_the_windows(qapp, host, work, monk
                 frames(app, n=1)
             frames(app, n=2)
         kinds = [type(w) for w in host.WINDOWS]
-        assert len(kinds) == 2 and kinds[1] is TTTRTimeWindowTool
+        assert len(kinds) == 2 and kinds[1] is host_class()
         assert type(host.WINDOWS[0].app).__name__ == "IntensityTraceApp"
         host.WINDOWS[0].app.wait()
         assert host.WINDOWS[0].app.model.path == str(work / "m001.spc")
-        assert [str(p) for p in host.WINDOWS[1]._file_paths] == [str(work / "m001.spc")]
+        assert [str(p) for p in host.WINDOWS[1].controller._file_paths] == [str(work / "m001.spc")]
         assert app.model.error_text == ""
         assert app.model.status_text.startswith("Sent m001.spc")
     finally:

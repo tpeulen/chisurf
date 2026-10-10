@@ -16,7 +16,6 @@
     "window": {"enabled": true, "settings_key": null}
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.microscopy.img_tracking.gui.tool:ImgTrackingTool",
     "emtk": "chisurf.plugins.microscopy.img_tracking.gui.app:make_app",
     "cli": "img-tracking=chisurf.plugins.microscopy.img_tracking.cli:cli",
     "services": "chisurf.plugins.microscopy.img_tracking.backend.services:register_services"

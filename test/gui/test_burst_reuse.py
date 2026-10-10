@@ -43,106 +43,86 @@ def _runs(monkeypatch, module_or_obj, name="run", returns=None):
     return calls
 
 
-class _RunningTask:
-    """A task that is still going, as ``ChiSurfProgress.run`` returns one."""
+def _count_submits(monkeypatch, controller):
+    """Replace the controller's worker submission with a counter (what is pinned is the decision to compute)."""
+    calls: list = []
 
-    def __init__(self) -> None:
-        self.cancelled = False
+    def submit(fn, *args, **kwargs):
+        calls.append(1)
+        return None
 
-    def cancel(self) -> None:
-        self.cancelled = True
-
-    def is_running(self) -> bool:
-        return not self.cancelled
+    monkeypatch.setattr(controller._executor, "submit", submit)
+    return calls
 
 
-def _drain_timers(ms: int = 20) -> None:
-    """Let deferred (singleShot) work run — that is how arrival starts a run."""
-    from qtpy import QtCore, QtWidgets
-
-    app = QtWidgets.QApplication.instance()
-    deadline = QtCore.QTime.currentTime().addMSecs(ms)
-    while QtCore.QTime.currentTime() < deadline:
-        app.processEvents(QtCore.QEventLoop.AllEvents, 5)
+def _came_back(controller, fingerprint):
+    """As if the run had returned a result: not running, a result in memory, remembered by the cache."""
+    controller.model.is_running = False
+    controller.model.is_locked = False
+    controller._future = None
+    controller.model.df = object()
+    controller._cache.remember(fingerprint)
 
 
 # ── BVA ──────────────────────────────────────────────────────────────
 
 
 @pytest.fixture
-def bva(qapp, burst_folder):
-    from chisurf.plugins.burst.burst_bva.gui.tool import BVATool
+def bva(burst_folder):
+    from chisurf.plugins.burst.burst_bva.gui.app import create_app
 
-    tool = BVATool(embedded=True)
-    tool.data_folder = burst_folder
-    tool.analysis_folder = burst_folder
-    yield tool
-    tool.close()
+    app = create_app()
+    app.model.auto_update = False
+    app.model.set_folder(burst_folder)
+    yield app
+    app.close()
 
 
 def test_bva_skips_a_run_that_would_reproduce_its_own_plot(bva, monkeypatch):
-    import pandas as pd
+    ctl = bva.controller
+    started = _count_submits(monkeypatch, ctl)
 
-    from chisurf.gui.progress import ChiSurfProgress
-
-    started = _runs(monkeypatch, ChiSurfProgress, "run")
-
-    bva._start_analysis(write_output=False)
+    ctl.run(write_output=False)
     assert len(started) == 1, "the first run must compute"
+    _came_back(ctl, ctl._fingerprint)
 
-    # Pretend that run finished and produced a plot.
-    bva._df = pd.DataFrame({"Proximity Ratio Std": [0.1]})
-    bva._result_cache.remember(bva._running_fingerprint)
-
-    bva._start_analysis(write_output=False)
+    ctl.run(write_output=False)
     assert len(started) == 1, "an identical request must not recompute"
 
-    bva._start_analysis(write_output=False, force=True)
+    ctl.run(write_output=False, force=True)
     assert len(started) == 2, "force must recompute"
 
 
 def test_bva_recomputes_when_a_setting_changes(bva, monkeypatch):
-    import pandas as pd
+    ctl = bva.controller
+    started = _count_submits(monkeypatch, ctl)
+    ctl.run(write_output=False)
+    _came_back(ctl, ctl._fingerprint)
 
-    from chisurf.gui.progress import ChiSurfProgress
-
-    started = _runs(monkeypatch, ChiSurfProgress, "run")
-    bva._start_analysis(write_output=False)
-    bva._df = pd.DataFrame({"Proximity Ratio Std": [0.1]})
-    bva._result_cache.remember(bva._running_fingerprint)
-
-    bva.le_photons_per_slice.setText(str(int(bva.le_photons_per_slice.text() or 10) + 5))
-    bva._start_analysis(write_output=False)
+    bva.model.photons_per_slice += 5
+    ctl.run(write_output=False)
     assert len(started) == 2, "a changed setting must recompute"
 
 
 def test_bva_recomputes_when_a_burst_file_changes(bva, burst_folder, monkeypatch):
-    import pandas as pd
-
-    from chisurf.gui.progress import ChiSurfProgress
-
-    started = _runs(monkeypatch, ChiSurfProgress, "run")
-    bva._start_analysis(write_output=False)
-    bva._df = pd.DataFrame({"Proximity Ratio Std": [0.1]})
-    bva._result_cache.remember(bva._running_fingerprint)
+    ctl = bva.controller
+    started = _count_submits(monkeypatch, ctl)
+    ctl.run(write_output=False)
+    _came_back(ctl, ctl._fingerprint)
 
     (burst_folder / "bi4_bur" / "m002.bur").write_text("First File\n\nm002.spc\n")
-    bva._start_analysis(write_output=False)
+    ctl.run(write_output=False)
     assert len(started) == 2, "another burst file is different input"
 
 
 def test_bva_writes_when_the_previous_run_only_previewed(bva, monkeypatch):
     """A preview satisfies a preview, never a Run: the BV4 files are not there."""
-    import pandas as pd
+    ctl = bva.controller
+    started = _count_submits(monkeypatch, ctl)
+    ctl.run(write_output=False)
+    _came_back(ctl, ctl._fingerprint)
 
-    from chisurf.gui.progress import ChiSurfProgress
-
-    started = _runs(monkeypatch, ChiSurfProgress, "run")
-    bva._start_analysis(write_output=False)
-    bva._df = pd.DataFrame({"Proximity Ratio Std": [0.1]})
-    bva._result_cache.remember(bva._running_fingerprint)
-
-    bva._start_analysis(write_output=True)
+    ctl.run(write_output=True)
     assert len(started) == 2, "the outputs still have to be written"
 
 
@@ -150,85 +130,76 @@ def test_bva_writes_when_the_previous_run_only_previewed(bva, monkeypatch):
 
 
 @pytest.fixture
-def two_cde(qapp, burst_folder):
-    from chisurf.plugins.burst.burst_2cde.gui.tool import BurstTwoCdeTool
+def two_cde(burst_folder):
+    from chisurf.plugins.burst.burst_2cde.gui.app import create_app
 
-    tool = BurstTwoCdeTool(embedded=True)
-    tool.set_folder(burst_folder)
-    yield tool
-    tool.close()
+    app = create_app()
+    app.model.set_folder(burst_folder)
+    yield app
+    app.close()
 
 
 def test_2cde_skips_only_when_its_companion_files_are_current(two_cde, burst_folder, monkeypatch):
     from chisurf.core.runtime import analysis_cache
-    from chisurf.gui.progress import ChiSurfProgress
 
-    started = _runs(monkeypatch, ChiSurfProgress, "run")
+    ctl = two_cde.controller
+    started = _count_submits(monkeypatch, ctl)
 
-    two_cde.run()
+    ctl.run()
     assert len(started) == 1
+    _came_back(ctl, ctl._fingerprint)
 
-    # As if that run had come back.
-    two_cde._df = object()
-    two_cde._result_cache.remember(two_cde._running_fingerprint)
-
-    # A result in memory is not enough — the 2c4 companions must exist for this
+    # A result in memory is not enough -- the 2c4 companions must exist for this
     # fingerprint, else a downstream reader would find nothing.
-    two_cde.run()
+    ctl.run()
     assert len(started) == 2, "no stamp on disk means the companions are not there"
-    two_cde._df = object()
-    two_cde._result_cache.remember(two_cde._running_fingerprint)
+    _came_back(ctl, ctl._fingerprint)
 
-    out = burst_folder / "2c4"
+    out = burst_folder / "Info"
     out.mkdir(exist_ok=True)
-    (out / "m000.2c4").write_text("x")
+    companion = burst_folder / "m000.2c4"
+    companion.write_text("x")
     analysis_cache.write_stamp(
         out / "2cde.stamp.json",
-        two_cde.analysis_fingerprint(),
-        outputs=[out / "m000.2c4"],
+        two_cde.model.analysis_fingerprint(),
+        outputs=[companion],
         tool="2cde",
     )
-    two_cde.run()
+    ctl.run()
     assert len(started) == 2, "with results on disk and nothing changed, do not recompute"
 
-    two_cde._tau.setValue(two_cde._tau.value() * 2)
-    two_cde.run()
+    two_cde.model.tau_us = two_cde.model.tau_us * 2
+    ctl.run()
     assert len(started) == 3, "a changed tau must recompute"
 
 
 def test_2cde_computes_when_the_step_is_opened(two_cde, monkeypatch):
     """Landing on the step shows the result, not an empty plot and a button."""
-    from chisurf.gui.progress import ChiSurfProgress
-
-    started = _runs(monkeypatch, ChiSurfProgress, "run")
-    two_cde.show()
-    _drain_timers()
+    ctl = two_cde.controller
+    started = _count_submits(monkeypatch, ctl)
+    ctl.auto_run()
     assert len(started) == 1, "being shown with a folder must start the computation"
 
 
 def test_2cde_does_not_start_a_second_run_on_top_of_a_running_one(two_cde, monkeypatch):
-    from chisurf.gui.progress import ChiSurfProgress
-
-    started = _runs(monkeypatch, ChiSurfProgress, "run", returns=_RunningTask())
-    two_cde.run()
-    two_cde.show()
-    _drain_timers()
+    ctl = two_cde.controller
+    started = _count_submits(monkeypatch, ctl)
+    ctl.run()
+    ctl.auto_run()
     assert len(started) == 1, "a run in flight must not be doubled by arriving"
 
 
 def test_2cde_stop_cancels_and_leaves_nothing_to_reuse(two_cde, monkeypatch):
-    from chisurf.gui.progress import ChiSurfProgress
+    ctl = two_cde.controller
+    _count_submits(monkeypatch, ctl)
+    ctl.run()
+    ctl._future = object()  # the run is in flight
+    assert two_cde.model.is_running, "Stop is offered while the run is going"
 
-    task = _RunningTask()
-    _runs(monkeypatch, ChiSurfProgress, "run", returns=task)
-    two_cde.run()
-    assert two_cde._stop.isEnabled(), "Stop is offered while the run is going"
-
-    two_cde._df = object()
-    two_cde._result_cache.remember(two_cde._running_fingerprint)
-    two_cde.stop()
-    assert task.cancelled, "Stop must reach the running task"
-    assert not two_cde._result_cache.matches(two_cde.analysis_fingerprint()), (
+    ctl._cache.remember(ctl._fingerprint)
+    ctl.stop()
+    assert ctl._cancel.is_set(), "Stop must reach the running task"
+    assert not ctl._cache.matches(two_cde.model.analysis_fingerprint()), (
         "a stopped run computed part of an answer, not an answer"
     )
 
@@ -242,7 +213,10 @@ def test_every_step_fingerprints_its_own_inputs(bva, two_cde, burst_folder):
     They are told apart by ``extra``; without it, one step's stamp would answer
     for another's outputs.
     """
-    assert bva.analysis_fingerprint(bva._get_bva_settings()) != two_cde.analysis_fingerprint()
+    assert (
+        bva.model.analysis_fingerprint(bva.model.bva_settings())
+        != two_cde.model.analysis_fingerprint()
+    )
 
 
 # ── MLE batch export ─────────────────────────────────────────────────
@@ -328,60 +302,50 @@ def test_burst_search_is_not_repeated_for_an_identical_request(qapp, tmp_path):
 
 
 def test_a_stopped_2cde_run_does_not_start_itself_again(two_cde, monkeypatch):
-    from chisurf.gui.progress import ChiSurfProgress
-
-    started = _runs(monkeypatch, ChiSurfProgress, "run", returns=_RunningTask())
-    two_cde.show()
-    _drain_timers()
+    ctl = two_cde.controller
+    started = _count_submits(monkeypatch, ctl)
+    ctl.auto_run()
     assert len(started) == 1
 
-    two_cde.stop()
-    two_cde._analysis_over()
-    two_cde.hide()
-    two_cde.show()
-    _drain_timers()
+    ctl._future = object()
+    ctl.stop()
+    ctl._future = None
+    two_cde.model.is_running = False
+    ctl.auto_run()
     assert len(started) == 1, "revisiting must not restart what was stopped"
 
-    # Asking explicitly overrides the stop — that is what Run means.
-    two_cde._on_run_clicked()
+    # Asking explicitly overrides the stop -- that is what Run means.
+    ctl.run()
     assert len(started) == 2
 
 
-def test_restart_runs_what_the_gate_would_have_skipped(two_cde, monkeypatch):
-    """The override has to be reachable from the panel, not only from Python."""
+def test_restart_runs_what_the_gate_would_have_skipped(two_cde, burst_folder, monkeypatch):
+    """The override has to be reachable from the controller, not only from the cache."""
     from chisurf.core.runtime import analysis_cache
-    from chisurf.gui.progress import ChiSurfProgress
 
-    started = _runs(monkeypatch, ChiSurfProgress, "run")
-    folder = pathlib_path(two_cde)
-    two_cde.run()
-    two_cde._df = object()
-    two_cde._result_cache.remember(two_cde._running_fingerprint)
-    out = folder / "2c4"
+    ctl = two_cde.controller
+    started = _count_submits(monkeypatch, ctl)
+    ctl.run()
+    _came_back(ctl, ctl._fingerprint)
+    out = burst_folder / "Info"
     out.mkdir(exist_ok=True)
-    (out / "m000.2c4").write_text("x")
+    companion = burst_folder / "m000.2c4"
+    companion.write_text("x")
     analysis_cache.write_stamp(
         out / "2cde.stamp.json",
-        two_cde.analysis_fingerprint(),
-        outputs=[out / "m000.2c4"],
+        two_cde.model.analysis_fingerprint(),
+        outputs=[companion],
         tool="2cde",
     )
 
-    two_cde.run()
+    ctl.run()
     assert len(started) == 1, "unchanged: skipped"
-    assert two_cde._restart.property("attention") is True, (
+    assert two_cde.model.restart_attention is True, (
         "the button is drawn attention to exactly when it is the thing you want"
     )
 
-    two_cde._restart.click()
+    ctl.restart()
     assert len(started) == 2, "Recompute must run what the gate skipped"
-
-
-def pathlib_path(tool):
-    """The folder a 2CDE panel is pointed at."""
-    import pathlib
-
-    return pathlib.Path(tool._folder_edit.text().strip())
 
 
 def test_a_changed_lut_recomputes_every_photon_reading_step(two_cde):
@@ -390,17 +354,17 @@ def test_a_changed_lut_recomputes_every_photon_reading_step(two_cde):
     from chisurf.core.fio import lut_context
 
     lut_context.clear_active_setup_lut()
-    before = two_cde.analysis_fingerprint()
+    before = two_cde.model.analysis_fingerprint()
     try:
         lut_context.set_active_setup_lut(
             channel_luts={0: np.arange(16)}, channel_shifts={}, apply_lut=True
         )
-        assert two_cde.analysis_fingerprint() != before, (
+        assert two_cde.model.analysis_fingerprint() != before, (
             "linearising the micro-times changes what 2CDE computes"
         )
     finally:
         lut_context.clear_active_setup_lut()
-    assert two_cde.analysis_fingerprint() == before, "and switching back is the old state"
+    assert two_cde.model.analysis_fingerprint() == before, "and switching back is the old state"
 
 
 def test_a_corrected_estimator_does_not_inherit_the_old_exports(qapp, burst_folder, monkeypatch):

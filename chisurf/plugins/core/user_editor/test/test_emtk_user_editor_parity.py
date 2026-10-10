@@ -201,27 +201,14 @@ def shown(app):
 # ── 1. rows and fields equal the Qt tool's ──────────────────────────────
 
 
-def test_rows_fields_and_status_match_the_qt_widget(qapp, qtbot, temp_db):
-    """The same seeded accounts give the Qt table's cells, the form's fields and status."""
-    from qtpy import QtWidgets
+QT = json.loads((Path(__file__).parent / "qt_reference.json").read_text())
 
-    from chisurf.gui.widgets.chitable import ChiTableWidget
+
+def test_rows_fields_and_status_match_the_qt_widget(temp_db):
+    """The same seeded accounts give the retired Qt table's cells, the form's fields and status."""
     from chisurf.plugins.core.user_editor.gui.model import TABLE_COLUMNS
-    from chisurf.plugins.core.user_editor.gui.tool import UserEditorWidget
-    from chisurf.plugins.core.user_editor.gui.view_model import UserEditorViewModel
 
-    qt_widget = UserEditorWidget(view_model=UserEditorViewModel(client_factory=lambda: temp_db))
-    qtbot.addWidget(qt_widget)
-    qt_widget.show()
-    qapp.processEvents()
-    qt_table = qt_widget.auto_form.findChildren(ChiTableWidget)[0]
-    qt_model = qt_table._view.model()
-    titles = [str(qt_model.headerData(c, 1)) for c in range(qt_model.columnCount())]
-    qt_cells = [
-        [str(qt_model.index(r, c).data() or "") for c in range(qt_model.columnCount())]
-        for r in range(qt_model.rowCount())
-    ]
-
+    titles, qt_cells = QT["titles"], QT["cells"]
     app = loaded_app(temp_db)
     rows, columns = app.displayed()
     assert [title for _k, title in columns] == [t for _k, t in TABLE_COLUMNS]
@@ -230,51 +217,36 @@ def test_rows_fields_and_status_match_the_qt_widget(qapp, qtbot, temp_db):
     assert titles[: len(shared)] == shared
     assert emtk_cells == [row[: len(shared)] for row in qt_cells]
     assert len(emtk_cells) == 11 and "alice" in [r[1] for r in emtk_cells]
-    assert (
-        app.model.status_text()
-        == qt_widget.model.status_text()
-        == ("11 user(s). Signed in as 'admin'.")
-    )
+    assert app.model.status_text() == QT["status"] == ("11 user(s). Signed in as 'admin'.")
 
-    # select the same account in both and compare every field
-    qt_table._view.selectRow(2)
-    qapp.processEvents()
-    qt_key = qt_widget.model._selected_id
-    click_row(app, qt_key)
+    # select the same account as the Qt tool did and compare every field
+    click_row(app, QT["selected_key"])
     draw(app)
-    edits = [e.text() for e in qt_widget.auto_form.findChildren(QtWidgets.QLineEdit)][:10]
-    assert edits == [str(getattr(app.model, name)) for name in FIELDS]
-    boxes = qt_widget.auto_form.findChildren(QtWidgets.QCheckBox)
-    assert [b.isChecked() for b in boxes] == [app.model.is_admin, app.model.allow_autologin]
-    assert app.model.details_text() == qt_widget.model.details_text() == "### Bob Baker\n"
+    assert QT["edits"] == [str(getattr(app.model, name)) for name in FIELDS]
+    assert QT["boxes"] == [app.model.is_admin, app.model.allow_autologin]
+    assert app.model.details_text() == QT["details"] == "### Bob Baker\n"
 
-    # an administrator and a passwordless account carry their flags in both
+    # an administrator and a passwordless account carry their flags
     for key in ("alice", "carol"):
         click_row(app, key)
-        qt_widget.model.select_row({"username": key})
-        assert app.model.is_admin == qt_widget.model.is_admin
-        assert app.model.allow_autologin == qt_widget.model.allow_autologin
+        assert [app.model.is_admin, app.model.allow_autologin] == QT["flags_" + key]
     assert app.model.is_admin is False and app.model.allow_autologin is True
 
 
-def test_password_rule_matches_the_qt_dialog(qapp, qtbot):
+def test_password_rule_matches_the_qt_dialog():
     from chisurf.plugins.core.user_editor.gui.model import (
         password_strength,
         strength_label,
     )
-    from chisurf.plugins.core.user_editor.gui.tool import PasswordChangeDialog
 
-    dialog = PasswordChangeDialog(user_id="bob", is_admin=False)
-    qtbot.addWidget(dialog)
-    for text in ("", "a", "abcdefgh", "Abcdefgh", "Abcdefg1", "Abcdef1!", "ABC123!!", "aA1!"):
-        dialog.on_password_changed(text)
+    for text, (qt_score, qt_label, qt_feedback) in QT["password"].items():
         score, missing = password_strength(text)
-        assert score == dialog.score, text
-        assert strength_label(text).replace("Strength: ", "") == (
-            dialog.strength_label.text().replace("Strength: ", "")
+        assert score == qt_score, text
+        assert strength_label(text).replace("Strength: ", "") == qt_label.replace(
+            "Strength: ", ""
         ), text
         if text and score < 5:
-            assert dialog.feedback_label.text() == "Requirements: " + ", ".join(missing)
+            assert qt_feedback == "Requirements: " + ", ".join(missing)
 
 
 # ── 2. the table: rows, empty state, errors ─────────────────────────────
@@ -319,18 +291,12 @@ def test_an_unreachable_server_says_so_and_invents_nothing():
     assert not app.model.enabled("do_save") and not app.model.enabled("ask_delete")
 
 
-def test_permission_denied_from_the_real_server_matches_the_qt_message(qapp, qtbot, temp_db):
-    """A plain account may not list users: both windows say the same."""
-    from chisurf.plugins.core.user_editor.gui.tool import UserEditorWidget
-    from chisurf.plugins.core.user_editor.gui.view_model import UserEditorViewModel
-
+def test_permission_denied_from_the_real_server_matches_the_qt_message(temp_db):
+    """A plain account may not list users: the retired Qt window said the same."""
     plain = seeded_db.admin_client(seeded_db.PLAIN_USER)
-    qt_widget = UserEditorWidget(view_model=UserEditorViewModel(client_factory=lambda: plain))
-    qtbot.addWidget(qt_widget)
-    qt_widget.model.ensure_loaded()
     app = loaded_app(plain)
     assert app.model.users == [] and shown(app) == []
-    assert app.model.status_text() == qt_widget.model.status_text()
+    assert app.model.status_text() == QT["denied_status"]
     # the server answered "Permission denied": that is a permission, not an unreachable server
     assert app.model.status_text().startswith("Listing users requires an administrator account")
     assert "Could not reach" not in app.model.status_text()

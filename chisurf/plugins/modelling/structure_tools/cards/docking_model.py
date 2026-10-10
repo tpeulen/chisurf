@@ -1,7 +1,7 @@
 """The docking card's view model: inputs, run control, results and the score traces, without Qt.
 
-The inputs and the request they build are those of the Qt tool's ``_DockingModel`` (``fret/gui/dock_tool.py``, which
-cannot be imported without Qt); the run is the same: ``dock`` in a terminable child process, repeated docking through
+The inputs and the request they build are those of the Qt tool's ``_DockingModel`` (``fret/gui/docking_model.py``, which
+is Qt-free); the run is the same: ``dock`` in a terminable child process, repeated docking through
 ``estimate_errors``, the other operations inline, the score traces read from the files the engine writes while it
 runs. The tests compare :meth:`DockingSession.build_params` with the Qt model's for the same inputs.
 """

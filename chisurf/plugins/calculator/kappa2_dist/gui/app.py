@@ -2,9 +2,8 @@
 
 Left: the model choice and the anisotropy / calculation parameters. Right: the
 k² distribution the selected model produces, and the resulting orientation
-statistics. The widget (:class:`~.tool.Kappa2Dist`) keeps the RPC-backed
-client, the save path and the backward-compat surface; this app renders its
-state and calls back. Immediate mode reads the model every frame, so an edit
+statistics. The tool object (:func:`make_app` builds a namespace) keeps the RPC-backed
+client and the model; this app renders its state and calls back. Immediate mode reads the model every frame, so an edit
 in the controls is the model's state on the same frame — Compute just runs the
 distribution.
 """
@@ -13,7 +12,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable
+from typing import Any, Callable
 
 import emtk.im as im
 import emtk.implot as implot
@@ -26,8 +25,10 @@ from emtk.view_form import FormState, draw_form
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import window_size
 
-if TYPE_CHECKING:
-    from .tool import Kappa2Dist, _Kappa2DistModel
+from .model import _Kappa2DistModel
+
+#: The state object the app draws: ``_model`` (a :class:`.model._Kappa2DistModel`), ``busy``, ``dirty``, ``status``.
+Kappa2Dist = Any
 
 WINDOW_BG = (30, 32, 38, 255)
 #: The distribution's line colour (data colour, kept from the earlier app).
@@ -449,7 +450,6 @@ def make_app(kappa2: float = 0.667, **kwargs):
     from types import SimpleNamespace
 
     from ..backend.services import _kappa2_compute_handler
-    from .model import _Kappa2DistModel
 
     state = SimpleNamespace(_model=_Kappa2DistModel(), busy=False, dirty=False, status="", error="")
     state._model.kappa2_true = kappa2
@@ -542,6 +542,12 @@ def make_app(kappa2: float = 0.667, **kwargs):
 
     app.kappa2_gui.on_save = _install_save_dialog(app, write)
     app.write_csv = write
+
+    def compute_now():
+        """Compute synchronously for the inputs as they stand (a caller that reads the result)."""
+        state._model.compute(client)
+
+    app.compute_now = compute_now
     # The first computation runs on construction, as the Qt tool's did (synchronously, so the first frame has data).
     state._model.compute(client)
     refresh_status()

@@ -29,13 +29,9 @@ is reached from:
 * Python, `chisurf.plugins.burst.mfd_prepare.api.prepare_folder`, or the core
   function directly;
 * the RPC service `mfd_prepare.prepare`;
-* its window, opened from the ChiSurf console:
-  ```python
-  from chisurf.plugins.burst.mfd_prepare.gui.tool import MfdPrepareTool
-  w = MfdPrepareTool(); w.show()
-  ```
+* its window, launched with `python -m chisurf.emtk --plugin mfd_prepare`.
 
-The window is an EMTK app (no Qt widgets of its own; the Qt window is only its host). Top to bottom:
+The window is an EMTK app. Top to bottom:
 
 | control | what it does |
 |---|---|

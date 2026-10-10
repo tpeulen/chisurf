@@ -22,7 +22,6 @@
   },
   "entrypoints": {
     "emtk": "chisurf.plugins.microscopy.spot_finder.gui.app:make_app",
-    "gui": "chisurf.plugins.microscopy.spot_finder.gui.tool:SpotFinderTool",
     "cli": "spot-finder=chisurf.plugins.microscopy.spot_finder.cli:cli",
     "services": "chisurf.plugins.microscopy.spot_finder.backend.services:register_services"
   },

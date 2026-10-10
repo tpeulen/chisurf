@@ -40,7 +40,7 @@ def contract_descriptor() -> dict[str, Any]:
         "contract_version": CONTRACT_VERSION,
         "transport": {
             "rpc": "JSON-RPC over ChiSurf ServiceDispatcher/ZMQ",
-            "gui": "chisurf.plugins.modelling.fps_json_editor.gui.tool",
+            "gui": "chisurf.plugins.modelling.fps_json_editor.gui.app",
             "api": "chisurf.plugins.modelling.fps_json_editor.api",
         },
         "inputs": {

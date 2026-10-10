@@ -5,6 +5,8 @@
     "type": "button_row",
     "description": "Choose the structures and the HYDRO program.",
     "buttons": [
+      {"action": "load_example", "label": "Load example", "icon": "🧪",
+       "description": "Load a simulated sphere of known radius and a stand-in solver for it (not HYDROPRO). Run it and compare the diffusion coefficient with the Stokes-Einstein value in the guide."},
       {"action": "select_files", "label": "Select files…",
        "description": "Pick one or more structure files (PDB or bead coordinates) with the file chooser; they replace the list in 'Structures'."},
       {"action": "select_exe", "label": "Executable…",

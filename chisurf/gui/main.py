@@ -854,17 +854,11 @@ class Main(
 
     def onOpenUpdate(self):
         """Open the updater plugin."""
-        # Import the updater plugin
-        import importlib
-
         try:
-            try:
-                updater_plugin = importlib.import_module("chisurf.plugins.core.updater")
-            except ImportError:
-                updater_plugin = importlib.import_module("chisurf.plugins.core.updater")
+            from chisurf.gui.updater_window import open_updater_window
 
-            window = updater_plugin.UpdaterWidget()
-            window.show()
+            # kept on the main window: an unreferenced host would be collected and close
+            self._updater_window = open_updater_window()
         except Exception as e:
             # Show error message if plugin can't be loaded
             dialogs.information(
@@ -873,16 +867,12 @@ class Main(
 
     def onOpenAbout(self):
         """Open the about plugin."""
-        import importlib
-
         try:
-            try:
-                about_plugin = importlib.import_module("chisurf.plugins.core.about")
-            except ImportError:
-                about_plugin = importlib.import_module("chisurf.plugins.core.about")
+            from chisurf.gui.plugin_window import open_native_plugin
+            from chisurf.plugins.core import about
 
-            window = about_plugin.AboutDialog(parent=self)
-            window.show()
+            # kept on the main window: an unreferenced host would be collected and close
+            self._about_window = open_native_plugin(pathlib.Path(about.__file__).parent)
         except Exception as e:
             dialogs.information(None, "About Plugin Error", f"Error opening About dialog: {str(e)}")
 

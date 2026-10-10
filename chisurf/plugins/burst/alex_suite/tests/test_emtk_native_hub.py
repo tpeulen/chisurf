@@ -77,12 +77,17 @@ def wait_for(drv, condition, timeout=60.0) -> None:
 
 
 def test_the_rail_is_the_legacy_panel_table():
-    """The Qt shell's steps and side tools, in its order; Setup's role is the burst hub's 'setup' (was 'channels')."""
-    pytest.importorskip("qtpy")
-    from chisurf.plugins.burst.alex_suite.gui.native import STEPS
-    from chisurf.plugins.burst.alex_suite.gui.tool import ALEX_PANELS
+    """The retired Qt shell's steps and side tools (qt_reference.json); Setup's role is the burst hub's 'setup' (was 'channels')."""
+    import json
 
-    legacy = [("setup" if p["role"] == "channels" else p["role"]) for p in ALEX_PANELS if not p.get("separator")]
+    from chisurf.plugins.burst.alex_suite.gui.native import STEPS
+
+    recorded = json.loads((Path(__file__).with_name("qt_reference.json")).read_text(encoding="utf-8"))
+    legacy = [
+        ("setup" if p["role"] == "channels" else p["role"])
+        for p in recorded["ALEX_PANELS"]
+        if not p.get("separator")
+    ]
     native = [p["role"] for p in STEPS if not p.get("separator")]
     assert native == legacy
     numbered = [p["name"] for p in STEPS if p["name"][:1].isdigit()]

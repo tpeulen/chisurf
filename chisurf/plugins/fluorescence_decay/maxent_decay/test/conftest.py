@@ -28,16 +28,4 @@ def hermetic_user_state(tmp_path_factory, monkeypatch):
         )
     except Exception:  # pragma: no cover
         pass
-    try:
-        from qtpy import QtCore
-
-        QtCore.QSettings.setDefaultFormat(QtCore.QSettings.IniFormat)
-        QtCore.QSettings.setPath(
-            QtCore.QSettings.IniFormat, QtCore.QSettings.UserScope, str(tmp_path / "qt")
-        )
-        QtCore.QSettings.setPath(
-            QtCore.QSettings.IniFormat, QtCore.QSettings.SystemScope, str(tmp_path / "qt")
-        )
-    except Exception:  # pragma: no cover
-        pass
     yield

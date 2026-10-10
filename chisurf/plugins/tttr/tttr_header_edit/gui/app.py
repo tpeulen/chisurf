@@ -3,7 +3,7 @@
 Left: the header tags as an editable table — one row per tag, the type chosen
 from the tag-type combo, plus Open / Add / Remove / Save-as-PTU actions and the
 source summary. Right: the read-only JSON view of the edited header. The widget
-(:class:`~.tool.TagsEditor`) keeps the Qt-free
+(:class:`~.native.NativeHeaderEditor`) keeps the Qt-free
 :class:`~..view_model.HeaderEditorViewModel`, the file dialogs and the OS drop;
 this app renders its state. The string editors are the source of truth for the
 table and are committed to the model on every edit, the way the Qt table's
@@ -26,7 +26,7 @@ from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import action_button
 
 if TYPE_CHECKING:
-    from .tool import TagsEditor
+    from .native import NativeHeaderEditor
 
 WINDOW_BG = (30, 32, 38, 255)
 ACCENT_GREEN = (46, 160, 67, 255)
@@ -39,7 +39,7 @@ class HeaderEditorGui(TourTarget):
 
     def __init__(
         self,
-        tool: TagsEditor,
+        tool: NativeHeaderEditor,
         on_open: Callable[[], None] | None = None,
         on_save: Callable[[], None] | None = None,
         on_guide: Callable[[], None] | None = None,
@@ -258,7 +258,7 @@ class HeaderEditorApp(ImApp):
 
     def __init__(
         self,
-        tool: TagsEditor,
+        tool: NativeHeaderEditor,
         on_open: Callable[[], None] | None = None,
         on_save: Callable[[], None] | None = None,
     ) -> None:

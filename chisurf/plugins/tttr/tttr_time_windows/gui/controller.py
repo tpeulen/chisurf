@@ -16,17 +16,26 @@ from .app import TimeWindowApp
 from .client import TimeWindowClient
 
 
+def _supported_exts():
+    """The TTTR file extensions tttrlib reads (the vendor list when tttrlib cannot say)."""
+    found = set()
+    try:
+        import tttrlib
+
+        for ext in getattr(tttrlib, "get_supported_filetypes", lambda: [])():
+            text = str(ext).strip().lower()
+            if text:
+                found.add(text if text.startswith(".") else "." + text)
+    except Exception:  # noqa: BLE001 - the fixed list below is the fallback
+        pass
+    return found or {".ptu", ".phu", ".ht2", ".ht3", ".pt3", ".t3r"}
+
+
 def _is_supported_path(path):
-    return (
-        str(path)
-        .lower()
-        .endswith(
-            tuple(
-                ext + suffix
-                for ext in (".ptu", ".phu", ".ht2", ".ht3", ".pt3", ".t3r")
-                for suffix in ("", ".gz", ".bz2")
-            )
-        )
+    """Whether *path* has a supported TTTR extension, optionally ``.gz`` / ``.bz2``."""
+    lower = str(path).lower()
+    return any(
+        lower.endswith(ext + suffix) for ext in _supported_exts() for suffix in ("", ".gz", ".bz2")
     )
 
 

@@ -1,6 +1,6 @@
-"""The native IRF & BG calibration at parity with the Qt ImgCalibrationTool.
+"""The native IRF & BG calibration at parity with the retired Qt ImgCalibrationTool.
 
-The Qt tool runs in a subprocess (this process stays Qt-free) on real photons -- the
+The Qt tool's numbers on real photons were recorded before it was deleted (``qt_reference.json``) -- the
 micro-time shifter's demo SPC as source and IRF, one detector from channels 0 (parallel)
 and 8 (perpendicular) -- and its decay, windows and backgrounds are compared with the
 emtk app's; the backgrounds also with the mean counts of a histogram made here from
@@ -10,8 +10,6 @@ the photons directly.
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -77,47 +75,11 @@ def _fields(sections):
         yield from _fields(section.get("sections", []))
 
 
-_QT = r"""
-import json, sys
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-from chisurf.plugins.microscopy.img_calibration.gui.tool import ImgCalibrationTool
-spc, setup = sys.argv[1], json.loads(sys.argv[2])
-w = ImgCalibrationTool()
-m = w.model
-m.apply_setup_settings(setup); m.apply_pipeline_context({"source": spc}); m.sel_irf_files = [spc]
-m.ensure_histograms()
-m.set_conv_range(500, 3000); m.set_irf_range(550, 700); m.set_bg_range(0, 400)
-published = []
-m.publish = published.append
-m.apply()
-d = m.decay_data()
-print("FACTS" + json.dumps({"n": d["n"], "data": d["data"].tolist(), "irf_vv": d["irf_vv"].tolist(),
-                            "conv": d["conv"], "irf_range": d["irf_range"], "bg": [m.sel_bg_vv, m.sel_bg_vh],
-                            "status": m.status_text, "published": published}))
-"""
-
-
 @pytest.fixture(scope="module")
 def qt(spc):
-    pytest.importorskip("qtpy")
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT, spc, json.dumps(SETUP)],
-        capture_output=True,
-        text=True,
-        timeout=300,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and (
-        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
-    ):
-        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS") :])
+    """What the retired Qt tool computed on the same photons, recorded before its deletion."""
+    text = (HERE / "qt_reference.json").read_text(encoding="utf-8").replace("<SPC>", spc)
+    return json.loads(text)
 
 
 # 1. the Qt tool's decay, windows and backgrounds; the backgrounds are the photons' mean counts

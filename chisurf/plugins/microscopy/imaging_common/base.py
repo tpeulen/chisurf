@@ -1,10 +1,9 @@
 """Shared base classes for the per-pixel imaging map tools.
 
-Both an AutoForm-friendly Qt-free view-model base (:class:`ImagingMapViewModel`)
-and a host widget (:class:`ImagingMapTool`) with the action **toolbar** and
-**file-drop** support. The Intensity / N&B / Phasor tools are thin subclasses:
-the view-model implements ``_compute`` and the image accessors, the host is a
-one-line subclass. The per-pixel results use the standard imaging-HDF5 (the same
+The Qt-free view-model base (:class:`ImagingMapViewModel`) of the per-pixel imaging
+map tools. The Intensity / N&B / Micro-time / Phasor view-models are subclasses that
+implement ``_compute`` and the image accessors; the window is the native emtk app
+(:mod:`chisurf.plugins.microscopy.imaging_emtk`). The per-pixel results use the standard imaging-HDF5 (the same
 flat, column-extensible ``results`` table used for smFRET burst analysis and
 readable by ndxplorer): a new analysis just adds columns.
 """
@@ -484,8 +483,10 @@ class ImagingMapViewModel:
             self.results_text = "Nothing to add — press Run first."
             self.notify("run")
             return
-        path = self.pipeline_hdf5 or self._ask_hdf5_path()
+        path = self.pipeline_hdf5
         if not path:
+            self.results_text = "Choose an HDF5 file first (Add to HDF5 in the window asks for it)."
+            self.notify("run")
             return
         try:
             added = self._write_hdf5(path)
@@ -621,17 +622,6 @@ class ImagingMapViewModel:
         from chisurf.core.fluorescence.imaging import maps_to_table
 
         return maps_to_table(self._columns)
-
-    def _ask_hdf5_path(self) -> str:
-        try:
-            from qtpy import QtWidgets
-
-            path, _ = QtWidgets.QFileDialog.getSaveFileName(
-                None, "Imaging HDF5", "", "HDF5 (*.h5 *.hdf5)"
-            )
-            return path
-        except Exception:
-            return ""
 
 
 def build_ndx_data_source(df):

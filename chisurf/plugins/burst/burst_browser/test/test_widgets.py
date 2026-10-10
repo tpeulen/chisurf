@@ -1,59 +1,51 @@
 import numpy as np
 import pandas as pd
-from qtpy import QtWidgets
+import time
 
 from chisurf.core.datastore import column_names, numeric_column, row_count, take_rows
 
 
-def test_burst_browser_widget(qapp, qtbot, tmp_path):
-    from chisurf.plugins.burst.burst_browser import BurstBrowserWidget
+def test_burst_browser_loads_gates_and_draws(tmp_path):
+    from emtk.testing import RecordingPainter
 
-    widget = BurstBrowserWidget()
-    qtbot.addWidget(widget)
-    assert isinstance(widget, QtWidgets.QWidget)
-    assert widget.windowTitle() == "Burst Browser"
-    assert widget.table is None
+    from chisurf.plugins.burst.burst_browser.gui.app import create_app
 
-    # Tour target query
-    assert widget.tour_target({"name": "open_folder"}) is None
+    app = create_app()
+    try:
+        assert app.table is None
 
-    # Load test data
-    n = 20
-    df = pd.DataFrame(
-        {
-            "First Photon": range(n),
-            "Last Photon": range(1, n + 1),
-            "Number of Photons": np.full(n, 100),
-            "E": np.linspace(0.1, 0.9, n),
-            "S": np.linspace(0.2, 0.8, n),
-        }
-    )
-    burd = tmp_path / "data"
-    burd.mkdir()
-    _interleave(df, ["First Photon", "Last Photon", "Number of Photons", "E", "S"]).to_csv(
-        burd / "test.bur", sep="\t", index=False
-    )
+        n = 20
+        df = pd.DataFrame(
+            {
+                "First Photon": range(n),
+                "Last Photon": range(1, n + 1),
+                "Number of Photons": np.full(n, 100),
+                "E": np.linspace(0.1, 0.9, n),
+                "S": np.linspace(0.2, 0.8, n),
+            }
+        )
+        burd = tmp_path / "data"
+        burd.mkdir()
+        _interleave(df, ["First Photon", "Last Photon", "Number of Photons", "E", "S"]).to_csv(
+            burd / "test.bur", sep="\t", index=False
+        )
 
-    widget.load_folder(burd)
-    assert widget.table is not None
+        app.load_folder(burd)
+        end = time.monotonic() + 30
+        while (app.table is None or app.controller.running) and time.monotonic() < end:
+            time.sleep(0.02)
+            app.draw(RecordingPainter(), 0, 0, 900, 600)
+        assert app.table is not None
 
-    # Check tour target after render
-    widget.show()
-    widget.resize(900, 600)
-    qapp.processEvents()
-
-    pixmap = widget.host.grab()
-    assert pixmap.width() > 0
-    assert pixmap.height() > 0
-
-    # Verify region adjustment and histogram update
-    widget.model.e_min = 0.3
-    widget.model.e_max = 0.7
-    widget.model.refresh()
-    qapp.processEvents()
-    h = widget.model.histogram()
-    assert h is not None
-    assert widget.tour_target({"name": "open_folder"}) is not None
+        painter = RecordingPainter()
+        app.draw(painter, 0, 0, 900, 600)
+        assert painter.strings
+        app.model.e_min = 0.3
+        app.model.e_max = 0.7
+        app.model.refresh()
+        assert app.model.histogram() is not None
+    finally:
+        app.close()
 
 
 def _interleave(df_n: pd.DataFrame, cols) -> pd.DataFrame:

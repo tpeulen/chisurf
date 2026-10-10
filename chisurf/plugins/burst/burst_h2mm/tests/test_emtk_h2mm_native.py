@@ -33,14 +33,6 @@ def sample(tmp_path_factory):
     return target / BURSTS
 
 
-@pytest.fixture(scope="module")
-def qapp_ref():
-    """Keep a reference to the QApplication: a collected one aborts the process when a Qt tool is built."""
-    from qtpy.QtWidgets import QApplication
-
-    yield QApplication.instance() or QApplication([])
-
-
 @pytest.fixture
 def app():
     window = create_app()
@@ -295,7 +287,7 @@ def test_a_toggle_is_flipped_by_a_click(app):
 # Cards H2, H4, H5: detector editor, remaining plots, Restart / Bootstrap / LL scan / dwells / settings / plot saving
 # ------------------------------------------------------------------------------------------------------------------
 @pytest.fixture(scope="module")
-def fitted(sample, qapp_ref):
+def fitted(sample):
     """One app with a real fit (states 1..3) on the BH sample, shared by the tests below."""
     window = create_app()
     drv = Driver(window)
@@ -534,7 +526,7 @@ def test_result_view_arrows_and_bands_are_empty_without_a_fit():
 
 
 # ------------------------------------------------------------------------------------------------------------------
-# Hand-off: the burst-analysis workflow's step 7 hosts the native app (apply_workflow_context, panel, task seam)
+# Hand-off: the burst-analysis hub's step 7 hands the native app its context (apply_workflow_context)
 # ------------------------------------------------------------------------------------------------------------------
 def test_apply_workflow_context_sets_the_folder_and_the_detectors(sample):
     model = H2mmViewModel()
@@ -553,30 +545,3 @@ def test_apply_workflow_context_sets_the_folder_and_the_detectors(sample):
     assert other.data_folder == "" and other.file_type == "PTU", (
         "a missing folder is ignored; a bare file type is taken"
     )
-
-
-def test_the_workflow_panel_runs_a_fit_through_the_task_seam(qapp_ref, sample):
-    """The shell's Next waits for the step's registered task: the hidden run button the shell clicks starts one."""
-    from qtpy import QtWidgets
-
-    from chisurf.gui.task import running_tasks_under
-    from chisurf.plugins.burst.burst_h2mm.gui.panel import make_panel
-
-    panel = make_panel()
-    try:
-        panel.apply_workflow_context({"burst_folder": str(sample), "channel_settings": BH_SETUP})
-        panel.model.min_states = panel.model.max_states = 2
-        panel.model.restarts = 1
-        button = panel.findChild(QtWidgets.QToolButton, "toolAction_run")
-        assert button is not None and button.isEnabled()
-        button.click()
-        assert running_tasks_under(panel), "the shell cannot see the fit: Next would never advance"
-        end = time.monotonic() + 180
-        while running_tasks_under(panel) and time.monotonic() < end:
-            qapp_ref.processEvents()
-            time.sleep(0.05)
-        qapp_ref.processEvents()
-        assert panel.model.analysis is not None and panel.model.analysis.best.n_states == 2
-        assert "Selected 2 states" in panel.model.status_text
-    finally:
-        panel.close()

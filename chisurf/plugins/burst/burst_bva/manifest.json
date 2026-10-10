@@ -19,7 +19,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.burst.burst_bva.gui.tool:BVATool",
     "cli": "chisurf.plugins.burst.burst_bva.cli.main:cli",
     "services": "chisurf.plugins.burst.burst_bva.backend.services:register_services",
     "emtk": "chisurf.plugins.burst.burst_bva.gui.app:create_app"

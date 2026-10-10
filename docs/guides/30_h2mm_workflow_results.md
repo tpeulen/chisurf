@@ -115,5 +115,5 @@ floor labels run into each other (`7.4e-057.4e-05`). The *State path* axis reads
 
 ## See also
 
-- `chisurf/plugins/burst/burst_h2mm/` (`core/analysis.py`, `gui/tool.py`); theory in {ref}`concept-h2mm`.
+- `chisurf/plugins/burst/burst_h2mm/` (`core/analysis.py`, `gui/native.py`); theory in {ref}`concept-h2mm`.
 - Uncertainty & simulation validation: [tutorial 31](31_h2mm_simulation_validation.md).

@@ -53,31 +53,9 @@ def native_driver(page):
 
 def actual_caller(kind):
     """Construct each existing caller; return its real parent and detector page."""
-    if kind in {"background", "irf", "count_rate"}:
-        section_factories = {
-            "background": ("chisurf.plugins.burst.burst_background.gui.sections", "build_detector_page",
-                "chisurf.plugins.burst.burst_background.view_model", "BackgroundViewModel"),
-            "irf": ("chisurf.plugins.burst.burst_irf_bg.gui.sections", "irf_bg_channels",
-                "chisurf.plugins.burst.burst_irf_bg.gui.view_model", "IrfBackgroundViewModel"),
-            "count_rate": ("chisurf.plugins.tttr.tttr_count_rate_analysis.gui.sections", "count_rate_channels",
-                "chisurf.plugins.tttr.tttr_count_rate_analysis.gui.view_model", "CountRateViewModel"),
-        }
-        module, factory, model_module, model_class = section_factories[kind]
-        model = getattr(importlib.import_module(model_module), model_class)()
-        page = getattr(importlib.import_module(module), factory)(model)
-        return page, page, model
-    if kind == "audifier":
-        from chisurf.plugins.tttr.audifier.gui.sections import _SetupSection
-        from chisurf.plugins.tttr.audifier.gui.view_model import AudifierViewModel
-        model = AudifierViewModel()
-        parent = _SetupSection(model)
-        return parent, parent._page, model
     caller_constructors = {
-        "core_tool": ("chisurf.plugins.core.setup_channel_definition.gui.tool", "SetupChannelDefinitionWidget", "page"),
         "core_wizard": ("chisurf.plugins.core.setup_channel_definition.wizard", "ChisurfWizard", "filter"),
-        "bid": ("chisurf.plugins.burst.bid_to_analysis.gui.legacy", "BidToAnalysisGUI", "detector_page"),
         "trace": ("chisurf.plugins.tttr.trace_browser.widget", "TraceBrowser", "detector_page"),
-        "image": ("chisurf.plugins.tttr.tttr_image_browser.workspace", "TTTRImageBrowser", "detector_page"),
         "intensity": ("chisurf.plugins.tttr.intensity_trace.qt_tool", "IntensityTrace", "detector_wizard_page"),
     }
     module, class_name, attribute = caller_constructors[kind]
@@ -85,8 +63,7 @@ def actual_caller(kind):
     return parent, getattr(parent, attribute), getattr(parent, "model", None)
 
 
-@pytest.mark.parametrize("kind", ["core_tool", "core_wizard", "background", "irf", "count_rate",
-                                  "audifier", "bid", "trace", "image", "intensity"])
+@pytest.mark.parametrize("kind", ["core_wizard", "trace", "intensity"])
 def test_actual_existing_caller_hosts_native_settings_and_preserves_semantics(qapp, kind):
     """Native hosting preserves real callbacks/providers and closes its owned surface."""
     from qtpy.QtWidgets import QWidget
@@ -103,18 +80,8 @@ def test_actual_existing_caller_hosts_native_settings_and_preserves_semantics(qa
         assert data["future_setup_metadata"] == SETTINGS["future_setup_metadata"]
         assert page.filetype == "SPC-130"
         assert page.effective_micro_time_resolution == 6.591796875
-        if kind in {"background", "irf"}:
-            assert model.channels_provider() == data["detectors"]
-        elif kind == "count_rate":
-            assert model.channels_provider() == page.channels()
-        elif kind == "audifier":
-            parent._update()
-            assert [detector["name"] for detector in model.detectors] == ["donor"]
-        elif kind == "trace":
+        if kind == "trace":
             parent._on_continue()
-            assert parent.model.setup_settings["detectors"] == data["detectors"]
-        elif kind == "image":
-            parent.apply_setup_settings(copy.deepcopy(data))
             assert parent.model.setup_settings["detectors"] == data["detectors"]
         parent.close()
         qapp.processEvents()

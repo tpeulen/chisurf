@@ -1,16 +1,13 @@
-"""The native Burst Browser at parity with the Qt BurstBrowserWidget.
+"""The native Burst Browser at parity with the retired Qt BurstBrowserWidget.
 
-Both hosts draw the same ``BurstBrowserApp``; the Qt widget adds its file dialogs
-and loads synchronously, the emtk app loads on the controller's worker. The Qt
-widget runs in a subprocess on the same demo folder (this process stays Qt-free)
-and what it shows -- rows, gated rows, histogram, status -- is compared.
+Both hosts drew the same ``BurstBrowserApp``; the Qt widget added its file dialogs and loaded synchronously, the
+emtk app loads on the controller's worker. What the Qt widget showed on the same demo folder -- rows, gated rows,
+histogram, status -- was recorded (``qt_reference.json``) and is compared.
 """
 
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -69,48 +66,9 @@ def _shown(model):
     }
 
 
-_QT = r"""
-import json, pathlib, sys
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-from chisurf.core.datastore import row_count
-from chisurf.plugins.burst.burst_browser import BurstBrowserWidget
-w = BurstBrowserWidget()
-w.load_folder(pathlib.Path(sys.argv[1]))
-def shown(m):
-    m.hist_column = "E"
-    h = m.histogram()
-    return {"rows": row_count(m.table), "masked": len(m.masked_row_indices()),
-            "counts": [int(c) for c in h["counts"]], "status": m.status_text()}
-before = shown(w.model)
-for k, v in json.loads(sys.argv[2]).items():
-    setattr(w.model, k, v)
-w.model.refresh()
-print("FACTS" + json.dumps({"loaded": before, "gated": shown(w.model),
-                            "api": [n for n in ("table", "load_folder", "load_bur") if hasattr(w, n)]}))
-"""
-
-
 def _qt_facts(root):
-    pytest.importorskip("qtpy")
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT, str(root), json.dumps(GATES)],
-        capture_output=True,
-        text=True,
-        timeout=300,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and (
-        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
-    ):
-        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
-    # Any other failure is the Qt widget's own: skipping it hid a broken Qt host.
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS") :])
+    """What the retired Qt BurstBrowserWidget showed for the same folder and gates (qt_reference.json)."""
+    return json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
 
 
 # 1. what the Qt widget shows for the same folder and gates

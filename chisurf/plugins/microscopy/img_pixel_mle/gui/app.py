@@ -30,7 +30,12 @@ class PixelMleApp(ImagingToolApp):
         "add_irf": ("Choose the IRF file", "open", PHOTON_FILE_FILTER, "add_irf", True),
         "roi": ("Choose a region", "open", REGION_FILE_FILTER, "set_roi_file"),
     }
-    OUTCOMES = {"run": "request_run", "files": "sel_files", "irf": "sel_irf_files"}
+    OUTCOMES = {
+        "run": "request_run",
+        "files": "sel_files",
+        "irf": "sel_irf_files",
+        "demo": "load_example",
+    }
 
     def __init__(self, model: PixelMleModel | None = None, coordinator: Any = None) -> None:
         self.coordinator = coordinator

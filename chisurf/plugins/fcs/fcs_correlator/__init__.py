@@ -10,14 +10,14 @@ and merging fluorescence correlation spectroscopy (FCS) data. Features include:
 - Multi-tau correlation with configurable parameters (bins, cascades, fine grid)
 - FCS curve merging and export
 
-The existing Qt entry point hosts a native emtk workflow rail and declarative
-AutoForm controls for channel definitions, files, filtering, correlation and merging.
+The native emtk app is a workflow rail with declarative controls for channel definitions, files,
+filtering, correlation and merging.
 
 The correlator workflow is no longer a standalone menu entry: it is hosted as
 the first section of the unified **FCS** tool (``fcs_toolbox``), which merges the
 correlator workflow with the optional FCS tools (2D-FLCS, Lifetime-FCS Sim,
 Burst-wise FCS, calculators). This module remains the reusable building block
-(``FcsCorrelatorTool`` + the correlator/filter/merger AutoForm panels) and is
+(the correlator workflow app + the filter/correlator models) and is
 therefore hidden from the plugin menu.
 """
 

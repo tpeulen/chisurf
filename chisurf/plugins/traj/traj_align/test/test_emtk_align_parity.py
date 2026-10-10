@@ -9,15 +9,14 @@ superposition done here directly.
 from __future__ import annotations
 
 import json
-import os
 import re
-import subprocess
 import sys
 import time
 from pathlib import Path
 
 import numpy as np
 import pytest
+from chisurf.plugins.traj.traj_save_topology.test.qt_recorded import load_reference, same_coordinates
 from emtk.testing import PixelPainter, RecordingPainter
 
 HERE = Path(__file__).parent
@@ -70,58 +69,12 @@ def _read(path):
     return md.load(str(path), top=TOP)
 
 
-_QT = r"""
-import json, sys
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-from chisurf.plugins.traj.traj_align import sections
-from chisurf.plugins.traj.traj_align.widget import AlignTrajectoryWidget
-traj, top, target, selection, stride = sys.argv[1:6]
-told, errors = [], []
-sections.dialogs.information = lambda parent, title, text: told.append([title, text])
-sections.dialogs.error = lambda parent, title, text: errors.append([title, text])
-w = AlignTrajectoryWidget()
-io = w.findChild(sections._IoSection)
-io._save_aligned()                                    # nothing chosen yet
-io._load_trajectory(traj); io._load_topology(top)
-w.model.atom_selection, w.model.stride = selection, int(stride)
-QtWidgets.QFileDialog.getSaveFileName = staticmethod(lambda *a, **k: ("", ""))
-io._save_aligned()                                    # the dialog closed
-QtWidgets.QFileDialog.getSaveFileName = staticmethod(lambda *a, **k: (target, "DCD trajectory (*.dcd)"))
-io._save_aligned()
-w.model.atom_selection = "CA, 1"
-io._save_aligned()                                    # a selection that is not atom ids
-w.model.atom_selection = selection
-QtWidgets.QFileDialog.getSaveFileName = staticmethod(lambda *a, **k: (target + "/inside_a_file.dcd", ""))
-io._save_aligned()                                    # an unwritable target
-print("FACTS" + json.dumps({"told": told, "errors": errors, "log": w.model._log}))
-"""
 
 
 @pytest.fixture(scope="module")
-def qt(tmp_path_factory):
-    pytest.importorskip("qtpy")
-    target = tmp_path_factory.mktemp("qt") / "aligned.dcd"
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT, TRAJ, TOP, str(target), FIT, str(STRIDE)],
-        capture_output=True,
-        text=True,
-        timeout=300,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and (
-        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
-    ):
-        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
-    # Any other failure is the Qt widget's own: skipping it hid a broken Qt host.
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    facts = json.loads(line[len("FACTS") :])
-    facts["target"] = target
-    return facts
+def qt():
+    """The retired Qt widget's answers, recorded before it was deleted (qt_reference.json)."""
+    return load_reference(HERE)
 
 
 @pytest.fixture(scope="module")
@@ -146,10 +99,10 @@ def test_a_save_writes_what_the_qt_widget_writes(qt, reference, tmp_path):
         target = tmp_path / "aligned.dcd"
         _pick(app, target)
         _settle(app)
-        ours, theirs = _read(target), _read(qt["target"])
+        ours = _read(target)
         source, aligned = reference
-        assert ours.n_frames == theirs.n_frames == source.n_frames == 116  # 464 frames at stride 4
-        assert np.asarray(ours.xyz) == pytest.approx(np.asarray(theirs.xyz), abs=1e-4)
+        assert ours.n_frames == source.n_frames == 116  # 464 frames at stride 4
+        assert same_coordinates(ours.xyz, qt["target"])
         assert np.asarray(ours.xyz) == pytest.approx(np.asarray(aligned.xyz), abs=1e-3)
         moved = np.abs(np.asarray(source.xyz) - np.asarray(aligned.xyz)).max()
         assert moved > 1.0  # the alignment did move the frames

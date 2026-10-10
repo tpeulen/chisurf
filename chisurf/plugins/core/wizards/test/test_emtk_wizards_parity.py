@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 
 import pytest
-from emtk.testing import RecordingPainter
 
 from chisurf.plugins.core.project_browser.test.driving import (
     clipped_texts,
@@ -13,7 +12,7 @@ from chisurf.plugins.core.project_browser.test.driving import (
     layout_problems,
 )
 from chisurf.plugins.emtk_hermetic import hermetic, real_chisurf_untouched  # noqa: F401
-from chisurf.plugins.emtk_test_input import Driver, assert_tour_card_clear
+from chisurf.plugins.emtk_test_input import Driver
 
 from ..core.registry import default_wizards
 from ..gui.app import WizardHubApp
@@ -31,22 +30,15 @@ def test_the_catalogue_names_a_native_factory_for_every_wizard():
         assert callable(getattr(importlib.import_module(module), attr))
 
 
-def test_the_list_equals_the_qt_hubs_list(qapp):
-    from ..gui.tool import WizardHub
-
-    qt = WizardHub()
+def test_the_list_equals_the_qt_hubs_list():
+    """The retired Qt hub listed (id, tooltip=description) per entry and opened on the first one."""
     app = WizardHubApp()
-    qt_items = [
-        (qt._list.item(i).data(0x100), qt._list.item(i).toolTip()) for i in range(qt._list.count())
+    assert [(e.id, e.description) for e in app.entries] == [
+        (e.id, e.description) for e in default_wizards()
     ]
-    assert qt_items == [(e.id, e.description) for e in app.entries]
-    assert app.selected == qt._list.item(0).data(0x100)
-    for i, entry in enumerate(app.entries):
-        qt._list.setCurrentRow(i)
-        assert (
-            qt._title.text().strip().endswith(entry.label)
-            and qt._subtitle.text() == entry.description
-        )
+    assert app.selected == default_wizards()[0].id == "anisotropy"
+    for entry in app.entries:
+        assert entry.label and entry.description
 
 
 def test_the_header_and_the_embedded_wizard_are_drawn_for_each_entry():

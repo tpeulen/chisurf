@@ -128,21 +128,24 @@ def _open_fps_editor(window, payload: dict) -> None:
     window : chimol.hosts.qt.MolViewPluginWindow
         The window the hook was called on; the editor is kept alive on it.
     payload : dict
-        The fps.json document, as :attr:`FpsJsonEditor.fps_json_payload` takes.
+        The fps.json document, as :meth:`FpsEditor.load_payload` takes.
     """
-    from chisurf.plugins.modelling.fps_json_editor.gui.tool import FpsJsonEditorTool
+    import pathlib
+
+    from chisurf.gui.plugin_window import open_native_plugin
+    from chisurf.plugins.modelling import fps_json_editor
 
     tool = getattr(window, "_fps_json_editor", None)
     if tool is None:
-        tool = FpsJsonEditorTool()
+        tool = open_native_plugin(pathlib.Path(fps_json_editor.__file__).parent)
         # Held on the chimol window, or Qt collects the editor the moment the
         # command returns -- the same reason the plugin launcher keeps its
         # windows on the main window.
         window._fps_json_editor = tool
-    tool.editor.fps_json_payload = dict(payload)
-    tool.show()
-    tool.raise_()
-    tool.activateWindow()
+    else:
+        tool.show()
+        tool.raise_()
+    tool.control.editor.load_payload(dict(payload))
 
 
 def _create_window():

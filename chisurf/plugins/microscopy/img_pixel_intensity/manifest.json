@@ -20,7 +20,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.microscopy.img_pixel_intensity.gui.tool:ImgPixelIntensityTool",
     "cli": "img-pixel-intensity=chisurf.plugins.microscopy.img_pixel_intensity.cli:cli",
     "emtk": "chisurf.plugins.microscopy.img_pixel_intensity.gui.app:make_app"
   },

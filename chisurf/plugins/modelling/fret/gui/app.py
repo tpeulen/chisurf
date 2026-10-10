@@ -7,6 +7,8 @@ list of tools on the left, in the mechanics of the Structure Tools hub.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from chisurf.plugins.modelling.structure_tools.app import StructureToolsHubApp
 
 ENTRIES = [
@@ -31,6 +33,8 @@ class FretApp(StructureToolsHubApp):
     ENTRIES = ENTRIES
     TITLE = "FRET"
     COMPACT = True
+    GUIDE_FILE = Path(__file__).parent / "guide.json"
+    HELP_FILE = Path(__file__).parent / "help.md"
 
 
 def make_app() -> FretApp:

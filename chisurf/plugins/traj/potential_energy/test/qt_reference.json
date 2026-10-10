@@ -1,0 +1,8 @@
+{
+ "energies": "FrameNbr\tRadius-Gyration\tClash-Potential\t\n1\t5.188\t0.776\t\n2\t4.907\t0.281\t\n3\t4.836\t0.815\t\n4\t4.951\t0.102\t\n",
+ "files": {
+  "H-Bond": "chisurf/core/structure/potential/database/hb.npy",
+  "Iso-UNRES": "chisurf/core/structure/potential/database/unres.npy",
+  "Miyazawa-Jernigan": "chisurf/core/structure/potential/database/mj.npy"
+ }
+}

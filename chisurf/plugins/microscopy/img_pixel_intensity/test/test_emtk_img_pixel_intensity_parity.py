@@ -211,11 +211,6 @@ def test_the_database_button_picks_a_dataset(app, drv, flim):
     C.database_button_picks_a_dataset(app, drv, flim)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="emtk gap: the dataset picker's buttons share one id and its Open selected / Cancel never fire; "
-    "see okf/plugins/emtk-ports/img_drift/REPORT.md",
-)
 def test_the_open_selected_button_of_the_database_picker_can_be_pressed(app, drv, flim):
     C.open_selected_button_of_the_database_picker_can_be_pressed(app, drv, flim)
 

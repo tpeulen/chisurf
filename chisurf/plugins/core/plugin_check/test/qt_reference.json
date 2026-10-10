@@ -1,0 +1,79 @@
+{
+ "n_rows": 129,
+ "pending_cell": "\u23f3",
+ "first_rows": [
+  [
+   "Help:About ChiSurf",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ],
+  [
+   "Spectroscopy:FRET:Accurate FRET",
+   "\u23f3",
+   "built-in",
+   "(+2 optional)",
+   ""
+  ],
+  [
+   "Tools:Views:Acquisition",
+   "\u23f3",
+   "built-in",
+   "",
+   ""
+  ]
+ ],
+ "status_label": "Ready \u2728 129 plugin(s) found",
+ "details_0": [
+  "Plugin",
+  "Module",
+  "Source",
+  "Status",
+  "Description",
+  "Features"
+ ],
+ "details_1": [
+  "Plugin",
+  "Module",
+  "Source",
+  "Status",
+  "Optional",
+  "Description"
+ ],
+ "details_7": [
+  "Plugin",
+  "Module",
+  "Source",
+  "Status",
+  "Description"
+ ],
+ "details_20": [
+  "Plugin",
+  "Module",
+  "Source",
+  "Status",
+  "Optional",
+  "Description"
+ ],
+ "details_60": [
+  "Plugin",
+  "Module",
+  "Source",
+  "Status",
+  "Description"
+ ],
+ "error_cell": "ImportError: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...",
+ "glyphs": [
+  "\u2705",
+  "\u274c",
+  "\u26a0\ufe0f"
+ ],
+ "delay": [
+  0.0,
+  5.0,
+  0.1,
+  0.5
+ ],
+ "skip_blacklisted": true
+}

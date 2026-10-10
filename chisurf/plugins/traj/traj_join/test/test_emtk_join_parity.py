@@ -10,15 +10,14 @@ the old join interleaved and chunk-reversed on exactly that.
 from __future__ import annotations
 
 import json
-import os
 import re
-import subprocess
 import sys
 import time
 from pathlib import Path
 
 import numpy as np
 import pytest
+from chisurf.plugins.traj.traj_save_topology.test.qt_recorded import load_reference, same_coordinates
 from emtk.testing import PixelPainter, RecordingPainter
 
 HERE = Path(__file__).parent
@@ -73,54 +72,12 @@ def source():
     return np.asarray(md.load(TRAJ, top=TOP).xyz)
 
 
-_QT = r"""
-import json, sys
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-from chisurf.plugins.traj.traj_join import sections
-from chisurf.plugins.traj.traj_join.widget import JoinTrajectoriesWidget
-traj, top, target, chunk = sys.argv[1:5]
-told, errors = [], []
-sections.dialogs.information = lambda parent, title, text: told.append([title, text])
-sections.dialogs.error = lambda parent, title, text: errors.append([title, text])
-w = JoinTrajectoriesWidget()
-io = w.findChild(sections._IoSection)
-io._load_trajectory_1(traj)
-io._save_joined()                                     # one trajectory only
-io._load_trajectory_2(traj); io._load_topology(top)
-w.model.reverse_traj_2, w.model.chunk_size = True, int(chunk)
-QtWidgets.QFileDialog.getSaveFileName = staticmethod(lambda *a, **k: ("", ""))
-io._save_joined()                                     # the dialog closed
-QtWidgets.QFileDialog.getSaveFileName = staticmethod(lambda *a, **k: (target, "DCD trajectory (*.dcd)"))
-io._save_joined()
-print("FACTS" + json.dumps({"told": told, "errors": errors, "log": w.model._log}))
-"""
 
 
 @pytest.fixture(scope="module")
-def qt(tmp_path_factory):
-    pytest.importorskip("qtpy")
-    target = tmp_path_factory.mktemp("qt") / "joined.dcd"
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT, TRAJ, TOP, str(target), str(CHUNK)],
-        capture_output=True,
-        text=True,
-        timeout=300,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and (
-        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
-    ):
-        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
-    # Any other failure is the Qt widget's own: skipping it hid a broken Qt host.
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    facts = json.loads(line[len("FACTS") :])
-    facts["target"] = target
-    return facts
+def qt():
+    """The retired Qt widget's answers, recorded before it was deleted (qt_reference.json)."""
+    return load_reference(HERE)
 
 
 def _read(path):
@@ -141,11 +98,11 @@ def test_a_time_join_appends_the_whole_reversed_trajectory(qt, source, tmp_path)
         target = tmp_path / "joined.dcd"
         _pick(app, target)
         _settle(app)
-        ours, theirs = _read(target), _read(qt["target"])
+        ours = _read(target)
         expected = np.concatenate([source, source[::-1]])
-        assert ours.shape == theirs.shape == expected.shape == (928, 5235, 3)
+        assert ours.shape == expected.shape == (928, 5235, 3)
         np.testing.assert_allclose(ours, expected, atol=1e-3)  # not A0-99, B99-0, A100-199, ...
-        np.testing.assert_allclose(ours, theirs, atol=1e-4)
+        assert same_coordinates(ours, qt["target"])
         np.testing.assert_allclose(
             ours[463], ours[464], atol=1e-3
         )  # forward and back: the turn repeats a frame

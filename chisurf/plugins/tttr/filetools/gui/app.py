@@ -1,8 +1,7 @@
 """EMTK File tools hub: a navigation list of six file tools, each the child's own emtk app.
 
-Child routes come from the children's manifests (``panels.json`` names them by
-their Qt entrypoint; :func:`native_factory` reads the matching ``emtk``
-entrypoint), so the hub never imports a Qt route. The selected child draws in
+Child routes come from the children's manifests (``panels.json`` names each by its
+plugin folder; :func:`native_factory` reads that plugin's ``emtk`` entrypoint). The selected child draws in
 the right-hand box and receives the pointer, wheel, keys and drops that land
 there. Frames are requested only while the child (or the hub's own tour/help)
 needs them.
@@ -39,12 +38,9 @@ SPLITTER_FIELDS = (
 
 
 def native_factory(panel):
-    """Resolve only the native declaration; never import the legacy Qt route."""
-    parts = panel["entrypoint"].split(":")[0].split(".")
+    """Resolve a panel's native declaration: the ``emtk`` entrypoint of its plugin's manifest."""
     root = Path(__file__).resolve().parents[3]
-    # A route may name a plugin package itself (BID), or its gui module.
-    relative = parts[2 : parts.index("gui")] if "gui" in parts else parts[2:]
-    manifest = root.joinpath(*relative, "manifest.json")
+    manifest = root.joinpath(*str(panel["plugin"]).split("/"), "manifest.json")
     data = json.loads(manifest.read_text())
     return data.get("entrypoints", {}).get("emtk")
 
@@ -176,7 +172,7 @@ class FileToolsApp(TourTarget, ImApp):
                 if im.selectable(
                     caption(panel),
                     self.selected == panel["role"],
-                    icon=entry_icon(panel, panel["entrypoint"]),
+                    icon=entry_icon(panel, panel["plugin"]),
                 ):
                     self.select(panel["role"])
                 im.set_item_tooltip(tr(panel["description"]))
@@ -199,7 +195,7 @@ class FileToolsApp(TourTarget, ImApp):
             im.set_next_window_size((width - left, height - 90), im.Cond.ALWAYS)
             if im.begin("##Pending file tool", flags=flags | im.WindowFlags.NO_TITLE_BAR):
                 im.text_wrapped(tr(self.errors.get(self.selected, "")))
-                im.text_wrapped(panel["entrypoint"])
+                im.text_wrapped(panel["plugin"])
                 if im.button(tr("Retry")):
                     self.select(self.selected)
                 im.set_item_tooltip(

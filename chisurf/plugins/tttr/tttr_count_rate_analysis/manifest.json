@@ -21,7 +21,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.tttr.tttr_count_rate_analysis.gui.tool:CountRateAnalyzer",
     "cli": "count-rate=chisurf.plugins.tttr.tttr_count_rate_analysis.cli:cli",
     "emtk": "chisurf.plugins.tttr.tttr_count_rate_analysis.gui.controller:create_app"
   }

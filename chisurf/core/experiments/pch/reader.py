@@ -173,7 +173,7 @@ class PCHReader(ExperimentReader):
         """Return (t_centers, trace_counts, k_vals, p_exp).
 
         The implementation mirrors the logic used in the standalone PCH plugin
-        (chisurf.plugins.pch.PCHApp.compute_trace_pch) but without any GUI
+        (the PCH model in chisurf.plugins.pch.gui.model) but without any GUI
         dependencies.
         """
         # Routing-channel selection

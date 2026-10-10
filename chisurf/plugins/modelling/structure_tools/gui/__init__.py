@@ -1,7 +1,1 @@
-"""GUI for the Structure Tools combined plugin."""
-
-from __future__ import annotations
-
-from .tool import StructureToolsTool  # noqa: F401
-
-__all__ = ["StructureToolsTool"]
+"""Resources of the Structure Tools plugin (window spec, guide, help)."""

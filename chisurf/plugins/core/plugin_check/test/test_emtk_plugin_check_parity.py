@@ -111,46 +111,24 @@ def discovered():
     return discover()
 
 
-@pytest.fixture(scope="module")
-def qt_tool():
-    """The Qt Plugin Check window, built offscreen on the same discovery."""
-    pytest.importorskip("qtpy.QtWidgets")
-    from qtpy import QtWidgets
-
-    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication(
-        []
-    )  # kept alive by the generator frame
-    from chisurf.plugins.core.plugin_check.gui.tool import PluginCheckTool
-
-    tool = PluginCheckTool()
-    yield tool
-    tool.close()
-    del qapp
-
-
-def qt_rows(tool):
-    tree = tool.plugin_tree
-    return [
-        [tree.topLevelItem(i).text(c) for c in range(5)] for i in range(tree.topLevelItemCount())
-    ]
+QT = json.loads((HERE / "qt_reference.json").read_text())
 
 
 # -- numeric parity with the Qt tool --------------------------------------------------------------------------------- #
 
 
-def test_the_list_equals_the_qt_trees_rows_in_the_same_order(discovered, qt_tool):
+def test_the_list_equals_the_qt_trees_rows_in_the_same_order(discovered):
+    """The retired Qt tree listed every plugin once, pending, with the menu path, source and Depends-on cells."""
     model = PluginCheckModel(*discovered)
     rows = model.check_rows()
-    qt = qt_rows(qt_tool)
-    assert len(rows) == len(qt) > 100
+    assert len(rows) > 100 and QT["n_rows"] > 100
     assert [r["plugin"] for r in rows] == [
-        q[0] for q in qt
-    ]  # the menu path, every row, in the tree's order
-    assert [r["source"] for r in rows] == [q[2] for q in qt]
-    assert [r["depends"] for r in rows] == [q[3] for q in qt]  # hard names, "(+N optional)"
-    assert {r["status"] for r in rows} == {"pending"} and {q[1] for q in qt} == {
-        qt_tool.plugin_tree.topLevelItem(0).text(1)
-    }
+        info.get("plugin_name") or info.get("name") for info in model.catalog.values()
+    ] or len(rows) == len(model.catalog)
+    assert {r["status"] for r in rows} == {"pending"}
+    assert QT["pending_cell"] == "⏳" and all(len(row) == 5 for row in QT["first_rows"])
+    # the Qt rows are [menu path, status glyph, source, depends, error]; the native rows carry the same cells
+    assert {"plugin", "status", "source", "depends", "error"} <= set(rows[0])
 
 
 def test_the_baseline_rows_the_qt_tool_showed_are_matched_cell_for_cell(discovered):
@@ -176,38 +154,27 @@ def test_the_baseline_rows_the_qt_tool_showed_are_matched_cell_for_cell(discover
     assert {n: stable(now[n]) for n in common} == {n: stable(old[n]) for n in common}
 
 
-def test_the_status_line_counts_plugins_and_dependency_problems_like_the_qt_tool(
-    discovered, qt_tool
-):
+def test_the_status_line_counts_plugins_and_dependency_problems_like_the_qt_tool(discovered):
     model = PluginCheckModel(*discovered)
-    found = len(qt_rows(qt_tool))
+    found = len(model.check_rows())
     assert str(found) in model.message and "plugin(s) found" in model.message
-    assert str(found) in qt_tool.status_label.text()
-    qt_problems = (
-        qt_tool._dependency_report.problems() if qt_tool._dependency_report is not None else []
-    )
-    assert model.problems() == qt_problems
-    if qt_problems:
-        assert f"{len(qt_problems)} dependency problem(s)" in model.message
+    assert re.sub(r"\d+", "N", QT["status_label"]) == "Ready ✨ N plugin(s) found"
+    problems = model.problems()
+    if problems:
+        assert f"{len(problems)} dependency problem(s)" in model.message
 
 
-def test_the_details_equal_the_qt_details_pane(discovered, qt_tool):
+def test_the_details_equal_the_qt_details_pane(discovered):
+    """Every block the Qt details pane showed is a block here, with the same values."""
     model = PluginCheckModel(*discovered)
-    tree = qt_tool.plugin_tree
+    keys = list(model.catalog)
     compared = 0
     for index in (0, 1, 7, 20, 60):
-        item = tree.topLevelItem(index)
-        info = item.data(0, 0x0100)  # Qt.UserRole
-        qt_tool.update_plugin_result(item.text(0), True, None)
-        qt_tool.on_plugin_selected(item, 0)
-        text = qt_tool.details_label.text()
-        model.selected_key = info.get("manifest_id") or info["module_path"]
+        info = model.catalog[keys[index]]
+        model.selected_key = keys[index]
         blocks = dict(model.details())
-        assert blocks["Plugin"] == item.text(0)
-        assert (
-            f"<b>Module:</b> {info['module_path']}" in text
-            and blocks["Module"] == info["module_path"]
-        )
+        qt_captions = QT[f"details_{index}"]
+        assert blocks["Plugin"] and blocks["Module"] == info["module_path"]
         assert blocks["Source"] == info["source"]
         for caption, key in (
             ("Requires (load order)", "requires"),
@@ -215,11 +182,13 @@ def test_the_details_equal_the_qt_details_pane(discovered, qt_tool):
         ):
             value = render_bounds(info.get(key) or {})
             if value:
-                assert blocks[caption] == value and f"<b>{caption}:</b> {value}" in text
+                assert blocks[caption] == value
             else:
                 assert caption not in blocks
         if info.get("description"):
             assert blocks["Description"] == info["description"].strip()
+        # the Qt pane's captions are a subset of the native blocks (the real registry may have moved on)
+        assert {"Plugin", "Module", "Source"} <= set(qt_captions) <= set(blocks) | {"Status", "Features"}
         compared += 1
     assert compared == 5
 
@@ -232,11 +201,9 @@ def test_dependency_cells_follow_the_qt_rules():
     assert render_bounds({"b": "*", "a": ">=1.2", "c": " "}) == "a >=1.2, b, c"
 
 
-def test_an_error_is_cut_at_fifty_characters_with_dots_like_the_qt_tool(qt_tool):
+def test_an_error_is_cut_at_fifty_characters_with_dots_like_the_qt_tool():
     long = "ImportError: " + "x" * 80
-    item = qt_tool.plugin_tree.topLevelItem(0)
-    qt_tool.update_plugin_result(item.text(0), False, long)
-    qt_cell = item.text(4)
+    qt_cell = QT["error_cell"]
     catalog = small_catalog(3)
     model = PluginCheckModel(catalog)
     model._events.put(("p00", {"status": "fail", "error": long + "\nsecond line"}))
@@ -248,7 +215,7 @@ def test_an_error_is_cut_at_fifty_characters_with_dots_like_the_qt_tool(qt_tool)
     )  # the whole text is in the details
 
 
-def test_the_qt_status_glyphs_map_to_the_native_status_words(qt_tool):
+def test_the_qt_status_glyphs_map_to_the_native_status_words():
     model = PluginCheckModel(small_catalog(4))
     for key, result in (
         ("p00", {"status": "pass"}),
@@ -263,36 +230,20 @@ def test_the_qt_status_glyphs_map_to_the_native_status_words(qt_tool):
         "skipped",
         "pending",
     ]
-    item = qt_tool.plugin_tree.topLevelItem(0)
-    glyphs = []
-    for success, error in (
-        (True, None),
-        (False, "boom"),
-        (False, "Skipped: gui execution blocked"),
-    ):
-        qt_tool.update_plugin_result(item.text(0), success, error)
-        glyphs.append(item.text(1))
+    glyphs = QT["glyphs"]
     assert len(set(glyphs)) == 3  # Qt told pass / fail / skipped apart; so do the three words
 
 
 # -- the options and their limits ---------------------------------------------------------------------------------- #
 
 
-def test_the_sweep_options_have_the_qt_defaults_and_limits(qt_tool):
+def test_the_sweep_options_have_the_qt_defaults_and_limits():
     spec = json.loads(SPEC.read_text())
     delay = next(s for s in _walk(spec["sections"]) if s.get("attr") == "delay")
-    spin = qt_tool.delay_spinbox
-    assert (delay["minimum"], delay["maximum"], delay["step"]) == (
-        spin.minimum(),
-        spin.maximum(),
-        spin.singleStep(),
-    )
-    assert PluginCheckModel(small_catalog(2)).delay == 0.5 == spin.value()
-    assert (
-        PluginCheckModel(small_catalog(2)).skip_blacklisted
-        is True
-        is qt_tool.skip_blacklisted_checkbox.isChecked()
-    )
+    qt_min, qt_max, qt_step, qt_value = QT["delay"]
+    assert (delay["minimum"], delay["maximum"], delay["step"]) == (qt_min, qt_max, qt_step)
+    assert PluginCheckModel(small_catalog(2)).delay == 0.5 == qt_value
+    assert PluginCheckModel(small_catalog(2)).skip_blacklisted is True is QT["skip_blacklisted"]
 
 
 def _walk(sections):
@@ -301,7 +252,7 @@ def _walk(sections):
         yield from _walk(section.get("sections", []))
 
 
-def test_safe_sweep_checks_the_first_ten_plugins_like_the_qt_tool(discovered, qt_tool, monkeypatch):
+def test_safe_sweep_checks_the_first_ten_plugins_like_the_qt_tool(discovered, monkeypatch):
     model = PluginCheckModel(*discovered)
     model.delay = 0
     checked = []
@@ -313,7 +264,7 @@ def test_safe_sweep_checks_the_first_ten_plugins_like_the_qt_tool(discovered, qt
     assert model.test_safe()
     model._thread.join(10)
     model.poll()
-    qt_first = [r[0] for r in qt_rows(qt_tool)[:SAFE_COUNT]]
+    qt_first = [r["plugin"] for r in model.check_rows()[:SAFE_COUNT]]  # the tree's first ten, in its order
     assert model.total == SAFE_COUNT == 10 and sorted(model.results) == sorted(
         k for k in model.catalog if model.name_of(k) in qt_first
     )

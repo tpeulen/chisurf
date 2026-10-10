@@ -35,22 +35,3 @@ menu_hidden = True
 
 # Expose the plugin CLI through chisurf.core.cli.
 cli_entrypoint = "alex=chisurf.plugins.tttr.ptu_alex_creator.cli.main:cli"
-
-__all__ = ["AlexPTUCreator"]
-
-
-def __getattr__(attr_name: str):
-    """Lazy Qt import gate (no Qt import as a package side effect)."""
-    if attr_name == "AlexPTUCreator":
-        from .gui.tool import AlexPTUCreator as _cls
-
-        globals()["AlexPTUCreator"] = _cls
-        return _cls
-    raise AttributeError(f"module {__name__!r} has no attribute {attr_name!r}")
-
-
-if __name__ == "plugin":
-    from .gui.tool import AlexPTUCreator
-
-    window = AlexPTUCreator()
-    window.show()

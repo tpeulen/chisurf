@@ -85,6 +85,7 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         restore: bool = True,
     ) -> None:
         self.model = model or BurstSelectionModel()
+        self.example_folder: Path | None = None  # None: the plugin's demo cache
         if model is None and restore:
             self.model.restore()
         self.on_run_done = on_run_done
@@ -230,6 +231,24 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             return False
         self.job.start("run")
         return True
+
+    def load_example(self) -> None:
+        """Add the simulated stream with its known twelve bursts and select the matching detectors."""
+        from ..demo import SETUP, make_demo
+
+        try:
+            path = make_demo(self.example_folder)
+        except Exception as exc:  # noqa: BLE001 - shown in the status line
+            self.model.status_text = f"Cannot build the example: {exc}"
+            return
+        self.apply_setup(SETUP)
+        self.model.add_paths([path])
+        self._diag_due = time.monotonic()
+        self.track("load_example")
+        self.model.status_text = (
+            "Example added: a simulated stream with 12 planted bursts of about 200 photons. "
+            "Press Run: the search must find all 12."
+        )
 
     def run_step(self) -> bool:
         """The workflow hub's Next: run unless an identical search is already displayed."""
@@ -392,6 +411,12 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         pressed = button_row(
             [
                 {
+                    "label": action_caption("example"),
+                    "key": "load_example",
+                    "enabled": not busy,
+                    "tip": "Add a simulated photon stream with 12 planted bursts and select its detectors.",
+                },
+                {
                     "label": "Add files",
                     "key": "add_files",
                     "enabled": not busy,
@@ -493,7 +518,9 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             ],
             remember=self.remember,
         )
-        if pressed:
+        if pressed == "load_example":
+            self.load_example()
+        elif pressed:
             self._press(pressed)
         if busy or self.job.progress:
             im.text_wrapped(self.job.progress or m.status_text)

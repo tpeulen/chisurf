@@ -1,20 +1,17 @@
-"""The emtk TTTR image browser against the Qt tool: same files, same numbers, every action.
+"""The emtk TTTR image browser against the retired Qt tool: same files, same numbers, every action.
 
-The Qt reference runs in a subprocess (``qt_reference.py``: the real ``TTTRImageBrowserTool`` offscreen, on the same
-CLSM test files and the same detector setup, with temporary settings and the destination dialogs stubbed). Because the
-Qt tool and the emtk model share ``ImageBrowserViewModel``, a fault in it would pass a Qt-versus-emtk comparison on its
-own: the numbers pinned below were captured from the Qt window before the port (``qt_values.json`` of the evidence
-folder) and a written-out reference of the rules (the DOCX content, the copy rule) is compared too.
+The Qt reference was recorded from the real ``TTTRImageBrowserTool`` (offscreen, on the same CLSM test files and the
+same detector setup, with temporary settings and the destination dialogs stubbed) into ``qt_reference.json``. Because
+the Qt tool and the emtk model shared ``ImageBrowserViewModel``, a fault in it would pass a Qt-versus-emtk comparison
+on its own: the numbers pinned below were captured from the Qt window before the port and a written-out reference of
+the rules (the DOCX content, the copy rule) is compared too.
 """
 
 import hashlib
 import io
 import json
-import os
 import pathlib
 import shutil
-import subprocess
-import sys
 import zipfile
 
 import numpy as np
@@ -58,43 +55,9 @@ def sha(a):
 
 
 @pytest.fixture(scope="module")
-def qt(photon_template, tmp_path_factory):
-    """What the real Qt tool computed and did on a copy of the photon folder (a Qt failure fails, never skips)."""
-    work = tmp_path_factory.mktemp("qt_work")
-    folder = work / "imgs"
-    shutil.copytree(photon_template, folder)
-    (work / "setup.json").write_text(json.dumps(two_detector_setup()))
-    env = dict(
-        os.environ,
-        QT_QPA_PLATFORM="offscreen",
-        CHISURF_SETTINGS_DIR=str(work / "settings"),
-        MMFDB_SETTINGS_DIR=str(work / "mmfdb"),
-        MMFDB_DATABASE_PATH=str(work / "mmfdb.sqlite"),
-        HOME=str(work / "home"),
-        PYTHONPATH=os.pathsep.join([str(REPO), os.environ.get("PYTHONPATH", "")]),
-    )
-    probe = subprocess.run([sys.executable, "-c", "import qtpy"], env=env, capture_output=True)
-    if probe.returncode != 0:
-        pytest.skip("Qt (qtpy) is not installed")
-    proc = subprocess.run(
-        [
-            sys.executable,
-            str(HERE / "qt_reference.py"),
-            str(folder),
-            str(work / "setup.json"),
-            str(work),
-        ],
-        env=env,
-        capture_output=True,
-        text=True,
-        timeout=900,
-    )
-    lines = [ln for ln in proc.stdout.splitlines() if ln.startswith("JSON:")]
-    if proc.returncode != 0 or not lines:
-        pytest.fail(f"the Qt reference failed (exit {proc.returncode}):\n{proc.stderr[-3000:]}")
-    data = json.loads(lines[-1][5:])
-    data["folder"] = folder
-    return data
+def qt():
+    """What the retired Qt tool computed and did on the photon folder (``qt_reference.json``)."""
+    return json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
 
 
 def model_on(folder, setup=True):

@@ -1,0 +1,21 @@
+{
+  "_comment": "Guided tour of the FRET window (docking and pair selection). The awaited step waits for the user to open the second tool.",
+  "steps": [
+    {
+      "title": "Two FRET tools in one window",
+      "text": "<b>Docking &amp; Screening</b> places rigid bodies with FRET restraints and scores structure libraries; <b>Pair Selection</b> picks the label pairs that tell the conformations of a trajectory apart. You press the controls; the tour only points at them.",
+      "target": {}
+    },
+    {
+      "title": "Open pair selection",
+      "text": "Each row opens one tool. Pick <b>Pair Selection</b>: the right-hand area becomes that tool, which has its own Guide and Help buttons.",
+      "target": {"name": "nav_Pair Selection"},
+      "await": {"hint": "Select <b>Pair Selection</b> in the list."}
+    },
+    {
+      "title": "The tool itself",
+      "text": "Everything in this area belongs to the selected tool. Switching away and back keeps its settings and results.",
+      "target": {"name": "tool_area"}
+    }
+  ]
+}

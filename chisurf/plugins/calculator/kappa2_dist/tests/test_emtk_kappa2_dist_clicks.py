@@ -372,33 +372,6 @@ def test_a_drag_pans_the_distribution_plot(app):
     assert tick_labels(draw(app, frames=2)) != before
 
 
-# ── the host: no file drop (the Qt widget accepted none either) ------------------------------------------------- #
-
-
-def test_the_qt_host_refuses_a_dropped_file_as_the_qt_widget_did(app):
-    QtWidgets = pytest.importorskip("qtpy.QtWidgets")
-    from emtk.qt_host import ControlHost
-    from qtpy import QtCore, QtGui
-
-    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication(
-        []
-    )  # kept alive for the host
-    host = ControlHost(app)
-    host.resize(*SIZE)
-    mime = QtCore.QMimeData()
-    mime.setUrls([QtCore.QUrl.fromLocalFile("/tmp/run.ptu")])
-    enter = QtGui.QDragEnterEvent(
-        QtCore.QPoint(10, 10),
-        QtCore.Qt.CopyAction,
-        mime,
-        QtCore.Qt.LeftButton,
-        QtCore.Qt.NoModifier,
-    )
-    host.dragEnterEvent(enter)
-    assert not enter.isAccepted() and qapp is not None
-    host.close()
-
-
 # ── the same flow in the small window --------------------------------------------------------------------------- #
 
 

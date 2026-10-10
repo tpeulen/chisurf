@@ -1,6 +1,6 @@
 """The κ² distribution calculator, driven the way its GUI drives it.
 
-The tool is AutoForm over a plain model object (PRD-40): the inputs are named
+The tool is an emtk app over a plain model object: the inputs are named
 fields, ``compute`` runs the selected model, and the outputs are fields again.
 This used to poke ``doubleSpinBox_10`` and friends — the names Designer gave
 the widgets of a ``.ui`` file that no longer exists — so every test errored
@@ -18,26 +18,17 @@ import utils
 TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 utils.set_search_paths(TOPDIR)
 
-from qtpy.QtWidgets import QApplication
-
 import chisurf.core.fio  # noqa: F401 - registers the readers the tool imports
-
-app = QApplication.instance() or QApplication(sys.argv)
 
 
 class Tests(unittest.TestCase):
     """The cone model, with and without a known donor-acceptor anisotropy."""
 
     def setUp(self):
-        from chisurf.plugins.calculator.kappa2_dist.k2dgui import Kappa2Dist
+        from chisurf.plugins.calculator.kappa2_dist.gui.app import make_app
 
-        self.tool = Kappa2Dist()
-        self.model = self.tool._model
-
-    def tearDown(self):
-        self.tool.close()
-        self.tool.deleteLater()
-        QApplication.processEvents()
+        self.app = make_app()
+        self.model = self.app.tool._model
 
     def test_defaults(self):
         """The anisotropies, the histogram step and its bin count."""
@@ -62,7 +53,7 @@ class Tests(unittest.TestCase):
         This mode samples randomly, so the spreads are asserted to the
         precision a 10 000-sample run actually has.
         """
-        self.tool._do_compute()
+        self.app.compute_now()
 
         self.assertAlmostEqual(self.model.k2_mean, 2.0 / 3.0, delta=0.01)
         self.assertAlmostEqual(self.model.k2_sd, 0.217, delta=0.005)
@@ -81,7 +72,7 @@ class Tests(unittest.TestCase):
         The sweep is deterministic, so the values are tight.
         """
         self.model.rAD_known = True
-        self.tool._do_compute()
+        self.app.compute_now()
 
         self.assertAlmostEqual(self.model.k2_mean, 2.0 / 3.0, places=3)
         self.assertAlmostEqual(self.model.k2_sd, 0.2200, places=3)

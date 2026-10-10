@@ -26,9 +26,9 @@ The plugin follows the client-server / Qt-free-core standard:
   `region_mle_emtk.view.json` over `RegionMleModel` (`model.py`: the
   view-model plus window state) and runs the analysis on a
   `chisurf.emtk.jobs.SnapshotJob`; its `custom` sections (file lists, region
-  editor, region image, decay plot) are drawn by callbacks in `app.py`. The Qt
-  `RegionMleTool` (`tool.py`, AutoForm over `region_mle.view.json`) stays as
-  the legacy fallback.
+  editor, region image, decay plot) are drawn by callbacks in `app.py`. The
+  former Qt `RegionMleTool` is gone; `region_mle.view.json` remains the
+  view-model's authored spec.
 - **`cli/`** — `region-mle analyze | contract | serve`.
 
 ## GUI usage

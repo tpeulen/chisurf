@@ -631,16 +631,16 @@ def test_guide_button_starts_the_tour_and_its_card_buttons_work(drv):
     assert tour.active and not tour.awaiting
     drv.click_text(
         "Next ►", last=True
-    )  # step 1 awaits the Executable… button: Next is greyed there
+    )  # step 1 awaits the Load example button: Next is greyed there
     assert tour.step_idx == 1 and tour.awaiting
     drv.click_text("Next ►", last=True)
     assert tour.step_idx == 1
-    tour.start(3)  # AER: nothing to press
+    tour.start(4)  # AER: nothing to press
     drv.draw(3)
     drv.click_text("Next ►", last=True)
-    assert tour.step_idx == 4
+    assert tour.step_idx == 5
     drv.click_text("◄ Prev", last=True)
-    assert tour.step_idx == 3
+    assert tour.step_idx == 4
     drv.click_text("Close Tour", last=True)
     assert not tour.active
 
@@ -654,8 +654,12 @@ def test_every_guide_target_is_a_drawn_control(drv):
             assert tour.get_target_rect(key), f"{step['title']}: {key} is not drawn"
 
 
-def test_the_tour_waits_for_the_buttons_and_is_walked_to_the_end(drv, world):
+def test_the_tour_waits_for_the_buttons_and_is_walked_to_the_end(drv, world, tmp_path):
+    from chisurf.plugins.modelling.hydropro.demo import expected_diffusion
+
     tour = drv.app.tour
+    drv.app.model.example_folder = tmp_path / "demo"
+    drv.app.model.work_dir = tmp_path / "work"
     drv.click("guide")
     seen = []
     for _ in range(40):
@@ -666,22 +670,17 @@ def test_the_tour_waits_for_the_buttons_and_is_walked_to_the_end(drv, world):
         key = tour._target_key(step.get("target"))
         if tour.awaiting:
             seen.append(key)
-            if key == "Executable":
-                drv.click("select_exe")
-                assert dialog_open(drv)
-                drv.app.dialog.enter("bin")
-                drv.draw(2)
-                pick(drv, "hydropro10.exe")
-            elif key == "Select files":
-                drv.click("select_files")
-                pick(drv, "148l.pdb")
+            if key == "load_example":
+                drv.click("load_example")
             elif key == "Run":
                 drv.click("run")
                 finish(drv)
             assert not tour.awaiting, f"{step['title']}: operating {key} did not release the step"
         tour.next()
-    assert not tour.active and seen == ["Executable", "Select files", "Run"]
-    assert drv.app.model.result_rows()[0]["d"] == "1.047e-06"
+    assert not tour.active and seen == ["load_example", "Run"]
+    assert float(drv.app.model.result_rows()[0]["d"]) == pytest.approx(
+        expected_diffusion(), rel=0.03
+    )
 
 
 def test_the_tour_card_does_not_cover_the_control_a_step_points_at(drv):

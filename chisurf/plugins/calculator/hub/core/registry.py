@@ -90,7 +90,7 @@ def default_calculators() -> list[CalculatorEntry]:
                 "Orientation-factor distribution p(κ²) for FRET — wobbling-in-cone, "
                 "diffusion-with-traps and isotropic models with apparent-distance error."
             ),
-            widget="chisurf.plugins.calculator.kappa2_dist.gui.tool:Kappa2Dist",
+            widget="chisurf.plugins.calculator.kappa2_dist.gui.app:make_app",
             icon="🎯",
         ),
         CalculatorEntry(

@@ -1,0 +1,18 @@
+{
+ "pack_row": "m000.spc, m001.spc → m000.pto",
+ "unpack_row": "m000.pto → m000.spc, m000.set, m001.spc",
+ "names": [
+  "m000.pto",
+  "m000.set",
+  "m000.spc",
+  "m001.spc"
+ ],
+ "bad_row": "bad.pto: could not unpack ({result})",
+ "accepts": {
+  "m000.spc": true,
+  "m000.set": false,
+  "x.pto": true,
+  "notes.txt": false,
+  "missing.ptu": true
+ }
+}

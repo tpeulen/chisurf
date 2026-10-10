@@ -19,7 +19,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.burst.burst_background:BurstBackgroundEstimator",
     "cli": "burst-background=chisurf.plugins.burst.burst_background.cli:cli",
     "emtk": "chisurf.plugins.burst.burst_background.gui.app:create_app"
   },

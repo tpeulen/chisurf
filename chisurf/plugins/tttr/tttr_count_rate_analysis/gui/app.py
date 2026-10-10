@@ -4,7 +4,7 @@ Left: the TTTR file queue (add/clear) and the detector-channel source — a
 saved detector setup from the canonical store, converted into the channel
 definition the model computes with. Right: the count-rate-vs-file plot and
 the per-channel results table, with the Calculate / Save actions. The widget
-(:class:`~.tool.CountRateAnalyzer`) keeps the Qt-free
+(:class:`~.controller.CountRateController`) keeps the Qt-free
 :class:`~..view_model.CountRateViewModel` and injects the channels provider;
 this app renders its state.
 """
@@ -27,7 +27,7 @@ from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import action_button, action_caption, window_size
 
 if TYPE_CHECKING:
-    from .tool import CountRateAnalyzer
+    from .controller import CountRateController
 
 WINDOW_BG = (30, 32, 38, 255)
 
@@ -111,7 +111,7 @@ class CountRateGui(TourTarget):
 
     def __init__(
         self,
-        tool: CountRateAnalyzer,
+        tool: CountRateController,
         on_calculate: Callable[[], None] | None = None,
         on_save: Callable[[], None] | None = None,
         on_add_files: Callable[[], None] | None = None,
@@ -451,7 +451,7 @@ class CountRateApp(ImApp):
 
     def __init__(
         self,
-        tool: CountRateAnalyzer,
+        tool: CountRateController,
         on_calculate: Callable[[], None] | None = None,
         on_save: Callable[[], None] | None = None,
         on_add_files: Callable[[], None] | None = None,

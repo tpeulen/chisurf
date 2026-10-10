@@ -1,7 +1,7 @@
 """The native Imaging Tools hub against the Qt tool it replaces: the tool list, the pipeline order, the shared context.
 
 Hermetic: settings, MMFDB and HOME are temporary folders (the detector-setup store is the temporary settings folder), no
-network. The Qt tool is the committed ``ImagingToolsTool`` built offscreen. Children are fakes (recording what the hub
+network. The Qt tool's lists were recorded before it was deleted (``qt_reference.json``). Children are fakes (recording what the hub
 hands them) except in the tests that draw the real native children. A module guard fails the run if anything appears
 in the real ``~/.chisurf`` other than its ``logs`` folder.
 """
@@ -134,14 +134,20 @@ def draw(app, size=BIG, frames=3):
 
 @pytest.fixture(scope="module")
 def qt_module():
-    pytest.importorskip("qtpy.QtWidgets")
-    from qtpy import QtWidgets
+    """What the retired Qt tool listed, recorded before its deletion (``qt_reference.json``)."""
+    import json
+    from types import SimpleNamespace
 
-    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    from chisurf.plugins.microscopy.imaging_tools.gui import tool
-
-    tool._qapp = qapp
-    return tool
+    ref = json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
+    return SimpleNamespace(
+        IMAGING_PANELS=[
+            {k: v for k, v in p.items() if v is not None} for p in ref["panels"]
+        ],
+        ImagingToolsTool=SimpleNamespace(
+            PIPELINE_ORDER=tuple(ref["pipeline_order"]),
+            ANALYSIS_ROLES=tuple(ref["analysis_roles"]),
+        ),
+    )
 
 
 # -- parity with the Qt tool ------------------------------------------------------------------------------------------ #
@@ -303,11 +309,16 @@ def test_the_hub_draws_without_clipped_or_overlapping_text_around_a_child(size):
     app = fake_hub()
     painter = draw_clip(app, size, frames=3)
     assert {"Back", "Next", "Run all", "Help", "Guide"} <= set(painter.strings) | {"Search..."}
-    left = app.child_box[0]
-    hub = [t for t in painter.shown if t[0][0] < left or t[0][1] < app.child_box[1]]
-    problems = layout_problems(type("P", (), {"shown": hub})(), size)
+    left, top = app.child_box[0], app.child_box[1]
+    hub = [
+        fragment
+        for fragment in painter.visible_text_fragments()
+        if fragment[0][0][0] < left or fragment[0][0][1] < top
+    ]
+    holder = type("P", (), {"visible_text_fragments": lambda _self: iter(hub)})()
+    problems = layout_problems(holder, size)
     assert problems == [], problems
-    cut = clipped_texts(type("P", (), {"shown": hub})())
+    cut = clipped_texts(holder)
     assert cut == [], cut
     app.close()
 

@@ -2,8 +2,8 @@
 
 Guided construction of a linked VV/VH global anisotropy fit. The plugin follows
 the new standard: a Qt-free :mod:`.core` (IRF correction, spectrum I/O, the VV/VH
-link plan) reused by both the GUI and CLI, a declarative :mod:`.gui` (AutoForm
-over ``anisotropy.view.json`` with embedded interactive widgets) and a :mod:`.cli`.
+link plan) reused by both the GUI and CLI, a native emtk :mod:`.gui` (steps from
+``anisotropy.view.json``, forms from ``gui/anisotropy_emtk.view.json``) and a :mod:`.cli`.
 """
 
 from pathlib import Path
@@ -16,9 +16,3 @@ if _manifest is not None:
 else:
     name = "Spectroscopy:Fluorescence decay:Anisotropy-Wizard"
 
-
-if __name__ == "plugin":
-    from .gui.tool import AnisotropyWizard
-
-    _wizard = AnisotropyWizard()
-    _wizard.show()

@@ -16,6 +16,12 @@ from chisurf.plugins.emtk_test_input import Driver
 
 SIZES = [(1200, 800), (800, 600)]
 LABELS = [p.label for p in PANELS]
+#: The destinations of the retired Qt Settings hub (``SETTINGS_PANELS``), in its order.
+QT_PANEL_NAMES = [
+    "Getting Started", "ChiSurf Settings", "Acquisition", "Styles", "Plots", "Models",
+    "User Editor", "AI Settings", "Plugins", "Updates", "Packages", "Channel Definition",
+    "FCS Definitions", "TTTR LUT Tools", "Plugin Check",
+]
 #: The dedicated panel (class name) each destination must host: never the generic file editor.
 EXPECTED = {
     "boarding": "BoardingApp",
@@ -89,9 +95,7 @@ def test_the_hub_opens_on_getting_started_and_lists_the_fifteen_qt_destinations(
 
 
 def test_the_destinations_equal_the_qt_hub_in_name_and_order():
-    from chisurf.plugins.core.setup.gui.tool import SETTINGS_PANELS
-
-    assert LABELS == [p["name"] for p in SETTINGS_PANELS]
+    assert LABELS == QT_PANEL_NAMES
 
 
 @pytest.mark.parametrize("size", SIZES, ids=lambda s: f"{s[0]}x{s[1]}")
@@ -223,9 +227,8 @@ def test_next_and_back_walk_the_list_in_order_by_clicks(hub):
 def test_next_and_back_equal_the_qt_stepper(world):
     """The Qt stepper walks every non-separator row of the list in order."""
     from chisurf.plugins.core.setup.gui.model import step_target
-    from chisurf.plugins.core.setup.gui.tool import SETTINGS_PANELS
 
-    qt_names = [p["name"] for p in SETTINGS_PANELS if not p.get("separator")]
+    qt_names = QT_PANEL_NAMES
     walked = [PANELS[0].key]
     while (nxt := step_target(PANELS, walked[-1], 1)) is not None:
         walked.append(nxt)

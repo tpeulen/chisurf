@@ -1,7 +1,6 @@
-"""The correlator step's settings and computation, Qt-free: what the Qt AutoForm panel and the native app both edit.
+"""The correlator step's settings and computation, Qt-free: what the native step app edits.
 
-The Qt sections (preset/channel combos, lifetime-filter buttons, Correlate) live in :mod:`.correlator_panel`; the
-native drawers in :mod:`.gui.steps`.
+The preset/channel combos, lifetime-filter buttons and Correlate are drawn by :mod:`.gui.steps`.
 """
 
 from __future__ import annotations
@@ -109,7 +108,6 @@ class CorrelatorSettingsModel:
         self._species_a: int = 0
         self._species_b: int = 0
 
-        self._form: typing.Any = None
 
     @property
     def filter_mode(self) -> bool:

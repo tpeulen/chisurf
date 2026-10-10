@@ -40,6 +40,27 @@ from emtk.i18n import tr
 HERE = Path(__file__).parent
 
 
+#: Spec keys whose text a user reads (``options`` are values, not text: ``labels`` carry their spelling).
+_TEXT_KEYS = ("title", "label", "description", "tooltip", "hint", "placeholder", "caption")
+
+
+def translated(node):
+    """A copy of a spec with every text a user reads put through ``tr``."""
+    if isinstance(node, dict):
+        out = {}
+        for key, value in node.items():
+            if key in _TEXT_KEYS and isinstance(value, str):
+                out[key] = tr(value) if value else value
+            elif key in ("labels", "descriptions") and isinstance(value, list):
+                out[key] = [tr(v) if isinstance(v, str) else v for v in value]
+            else:
+                out[key] = translated(value)
+        return out
+    if isinstance(node, list):
+        return [translated(item) for item in node]
+    return node
+
+
 class H2mmNativeApp(TourTarget, ImApp):
     """Immediate-mode H2MM app: settings form, detector editor, actions through ``SnapshotJob``, tables and plots."""
 
@@ -58,14 +79,14 @@ class H2mmNativeApp(TourTarget, ImApp):
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.plots = ResultPlots()
         self.form = FormState()
-        spec = load_view_spec(str(HERE / "h2mm.view.json"))
+        spec = translated(load_view_spec(str(HERE / "h2mm.view.json")))
         self.window_size = window_size(spec, (1100, 720))
         sections = spec["sections"]
         self.settings_sections = [
-            s for s in sections if s.get("type") == "panel" and s.get("title") != "Burst"
+            s for s in sections if s.get("type") == "panel" and s.get("title") != tr("Burst")
         ]
         self.burst_sections = [
-            s for s in sections if s.get("type") == "panel" and s.get("title") == "Burst"
+            s for s in sections if s.get("type") == "panel" and s.get("title") == tr("Burst")
         ]
         self.tables = [s for s in sections if s.get("type") == "table"]
         for table, height in zip(self.tables, (110, 90)):

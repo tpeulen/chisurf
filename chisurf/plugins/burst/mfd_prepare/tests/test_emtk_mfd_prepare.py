@@ -416,21 +416,6 @@ def test_the_mouse_wheel_scrolls_a_report_that_does_not_fit_the_small_window(pre
     assert hidden()  # and back up to the top
 
 
-# ---- the Qt host --------------------------------------------------------------------------------------------------------- #
-def test_the_qt_tool_hosts_the_app_and_exposes_the_old_attributes(qapp):
-    from chisurf.plugins.burst.mfd_prepare.gui.tool import MfdPrepareTool
-
-    tool = MfdPrepareTool()
-    assert isinstance(tool.app, MfdPrepareApp)
-    assert tool._folder == "" and tool._report_text == ""
-    tool.model.set_folder(str(FIXTURE))
-    tool.model.prepare()
-    assert (
-        tool._folder == str(FIXTURE)
-        and tool._report_text == prepare_folder(PrepareRequest(folder=str(FIXTURE))).report
-    )
-
-
 # ---- Qt-free ------------------------------------------------------------------------------------------------------------- #
 def test_the_app_is_qt_free():
     from test.gui.emtk_port_parity import qt_free
@@ -443,4 +428,4 @@ def test_the_app_is_qt_free():
 def test_the_manifest_declares_the_emtk_entrypoint():
     manifest = json.loads((Path(__file__).parents[1] / "manifest.json").read_text())
     assert manifest["entrypoints"]["emtk"] == "chisurf.plugins.burst.mfd_prepare.gui.app:make_app"
-    assert manifest["entrypoints"]["gui"].endswith("MfdPrepareTool")
+    assert "gui" not in manifest["entrypoints"]

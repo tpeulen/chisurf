@@ -24,23 +24,3 @@ _manifest = (
     json.loads(_manifest_path.read_text(encoding="utf-8")) if _manifest_path.exists() else {}
 )
 name = _manifest.get("display_name", "Structure:Modelling:Structure Tools")
-
-
-def __getattr__(attr_name: str):
-    """Lazy Qt import gate."""
-    if attr_name == "StructureToolsTool":
-        from .gui.tool import StructureToolsTool as _cls
-
-        globals()["StructureToolsTool"] = _cls
-        return _cls
-    raise AttributeError(f"module {__name__!r} has no attribute {attr_name!r}")
-
-
-if __name__ == "plugin":
-    from .gui.tool import StructureToolsTool
-
-    window = StructureToolsTool()
-    window.show()
-
-
-__all__ = ["StructureToolsTool"]

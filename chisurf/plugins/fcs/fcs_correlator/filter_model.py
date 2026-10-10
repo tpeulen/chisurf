@@ -1,4 +1,4 @@
-"""Photon/Burst filter step — the Qt-free settings model (Qt sections: :mod:`.filter_panel`).
+"""Photon/Burst filter step — the Qt-free settings model (drawn by :mod:`.gui.steps`).
 
 An AutoForm rendering of the photon/burst filter step used inside the FCS
 Correlator workflow. Files come from the Files step, the container type/setup
@@ -15,7 +15,6 @@ advanced modes (bocpd/kalman/cusum, MCS/decay histograms).
 from __future__ import annotations
 
 import pathlib
-import typing
 
 import numpy as np
 
@@ -101,9 +100,7 @@ class FilterSettingsModel:
         self._files: list[str] = []
         self._sel_cache_id = None
         self._sel_cache = None
-        self._form: typing.Any = None
         self._last_mode = self.filter_mode
-        self._refresh_timer = None
 
     # Which extra parameters are relevant to each filter mode (everything not
     # listed here is always shown). Used to render only the relevant controls.
@@ -140,7 +137,7 @@ class FilterSettingsModel:
 
     def view_spec_dict(self) -> dict:
         """``filter.view.json`` with only the current mode's parameters, every bound field calling
-        :meth:`on_param_changed` (the dict both the Qt AutoForm and the native form draw)."""
+        :meth:`on_param_changed` (the dict the native form draws)."""
         import copy
         import json
 
@@ -178,35 +175,9 @@ class FilterSettingsModel:
     # -- live update ---------------------------------------------------------
 
     def on_param_changed(self, value=None) -> None:
-        """Called by AutoForm whenever a bound field changes (auto-update)."""
-        if self.filter_mode != self._last_mode:
-            # Mode switched: re-render so only the relevant controls show (a native view re-reads the spec itself).
-            self._last_mode = self.filter_mode
-            self._sel_cache_id = None
-            form = self._form
-            if form is not None:
-                from qtpy import QtCore
-
-                QtCore.QTimer.singleShot(0, form.rebuild)
-            return
-        self._schedule_refresh()
-
-    def _schedule_refresh(self) -> None:
-        """Debounce recomputes so dragging/typing stays responsive."""
+        """Called by the view whenever a bound field changes: drop the cached selection (recomputed on next draw)."""
+        self._last_mode = self.filter_mode
         self._sel_cache_id = None
-        if self._form is None:  # no Qt form: the native view redraws from the model on its next frame
-            return
-        from qtpy import QtCore
-
-        if self._refresh_timer is None:
-            self._refresh_timer = QtCore.QTimer()
-            self._refresh_timer.setSingleShot(True)
-            self._refresh_timer.timeout.connect(self._do_refresh)
-        self._refresh_timer.start(150)
-
-    def _do_refresh(self) -> None:
-        if self._form is not None:
-            self._form.refresh_plots()
 
     # -- data plumbing -------------------------------------------------------
 
@@ -222,8 +193,6 @@ class FilterSettingsModel:
         self._sel_cache_id = None
         if self.range_hi <= 0 and self._tttr is not None:
             self.range_hi = len(self._tttr)
-        if self._form is not None:
-            self._form.refresh_plots()
 
     # -- selection -----------------------------------------------------------
 
@@ -401,8 +370,6 @@ class FilterSettingsModel:
 
     def invalidate(self) -> None:
         self._sel_cache_id = None
-        if self._form is not None:
-            self._form.refresh_plots()
 
     # -- plot data sources ---------------------------------------------------
 

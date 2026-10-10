@@ -327,6 +327,24 @@ def _grab_2cde_tool():
     _grab(tool, "burst_2cde_tool.png")
 
 
+def _emtk_enter(driver, field, text):
+    """Type *text* into the one-line field *field* of a native app and press Enter, as a person does."""
+    from emtk import keys
+    from emtk.events import CONTROL_MODIFIER
+
+    driver.click(field)
+    driver.press(ord("A"), CONTROL_MODIFIER)
+    driver.type(str(text))
+    driver.press(keys.KEY_RETURN)
+    driver.frame(2)
+
+
+def _emtk_park(driver):
+    """Move the pointer to the empty bottom-left corner so no tooltip covers the figure."""
+    driver.hover((12.0, float(driver.size[1]) - 12.0))
+    driver.frame(2)
+
+
 def _grab_drift_tool():
     """Grab the drift-correction workspace and its projections (guide 43).
 
@@ -335,50 +353,44 @@ def _grab_drift_tool():
     confocal test image is a stable acquisition with sub-pixel drift, which
     would make an honest but entirely uninformative screenshot.
     """
+    from emtk.testing import Driver
+    from screenshots.emtk_shot import FIG, app_from, wait
+
     from chisurf.core.fio.image import imwrite
-    from chisurf.gui.autoform.sections.builtin import ImageMapWidget
-    from chisurf.plugins.microscopy.img_drift.gui.tool import ImgDriftTool
 
     rng = np.random.default_rng(1)
     yy, xx = np.mgrid[0:64, 0:64]
     base = sum(
-        90.0 * np.exp(-((yy - cy) ** 2 + (xx - cx) ** 2) / (2 * 3.0 ** 2))
+        90.0 * np.exp(-((yy - cy) ** 2 + (xx - cx) ** 2) / (2 * 3.0**2))
         for cy, cx in rng.integers(8, 56, size=(14, 2))
     ) + rng.poisson(4.0, (64, 64))
-    stack = np.stack(
-        [np.roll(base, (2 * k, -k), axis=(0, 1)) for k in range(12)]
-    ).astype(np.float32)
+    stack = np.stack([np.roll(base, (2 * k, -k), axis=(0, 1)) for k in range(12)]).astype(
+        np.float32
+    )
+    path = pathlib.Path(tempfile.mkdtemp()) / "drift_demo.tif"
+    imwrite(path, stack, axes="TYX")
 
-    tmp = pathlib.Path(tempfile.mkdtemp()) / "drift_demo.tif"
-    imwrite(tmp, stack, axes="TYX")
+    app = app_from("img_drift")
+    driver = Driver(app, (1400, 820))
+    driver.frame(2)
+    _emtk_enter(driver, "filename", path)
+    wait(driver, lambda: not app.job.busy)
+    _emtk_park(driver)
+    driver.screenshot(FIG / "drift_workspace.png")
+    print("wrote drift_workspace.png", flush=True)
+    # Both projections are drawn side by side on the Projection tab; the guide shows them one by one.
+    app.docks.focus("Projection")
+    driver.frame(4)
+    _emtk_park(driver)
+    from PIL import Image
 
-    tool = ImgDriftTool()
-    tool.model.set_filename(str(tmp))
-    tool.model.compute()
-    tool.resize(1400, 820)
-    tool.show()
-    tool._refresh()
-    QApplication.instance().processEvents()
-    _grab(tool, "drift_workspace.png")
-
-    # The projections live on a tab that is not current, so their widgets have
-    # never been laid out; grabbing them now yields a collapsed sliver. Raise
-    # the tab and let Qt settle first.
-    from qtpy.QtWidgets import QTabBar
-
-    for bar in tool.findChildren(QTabBar):
-        for i in range(bar.count()):
-            if bar.tabText(i) == "Projection":
-                bar.setCurrentIndex(i)
-    QApplication.instance().processEvents()
-
-    targets = {"before_image": "drift_before.png", "after_image": "drift_after.png"}
-    for widget in tool.findChildren(ImageMapWidget):
-        name = targets.get(getattr(widget, "_target", ""))
-        if name:
-            widget.resize(420, 400)
-            QApplication.instance().processEvents()
-            _grab(widget, name)
+    shot = FIG / "drift_projection.png"
+    driver.screenshot(shot)
+    image = Image.open(shot)
+    for name, box in (("drift_before.png", (565, 20, 972, 810)), ("drift_after.png", (975, 20, 1385, 810))):
+        image.crop(box).save(FIG / name)
+        print("wrote", name, flush=True)
+    shot.unlink()
 
 
 def _grab_precision_tool():
@@ -409,17 +421,20 @@ def _grab_frc_tool():
     even/odd frame halves stop agreeing a few pixels in. The pixel size is the
     80 nm of that acquisition, so the headline is in nanometres.
     """
-    from chisurf.plugins.microscopy.img_frc.gui.tool import ImgFrcTool
+    from emtk.testing import Driver
+    from screenshots.emtk_shot import FIG, app_from, wait
 
-    tool = ImgFrcTool()
-    tool.model.set_filename("test/data/clsm/PQ_Olympus_MFIS.ht3")
-    tool.model.pixel_size_nm = 80.0
-    tool.model.compute()
-    tool.resize(1500, 850)
-    tool.show()
-    tool._refresh()
-    QApplication.instance().processEvents()
-    _grab(tool, "frc_workspace.png")
+    app = app_from("img_frc")
+    driver = Driver(app, (1500, 850))
+    driver.frame(2)
+    _emtk_enter(driver, "filename", pathlib.Path("test/data/clsm/PQ_Olympus_MFIS.ht3").resolve())
+    wait(driver, lambda: not app.job.busy)
+    app.model.pixel_size_nm = 80.0
+    driver.click("measure")
+    wait(driver, lambda: not app.job.busy)
+    _emtk_park(driver)
+    driver.screenshot(FIG / "frc_workspace.png")
+    print("wrote frc_workspace.png", flush=True)
 
 
 def _grab_burst_gs_tool():
@@ -467,12 +482,13 @@ def _grab_tracking_tool():
     Two grabs -- the report beside the movie with detections marked, and the
     trajectories, which is the view that reveals identity swaps.
     """
-    from qtpy.QtWidgets import QTabWidget
+    from emtk.testing import Driver
+    from screenshots.emtk_shot import FIG, app_from, wait
 
-    from chisurf.plugins.microscopy.img_tracking.gui.tool import ImgTrackingTool
-
-    tool = ImgTrackingTool()
-    model = tool.model
+    app = app_from("img_tracking")
+    driver = Driver(app, (1500, 900))
+    driver.frame(2)
+    model = app.model
     model.use_simulation = True
     model.sim_n_frames = 60
     model.sim_size = 256
@@ -481,37 +497,31 @@ def _grab_tracking_tool():
     model.max_distance = 4.0
     model.min_track_length = 15
     model.n_bootstrap = 150
-    model.compute()
-    tool.resize(1500, 900)
-    tool.show()
-    tool._refresh()
-    QApplication.instance().processEvents()
-    _grab(tool, "tracking_workspace.png")
-
-    for tabs in tool.findChildren(QTabWidget):
-        labels = [tabs.tabText(i) for i in range(tabs.count())]
-        if "Trajectories" in labels:
-            tabs.setCurrentIndex(labels.index("Trajectories"))
-            QApplication.instance().processEvents()
-            tool._refresh()
-            QApplication.instance().processEvents()
-            _grab(tool, "tracking_trajectories.png")
-            break
+    driver.click("track")
+    wait(driver, lambda: not app.job.busy)
+    _emtk_park(driver)
+    driver.screenshot(FIG / "tracking_workspace.png")
+    print("wrote tracking_workspace.png", flush=True)
+    app.docks.focus("Trajectories")
+    driver.frame(4)
+    _emtk_park(driver)
+    driver.screenshot(FIG / "tracking_trajectories.png")
+    print("wrote tracking_trajectories.png", flush=True)
 
 
 def _grab_coloc_tool():
     """Grab the colocalization workspace and its intensity scatter (guide 38)."""
-    # Import the tool first: it pulls the GUI packages in the order the app does
-    # (importing ``autoform`` cold trips a circular import in the widget layer).
-    from chisurf.gui.autoform.sections.builtin import ImageMapWidget
-    from chisurf.plugins.microscopy.img_coloc.gui.tool import ImgColocTool
+    from emtk.testing import Driver
+    from screenshots.emtk_shot import FIG, app_from, wait
 
     source = pathlib.Path("test/data/clsm/PQ_Olympus_MFIS.ht3")
     if not source.is_file():
         raise FileNotFoundError(source)
-    tool = ImgColocTool()
+    app = app_from("img_coloc")
+    driver = Driver(app, (1500, 900))
+    driver.frame(2)
     # A detector setup as the Detector-Def tool defines it: named windows as channels.
-    tool.model.apply_setup_settings(
+    app.apply_setup_settings(
         {
             "name": "confocal",
             "detectors": {
@@ -520,34 +530,33 @@ def _grab_coloc_tool():
             },
         }
     )
-    tool.model.filename = str(source)
-    tool.model.channel_a, tool.model.channel_b = "green", "red"
-    tool.model.auto_background = True
-    tool.model.ccf_max_shift = 12
-    tool.model.compute()
-    tool.resize(1500, 900)
-    tool.show()
-    tool._refresh()
-    QApplication.instance().processEvents()
-    _grab(tool, "coloc_workspace.png")
-
-    for widget in tool.findChildren(ImageMapWidget):
-        if getattr(widget, "_target", "") == "histogram_image":
-            widget.resize(560, 480)
-            _grab(widget, "coloc_scatter.png")
-            break
+    app.model.filename = str(source)
+    app.model.channel_a, app.model.channel_b = "green", "red"
+    app.model.auto_background = True
+    app.model.ccf_max_shift = 12
+    app.start()
+    wait(driver, lambda: not app.job.busy and not app.model.busy)
+    _emtk_park(driver)
+    driver.screenshot(FIG / "coloc_workspace.png")
+    print("wrote coloc_workspace.png", flush=True)
+    app.docks.focus("Intensity scatter")
+    driver.frame(4)
+    _emtk_park(driver)
+    driver.screenshot(FIG / "coloc_scatter.png")
+    print("wrote coloc_scatter.png", flush=True)
 
     # Object regime: synthetic puncta, because the real confocal test image is one
     # continuous cell and would segment into a single object.
-    _grab_coloc_objects(tool)
+    _grab_coloc_objects(app, driver)
 
 
-def _grab_coloc_objects(tool):
+def _grab_coloc_objects(app, driver):
     """Grab the object map + distance histogram on synthetic puncta (guide 38)."""
     import tempfile
 
+    from screenshots.emtk_shot import FIG, wait
+
     from chisurf.core.fio.image import imwrite
-    from chisurf.gui.autoform.sections.builtin import ImageMapWidget, PlotWidget
 
     shape = (160, 160)
     yy, xx = np.mgrid[: shape[0], : shape[1]]
@@ -569,24 +578,18 @@ def _grab_coloc_objects(tool):
     with tempfile.TemporaryDirectory() as tmp:
         path = pathlib.Path(tmp) / "puncta.tif"
         imwrite(path, np.stack([a, b]).astype(np.float32), axes="CYX")
-        tool.model.object_analysis = True
-        tool.model.object_distance = 3.0
-        tool.model.filename = str(path)
-        tool.model.channel_a, tool.model.channel_b = "ch0", "ch1"
-        tool.model.compute()
-        QApplication.instance().processEvents()
-        for widget in tool.findChildren(ImageMapWidget):
-            if getattr(widget, "_target", "") == "object_map_image":
-                widget.refresh()
-                widget.resize(520, 480)
-                _grab(widget, "coloc_objects.png")
-                break
-        for widget in tool.findChildren(PlotWidget):
-            if getattr(getattr(widget, "_section", None), "source", "") == "object_distance_series":
-                widget.refresh()
-                widget.resize(620, 380)
-                _grab(widget, "coloc_object_distances.png")
-                break
+        app.model.object_analysis = True
+        app.model.object_distance = 3.0
+        app.model.filename = str(path)
+        app.model.channel_a, app.model.channel_b = "ch0", "ch1"
+        app.start()
+        wait(driver, lambda: not app.job.busy and not app.model.busy)
+        for title, name in (("Objects", "coloc_objects.png"), ("Object distances", "coloc_object_distances.png")):
+            app.docks.focus(title)
+            driver.frame(4)
+            _emtk_park(driver)
+            driver.screenshot(FIG / name)
+            print("wrote", name, flush=True)
 
 
 def _grab_accurate_fret_tool():
@@ -954,17 +957,16 @@ def _grab_ndx_gaussian_panel():
 
 def _grab_kappa2_tool():
     """Grab the k2 distribution calculator in the restricted-dye state (guide 61)."""
-    from chisurf.plugins.calculator.kappa2_dist import Kappa2Dist
+    from screenshots.emtk_shot import app_from, render
 
-    tool = Kappa2Dist()
+    app = app_from("kappa2_dist")
     # Not the defaults: a visibly restricted donor, so the panel shows a real
     # distance penalty rather than the near-zero one a mobile dye gives.
-    tool._model.r_Dinf = 0.15
-    tool._model.r_Ainf = 0.20
-    tool._form.sync_fields()
-    tool._do_compute()
-    tool.resize(560, 820)
-    _grab(tool, "kappa2_tool.png")
+    m = app.tool._model
+    m.r_Dinf = 0.15
+    m.r_Ainf = 0.20
+    app.compute_now()
+    render(app, "kappa2_tool.png", size=(640, 820))
 
 
 def _grab_ask_the_documentation():
@@ -1177,7 +1179,7 @@ def _grab_pto_inspector():
     import shutil
 
     from chisurf.core.fio.pto import Measurement
-    from chisurf.plugins.core.pto_inspector.gui.tool import PtoInspectorTool
+    from screenshots.emtk_shot import app_from, render
 
     ptu = pathlib.Path("test/data/clsm/Leica_SP5.ptu")
     if not ptu.is_file():
@@ -1212,11 +1214,9 @@ def _grab_pto_inspector():
             derived_from=bursts,
         )
 
-    tool = PtoInspectorTool()
-    tool.resize(1400, 900)
-    tool.model.set_filename(str(work / "measurement.pto"))
-    QApplication.instance().processEvents()
-    _grab(tool, "pto_inspector.png")
+    app = app_from("pto_inspector")
+    app.model.set_filename(str(work / "measurement.pto"))
+    render(app, "pto_inspector.png", (1400, 900))
 
 
 def _grab_irf_estimator():
@@ -1700,16 +1700,13 @@ def _grab_intensity_trace():
 def _grab_file_tools():
     """File-tools hub: Split / Convert with a file loaded, and Time Windows run.
 
-    Writes ``file_tools.png`` (TTTR -> Time Windows after *Process*, preview
-    tab showing the trace with its window boundaries) and
-    ``file_tools_split.png`` (TTTR Split / Convert with a file loaded).
+    Writes ``file_tools.png`` (TTTR -> Time Windows after *Process*, with the
+    trace and its window boundaries) and ``file_tools_split.png`` (TTTR Split /
+    Convert with a file loaded). The hub and both children are the native emtk apps.
     """
     import tttrlib
-    from qtpy.QtWidgets import QWidget
-
-    from chisurf.plugins.tttr.filetools.gui.tool import FileToolsTool
-    from chisurf.plugins.tttr.tttr_splitter.gui.view_model import SplitterViewModel
-    from chisurf.plugins.tttr.tttr_time_windows.gui.tool import TTTRTimeWindowTool
+    from emtk.testing import Driver
+    from screenshots.emtk_shot import app_from, render, wait
 
     src = pathlib.Path("test/data/tttr/BH/132/BH_SPC132.spc")
     if not src.is_file():
@@ -1718,161 +1715,95 @@ def _grab_file_tools():
     work.mkdir()
     spc = work / src.name
     shutil.copy(src, spc)
-    app = QApplication.instance()
 
-    tool = FileToolsTool()
-    tool.resize(1300, 800)
-    tool.show()
-    app.processEvents()
+    hub = app_from("filetools")
+    driver = Driver(hub, (1300, 800))
+    driver.frame(2)
 
-    def _panel(row, cls):
-        tool.nav_list.setCurrentRow(row)
-        app.processEvents()
-        inst = tool.panels[row].get("instance")
-        if isinstance(inst, cls):
-            return inst
-        # an embedded QMainWindow is flattened; the window itself is kept here
-        for child in [inst, *inst.findChildren(QWidget)]:
-            mw = getattr(child, "_embedded_mainwindow", None)
-            if isinstance(mw, cls):
-                return mw
-        found = inst.findChildren(cls) if inst is not None else []
-        return found[0] if found else None
-
-    # 1) Split / Convert (row 0)
-    tool.nav_list.setCurrentRow(0)
-    app.processEvents()
-    inst = tool.panels[0].get("instance")
-    model = None
-    for obj in [inst, *inst.findChildren(object)]:
-        m = getattr(obj, "model", None) or getattr(obj, "_model", None)
-        if isinstance(m, SplitterViewModel):
-            model = m
-            break
+    # 1) Split / Convert
+    hub.select("split_convert")
+    model = hub.children["split_convert"].tool._model
     model.output_folder = str(work / "split")
     model.set_tttr(tttrlib.TTTR(str(spc)), str(spc))
     model.update()
-    app.processEvents()
-    _grab(tool, "file_tools_split.png")
+    render(hub, "file_tools_split.png", size=(1300, 800), driver=driver)
 
-    # 2) TTTR -> Time Windows (row 4): queue the file, process, show preview
-    tw = _panel(4, TTTRTimeWindowTool)
-    tw.tws_spin.blockSignals(True)
-    tw.tws_spin.setValue(1000.0)
-    tw.tws_spin.blockSignals(False)
-    tw._file_model.files = [str(spc)]
-    tw._on_files_changed()
-    tw._process_all()
-    tw.dock_area.setCurrentIndex(2)
-    app.processEvents()
-    _grab(tool, "file_tools.png")
-    return tool
+    # 2) TTTR -> Time Windows: queue the file, process, show the preview
+    hub.select("tttr_time_windows")
+    controller = hub.children["tttr_time_windows"].tool
+    controller.time_window_ms = 1000.0
+    controller.add_paths([spc])
+    controller._process_all()
+    wait(driver, lambda: not controller.job.running and not controller.process_pending)
+    render(hub, "file_tools.png", size=(1300, 800), driver=driver)
+    return hub
 
 
 def _grab_fcs_toolbox():
-    """Grab the unified FCS tool (Spectroscopy:FCS): every correlator step.
+    """Grab the unified FCS tool (Spectroscopy:FCS): every correlator step, as the native hub draws it.
 
-    Loads the BH SPC-132 test stream, defines a two-detector setup, turns on
-    the photon filter, correlates the green channels against the red ones in
-    ten chunks and hands them to the merger — the state a user reaches after
-    one pass through the rail.
+    Loads the BH SPC-132 test stream, turns on the photon filter, correlates the green channels against the
+    red ones in ten chunks and hands them to the merger: the state a user reaches after one pass through the
+    rail. Each step is written through :class:`emtk.testing.PixelPainter`.
     """
-    from chisurf.plugins.fcs.fcs_toolbox.tool import FcsTool
+    from emtk.testing import PixelPainter, png_encode
 
-    app = QApplication.instance()
-    spc = _SPC_FILE.resolve()
-    setup_name = "SPC-132 (2 detectors)"
-    setup = {
-        "windows": {"prompt": [0, 4095]},
-        "detectors": {
-            "Green": {"chs": [0, 8], "micro_time_ranges": [[0, 4095]]},
-            "Red": {"chs": [1, 9], "micro_time_ranges": [[0, 4095]]},
-        },
-    }
+    from chisurf.plugins.fcs.fcs_correlator.test.test_emtk_workflow import Hub
+    from chisurf.plugins.fcs.fcs_toolbox.gui.app import make_app
 
-    tool = FcsTool()
-    tool.resize(1280, 800)
-    tool.show()
-    app.processEvents()
+    size = (1280, 800)
+    hub = Hub(make_app(), size)
+    app = hub.app
 
-    def go(role):
-        tool.nav_list.setCurrentRow(tool._nav_row_for_role(role))
-        for _ in range(3):
-            app.processEvents()
+    def shot(name):
+        from chisurf.emtk.background_build import join_all
+
+        for _ in range(2):
+            join_all()
+            painter = PixelPainter(*size)
+            app.draw(painter, 0, 0, *size)
+        (FIG / name).write_bytes(png_encode(painter.width, painter.height, painter.px))
+        print("wrote", name)
 
     # 1. Channel definitions: a detector setup and its correlation pairs.
-    go("channel_def")
-    chdef = tool._workflow_panels["channel_def"]
-    chdef.model._detector_setups = {setup_name: setup}
-    chdef.model._fcs_cfg = {"setups": {setup_name: {"pairs": []}}}
-    chdef.model.current_setup = setup_name
-    chdef.model.add_pair("Green", "Green")
-    chdef.model.add_pair("Red", "Red")
-    chdef.model.add_pair("Green", "Red")
-    chdef.auto_form.rebuild()
-    app.processEvents()
-    _grab(tool, "fcs_toolbox_channels.png")
+    hub.nav("channel_def")
+    shot("fcs_toolbox_channels.png")
 
     # 2. Files & steps: one photon stream, photon filter on, merger on.
-    go("files")
-    files = tool._workflow_panels["files"]
-    files.file_list.set_paths([str(spc)])
-    files.cb_photon_filter.setChecked(True)
-    app.processEvents()
-    _grab(tool, "fcs_toolbox_files.png")
+    hub.nav("files")
+    hub.child.add_paths([str(_SPC_FILE.resolve())])
+    hub.draw(3)
+    shot("fcs_toolbox_files.png")
 
     # 3. Photon / burst filter: default count-rate burst selection.
-    go("filter")
-    fm = tool._filter_model
+    hub.nav("filter")
+    fm = app.filter_model
     fm.channel_numbers = "0, 1, 8, 9"
     fm.max_dmt = 0.5
     fm.min_ph = 30
-    fm.mcs_bin_width = 10.0
-    tool._filter_form.sync_fields()
-    tool._filter_form.refresh_plots()
-    app.processEvents()
-    _grab(tool, "fcs_toolbox_filter.png")
+    hub.draw(3)
+    shot("fcs_toolbox_filter.png")
 
     # 4. Correlator: green x red cross-correlation, ten chunks.
-    files.cb_photon_filter.setChecked(False)  # correlate the whole stream
-    go("correlator")
-    cm = tool._correlator_model
-    cm.channel_a = "0, 8"
-    cm.channel_b = "1, 9"
-    cm.n_bins = 4
-    cm.n_casc = 26
-    cm.n_splits = 10
-    tool._correlator_form.sync_fields()
-    from chisurf.plugins.fcs.fcs_correlator.correlator_panel import _CorrelateControls
-
-    for ctl in tool._correlator_form.findChildren(_CorrelateControls):
-        ctl.btn.click()  # the real button: status label + plot refresh
-    app.processEvents()
+    hub.nav("correlator")
+    cm = app.correlator_model
+    cm.channel_a, cm.channel_b = "0, 8", "1, 9"
+    cm.n_bins, cm.n_casc, cm.n_splits = 4, 26, 10
+    hub.click("correlate")
+    hub.wait_correlated()
     print("chunks", len(cm._correlations))
-    _grab(tool, "fcs_toolbox_correlator.png")
+    shot("fcs_toolbox_correlator.png")
 
-    # 5. Merger: the chunks averaged; drop one to show the dashed style.
-    go("merger")
-    mm = tool._merger_model
-    if len(mm._correlations) > 3:
-        mm._toggle_curve(3)
-    mm._form.sync_fields()
-    for w in mm._form.findChildren(object):
-        if getattr(w, "AUTOFORM_REFRESH", False) and hasattr(w, "refresh"):
-            w.refresh()
-    print("merger folder:", repr(mm.folder_path), "target:", mm.target_filepath())
-    app.processEvents()
-    mean = mm.compute_mean()
-    if mean is not None:
-        print("merged", mean["n_curves"], "curves, dur", mean["duration"], "CR", mean["count_rate"])
-    _grab(tool, "fcs_toolbox_merger.png")
+    # 5. Merger: the chunks averaged.
+    hub.nav("merger")
+    hub.draw(3)
+    shot("fcs_toolbox_merger.png")
 
     # Visit every optional tool once so a broken panel shows up here.
     for role in ("flc_2d", "lfcs_sim", "burst_fcs", "diffusion_calc", "filter_calc"):
-        go(role)
-        row = tool._nav_row_for_role(role)
-        print(role, "loaded:", tool.panels[row].get("instance") is not None)
-    tool.close()
+        hub.nav(role)
+        print(role, "loaded:", role in app.children)
+    app.close()
 
 
 def _pump(seconds):
@@ -2224,32 +2155,20 @@ def _grab_hydropro_exe_dialog():
 
 
 def _grab_quest_hub():
-    """Structure Tools with the QuEst entry selected (its error panel)."""
-    from chisurf.plugins.modelling.structure_tools.gui.tool import StructureToolsTool
+    """Structure Tools with the QuEst card selected."""
+    from screenshots.emtk_shot import app_from, render
 
-    w = StructureToolsTool()
-    w.resize(1100, 640)
-    w.show()
-    QApplication.instance().processEvents()
-    # select the QuEst panel by role
-    nav = getattr(w, "select_role", None)
-    if callable(nav):
-        nav("quest")
-    else:
-        from chisurf.plugins.modelling.structure_tools.gui.tool import STRUCTURE_PANELS
-
-        idx = [p.get("role") for p in STRUCTURE_PANELS].index("quest")
-        w.nav_list.setCurrentRow(idx)
-    for _ in range(5):
-        QApplication.instance().processEvents()
-    _grab(w, "quest_structure_tools.png")
+    app = app_from("structure_tools")
+    app.select("QuEst")
+    render(app, "quest_structure_tools.png", (1100, 640))
+    app.close()
 
 
 def _grab_traj_tools():
     """Traj Tools hub on the T4L NMSim trajectory: Align, FRET, Energy Calc, Remove Clashed (guide 81)."""
     from chisurf.core.structure import trajectory_data as md
-    from chisurf.gui.widgets.structure import potentialDict
-    from chisurf.plugins.traj.traj_tools.gui.tool import TrajectoryToolsTool
+    from chisurf.plugins.traj.potential_energy.potential_specs import make_potential
+    from screenshots.emtk_shot import app_from, render
 
     out = pathlib.Path(tempfile.mkdtemp(prefix="traj_tools_"))
     top, dcd = str(_T4L_TOP), str(_T4L_DCD)
@@ -2259,64 +2178,61 @@ def _grab_traj_tools():
     def idx(res, name):
         return int(ref.top.select(f"resSeq {res} and name {name}")[0])
 
-    tool = TrajectoryToolsTool()
-    tool.resize(900, 640)
-    tools = tool._tools
+    tool = app_from("traj_tools")
+    size = (900, 640)
 
-    align = tools["Align"]
+    def tools_of(name):
+        tool.select(name)
+        return tool.children[name]
+
+    align = tools_of("Align")
     align.model.set_topology(top)
     align.model.set_trajectory(dcd)
     align.model.atom_selection = ", ".join(str(i) for i in ca)
     align.model.save_aligned(str(out / "t4l_aligned.dcd"))
-    align.auto_form.sync_fields()
-    tool._select_tool("Align")
-    _grab(tool, "traj_tools_align.png")
+    tool.select("Align")
+    render(tool, "traj_tools_align.png", size)
 
-    fret = tools["FRET"]
+    fret = tools_of("FRET")
     fret.model.set_topology(top)
     fret.model.set_trajectory(dcd)
-    section = fret.model.atom_pair_section
-    section.set_donor(idx(36, "CA"), idx(36, "CB"))
-    section.set_acceptor(idx(132, "CA"), idx(132, "CB"))
+    fret.model.donor = (idx(36, "CA"), idx(36, "CB"))
+    fret.model.acceptor = (idx(132, "CA"), idx(132, "CB"))
     fret.model.forster_radius = 52.0
     fret.model.tau0 = 4.0
     fret.model.t_step = 1.0
     fret.model.calc(str(out / "t4l_36_132.csv"))
-    fret.auto_form.sync_fields()
-    tool._select_tool("FRET")
-    _grab(tool, "traj_tools_fret.png")
+    tool.select("FRET")
+    render(tool, "traj_tools_fret.png", size)
 
-    energy = tools["Energy Calc"]
+    energy = tools_of("Energy Calc")
     energy.model.set_topology(top)
     energy.model.set_trajectory(dcd)
     energy.model.stride = 10
     for name in ("Radius of Gyration", "Clash potential"):
-        energy.model.add_potential(potentialDict[name](structure=None, parent=None), 1.0, name=name)
+        energy.model.add_potential(make_potential(name, {}), 1.0, name=name)
     energy.model.process(str(out / "t4l_energy.txt"))
-    energy.auto_form.sync_fields()
-    tool._select_tool("Energy Calc")
-    _grab(tool, "traj_tools_energy.png")
+    tool.select("Energy Calc")
+    render(tool, "traj_tools_energy.png", size)
 
-    clash = tools["Remove Clashed"]
+    clash = tools_of("Remove Clashed")
     clash.model.set_topology(top)
     clash.model.set_trajectory(dcd)
     clash.model.atom_selection = "name CA"
     clash.model.min_distance = 3.5
     clash.model.save_clash_free(str(out / "t4l_clash_free.dcd"))
-    clash.auto_form.sync_fields()
-    tool._select_tool("Remove Clashed")
-    _grab(tool, "traj_tools_clashes.png")
+    tool.select("Remove Clashed")
+    render(tool, "traj_tools_clashes.png", size)
 
-    conv = tools["Convert"]
+    conv = tools_of("Convert")
     conv.model.set_topology(top)
     conv.model.set_trajectory(dcd)
     conv.model.set_target_directory(str(out))
     conv.model.filename = "t4l_every10"
     conv.model.stride = 10
     conv.model.convert()
-    conv.auto_form.sync_fields()
-    tool._select_tool("Convert")
-    _grab(tool, "traj_tools_convert.png")
+    tool.select("Convert")
+    render(tool, "traj_tools_convert.png", size)
     tool.close()
 
 
@@ -2449,18 +2365,15 @@ def main():
         except Exception as exc:  # keep going; report which grab failed
             print(f"SKIP {grab.__name__}: {exc}")
 
-    # ① Compute LUT — the AutoForm panel with a real flat-light file loaded, so
-    # the interactive raw/after plots + draggable region are shown.
-    from chisurf.plugins.tttr.tttr_lut_tools.gui.tool import TTRLutToolsWidget
+    # ① Compute LUT — the native app with a real flat-light file loaded, so
+    # the raw/after plots and the draggable region are shown.
+    from screenshots.emtk_shot import app_from, render
 
     spc = pathlib.Path("test/data/tttr/BH/132/BH_SPC132.spc")
-    tool = TTRLutToolsWidget()
-    tool.resize(1120, 760)
+    lut_app = app_from("tttr_lut_tools")
     if spc.is_file():
-        tool.tac_panel.model.load_files([str(spc)])
-        QApplication.instance().processEvents()
-    tool.dock_area.setCurrentWidget(tool.tac_panel)
-    _grab(tool, "lut_tools_workspace.png")
+        lut_app.model.add_files([str(spc.resolve())])
+    render(lut_app, "lut_tools_workspace.png", size=(1120, 760))
 
     # The channel-definition editor (LUT handling section, lut_channel_box.png) is the one-page emtk editor:
     # docs/guides/screenshots/channel_editor_emtk.py draws it.

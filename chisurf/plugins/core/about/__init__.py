@@ -1,18 +1,8 @@
-"""ChiSurf version, logo, developer and contact information."""
+"""ChiSurf version, logo, developer and contact information.
+
+The window is the native emtk app in :mod:`.gui.app`; importing this package needs no Qt binding.
+"""
 
 name = "Help:About ChiSurf"
 icon = "ℹ"
-__all__ = ["AboutDialog"]
-
-
-def __getattr__(attribute):
-    if attribute == "AboutDialog":
-        from .qt_dialog import AboutDialog
-        return AboutDialog
-    raise AttributeError(f"module {__name__!r} has no attribute {attribute!r}")
-
-
-if __name__ == "plugin":
-    from chisurf.plugins.core.about.qt_dialog import AboutDialog
-    window = AboutDialog()
-    window.show()
+__all__: list[str] = []

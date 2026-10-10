@@ -35,10 +35,7 @@ def test_native_fit_loading_targets_and_no_files():
     )
     app = FTestApp(fit_provider=lambda: [fit])
     app.refresh_fits()
-    app.tour.start(1)
-    assert app.tour.awaiting
     assert app.load_fit_into(0, "model1")
-    assert not app.tour.awaiting
     assert (app.model.chi2_1, app.model.n1) == (1.2, 117)
     assert app.load_fit_into(0, "model2")
     assert (app.model.chi2_2, app.model.n2) == (1.2, 117)
@@ -49,6 +46,31 @@ def test_native_fit_loading_targets_and_no_files():
     assert "no dropped files" in app.status
     assert not app.load_fit_into(1, "model1")
     assert "No such open fit" in app.status
+
+
+def test_example_recovers_the_two_lifetimes_and_prefers_them(tmp_path):
+    """The simulated decay has two lifetimes: the F-test must prefer two exponentials."""
+    import json
+
+    from chisurf.plugins.core.f_test.demo import DEMO, make_demo
+
+    path = make_demo(tmp_path)
+    assert make_demo(tmp_path) == path
+    stats = json.loads(path.read_text())
+    assert stats["simple"]["chi2r"] > 10 * stats["complex"]["chi2r"]
+    assert stats["complex"]["chi2r"] == pytest.approx(1.0, abs=0.25)
+    for fitted, true in zip(stats["complex"]["lifetimes_ns"], DEMO["lifetimes_ns"]):
+        assert fitted == pytest.approx(true, rel=0.1)
+
+    from chisurf.plugins.core.f_test.gui.app import FTestApp
+
+    app = FTestApp(fit_provider=lambda: [])
+    app.example_folder = tmp_path
+    app.tour.start(1)
+    assert app.tour.awaiting
+    app.load_example()
+    assert not app.tour.awaiting
+    assert app.model.conf_level > 0.999
 
 
 def test_native_f_test_without_qt():

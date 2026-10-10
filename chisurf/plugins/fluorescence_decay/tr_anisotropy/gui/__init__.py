@@ -1,6 +1,6 @@
-"""Native anisotropy model with lazy legacy Qt exports."""
+"""Native anisotropy workflow: the emtk app (``app``), its model and the shared view-model."""
 
-__all__ = ["AnisotropyWizard", "ChisurfWizard", "AnisotropyViewModel"]
+__all__ = ["AnisotropyViewModel"]
 
 
 def __getattr__(name):
@@ -8,8 +8,4 @@ def __getattr__(name):
         from .view_model import AnisotropyViewModel
 
         return AnisotropyViewModel
-    if name in {"AnisotropyWizard", "ChisurfWizard"}:
-        from . import tool
-
-        return getattr(tool, name)
     raise AttributeError(name)

@@ -1,17 +1,14 @@
-"""The native burst background tool at parity with the Qt BurstBackgroundEstimator.
+"""The native burst background tool at parity with the retired Qt BurstBackgroundEstimator.
 
-Both hosts draw the same ``BurstBackgroundApp``; the Qt widget estimates
-synchronously with files pushed in by the workflow shell, the emtk app picks its
-own files and estimates on the controller's worker. The Qt widget runs in a
-subprocess on the same measurement (this process stays Qt-free) and the rates are
-compared, and both against the background the demo measurement was made with.
+Both hosts drew the same ``BurstBackgroundApp``; the Qt widget estimated synchronously with files pushed in by
+the workflow shell, the emtk app picks its own files and estimates on the controller's worker. The Qt widget's
+rates on the same measurement were recorded (``qt_reference.json``) and are compared, and both against the
+background the demo measurement was made with.
 """
 
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -60,49 +57,10 @@ def _estimated(app, path):
     return next(iter(app.model.backgrounds.values()))
 
 
-_QT = r"""
-import json, sys
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-from chisurf.plugins.burst.burst_background import BurstBackgroundEstimator
-w = BurstBackgroundEstimator()
-w._add_tttr_files([sys.argv[1]])
-w._estimate()
-rates = next(iter(w.model.backgrounds.values()))
-print("FACTS" + json.dumps({"rates": rates, "window": [w.model.fit_from_ms, w.model.fit_to_ms],
-                            "api": [n for n in ("tttr_files", "_add_tttr_files", "detector_wizard_page") if hasattr(w, n)]}))
-"""
-
-
 @pytest.fixture(scope="module")
-def qt(measurement, tmp_path_factory):
-    pytest.importorskip("qtpy")
-    # The Qt widget opens the last used detector setup of the user's settings; the reference must not see it.
-    private = tmp_path_factory.mktemp("qt_settings")
-    env = dict(
-        os.environ,
-        QT_QPA_PLATFORM="offscreen",
-        CHISURF_SETTINGS_DIR=str(private / "s"),
-        MMFDB_SETTINGS_DIR=str(private / "m"),
-        MMFDB_DATABASE_PATH=str(private / "m" / "db.sqlite"),
-    )
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT, str(measurement)],
-        capture_output=True,
-        text=True,
-        timeout=300,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and (
-        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
-    ):
-        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
-    # Any other failure is the Qt widget's own: skipping it hid a broken Qt host.
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS") :])
+def qt():
+    """What the retired Qt BurstBackgroundEstimator reported on the demo measurement (qt_reference.json)."""
+    return json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
 
 
 # 1. the Qt widget's rates, and the background the measurement was made with
@@ -294,7 +252,3 @@ def test_every_control_has_a_tooltip():
         assert emtk_inventory(app)["controls_without_tooltip"] == []
     finally:
         app.close()
-
-
-def test_the_workflow_api_is_on_the_qt_widget(qt):
-    assert set(qt["api"]) == {"tttr_files", "_add_tttr_files", "detector_wizard_page"}

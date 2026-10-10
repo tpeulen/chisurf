@@ -171,30 +171,8 @@ class BoardingViewModel:
         self.notify("refresh")
 
     def open_settings_editor(self) -> None:
-        """Open the ChiSurf settings editor in a modeless window."""
-        try:
-            from qtpy import QtCore, QtWidgets
-
-            import chisurf as cs
-            from chisurf.gui.widgets.settings_editor import SettingsEditor
-
-            dialog = QtWidgets.QDialog()
-            dialog.setWindowTitle("ChiSurf Settings")
-            dialog.setModal(False)
-            dialog.setAttribute(QtCore.Qt.WA_DeleteOnClose, False)
-            layout = QtWidgets.QVBoxLayout(dialog)
-            editor = SettingsEditor(
-                filename=str(utils.settings_paths()["settings_chisurf_yaml"]),
-                window_title="ChiSurf Settings",
-            )
-            layout.addWidget(editor)
-            dialog.resize(1000, 700)
-            dialog.show()
-            dialog.raise_()
-            dialog.activateWindow()
-            cs.__init_chisurf_settings_editor__ = dialog
-        except Exception:
-            logger.warning("boarding: could not open settings editor", exc_info=True)
+        """Open the ChiSurf settings editor (the host window supplies it; the native model overrides this)."""
+        logger.info("boarding: the settings editor is opened by the host window")
 
     def open_help(self) -> None:
         """Open the ChiSurf help browser, if the main GUI is available."""

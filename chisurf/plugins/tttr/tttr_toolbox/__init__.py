@@ -1,4 +1,4 @@
-"""TTTR Tools — combined NavigationPanelTool plugin.
+"""TTTR Tools — hub of native emtk apps.
 
 A single unified window (left navigation, right panel) that hosts the existing
 TTTR file tools as embedded panels:
@@ -9,7 +9,7 @@ TTTR file tools as embedded panels:
 - (separator)
 - Split / Convert     (tttr_splitter)
 
-Each sub-tool is embedded as-is; this plugin only provides the shared shell.
+Each sub-tool opens as its own emtk app; this plugin only provides the shared hub.
 The individual tools stay importable and standalone-launchable but are hidden
 from the ribbon menu (``menu_hidden``) so they appear only inside TTTR Tools.
 """
@@ -25,22 +25,3 @@ _manifest = (
 )
 name = _manifest.get("display_name", "Tools:Photon data:TTTR Tools")
 
-
-def __getattr__(attr_name: str):
-    """Lazy Qt import gate (PRD-23: no Qt import as a package side effect)."""
-    if attr_name == "TttrToolboxTool":
-        from .gui.tool import TttrToolboxTool as _cls
-
-        globals()["TttrToolboxTool"] = _cls
-        return _cls
-    raise AttributeError(f"module {__name__!r} has no attribute {attr_name!r}")
-
-
-if __name__ == "plugin":
-    from .gui.tool import TttrToolboxTool
-
-    window = TttrToolboxTool()
-    window.show()
-
-
-__all__ = ["TttrToolboxTool"]

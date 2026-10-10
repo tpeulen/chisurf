@@ -224,13 +224,3 @@ def test_run_settings_carry_the_selected_model(monkeypatch):
     assert s.fit_model == "fit24"
     assert list(s.initial_values)[0] == 3.14
     assert len(s.initial_values) == 5 and len(s.fixed_flags) == 5
-
-
-def test_tool_creation(qapp, qtbot):
-    from chisurf.plugins.microscopy.img_pixel_mle.gui.tool import ImgPixelMleTool
-
-    widget = ImgPixelMleTool()
-    qtbot.addWidget(widget)
-    assert widget.windowTitle() == "Pixel-wise MLE"
-    assert hasattr(widget, "auto_form")
-    assert hasattr(widget, "model")

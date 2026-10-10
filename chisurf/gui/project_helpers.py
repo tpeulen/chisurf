@@ -175,8 +175,9 @@ def open_recent_project(window, project_path: str) -> None:
     except Exception:
         return False
 
-    if hasattr(window, "_guard_project_transition") and not window._guard_project_transition():
-        return False
+    # No guard here: `replace_project` asks the window's transition guard itself
+    # (it is the one authority over replacing the live project). Asking here as
+    # well put "Save changes?" on screen twice for one Open.
 
     # Validate and stage the document before asking the live application to
     # replace its current state. A malformed archive must not destroy it.

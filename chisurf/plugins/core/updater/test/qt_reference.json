@@ -1,0 +1,38 @@
+{
+ "after_check": [
+  true,
+  true,
+  false,
+  true,
+  "Update available: version 26.10.02",
+  [
+   "Version 26.10.02",
+   "Version 26.09.20",
+   "Version 26.08.01"
+  ]
+ ],
+ "no_versions": [
+  "Error checking for updates: No update information available",
+  false
+ ],
+ "cmd_0": [
+  "/fake/bin/micromamba",
+  "install",
+  "--yes",
+  "--update-deps",
+  "--force-reinstall",
+  "--prefix",
+  "<prefix>",
+  "chisurf-macos-26.10.02.tar.bz2"
+ ],
+ "cmd_2": [
+  "/fake/bin/micromamba",
+  "install",
+  "--yes",
+  "--update-deps",
+  "--force-reinstall",
+  "--prefix",
+  "<prefix>",
+  "chisurf-macos-26.08.01.conda"
+ ]
+}

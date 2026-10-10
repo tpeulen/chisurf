@@ -1,1 +1,1 @@
-"""Native application and lazy legacy Qt adapter."""
+"""Native BID to analysis converter (:mod:`.app`)."""

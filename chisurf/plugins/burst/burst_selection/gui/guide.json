@@ -7,14 +7,14 @@
       "target": {}
     },
     {
-      "title": "The raw files",
-      "text": "Add TTTR files, a folder of them, or drop them on the window. They are read once here; nothing downstream re-opens them.",
+      "title": "Start with a stream whose answer you know",
+      "text": "<b>Load example</b> adds a simulated photon stream with exactly <b>12 planted bursts</b> of about 200 photons, 60 % of them on the red detector, and selects the matching detectors. Your own files go in with <b>Add files</b>, <b>Add folder</b> or by dropping them on the window; they are read once here and nothing downstream re-opens them.",
       "target": {
-        "name": "toolAction_add",
+        "name": "load_example",
         "tab": "files"
       },
       "await": {
-        "hint": "Press <b>Add files</b> (or <b>Add folder</b>) and choose your measurements."
+        "hint": "Press <b>Load example</b>."
       }
     },
     {

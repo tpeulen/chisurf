@@ -36,7 +36,6 @@
     "enabled": false
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.tttr.tttr_microtime_shifter.gui.tool:MicrotimeShifterTool",
     "cli": "microtime-shift=chisurf.plugins.tttr.tttr_microtime_shifter.cli.main:cli",
     "services": "chisurf.plugins.tttr.tttr_microtime_shifter.backend.services:register_services",
     "emtk": "chisurf.plugins.tttr.tttr_microtime_shifter.gui.app:create_app"

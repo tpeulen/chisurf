@@ -20,7 +20,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.microscopy.img_calibration.gui.tool:ImgCalibrationTool",
     "emtk": "chisurf.plugins.microscopy.img_calibration.gui.app:make_app"
   },
   "menu_hidden": true

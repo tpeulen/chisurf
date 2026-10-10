@@ -55,14 +55,6 @@ from .api import (
 from .gui.client import FilterCalcClient  # noqa: F401
 
 
-def __getattr__(name):
-    if name == "FcsFilterCalculatorWidget":
-        from .gui_parts.main_window import FcsFilterCalculatorWidget
-
-        return FcsFilterCalculatorWidget
-    raise AttributeError(name)
-
-
 __all__ = [
     "compute_filters",
     "compute_filters_from_files",
@@ -78,8 +70,7 @@ __all__ = [
     "FilterResultMFD",
     "UnmixResult",
     "DetectionMode",
-    "FcsFilterCalculatorWidget",
-    "FilterCalcClient",
+        "FilterCalcClient",
     "menu_hidden",
     "name",
 ]
@@ -96,23 +87,7 @@ name = (
 menu_hidden = True
 
 
-# When the plugin is loaded as a module with __name__ == "plugin",
-# this code will be executed by the ChiSurf plugin system.
-if __name__ == "plugin":
-    from .gui import FcsFilterCalculatorWidget
-
-    window = FcsFilterCalculatorWidget()
-    window.show()
-
-
 if __name__ == "__main__":
-    import sys
+    from chisurf.emtk.__main__ import main as _launch
 
-    from qtpy import QtWidgets
-
-    from .gui import FcsFilterCalculatorWidget
-
-    app = QtWidgets.QApplication(sys.argv)
-    win = FcsFilterCalculatorWidget()
-    win.show()
-    sys.exit(app.exec_())
+    _launch(["--plugin", "fcs_filter_calculator"])

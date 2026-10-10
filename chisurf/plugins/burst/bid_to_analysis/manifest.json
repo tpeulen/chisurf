@@ -11,7 +11,6 @@
     "Converter"
   ],
   "entrypoints": {
-    "script": "__init__.py",
     "emtk": "chisurf.plugins.burst.bid_to_analysis.gui.app:create_app"
   },
   "menu_hidden": true

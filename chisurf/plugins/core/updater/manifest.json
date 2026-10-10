@@ -15,7 +15,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.core.updater:UpdaterWidget",
     "emtk": "chisurf.plugins.core.updater.gui.app:make_app"
   }
 }

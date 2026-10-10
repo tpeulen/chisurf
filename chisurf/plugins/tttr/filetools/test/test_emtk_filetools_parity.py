@@ -1,6 +1,6 @@
-"""The native File tools hub at parity with the Qt FileToolsTool.
+"""The native File tools hub at parity with the retired Qt FileToolsTool.
 
-The Qt hub runs in a subprocess (this process stays Qt-free): its panel list is compared
+The Qt hub's recorded panel list (``qt_reference.json``) is compared
 with the emtk hub's, and every panel must open its child's own emtk app. The hub's own
 behaviour -- navigation by pointer, frames only while the child needs them, a guide
 that waits for a tool to be opened, drops and keys routed to the open child -- is
@@ -10,8 +10,6 @@ driven here.
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -22,6 +20,7 @@ HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 PANELS = json.loads((HERE.parent / "gui" / "panels.json").read_text())["panels"]
 
+from chisurf.plugins.emtk_layout import action_caption  # noqa: E402
 from chisurf.plugins.tttr.filetools.gui.app import FileToolsApp, caption  # noqa: E402
 
 
@@ -33,38 +32,10 @@ def _draw(app, size=(1200, 800), n=2, painter=RecordingPainter):
     return out
 
 
-_QT = r"""
-import json
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-from chisurf.plugins.tttr.filetools.gui.tool import FileToolsTool
-from chisurf.plugins.emtk_layout import action_caption
-w = FileToolsTool()
-rows = [w.nav_list.item(i).text() for i in range(w.nav_list.count())]
-print("FACTS" + json.dumps({"rows": rows}))
-"""
-
-
 @pytest.fixture(scope="module")
 def qt():
-    pytest.importorskip("qtpy")
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT],
-        capture_output=True,
-        text=True,
-        timeout=300,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and (
-        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
-    ):
-        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS") :])
+    """The retired Qt hub's navigation rows (icon + name), recorded in ``qt_reference.json``."""
+    return json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
 
 
 # 1. the Qt hub's tools, in its order; every one opens its own emtk app

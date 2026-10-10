@@ -1,22 +1,30 @@
-"""Tests for the unified FCS window (native workflow host)."""
+"""Tests for the unified FCS window (the native hub)."""
+
+from emtk.testing import RecordingPainter
 
 
-def test_fcs_tool_merges_correlator_and_tools(qapp, qtbot):
-    from chisurf.plugins.fcs.fcs_toolbox.tool import FcsTool, FcsToolboxTool
+def _show(app, role):
+    """Open a panel the way the rail does and draw a frame; True when it is the selected one."""
+    app.select(role)
+    app.draw(RecordingPainter(), 0, 0, 1200, 800)
+    return app.selected == role
 
-    tool = FcsTool()
-    qtbot.addWidget(tool)
-    assert tool.windowTitle() == "FCS"
-    assert FcsToolboxTool is FcsTool
-    assert tool.app.selected == "files"
-    assert [p["role"] for p in tool.app.tools] == [
-        "channel_def", "files", "filter", "correlator", "merger",
-        "flc_2d", "lfcs_sim", "burst_fcs", "diffusion_calc", "filter_calc",
-    ]
-    assert "diffusion_calc" not in tool.app.children
-    assert tool.show_panel_by_role("diffusion_calc")
-    assert tool.app.children["diffusion_calc"] is not None
-    tool.close()
+
+def test_fcs_tool_merges_correlator_and_tools():
+    from chisurf.plugins.fcs.fcs_toolbox.gui.app import make_app
+
+    app = make_app()
+    try:
+        assert app.selected == "files"
+        assert [p["role"] for p in app.tools] == [
+            "channel_def", "files", "filter", "correlator", "merger",
+            "flc_2d", "lfcs_sim", "burst_fcs", "diffusion_calc", "filter_calc",
+        ]  # fmt: skip
+        assert "diffusion_calc" not in app.children
+        assert _show(app, "diffusion_calc")
+        assert app.children["diffusion_calc"] is not None
+    finally:
+        app.close()
 
 
 def test_included_plugins_are_menu_hidden():
@@ -34,14 +42,19 @@ def test_included_plugins_are_menu_hidden():
         assert getattr(m, "menu_hidden", False) is True, mod
 
 
-def test_show_panel_by_role_navigates_to_filter_calc(qapp, qtbot):
-    from chisurf.plugins.fcs.fcs_toolbox.tool import FcsTool
+def test_selecting_the_filter_calculator_opens_it():
+    from chisurf.plugins.fcs.fcs_toolbox.gui.app import make_app
 
-    w = FcsTool()
-    qtbot.addWidget(w)
-    assert w.app.selected == "files"
-    assert w.show_panel_by_role("filter_calc") is True
-    assert w.app.selected == "filter_calc"
-    assert "filter_calc" in w.app.children
-    assert w.show_panel_by_role("does_not_exist") is False
-    w.close()
+    app = make_app()
+    try:
+        assert app.selected == "files"
+        assert _show(app, "filter_calc") is True
+        assert "filter_calc" in app.children
+        try:
+            app.select("does_not_exist")
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("an unknown role must be refused")
+    finally:
+        app.close()

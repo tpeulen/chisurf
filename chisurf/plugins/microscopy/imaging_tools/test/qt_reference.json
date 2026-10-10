@@ -1,0 +1,136 @@
+{
+ "panels": [
+  {
+   "role": "setup",
+   "name": "Setup",
+   "description": "Define detector channels and PIE time windows once for all imaging tools.",
+   "separator": null
+  },
+  {
+   "role": "browser",
+   "name": "Browser",
+   "description": "Browse TTTR image files and explore intensity maps.",
+   "separator": null
+  },
+  {
+   "role": "drift",
+   "name": "Drift",
+   "description": "Optional pre-processing: measure and remove inter-frame sample drift. Belongs before the numbered steps — every per-pixel map below is built from frames that must already be aligned. Photon streams are corrected photon by photon, so the steps below still see real photons.",
+   "separator": null
+  },
+  {
+   "role": "frc",
+   "name": "Resolution",
+   "description": "How fine a detail this acquisition actually resolves, by Fourier ring correlation between two independent halves of it. Sits after Drift because drift blurs the image and so lowers the measured resolution — measure it on frames that are already aligned.",
+   "separator": null
+  },
+  {
+   "role": "flow",
+   "name": "Flow",
+   "description": "Map the velocity field: one arrow per tile, over the image. Sits beside Tracking because both measure motion rather than building a per-pixel map -- and after Drift for the same reason Tracking is, since a drifting stage is indistinguishable from a sample flowing the other way. Tracking follows individual particles; this reads a velocity from the correlations of everything at once, so it works where the labels are too dense to resolve as spots.",
+   "separator": null
+  },
+  {
+   "role": "tracking",
+   "name": "Tracking",
+   "description": "Follow individual particles through the frames and fit their diffusion coefficient. Sits after Drift because a drifting sample looks exactly like directed motion, and outside the numbered steps because it measures motion rather than building a per-pixel map.",
+   "separator": null
+  },
+  {
+   "role": "coloc",
+   "name": "Colocalization",
+   "description": "Two-channel colocalization (Pearson, Manders, Costes, Li ICQ) with an interactive intensity scatter gate. Sits after Drift because a channel registration error reads as anti-correlation, and outside the numbered steps because it compares two channels rather than building a per-pixel map.",
+   "separator": null
+  },
+  {
+   "role": "pixel_intensity",
+   "name": "1. Intensity",
+   "description": "Per-pixel intensity map; creates the standard imaging HDF5 (with source back-reference).",
+   "separator": null
+  },
+  {
+   "role": "pixel_nb",
+   "name": "2. Number & Brightness",
+   "description": "Per-pixel Number (N) and Brightness (B); adds fields to the imaging HDF5.",
+   "separator": null
+  },
+  {
+   "role": "pixel_micro_time",
+   "name": "3. Mean Micro-Time",
+   "description": "Per-pixel mean micro-time (arrival time, ns) per detector window; adds fields to the imaging HDF5.",
+   "separator": null
+  },
+  {
+   "role": "calibration",
+   "name": "4. IRF & BG",
+   "description": "Optional: per-detector IRF file + background (kHz); transferred to Phasor and MLE. Skippable.",
+   "separator": null
+  },
+  {
+   "role": "pixel_phasor",
+   "name": "5. Phasor-FLIM",
+   "description": "Per-pixel phasor (g, s) maps and phasor plot; adds fields to the imaging HDF5.",
+   "separator": null
+  },
+  {
+   "role": "pixel_mle",
+   "name": "6. Pixel-wise MLE",
+   "description": "Pixel-wise MLE lifetime analysis; adds fields to the imaging HDF5.",
+   "separator": null
+  },
+  {
+   "role": "separator",
+   "name": "────────",
+   "description": null,
+   "separator": true
+  },
+  {
+   "role": "clsm_draw",
+   "name": "CLSM Draw",
+   "description": "Interactive CLSM pixel selection, ROI drawing and decay extraction; opens imaging HDF5 (via source back-reference).",
+   "separator": null
+  },
+  {
+   "role": "spot_finder",
+   "name": "Spot Finder",
+   "description": "Find the regions — molecules, beads, objects — and write them, with their pixels, into each measurement's container.",
+   "separator": null
+  },
+  {
+   "role": "molecule_mle",
+   "name": "Region MLE",
+   "description": "Lifetime MLE per region, on the regions the Spot Finder found.",
+   "separator": null
+  },
+  {
+   "role": "psf",
+   "name": "PSF Determination",
+   "description": "3D Gaussian PSF fitting and bead detection.",
+   "separator": null
+  },
+  {
+   "role": "clsm_generator",
+   "name": "CLSM Generator",
+   "description": "Generate a synthetic CLSM photon image from an intensity image and per-detector lifetime maps: a known answer to check the imaging pipeline against.",
+   "separator": null
+  }
+ ],
+ "pipeline_order": [
+  "browser",
+  "drift",
+  "frc",
+  "tracking",
+  "pixel_intensity",
+  "pixel_nb",
+  "pixel_micro_time",
+  "calibration",
+  "pixel_phasor",
+  "pixel_mle"
+ ],
+ "analysis_roles": [
+  "pixel_intensity",
+  "pixel_nb",
+  "pixel_micro_time",
+  "pixel_phasor"
+ ]
+}

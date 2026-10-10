@@ -7,11 +7,12 @@ behaviour is a bug that presented as the application crashing.
 
 from __future__ import annotations
 
-import pytest
 
-pytest.importorskip("qtpy")
+import json
+from pathlib import Path
 
-from chisurf.plugins.burst.alex_suite.gui.tool import ALEX_PANELS  # noqa: E402
+#: Recorded from the retired Qt shell's ALEX_PANELS before deletion.
+ALEX_PANELS = json.loads((Path(__file__).with_name("qt_reference.json")).read_text(encoding="utf-8"))["ALEX_PANELS"]
 
 
 def _numbered() -> list[str]:
@@ -48,35 +49,3 @@ def test_the_conversion_step_is_optional():
     """
     alternation = next(p for p in ALEX_PANELS if p["role"] == "alternation")
     assert alternation.get("optional") is True
-
-
-def test_dropping_a_file_does_not_convert_it(qapp):
-    """No `.pto` drop guard on the data step.
-
-    Dropping a vendor file elsewhere offers to embed it in a `.pto` immediately.
-    Here that is wrong twice over: a µs-ALEX measurement converted before the
-    alternation step still has its alternation in the *macro* time, so the
-    container's micro-time is empty and the alternation step then converts that
-    container into a second file; and the embed is a synchronous whole-file copy
-    on the GUI thread — about two minutes for a 45 MB `.sm` — which is
-    indistinguishable from the application having hung. That is what "dropping a
-    .sm crashes it" was.
-    """
-    from chisurf.plugins.burst.burst_analysis.gui.tool import BurstDataSelectionWidget
-
-    panel = BurstDataSelectionWidget(guards=())
-    try:
-        assert panel.file_list._guards == ()
-    finally:
-        panel.deleteLater()
-
-
-def test_the_shared_data_panel_still_guards_by_default(qapp):
-    """Turning the guard off is this workflow's choice, not a global change."""
-    from chisurf.plugins.burst.burst_analysis.gui.tool import BurstDataSelectionWidget
-
-    panel = BurstDataSelectionWidget()
-    try:
-        assert "tttr_to_pto" in panel.file_list._guards
-    finally:
-        panel.deleteLater()

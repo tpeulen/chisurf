@@ -269,3 +269,24 @@ def test_apply_setup_lut_in_place():
     assert staging.apply_setup_lut(t1, {ch: ntac}, apply_lut=True) is True
     ref = staging.open_tttr(str(SPC), channel_luts={ch: ntac}, apply_lut=True)
     assert np.array_equal(np.asarray(t1.micro_times), np.asarray(ref.micro_times))
+
+
+def test_a_container_ignores_the_vendor_routine_of_its_setup(tmp_path):
+    """A `.pto` read with the setup's vendor type gives the photons it holds, not its raw bytes.
+
+    Burst Selection passes its detector setup's routine ("SPC-130") to every
+    read; on a container that made tttrlib parse the container file itself as
+    SPC records -- 13 892 "photons" for a stream of 8 501, and two bursts found
+    where twelve were planted, with no error.
+    """
+    tttrlib = pytest.importorskip("tttrlib")
+    from chisurf.core.fio.pto import Measurement
+    from chisurf.plugins.burst.burst_selection import demo
+
+    spc = demo.make_demo(tmp_path)
+    with Measurement.create(spc) as m:
+        pto = m.path
+    vendor = tttrlib.TTTR(str(spc), "SPC-130")
+    contained = staging.open_tttr(str(pto), "SPC-130", cache=False)
+    assert len(contained) == len(vendor)
+    assert np.array_equal(np.asarray(contained.macro_times), np.asarray(vendor.macro_times))

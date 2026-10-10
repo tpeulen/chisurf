@@ -1,0 +1,25 @@
+{
+ "_note": "Recorded from the retired Qt BurstIrfBackgroundTool on the demo measurement.",
+ "rows": [
+  {
+   "detector": "green",
+   "background_khz": 1.9932740306383425,
+   "prompt_ns": 1.9683837890625,
+   "n_bg": 48126,
+   "n_burst": 20299
+  },
+  {
+   "detector": "red",
+   "background_khz": 1.9926074526104407,
+   "prompt_ns": 1.94091796875,
+   "n_bg": 47666,
+   "n_burst": 14416
+  }
+ ],
+ "sent": "Sent IRF + background to MLE for 2 detector(s).",
+ "early": "Compute the IRF and background first.",
+ "received": [
+  "green",
+  "red"
+ ]
+}

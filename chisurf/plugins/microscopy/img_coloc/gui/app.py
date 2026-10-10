@@ -34,7 +34,7 @@ class ColocApp(DetectorEditorMixin, PlaneMixin, ImagingToolApp):
         "save_regions": ("Save regions", "save", "JSON (*.json)", "save_regions"),
         "load_regions": ("Load regions", "open", "JSON (*.json)", "load_regions"),
     }
-    OUTCOMES = {"file": "filename", "computed": "run_coloc"}
+    OUTCOMES = {"file": "filename", "computed": "run_coloc", "demo": "load_example"}
 
     def __init__(self, model: ColocModel | None = None, coordinator: Any = None) -> None:
         self.coordinator = coordinator

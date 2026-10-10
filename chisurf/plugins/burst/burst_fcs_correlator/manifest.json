@@ -36,7 +36,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.burst.burst_fcs_correlator.gui.tool:BurstFcsTool",
     "cli": null,
     "services": "chisurf.plugins.burst.burst_fcs_correlator.backend.services:register_services",
     "emtk": "chisurf.plugins.burst.burst_fcs_correlator.gui.app:create_app"

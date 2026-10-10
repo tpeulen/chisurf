@@ -1,98 +1,40 @@
-"""Tests for the integrated lifetime analysis tool."""
+"""Tests for the integrated lifetime analysis tool (the native hub)."""
 
 from __future__ import annotations
 
-import sys
-import types
 from pathlib import Path
 
 from chisurf.core.plugin.manifest import load_manifest
 
 
 def test_lifetime_panel_order() -> None:
-    """Integrated lifetime tool exposes the requested ordered tools."""
-    from chisurf.plugins.fluorescence_decay.lifetime_analysis.gui.tool import (
-        LIFETIME_PANELS,
-    )
+    """The hub lists the requested tools in order."""
+    from chisurf.plugins.fluorescence_decay.lifetime_analysis.gui.app import PANELS
 
-    labels = [f"{panel.get('icon', '')} {panel['name']}".strip() for panel in LIFETIME_PANELS]
-    assert labels == [
-        "🌊 1. IRF Estimation",
-        "📈 2. MaxEnt MEM",
-        "⏱️ 3. Lazy Lifetime Analysis",
-        "📊 4. Histogram-Microtime",
-        "⚖️ 5. VV/VH G-Factor",
-        "🎏 6. VV/VH Anisotropy",
-        "🧪 Synthetic Decay",
+    assert [panel[1] for panel in PANELS] == [
+        "1. IRF Estimation",
+        "2. MaxEnt MEM",
+        "3. Lazy Lifetime Analysis",
+        "4. Histogram-Microtime",
+        "5. VV/VH G-Factor",
+        "6. VV/VH Anisotropy",
+        "Synthetic Decay",
     ]
 
 
 def test_lazy_lifetime_panel_marked_experimental() -> None:
-    """Lazy Lifetime panel carries experimental metadata for the navigation shell.
-
-    The flag is not written in the panel definition: it is read from the LLTF
-    manifest, so the tool declares its maturity in one place only.
-    """
-    from chisurf.plugins.fluorescence_decay.lifetime_analysis.gui.tool import (
-        LIFETIME_PANELS,
-    )
-
-    lazy_panel = next(panel for panel in LIFETIME_PANELS if panel["role"] == "lazy_lifetime")
-    assert lazy_panel["experimental"] is True
-    assert "experimental" in lazy_panel["experimental_message"].lower()
+    """The hub reads the experimental flag from the LLTF manifest, not from its own table."""
+    from chisurf.plugins.fluorescence_decay.lifetime_analysis.gui.app import make_app
 
     lltf = load_manifest(Path(__file__).resolve().parents[2] / "lltf" / "manifest.json")
-    assert lltf is not None
-    assert lazy_panel["experimental_message"] == lltf.experimental_message
-
-
-def test_lifetime_panel_factories_import_expected_widgets(monkeypatch) -> None:
-    """Panel factories instantiate the existing standalone widget classes."""
-    from qtpy import QtWidgets
-
-    from chisurf.plugins.fluorescence_decay.lifetime_analysis.gui import tool
-
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-    class Widget(QtWidgets.QWidget):
-        def __init__(self, parent=None):
-            super().__init__(parent)
-
-    class MainWindow(QtWidgets.QMainWindow):
-        def __init__(self, parent=None):
-            super().__init__(parent)
-
-    modules = {
-        "chisurf.plugins.fluorescence_decay.maxent_decay.gui.gui": (
-            "MaxentDecayWidget",
-            MainWindow,
-        ),
-        "chisurf.plugins.tttr.microtime_histogram.gui.app": (
-            "create_host",
-            Widget,
-        ),
-        "chisurf.plugins.vv_vh_g_factor.gui.app": ("create_host", Widget),
-    }
-    for module_name, (class_name, widget_class) in modules.items():
-        module = types.ModuleType(module_name)
-        setattr(module, class_name, widget_class)
-        monkeypatch.setitem(sys.modules, module_name, module)
-
-    parent = QtWidgets.QWidget()
-    widgets = [
-        tool._irf_estimator(parent),
-        tool._maxent_mem(parent),
-        tool._lazy_lifetime(parent),
-        tool._microtime_histogram(parent),
-        tool._vv_vh_g_factor(parent),
-    ]
-
-    assert all(isinstance(widget, QtWidgets.QWidget) for widget in widgets)
-    assert all(widget.parent() is parent for widget in widgets)
-    for widget in widgets:
-        widget.close()
-    parent.close()
-    app.processEvents()
+    assert lltf is not None and lltf.experimental
+    app = make_app()
+    try:
+        assert app.experimental_message("lltf") == lltf.experimental_message
+        assert "experimental" in app.experimental_message("lltf").lower()
+        assert not app.experimental_message("maxent_decay")
+    finally:
+        app.close()
 
 
 def test_lifetime_analysis_menu_metadata() -> None:

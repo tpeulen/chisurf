@@ -81,19 +81,10 @@ def info(input_file):
 
 @cli.command()
 def gui():
-    """Launch the GUI version of the filter calculator."""
-    try:
-        from qtpy import QtWidgets
+    """Launch the filter calculator window (the emtk app)."""
+    from chisurf.emtk.__main__ import main as launch
 
-        from ..gui_parts.main_window import FcsFilterCalculatorWidget
-
-        app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
-        window = FcsFilterCalculatorWidget()
-        window.show()
-        sys.exit(app.exec_())
-    except ImportError as e:
-        click.echo(f"✗ GUI not available: {e}", err=True)
-        sys.exit(1)
+    launch(["--plugin", "fcs_filter_calculator"])
 
 
 def main(argv=None):

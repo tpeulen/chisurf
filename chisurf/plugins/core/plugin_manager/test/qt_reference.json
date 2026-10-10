@@ -1,0 +1,74 @@
+{
+ "titles": [
+  "Plugin",
+  "Id",
+  "Version",
+  "Category",
+  "Status",
+  "Requires",
+  "Required by",
+  "Optional",
+  "Source",
+  "Toolbar",
+  "Window state"
+ ],
+ "trio_cells": [
+  [
+   "Alpha",
+   "alpha",
+   "0.1.0",
+   "Tools",
+   "cli only",
+   "",
+   "gamma",
+   "",
+   "user",
+   "yes",
+   "plugin default"
+  ],
+  [
+   "Delta",
+   "delta",
+   "0.1.0",
+   "",
+   "cli only",
+   "ghost",
+   "",
+   "",
+   "user",
+   "",
+   "plugin default"
+  ],
+  [
+   "Gamma",
+   "gamma",
+   "0.1.0",
+   "Setup",
+   "cli only",
+   "alpha",
+   "",
+   "",
+   "user",
+   "",
+   "plugin default"
+  ]
+ ],
+ "n_rows_gt": 130,
+ "status": "132 plugins \u00b7 2 disabled \u00b7 1 needing attention",
+ "dep_titles": [
+  "Plugin",
+  "Relation",
+  "Bound",
+  "Installed",
+  "Status"
+ ],
+ "dep_cells": [
+  [
+   "alpha",
+   "requires",
+   "any",
+   "0.1.0",
+   "cli only"
+  ]
+ ]
+}

@@ -317,8 +317,13 @@ class ConfigurationApp(ImApp):
                     path = prefix + (key,)
                     label = ".".join(map(str, path))
                     if isinstance(item, dict):
-                        if self.setting_filter or im.collapsing_header(label, open_=True):
+                        if self.setting_filter:
                             draw_values(item, path)
+                        else:
+                            opened = im.collapsing_header(label, open_=True)
+                            im.set_item_tooltip(label)
+                            if opened:
+                                draw_values(item, path)
                         continue
                     if self.setting_filter.casefold() not in label.casefold():
                         continue

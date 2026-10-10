@@ -7,14 +7,33 @@
       "target": {}
     },
     {
-      "title": "Load the image and name the two channels",
+      "title": "Start with an image whose answer you know",
+      "text": "<b>Load example</b> writes a simulated two-channel image: channel A holds 14 bright discs, channel B holds the same 14 <i>plus 14 more</i>. So every disc of A has a partner in B (<b>M1 ≈ 1</b>), but only half of B sits on A (<b>M2 ≈ 0.5</b>), the asymmetry a single Pearson number cannot show. It also sets the thresholds; you press <b>Run</b> next.",
+      "target": {
+        "name": "load_example",
+        "action": "Load example"
+      },
+      "await": {
+        "hint": "Press <b>Load example</b>."
+      }
+    },
+    {
+      "title": "Run it and read the two Manders coefficients",
+      "text": "<b>Run</b> computes every coefficient for the selected pair. Read <b>Manders M1</b> (A with B) and <b>M2</b> (B with A): about <b>1</b> and about <b>0.5</b>, with the threshold of 30 photons that sits between the background and the discs.",
+      "target": {
+        "name": "run_coloc",
+        "action": "Run"
+      },
+      "await": {
+        "hint": "Press <b>Run</b>."
+      }
+    },
+    {
+      "title": "Load your own image and name the two channels",
       "text": "Two channels of the same field of view: a TIFF stack or a photon-stream file. Choosing or dropping a file loads and runs it. Which channel is A and which is B matters for M1 and M2 — they are not symmetric, and reporting one without saying which channel it belongs to makes it unreadable.",
       "target": {
         "name": "file",
         "action": "Image"
-      },
-      "await": {
-        "hint": "Choose the image file (type a path and press Enter, Browse, or drop one)."
       }
     },
     {

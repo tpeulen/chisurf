@@ -1,16 +1,13 @@
-"""The native 2CDE tool at parity with the Qt BurstTwoCdeTool.
+"""The native 2CDE tool at parity with the retired Qt BurstTwoCdeTool.
 
-Both hosts draw the same ``BurstTwoCdeApp``; what differs is the run around it --
-the Qt tool's ChiSurfProgress worker, result cache, stamp and show-time run against
-the emtk ``TwoCdeController``. The Qt worker runs in a subprocess on the same demo
-folder (this process stays Qt-free) and the answers are compared.
+Both hosts drew the same ``BurstTwoCdeApp``; what differed is the run around it -- the Qt tool's
+ChiSurfProgress worker, result cache, stamp and show-time run against the emtk ``TwoCdeController``. The Qt
+worker's answer on the same demo folder was recorded (``qt_reference.json``) and is compared.
 """
 
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -68,54 +65,14 @@ def _values(df):
     return np.asarray(df[core.COLUMN_FRET_2CDE], float)
 
 
-_QT = r"""
-import json, pathlib, sys
-from types import SimpleNamespace
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-from chisurf.plugins.burst.burst_2cde.gui.tool import BurstTwoCdeTool
-folder = pathlib.Path(sys.argv[1])
-w = BurstTwoCdeTool()
-w.model.donor_channels_text, w.model.acceptor_channels_text = "0", "1"
-w.model.set_folder(folder)
-progress = SimpleNamespace(set_value=lambda v: None, set_maximum=lambda v: None)
-task = SimpleNamespace(set_range=lambda a, b: None, set_text=lambda t: None, progress_window=lambda t: progress)
-df, variant = w._analysis_worker(str(folder), w.settings(), w.analysis_fingerprint(), w.input_files(),
-                                 w.fingerprint_params(), task)
-import numpy as np
-from chisurf.plugins.burst.burst_2cde.core import computation as core
-print("FACTS" + json.dumps({"values": np.asarray(df[core.COLUMN_FRET_2CDE], float).tolist(), "variant": variant,
-                            "params": w.fingerprint_params(),
-                            "companions": sorted(p.name for p in folder.parent.glob("*.pto"))}))
-"""
-
-
 def _qt_facts(folder):
-    pytest.importorskip("qtpy")
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT, str(folder)],
-        capture_output=True,
-        text=True,
-        timeout=300,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and (
-        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
-    ):
-        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
-    # Any other failure is the Qt tool's own: skipping it hid a broken Qt host.
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS") :])
+    """What the retired Qt BurstTwoCdeTool's worker returned on the demo folder (qt_reference.json)."""
+    return json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
 
 
 # 1. the same answer as the Qt tool's worker, and the known one
 def test_a_run_gives_the_qt_tools_answer_and_writes_the_same_companion(folder, tmp_path):
-    qt_folder = build(tmp_path / "qt_measurement")
-    qt = _qt_facts(qt_folder)
+    qt = _qt_facts(folder)
     app = _app(folder)
     try:
         app.controller.run()

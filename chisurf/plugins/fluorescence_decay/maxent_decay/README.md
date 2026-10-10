@@ -14,11 +14,11 @@ core `chisurf` models.
 ## Modules
 
 - `__init__.py`
-  - Plugin metadata and `load()` function returning `MaxentDecayWidget`.
+  - Plugin metadata and `load()` function returning the emtk app.
 - `fmem/`
   - `core.py`: numerical MaxEnt solvers (`solve_lifetime_mem`, `solve_fret_mem`).
   - `api.py`: convenience helpers for scripts/notebooks (grid builders and `run_*` helpers).
-  - `gui.py`: Qt/chiplot front-end (`MaxentDecayWidget`).
+  - `gui/app.py`: native emtk front-end (`make_app`).
   - `settings.py`: JSON-based user defaults.
   - `sampling.py`: Q-MCMC sampling utilities built on the ensemble sampler in
     `chisurf.core.fitting.ensemble`.

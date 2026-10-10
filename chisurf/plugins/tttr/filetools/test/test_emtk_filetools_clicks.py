@@ -329,7 +329,7 @@ def test_emoji_are_only_the_list_rows_icons(drv):
     """Each row carries its tool's pictogram in the icon slot; buttons and captions carry none."""
     from emtk.im_widgets import icon_text
 
-    icons = {icon_text(entry_icon(p, p["entrypoint"])) for p in drv.app.panels}
+    icons = {icon_text(entry_icon(p, p["plugin"])) for p in drv.app.panels}
     strings = drv.draw(2).strings
     assert icons <= set(strings)
     for text in strings:

@@ -1,0 +1,58 @@
+{
+ "ALEX_PANELS": [
+  {
+   "role": "channels",
+   "name": "1. Setup"
+  },
+  {
+   "role": "data",
+   "name": "2. Files"
+  },
+  {
+   "role": "alternation",
+   "name": "3. Alternation (µs-ALEX)",
+   "optional": true
+  },
+  {
+   "role": "selection",
+   "name": "4. Burst search"
+  },
+  {
+   "role": "background",
+   "name": "5. Background"
+  },
+  {
+   "role": "accurate_fret",
+   "name": "6. Accurate FRET"
+  },
+  {
+   "role": "es",
+   "name": "7. E–S histogram"
+  },
+  {
+   "role": "separator",
+   "name": "────────",
+   "separator": true
+  },
+  {
+   "role": "browser",
+   "name": "Burst properties"
+  },
+  {
+   "role": "titration",
+   "name": "Titration",
+   "optional": true
+  },
+  {
+   "role": "bva",
+   "name": "BVA"
+  },
+  {
+   "role": "legacy_export",
+   "name": "Export (ALEX-Suite CSV)",
+   "optional": true
+  }
+ ],
+ "initial_role": "channels",
+ "_note": "Recorded from the retired Qt AlexSuiteTool before deletion."
+}

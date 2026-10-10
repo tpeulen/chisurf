@@ -15,11 +15,16 @@ Qt feature fail here instead of surfacing as a user complaint.
 from __future__ import annotations
 
 import ast
+import json
 import pathlib
 
 import pytest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
+
+#: The public methods of the retired Qt panels, recorded before their files were deleted
+#: (``qt_feature_surface.json``); a panel whose Qt file still exists is read from the source.
+RECORDED = json.loads((pathlib.Path(__file__).parent / "qt_feature_surface.json").read_text())
 
 #: panel key -> (Qt widget module, Qt class name, native app module, native class)
 PANELS = {
@@ -54,10 +59,6 @@ PANELS = {
     "channels": (
         "chisurf/plugins/core/setup_channel_definition/gui/tool.py", "SetupChannelDefinitionWidget",
         "chisurf/plugins/core/setup_channel_definition/gui/app.py", None,
-    ),
-    "fcs": (
-        "chisurf/plugins/fcs/fcs_channel_preset/gui/tool.py", "FCSChannelWidget",
-        "chisurf/plugins/fcs/fcs_channel_preset/gui/app.py", None,
     ),
     "lut": (
         "chisurf/plugins/tttr/tttr_lut_tools/gui/tool.py", "TTTRLUTSettingsPanel",
@@ -159,9 +160,18 @@ def _panel_covers(qt_name: str, panel_key: str, native_defs: set[str], native_sr
 @pytest.mark.parametrize("panel_key", sorted(PANELS))
 def test_native_panel_covers_qt_feature_surface(panel_key: str):
     qt_path, qt_cls, native_path, _native_cls = PANELS[panel_key]
-    qt_methods = _public_methods(ROOT / qt_path, qt_cls)
+    if panel_key in RECORDED and not (ROOT / qt_path).exists():
+        qt_methods = set(RECORDED[panel_key]["methods"])
+    else:
+        qt_methods = _public_methods(ROOT / qt_path, qt_cls)
     native_defs = _module_defs(ROOT / native_path)
-    native_src = (ROOT / native_path).read_text(encoding="utf-8")
+    # the native app draws from its view spec and a model beside it: both count as the native module
+    folder = (ROOT / native_path).parent
+    native_src = "".join(
+        p.read_text(encoding="utf-8")
+        for pattern in ("*.py", "*.json")
+        for p in sorted(folder.glob(pattern))
+    )
     # Native apps delegate persistence to the EMTK state contract.
     native_defs |= {"export_settings", "restore_settings"}
     missing = sorted(

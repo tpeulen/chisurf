@@ -60,7 +60,10 @@ class Child(ImApp):
 
     def __init__(self):
         super().__init__(lambda: None)
+        from chisurf.emtk.channel_definition import ChannelDefinitionWidget
+
         self.calls, self.value, self.dropped = [], 1, []
+        self.channel_editor = ChannelDefinitionWidget()  # a setup-using tool hosts the shared editor
 
     def pointer_press(self, *a):
         self.calls.append(("press", a))
@@ -102,15 +105,12 @@ def ui():
 # -- parity with the Qt tool ----------------------------------------------------------------------------------------- #
 
 
-def test_the_navigation_list_equals_the_qt_tools_panels(ui, qapp, qtbot):
-    from chisurf.plugins.tttr.tttr_toolbox.gui.tool import TttrToolboxTool
-
+def test_the_navigation_list_equals_the_qt_tools_panels(ui):
     spec = json.loads((PLUGIN / "gui" / "panels.json").read_text())
     expected = [p["name"] for p in spec["panels"] if not p.get("separator")]
-    assert [p["name"] for p in ui.app.tools] == expected
-    qt = TttrToolboxTool()
-    qtbot.addWidget(qt)
-    assert qt.windowTitle().endswith("TTTR Tools")
+    # the hub adds the shared "Setup" page in front of the tools that use a detector setup
+    assert [p["name"] for p in ui.app.tools if p["role"] != "setup"] == expected
+    assert ui.app.title.endswith("TTTR Tools")  # the retired Qt window's title
     ui.draw(3)
     for panel in ui.app.tools:
         assert f"nav.{panel['role']}" in ui.app.item_rects
@@ -238,7 +238,10 @@ def test_a_tool_that_cannot_open_shows_the_reason_and_retry_reopens_it():
 
     driver = Driver(make_app(resolver=resolver))
     try:
+        driver.app.select("alex_creator")  # the shared Setup page opens first
         driver.draw(3)
+        driver.app._collect_build(wait=True)  # the tool is made on a worker thread
+        driver.draw(2)
         assert driver.drawn("The selected tool could not be opened.")
         assert any("broken child dependency" in s for s in driver.draw(2).strings)
         driver.click_name("retry")

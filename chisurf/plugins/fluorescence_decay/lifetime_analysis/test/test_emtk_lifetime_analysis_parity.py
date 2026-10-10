@@ -1,4 +1,4 @@
-"""The native lifetime hub against the Qt shell it replaces, with real input events routed through the hub to the hosted tools.
+"""The native lifetime hub (it replaced a Qt shell), with real input events routed through the hub to the hosted tools.
 
 Hermetic through ``conftest.py``; the last test proves the user's real ``~/.chisurf`` is untouched. The five hosted tools
 have their own test folders: here only what the hub owns is checked (list, search, Back/Next, banner, help, guide,
@@ -61,19 +61,30 @@ def child_texts(ui):
 
 # ───────────────────────────── the Qt shell's list is the native list ───────────────────────────── #
 
+#: The names, in order, the retired Qt shell listed (recorded before it was deleted).
+QT_NAMES = [
+    "1. IRF Estimation",
+    "2. MaxEnt MEM",
+    "3. Lazy Lifetime Analysis",
+    "4. Histogram-Microtime",
+    "5. VV/VH G-Factor",
+    "6. VV/VH Anisotropy",
+    "Synthetic Decay",
+]
+#: The only panel the Qt shell flagged experimental (its message is the LLTF manifest's).
+QT_EXPERIMENTAL = {"lltf"}
 
-def test_names_descriptions_order_and_maturity_equal_the_qt_shell():
-    pytest.importorskip("qtpy")
-    from chisurf.plugins.fluorescence_decay.lifetime_analysis.gui.tool import LIFETIME_PANELS
 
-    assert [p[1] for p in PANELS] == [p["name"] for p in LIFETIME_PANELS]
-    assert [p[3] for p in PANELS] == [p["description"] for p in LIFETIME_PANELS]
+def test_names_order_and_maturity_equal_the_qt_shell():
+    from chisurf.core.plugin.manifest import load_manifest
+
+    assert [p[1] for p in PANELS] == QT_NAMES
+    lltf = load_manifest(PLUGIN.parent / "lltf" / "manifest.json")
     app = make_app()
     try:
-        for (ident, _label, _icon, _desc, _alias), qt in zip(PANELS, LIFETIME_PANELS):
-            assert bool(app.experimental_message(ident)) == bool(qt.get("experimental")), ident
-            if qt.get("experimental"):
-                assert app.experimental_message(ident) == qt["experimental_message"]
+        for ident, _label, _icon, _desc, _alias in PANELS:
+            assert bool(app.experimental_message(ident)) == (ident in QT_EXPERIMENTAL), ident
+        assert app.experimental_message("lltf") == lltf.experimental_message
     finally:
         app.close()
 

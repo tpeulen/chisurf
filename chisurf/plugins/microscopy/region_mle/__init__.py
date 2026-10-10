@@ -2,7 +2,7 @@
 
 Segments single molecules from a confocal (CLSM) image and fits each by
 single-lifetime Poisson maximum likelihood (Fit23).  The Qt-free computation core
-lives in :mod:`.core.region_mle`; the AutoForm GUI is in :mod:`.gui`.
+lives in :mod:`.core.region_mle`; the native emtk app is in :mod:`.gui.app`.
 """
 
 from __future__ import annotations
@@ -17,16 +17,3 @@ _manifest_path = _Path(__file__).parent / "manifest.json"
 if _manifest_path.exists():
     _manifest = _json.loads(_manifest_path.read_text(encoding="utf-8"))
     name = _manifest.get("display_name", name)
-
-
-def __getattr__(attr_name: str):
-    """Lazy Qt gate for the GUI entrypoint (keeps the package import Qt-free)."""
-    if attr_name == "RegionMleTool":
-        from .gui.tool import RegionMleTool as _cls
-
-        globals()["RegionMleTool"] = _cls
-        return _cls
-    raise AttributeError(f"module {__name__!r} has no attribute {attr_name!r}")
-
-
-__all__ = ["RegionMleTool"]

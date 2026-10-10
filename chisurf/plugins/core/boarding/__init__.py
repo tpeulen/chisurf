@@ -1,4 +1,4 @@
-"""Boarding wizard plugin for first-run ChiSurf setup."""
+"""Boarding wizard plugin for first-run ChiSurf setup (the native emtk app in :mod:`.app`)."""
 
 # Plugin brand icon (unified emoji set)
 icon = "🧭"
@@ -12,9 +12,3 @@ if _manifest is not None:
     name = _manifest.display_name
 else:
     name = "Help:Boarding Wizard"
-
-
-if __name__ == "plugin":
-    from .wizard import show_onboarding
-
-    show_onboarding()

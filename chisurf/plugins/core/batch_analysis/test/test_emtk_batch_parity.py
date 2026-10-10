@@ -7,7 +7,6 @@ settings; the real ``~/.chisurf`` is checked unchanged.
 
 from __future__ import annotations
 
-import csv
 import json
 import re
 import zipfile
@@ -27,7 +26,6 @@ from chisurf.plugins.emtk_hermetic import (  # noqa: F401  (autouse fixtures)
 )
 
 from ..core import runner
-from ..gui import view_model as qt_vm_module
 from ..gui.app import BatchAnalysisApp
 from ..gui.model import STEPS, BatchModel
 from ..gui.view_model import BatchViewModel
@@ -148,31 +146,16 @@ def test_the_selection_summary_equals_the_qt_summary(tmp_path):
 # -- loaded datasets: the Qt check list ---------------------------------------------------------------------------------- #
 
 
-def test_the_dataset_rows_are_the_qt_lists_items_and_a_tick_selects_the_same_indices(
-    qapp, monkeypatch
-):
-    from ..gui.loaded_datasets import LoadedDatasetSelector
-
+def test_the_dataset_rows_are_the_qt_lists_items_and_a_tick_selects_the_same_indices():
+    """The retired Qt list showed "1. A" ...; ticking row 1 selected index [1] and unticking cleared it."""
     session = FakeSession(datasets=("A", "B", "C", "Global Dataset"))
-    qt = BatchViewModel()
-    qt.imported_datasets = lambda: [d for d in session.datasets if d.name != "Global Dataset"]
-    widget = LoadedDatasetSelector(qt)
     native = BatchModel(session=session)
-    labels = [widget._list.item(i).text() for i in range(widget._list.count())]  # noqa: SLF001
-    assert labels == [r["label"] for r in native.dataset_rows()] == ["1. A", "2. B", "3. C"]
-    from qtpy import QtCore
-
-    widget._list.item(1).setCheckState(QtCore.Qt.Checked)  # noqa: SLF001
+    assert [r["label"] for r in native.dataset_rows()] == ["1. A", "2. B", "3. C"]
     native.set_dataset_use(native.dataset_rows()[1], "use", True)
-    assert qt.selected_dataset_indices == native.selected_dataset_indices == [1]
-    assert (
-        [d.name for d in qt.selected_datasets()]
-        == [d.name for d in native.selected_datasets()]
-        == ["B"]
-    )
-    widget._list.item(1).setCheckState(QtCore.Qt.Unchecked)  # noqa: SLF001
+    assert native.selected_dataset_indices == [1]
+    assert [d.name for d in native.selected_datasets()] == ["B"]
     native.set_dataset_use(native.dataset_rows()[1], "use", False)
-    assert qt.selected_dataset_indices == native.selected_dataset_indices == []
+    assert native.selected_dataset_indices == []
 
 
 def test_refresh_keeps_the_ticks_of_datasets_that_are_still_there():
@@ -187,48 +170,42 @@ def test_refresh_keeps_the_ticks_of_datasets_that_are_still_there():
 # -- files: the Qt path list --------------------------------------------------------------------------------------------- #
 
 
-def test_adding_files_and_folders_gives_the_qt_path_lists_result(qapp, tmp_path):
-    from chisurf.gui.autoform.sections.path_list_section import PathListWidget
-
-    from ..gui.view_model import BatchViewModel as Vm
-
+def test_adding_files_and_folders_gives_the_qt_path_lists_result(tmp_path):
     folder = tmp_path / "data"
     (folder / "sub").mkdir(parents=True)
     for name in ("b.sm", "a.sm", "sub/c.sm"):
         (folder / name).write_text("x")
     loose = tmp_path / "loose.sm"
     loose.write_text("x")
-    qt = Vm()
-    widget = PathListWidget(qt, "files", add_folders=True, mmfdb=False)
     native = BatchModel(session=FakeSession())
-    for batch in (
-        [str(loose)],
-        [str(folder)],
-        [str(loose), str(tmp_path / "missing.sm")],
-    ):  # the last repeats and misses
-        widget.add_paths(batch)
+    # what the retired Qt path list held after each add (a folder expands sorted; repeats and misses add nothing)
+    expected = [
+        ["loose.sm"],
+        ["loose.sm", "a.sm", "b.sm", "c.sm"],
+        ["loose.sm", "a.sm", "b.sm", "c.sm"],
+    ]
+    for batch, names in zip(
+        (
+            [str(loose)],
+            [str(folder)],
+            [str(loose), str(tmp_path / "missing.sm")],  # the last repeats and misses
+        ),
+        expected,
+        strict=True,
+    ):
         native.add_paths(batch)
-        assert qt.files == native.files
-    assert [Path(p).name for p in native.files] == ["loose.sm", "a.sm", "b.sm", "c.sm"]
+        assert [Path(p).name for p in native.files] == names
 
 
-def test_remove_and_clear_match_the_qt_buttons(qapp, tmp_path):
-    from chisurf.gui.autoform.sections.path_list_section import PathListWidget
-
+def test_remove_and_clear_match_the_qt_buttons(tmp_path):
     files = make_files(tmp_path, ("a.sm", "b.sm", "c.sm"))
-    qt = BatchViewModel()
-    widget = PathListWidget(qt, "files", mmfdb=False)
     native = BatchModel(session=FakeSession())
-    widget.add_paths(files)
     native.add_paths(files)
-    widget.select_index(1)
     native.select_file(native.file_rows()[1])
-    widget._remove_selected()  # noqa: SLF001
     native.remove_selected()
-    assert qt.files == native.files == [files[0], files[2]]
-    widget.clear()
+    assert native.files == [files[0], files[2]]  # the Qt remove button left the same two
     native.clear_files()
-    assert qt.files == native.files == []
+    assert native.files == []
 
 
 # -- the run: the same numbers and files as the Qt run ------------------------------------------------------------------- #

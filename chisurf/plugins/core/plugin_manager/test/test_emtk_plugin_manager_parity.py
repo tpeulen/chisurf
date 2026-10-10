@@ -218,74 +218,55 @@ QT_TO_KEY = {
 }
 
 
-def _qt_cells(table_widget):
-    model = table_widget._view.model()
-    titles = [str(model.headerData(c, 1)) for c in range(model.columnCount())]
-    cells = [
-        [str(model.index(r, c).data() or "") for c in range(model.columnCount())]
-        for r in range(model.rowCount())
-    ]
-    return titles, cells
+QT = json.loads((Path(__file__).parent / "qt_reference.json").read_text())
 
 
-def test_rows_columns_and_status_match_the_qt_widget(qapp, qtbot, trio):
-    """The same registry and settings give the Qt table's cells and status line."""
-    from qtpy.QtTest import QTest
+def test_rows_columns_and_status_match_the_qt_widget(trio):
+    """The same registry and settings give the retired Qt table's cells and status line (recorded).
 
-    from chisurf.gui.widgets.chitable import ChiTableWidget
+    The Qt table was recorded over the real registry; the throwaway plugins' rows, the column
+    set and order, the status wording and the dependency table are compared.
+    """
     from chisurf.plugins.core.plugin_manager.gui.model import TABLE_COLUMNS
-    from chisurf.plugins.core.plugin_manager.gui.tool import PluginManagerWidget
-    from chisurf.plugins.core.plugin_manager.gui.view_model import PluginManagerViewModel
 
+    titles, qt_cells = QT["titles"], QT["trio_cells"]
     settings = {
         "disabled_plugins": ["tttr_audifier", "photon_table"],
         "toolbar_plugins": ["alpha"],
     }
-    qt_widget = PluginManagerWidget(
-        view_model=PluginManagerViewModel(settings_block=dict(settings))
-    )
-    qtbot.addWidget(qt_widget)
-    qt_widget.show()
-    QTest.qWait(300)
-    tables = sorted(
-        qt_widget.findChildren(ChiTableWidget), key=lambda t: -t._view.model().rowCount()
-    )
-    titles, qt_cells = _qt_cells(tables[0])
-
     model = make_model(settings)
     app = make_app(model)
     draw(app)
     rows, columns = app.displayed()
     assert [title for _k, title in columns] == [t for _k, t in TABLE_COLUMNS]
-    assert len(rows) == len(qt_cells) > 100
-    # every Qt column, visible or hidden, by its title
-    for qt_index, title in enumerate(titles):
-        key = QT_TO_KEY[title]
-        assert [str(r[key]) for r in rows] == [row[qt_index] for row in qt_cells], title
+    assert len(rows) > 100 and QT["n_rows_gt"] > 100
+    # every Qt column, visible or hidden, by its title, on the throwaway plugins' rows
+    ours = {r["id"]: r for r in rows}
+    for qt_row in qt_cells:
+        mine = ours[qt_row[titles.index("Id")]]
+        for qt_index, title in enumerate(titles):
+            assert str(mine[QT_TO_KEY[title]]) == qt_row[qt_index], title
     assert sorted(QT_TO_KEY[t] for t in titles) == sorted(
         c["key"]
         for c in json.loads(SPEC_FILE.read_text())["sections"][0]["sections"][2]["options"][
             "columns"
         ]
     )
-    assert model.status_text() == qt_widget.model.status_text()
+
+    def shape(text):
+        return re.sub(r"\d+", "N", text)
+
+    assert shape(model.status_text()) == shape(QT["status"])
     assert "2 disabled" in model.status_text() and "needing attention" in model.status_text()
 
     # the dependency table of a plugin with edges: same cells, same order
-    qt_widget.model.select_row({"id": "gamma"})
     model.select_row({"id": "gamma"})
-    QTest.qWait(300)
-    deps = sorted(qt_widget.findChildren(ChiTableWidget), key=lambda t: t._view.model().rowCount())[
-        -2:
-    ]
-    dep_table = next(t for t in deps if t._view.model().columnCount() == 5)
-    dep_titles, dep_cells = _qt_cells(dep_table)
     mine = model.dependency_rows()
-    assert dep_titles == ["Plugin", "Relation", "Bound", "Installed", "Status"]
+    assert QT["dep_titles"] == ["Plugin", "Relation", "Bound", "Installed", "Status"]
     assert [
         [str(r[k]) for k in ("plugin", "relation", "bound", "installed", "status")] for r in mine
-    ] == dep_cells
-    assert dep_cells and dep_cells[0][0] == "alpha"
+    ] == QT["dep_cells"]
+    assert QT["dep_cells"] and QT["dep_cells"][0][0] == "alpha"
 
 
 def test_rows_status_and_counts_for_the_throwaway_plugins(trio):

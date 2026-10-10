@@ -21,14 +21,4 @@ if _manifest_path.exists():
     name = _manifest.get("display_name", name)
 
 
-def __getattr__(attr_name: str):
-    """Lazy Qt gate for the GUI entrypoint (keeps the package import Qt-free)."""
-    if attr_name == "SpotFinderTool":
-        from .gui.tool import SpotFinderTool as _cls
-
-        globals()["SpotFinderTool"] = _cls
-        return _cls
-    raise AttributeError(f"module {__name__!r} has no attribute {attr_name!r}")
-
-
-__all__ = ["SpotFinderTool", "name", "cli_entrypoint"]
+__all__ = ["name", "cli_entrypoint"]

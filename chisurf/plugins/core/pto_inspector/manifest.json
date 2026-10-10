@@ -19,7 +19,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.core.pto_inspector.gui.tool:PtoInspectorTool",
     "cli": "csg_pto_inspect=chisurf.plugins.core.pto_inspector.cli.main:cli",
     "emtk": "chisurf.plugins.core.pto_inspector.gui.app:make_app"
   },

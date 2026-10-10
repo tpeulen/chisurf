@@ -586,7 +586,7 @@ def movie_play_loop_stop_and_speed(app: Any, drv: Driver, path: Any, tab: str) -
 def help_button_opens_the_help_and_its_buttons_work(app: Any, drv: Driver) -> None:
     drv.click("help")
     assert app.help_window.open
-    assert {"Start Guided Tour", "Close"} <= set(drv.draw(2).strings)
+    assert {"Start Guided Tour", "Close Help"} <= set(drv.draw(2).strings)
     drv.click_text("Start Guided Tour")
     assert not app.help_window.open and app.tour.active
     app.tour.stop()

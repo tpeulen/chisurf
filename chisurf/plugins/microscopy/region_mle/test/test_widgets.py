@@ -174,16 +174,6 @@ def test_export_results_writes_combined_table(tmp_path):
     assert set(df["tau"]) == {1.0, 2.0, 3.0}
 
 
-def test_tool_creation(qapp, qtbot):
-    from chisurf.plugins.microscopy.region_mle.gui.tool import RegionMleTool
-
-    widget = RegionMleTool()
-    qtbot.addWidget(widget)
-    assert widget.windowTitle() == "Region MLE"
-    assert hasattr(widget, "auto_form")
-    assert hasattr(widget, "model")
-
-
 # --- the analysis region, and the measured molecules ------------------------
 def test_the_region_list_drives_the_setting_the_analysis_reads(tmp_path):
     """The list is the editing surface; the setting takes one region.

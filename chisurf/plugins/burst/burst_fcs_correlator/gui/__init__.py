@@ -6,8 +6,4 @@ def __getattr__(name):
         from .client import BurstFcsClient
 
         return BurstFcsClient
-    if name == "BurstFcsTool":
-        from .tool import BurstFcsTool
-
-        return BurstFcsTool
     raise AttributeError(name)

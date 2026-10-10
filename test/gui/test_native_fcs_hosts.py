@@ -5,49 +5,48 @@ import pytest
 
 
 @pytest.mark.parametrize("full", [False, True])
-def test_fcs_host_uses_one_native_surface_and_closes_it(qtbot, monkeypatch, full):
-    """Both public Qt names retain the actual app and its scientific context."""
-    from chisurf.plugins.fcs.fcs_correlator.gui.app import FcsHubApp
-    from chisurf.plugins.fcs.fcs_correlator.tool import FcsCorrelatorTool
-    from chisurf.plugins.fcs.fcs_toolbox.tool import FcsTool, FcsToolboxTool
+def test_fcs_hub_is_one_native_surface_and_closes_once(monkeypatch, full):
+    """Both hubs keep the actual app and its scientific context, and close their children once."""
+    from emtk.testing import RecordingPainter
 
-    tool = FcsTool() if full else FcsCorrelatorTool()
-    qtbot.addWidget(tool)
-    assert isinstance(tool.app, FcsHubApp)
-    assert tool.host.control is tool.app and tool.centralWidget() is tool.host
-    assert tool.workflow is tool.app.workflow
-    assert tool.workflow_context is tool.app.workflow.context
-    assert FcsToolboxTool is FcsTool
-    roles = {panel["role"] for panel in tool.app.tools}
+    from chisurf.plugins.fcs.fcs_correlator.gui.app import FcsHubApp
+    from chisurf.plugins.fcs.fcs_correlator.gui.app import make_app as correlator
+    from chisurf.plugins.fcs.fcs_toolbox.gui.app import make_app as toolbox
+
+    app = toolbox() if full else correlator()
+    assert isinstance(app, FcsHubApp)
+    assert app.workflow.context is not None
+    roles = {panel["role"] for panel in app.tools}
     assert {"channel_def", "files", "filter", "correlator", "merger"} <= roles
     if full:
         assert {"flc_2d", "lfcs_sim", "burst_fcs", "diffusion_calc", "filter_calc"} <= roles
-        assert tool.show_panel_by_role("filter_calc")
-        assert tool.app.selected == "filter_calc"
-    assert not tool.show_panel_by_role("unknown")
+        app.select("filter_calc")
+        app.draw(RecordingPainter(), 0, 0, 1200, 800)
+        assert app.selected == "filter_calc"
+    try:
+        app.select("unknown")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("an unknown role must be refused")
     calls = []
-    close = tool.app.close
-    monkeypatch.setattr(tool.app, "close", lambda: (calls.append("close"), close()))
-    tool.close()
-    tool.close()
-    tool.host.close()
+    close = app.close
+    monkeypatch.setattr(app, "close", lambda: (calls.append("close"), close()))
+    app.close()
     assert calls == ["close"]
-    assert tool.host._control_closed
-    assert tool.app.children == {}
+    assert app.children == {}
 
 
-
-def test_burst_host_parent_closure_cancels_real_queued_work_once(qtbot, monkeypatch):
-    """The existing live burst host closes its owned executor once, even on repeated close."""
+def test_burst_app_closure_cancels_real_queued_work_once(monkeypatch):
+    """The native burst-FCS app closes its owned executor once, even on repeated close."""
     from concurrent.futures import CancelledError
     from threading import Event
 
-    from chisurf.plugins.burst.burst_fcs_correlator.gui.tool import BurstFcsTool
+    from chisurf.plugins.burst.burst_fcs_correlator.gui.app import create_app
 
-    tool = BurstFcsTool(embedded=True)
-    qtbot.addWidget(tool)
+    app = create_app()
     started, release = Event(), Event()
-    ctrl = tool.controller
+    ctrl = app.controller
 
     def in_flight():
         started.set()
@@ -58,14 +57,9 @@ def test_burst_host_parent_closure_cancels_real_queued_work_once(qtbot, monkeypa
     assert started.wait(timeout=2)
     queued = ctrl._executor.submit(lambda: "must never run")
     ctrl._future, ctrl.running = queued, True
-    calls = []
-    close = tool.app.close
-    monkeypatch.setattr(tool.app, "close", lambda: (calls.append("close"), close()))
     try:
-        tool.close()
-        tool.close()
-        tool.host.close()
-        assert calls == ["close"] and tool.host._control_closed
+        app.close()
+        app.close()
         assert queued.cancelled() and ctrl._cancel.is_set()
     finally:
         release.set()
@@ -73,8 +67,7 @@ def test_burst_host_parent_closure_cancels_real_queued_work_once(qtbot, monkeypa
         running.result(timeout=5)
 
 
-
-def test_native_correlator_host_matches_frozen_real_measurement(qtbot, tmp_path):
+def test_native_correlator_host_matches_frozen_real_measurement(tmp_path):
     """Retiring the Qt wizard keeps the actual two-chunk measurements and channel counts."""
     import json
     import shutil
@@ -82,17 +75,20 @@ def test_native_correlator_host_matches_frozen_real_measurement(qtbot, tmp_path)
 
     import numpy as np
 
-    from chisurf.plugins.fcs.fcs_toolbox.tool import FcsTool
+    from emtk.testing import RecordingPainter
+
+    from chisurf.plugins.fcs.fcs_toolbox.gui.app import make_app
 
     root = Path(__file__).resolve().parents[2]
     source = tmp_path / "BH_SPC132.spc"
     shutil.copy2(root / "test/data/tttr/BH/132/BH_SPC132.spc", source)
-    tool = FcsTool()
-    qtbot.addWidget(tool)
+    app = make_app()
     try:
-        tool.app.files_step.add_paths([str(source)])
-        assert tool.show_panel_by_role("correlator")
-        model = tool.app.correlator_model
+        app.files_step.add_paths([str(source)])
+        app.select("correlator")
+        app.draw(RecordingPainter(), 0, 0, 1200, 800)
+        assert app.selected == "correlator"
+        model = app.correlator_model
         model.channel_a, model.channel_b, model.n_splits = "0,1", "8,9", 2
         assert len(model._tttr) == 183657
         model.correlate_data()
@@ -106,7 +102,7 @@ def test_native_correlator_host_matches_frozen_real_measurement(qtbot, tmp_path)
             assert measured["correlation_settings"] == frozen["correlation_settings"]
             assert measured["duration"] == frozen["duration"]
     finally:
-        tool.close()
+        app.close()
 
 
 @pytest.mark.parametrize("width", [800, 1200])

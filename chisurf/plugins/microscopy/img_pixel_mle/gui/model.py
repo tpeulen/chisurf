@@ -95,6 +95,36 @@ class PixelMleModel(EmtkModelMixin, PixelMleViewModel):
             self.notify("irf")
             self.notify("settings")
 
+    example_folder: pathlib.Path | None = None  # None: the plugin's demo cache
+
+    def load_example(self) -> None:
+        """Select the simulated two-lifetime image and its IRF, and start from the matching anisotropy."""
+        from ..demo import DEMO, irf_path, make_demo
+
+        try:
+            image = make_demo(self.example_folder)
+        except Exception as exc:  # noqa: BLE001 - shown in the status line
+            self.status_text = f"Could not make the example: {exc}"
+            return
+        self.files = [str(image)]
+        self.irf_files = [str(irf_path(image.parent))]
+        self.settings.detector_chs_p = [DEMO["parallel_channel"]]
+        self.settings.detector_chs_s = [DEMO["perpendicular_channel"]]
+        self.settings.micro_time_start, self.settings.micro_time_stop = 0, int(DEMO["n_micro"])
+        self.settings.micro_time_binning = 1
+        self.fit_model = "fit23"
+        x0, _fixed = self._ensure_model_params("fit23")
+        x0[2], x0[3] = float(DEMO["r0"]), float(DEMO["rho_ns"])
+        self.status_text = (
+            f"Example loaded: left half tau = {DEMO['tau_left_ns']} ns, right half "
+            f"{DEMO['tau_right_ns']} ns. Press Run."
+        )
+        self.notify("rebuild")
+        self.notify("files")
+        self.notify("irf")
+        self.notify("settings")
+        self.notify("demo")
+
     def open_path(self, path: str) -> None:
         """A dataset picked in the database: a photon file to analyse."""
         self.add_files([path])

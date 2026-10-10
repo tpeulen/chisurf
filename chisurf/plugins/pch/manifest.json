@@ -15,7 +15,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.pch.gui.tool:PCHApp",
     "emtk": "chisurf.plugins.pch.gui.app:make_app",
     "cli": "pch=chisurf.plugins.pch.cli:cli",
     "services": "chisurf.plugins.pch.backend.services:register_services"

@@ -127,7 +127,7 @@
               "type": "custom",
               "key": "embed",
               "options": {
-                "widget": "chisurf.plugins.fcs.fcs_channel_preset.gui.tool:FCSChannelWidget"
+                "widget": "chisurf.gui.widgets.emtk_embed:FCSChannelEmbed"
               }
             }
           ]

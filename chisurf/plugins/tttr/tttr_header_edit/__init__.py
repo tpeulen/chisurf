@@ -36,22 +36,3 @@ name = "TTTR:Editor:TTTR Header editor"
 # Aggregated into the File tools hub (filetools); hidden as a top-level
 # menu entry but still importable and standalone-launchable.
 menu_hidden = True
-
-__all__ = ["TagsEditor"]
-
-
-def __getattr__(attr_name: str):
-    """Lazy Qt import gate (no Qt import as a package side effect)."""
-    if attr_name == "TagsEditor":
-        from .gui.tool import TagsEditor as _cls
-
-        globals()["TagsEditor"] = _cls
-        return _cls
-    raise AttributeError(f"module {__name__!r} has no attribute {attr_name!r}")
-
-
-if __name__ == "plugin":
-    from .gui.tool import TagsEditor
-
-    window = TagsEditor()
-    window.show()

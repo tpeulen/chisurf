@@ -1,15 +1,12 @@
 class TestKappa2Dist:
-    def test_creation(self, qapp, qtbot):
-        from chisurf.plugins.calculator.kappa2_dist import Kappa2Dist
+    def test_creation(self):
+        from chisurf.plugins.calculator.kappa2_dist.gui.app import make_app
 
-        widget = Kappa2Dist()
-        qtbot.addWidget(widget)
-        assert widget is not None
+        app = make_app()
+        assert app is not None
 
-    def test_creation_with_kappa2(self, qapp, qtbot):
-        from chisurf.plugins.calculator.kappa2_dist import Kappa2Dist
+    def test_creation_with_kappa2(self):
+        from chisurf.plugins.calculator.kappa2_dist.gui.app import make_app
 
-        widget = Kappa2Dist(kappa2=0.667)
-        qtbot.addWidget(widget)
-        assert widget is not None
-        assert widget.kappa2 == 0.667
+        app = make_app(kappa2=0.667)
+        assert app.tool._model.kappa2_true == 0.667

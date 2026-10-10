@@ -1,7 +1,7 @@
 """The native FCS confocal calculator at parity with the Qt ConfocalCalcWidget.
 
-The Qt widget replays an edit sequence in a subprocess (this process stays Qt-free).
-After every step it reports its settings and which fields it leaves editable. The
+The Qt widget replayed this edit sequence once; ``qt_reference.json`` holds, after every step,
+its settings and which fields it left editable. The
 native app replays the same sequence through the spec's commit path (``setattr``
 then the section's ``call``, as a typed value does) and through pointer presses on
 its radios, buttons and fold headers.
@@ -10,8 +10,6 @@ its radios, buttons and fold headers.
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -50,61 +48,12 @@ STEPS = [
     ("water", None, True),
 ]
 
-_QT = r"""
-import json, sys
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-from chisurf.plugins.fcs.fcs_calculator.wizard import ConfocalCalcWidget
-w = ConfocalCalcWidget()
-steps, dye = json.loads(sys.argv[1]), sys.argv[2]
-def editable():
-    return {"D_um2_s": not w.D_um2_s.isReadOnly(), "rh_nm": not w.rh_nm.isReadOnly(),
-            "veff_fL": not w.veff_fL.isReadOnly(), "eta_mPa_s": w.eta_mPa_s.isEnabled(),
-            "shape_aspect": w.shape_aspect.isEnabled()}
-facts = [{"settings": w._collect_settings(), "editable": editable(), "dyes": [w.dye_combo.itemText(i) for i in range(w.dye_combo.count())]}]
-for kind, a, b in steps:
-    if kind == "value":
-        getattr(w, a).setValue(b)
-    elif kind == "fix":
-        {"D": w.rb_fix_D, "rh": w.rb_fix_rh, "V": w.rb_fix_V}[a].setChecked(True)
-    elif kind == "water":
-        w.use_water_eta.setChecked(b)
-    elif kind == "dye":
-        w.dye_combo.setCurrentText(dye)
-        (w.scale_dref if a else w.scale_dref_none).setChecked(True)
-        w.btn_apply_dref.click()
-    elif kind == "shape":
-        w.shape_combo.setCurrentText(a)
-        w.shape_size_nm.setValue(b[0]); w.shape_aspect.setValue(b[1])
-        w.btn_apply_shape.click()
-    facts.append({"settings": w._collect_settings(), "editable": editable()})
-data = dict(facts[-1]["settings"], fix_mode="rh", dye="Rhodamine 6G (Rh6G)", shape_type="Hexagon", tau_us=95.0)
-w._apply_settings(data)
-print("FACTS" + json.dumps({"steps": facts, "imported": w._collect_settings()}))
-"""
 
 
 @pytest.fixture(scope="module")
 def qt():
-    pytest.importorskip("qtpy")
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT, json.dumps(STEPS), DYE],
-        capture_output=True,
-        text=True,
-        timeout=300,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and (
-        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
-    ):
-        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
-    # Any other failure is the Qt widget's own: skipping it hid a broken Qt host.
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS") :])
+    """What the Qt ConfocalCalcWidget reported for STEPS, recorded before it was retired."""
+    return json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
 
 
 def _sections(sections=SPEC["sections"]):

@@ -8,10 +8,9 @@ The plugin is split into Qt-free and GUI layers (like ``burst_selection`` /
 - :mod:`.backend`  — ZMQ/JSON-RPC service handlers.
 - :mod:`.cli`      — ``psf-determination`` command-line interface.
 - :mod:`.gui`      — the interactive tool: a Qt-free :class:`~.gui.view_model.PsfViewModel`
-  rendered by :class:`~chisurf.gui.autoform.AutoForm` from ``gui/psf.view.json``.
+  drawn by the native emtk app (:mod:`.gui.app`) from ``gui/psf.view.json``.
 
-Qt is only imported lazily through the :class:`PsfDeterminationTool` gate below,
-so importing this package stays headless-safe.
+Importing this package needs no Qt binding.
 """
 
 from __future__ import annotations
@@ -31,14 +30,4 @@ if _manifest_path.exists():
 cli_entrypoint = "psf-determination=chisurf.plugins.microscopy.psf_determination.cli:cli"
 
 
-def __getattr__(attr_name: str):
-    """Lazy Qt gate for the new-style GUI entrypoint."""
-    if attr_name == "PsfDeterminationTool":
-        from .gui.tool import PsfDeterminationTool as _cls
-
-        globals()["PsfDeterminationTool"] = _cls
-        return _cls
-    raise AttributeError(f"module {__name__!r} has no attribute {attr_name!r}")
-
-
-__all__ = ["PsfDeterminationTool", "gaussian_3d"]
+__all__ = ["gaussian_3d"]

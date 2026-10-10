@@ -19,7 +19,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.microscopy.imaging_tools.gui.tool:ImagingToolsTool",
     "emtk": "chisurf.plugins.microscopy.imaging_tools.gui.app:make_app"
   },
   "optional_requires": {

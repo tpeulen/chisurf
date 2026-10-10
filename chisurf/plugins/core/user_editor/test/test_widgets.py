@@ -259,20 +259,3 @@ def test_every_bound_attribute_exists_on_the_model():
     for section in spec["sections"]:
         walk(section)
     assert not missing, "view spec binds to missing attributes:\n  " + "\n  ".join(missing)
-
-
-def test_user_editor_widget_creation(qapp, qtbot):
-    """The panel builds without reaching the network."""
-    from chisurf.plugins.core.user_editor.gui.tool import UserEditorWidget
-
-    widget = UserEditorWidget(view_model=_model(_FakeClient([_record()])))
-    qtbot.addWidget(widget)
-    assert "User" in widget.windowTitle()
-    assert widget.model.users == [], "the constructor fetched users"
-
-
-def test_the_password_dialog_is_still_importable_from_here(qapp):
-    """chisurf/gui/__init__.py imports it from this module for the login flow."""
-    from chisurf.plugins.core.user_editor.gui.tool import PasswordChangeDialog
-
-    assert PasswordChangeDialog is not None

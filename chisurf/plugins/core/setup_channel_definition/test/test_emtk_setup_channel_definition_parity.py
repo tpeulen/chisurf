@@ -520,13 +520,13 @@ def test_the_guide_advances_when_the_user_presses_save(setups_file):
 # ---------------------------------------------------------------------------
 # 7. drawing, persistence, Qt-free
 # ---------------------------------------------------------------------------
-def test_the_manifest_opens_the_emtk_tool_and_keeps_the_qt_one():
+def test_the_manifest_opens_the_emtk_tool_only():
     manifest = json.loads((PLUGIN / "manifest.json").read_text())
     assert (
         manifest["entrypoints"]["emtk"]
         == "chisurf.plugins.core.setup_channel_definition.gui.app:make_app"
     )
-    assert manifest["entrypoints"]["gui"].endswith("gui.tool:SetupChannelDefinitionWidget")
+    assert "gui" not in manifest["entrypoints"]
 
 
 def test_port_is_qt_free():

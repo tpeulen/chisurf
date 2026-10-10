@@ -59,25 +59,28 @@ def test_bid_output_help_reaches_translated_sink_without_changing_conversion_set
 
 
 def test_h2mm_tuple_help_is_translated_at_actual_controls_without_changing_fit_options(monkeypatch):
-    """Tuple-held descriptions cannot silently bypass the normal translation path."""
-    from chisurf.plugins.burst.burst_h2mm.gui import app as owner
+    """Spec-held descriptions of the native H2MM form go through the normal translation path."""
+    from chisurf.plugins.burst.burst_h2mm.gui import native as owner
 
-    # The GUI supports an empty tool before any measurement is selected.
-    app = owner.H2mmApp(tool=None)
     sources = (
-        "Number of random restarts; the fit with the best log-likelihood wins.",
-        "Maximum number of EM iterations per fit.",
-        "Bursts shorter than this many photons are excluded from the fit.",
+        "Random initialisations per state count; the best log-likelihood wins.",
+        "Maximum EM iterations per fit.",
+        "Bursts with fewer stream photons are left out.",
     )
-    before = tuple(getattr(app.h2mm_gui, name) for name in ("restarts", "max_iter", "min_photons"))
-    translations, observed = translated_tooltip_sink(monkeypatch, owner, sources)
-    Driver(app, (1100, 900)).draw(3)
+    names = ("restarts", "max_iter", "min_photons")
+    # The settings form draws its descriptions through emtk.im_widgets.
+    from types import SimpleNamespace
+
+    from emtk import im_widgets
+
+    translations, observed = translated_tooltip_sink(monkeypatch, SimpleNamespace(im=im_widgets), sources)
+    # The spec is translated when the app loads it, so the app is built after the locale is set.
+    app = owner.H2mmNativeApp()
+    before = tuple(getattr(app.model, name) for name in names)
+    Driver(app, (1100, 3000)).draw(3)
     assert set(translations.values()) <= set(observed)
     assert not set(sources) & set(observed)
-    assert (
-        tuple(getattr(app.h2mm_gui, name) for name in ("restarts", "max_iter", "min_photons"))
-        == before
-    )
+    assert tuple(getattr(app.model, name) for name in names) == before
 
 
 def test_header_editor_new_help_and_labels_translate_without_mutating_real_tags(monkeypatch):
@@ -99,11 +102,11 @@ def test_header_editor_new_help_and_labels_translate_without_mutating_real_tags(
         "Header tag name; names must not be empty.",
     )
     translations, observed = translated_tooltip_sink(monkeypatch, owner, sources)
-    i18n.add_translations("burst-contract", {"📂 Open": "Localized open"})
+    i18n.add_translations("burst-contract", {"Open…": "Localized open"})
     driver = Driver(app, (1100, 800))
     painter = driver.draw(3)
     assert set(translations.values()) <= set(observed)
-    assert "Localized open" in painter.strings
+    assert "📂  Localized open" in painter.strings
     driver.click("open")
     assert opened == [True]
     assert model.tags == before

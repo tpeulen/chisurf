@@ -146,24 +146,13 @@ def shown_names(app):
 # ── 1. rows and status counts equal the Qt tool's ───────────────────────
 
 
-def test_rows_and_status_match_the_qt_widget(qapp, qtbot):
-    """The same registry and settings give the Qt table's cells and status line."""
-    from chisurf.gui.widgets.chitable import ChiTableWidget
+def test_rows_and_status_match_the_qt_widget(fake_registry):
+    """The same registry and settings give the retired Qt table's cells and status line (recorded)."""
     from chisurf.plugins.core.model_manager.gui.model import TABLE_COLUMNS
-    from chisurf.plugins.core.model_manager.gui.tool import ModelManagerWidget
-    from chisurf.plugins.core.model_manager.gui.view_model import ModelManagerViewModel
 
+    qt = json.loads((Path(__file__).parent / "qt_reference.json").read_text())
+    titles, qt_cells = qt["titles"], qt["cells"]
     settings = {"disabled_models": ["Lifetime", "Et-Model free"]}
-    qt_widget = ModelManagerWidget(view_model=ModelManagerViewModel(settings_block=dict(settings)))
-    qtbot.addWidget(qt_widget)
-    qt_table = qt_widget.findChildren(ChiTableWidget)[0]
-    qt_model = qt_table._view.model()
-    titles = [str(qt_model.headerData(c, 1)) for c in range(qt_model.columnCount())]
-    qt_cells = [
-        [str(qt_model.index(r, c).data() or "") for c in range(qt_model.columnCount())]
-        for r in range(qt_model.rowCount())
-    ]
-
     model = make_model(settings["disabled_models"])
     app = make_app(model)
     draw(app)
@@ -171,15 +160,13 @@ def test_rows_and_status_match_the_qt_widget(qapp, qtbot):
     assert [title for _k, title in columns] == [t for _k, t in TABLE_COLUMNS]
     emtk_cells = [[str(r[key]) for key, _t in columns] for r in rows]
 
-    assert len(emtk_cells) == len(qt_cells) > 20
+    assert len(emtk_cells) == len(qt_cells) == 6
     shared = [c for c in titles if c in [t for _k, t in TABLE_COLUMNS]]
     assert shared == [t for _k, t in TABLE_COLUMNS]
     qt_cells_by_title = [[row[titles.index(t)] for t in shared] for row in qt_cells]
     assert emtk_cells == qt_cells_by_title
-    assert model.status_text() == qt_widget.model.status_text()
-    assert "2 disabled name(s) match no model" in model.status_text() or (
-        "1 disabled name(s) match no model" in model.status_text()
-    )
+    assert model.status_text() == qt["status"]
+    assert "1 disabled name(s) match no model" in model.status_text()
 
 
 def test_rows_status_and_counts_for_a_known_registry(fake_registry):

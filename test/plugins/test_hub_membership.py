@@ -113,19 +113,17 @@ def _declared_children() -> dict[str, list[str]]:
         "filetools": _panels_json("tttr/filetools/gui/panels.json"),
         "imaging_tools": [row[1] for row in IMAGING],
         "calculators": [e.widget for e in default_calculators()],
-        "wizards": [e.widget for e in default_wizards()],
+        "wizards": [e.emtk for e in default_wizards()],
         "games": [p["class_path"] for p in GAME_PANELS],
         "setup": [ref for p in SETUP for ref in (p.plugin, p.entry) if ref],
-        # Its native cards live in the hub; the Qt panel table names the plugins behind them.
-        "structure_tools": [p["emtk"] for p in STRUCTURE_TOOL_PANELS]
-        + _module_refs(ROOT / "modelling/structure_tools/gui/tool.py"),
+        "structure_tools": [p.get("plugin") or p["emtk"] for p in STRUCTURE_TOOL_PANELS],
         "traj_tools": [p["emtk"] for p in TOOL_PANELS],
         "lifetime_analysis": [row[0] for row in DECAY],
         "burst_analysis": [p["plugin"] for p in BURST if p.get("plugin")],
         "alex_suite": [p["plugin"] for p in ALEX if p.get("plugin")],
-        # Qt-only hubs: their panel factories import the hosted tools.
-        "fcs_toolbox": _module_refs(ROOT / "fcs/fcs_toolbox/tool.py", ROOT / "fcs/fcs_toolbox/gui/app.py"),
-        "fcs_correlator": _module_refs(ROOT / "fcs/fcs_correlator/tool.py", ROOT / "fcs/fcs_correlator/gui/app.py"),
+        # Hubs whose panel factories name the hosted tools in their app module.
+        "fcs_toolbox": _module_refs(ROOT / "fcs/fcs_toolbox/gui/app.py"),
+        "fcs_correlator": _module_refs(ROOT / "fcs/fcs_correlator/gui/app.py"),
     }
 
 

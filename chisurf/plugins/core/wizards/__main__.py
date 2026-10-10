@@ -2,18 +2,15 @@
 
 from __future__ import annotations
 
+import sys
 
-def main() -> None:
-    """Launch the Wizards hub as a standalone Qt application."""
-    from qtpy import QtWidgets
 
-    from .gui.tool import WizardHub
+def main(argv: list[str] | None = None) -> int:
+    """Forward standalone launch options to the shared native plugin launcher."""
+    from chisurf.emtk.__main__ import main as launch
 
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    win = WizardHub()
-    win.show()
-    app.exec_()
+    return launch(["--plugin", "wizards", *(sys.argv[1:] if argv is None else argv)])
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

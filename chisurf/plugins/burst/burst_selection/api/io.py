@@ -299,9 +299,17 @@ def _register_decay(store, name: str) -> int | None:
     from chisurf.core.data import DataCurve
     from chisurf.core.datastore import column_names, numeric_column
 
+    # The running session is the main window, not a `chisurf.api` attribute --
+    # nothing sets one, so asking only for that registered nothing in the real
+    # app. A local facade adds to the live session's dataset list through the
+    # same macro route a file load takes (the acquisition demo does the same).
+    if getattr(cs, "cs", None) is None:
+        return None
     api = getattr(cs, "api", None)
     if api is None:
-        return None
+        from chisurf.core.api import ChiSurfAPI
+
+        api = ChiSurfAPI(mode="local")
     axis = "Time (ns)" if "Time (ns)" in column_names(store) else "Channel"
     y = numeric_column(store, "Counts")
     curve = DataCurve(

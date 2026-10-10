@@ -16,7 +16,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.modelling.structure_tools.gui.tool:StructureToolsTool",
     "emtk": "chisurf.plugins.modelling.structure_tools.app:make_app"
   },
   "optional_requires": {

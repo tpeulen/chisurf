@@ -16,10 +16,8 @@ import tempfile
 from unittest.mock import patch
 
 import pytest
-from qtpy import QtWidgets
 
 from chisurf.core.settings import ai_settings
-from chisurf.plugins.ai_settings.gui.tool import AISettingsWidget
 
 
 class TestAISettingsModule:
@@ -101,23 +99,8 @@ class TestAISettingsSaveLoad:
                 assert loaded["api_key"] == "test-mistral-key"
 
 
-@pytest.fixture(scope="module")
-def app():
-    """Create QApplication instance for Qt tests."""
-    app = QtWidgets.QApplication.instance()
-    if app is None:
-        app = QtWidgets.QApplication([])
-    yield app
-
-
 class TestAISettingsIntegration:
-    """Integration tests for AI settings plugin."""
-
-    def test_plugin_load_function_returns_widget(self, app):
-        """Test that plugin load returns a widget."""
-        from chisurf.plugins.ai_settings import load
-
-        assert isinstance(load(), AISettingsWidget)
+    """Integration tests for AI settings plugin (the window is the native emtk app)."""
 
     def test_plugin_name_defined(self):
         """Test that plugin name is defined."""
@@ -130,9 +113,3 @@ class TestAISettingsIntegration:
         from chisurf.plugins import ai_settings as plugin
 
         assert plugin.icon == "🤖"
-
-    def test_plugin_exports_widget(self, app):
-        """Test that widget is exported."""
-        from chisurf.plugins.ai_settings import AISettingsWidget as ImportedWidget
-
-        assert ImportedWidget is AISettingsWidget

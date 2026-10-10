@@ -7,10 +7,15 @@
       "target": {}
     },
     {
+      "title": "Start with an answer you know",
+      "text": "<b>Load example</b> simulates a decay that really has <i>two</i> lifetimes (0.8 and 4 ns), fits it with one and with two exponentials, and loads both χ²r and ν. The extra component is real, so the test must say so.",
+      "target": {"name": "load_example", "action": "Load example"},
+      "await": {"hint": "Press <b>Load example</b>."}
+    },
+    {
       "title": "Load the fits, not the numbers",
-      "text": "<b>From fit</b> lists every open fit. Send the simpler one to <b>model 1</b> and the more complex one to <b>model 2</b>; χ²r and ν = points − free parameters come across exactly.",
-      "target": {"action": "From fit"},
-      "await": {"hint": "Open <b>From fit</b> and choose a fit for model 1, then again for model 2."}
+      "text": "With your own data, <b>From fit</b> lists every open fit. Send the simpler one to <b>model 1</b> and the more complex one to <b>model 2</b>; χ²r and ν = points − free parameters come across exactly.",
+      "target": {"action": "From fit"}
     },
     {
       "title": "Read the confidence",

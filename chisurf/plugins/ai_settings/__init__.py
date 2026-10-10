@@ -1,10 +1,13 @@
+"""AI Settings: configure the API providers and backends the assistants use.
+
+The window is the native emtk app in :mod:`.gui.app`; importing this package needs no Qt binding.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
 
-import chisurf as cs
 from chisurf.core.plugin import load_manifest
-from chisurf.core.plugin.registry import apply_manifest_statefulness
 
 _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 if _manifest is not None:
@@ -15,32 +18,4 @@ else:
 description = "AI Settings plugin for configuring API providers and backends."
 icon = "🤖"
 
-
-def load():
-    """Return the plugin's main widget instance."""
-    from chisurf.plugins.ai_settings.gui.tool import AISettingsWidget
-
-    return AISettingsWidget()
-
-
-__all__ = ["name", "load", "icon", "AISettingsWidget"]
-
-if __name__ == "plugin":
-    try:
-        from chisurf.plugins.ai_settings.gui.tool import AISettingsWidget
-
-        parent = getattr(cs, "cs", None)
-        window = AISettingsWidget(parent=parent)
-        if _manifest is not None:
-            apply_manifest_statefulness(window, _manifest)
-        window.show()
-    except Exception as exc:
-        print(f"Failed to open AI Settings: {exc}")
-
-
-def __getattr__(name):
-    if name == "AISettingsWidget":
-        from .gui.tool import AISettingsWidget
-
-        return AISettingsWidget
-    raise AttributeError(name)
+__all__ = ["name", "icon"]

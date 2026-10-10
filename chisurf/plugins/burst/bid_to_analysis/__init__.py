@@ -662,18 +662,3 @@ def convert_many(
             shutil.rmtree(output_dir, ignore_errors=True)
 
     return bur_paths
-
-
-def __getattr__(name):
-    if name == "BidToAnalysisGUI":
-        from .gui.legacy import BidToAnalysisGUI
-
-        return BidToAnalysisGUI
-    raise AttributeError(name)
-
-
-if __name__ == "plugin":
-    from chisurf.plugins.burst.bid_to_analysis.gui.legacy import BidToAnalysisGUI
-
-    window = BidToAnalysisGUI()
-    window.show()

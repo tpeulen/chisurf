@@ -34,7 +34,7 @@ class TestPackageBoundaries:
         """Importing the plugin root should not import GUI modules.
 
         Checked in a clean subprocess: another test in the session (the GUI
-        construction smoke test) legitimately imports ``gui.tool``, so an
+        native app test) legitimately imports ``gui.app``, so an
         in-process ``sys.modules`` check would depend on collection order.
         """
         import subprocess
@@ -61,8 +61,7 @@ class TestPackageBoundaries:
 
     def test_gui_communication_reexports_api_client(self):
         """The old GUI communication import path should remain compatible."""
-        sys.modules.pop("chisurf.plugins.modelling.fps_json_editor.gui.editor", None)
-        sys.modules.pop("chisurf.plugins.modelling.fps_json_editor.gui.tool", None)
+        sys.modules.pop("chisurf.plugins.modelling.fps_json_editor.gui.app", None)
 
         from chisurf.plugins.modelling.fps_json_editor.api.client import (
             FpsJsonEditorClient as ApiClient,
@@ -72,16 +71,7 @@ class TestPackageBoundaries:
         )
 
         assert GuiClient is ApiClient
-        assert "chisurf.plugins.modelling.fps_json_editor.gui.editor" not in sys.modules
-        assert "chisurf.plugins.modelling.fps_json_editor.gui.tool" not in sys.modules
-
-    def test_gui_package_exposes_entrypoints_lazily(self):
-        """The GUI package should keep entrypoint imports lazy."""
-        import chisurf.plugins.modelling.fps_json_editor.gui as gui
-
-        assert sorted(gui.__all__) == ["FpsJsonEditor", "FpsJsonEditorTool"]
-        assert "chisurf.plugins.modelling.fps_json_editor.gui.editor" not in sys.modules
-        assert "chisurf.plugins.modelling.fps_json_editor.gui.tool" not in sys.modules
+        assert "chisurf.plugins.modelling.fps_json_editor.gui.app" not in sys.modules
 
 
 class TestMrcExport:

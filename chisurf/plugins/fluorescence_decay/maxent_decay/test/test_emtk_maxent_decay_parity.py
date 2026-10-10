@@ -18,10 +18,9 @@ import numpy as np
 import pytest
 
 from chisurf.plugins.emtk_layout import action_caption
-from emtk import keys
 
-from chisurf.plugins.emtk_test_input import CTRL, SIZE, SMALL, Driver
-from chisurf.plugins.fluorescence_decay.maxent_decay.gui.app import MaxentApp, make_app
+from chisurf.plugins.emtk_test_input import SIZE, SMALL, Driver
+from chisurf.plugins.fluorescence_decay.maxent_decay.gui.app import make_app
 from chisurf.plugins.fluorescence_decay.maxent_decay.gui.model import MEMModel, execute_job
 from chisurf.plugins.fluorescence_decay.maxent_decay.test.test_solver_contract import _problem
 
@@ -154,62 +153,38 @@ def write_decay(path, t, y):
 # ───────────────────────────── numbers equal the Qt tool ───────────────────────────── #
 
 
-@pytest.fixture
-def qt_tool():
-    QtWidgets = pytest.importorskip("qtpy.QtWidgets")
-    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    from chisurf.plugins.fluorescence_decay.maxent_decay.gui.gui import MaxentDecayWidget
-
-    fit = stub_fit()
-    w = MaxentDecayWidget()
-    w._qapp = qapp
-    w._current_fit = lambda: fit
-    w._on_refresh_data()
-    return w
+QT_REFERENCE = json.loads((Path(__file__).parent / "qt_reference.json").read_text(encoding="utf-8"))
 
 
-def test_refreshing_from_a_live_fit_sets_the_same_values_as_the_qt_tool(qt_tool):
+def test_refreshing_from_a_live_fit_sets_the_same_values_as_the_qt_tool():
+    """The values the retired Qt tool showed after refreshing from the same live fit (``qt_reference.json``)."""
+    qt = QT_REFERENCE
     m = MEMModel()
     m.load_fit(stub_fit())
-    assert m.settings.tau_min == pytest.approx(qt_tool.spin_tau_min.value(), abs=1e-3)
-    assert m.settings.period == pytest.approx(qt_tool.spin_period.value(), abs=1e-2)
-    assert m.settings.background == pytest.approx(qt_tool.spin_background.value())
-    assert m.settings.timeshift == pytest.approx(qt_tool.spin_timeshift.value())
-    assert (m.settings.irf_background or 0.0) == pytest.approx(qt_tool.spin_irf_bg.value())
-    assert m.fitrange == tuple(qt_tool._fit_range)
-    assert (
-        "two_lifetimes.dat" in qt_tool.label_data_source.text() and "two_lifetimes.dat" in m.source
-    )
-    assert "IRF.dat" in qt_tool.label_irf_source.text() and "IRF.dat" in m.irf_source
+    assert m.settings.tau_min == pytest.approx(qt["tau_min"], abs=1e-3)
+    assert m.settings.period == pytest.approx(qt["period"], abs=1e-2)
+    assert m.settings.background == pytest.approx(qt["background"])
+    assert m.settings.timeshift == pytest.approx(qt["timeshift"])
+    assert (m.settings.irf_background or 0.0) == pytest.approx(qt["irf_bg"])
+    assert m.fitrange == tuple(qt["fit_range"])
+    assert "two_lifetimes.dat" in qt["data_source"] and "two_lifetimes.dat" in m.source
+    assert "IRF.dat" in qt["irf_source"] and "IRF.dat" in m.irf_source
 
 
-def test_the_mem_run_equals_the_qt_run(qt_tool):
-    qt_tool.spin_tau_bins.setValue(32)
-    qt_tool.spin_tau_max.setValue(8.0)
-    qt_tool._run_mem()
-    qt = qt_tool._last_result
+def test_the_mem_run_equals_the_qt_run():
+    qt = QT_REFERENCE["run"]
     m = MEMModel()
     m.load_fit(stub_fit())
     m.settings.tau_bins, m.settings.tau_max = 32, 8.0
     result = m.run()
-    assert float(result["chisq"]) == pytest.approx(float(qt["chisq"]), rel=1e-6)
+    assert float(result["chisq"]) == pytest.approx(qt["chisq"], rel=1e-6)
     np.testing.assert_allclose(result["p"], qt["p"], rtol=1e-5, atol=1e-8)
     np.testing.assert_allclose(result["tau"], qt["tau"])
-    assert float(result["S"]) == pytest.approx(float(qt["S"]), rel=1e-6)
+    assert float(result["S"]) == pytest.approx(qt["S"], rel=1e-6)
 
 
-def test_the_lcurve_sweep_equals_the_qt_sweep(qt_tool, monkeypatch):
-    qt_tool.spin_tau_bins.setValue(16)
-    qt_tool.spin_tau_max.setValue(8.0)
-    seen = {}
-    monkeypatch.setattr(
-        qt_tool,
-        "_update_lcurve_plot",
-        lambda chi, sol, nu, corner: seen.update(
-            chi=np.array(chi), sol=np.array(sol), nu=np.array(nu)
-        ),
-    )
-    qt_tool._run_lcurve()
+def test_the_lcurve_sweep_equals_the_qt_sweep():
+    seen = QT_REFERENCE["lcurve"]
     m = MEMModel()
     m.load_fit(stub_fit())
     m.settings.tau_bins, m.settings.tau_max = 16, 8.0

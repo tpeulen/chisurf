@@ -1,10 +1,13 @@
+"""Plugin Manager: enable, disable, install and remove ChiSurf plugins.
+
+The window is the native emtk app in :mod:`.gui.app`; importing this package needs no Qt binding.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
 
-import chisurf as cs
 from chisurf.core.plugin import load_manifest
-from chisurf.core.plugin.registry import apply_manifest_statefulness
 from chisurf.plugins.core.plugin_manager.api.icons import AIIconRateLimitError
 from chisurf.plugins.core.plugin_manager.api.records import read_module_docstring
 
@@ -17,46 +20,4 @@ else:
 description = "This tool manages the list of active/disabled plugins in ChiSurf."
 icon = "🔌"
 
-
-def load():
-    """Return the plugin manager widget."""
-    from chisurf.plugins.core.plugin_manager.gui.tool import PluginManagerWidget
-
-    return PluginManagerWidget()
-
-
-def __getattr__(name):
-    """Load the legacy Qt panel only when a caller explicitly requests it."""
-    if name == "PluginManagerWidget":
-        from chisurf.plugins.core.plugin_manager.gui.tool import PluginManagerWidget
-
-        return PluginManagerWidget
-    raise AttributeError(name)
-
-
-__all__ = [
-    "AIIconRateLimitError",
-    "PluginManagerWidget",
-    "read_module_docstring",
-    "load",
-    "name",
-    "description",
-    "icon",
-]
-
-if __name__ == "plugin":
-    try:
-        from chisurf.plugins.core.plugin_manager.gui.tool import PluginManagerWidget
-
-        parent = getattr(cs, "cs", None)
-        window = PluginManagerWidget(parent=parent)
-        if _manifest is not None:
-            apply_manifest_statefulness(window, _manifest)
-        window.show()
-        window.raise_()
-        window.activateWindow()
-    except Exception as exc:
-        print(f"Failed to open Plugin Manager: {exc}")
-        import traceback
-
-        traceback.print_exc()
+__all__ = ["AIIconRateLimitError", "read_module_docstring", "name", "description", "icon"]

@@ -97,3 +97,18 @@ class FTestModel:
             self.recompute_chi2_max()
         else:
             raise ValueError(f"Unknown fit load target: {target}")
+
+    def load_example(self, path=None) -> dict:
+        """Load the simulated one- versus two-exponential statistics (known answer: two)."""
+        import json
+
+        from ..demo import make_demo
+
+        stats = json.loads(make_demo(path).read_text(encoding="utf-8"))
+        simple, rich = stats["simple"], stats["complex"]
+        self.chi2_1, self.n1 = simple["chi2r"], simple["dof"]
+        self.chi2_2, self.n2 = rich["chi2r"], rich["dof"]
+        self.recompute_conf()
+        self.chi2_min, self.npars, self.dof = rich["chi2r"], rich["n_free"], rich["dof"]
+        self.recompute_chi2_max()
+        return stats

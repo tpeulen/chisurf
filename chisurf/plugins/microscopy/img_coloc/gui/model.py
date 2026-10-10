@@ -139,6 +139,23 @@ class ColocModel(EmtkModelMixin, ColocViewModel):
         self.set_filename(str(path))
         self.compute()
 
+    example_folder: pathlib.Path | None = None  # None: the plugin's demo cache
+
+    def load_example(self) -> None:
+        """Load the simulated two-channel image with the threshold that reads its known coefficients, and run it."""
+        from ..demo import DEMO, make_demo
+
+        try:
+            path = make_demo(self.example_folder)
+        except Exception as exc:  # noqa: BLE001 - shown in the status line
+            self.status_line = f"Could not make the example: {exc}"
+            return
+        self.auto_background = False
+        self.auto_threshold = False
+        self.threshold_a = self.threshold_b = float(DEMO["threshold"])
+        self.open_path(str(path))
+        self.notify("demo")
+
     def commit_filename(self, value: str) -> None:
         value = str(value or "").strip()
         if value:

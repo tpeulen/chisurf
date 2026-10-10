@@ -209,21 +209,17 @@ def test_drift_is_registered_in_the_imaging_toolbox():
     steps is built from frames that must already be aligned, so the panel has
     to sit ahead of them and inside the pipeline order the 'Next' button walks.
     """
-    from chisurf.plugins.microscopy.imaging_tools.gui.tool import (
-        IMAGING_PANELS,
-        ImagingToolsTool,
-    )
+    from chisurf.plugins.microscopy.imaging_tools.gui.app import PANELS, ImagingToolsApp
 
-    names = [p["name"] for p in IMAGING_PANELS]
-    roles = [p.get("role") for p in IMAGING_PANELS]
+    names = [row[2] for row in PANELS]
+    roles = [row[0] for row in PANELS]
     assert "drift" in roles, "the drift panel is not registered in the toolbox"
 
     # ordered before every numbered analysis step
     assert names.index("Drift") < names.index("1. Intensity")
-    order = ImagingToolsTool.PIPELINE_ORDER
+    order = ImagingToolsApp.PIPELINE_ORDER
     assert "drift" in order
     assert order.index("drift") < order.index("pixel_intensity")
 
-    panel = IMAGING_PANELS[roles.index("drift")]
-    assert callable(panel["factory"])
-    assert panel.get("description"), "every navigation entry needs a description"
+    panel = PANELS[roles.index("drift")]
+    assert panel[3], "every navigation entry needs a description"

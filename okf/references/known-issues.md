@@ -4,6 +4,56 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## Burst plugins whose Qt tool is still shipped: W9 phase 1 skips (found 2026-10-10)
+
+status: open — three Qt entrypoints remain in `chisurf/plugins/burst`:
+
+* **burst_fusion** (`gui/tool.py`, `gui/sections.py`): the emtk twin fails the W7 click-all (`pytest test/e2e -k burst_fusion`: "real interaction with 'load_example' did not satisfy tour await" after the sweep has already pressed *Load example* and *MMFDB datasets*). A scripted repro (fresh app, tour at step 1, click *Load example*) passes, so the defect is the state the sweep leaves behind (a modal dataset picker or a still-running demo disabling the button). Fix that, then retire the Qt tool the way burst_background was.
+* **burst_selection** (`gui/tool.py` 4032 lines, `gui/app.py`, `gui/sections.py`, `gui/gmm_settings_dialog.py`, `gui/display_view_model.py`, `wizard.py`) and **burst_mle_analysis** (`wizard.py` 5197 lines, `utils.py`, `gui/app.py`, `gui/fit_view.py`): the Qt hub that embedded them is gone, so nothing in production opens them, but ~120 tests (burst_selection: `test_new_gui.py` 1900 lines drives `BurstSelectionTool.__new__` internals, nine more files; burst_mle_analysis: `test_mle_gui_end_to_end.py`, `test_mle_engine.py` and `test_state_split.py` compare the Qt-free engine with the wizard number for number; `test/gui/test_burst_settings_restore.py`, `test_mle_frozen_inputs.py`, `test_channel14_mle_consumers.py`, `test_burst_mle_model_selection.py`) still exercise their behaviour. Each needs its wizard numbers recorded to a `qt_reference.json` (pattern: `accurate_fret/test/qt_reference.json`) and the Qt-internals tests mapped to `gui/diagnostics.py` / `gui/model.py` / `engine.py` equivalents before the tool can go. Burst_selection's `gui/native.py` and `guide.json` were being edited by another lane when this was written.
+
+## Guide screenshot scripts still import the Qt burst tools retired in W9 phase 1 (found 2026-10-10)
+
+status: open — `docs/guides/make_screenshots.py` (burst_browser ~286, burst_gs ~435, accurate_fret ~599, burst_ebfret ~1150, alex_suite ~1510/1544), `docs/guides/screenshots/guides_02_14.py` (accurate_fret ~335, burst_bva ~154), `guides_15_25.py` (burst_background ~182, accurate_fret ~556), `guides_26_36.py` (burst_analysis ~165), `guides_39_53.py` (burst_analysis ~154) and `spectra_mfd.py:51` (mfd_prepare) still import the deleted `gui/tool.py` / `gui/sections.py` of accurate_fret, burst_analysis, alex_suite, burst_background, burst_browser, burst_bva, burst_2cde, burst_ebfret, burst_fcs_correlator, burst_gs, burst_irf_bg and mfd_prepare, so those grab functions raise ImportError. Re-derive with `grep -rn "gui.tool import\|burst_background import\|burst_browser import" docs/guides`. Fix: build the emtk app with `emtk_shot.app_from(<plugin id>)` and render it with `emtk.testing.Driver` (see `guides_56_65.py`).
+
+## The run picker cannot tell the burst analyses apart (found 2026-10-10)
+
+status: open — owner: W4 (`.pto`-first burst runs, PRD-154); strict xfail `run_picker` in `test/e2e/test_release_scenario.py`.
+
+After selection → MLE → H2MM → sub-ensemble decay → burst-wise FCS on the Burst Selection demo, the container holds every
+table (`mle green`/`mle red`, `h2mm`, `burst fcs`, `<run>/sub-ensemble decay`), each with `lineage()` ending at the
+embedded `bs_demo.spc`, but `run_rows_for(pto, operation="")` lists **2** runs: the burst search, and one `(top level)`
+row into which MLE, H2MM and FCS are folded, because those writers name their tables at the container's top level
+instead of under the run they read (and record the photon stream, not the run, as parent). The decay is under the run
+and so is not a row of its own. Measure: `pytest test/e2e/test_release_scenario.py -k run_picker` and read
+`renders/e2e/release_scenario/result.json` (`run_picker.observed.rows`). Blocks: picking an analysis to continue from, and
+`lineage()` chaining selection → analysis (W4 step 5). Fix in the writers (`burst_mle_analysis/core/export.py`,
+`burst_h2mm` backend, `burst_fcs_correlator/core/export.py`): write each as a run with `derived_from` the source run.
+
+## An autosave tick during a running sampling job fails to capture (found 2026-10-10)
+
+status: open — owner: W2/W3 (project autosave, sampling persistence).
+
+Intermittent: in one of six scenario runs, the 1 s autosave tick that fell inside a server sampling job logged
+`Project autosave failed … SessionCodecError: model '<uid>' prediction changed after reconstruction` (the sampler moves
+the model's parameters while `capture_session` rebuilds it). The next tick after the job succeeds, so nothing is lost and
+no dialog appears, but the log shows an exception. Measure: drive the scenario with `interval_s=1` and grep
+`worker.log` for `Project autosave failed`. Fix: skip (or defer) the tick while a sampling/fit job owns the fit.
+
+## A `.pto` read with the setup's vendor routine parsed the container as raw SPC (found 2026-10-10)
+
+status: resolved 2026-10-10 — `staging.open_tttr` always auto-detects a `.pto` (the routine describes the embedded vendor file); guard `test/fio/test_staging.py::test_a_container_ignores_the_vendor_routine_of_its_setup`.
+
+Burst Selection on the demo container found 2 bursts instead of the 12 planted: its setup's `"SPC-130"` reached
+`tttrlib.TTTR(pto, "SPC-130")`, which read the container's bytes as SPC records (13 892 "photons" for 8 501).
+
+## *Decay from selected bursts* never registered the decay as a dataset (found 2026-10-10)
+
+status: resolved 2026-10-10 — `burst_selection/api/io.py::_register_decay` uses a local `ChiSurfAPI` when a main window runs (nothing sets `chisurf.api`); guard `burst_selection/tests/test_run_picker.py::test_the_decay_is_registered_with_the_running_session`.
+
+## Opening a project over unsaved work asked "Save changes?" twice (found 2026-10-10)
+
+status: resolved 2026-10-10 — `project_helpers.open_recent_project` no longer guards before `replace_project`, which asks the window's guard itself; the release scenario's `reload` step asserts one prompt.
+
 ## The sample/analysis export writes database column names under flrCIF categories (found 2026-10-10)
 
 status: resolved 2026-10-10 — the export maps columns to declared items (`_FLR_EXPORT_COLUMNS` in mmfdb `repository.py`; chemical descriptors moved to `_flr_probe_descriptor`; `database_hosted` YES/NO; `mmfdb_flr_ext.dic` 1.11 declares the nine items flrCIF has no home for) and `read_graph_cif` escalates every keyword no dictionary declares, in any category. Guard: mmfdb `tests/test_flr_export_items.py`. Earlier text below is the original finding.
@@ -7052,4 +7102,5 @@ point glyph in the application at once, and the render fixtures would all need
 re-inspecting; that is its own change, with its own before/after images.
 
 ---
+
 

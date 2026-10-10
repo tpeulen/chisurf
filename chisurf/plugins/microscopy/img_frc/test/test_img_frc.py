@@ -294,19 +294,15 @@ def test_frc_is_a_step_of_the_imaging_toolbox():
     Drift blurs the image and so lowers the measured resolution; measuring it on
     frames that are not yet aligned reports the drift, not the microscope.
     """
-    from chisurf.plugins.microscopy.imaging_tools.gui.tool import (
-        IMAGING_PANELS,
-        ImagingToolsTool,
-    )
+    from chisurf.plugins.microscopy.imaging_tools.gui.app import PANELS, ImagingToolsApp
 
-    roles = [p.get("role") for p in IMAGING_PANELS]
+    roles = [row[0] for row in PANELS]
     assert "frc" in roles
     assert roles.index("frc") > roles.index("drift")
-    assert "frc" in ImagingToolsTool.PIPELINE_ORDER
+    assert "frc" in ImagingToolsApp.PIPELINE_ORDER
 
-    panel = IMAGING_PANELS[roles.index("frc")]
-    assert callable(panel["factory"])
-    assert panel["description"].strip()
+    panel = PANELS[roles.index("frc")]
+    assert panel[3].strip()
 
 
 def test_the_panel_adopts_the_toolbox_source_and_setup(tiff_stack):

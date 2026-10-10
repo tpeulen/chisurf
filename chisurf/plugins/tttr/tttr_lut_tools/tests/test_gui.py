@@ -1,11 +1,9 @@
-"""GUI smoke tests for the LUT Tools workspace (offscreen)."""
+"""The LUT compute view model: load, channels, region, parameter changes."""
 
 import pathlib
 
 import numpy as np
 import pytest
-
-pytest.importorskip("qtpy")
 
 _SPC = (
     pathlib.Path(__file__).resolve().parents[5]
@@ -16,51 +14,6 @@ _SPC = (
     / "132"
     / "BH_SPC132.spc"
 )
-
-
-@pytest.fixture(scope="module")
-def qapp():
-    from qtpy.QtWidgets import QApplication
-
-    return QApplication.instance() or QApplication([])
-
-
-def test_tool_builds_and_exposes_panels(qapp):
-    from chisurf.plugins.tttr.tttr_lut_tools.gui.tool import TTRLutToolsWidget
-
-    w = TTRLutToolsWidget()
-    # channel-definition editor relies on these attributes for the LUT transfer.
-    assert hasattr(w, "settings_panel")
-    assert hasattr(w, "tac_panel")
-    assert hasattr(w, "bridge_btn")
-
-
-@pytest.mark.skipif(not _SPC.is_file(), reason="sample SPC not available")
-def test_add_all_channels_to_setup(qapp):
-    from chisurf.plugins.tttr.tttr_lut_tools.gui.tool import TTRLutToolsWidget
-
-    w = TTRLutToolsWidget()
-    w.tac_panel.model.load_files([str(_SPC)])
-    # "Add all channels to setup" computes + assigns a LUT for every channel.
-    w._bridge_compute_to_assign()
-    chans = w.tac_panel.model.available_channels
-    assert len(chans) > 1
-    assert sorted(w.settings_panel.channel_luts) == list(chans)
-
-
-def test_help_dialog_builds_from_readme(qapp):
-    from chisurf.plugins.tttr.tttr_lut_tools.gui.tool import _HelpDialog
-
-    d = _HelpDialog()
-    assert d.windowTitle().startswith("TTTR LUT Tools")
-
-
-def test_compute_panel_is_autoform(qapp):
-    from chisurf.plugins.tttr.tttr_lut_tools.gui.tac_lut_panel import TACLinearizationPanel
-
-    panel = TACLinearizationPanel()
-    assert hasattr(panel, "auto_form")
-    assert hasattr(panel, "model")
 
 
 def test_compute_viewmodel_load_and_region():

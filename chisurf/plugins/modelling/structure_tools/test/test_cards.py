@@ -172,7 +172,7 @@ def test_fps_card_file_dialog_loads(inputs):
 
 def test_docking_request_equals_the_qt_models(inputs, tmp_path):
     pytest.importorskip("qtpy")
-    from chisurf.plugins.modelling.fret.gui.dock_tool import _DockingModel
+    from chisurf.plugins.modelling.fret.gui.docking_model import DockingModel as _DockingModel
 
     s, q = DockingSession(), _DockingModel()
     pdbs = [str(tmp_path / "protein_1R0A.pdb"), str(tmp_path / "dna.pdb")]

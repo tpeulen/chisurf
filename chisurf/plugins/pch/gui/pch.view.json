@@ -4,6 +4,8 @@
   "sections": [
     {"type": "panel", "title": "Actions", "description": "Load a photon stream, compute and fit the histogram, and export the results.", "sections": [
       {"type": "button_row", "buttons": [
+        {"action": "load_example", "label": "Load example", "icon": "🧪",
+         "description": "Load a simulated photon stream of one diffusing species with a known brightness (3 photons per molecule per 20 µs bin), and set the channel and bin time to match."},
         {"action": "load", "label": "Load TTTR",
          "description": "Choose a photon-stream file (PTU, HT3, T2R, T3R, PTO, SPC) to analyse."},
         {"action": "compute", "label": "Compute PCH",

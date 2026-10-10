@@ -36,17 +36,7 @@
           "title": "Normalize IRF",
           "icon": "📈",
           "subtitle": "Pick a background region; IRFs are subtracted and intensity-matched.",
-          "sections": [
-            {
-              "type": "custom",
-              "key": "embed",
-              "description": "Normalization of the IRFs of the polarized channels.",
-              "options": {
-                "widget": "chisurf.plugins.fluorescence_decay.tr_anisotropy.gui.irf_widget:IrfNormalizationWidget",
-                "pass_model": true
-              }
-            }
-          ]
+          "sections": []
         },
         {
           "title": "Corrections",
@@ -67,17 +57,7 @@
           "icon": "🧬",
           "subtitle": "Define the lifetime and rotation spectra.",
           "complete_when": {"attr": "components_ready", "equals": "True"},
-          "sections": [
-            {
-              "type": "custom",
-              "key": "embed",
-              "description": "Table of the lifetime and rotational components of the model.",
-              "options": {
-                "widget": "chisurf.plugins.fluorescence_decay.tr_anisotropy.gui.components_widget:ComponentsWidget",
-                "pass_model": true
-              }
-            }
-          ]
+          "sections": []
         },
         {
           "title": "Finish",

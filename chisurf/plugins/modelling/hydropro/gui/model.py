@@ -170,6 +170,18 @@ class HydroProModel:
             self.struct_files = ", ".join(paths)
             self.cells = {}
 
+    example_folder: Path | None = None  # None: the plugin's demo cache
+
+    def load_example(self) -> None:
+        """Select the simulated sphere and its stand-in solver (a known Stokes-Einstein answer)."""
+        from ..demo import make_demo, standin_path
+
+        pdb = make_demo(self.example_folder)
+        self.exe_path = str(standin_path(pdb.parent))
+        self.files_chosen([pdb])
+        self.indmode, self.t, self.eta = "1", 20.0, 0.01
+        self.status = "Example loaded: a sphere of radius 17 A and its stand-in solver. Press Run."
+
     def exe_chosen(self, path) -> None:
         if path:
             self.exe_path = str(path)

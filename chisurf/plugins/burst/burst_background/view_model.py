@@ -1,13 +1,12 @@
-"""Qt-free view-model backing the Burst Background Estimation (AutoForm) tool.
+"""Qt-free view-model backing the Burst Background Estimation tool.
 
 :class:`BackgroundViewModel` holds the loaded TTTR files and the per-file,
 per-detector background diagnostics from
 :func:`chisurf.core.fluorescence.burst.background_diagnostics_from_bursts` (the
 inter-photon-time histogram, the fitted background-tail model, and the resulting
-rate in kHz). The detector channel definition comes from the (Qt)
-``DetectorWizardPage`` via an injected ``channels_provider`` callable, keeping
-this model Qt-free. The GUI (``gui/tool`` host + ``gui/sections``) owns Qt
-concerns. Mirrors :class:`~...burst_irf_bg.gui.view_model.IrfBackgroundViewModel`.
+rate in kHz). The detector channel definition comes from the detector editor
+via an injected ``channels_provider`` callable, keeping this model Qt-free. The
+emtk app (``gui/app``) draws it. Mirrors :class:`~...burst_irf_bg.gui.view_model.IrfBackgroundViewModel`.
 """
 
 from __future__ import annotations
@@ -90,10 +89,8 @@ class BackgroundViewModel:
         # controls happen to be selected when they are later fitted or saved.
         self._interphoton_settings: dict = {}
         self._result_settings: dict | None = None
-        #: Callable returning the DetectorWizardPage detectors map (set by the GUI).
+        #: Callable returning the detectors map (set by the GUI).
         self.channels_provider: Callable[[], dict] | None = None
-        #: The Qt DetectorWizardPage, exposed so the shell can push channels in.
-        self.detector_wizard_page = None
 
         # Results.
         self.backgrounds: dict[str, dict[str, float]] = {}

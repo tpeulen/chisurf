@@ -54,12 +54,11 @@ def native_host_type(qapp):
         qapp.processEvents()
 
 def test_lifetime_factory_hosts_existing_native_app_and_preserves_qwidget_parent(qapp, native_host_type):
-    """The embedded lifetime panel hosts GFactorApp instead of constructing the retired UI."""
-    from chisurf.plugins.fluorescence_decay.lifetime_analysis.gui.tool import _vv_vh_g_factor
-    from chisurf.plugins.vv_vh_g_factor.gui.app import GFactorApp
+    """The Qt-embeddable host wraps GFactorApp instead of constructing the retired UI."""
+    from chisurf.plugins.vv_vh_g_factor.gui.app import GFactorApp, create_host
 
     parent = QtWidgets.QWidget()
-    widget = _vv_vh_g_factor(parent)
+    widget = create_host(parent=parent)
     try:
         assert isinstance(widget, native_host_type)
         assert isinstance(widget.control, GFactorApp)

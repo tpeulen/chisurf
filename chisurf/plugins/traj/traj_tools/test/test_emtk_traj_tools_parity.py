@@ -20,61 +20,31 @@ from ..registry import TOOL_PANELS
 REPO = next(p for p in Path(__file__).parents if (p / "pyproject.toml").exists())
 DCD = REPO / "test/data/atomic_coordinates/trajectory/hgbp1/hgbp1_transition.dcd"
 BIG, SMALL = (1200, 800), (800, 600)
-_KEEP: list = []
+#: What the retired Qt workspace answered, recorded before it was deleted.
+QT_TABS = ["Align", "Convert", "Energy Calc", "FRET", "Join", "Remove Clashed", "Rot Translate", "Save Topol"]
 
 
-@pytest.fixture(scope="module")
-def qt_tool(qapp, tmp_path_factory):
-    """The Qt workspace, built once under a temporary HOME / settings folder (it writes its geometry on close)."""
-    root = tmp_path_factory.mktemp("qt_home")
-    patch = pytest.MonkeyPatch()
-    for name, value in (
-        ("HOME", root / "home"),
-        ("CHISURF_SETTINGS_DIR", root / "s"),
-        ("MMFDB_SETTINGS_DIR", root / "m"),
-        ("MMFDB_DATABASE_PATH", root / "m.sqlite"),
-    ):
-        patch.setenv(name, str(value))
-    (root / "home").mkdir()
-    from ..gui.tool import TrajectoryToolsTool
-
-    tool = TrajectoryToolsTool()
-    _KEEP.append(
-        tool
-    )  # destroying the dock workspace while the process is alive bus-errors (Qt/pyqtgraph teardown)
-    yield tool
-    patch.undo()
-
-
-def test_the_list_is_the_qt_tabs_in_the_same_order(qt_tool):
-    assert list(qt_tool._tools) == [p["name"] for p in TOOL_PANELS]
+def test_the_list_is_the_qt_tabs_in_the_same_order():
+    assert [p["name"] for p in TOOL_PANELS] == QT_TABS
     app = TrajectoryToolsHubApp()
-    assert [e.id for e in app.entries] == list(
-        qt_tool._tools
-    ) and app.selected == qt_tool._active_tool == "Align"
+    assert [e.id for e in app.entries] == QT_TABS and app.selected == "Align"
     assert all(p["description"] and p["emtk"] for p in TOOL_PANELS)
-
-
-def test_the_status_line_says_what_the_qt_status_bar_said(qt_tool):
-    app = TrajectoryToolsHubApp()
-    assert qt_tool.status_bar.currentMessage() == "Active tool: Align"
-    for name in ("Convert", "FRET"):
-        qt_tool._select_tool(name)
-        app.select(name)
-        assert qt_tool.status_bar.currentMessage() == app.status == f"Active tool: {name}"
     app.close()
 
 
-def test_a_dropped_trajectory_fills_the_same_field_as_the_qt_drop(qt_tool):
-    from pathlib import Path as P
+def test_the_status_line_says_what_the_qt_status_bar_said():
+    app = TrajectoryToolsHubApp()
+    for name in ("Align", "Convert", "FRET"):
+        app.select(name)
+        assert app.status == f"Active tool: {name}"
+    app.close()
 
-    qt_tool._select_tool("Align")
-    qt_tool.on_paths_dropped([P(DCD)])
-    qt_path = qt_tool._tools["Align"].trajectory_filename
+
+def test_a_dropped_trajectory_fills_the_trajectory_field_as_the_qt_drop_did():
     app = TrajectoryToolsHubApp()
     app.select("Align")
     assert app.files_dropped([str(DCD)]) is True
-    assert app.children["Align"].model.trajectory_filename == qt_path == str(DCD)
+    assert app.children["Align"].model.trajectory_filename == str(DCD)
     assert app.status == f"Align: {DCD.name}"
     app.close()
 

@@ -136,10 +136,6 @@ def _ensure_bh_setup():
         DetectorSetupClient,
     )
 
-    from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
-        save_detector_setups,
-    )
-
     # Two stores: the RPC service reads/writes settings/detector_setups.json,
     # the SetupSelector reads MMFDB. Write both so every tool sees the setup.
     client = DetectorSetupClient()
@@ -159,9 +155,6 @@ def _ensure_bh_setup():
         )
         db.conn.commit()
         db.close()
-    save_detector_setups(
-        {"setups": {_BH_SETUP: {"detectors": _BH_DETECTORS}}, "last_used": _BH_SETUP}
-    )
     save_fcs_channel_setups(
         {
             "setups": {
@@ -247,37 +240,38 @@ def _grab_16_burst_fcs():
 
 # ---------------------------------------------------------------- guide 17
 def _grab_17_filter_calculator():
-    """FCS Filter Calculator on the BH SPC-132 decay: Auto-fit 2 species + Unmix."""
-    from chisurf.plugins.fcs.fcs_filter_calculator.gui_parts.main_window import (
-        FcsFilterCalculatorWidget,
-    )
+    """FCS Filter Calculator (emtk) on the BH SPC-132 decay: Auto-fit 2 species + Unmix."""
+    from emtk.testing import PixelPainter, png_encode
+    from emtk_shot import app_from
+
+    from chisurf.plugins.fcs.fcs_filter_calculator.test.driving import FilterDriver
 
     _ensure_bh_setup()
-    tool = FcsFilterCalculatorWidget()
-    tool.resize(1400, 900)
-    tool.show()
-    _settle()
-    print("setup:", tool.setup_selector.current_setup())
-    print("detectors:", tool.detector_selection.get_selected())
-    print("minsize:", tool.minimumSizeHint(), tool.size())
-    tool._set_total_paths([_SPC_FILE.resolve()])
-    _settle()
-    tool.sb_autofit_n.setValue(2)
-    tool._auto_fit_components()
-    _settle()
-    print("autofit:", tool.lbl_autofit_status.text())
-    tool._unmix_total()
-    _settle()
-    if os.environ.get("SHOT_PROBE"):
-        _probe_tabs(tool, "17")
-    # The docks stack to ~1450 px minimum height; grab the working half (inputs,
-    # components, filters, residuals, reconstruction) and the Auto-fit dock.
+    app = app_from("fcs_filter_calculator")
+    driver = FilterDriver(app, (1400, 900))
+    driver.settle()  # the first computation publishes its model snapshot: edit the live one after it
+    model = app.model
+    model.set_setup({"detectors": _BH_DETECTORS})
+    model.set_total_paths([_SPC_FILE.resolve()])
+    model.components.clear()
+    model._auto_fit_settings["n_components"] = 2
+    model._auto_fit_components()
+    print("autofit:", model.message)
+    model.unmix()
+    print("unmix:", model.message)
 
-    _grab_rect(tool, "17_filter_calculator.png", 550)
-    autofit = tool.cb_autofit_kind.parentWidget()
-    top = autofit.mapTo(tool, autofit.rect().topLeft()).y() - 30
-    _grab_rect(tool, "17_filter_calculator_autofit.png", autofit.height() + 34, top=top)
-    return tool
+    def write(name):
+        for _ in range(2):
+            painter = PixelPainter(1400, 900)
+            app.draw(painter, 0, 0, 1400, 900)
+        (FIG / name).write_bytes(png_encode(painter.width, painter.height, painter.px))
+        print("wrote", name)
+
+    write("17_filter_calculator.png")
+    driver.tab("Auto-fit")
+    write("17_filter_calculator_autofit.png")
+    app.close()
+    return app
 
 
 # ---------------------------------------------------------------- guide 18

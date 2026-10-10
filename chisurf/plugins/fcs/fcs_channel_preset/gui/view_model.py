@@ -3,12 +3,10 @@
 Holds the editing state (selected detector setup, its logical channels, the
 channel-pair list and the *public* flag) and the load/save logic, exposing the
 attributes and methods that ``fcs_channel_preset.view.json`` binds to. The
-concrete Qt widgets are built by :class:`~chisurf.gui.autoform.auto_form.AutoForm`
-from that spec plus the custom ``fcs_channel_pairs`` section
-(:mod:`chisurf.plugins.fcs.fcs_channel_preset.gui.sections`).
+emtk app (:mod:`chisurf.plugins.fcs.fcs_channel_preset.gui.app`) draws it from that spec.
 
 The channel-pair schema mirrors the on-disk ``fcs_channel_setups.json`` (see the
-plugin ``tool`` module docstring): each pair is
+plugin ``manifest.json`` and ``gui/app.py``): each pair is
 ``{"name", "channel_a", "channel_b", "n_bins", "n_casc", "make_fine"}``.
 
 GUI-side helpers (``load_detector_setups`` / ``resolve_active_user_id``) are

@@ -8,15 +8,14 @@ the emtk app's, and the written PDB against frame 0 of the trajectory read direc
 from __future__ import annotations
 
 import json
-import os
 import re
-import subprocess
 import sys
 import time
 from pathlib import Path
 
 import numpy as np
 import pytest
+from chisurf.plugins.traj.traj_save_topology.test.qt_recorded import load_reference, same_coordinates
 from emtk.testing import PixelPainter, RecordingPainter
 
 HERE = Path(__file__).parent
@@ -62,52 +61,12 @@ def _loaded(**kw):
     return app
 
 
-_QT = r"""
-import json, sys
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-from chisurf.plugins.traj.traj_save_topology import sections
-from chisurf.plugins.traj.traj_save_topology.widget import SaveTopology
-traj, top, target = sys.argv[1:4]
-told = []
-sections.dialogs.information = lambda parent, title, text: told.append([title, text])
-w = SaveTopology()
-io = w.findChild(sections._IoSection)
-io._save_topology()                                   # nothing chosen yet
-io._load_trajectory(traj); io._load_topology(top)
-QtWidgets.QFileDialog.getSaveFileName = staticmethod(lambda *a, **k: ("", ""))
-io._save_topology()                                   # the dialog closed
-QtWidgets.QFileDialog.getSaveFileName = staticmethod(lambda *a, **k: (target, "PDB-files (*.pdb)"))
-io._save_topology()
-print("FACTS" + json.dumps({"told": told, "log": w.model._log,
-                            "fields": [io._edit.text(), io._top_edit.text()]}))
-"""
 
 
 @pytest.fixture(scope="module")
-def qt(tmp_path_factory):
-    pytest.importorskip("qtpy")
-    target = tmp_path_factory.mktemp("qt") / "frame0.pdb"
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT, TRAJ, TOP, str(target)],
-        capture_output=True,
-        text=True,
-        timeout=300,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and (
-        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
-    ):
-        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
-    # Any other failure is the Qt widget's own: skipping it hid a broken Qt host.
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    facts = json.loads(line[len("FACTS") :])
-    facts["target"] = target
-    return facts
+def qt():
+    """The retired Qt widget's answers, recorded before it was deleted (qt_reference.json)."""
+    return load_reference(HERE)
 
 
 # 1. the same file and the same log as the Qt widget; the file is frame 0
@@ -123,10 +82,9 @@ def test_a_save_writes_what_the_qt_widget_writes(qt, tmp_path):
         _pick(app, target)
         _settle(app)
         ours = md.load(str(target))
-        theirs = md.load(str(qt["target"]))
         frame0 = md.load(TRAJ, top=TOP)[0]
-        assert ours.n_atoms == theirs.n_atoms == frame0.n_atoms == 5235
-        assert np.asarray(ours.xyz) == pytest.approx(np.asarray(theirs.xyz))
+        assert ours.n_atoms == frame0.n_atoms == 5235
+        assert same_coordinates(ours.xyz, qt["target"], atol=1e-5)
         assert (
             np.abs(np.asarray(ours.xyz) - np.asarray(frame0.xyz)).max() < 1e-3
         )  # PDB keeps 3 decimals

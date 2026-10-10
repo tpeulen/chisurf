@@ -39,7 +39,7 @@ def test_manifest_and_cli_and_rpc():
 
     m = load_manifest(Path(__file__).resolve().parents[1] / "manifest.json")
     assert m is not None
-    assert m.entrypoints.gui and m.entrypoints.cli and m.entrypoints.services
+    assert m.entrypoints.emtk and m.entrypoints.cli and m.entrypoints.services
     assert len(m.rpc_methods) == 4
     assert set(cli.commands) == {"convert", "merge"}
     assert "alex.convert" in list_methods() and "alex.merge" in list_methods()
@@ -65,19 +65,6 @@ def test_general_path_list_drop_expands_files_and_folders(qapp, qtbot, tmp_path)
     # committing writes the bound model attribute
     w._add([str(tmp_path / "m1.sm"), str(tmp_path / "m2.sm")])
     assert model.batch_files == [str(tmp_path / "m1.sm"), str(tmp_path / "m2.sm")]
-
-
-def test_tool_builds_with_autoform(qapp, qtbot):
-    from chisurf.gui.autoform import AutoForm
-    from chisurf.gui.autoform.sections.registry import get_section_factory
-    from chisurf.plugins.tttr.ptu_alex_creator.gui.tool import AlexPTUCreator
-
-    w = AlexPTUCreator()
-    qtbot.addWidget(w)
-    assert isinstance(w.auto_form, AutoForm)
-    assert get_section_factory("alex_actions") is not None
-    assert get_section_factory("alex_batch_run") is not None
-    assert get_section_factory("path_list") is not None
 
 
 @pytest.mark.skipif(not _PTU.exists(), reason="sample PTU not available")

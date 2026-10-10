@@ -16,7 +16,8 @@ from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, _clean_html_text
 from chisurf.plugins.emtk_layout import (
-    LabelColumn, action_button, button_row, labelled, layout_spec, window_size,
+    LabelColumn, action_button, action_caption, action_tooltip, button_row, labelled, layout_spec,
+    window_size,
 )
 
 from .model import NativeAnisotropyModel
@@ -35,6 +36,7 @@ FILE_FIELDS = (
 STACKED_FIELDS = (("irf_vv_path", "IRF VV/VH"), ("data_vv_path", "Data VV/VH"))
 #: The tour target of each step that waits for a control, and the step it lives on.
 TARGET_STEP = {
+    "load_example": 1,
     "data_vv_path": 1,
     "load_data": 2,
     "g_factor": 3,
@@ -210,6 +212,13 @@ class AnisotropyApp(ImApp):
         column.pad(spec["sections"])
         draw_form(spec, model or self.model, self.forms[name])
 
+    def load_example(self):
+        """Fill the four paths and the reader settings from the simulated example (known answer)."""
+        self.model.error(self.model.load_example)
+        self.tour.notify_used("load_example")
+        if self.model.files_ready():
+            self.tour.notify_used("data_vv_path")
+
     def data_step(self):
         m = self.model
         fields = STACKED_FIELDS if m.stacked_files else FILE_FIELDS
@@ -220,6 +229,15 @@ class AnisotropyApp(ImApp):
             160.0,
             min(520.0, im.get_content_region_avail()[0] - label_w - browse_w - 80.0 - 3 * spacing),
         )
+        if im.button(f"{action_caption('example')}###load_example"):
+            self.load_example()
+        im.set_item_tooltip(
+            action_tooltip(
+                "example",
+                tr("Fill in four simulated files (one lifetime, one rotation, known r0) and matching reader settings."),
+            )
+        )
+        self.item_rects["load_example"] = im.get_item_rect()
         im.text_disabled(tr("Files"))
         for attr, label in fields:
             im.text(label)

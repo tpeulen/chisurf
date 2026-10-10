@@ -6,12 +6,11 @@ a single-molecule measurement — the scatter and dark counts between molecules
 IRF/background patterns to the burst-MLE lifetime fit, so no separate scatter or
 buffer acquisition is needed.
 
-New-style AutoForm + JSON tool: a Qt-free
-:class:`~.gui.view_model.IrfBackgroundViewModel` drives the detector channel-
-definition page, the file list, the IRF plot and the results table laid out from
-``gui/irf_bg.view.json``. It is aggregated into the ``burst_analysis`` workflow
-shell (``menu_hidden`` keeps it off the ribbon) but stays importable and
-standalone-launchable.
+A Qt-free :class:`~.gui.view_model.IrfBackgroundViewModel` drives the detector
+channel-definition page, the file list, the IRF plot and the results table laid
+out from ``gui/irf_bg.view.json`` and drawn by the native emtk app in
+:mod:`.gui.app`. It is aggregated into the ``burst_analysis`` workflow hub
+(``menu_hidden`` keeps it off the ribbon) but stays standalone-launchable.
 """
 
 from __future__ import annotations
@@ -31,14 +30,3 @@ name = (
 )
 
 menu_hidden = True
-
-__all__ = ["BurstIrfBackgroundTool"]
-
-
-def __getattr__(attr_name: str):
-    """Lazily expose the GUI tool without importing Qt at package import."""
-    if attr_name == "BurstIrfBackgroundTool":
-        from chisurf.plugins.burst.burst_irf_bg.gui.tool import BurstIrfBackgroundTool
-
-        return BurstIrfBackgroundTool
-    raise AttributeError(attr_name)

@@ -312,18 +312,6 @@ def test_a_failing_operation_says_why_where_the_qt_tool_showed_an_empty_box(mode
     assert model.dialog == ""
 
 
-def test_the_qt_worker_now_passes_the_failure_text_too(qapp, qtbot):
-    from chisurf.plugins.core.updater.package_widget import PackageWorker
-
-    got = []
-    worker = PackageWorker(lambda: (False, "solver said no"))
-    worker.finished.connect(lambda ok, data, err: got.append((ok, err)))
-    worker.start()
-    qtbot.waitUntil(lambda: bool(got), timeout=3000)
-    worker.wait()
-    assert got == [(False, "solver said no")]
-
-
 def test_buttons_that_need_a_selection_are_greyed_without_one(model):
     for name in (
         "ask_update_selected",

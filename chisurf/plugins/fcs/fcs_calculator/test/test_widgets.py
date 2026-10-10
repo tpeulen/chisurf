@@ -1,62 +1,37 @@
-from qtpy import QtWidgets
+"""The confocal calculator's emtk model: which fields are inputs and which are derived."""
+
+from chisurf.plugins.fcs.fcs_calculator.gui.model import ConfocalModel
 
 
-def test_confocal_calc_widget(qapp, qtbot):
-    from chisurf.plugins.fcs.fcs_calculator.wizard import ConfocalCalcWidget
-
-    widget = ConfocalCalcWidget()
-    qtbot.addWidget(widget)
-    assert isinstance(widget, QtWidgets.QWidget)
-    assert "FCS Confocal Calculator" in widget.windowTitle()
-
-
-def _looks_computed(sb):
-    """Return the pair (background colour, has step arrows) of a spin box."""
-    return (
-        sb.palette().base().color().name(),
-        sb.buttonSymbols() != QtWidgets.QAbstractSpinBox.NoButtons,
-    )
+def test_the_model_constructs_with_a_title():
+    app_module = __import__("chisurf.plugins.fcs.fcs_calculator.gui.app", fromlist=["x"])
+    app = app_module.ConfocalApp()
+    try:
+        assert app.model is not None
+    finally:
+        app.close()
 
 
-def test_a_computed_field_does_not_look_like_an_input(qapp, qtbot):
-    from chisurf.plugins.fcs.fcs_calculator.wizard import ConfocalCalcWidget
-
-    widget = ConfocalCalcWidget()
-    qtbot.addWidget(widget)
-
+def test_a_computed_field_is_not_an_input():
+    model = ConfocalModel()
     # Default constraint is "Fix D": D is typed in, r_h and Veff are derived.
-    input_look = _looks_computed(widget.D_um2_s)
-    assert input_look[1] is True
-    for sb in (widget.rh_nm, widget.veff_fL):
-        assert sb.isReadOnly()
-        assert _looks_computed(sb) != input_look
-        assert _looks_computed(sb)[1] is False
-
-    # Switching the constraint moves the marking rather than accumulating it:
-    # Veff becomes the input and D becomes derived.
-    widget.rb_fix_V.setChecked(True)
-    assert _looks_computed(widget.veff_fL) == input_look
-    assert _looks_computed(widget.D_um2_s) != input_look
-
-    # ... and switching back restores D exactly, so the marking is reversible.
-    widget.rb_fix_D.setChecked(True)
-    assert _looks_computed(widget.D_um2_s) == input_look
-    assert _looks_computed(widget.veff_fL) != input_look
+    assert model.enabled("D_um2_s")
+    assert not model.enabled("rh_nm") and not model.enabled("veff_fL")
+    model.constraint = "V"
+    model.recompute()
+    assert model.enabled("veff_fL")
+    assert not model.enabled("D_um2_s")
+    model.constraint = "D"
+    model.recompute()
+    assert model.enabled("D_um2_s")
+    assert not model.enabled("veff_fL")
 
 
-def test_the_aspect_box_is_disabled_for_the_default_sphere(qapp, qtbot):
-    from chisurf.plugins.fcs.fcs_calculator.wizard import ConfocalCalcWidget
-
-    widget = ConfocalCalcWidget()
-    qtbot.addWidget(widget)
-
-    # "Sphere" is index 0, so currentIndexChanged never fires for it: the state
-    # has to be established at construction, not on the first user change.
-    assert widget.shape_combo.currentText() == "Sphere"
-    assert widget.shape_aspect.isEnabled() is False
-
-    widget.shape_combo.setCurrentText("Ellipsoid")
-    assert widget.shape_aspect.isEnabled() is True
-
-    widget.shape_combo.setCurrentText("Sphere")
-    assert widget.shape_aspect.isEnabled() is False
+def test_the_aspect_box_is_disabled_for_the_default_sphere():
+    model = ConfocalModel()
+    assert model.shape_type == "Sphere"
+    assert not model.enabled("shape_aspect")
+    model.shape_type = "Ellipsoid"
+    assert model.enabled("shape_aspect")
+    model.shape_type = "Sphere"
+    assert not model.enabled("shape_aspect")

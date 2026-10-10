@@ -4,7 +4,7 @@ Left: the input file and output folder rows (browse buttons; OS drops land on
 the Qt window and load the input) with the Convert/Split button and its
 progress bar. Right: the split options and the batch panel — a queue of files
 processed with the current option set. The widget
-(:class:`~.tool.PTUSplitter`) keeps the Qt-free
+(:class:`~.controller.SplitterController`) keeps the Qt-free
 :class:`~..view_model.SplitterViewModel` and the dialogs; this app renders its
 state and calls back.
 """
@@ -24,7 +24,7 @@ from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import action_button
 
 if TYPE_CHECKING:
-    from .tool import PTUSplitter
+    from .controller import SplitterController
 
 WINDOW_BG = (30, 32, 38, 255)
 ACCENT_GREEN = (46, 160, 67, 255)
@@ -37,7 +37,7 @@ class SplitterGui(TourTarget):
 
     def __init__(
         self,
-        tool: PTUSplitter,
+        tool: SplitterController,
         on_browse_input: Callable[[], None] | None = None,
         on_browse_output: Callable[[], None] | None = None,
         on_run: Callable[[], None] | None = None,
@@ -338,7 +338,7 @@ class SplitterGui(TourTarget):
 class SplitterApp(ImApp):
     """The EMTK ImApp for the TTTR Split / Convert tool."""
 
-    def __init__(self, tool: PTUSplitter, **callbacks: Callable) -> None:
+    def __init__(self, tool: SplitterController, **callbacks: Callable) -> None:
         self.tool = tool
         self.splitter_gui = SplitterGui(tool, **callbacks)
         super().__init__(gui=self._render, continuous=False)

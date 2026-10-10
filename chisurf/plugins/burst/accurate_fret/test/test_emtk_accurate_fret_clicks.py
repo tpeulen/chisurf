@@ -174,43 +174,11 @@ def test_a_burst_table_that_cannot_be_read_says_so_and_the_dialog_is_not_stuck(a
     assert app.controller.running is False
 
 
-def test_a_file_dropped_on_the_host_loads_like_the_dialog(app, bursts):
-    QtWidgets = pytest.importorskip("qtpy.QtWidgets")
-    from emtk.qt_host import ControlHost
-    from qtpy import QtCore, QtGui
-
-    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+def test_a_file_dropped_on_the_window_loads_like_the_dialog(app, bursts):
     draw(app, frames=3)
-    host = ControlHost(app)
-    host.resize(*SIZE)
-    host.show()
-    mime = QtCore.QMimeData()
-    mime.setUrls([QtCore.QUrl.fromLocalFile(str(bursts))])
-    enter = QtGui.QDragEnterEvent(
-        QtCore.QPoint(300, 300),
-        QtCore.Qt.CopyAction,
-        mime,
-        QtCore.Qt.LeftButton,
-        QtCore.Qt.NoModifier,
-    )
-    host.dragEnterEvent(enter)
-    assert enter.isAccepted(), "the host refuses a drop on this app"
-    event = QtGui.QDropEvent(
-        QtCore.QPointF(300, 300),
-        QtCore.Qt.CopyAction,
-        mime,
-        QtCore.Qt.LeftButton,
-        QtCore.Qt.NoModifier,
-    )
-    host.dropEvent(event)
-    qapp.processEvents()
+    app.on_paths_dropped([str(bursts)])
     wait(app)
-    assert (
-        event.isAccepted()
-        and app.model.filename == str(bursts)
-        and app.controller.status == "Burst table loaded."
-    )
-    host.close()
+    assert app.model.filename == str(bursts) and app.controller.status == "Burst table loaded."
 
 
 def test_a_dropped_path_that_does_not_exist_is_reported(app):

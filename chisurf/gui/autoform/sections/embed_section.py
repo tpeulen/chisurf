@@ -9,7 +9,7 @@ wizard/tool that needs to embed an existing widget.
 Authoring::
 
     {"type": "custom", "key": "embed",
-     "options": {"widget": "chisurf.plugins.fcs.fcs_channel_preset.gui.tool:FCSChannelWidget"}}
+     "options": {"widget": "chisurf.gui.widgets.emtk_embed:FCSChannelEmbed"}}
 
     {"type": "custom", "key": "embed", "options": {"attr": "histogram_widget"}}
 

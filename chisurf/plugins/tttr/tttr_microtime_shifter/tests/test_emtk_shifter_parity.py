@@ -1,6 +1,6 @@
-"""The native micro-time shifter at parity with the Qt MicrotimeShifterTool.
+"""The native micro-time shifter at parity with the retired Qt MicrotimeShifterTool.
 
-The Qt tool runs in a subprocess (this process stays Qt-free) on a demo file whose two
+The Qt tool's values were recorded (``qt_reference.json``) on a demo file whose two
 detectors are offset by a known 400 bins: its auto-align shifts, preview and saved file
 are compared with the emtk app's, and both against references computed here from the
 photons themselves (the rising edge from a numpy histogram, the saved micro-times as
@@ -10,8 +10,6 @@ photons themselves (the rising edge from a numpy histogram, the saved micro-time
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -83,55 +81,10 @@ def _fields(sections):
         yield from _fields(section.get("sections", []))
 
 
-_QT = r"""
-import json, sys
-from pathlib import Path
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-from chisurf.gui import dialogs
-from chisurf.plugins.tttr.tttr_microtime_shifter.gui.tool import MicrotimeShifterTool
-source, target = sys.argv[1:3]
-told = []
-dialogs.information = lambda parent, title, text, *a, **k: told.append([title, text])
-dialogs.error = lambda parent, title, text, *a, **k: told.append([title, text])
-w = MicrotimeShifterTool()
-w._db = lambda: None                                   # no database: the file branch of Save
-w._file_model.files = [source]
-w._on_file_path(source)
-level, pos = w._trigger_level, w._trigger_pos
-w.auto_align()
-preview = w._client.histogram(w._file_paths, global_shift=w._global_shift, channel_shifts=w._channel_shifts)
-QtWidgets.QFileDialog.getSaveFileName = staticmethod(lambda *a, **k: (target, ""))
-w._open_save_dialog()
-print("FACTS" + json.dumps({"shifts": {str(k): v for k, v in w._channel_shifts.items()}, "level": level, "pos": pos,
-                            "preview": preview["histograms"], "told": told}))
-"""
-
-
 @pytest.fixture(scope="module")
-def qt(demo, tmp_path_factory):
-    pytest.importorskip("qtpy")
-    target = tmp_path_factory.mktemp("qt") / "qt_shifted.spc"
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT, str(demo), str(target)],
-        capture_output=True,
-        text=True,
-        timeout=300,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and (
-        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
-    ):
-        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
-    # Any other failure is the Qt tool's own: skipping it hid a broken Qt host.
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    facts = json.loads(line[len("FACTS") :])
-    facts["target"] = target
-    return facts
+def qt():
+    """What the retired Qt MicrotimeShifterTool did on the demo file (``qt_reference.json``)."""
+    return json.loads((HERE / "qt_reference.json").read_text())
 
 
 # 1. the Qt tool's defaults, shifts and preview; the shifts put each rising edge on the target
@@ -172,14 +125,19 @@ def test_a_saved_file_holds_every_photon_shifted_as_the_qt_tool_writes_it(qt, de
         app.dialog.draw = lambda: [str(target)]
         _settle(app)
         assert app.message == "Saved 1/1 shifted file(s)."
-        ours, theirs = _photons(target), _photons(qt["target"])
+        ours = _photons(target)
         shift = np.vectorize(app.channel_shifts.get)(routing)
         expected = (micro + shift) % N_MT
         assert np.array_equal(ours[1], expected) and np.array_equal(ours[0], macro)
         assert np.array_equal(ours[2], routing)
-        for a, b in zip(ours, theirs):
-            assert np.array_equal(a, b)
-        assert qt["told"] and qt["told"][-1][0] == "Saved"
+        import hashlib
+
+        # the Qt tool's saved file: macro-times, micro-times and routing, byte for byte
+        assert [
+            hashlib.sha256(np.asarray(a, dtype=np.int64).tobytes()).hexdigest() for a in ours
+        ] == qt["saved_sha256"]
+        assert len(ours[0]) == qt["saved_n"]
+        assert qt["told"][-1][0] == "Saved"
     finally:
         app.close()
 

@@ -16,7 +16,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.tttr.tttr_toolbox.gui.tool:TttrToolboxTool",
     "emtk": "chisurf.plugins.tttr.tttr_toolbox.gui.app:make_app"
   },
   "optional_requires": {

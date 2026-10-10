@@ -9,7 +9,7 @@ Layout (the client-server plugin standard):
 - ``backend/``   — RPC service registration (``img_flow.*`` methods).
 - ``client.py``  — typed client used by the CLI and the GUI alike.
 - ``cli/``       — the headless ``img-flow`` command.
-- ``gui/``       — AutoForm view spec, Qt-free view model, guided tour, thin tool.
+- ``gui/``       — AutoForm view spec, Qt-free view model, guided tour, the native emtk app.
 
 There is no fit and no model here: a velocity is read off where a correlation
 peak *is*, not off a parameter released in a transport model.

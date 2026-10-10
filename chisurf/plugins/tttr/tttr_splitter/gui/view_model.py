@@ -3,8 +3,8 @@
 :class:`SplitterViewModel` holds the interactive state (loaded TTTR object, the
 split/convert options that AutoForm binds its controls to, and the batch file
 list) and performs the split/transcode through :mod:`tttrlib`. It is deliberately
-free of Qt so the logic can be unit-tested headlessly; the GUI (``gui.tool`` +
-``gui.sections``) owns all Qt concerns and drives this model.
+free of Qt so the logic can be unit-tested headlessly; the native app
+(``gui.app``) draws and drives this model.
 
 Mirrors :class:`chisurf.plugins.microscopy.psf_determination.gui.view_model.PsfViewModel`.
 """

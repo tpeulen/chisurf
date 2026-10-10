@@ -216,24 +216,6 @@ def test_view_models_build_via_autoform(qtbot):
         qtbot.addWidget(AutoForm(vm))  # must not raise; qtbot cleans it up
 
 
-def test_imaging_tools_have_toolbar_and_accept_drops(qtbot):
-    """Each imaging tool exposes an action toolbar and accepts file drops."""
-    from chisurf.plugins.microscopy.img_pixel_intensity.gui.tool import (
-        ImgPixelIntensityTool,
-    )
-    from chisurf.plugins.microscopy.img_pixel_micro_time.gui.tool import (
-        ImgPixelMicroTimeTool,
-    )
-    from chisurf.plugins.microscopy.img_pixel_nb.gui.tool import ImgPixelNBTool
-    from chisurf.plugins.microscopy.img_pixel_phasor.gui.tool import ImgPixelPhasorTool
-
-    for cls in (ImgPixelIntensityTool, ImgPixelNBTool, ImgPixelMicroTimeTool, ImgPixelPhasorTool):
-        tool = cls(embedded=True)
-        qtbot.addWidget(tool)  # qtbot owns lifecycle -> no teardown segfault
-        assert tool.acceptDrops()
-        assert len(tool.toolbar.actions()) >= 3  # Run, HDF5, ndxplorer
-
-
 def test_image_widget_channel_selector_and_movie(qtbot):
     """The general image dock exposes a detector-channel combo + frame-movie controls."""
     from chisurf.gui.autoform.sections.builtin import ImageMapWidget

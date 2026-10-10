@@ -29,7 +29,6 @@
   },
   "statefulness": true,
   "entrypoints": {
-    "gui": "chisurf.plugins.tttr.photon_table.gui.tool:PhotonTableTool",
     "emtk": "chisurf.plugins.tttr.photon_table.gui.app:make_app"
   },
   "rpc_methods": [],

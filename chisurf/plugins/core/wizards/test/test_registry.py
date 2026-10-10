@@ -18,16 +18,16 @@ def test_default_wizards_nonempty_and_unique():
     assert len(labels) == len(set(labels))  # unique labels
 
 
-def test_entries_point_at_importable_widgets():
+def test_entries_point_at_importable_factories():
     for entry in default_wizards():
-        assert ":" in entry.widget, f"{entry.id} widget path must be 'module:Class'"
-        module_name, attr = entry.widget.split(":", 1)
+        assert ":" in entry.emtk, f"{entry.id} factory path must be 'module:factory'"
+        module_name, attr = entry.emtk.split(":", 1)
         module = importlib.import_module(module_name)
-        assert hasattr(module, attr), f"{module_name} has no {attr!r}"
+        assert callable(getattr(module, attr)), f"{module_name} has no {attr!r}"
 
 
 def test_manifest_loads():
     manifest = load_manifest(Path(__file__).parents[1] / "manifest.json")
     assert manifest is not None
     assert manifest.id == "wizards"
-    assert manifest.entrypoints.gui.endswith("WizardHub")
+    assert manifest.entrypoints.emtk and not manifest.entrypoints.gui

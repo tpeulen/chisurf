@@ -204,3 +204,45 @@ def hermetic_env(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("MMFDB_SETTINGS_DIR", str(tmp_path / "mmfdb"))
     monkeypatch.setenv("MMFDB_DATABASE_PATH", str(tmp_path / "mmfdb.sqlite"))
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
+
+
+# -- recorded Qt references ---------------------------------------------------- #
+
+
+def fingerprint(array: Any, grid: int = 8) -> dict:
+    """Summarise an image so a recording can stand in for the whole array.
+
+    Parameters
+    ----------
+    array : array_like
+        A 2-D image (or any array; a 1-D array is summarised without blocks).
+    grid : int, optional
+        Block-mean grid edge for 2-D images.
+
+    Returns
+    -------
+    dict
+        ``shape``, ``sum``, ``sumsq`` and, for 2-D input, ``blocks`` (a ``grid`` x ``grid`` grid
+        of block means), enough to catch any change a person would call a different image.
+    """
+    import numpy as np
+
+    a = np.asarray(array, dtype=float)
+    out = {"shape": list(a.shape), "sum": float(a.sum()), "sumsq": float((a * a).sum())}
+    if a.ndim == 2 and min(a.shape) >= grid:
+        rows = np.array_split(np.arange(a.shape[0]), grid)
+        cols = np.array_split(np.arange(a.shape[1]), grid)
+        out["blocks"] = [[float(a[np.ix_(r, c)].mean()) for c in cols] for r in rows]
+    return out
+
+
+def assert_fingerprint(array: Any, recorded: dict, rtol: float = 1e-9) -> None:
+    """Assert *array* matches a :func:`fingerprint` recorded from the retired Qt tool."""
+    import numpy as np
+
+    got = fingerprint(array, grid=len(recorded["blocks"]) if "blocks" in recorded else 8)
+    assert got["shape"] == recorded["shape"]
+    for key in ("sum", "sumsq"):
+        np.testing.assert_allclose(got[key], recorded[key], rtol=rtol, atol=1e-12)
+    if "blocks" in recorded:
+        np.testing.assert_allclose(got["blocks"], recorded["blocks"], rtol=rtol, atol=1e-12)

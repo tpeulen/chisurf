@@ -9,15 +9,14 @@ test done here with scipy's pairwise distances.
 from __future__ import annotations
 
 import json
-import os
 import re
-import subprocess
 import sys
 import time
 from pathlib import Path
 
 import numpy as np
 import pytest
+from chisurf.plugins.traj.traj_save_topology.test.qt_recorded import load_reference, same_coordinates
 from emtk.testing import PixelPainter, RecordingPainter
 
 HERE = Path(__file__).parent
@@ -68,67 +67,12 @@ def _loaded():
     return app
 
 
-_QT = r"""
-import json, sys
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-from chisurf.plugins.traj.traj_remove_clashes import sections
-from chisurf.plugins.traj.traj_remove_clashes.widget import RemoveClashedFrames
-traj, top, target, selection, stride, distance = sys.argv[1:7]
-told, errors, asked = [], [], []
-sections.dialogs.information = lambda parent, title, text: told.append([title, text])
-sections.dialogs.error = lambda parent, title, text: errors.append([title, text])
-w = RemoveClashedFrames()
-io = w.findChild(sections._IoSection)
-io._save_clash_free()                                 # nothing chosen yet
-io._load_trajectory(traj); io._load_topology(top)
-w.model.atom_selection, w.model.stride, w.model.min_distance = selection, int(stride), float(distance)
-def answer(value):
-    return staticmethod(lambda parent, title, directory, filters: (asked.append([title, filters]), (value, ""))[1])
-QtWidgets.QFileDialog.getSaveFileName = answer("")
-io._save_clash_free()                                 # the dialog closed
-QtWidgets.QFileDialog.getSaveFileName = answer(target)
-io._save_clash_free()
-w.model.atom_selection = "name"
-io._save_clash_free()                                 # a selection that does not parse
-print("FACTS" + json.dumps({"told": told, "errors": errors, "asked": asked, "log": w.model._log}))
-"""
 
 
 @pytest.fixture(scope="module")
-def qt(tmp_path_factory):
-    pytest.importorskip("qtpy")
-    target = tmp_path_factory.mktemp("qt") / "clash_free.dcd"
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            _QT,
-            TRAJ,
-            TOP,
-            str(target),
-            SELECTION,
-            str(STRIDE),
-            str(MIN_DISTANCE),
-        ],
-        capture_output=True,
-        text=True,
-        timeout=300,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and (
-        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
-    ):
-        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
-    # Any other failure is the Qt widget's own: skipping it hid a broken Qt host.
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    facts = json.loads(line[len("FACTS") :])
-    facts["target"] = target
-    return facts
+def qt():
+    """The retired Qt widget's answers, recorded before it was deleted (qt_reference.json)."""
+    return load_reference(HERE)
 
 
 @pytest.fixture(scope="module")
@@ -169,14 +113,14 @@ def test_a_save_keeps_what_the_qt_widget_keeps(qt, reference, tmp_path):
         target = tmp_path / "clash_free.dcd"
         _pick(app, target)
         _settle(app)
-        (ours, our_times), (theirs, their_times) = _read(target), _read(qt["target"])
-        assert keep.sum() == ours.n_frames == theirs.n_frames == 42 and len(keep) == 116
+        ours, our_times = _read(target)
+        assert keep.sum() == ours.n_frames == 42 and len(keep) == 116
         assert np.asarray(ours.xyz) == pytest.approx(np.asarray(source.xyz)[keep], abs=1e-3)
-        assert np.asarray(ours.xyz) == pytest.approx(np.asarray(theirs.xyz), abs=1e-4)
+        assert same_coordinates(ours.xyz, qt["target"])
         assert np.asarray(our_times) == pytest.approx(
             np.asarray(source.time)[keep]
         )  # the gaps stay visible
-        assert np.asarray(our_times) == pytest.approx(np.asarray(their_times))
+        assert np.asarray(our_times) == pytest.approx(np.asarray(qt["target_times"]))
         mine = _messages(app.model.log_text())
         assert mine[-2:] == [
             "Kept 42 of 116 frames (min distance 3.5 Å)",

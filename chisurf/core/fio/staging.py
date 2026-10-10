@@ -505,6 +505,15 @@ def open_tttr(
     # selector or it stages a file that does not exist.
     path, selector = split_container_spec(src)
 
+    # A `.pto` names its own members' formats. The routine a caller carries is
+    # the detector setup's *vendor* type ("SPC-130"), which describes the file
+    # that was embedded, not the container: handed to the reader it makes
+    # tttrlib parse the container's bytes as raw SPC records -- more photons
+    # than were measured, at the wrong times, with no error. The container
+    # always auto-detects.
+    if path.suffix.lower() == ".pto":
+        container = None
+
     # Only a *plain* read is shareable. ``apply_setup_lut`` below rewrites the
     # micro times in place, so a corrected object is a mutated one: handing the
     # same instance to a second caller — or worse, letting a later correction

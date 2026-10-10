@@ -19,6 +19,7 @@ import pytest
 
 from chisurf.core.fio.image import imread, imwrite
 from chisurf.plugins.microscopy.imaging_emtk.testing import (
+    assert_fingerprint,
     Driver,
     dialog_open,
     hermetic_env,
@@ -148,47 +149,10 @@ def test_the_shift_table_shows_what_the_qt_table_showed(app, drv, tiff):
     assert {"Frame", "dx / px", "dy / px", "|d| / px"} <= set(drv.draw(2).strings)
 
 
-# ── 2. the live Qt tool on the same files ──────────────────────────────────────────────────────────────────── #
+# ── 2. the Qt tool's recorded results on the same files ───────────────────────────────────────────────────── #
 
-
-@pytest.fixture(scope="module")
-def qt_tool():
-    """The legacy Qt tool, offscreen, on temporary settings. Skipped only when Qt is not installed."""
-    if importlib.util.find_spec("qtpy") is None:
-        pytest.skip("Qt is not installed")
-    import os
-
-    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-    from qtpy import QtWidgets
-
-    from chisurf.plugins.microscopy.img_drift.gui.tool import ImgDriftTool
-
-    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    tool = ImgDriftTool()
-    tool._qapp = qapp
-    yield tool
-    tool.close()
-
-
-def qt_measure(tool, path, **settings):
-    """What the Qt window computes for *path* (the file event starts the measurement; here it runs inline)."""
-    m = tool.model
-    m.reference, m.mode, m.smooth, m.subpixel = "first", "wrap", 2.0, False
-    for k, v in settings.items():
-        setattr(m, k, v)
-    assert m.set_filename(str(path))
-    assert m.compute()
-    tool._on_finished(True)
-    tool._refresh()
-    return m
-
-
-def qt_table_cells(tool):
-    from qtpy import QtWidgets
-
-    table = next(t for t in tool.findChildren(QtWidgets.QTableWidget) if t.columnCount() == 4)
-    return [[table.item(r, c).text() for c in range(4)] for r in range(table.rowCount())]
-
+#: What the retired Qt tool computed and showed on these files, recorded before it was deleted (``qt_reference.json``).
+QT_REF = json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
 
 SCENARIOS = {
     "defaults": {},
@@ -201,69 +165,51 @@ SCENARIOS = {
 
 
 @pytest.mark.parametrize("scenario", list(SCENARIOS))
-def test_the_qt_tool_and_the_emtk_app_agree_on_every_result(app, drv, qt_tool, tiff, scenario):
+def test_the_recorded_qt_results_and_the_emtk_app_agree_on_every_scenario(
+    app, drv, tiff, scenario
+):
     settings = SCENARIOS[scenario]
-    qt = qt_measure(qt_tool, tiff, **settings)
+    qt = QT_REF["scenarios"][scenario]
     m = measured(app, drv, tiff)
     for k, v in settings.items():
         setattr(m, k, v)
     drv.click("measure")
     drv.settle()
-    assert m.status_line == qt_tool.statusBar().currentMessage() == qt.status
-    np.testing.assert_array_equal(shifts_of(m), shifts_of(qt))
-    np.testing.assert_array_equal(np.asarray(m.before_image()), np.asarray(qt.before_image()))
-    np.testing.assert_array_equal(np.asarray(m.after_image()), np.asarray(qt.after_image()))
-    assert [{k: v for k, v in s.items()} for s in m.drift_series()] and len(
-        m.drift_series()
-    ) == len(qt.drift_series())
-    for a, b in zip(m.drift_series(), qt.drift_series()):
+    assert m.status_line == qt["bar"] == qt["status"]
+    np.testing.assert_array_equal(shifts_of(m), qt["shifts"])
+    assert_fingerprint(m.before_image(), qt["before"])
+    assert_fingerprint(m.after_image(), qt["after"])
+    assert len(m.drift_series()) == len(qt["series"])
+    for a, b in zip(m.drift_series(), qt["series"]):
         np.testing.assert_array_equal(a["y"], b["y"])
         assert a["name"] == b["name"] and a["color"] == b["color"]
     cells = [
         [str(r["frame"]), f"{r['dx']:+.2f}", f"{r['dy']:+.2f}", f"{r['magnitude']:.2f}"]
         for r in m.shift_table_rows()
     ]
-    assert cells == qt_table_cells(qt_tool)
+    assert cells == qt["table"]
 
 
 @pytest.mark.skipif(not HT3.exists(), reason="CLSM test data not present")
-def test_the_qt_tool_and_the_emtk_app_agree_on_the_photon_stream(app, drv, qt_tool):
-    qt = qt_measure(qt_tool, HT3)
+def test_the_recorded_qt_result_and_the_emtk_app_agree_on_the_photon_stream(app, drv):
+    qt = QT_REF["photon_stream"]
     m = measured(app, drv, HT3)
-    assert m.status_line == qt.status and m.channel_names == qt.channel_names
-    np.testing.assert_array_equal(shifts_of(m), shifts_of(qt))
-    np.testing.assert_array_equal(np.asarray(m.before_image()), np.asarray(qt.before_image()))
+    assert m.status_line == qt["status"] and m.channel_names == qt["channel_names"]
+    np.testing.assert_array_equal(shifts_of(m), qt["shifts"])
+    assert_fingerprint(m.before_image(), qt["before"])
 
 
 @pytest.mark.parametrize("attr", ["smooth"])
-def test_typed_extremes_are_clamped_to_the_range_the_qt_spin_box_enforced(app, drv, qt_tool, attr):
-    from chisurf.gui.autoform.sections.builtin import ValueWidget
-
-    editor = {
-        vw._section.attr: vw.editor
-        for vw in qt_tool.findChildren(ValueWidget)
-        if getattr(vw, "_section", None)
-    }[attr]
+def test_typed_extremes_are_clamped_to_the_range_the_qt_spin_box_enforced(app, drv, attr):
     drv.click("Estimator.fold")
-    for qt_value in (1e9, -5.0):
-        editor.setValue(qt_value)
-        drv.type_into(attr, str(qt_value))
-        assert getattr(app.model, attr) == pytest.approx(editor.value()), (attr, qt_value)
+    for qt_value, qt_clamped in QT_REF["smooth_clamp"].items():
+        drv.type_into(attr, qt_value)
+        assert getattr(app.model, attr) == pytest.approx(qt_clamped), (attr, qt_value)
 
 
-def test_the_qt_choice_lists_equal_the_emtk_choice_lists(app, qt_tool):
+def test_the_qt_choice_lists_equal_the_emtk_choice_lists(app):
     """The stream's thin app offered 'middle', 'nearest' and 'reflect', which the core refuses, and no 'previous' / 'constant'."""
-    from chisurf.gui.autoform.sections.builtin import ChoiceWidget
-
-    qt_options = {}
-    for cw in qt_tool.findChildren(ChoiceWidget):
-        section = getattr(cw, "_section", None)
-        if section is not None and section.attr in ("reference", "mode"):
-            qt_options[section.attr] = (
-                [cw.combo.itemText(i) for i in range(cw.combo.count())]
-                if hasattr(cw, "combo")
-                else None
-            )
+    qt_options = QT_REF["choices"]
     spec = {s["attr"]: s for s in walk(EMTK_SPEC["sections"]) if s.get("type") == "choice"}
     for attr, labels in (
         ("reference", ["First frame", "Previous frame", "Stack mean"]),
@@ -273,8 +219,7 @@ def test_the_qt_choice_lists_equal_the_emtk_choice_lists(app, qt_tool):
         assert spec[attr]["options"] == (
             ["first", "previous", "mean"] if attr == "reference" else ["wrap", "constant"]
         )
-        if qt_options.get(attr):
-            assert qt_options[attr] == labels
+        assert qt_options[attr] == labels
 
 
 # ── 3. choosing a file: typed, Browse, Database, drop ─────────────────────────────────────────────────────── #
@@ -586,7 +531,7 @@ def test_the_channel_list_names_the_channels_of_the_file_and_the_chosen_one_is_m
 
 
 def test_the_estimator_panel_opens_and_smoothing_and_subpixel_give_the_qt_measurement(
-    app, drv, qt_tool, tiff
+    app, drv, tiff
 ):
     drv.click("Estimator.fold")
     assert {"smooth", "subpixel"} <= set(app.form.rects)
@@ -597,8 +542,8 @@ def test_the_estimator_panel_opens_and_smoothing_and_subpixel_give_the_qt_measur
     assert app.model.smooth == 0.0 and app.model.subpixel is True
     drv.click("measure")
     drv.settle()
-    qt = qt_measure(qt_tool, tiff, smooth=0.0, subpixel=True)
-    np.testing.assert_array_equal(shifts_of(app.model), shifts_of(qt))
+    qt = QT_REF["scenarios"]["no smoothing, subpixel"]
+    np.testing.assert_array_equal(shifts_of(app.model), qt["shifts"])
     assert not np.array_equal(
         shifts_of(app.model), default
     )  # sub-pixel refinement moved the answer off the whole pixels
@@ -943,7 +888,7 @@ def test_the_window_draws_empty_and_populated_at_both_sizes(app, drv, tiff):
             "Measure",
             "Export stack",
             "Export shifts",
-            "Browse",
+            "📂  Browse…",
             "Database",
         } <= set(drv.draw(3, size).strings)
     measured(app, drv, tiff)

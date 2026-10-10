@@ -20,34 +20,3 @@ if _manifest is not None:
 else:
     name = "Tools:Converter:TTTR→Time-Window BIDs"
     cli_entrypoint = ""
-
-__all__ = ["TTTRTimeWindowTool"]
-
-
-def __getattr__(name: str):
-    """Lazily import the GUI tool (no Qt import as a package side effect)."""
-    if name == "TTTRTimeWindowTool":
-        from .gui.tool import TTTRTimeWindowTool
-
-        return TTTRTimeWindowTool
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-
-if __name__ == "plugin":
-    from .gui.tool import TTTRTimeWindowTool
-
-    w = TTTRTimeWindowTool()
-    w.show()
-
-if __name__ == "__main__":
-    import sys
-
-    from qtpy import QtWidgets
-
-    from .gui.tool import TTTRTimeWindowTool
-
-    app = QtWidgets.QApplication(sys.argv)
-    app.aboutToQuit.connect(app.deleteLater)
-    w = TTTRTimeWindowTool()
-    w.show()
-    sys.exit(app.exec_())

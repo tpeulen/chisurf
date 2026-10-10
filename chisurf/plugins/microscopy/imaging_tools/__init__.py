@@ -1,11 +1,9 @@
-"""Imaging Tools — combined NavigationPanelTool plugin.
+"""Imaging Tools — the unified imaging toolbox.
 
-Provides a single unified window with:
-- Image Browser (TTTR Image Browser)
-- Region MLE (region_mle)
-- Pixel-wise MLE (img_pixel_mle)
-- (separator)
-- PSF Determination (psf_determination)
+One window listing the imaging tools in pipeline order (setup, browser, drift,
+FRC, flow, tracking, colocalization, the per-pixel maps, MLE, CLSM, PSF). The
+window is the native emtk app in :mod:`.gui.app`; importing this package needs
+no Qt binding.
 """
 
 from __future__ import annotations
@@ -18,22 +16,3 @@ _manifest = (
     json.loads(_manifest_path.read_text(encoding="utf-8")) if _manifest_path.exists() else {}
 )
 name = _manifest.get("display_name", "Imaging:Image Tools")
-
-
-def __getattr__(attr_name: str):
-    """Lazy Qt import gate."""
-    if attr_name == "ImagingToolsTool":
-        from .gui.tool import ImagingToolsTool as _cls
-
-        globals()["ImagingToolsTool"] = _cls
-        return _cls
-    raise AttributeError(f"module {__name__!r} has no attribute {attr_name!r}")
-
-
-if __name__ == "plugin":
-    from .gui.tool import ImagingToolsTool
-
-    window = ImagingToolsTool()
-    window.show()
-
-__all__ = ["ImagingToolsTool"]

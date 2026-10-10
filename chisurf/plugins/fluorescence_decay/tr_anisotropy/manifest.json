@@ -21,7 +21,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.fluorescence_decay.tr_anisotropy.gui.tool:AnisotropyWizard",
     "cli": "anisotropy=chisurf.plugins.fluorescence_decay.tr_anisotropy.cli:cli",
     "emtk": "chisurf.plugins.fluorescence_decay.tr_anisotropy.gui.app:make_app"
   },

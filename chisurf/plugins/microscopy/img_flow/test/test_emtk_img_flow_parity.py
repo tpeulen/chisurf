@@ -219,48 +219,10 @@ def test_each_scenario_of_the_qt_capture_is_reproduced(app, drv, flow_tif):
         )
 
 
-# ── 2. the live Qt tool on the same file ────────────────────────────────────────────────────────────────────── #
+# ── 2. the Qt tool's recorded results on the same file ────────────────────────────────────────────────────── #
 
-
-@pytest.fixture(scope="module")
-def qt_tool():
-    """The legacy Qt tool, offscreen, on temporary settings. Skipped only when Qt is not installed."""
-    if importlib.util.find_spec("qtpy") is None:
-        pytest.skip("Qt is not installed")
-    import os
-
-    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-    from qtpy import QtWidgets
-
-    from chisurf.plugins.microscopy.img_flow.gui.tool import ImgFlowTool
-
-    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    tool = ImgFlowTool()
-    tool._qapp = qapp
-    yield tool
-    tool.close()
-
-
-def qt_map(tool, path, **settings):
-    """What the Qt window computes for *path* (the compute runs inline here)."""
-    m = tool.model
-    for k, v in dict(BASE, **settings).items():
-        setattr(m, k, v)
-    m.channel = 0
-    assert m.filename != str(path) or True
-    m.set_filename(str(path))
-    ok = m.compute()
-    tool._on_finished(ok)
-    tool._refresh()
-    return m
-
-
-def qt_table_cells(tool):
-    from qtpy import QtWidgets
-
-    table = next(t for t in tool.findChildren(QtWidgets.QTableWidget) if t.columnCount() == 7)
-    return [[table.item(r, c).text() for c in range(7)] for r in range(table.rowCount())]
-
+#: What the retired Qt tool computed and showed, recorded before it was deleted (``qt_reference.json``).
+QT_REF = json.loads((Path(__file__).parent / "qt_reference.json").read_text(encoding="utf-8"))
 
 SCENARIOS = {
     "defaults": {},
@@ -275,68 +237,53 @@ SCENARIOS = {
 }
 
 
+def _nn(array):
+    return np.nan_to_num(np.asarray(array, dtype=float), nan=-999)
+
+
 @pytest.mark.parametrize("scenario", list(SCENARIOS))
-def test_the_qt_tool_and_the_emtk_app_agree_on_every_result(app, drv, qt_tool, flow_tif, scenario):
+def test_the_recorded_qt_results_and_the_emtk_app_agree_on_every_scenario(
+    app, drv, flow_tif, scenario
+):
     settings = dict(BASE, **SCENARIOS[scenario])
-    qt = qt_map(qt_tool, flow_tif, **SCENARIOS[scenario])
+    qt = QT_REF["scenarios"][scenario]
     loaded(app, drv, flow_tif)
     mapped(app, drv, **settings)
     m = app.model
-    assert m.status_line == qt_tool.statusBar().currentMessage() == qt.status
+    assert m.status_line == qt["bar"] == qt["status"]
     for name in ("vx", "vy", "quality", "x", "y"):
-        np.testing.assert_array_equal(
-            getattr(m.result, name), getattr(qt.result, name), err_msg=name
-        )
-    assert m.result.n_escaped == qt.result.n_escaped and m.summary_html() == qt.summary_html()
-    assert m.flow_vectors() == qt.flow_vectors() and m.flow_extent() == qt.flow_extent()
-    assert [s["name"] for s in m.profile_series()] == [s["name"] for s in qt.profile_series()]
-    for a, b in zip(m.profile_series(), qt.profile_series()):
-        np.testing.assert_array_equal(
-            np.asarray(a["y"], dtype=float), np.asarray(b["y"], dtype=float)
-        )
+        np.testing.assert_array_equal(_nn(getattr(m.result, name)), qt[name], err_msg=name)
+    assert m.result.n_escaped == qt["n_escaped"] and m.summary_html() == qt["summary"]
+    assert json.loads(json.dumps(m.flow_vectors())) == qt["vectors"]
+    assert list(m.flow_extent()) == qt["extent"]
+    assert [s["name"] for s in m.profile_series()] == [s["name"] for s in qt["profile"]]
+    for a, b in zip(m.profile_series(), qt["profile"]):
+        np.testing.assert_array_equal(_nn(a["y"]), b["y"])
     cells = [
         [f"{r[k]:.4g}" for k in ("x", "y", "vx", "vy", "speed", "angle", "quality")]
         for r in m.tile_table_rows()
     ]
-    assert cells == qt_table_cells(qt_tool)
+    assert cells == qt["table"]
     if not m.result.kept(m.min_quality).any():
-        assert m.diagnose() == qt.diagnose()
+        assert m.diagnose() == qt["diagnose"]
 
 
 @needs_simulator
-def test_the_demo_is_loaded_and_mapped_as_the_qt_tool_does(app, drv, qt_tool, with_demo):
-    from chisurf.plugins.microscopy.img_flow.gui.view_model import FlowViewModel
-
+def test_the_demo_is_loaded_and_mapped_as_the_qt_tool_did(app, drv, with_demo):
+    qt = QT_REF["demo"]
     drv.click("load_example")
     drv.settle(timeout=300)
     m = app.model
-    qt = qt_tool.model
-    fresh = FlowViewModel()
-    for k in (
-        "method",
-        "tile",
-        "step",
-        "n_lags",
-        "distance",
-        "subtract_average",
-        "min_quality",
-        "arrow_scale",
-    ):
-        setattr(
-            qt, k, getattr(fresh, k)
-        )  # the Qt tool is shared by the module: start from the defaults the new app has
-    qt.load_demo()
-    assert m.status_line == qt.status and "frames of 64x64, 1 channel(s). Ready." in m.status_line
-    assert Path(m.filename) == with_demo == Path(qt.filename)
-    for k in ("pixel_duration_us", "line_duration_ms", "frame_duration_ms", "pixel_size_nm"):
-        assert getattr(m, k) == pytest.approx(getattr(qt, k)), k
+    assert m.status_line == qt["status"] and "frames of 64x64, 1 channel(s). Ready." in m.status_line
+    assert Path(m.filename) == with_demo
+    for k, v in qt["timing"].items():
+        assert getattr(m, k) == pytest.approx(v), k
     assert (m.pixel_duration_us, m.frame_duration_ms) == (20.0, 81.92)
     assert m.demo_truth is not None and m.demo_truth["v_max_um_s"] == 2.0
     drv.click("map_flow")
     drv.settle()
-    qt.compute()
-    assert m.status_line == qt.status and m.result.n_escaped == qt.result.n_escaped
-    np.testing.assert_array_equal(np.asarray(m.result.vx), np.asarray(qt.result.vx))
+    assert m.status_line == qt["after_status"] and m.result.n_escaped == qt["n_escaped"]
+    np.testing.assert_array_equal(_nn(m.result.vx), qt["vx"])
 
 
 @needs_simulator
@@ -368,24 +315,13 @@ def test_the_demo_gives_arrows_along_plus_x_with_a_parabolic_profile(app, drv, w
         "step",
     ],
 )
-def test_typed_extremes_are_clamped_to_the_range_the_qt_spin_box_enforced(app, drv, qt_tool, attr):
-    from qtpy import QtWidgets
-
-    from chisurf.gui.autoform.sections.builtin import ValueWidget
-
-    editor = {
-        vw._section.attr: vw.editor
-        for vw in qt_tool.findChildren(ValueWidget)
-        if getattr(vw, "_section", None)
-    }[attr]
+def test_typed_extremes_are_clamped_to_the_range_the_qt_spin_box_enforced(app, drv, attr):
     drv.draw(2)
     if attr in ("arrow_scale", "step"):
         drv.click("Display and estimator.fold")
-    whole = isinstance(editor, QtWidgets.QSpinBox)
-    for qt_value in (1_000_000_000, -5):
-        editor.setValue(qt_value if whole else float(qt_value))
-        drv.type_into(attr, str(qt_value))
-        assert getattr(app.model, attr) == pytest.approx(editor.value(), rel=1e-9), (attr, qt_value)
+    for qt_value, qt_clamped in QT_REF["clamp"][attr].items():
+        drv.type_into(attr, qt_value)
+        assert getattr(app.model, attr) == pytest.approx(qt_clamped, rel=1e-9), (attr, qt_value)
 
 
 # ── 3. choosing files: typed, Browse, Database, drops ──────────────────────────────────────────────────────── #
@@ -1123,9 +1059,9 @@ def test_the_window_draws_empty_and_populated_at_both_sizes(app, drv, flow_tif):
         assert {
             "Settings",
             "Map flow",
-            "Load demo",
+            "🧪  Load example",
             "Export CSV",
-            "Browse",
+            "📂  Browse…",
             "Database",
             "Flow",
         } <= set(drv.draw(3, size).strings)

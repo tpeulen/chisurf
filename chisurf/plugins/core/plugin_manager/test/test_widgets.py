@@ -400,13 +400,10 @@ def test_every_bound_attribute_exists_on_the_model():
     )
 
 
-def test_plugin_manager_widget_creation(qapp, qtbot):
-    """The panel builds, and shows every plugin discovery found."""
-    from chisurf.plugins.core.plugin_manager import PluginManagerWidget
+def test_plugin_manager_model_shows_every_plugin_discovery_found():
+    """The editor's model lists the discovered plugins and its table source agrees."""
+    from chisurf.plugins.core.plugin_manager.gui.view_model import PluginManagerViewModel
 
-    widget = PluginManagerWidget()
-    qtbot.addWidget(widget)
-    assert "Plugin" in widget.windowTitle()
-    assert widget.model.rows, "no plugins reached the panel"
-    # the table source and the model agree
-    assert len(widget.model.plugin_rows()) == len(widget.model.visible_rows())
+    model = PluginManagerViewModel(settings_block={})
+    assert model.rows, "no plugins reached the panel"
+    assert len(model.plugin_rows()) == len(model.visible_rows())

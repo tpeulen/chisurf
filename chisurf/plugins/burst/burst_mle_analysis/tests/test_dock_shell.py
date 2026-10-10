@@ -57,33 +57,6 @@ def test_hosted_pages_are_not_left_explicitly_hidden(qapp):
     assert not blank, f"pages handed to the dock area still explicitly hidden: {blank}"
 
 
-def test_embedded_panel_shows_the_fit_workspace(qapp):
-    """The workflow panel must render the fit controls, not just a dock title."""
-    from qtpy import QtWidgets
-
-    from chisurf.plugins.burst.burst_analysis.gui import tool as tool_mod
-
-    host = QtWidgets.QWidget()
-    layout = QtWidgets.QVBoxLayout(host)
-    embedded = tool_mod._burst_mle(host)
-    layout.addWidget(embedded)
-    host.resize(1200, 800)
-    host.show()
-    try:
-        QtWidgets.QApplication.processEvents()
-        QtWidgets.QApplication.processEvents()
-        if hasattr(embedded, "_app"):
-            assert embedded.isVisible(), "the EMTK host is not visible"
-            assert embedded._app is not None
-            return
-        wizard = getattr(embedded, "_mle_wizard", embedded)
-        tau = wizard.doubleSpinBox_tau
-        assert embedded.isAncestorOf(tau), "the fit controls are not in the panel"
-        assert tau.isVisible(), "the Burst-MLE workspace renders as an empty dock"
-    finally:
-        host.close()
-
-
 def test_wizard_builds_without_ui_file(qapp):
     # The wizard is now built entirely in code; wizard.ui is gone. Every widget
     # the old .ui defined (and the code references) must exist as an attribute.
@@ -157,39 +130,3 @@ def test_file_drops_are_separate_docks(qapp):
         box = getattr(w, attr)
         assert box.parent() is not w.tab_files
         assert area.isAncestorOf(box)
-
-
-def test_embedded_hides_duplicate_file_docks(qapp):
-    # In the burst-analysis workflow the file inputs are supplied upstream, so the
-    # MLE panel hides its Burst/IRF/Background file docks and shows only the fit.
-    from qtpy import QtWidgets
-
-    from chisurf.plugins.burst.burst_analysis.gui import tool as tool_mod
-
-    host = QtWidgets.QWidget()
-    embedded = tool_mod._burst_mle(host)  # sets _embedded=True
-    QtWidgets.QApplication.processEvents()
-    wizard = getattr(embedded, "_mle_wizard", embedded)
-    titles = [title for _attr, title in wizard._dock_pages]
-    assert titles == ["Burst-MLE"]
-    # The burst list widget still exists so upstream files can be loaded into it.
-    assert hasattr(wizard, "burst_files_list")
-
-
-def test_embedded_drops_detector_panel(qapp):
-    from qtpy import QtWidgets
-
-    from chisurf.plugins.burst.burst_analysis.gui.tool import _remove_tab_by_name
-    from chisurf.plugins.burst.burst_mle_analysis.wizard import (
-        MLELifetimeAnalysisWizard,
-    )
-
-    w = MLELifetimeAnalysisWizard()
-    # The workflow removes this tab synchronously before the deferred conversion.
-    _remove_tab_by_name(w, "Detector Definition")
-    QtWidgets.QApplication.processEvents()
-    QtWidgets.QApplication.processEvents()
-
-    titles = [title for _attr, title in w._dock_pages]
-    assert titles == ["Burst Files", "IRF Files", "Background Files", "Burst-MLE"]
-    assert w.tab_parameters.parent() is not w.tabWidget

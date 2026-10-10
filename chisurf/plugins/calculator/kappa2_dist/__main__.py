@@ -60,15 +60,12 @@ def _run(argv: list[str]) -> None:
                 print(json.dumps(result, indent=2))
         return
 
-    # No CLI flags → launch the GUI.
-    from qtpy import QtWidgets
+    # No CLI flags -> launch the emtk window.
+    from emtk.native import run
 
-    from .k2dgui import Kappa2Dist
+    from .gui.app import make_app
 
-    app = QtWidgets.QApplication(sys.argv)
-    win = Kappa2Dist()
-    win.show()
-    sys.exit(app.exec_())
+    run(make_app())
 
 
 if __name__ == "__main__":

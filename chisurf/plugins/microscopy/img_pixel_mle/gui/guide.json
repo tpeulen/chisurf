@@ -7,25 +7,22 @@
       "target": {}
     },
     {
-      "title": "Add the photon files",
-      "text": "The confocal TTTR files to analyse (PTU/HT3/...). <b>Add files</b> opens a chooser that takes several; <b>Database</b> picks a registered dataset; files can be dropped on the window.",
+      "title": "Start with data whose answer you know",
+      "text": "<b>Load example</b> writes a simulated polarisation-resolved FLIM image, a left half with a lifetime of <b>1.5 ns</b> and a right half with <b>3.5 ns</b>, together with the instrument response that goes with it, and fills in the matching channels and fit window. The lifetime map must show two plateaus at those values.",
       "target": {
-        "name": "files",
-        "action": "CLSM imaging files"
+        "name": "load_example",
+        "action": "Load example"
       },
       "await": {
-        "hint": "Add at least one photon file."
+        "hint": "Press <b>Load example</b>."
       }
     },
     {
-      "title": "Add the IRF",
-      "text": "The instrument response function measurement; the first file is used. Without it the decay cannot be deconvolved.",
+      "title": "The photon files and the IRF",
+      "text": "With your own data, <b>Add files</b> opens a chooser that takes several confocal TTTR files (PTU/HT3/...); <b>Database</b> picks a registered dataset; files can be dropped on the window. The <b>IRF</b> is the instrument response measurement, the first file is used; without it the decay cannot be deconvolved.",
       "target": {
-        "name": "irf",
-        "action": "IRF file"
-      },
-      "await": {
-        "hint": "Choose the IRF file."
+        "name": "files",
+        "action": "CLSM imaging files"
       }
     },
     {

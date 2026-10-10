@@ -12,9 +12,9 @@ The three requests open what the retired Qt Trace Browser opened:
 * ``open_intensity_trace``: a new native Intensity Trace window
   (:class:`~chisurf.plugins.tttr.intensity_trace.gui.app.IntensityTraceApp` hosted in a Qt window)
   with its title, bin window and detector setup set, the file loaded and binned;
-* ``open_time_window``: a new
-  :class:`~chisurf.plugins.tttr.tttr_time_windows.gui.tool.TTTRTimeWindowTool` (the Time Window
-  tool) holding the file and the bin window;
+* ``open_time_window``: a new native Time Window app
+  (:func:`~chisurf.plugins.tttr.tttr_time_windows.gui.controller.create_app` hosted in a Qt
+  window; its controller is ``window.controller``) holding the file and the bin window;
 * ``open_ndxplorer``: ChiSurf's ndX window
   (:func:`~chisurf.plugins.ndxplorer.window.build_ndxplorer_window`) on the burst-analysis folder
   the model wrote.
@@ -115,8 +115,10 @@ def open_intensity_trace(payload: dict) -> QtWidgets.QWidget:
 
 
 def open_time_window(payload: dict) -> QtWidgets.QWidget:
-    """Open a new Time Window tool holding ``payload["files"]`` and ``window_ms`` (the Qt ``_on_transfer_to_tw``)."""
-    from chisurf.plugins.tttr.tttr_time_windows.gui.tool import TTTRTimeWindowTool
+    """Open a new Time Window app holding ``payload["files"]`` and ``window_ms`` (the Qt ``_on_transfer_to_tw``)."""
+    from emtk.qt_host import ControlHost
+
+    from chisurf.plugins.tttr.tttr_time_windows.gui.controller import create_app
 
     files = [pathlib.Path(str(f)) for f in payload["files"]]
     if not files:
@@ -124,13 +126,19 @@ def open_time_window(payload: dict) -> QtWidgets.QWidget:
     for path in files:
         if not path.is_file():
             raise FileNotFoundError(f"{path} does not exist")
-    window = TTTRTimeWindowTool()
-    window.time_window_ms = float(payload["window_ms"])
-    window.add_paths(files)
-    if not window._file_paths:
-        window.close()
+    app = create_app()
+    controller = app.tool
+    controller.time_window_ms = float(payload["window_ms"])
+    controller.add_paths(files)
+    if not controller._file_paths:
+        app.close()
         raise ValueError(f"{files[0].name} is not a TTTR file the Time Window tool reads")
+    window = ControlHost(app)
+    window.app = app
+    window.controller = controller
     window.setWindowTitle(f"Time Window BID Generation: {files[0].name}")
+    width, height = app.window_size
+    window.resize(int(width), int(height))
     return _keep(window)
 
 

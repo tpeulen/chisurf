@@ -122,17 +122,13 @@ def pick(ui, x, y):
 
 @pytest.fixture
 def qt_model():
-    pytest.importorskip("qtpy")
-    from qtpy import QtWidgets
+    """The view-model the retired Qt tool wrapped (it held no logic of its own), on the same stack."""
+    from chisurf.plugins.microscopy.psf_determination.gui.view_model import PsfViewModel
 
-    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    from chisurf.plugins.microscopy.psf_determination.gui.tool import PsfDeterminationTool
-
-    tool = PsfDeterminationTool()
-    tool._qapp = qapp
-    tool.model.set_stack(make_stack())
-    tool.model.pixel_size_nm, tool.model.z_step_nm = 100.0, 300.0
-    return tool.model
+    model = PsfViewModel()
+    model.set_stack(make_stack())
+    model.pixel_size_nm, model.z_step_nm = 100.0, 300.0
+    return model
 
 
 def test_detection_fits_and_the_batch_csv_started_in_the_native_window_equal_the_qt_tools(

@@ -61,7 +61,7 @@ def test_panels_retained_and_manifest_declares_native():
     manifest = json.loads(Path(__file__).parents[1].joinpath("manifest.json").read_text())
     assert manifest["entrypoints"]["emtk"].endswith(":make_app")
     assert len(SPEC["panels"]) == 7
-    assert all(p.get("description") and p.get("entrypoint") for p in SPEC["panels"])
+    assert all(p.get("description") and p.get("plugin") for p in SPEC["panels"])
 
 
 def test_split_and_time_window_options_roundtrip():

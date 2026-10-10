@@ -212,22 +212,20 @@ def _grab_03_polymer_editors() -> None:
 
 
 def _grab_04_pch_tool() -> None:
-    """The PCH tool with the histogram of BH_SPC132 (green, 50 us bins) computed."""
-    from chisurf.plugins.pch.gui.tool import PCHApp
+    """The PCH app with the histogram of BH_SPC132 (green, 50 us bins) computed."""
+    try:
+        from screenshots.emtk_shot import app_from, render
+    except ImportError:  # run standalone from this folder
+        from emtk_shot import app_from, render
 
-    tool = PCHApp()
-    tool.resize(1400, 850)
-    tool.show()
-    _pump(0.5)
-    tool.centralWidget().setSizes([850, 550])
-    tool._load_path(str(_SPC_FILE.resolve()))
-    tool.le_ch.setText("0,8")
-    tool.spin_bin.setValue(50.0)
-    tool._on_compute()
-    _pump(5)
-    print("PCH:", tool.statusBar().currentMessage())
-    _grab(tool, "04_pch_tool.png")
-    tool.close()
+    app = app_from("pch")
+    model = app.model
+    model.channels = "0,8"
+    model.bin_time_us = 50.0
+    model.load_path(str(_SPC_FILE.resolve()))
+    model.compute_now()
+    print("PCH:", model.status_line())
+    render(app, "04_pch_tool.png", size=(1400, 850))
 
 
 def _grab_04_fida_editor() -> None:

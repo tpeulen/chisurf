@@ -1,10 +1,10 @@
 """Registry of embeddable wizards for the Wizards hub (Qt-free).
 
 The hub is a two-panel tool: a list of wizards on the left, the selected wizard
-embedded on the right. Each entry names an *embeddable* ``QWidget`` (a plain
-panel, no window chrome) by dotted import path; the GUI resolves and instantiates
-it lazily on first selection. Keeping the catalogue here — as plain data — lets it
-be unit-tested and extended without importing Qt.
+embedded on the right. Each entry names the native emtk app factory of the wizard by
+dotted import path; the hub resolves and builds it lazily on first selection. Keeping
+the catalogue here — as plain data — lets it be unit-tested and extended without
+importing Qt.
 """
 
 from __future__ import annotations
@@ -24,21 +24,18 @@ class WizardEntry:
         Text shown in the selector list.
     description : str
         One-line summary shown above the embedded wizard.
-    widget : str
-        Dotted import path ``"pkg.module:ClassName"`` of an embeddable ``QWidget``
-        that constructs with no required arguments.
+    emtk : str
+        Dotted path ``"pkg.module:factory"`` of the native app factory of the wizard
+        (called with no arguments).
     icon : str
         Optional emoji/icon shown next to the label.
-    emtk : str or None
-        Optional native factory for the embedded wizard.
     """
 
     id: str
     label: str
     description: str
-    widget: str
+    emtk: str
     icon: str = ""
-    emtk: str | None = None
 
 
 def default_wizards() -> list[WizardEntry]:
@@ -48,19 +45,15 @@ def default_wizards() -> list[WizardEntry]:
             id="anisotropy",
             label="Anisotropy",
             description="Build a linked VV/VH global time-resolved anisotropy fit.",
-            widget="chisurf.plugins.fluorescence_decay.tr_anisotropy.gui.tool:AnisotropyAssistantWidget",
-            icon="🔬",
-            # Native factory is available; the Qt widget path remains for the
-            # legacy host and reference capture.
             emtk="chisurf.plugins.fluorescence_decay.tr_anisotropy.gui.app:make_app",
+            icon="🔬",
         ),
         WizardEntry(
             id="batch_analysis",
             label="Batch analysis",
             description="Apply one template fit to many datasets or files.",
-            widget="chisurf.plugins.core.batch_analysis.gui.tool:BatchAnalysisWidget",
-            icon="📋",
             emtk="chisurf.plugins.core.batch_analysis.gui.app:make_app",
+            icon="📋",
         ),
     ]
 

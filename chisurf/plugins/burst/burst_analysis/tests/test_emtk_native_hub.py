@@ -93,13 +93,23 @@ def walk_to_bursts(hub, files) -> Driver:
 
 
 def test_the_rail_is_the_legacy_panel_table():
-    """Same steps, same order, same names and roles as the Qt shell's BURST_PANELS."""
+    """Same steps, same order, same names and roles as the retired Qt shell's BURST_PANELS (qt_reference.json)."""
     from chisurf.plugins.burst.burst_analysis.gui.native import STEPS
-    from chisurf.plugins.burst.burst_analysis.gui.tool import BURST_PANELS
 
+    recorded = json.loads((Path(__file__).with_name("qt_reference.json")).read_text(encoding="utf-8"))
     native = [(p["role"], p["name"], bool(p.get("optional"))) for p in STEPS if not p.get("separator")]
-    legacy = [(p["role"], p["name"], bool(p.get("optional"))) for p in BURST_PANELS if not p.get("separator")]
+    legacy = [
+        (p["role"], p["name"], bool(p.get("optional")))
+        for p in recorded["BURST_PANELS"]
+        if not p.get("separator")
+    ]
     assert native == legacy
+    assert recorded["initial_role"] == "setup"
+    roles = [p.get("role") for p in recorded["BURST_PANELS"]]
+    # Segmentation precedes the fit that consumes it; fusion precedes every measuring step.
+    assert roles.index("h2mm") < roles.index("segment_mle")
+    for measured in ("bva", "two_cde", "mle", "h2mm", "segment_mle"):
+        assert roles.index("fusion") < roles.index(measured)
 
 
 def test_every_step_opens_and_draws_empty(hub):

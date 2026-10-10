@@ -8,7 +8,6 @@
   ],
   "categories": ["Spectroscopy", "Correlation"],
   "entrypoints": {
-    "gui": "chisurf.plugins.fcs.fcs_toolbox.tool:FcsTool",
     "emtk": "chisurf.plugins.fcs.fcs_toolbox.gui.app:make_app",
     "script": "__init__.py"
   },

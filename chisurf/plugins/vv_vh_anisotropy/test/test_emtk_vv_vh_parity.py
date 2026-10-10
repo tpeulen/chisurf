@@ -1,6 +1,6 @@
-"""The native VV/VH anisotropy app at parity with the Qt VvVhAnisotropyCalculator.
+"""The native VV/VH anisotropy app at parity with the retired Qt VvVhAnisotropyCalculator.
 
-Numbers are compared with the genuine Qt tool (``qt_tool.py``, offscreen) for the same
+Numbers are compared with the values recorded from the genuine Qt tool (``qt_reference.json``) for the same
 generated input (``okf/plugins/emtk-ports/vv_vh_anisotropy/scripts/data.py``): r-infinity, the
 anisotropy trace and metadata files, and the batch rows. Two Qt defects are not reproduced and
 are tested as fixed: ``_shifted.dat`` was never written, and a file without numbers made the
@@ -59,7 +59,9 @@ def app():
     app.close()
 
 
-# the Qt tool, driven through its widgets ---------------------------------------------------
+# the retired Qt tool's recorded values -----------------------------------------------------
+
+QT_REFERENCE = json.loads((HERE / "qt_reference.json").read_text())
 
 SETTINGS = [
     dict(g=1.0, bg=(0.0, 0.0), apply_bg=False, shift=0.0, flip=False),
@@ -68,59 +70,33 @@ SETTINGS = [
 ]
 
 
-@pytest.fixture
-def qt_tool(qapp):
-    from chisurf.plugins.vv_vh_anisotropy.qt_tool import VvVhAnisotropyCalculator
-
-    tool = VvVhAnisotropyCalculator()
-    yield tool
-    tool.close()
-
-
-def _set_qt(tool, s):
-    tool.g_spin.setValue(s["g"])
-    tool.bg_vv_spin.setValue(s["bg"][0])
-    tool.bg_vh_spin.setValue(s["bg"][1])
-    tool.bg_checkbox.setChecked(s["apply_bg"])
-    tool.shift_spin.setValue(s["shift"])
-    tool.flip_checkbox.setChecked(s["flip"])
-
-
 def _set_model(model, s):
     model.g_factor, (model.bg_vv, model.bg_vh) = s["g"], s["bg"]
     model.apply_bg, model.shift, model.flip = s["apply_bg"], s["shift"], s["flip"]
     model.compute()
 
 
-# 1. r(t), r-infinity and the saved files equal the Qt tool's, for the same input and settings
-@pytest.mark.parametrize("settings", SETTINGS, ids=["plain", "bg+shift", "flip+negative-shift"])
-def test_trace_rinf_and_files_equal_the_qt_tool(qt_tool, files, tmp_path, monkeypatch, settings):
-    from qtpy import QtWidgets
-
+# 1. r(t), r-infinity and the saved files equal the values recorded from the Qt tool, for the same input and settings
+@pytest.mark.parametrize("index", range(len(SETTINGS)), ids=["plain", "bg+shift", "flip+negative-shift"])
+def test_trace_rinf_and_files_equal_the_recorded_qt_tool(files, tmp_path, index):
+    settings, ref = SETTINGS[index], QT_REFERENCE["trace"][index]
     a, _ = files
-    qt_tool.load_vv_vh_file(a)
-    _set_qt(qt_tool, settings)
     model = AnisotropyModel()
     model.load(a)
     _set_model(model, settings)
-    assert model.region_bounds == [float(v) for v in qt_tool.region_bounds]
-    np.testing.assert_allclose(model.r_t, qt_tool.r_t, rtol=1e-12, equal_nan=True)
-    assert model.r_infty == pytest.approx(qt_tool.r_infty, rel=1e-12)
-    assert model.r_infty_text == qt_tool.rinf_line.text()
+    assert model.region_bounds == ref["region_bounds"]
+    expected = np.array([np.nan if v is None else v for v in ref["r_t"]])
+    np.testing.assert_allclose(model.r_t, expected, rtol=1e-12, equal_nan=True)
+    assert model.r_infty == pytest.approx(ref["r_infty"], rel=1e-12)
+    assert model.r_infty_text == ref["r_infty_text"]
     # the files: the anisotropy trace and the metadata are byte-identical
-    qt_out, emtk_out = tmp_path / "qt" / "r.txt", tmp_path / "emtk" / "r.txt"
-    qt_out.parent.mkdir(), emtk_out.parent.mkdir()
-    monkeypatch.setattr(
-        QtWidgets.QFileDialog, "getSaveFileName", staticmethod(lambda *a_, **k: (str(qt_out), ""))
-    )
-    qt_tool.save_outputs()
-    model.save(emtk_out)
+    out = tmp_path / "emtk" / "r.txt"
+    out.parent.mkdir()
+    model.save(out)
     # the Qt tool wrote two of the three files (see the next test): the two it wrote are the ones compared
-    assert sorted(p.name for p in qt_out.parent.iterdir()) == ["r_anisotropy.txt", "r_rinf.csv"]
-    for suffix in ("_anisotropy.txt", "_rinf.csv"):
-        assert (emtk_out.parent / f"r{suffix}").read_bytes() == (
-            qt_out.parent / f"r{suffix}"
-        ).read_bytes()
+    assert ref["files"] == ["r_anisotropy.txt", "r_rinf.csv"]
+    for name in ("r_anisotropy.txt", "r_rinf.csv"):
+        assert (out.parent / name).read_text() == ref[name]
 
 
 # 2. the Qt tool never wrote _shifted.dat (write_vv_vh got its arguments in the wrong order inside
@@ -144,11 +120,10 @@ def test_shifted_decays_are_written_and_read_back(files, tmp_path):
     assert len(vv) == len(vh) == 256
 
 
-# 3. the batch rows equal the Qt batch window's, for the same snapshot
-@pytest.mark.parametrize("settings", SETTINGS, ids=["plain", "bg+shift", "flip+negative-shift"])
-def test_batch_rows_equal_the_qt_batch_window(qapp, files, settings):
-    from chisurf.plugins.vv_vh_anisotropy.qt_tool import VvVhAnisotropyBatchWindow
-
+# 3. the batch rows equal the Qt batch window's recorded rows, for the same snapshot
+@pytest.mark.parametrize("index", range(len(SETTINGS)), ids=["plain", "bg+shift", "flip+negative-shift"])
+def test_batch_rows_equal_the_recorded_qt_batch_window(files, index):
+    settings = SETTINGS[index]
     snap_in = {
         "apply_bg": settings["apply_bg"],
         "bg_vv": settings["bg"][0],
@@ -159,18 +134,15 @@ def test_batch_rows_equal_the_qt_batch_window(qapp, files, settings):
         "region_min": 150.0,
         "region_max": 400.0,
     }  # past the last channel: clamped in both tools
-    window = VvVhAnisotropyBatchWindow(dict(snap_in))
     model = AnisotropyModel()
     model.batch_snapshot = dict(snap_in)
     model.batch_files = [str(p) for p in files]
     rows = model.run_batch()
-    for path, row in zip(files, rows):
-        qt_row = window._compute_rinf_for_file(str(path))
+    for row, qt_row in zip(rows, QT_REFERENCE["batch"][index]):
         assert row[0] == qt_row[0]
         assert row[1] == pytest.approx(qt_row[1], rel=1e-12)
         assert list(row[2:7]) == pytest.approx(list(qt_row[2:7]))
         assert row[7] == ""
-    window.close()
 
 
 # 4. the batch uses the settings the window was opened with (the Qt snapshot), not later edits
@@ -483,7 +455,12 @@ def test_labels_have_no_pictograms(app, files):
     app.model.load(files[0])
     app.model.open_batch()
     painter = _draw(app)
-    assert [s for s in painter.strings if re.search("[\U0001f000-\U0001ffff☀-➿⛔️]", s)] == []
+    from chisurf.plugins.emtk_layout import ACTIONS, action_caption
+
+    shared = {action_caption(key) for key in ACTIONS}  # the shared vocabulary draws its own icons
+    assert [
+        s for s in painter.strings if s not in shared and re.search("[\U0001f000-\U0001ffff☀-➿⛔️]", s)
+    ] == []
 
 
 # 14. no Qt

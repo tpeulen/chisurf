@@ -1,21 +1,13 @@
-"""Entry point for running the Burst Browser widget directly.
+"""Entry point for the Burst Browser: ``python -m chisurf.plugins.burst.burst_browser``."""
 
-Usage:
-  python -m chisurf.plugins.burst.burst_browser
-"""
-
-import sys
-
-from qtpy.QtWidgets import QApplication
-
-from chisurf.plugins.burst.burst_browser import BurstBrowserWidget
+from __future__ import annotations
 
 
-def main():
-    app = QApplication(sys.argv)
-    w = BurstBrowserWidget()
-    w.show()
-    sys.exit(app.exec())
+def main() -> None:
+    """Launch the plugin as a native emtk application."""
+    from chisurf.emtk.__main__ import main as launch
+
+    launch(["--plugin", "burst_browser"])
 
 
 if __name__ == "__main__":

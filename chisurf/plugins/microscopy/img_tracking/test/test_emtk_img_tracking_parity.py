@@ -251,38 +251,23 @@ def test_the_tracks_table_shows_what_the_qt_table_showed(app, drv):
     assert {"#", "Points", "Frames", "Net [px]"} <= set(strings)
 
 
-# ── 2. the live Qt tool on the same data ─────────────────────────────────────────────────────────────────────── #
+# ── 2. the Qt tool's recorded results on the same data ─────────────────────────────────────────────────────── #
+
+#: What the retired Qt tool computed and showed, recorded before it was deleted (``qt_reference.json``).
+QT_REF = json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
 
 
-@pytest.fixture(scope="module")
-def qt_tool():
-    """The legacy Qt tool, offscreen, on temporary settings. Skipped only when Qt is not installed."""
-    if importlib.util.find_spec("qtpy") is None:
-        pytest.skip("Qt is not installed")
-    import os
+def _plain(value):
+    """Round-trip *value* through JSON so it compares with a recording (tuples are lists, numpy scalars numbers)."""
 
-    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-    from qtpy import QtWidgets
+    def default(obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        if isinstance(obj, np.generic):
+            return obj.item()
+        return str(obj)
 
-    from chisurf.plugins.microscopy.img_tracking.gui.tool import ImgTrackingTool
-
-    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    tool = ImgTrackingTool()
-    tool._qapp = qapp
-    yield tool
-    tool.close()
-
-
-def qt_table_cells(tool):
-    from qtpy import QtWidgets
-
-    table = next(
-        t for t in tool.findChildren(QtWidgets.QTableWidget) if t.rowCount() or t.columnCount() == 4
-    )
-    return [
-        [table.item(r, c).text() for c in range(table.columnCount())]
-        for r in range(table.rowCount())
-    ]
+    return json.loads(json.dumps(value, default=default))
 
 
 SCENARIOS = {
@@ -295,30 +280,21 @@ SCENARIOS = {
 
 
 @pytest.mark.parametrize("scenario", list(SCENARIOS))
-def test_the_qt_tool_and_the_emtk_app_agree_on_every_result(app, drv, qt_tool, scenario):
+def test_the_recorded_qt_results_and_the_emtk_app_agree_on_every_scenario(app, drv, scenario):
     settings = dict(SMALL, **SCENARIOS[scenario])
-    qt_tool.model.fit_alpha, qt_tool.model.method = False, "wavelet"
-    for name, value in settings.items():
-        setattr(qt_tool.model, name, value)
-    assert qt_tool.model.compute()
-    qt_tool._on_finished(True)
-    qt_tool._refresh()
+    qt = QT_REF["scenarios"][scenario]
     m = tracked(app, drv, **settings)
-    assert m.results_text == qt_tool.model.results_text
-    assert m.status_line == qt_tool.statusBar().currentMessage()
-    assert m.result.fit.diffusion_coefficient == qt_tool.model.result.fit.diffusion_coefficient
-    assert [r["track"] for r in m.track_rows()] == [r["track"] for r in qt_tool.model.track_rows()]
-    assert m.track_series() and m.track_series() == qt_tool.model.track_series()
-    assert (
-        m.msd_series() == qt_tool.model.msd_series()
-        and m.length_series() == qt_tool.model.length_series()
-    )
-    qt_cells = qt_table_cells(qt_tool)
+    assert m.results_text == qt["results_text"]
+    assert m.status_line == qt["bar"]
+    assert m.result.fit.diffusion_coefficient == qt["D"]
+    assert [r["track"] for r in m.track_rows()] == qt["tracks"]
+    assert m.track_series() and _plain(m.track_series()) == qt["track_series"]
+    assert _plain(m.msd_series()) == qt["msd"] and _plain(m.length_series()) == qt["length"]
     emtk_cells = [
         [str(r["track"]), str(r["length"]), r["frames"], f"{r['net']:.2f}"]
         for r in m.track_table_rows()
     ]
-    assert qt_cells == emtk_cells
+    assert emtk_cells == qt["table"]
 
 
 @pytest.mark.parametrize(
@@ -346,27 +322,14 @@ def test_the_qt_tool_and_the_emtk_app_agree_on_every_result(app, drv, qt_tool, s
         "frame_interval",
     ],
 )
-def test_typed_extremes_are_clamped_to_the_range_the_qt_spin_box_enforced(app, drv, qt_tool, attr):
-    from chisurf.gui.autoform.sections.builtin import ValueWidget
-
-    editors = {
-        vw._section.attr: vw.editor
-        for vw in qt_tool.findChildren(ValueWidget)
-        if getattr(vw, "_section", None)
-    }
-    editor = editors[attr]
+def test_typed_extremes_are_clamped_to_the_range_the_qt_spin_box_enforced(app, drv, attr):
     drv.draw(2)
     if attr not in app.form.rects:  # fields inside a folded panel
         for fold in ("Simulate instead.fold", "3. Transport.fold"):
             if fold in app.form.rects:
                 drv.click(fold)
-    from qtpy import QtWidgets
-
-    whole = isinstance(editor, QtWidgets.QSpinBox)
-    for qt_value in (1_000_000_000, -5):
-        editor.setValue(qt_value if whole else float(qt_value))
-        drv.type_into(attr, str(qt_value))
-        qt_result = editor.value()  # incl. sim_diffusion: the Qt box shows 4 decimals and rounds its minimum 1e-06 to 0.0, and so does the emtk field
+    for qt_value, qt_result in QT_REF["clamp"][attr].items():
+        drv.type_into(attr, qt_value)  # incl. sim_diffusion: the Qt box shows 4 decimals and rounds its minimum 1e-06 to 0.0, and so does the emtk field
         assert getattr(app.model, attr) == pytest.approx(qt_result, rel=1e-9), (attr, qt_value)
 
 
@@ -987,7 +950,7 @@ def test_the_imaging_hub_contract(app, drv):
 def test_the_window_draws_empty_and_populated_at_both_sizes(app, drv):
     for size in ((1200, 800), (800, 600)):
         strings = set(drv.draw(3, size).strings)
-        assert {"Settings", "Report", "Track", "Open", "Export CSV"} <= strings
+        assert {"Settings", "Report", "Track", "📂  Open…", "Export CSV"} <= strings
     tracked(app, drv)
     for size in ((1200, 800), (800, 600)):
         strings = set(drv.draw(3, size).strings)

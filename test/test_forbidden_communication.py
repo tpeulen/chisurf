@@ -65,8 +65,6 @@ EXPECTED_VIOLATIONS: dict[str, int] = {
     # edits the fitting client would, plus the fixture's own link setup.
     "chisurf/plugins/core/globalview/tests/test_model.py": 9,
     "chisurf/plugins/core/lightpath_simulator/core/parameters.py": 2,
-    "chisurf/plugins/fcs/fcs_filter_calculator/gui_parts/main_window.py": 1,
-    "chisurf/plugins/fcs/fcs_filter_calculator/test/test_widgets.py": 3,
     "chisurf/plugins/fluorescence_decay/irf_estimator/backend/services.py": 1,
     "chisurf/plugins/fluorescence_decay/maxent_decay/core/solver.py": 3,
     "chisurf/plugins/fluorescence_decay/synthetic_decay/gui/view_model.py": 1,

@@ -15,7 +15,6 @@
     }
   },
   "entrypoints": {
-    "emtk": "chisurf.plugins.core.style_manager.gui.app:make_style_manager_app",
-    "gui": "chisurf.plugins.core.style_manager.gui.tool:StyleManagerWidget"
+    "emtk": "chisurf.plugins.core.style_manager.gui.app:make_style_manager_app"
   }
 }

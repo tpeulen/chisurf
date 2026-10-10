@@ -3,6 +3,7 @@ import pathlib
 
 import numpy as np
 import pytest
+from emtk.testing import RecordingPainter
 
 _SPC = (
     pathlib.Path(__file__).resolve().parents[5]
@@ -15,38 +16,41 @@ _SPC = (
 )
 
 
-def test_fcs_correlator_tool(qapp, qtbot):
-    from chisurf.plugins.fcs.fcs_correlator.tool import FcsCorrelatorTool
-
-    widget = FcsCorrelatorTool()
-    qtbot.addWidget(widget)
-    assert widget.host.control is widget.app
-    widget.close()
+def _show(app, role):
+    """Open a step the way the rail does and draw a frame; True when it is the selected one."""
+    app.select(role)
+    app.draw(RecordingPainter(), 0, 0, 1200, 800)
+    return app.selected == role
 
 
-def test_workflow_leads_with_channel_definitions(qapp, qtbot):
+def test_fcs_correlator_app():
+    from chisurf.plugins.fcs.fcs_correlator.gui.app import FcsHubApp, make_app
+
+    app = make_app()
+    try:
+        assert isinstance(app, FcsHubApp)
+        assert app.workflow is not None
+    finally:
+        app.close()
+
+
+def test_workflow_leads_with_channel_definitions():
     """No detector-setup step: channel definitions are step 1, opens on files."""
-    from chisurf.plugins.fcs.fcs_correlator.gui.app import STEP_ROLES
-    from chisurf.plugins.fcs.fcs_correlator.tool import FcsCorrelatorTool
+    from chisurf.plugins.fcs.fcs_correlator.gui.app import STEP_ROLES, make_app
 
     assert STEP_ROLES == ("channel_def", "files", "filter", "correlator", "merger")
-    tool = FcsCorrelatorTool()
-    qtbot.addWidget(tool)
-    assert tool.app.selected == "files"
-    tool.close()
+    app = make_app()
+    try:
+        assert app.selected == "files"
+    finally:
+        app.close()
 
 
-def test_lifetime_filter_load_species_select_unload(qapp, qtbot, tmp_path):
+def test_lifetime_filter_load_species_select_unload(tmp_path):
     """Loading a filter switches the correlator to species-selection mode."""
-    from chisurf.gui.autoform import AutoForm
-    from chisurf.plugins.fcs.fcs_correlator.correlator_panel import (
-        CorrelatorSettingsModel,
-    )
+    from chisurf.plugins.fcs.fcs_correlator.correlator_model import CorrelatorSettingsModel
 
     model = CorrelatorSettingsModel()
-    form = AutoForm(model)
-    qtbot.addWidget(form)
-    model._form = form
     assert model.filter_mode is False
 
     nbins = 32
@@ -79,30 +83,20 @@ def test_lifetime_filter_load_species_select_unload(qapp, qtbot, tmp_path):
     assert model.filter_mode is False
 
 
-def test_channel_combos_switch_to_species(qapp, qtbot):
-    """The A/B combo section lists species when filters are loaded."""
-    from chisurf.plugins.fcs.fcs_correlator.correlator_panel import (
-        CorrelatorSettingsModel,
-        _ChannelComboWidget,
-    )
+def test_species_a_and_b_are_picked_by_index():
+    """With filters loaded the A/B choices are species indices (the step app draws them as combos)."""
+    from chisurf.plugins.fcs.fcs_correlator.correlator_model import CorrelatorSettingsModel
 
     model = CorrelatorSettingsModel()
-    widget = _ChannelComboWidget(model)
-    qtbot.addWidget(widget)
-
     model.set_lifetime_filters(np.random.rand(2, 16), ["Fast", "Slow"])
-    widget.refresh()
-    assert widget.lbl_a.text() == "Species A:"
-    assert [widget.combo_a.itemText(i) for i in range(widget.combo_a.count())] == [
-        "Fast",
-        "Slow",
-    ]
-    widget.combo_b.setCurrentIndex(1)
+    assert model.filter_mode is True
+    assert model._filter_labels == ["Fast", "Slow"]
+    model._species_b = 1
     assert model._species_b == 1
 
 
 @pytest.mark.skipif(not _SPC.exists(), reason="SPC test data not available")
-def test_files_carry_over_to_correlator(qapp, qtbot):
+def test_files_carry_over_to_correlator():
     """Selecting files in step 2 must load photon data into the correlator (step 4).
 
     Regression: the correlator read the container type from a non-existent
@@ -110,15 +104,14 @@ def test_files_carry_over_to_correlator(qapp, qtbot):
     ``tttrlib.TTTR(path, "")`` returns an empty object without raising, so the
     correlator silently received zero photons.
     """
-    from chisurf.plugins.fcs.fcs_correlator.tool import FcsCorrelatorTool
+    from chisurf.plugins.fcs.fcs_correlator.gui.app import make_app
 
-    tool = FcsCorrelatorTool()
-    qtbot.addWidget(tool)
-
-    tool.app.files_step.add_paths([str(_SPC)])
-    assert tool.show_panel_by_role("correlator")
-    model = tool.app.correlator_model
-    assert model._tttr is not None
-    assert len(model._tttr) > 0
-
-    tool.close()
+    app = make_app()
+    try:
+        app.files_step.add_paths([str(_SPC)])
+        assert _show(app, "correlator")
+        model = app.correlator_model
+        assert model._tttr is not None
+        assert len(model._tttr) > 0
+    finally:
+        app.close()

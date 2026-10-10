@@ -11,7 +11,7 @@ def test_manifest_loads():
     manifest = load_manifest(Path(__file__).parents[1] / "manifest.json")
     assert manifest is not None
     assert manifest.id == "batch_analysis"
-    assert manifest.entrypoints.gui.endswith("BatchProcessingWizard")
+    assert manifest.entrypoints.emtk and not manifest.entrypoints.gui
     assert manifest.entrypoints.cli is not None
 
 

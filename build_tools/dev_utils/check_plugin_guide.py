@@ -21,7 +21,7 @@ Usage
     CHISURF_SETTINGS_DIR=/tmp/qa-settings \\
     PYTHONPATH="modules/mmfdb/src:modules/imp-tricks/src:." \\
     python build_tools/dev_utils/check_plugin_guide.py \\
-        chisurf.plugins.burst.burst_analysis.gui.tool:BurstAnalysisTool /tmp/shots
+        burst_analysis /tmp/shots --native
 
 Pass ``--all`` instead of a target to check every native declaration and each
 legacy plugin that ships a tour. Pass ``--native`` when the target is a plugin id.

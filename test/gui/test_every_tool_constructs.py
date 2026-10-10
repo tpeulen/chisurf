@@ -51,9 +51,6 @@ BLOCKING = {
 #: work on a background thread from ``__init__``, which is the side effect the
 #: read-only-construction rule exists to forbid.
 CRASHING = {
-    # Schedules the vectorial PSF computation on a QThreadPool worker during
-    # construction; the worker segfaults in PSFComputation.run.
-    "psf_calculator",
     # Aborts, then segfaults, while building.
     "lightpath_simulator",
 }
@@ -99,7 +96,9 @@ TOOLS = _gui_tools()
 
 def test_tools_were_discovered():
     """The discovery itself must not silently find nothing."""
-    assert len(TOOLS) > 100, f"only {len(TOOLS)} GUI tools discovered"
+    # The Qt tools are being retired in favour of emtk apps (W9), so the count only falls; the check
+    # is that discovery still finds the Qt shell features that remain, not a fixed number.
+    assert len(TOOLS) > 5, f"only {len(TOOLS)} GUI tools discovered"
 
 
 def test_the_known_broken_lists_do_not_rot():

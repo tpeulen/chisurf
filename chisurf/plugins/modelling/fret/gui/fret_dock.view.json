@@ -1,5 +1,5 @@
 {
-  "_comment": "AutoForm view scheme for the FRET docking tool (IMP + IMP.bff). Short labels; detail lives in tooltips (description). Compute runs in dock_tool.py via api.operations.",
+  "_comment": "AutoForm view scheme for the FRET docking tool (IMP + IMP.bff). Short labels; detail lives in tooltips (description). The request is built by docking_model.py for api.operations.",
   "sections": [
     {
       "type": "panel",

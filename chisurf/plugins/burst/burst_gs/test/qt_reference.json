@@ -1,0 +1,16 @@
+{
+ "_note": "Recorded from the retired Qt BurstGsTool on its own simulation.",
+ "matrix": [
+  [
+   0.0,
+   1017.4686809748963
+  ],
+  [
+   2878.9439997765894,
+   0.0
+  ]
+ ],
+ "logL": -24451.57035364322,
+ "status": "logL = -24,451.6, k(1\u21922) = 2,879 /s, k(2\u21921) = 1,017 /s",
+ "report": "200 bursts, 40,000 photons, 2 states\n\nRates (s^-1):\n  k(1 -> 2) =      2,878.9\n  k(2 -> 1) =      1,017.5\n\nFRET efficiencies:\n  E(1) = 0.2370\n  E(2) = 0.7493\n\nRelaxation time(s): 256.6 us\n\nlogL = -24,451.57\nBIC  = 48,945.53   AIC = 48,911.14"
+}

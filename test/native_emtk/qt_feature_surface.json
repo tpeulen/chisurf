@@ -1,0 +1,70 @@
+{
+ "boarding": {
+  "qt_class": "BoardingAssistantWidget",
+  "qt_file": "chisurf/plugins/core/boarding/wizard.py",
+  "methods": []
+ },
+ "style": {
+  "qt_class": "StyleManagerWidget",
+  "qt_file": "chisurf/plugins/core/style_manager/gui/tool.py",
+  "methods": [
+   "load_file",
+   "load_style_files",
+   "on_apply_style",
+   "on_clear_styles",
+   "on_file_selected",
+   "on_new_file",
+   "on_save_file"
+  ]
+ },
+ "plots": {
+  "qt_class": "PlotSettingsWidget",
+  "qt_file": "chisurf/plugins/core/plot_settings/gui/tool.py",
+  "methods": []
+ },
+ "models": {
+  "qt_class": "ModelManagerWidget",
+  "qt_file": "chisurf/plugins/core/model_manager/gui/tool.py",
+  "methods": []
+ },
+ "users": {
+  "qt_class": "UserEditorWidget",
+  "qt_file": "chisurf/plugins/core/user_editor/gui/tool.py",
+  "methods": []
+ },
+ "ai": {
+  "qt_class": "AISettingsWidget",
+  "qt_file": "chisurf/plugins/ai_settings/gui/tool.py",
+  "methods": []
+ },
+ "plugins": {
+  "qt_class": "PluginManagerWidget",
+  "qt_file": "chisurf/plugins/core/plugin_manager/gui/tool.py",
+  "methods": []
+ },
+ "channels": {
+  "qt_class": "SetupChannelDefinitionWidget",
+  "qt_file": "chisurf/plugins/core/setup_channel_definition/gui/tool.py",
+  "methods": []
+ },
+ "check": {
+  "qt_class": "PluginCheckTool",
+  "qt_file": "chisurf/plugins/core/plugin_check/gui/tool.py",
+  "methods": [
+   "cleanup",
+   "clear_blacklist",
+   "on_plugin_selected",
+   "refresh_plugins",
+   "start_safe_testing",
+   "start_testing",
+   "testing_finished",
+   "update_plugin_result",
+   "update_progress"
+  ]
+ },
+ "lut": {
+  "qt_class": "TTTRLUTSettingsPanel",
+  "qt_file": "chisurf/plugins/tttr/tttr_lut_tools/gui/tool.py",
+  "methods": []
+ }
+}

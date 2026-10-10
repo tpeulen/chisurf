@@ -3,7 +3,7 @@
 :class:`BurstDataSelectionModel` holds the raw TTTR files every later step reads, and registers each newly added
 local file in MMFDB (object store + raw-data registry) through :func:`import_raw_file`. Nothing in it imports Qt.
 
-:class:`BurstDataSelectionApp` draws a *source* -- the model, or the legacy Qt ``BurstDataSelectionWidget`` that
+:class:`BurstDataSelectionApp` draws a *source* -- the model, or any object that
 speaks the same few methods (``paths``, ``add_paths``, ``remove_index``, ``clear``, ``mmfdb_payload``,
 ``import_path``) -- as three windows: the file table (``data_table`` from ``data_selection.view.json``), the
 selected file's details with its MMFDB status, and a summary. Files come from :class:`emtk.file_dialog.FileDialog`,

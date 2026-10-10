@@ -3,8 +3,8 @@
 Computes fluorescence correlation functions on a per-burst basis from Burst-ID
 ``.bst`` / BUR files. The compute core is Qt-free (:mod:`.core`), exposed via
 backend RPC services (:mod:`.backend`) and reached from the GUI through
-:class:`.gui.BurstFcsClient`. The GUI (:class:`.gui.BurstFcsTool`) renders its
-settings and dockable plots declaratively via AutoForm.
+:class:`.gui.BurstFcsClient`. The window is the native emtk app in :mod:`.gui.app`,
+declared by ``burst_fcs_emtk.view.json``.
 """
 
 from __future__ import annotations
@@ -12,7 +12,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from chisurf.core.plugin import load_manifest
-from chisurf.core.plugin.registry import apply_manifest_statefulness
 
 _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 if _manifest is not None:
@@ -23,12 +22,4 @@ else:
 # Hidden from the menu: surfaced inside the FCS Toolbox meta tool.
 menu_hidden = True
 
-__all__ = ["BurstFcsTool", "menu_hidden", "name"]
-
-
-def __getattr__(name):
-    if name == "BurstFcsTool":
-        from .gui.tool import BurstFcsTool
-
-        return BurstFcsTool
-    raise AttributeError(name)
+__all__ = ["menu_hidden", "name"]

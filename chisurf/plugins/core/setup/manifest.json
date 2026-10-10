@@ -18,7 +18,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.core.setup.gui.tool:UnifiedSettingsTool",
     "emtk": "chisurf.plugins.core.setup.gui.app:make_app"
   },
   "optional_requires": {

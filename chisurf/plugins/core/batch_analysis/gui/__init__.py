@@ -1,16 +1,5 @@
-"""Lazy GUI layer for the Batch-Analysis plugin."""
+"""Native emtk batch-analysis app (``app.py``) over the view model in ``view_model.py``."""
 
 from .view_model import BatchViewModel
 
-__all__ = ["BatchAnalysisWidget", "BatchProcessingWizard", "BatchViewModel"]
-
-
-def __getattr__(name):
-    if name in {"BatchAnalysisWidget", "BatchProcessingWizard"}:
-        from .tool import BatchAnalysisWidget, BatchProcessingWizard
-
-        return {
-            "BatchAnalysisWidget": BatchAnalysisWidget,
-            "BatchProcessingWizard": BatchProcessingWizard,
-        }[name]
-    raise AttributeError(name)
+__all__ = ["BatchViewModel"]

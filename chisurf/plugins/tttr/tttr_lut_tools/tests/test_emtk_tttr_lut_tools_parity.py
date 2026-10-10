@@ -1,9 +1,9 @@
-"""The native LUT Tools app against the Qt tool: numbers, plots, every control, no Qt.
+"""The native LUT Tools app against the recorded Qt tool: numbers, plots, every control, no Qt.
 
 Hermetic: every file is a temporary copy of the repository's BH SPC-130 sample, settings and
 MMFDB point into a temporary folder, and nothing touches the user's ``~/.chisurf``. The Qt half
-is the real ``TTRLutToolsWidget`` constructed offscreen; its plot curves, spin boxes, info label
-and bridge result are the reference the native model is compared with.
+is the retired ``TTRLutToolsWidget``: its plot curves, spin boxes, info label and bridge
+result were recorded (``qt_reference.npz`` / ``.json``) and are what the native model is compared with.
 """
 
 from __future__ import annotations
@@ -111,38 +111,16 @@ def chooser(monkeypatch):
 
 
 @pytest.fixture(scope="module")
-def qapp():
-    qtpy = pytest.importorskip("qtpy")
-    from qtpy.QtWidgets import QApplication
-
-    _ = qtpy
-    return QApplication.instance() or QApplication([])
-
-
-@pytest.fixture
-def qt_tool(qapp, env):
-    """The real Qt tool with the sample loaded in tab 1."""
-    from chisurf.plugins.tttr.tttr_lut_tools.gui import sections
-    from chisurf.plugins.tttr.tttr_lut_tools.gui.tool import TTRLutToolsWidget
-
-    widget = TTRLutToolsWidget()
-    widget.tac_panel.model.load_files([str(env["spc"])])
-    plots = widget.tac_panel.findChildren(sections._ComputePlotSection)[0]
-    yield widget, plots
-    widget.close()
+def qt_ref():
+    """What the retired Qt tool produced for the sample (``qt_reference.npz`` / ``.json``)."""
+    arrays = np.load(Path(__file__).with_name("qt_reference.npz"))
+    meta = json.loads(Path(__file__).with_name("qt_reference.json").read_text())
+    return arrays, meta
 
 
 # --------------------------------------------------------------------------- #
-# 1. numbers equal the Qt widget's for the same file
+# 1. numbers equal the Qt widget's (recorded) for the same file
 # --------------------------------------------------------------------------- #
-def qt_spins(widget):
-    from qtpy import QtWidgets
-
-    return sorted(
-        float(w.value()) for w in widget.tac_panel.findChildren(QtWidgets.QAbstractSpinBox)
-    )
-
-
 def native_spins(model):
     return sorted(
         float(getattr(model, k))
@@ -159,107 +137,79 @@ def native_spins(model):
     )
 
 
-def test_loaded_state_equals_the_qt_widget(env, qt_tool):
-    widget, plots = qt_tool
+def test_loaded_state_equals_the_qt_widget(env, qt_ref):
+    arrays, meta = qt_ref
     app = make(env)
     model = load(app, env)
-    qx, qy = plots._raw_curve.get_data()
     x, y, label = model.raw_plot()
-    np.testing.assert_array_equal(x, qx)
-    np.testing.assert_array_equal(y, qy)
+    np.testing.assert_array_equal(x, arrays["A_raw_x"])
+    np.testing.assert_array_equal(y, arrays["A_raw_y"])
     assert label == "Counts"
-    after_x, after_y = plots._after_curve.get_data()
     native_x, native_y = model.corrected_plot()
-    np.testing.assert_array_equal(native_x, after_x)
-    np.testing.assert_array_equal(native_y, after_y)
-    assert native_spins(model) == qt_spins(widget)
-    assert model.info_text == widget.tac_panel.model.info_text()
-    assert (
-        model.ws.compute.available_channels
-        == widget.tac_panel.model.available_channels
-        == [
-            0,
-            1,
-            8,
-            9,
-        ]
-    )
-    assert model.channel == widget.tac_panel.model.channel == "0"
+    np.testing.assert_array_equal(native_x, arrays["A_after_x"])
+    np.testing.assert_array_equal(native_y, arrays["A_after_y"])
+    assert native_spins(model) == meta["A"]["spins"]
+    assert model.info_text == meta["A"]["info"]
+    assert model.ws.compute.available_channels == meta["A"]["channels"] == [0, 1, 8, 9]
+    assert model.channel == meta["A"]["channel"] == "0"
     np.testing.assert_array_equal(
-        model.ws.compute.current_table["NTAC_fract"],
-        widget.tac_panel.model.current_table["NTAC_fract"],
+        model.ws.compute.current_table["NTAC_fract"], arrays["A_ntac"]
     )
 
 
-def test_hand_tuned_region_normalize_threshold_and_wrap_equal_the_qt_widget(env, qt_tool):
-    widget, plots = qt_tool
-    qt_model = widget.tac_panel.model
+def test_hand_tuned_region_normalize_threshold_and_wrap_equal_the_qt_widget(env, qt_ref):
+    arrays, meta = qt_ref
     app = make(env)
     model = load(app, env)
-    for target in (qt_model, model):
-        target.linear_start, target.linear_stop = 1200, 1900
-        target.normalize = True
-        target.threshold = 1.0
-        target.mitigate_wrap = True
-        target.ntac_required = 2048
-    qt_model.compute()
-    qt_model.notify("plot")
+    model.linear_start, model.linear_stop = 1200, 1900
+    model.normalize = True
+    model.threshold = 1.0
+    model.mitigate_wrap = True
+    model.ntac_required = 2048
     model.param_changed()
-    qx, qy = plots._raw_curve.get_data()
     x, y, label = model.raw_plot()
-    np.testing.assert_array_equal(x, qx)
-    np.testing.assert_allclose(y, qy)
+    np.testing.assert_array_equal(x, arrays["B_raw_x"])
+    np.testing.assert_allclose(y, arrays["B_raw_y"])
     assert label == "Counts / ⟨region⟩"
-    after = plots._after_curve.get_data()[1]
+    after = arrays["B_after_y"]
     np.testing.assert_array_equal(model.corrected_plot()[1], after)
     assert len(after) == 2048
-    assert model.info_text == qt_model.info_text()
+    assert model.info_text == meta["B"]["info"]
     np.testing.assert_array_equal(
-        model.ws.compute.current_table["NTAC_fract"], qt_model.current_table["NTAC_fract"]
+        model.ws.compute.current_table["NTAC_fract"], arrays["B_ntac"]
     )
 
 
-def test_every_channel_selected_gives_the_qt_lut(env, qt_tool):
-    widget, _ = qt_tool
-    qt_model = widget.tac_panel.model
+def test_every_channel_selected_gives_the_qt_lut(env, qt_ref):
+    arrays, meta = qt_ref
     app = make(env)
     model = load(app, env)
     for channel in model.ws.compute.available_channels:
-        qt_model.channel = str(channel)
-        qt_model.update()
         model.channel = str(channel)
         model.channel_changed()
         np.testing.assert_array_equal(
-            model.ws.compute.current_table["NTAC_fract"], qt_model.current_table["NTAC_fract"]
+            model.ws.compute.current_table["NTAC_fract"], arrays[f"C_ntac_{channel}"]
         )
-        assert model.info_text == qt_model.info_text()
-        assert (model.linear_start, model.linear_stop) == (
-            qt_model.linear_start,
-            qt_model.linear_stop,
-        )
+        assert model.info_text == meta["C"][str(channel)]["info"]
+        assert [model.linear_start, model.linear_stop] == meta["C"][str(channel)]["region"]
 
 
-def test_add_all_channels_gives_the_luts_the_qt_bridge_assigns(env, qt_tool):
-    widget, _ = qt_tool
-    widget._bridge_compute_to_assign()
-    qt_luts = widget.settings_panel.channel_luts
+def test_add_all_channels_gives_the_luts_the_qt_bridge_assigns(env, qt_ref):
+    arrays, meta = qt_ref
     app = make(env)
     model = load(app, env)
     click(app, "add_all")
     settle(app)
-    assert sorted(qt_luts) == sorted(model.ws.channel_luts) == [0, 1, 8, 9]
-    for channel, lut in qt_luts.items():
-        np.testing.assert_array_equal(model.ws.channel_luts[channel], lut)
+    assert meta["D"] == sorted(model.ws.channel_luts) == [0, 1, 8, 9]
+    for channel in meta["D"]:
+        np.testing.assert_array_equal(model.ws.channel_luts[channel], arrays[f"D_lut_{channel}"])
     assert "channel(s) 0, 1, 8, 9" in model.message
     assert model.ws.selected_lut == "ch9_lut"
     assert sorted(model.ws.loaded_luts) == ["ch0_lut", "ch1_lut", "ch8_lut", "ch9_lut"]
 
 
-def test_saved_lut_and_exported_corrected_files_equal_the_qt_ones(env, qt_tool, chooser):
-    widget, _ = qt_tool
-    qt_lut, qt_corr = env["dir"] / "qt_lut.npy", env["dir"] / "qt_corr.npy"
-    widget.tac_panel.model.save_lut(str(qt_lut))
-    widget.tac_panel.model.export_corrected(str(qt_corr))
+def test_saved_lut_and_exported_corrected_files_equal_the_qt_ones(env, qt_ref, chooser):
+    arrays, _ = qt_ref
     app = make(env)
     load(app, env)
     lut, corr = env["dir"] / "lut.npy", env["dir"] / "corr.npy"
@@ -270,14 +220,13 @@ def test_saved_lut_and_exported_corrected_files_equal_the_qt_ones(env, qt_tool, 
     click(app, "request_export_corrected")
     settle(app)
     assert "Exported corrected micro-times" in app.model.message
-    np.testing.assert_array_equal(np.load(lut), np.load(qt_lut))
-    np.testing.assert_array_equal(np.load(corr), np.load(qt_corr))
+    np.testing.assert_array_equal(np.load(lut), arrays["E_lut"])
+    np.testing.assert_array_equal(np.load(corr), arrays["E_corr"])
     assert np.load(corr).size == 56499
 
 
-def test_autodetect_equals_qt_on_a_channel_with_a_plateau_and_reports_failure(env, qt_tool):
-    widget, _ = qt_tool
-    qt_model = widget.tac_panel.model
+def test_autodetect_equals_qt_on_a_channel_with_a_plateau_and_reports_failure(env, qt_ref):
+    _, meta = qt_ref
     app = make(env)
     model = load(app, env)
     # Channel 0 of this decay file has no flat plateau: the Qt tool swallows the error, the
@@ -287,22 +236,11 @@ def test_autodetect_equals_qt_on_a_channel_with_a_plateau_and_reports_failure(en
     assert (model.linear_start, model.linear_stop) == (1200, 1900)
     assert model.message.startswith("Auto-detect failed")
     # Channel 8 has one.
-    for target in (qt_model, model):
-        target.channel = "8"
-    qt_model.update()
+    model.channel = "8"
     model.channel_changed()
-    for target in (qt_model, model):
-        target.linear_start, target.linear_stop = 1200, 1900
-    qt_model.autodetect()
+    model.linear_start, model.linear_stop = 1200, 1900
     click(app, "autodetect")
-    assert (
-        (model.linear_start, model.linear_stop)
-        == (788, 828)
-        == (
-            qt_model.linear_start,
-            qt_model.linear_stop,
-        )
-    )
+    assert [model.linear_start, model.linear_stop] == meta["F"] == [788, 828]
     assert model.message == "Auto-detected region [788, 828)."
 
 

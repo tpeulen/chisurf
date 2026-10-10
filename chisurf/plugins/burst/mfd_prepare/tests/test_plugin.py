@@ -104,23 +104,6 @@ class TestCli:
         assert "fit" in result.output
 
 
-@pytest.fixture
-def qapp():
-    from qtpy import QtWidgets
-
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
-    yield app
-
-
-class TestGui:
-    def test_gui_construction(self, qapp):
-        from chisurf.plugins.burst.mfd_prepare.gui.tool import MfdPrepareTool
-
-        tool = MfdPrepareTool()
-        assert tool.windowTitle() == "MFD Prepare"
-        assert tool.centralWidget() is not None
-
-
 def test_jsonable_drops_in_process_handles():
     """The summary's ``_tttrs`` made the RPC result unserializable."""
     import json

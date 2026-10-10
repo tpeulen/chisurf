@@ -1,26 +1,11 @@
 """Headless test for the Burst Background Estimation diagnostics plots.
 
-The tool was rebuilt as an AutoForm over a Qt-free view model: the two plots are
-now the ``bg_iht_plot`` / ``bg_rate_plot`` sections of ``background.view.json``
-rather than ``iht_plot`` / ``rate_plot`` attributes on the widget, and the
-detector colouring moved to :func:`...view_model.det_color`. This test follows
-the split -- what is drawn is asserted on the view model, and that it draws and
-paints is asserted on the sections.
+What is drawn is asserted on the Qt-free view model, and that it paints is asserted on the native app.
 """
 
 from __future__ import annotations
 
 import numpy as np
-import pytest
-
-pytest.importorskip("qtpy")
-
-
-@pytest.fixture(scope="module")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
 def _diagnostics():
@@ -68,32 +53,26 @@ def test_the_view_model_turns_diagnostics_into_plottable_series():
     assert model.iht_series() == []
 
 
-def test_diagnostics_plots_build_and_render(qapp, tmp_path):
-    """Both plot sections take the diagnostics and paint headlessly."""
-    from chisurf.plugins.burst.burst_background import BurstBackgroundEstimator
-    from chisurf.plugins.burst.burst_background.gui import sections
+def test_diagnostics_plots_build_and_render():
+    """The native app takes the diagnostics and paints them headlessly; clearing drops the series."""
+    from emtk.testing import RecordingPainter
 
-    w = BurstBackgroundEstimator(show_channel_definition=False)
-    iht = w.findChildren(sections._IhtPlotSection)
-    rate = w.findChildren(sections._RatePlotSection)
-    assert len(iht) == 1 and len(rate) == 1, "the view spec must build both plots"
+    from chisurf.plugins.burst.burst_background.gui.app import create_app
 
-    w.model.diagnostics = _diagnostics()
-    w.model.notify()
+    app = create_app()
+    try:
+        app.model.diagnostics = _diagnostics()
+        app.model.notify()
+        assert len(app.model.iht_series()) >= 4
+        for _ in range(3):
+            painter = RecordingPainter()
+            app.draw(painter, 0, 0, 1200, 800)
+        assert painter.strings, "nothing was drawn"
 
-    # The series reached the plot: its CSV export is the public way to ask.
-    exported = tmp_path / "iht.csv"
-    iht[0].plot.export_csv(str(exported))
-    rows = exported.read_text().splitlines()
-    assert len(rows) > 1, "the inter-photon-time plot holds no series"
-
-    w.resize(720, 600)
-    assert not w.grab().isNull()
-
-    w.model.clear()
-    empty = tmp_path / "empty.csv"
-    iht[0].plot.export_csv(str(empty))
-    assert empty.read_text().strip() == "", "clearing must drop the plotted series"
+        app.model.clear()
+        assert app.model.iht_series() == []
+    finally:
+        app.close()
 
 
 def test_semantic_detector_colors():

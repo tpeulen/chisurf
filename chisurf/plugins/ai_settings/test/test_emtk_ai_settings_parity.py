@@ -178,36 +178,16 @@ def saved():
 # --------------------------------------------------------------------------- #
 # 1. model defaults and the provider table equal the Qt widget's
 # --------------------------------------------------------------------------- #
-def test_provider_options_and_defaults_equal_the_qt_tool(qapp):
-    """The emtk provider list is the Qt choice's list; a fresh model equals the Qt widget's."""
-    pytest.importorskip("qtpy")
-    from chisurf.gui.autoform.sections.builtin import ChoiceWidget
-    from chisurf.plugins.ai_settings.gui.tool import AISettingsWidget
-
-    widget = AISettingsWidget()
-    try:
-        combo = next(
-            c.combo for c in widget.form.findChildren(ChoiceWidget) if c._section.attr == "provider"
-        )
-        qt_labels = [combo.itemText(i) for i in range(combo.count())]
-        app = make_app()
-        assert [label for _key, label in app.model.available_providers()] == qt_labels
-        for attr in (
-            "provider",
-            "base_url",
-            "api_key",
-            "text_model",
-            "image_model",
-            "temperature",
-            "top_p",
-            "max_tokens",
-        ):
-            assert getattr(app.model, attr) == getattr(widget.model, attr), attr
-        assert app.model.provider == "mistral"
-        assert app.model.base_url == "https://api.mistral.ai/v1"
-        assert (app.model.temperature, app.model.top_p, app.model.max_tokens) == (0.3, 0.9, 4096)
-    finally:
-        widget.close()
+def test_provider_options_and_defaults_equal_the_qt_tool():
+    """The emtk provider list is the retired Qt choice's list; a fresh model equals its model (recorded)."""
+    qt = json.loads((HERE / "qt_reference.json").read_text())
+    app = make_app()
+    assert [label for _key, label in app.model.available_providers()] == qt["labels"]
+    for attr, value in qt["defaults"].items():
+        assert getattr(app.model, attr) == value, attr
+    assert app.model.provider == "mistral"
+    assert app.model.base_url == "https://api.mistral.ai/v1"
+    assert (app.model.temperature, app.model.top_p, app.model.max_tokens) == (0.3, 0.9, 4096)
 
 
 def test_numeric_ranges_equal_the_qt_spec():
@@ -874,9 +854,9 @@ def test_port_is_qt_free():
     assert result["ok"], result["output"]
 
 
-def test_manifest_keeps_both_entrypoints():
+def test_manifest_declares_only_the_native_entrypoint():
     manifest = json.loads((HERE.parent / "manifest.json").read_text())
-    assert manifest["entrypoints"]["gui"].endswith("gui.tool:AISettingsWidget")
+    assert "gui" not in manifest["entrypoints"]
     assert (
         manifest["entrypoints"]["emtk"]
         == "chisurf.plugins.ai_settings.gui.app:make_ai_settings_app"

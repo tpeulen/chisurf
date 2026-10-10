@@ -21,7 +21,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.core.plugin_check.gui.tool:PluginCheckTool",
     "emtk": "chisurf.plugins.core.plugin_check.gui.app:make_app"
   }
 }

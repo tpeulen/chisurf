@@ -1,0 +1,182 @@
+{
+ "titles": [
+  "User",
+  "Username",
+  "Role",
+  "Admin",
+  "Autologin",
+  "Active",
+  "E-mail"
+ ],
+ "cells": [
+  [
+   "admin",
+   "admin",
+   "Generic",
+   "yes",
+   "",
+   "\u2605",
+   ""
+  ],
+  [
+   "Alice Archer",
+   "alice",
+   "Principal Investigator",
+   "yes",
+   "",
+   "",
+   "alice@example.org"
+  ],
+  [
+   "Bob Baker",
+   "bob",
+   "Postdoc",
+   "",
+   "",
+   "",
+   "bob@example.org"
+  ],
+  [
+   "Carol Chen",
+   "carol",
+   "PhD Student",
+   "",
+   "yes",
+   "",
+   "carol@example.org"
+  ],
+  [
+   "Dave Dunn",
+   "dave",
+   "Facility Manager",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "Erin Evans",
+   "erin",
+   "Technician",
+   "",
+   "",
+   "",
+   "erin@example.org"
+  ],
+  [
+   "Guest User",
+   "guest",
+   "Generic",
+   "",
+   "yes",
+   "",
+   ""
+  ],
+  [
+   "Demo Operator",
+   "operator_demo",
+   "Generic",
+   "",
+   "",
+   "",
+   "operator@example.org"
+  ],
+  [
+   "Thomas Peulen",
+   "thomas",
+   "Generic",
+   "",
+   "",
+   "",
+   "thomas.peulen@tu-dortmund.de"
+  ],
+  [
+   "Local user",
+   "user",
+   "Generic",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "Local service identity",
+   "user_default",
+   "Generic",
+   "",
+   "",
+   "",
+   ""
+  ]
+ ],
+ "status": "11 user(s). Signed in as 'admin'.",
+ "selected_key": "bob",
+ "edits": [
+  "bob",
+  "Bob Baker",
+  "bob@example.org",
+  "Postdoc",
+  "Institute of Biophysics",
+  "FCS",
+  "",
+  "",
+  "",
+  ""
+ ],
+ "boxes": [
+  false,
+  false
+ ],
+ "details": "### Bob Baker\n",
+ "flags_alice": [
+  true,
+  false
+ ],
+ "flags_carol": [
+  false,
+  true
+ ],
+ "password": {
+  "": [
+   0,
+   "Enter a password",
+   ""
+  ],
+  "a": [
+   1,
+   "Strength: Weak",
+   "Requirements: At least 8 characters, At least one uppercase letter, At least one number, At least one special character"
+  ],
+  "abcdefgh": [
+   2,
+   "Strength: Weak",
+   "Requirements: At least one uppercase letter, At least one number, At least one special character"
+  ],
+  "Abcdefgh": [
+   3,
+   "Strength: Medium",
+   "Requirements: At least one number, At least one special character"
+  ],
+  "Abcdefg1": [
+   4,
+   "Strength: Medium",
+   "Requirements: At least one special character"
+  ],
+  "Abcdef1!": [
+   5,
+   "Strength: Strong",
+   ""
+  ],
+  "ABC123!!": [
+   4,
+   "Strength: Medium",
+   "Requirements: At least one lowercase letter"
+  ],
+  "aA1!": [
+   4,
+   "Strength: Medium",
+   "Requirements: At least 8 characters"
+  ]
+ },
+ "denied_status": "Listing users requires an administrator account. Sign in as an administrator, then press Reload."
+}

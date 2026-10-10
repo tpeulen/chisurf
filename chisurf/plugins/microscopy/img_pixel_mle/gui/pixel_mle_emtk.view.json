@@ -13,6 +13,12 @@
           "type": "button_row",
           "buttons": [
             {
+              "label": "Load example",
+              "icon": "🧪",
+              "action": "load_example",
+              "description": "Load a simulated two-lifetime image (1.5 ns left, 3.5 ns right) with its IRF and matching settings, so the lifetime map can be checked against a number."
+            },
+            {
               "label": "Run",
               "icon": "▶️",
               "action": "request_run",

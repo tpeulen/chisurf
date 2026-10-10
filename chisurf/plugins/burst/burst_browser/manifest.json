@@ -19,7 +19,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.burst.burst_browser:BurstBrowserWidget",
     "emtk": "chisurf.plugins.burst.burst_browser.gui.app:create_app"
   },
   "menu_hidden": true

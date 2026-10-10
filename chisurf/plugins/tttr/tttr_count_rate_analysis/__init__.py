@@ -33,22 +33,3 @@ menu_hidden = True
 
 # Expose the plugin CLI through chisurf.core.cli.
 cli_entrypoint = "count-rate=chisurf.plugins.tttr.tttr_count_rate_analysis.cli:cli"
-
-__all__ = ["CountRateAnalyzer"]
-
-
-def __getattr__(attr_name: str):
-    """Lazy Qt import gate (no Qt import as a package side effect)."""
-    if attr_name == "CountRateAnalyzer":
-        from .gui.tool import CountRateAnalyzer as _cls
-
-        globals()["CountRateAnalyzer"] = _cls
-        return _cls
-    raise AttributeError(f"module {__name__!r} has no attribute {attr_name!r}")
-
-
-if __name__ == "plugin":
-    from .gui.tool import CountRateAnalyzer
-
-    window = CountRateAnalyzer()
-    window.show()

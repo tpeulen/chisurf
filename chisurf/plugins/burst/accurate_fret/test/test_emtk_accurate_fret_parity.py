@@ -1,15 +1,12 @@
-"""The native accurate-FRET app at parity with the Qt AccurateFretTool: numbers, guide, tooltips, plots.
+"""The native accurate-FRET app at parity with the retired Qt AccurateFretTool: numbers, guide, tooltips, plots.
 
-The Qt numbers come from ``AccurateFretTool`` built in a subprocess on the same
-simulated bursts (this process stays Qt-free); the calibration workflow itself
-is covered by ``test_native.py``.
+The Qt numbers were recorded from ``AccurateFretTool`` on the same simulated bursts (qt_reference.json); the
+calibration workflow itself is covered by ``test_native.py``.
 """
 
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -62,40 +59,10 @@ def _draw(app, size=(1200, 800), times=3):
     return painter
 
 
-_QT = r"""
-import json, sys
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-from chisurf.plugins.burst.accurate_fret.gui.tool import AccurateFretTool
-w = AccurateFretTool()
-m = w.model
-m.n_bootstrap = 0
-m.donor_lifetime = float(sys.argv[2])
-m.set_filename(sys.argv[1])
-assert m.compute()
-print("FACTS" + json.dumps({"factors": m.factor_rows(), "populations": m.population_rows()}, default=str))
-"""
-
-
 def test_calibration_equals_the_qt_tool(tmp_path):
-    """Same bursts, same settings: every factor and population row the Qt tool reports."""
-    pytest.importorskip("qtpy")
-    path = _bursts(tmp_path)
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen", CHISURF_SETTINGS_DIR=str(tmp_path / "s"))
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT, str(path), str(TAU_D0)],
-        capture_output=True,
-        text=True,
-        timeout=300,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None:
-        pytest.skip(f"AccurateFretTool could not be built here: {proc.stderr[-800:]}")
-    qt = json.loads(line[len("FACTS") :])
-    app = _calibrated(path)
+    """Same bursts, same settings: every factor and population row the retired Qt tool reported (qt_reference.json)."""
+    recorded = json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
+    app = _calibrated(_bursts(tmp_path))
     try:
         ours = json.loads(
             json.dumps(
@@ -103,7 +70,7 @@ def test_calibration_equals_the_qt_tool(tmp_path):
                 default=str,
             )
         )
-        assert ours == qt
+        assert ours == {"factors": recorded["factors"], "populations": recorded["populations"]}
     finally:
         app.close()
 

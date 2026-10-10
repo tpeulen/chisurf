@@ -491,16 +491,10 @@ class PluginManagerViewModel:
 
     @staticmethod
     def _refresh_host_toolbar() -> None:
-        """Rebuild the main window's plugin toolbar, if one is up."""
+        """Rebuild the main window's plugin toolbar, if a Qt shell is up (never fails the save)."""
         try:
-            from qtpy import QtWidgets
+            from chisurf.gui.plugin_toolbar import refresh_plugin_toolbar
 
-            for widget in QtWidgets.QApplication.topLevelWidgets():
-                loader = getattr(widget, "load_toolbar_plugins", None)
-                if callable(loader):
-                    toolbar = getattr(widget, "plugins_toolbar", None)
-                    if toolbar is not None:
-                        toolbar.clear()
-                    loader()
+            refresh_plugin_toolbar()
         except Exception:
             pass

@@ -1,9 +1,9 @@
-"""The native Photon Table against the Qt tool: rows, summary, actions, errors, drawing, no Qt.
+"""The native Photon Table against the recorded Qt tool (qt_reference.json): rows, summary, actions, errors, drawing, no Qt.
 
 Hermetic: the settings folder is a temporary one, the data is a private copy of
 ``test/data/tttr/BH/132/BH_SPC132.spc`` (183,657 photons on routing channels 0, 1, 8 and 9).
-The reference numbers are read straight from tttrlib for the same file, and the Qt tool
-(constructed offscreen) is the second source: its drawn cells and its status messages.
+The reference numbers are read straight from tttrlib for the same file, and the recorded Qt tool
+is the second source: its drawn cells and its status messages.
 """
 
 from __future__ import annotations
@@ -133,33 +133,22 @@ def test_filtered_rows_equal_tttrlib(sample, reference):
 
 
 @needs_sample
-def test_summary_and_cells_equal_the_qt_tool(qapp, sample):
-    """The Qt tool's drawn summary and first rows are the native app's."""
-    from chisurf.plugins.tttr.photon_table.gui.tool import PhotonTableTool
-
-    tool = PhotonTableTool()
-    try:
-        tool.load_file(str(sample))
-        qt = RecordingPainter()
-        tool.app.draw(qt, 0.0, 0.0, 1200.0, 800.0)
-        qt_strings = set(qt.strings)
-        app = loaded(sample)
-        m = app.model
-        assert str(sample) in qt_strings and m.file_name == str(sample)
-        assert m.summary_text in qt_strings
-        assert m.channels_text in qt_strings
-        assert m.notice == tool.statusBar().currentMessage()
-        # the first rows: the Qt table's cells (thousands separators) are the native values
-        for r in m.rows[:25]:
-            assert f"{r['photon']:,}" in qt_strings and f"{r['idx']:,}" in qt_strings
-            assert f"{r['micro']}" in qt_strings and f"{r['macro']:.6f}" in qt_strings
-        # the model behind both is the same rows
-        assert [r["idx"] for r in m.rows] == [
-            r["idx"]
-            for r in tool._model.page(tool.first_index, tool.rows_per_page, tool.channel_filter)
-        ]
-    finally:
-        tool.close()
+def test_summary_and_cells_equal_the_recorded_qt_tool(sample):
+    """The retired Qt tool's drawn summary and first rows (qt_reference.json) are the native app's."""
+    ref = json.loads((HERE / "qt_reference.json").read_text())
+    qt_strings = set(ref["strings"])
+    app = loaded(sample)
+    m = app.model
+    assert m.file_name == str(sample)
+    assert m.summary_text in qt_strings
+    assert m.channels_text in qt_strings
+    assert m.notice == ref["status"].replace("<FILE>", str(sample))
+    # the first rows: the Qt table's cells (thousands separators) are the native values
+    for r in m.rows[:25]:
+        assert f"{r['photon']:,}" in qt_strings and f"{r['idx']:,}" in qt_strings
+        assert f"{r['micro']}" in qt_strings and f"{r['macro']:.6f}" in qt_strings
+    # the model behind both is the same rows
+    assert [r["idx"] for r in m.rows] == ref["page_idx"]
 
 
 @needs_sample
@@ -354,10 +343,8 @@ def test_a_missing_file_is_reported_and_nothing_loads(tmp_path):
 
 
 @needs_sample
-def test_an_unreadable_file_keeps_the_old_table_and_says_what_tttrlib_said(qapp, sample, tmp_path):
-    """Same text as the Qt tool's status message, and the table that was shown stays."""
-    from chisurf.plugins.tttr.photon_table.gui.tool import PhotonTableTool
-
+def test_an_unreadable_file_keeps_the_old_table_and_says_what_tttrlib_said(sample, tmp_path):
+    """Same text as the Qt tool's recorded status message, and the table that was shown stays."""
     bad = tmp_path / "broken.ptu"
     bad.write_text("this is not a TTTR file")
     app = loaded(sample)
@@ -367,12 +354,8 @@ def test_an_unreadable_file_keeps_the_old_table_and_says_what_tttrlib_said(qapp,
     assert app.model.table.n_photons == 183_657 and app.model.first_index == 400
     assert app.model.notice.startswith(f"Could not open {bad}: ")
     assert app.model.input_file == str(sample)
-    tool = PhotonTableTool()
-    try:
-        tool.load_file(str(bad))
-        assert app.model.notice == tool.statusBar().currentMessage()
-    finally:
-        tool.close()
+    ref = json.loads((HERE / "qt_reference.json").read_text())
+    assert app.model.notice == ref["bad_status"].replace("<FILE>", str(bad))
     # the window still draws the old table after the error
     assert any("183,657 photons" in s for s in draw(app).strings)
 

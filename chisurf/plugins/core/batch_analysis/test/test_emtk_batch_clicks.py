@@ -13,7 +13,6 @@ from chisurf.plugins.emtk_layout import action_caption
 from pathlib import Path
 
 import pytest
-from emtk import keys
 
 from chisurf.plugins.emtk_hermetic import (  # noqa: F401  (autouse fixtures)
     hermetic,

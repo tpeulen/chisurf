@@ -10,14 +10,12 @@ from __future__ import annotations
 import json
 import os
 import pwd
-import time
 from pathlib import Path
 
-import numpy as np
 import pytest
 
 from chisurf.plugins.fcs.fcs_filter_calculator.gui.app import SPEC, create_app
-from chisurf.plugins.fcs.fcs_filter_calculator.gui.panel import INSTRUMENT_ROWS, component_spec
+from chisurf.plugins.fcs.fcs_filter_calculator.gui.panel import INSTRUMENT_ROWS
 
 from .driving import (
     BIG,
@@ -47,49 +45,16 @@ def drv():
     app.close()
 
 
-@pytest.fixture
-def qapp():
-    QtWidgets = pytest.importorskip("qtpy.QtWidgets")
-    application = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    yield application
-    return
-
-
-def qt_widget(qapp):
-    from chisurf.plugins.fcs.fcs_filter_calculator.gui_parts.main_window import (
-        FcsFilterCalculatorWidget,
-    )
-
-    widget = FcsFilterCalculatorWidget()
-    widget.show()
-    end = time.monotonic() + 30
-    while widget._result is None and time.monotonic() < end:
-        qapp.processEvents()
-        time.sleep(0.02)
-    return widget
-
-
-def test_the_example_starts_with_the_qt_widgets_fit_range_and_components(qapp):
-    widget = qt_widget(qapp)
+def test_the_example_starts_with_the_qt_widgets_fit_range_and_components():
+    reference = json.loads((Path(__file__).parent / "qt_reference.json").read_text())
+    app = create_app()
     try:
-        app = create_app()
-        try:
-            qt_names = [widget.lw_species.item(i).text() for i in range(widget.lw_species.count())]
-            assert [c.name for c in app.model.components] == [n.split("  [")[0] for n in qt_names]
-            assert (
-                (widget.sb_fit_start.value(), widget.sb_fit_stop.value())
-                == tuple(app.model._fit_bounds)
-                == (10, 254)
-            )
-            assert (
-                app.model.total_label == widget.lbl_total.text()
-                if hasattr(widget, "lbl_total")
-                else True
-            )
-        finally:
-            app.close()
+        assert [c.name for c in app.model.components] == [
+            n.split("  [")[0] for n in reference["components"]
+        ]
+        assert tuple(app.model._fit_bounds) == tuple(reference["fit_range"]) == (10, 254)
     finally:
-        widget.deleteLater()
+        app.close()
 
 
 def test_the_instrument_rows_are_the_qt_instrument_options(qapp):

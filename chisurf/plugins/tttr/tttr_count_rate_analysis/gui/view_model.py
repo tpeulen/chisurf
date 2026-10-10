@@ -4,7 +4,7 @@
 count-rate results, and computes count rates through :mod:`tttrlib`. The channel
 definition comes from the (Qt) ``DetectorWizardPage`` via an injected
 ``channels_provider`` callable, keeping this model free of Qt so it is unit-
-testable headlessly. The GUI (``gui.tool`` + ``gui.sections``) owns Qt concerns.
+testable headlessly. The native app (``gui.app``) draws it.
 
 Mirrors :class:`chisurf.plugins.tttr.ptu_alex_creator.gui.view_model.AlexViewModel`.
 """

@@ -164,72 +164,33 @@ class TestAISettingsModel:
         assert "successful" in model.status_html.lower()
 
 
-# --- widget/AutoForm rendering tests -------------------------------------------
-class TestAISettingsWidget:
-    """The AutoForm-mounted widget renders the secret + editable controls."""
+def test_connection_runs_off_the_ui_thread(monkeypatch):
+    """The blocking request runs on a background thread, never the caller's."""
+    import threading
+    import time
 
-    def test_creation_mounts_autoform(self, qapp, qtbot):
-        from chisurf.gui.autoform import AutoForm
-        from chisurf.plugins.ai_settings.gui.tool import AISettingsWidget
+    from chisurf.plugins.ai_settings.gui.model import AISettingsModel
 
-        widget = AISettingsWidget()
-        qtbot.addWidget(widget)
-        assert isinstance(widget.form, AutoForm)
-        assert widget.model is not None
+    seen = {}
 
-    def test_secret_api_key_field_masked_with_reveal(self, qapp, qtbot):
-        from qtpy import QtWidgets
+    def fake_get_models(base_url, api_key):
+        seen["worker"] = threading.current_thread()
+        return {"data": []}
 
-        from chisurf.gui.autoform.sections.builtin import ValueWidget
-        from chisurf.plugins.ai_settings.gui.tool import AISettingsWidget
+    monkeypatch.setattr(AISettingsModel, "_get_models", staticmethod(fake_get_models))
+    from chisurf.plugins.ai_settings.gui.app import AISettingsApp
 
-        widget = AISettingsWidget()
-        qtbot.addWidget(widget)
-        key_field = next(
-            vw
-            for vw in widget.form.findChildren(ValueWidget)
-            if getattr(vw._section, "attr", None) == "api_key"
-        )
-        assert key_field.editor.echoMode() == QtWidgets.QLineEdit.Password
-        key_field.reveal.setChecked(True)
-        assert key_field.editor.echoMode() == QtWidgets.QLineEdit.Normal
-
-    def test_model_combos_are_editable(self, qapp, qtbot):
-        from chisurf.gui.autoform.sections.builtin import ChoiceWidget
-        from chisurf.plugins.ai_settings.gui.tool import AISettingsWidget
-
-        widget = AISettingsWidget()
-        qtbot.addWidget(widget)
-        editable_attrs = {
-            cw._section.attr
-            for cw in widget.form.findChildren(ChoiceWidget)
-            if cw.combo is not None and cw.combo.isEditable()
-        }
-        assert {"text_model", "image_model"} <= editable_attrs
-
-    def test_connection_runs_off_the_ui_thread(self, qapp, qtbot, monkeypatch):
-        import threading
-
-        from chisurf.plugins.ai_settings.gui.model import AISettingsModel
-        from chisurf.plugins.ai_settings.gui.tool import AISettingsWidget
-
-        seen = {}
-
-        def fake_get_models(base_url, api_key):
-            seen["worker"] = threading.current_thread()
-            return {"data": []}
-
-        monkeypatch.setattr(AISettingsModel, "_get_models", staticmethod(fake_get_models))
-
-        widget = AISettingsWidget()
-        qtbot.addWidget(widget)
-        widget.model.set_provider("openai")
-        widget.model.api_key = "sk-x"
-        widget.model.test_connection()
-
-        qtbot.waitUntil(lambda: "successful" in widget.model.status_html.lower(), timeout=3000)
-        # The blocking request ran on a background thread, not the GUI thread.
-        assert seen["worker"] is not threading.main_thread()
+    app = AISettingsApp()
+    model = app.model
+    model.set_provider("openai")
+    model.api_key = "sk-x"
+    model.test_connection()
+    end = time.monotonic() + 3
+    while "successful" not in model.status_html.lower() and time.monotonic() < end:
+        time.sleep(0.01)
+        app.job.poll()
+    assert "successful" in model.status_html.lower()
+    assert seen["worker"] is not threading.main_thread()
 
 
 def test_native_acp_command_is_saved_without_replacing_http_provider():

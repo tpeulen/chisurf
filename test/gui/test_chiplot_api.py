@@ -466,9 +466,6 @@ def test_migrated_modules_import(qapp):
 
     for name in (
         "chisurf.plugins.tttr.microtime_histogram.gui.app",
-        "chisurf.plugins.fcs.fcs_correlator.correlator_panel",
-        "chisurf.plugins.fcs.fcs_correlator.filter_panel",
-        "chisurf.plugins.fcs.fcs_correlator.merger_panel",
         # Batch 11
         "chisurf.plugins.fluorescence_decay.tr_anisotropy.gui.irf_widget",
         "chisurf.plugins.vv_vh_anisotropy",
@@ -484,12 +481,8 @@ def test_migrated_modules_import(qapp):
         # Batch 16
         "chisurf.plugins.core.lightpath_simulator.gui.node_types",
         # Batch 17
-        "chisurf.plugins.burst.burst_2cde.gui.tool",
         "chisurf.gui.widgets.spectrum_view",
-        # Batch 20
-        "chisurf.plugins.burst.burst_background.gui.sections",
-        # Batch 21
-        "chisurf.plugins.burst.burst_browser.gui.sections",
+        # Batches 20-21 (burst_background / burst_browser sections) were deleted with their Qt tools.
         # NB: irf_estimator.gui.tool (Batch 24) is intentionally NOT listed — like
         # burst_fcs_correlator it transitively imports IMP, which segfaults in this
         # shared test process. Verified standalone + screenshot-checked instead.
@@ -500,8 +493,6 @@ def test_migrated_modules_import(qapp):
         # Batch 27
         # NB: surfaceplot was deleted with the orphan sweep (Batch 31) — the
         # module is gone, so it cannot be checked for import cleanliness here.
-        # Batch 28
-        "chisurf.plugins.fcs.fcs_filter_calculator.gui_parts.main_window",
         # Batch 32
         "chisurf.gui.plots.residual_image",
         # Batch 33

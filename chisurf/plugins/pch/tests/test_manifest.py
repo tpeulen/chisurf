@@ -10,7 +10,7 @@ def test_manifest_loads():
     assert manifest is not None
     assert manifest.id == "pch"
     assert manifest.version == "2.0.0"
-    assert manifest.entrypoints.gui is not None
+    assert manifest.entrypoints.emtk is not None
     assert manifest.entrypoints.cli is not None
     assert manifest.entrypoints.services is not None
     assert len(manifest.rpc_methods) == 3

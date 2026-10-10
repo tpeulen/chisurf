@@ -9,15 +9,14 @@ both files against x' = R x + t computed here.
 from __future__ import annotations
 
 import json
-import os
 import re
-import subprocess
 import sys
 import time
 from pathlib import Path
 
 import numpy as np
 import pytest
+from chisurf.plugins.traj.traj_save_topology.test.qt_recorded import load_reference, same_coordinates
 from emtk.testing import PixelPainter, RecordingPainter
 
 HERE = Path(__file__).parent
@@ -77,71 +76,12 @@ def _read(path):
     return md.load(str(path), top=TOP)
 
 
-_QT = r"""
-import json, sys
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-from chisurf.plugins.traj.traj_rotate_translate import sections
-from chisurf.plugins.traj.traj_rotate_translate.widget import RotateTranslateTrajectoryWidget
-traj, top, target, matrix, vector, stride = sys.argv[1:7]
-told, errors = [], []
-sections.dialogs.information = lambda parent, title, text: told.append([title, text])
-sections.dialogs.error = lambda parent, title, text: errors.append([title, text])
-w = RotateTranslateTrajectoryWidget()
-io = w.findChild(sections._IoSection)
-io._save()                                            # nothing chosen yet
-io._load_trajectory(traj); io._load_topology(top)
-for i, row in enumerate(json.loads(matrix)):          # typed into the editors, as a user would
-    for j, value in enumerate(row):
-        io._rot_edits[i][j].setText(str(value))
-for k, value in enumerate(json.loads(vector)):
-    io._trans_edits[k].setText(str(value))
-w.model.stride = int(stride)
-QtWidgets.QFileDialog.getSaveFileName = staticmethod(lambda *a, **k: ("", ""))
-io._save()                                            # the dialog closed
-QtWidgets.QFileDialog.getSaveFileName = staticmethod(lambda *a, **k: (target, "DCD trajectory (*.dcd)"))
-io._save()
-QtWidgets.QFileDialog.getSaveFileName = staticmethod(lambda *a, **k: (target + "/inside_a_file.dcd", ""))
-io._save()                                            # an unwritable target
-print("FACTS" + json.dumps({"told": told, "errors": errors, "log": w.model._log,
-                            "matrix": w.model.rotation_matrix.tolist()}))
-"""
 
 
 @pytest.fixture(scope="module")
-def qt(tmp_path_factory):
-    pytest.importorskip("qtpy")
-    target = tmp_path_factory.mktemp("qt") / "moved.dcd"
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            _QT,
-            TRAJ,
-            TOP,
-            str(target),
-            json.dumps(R),
-            json.dumps(T),
-            str(STRIDE),
-        ],
-        capture_output=True,
-        text=True,
-        timeout=300,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and (
-        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
-    ):
-        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
-    # Any other failure is the Qt widget's own: skipping it hid a broken Qt host.
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    facts = json.loads(line[len("FACTS") :])
-    facts["target"] = target
-    return facts
+def qt():
+    """The retired Qt widget's answers, recorded before it was deleted (qt_reference.json)."""
+    return load_reference(HERE)
 
 
 # 1. the same file as the Qt widget; that file is R x + t of the source
@@ -158,11 +98,11 @@ def test_a_save_writes_what_the_qt_widget_writes(qt, tmp_path):
         target = tmp_path / "moved.dcd"
         _pick(app, target)
         _settle(app)
-        ours, theirs = _read(target), _read(qt["target"])
+        ours = _read(target)
         source = np.asarray(md.load(TRAJ, top=TOP, stride=STRIDE).xyz, dtype=float)
         expected = source @ np.asarray(R).T + np.asarray(T)
-        assert ours.n_frames == theirs.n_frames == 116
-        assert np.asarray(ours.xyz) == pytest.approx(np.asarray(theirs.xyz), abs=1e-4)
+        assert ours.n_frames == 116
+        assert same_coordinates(ours.xyz, qt["target"])
         assert np.asarray(ours.xyz) == pytest.approx(expected, abs=1e-3)
         x, y, z = source[0, 0]  # (10 - y, x, z), the help page's example
         assert np.asarray(ours.xyz)[0, 0] == pytest.approx([10 - y, x, z], abs=1e-3)

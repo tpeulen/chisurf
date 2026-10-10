@@ -16,7 +16,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.tttr.filetools.gui.tool:FileToolsTool",
     "emtk": "chisurf.plugins.tttr.filetools.gui.app:make_app"
   },
   "optional_requires": {

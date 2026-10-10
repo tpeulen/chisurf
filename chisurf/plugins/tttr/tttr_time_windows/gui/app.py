@@ -1,10 +1,10 @@
 """EMTK immediate-mode UI for the TTTR → time-window BIDs tool.
 
 Left: the file queue (buttons + the drop hint; OS drops land on the Qt window
-and are routed to :meth:`TTTRTimeWindowTool.on_paths_dropped`) and the split
+and are routed to :meth:`TimeWindowController.drop_paths`) and the split
 settings — time-window duration and output folder. Right: the intensity-trace
 preview with the time-window boundaries as dashed vertical lines, and the
-processing log. The tool (:class:`~.tool.TTTRTimeWindowTool`) keeps the client,
+processing log. The tool (:class:`~.controller.TimeWindowController`) keeps the client,
 the processing and the file-list state; this app renders and calls back.
 """
 
@@ -26,7 +26,7 @@ from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import action_button, action_caption, window_size
 
 if TYPE_CHECKING:
-    from .tool import TTTRTimeWindowTool
+    from .controller import TimeWindowController
 
 WINDOW_BG = (30, 32, 38, 255)
 #: More boundaries than this are not drawn (they would only cover the trace).
@@ -61,7 +61,7 @@ class TimeWindowGui(TourTarget):
 
     def __init__(
         self,
-        tool: TTTRTimeWindowTool,
+        tool: TimeWindowController,
         on_process: Callable[[], None] | None = None,
         on_clear: Callable[[], None] | None = None,
         on_browse: Callable[[], None] | None = None,
@@ -333,7 +333,7 @@ class TimeWindowApp(ImApp):
 
     def __init__(
         self,
-        tool: TTTRTimeWindowTool,
+        tool: TimeWindowController,
         on_process: Callable[[], None] | None = None,
         on_clear: Callable[[], None] | None = None,
         on_browse: Callable[[], None] | None = None,

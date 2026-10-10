@@ -1168,14 +1168,12 @@ def setup_gui(app: QtWidgets.QApplication, window: cs.gui.main.Main = None, stag
                             QtWidgets.QMessageBox.Yes,
                         )
                         if reply == QtWidgets.QMessageBox.Yes:
-                            import importlib
+                            from chisurf.gui.updater_window import open_updater_window
 
-                            updater_plugin = importlib.import_module("chisurf.plugins.core.updater")
                             # Keep a strong reference to prevent garbage collection from closing the window
-                            cs.__updater_window__ = updater_plugin.UpdaterWidget(
+                            cs.__updater_window__ = open_updater_window(
                                 suppress_initial_notification=True
                             )
-                            cs.__updater_window__.show()
                             try:
                                 cs.__updater_window__.raise_()
                                 cs.__updater_window__.activateWindow()
@@ -1482,9 +1480,15 @@ def get_win(app: QtWidgets.QApplication) -> cs.gui.main.Main:
             pass
 
         try:
-            from chisurf.plugins.core.boarding import wizard as _wiz
+            import pathlib
 
-            _wiz.show_onboarding(parent=window)
+            from chisurf.gui.plugin_window import open_native_plugin
+            from chisurf.plugins.core import boarding as _boarding
+
+            # kept on the package: an unreferenced host would be collected and close
+            cs.__init_chisurf_wizard__ = open_native_plugin(
+                pathlib.Path(_boarding.__file__).parent
+            )
         except Exception as e:
             try:
                 logging.debug(f"Failed to open onboarding wizard: {e}")
@@ -1880,9 +1884,7 @@ class LoginDialog(QtWidgets.QDialog):
                         QtWidgets.QMessageBox.Yes,
                     )
                     if reply == QtWidgets.QMessageBox.Yes:
-                        from chisurf.plugins.core.user_editor.gui.tool import (
-                            PasswordChangeDialog,
-                        )
+                        from chisurf.gui.password_dialog import PasswordChangeDialog
 
                         is_admin = bool(user_data.get("is_admin", False))
                         dlg = PasswordChangeDialog(user_id=user_id, is_admin=is_admin, parent=self)

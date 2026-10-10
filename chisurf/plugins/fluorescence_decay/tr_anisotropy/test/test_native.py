@@ -161,3 +161,43 @@ def test_native_stacked_files_select_both_channels_and_preserve_header_dt(tmp_pa
     assert np.allclose(model.data["data_vv"].y, data_vv)
     assert np.allclose(model.data["data_vh"].y, data_vh)
     assert np.diff(model.data["data_vh"].x).mean() == pytest.approx(0.1)
+
+
+def test_example_global_fit_recovers_the_simulated_lifetime_and_rotation(tmp_path, monkeypatch):
+    """Load example, load, create the linked fits and fit: tau, rho and r0 come back."""
+    import chisurf
+
+    from chisurf.plugins.fluorescence_decay.tr_anisotropy.demo import DEMO
+
+    monkeypatch.setattr(chisurf, "fits", [])
+    monkeypatch.setattr(chisurf, "imported_datasets", [])
+    model = NativeAnisotropyModel()
+    model.example_folder = tmp_path
+    model.load_example()
+    assert model.files_ready()
+    assert model.load_data()
+    result = model.create_fits()
+    assert result is not None, model.status
+    vv, vh, global_fit = result
+    for fit in (vv, vh):
+        fit.fit_range = (20, DEMO["n_tac"] - 20)
+    global_fit.run()
+    values = {p.canonical_id: p.value for p in vv.model.parameters_all}
+    assert values["lifetime.tau.0"] == pytest.approx(DEMO["tau_ns"], rel=0.03)
+    assert values["rotation.time.0"] == pytest.approx(DEMO["rho_ns"], rel=0.05)
+    assert values["anisotropy.r0"] == pytest.approx(DEMO["r0"], rel=0.05)
+
+
+def test_load_example_is_cached_and_releases_the_tour_step(tmp_path):
+    from chisurf.plugins.fluorescence_decay.tr_anisotropy.demo import make_demo
+    from chisurf.plugins.fluorescence_decay.tr_anisotropy.gui.app import AnisotropyApp
+
+    first = make_demo(tmp_path)
+    stamp = first.stat().st_mtime_ns
+    assert make_demo(tmp_path) == first and first.stat().st_mtime_ns == stamp
+    app = AnisotropyApp(NativeAnisotropyModel())
+    app.model.example_folder = tmp_path
+    app.tour.start(1)
+    assert app.tour.awaiting
+    app.load_example()
+    assert not app.tour.awaiting and app.model.files_ready()

@@ -17,17 +17,14 @@ polarisation-resolved fluorescence decays.
 
 ```
 tr_anisotropy/
-  manifest.json               plugin metadata + gui/cli entrypoints
+  manifest.json               plugin metadata + emtk/cli entrypoints
   core/irf.py                 Qt-free IRF background subtraction + normalisation
   core/spectra.py             lifetime/rotation spectrum I/O (*.spk.json)
   core/fits.py                VV/VH parameter link/constraint plan (as data)
   gui/view_model.py           AnisotropyViewModel (state, loading, fit creation)
-  gui/tool.py                 AutoForm host (AnisotropyWizard / ChisurfWizard alias)
   gui/app.py                  native emtk window (make_app); form in gui/anisotropy_emtk.view.json
   gui/model.py                Qt-free NativeAnisotropyModel (readers, linked fits, spectra tables)
-  gui/irf_widget.py           embedded interactive IRF region selector (chiplot)
-  gui/components_widget.py    embedded lifetime/rotation spectrum tables
-  anisotropy.view.json        declarative wizard layout (AutoForm)
+  anisotropy.view.json        the wizard's step titles and subtitles
   cli/main.py                 `anisotropy irf-correct` / `anisotropy spectrum`
   test/                       headless tests (no Qt)
 ```

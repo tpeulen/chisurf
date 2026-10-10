@@ -33,7 +33,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.fcs.fcs_filter_calculator.gui_parts.main_window:FcsFilterCalculatorWidget",
     "cli": "chisurf.plugins.fcs.fcs_filter_calculator.cli.main:main",
     "services": "chisurf.plugins.fcs.fcs_filter_calculator.backend.services:register_services",
     "emtk": "chisurf.plugins.fcs.fcs_filter_calculator.gui.app:create_app"

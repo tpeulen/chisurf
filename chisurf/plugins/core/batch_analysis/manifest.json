@@ -15,7 +15,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.core.batch_analysis.gui.tool:BatchProcessingWizard",
     "emtk": "chisurf.plugins.core.batch_analysis.gui.app:make_app",
     "cli": "batch-analysis=chisurf.plugins.core.batch_analysis.cli:cli"
   },

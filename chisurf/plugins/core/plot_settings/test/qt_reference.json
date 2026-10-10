@@ -1,0 +1,131 @@
+{
+ "defaults": {
+  "backend": "emtk",
+  "colors": {
+   "data": "#ffffff",
+   "model": "#ffffff",
+   "irf": "#ffffff",
+   "residuals": "#ffffff",
+   "auto_corr": "#ffffff",
+   "region_selector": "#ffffff",
+   "region_selector_alpha": 100,
+   "active_transparency": 1.0,
+   "inactive_transparency": 0.2
+  },
+  "line_width": 2.0,
+  "font_size": 0,
+  "enable_grid": true,
+  "grid_alpha": 0.35,
+  "show_data_grid": true,
+  "show_residual_grid": true,
+  "show_acorr_grid": true,
+  "enable_region_selector": true,
+  "show_legend": false,
+  "hideTitle": true,
+  "label_axis": false,
+  "node_graph": {
+   "show_grid": true,
+   "grid_line_width": 0.5,
+   "grid_opacity": 0.06,
+   "grid_spacing": 24.0,
+   "node_size": 13.0
+  },
+  "pyqtgraph_config": {
+   "antialias": false,
+   "background": "k",
+   "foreground": "d",
+   "leftButtonPan": true
+  }
+ },
+ "seeded": {
+  "backend": "emtk",
+  "colors": {
+   "data": "#112233",
+   "model": "#445566",
+   "irf": "#778899",
+   "residuals": "#aabbcc",
+   "auto_corr": "#ddeeff",
+   "region_selector": "#123456",
+   "region_selector_alpha": 77,
+   "active_transparency": 0.8,
+   "inactive_transparency": 0.4
+  },
+  "line_width": 3.5,
+  "font_size": 11,
+  "enable_grid": false,
+  "grid_alpha": 0.6,
+  "show_data_grid": false,
+  "show_residual_grid": false,
+  "show_acorr_grid": false,
+  "enable_region_selector": false,
+  "show_legend": true,
+  "hideTitle": false,
+  "label_axis": true,
+  "node_graph": {
+   "show_grid": false,
+   "grid_line_width": 1.25,
+   "grid_opacity": 0.3,
+   "grid_spacing": 40.0,
+   "node_size": 20.5
+  },
+  "pyqtgraph_config": {
+   "antialias": true,
+   "background": "w",
+   "foreground": "k",
+   "leftButtonPan": false
+  }
+ },
+ "ranges": {
+  "region_alpha": [
+   0,
+   255
+  ],
+  "active_transparency": [
+   0.0,
+   1.0
+  ],
+  "inactive_transparency": [
+   0.0,
+   1.0
+  ],
+  "line_width": [
+   0.5,
+   10.0
+  ],
+  "font_size": [
+   0,
+   24
+  ],
+  "grid_alpha_pct": [
+   0,
+   100
+  ],
+  "ng_line_width": [
+   0.0,
+   4.0
+  ],
+  "ng_grid_opacity_pct": [
+   0,
+   100
+  ],
+  "ng_grid_spacing": [
+   4,
+   96
+  ],
+  "ng_node_size": [
+   6.0,
+   30.0
+  ]
+ },
+ "folds": {
+  "Rendering Backend": true,
+  "Colors": true,
+  "Appearance": false,
+  "Node Graphs (Global View)": false,
+  "Advanced: pyqtgraph Configuration": false,
+  "Preview": true
+ },
+ "backends": [
+  "emtk"
+ ]
+}

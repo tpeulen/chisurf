@@ -708,18 +708,21 @@ def test_close_tour_ends_the_tour_with_the_pointer(
 
 
 def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(
-    app, drv, pair
+    app, drv, pair, tmp_path
 ):
-    def choose():
-        app.model.folder = str(pair.parent)
-        drv.click("open_file")
-        drv.click_text("pair.tif")
-        drv.click_text("Open", last=True)
+    app.model.example_folder = tmp_path
+
+    def load_example():
+        drv.click("load_example")
+
+    def run():
+        drv.click("run_coloc")
 
     C.tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(
-        app, drv, pair, {"file": choose}, card_buttons=False
+        app, drv, pair, {"load_example": load_example, "run_coloc": run}, card_buttons=False
     )
     assert app.model.metric_rows()
+    assert app.model.filename.endswith("coloc_demo.tif")
 
 
 def test_every_guide_target_is_a_drawn_control_or_window(app, drv, pair):

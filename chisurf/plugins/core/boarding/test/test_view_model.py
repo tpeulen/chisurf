@@ -57,7 +57,7 @@ def test_editors_are_embedded_via_custom_sections() -> None:
         sec for step in wiz.steps for sec in step.sections if getattr(sec, "key", "") == "embed"
     ]
     widgets = {sec.options.get("widget", "") for sec in embeds}
-    assert any("FCSChannelWidget" in w for w in widgets)
+    assert any("FCSChannelEmbed" in w for w in widgets)
     assert any("DetectorWizardPage" in w for w in widgets)
 
 

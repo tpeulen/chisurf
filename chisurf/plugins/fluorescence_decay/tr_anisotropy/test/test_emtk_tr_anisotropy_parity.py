@@ -11,7 +11,6 @@ The control -> test list is in ``okf/plugins/emtk-ports/tr_anisotropy/REPORT.md`
 from __future__ import annotations
 
 import json
-import types
 from pathlib import Path
 
 import numpy as np
@@ -20,7 +19,6 @@ import pytest
 from chisurf.plugins.emtk_layout import action_caption
 from emtk import keys
 
-from chisurf.core.experiments.tcspc.reader import TCSPCReader
 from chisurf.plugins.emtk_test_input import SIZE, SMALL, Driver
 from chisurf.plugins.fluorescence_decay.tr_anisotropy.core import irf as core_irf
 from chisurf.plugins.fluorescence_decay.tr_anisotropy.core import spectra as core_spectra
@@ -108,103 +106,73 @@ def load(ui, files):
 # ───────────────────────────── numeric parity with the Qt wizard ───────────────────────────── #
 
 
-@pytest.fixture
-def qt_wizard(files):
-    QtWidgets = pytest.importorskip("qtpy.QtWidgets")
-    import chisurf
-
-    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])  # noqa: F841 (kept alive)
-    chisurf.cs = types.SimpleNamespace(
-        current_setup=None,
-        current_experiment_reader=TCSPCReader(dt=1.0, rep_rate=10.0, skiprows=0),
-        current_experiment=None,
-        dataset_selector=None,
-    )
-    from chisurf.plugins.fluorescence_decay.tr_anisotropy.gui.tool import AnisotropyWizard
-
-    wizard = AnisotropyWizard()
-    set_files(wizard.model, files)
-    wizard._qapp = qapp
-    return wizard
+QT_REFERENCE = json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
 
 
-def test_loading_and_the_background_correction_equal_the_qt_wizard(qt_wizard, files):
-    qt = qt_wizard.model
-    assert qt.load_data()
+def test_loading_and_the_background_correction_equal_the_qt_wizard(files):
+    """What the retired Qt wizard (the shared ``AnisotropyViewModel``) computed from the same files."""
+    qt = QT_REFERENCE
     native = NativeAnisotropyModel()
     native.first_column_is_time = True
     set_files(native, files)
     native.load_data()
-    assert (native.region_lb, native.region_ub) == (qt.region_lb, qt.region_ub)
+    assert [native.region_lb, native.region_ub] == qt["load"]["region"]
     for key in ("irf_vv", "irf_vh", "data_vv", "data_vh", "irf_vv_bg_norm", "irf_vh_bg_norm"):
-        np.testing.assert_allclose(native.data[key].y, qt.data[key].y, err_msg=key)
+        np.testing.assert_allclose(native.data[key].y, qt["load"][key], err_msg=key)
     for lb, ub in ((50, 150), (10, 30), (0, 256), (120, 120)):
-        qt.apply_region(lb, ub)
         native.apply_region(lb, ub)
         for key in ("irf_vv_bg_norm", "irf_vh_bg_norm"):
-            np.testing.assert_allclose(native.data[key].y, qt.data[key].y, err_msg=(lb, ub, key))
+            np.testing.assert_allclose(
+                native.data[key].y, qt["regions"][f"{lb},{ub}"][key], err_msg=(lb, ub, key)
+            )
 
 
-def test_a_crossed_region_is_swapped_where_the_qt_wizard_silently_skipped_the_subtraction(
-    qt_wizard, files
-):
+def test_a_crossed_region_is_swapped_where_the_qt_wizard_silently_skipped_the_subtraction(files):
     """Deliberate difference: Qt passes (200, 100) on, an empty region, so no background is subtracted."""
-    qt = qt_wizard.model
-    qt.load_data()
     native = NativeAnisotropyModel()
     native.first_column_is_time = True
     set_files(native, files)
     native.load_data()
-    qt.apply_region(200, 100)
     native.apply_region(200, 100)
     assert (native.region_lb, native.region_ub) == (100, 200)
     swapped, _ = core_irf.correct_irfs(native.data["irf_vv"].y, native.data["irf_vh"].y, 100, 200)
     np.testing.assert_allclose(native.data["irf_vv_bg_norm"].y, swapped)
-    skipped, _ = core_irf.correct_irfs(qt.data["irf_vv"].y, qt.data["irf_vh"].y, 200, 100)
-    np.testing.assert_allclose(qt.data["irf_vv_bg_norm"].y, skipped)
-
-
-def test_the_qt_wizards_step_texts_and_check_marks_are_the_natives(qt_wizard, ui, files):
-    wiz = qt_wizard.findChild(
-        __import__("chisurf.gui.autoform.sections.wizard_section", fromlist=["x"]).WizardWidget
+    skipped = QT_REFERENCE["regions"]["200,100"]
+    qt_vv, _ = core_irf.correct_irfs(
+        np.asarray(QT_REFERENCE["load"]["irf_vv"]), np.asarray(QT_REFERENCE["load"]["irf_vh"]), 200, 100
     )
-    assert [s["title"] for s in ui.app.steps] == [
-        wiz._steps[i].title for i in range(len(wiz._steps))
-    ]
-    for i, step in enumerate(wiz._steps):
-        assert ui.app.steps[i].get("subtitle", "") == (step.subtitle or "")
+    np.testing.assert_allclose(skipped["irf_vv_bg_norm"], qt_vv)
+
+
+def test_the_qt_wizards_step_texts_and_check_marks_are_the_natives(ui, files):
+    assert [s["title"] for s in ui.app.steps] == [t for t, _ in QT_REFERENCE["steps"]]
+    for i, (_title, subtitle) in enumerate(QT_REFERENCE["steps"]):
+        assert ui.app.steps[i].get("subtitle", "") == subtitle
     # the Qt check marks: Data waits for the files, Components for both spectra, the rest are ticked
-    qt, native = qt_wizard.model, ui.app.model
-    for state in ({}, files, {"data_vh": ""}):
-        for model in (qt, native):
-            set_files(model, {**{k: "" for k in files}, **state} if state is not files else files)
-        for i in range(6):
-            assert native.step_complete(i) == wiz._step_complete(i), (sorted(state), i)
-    for model in (qt, native):
-        model.lifetime_spectrum = []
-    assert [native.step_complete(i) for i in range(6)] == [wiz._step_complete(i) for i in range(6)]
+    native = ui.app.model
+    for state, expected in zip(({}, files, {"data_vh": ""}), QT_REFERENCE["checks"]):
+        set_files(native, {**{k: "" for k in files}, **state} if state is not files else files)
+        assert [native.step_complete(i) for i in range(6)] == expected, sorted(state)
+    native.lifetime_spectrum = []
+    assert [native.step_complete(i) for i in range(6)] == QT_REFERENCE["checks"][3]
     assert native.step_complete(4) is False
 
 
-def test_corrections_defaults_and_spectra_files_equal_the_qt_wizard(qt_wizard, tmp_path):
-    qt = qt_wizard.model
+def test_corrections_defaults_and_spectra_files_equal_the_qt_wizard(tmp_path):
+    qt = QT_REFERENCE
     native = (
         make_app().model
-    )  # a fresh window starts from the same stored defaults the Qt wizard reads
-    assert (native.g_factor, native.l1, native.l2) == (qt.g_factor, qt.l1, qt.l2)
+    )  # a fresh window starts from the same stored defaults the Qt wizard read
+    assert (native.g_factor, native.l1, native.l2) == (qt["defaults"]["g"], qt["defaults"]["l1"], qt["defaults"]["l2"])
     assert (native.g_factor, native.l1, native.l2) == (1.16, 0.12, 0.44)
-    assert native.lifetime_spectrum == qt.lifetime_spectrum
-    assert native.rotation_spectrum == qt.rotation_spectrum
-    qt.lifetime_spectrum = [[0.4, 1.0], [0.6, 3.0]]
+    assert native.lifetime_spectrum == qt["lifetime_default"]
+    assert native.rotation_spectrum == qt["rotation_default"]
     native.lifetime_spectrum = [[0.4, 1.0], [0.6, 3.0]]
-    qt_file, native_file = tmp_path / "qt.spk.json", tmp_path / "native.spk.json"
-    core_spectra.save_spectra(
-        qt_file, qt.lifetime_spectrum, qt.rotation_spectrum, mirror_to_default=False
-    )
+    native_file = tmp_path / "native.spk.json"
     native.save_spectra(native_file)
-    assert json.loads(qt_file.read_text()) == json.loads(native_file.read_text())
+    assert qt["spk"] == json.loads(native_file.read_text())
     fresh = NativeAnisotropyModel()
-    fresh.load_spectra(str(qt_file))
+    fresh.load_spectra(str(native_file))
     assert fresh.lifetime_spectrum == [[0.4, 1.0], [0.6, 3.0]]
 
 
@@ -744,6 +712,7 @@ def test_the_help_links_point_at_pages_that_exist():
 
 
 def test_the_tour_is_walked_with_the_real_controls_and_waits_at_each_await(ui, files, tmp_path):
+    ui.app.model.example_folder = tmp_path
     ui.click_text(action_caption("guide"))
     tour = ui.app.tour
     assert tour.active and tour.step_idx == 0
@@ -751,23 +720,22 @@ def test_the_tour_is_walked_with_the_real_controls_and_waits_at_each_await(ui, f
     assert tour.step_idx == 1 and ui.app.step_index == 1 and tour.awaiting
     ui.click_text("Next ►")  # refused while it waits
     assert tour.step_idx == 1
-    ui.type_into_name("irf_vv_path", files["irf_vv"])
-    ui.type_into_name("irf_vh_path", files["irf_vh"])
-    ui.type_into_name("data_vv_path", files["data_vv"])
-    ui.type_into_name("data_vh_path", files["data_vh"])
-    assert not tour.awaiting
+    ui.click_text(action_caption("example"))
+    assert not tour.awaiting and ui.app.model.files_ready()
     ui.click_text("Next ►")
-    assert tour.step_idx == 2 and ui.app.step_index == 2 and tour.awaiting
+    assert tour.step_idx == 2 and ui.app.step_index == 1 and not tour.awaiting  # your own files
+    ui.click_text("Next ►")
+    assert tour.step_idx == 3 and ui.app.step_index == 2 and tour.awaiting
     ui.click_text("Load / reload data")
     assert not tour.awaiting
     ui.click_text("Next ►")
-    assert tour.step_idx == 3 and ui.app.step_index == 3 and tour.awaiting
+    assert tour.step_idx == 4 and ui.app.step_index == 3 and tour.awaiting
     ui.type_into_name("g_factor", "1.1")
     ui.click_text("Next ►")
-    assert tour.step_idx == 4 and ui.app.step_index == 4 and tour.awaiting
+    assert tour.step_idx == 5 and ui.app.step_index == 4 and tour.awaiting
     ui.click(ui.text_rect(ui.draw(), "Add component", last=False))
     ui.click_text("Next ►")
-    assert tour.step_idx == 5 and ui.app.step_index == 5 and tour.awaiting
+    assert tour.step_idx == 6 and ui.app.step_index == 5 and tour.awaiting
     ui.click_text("Create fits")
     assert not tour.awaiting
     ui.click_text("Close Tour")

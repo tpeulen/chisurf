@@ -7,10 +7,15 @@
       "target": {}
     },
     {
-      "title": "Load a photon stream",
-      "text": "Press <b>Load TTTR</b> and choose a PTU, HT3, T2R, T3R, PTO or SPC file, or drop it on the window.",
-      "target": {"name": "file_loaded"},
-      "await": {"hint": "Press <b>Load TTTR</b> and choose a file to continue."}
+      "title": "Start with data whose answer you know",
+      "text": "<b>Load example</b> writes a simulated photon stream of molecules diffusing through a focus. Their brightness is set by construction: 3 photons per molecule in each 20 µs bin, so the fit must find ε ≈ 3. It also sets <b>Channels</b> and <b>Bin time</b> to match.",
+      "target": {"name": "load_example", "action": "Load example"},
+      "await": {"hint": "Press <b>Load example</b>."}
+    },
+    {
+      "title": "Your own photon stream",
+      "text": "With your own data press <b>Load TTTR</b> and choose a PTU, HT3, T2R, T3R, PTO or SPC file, or drop it on the window.",
+      "target": {"name": "file_loaded"}
     },
     {
       "title": "Say which detectors count",

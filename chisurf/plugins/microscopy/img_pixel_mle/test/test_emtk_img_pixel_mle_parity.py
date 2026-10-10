@@ -533,29 +533,21 @@ def test_guide_button_starts_the_tour_and_close_tour_ends_it(app):
 
 
 def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(
-    app, drv, files
+    app, drv, files, tmp_path
 ):
-    def add_files():
-        app.model.folder = str(files[0].parent)
-        drv.click("sel_files.add")
-        drv.click_text("scan.ptu")
-        drv.click_text("Open", last=True)
+    app.model.example_folder = tmp_path
 
-    def add_irf():
-        app.model.folder = str(files[0].parent)
-        drv.click("sel_irf_files.add")
-        drv.click_text("irf.ptu")
-        drv.click_text("Open", last=True)
+    def load_example():
+        drv.click("load_example")
 
     def run():
-        for k, v in FIT.items():
-            setattr(app.model, k, v)
         drv.click("request_run")
 
     C.tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(
-        app, drv, files[0], {"files": add_files, "irf": add_irf, "run": run}
+        app, drv, files[0], {"load_example": load_example, "run": run}
     )
     assert app.model.results
+    assert app.model.files == [str(tmp_path / "mle_demo.ptu")]
 
 
 def test_every_guide_target_is_a_drawn_control_or_window(app, drv, files):

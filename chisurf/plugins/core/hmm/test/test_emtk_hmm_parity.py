@@ -120,13 +120,12 @@ def type_value(ui, name, text):
 
 @pytest.fixture
 def qt_tool(files):
-    QtWidgets = pytest.importorskip("qtpy.QtWidgets")
-    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    from chisurf.plugins.core.hmm.gui.tool import HmmTool
+    """The view model the retired Qt window drove (it hosted this Qt-free model unchanged)."""
+    from types import SimpleNamespace
 
-    tool = HmmTool()
-    tool._qapp = qapp
-    return tool
+    from chisurf.plugins.core.hmm.gui.view_model import HmmViewModel
+
+    return SimpleNamespace(model=HmmViewModel())
 
 
 def test_a_fit_started_in_the_native_window_equals_the_qt_tools_fit(qt_tool, ui, files):

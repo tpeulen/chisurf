@@ -1821,3 +1821,48 @@ class PackageManager:
             if not ok2:
                 return False, msg
         return True, (last_msg or "Channels updated")
+
+
+def build_installed_vs_latest_changelog(
+    latest_version: str, max_chars: int = 1500, limit: int = 50
+):
+    """
+    Build changelog text comparing the installed version vs the provided latest version.
+
+    This helper is used by the startup prompt. It should be quiet on errors
+    (no raw HTTP errors in the popup) and mirror the updater window's defaults
+    (development branch).
+
+    Args:
+        latest_version: The latest version string to compare against the installed version.
+        max_chars: Optional maximum number of characters to return; truncates with hint if exceeded.
+        limit: Maximum number of commit entries to include when querying GitHub.
+
+    Returns:
+        Tuple: (installed_version, changelog_text)
+    """
+    try:
+        from chisurf.core import info as _info
+
+        installed = getattr(_info, "__version__", "")
+    except Exception:
+        installed = ""
+
+    try:
+        up = ChiSurfUpdater()
+        # Use the same default branch as the updater window (development)
+        try:
+            up.channel = "development"
+        except Exception:
+            pass
+        changelog = up._build_changelog(installed, str(latest_version), limit=limit)
+        # Suppress fallback error texts in startup popup
+        if isinstance(changelog, str):
+            cl_lower = changelog.lower()
+            if ("could not be retrieved" in cl_lower) or ("could not be determined" in cl_lower):
+                changelog = ""
+            elif max_chars and len(changelog) > max_chars:
+                changelog = changelog[:max_chars] + "\n...\n(Open Updater to see full changes)"
+        return installed, changelog
+    except Exception:
+        return installed, ""

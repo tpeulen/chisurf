@@ -1,5 +1,5 @@
 """The native FCS correlator: the workflow (channel definitions → files → filter → correlator → merger) behind a
-rail, as the Qt ``FcsCorrelatorTool``; the FCS hub (``fcs_toolbox``) is this with the FCS tools below it.
+rail; the FCS hub (``fcs_toolbox``) is this with the FCS tools below it.
 
 Built on :class:`chisurf.emtk.tool_hub.ToolHubApp`. The steps are emtk apps (:mod:`.steps`, the channel-preset and
 merger apps of their plugins); what one step hands the next is :class:`..workflow.FcsWorkflow`'s, applied each time a

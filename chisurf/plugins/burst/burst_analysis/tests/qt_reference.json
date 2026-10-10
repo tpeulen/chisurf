@@ -1,0 +1,88 @@
+{
+ "BURST_PANELS": [
+  {
+   "role": "setup",
+   "name": "0. Setup Selection",
+   "icon": "⚙️"
+  },
+  {
+   "role": "data",
+   "name": "1. Data Selection",
+   "icon": "📂"
+  },
+  {
+   "role": "selection",
+   "name": "2. Burst Selection",
+   "icon": "🔍"
+  },
+  {
+   "role": "fusion",
+   "name": "3. Burst Fusion (optional)",
+   "icon": "🔗",
+   "optional": true
+  },
+  {
+   "role": "bva",
+   "name": "4. Burst BVA",
+   "icon": "📊"
+  },
+  {
+   "role": "two_cde",
+   "name": "5. Burst 2CDE",
+   "icon": "📊"
+  },
+  {
+   "role": "mle",
+   "name": "6. Burst MLE",
+   "icon": "🎯"
+  },
+  {
+   "role": "h2mm",
+   "name": "7. Burst segmentation (H2MM)",
+   "icon": "🔀"
+  },
+  {
+   "role": "segment_mle",
+   "name": "8. Burst segment MLE",
+   "icon": "🎯"
+  },
+  {
+   "role": "separator",
+   "name": "────────",
+   "icon": "",
+   "separator": true
+  },
+  {
+   "role": "browser",
+   "name": "Browser",
+   "icon": "📋"
+  },
+  {
+   "role": "accurate_fret",
+   "name": "Accurate FRET",
+   "icon": "🎯"
+  },
+  {
+   "role": "burst_fcs",
+   "name": "Burst FCS",
+   "icon": "📊"
+  },
+  {
+   "role": "burst_gs",
+   "name": "Kinetics (GS)",
+   "icon": "🔀"
+  },
+  {
+   "role": "background",
+   "name": "Background",
+   "icon": "🌙"
+  },
+  {
+   "role": "irf_bg",
+   "name": "IRF & Background",
+   "icon": "✨"
+  }
+ ],
+ "initial_role": "setup",
+ "_note": "Recorded from the retired Qt BurstAnalysisTool before deletion."
+}

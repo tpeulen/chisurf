@@ -1,4 +1,4 @@
-"""VV/VH anisotropy calculator, with independent Qt and EMTK entrypoints."""
+"""VV/VH anisotropy calculator, a native emtk app."""
 
 from pathlib import Path
 
@@ -14,10 +14,3 @@ deprecation_message = (_manifest.deprecation_message if _manifest is not None el
     "Use the VV/VH G-Factor plugin and reader-integrated anisotropy workflow instead."
 )
 
-
-def __getattr__(name):
-    if name in {"VvVhAnisotropyCalculator", "VvVhAnisotropyBatchWindow"}:
-        from . import qt_tool
-
-        return getattr(qt_tool, name)
-    raise AttributeError(name)

@@ -1,8 +1,8 @@
 """The structure-modelling tools the native workspace hosts, in display order.
 
-Mirrors the Qt hub's ``STRUCTURE_PANELS``. Every entry has a native ``emtk``
+Every entry has a native ``emtk``
 factory: the FPS JSON editor, docking and QuEst are cards of this plugin
-(``cards/``), the others are the apps of their own plugins.
+(``cards/``; ``plugin`` names the plugin behind each card), the others are the apps of their own plugins.
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ STRUCTURE_TOOL_PANELS: list[dict] = [
         "group": 0,
         "description": "Edit fps.json files for FRET accessible-volume modelling and fetch reference PDBs.",
         "emtk": "chisurf.plugins.modelling.structure_tools.cards.fps_json:make_app",
+        "plugin": "fps_json_editor",
     },
     {
         "name": "Docking & Screening",
@@ -21,12 +22,14 @@ STRUCTURE_TOOL_PANELS: list[dict] = [
         "group": 0,
         "description": "FRET-restrained rigid-body docking, refinement and structure-library screening (IMP + IMP.bff).",
         "emtk": "chisurf.plugins.modelling.structure_tools.cards.docking:make_app",
+        "plugin": "fret_docking",
     },
     {
         "name": "QuEst",
         "group": 1,
         "description": "Quenching estimator — dye-diffusion simulation of fluorescence quenching and decays.",
         "emtk": "chisurf.plugins.modelling.structure_tools.cards.quest:make_app",
+        "plugin": "quenching_estimator",
     },
     {
         "name": "HydroPro",

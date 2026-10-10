@@ -10,15 +10,14 @@ modes included (the three conversions guide 81 listed as broken).
 from __future__ import annotations
 
 import json
-import os
 import re
-import subprocess
 import sys
 import time
 from pathlib import Path
 
 import numpy as np
 import pytest
+from chisurf.plugins.traj.traj_save_topology.test.qt_recorded import load_reference, same_coordinates
 from emtk.testing import PixelPainter, RecordingPainter
 
 HERE = Path(__file__).parent
@@ -81,62 +80,21 @@ def _read(path, top=TOP):
     return np.asarray(md.load(str(path), top=top).xyz)
 
 
-_QT = r"""
-import json, sys
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-from chisurf.plugins.traj.traj_convert import sections
-from chisurf.plugins.traj.traj_convert.widget import MDConverter
-traj, top, target = sys.argv[1:4]
-told, errors = [], []
-sections.dialogs.information = lambda parent, title, text: told.append([title, text])
-sections.dialogs.error = lambda parent, title, text: errors.append([title, text])
-w = MDConverter()
-run = w.findChild(sections._RunSection)
-run._convert()                                        # nothing chosen
-m = w.model
-m.set_topology(top); m.set_trajectory(traj); m.set_target_directory(target)
-m.first_frame, m.last_frame, m.stride, m.filename = 10, 50, 10, "frames"
-run._convert()
-m.first_frame, m.last_frame = 100, 50                 # a range that selects nothing
-run._convert()
-print("FACTS" + json.dumps({"told": told, "errors": errors, "log": m._log}))
-"""
 
 
 @pytest.fixture(scope="module")
-def qt(tmp_path_factory):
-    pytest.importorskip("qtpy")
-    target = tmp_path_factory.mktemp("qt")
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT, TRAJ, TOP, str(target)],
-        capture_output=True,
-        text=True,
-        timeout=300,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and (
-        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
-    ):
-        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
-    # Any other failure is the Qt widget's own: skipping it hid a broken Qt host.
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    facts = json.loads(line[len("FACTS") :])
-    facts["target"] = target
-    return facts
+def qt():
+    """The retired Qt widget's answers, recorded before it was deleted (qt_reference.json)."""
+    return load_reference(HERE)
 
 
 # 1. the Qt widget's output and answers; the range includes its last frame
 def test_a_range_converts_as_the_qt_widget_does_and_keeps_its_last_frame(qt, source, tmp_path):
     app = _run(_loaded(tmp_path))
     try:
-        ours, theirs = _read(tmp_path / "frames.dcd"), _read(qt["target"] / "frames.dcd")
+        ours = _read(tmp_path / "frames.dcd")
         np.testing.assert_allclose(ours, source[[10, 20, 30, 40, 50]], atol=1e-3)  # 50 included now
-        np.testing.assert_allclose(ours, theirs, atol=1e-4)
+        assert same_coordinates(ours, qt["target"])
         assert app.notice == "Conversion done!" == qt["told"][-1][1]
         assert "Wrote 5 frames of 5235 atoms" in _messages(app.model.log_text())
         assert "Wrote 5 frames of 5235 atoms" in _messages(qt["log"])

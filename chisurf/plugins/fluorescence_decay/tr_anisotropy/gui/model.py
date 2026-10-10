@@ -139,6 +139,27 @@ class NativeAnisotropyModel(AnisotropyViewModel):
             ("data_vh", "vh", self.data_vv_path if self.stacked_files else self.data_vh_path),
         ]
 
+    example_folder: Path | None = None  # None: the plugin's demo cache
+
+    def load_example(self):
+        """Select the four simulated files and start from components near, not at, the known answer."""
+        from ..demo import DEMO, make_demo, paths
+
+        files = paths(make_demo(self.example_folder).parent)
+        for key, path in files.items():
+            setattr(self, key + "_path", str(path))
+        self.stacked_files, self.first_column_is_time, self.use_header = False, True, True
+        self.skiprows, self.bin_width = 0, float(DEMO["dt_ns"])
+        self.rep_rate = float(DEMO["rep_rate_mhz"])
+        self.g_factor, self.l1, self.l2 = 1.0, 0.0, 0.0
+        self.lifetime_spectrum = [[1.0, 3.0]]
+        self.rotation_spectrum = [[0.3, 1.0]]
+        self.status = (
+            f"Example loaded: lifetime {DEMO['tau_ns']} ns, rotation {DEMO['rho_ns']} ns, "
+            f"r0 {DEMO['r0']}. Press Load / reload data."
+        )
+        self.notify("refresh")
+
     def load_data(self):
         if not self.files_ready():
             raise ValueError("Select every required file before loading.")

@@ -3,8 +3,8 @@
 Holds the concentration/file table, runs
 :func:`~chisurf.plugins.burst.alex_suite.api.titration.run_titration`, and turns
 the result into the plot series and the summary text the AutoForm view renders.
-No Qt import — the panel is
-:class:`~chisurf.plugins.burst.alex_suite.gui.titration.TitrationPanel`.
+No Qt import — the step is
+:class:`~chisurf.plugins.burst.alex_suite.gui.step_apps.TitrationStep`.
 """
 
 from __future__ import annotations

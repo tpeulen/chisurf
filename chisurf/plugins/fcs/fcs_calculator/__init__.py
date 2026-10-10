@@ -1,5 +1,5 @@
 """
-FCS Confocal Calculator — v3 (PyQt5)
+FCS Confocal Calculator — v3 (emtk app in gui/app.py)
 
 What’s improved versus prior builds
 - **Exclusive constraints** via radio buttons (Fix D | Fix r_h | Fix Veff), no accidental multi‑select.

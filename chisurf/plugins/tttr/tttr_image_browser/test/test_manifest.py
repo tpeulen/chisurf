@@ -11,8 +11,7 @@ def test_manifest_loads():
     assert manifest.version == "2.0.0"
     assert manifest.display_name == "Spectroscopy:Imaging:Tools:Image Browser"
     assert (
-        manifest.entrypoints.gui
-        == "chisurf.plugins.tttr.tttr_image_browser.gui.tool:TTTRImageBrowserTool"
+        manifest.entrypoints.emtk == "chisurf.plugins.tttr.tttr_image_browser.gui.app:make_app"
     )
     assert (
         manifest.entrypoints.cli

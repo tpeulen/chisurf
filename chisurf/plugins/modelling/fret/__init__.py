@@ -52,13 +52,3 @@ from .core.engine import DistanceRestraint, RigidBody, SpringParameters
 from .core.imp_engine import DockingParameters, DockingResult, dock, refine, score, screen
 from .core.io import load_structure, write_pdb
 from .core.screening import score_single_structure, screen_structure_library
-
-# ChiSurf plugin entry point.
-if __name__ == "plugin":
-    # ``FretDockingTool`` is the maintained AutoForm-based GUI driven by the
-    # IMP/IMP.bff engine; the legacy ``FretDockWizard`` (and its spring engine)
-    # has been removed.
-    from .gui import FretDockingTool
-
-    window = FretDockingTool()
-    window.show()

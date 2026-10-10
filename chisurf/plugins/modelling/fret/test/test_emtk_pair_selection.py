@@ -70,43 +70,25 @@ EXPECTED_ROWS = [(1, "A:THR92-A:GLY94", 1.53), (2, "A:TYR47-A:ASN50", 1.29), (3,
 # ---- numeric parity with the Qt window -------------------------------------------------------------------------
 
 
-def test_the_run_equals_the_qt_windows(inputs, qapp):
-    from chisurf.gui import dialogs
-    from chisurf.plugins.modelling.fret.gui.pair_selection_wizard import FRETPairSelectionWindow
+QT = json.loads((Path(__file__).parent / "qt_reference.json").read_text())
 
-    dialogs.error = lambda parent, title, text: pytest.fail(f"{title}: {text}")
-    window = FRETPairSelectionWindow()
-    window.traj_edit.setText(str(inputs / "small.dcd"))
-    window.top_edit.setText(str(inputs / "topol.pdb"))
-    window.max_pairs_spin.setValue(5)
-    window._run()
-    qt_rows = [(int(window.table.item(r, 0).text()), window.table.item(r, 1).text(), float(window.table.item(r, 2).text()))
-               for r in range(window.table.rowCount())]
 
+def test_the_run_equals_the_qt_windows(inputs):
+    """The retired Qt window chose these five pairs, and its Export button wrote this text (recorded)."""
     ui = ready(inputs)
     run_and_wait(ui)
     rows = [(r["number"], r["pair"], round(r["rmsd"], 2)) for r in ui.app.session.rows]
-    assert rows == qt_rows == [(n, p, v) for n, p, v in EXPECTED_ROWS]
-    # the Export button of both windows writes the same text
-    out = inputs.parent / "qt_export.txt"
-    import chisurf.gui.widgets as widgets
-
-    widgets.save_file = lambda **kw: str(out)
-    window._export()
-    assert out.read_text() == ui.app.session.result.export_text()
+    assert rows == [(n, p, v) for n, p, v in EXPECTED_ROWS]
+    assert ui.app.session.result.export_text() == QT["export_text"]
     ui.app.close()
 
 
-def test_the_default_fields_equal_the_qt_windows(qapp):
-    from chisurf.plugins.modelling.fret.gui.pair_selection_wizard import FRETPairSelectionWindow
-
-    w = FRETPairSelectionWindow()
-    assert w._params() == PairParams()
-    for attr, spin in (("stride", w.stride_spin), ("av_samples", w.av_samples_spin), ("av_max_points", w.av_max_points_spin),
-                       ("max_pairs", w.max_pairs_spin), ("r0", w.r0_spin), ("err", w.err_spin)):
+def test_the_default_fields_equal_the_qt_windows():
+    """The Qt window started at ``PairParams()`` and its spin boxes had these ranges (recorded)."""
+    for attr, (lo, hi) in QT["ranges"].items():
         spec = _field(make_app().spec, attr)
-        assert spec["minimum"] == pytest.approx(spin.minimum()), attr
-        assert spec["maximum"] == pytest.approx(spin.maximum()), attr
+        assert spec["minimum"] == pytest.approx(lo), attr
+        assert spec["maximum"] == pytest.approx(hi), attr
 
 
 def _field(spec, attr):

@@ -330,16 +330,17 @@ def test_draws_empty_and_populated(size):
     assert set(app.forms[1].rects) >= {"chi2_max"}
 
 
-# guide: the From fit step waits for a load, whichever row it was
-def test_the_guide_step_on_from_fit_waits_for_a_load():
+# guide: the Load example step waits for the press of the real button
+def test_the_guide_step_on_load_example_waits_for_the_press(tmp_path):
     app = FTestApp(fit_provider=_fits)
+    app.example_folder = tmp_path
     _frames(app)
     app.tour.start(1)
     assert app.tour.awaiting
-    x, y, w, h = app.item_rects["From fit"]
+    x, y, w, h = app.item_rects["load_example"]
     _click(app, x + w / 2, y + h / 2)
-    _click(app, *_menu_rows(app)[4])
     assert not app.tour.awaiting
+    assert app.model.conf_level > 0.999
 
 
 # 6. no Qt

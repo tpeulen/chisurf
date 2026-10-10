@@ -1,0 +1,573 @@
+{
+ "steps": [
+  {
+   "settings": {
+    "tau_us": 70.0,
+    "D_um2_s": 400.0,
+    "rh_nm": 0.535862,
+    "S": 5.0,
+    "veff_fL": 1.043571,
+    "temp_C": 20.0,
+    "eta_mPa_s": 1.0017,
+    "conc_nM": 1.0,
+    "num_mols": 0.628,
+    "use_water_eta": true,
+    "invN": 1.591209087,
+    "fix_mode": "D",
+    "dye": "ATTO 488 (COOH)",
+    "scale_dref": true,
+    "shape_type": "Sphere",
+    "shape_size_nm": 5.0,
+    "shape_aspect": 1.0
+   },
+   "editable": {
+    "D_um2_s": true,
+    "rh_nm": false,
+    "veff_fL": false,
+    "eta_mPa_s": false,
+    "shape_aspect": false
+   },
+   "dyes": [
+    "ATTO 488 (COOH)",
+    "ATTO 655 (COOH)",
+    "ATTO 655 (NHS)",
+    "ATTO 655 (maleimide)",
+    "Alexa Fluor 633",
+    "Alexa Fluor 647",
+    "Bovine Serum Albumin",
+    "Cy5",
+    "Fluorescein",
+    "Oregon Green 488",
+    "Rhodamine 110",
+    "Rhodamine 123",
+    "Rhodamine 6G",
+    "Rhodamine B",
+    "Ribonuclease A",
+    "Sucrose"
+   ]
+  },
+  {
+   "settings": {
+    "tau_us": 120.0,
+    "D_um2_s": 400.0,
+    "rh_nm": 0.535862,
+    "S": 5.0,
+    "veff_fL": 2.342322,
+    "temp_C": 20.0,
+    "eta_mPa_s": 1.0017,
+    "conc_nM": 1.0,
+    "num_mols": 1.411,
+    "use_water_eta": true,
+    "invN": 0.708928508,
+    "fix_mode": "D",
+    "dye": "ATTO 488 (COOH)",
+    "scale_dref": true,
+    "shape_type": "Sphere",
+    "shape_size_nm": 5.0,
+    "shape_aspect": 1.0
+   },
+   "editable": {
+    "D_um2_s": true,
+    "rh_nm": false,
+    "veff_fL": false,
+    "eta_mPa_s": false,
+    "shape_aspect": false
+   }
+  },
+  {
+   "settings": {
+    "tau_us": 120.0,
+    "D_um2_s": 400.0,
+    "rh_nm": 0.535862,
+    "S": 5.0,
+    "veff_fL": 2.342322,
+    "temp_C": 20.0,
+    "eta_mPa_s": 1.0017,
+    "conc_nM": 2.0,
+    "num_mols": 2.821,
+    "use_water_eta": true,
+    "invN": 0.354464302,
+    "fix_mode": "D",
+    "dye": "ATTO 488 (COOH)",
+    "scale_dref": true,
+    "shape_type": "Sphere",
+    "shape_size_nm": 5.0,
+    "shape_aspect": 1.0
+   },
+   "editable": {
+    "D_um2_s": true,
+    "rh_nm": false,
+    "veff_fL": false,
+    "eta_mPa_s": false,
+    "shape_aspect": false
+   }
+  },
+  {
+   "settings": {
+    "tau_us": 120.0,
+    "D_um2_s": 400.0,
+    "rh_nm": 0.535862,
+    "S": 5.0,
+    "veff_fL": 2.342322,
+    "temp_C": 20.0,
+    "eta_mPa_s": 1.0017,
+    "conc_nM": 3.544643,
+    "num_mols": 5.0,
+    "use_water_eta": true,
+    "invN": 0.2,
+    "fix_mode": "D",
+    "dye": "ATTO 488 (COOH)",
+    "scale_dref": true,
+    "shape_type": "Sphere",
+    "shape_size_nm": 5.0,
+    "shape_aspect": 1.0
+   },
+   "editable": {
+    "D_um2_s": true,
+    "rh_nm": false,
+    "veff_fL": false,
+    "eta_mPa_s": false,
+    "shape_aspect": false
+   }
+  },
+  {
+   "settings": {
+    "tau_us": 120.0,
+    "D_um2_s": 400.0,
+    "rh_nm": 0.535862,
+    "S": 5.0,
+    "veff_fL": 2.342322,
+    "temp_C": 20.0,
+    "eta_mPa_s": 1.0017,
+    "conc_nM": 1.417857,
+    "num_mols": 2.0,
+    "use_water_eta": true,
+    "invN": 0.5,
+    "fix_mode": "D",
+    "dye": "ATTO 488 (COOH)",
+    "scale_dref": true,
+    "shape_type": "Sphere",
+    "shape_size_nm": 5.0,
+    "shape_aspect": 1.0
+   },
+   "editable": {
+    "D_um2_s": true,
+    "rh_nm": false,
+    "veff_fL": false,
+    "eta_mPa_s": false,
+    "shape_aspect": false
+   }
+  },
+  {
+   "settings": {
+    "tau_us": 120.0,
+    "D_um2_s": 400.00027,
+    "rh_nm": 0.535862,
+    "S": 5.0,
+    "veff_fL": 2.342325,
+    "temp_C": 20.0,
+    "eta_mPa_s": 1.0017,
+    "conc_nM": 1.417856,
+    "num_mols": 2.0,
+    "use_water_eta": true,
+    "invN": 0.5,
+    "fix_mode": "rh",
+    "dye": "ATTO 488 (COOH)",
+    "scale_dref": true,
+    "shape_type": "Sphere",
+    "shape_size_nm": 5.0,
+    "shape_aspect": 1.0
+   },
+   "editable": {
+    "D_um2_s": false,
+    "rh_nm": true,
+    "veff_fL": false,
+    "eta_mPa_s": false,
+    "shape_aspect": false
+   }
+  },
+  {
+   "settings": {
+    "tau_us": 120.0,
+    "D_um2_s": 107.172472,
+    "rh_nm": 2.0,
+    "S": 5.0,
+    "veff_fL": 0.324849,
+    "temp_C": 20.0,
+    "eta_mPa_s": 1.0017,
+    "conc_nM": 10.223452,
+    "num_mols": 2.0,
+    "use_water_eta": true,
+    "invN": 0.5,
+    "fix_mode": "rh",
+    "dye": "ATTO 488 (COOH)",
+    "scale_dref": true,
+    "shape_type": "Sphere",
+    "shape_size_nm": 5.0,
+    "shape_aspect": 1.0
+   },
+   "editable": {
+    "D_um2_s": false,
+    "rh_nm": true,
+    "veff_fL": false,
+    "eta_mPa_s": false,
+    "shape_aspect": false
+   }
+  },
+  {
+   "settings": {
+    "tau_us": 120.0,
+    "D_um2_s": 107.172471,
+    "rh_nm": 2.0,
+    "S": 5.0,
+    "veff_fL": 0.324849,
+    "temp_C": 20.0,
+    "eta_mPa_s": 1.0017,
+    "conc_nM": 10.223452,
+    "num_mols": 2.0,
+    "use_water_eta": true,
+    "invN": 0.5,
+    "fix_mode": "V",
+    "dye": "ATTO 488 (COOH)",
+    "scale_dref": true,
+    "shape_type": "Sphere",
+    "shape_size_nm": 5.0,
+    "shape_aspect": 1.0
+   },
+   "editable": {
+    "D_um2_s": false,
+    "rh_nm": false,
+    "veff_fL": true,
+    "eta_mPa_s": false,
+    "shape_aspect": false
+   }
+  },
+  {
+   "settings": {
+    "tau_us": 120.0,
+    "D_um2_s": 226.792604,
+    "rh_nm": 0.945114,
+    "S": 5.0,
+    "veff_fL": 1.0,
+    "temp_C": 20.0,
+    "eta_mPa_s": 1.0017,
+    "conc_nM": 3.321078,
+    "num_mols": 2.0,
+    "use_water_eta": true,
+    "invN": 0.5,
+    "fix_mode": "V",
+    "dye": "ATTO 488 (COOH)",
+    "scale_dref": true,
+    "shape_type": "Sphere",
+    "shape_size_nm": 5.0,
+    "shape_aspect": 1.0
+   },
+   "editable": {
+    "D_um2_s": false,
+    "rh_nm": false,
+    "veff_fL": true,
+    "eta_mPa_s": false,
+    "shape_aspect": false
+   }
+  },
+  {
+   "settings": {
+    "tau_us": 120.0,
+    "D_um2_s": 263.169504,
+    "rh_nm": 0.814475,
+    "S": 4.0,
+    "veff_fL": 1.0,
+    "temp_C": 20.0,
+    "eta_mPa_s": 1.0017,
+    "conc_nM": 3.321078,
+    "num_mols": 2.0,
+    "use_water_eta": true,
+    "invN": 0.5,
+    "fix_mode": "V",
+    "dye": "ATTO 488 (COOH)",
+    "scale_dref": true,
+    "shape_type": "Sphere",
+    "shape_size_nm": 5.0,
+    "shape_aspect": 1.0
+   },
+   "editable": {
+    "D_um2_s": false,
+    "rh_nm": false,
+    "veff_fL": true,
+    "eta_mPa_s": false,
+    "shape_aspect": false
+   }
+  },
+  {
+   "settings": {
+    "tau_us": 120.0,
+    "D_um2_s": 263.169504,
+    "rh_nm": 0.814515,
+    "S": 4.0,
+    "veff_fL": 1.0,
+    "temp_C": 20.0,
+    "eta_mPa_s": 1.0017,
+    "conc_nM": 3.321078,
+    "num_mols": 2.0,
+    "use_water_eta": false,
+    "invN": 0.5,
+    "fix_mode": "V",
+    "dye": "ATTO 488 (COOH)",
+    "scale_dref": true,
+    "shape_type": "Sphere",
+    "shape_size_nm": 5.0,
+    "shape_aspect": 1.0
+   },
+   "editable": {
+    "D_um2_s": false,
+    "rh_nm": false,
+    "veff_fL": true,
+    "eta_mPa_s": true,
+    "shape_aspect": false
+   }
+  },
+  {
+   "settings": {
+    "tau_us": 120.0,
+    "D_um2_s": 263.169504,
+    "rh_nm": 0.679916,
+    "S": 4.0,
+    "veff_fL": 1.0,
+    "temp_C": 20.0,
+    "eta_mPa_s": 1.2,
+    "conc_nM": 3.321078,
+    "num_mols": 2.0,
+    "use_water_eta": false,
+    "invN": 0.5,
+    "fix_mode": "V",
+    "dye": "ATTO 488 (COOH)",
+    "scale_dref": true,
+    "shape_type": "Sphere",
+    "shape_size_nm": 5.0,
+    "shape_aspect": 1.0
+   },
+   "editable": {
+    "D_um2_s": false,
+    "rh_nm": false,
+    "veff_fL": true,
+    "eta_mPa_s": true,
+    "shape_aspect": false
+   }
+  },
+  {
+   "settings": {
+    "tau_us": 120.0,
+    "D_um2_s": 263.169504,
+    "rh_nm": 0.703109,
+    "S": 4.0,
+    "veff_fL": 1.0,
+    "temp_C": 30.0,
+    "eta_mPa_s": 1.2,
+    "conc_nM": 3.321078,
+    "num_mols": 2.0,
+    "use_water_eta": false,
+    "invN": 0.5,
+    "fix_mode": "V",
+    "dye": "ATTO 488 (COOH)",
+    "scale_dref": true,
+    "shape_type": "Sphere",
+    "shape_size_nm": 5.0,
+    "shape_aspect": 1.0
+   },
+   "editable": {
+    "D_um2_s": false,
+    "rh_nm": false,
+    "veff_fL": true,
+    "eta_mPa_s": true,
+    "shape_aspect": false
+   }
+  },
+  {
+   "settings": {
+    "tau_us": 120.0,
+    "D_um2_s": 321.248507,
+    "rh_nm": 0.575993,
+    "S": 4.0,
+    "veff_fL": 1.348678,
+    "temp_C": 30.0,
+    "eta_mPa_s": 1.2,
+    "conc_nM": 2.462469,
+    "num_mols": 2.0,
+    "use_water_eta": false,
+    "invN": 0.5,
+    "fix_mode": "D",
+    "dye": "ATTO 655 (COOH)",
+    "scale_dref": true,
+    "shape_type": "Sphere",
+    "shape_size_nm": 5.0,
+    "shape_aspect": 1.0
+   },
+   "editable": {
+    "D_um2_s": true,
+    "rh_nm": false,
+    "veff_fL": false,
+    "eta_mPa_s": true,
+    "shape_aspect": false
+   }
+  },
+  {
+   "settings": {
+    "tau_us": 120.0,
+    "D_um2_s": 426.0,
+    "rh_nm": 0.434359,
+    "S": 4.0,
+    "veff_fL": 2.059496,
+    "temp_C": 30.0,
+    "eta_mPa_s": 1.2,
+    "conc_nM": 1.612568,
+    "num_mols": 2.0,
+    "use_water_eta": false,
+    "invN": 0.5,
+    "fix_mode": "D",
+    "dye": "ATTO 655 (COOH)",
+    "scale_dref": false,
+    "shape_type": "Sphere",
+    "shape_size_nm": 5.0,
+    "shape_aspect": 1.0
+   },
+   "editable": {
+    "D_um2_s": true,
+    "rh_nm": false,
+    "veff_fL": false,
+    "eta_mPa_s": true,
+    "shape_aspect": false
+   }
+  },
+  {
+   "settings": {
+    "tau_us": 120.0,
+    "D_um2_s": 39.979109,
+    "rh_nm": 4.628341,
+    "S": 4.0,
+    "veff_fL": 0.05921,
+    "temp_C": 30.0,
+    "eta_mPa_s": 1.2,
+    "conc_nM": 56.089655,
+    "num_mols": 2.0,
+    "use_water_eta": false,
+    "invN": 0.5,
+    "fix_mode": "D",
+    "dye": "ATTO 655 (COOH)",
+    "scale_dref": false,
+    "shape_type": "Ellipsoid",
+    "shape_size_nm": 4.0,
+    "shape_aspect": 3.0
+   },
+   "editable": {
+    "D_um2_s": true,
+    "rh_nm": false,
+    "veff_fL": false,
+    "eta_mPa_s": true,
+    "shape_aspect": true
+   }
+  },
+  {
+   "settings": {
+    "tau_us": 120.0,
+    "D_um2_s": 49.351072,
+    "rh_nm": 3.749401,
+    "S": 4.0,
+    "veff_fL": 0.081207,
+    "temp_C": 30.0,
+    "eta_mPa_s": 1.2,
+    "conc_nM": 40.896633,
+    "num_mols": 2.0,
+    "use_water_eta": false,
+    "invN": 0.5,
+    "fix_mode": "D",
+    "dye": "ATTO 655 (COOH)",
+    "scale_dref": false,
+    "shape_type": "Cylinder",
+    "shape_size_nm": 4.0,
+    "shape_aspect": 3.0
+   },
+   "editable": {
+    "D_um2_s": true,
+    "rh_nm": false,
+    "veff_fL": false,
+    "eta_mPa_s": true,
+    "shape_aspect": true
+   }
+  },
+  {
+   "settings": {
+    "tau_us": 120.0,
+    "D_um2_s": 61.678987,
+    "rh_nm": 3.0,
+    "S": 4.0,
+    "veff_fL": 0.113463,
+    "temp_C": 30.0,
+    "eta_mPa_s": 1.2,
+    "conc_nM": 29.270261,
+    "num_mols": 2.0,
+    "use_water_eta": false,
+    "invN": 0.5,
+    "fix_mode": "D",
+    "dye": "ATTO 655 (COOH)",
+    "scale_dref": false,
+    "shape_type": "Sphere",
+    "shape_size_nm": 6.0,
+    "shape_aspect": 3.0
+   },
+   "editable": {
+    "D_um2_s": true,
+    "rh_nm": false,
+    "veff_fL": false,
+    "eta_mPa_s": true,
+    "shape_aspect": false
+   }
+  },
+  {
+   "settings": {
+    "tau_us": 120.0,
+    "D_um2_s": 61.678987,
+    "rh_nm": 4.515622,
+    "S": 4.0,
+    "veff_fL": 0.113463,
+    "temp_C": 30.0,
+    "eta_mPa_s": 0.7972,
+    "conc_nM": 29.270261,
+    "num_mols": 2.0,
+    "use_water_eta": true,
+    "invN": 0.5,
+    "fix_mode": "D",
+    "dye": "ATTO 655 (COOH)",
+    "scale_dref": false,
+    "shape_type": "Sphere",
+    "shape_size_nm": 6.0,
+    "shape_aspect": 3.0
+   },
+   "editable": {
+    "D_um2_s": true,
+    "rh_nm": false,
+    "veff_fL": false,
+    "eta_mPa_s": false,
+    "shape_aspect": false
+   }
+  }
+ ],
+ "imported": {
+  "tau_us": 95.0,
+  "D_um2_s": 61.678982,
+  "rh_nm": 4.515622,
+  "S": 4.0,
+  "veff_fL": 0.079922,
+  "temp_C": 30.0,
+  "eta_mPa_s": 0.7972,
+  "conc_nM": 41.554025,
+  "num_mols": 2.0,
+  "use_water_eta": true,
+  "invN": 0.5,
+  "fix_mode": "rh",
+  "dye": "Rhodamine 6G",
+  "scale_dref": false,
+  "shape_type": "Sphere",
+  "shape_size_nm": 6.0,
+  "shape_aspect": 3.0
+ }
+}

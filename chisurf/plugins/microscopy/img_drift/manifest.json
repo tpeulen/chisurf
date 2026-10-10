@@ -12,7 +12,6 @@
   "state_namespace": "img_drift",
   "statefulness": {"enabled": true, "window": {"enabled": true, "settings_key": null}},
   "entrypoints": {
-    "gui": "chisurf.plugins.microscopy.img_drift.gui.tool:ImgDriftTool",
     "emtk": "chisurf.plugins.microscopy.img_drift.gui.app:make_app",
     "cli": "img-drift=chisurf.plugins.microscopy.img_drift.cli:cli"
   },

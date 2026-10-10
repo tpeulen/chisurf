@@ -22,6 +22,12 @@
               "description": "Compute the colocalization of the selected channel pair, estimate the backgrounds, or write the coefficients.",
               "buttons": [
                 {
+                  "action": "load_example",
+                  "label": "Load example",
+                  "icon": "🧪",
+                  "description": "Load a simulated two-channel image whose answer is known (every spot of A is also in B, but only half of B is on A) with thresholds that match; press Run to read the coefficients."
+                },
+                {
                   "action": "run_coloc",
                   "label": "Run",
                   "icon": "▶️",

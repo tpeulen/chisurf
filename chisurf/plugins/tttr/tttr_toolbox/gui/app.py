@@ -2,7 +2,7 @@
 
 The rail, header, Back / Next, help, tour and input routing are the shared
 :class:`chisurf.emtk.tool_hub.ToolHubApp`. This module adds the panel list
-(``panels.json``, which the legacy Qt shell reads too) and resolves each panel's
+(``panels.json``, naming each tool by its plugin folder) and resolves each panel's
 native app from its plugin's manifest at the moment it is opened.
 """
 
@@ -25,9 +25,8 @@ def load_panels():
 
 
 def plugin_dir(panel) -> str:
-    """The plugin folder (relative to ``chisurf/plugins``) a panel's Qt entrypoint lives in."""
-    module = panel["entrypoint"].split(":", 1)[0].split(".gui.", 1)[0]
-    return "/".join(module.split(".")[2:])
+    """The plugin folder (relative to ``chisurf/plugins``) a panel opens."""
+    return str(panel["plugin"])
 
 
 def manifest_path(panel):
@@ -45,20 +44,13 @@ def resolve_factory(panel):
     return getattr(importlib.import_module(module), attribute), spec
 
 
-def _with_plugin(panel):
-    """A panel that also names its plugin folder, so the hub reads its maturity flags and help."""
-    if panel.get("separator") or "entrypoint" not in panel:
-        return dict(panel)
-    return {**panel, "plugin": panel.get("plugin") or plugin_dir(panel)}
-
-
 class TttrToolboxApp(ToolHubApp):
     """TTTR Tools on the shared native hub."""
 
     def __init__(self, panels=None, resolver=None):
         super().__init__(
             "TTTR Tools",
-            [_with_plugin(p) for p in (load_panels() if panels is None else panels)],
+            [dict(p) for p in (load_panels() if panels is None else panels)],
             help_resource=RESOURCES / "help.md",
             guide=RESOURCES / "guide.json",
             # Looked up at call time, so a patched ``manifest_path`` is honoured.

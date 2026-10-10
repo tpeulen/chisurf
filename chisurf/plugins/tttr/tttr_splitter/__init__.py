@@ -28,22 +28,3 @@ name = "TTTR:Editor:Split/Convert"
 # Aggregated into the File tools hub (filetools); hidden as a top-level
 # menu entry but still importable and standalone-launchable.
 menu_hidden = True
-
-__all__ = ["PTUSplitter"]
-
-
-def __getattr__(attr_name: str):
-    """Lazy Qt import gate (no Qt import as a package side effect)."""
-    if attr_name == "PTUSplitter":
-        from .gui.tool import PTUSplitter as _cls
-
-        globals()["PTUSplitter"] = _cls
-        return _cls
-    raise AttributeError(f"module {__name__!r} has no attribute {attr_name!r}")
-
-
-if __name__ == "plugin":
-    from .gui.tool import PTUSplitter
-
-    window = PTUSplitter()
-    window.show()

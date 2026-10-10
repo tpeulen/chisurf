@@ -13,18 +13,7 @@ import os
 import pytest
 from chisurf.plugins.emtk_layout import action_caption
 
-try:
-    from qtpy import QtWidgets
-except ImportError:
-    QtWidgets = None  # type: ignore[assignment]
 
-_needs_qt = pytest.mark.skipif(QtWidgets is None, reason="Qt bindings not available")
-
-_APP: list = []
-
-
-def _ensure_app():
-    _APP[:] = [QtWidgets.QApplication.instance() or QtWidgets.QApplication([])]
 
 
 class RecordingPainter:
@@ -80,25 +69,19 @@ class RecordingPainter:
 
 
 @pytest.fixture
-def tool(qapp):
-    _ensure_app()
-    from chisurf.plugins.tttr.tttr_header_edit.gui.tool import TagsEditor
+def tool():
+    from chisurf.plugins.tttr.tttr_header_edit.gui.native import create_app
 
-    tool = TagsEditor()
-    yield tool
-    tool.close()
-
-
-@_needs_qt
-def test_the_window_hosts_the_emtk_app(tool):
-    from emtk.qt_host import host_class
-
-    assert isinstance(tool.host, host_class())
-    assert tool.app is tool.host.control
-    assert hasattr(tool.app, "start_guide") and hasattr(tool.app, "show_help")
+    native = create_app()
+    yield native
+    native.close()
 
 
-@_needs_qt
+def test_the_native_app_owns_the_editor_gui(tool):
+    assert hasattr(tool.header_gui, "start_guide") and hasattr(tool.header_gui, "show_help")
+    assert tool.header_gui.docks is tool.docks
+
+
 def test_a_frame_draws_actions_rows_and_json(tool, monkeypatch):
     """One frame renders the action row, every tag row, and the JSON view."""
     import emtk.im as im
@@ -107,7 +90,7 @@ def test_a_frame_draws_actions_rows_and_json(tool, monkeypatch):
     monkeypatch.setattr(im, "set_item_tooltip", lambda s: tooltips.append(str(s)))
 
     painter = RecordingPainter()
-    tool.app.draw(painter, 0.0, 0.0, 900.0, 620.0)
+    tool.draw(painter, 0.0, 0.0, 900.0, 620.0)
 
     assert painter.ops > 120
     assert action_caption("open") in painter.strings
@@ -121,7 +104,6 @@ def test_a_frame_draws_actions_rows_and_json(tool, monkeypatch):
     assert len(tooltips) >= 5, tooltips
 
 
-@_needs_qt
 def test_editing_a_value_commits_to_the_model(tool, monkeypatch):
     """A cell edit flows through the string editors into the model's tags."""
     import emtk.im as im
@@ -136,16 +118,15 @@ def test_editing_a_value_commits_to_the_model(tool, monkeypatch):
     monkeypatch.setattr(im, "input_text", input_spy)
 
     with __import__("emtk").frame(RecordingPainter(), (0.0, 0.0, 900.0, 620.0)):
-        tool.app.header_gui.docks.draw((0.0, 0.0, 900.0, 620.0))
+        tool.header_gui.docks.draw((0.0, 0.0, 900.0, 620.0))
 
     tag = next(t for t in tool.model.tags if t["name"] == "File_CreatingTime")
     # The tag's type coerces the edited string to a float.
     assert tag["value"] == pytest.approx(1539705731.999)
 
 
-@_needs_qt
 def test_add_and_remove_rows_flow_through_the_model(tool, monkeypatch):
-    gui = tool.app.header_gui
+    gui = tool.header_gui
     n0 = len(gui._rows)
     gui._rows.append({"name": "NewTag", "type": "AnsiString", "value": "x", "idx": "-1"})
     gui._commit()
@@ -157,12 +138,11 @@ def test_add_and_remove_rows_flow_through_the_model(tool, monkeypatch):
     assert not any(t["name"] == "NewTag" for t in tool.model.tags)
 
 
-@_needs_qt
 def test_the_type_combo_converts_the_value(tool, monkeypatch):
     """Switching a tag's type re-coerces its stored value."""
     import emtk.im as im
 
-    gui = tool.app.header_gui
+    gui = tool.header_gui
     real_combo = im.combo
 
     def combo_spy(label, current, items, *a, **k):
@@ -179,13 +159,12 @@ def test_the_type_combo_converts_the_value(tool, monkeypatch):
     assert tool.model.tags[0]["value"] == 42
 
 
-@_needs_qt
 def test_a_load_rebuilds_the_editors(tool):
     """A new header (Open/drop) replaces the editors from the model."""
     other = json.dumps({"tags": [{"name": "TagX", "type": 0x4001FFFF, "value": "v", "idx": 3}]})
     tool.model.load_json(other)
-    tool._on_model_event("loaded")
+    tool.header_gui.rebuild_rows()
 
-    gui = tool.app.header_gui
+    gui = tool.header_gui
     assert [r["name"] for r in gui._rows] == ["TagX"]
     assert [r["idx"] for r in gui._rows] == ["3"]

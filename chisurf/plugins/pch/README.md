@@ -7,7 +7,7 @@ Analyze the distribution of photon counts in fluorescence time traces to extract
 ```
 pch/
 ├── manifest.json           # Plugin manifest (entrypoints, RPC methods, metadata)
-├── __init__.py             # Bootstrap — loads manifest, exports PCHApp
+├── __init__.py             # Bootstrap — loads manifest, loads manifest
 ├── api/
 │   ├── models.py           # PchSettings, PchResult, FitResult dataclasses
 │   └── algorithms.py       # Pure PCH math (NumPy)
@@ -20,7 +20,6 @@ pch/
 │   ├── app.py              # PchApp, the native emtk window (entrypoints.emtk)
 │   ├── guide.json          # guided tour
 │   ├── help.md             # help page
-│   └── tool.py             # legacy Qt PCHApp (entrypoints.gui), kept until removed
 ├── cli/
 │   └── main.py             # click CLI: pch analyze, pch refit
 └── tests/
@@ -51,7 +50,7 @@ python -m chisurf pch refit results.npz --components 3 --json
 
 - ttrolib (TTTR file I/O)
 - numpy, scipy (computation)
-- emtk (GUI); qtpy only for the legacy Qt tool
+- emtk (GUI)
 - click (CLI)
 
 ## Author

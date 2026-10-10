@@ -414,11 +414,6 @@ def test_the_database_button_picks_a_dataset(app, drv, flim):
     C.database_button_picks_a_dataset(app, drv, flim)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="emtk gap: the dataset picker's buttons share one id and its Open selected / Cancel never fire; "
-    "see okf/plugins/emtk-ports/img_drift/REPORT.md",
-)
 def test_the_open_selected_button_of_the_database_picker_can_be_pressed(app, drv, flim):
     C.open_selected_button_of_the_database_picker_can_be_pressed(app, drv, flim)
 
@@ -736,10 +731,6 @@ def test_zz_the_real_user_settings_were_never_touched():
     assert data.real_settings_state() == _REAL_BEFORE
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="emtk gap: Enter on an emptied text field commits nothing (okf/plugins/emtk-ports/scripts/emtk_gaps_repro.py); Clear IRF is the way",
-)
 def test_an_emptied_irf_field_is_committed_on_enter(app, drv, flim):
     phasor_app(app, drv, flim)
     app.model.commit_irf("somewhere.ptu")

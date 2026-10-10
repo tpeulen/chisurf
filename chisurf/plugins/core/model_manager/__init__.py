@@ -1,3 +1,8 @@
+"""Model Manager: enable or disable the fitting models ChiSurf offers.
+
+The window is the native emtk app in :mod:`.gui.app`; importing this package needs no Qt binding.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -13,46 +18,4 @@ else:
 description = "Model Manager Plugin for ChiSurf"
 icon = "⚙️"
 
-
-def load():
-    """Return the model manager widget."""
-    from chisurf.plugins.core.model_manager.gui.tool import ModelManagerWidget
-
-    return ModelManagerWidget()
-
-
-__all__ = [
-    "ModelManagerWidget",
-    "load",
-    "name",
-    "description",
-    "icon",
-]
-
-
-def __getattr__(attribute):
-    if attribute == "ModelManagerWidget":
-        from chisurf.plugins.core.model_manager.gui.tool import ModelManagerWidget
-
-        return ModelManagerWidget
-    raise AttributeError(attribute)
-
-
-if __name__ == "plugin":
-    try:
-        import chisurf as cs
-        from chisurf.core.plugin.registry import apply_manifest_statefulness
-
-        ModelManagerWidget = __getattr__("ModelManagerWidget")
-        parent = getattr(cs, "cs", None)
-        window = ModelManagerWidget(parent=parent)
-        if _manifest is not None:
-            apply_manifest_statefulness(window, _manifest)
-        window.show()
-        window.raise_()
-        window.activateWindow()
-    except Exception as exc:
-        print(f"Failed to open Model Manager: {exc}")
-        import traceback
-
-        traceback.print_exc()
+__all__ = ["name", "description", "icon"]

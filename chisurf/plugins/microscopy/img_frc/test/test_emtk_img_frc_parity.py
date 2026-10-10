@@ -21,6 +21,7 @@ import pytest
 from chisurf.core.fio.image import imwrite
 from chisurf.core.fluorescence.imaging import frc as frc_mod
 from chisurf.plugins.microscopy.imaging_emtk.testing import (
+    assert_fingerprint,
     Driver,
     dialog_open,
     hermetic_env,
@@ -222,57 +223,10 @@ def test_the_ring_table_shows_what_the_qt_table_showed(app, drv, stack_a):
     assert {"Period", "FRC", "Threshold"} <= {s for s in drv.draw(2).strings}
 
 
-# ── 2. the live Qt tool on the same files ──────────────────────────────────────────────────────────────────── #
+# ── 2. the Qt tool's recorded results on the same files ───────────────────────────────────────────────────── #
 
-
-@pytest.fixture(scope="module")
-def qt_tool():
-    """The legacy Qt tool, offscreen, on temporary settings. Skipped only when Qt is not installed."""
-    if importlib.util.find_spec("qtpy") is None:
-        pytest.skip("Qt is not installed")
-    import os
-
-    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-    from qtpy import QtWidgets
-
-    from chisurf.plugins.microscopy.img_frc.gui.tool import ImgFrcTool
-
-    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    tool = ImgFrcTool()
-    tool._qapp = qapp
-    yield tool
-    tool.close()
-
-
-def qt_measure(tool, path, second=None, **settings):
-    """What the Qt window computes for *path* (the compute runs inline here)."""
-    m = tool.model
-    m.split, m.criterion, m.pixel_size_nm, m.bin_width, m.smooth, m.axis_order = (
-        "even_odd",
-        "fixed_1/7",
-        0.0,
-        0.0,
-        3,
-        "auto",
-    )
-    m.channel, m.channel_2, m.second_filename = 0, "", ""
-    assert m.set_filename(str(path))
-    if second:
-        m.set_second_filename(str(second))
-    for k, v in settings.items():
-        setattr(m, k, v)
-    ok = m.compute()
-    tool._on_finished(ok)
-    tool._refresh()
-    return m
-
-
-def qt_table_cells(tool):
-    from qtpy import QtWidgets
-
-    table = next(t for t in tool.findChildren(QtWidgets.QTableWidget) if t.columnCount() == 5)
-    return [[table.item(r, c).text() for c in range(5)] for r in range(table.rowCount())]
-
+#: What the retired Qt tool computed and showed on these files, recorded before it was deleted (``qt_reference.json``).
+QT_REF = json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
 
 SCENARIOS = {
     "defaults": {},
@@ -287,26 +241,24 @@ SCENARIOS = {
 
 
 @pytest.mark.parametrize("scenario", list(SCENARIOS))
-def test_the_qt_tool_and_the_emtk_app_agree_on_every_result(
-    app, drv, qt_tool, stack_a, stack_b, scenario
+def test_the_recorded_qt_results_and_the_emtk_app_agree_on_every_scenario(
+    app, drv, stack_a, stack_b, scenario
 ):
     settings = SCENARIOS[scenario]
-    qt = qt_measure(
-        qt_tool, stack_a, stack_b if settings.get("split") == "two_files" else None, **settings
-    )
+    qt = QT_REF["scenarios"][scenario]
     m = loaded(app, drv, stack_a)
     if settings.get("split") == "two_files":
         drv.type_into("second_filename", str(stack_b))
     measure(app, drv, **settings)
-    assert m.status_line == qt_tool.statusBar().currentMessage() == qt.status
-    for a, b in zip(curve_of(m), curve_of(qt)):
+    assert m.status_line == qt["bar"] == qt["status"]
+    for a, b in zip(curve_of(m), qt["curve"]):
         np.testing.assert_array_equal(a, b)
-    assert m.result.resolution == qt.result.resolution and m.result.crossed == qt.result.crossed
-    np.testing.assert_array_equal(m.half_1_image(), qt.half_1_image())
-    np.testing.assert_array_equal(m.half_2_image(), qt.half_2_image())
-    assert m.summary_html() == qt.summary_html()
-    assert [s["name"] for s in m.frc_series()] == [s["name"] for s in qt.frc_series()]
-    for a, b in zip(m.frc_series(), qt.frc_series()):
+    assert m.result.resolution == qt["resolution"] and m.result.crossed == qt["crossed"]
+    assert_fingerprint(m.half_1_image(), qt["half1"])
+    assert_fingerprint(m.half_2_image(), qt["half2"])
+    assert m.summary_html() == qt["summary"]
+    assert [s["name"] for s in m.frc_series()] == [s["name"] for s in qt["series"]]
+    for a, b in zip(m.frc_series(), qt["series"]):
         np.testing.assert_array_equal(a["y"], b["y"])
     cells = [
         [
@@ -318,58 +270,41 @@ def test_the_qt_tool_and_the_emtk_app_agree_on_every_result(
         ]
         for r in m.ring_table_rows()
     ]
-    assert cells == qt_table_cells(qt_tool)
+    assert cells == qt["table"]
 
 
 @pytest.mark.skipif(not HT3.exists(), reason="CLSM test data not present")
-def test_the_qt_tool_and_the_emtk_app_agree_on_the_photon_stream_and_the_channel_split(
-    app, drv, qt_tool
+def test_the_recorded_qt_results_and_the_emtk_app_agree_on_the_photon_stream_and_the_channel_split(
+    app, drv
 ):
-    qt = qt_measure(qt_tool, HT3)
+    qt = QT_REF["photon_stream"]
     m = loaded(app, drv, HT3)
     measure(app, drv)
-    np.testing.assert_array_equal(curve_of(m)[1], curve_of(qt)[1])
-    assert m.status_line == qt.status and m.channel_names == qt.channel_names
-    qt = qt_measure(qt_tool, HT3, split="channels", channel="ch0", channel_2="ch1")
+    np.testing.assert_array_equal(curve_of(m)[1], qt["curve"][1])
+    assert m.status_line == qt["status"] and m.channel_names == qt["channel_names"]
+    qt = QT_REF["photon_channels"]
     measure(app, drv, split="channels", channel="ch0", channel_2="ch1")
-    np.testing.assert_array_equal(curve_of(m)[1], curve_of(qt)[1])
-    assert m.status_line == qt.status
+    np.testing.assert_array_equal(curve_of(m)[1], qt["curve"][1])
+    assert m.status_line == qt["status"]
 
 
 @pytest.mark.skipif(not HT3.exists(), reason="CLSM test data not present")
-def test_the_hub_setup_payload_names_the_detector_windows_as_the_qt_tool_did(app, drv, qt_tool):
+def test_the_hub_setup_payload_names_the_detector_windows_as_the_qt_tool_did(app, drv):
     payload = {"detectors": {"green": {"chs": [0]}, "red": {"chs": [1]}}}
-    qt = qt_tool.model
-    qt.detectors = {}
-    qt.set_filename(str(HT3))
-    qt.apply_setup_settings(payload)
     loaded(app, drv, HT3)
     app.apply_setup_settings(payload)
     drv.settle()
-    assert app.model.channel_names == qt.channel_names and set(app.model.channel_names) >= {
-        "green",
-        "red",
-    }
-    qt.detectors = {}
+    assert app.model.channel_names == QT_REF["hub_channel_names"] and set(
+        app.model.channel_names
+    ) >= {"green", "red"}
 
 
 @pytest.mark.parametrize("attr", ["pixel_size_nm", "bin_width", "smooth"])
-def test_typed_extremes_are_clamped_to_the_range_the_qt_spin_box_enforced(app, drv, qt_tool, attr):
-    from qtpy import QtWidgets
-
-    from chisurf.gui.autoform.sections.builtin import ValueWidget
-
-    editor = {
-        vw._section.attr: vw.editor
-        for vw in qt_tool.findChildren(ValueWidget)
-        if getattr(vw, "_section", None)
-    }[attr]
+def test_typed_extremes_are_clamped_to_the_range_the_qt_spin_box_enforced(app, drv, attr):
     drv.click("Estimator.fold") if attr != "pixel_size_nm" else None
-    whole = isinstance(editor, QtWidgets.QSpinBox)
-    for qt_value in (1_000_000, -5):
-        editor.setValue(qt_value if whole else float(qt_value))
-        drv.type_into(attr, str(qt_value))
-        assert getattr(app.model, attr) == pytest.approx(editor.value()), (attr, qt_value)
+    for qt_value, qt_clamped in QT_REF["clamp"][attr].items():
+        drv.type_into(attr, qt_value)
+        assert getattr(app.model, attr) == pytest.approx(qt_clamped), (attr, qt_value)
 
 
 # ── 3. choosing files: typed, Browse, Database, drops ──────────────────────────────────────────────────────── #
@@ -1099,7 +1034,7 @@ def test_the_imaging_hub_adopts_its_source_as_the_qt_tool_did(app, drv, stack_a)
 
 def test_the_window_draws_empty_and_populated_at_both_sizes(app, drv, stack_a):
     for size in ((1200, 800), (800, 600)):
-        assert {"Settings", "Measure", "Export CSV", "Browse", "Database", "Resolution"} <= set(
+        assert {"Settings", "Measure", "Export CSV", "📂  Browse…", "Database", "Resolution"} <= set(
             drv.draw(3, size).strings
         )
     loaded(app, drv, stack_a)

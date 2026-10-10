@@ -31,17 +31,6 @@ def test_view_spec_loads():
     assert spec is not None
 
 
-def test_tool_builds_with_autoform(qapp, qtbot):
-    from chisurf.plugins.tttr.tttr_splitter.gui.tool import PTUSplitter
-
-    w = PTUSplitter()
-    qtbot.addWidget(w)
-    # The UI is the EMTK app; the AutoForm-era attribute is a repaint shim.
-    assert hasattr(w.auto_form, "sync_fields")
-    assert w.app is w.host.control
-    assert w._model is not None
-
-
 @pytest.mark.skipif(not _PTU.exists(), reason="sample PTU not available")
 def test_split_preserves_photons(tmp_path):
     import tttrlib

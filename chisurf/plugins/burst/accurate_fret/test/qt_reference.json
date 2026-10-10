@@ -1,0 +1,55 @@
+{
+ "_note": "Recorded from the retired Qt AccurateFretTool (n=100 simulated bursts, seed 5, n_bootstrap=0).",
+ "factors": [
+  {
+   "factor": "\u03b1",
+   "value": "0.0798",
+   "uncertainty": "\u2014",
+   "origin": "data estimate"
+  },
+  {
+   "factor": "\u03b2",
+   "value": "1.4283",
+   "uncertainty": "\u2014",
+   "origin": "source not reported"
+  },
+  {
+   "factor": "\u03b3",
+   "value": "0.6162",
+   "uncertainty": "0.0065",
+   "origin": "data estimate"
+  },
+  {
+   "factor": "\u03b4",
+   "value": "0.0596",
+   "uncertainty": "\u2014",
+   "origin": "data estimate"
+  },
+  {
+   "factor": "R\u2080",
+   "value": "52.0000",
+   "uncertainty": "\u2014",
+   "origin": "given"
+  }
+ ],
+ "populations": [
+  {
+   "population": "0",
+   "n": "100",
+   "E": "0.3152 \u00b1 0.0043",
+   "S": "0.500",
+   "tau_f": "2.899",
+   "distance": "59.2 \u00b1 0.2",
+   "off_line": "+0.0194"
+  },
+  {
+   "population": "1",
+   "n": "100",
+   "E": "0.7602 \u00b1 0.0030",
+   "S": "0.500",
+   "tau_f": "1.318",
+   "distance": "42.9 \u00b1 0.1",
+   "off_line": "+0.0119"
+  }
+ ]
+}

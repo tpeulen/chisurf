@@ -1,16 +1,13 @@
-"""The native BVA tool at parity with the Qt BVATool.
+"""The native BVA tool at parity with the retired Qt BVATool.
 
-Both hosts draw the same ``BurstBvaApp``; what differs is the run around it -- the
-Qt tool's ChiSurfProgress worker, result cache, stamp and auto update against the
-emtk ``BvaController``. The Qt worker runs in a subprocess on the same demo burst
-folder (this process stays Qt-free) and the answers are compared.
+Both hosts drew the same ``BurstBvaApp``; what differed is the run around it -- the Qt tool's ChiSurfProgress
+worker, result cache, stamp and auto update against the emtk ``BvaController``. The Qt worker's answers on the
+two demo burst folders were recorded (``qt_reference.json``) and are compared.
 """
 
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -85,59 +82,14 @@ def _std(df):
     )
 
 
-_QT = r"""
-import json, pathlib, sys
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-import numpy as np
-from chisurf.plugins.burst.burst_bva.gui.tool import BVATool
-class Task:
-    def set_range(self, *a): pass
-    def set_text(self, *a): pass
-    def progress_window(self, *a):
-        return type("P", (), {"set_value": lambda s, v: None, "set_maximum": lambda s, v: None})()
-def run(w):
-    s = w.model.bva_settings()
-    w._analysis_done(w._analysis_worker(s, True, w.analysis_fingerprint(s), w.input_files(), w.fingerprint_params(s), Task()))
-    return np.asarray(w.model.df["Proximity Ratio Std"], float).tolist()
-w = BVATool()
-w.model.auto_update = False
-w.model.donor_channels_text, w.model.acceptor_channels_text = "0", "1"
-w.model.set_folder(pathlib.Path(sys.argv[1]))
-first = run(w)
-w.model.set_folder(pathlib.Path(sys.argv[2]))
-second = run(w)
-print("FACTS" + json.dumps({"first": first, "second": second, "status": w.model.status_text,
-                            "companions": sorted(p.name for p in pathlib.Path(sys.argv[1]).parent.glob("*.pto"))}))
-"""
-
-
-def _qt_facts(first, second):
-    pytest.importorskip("qtpy")
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT, str(first), str(second)],
-        capture_output=True,
-        text=True,
-        timeout=300,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and (
-        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
-    ):
-        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
-    # Any other failure is the Qt tool's own: skipping it hid a broken Qt host.
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS") :])
+def _qt_facts(first=None, second=None):
+    """What the retired Qt BVATool's worker returned on the two demo folders (qt_reference.json)."""
+    return json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
 
 
 # 1. the Qt tool's answer, and the known one; the companions it writes
 def test_a_run_gives_the_qt_tools_bva_and_writes_the_same_companions(tmp_path):
-    a, b = build(tmp_path / "qt_a"), build(tmp_path / "qt_b", seed=9)
-    qt = _qt_facts(a, b)
+    qt = _qt_facts()
     ours_a = build(tmp_path / "a")
     app = _app(ours_a)
     try:
@@ -175,7 +127,7 @@ def test_a_new_folder_is_computed_on_its_own_bursts(tmp_path):
         assert _std(app.model.df) == pytest.approx(expected, nan_ok=True)
     finally:
         app.close()
-    qt = _qt_facts(build(tmp_path / "qa"), build(tmp_path / "qb", seed=9))
+    qt = _qt_facts()
     assert np.asarray(qt["second"]) == pytest.approx(expected, nan_ok=True)  # the Qt tool too
 
 

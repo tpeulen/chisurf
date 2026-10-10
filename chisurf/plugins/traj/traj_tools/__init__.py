@@ -16,20 +16,3 @@ if _manifest is not None:
 else:
     name = "Structure:Trajectory:Traj Tools"
     cli_entrypoint = ""
-
-__all__ = ["TrajectoryToolsTool"]
-
-
-def __getattr__(attribute):
-    # Lazy export: the Qt widget (and its qtpy import) must not load before the
-    # native EMTK factory declared in the manifest.
-    if attribute == "TrajectoryToolsTool":
-        from chisurf.plugins.traj.traj_tools.gui.tool import TrajectoryToolsTool
-
-        return TrajectoryToolsTool
-    raise AttributeError(attribute)
-
-
-if __name__ == "plugin":
-    window = __getattr__("TrajectoryToolsTool")()
-    window.show()

@@ -1,80 +1,24 @@
-"""Tests for the TTTR Tools window (shared NavigationPanelTool shell)."""
+"""Tests for the TTTR Tools hub: its panel list and the plugins it hides from the ribbon."""
 
 
-def test_tttr_tools_uses_shared_navigation_shell(qapp, qtbot):
-    from chisurf.gui.widgets.navigation import NavigationPanelTool
-    from chisurf.plugins.tttr.tttr_toolbox.gui.tool import TTTR_PANELS, TttrToolboxTool
-
-    w = TttrToolboxTool()
-    qtbot.addWidget(w)
-
-    # same base / look as FCS Tools, Structure Tools, Burst Analysis, ...
-    assert isinstance(w, NavigationPanelTool)
-    assert "TTTR Tools" in w.windowTitle()
-
-    # one navigation entry per panel (incl. the separator)
-    assert w.nav_list.count() == len(TTTR_PANELS)
-    names = [w.nav_list.item(i).text() for i in range(w.nav_list.count())]
-    assert any("ALEX Creator" in n for n in names)
-    assert any("Photon Table" in n for n in names)
-    assert any("Count Rate Analysis" in n for n in names)
-
-    # panels load lazily: only the first + the (possibly persisted) current panel
-    # are instantiated; every other panel stays a placeholder.
-    kept = {0, w.nav_list.currentRow()}
-    assert all(
-        p.get("instance") is None
-        for i, p in enumerate(w.panels)
-        if i not in kept and not p.get("separator")
-    )
-
-
-def test_toolbox_remembers_window_and_selection(qapp, qtbot, tmp_path):
-    """The toolbox persists geometry, splitter and the selected panel."""
-    from qtpy import QtCore
-
-    from chisurf.plugins.tttr.tttr_toolbox.gui.tool import TttrToolboxTool
-
-    # Isolate to a throwaway ini file so the real user settings are untouched.
-    ini = str(tmp_path / "toolbox.ini")
-
-    def _settings():
-        return QtCore.QSettings(ini, QtCore.QSettings.IniFormat)
-
-    w = TttrToolboxTool()
-    qtbot.addWidget(w)
-    assert w._settings_key == "tttr_toolbox"
-    w._settings = _settings
-    w.resize(1180, 760)
-    w.nav_list.setCurrentRow(4)  # Count Rate Analysis
-    w._save_window_state()
-
-    w2 = TttrToolboxTool()
-    qtbot.addWidget(w2)
-    w2._settings = _settings
-    w2._restore_window_state()
-    assert w2.nav_list.currentRow() == 4
-
-
-def test_panels_are_data_driven_from_json():
-    """The panel list is built from panels.json (entrypoint strings), not Python."""
+def test_panels_name_plugins_with_a_native_app():
+    """Every toolbox entry names a plugin folder whose manifest declares a resolvable emtk app."""
+    import importlib
     import json
     import pathlib
 
-    from chisurf.plugins.tttr.tttr_toolbox.gui import tool as tool_mod
-
     spec = json.loads(
-        (pathlib.Path(tool_mod.__file__).with_name("panels.json")).read_text(encoding="utf-8")
+        (pathlib.Path(__file__).parents[1] / "gui" / "panels.json").read_text(encoding="utf-8")
     )
-    tool_panels = [p for p in spec["panels"] if not p.get("separator")]
-    # every non-separator entry declares a resolvable "module:Class" entrypoint
-    for p in tool_panels:
-        module_name, _, attr = p["entrypoint"].partition(":")
-        assert module_name and attr, p
-    # and each becomes a panel with a generated factory
-    built = [p for p in tool_mod.TTTR_PANELS if not p.get("separator")]
-    assert len(built) == len(tool_panels)
-    assert all(callable(p["factory"]) for p in built)
+    root = pathlib.Path(__file__).resolve().parents[3]
+    panels = [p for p in spec["panels"] if not p.get("separator")]
+    assert len(panels) == 5
+    for panel in panels:
+        manifest = json.loads(
+            (root / panel["plugin"] / "manifest.json").read_text(encoding="utf-8")
+        )
+        module_name, _, attr = manifest["entrypoints"]["emtk"].partition(":")
+        assert callable(getattr(importlib.import_module(module_name), attr)), panel["plugin"]
 
 
 def test_included_plugins_are_menu_hidden():

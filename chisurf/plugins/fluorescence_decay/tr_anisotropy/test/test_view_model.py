@@ -49,16 +49,6 @@ def test_every_reference_resolves_on_the_model():
                 assert callable(getattr(vm, action, None)), f"missing action {action!r}"
 
 
-def test_embedded_widgets_declared():
-    wiz = AnisotropyViewModel().view_spec().sections[0]
-    embeds = [
-        sec for step in wiz.steps for sec in step.sections if getattr(sec, "key", "") == "embed"
-    ]
-    widgets = {sec.options.get("widget", "") for sec in embeds}
-    assert any("IrfNormalizationWidget" in w for w in widgets)
-    assert any("ComponentsWidget" in w for w in widgets)
-
-
 def test_corrections_are_float_properties():
     vm = AnisotropyViewModel()
     vm.g_factor = 1.5

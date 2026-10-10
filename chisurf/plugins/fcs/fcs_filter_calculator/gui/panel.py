@@ -50,6 +50,17 @@ def describe(component) -> str:
     return str(source.get("type", "component"))
 
 
+#: Convolution/acquisition plumbing hidden from the Auto-fit parameter table: configured by the
+#: auto-fit itself (axis, range, IRF placement, acquisition times), not results the user reads
+#: or links; showing it would bury the lifetimes and amplitudes that matter.
+AUTOFIT_HIDDEN_PARAMETERS = frozenset(
+    {
+        "dt", "rep", "start", "stop", "irf_start", "irf_stop", "lb", "n0", "win-size",
+        "tBg", "tMeas", "tDead", "r0", "g", "l1", "l2", "lamp background", "irf position",
+    }
+)  # fmt: skip
+
+
 class FilterPanel:
     """Fields, tables and actions of the window; edits are ignored while a computation runs (the model is then a snapshot)."""
 
@@ -426,18 +437,25 @@ class FilterPanel:
     def parameter_rows(self):
         result = self.m._auto_fit_result
         fit = result.get("fit") if result else None
-        parameters = getattr(getattr(fit, "model", None), "parameters_all", {})
+        model = getattr(fit, "model", None)
+        parameters = getattr(model, "parameters_all", {})
         if isinstance(parameters, dict):
             parameters = list(parameters.values())
+        # A BFF model holds every component it could use; only the fitted topology's
+        # parameters (and what it presents) are rows.
+        used = getattr(model, "structure_parameter_ids", None)
+        used = set(used()) if callable(used) else None
         rows = []
         for p in parameters or []:
-            if getattr(p, "name", "") in {
-                "dt",
-                "start",
-                "stop",
-                "irf_start",
-                "irf_stop",
-            } or not isinstance(getattr(p, "value", None), (int, float)):
+            if (
+                getattr(p, "name", "") in AUTOFIT_HIDDEN_PARAMETERS
+                or not isinstance(getattr(p, "value", None), (int, float))
+                or not (
+                    used is None
+                    or getattr(p, "is_output", False)
+                    or getattr(p, "canonical_id", None) in used
+                )
+            ):
                 continue
             link = getattr(p, "link", None)
             rows.append(

@@ -11,43 +11,25 @@ import pathlib
 
 import pytest
 
-try:
-    from qtpy import QtWidgets
-except ImportError:
-    QtWidgets = None  # type: ignore[assignment]
 
-_needs_qt = pytest.mark.skipif(QtWidgets is None, reason="Qt bindings not available")
-
-_APP: list = []
-
-
-def _ensure_app():
-    _APP[:] = [QtWidgets.QApplication.instance() or QtWidgets.QApplication([])]
 
 
 from emtk.testing import RecordingPainter  # noqa: E402
 
 
 @pytest.fixture
-def tool(qapp):
-    _ensure_app()
-    from chisurf.plugins.tttr.tttr_splitter.gui.tool import PTUSplitter
+def tool():
+    from chisurf.plugins.tttr.tttr_splitter.gui.controller import SplitterController
 
-    tool = PTUSplitter()
-    yield tool
-    tool.close()
+    controller = SplitterController()
+    yield controller
+    controller.app.close()
 
 
-@_needs_qt
-def test_the_window_hosts_the_emtk_app(tool):
-    from emtk.qt_host import host_class
-
-    assert isinstance(tool.host, host_class())
-    assert tool.app is tool.host.control
+def test_the_controller_owns_the_native_app(tool):
     assert hasattr(tool.app, "start_guide") and hasattr(tool.app, "show_help")
 
 
-@_needs_qt
 def test_a_frame_draws_all_three_docks(tool):
     painter = RecordingPainter()
     tool.app.draw(painter, 0.0, 0.0, 900.0, 620.0)
@@ -63,7 +45,6 @@ def test_a_frame_draws_all_three_docks(tool):
     assert any("No files queued" in s for s in painter.strings)
 
 
-@_needs_qt
 def test_editing_the_input_path_loads_the_file(tool, monkeypatch):
     """Typing a path into the input row runs the loader with it."""
     import emtk.im as im
@@ -85,23 +66,17 @@ def test_editing_the_input_path_loads_the_file(tool, monkeypatch):
     assert loaded == ["/data/run.ptu"]
 
 
-@_needs_qt
 def test_load_input_rejects_a_missing_file(tool, monkeypatch):
-    warnings: list = []
-    monkeypatch.setattr("chisurf.gui.dialogs.warning", lambda *a, **k: warnings.append(a))
     tool.load_input("/nowhere/never.ptu")
-    assert warnings, "the invalid-file warning was not shown"
+    assert tool.message == "Could not load /nowhere/never.ptu: file does not exist"
     assert tool._model.input_file == ""
 
 
-@_needs_qt
 def test_run_progress_and_reason_reach_the_canvas(tool, monkeypatch):
     """A running split shows its percentage; a cannot-split reason shows."""
     # No file loaded → the run reports why instead of splitting.
-    runs: list = []
-    monkeypatch.setattr("chisurf.gui.dialogs.warning", lambda *a, **k: runs.append(a))
     tool._run()
-    assert runs, "the cannot-split warning was not shown"
+    assert tool.message, "the cannot-split reason was not reported"
 
     # A running state renders the progress bar with its percentage.
     tool.run_running = True
@@ -111,7 +86,6 @@ def test_run_progress_and_reason_reach_the_canvas(tool, monkeypatch):
     assert any("40%" in s for s in painter.strings), painter.strings[:20]
 
 
-@_needs_qt
 def test_batch_progress_renders_per_file_counts(tool):
     tool._model.batch_files = ["/data/a.ptu", "/data/b.ptu", "/data/c.ptu"]
     tool.batch_progress = (2, 3)
@@ -122,7 +96,6 @@ def test_batch_progress_renders_per_file_counts(tool):
     assert "/data/a.ptu" in painter.strings
 
 
-@_needs_qt
 def test_batch_queue_child_keeps_output_option_below_long_paths(tool, monkeypatch):
     import emtk.im as im
 
@@ -150,21 +123,16 @@ def test_batch_queue_child_keeps_output_option_below_long_paths(tool, monkeypatc
     assert rects["output"][1] >= rects["file"][1] + rects["file"][3]
 
 
-@_needs_qt
 def test_batch_start_without_files_reports(tmp_path, tool, monkeypatch):
-    infos: list = []
-    monkeypatch.setattr("chisurf.gui.dialogs.information", lambda *a, **k: infos.append(a))
     tool._start_batch()
-    assert infos, "the no-files notice was not shown"
+    assert tool.message == "Add PTU files or folders first."
 
 
-@_needs_qt
 def test_the_view_json_still_loads(tool):
     """The declarative spec stays loadable for the RPC/CLI consumers."""
     assert tool._model.view_spec() is not None
 
 
-@_needs_qt
 def test_split_options_restore_qt_controls(tool, monkeypatch):
     import emtk.im as im
 

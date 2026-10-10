@@ -241,17 +241,6 @@ def test_another_output_container_equals_the_qt_tools(ui, source, tmp_path):
     same_file(tmp_path / "qt.ht3", tmp_path / "ours.ht3")
 
 
-def test_the_qt_tool_has_a_help_button(qapp, qtbot):
-    from qtpy import QtWidgets
-
-    from chisurf.plugins.tttr.ptu_alex_creator.gui.tool import AlexPTUCreator
-
-    tool = AlexPTUCreator()
-    qtbot.addWidget(tool)
-    texts = {b.text() for b in tool.findChildren(QtWidgets.QToolButton)}
-    assert "?" in texts or any("?" in t for t in texts)
-
-
 # -- the file row ---------------------------------------------------------------------------------------------------- #
 
 

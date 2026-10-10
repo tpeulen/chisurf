@@ -1,8 +1,8 @@
 """Wizards hub plugin.
 
 A two-panel launcher: pick a wizard on the left, use it embedded on the right.
-The catalogue of wizards is Qt-free data in :mod:`.core.registry`; the GUI host
-(:mod:`.gui.tool`) resolves and embeds each wizard widget lazily.
+The catalogue of wizards is Qt-free data in :mod:`.core.registry`; the native hub
+(:mod:`.gui.app`) builds each wizard app lazily.
 """
 
 # Plugin brand icon (unified emoji set)
@@ -17,10 +17,3 @@ if _manifest is not None:
     name = _manifest.display_name
 else:
     name = "Tools:Calculators:Wizards"
-
-
-if __name__ == "plugin":
-    from .gui.tool import WizardHub
-
-    _hub = WizardHub()
-    _hub.show()

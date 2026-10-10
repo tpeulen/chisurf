@@ -13,7 +13,7 @@ from emtk.docking import DockManager, Region, Split
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
-from chisurf.plugins.emtk_layout import action_button, window_size
+from chisurf.plugins.emtk_layout import action_button, action_caption, action_tooltip, window_size
 
 from .model import _CHI2_2_ATTRS, _CHI2_MAX_ATTRS, _CONF_ATTRS, FTestModel
 
@@ -47,6 +47,7 @@ class FTestApp(ImApp):
         self.fits: list[Any] = []
         self.menu_open = False
         self.status = ""
+        self.example_folder = None  # None: the plugin's demo cache
         self.item_rects = {}
         self.spec = json.loads(Path(__file__).with_name("ftest.view.json").read_text())
         self.window_size = window_size(self.spec, (1200, 800))
@@ -130,6 +131,19 @@ class FTestApp(ImApp):
         self.tour.notify_used("From fit")
         return True
 
+    def load_example(self) -> None:
+        """Fill both panels from the simulated one- versus two-exponential fits."""
+        try:
+            stats = self.model.load_example(self.example_folder)
+        except Exception as exc:
+            self.status = f"Could not build the example: {exc}"
+            return
+        for form in self.forms:
+            form.buffers.clear()
+        taus = ", ".join(f"{t:.2f}" for t in stats["complex"]["lifetimes_ns"])
+        self.status = f"Example: decay simulated with two lifetimes; the two-exponential fit finds {taus} ns."
+        self.tour.notify_used("load_example")
+
     def on_paths_dropped(self, paths) -> None:
         if paths:
             self.status = "The F-test calculator takes no dropped files."
@@ -158,6 +172,16 @@ class FTestApp(ImApp):
             im.end_menu()
         else:
             self.menu_open = False
+        im.same_line()
+        if im.button(f"{action_caption('example')}###load_example"):
+            self.load_example()
+        im.set_item_tooltip(
+            action_tooltip(
+                "example",
+                tr("Load the statistics of a one- and a two-exponential fit to a simulated two-lifetime decay."),
+            )
+        )
+        self.item_rects["load_example"] = im.get_item_rect()
         im.same_line()
         if action_button("guide"):
             self.tour.start()

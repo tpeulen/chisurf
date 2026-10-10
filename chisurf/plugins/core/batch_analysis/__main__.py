@@ -1,19 +1,16 @@
-"""Standalone launcher for the Batch-Analysis wizard (``csg_batch_analysis``)."""
+"""Standalone launcher for the Batch-Analysis app (``csg_batch_analysis``)."""
 
 from __future__ import annotations
 
+import sys
 
-def main() -> None:
-    """Launch the batch-analysis wizard as a standalone Qt application."""
-    from qtpy import QtWidgets
 
-    from .gui.tool import BatchProcessingWizard
+def main(argv: list[str] | None = None) -> int:
+    """Forward standalone launch options to the shared native plugin launcher."""
+    from chisurf.emtk.__main__ import main as launch
 
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    win = BatchProcessingWizard()
-    win.show()
-    app.exec_()
+    return launch(["--plugin", "batch_analysis", *(sys.argv[1:] if argv is None else argv)])
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

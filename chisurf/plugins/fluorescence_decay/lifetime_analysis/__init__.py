@@ -18,19 +18,7 @@ name = (
 
 
 def load():
-    """Return the integrated lifetime analysis tool."""
-    from chisurf.plugins.fluorescence_decay.lifetime_analysis.gui.tool import (
-        LifetimeAnalysisTool,
-    )
+    """Return the integrated lifetime analysis emtk hub."""
+    from chisurf.plugins.fluorescence_decay.lifetime_analysis.gui.app import make_app
 
-    return LifetimeAnalysisTool()
-
-
-if __name__ == "plugin":
-    window = load()
-    window.show()
-    window.raise_()
-    window.activateWindow()
-
-
-__all__ = ["LifetimeAnalysisTool", "load", "name"]
+    return make_app()

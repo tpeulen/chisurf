@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import copy
 import json
-import os
 import re
 from pathlib import Path
 
@@ -169,22 +168,9 @@ def click(app, name, size=(1200, 800)):
     draw(app, size, 2)
 
 
-# ── Qt tool as the reference (the widget is built offscreen) ─────────────
+# ── the retired Qt tool as the reference (recorded before it was deleted) ──
 
-
-@pytest.fixture(scope="module")
-def qapp():
-    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-    qtpy = pytest.importorskip("qtpy")
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-
-def qt_widget(qapp):
-    from chisurf.plugins.core.plot_settings.gui.tool import PlotSettingsWidget
-
-    return PlotSettingsWidget()
+QT = json.loads((Path(__file__).parent / "qt_reference.json").read_text())
 
 
 def strip_widget_noise(settings):
@@ -192,54 +178,31 @@ def strip_widget_noise(settings):
     return json.loads(json.dumps(settings))
 
 
-@pytest.mark.gui
-def test_defaults_equal_the_qt_widget(qapp, empty_plot_settings):
-    widget = qt_widget(qapp)
+def test_defaults_equal_the_qt_widget(empty_plot_settings):
     model = make_model()
-    assert strip_widget_noise(model.collect()) == strip_widget_noise(widget._collect_settings())
+    assert strip_widget_noise(model.collect()) == QT["defaults"]
 
 
-@pytest.mark.gui
-def test_seeded_settings_load_like_the_qt_widget(qapp):
-    widget = qt_widget(qapp)
+def test_seeded_settings_load_like_the_qt_widget():
     model = make_model()
     collected = model.collect()
-    assert strip_widget_noise(collected) == strip_widget_noise(widget._collect_settings())
+    assert strip_widget_noise(collected) == QT["seeded"]
     assert collected["colors"]["data"] == "#112233"
     assert collected["colors"]["region_selector_alpha"] == 77
     assert collected["node_graph"]["grid_spacing"] == 40.0
     assert collected["pyqtgraph_config"]["background"] == "w"
 
 
-@pytest.mark.gui
-def test_ranges_equal_the_qt_controls(qapp):
+def test_ranges_equal_the_qt_controls():
     from chisurf.plugins.core.plot_settings.gui.model import RANGES
 
-    widget = qt_widget(qapp)
-    qt = {
-        "region_alpha": widget.alpha_slider,
-        "active_transparency": widget.active_transparency,
-        "inactive_transparency": widget.inactive_transparency,
-        "line_width": widget.line_width,
-        "font_size": widget.font_size,
-        "grid_alpha_pct": widget.grid_alpha,
-        "ng_line_width": widget.ng_line_width,
-        "ng_grid_opacity_pct": widget.ng_grid_opacity,
-        "ng_grid_spacing": widget.ng_grid_spacing,
-        "ng_node_size": widget.ng_node_size,
-    }
-    assert set(qt) == set(RANGES)
-    for attr, control in qt.items():
-        lo, hi = RANGES[attr]
-        assert (lo, hi) == (control.minimum(), control.maximum()), attr
+    assert set(QT["ranges"]) == set(RANGES)
+    for attr, (qt_lo, qt_hi) in QT["ranges"].items():
+        assert tuple(RANGES[attr]) == (qt_lo, qt_hi), attr
 
 
-@pytest.mark.gui
-def test_sections_start_in_the_qt_fold_state(qapp):
-    from chisurf.gui.widgets.collapsible_box import CollapsibleBox
-
-    widget = qt_widget(qapp)
-    qt = {b.title(): b.is_expanded() for b in widget.findChildren(CollapsibleBox)}
+def test_sections_start_in_the_qt_fold_state():
+    qt = QT["folds"]
     for panel in spec()["sections"][0]["sections"]:
         assert panel["title"] in qt, panel["title"]
         assert (not panel["collapsed"]) is qt[panel["title"]], panel["title"]
@@ -247,13 +210,10 @@ def test_sections_start_in_the_qt_fold_state(qapp):
     assert qt["Preview"] is True  # the preview is its own docked window, always open
 
 
-@pytest.mark.gui
-def test_backend_choices_equal_the_qt_combo(qapp):
+def test_backend_choices_equal_the_qt_combo():
     from chisurf.gui.chiplot import available_backends
 
-    widget = qt_widget(qapp)
-    qt_items = [widget.backend_combo.itemText(i) for i in range(widget.backend_combo.count())]
-    assert list(make_model().backends) == qt_items == available_backends()
+    assert list(make_model().backends) == QT["backends"] == available_backends()
 
 
 # ── the model ────────────────────────────────────────────────────────────

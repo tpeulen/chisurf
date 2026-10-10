@@ -1,16 +1,13 @@
-"""The native photon-by-photon kinetics tool at parity with the Qt BurstGsTool.
+"""The native photon-by-photon kinetics tool at parity with the retired Qt BurstGsTool.
 
-Both hosts draw the same ``BurstGsApp``; the Qt tool fits through ChiSurfProgress
-and reports in its status bar, the emtk app fits on the controller's worker. The Qt
-tool runs in a subprocess on the tool's own simulation (known rates; this process
-stays Qt-free) and the fits are compared.
+Both hosts drew the same ``BurstGsApp``; the Qt tool fitted through ChiSurfProgress and reported in its
+status bar, the emtk app fits on the controller's worker. The Qt tool's fit on the tool's own simulation
+(known rates) was recorded in ``qt_reference.json`` and the fits are compared.
 """
 
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -52,41 +49,10 @@ def _settle(app, timeout=120.0):
     _draw(app, n=1)
 
 
-_QT = r"""
-import json
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-from chisurf.plugins.burst.burst_gs.gui.tool import BurstGsTool
-w = BurstGsTool()
-w.model.use_simulation = True
-w._fitted(bool(w.model.compute()))
-fit = w.model.analysis.fit
-print("FACTS" + json.dumps({"matrix": fit.rate_matrix.tolist(), "logL": fit.log_likelihood,
-                            "status": w.statusBar().currentMessage(), "report": w.model.results_text}))
-"""
-
-
 @pytest.fixture(scope="module")
 def qt():
-    pytest.importorskip("qtpy")
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT],
-        capture_output=True,
-        text=True,
-        timeout=600,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and (
-        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
-    ):
-        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
-    # Any other failure is the Qt tool's own: skipping it hid a broken Qt host.
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS") :])
+    """What the retired Qt BurstGsTool reported on the same simulation (qt_reference.json)."""
+    return json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
 
 
 # 1. the Qt tool's fit, status line and report; the simulated rates come back

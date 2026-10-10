@@ -1,0 +1,75 @@
+{
+ "titles": [
+  "key",
+  "Model",
+  "Experiment",
+  "Status",
+  "Spec",
+  "Parameter UI",
+  "Module",
+  "Shared"
+ ],
+ "cells": [
+  [
+   "pkg.tcspc.Lifetime",
+   "Lifetime",
+   "TCSPC",
+   "disabled",
+   "none",
+   "spec-driven",
+   "pkg.tcspc",
+   ""
+  ],
+  [
+   "pkg.tcspc.parse.ParseTCSPC",
+   "Parse-Model",
+   "TCSPC",
+   "enabled",
+   "none",
+   "spec-driven",
+   "pkg.tcspc.parse",
+   "FCS"
+  ],
+  [
+   "pkg.tcspc.fret.FretDiscrete",
+   "FRET: discrete",
+   "TCSPC",
+   "enabled",
+   "none",
+   "spec-driven",
+   "pkg.tcspc.fret",
+   ""
+  ],
+  [
+   "pkg.fcs.parse.ParseFCS",
+   "Parse-Model",
+   "FCS",
+   "enabled",
+   "none",
+   "spec-driven",
+   "pkg.fcs.parse",
+   "TCSPC"
+  ],
+  [
+   "pkg.fcs.K",
+   "FCS kinetics",
+   "FCS",
+   "enabled",
+   "none",
+   "spec-driven",
+   "pkg.fcs",
+   ""
+  ],
+  [
+   "pkg.pda.Pda2c",
+   "PDA2c",
+   "PDA",
+   "enabled",
+   "none",
+   "spec-driven",
+   "pkg.pda",
+   ""
+  ]
+ ],
+ "status": "6 models \u00b7 1 disabled \u00b7 1 disabled name(s) match no model"
+}
