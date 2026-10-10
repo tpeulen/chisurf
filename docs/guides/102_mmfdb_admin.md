@@ -78,6 +78,11 @@ double-click it to open that record in its own panel.
 Some panels have their own actions. Users have **Change password** and **Jump to
 branch**. Branches have **Set head**. Raw Data and Processed Products have
 **Copy ID**, **Reveal**, **Use as provenance seed**, **Validate** and **Delete**.
+Experiments show their linked data in a sub-table (**Add data**, **Save data**,
+**Delete data**, **Open data**); Setups have **Validate setup**; Projects list their
+archived versions with **Restore project to ChiSurf** and **Delete archived version**
+(only the picked one, after asking). Every panel has **Copy row**, **Copy checked IDs**
+and the tick helpers (**Check all**, **Uncheck all**, **Invert checks**).
 Analyses have **Details**, and Objects have **Copy UUID**, **Reveal** and
 **Delete object**.
 

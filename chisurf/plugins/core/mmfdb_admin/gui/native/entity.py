@@ -19,6 +19,7 @@ from ..entity_registry import EntitySpec
 from ..entity_schema import FieldSpec, entity_columns
 from ..entity_values import coerce_in, coerce_out, default_for, view_section
 from .base import Panel, cell
+from .entity_extras import ExtrasMixin
 from .dialogs import (
     AnalysisDetailsDialog,
     ChoiceDialog,
@@ -75,6 +76,8 @@ class EntityForm:
         if name.startswith("choices__"):
             field = panel.field(name[len("choices__") :])
             return lambda: list(field.choices) if field else []
+        if name.startswith("x_"):
+            return getattr(panel, name)
         if name.startswith("fk__"):
             field_name = name[len("fk__") :]
             return lambda: panel.fk_choices(field_name)
@@ -92,10 +95,12 @@ class EntityForm:
 
     def enabled(self, name: str) -> bool:  # noqa: ARG002 - view_form hook
         panel = self._panel
+        if name.startswith("x_"):
+            return panel.x_enabled(name)
         return bool(panel.selected_id) and panel.admin.connected
 
 
-class EntityPanel(Panel):
+class EntityPanel(ExtrasMixin, Panel):
     """One entity: its table, its form, New / Delete and the actions declared for it."""
 
     def __init__(
@@ -119,6 +124,7 @@ class EntityPanel(Panel):
         #: ``field -> [(value, label)]`` of every foreign key, fetched with the rows.
         self.fk_options: dict[str, list[tuple[str, str]]] = {}
         self._preview_dir: tempfile.TemporaryDirectory | None = None
+        self._init_extras()
 
     # ── schema ─────────────────────────────────────────────────────────
     def field(self, name: str) -> FieldSpec | None:
@@ -140,7 +146,7 @@ class EntityPanel(Panel):
         return [
             view_section(fs, f"fk__{fs.name}" if self.fk_target(fs.name) else "", read_only=locked)
             for fs in self.field_specs
-        ]
+        ] + self.extra_sections()
 
     def table_columns(self) -> list[dict]:
         """The table's columns: a check box, then the id and the fields (links for keys)."""
@@ -252,6 +258,7 @@ class EntityPanel(Panel):
         """Select *record_id* and load it into the form (fetching it if it is not listed)."""
         self.selected_id = str(record_id)
         record = self.records.get(self.selected_id)
+        self.after_select()
         if record is not None:
             self.form.load(record)
             return

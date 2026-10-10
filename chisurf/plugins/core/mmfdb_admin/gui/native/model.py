@@ -189,6 +189,9 @@ class AdminModel:
         #: request without a dialog (tests); ``opener(location)`` opens a file / URL.
         self.chooser: Callable[..., str | None] | None = None
         self.opener: Callable[[str], Any] = open_location
+        #: ``restorer(project_id, version_id, payload)`` loads a fetched project version into
+        #: ChiSurf (default: the ``project.restore`` action); tests inject their own.
+        self.restorer: Callable[[str, str, Any], Any] | None = None
 
     # ── calls ──────────────────────────────────────────────────────────
     def run(
@@ -331,6 +334,14 @@ class AdminModel:
 
     def copy(self, text: str) -> None:
         self.copies.append(str(text))
+
+    def restore_project(self, project_id: str, version_id: str, payload: Any) -> Any:
+        """Hand a fetched project version to ChiSurf (replaces the open project)."""
+        if self.restorer is not None:
+            return self.restorer(project_id, version_id, payload)
+        from chisurf.core.actions import dispatch
+
+        return dispatch("project.restore", {"project_id": version_id})
 
     def open_location(self, location: str) -> None:
         try:

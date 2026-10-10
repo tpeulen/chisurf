@@ -62,6 +62,10 @@ Some entities have their own actions:
 | Raw Data, Processed Products | **Copy ID**, **Reveal** (open the file or URL), **Use as provenance seed**, **Validate** (set the validation status), **Delete** (soft delete, asks) |
 | Analyses | **Copy ID**, **Details** (parameters and input / output products), **Use as provenance seed** |
 | Objects | **Copy UUID**, **Reveal** (a downloaded copy; the server path is never shown), **Delete object** (drops one reference while others remain) |
+| Experiments | **Experiment data / links** sub-table under the form: **Add data**, **Save data**, **Delete data** (asks), **Open data**; click a cell to edit it |
+| Setups | **Validate setup** (the server checks name and version; the result shows below the button) |
+| Projects | **Archived versions** table: **Restore project to ChiSurf** (the picked version, else the latest) and **Delete archived version** (only the picked one, asks) |
+| every panel | **Copy row**, **Copy checked IDs**, **Check all**, **Uncheck all**, **Invert checks** (the old right-click menu's row helpers) |
 
 ## The other panels
 

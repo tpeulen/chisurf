@@ -1,0 +1,136 @@
+{
+  "_comment": "Sections appended below an entity panel's generated form. Key = entity key; '*' = every entity. Their sources and actions are 'x_' names that EntityForm routes to gui/native/entity_extras.py (ExtrasMixin).",
+  "experiment": [
+    {
+      "type": "button_row",
+      "weight": 0,
+      "description": "Add, save, delete or open the experiment's linked data.",
+      "buttons": [
+        {
+          "action": "x_data_add",
+          "label": "Add data",
+          "description": "Add an empty data row to the selected experiment; fill its cells, then press Save data."
+        },
+        {
+          "action": "x_data_save",
+          "label": "Save data",
+          "description": "Save the picked data row (a data type is required; reading options must be JSON)."
+        },
+        {
+          "action": "x_data_delete",
+          "label": "Delete data",
+          "description": "Delete the picked data record (asks first)."
+        },
+        {
+          "action": "x_data_open",
+          "label": "Open data",
+          "description": "Open the picked row's file, folder or URL with the system's default handler."
+        }
+      ]
+    },
+    {
+      "type": "custom",
+      "key": "data_table",
+      "title": "Experiment data / links",
+      "description": "The data rows linked to the selected experiment: type, storage mode, location, MIME type, checksum, reading options and details. Click a cell to edit it, then press Save data.",
+      "options": {
+        "source": "x_data_rows",
+        "columns_source": "x_data_columns",
+        "row_key": "_id",
+        "selected_call": "x_data_select",
+        "edited_call": "x_data_edited",
+        "editable": true,
+        "height": 110,
+        "fit_columns": true,
+        "min_column_width": 70
+      }
+    }
+  ],
+  "setup": [
+    {
+      "type": "button_row",
+      "weight": 0,
+      "description": "Check the selected setup.",
+      "buttons": [
+        {
+          "action": "x_validate_setup",
+          "label": "Validate setup",
+          "description": "Ask the server whether the selected setup definition is valid (a name and a positive version are required)."
+        }
+      ]
+    },
+    {
+      "type": "info",
+      "source": "x_validation_text",
+      "description": "The result of the last validation."
+    }
+  ],
+  "project": [
+    {
+      "type": "button_row",
+      "weight": 0,
+      "description": "Restore or delete the picked archived version.",
+      "buttons": [
+        {
+          "action": "x_restore_version",
+          "label": "Restore project to ChiSurf",
+          "description": "Fetch the picked version (the latest if none is picked) from the database and replace the open ChiSurf project with it."
+        },
+        {
+          "action": "x_delete_version",
+          "label": "Delete archived version",
+          "description": "Delete only the picked archived version from the database (asks first)."
+        }
+      ]
+    },
+    {
+      "type": "custom",
+      "key": "data_table",
+      "title": "Archived versions",
+      "description": "Every archived version of the selected project. Pick one, then restore it into ChiSurf or delete it.",
+      "options": {
+        "source": "x_version_rows",
+        "columns_source": "x_version_columns",
+        "row_key": "_id",
+        "selected_call": "x_version_select",
+        "height": 110,
+        "fit_columns": true,
+        "min_column_width": 70
+      }
+    }
+  ],
+  "*": [
+    {
+      "type": "button_row",
+      "weight": 0,
+      "description": "Row helpers: copy and tick rows.",
+      "buttons": [
+        {
+          "action": "x_copy_row",
+          "label": "Copy row",
+          "description": "Copy the selected row as tab-separated text."
+        },
+        {
+          "action": "x_copy_checked",
+          "label": "Copy checked IDs",
+          "description": "Copy the IDs of the ticked rows, one per line."
+        },
+        {
+          "action": "x_check_all",
+          "label": "Check all",
+          "description": "Tick every listed row."
+        },
+        {
+          "action": "x_uncheck_all",
+          "label": "Uncheck all",
+          "description": "Clear every tick."
+        },
+        {
+          "action": "x_invert_checks",
+          "label": "Invert checks",
+          "description": "Tick the unticked rows and clear the ticked ones."
+        }
+      ]
+    }
+  ]
+}
