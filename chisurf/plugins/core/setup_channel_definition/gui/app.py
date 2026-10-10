@@ -95,6 +95,15 @@ class SetupChannelDefinitionApp(ImApp):
         self.tour.draw(*vp.size)
 
     @property
+    def busy(self) -> bool:
+        """Whether the saved setups or a measurement are still being read (what a driver's ``settle`` waits on)."""
+        return bool(
+            getattr(self.toolbar, "loading", False)
+            or getattr(self.page, "_future", None) is not None
+            or getattr(self.page, "_reference_future", None) is not None
+        )
+
+    @property
     def toolbar(self):
         """The state of the page's Setup row (Save, Rename, Delete, Public, Calibration)."""
         return self.page.toolbar

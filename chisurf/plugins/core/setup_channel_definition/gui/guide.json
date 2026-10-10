@@ -6,9 +6,6 @@
       "text": "The <b>Setup</b> choice lists the saved detector setups. Pick one and its detectors, PIE windows, reading routine, LUTs and optical setup replace the working definition. <i>Unsaved</i> is a definition with no name.",
       "target": {
         "name": "setup_choice"
-      },
-      "await": {
-        "hint": "Pick a setup, or skip this step if none is saved yet."
       }
     },
     {

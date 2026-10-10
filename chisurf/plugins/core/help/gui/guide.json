@@ -1,0 +1,51 @@
+{
+  "steps": [
+    {
+      "title": "The documentation browser",
+      "text": "The tree on the left is the whole manual: concepts (what a method measures), guides (which tool, which settings) and the plugin reference. The page you pick opens on the right.",
+      "target": {
+        "name": "doc_address"
+      }
+    },
+    {
+      "title": "Type an address or a search",
+      "text": "Enter a page such as <code>docs/concepts/fcs.md</code>, a citation key, a web address, or just words to search for.",
+      "target": {
+        "name": "doc_address"
+      },
+      "await": {
+        "hint": "Type something into the address field."
+      }
+    },
+    {
+      "title": "Go",
+      "text": "<b>Go</b> (or Enter) opens the page, or searches the documentation for your words.",
+      "target": {
+        "name": "go"
+      },
+      "await": {
+        "hint": "Press Go."
+      }
+    },
+    {
+      "title": "Back to the start",
+      "text": "<b>Home</b> shows the start page with the shortest ways in.",
+      "target": {
+        "name": "home"
+      },
+      "await": {
+        "hint": "Press Home."
+      }
+    },
+    {
+      "title": "Make the text larger",
+      "text": "<b>A+</b> and <b>A−</b> change the reading size; Ctrl/Cmd and the mouse wheel do the same.",
+      "target": {
+        "name": "zoom_in"
+      },
+      "await": {
+        "hint": "Press A+."
+      }
+    }
+  ]
+}

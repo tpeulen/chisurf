@@ -182,6 +182,7 @@ class PtoInspectorApp(ImApp):
         if event == "opened":
             if self.model.inspection is not None:
                 self.tour.notify_used("filename")
+                self.tour.notify_used("open")
             self.graph.set_document(
                 GraphDocument.from_dict(self.model.provenance_graph() or {"nodes": [], "edges": []})
             )
@@ -214,7 +215,8 @@ class PtoInspectorApp(ImApp):
             im.set_item_tooltip(tr(tip))
         if pressed:
             self.safe(fn)
-            self.tour.notify_used(title)
+            if title != "open":  # Open counts once a container has really opened
+                self.tour.notify_used(title)
         self.rects[title] = (*im.get_item_rect_min(), *im.get_item_rect_size())
         im.end_disabled()
 

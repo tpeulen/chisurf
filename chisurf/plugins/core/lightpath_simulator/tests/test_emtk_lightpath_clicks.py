@@ -648,18 +648,21 @@ def walk_tour_to_the_simulate_step(drv):
     tour = drv.app.tour
     assert tour.active and tour.step_idx == 0
     drv.click_text("Next ►")
-    assert tour.step_idx == 1 and tour.awaiting  # Add to Graph: wait for the user
+    assert tour.step_idx == 1 and tour.awaiting  # pick a component: wait for the user
     drv.draw(2)
     drv.click_text("Next ►")
     assert tour.step_idx == 1  # a card button does not skip an awaited step
     drv.click_at(*_centre(in_window(drv, "palette_rows", "Filter")))
+    assert not tour.awaiting
+    drv.click_text("Next ►")
+    assert tour.step_idx == 2 and tour.awaiting  # Add to Graph: wait for the user
     drv.click("add_selected")
     assert not tour.awaiting
     drv.click_text("Next ►")
-    assert tour.step_idx == 2
+    assert tour.step_idx == 3
     drv.click("reset")
     drv.click_text("Next ►")
-    assert tour.step_idx == 3 and tour.awaiting
+    assert tour.step_idx == 4 and tour.awaiting
     return tour
 
 
@@ -675,7 +678,7 @@ def test_the_tour_next_button_works_over_the_results_table(drv):
     drv.click("calculate")
     drv.settle()
     drv.click_text("Next ►")
-    assert tour.step_idx == 4
+    assert tour.step_idx == 5
 
 
 def test_escape_ends_the_tour(drv):

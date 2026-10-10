@@ -76,7 +76,10 @@ class BurstTwoCdeGui:
             size=(700.0, 520.0),
         )
         self.tour = EmTkGuidedTour(
-            steps=guide_resource, get_target_rect=lambda k: self.item_rects.get(k), owner=self.model
+            steps=guide_resource,
+            get_target_rect=lambda k: self.item_rects.get(k),
+            owner=self.model,
+            wait_for_controls=True,
         )
         self.model.add_observer(self._on_model_event)
 
@@ -100,7 +103,10 @@ class BurstTwoCdeGui:
         pass
 
     def track(self, name: str) -> None:
-        """Record usage of a named control."""
+        """Record usage of a named control (a guided tour awaits it by that name)."""
+        self.tour.notify_used(name)
+        if name.startswith("toolAction_"):
+            self.tour.notify_used(name[len("toolAction_"):])
         if callable(self.on_used):
             self.on_used(name)
 

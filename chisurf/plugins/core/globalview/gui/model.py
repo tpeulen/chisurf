@@ -639,8 +639,8 @@ class GlobalViewModel:
         """Re-read everything and lay it out again."""
         self.rebuild(force=True)
 
-    def relayout(self) -> None:
-        """A setting that moves nodes changed."""
+    def relayout(self, _value: object = None) -> None:
+        """A setting that moves nodes changed (a form toggle also passes its new value)."""
         self.rebuild(force=True)
 
     def auto_refresh_changed(self, value: bool | None = None) -> None:
@@ -651,7 +651,7 @@ class GlobalViewModel:
             self.rebuild(force=True)
         self._update_status()
 
-    def apply_node_size(self) -> None:
+    def apply_node_size(self, _value: object = None) -> None:
         """Rescale the marks: appearance only, no layout."""
         self.content.radius_scale = float(self.node_size) / 11.0
 

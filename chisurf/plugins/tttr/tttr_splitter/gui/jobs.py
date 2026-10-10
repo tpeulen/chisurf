@@ -16,6 +16,11 @@ class BackgroundJob:
     def running(self):
         return self.future is not None
 
+    @property
+    def busy(self):
+        """Alias of :attr:`running` under the name ``emtk.testing.Driver.settle`` waits on."""
+        return self.running
+
     def start(self, work, publish, error):
         if self.running:
             return False

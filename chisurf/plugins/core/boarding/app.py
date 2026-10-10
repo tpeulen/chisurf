@@ -170,7 +170,7 @@ class BoardingApp(ImApp):
         for item in self.model.navigation():
             if im.selectable(item["label"], item["current"]):
                 self.model.go_to(item["index"])
-                self.tour.notify_used("nav_step")
+                self.tour.notify_used("nav_list")
             im.set_item_tooltip(item["tooltip"])
             if item["current"]:
                 self.item_rects["nav_list"] = im.get_item_rect()

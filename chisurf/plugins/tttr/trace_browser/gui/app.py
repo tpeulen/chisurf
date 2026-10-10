@@ -564,7 +564,7 @@ class TraceBrowserApp(ImApp):
         if im.button(tr("Continue")):
             self.continue_to_browser()
         im.set_item_tooltip(tr("Accept detector setup and open trace browser"))
-        self.item_rects["continue"] = im.get_item_rect()
+        self.item_rects["continue"] = self.item_rects["setup_accepted"] = im.get_item_rect()
         im.same_line()
         self._draw_help_buttons()
         im.separator()

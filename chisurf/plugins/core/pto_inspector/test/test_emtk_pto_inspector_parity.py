@@ -549,7 +549,7 @@ def test_guide_steps_point_at_controls_the_app_draws(app):
         name = EmTkGuidedTour._target_key(step["target"])
         assert app.rects.get(name), f"{step['title']}: nothing drawn for {name!r}"
     assert [EmTkGuidedTour._target_key(s["target"]) for s in steps if s.get("await")] == [
-        "filename",
+        "open",
         "Verify",
     ]
 

@@ -25,7 +25,7 @@ from emtk.im_core import Col
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.typed_field import typed_number_field
 from emtk.i18n import tr
-from chisurf.plugins.emtk_layout import action_button
+from chisurf.plugins.emtk_layout import action_button, action_caption, same_line_or_wrap
 
 if TYPE_CHECKING:
     from .alternation import AlexAlternationPanel
@@ -202,7 +202,7 @@ class LegacyExportGui(TourTarget):
             im.pop_style_color(3)
             self.remember("run")
 
-            im.same_line()
+            same_line_or_wrap(action_caption("help"))
             if action_button("help"):
                 self.show_help()
             self.remember("help")
@@ -330,27 +330,27 @@ class TitrationGui(TourTarget):
             model.browse_files()
         im.set_item_tooltip(tr("Add burst files as titration points (one concentration each)."))
         self.remember("add_files")
-        im.same_line()
+        same_line_or_wrap("➖")
         if im.button("➖"):
             model.remove_last_row()
         im.set_item_tooltip(tr("Remove the last row of the titration series."))
-        im.same_line()
+        same_line_or_wrap("🗑️")
         if im.button("🗑️"):
             model.clear_rows()
         im.set_item_tooltip(tr("Clear the whole titration series."))
-        im.same_line()
+        same_line_or_wrap(tr("📈 Fit series"))
         im.push_style_color(Col.BUTTON, ACCENT_GREEN)
         if im.button(tr("📈 Fit series")):
             model.run()
         im.set_item_tooltip(tr("Fit the selected binding model to the titration series."))
         im.pop_style_color(1)
         self.remember("run")
-        im.same_line()
+        same_line_or_wrap(tr("💾 Export CSV"))
         if im.button(tr("💾 Export CSV")):
             self.panel.export_csv()
         im.set_item_tooltip(tr("Export the titration series and fit results to a CSV file."))
         self.remember("export")
-        im.same_line()
+        same_line_or_wrap(action_caption("help"))
         if action_button("help"):
             self.show_help()
         self.remember("help")

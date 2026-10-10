@@ -2,6 +2,11 @@
 
 ## 2026-10-10
 
+- W7 tours wired: boarding, globalview, lightpath simulator, setup channel definition, FCS merger, FCS
+  channel preset, burst 2CDE, PTO inspector, ALEX suite, burst BVA, TTTR image browser, trace browser, plot
+  settings and help pass the click-all (wrong notify ids, a toggle callback that raised before notifying,
+  steps that awaited what no click can do, demos for the folder steps). Open: user_editor needs a seeded
+  account to select.
 - PRD-154 W10: bff's model search gains a modality token (state width 78), a
   `request_information` outcome for moves whose measurement is missing, smFRET/MFD and PIE/ALEX
   self-play games, and a fit-settings action space; the retrained policy passes the gate (all

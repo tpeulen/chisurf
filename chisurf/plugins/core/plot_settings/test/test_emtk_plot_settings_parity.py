@@ -667,8 +667,7 @@ def test_guide_steps_point_at_controls_the_app_draws():
         rect = app.item_rects.get(name) or app.form.rects.get(name)
         assert rect is not None, f"{step['title']}: nothing drawn for {name!r}"
     awaiting = [EmTkGuidedTour._target_key(s["target"]) for s in steps if s.get("await")]
-    assert awaiting == [
-        "backend",
+    assert awaiting == [  # no "backend" step awaits: emtk is the only backend, nothing can be picked
         "color_data",
         "apply",
         "Appearance.fold",

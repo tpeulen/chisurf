@@ -6,8 +6,19 @@
       "target": {}
     },
     {
+      "title": "Pick a component",
+      "text": "Click a component in the list. Double-clicking a row adds it straight away.",
+      "target": {
+        "name": "palette_row"
+      },
+      "window": "controls",
+      "await": {
+        "hint": "Click a component in the list."
+      }
+    },
+    {
       "title": "Add a component",
-      "text": "Click a component in the list, then press Add to Graph. It appears in the middle of the visible graph. Double-clicking a row does the same.",
+      "text": "Press Add to Graph: the selected component appears in the middle of the visible graph. Double-clicking a row does the same.",
       "target": {
         "action": "add_selected"
       },

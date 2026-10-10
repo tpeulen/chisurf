@@ -374,6 +374,17 @@ def button_width(label: str) -> float:
     return im.calc_text_size(label, hide_double_hash=True)[0] + 2.0 * im.get_style().frame_padding[0]
 
 
+def same_line_or_wrap(label: str) -> None:
+    """Continue the current row for a button captioned *label*, or start a new row when it would not fit.
+
+    An unwrapped ``im.same_line()`` pushes a trailing button past the right edge of a narrow dock,
+    where it can be neither seen nor scrolled to.
+    """
+    im.same_line()
+    if im.get_content_region_avail()[0] < button_width(label):
+        im.new_line()
+
+
 def button_row(
     buttons: Sequence[dict],
     width: float | None = None,
@@ -434,6 +445,7 @@ __all__ = [
     "action_item",
     "action_tooltip",
     "button_row",
+    "same_line_or_wrap",
     "button_width",
     "cap_widths",
     "group_by_width",

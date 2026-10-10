@@ -36,7 +36,8 @@ class PresetApp(ImApp):
         self.window_size = window_size(spec, (1100, 720))
         root = Path(__file__).parents[1]
         self.help = EmTkHelpWindow(title="FCS channel definitions", resource=root / "help.md")
-        self.tour = EmTkGuidedTour(steps=root / "guide.json", get_target_rect=self.item_rects.get)
+        self.tour = EmTkGuidedTour(steps=root / "guide.json", get_target_rect=self.item_rects.get,
+            wait_for_controls=True)
         self.docks = DockManager(Split("h", 0.34, Region("setup"), Region("pairs")))
         self.docks.add_window("setup", tr("Detector setup"), self.draw_setup, dock="setup")
         self.docks.add_window("pairs", tr("Channel pairs"), self.draw_pairs, dock="pairs")
@@ -116,6 +117,7 @@ class PresetApp(ImApp):
 
     def button(self, label, tip, callback):
         if im.button(tr(label)):
+            self.tour.notify_used(label)
             self.run_action(callback)
         im.set_item_tooltip(tr(tip))
         self.item_rects[label] = im.get_item_rect()
@@ -123,6 +125,7 @@ class PresetApp(ImApp):
     def action(self, key, rect_key, callback, tip=None):
         """Draw shared action *key* through the vocabulary; its rectangle keeps the tour key *rect_key*."""
         if action_button(key, tooltip=tr(tip) if tip else None):
+            self.tour.notify_used(rect_key)
             self.run_action(callback)
         self.item_rects[rect_key] = im.get_item_rect()
 
@@ -136,6 +139,8 @@ class PresetApp(ImApp):
         )
         im.set_item_tooltip(tr(tip))
         self.item_rects[label] = im.get_item_rect()
+        if changed:
+            self.tour.notify_used(label)
         return changed, options[index]
 
     def draw_setup(self, box):

@@ -1,5 +1,5 @@
 {
-  "_comment": "Guided tour of the native PTO inspector. 'name' is the emtk control or window (the keys of PtoInspectorApp.rects); 'filename' is heard when a container has been opened, 'Verify' when the button is pressed. The Qt tool keeps guide.json.",
+  "_comment": "Guided tour of the native PTO inspector. 'name' is the emtk control or window (the keys of PtoInspectorApp.rects); 'open' is heard when a container has been opened, 'Verify' when the button is pressed. The Qt tool keeps guide.json.",
   "steps": [
     {
       "title": "What a .pto is",
@@ -9,7 +9,7 @@
     {
       "title": "Open a container",
       "text": "Press <b>Open</b> and choose a .pto, pick one from the MMFDB database with <b>Database</b>, or drop one on the window. A vendor photon file dropped here is offered for packing into a new container first.",
-      "target": {"name": "filename"},
+      "target": {"name": "open"},
       "await": {"hint": "Open a <b>.pto</b>: press <b>Open</b>, or drop one here."}
     },
     {

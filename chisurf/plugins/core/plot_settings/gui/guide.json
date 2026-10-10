@@ -10,12 +10,9 @@
     },
     {
       "title": "The backend is the how, not the what",
-      "text": "The rendering backend decides which engine draws a plot; the curves, ranges and selections stay as they are. A changed backend reaches plots that are created afterwards.",
+      "text": "The rendering backend decides which engine draws a plot; the curves, ranges and selections stay as they are. A changed backend reaches plots that are created afterwards. Only the native <b>emtk</b> backend is installed, so there is nothing to switch yet.",
       "target": {
         "name": "backend"
-      },
-      "await": {
-        "hint": "Open the list and pick a backend."
       }
     },
     {

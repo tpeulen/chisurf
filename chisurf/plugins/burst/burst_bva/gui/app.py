@@ -582,10 +582,11 @@ class BurstBvaGui:
         im.spacing()
         self._draw_pair_assignment()
         im.spacing()
-        if not im.collapsing_header(tr("Manual routing"), im.TreeNodeFlags.DEFAULT_OPEN):
-            self.remember("manual_routing")
-            return
+        opened = im.collapsing_header(tr("Manual routing"), im.TreeNodeFlags.DEFAULT_OPEN)
+        im.set_item_tooltip(tr("Type the donor and acceptor routing channels by hand instead of picking a detector pair."))
         self.remember("manual_routing")
+        if not opened:
+            return
         im.text_colored((200, 210, 230, 255), "Detector Routing")
 
         im.text(tr("Donor routing channels:"))

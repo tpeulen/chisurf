@@ -15,7 +15,7 @@ timestamp: '2026-09-23T21:13:31+02:00'
 
 ## Where to pick this up
 
-1. **Gate margin at budget 8 is one run.** Measure:
+1. Measure: **Gate margin at budget 8 is one run.**
    `$E/bin/python test/mcts/bench_action_policy.py --measurements 30 --seed 91000`
    from `~/dev/imp.bff` (`$E` = arm64 env, IMP built from `../imp`, see
    [imp-local-build](../workflows/imp-local-build.md)); all games ship
@@ -28,16 +28,16 @@ timestamp: '2026-09-23T21:13:31+02:00'
    kind-specific feature is the next lever. Retraining from saved episodes
    takes 2 min (`--episodes-file`); playing them takes 36 min, 22 of it
    `tcspc_anisotropy`.
-2. **ChiSurf's pixi env still runs the old bff** (pypi git dep, commit
+2. Blocked: **ChiSurf's pixi env still runs the old bff** (pypi git dep, commit
    e6137af): the old 71-wide policy and no fit-settings space. Until imp.bff
    `dev` is pushed and the env rebuilt, `test_mcts_fit_settings.py` and the
    fit-settings test in `test_mcts_execution.py` skip there; they pass in the
    arm64 env. The checkbox refuses with `fit_settings_unavailable` on an old bff.
-3. **Three FRET families play no episodes** (`tcspc_fret_ising_chain`,
+3. Open: **Three FRET families play no episodes** (`tcspc_fret_ising_chain`,
    `saw_nu`, `worm_like_chain`: 0 episodes, ising costs 380 s). Their moves
    offer no choice from the bound fixture; fix the moves or drop them from
    `_games.GAMES`.
-4. **Open from the contract:** invalid-acquisition validation before
+4. Open: **from the contract:** invalid-acquisition validation before
    simulation; one photon stream reduced to several observables.
 
 ## Decision

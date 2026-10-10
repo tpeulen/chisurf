@@ -492,7 +492,13 @@ def reveal_control(driver, recorder, visit_id):
         area = visible_rectangle({"rect": clip, "clip_rect": clip}, driver.size)
         assert area is not None, f"coverage: scrolling region for {row['id']!r} is not visible"
         direction = -1 if row["rect"][1] + row["rect"][3] / 2 > area[1] + area[3] / 2 else 1
-        driver.wheel(direction, at=(area[0] + area[2] / 2, area[1] + area[3] / 2))
+        # A notch moves 40 px: take bigger steps toward a control far down a long document.
+        distance = abs(row["rect"][1] + row["rect"][3] / 2 - (area[1] + area[3] / 2))
+        notches = int(min(20, max(1, (distance - area[3] / 2) // 80)))
+        # A tour card or a popup can sit over the middle of the region and take the wheel, so the
+        # pointer also tries the region's left and right margins, as a user moving the mouse would.
+        fx = (0.5, 0.02, 0.98)[attempt % 3]
+        driver.wheel(direction * notches, at=(area[0] + area[2] * fx, area[1] + area[3] / 2))
     raise AssertionError(f"coverage: could not reveal {row['id']!r} after {attempt + 1} scrolls")
 
 
@@ -618,13 +624,16 @@ def operate_awaited_tour_step(driver, tour, result, recorder, spec=None):
                 f"tour requires unsafe text edit {target!r}"
             )
             driver.press(ord("A"), CONTROL_MODIFIER)
-            demo = demo_choice(result.get("demo_dir"), "open", ())
-            if re.search(r"(file|path)", target, re.I) and demo:
+            # The control's resolved name may say more than the tour key (``lineEdit`` -> ``folder``).
+            named = f"{target} {matches[-1].get('id', '')}"
+            folder_field = re.search(r"(folder|directory|dir\b)", named, re.I)
+            demo = demo_choice(result.get("demo_dir"), "folder" if folder_field else "open", ())
+            if re.search(r"(file|path|folder|directory)", named, re.I) and demo:
                 # A path field takes the plugin's own demo file, never a user file.
                 result.setdefault("demo_fed", []).append(demo[0])
                 driver.type(demo[0])
             else:
-                if re.search(r"(file|path)", target, re.I):
+                if re.search(r"(file|path|folder|directory)", named, re.I):
                     # No demo: a path that does not exist, inside the scratch workspace.
                     driver.type(str(Path(tempfile.gettempdir()) / "chisurf-e2e-missing" / "input.dat"))
                 else:
@@ -726,6 +735,12 @@ def settle_with_cancel(driver, recorder, result):
             raise TimeoutError(f"{stop['id']!r} did not restore an idle app within 5s") from pending
 
 
+#: Documentation browsers: every documentation page is a node and every page re-creates its own
+#: per-block buttons, so the inventory grows with the size of the docs, not with the plugin. The sweep
+#: presses this many controls (recorded as ``inventory_bounded``) instead of walking the whole tree.
+INVENTORY_BUDGET = {"help": 150}
+
+
 def _native(plugin_id, result, png_path):
     """Draw a real app, visit safe controls, audit its tour and tooltips."""
     from emtk import im, keys
@@ -822,6 +837,7 @@ def _native(plugin_id, result, png_path):
             controls = {row["visit_id"]: dict(row) for row in recorder.rows if row["kind"] in CLICKABLE}
             pending = sorted(controls)
             visited = set()
+            repeats, sampled_out = {}, set()
             while pending:
                 # Finish the current page before selecting a different tab.
                 pending.sort(key=lambda name: (controls[name]["kind"] == "begin_tab_item", name))
@@ -829,9 +845,25 @@ def _native(plugin_id, result, png_path):
                 if name in visited:
                     continue
                 visited.add(name)
-                assert len(visited) <= 512, "control inventory did not stabilize within 512 targets"
+                budget = INVENTORY_BUDGET.get(plugin_id)
+                if budget and len(visited) - len(sampled_out) > budget:
+                    result["inventory_bounded"] = budget
+                    break
+                assert len(visited) - len(sampled_out) <= 512, "control inventory did not stabilize within 512 targets"
                 control = controls[name]
                 raw_name = control["id"]
+                # A documentation browser re-creates the same per-block button (Copy, ...) on every
+                # page it opens, and it opens hundreds. Past a generous budget, a button whose
+                # caption was already pressed three times is a repeat of a control that has been
+                # exercised: sample it instead of walking the whole documentation tree.
+                if len(visited) > 128 and control["kind"] in ("button", "small_button"):
+                    key = ("repeat", control["kind"], control["label"])
+                    repeats[key] = repeats.get(key, 0) + 1
+                    if repeats[key] > 3:
+                        result["skipped"].append({"control": name,
+                                                  "reason": "repeat of an already exercised per-page control"})
+                        sampled_out.add(name)
+                        continue
                 reason = skip_reason(raw_name + " " + control["label"],
                                      control_tags(getattr(app, "spec", {}), raw_name))
                 if reason:
@@ -856,6 +888,30 @@ def _native(plugin_id, result, png_path):
                 proof = (recorder.pressed_ids if control["kind"] in
                          {"button", "small_button", "radio_button", "selectable", "menu_item", "autoform_fold"}
                          else recorder.pressed_ids | recorder.contact_ids)
+                if current["engine_id"] not in proof:
+                    # A control that a background job removes mid-click (a "pending" Cancel whose
+                    # database call just failed) is gone, not unclickable; anything still drawn must have been hit.
+                    recorder.rows.clear()
+                    driver.frame()
+                    if not any(row["visit_id"] == name for row in recorder.rows):
+                        visited.remove(name)
+                        result["skipped"].append({"control": name, "reason": "withdrawn by a background job during the click"})
+                        continue
+                    # A floating window a previous control opened (a preview) may sit over the target.
+                    # Escape closes the window under the pointer, so a user parks it there and presses Esc.
+                    driver.hover(click_box)
+                    driver.escape()
+                    driver.frame(2)
+                    result.setdefault("covering_windows_dismissed", []).append(raw_name)
+                    revealed = reveal_control(driver, recorder, name)
+                    if revealed is not None:
+                        current, click_box = revealed
+                        recorder.pressed_ids.clear()
+                        recorder.contact_ids.clear()
+                        driver.click(click_box)
+                        proof = (recorder.pressed_ids if control["kind"] in
+                                 {"button", "small_button", "radio_button", "selectable", "menu_item", "autoform_fold"}
+                                 else recorder.pressed_ids | recorder.contact_ids)
                 assert current["engine_id"] in proof, f"coverage: visible {raw_name!r} did not receive an actual click"
                 if current.get("expanded"):
                     # An already open group must stay reachable for its child controls.

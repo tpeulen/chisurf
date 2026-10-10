@@ -31,6 +31,7 @@ from chisurf.plugins.core.help.api import review as help_review
 from chisurf.plugins.core.help.api import toc as help_toc
 from chisurf.plugins.core.help.api.mathtext import _unicode_fallback, html_math, normalise_latex
 from chisurf.plugins.core.help.api.xref import document_reference, resolve_document, resolve_ref
+from chisurf.emtk.help_guide import EmTkGuidedTour
 from chisurf.plugins.emtk_layout import SHORTCUT, action_button, window_size
 
 _LOGGER = logging.getLogger(__name__)
@@ -1267,6 +1268,14 @@ class HelpGui:
         self.provider_settings = None
         self.provider_settings_open = False
         self._search_focus = False
+        #: Rectangles of the controls the guided tour points at, by name.
+        self.item_rects: dict[str, tuple[float, float, float, float]] = {}
+        self.tour = EmTkGuidedTour(
+            steps=pathlib.Path(__file__).with_name("guide.json"),
+            owner=self,
+            wait_for_controls=True,
+            get_target_rect=self.item_rects.get,
+        )
 
         # Keep navigation and the assistant in tabs so the document has room to read.
         layout = Split("h", 0.24, Region("toc"), Region("document"))
@@ -1353,6 +1362,7 @@ class HelpGui:
 
         self.docks.draw((0.0, 0.0, width, height))
         self._draw_provider_settings()
+        self.tour.draw(width, height)
 
     def _expand_inline_markup(self, text: str) -> tuple[str, list[tuple[str, str]]]:
         """Expand inline math and Sphinx/MyST roles, returning clean text and links."""
@@ -1636,12 +1646,18 @@ class HelpGui:
         im.set_item_tooltip(
             tr("Enter a document, source symbol, citation key or web address; press Enter or Go")
         )
+        self.item_rects["doc_address"] = im.get_item_rect()
+        if changed:
+            self.tour.notify_used("doc_address")
         entered = im.is_item_active() and im.is_key_pressed(im.Key.ENTER)
         if changed and self.model.address_suggestions(address):
             im.open_popup("address_suggestions")
         im.same_line()
-        if im.button(tr("Go")) or entered:
+        pressed_go = im.button(tr("Go"))
+        self.item_rects["go"] = im.get_item_rect()
+        if pressed_go or entered:
             self.model.navigate_address(address)
+            self.tour.notify_used("go")
         im.set_item_tooltip(tr("Navigate to this address or search for its text"))
         if im.begin_popup("address_suggestions"):
             for index, suggestion in enumerate(self.model.address_suggestions(address)):
@@ -1655,6 +1671,8 @@ class HelpGui:
         # Navigation toolbar with clear emoticons and tooltips
         if im.button(tr("Home")):
             self.model.show_home()
+            self.tour.notify_used("home")
+        self.item_rects["home"] = im.get_item_rect()
         im.set_item_tooltip(_with_shortcut(tr("Show documentation start page"), "Alt+Home"))
         im.same_line()
         can_back = self.model.history_idx > 0
@@ -1697,6 +1715,11 @@ class HelpGui:
         if im.button(tr("Videos")):
             webbrowser.open_new("https://www.peulen.xyz/tutorial/")
         im.set_item_tooltip(tr("Open tutorial videos in your web browser"))
+        im.same_line()
+        if im.button(tr("Guide")):
+            self.tour.start()
+        im.set_item_tooltip(tr("Start a step-by-step tour that points at the real controls"))
+        self.item_rects["guide"] = im.get_item_rect()
 
         im.same_line()
         im.text_disabled("|")
@@ -1735,6 +1758,8 @@ class HelpGui:
         im.same_line()
         if im.small_button("A+"):
             self.model.zoom(1)
+            self.tour.notify_used("zoom_in")
+        self.item_rects["zoom_in"] = im.get_item_rect()
         im.set_item_tooltip(
             _with_shortcut(
                 tr("Increase document text by half a point; Ctrl/Command+wheel also zooms"),

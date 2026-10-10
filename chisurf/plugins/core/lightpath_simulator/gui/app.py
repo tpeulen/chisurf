@@ -291,6 +291,7 @@ class LightPathApp(TourTarget, ImApp):
     def __init__(self, db_path=None, client=None, state_path=None, owner_id="lightpath"):
         self.window_size = window_size(SPEC, (1200, 800))
         self.item_rects: dict = {}
+        self._last_palette = ""
         self.controller = LightPathController(db_path, client, state_path, owner_id)
         self.content = BeampathContent()
         self.graph_control = OpticalGraphControl(
@@ -456,9 +457,20 @@ class LightPathApp(TourTarget, ImApp):
         )
         self.item_rects["graph"] = canvas
 
+    def _tour_outcomes(self):
+        """Tell the tour when a palette row was picked (the table reports no field use)."""
+        rect = self.forms["palette"].rects.get("palette_rows")
+        if rect is not None:
+            self.item_rects["palette_row"] = rect
+        picked = self.panel.selected_type
+        if picked and picked != self._last_palette:
+            self.tour.notify_used("palette_row")
+        self._last_palette = picked
+
     def _draw_controls(self, box):
         panel = self.panel
         self._form("palette", SPEC["palette"])
+        self._tour_outcomes()
         self._form("palette", SPEC["palette_buttons"])
         self._form("view", SPEC["view"], True)
         self._form("backend", SPEC["backend"], True)
