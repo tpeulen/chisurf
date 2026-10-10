@@ -137,7 +137,10 @@ traces. No photon-index truncation was used for this render.
     *max dMT*: removes aggregates and bright spikes, the usual reason to filter a
     solution measurement.
   * *bocpd*, *kalman*, *cusum* — change-point burst detection on a binned trace;
-    their parameters appear when selected. **Fill gaps** bridges short
+    their parameters appear when selected. CUSUM defaults: background 1000 photons/s
+    (Hz, not kHz; set it near the measured background), s/b ratio 0 (estimated
+    from the data), alpha = beta = 0.05 (false-alarm and missed-detection
+    probabilities). **Fill gaps** bridges short
     rejections.
 * **enable** switches the burst/count-rate part off while keeping the channel,
   µt and dMT selections. **invert** keeps the rejected photons — note that it

@@ -225,8 +225,10 @@ def apply_network_style(editor: typing.Any) -> None:
     style.flags &= ~emtk_nodes.StyleFlags.NODE_OUTLINE
     style.colors[emtk_nodes.Col.GRID_BACKGROUND] = (24, 26, 31, 255)
     # A disc is its own connector, so the pointer must be able to catch it
-    # anywhere on the mark rather than on a dot that is not drawn.
-    style.pin_hover_radius = 14.0
+    # near its input/output pin rather than on a dot that is not drawn. The
+    # pins sit 12 px either side of the centre, so the radius stays below that:
+    # pressing the middle of the mark selects the node, pressing a side links.
+    style.pin_hover_radius = 11.0
 
 
 def draw_legend(document: GraphDocument, box: tuple) -> None:

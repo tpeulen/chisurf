@@ -87,10 +87,10 @@ class FilterSettingsModel:
         self.kalman_min_len = 2
         self.kalman_merge_gap = 3
         # CUSUM
-        self.cusum_bg_rate = 1.0
-        self.cusum_sb_ratio = 1.0
-        self.cusum_alpha = 0.45
-        self.cusum_beta = 20.0
+        self.cusum_bg_rate = 1000.0
+        self.cusum_sb_ratio = 0.0
+        self.cusum_alpha = 0.05
+        self.cusum_beta = 0.05
         # Plot settings
         self.mcs_bin_width = 1.0  # ms
         self.range_lo = 0

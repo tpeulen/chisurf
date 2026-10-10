@@ -176,11 +176,6 @@ def test_dragging_a_connector_to_empty_space_links_nothing():
     assert mutator.calls == []
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="a disc's connectors sit 12 px either side of its centre and each catches the pointer within 14 px, "
-    "so a press on the middle of a mark starts a link instead of selecting the node; only the rim below/above works",
-)
 def test_pressing_the_middle_of_a_mark_selects_the_node():
     app, model, fits, _ = _make()
     node_id = _node_id(fits[0], "c")

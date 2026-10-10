@@ -78,11 +78,6 @@ def test_change_point_parameters_move_the_selection(stream):
     hub.app.close()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="shipped CUSUM defaults (background 1/s, beta 20) select no photon at all: choosing the mode "
-    "empties the correlator input until the user finds working values",
-)
 def test_cusum_with_its_default_parameters_keeps_some_photons(stream):
     hub, model = _filter_step(stream)
     _mode(hub, "cusum")

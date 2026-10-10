@@ -221,7 +221,7 @@
           "kind": "float",
           "minimum": 0.0,
           "maximum": 1000000.0,
-          "description": "Background rate (CUSUM)."
+          "description": "Background count rate in photons per second (Hz, not kHz); default 1000. A value far below the true background keeps no photon."
         },
         {
           "type": "value",
@@ -230,7 +230,7 @@
           "kind": "float",
           "minimum": 0.0,
           "maximum": 100000.0,
-          "description": "Signal-to-background ratio (CUSUM)."
+          "description": "Expected signal-to-background rate ratio of a burst; 0 (default) estimates it from the data."
         },
         {
           "type": "value",
@@ -239,7 +239,7 @@
           "kind": "float",
           "minimum": 0.0,
           "maximum": 1.0,
-          "description": "False-alarm probability (CUSUM)."
+          "description": "False-alarm probability of the sequential test, 0-1 (default 0.05)."
         },
         {
           "type": "value",
@@ -247,8 +247,8 @@
           "label": "CUSUM beta",
           "kind": "float",
           "minimum": 0.0,
-          "maximum": 100000.0,
-          "description": "Missed-detection parameter (CUSUM)."
+          "maximum": 1.0,
+          "description": "Missed-detection probability of the sequential test, 0-1 (default 0.05)."
         }
       ]
     },
