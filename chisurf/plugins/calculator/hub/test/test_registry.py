@@ -30,4 +30,5 @@ def test_manifest_loads():
     manifest = load_manifest(Path(__file__).parents[1] / "manifest.json")
     assert manifest is not None
     assert manifest.id == "calculators"
-    assert manifest.entrypoints.gui.endswith("CalculatorHub")
+    assert manifest.entrypoints.emtk.endswith("hub.gui.app:make_app")
+    assert manifest.entrypoints.gui is None

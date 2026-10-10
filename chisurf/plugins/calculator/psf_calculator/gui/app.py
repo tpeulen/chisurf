@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import numpy as np
-from emtk import im, implot, implot3d
+from emtk import im, implot
 from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
@@ -23,13 +23,18 @@ from chisurf.plugins.emtk_layout import window_size as shared_window_size
 
 from ..core import PSFModel
 from .panel import PSFPanel
+from .volume_view import PSFVolumeView
 
 HERE = Path(__file__).parent
 SPEC = json.loads((HERE / "psf_emtk.view.json").read_text(encoding="utf-8"))
 #: Quiet period after the last edit before the volume is recomputed (the Qt tool's debounce), seconds.
 DEBOUNCE = 0.25
-#: The 3-D view draws at most this many voxels (the export keeps every one).
-MAX_VOXELS = 6000
+#: What the 3-D view's tooltip says about the camera and the shells.
+VOLUME_TOOLTIP = (
+    "Isosurfaces of the PSF: the threshold shell (dim wings), the half-maximum shell and the bright core. "
+    "Left-drag rotates, the wheel zooms, Ctrl+left-drag or middle-drag pans. "
+    "Threshold sets the outer shell, gamma and the colormap its colours."
+)
 SETTINGS = (
     "na",
     "n_immersion",
@@ -81,6 +86,7 @@ class PSFApp(TourTarget, ImApp):
             wait_for_controls=True,
         )
         self.panel = PSFPanel(self)
+        self.volume_view = PSFVolumeView()
         self.forms = {
             n: FormState(on_used=self.tour.notify_used)
             for n in ("toolbar", "parameters", "result", "slice")
@@ -196,51 +202,16 @@ class PSFApp(TourTarget, ImApp):
                 tr("Waiting for the first PSF calculation.") if not self.error else tr("No volume to show.")
             )
             return
-        flags = implot3d.FLAGS_NO_LEGEND
-        if implot3d.begin_plot(tr("PSF volume") + "##psf-volume", (-1, -1), flags):
-            implot3d.setup_axes(tr("x [nm]"), tr("y [nm]"), tr("z [nm]"))
-            model = self.model
-            nz, ny, nx = volume.shape
-            peak = max(float(volume.max()), 1e-30)
-            z, y, x = np.nonzero(volume >= float(model.threshold) * peak)
-            stride = max(1, (len(x) + MAX_VOXELS - 1) // MAX_VOXELS)
-            x, y, z = x[::stride], y[::stride], z[::stride]
-            intensity = (volume[z, y, x] / peak) ** model.gamma
-            from emtk import colormaps
-
-            cmap = colormaps.get(model.colormap)
-            for k in range(12):
-                mask = (intensity >= k / 12) & (
-                    intensity < (k + 1) / 12 if k < 11 else intensity <= 1
-                )
-                if mask.any():
-                    # Outline and fill both: a 2 px marker is mostly outline, which would
-                    # otherwise take the item's automatic colour, one blue for all.
-                    band = cmap((k + 0.5) / 12)
-                    spec = implot3d.Spec(marker_size=2, marker_fill_color=band, marker_line_color=band)
-                    implot3d.plot_scatter(
-                        tr("Intensity {band}").format(band=k) + f"##psf{k}",
-                        (x[mask] - (nx - 1) / 2) * model.pixel_size_nm,
-                        (y[mask] - (ny - 1) / 2) * model.pixel_size_nm,
-                        (z[mask] - (nz - 1) / 2) * model.z_step_nm,
-                        spec=spec,
-                    )
-            if model.show_polarization and model.model == "vectorial":
-                segments = model.polarization_segments()
-                if segments is not None:
-                    for i, segment in enumerate(segments):
-                        a = np.asarray(segment)
-                        implot3d.plot_line(
-                            tr("Polarization {index}").format(index=i) + f"##polarization{i}",
-                            (a[:, 0] - (nx - 1) / 2) * model.pixel_size_nm,
-                            (a[:, 1] - (ny - 1) / 2) * model.pixel_size_nm,
-                            (a[:, 2] - (nz - 1) / 2) * model.z_step_nm,
-                        )
-            implot3d.end_plot()
-            im.set_item_tooltip(
-                tr("Drag to rotate the physical PSF volume. Threshold hides dim voxels; gamma changes their brightness. "
-                   "The view draws up to 6,000 voxels; the export keeps every voxel.")
+        if not self.volume_view.sync(self.model) or not self.volume_view.draw():
+            im.text_wrapped(
+                tr("The 3-D view needs a WebGPU adapter: {error}").format(error=self.volume_view.error)
             )
+            self.remember("volume", tuple(box))
+            return
+        self.item_rects["volume_view"] = im.get_item_rect()
+        if self.volume_view.view._dragging:
+            self.tour.notify_used("volume_view")  # the guide's "turn the focus around" step
+        im.set_item_tooltip(tr(VOLUME_TOOLTIP))
         self.remember("volume", tuple(box))
 
     def _slice_colours(self) -> list:
@@ -390,6 +361,7 @@ class PSFApp(TourTarget, ImApp):
         self.schedule()
 
     def close(self) -> None:
+        self.volume_view.close()
         self._executor.shutdown(wait=False, cancel_futures=True)
 
 

@@ -1,57 +1,29 @@
+"""Behaviour tests of the FCS saturation calculator, on the native model.
+
+These were the tests of the Qt ``SaturationCalculatorTool``; the tool is deleted and its logic lives
+in :class:`~..gui.model.SaturationModel`, which the emtk app drives. The Qt-widget-structure tests
+(AutoForm children, toolbar actions, rate-matrix header stretch, dock-tab names, the QSlider, the Qt
+guided tour) have native equivalents in ``test_emtk_saturation_clicks.py`` (toolbar, Guide, power slider,
+tables, tour) and are not repeated here.
+"""
+
 import os
 
 import numpy as np
 import pytest
-from qtpy import QtWidgets
 
-from chisurf.gui.autoform.sections.builtin import PlotWidget
-from chisurf.plugins.calculator.fcs_saturation_calc.gui.tool import SaturationCalculatorTool
+from chisurf.plugins.calculator.fcs_saturation_calc.gui.model import SaturationModel
+
+
+def SaturationCalculatorTool():
+    """A fresh model, the object the tests used to reach through the Qt tool."""
+    return SaturationModel()
 
 
 @pytest.fixture
 def qapp():
-    app = QtWidgets.QApplication.instance()
-    if app is None:
-        app = QtWidgets.QApplication([])
-    yield app
-
-
-def test_saturation_calculator_tool_instantiation(qapp):
-    """Test that the SaturationCalculatorTool can be instantiated without errors."""
-    tool = SaturationCalculatorTool()
-
-    # Verify the tool has the expected attributes
-    assert tool.form is not None, "AutoForm was not created."
-    assert hasattr(tool, "fcs_curves_series"), "fcs_curves_series property is missing."
-
-    # Ensure plots are initialized with non-empty curves: unperturbed, saturated
-    # and the single-component reference fit overlaid on it.
-    series = tool.fcs_curves_series
-    names = [s["name"] for s in series]
-    assert len(series) == 3, f"Expected 3 series, found {names}."
-    assert any("1-component" in n for n in names)
-    assert all(len(s["x"]) == 300 for s in series)
-
-    # FCS, residual, Volume vs Power, Volume Profile, Diffusion Time vs Power
-    plot_widgets = tool.form.findChildren(PlotWidget)
-    assert len(plot_widgets) == 5, f"Expected 5 PlotWidgets in form, found {len(plot_widgets)}."
-    for pw in plot_widgets:
-        assert pw.plot.series(), "Expected plot curves to be drawn."
-
-    # Ensure toolbar buttons (Compute, Guide & Help) exist
-    assert tool.toolbar is not None
-    actions = [a.text() for a in tool.toolbar.actions()]
-    assert any("Compute" in a for a in actions), (
-        f"Compute action missing from toolbar. Found: {actions}"
-    )
-
-    btn_texts = [w.text() for w in tool.toolbar.findChildren(QtWidgets.QToolButton)]
-    assert any("Guide" in t for t in btn_texts), (
-        f"Guide button missing from toolbar. Found: {btn_texts}"
-    )
-    assert any(t in ("?", "Help") for t in btn_texts), (
-        f"Help button missing from toolbar. Found: {btn_texts}"
-    )
+    """Kept as a no-op so the tests read as before: no Qt application is needed."""
+    yield None
 
 
 def test_power_sweep_series(qapp):
@@ -67,28 +39,6 @@ def test_power_sweep_series(qapp):
     assert len(tau_series[0]["x"]) > 10
     assert v_series[1]["x"][0] == 5.0
     assert tau_series[1]["x"][0] == 5.0
-
-
-def test_state_change_updates_rate_matrices(qapp):
-    """Assert that changing the number of states resizes the rate matrix in model and GUI."""
-    from chisurf.gui.autoform.sections.rate_matrix_section import RateMatrixWidget
-
-    tool = SaturationCalculatorTool()
-    matrices = tool.form.findChildren(RateMatrixWidget)
-    assert len(matrices) == 2, "dark-rate and excitation matrices must both be editable"
-    assert matrices[0].table.rowCount() == 3
-
-    # Change n_states to 4
-    tool.saturation.n_states = 4
-    tool.form.sync_fields()
-    tool.form.refresh_plots()
-
-    assert tool.saturation.n_states == 4
-    assert len(tool.saturation.dark.rate_values) == 16  # 4x4
-    assert len(tool.saturation.exc.rate_values) == 16  # 4x4
-    for m in matrices:
-        assert m.table.rowCount() == 4
-        assert m.table.columnCount() == 4
 
 
 def test_compute_updates_info_text(qapp):
@@ -117,22 +67,8 @@ def test_bunching_toggle_affects_curves(qapp):
     assert g_sat_bunching_0 > g_sat_nobunching_0
 
 
-def test_rate_matrix_widgets_stretch_and_style(qapp):
-    """Assert RateMatrixWidget uses stretch mode and compact styling."""
-    from chisurf.gui.autoform.sections.rate_matrix_section import RateMatrixWidget
-
-    tool = SaturationCalculatorTool()
-    matrices = tool.form.findChildren(RateMatrixWidget)
-    assert len(matrices) == 2
-    for m in matrices:
-        assert m.table.horizontalHeader().sectionResizeMode(0) == QtWidgets.QHeaderView.Stretch
-        assert m.table.verticalHeader().sectionResizeMode(0) == QtWidgets.QHeaderView.Stretch
-
-
 def test_rate_unit_switching(qapp):
     """Assert that switching rate_unit rescales dark rates and updates header label."""
-    from chisurf.gui.autoform.sections.rate_matrix_section import RateMatrixWidget
-
     tool = SaturationCalculatorTool()
     tool.rate_unit = "1/ms"
     k21_ms = tool.saturation.dark.rates_by_name()["k2_1"].value
@@ -141,18 +77,12 @@ def test_rate_unit_switching(qapp):
     k21_us = tool.saturation.dark.rates_by_name()["k2_1"].value
     assert abs(k21_us - (k21_ms / 1000.0)) < 1e-6
 
-    matrices = tool.form.findChildren(RateMatrixWidget)
-    assert "(1/us)" in matrices[0]._header_label.text()
+    assert tool.rate_unit == "1/us"
 
 
-def test_scheme_presets_and_state_scheme_widget(qapp):
+def test_scheme_presets_set_state_count_labels_and_rates(qapp):
     """Assert scheme preset loading updates state count, labels, rates, and HMM graph widget."""
-    from chisurf.gui.autoform.sections.state_scheme_section import StateSchemeWidget
-
     tool = SaturationCalculatorTool()
-
-    scheme_widgets = tool.form.findChildren(StateSchemeWidget)
-    assert len(scheme_widgets) == 1, "StateSchemeWidget missing from AutoForm layout."
 
     tool.scheme_preset = "Cyanine 5 (4-state, isomer + triplet)"
     assert tool.saturation.n_states == 4
@@ -187,9 +117,7 @@ def test_save_and_load_kinetics_scheme(tmp_path, qapp):
 def test_user_settings_persistence(tmp_path, monkeypatch, qapp):
     """Assert tool settings are saved to and restored from user settings directory."""
     settings_file = str(tmp_path / "settings.json")
-    monkeypatch.setattr(
-        SaturationCalculatorTool, "get_user_settings_path", lambda self: settings_file
-    )
+    monkeypatch.setattr(SaturationModel, "get_user_settings_path", lambda self: settings_file)
 
     tool = SaturationCalculatorTool()
     tool.saturation._power.value = 0.55  # 550 mW
@@ -198,36 +126,12 @@ def test_user_settings_persistence(tmp_path, monkeypatch, qapp):
 
     assert os.path.exists(settings_file)
 
-    tool2 = SaturationCalculatorTool()
+    tool2 = SaturationModel(restore=True)  # the Qt tool restored the session on construction
     assert abs(tool2.saturation._power.value - 0.55) < 1e-5
     assert tool2.normalize_fcs is True
 
 
-def test_guided_tour_raises_target_dock_tab(qapp):
-    """Assert guided tour steps raise the referenced dock tab to foreground."""
-    import sys
-
-    from chisurf.gui.widgets.tools.guided_tour import GuidedTour, load_tour
-
-    tool = SaturationCalculatorTool()
-    mod = sys.modules[tool.__module__]
-    guide_file = os.path.join(os.path.dirname(mod.__file__), "guide.json")
-    steps = load_tour(guide_file)
-    assert len(steps) >= 5
-
-    tour = GuidedTour(tool, steps, model=tool)
-    assert tour.start(index=0) is True
-
-    # Advance through steps targeting different docks
-    for i in range(1, len(steps)):
-        tour.next()
-        target_widget = tour.resolve_target(tour.steps[tour.index].target)
-        if target_widget is not None:
-            assert target_widget.parentWidget() is not None
-    tour.stop()
-
-
-def test_number_of_states_updates_brightness_and_form_tables(qapp):
+def test_number_of_states_updates_brightness_parameters(qapp):
     """Assert changing n_states updates brightness parameters and table sizes."""
     tool = SaturationCalculatorTool()
     assert tool.saturation.n_states == 3
@@ -280,23 +184,6 @@ def test_zero_power_leaves_the_two_curves_identical(qapp):
     np.testing.assert_allclose(series[0]["y"], series[1]["y"], rtol=1e-12)
 
 
-def test_power_is_a_logarithmic_slider(qapp):
-    """The power spans decades, so the slider must map logarithmically."""
-    tool = SaturationCalculatorTool()
-    sliders = tool.form.findChildren(QtWidgets.QSlider)
-    assert len(sliders) == 1, "the power control should carry exactly one slider"
-    slider = sliders[0]
-    seen = []
-    for pos in (0, 250, 500, 750, 1000):
-        slider.setValue(pos)
-        seen.append(tool.power_mW)
-    assert seen[0] == pytest.approx(0.001, rel=1e-6)
-    assert seen[-1] == pytest.approx(100.0, rel=1e-6)
-    # Equal travel must give equal *ratios*, which is what "logarithmic" means.
-    ratios = [b / a for a, b in zip(seen, seen[1:])]
-    assert max(ratios) / min(ratios) < 1.01
-
-
 def test_dragging_the_power_reuses_cached_results(qapp):
     """Revisiting a power must hit the cache rather than integrate again."""
     tool = SaturationCalculatorTool()
@@ -324,19 +211,6 @@ def test_the_cache_is_dropped_when_the_scheme_changes(qapp):
     tool._invalidate()
     after = list(tool.fcs_curves_series[1]["y"])
     assert not np.allclose(before, after)
-
-
-def test_info_is_its_own_dock_and_starts_hidden(qapp):
-    """The summary lives in a dock of its own, out of the way until asked for."""
-    tool = SaturationCalculatorTool()
-    area = tool.form._dock_areas[0]
-    names = [area._tab_names.get(w, "") for w in area._all_widgets]
-    assert "Info" in names, "the info dock must be registered"
-    info = area._all_widgets[names.index("Info")]
-    assert not info.isVisible(), "the info dock starts hidden"
-    # ... and the three profile plots are separate docks, not one merged panel.
-    for expected in ("Volume profile", "Volume(P)", "Diffusion time"):
-        assert expected in names, f"{expected} should be its own dock"
 
 
 def test_the_residual_panel_shows_the_second_diffusion_time(qapp):
@@ -371,3 +245,22 @@ def test_the_fit_overlay_can_be_switched_off(qapp):
     tool.show_gaussian_fit = False
     assert len(tool.fcs_curves_series) == 2
     assert tool.fcs_residual_series == []
+
+
+def test_the_model_starts_with_three_curves_and_the_reference_fit():
+    """Unperturbed, saturated and the single-component reference fit overlaid on it (300 lags each)."""
+    tool = SaturationCalculatorTool()
+    series = tool.fcs_curves_series
+    names = [s["name"] for s in series]
+    assert len(series) == 3, f"Expected 3 series, found {names}."
+    assert any("1-component" in n for n in names)
+    assert all(len(s["x"]) == 300 for s in series)
+
+
+def test_resizing_the_scheme_resizes_both_rate_matrices():
+    """Changing the number of states resizes the dark-rate and the excitation matrix."""
+    tool = SaturationCalculatorTool()
+    assert tool.saturation.n_states == 3
+    tool.saturation.n_states = 4
+    assert len(tool.saturation.dark.rate_values) == 16  # 4x4
+    assert len(tool.saturation.exc.rate_values) == 16  # 4x4

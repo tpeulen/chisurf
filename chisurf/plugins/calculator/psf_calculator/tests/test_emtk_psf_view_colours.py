@@ -2,10 +2,8 @@
 
 Two defects the accepted screenshots carried without anyone noticing:
 
-* the 3-D volume drew every voxel as the same blue ring: only the marker *fill*
-  took the colormap band, and at 2 px a marker is mostly outline, which took
-  the item's automatic colour -- one colour, because all twelve bands shared
-  one item id (``"Intensity k##psf"`` is the id ``psf`` in emtk);
+* the 3-D volume drew every voxel as the same blue ring (now the isosurface
+  shells of the chimol view, each coloured from the Display colormap);
 * the central slice asked for its own width with equal axes, which honour x
   and fit y to it, so the section was cropped to a band through its middle --
   and it ignored the colormap.
@@ -36,30 +34,26 @@ def _computed_app():
     return app
 
 
-def test_the_volume_is_coloured_by_intensity_band(monkeypatch):
-    from emtk import implot3d
-
-    app = _computed_app()
-    specs = []
-    original = implot3d.plot_scatter
-
-    def record(label, *args, spec=None, **kwargs):
-        specs.append((label, spec))
-        return original(label, *args, spec=spec, **kwargs)
-
-    monkeypatch.setattr(implot3d, "plot_scatter", record)
+def test_the_shells_are_coloured_by_intensity_and_follow_the_colormap():
+    from emtk import colormaps
     from emtk.testing import RecordingPainter
 
+    from chisurf.plugins.calculator.psf_calculator.gui.volume_view import COLOUR_FLOOR
+
+    app = _computed_app()
     app.draw(RecordingPainter(), 0, 0, 1200, 800)
-    bands = [(label, spec) for label, spec in specs if label.startswith("Intensity")]
-    assert len(bands) >= 6
-    ids = {label.split("##", 1)[1] for label, _ in bands}
-    assert len(ids) == len(bands), "bands share an item id, so they share one colour"
-    for _label, spec in bands:
-        assert tuple(spec.marker_line_color) == tuple(spec.marker_fill_color), (
-            "the outline is not the band's colour"
-        )
-    assert len({tuple(spec.marker_fill_color) for _l, spec in bands}) == len(bands)
+    view = app.volume_view
+    levels = view.view.viewer.get_volume_levels(view._object_id)
+    assert len(levels) == 3, "threshold shell, half maximum and core"
+    colours = [tuple(level["color"][:3]) for level in levels]
+    assert len(set(colours)) == len(colours), "every shell has its own colour"
+    peak = float(app.model.volume.max())
+    assert [round(l["level"] / peak, 4) for l in levels] == [app.model.threshold, 0.5, 0.85]
+    app.model.colormap = "viridis"
+    app.draw(RecordingPainter(), 0, 0, 1200, 800)
+    again = view.view.viewer.get_volume_levels(view._object_id)
+    core = colormaps.get("viridis")(COLOUR_FLOOR + (1 - COLOUR_FLOOR) * 0.85 ** app.model.gamma)[:3]
+    assert tuple(round(c, 4) for c in again[-1]["color"][:3]) == tuple(round(float(c), 4) for c in core)
 
 
 @pytest.mark.parametrize("plane, extent", [("XY", "nxy"), ("XZ", "nz")])

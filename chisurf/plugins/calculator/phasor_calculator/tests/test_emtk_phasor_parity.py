@@ -1,17 +1,14 @@
-"""The native phasor calculator at parity with the Qt PhasorCalculatorTool.
+"""The native phasor calculator at parity with the retired Qt PhasorCalculatorTool.
 
-The committed Qt tool rendered ``phasor.view.json`` with AutoForm over an inline model;
-the model moved unchanged to ``gui/model.py`` and the Qt window now hosts this emtk app.
-The Qt window runs in a subprocess (this process stays Qt-free): its model's overlay
-geometry and results are compared with the emtk app's, the reference table against the
-phasor formulas.
+The Qt tool rendered ``phasor.view.json`` with AutoForm over an inline model; the model moved
+unchanged to ``gui/model.py``. The Qt model's overlay geometry and results for the ``ON`` settings
+were recorded in ``qt_reference.json`` before the tool was deleted; they are compared with the emtk
+app's, and the reference table against the phasor formulas.
 """
 
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -59,47 +56,15 @@ def _fields(sections):
         yield from _fields(section.get("sections", []))
 
 
-_QT = r"""
-import json, sys
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-from chisurf.plugins.calculator.phasor_calculator.gui.tool import PhasorCalculatorTool
-w = PhasorCalculatorTool()
-for k, v in json.loads(sys.argv[1]).items():
-    setattr(w._model, k, v)
-w._form.sync_fields(); w._form.refresh_plots()
-overlays = [{"name": o.get("name"), "x": [float(v) for v in o.get("x", [])], "y": [float(v) for v in o.get("y", [])]}
-            for o in w._model.phasor_overlays()]
-print("FACTS" + json.dumps({"overlays": overlays, "html": w._model.results_html(),
-                            "hosts": type(w.app).__name__, "same_model": w.app.tool._model is w._model}))
-"""
-
-
-@pytest.fixture(scope="module")
-def qt():
-    pytest.importorskip("qtpy")
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT, json.dumps(ON)],
-        capture_output=True,
-        text=True,
-        timeout=300,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and (
-        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
-    ):
-        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
-    # Any other failure is the Qt tool's own: skipping it hid a broken Qt host.
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS") :])
+#: What the Qt ``PhasorCalculatorTool`` model produced for ``ON`` (overlay geometry and the results table),
+#: recorded before the Qt tool was deleted.
+QT = json.loads((HERE / "qt_reference.json").read_text())
 
 
 # 1. the same geometry and the same reference table as the Qt tool
-def test_overlays_equal_the_qt_tools(qt):
+def test_overlays_equal_the_recorded_qt_tools():
+    qt = QT
+    assert qt["settings"] == ON
     app = _app()
     ours = {o["name"]: o for o in app.phasor_gui._overlays()}
     for theirs in qt["overlays"]:
@@ -109,7 +74,8 @@ def test_overlays_equal_the_qt_tools(qt):
     assert "universal semicircle" in ours  # the emtk plot draws the circle itself
 
 
-def test_the_reference_table_holds_the_qt_results(qt):
+def test_the_reference_table_holds_the_qt_results():
+    qt = QT
     app = _app()
     rows = app.phasor_gui._rows()
     assert [t for t, _g, _s in rows] == [1.0, 3.0]
@@ -122,7 +88,7 @@ def test_the_reference_table_holds_the_qt_results(qt):
 
 
 # 3. one spec: every field drawn, its description the tooltip, the groups folded as declared
-def test_every_spec_field_is_drawn_with_its_description(monkeypatch, qt):
+def test_every_spec_field_is_drawn_with_its_description(monkeypatch):
     from emtk import im, im_widgets
 
     tips = []
@@ -136,7 +102,6 @@ def test_every_spec_field_is_drawn_with_its_description(monkeypatch, qt):
     fields = [f for f in _fields(SPEC["sections"]) if f.get("type") in ("value", "toggle")]
     assert {f["attr"] for f in fields} <= set(app.phasor_gui.form.rects)
     assert all(f["description"] in tips for f in fields)
-    assert qt["hosts"] == "PhasorCalcApp" and qt["same_model"]  # the Qt window hosts this app
 
 
 def test_groups_start_folded_as_the_spec_declares():

@@ -164,26 +164,6 @@ def test_model_produces_the_reference_result(short_app, long_app, monkeypatch):
     assert long.status_text == LONG["status"]
 
 
-def test_model_matches_the_qt_tool(short_app, qapp, qtbot):
-    """The Qt tool, which now delegates to the same model, gives the same arrays."""
-    from chisurf.plugins.fcs.flc_2d.gui.tool import FlcTwoDTool
-
-    tool = FlcTwoDTool()
-    qtbot.addWidget(tool)
-    tool._model.sim_time_s = 10.0
-    tool._model.run_1d_mem = True
-    tool._on_simulate()
-    assert tool._tttr.n_photons == SHORT["n_photons"]
-    tool._on_run()
-    ours, theirs = short_app.model, tool._model
-    assert np.array_equal(ours.spectrum_image(), theirs.spectrum_image())
-    assert np.array_equal(ours.residual_image(), theirs.residual_image())
-    assert np.array_equal(ours._lifetime["amp"], theirs._lifetime["amp"])
-    assert ours.lcurve_data().corner_index == theirs.lcurve_data().corner_index
-    assert np.array_equal(ours._mem1d["amp"], theirs._mem1d["amp"])
-    assert tool.statusBar().currentMessage() == theirs.status_text
-
-
 # 2. the model's actions
 def test_actions_change_state_and_report_errors(tmp_path):
     from chisurf.plugins.fcs.flc_2d.gui.app import make_app

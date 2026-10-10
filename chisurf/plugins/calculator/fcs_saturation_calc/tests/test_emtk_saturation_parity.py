@@ -270,30 +270,33 @@ def test_the_tables_show_the_qt_tables_cells(app, state):
             )
 
 
-@pytest.fixture
-def qapp():
-    QtWidgets = pytest.importorskip("qtpy.QtWidgets")
-    application = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    yield application  # held: a collected QApplication takes the Qt widgets down with it
+QT_PRESETS = json.loads((Path(__file__).with_name("golden_qt_presets.json")).read_text())
 
 
-def test_the_live_qt_tool_and_the_emtk_model_agree_on_every_preset(app, qapp):
-    from chisurf.plugins.calculator.fcs_saturation_calc.gui.tool import SaturationCalculatorTool
+def _signature(y):
+    y = np.asarray(y, float)
+    idx = np.linspace(0, y.size - 1, 8).astype(int) if y.size else []
+    return y.size, float(y.sum()) if y.size else 0.0, [float(y[i]) for i in idx]
 
-    tool = SaturationCalculatorTool()
-    try:
-        for preset in tool.scheme_names():
-            if preset == "Custom":
-                continue
-            tool.scheme_preset = preset
-            app.model.scheme_preset = preset
-            for source in SERIES:
-                for a, b in zip(getattr(app.model, source), getattr(tool, source)):
-                    assert np.allclose(a["y"], b["y"], rtol=1e-9, atol=1e-12), (preset, source)
-        assert app.model.scheme_names() == tool.scheme_names() == list(tool.SCHEME_PRESETS)
-        assert app.model.dye_names() == tool.dye_names()
-    finally:
-        tool.deleteLater()  # not close(): closing saves the session
+
+def test_the_recorded_qt_tool_and_the_emtk_model_agree_on_every_preset(app):
+    """``golden_qt_presets.json``: every series of every preset as the (now deleted) Qt tool computed it."""
+    for preset, sources in QT_PRESETS["presets"].items():
+        app.model.scheme_preset = preset
+        for source in SERIES:
+            mine = getattr(app.model, source)
+            theirs = sources[source]
+            assert [s["name"] for s in mine] == [s["name"] for s in theirs], (preset, source)
+            for a, b in zip(mine, theirs):
+                n, total, samples = _signature(a["y"])
+                assert n == b["y"]["n"], (preset, source)
+                assert total == pytest.approx(b["y"]["sum"], rel=1e-9, abs=1e-12), (preset, source)
+                assert samples == pytest.approx(b["y"]["samples"], rel=1e-9, abs=1e-12), (
+                    preset,
+                    source,
+                )
+    assert app.model.scheme_names() == QT_PRESETS["scheme_names"] == QT_PRESETS["scheme_presets"]
+    assert app.model.dye_names() == QT_PRESETS["dye_names"]
 
 
 def test_the_physical_anchors_of_the_guide_hold(app):

@@ -54,10 +54,16 @@ the parameters are settled and before exporting.
 
 ## Reading the display
 
-**Threshold** hides voxels below a fraction of the peak and **Gamma** shapes the
-opacity ramp. Both exist because a diffraction-limited focus is mostly empty
-space and renders as fog without them — they change only the picture, never the
-computation.
+The **3-D PSF** window draws the volume as isosurfaces (marching cubes in
+chimol) at three fractions of the peak: the **threshold** shell, the
+half-maximum shell and a bright core. **Threshold** sets the outer shell and
+crops the view to it, **Gamma** and the **Colormap** colour the shells — they
+change only the picture, never the computation.
+
+**Left-drag** rotates the volume, the **wheel** zooms and **Ctrl + left-drag**
+(or middle-drag) pans, with chimol's trackball camera. Changing a parameter
+or the Threshold builds a new picture and frames it again; Gamma and Colormap
+keep the camera where you left it.
 
 The summary reports the lateral (along x) and axial widths measured from the
 computed volume, next to the scalar prediction 0.51 λ/NA for comparison; the

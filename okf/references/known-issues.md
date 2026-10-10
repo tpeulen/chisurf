@@ -4,6 +4,16 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## Guide screenshot scripts still import retired Qt calculator tools (found 2026-10-10)
+
+status: open — owner W14 (docs screenshots move to the W7 e2e renders).
+
+The Qt `gui/tool.py` of psf_calculator, rics_precision, phasor_calculator, fcs_saturation_calc, fcs_lfcs_sim,
+irf_estimator and synthetic_decay were deleted (W9 phase 1), but `docs/guides/make_screenshots.py` (lines ~392,
+1231, 1988, 2038), `docs/guides/make_screenshot_psf.py:51`, `docs/guides/screenshots/guides_15_25.py:286` and
+`guides_56_65.py:16` still import them, so those screenshot functions raise ImportError. Re-derive with
+`grep -rn "gui.tool import" docs/guides`. Fix: render the emtk app headlessly (emtk.testing.Driver) instead.
+
 ## emtk: a one-line field keeps the keyboard after a click elsewhere (found 2026-10-10)
 
 status: resolved 2026-10-10 — emtk 6b5c637: input_text drops its nav focus on an outside click; the ALEX test is a normal test now.
@@ -58,7 +68,13 @@ rebuild" applies). The test should also not prefer an unlinkable binary silently
 
 ## ALEX hub: Accurate FRET opens no table from the container run (found 2026-10-10)
 
-status: open
+status: fixed 2026-10-10 (W4)
+
+**Cause** (found while landing the run handoff): `AlexHubApp._to_accurate_fret` called `self._editor_to(...)`, a
+helper removed when the burst workflow moved to one authoritative acquisition setup, so the hand-off raised
+`AttributeError` before it reached `controller.load(run)`; the hub swallowed it as a one-line status. The call is
+gone, and a run handed to the step while it is still busy (reading its dye catalogue) is now kept and taken up as
+soon as the step is idle instead of being dropped. All 13 hub tests pass. The original measurement follows.
 
 **Measured** with `chisurf/plugins/burst/alex_suite/tests/test_emtk_native_hub.py::test_next_alone_takes_the_demo_from_files_to_an_es_histogram`
 (identical on HEAD 4a4278771 and with the single detector-setup store): Next walks Setup → Files → Alternation → Burst

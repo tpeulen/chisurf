@@ -1,26 +1,20 @@
-"""Legacy AutoForm adapter over the shared native generator model."""
+"""Standalone (Qt-free) view model over the shared native generator model."""
 
 from .model import SyntheticDecayModel
 
 
 class SyntheticDecayViewModel(SyntheticDecayModel):
-    """Retain Qt file dialogs and GUI action dispatch for the reference window."""
+    """Keep the GUI action dispatch (fit group) of the reference window; file dialogs come from the host."""
 
     def __init__(self):
         super().__init__()
         self.fit_sink = self._register_gui_fit
 
     def _choose_file(self, mode, title, filename, filters):
+        """Ask the host's file chooser; without one nothing is chosen (the native app supplies its dialog)."""
         if callable(self.choose_file):
             return self.choose_file(mode, title, filename, filters)
-        from qtpy import QtWidgets
-
-        chooser = (
-            QtWidgets.QFileDialog.getOpenFileName
-            if mode == "open"
-            else QtWidgets.QFileDialog.getSaveFileName
-        )
-        return chooser(None, title, filename, filters)[0]
+        return ""
 
     @staticmethod
     def _register_gui_fit(group, polarized):

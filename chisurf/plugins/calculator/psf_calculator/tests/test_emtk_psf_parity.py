@@ -1,14 +1,13 @@
-"""The native PSF calculator against the Qt tool it replaces (the committed gui/tool.py).
+"""The native PSF calculator against the numbers of the Qt tool it replaced (recorded in ``qt_reference.json``).
 
-The Qt tool needs a 3-D volume renderer that the emtk chiplot backend does not have, so it is driven with a recording stand-in for
-the renderer: what the tool hands the renderer (the volume, the colormap, threshold and gamma, the polarization segments) is
-compared; the rendered 3-D image itself is not comparable. Hermetic: temporary HOME and settings.
+What the Qt tool handed its 3-D renderer (the volume, the colormap, threshold and gamma, the polarization segments) is compared;
+the rendered 3-D image itself is not comparable. Hermetic: temporary HOME and settings.
 """
 
 from __future__ import annotations
 
 import json
-import re
+import pathlib
 import time
 
 import numpy as np
@@ -17,11 +16,6 @@ import pytest
 from chisurf.plugins.calculator.psf_calculator.gui.app import SETTINGS, SPEC, PSFApp, make_app
 
 from .driving import BIG, SMALL, PSFDriver, clipped_texts, draw_clip, hermetic_env, layout_problems
-
-QT_SPEC = json.loads(
-    (__import__("pathlib").Path(__file__).parents[1] / "psf_calculator.view.json").read_text()
-)
-
 
 @pytest.fixture(autouse=True)
 def hermetic(tmp_path, monkeypatch):
@@ -54,99 +48,59 @@ def settle(app, size=BIG):
     return d
 
 
-# -- the same numbers as the Qt tool ------------------------------------------------------------------------ #
+# -- the same numbers as the retired Qt tool (recorded in qt_reference.json) ---------------------------- #
+#
+# ``qt_reference.json`` was recorded from the committed Qt ``PSFCalculator`` before it was deleted: for each scenario the
+# volume signature (shape, sum, max, argmax, 16 sampled voxels), the summary lines, what the tool handed its 3-D renderer
+# (colormap, threshold, gamma, polarization segments), the choice-list labels, the spec field table and the two export files.
+
+REF = json.loads((pathlib.Path(__file__).parent / "qt_reference.json").read_text())
 
 
-class StubView:
-    """What the Qt tool hands its 3-D renderer."""
-
-    def __init__(self):
-        self.calls = []
-
-    def set_scale(self, *a):
-        self.calls.append(("scale", a))
-
-    def set_volume(self, volume, colormap=None, threshold=None, gamma=None):
-        self.calls.append(("volume", np.asarray(volume).copy(), colormap, threshold, gamma))
-
-    def set_vectors(self, segments, color=None, width=None):
-        self.calls.append(("vectors", None if segments is None else np.asarray(segments).copy()))
+def sig(a):
+    """The signature recorded for an array (see ``qt_reference.json``)."""
+    flat = np.asarray(a, dtype=float).ravel()
+    return flat.sum(), flat.max(), int(flat.argmax()), flat[np.linspace(0, flat.size - 1, 16).astype(int)]
 
 
-_QAPP = []
+def assert_sig(array, ref):
+    """The array equals the recorded signature."""
+    arr = np.asarray(array)
+    assert list(arr.shape) == ref["shape"]
+    total, peak, argmax, samples = sig(arr)
+    assert total == pytest.approx(ref["sum"], rel=1e-9)
+    assert peak == pytest.approx(ref["max"], rel=1e-9)
+    assert argmax == ref["argmax"]
+    assert samples == pytest.approx(np.asarray(ref["samples"]), rel=1e-9, abs=1e-15)
 
 
-@pytest.fixture
-def qt_tool():
-    QtWidgets = pytest.importorskip("qtpy.QtWidgets")
-    _QAPP[:] = [
-        QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    ]  # kept: a collected application aborts the process
-    import chisurf.gui.chiplot as cp
-    from chisurf.plugins.calculator.psf_calculator.gui.tool import PSFCalculator
-
-    stub = StubView()
-    real = cp.VolumeView
-    cp.VolumeView = lambda *a, **k: __import__("qtpy.QtWidgets", fromlist=["QWidget"]).QWidget()
-    try:
-        tool = PSFCalculator()
-    finally:
-        cp.VolumeView = real
-    tool.view = stub
-    yield tool
-    tool.close()
-
-
-def run_qt(tool, **params):
-    for k, v in params.items():
-        setattr(tool.model, k, v)
-    tool.model.compute()
-    tool._show(tool.model.volume)
-    return tool
-
-
-SCENARIOS = [
-    {"nxy": 24, "nz": 7},
-    {"nxy": 24, "nz": 7, "model": "airy", "polarization": "linear", "angle_deg": 45.0},
-    {"nxy": 24, "nz": 7, "model": "gaussian"},
-    {"nxy": 24, "nz": 7, "polarization": "radial"},
-    {
-        "nxy": 16,
-        "nz": 5,
-        "na": 1.2,
-        "n_immersion": 1.333,
-        "wavelength_nm": 640.0,
-        "polarization": "x",
-        "show_polarization": False,
-    },
-]
+SCENARIOS = [r["params"] for r in REF["scenarios"]]
 
 
 @pytest.mark.parametrize(
-    "params",
-    SCENARIOS,
-    ids=lambda p: (
-        "-".join(f"{k}={v}" for k, v in p.items() if k not in ("nxy", "nz"))[:60] or "defaults"
+    "ref",
+    REF["scenarios"],
+    ids=lambda r: (
+        "-".join(f"{k}={v}" for k, v in r["params"].items() if k not in ("nxy", "nz"))[:60]
+        or "defaults"
     ),
 )
-def test_the_volume_the_summary_and_what_the_renderer_gets_equal_the_qt_tools(app, qt_tool, params):
-    run_qt(qt_tool, **params)
-    for k, v in params.items():
+def test_the_volume_the_summary_and_what_the_renderer_gets_equal_the_recorded_qt_tool(app, ref):
+    for k, v in ref["params"].items():
         setattr(app.model, k, v)
     app.model.compute()
-    assert np.array_equal(app.model.volume, qt_tool.model.volume)
-    qt_lines = [
-        re.sub(r"^- ", "", line).replace("**", "")
-        for line in qt_tool.model.summary_text().splitlines()
-    ]
-    assert app.panel.summary_lines().splitlines() == qt_lines
-    volume_call = next(c for c in qt_tool.view.calls if c[0] == "volume")
-    vectors_call = next(c for c in qt_tool.view.calls if c[0] == "vectors")
-    assert volume_call[2:] == (app.model.colormap, app.model.threshold, app.model.gamma)
+    assert_sig(app.model.volume, ref["volume"])
+    assert app.panel.summary_lines().splitlines() == ref["summary"]
+    renderer = ref["renderer"]
+    assert (renderer["colormap"], renderer["threshold"], renderer["gamma"]) == (
+        app.model.colormap,
+        app.model.threshold,
+        app.model.gamma,
+    )
     segments = app.model.polarization_segments() if app.model.show_polarization else None
-    assert (vectors_call[1] is None) == (segments is None)
+    assert (ref["vectors"] is None) == (segments is None)
     if segments is not None:
-        assert np.array_equal(vectors_call[1], segments)
+        assert_sig(segments, ref["vectors"])
 
 
 def test_every_field_of_the_qt_spec_is_in_the_emtk_spec_with_the_same_range_step_and_choices():
@@ -156,7 +110,7 @@ def test_every_field_of_the_qt_spec_is_in_the_emtk_spec_with_the_same_range_step
                 yield s
             yield from leaves(s.get("sections", []))
 
-    qt = {s["attr"]: s for s in leaves(QT_SPEC["sections"])}
+    qt = REF["spec_fields"]
     ours = {s["attr"]: s for s in leaves(SPEC["parameters"]["sections"])}
     assert set(qt) - {"psf_volume_view"} <= set(ours) and set(ours) <= set(qt)
     for name, theirs in ours.items():
@@ -173,45 +127,22 @@ def test_every_field_of_the_qt_spec_is_in_the_emtk_spec_with_the_same_range_step
             )  # the number fields gain the Qt spin arrows
 
 
-def test_the_choice_lists_equal_the_qt_combo_labels(qt_tool):
-    from chisurf.gui.autoform.sections.builtin import ChoiceWidget
-
-    qt = {
-        cw._section.attr: (
-            [cw.combo.itemText(i) for i in range(cw.combo.count())]
-            if cw.combo is not None
-            else [b.text() for b in cw._radios]
-        )
-        for cw in qt_tool.auto_form.findChildren(ChoiceWidget)
-    }
+def test_the_choice_lists_equal_the_recorded_qt_combo_labels():
     ours = {
         s["attr"]: s.get("labels") or s["options"]
         for p in SPEC["parameters"]["sections"]
         for s in p["sections"]
         if s.get("type") == "choice"
     }
-    assert qt == ours
+    assert REF["choices"] == ours
 
 
-def test_the_toolbar_offers_the_qt_export_formats_and_both_files_equal_the_qt_exports(
-    app, qt_tool, tmp_path, monkeypatch
-):
-    run_qt(qt_tool, nxy=16, nz=5)
-    import chisurf.gui.widgets.general as G
-
-    qt_files = {}
-    for suffix, filt in ((".npy", "NumPy array (*.npy)"), (".tif", "TIFF stack (*.tif *.tiff)")):
-        target = tmp_path / f"qt{suffix}"
-        monkeypatch.setattr(G, "save_file", lambda description="", file_type="", _t=target: str(_t))
-        qt_tool.export_volume(suffix, filt)
-        qt_files[suffix] = target
+def test_both_export_files_equal_the_recorded_qt_exports(app, tmp_path):
     app.model.nxy, app.model.nz = 16, 5
     app.model.compute()
-    assert app.model.save(tmp_path / "ours.npy").read_bytes() == qt_files[".npy"].read_bytes()
-    ours_tif = app.model.save(tmp_path / "ours.tif")
-    assert np.array_equal(
-        __import__("tifffile").imread(ours_tif), __import__("tifffile").imread(qt_files[".tif"])
-    )
+    exports = REF["exports"]
+    assert_sig(np.load(app.model.save(tmp_path / "ours.npy")), exports["npy"])
+    assert_sig(__import__("tifffile").imread(app.model.save(tmp_path / "ours.tif")), exports["tif"])
 
 
 # -- spec, tooltips, Qt-free --------------------------------------------------------------------------------- #

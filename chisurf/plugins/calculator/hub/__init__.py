@@ -3,8 +3,8 @@
 A two-panel launcher: pick a calculator on the left, use it embedded on the
 right. It groups the independent FRET-line, FRET/homoFRET and FCS calculators
 under a single ``Main:Tools:Calculators`` entry. The catalogue of calculators is
-Qt-free data in :mod:`.core.registry`; the GUI host (:mod:`.gui.tool`) resolves
-and embeds each calculator widget lazily on first selection.
+plain data in :mod:`.core.registry`; the native host (:mod:`.gui.app`) builds
+each calculator's app lazily on first selection.
 """
 
 # Plugin brand icon (unified emoji set)
@@ -20,9 +20,3 @@ if _manifest is not None:
 else:
     name = "Tools:Calculators:Calculators"
 
-
-if __name__ == "plugin":
-    from .gui.tool import CalculatorHub
-
-    _hub = CalculatorHub()
-    _hub.show()

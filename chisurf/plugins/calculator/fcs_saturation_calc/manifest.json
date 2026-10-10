@@ -8,7 +8,6 @@
   "icon": "⚡",
   "entrypoints": {
     "emtk": "chisurf.plugins.calculator.fcs_saturation_calc.gui.app:make_app",
-    "gui": "chisurf.plugins.calculator.fcs_saturation_calc.gui.tool:SaturationCalculatorTool",
     "cli": "chisurf.plugins.calculator.fcs_saturation_calc.cli.main:cli",
     "services": "chisurf.plugins.calculator.fcs_saturation_calc.backend.services:register_services"
   },

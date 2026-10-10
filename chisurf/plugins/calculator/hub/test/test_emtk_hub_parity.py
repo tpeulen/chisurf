@@ -1,8 +1,8 @@
-"""The native Calculators hub against the Qt hub it replaces; every control operated with simulated pointer and keys.
+"""The native Calculators hub against the recorded behaviour of the Qt hub it replaced; every control operated with simulated pointer and keys.
 
-Hermetic: settings in a temporary folder, no network, no files. The Qt hub is the committed ``CalculatorHub``
-(``gui/tool.py``, untouched); it is built offscreen with the same catalogue and compared entry by entry. The
-native window is driven only through ``press`` / ``release`` / ``pointer_move`` / ``key`` at the rectangles the
+Hermetic: settings in a temporary folder, no network, no files. The Qt ``CalculatorHub`` was built offscreen with the same
+catalogue before it was deleted and its list rows, tooltips, header texts and error pages were recorded (``QT_HUB`` below).
+The native window is driven only through ``press`` / ``release`` / ``pointer_move`` / ``key`` at the rectangles the
 controls were drawn in (the embedded calculator is reached through the hub's coordinate offset, as a user's
 pointer reaches it); the assertions read what is visible or what the embedded calculator's model holds.
 The coverage list control -> test is in ``okf/plugins/emtk-ports/calculators/REPORT.md``.
@@ -90,55 +90,45 @@ def type_into_child(app, rect, text, size=SIZE):
     draw(app, size, frames=2)
 
 
-# -- the Qt hub, built from the committed source ------------------------------------------------------- #
+# -- what the Qt hub showed, recorded before it was deleted ---------------------------------------------- #
 
-
-@pytest.fixture
-def qt_hub():
-    QtWidgets = pytest.importorskip("qtpy.QtWidgets")
-    from chisurf.plugins.calculator.hub.gui.tool import CalculatorHub
-
-    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    hub = CalculatorHub()
-    hub._qapp = qapp
-    yield hub
-    hub.close()
+#: (id, list row text, tooltip == header subtitle) of the eight rows of the Qt ``CalculatorHub``; the Qt header title
+#: equalled the row text, the first row was selected at start.
+QT_HUB = [
+    ("fret_calculator", "FRET / homoFRET", "Combined heteroFRET and homoFRET parameter calculator — convert between distance, efficiency, lifetime and rate."),
+    ("fret_line", "FRET line", "Compute static, dynamic, WLC and mixture FRET lines for parameter ranges, ready to overlay on smFRET 2D histograms."),
+    ("rics_precision", "RICS precision", "Predict how precisely a raster scan would measure a diffusion coefficient, and sweep the pixel dwell time to find the one that measures it best — from the intended settings, before acquiring."),
+    ("phasor", "Phasor plot", "Interactive phasor plot — universal semicircle with a reference-lifetime grid/ticks, a FRET trajectory and a two-component mixing line."),
+    ("kappa2_dist", "κ² distribution", "Orientation-factor distribution p(κ²) for FRET — wobbling-in-cone, diffusion-with-traps and isotropic models with apparent-distance error."),
+    ("f_test", "F-test / χ²-max", "Compare two nested model fits (confidence ↔ χ² threshold) and compute the χ²-max upper limit of a single fit at a confidence level."),
+    ("fcs_saturation", "FCS Saturation", "Numerical calculation of excitation saturation and effective volume expansion in FCS across arbitrary multi-state kinetic schemes (e.g. Cy5)."),
+    ("psf_calculator", "PSF calculator", "Compute a 3-D point-spread function and view it as a volume: vectorial Richards-Wolf, scalar Airy or Gaussian, with the polarization entering the objective pupil."),
+]
+#: The Qt error page for a calculator that cannot be built, and the Qt prompt for an empty catalogue.
+QT_BROKEN_PAGE = "Could not load 'Broken one':\nNo module named 'chisurf.nowhere'"
+QT_EMPTY_PROMPT = ("Select a calculator on the left to get started.", "No calculator selected.")
 
 
 # ── 1. the catalogue and the header equal the Qt hub ---------------------------------------------------- #
 
 
-def test_the_list_header_and_selection_equal_the_qt_hub_entry_by_entry(app, qt_hub):
-    from qtpy import QtCore
-
-    assert qt_hub._list.count() == len(app.entries) == 8
-    for row, entry in enumerate(app.entries):
-        item = qt_hub._list.item(row)
-        assert item.data(QtCore.Qt.UserRole) == entry.id
-        assert item.text().strip().endswith(entry.label)  # the Qt row is "<emoji>  label"
-        assert item.toolTip() == entry.description
-        qt_hub._list.setCurrentRow(row)
-        qt_hub._qapp.processEvents()
-        assert qt_hub._title.text().strip().endswith(entry.label)
-        assert qt_hub._subtitle.text() == entry.description
+def test_the_list_header_and_selection_equal_the_recorded_qt_hub_entry_by_entry(app):
+    assert len(app.entries) == len(QT_HUB) == 8
+    for entry, (qt_id, qt_label, qt_text) in zip(app.entries, QT_HUB):
+        assert (entry.id, entry.label, entry.description) == (qt_id, qt_label, qt_text)
         click_entry(app, entry.id)
         assert app.selected == entry.id
         strings = draw(app).strings
         assert entry.label in strings and entry.description in " ".join(strings)
-    # the first entry is selected at start in both
+    # the first entry is selected at start (the Qt list started at row 0)
     fresh = make_app()
-    qt_first = type(qt_hub)()
     try:
-        assert fresh.selected == default_calculators()[0].id
-        assert qt_first._list.currentRow() == 0
+        assert fresh.selected == default_calculators()[0].id == QT_HUB[0][0]
     finally:
-        qt_first.close()
         fresh.close()
 
 
-def test_a_calculator_that_cannot_be_built_says_why_like_the_qt_hub(qt_hub, monkeypatch):
-    from chisurf.plugins.calculator.hub.gui.tool import CalculatorHub
-
+def test_a_calculator_that_cannot_be_built_says_why_like_the_qt_hub(monkeypatch):
     entries = [
         CalculatorEntry(
             id="broken",
@@ -149,31 +139,17 @@ def test_a_calculator_that_cannot_be_built_says_why_like_the_qt_hub(qt_hub, monk
         *default_calculators()[:2],
     ]
     monkeypatch.setitem(FACTORIES, "broken", "chisurf.nowhere:Nothing")
-    qt = CalculatorHub(entries=entries)
-    page = qt._stack.currentWidget()
-    assert page.text() == "Could not load 'Broken one':\nNo module named 'chisurf.nowhere'"
-    qt.close()
     hub = CalculatorHubApp(entries=entries)
     strings = " ".join(draw(hub).strings)
-    assert "Could not load 'Broken one': No module named 'chisurf.nowhere'" in strings
+    # the Qt page said: "Could not load 'Broken one':\nNo module named 'chisurf.nowhere'"
+    assert QT_BROKEN_PAGE.replace("\n", " ") in strings
     assert hub.child is None and hub.error
     hub.close()
 
 
-def test_no_entries_shows_the_prompt_and_no_child(qt_hub):
-    from chisurf.plugins.calculator.hub.gui.tool import CalculatorHub
-
-    qt = CalculatorHub(entries=[])
-    assert (
-        qt._subtitle.text() == "Select a calculator on the left to get started."
-        and qt._stack.currentWidget().text() == "No calculator selected."
-    )
-    qt.close()
+def test_no_entries_shows_the_prompt_and_no_child():
     hub = CalculatorHubApp(entries=[])
-    assert (
-        hub.selected is None
-        and "Select a calculator on the left to get started." in draw(hub).strings
-    )
+    assert hub.selected is None and QT_EMPTY_PROMPT[0] in draw(hub).strings
     hub.close()
 
 
@@ -222,7 +198,13 @@ def test_emoji_in_the_list_are_only_the_registry_icons(app):
     from emtk.im_widgets import icon_text
 
     strings = draw(app).strings
-    icons = {icon_text(entry.icon) for entry in app.entries}
+    from chisurf.plugins.emtk_layout import action_caption
+
+    # The shared Help/Guide captions carry their vocabulary icon; they are chrome, not list rows.
+    icons = {icon_text(entry.icon) for entry in app.entries} | {
+        action_caption("guide"),
+        action_caption("help"),
+    }
     for entry in app.entries:
         assert entry.label in strings
         assert icon_text(entry.icon) in strings
@@ -366,11 +348,11 @@ def test_help_button_opens_the_help_window_whose_buttons_work(app):
     click(app, app.item_rects["help"])
     assert app.help_window.open
     painter = draw(app)
-    assert {"Start Guided Tour", "Close", "Close Help"} <= set(painter.strings)
+    assert {"Start Guided Tour", action_caption("close"), "Close Help"} <= set(painter.strings)
     click(app, text_rect(painter, "Start Guided Tour"))
     assert not app.help_window.open and app.tour.active
     app.tour.stop()
-    for closer, last in (("Close Help", True), ("Close", False)):
+    for closer, last in (("Close Help", True), (action_caption("close"), False)):
         click(app, app.item_rects["help"])
         click(app, text_rect(draw(app), closer, last=last))
         assert not app.help_window.open, closer
@@ -500,10 +482,10 @@ def test_every_control_has_a_tooltip_and_the_port_is_qt_free():
     assert result["ok"], result["output"]
 
 
-def test_the_manifest_opens_the_native_app_and_the_qt_hub_is_untouched():
+def test_the_manifest_opens_the_native_app_only():
     manifest = json.loads((HERE.parent / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["entrypoints"]["emtk"] == "chisurf.plugins.calculator.hub.gui.app:make_app"
-    assert manifest["entrypoints"]["gui"].endswith("CalculatorHub")
+    assert "gui" not in manifest["entrypoints"]  # the Qt hub is deleted
     assert (
         isinstance(make_app(), CalculatorHubApp) and hub_module.CalculatorHubApp is CalculatorHubApp
     )

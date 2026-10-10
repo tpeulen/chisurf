@@ -49,7 +49,7 @@ def default_calculators() -> list[CalculatorEntry]:
                 "Combined heteroFRET and homoFRET parameter calculator — convert "
                 "between distance, efficiency, lifetime and rate."
             ),
-            widget="chisurf.plugins.calculator.fret_calculator.gui.tool:FretCalculatorTool",
+            widget="chisurf.plugins.calculator.fret_calculator.gui.app:make_app",
             icon="🧮",
         ),
         CalculatorEntry(
@@ -70,7 +70,7 @@ def default_calculators() -> list[CalculatorEntry]:
                 "coefficient, and sweep the pixel dwell time to find the one that "
                 "measures it best — from the intended settings, before acquiring."
             ),
-            widget="chisurf.plugins.calculator.rics_precision.gui.tool:RicsPrecisionTool",
+            widget="chisurf.plugins.calculator.rics_precision.gui.app:make_app",
             icon="📐",
         ),
         CalculatorEntry(
@@ -80,7 +80,7 @@ def default_calculators() -> list[CalculatorEntry]:
                 "Interactive phasor plot — universal semicircle with a reference-"
                 "lifetime grid/ticks, a FRET trajectory and a two-component mixing line."
             ),
-            widget="chisurf.plugins.calculator.phasor_calculator.gui.tool:PhasorCalculatorTool",
+            widget="chisurf.plugins.calculator.phasor_calculator.gui.app:make_app",
             icon="◐",
         ),
         CalculatorEntry(
@@ -110,7 +110,7 @@ def default_calculators() -> list[CalculatorEntry]:
                 "Numerical calculation of excitation saturation and effective volume expansion "
                 "in FCS across arbitrary multi-state kinetic schemes (e.g. Cy5)."
             ),
-            widget="chisurf.plugins.calculator.fcs_saturation_calc.gui.tool:SaturationCalculatorTool",
+            widget="chisurf.plugins.calculator.fcs_saturation_calc.gui.app:make_app",
             icon="🔆",
         ),
         CalculatorEntry(
@@ -121,7 +121,7 @@ def default_calculators() -> list[CalculatorEntry]:
                 "Richards-Wolf, scalar Airy or Gaussian, with the polarization entering "
                 "the objective pupil."
             ),
-            widget="chisurf.plugins.calculator.psf_calculator.gui.tool:PSFCalculator",
+            widget="chisurf.plugins.calculator.psf_calculator.gui.app:make_app",
             icon="🔬",
         ),
     ]

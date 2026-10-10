@@ -785,23 +785,14 @@ def test_the_manifest_opens_the_native_app_and_the_hub_kwargs_are_accepted():
     assert isinstance(make_app(restore=False), FretCalcApp)
 
 
-def test_the_qt_host_runs_the_same_app_on_the_same_models(qt_tool):
-    from chisurf.plugins.calculator.fret_calculator.gui.tool import FretCalculatorTool
-
-    QtWidgets = pytest.importorskip("qtpy.QtWidgets")
-    tool = FretCalculatorTool()
-    try:
-        assert isinstance(tool.app, FretCalcApp)
-        assert tool.app.hetero.model is tool._hetero_model is tool.model.hetero
-        assert tool.tabs.count() == 2
-        tool.app.hetero.model.R = 55.0
-        tool.app.hetero._compute_forward()
-        assert tool.app.hetero.model.E == pytest.approx(
-            services.fret_compute_handler(R=55.0, R0=52.0, tau0=4.0, kappa2=0.667, sigma=6.0)[
-                "result"
-            ]["E"],
-            abs=5e-7,
-        )
-    finally:
-        tool.close()
-        assert QtWidgets is not None
+def test_the_app_runs_on_the_same_models_as_the_backend():
+    app = make_app(restore=False)
+    assert app.hetero.model is app.model.hetero
+    app.hetero.model.R = 55.0
+    app.hetero._compute_forward()
+    assert app.hetero.model.E == pytest.approx(
+        services.fret_compute_handler(R=55.0, R0=52.0, tau0=4.0, kappa2=0.667, sigma=6.0)[
+            "result"
+        ]["E"],
+        abs=5e-7,
+    )

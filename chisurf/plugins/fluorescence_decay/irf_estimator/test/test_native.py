@@ -113,36 +113,6 @@ assert 'chisurf.gui' not in sys.modules
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-def test_reference_qt_estimation_passes_uncorrected_counts_once(qapp, qtbot, monkeypatch):
-    from chisurf.plugins.fluorescence_decay.irf_estimator.api.models import IRFEstimationResult
-    from chisurf.plugins.fluorescence_decay.irf_estimator.gui import tool as legacy
-
-    widget = legacy.IRFEstimatorTool()
-    qtbot.addWidget(widget)
-    original = np.arange(20.0) + 10.0
-    widget.decay_data_original = original
-    widget.decay_data = original - 3.0
-    widget.manual_background = 3.0
-    seen = []
-
-    def estimate(intensity, **kwargs):
-        seen.append(np.asarray(intensity).copy())
-        return IRFEstimationResult(
-            irf=np.ones(20).tolist(),
-            params={"k": 0.1, "k_per_ns": 0.1, "C": 3.0},
-            time_axis=np.arange(20.0).tolist(),
-            dt=1.0,
-            lifetime_ns=10.0,
-            decay_rate_ns=0.1,
-            amplitude=1.0,
-            offset=3.0,
-        )
-
-    monkeypatch.setattr(legacy, "_estimate_irf", estimate)
-    widget.estimate_irf()
-    assert np.array_equal(seen[0], original)
-
-
 def test_bin_width_recalibration_keeps_rate_lifetime_and_export_consistent(tmp_path):
     values, time = decay()
     m = IRFViewModel()

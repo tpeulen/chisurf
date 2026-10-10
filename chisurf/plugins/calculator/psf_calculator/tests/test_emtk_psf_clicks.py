@@ -9,6 +9,7 @@ had no file drops, so there is no drop test.
 from __future__ import annotations
 
 import threading
+import time
 from pathlib import Path
 
 import numpy as np
@@ -244,9 +245,10 @@ def test_the_window_says_it_is_computing_while_the_volume_is_not_in(drv, monkeyp
 
     monkeypatch.setattr(PSFModel, "compute", slow)
     drv.type_into("na", "1.1")
-    for _ in range(60):
+    for _ in range(200):  # frames are fast now: wait out the 250 ms debounce in real time
         if "Computing the volume ..." in drv.draw(1).strings:
             break
+        time.sleep(0.01)
     assert "Computing the volume ..." in drv.draw(2).strings and drv.app.busy
     gate.set()
     drv.settle()
@@ -386,23 +388,60 @@ def test_export_to_an_unwritable_place_reports_instead_of_raising(drv, tmp_path)
 # -- the 3-D view ------------------------------------------------------------------------------------------------ #
 
 
-def view_texts(drv):
-    """Every text drawn inside the 3-D window (axis titles and ticks) with its position: they move when the box rotates."""
-    x, y, w, h = drv.rect("volume")
-    return sorted(
-        (t[5], round(t[0]), round(t[1]))
-        for t in drv.draw(2).texts
-        if x <= t[0] <= x + w and y <= t[1] <= y + h
-    )
+def view_frame(drv):
+    """The 3-D view's picture as an array (drawn by chimol, not by emtk's own plot)."""
+    drv.draw(2)
+    return np.asarray(drv.app.volume_view.view.frame).copy()
+
+
+def test_the_3d_view_is_a_chimol_picture_with_shells(drv):
+    frame = view_frame(drv)
+    assert drv.app.volume_view.error == ""
+    assert frame.ndim == 3 and (frame[:, :, :3] != frame[0, 0, :3]).any(), "the isosurfaces are drawn"
+    assert "volume_view" in drv.app.item_rects
 
 
 def test_dragging_in_the_3d_view_rotates_it(drv):
-    x, y, w, h = drv.rect("volume")
-    before = view_texts(drv)
-    assert len(before) > 10
-    drv.drag((x + w / 2, y + h / 2), (x + w / 2 + 200, y + h / 2 - 60), steps=12)
-    after = view_texts(drv)
-    assert sum(1 for a, b in zip(before, after) if a != b) > 10
+    x, y, w, h = drv.rect("volume_view")
+    before = view_frame(drv)
+    drv.drag((x + w / 2, y + h / 2), (x + w / 2 + 120, y + h / 2 - 40), steps=8)
+    after = view_frame(drv)
+    assert (before != after).any()
+
+
+def test_the_wheel_zooms_the_3d_view(drv):
+    x, y, w, h = drv.rect("volume_view")
+    before = view_frame(drv)
+    drv.wheel(x + w / 2, y + h / 2, 3)
+    assert (before != view_frame(drv)).any()
+
+
+def test_gamma_recolours_without_moving_the_camera_and_threshold_rebuilds(drv):
+    view = drv.app.volume_view
+    camera = list(view.view.viewer.get_view_state())
+    drv.type_into("gamma", "1.2")
+    drv.settle()
+    assert list(view.view.viewer.get_view_state()) == camera
+    built = view._volume_key
+    drv.type_into("threshold", "0.05")
+    drv.settle()
+    assert view._volume_key != built
+
+
+def test_shell_levels_follow_threshold_and_gamma():
+    from emtk import colormaps
+
+    from chisurf.plugins.calculator.psf_calculator.gui.volume_view import crop_box, shell_levels
+
+    cmap = colormaps.get("magma")
+    levels = shell_levels(0.02, 0.6, cmap, 10.0)
+    assert [round(l["level"], 6) for l in levels] == [0.2, 5.0, 8.5]
+    assert levels[-1]["color"][3] == 1.0 and levels[0]["color"][3] < 1.0
+    assert [round(l["level"], 6) for l in shell_levels(0.7, 0.6, cmap, 10.0)] == [7.0, 8.5]
+    volume = np.zeros((9, 9, 9))
+    volume[4, 3:6, 2:7] = 1.0
+    z, y, x = crop_box(volume, 0.5, pad=1)
+    assert (z.start, z.stop, y.start, y.stop, x.start, x.stop) == (3, 6, 2, 7, 1, 8)
 
 
 # -- guide and help ------------------------------------------------------------------------------------------------ #

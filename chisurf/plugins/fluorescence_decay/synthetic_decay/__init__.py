@@ -10,10 +10,3 @@ optional IRF convolution and Poisson shot noise.
 icon = "⚗️"
 
 name = "Spectroscopy:Fluorescence decay:Synthetic Decay Generator"
-
-
-if __name__ == "plugin":  # pragma: no cover
-    from .gui.tool import SyntheticDecayTool
-
-    _tool = SyntheticDecayTool()
-    _tool.show()

@@ -134,7 +134,7 @@ def test_guide_points_at_real_attributes():
     """
     steps = json.loads((PLUGIN_DIR / "gui" / "guide.json").read_text())["steps"]
     assert len(steps) >= 5
-    spec = json.loads((PLUGIN_DIR / "psf_calculator.view.json").read_text())
+    spec = json.loads((PLUGIN_DIR / "gui" / "psf_emtk.view.json").read_text())
 
     bound: set[str] = set()
 

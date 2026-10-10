@@ -1,14 +1,13 @@
-"""GUI tests for the synthetic decay generator tool."""
+"""Tests for the synthetic decay generator (native app and view model)."""
 
 from __future__ import annotations
 
 
-def test_tool_builds_and_generates(qapp, qtbot):
-    from chisurf.plugins.fluorescence_decay.synthetic_decay.gui.tool import SyntheticDecayTool
+def test_tool_builds_and_generates():
+    from chisurf.plugins.fluorescence_decay.synthetic_decay.gui.app import make_app
 
-    tool = SyntheticDecayTool()
-    qtbot.addWidget(tool)
-    m = tool.model
+    app = make_app()
+    m = app.model
     assert m.decay_series() == []  # nothing yet
     m.generate()
     series = m.decay_series()
@@ -16,7 +15,7 @@ def test_tool_builds_and_generates(qapp, qtbot):
     assert "Generated" in m.status
 
 
-def test_spectrum_edit_add_remove(qapp, qtbot):
+def test_spectrum_edit_add_remove():
     from chisurf.plugins.fluorescence_decay.synthetic_decay.gui.view_model import (
         SyntheticDecayViewModel,
     )
@@ -32,7 +31,7 @@ def test_spectrum_edit_add_remove(qapp, qtbot):
     assert len(m.spectrum_rows) == n0
 
 
-def test_shot_noise_path_changes_output(qapp, qtbot):
+def test_shot_noise_path_changes_output():
     from chisurf.plugins.fluorescence_decay.synthetic_decay.gui.view_model import (
         SyntheticDecayViewModel,
     )
@@ -51,7 +50,7 @@ def test_shot_noise_path_changes_output(qapp, qtbot):
 # -- anisotropy (VM / VV-VH) --------------------------------------------------
 
 
-def test_vm_mode_plots_decay_and_r(qapp, qtbot):
+def test_vm_mode_plots_decay_and_r():
     from chisurf.plugins.fluorescence_decay.synthetic_decay.gui.view_model import (
         SyntheticDecayViewModel,
     )
@@ -68,7 +67,7 @@ def test_vm_mode_plots_decay_and_r(qapp, qtbot):
     assert abs(r[0] - sum(row["b"] for row in m.rotation_rows)) < 1e-12
 
 
-def test_vvvh_mode_plots_pair(qapp, qtbot):
+def test_vvvh_mode_plots_pair():
     from chisurf.plugins.fluorescence_decay.synthetic_decay.gui.view_model import (
         SyntheticDecayViewModel,
     )
@@ -85,7 +84,7 @@ def test_vvvh_mode_plots_pair(qapp, qtbot):
     assert "VV/VH" in m.status
 
 
-def test_vvvh_dataset_group_carries_calibration(qapp, qtbot):
+def test_vvvh_dataset_group_carries_calibration():
     from chisurf.plugins.fluorescence_decay.synthetic_decay.gui.view_model import (
         SyntheticDecayViewModel,
     )
@@ -109,7 +108,7 @@ def test_vvvh_dataset_group_carries_calibration(qapp, qtbot):
     assert group.meta_data["g_factor"] == 1.6
 
 
-def test_vm_dataset_group_is_single_curve(qapp, qtbot):
+def test_vm_dataset_group_is_single_curve():
     from chisurf.plugins.fluorescence_decay.synthetic_decay.gui.view_model import (
         SyntheticDecayViewModel,
     )
@@ -170,7 +169,7 @@ def test_send_to_fit_creates_polarized_group():
         del cs.imported_datasets[dataset_index]
 
 
-def test_vvvh_save_writes_vv_vh_file(qapp, qtbot, tmp_path):
+def test_vvvh_save_writes_vv_vh_file(tmp_path):
     import numpy as np
 
     from chisurf.core.fio.vv_vh import read_vv_vh
@@ -184,19 +183,8 @@ def test_vvvh_save_writes_vv_vh_file(qapp, qtbot, tmp_path):
     m.l1, m.l2 = 0.03, 0.05
     m.generate()
     path = tmp_path / "pair.dat"
-    saved = {}
-    from qtpy import QtWidgets
-
-    original = QtWidgets.QFileDialog.getSaveFileName
-
-    def fake_save(*args, **kwargs):
-        return str(path), ""
-
-    QtWidgets.QFileDialog.getSaveFileName = staticmethod(fake_save)
-    try:
-        m.save()
-    finally:
-        QtWidgets.QFileDialog.getSaveFileName = original
+    m.choose_file = lambda mode, title, filename, filters: str(path)  # the host's file dialog
+    m.save()
     assert path.exists()
     vv, vh = read_vv_vh(path, split=True)
     assert np.allclose(vv, m._vv) and np.allclose(vh, m._vh)

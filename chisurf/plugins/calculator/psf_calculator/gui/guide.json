@@ -54,6 +54,14 @@
       "await": true
     },
     {
+      "title": "Step 7 — turn the focus around",
+      "text": "Press in the <b>3-D PSF</b> window and <b>drag with the left button</b> to rotate the focus; the <b>wheel</b> zooms and <b>Ctrl + left-drag</b> (or middle-drag) pans.<br/><br/>The three shells are isosurfaces: the dim <b>threshold</b> shell (where the wings end), the <b>half-maximum</b> shell and a bright core. Look at the hourglass from the side — its length along z against its width in the plane is the whole point of this tool.",
+      "target": {
+        "name": "volume_view"
+      },
+      "await": true
+    },
+    {
       "title": "Last — switch to Full before you quote a number",
       "text": "Everything so far ran on <b>Preview</b>, which evaluates the aperture integral at 60 points so editing stays responsive. Set <b>Quality</b> to <b>Full</b> (300 points) before taking a width you intend to publish or feed to a deconvolution.<br/><br/>Increase <b>Planes</b> and lower <b>z step</b> if you care about the axial width: the default sampling is coarse enough to quantize it.",
       "target": {

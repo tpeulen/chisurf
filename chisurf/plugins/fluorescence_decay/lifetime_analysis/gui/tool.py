@@ -9,12 +9,12 @@ from chisurf.gui.widgets.navigation import NavigationPanelTool, apply_manifest_f
 
 
 def _irf_estimator(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
-    """Create the IRF estimation panel."""
-    from chisurf.plugins.fluorescence_decay.irf_estimator.gui.tool import (
-        IRFEstimatorTool,
-    )
+    """Create the IRF estimation panel: the emtk app, hosted."""
+    from emtk.qt_host import ControlHost
 
-    return IRFEstimatorTool(parent=parent)
+    from chisurf.plugins.fluorescence_decay.irf_estimator.gui.app import make_app
+
+    return ControlHost(make_app(), parent=parent)
 
 
 def _maxent_mem(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
@@ -61,10 +61,12 @@ def _vv_vh_anisotropy(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
 
 
 def _synthetic_decay(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
-    """Create the synthetic decay generator panel."""
-    from chisurf.plugins.fluorescence_decay.synthetic_decay.gui.tool import SyntheticDecayTool
+    """Create the synthetic decay generator panel: the emtk app, hosted."""
+    from emtk.qt_host import ControlHost
 
-    return SyntheticDecayTool(parent=parent)
+    from chisurf.plugins.fluorescence_decay.synthetic_decay.gui.app import make_app
+
+    return ControlHost(make_app(), parent=parent)
 
 
 #: The panels of this shell. Maturity flags are not written here: a panel names

@@ -8,7 +8,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 
 def test_model_overlays_track_toggles():
-    from chisurf.plugins.calculator.phasor_calculator.gui.tool import _PhasorCalcModel
+    from chisurf.plugins.calculator.phasor_calculator.gui.model import _PhasorCalcModel
 
     m = _PhasorCalcModel()
     m.show_grid = False
@@ -26,7 +26,7 @@ def test_model_overlays_track_toggles():
 
 
 def test_model_tau_parsing_is_robust():
-    from chisurf.plugins.calculator.phasor_calculator.gui.tool import _PhasorCalcModel
+    from chisurf.plugins.calculator.phasor_calculator.gui.model import _PhasorCalcModel
 
     m = _PhasorCalcModel()
     m.taus = "1, 2 ; 4 , bad,"
@@ -36,7 +36,7 @@ def test_model_tau_parsing_is_robust():
 
 
 def test_results_html_lists_reference_points():
-    from chisurf.plugins.calculator.phasor_calculator.gui.tool import _PhasorCalcModel
+    from chisurf.plugins.calculator.phasor_calculator.gui.model import _PhasorCalcModel
 
     m = _PhasorCalcModel()
     html = m.results_html()
@@ -51,22 +51,21 @@ def test_registered_in_hub():
 
 
 def test_view_spec_loads():
-    from chisurf.plugins.calculator.phasor_calculator.gui.tool import _PhasorCalcModel
+    from chisurf.plugins.calculator.phasor_calculator.gui.model import _PhasorCalcModel
 
     spec = _PhasorCalcModel().view_spec()
     assert spec is not None
 
 
-def test_gui_tool_constructs_and_renders_offscreen(qtbot):
-    from chisurf.plugins.calculator.phasor_calculator.gui.tool import PhasorCalculatorTool
+def test_native_app_constructs_and_renders():
+    from emtk.testing import RecordingPainter
 
-    tool = PhasorCalculatorTool()
-    qtbot.addWidget(tool)
-    tool.show()
-    qtbot.waitExposed(tool)
+    from chisurf.plugins.calculator.phasor_calculator.gui.app import make_app
+
+    app = make_app()
     # Toggle overlays and refresh without error.
-    tool._model.show_fret = True
-    tool._model.show_component = True
-    tool._form.refresh_plots()
-    pixmap = tool.grab()
-    assert pixmap.width() > 0 and pixmap.height() > 0
+    app.tool._model.show_fret = True
+    app.tool._model.show_component = True
+    painter = RecordingPainter()
+    app.draw(painter, 0, 0, 860, 660)
+    assert painter.texts

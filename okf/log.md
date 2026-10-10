@@ -2,6 +2,14 @@
 
 ## 2026-10-10
 
+- PRD-154 W9 phase 1: the Qt tool of ten plugins is deleted and their `gui` entrypoint dropped
+  (psf_calculator, calculator hub, fret_calculator, phasor_calculator, rics_precision,
+  fcs_saturation_calc, fcs_lfcs_sim, flc_2d, irf_estimator, synthetic_decay); Qt parity tests
+  now compare against recorded Qt values (`qt_reference.json` / `golden_qt_presets.json`). New
+  guard `test/test_plugin_qt_free.py` with the shrinking `test/plugin_qt_allowlist.txt`.
+  PSF calculator's 3-D view is a hosted chimol volume view (`gui/volume_view.py`). Skipped with
+  reasons in [PRD-154](prds/prd-154.md): kappa2_dist, fcs_calculator, fcs_channel_preset,
+  fcs_filter_calculator, fcs_correlator/toolbox, maxent_decay, tr_anisotropy, lifetime_analysis.
 - Secondary Qt-to-emtk parity losses restored: Lightpath Simulator "Auto recalculate"
   (shared Easy Mode widget, 0.3 s debounce, off in the channel wizard); FPS JSON editor
   Distances multi-select and one-question bulk delete; trajectory number fields step on

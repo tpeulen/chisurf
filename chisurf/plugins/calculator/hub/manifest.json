@@ -16,8 +16,7 @@
     }
   },
   "entrypoints": {
-    "emtk": "chisurf.plugins.calculator.hub.gui.app:make_app",
-    "gui": "chisurf.plugins.calculator.hub.gui.tool:CalculatorHub"
+    "emtk": "chisurf.plugins.calculator.hub.gui.app:make_app"
   },
   "rpc_methods": [],
   "dependencies": {},

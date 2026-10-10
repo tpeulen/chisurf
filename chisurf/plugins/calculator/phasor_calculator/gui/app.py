@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 import emtk.im as im
 import emtk.implot as implot
@@ -26,7 +26,7 @@ from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import window_size as shared_window_size
 
 if TYPE_CHECKING:
-    from .tool import PhasorCalculatorTool, _PhasorCalcModel
+    from .model import _PhasorCalcModel
 
 WINDOW_BG = (30, 32, 38, 255)
 
@@ -138,7 +138,7 @@ class PhasorGui(TourTarget):
 
     def __init__(
         self,
-        tool: PhasorCalculatorTool,
+        tool: Any,
         on_guide: Callable[[], None] | None = None,
         on_help: Callable[[], None] | None = None,
     ) -> None:
@@ -335,7 +335,7 @@ class PhasorGui(TourTarget):
 class PhasorCalcApp(ImApp):
     """The EMTK ImApp for the phasor calculator."""
 
-    def __init__(self, tool: PhasorCalculatorTool) -> None:
+    def __init__(self, tool: Any) -> None:
         self.window_size = shared_window_size(SPEC, (640, 480))
         self.tool = tool
         self.phasor_gui = PhasorGui(

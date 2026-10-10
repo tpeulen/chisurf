@@ -164,33 +164,32 @@ def test_an_irf_file_smears_the_prompt_and_a_missing_one_is_an_error(app, tmp_pa
     assert m.decay_series() == [] and m.aniso_series() == []  # no stale curve survives an error
 
 
-def test_the_native_app_and_the_qt_tool_generate_the_same_numbers(qapp, app):
-    from chisurf.plugins.fluorescence_decay.synthetic_decay.gui.tool import SyntheticDecayTool
+def test_the_native_app_and_the_standalone_model_generate_the_same_numbers(app):
+    """The Qt tool hosted ``SyntheticDecayViewModel``; the standalone model and the app's agree."""
+    from chisurf.plugins.fluorescence_decay.synthetic_decay.gui.view_model import (
+        SyntheticDecayViewModel,
+    )
 
-    tool = SyntheticDecayTool()
-    try:
-        for model in (tool.model, app.model):
-            model.update_spectrum(0, "tau", 0.5)
-            model.add_row()
-            model.update_spectrum(2, "amp", 0.25)
-            model.update_spectrum(2, "tau", 9.0)
-            model.shot_noise, model.photon_count, model.seed = True, 200000.0, 7
-            model.set_polarization("vv/vh")
-            model.g_factor, model.l1, model.l2 = 1.3, 0.02, 0.05
-            model.generate()
-        assert tool.model._vv == app.model._vv and tool.model._vh == app.model._vh
-        assert tool.model._r == app.model._r
-        assert tool.model.status_text() == app.model.status_text()
-        assert tool.model.aniso_metadata() == app.model.aniso_metadata()
-        # and the table the Qt window shows holds the rows the native table shows
-        from qtpy import QtWidgets
-
-        qapp.processEvents()
-        table = next(t for t in tool.form.findChildren(QtWidgets.QTableWidget) if t.rowCount() == 3)
-        qt_cells = [[float(table.item(r, c).text()) for c in range(2)] for r in range(3)]
-        assert qt_cells == [[row["amp"], row["tau"]] for row in app.model.spectrum_rows]
-    finally:
-        tool.deleteLater()
+    standalone = SyntheticDecayViewModel()
+    for model in (standalone, app.model):
+        model.update_spectrum(0, "tau", 0.5)
+        model.add_row()
+        model.update_spectrum(2, "amp", 0.25)
+        model.update_spectrum(2, "tau", 9.0)
+        model.shot_noise, model.photon_count, model.seed = True, 200000.0, 7
+        model.set_polarization("vv/vh")
+        model.g_factor, model.l1, model.l2 = 1.3, 0.02, 0.05
+        model.generate()
+    assert standalone._vv == app.model._vv and standalone._vh == app.model._vh
+    assert standalone._r == app.model._r
+    assert standalone.status_text() == app.model.status_text()
+    assert standalone.aniso_metadata() == app.model.aniso_metadata()
+    # the table the Qt window showed held these three (amp, tau) rows
+    assert [[row["amp"], row["tau"]] for row in app.model.spectrum_rows] == [
+        [1.0, 0.5],
+        [1.0, 4.0],
+        [0.25, 9.0],
+    ]
 
 
 # ── 2. every action and its error path, by the buttons ──────────────────
@@ -302,45 +301,23 @@ def test_save_formats_and_the_vv_vh_file_round_trip(app, tmp_path):
     assert m.status_text() == "Saved VV/VH pair (256 bins) to pair.dat."
 
 
-def test_save_and_fit_group_before_generate_say_so_like_the_qt_tool(qapp, app, tmp_path):
-    from chisurf.plugins.fluorescence_decay.synthetic_decay.gui.tool import SyntheticDecayTool
-
-    tool = SyntheticDecayTool()
-    try:
-        tool.model.save(str(tmp_path / "x.csv"))
-        qt_save = tool.model.status_text()
-        tool.model.send_to_fit()
-        qt_fit = tool.model.status_text()
-    finally:
-        tool.deleteLater()
+def test_save_and_fit_group_before_generate_say_so_like_the_qt_tool(app, tmp_path):
     app.model.save(str(tmp_path / "x.csv"))
-    assert app.model.status_text() == qt_save == "Nothing to save — press Generate first."
+    assert app.model.status_text() == "Nothing to save — press Generate first."
     assert not (tmp_path / "x.csv").exists()
     app.model.send_to_fit()
-    assert app.model.status_text() == qt_fit == "Nothing to send — press Generate first."
+    assert app.model.status_text() == "Nothing to send — press Generate first."
 
 
-def test_load_spectrum_errors_equal_the_qt_tool(qapp, app, tmp_path):
-    from chisurf.plugins.fluorescence_decay.synthetic_decay.gui.tool import SyntheticDecayTool
-
+def test_load_spectrum_errors_equal_the_qt_tool(app, tmp_path):
     bad = tmp_path / "bad.csv"
     bad.write_text("a,b\nx,y\n")
     negative = tmp_path / "negative.csv"
     np.savetxt(negative, [[1.0, -2.0]], delimiter=",")
-    tool = SyntheticDecayTool()
-    try:
-        for path in (bad, negative):
-            tool.model.load_spectrum(str(path))
-            app.model.load_spectrum(str(path))
-            assert app.model.status_text() == tool.model.status_text()
-            assert (
-                app.model.spectrum_rows
-                == tool.model.spectrum_rows
-                == [{"amp": 1.0, "tau": 1.2}, {"amp": 1.0, "tau": 4.0}]
-            )
-        assert app.model.status_text().startswith("Invalid lifetime spectrum")
-    finally:
-        tool.deleteLater()
+    for path, status in ((bad, "Load failed: "), (negative, "Invalid lifetime spectrum: lifetimes must be positive")):
+        app.model.load_spectrum(str(path))
+        assert app.model.spectrum_rows == [{"amp": 1.0, "tau": 1.2}, {"amp": 1.0, "tau": 4.0}]
+        assert app.model.status_text().startswith(status)
 
 
 def test_fit_group_button_sends_the_generated_group_to_the_sink(tmp_path):

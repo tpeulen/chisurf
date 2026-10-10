@@ -1,17 +1,15 @@
 """The native IRF estimator at parity with the Qt IRFEstimatorTool.
 
 The Qt facts (the results group, the status bar's time axis, the data label, the
-background a file sets, the estimated IRF and when each action is enabled) come
-from the Qt widget in a subprocess on a measured donor decay; this process stays
-Qt-free. The native app is driven through its real controls: pointer presses on
+background a file sets, the estimated IRF and when each action is enabled) were
+recorded from the Qt widget on a measured donor decay (``qt_reference.json``) before it
+was deleted. The native app is driven through its real controls: pointer presses on
 the spec's buttons, the file dialog's callback, the dataset combo.
 """
 
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -30,31 +28,9 @@ DECAY = str(
 )
 ITERATIONS = 100
 
-_QT = r"""
-import json, sys
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-from chisurf.plugins.fluorescence_decay.irf_estimator.gui.tool import IRFEstimatorTool
-w = IRFEstimatorTool()
-def states():
-    return [w.estimate_button.isEnabled(), w.save_action.isEnabled(), w.transfer_action.isEnabled()]
-facts = {"states": [states()], "time_empty": w.status_time_label.text(), "label_empty": w.data_info_label.text()}
-w.load_decay_file(sys.argv[1])
-facts["states"].append(states())
-facts["background"] = w.background_spinbox.value()
-facts["label"] = w.data_info_label.text()
-facts["time"] = w.status_time_label.text()
-w.rl_iterations_spinbox.setValue(int(sys.argv[2]))
-w.range_selection_checkbox.setChecked(True)
-w.estimate_irf()
-facts["states"].append(states())
-facts["results"] = [w.lifetime_value.text(), w.decay_rate_value.text(), w.amplitude_value.text(), w.offset_value.text()]
-facts["irf"] = [float(v) for v in w.irf_data]
-facts["status"] = w._status_bar.currentMessage()
-w.load_decay_file(sys.argv[3])
-facts["tail_background"] = w.background_spinbox.value()
-print("FACTS" + json.dumps(facts))
-"""
+#: What the Qt ``IRFEstimatorTool`` showed on the measured donor decay and on the tail file, recorded before it was
+#: deleted (the data label holds ``{DECAY}`` for the absolute path of the file).
+QT_FACTS = json.loads((HERE / "qt_reference.json").read_text())
 
 
 @pytest.fixture(scope="module")
@@ -75,26 +51,10 @@ def tail_file(tmp_path_factory):
 
 
 @pytest.fixture(scope="module")
-def qt(tail_file):
-    pytest.importorskip("qtpy")
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT, DECAY, str(ITERATIONS), tail_file],
-        capture_output=True,
-        text=True,
-        timeout=300,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and (
-        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
-    ):
-        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
-    # Any other failure is the Qt widget's own: skipping it hid a broken Qt host.
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS") :])
+def qt():
+    facts = dict(QT_FACTS)
+    facts["label"] = facts["label"].replace("{DECAY}", DECAY)
+    return facts
 
 
 def _draw(app, size=(1200, 800), n=2, painter=RecordingPainter):

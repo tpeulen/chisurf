@@ -40,7 +40,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.fluorescence_decay.irf_estimator.gui.tool:IRFEstimatorTool",
     "cli": "irf-estimator=chisurf.plugins.fluorescence_decay.irf_estimator.cli:cli",
     "services": "chisurf.plugins.fluorescence_decay.irf_estimator.backend.services:register_services",
     "emtk": "chisurf.plugins.fluorescence_decay.irf_estimator.gui.app:make_app"

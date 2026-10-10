@@ -287,13 +287,11 @@ def test_tcspc_simulator_reader_uses_canonical_generator():
 def test_view_model_load_spectrum(tmp_path):
     """load_spectrum accepts interleaved and 2-column files and fills the table."""
     import numpy as np
-    from qtpy import QtWidgets
 
     from chisurf.plugins.fluorescence_decay.synthetic_decay.gui.view_model import (
         SyntheticDecayViewModel,
     )
 
-    QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     inter = tmp_path / "inter.txt"
     twocol = tmp_path / "twocol.txt"
     np.savetxt(inter, np.array([0.3, 1.2, 0.7, 4.0]))
@@ -302,6 +300,6 @@ def test_view_model_load_spectrum(tmp_path):
 
     for f in (inter, twocol):
         vm = SyntheticDecayViewModel()
-        QtWidgets.QFileDialog.getOpenFileName = staticmethod(lambda *a, **k: (str(f), ""))
+        vm.choose_file = lambda mode, title, filename, filters, _f=f: str(_f)  # the host's dialog
         vm.load_spectrum()
         assert vm.spectrum_rows == expected

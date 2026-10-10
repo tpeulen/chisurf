@@ -1,0 +1,750 @@
+{
+ "scenarios": [
+  {
+   "params": {
+    "nxy": 24,
+    "nz": 7
+   },
+   "volume": {
+    "shape": [
+     7,
+     24,
+     24
+    ],
+    "sum": 379.2053490573659,
+    "max": 1.0,
+    "argmax": 2003,
+    "idx": [
+     0,
+     268,
+     537,
+     806,
+     1074,
+     1343,
+     1612,
+     1881,
+     2149,
+     2418,
+     2687,
+     2956,
+     3224,
+     3493,
+     3762,
+     4031
+    ],
+    "samples": [
+     0.014728435045546447,
+     0.08812042158511844,
+     0.04551865802727496,
+     0.35423748624976953,
+     0.035714585517665286,
+     0.014079730348556203,
+     0.024928948538839635,
+     0.10774608931741093,
+     0.14126684548855564,
+     0.027339488837927257,
+     0.016216192535711316,
+     0.029269154511255967,
+     0.2609336005806376,
+     0.04806461679324113,
+     0.1034695240957497,
+     0.014728435045546447
+    ]
+   },
+   "summary": [
+    "volume 7 x 24 x 24 (30 nm px, 100 nm z)",
+    "lateral FWHM 211 nm",
+    "axial FWHM 512 nm",
+    "scalar 0.51 \u03bb/NA = 189 nm (1.12 x lateral)"
+   ],
+   "renderer": {
+    "colormap": "magma",
+    "threshold": 0.02,
+    "gamma": 0.6
+   },
+   "vectors": {
+    "shape": [
+     12,
+     2,
+     3
+    ],
+    "sum": 730.56,
+    "max": 21.12,
+    "argmax": 0,
+    "idx": [
+     0,
+     4,
+     9,
+     14,
+     18,
+     23,
+     28,
+     33,
+     37,
+     42,
+     47,
+     52,
+     56,
+     61,
+     66,
+     71
+    ],
+    "samples": [
+     21.12,
+     14.4,
+     18.698151682514084,
+     6.44,
+     14.4,
+     6.44,
+     18.698151682514084,
+     2.9018483174859186,
+     14.400000000000002,
+     2.9018483174859173,
+     6.44,
+     2.9018483174859204,
+     6.44,
+     2.901848317485917,
+     18.698151682514077,
+     6.44
+    ]
+   }
+  },
+  {
+   "params": {
+    "nxy": 24,
+    "nz": 7,
+    "model": "airy",
+    "polarization": "linear",
+    "angle_deg": 45.0
+   },
+   "volume": {
+    "shape": [
+     7,
+     24,
+     24
+    ],
+    "sum": 320.7413359869811,
+    "max": 1.0,
+    "argmax": 275,
+    "idx": [
+     0,
+     268,
+     537,
+     806,
+     1074,
+     1343,
+     1612,
+     1881,
+     2149,
+     2418,
+     2687,
+     2956,
+     3224,
+     3493,
+     3762,
+     4031
+    ],
+    "samples": [
+     0.004178043694857664,
+     1.3520915596164025e-05,
+     0.016160908845596615,
+     0.43379676321373134,
+     0.016626765094332883,
+     0.004928891329012594,
+     0.017039021381548083,
+     0.04334872788146754,
+     0.07046800862337686,
+     0.017892076464588565,
+     0.007262192171388578,
+     0.012590071731391187,
+     0.270321014472187,
+     0.017039021381548083,
+     0.017805645205670864,
+     0.004178043694857664
+    ]
+   },
+   "summary": [
+    "volume 7 x 24 x 24 (30 nm px, 100 nm z)",
+    "lateral FWHM 193 nm",
+    "axial FWHM 600 nm",
+    "scalar 0.51 \u03bb/NA = 189 nm (1.02 x lateral)"
+   ],
+   "renderer": {
+    "colormap": "magma",
+    "threshold": 0.02,
+    "gamma": 0.6
+   },
+   "vectors": null
+  },
+  {
+   "params": {
+    "nxy": 24,
+    "nz": 7,
+    "model": "gaussian"
+   },
+   "volume": {
+    "shape": [
+     7,
+     24,
+     24
+    ],
+    "sum": 220.11941497034798,
+    "max": 1.0,
+    "argmax": 2003,
+    "idx": [
+     0,
+     268,
+     537,
+     806,
+     1074,
+     1343,
+     1612,
+     1881,
+     2149,
+     2418,
+     2687,
+     2956,
+     3224,
+     3493,
+     3762,
+     4031
+    ],
+    "samples": [
+     0.018554585011553586,
+     0.031368111105092515,
+     0.02695928863757158,
+     0.07286648905774562,
+     0.041824882148872554,
+     0.016959047867975013,
+     0.034510720095476496,
+     0.07393324302278521,
+     0.09874707224661146,
+     0.04425347870489035,
+     0.019548434212226073,
+     0.03875640749841815,
+     0.07052545491252439,
+     0.027232891624764995,
+     0.03249653230387962,
+     0.018554585011553586
+    ]
+   },
+   "summary": [
+    "volume 7 x 24 x 24 (30 nm px, 100 nm z)",
+    "lateral FWHM 189 nm",
+    "axial FWHM nan nm",
+    "scalar 0.51 \u03bb/NA = 189 nm (1.00 x lateral)"
+   ],
+   "renderer": {
+    "colormap": "magma",
+    "threshold": 0.02,
+    "gamma": 0.6
+   },
+   "vectors": null
+  },
+  {
+   "params": {
+    "nxy": 24,
+    "nz": 7,
+    "polarization": "radial"
+   },
+   "volume": {
+    "shape": [
+     7,
+     24,
+     24
+    ],
+    "sum": 379.84961814342125,
+    "max": 1.0,
+    "argmax": 2003,
+    "idx": [
+     0,
+     268,
+     537,
+     806,
+     1074,
+     1343,
+     1612,
+     1881,
+     2149,
+     2418,
+     2687,
+     2956,
+     3224,
+     3493,
+     3762,
+     4031
+    ],
+    "samples": [
+     0.024459065666541217,
+     0.08938605110015417,
+     0.0532287712158616,
+     0.2730534084456809,
+     0.05312188854512417,
+     0.010577112622637823,
+     0.05174142663453047,
+     0.07607955134665194,
+     0.08946287686239972,
+     0.07091227968177302,
+     0.015604479612501707,
+     0.03749669565094187,
+     0.17319733024485953,
+     0.05700562303439363,
+     0.0778158207986574,
+     0.024459065666541217
+    ]
+   },
+   "summary": [
+    "volume 7 x 24 x 24 (30 nm px, 100 nm z)",
+    "lateral FWHM 184 nm",
+    "axial FWHM 540 nm",
+    "scalar 0.51 \u03bb/NA = 189 nm (0.97 x lateral)"
+   ],
+   "renderer": {
+    "colormap": "magma",
+    "threshold": 0.02,
+    "gamma": 0.6
+   },
+   "vectors": {
+    "shape": [
+     12,
+     2,
+     3
+    ],
+    "sum": 730.56,
+    "max": 23.520000000000003,
+    "argmax": 3,
+    "idx": [
+     0,
+     4,
+     9,
+     14,
+     18,
+     23,
+     28,
+     33,
+     37,
+     42,
+     47,
+     52,
+     56,
+     61,
+     66,
+     71
+    ],
+    "samples": [
+     18.72,
+     12.0,
+     21.976612651596735,
+     6.44,
+     12.0,
+     6.44,
+     21.976612651596735,
+     2.023387348403267,
+     12.000000000000002,
+     6.180309286568571,
+     6.44,
+     2.023387348403269,
+     6.44,
+     6.180309286568569,
+     17.819690713431427,
+     6.44
+    ]
+   }
+  },
+  {
+   "params": {
+    "nxy": 16,
+    "nz": 5,
+    "na": 1.2,
+    "n_immersion": 1.333,
+    "wavelength_nm": 640.0,
+    "polarization": "x",
+    "show_polarization": false
+   },
+   "volume": {
+    "shape": [
+     5,
+     16,
+     16
+    ],
+    "sum": 461.9036966052972,
+    "max": 1.0,
+    "argmax": 631,
+    "idx": [
+     0,
+     85,
+     170,
+     255,
+     341,
+     426,
+     511,
+     596,
+     682,
+     767,
+     852,
+     937,
+     1023,
+     1108,
+     1193,
+     1279
+    ],
+    "samples": [
+     0.04915005926993115,
+     0.6077253737461703,
+     0.6077253737461703,
+     0.04915005926993115,
+     0.6901861139622173,
+     0.6901861139622173,
+     0.0358885762684599,
+     0.6394694585350834,
+     0.7196822809331148,
+     0.030924270412069396,
+     0.6140233420489212,
+     0.7447662193196727,
+     0.0358885762684599,
+     0.5428171019922958,
+     0.6541713910472207,
+     0.04915005926993115
+    ]
+   },
+   "summary": [
+    "volume 5 x 16 x 16 (30 nm px, 100 nm z)",
+    "lateral FWHM 352 nm",
+    "axial FWHM 400 nm",
+    "scalar 0.51 \u03bb/NA = 272 nm (1.29 x lateral)"
+   ],
+   "renderer": {
+    "colormap": "magma",
+    "threshold": 0.02,
+    "gamma": 0.6
+   },
+   "vectors": null
+  }
+ ],
+ "choices": {
+  "model": [
+   "Vectorial (Richards-Wolf)",
+   "Airy (scalar, 2-D)",
+   "Gaussian"
+  ],
+  "polarization": [
+   "Circular",
+   "Linear x",
+   "Linear y",
+   "Linear at angle",
+   "Left circular",
+   "Unpolarized",
+   "Radial",
+   "Azimuthal"
+  ],
+  "quality": [
+   "Preview (fast)",
+   "Full"
+  ],
+  "colormap": [
+   "magma",
+   "inferno",
+   "viridis",
+   "gray"
+  ]
+ },
+ "spec_fields": {
+  "na": {
+   "kind": "float",
+   "minimum": 0.05,
+   "maximum": 1.7,
+   "step": 0.05,
+   "decimals": 2,
+   "options": null,
+   "labels": null,
+   "label": "NA",
+   "style": null
+  },
+  "n_immersion": {
+   "kind": "float",
+   "minimum": 1.0,
+   "maximum": 2.0,
+   "step": 0.01,
+   "decimals": 3,
+   "options": null,
+   "labels": null,
+   "label": "n (immersion)",
+   "style": null
+  },
+  "wavelength_nm": {
+   "kind": "float",
+   "minimum": 300.0,
+   "maximum": 1200.0,
+   "step": 10.0,
+   "decimals": 0,
+   "options": null,
+   "labels": null,
+   "label": "\u03bb (nm)",
+   "style": null
+  },
+  "model": {
+   "kind": null,
+   "minimum": null,
+   "maximum": null,
+   "step": null,
+   "decimals": null,
+   "options": [
+    "vectorial",
+    "airy",
+    "gaussian"
+   ],
+   "labels": [
+    "Vectorial (Richards-Wolf)",
+    "Airy (scalar, 2-D)",
+    "Gaussian"
+   ],
+   "label": "Optical model",
+   "style": null
+  },
+  "polarization": {
+   "kind": null,
+   "minimum": null,
+   "maximum": null,
+   "step": null,
+   "decimals": null,
+   "options": [
+    "circular",
+    "x",
+    "y",
+    "linear",
+    "left",
+    "unpolarized",
+    "radial",
+    "azimuthal"
+   ],
+   "labels": [
+    "Circular",
+    "Linear x",
+    "Linear y",
+    "Linear at angle",
+    "Left circular",
+    "Unpolarized",
+    "Radial",
+    "Azimuthal"
+   ],
+   "label": "Polarization",
+   "style": null
+  },
+  "angle_deg": {
+   "kind": "float",
+   "minimum": 0.0,
+   "maximum": 180.0,
+   "step": 5.0,
+   "decimals": 0,
+   "options": null,
+   "labels": null,
+   "label": "Angle (\u00b0)",
+   "style": null
+  },
+  "nxy": {
+   "kind": "int",
+   "minimum": 16,
+   "maximum": 192,
+   "step": 8,
+   "decimals": null,
+   "options": null,
+   "labels": null,
+   "label": "Lateral size (px)",
+   "style": null
+  },
+  "nz": {
+   "kind": "int",
+   "minimum": 3,
+   "maximum": 81,
+   "step": 2,
+   "decimals": null,
+   "options": null,
+   "labels": null,
+   "label": "Planes",
+   "style": null
+  },
+  "pixel_size_nm": {
+   "kind": "float",
+   "minimum": 1.0,
+   "maximum": 200.0,
+   "step": 5.0,
+   "decimals": 1,
+   "options": null,
+   "labels": null,
+   "label": "Pixel (nm)",
+   "style": null
+  },
+  "z_step_nm": {
+   "kind": "float",
+   "minimum": 5.0,
+   "maximum": 1000.0,
+   "step": 25.0,
+   "decimals": 1,
+   "options": null,
+   "labels": null,
+   "label": "z step (nm)",
+   "style": null
+  },
+  "quality": {
+   "kind": null,
+   "minimum": null,
+   "maximum": null,
+   "step": null,
+   "decimals": null,
+   "options": [
+    "preview",
+    "full"
+   ],
+   "labels": [
+    "Preview (fast)",
+    "Full"
+   ],
+   "label": "Quality",
+   "style": "radio"
+  },
+  "threshold": {
+   "kind": "float",
+   "minimum": 0.0,
+   "maximum": 0.9,
+   "step": 0.01,
+   "decimals": 3,
+   "options": null,
+   "labels": null,
+   "label": "Threshold",
+   "style": null
+  },
+  "gamma": {
+   "kind": "float",
+   "minimum": 0.1,
+   "maximum": 3.0,
+   "step": 0.1,
+   "decimals": 2,
+   "options": null,
+   "labels": null,
+   "label": "Gamma",
+   "style": null
+  },
+  "colormap": {
+   "kind": null,
+   "minimum": null,
+   "maximum": null,
+   "step": null,
+   "decimals": null,
+   "options": [
+    "magma",
+    "inferno",
+    "viridis",
+    "gray"
+   ],
+   "labels": null,
+   "label": "Colormap",
+   "style": null
+  },
+  "show_polarization": {
+   "kind": null,
+   "minimum": null,
+   "maximum": null,
+   "step": null,
+   "decimals": null,
+   "options": null,
+   "labels": null,
+   "label": "Polarization vectors",
+   "style": null
+  }
+ },
+ "exports": {
+  "npy_sha256": "e2d2e3baee131b4c8ac42597a3a3dea2a56975d49d805c8bf9bef67a39e9f68f",
+  "npy": {
+   "shape": [
+    5,
+    16,
+    16
+   ],
+   "sum": 247.68208442733894,
+   "max": 1.0,
+   "argmax": 631,
+   "idx": [
+    0,
+    85,
+    170,
+    255,
+    341,
+    426,
+    511,
+    596,
+    682,
+    767,
+    852,
+    937,
+    1023,
+    1108,
+    1193,
+    1279
+   ],
+   "samples": [
+    0.03665620421992168,
+    0.35423748624976953,
+    0.35423748624976953,
+    0.03665620421992168,
+    0.4622032291521173,
+    0.4622032291521173,
+    0.024928948538839635,
+    0.35026090265793575,
+    0.5042732164014243,
+    0.020002602814260556,
+    0.3254913363440368,
+    0.5807708611089966,
+    0.024928948538839635,
+    0.2609336005806375,
+    0.4357554196051742,
+    0.03665620421992168
+   ]
+  },
+  "tif": {
+   "shape": [
+    5,
+    16,
+    16
+   ],
+   "sum": 247.68208492547274,
+   "max": 1.0,
+   "argmax": 631,
+   "idx": [
+    0,
+    85,
+    170,
+    255,
+    341,
+    426,
+    511,
+    596,
+    682,
+    767,
+    852,
+    937,
+    1023,
+    1108,
+    1193,
+    1279
+   ],
+   "samples": [
+    0.036656204611063004,
+    0.35423749685287476,
+    0.35423749685287476,
+    0.036656204611063004,
+    0.4622032344341278,
+    0.4622032344341278,
+    0.024928947910666466,
+    0.3502609133720398,
+    0.5042732357978821,
+    0.02000260353088379,
+    0.325491338968277,
+    0.5807708501815796,
+    0.024928947910666466,
+    0.26093360781669617,
+    0.4357554316520691,
+    0.036656204611063004
+   ]
+  }
+ }
+}

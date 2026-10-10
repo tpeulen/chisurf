@@ -1,1 +1,1 @@
-"""Qt GUI host for the Calculators hub."""
+"""Native (emtk) host for the Calculators hub."""

@@ -63,10 +63,6 @@ def test_lifetime_panel_factories_import_expected_widgets(monkeypatch) -> None:
             super().__init__(parent)
 
     modules = {
-        "chisurf.plugins.fluorescence_decay.irf_estimator.gui.tool": (
-            "IRFEstimatorTool",
-            MainWindow,
-        ),
         "chisurf.plugins.fluorescence_decay.maxent_decay.gui.gui": (
             "MaxentDecayWidget",
             MainWindow,

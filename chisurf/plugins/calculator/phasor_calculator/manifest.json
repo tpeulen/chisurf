@@ -21,8 +21,7 @@
     }
   },
   "entrypoints": {
-    "emtk": "chisurf.plugins.calculator.phasor_calculator.gui.app:make_app",
-    "gui": "chisurf.plugins.calculator.phasor_calculator.gui.tool:PhasorCalculatorTool"
+    "emtk": "chisurf.plugins.calculator.phasor_calculator.gui.app:make_app"
   },
   "rpc_methods": [],
   "dependencies": {},

@@ -7,23 +7,7 @@ a recording painter — the full EMTK path without a raster.
 
 from __future__ import annotations
 
-import os
-
 import pytest
-
-try:
-    from qtpy import QtWidgets
-except ImportError:
-    QtWidgets = None  # type: ignore[assignment]
-
-_needs_qt = pytest.mark.skipif(QtWidgets is None, reason="Qt bindings not available")
-
-_APP: list = []
-
-
-def _ensure_app():
-    _APP[:] = [QtWidgets.QApplication.instance() or QtWidgets.QApplication([])]
-
 
 class RecordingPainter:
     """Counts the six operations instead of performing them."""
@@ -78,52 +62,44 @@ class RecordingPainter:
         pass
 
 
-@_needs_qt
-def test_the_tool_hosts_the_emtk_app(qapp):
-    """The window is a Qt shell around the immediate-mode app."""
-    from emtk.qt_host import host_class
+def test_the_app_offers_guide_and_help():
+    """The standalone app carries the shared Guide and Help entry points."""
+    from chisurf.plugins.calculator.rics_precision.gui.app import make_app
 
-    from chisurf.plugins.calculator.rics_precision.gui.tool import RicsPrecisionTool
-
-    tool = RicsPrecisionTool()
+    app = make_app()
     try:
-        assert tool.windowTitle() == "RICS precision"
-        assert isinstance(tool.host, host_class())
-        assert tool.app is tool.host.control
-        assert hasattr(tool.app, "start_guide") and hasattr(tool.app, "show_help")
+        assert hasattr(app, "start_guide") and hasattr(app, "show_help")
     finally:
-        tool.close()
+        app.close()
 
 
-@_needs_qt
-def test_one_sweep_flows_through_the_app(qapp):
-    """Compute → series/rows → the app draws the verdict and the table."""
-    from chisurf.plugins.calculator.rics_precision.gui.tool import RicsPrecisionTool
+def test_one_sweep_flows_through_the_app():
+    """Compute -> series/rows -> the app draws the verdict and the table."""
+    from chisurf.plugins.calculator.rics_precision.gui.app import make_app
 
-    tool = RicsPrecisionTool()
+    app = make_app()
     try:
         # A small sweep: the point is the path, not the statistics.
-        tool.model.n_images = 10
-        tool.model.n_repeats = 5
-        assert tool.model.compute(progress=lambda f, t: None)
+        app.model.n_images = 10
+        app.model.n_repeats = 5
+        assert app.model.compute(progress=lambda f, t: None)
 
-        series = tool.model.sweep_series()
-        rows = tool.model.sweep_rows()
-        assert len(rows) == len(tool.model.sweep.dwell)
+        series = app.model.sweep_series()
+        rows = app.model.sweep_rows()
+        assert len(rows) == len(app.model.sweep.dwell)
         # The curve, and the user's own setting marked on it.
         assert len(series) == 2 and series[1]["name"] == "your setting"
 
         painter = RecordingPainter()
-        tool.app.draw(painter, 0.0, 0.0, 900.0, 600.0)
+        app.draw(painter, 0.0, 0.0, 900.0, 600.0)
         assert painter.stroke_widths and all(width > 0 for width in painter.stroke_widths)
         assert painter.ops > 50, "the app drew nothing"
-        assert tool.model.status in painter.strings
+        assert app.model.status in painter.strings
     finally:
-        tool.close()
+        app.close()
 
 
-@_needs_qt
-def test_declared_window_and_translated_actions_keep_identity(qapp, monkeypatch):
+def test_declared_window_and_translated_actions_keep_identity(monkeypatch):
     """The small calculator declaration preserves action IDs across locale changes."""
     from emtk.im_core import split_label
 
@@ -146,32 +122,3 @@ def test_declared_window_and_translated_actions_keep_identity(qapp, monkeypatch)
     own_actions = [label for label in captions if "###" in label]
     assert [split_label(label)[1] for label in own_actions] == ["guide", "help"]
     assert all("Translated " in split_label(label)[0] for label in own_actions)
-
-
-@_needs_qt
-def test_standalone_geometry_uses_declaration_and_restores_user_size(qapp, tmp_path):
-    """Actual Qt persistence keeps a custom size ahead of the declared default."""
-    from qtpy import QtCore
-
-    from chisurf.plugins.calculator.rics_precision.gui.tool import RicsPrecisionTool
-
-    class IsolatedTool(RicsPrecisionTool):
-        tool_settings_name = "RicsPrecisionGeometryTest-" + tmp_path.name
-
-    settings = QtCore.QSettings("chisurf", IsolatedTool.tool_settings_name)
-    settings.clear()
-    tool = IsolatedTool()
-    try:
-        assert (tool.width(), tool.height()) == (640, 480)
-        assert (tool.minimumWidth(), tool.minimumHeight()) == (120, 120)
-        tool.resize(701, 503)
-        tool.save_window_geometry()
-        assert settings.value("geometry") is not None
-    finally:
-        tool.close()
-    restored = IsolatedTool()
-    try:
-        assert (restored.width(), restored.height()) == (701, 503)
-    finally:
-        restored.close()
-        settings.clear()

@@ -1,6 +1,6 @@
 """The native lifetime-FCS simulator at parity with the Qt LifetimeFcsSimWidget.
 
-The Qt widget runs its own button slot in a subprocess (this process stays Qt-free);
+The Qt widget's button slot was run once and recorded (``qt_reference.json``);
 its curves, status line and pens are compared with the emtk app's for the same
 settings, and both against the committed Qt model's run written out here.
 """
@@ -8,8 +8,6 @@ settings, and both against the committed Qt model's run written out here.
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -67,46 +65,15 @@ def _settle(app, timeout=120.0):
     _draw(app, n=1)
 
 
-_QT = r"""
-import json, sys
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-from chisurf.plugins.fcs.fcs_lfcs_sim.gui import tool
-w = tool.LifetimeFcsSimWidget()
-for k, v in json.loads(sys.argv[1]).items():
-    setattr(w._model, k, v)
-controls = w.findChild(tool._LfcsSimControls)
-controls._on_click()
-print("FACTS" + json.dumps({
-    "curves": [{"name": d["name"], "a": d["species_a"], "b": d["species_b"],
-                "x": list(map(float, d["x"])), "y": list(map(float, d["y"]))} for d in w._model.datasets],
-    "status": controls._status.text(),
-    "pens": {"species": list(tool._SPECIES_COLORS), "cross": tool._CROSS_COLOR},
-    "button": controls.btn.text()}))
-"""
+#: What the Qt ``LifetimeFcsSimWidget``'s button produced for ``SETTINGS`` (curves, status line, pens),
+#: recorded before the Qt widget was deleted.
+_QT_FACTS = json.loads((HERE / "qt_reference.json").read_text())
 
 
 @pytest.fixture(scope="module")
 def qt():
-    pytest.importorskip("qtpy")
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT, json.dumps(SETTINGS)],
-        capture_output=True,
-        text=True,
-        timeout=600,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and (
-        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
-    ):
-        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
-    # Any other failure is the Qt widget's own: skipping it hid a broken Qt host.
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS") :])
+    assert _QT_FACTS["settings"] == SETTINGS
+    return _QT_FACTS
 
 
 def _reference():

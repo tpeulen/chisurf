@@ -1,16 +1,18 @@
-import pytest
-from qtpy import QtWidgets
+"""The native IRF estimator app builds with its controls (the Qt tool creation test, ported)."""
 
 
-def test_irf_estimator_tool_creation(qapp, qtbot):
-    pytest.importorskip("pyqtgraph")
-    from chisurf.plugins.fluorescence_decay.irf_estimator import IRFEstimatorTool
+def test_irf_estimator_app_creation(tmp_path, monkeypatch):
+    monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path / "settings"))
+    from chisurf.plugins.fluorescence_decay.irf_estimator.gui.app import make_app
 
-    widget = IRFEstimatorTool()
-    qtbot.addWidget(widget)
-    assert isinstance(widget, QtWidgets.QMainWindow)
-    assert widget.windowTitle() == "IRF Estimator - Blind IRF Estimation"
-    assert hasattr(widget, "estimate_button")
-    assert hasattr(widget, "main_plot")
-    assert hasattr(widget, "save_action")
-    assert hasattr(widget, "transfer_action")
+    app = make_app()
+    try:
+        form = app.form_model
+        # estimate / save / transfer exist and are disabled until a decay is loaded
+        assert [form.enabled(n) for n in ("request_estimate", "request_save", "request_transfer")] == [
+            False,
+            False,
+            False,
+        ]
+    finally:
+        app.close()

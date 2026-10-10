@@ -245,7 +245,7 @@ def test_a_tool_that_cannot_be_built_is_reported_in_the_header(ui, monkeypatch):
 def test_help_opens_with_live_links_and_closes(ui):
     ui.click_name("help")
     assert ui.app.help_window.open
-    ui.click_text("Close")
+    ui.click_text(action_caption("close"))
     assert not ui.app.help_window.open
     import re
 
