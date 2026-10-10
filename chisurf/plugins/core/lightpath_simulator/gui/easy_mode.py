@@ -17,6 +17,7 @@ from chisurf.core.optical_configuration import (
 )
 from chisurf.core.settings import cs_settings
 from chisurf.gui import dialogs
+from chisurf.core.settings.path_utils import get_path
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.filtered_table import FilteredTableWidget
 from chisurf.plugins.core.lightpath_simulator.core.workflow import (
@@ -28,10 +29,11 @@ from chisurf.plugins.core.lightpath_simulator.core.workflow import (
 
 logger = logging.getLogger(__name__)
 
-EASY_LAST_CONFIG_PATH = Path.home() / ".chisurf" / "settings" / "lightpath_easy_last.json"
-EASY_PRESETS_DIR = Path.home() / ".chisurf" / "presets" / "lightpath_easy"
-OPTICAL_PRESETS_DIR = Path.home() / ".chisurf" / "presets" / "lightpath_optical"
-DYE_PRESETS_DIR = Path.home() / ".chisurf" / "presets" / "lightpath_dyes"
+# Per-user state lives under the settings folder (``CHISURF_SETTINGS_DIR`` redirects it, which keeps tests off ``~/.chisurf``).
+EASY_LAST_CONFIG_PATH = get_path("settings") / "settings" / "lightpath_easy_last.json"
+EASY_PRESETS_DIR = get_path("settings") / "presets" / "lightpath_easy"
+OPTICAL_PRESETS_DIR = get_path("settings") / "presets" / "lightpath_optical"
+DYE_PRESETS_DIR = get_path("settings") / "presets" / "lightpath_dyes"
 TEMPLATE_LIBRARY_DIR = Path(__file__).resolve().parents[1] / "templates"
 
 

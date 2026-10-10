@@ -145,6 +145,13 @@ The symptom to recognise: a layout/geometry test that passes alone and drifts
 in a suite, or a "default layout" screenshot that quietly stops being the
 default.
 
+The same holds for `~/.chisurf` itself. `chisurf/plugins/core/conftest.py` points
+`CHISURF_SETTINGS_DIR` and `MMFDB_SETTINGS_DIR` at a scratch folder at import time,
+before `chisurf.core.settings` resolves its paths (an explicit value still wins),
+and `hmm`'s `test_zzz_the_real_chisurf_folder_was_not_touched` lists any path a
+session wrote there. Code never builds `Path.home() / ".chisurf"` itself: it asks
+`get_path("settings")`, or the redirect cannot reach it.
+
 # GUI work is never blind — screenshot and look at it
 
 **Any change that touches a GUI is unfinished until the widget has been rendered

@@ -339,11 +339,6 @@ def test_the_filter_box_keeps_the_rows_containing_the_text_in_any_column(drv):
     )  # the filter is empty again
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="emtk gap: Ctrl+A in the table's filter box does not select its text (it does in every input field); "
-    "see REPORT.md section 10",
-)
 def test_ctrl_a_selects_the_filter_text_so_typing_replaces_it(drv):
     drv.click_text("filter")
     drv.type_text("Tool 2")

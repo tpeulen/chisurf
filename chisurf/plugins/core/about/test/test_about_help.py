@@ -7,6 +7,7 @@ import pytest
 from chisurf.plugins.core.about.gui.translations import LOCALES, tr
 from emtk import clipboard, i18n
 from emtk.keys import KEY_ESCAPE
+from emtk.view_form import icon_caption
 from emtk.testing import Driver
 
 from chisurf.core.dataspec.schema import validate_guide, validate_view_spec
@@ -62,9 +63,13 @@ def test_actual_locales_keep_actions_tooltips_and_identity(size, locale):
         assert tr("Version: {version}").format(version=__version__) in painter.strings
         assert "thomas.peulen@tu-dortmund.de" in painter.strings
         assert set(app.form.rects) == {"open_help", "copy_details", "start_guide", "close_about"}
-        assert len({rect[1] for rect in app.form.rects.values()}) == 1
+        # The captions carry their pictograms, so the longest locale (German) no longer fits one row at 320: the
+        # row then wraps -- every button stays inside the window, the check below -- and otherwise it is one row.
+        widths = [rect[2] for rect in app.form.rects.values()]
+        if sum(widths) + 4.0 * (len(widths) - 1) + 16.0 <= size[0]:
+            assert len({rect[1] for rect in app.form.rects.values()}) == 1
         for button in app.spec["sections"][0]["buttons"]:
-            assert tr(button["label"]) in painter.strings
+            assert icon_caption(button.get("icon", ""), tr(button["label"])) in painter.strings
             rect = app.form.rects[button["action"]]
             assert rect[0] >= 0 and rect[0] + rect[2] <= size[0]
             assert rect[1] + rect[3] <= size[1]
@@ -146,3 +151,21 @@ def test_closed_about_cannot_reopen_or_copy(copied):
     app.copy_details()
     assert not copied and not app.help_window.open and not app.tour.active
     assert not app.copy_status
+
+
+def test_a_wrapped_button_line_is_still_reachable():
+    """German at the narrow width wraps Close onto a second line; a real click there must still close."""
+    previous = i18n.get_locale()
+    i18n.set_locale("de")
+    try:
+        app = owner.make_app()
+        app.io.wall_clock = False
+        driver = Driver(app, (320, 420))
+        driver.draw(3)
+        rects = app.form.rects
+        assert rects["close_about"][1] > rects["open_help"][1]
+        driver.click(rects["close_about"])
+        driver.draw(2)
+        assert app.close_requested
+    finally:
+        i18n.set_locale(previous)

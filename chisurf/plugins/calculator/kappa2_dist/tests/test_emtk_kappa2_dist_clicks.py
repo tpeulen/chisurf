@@ -346,11 +346,6 @@ def tick_labels(painter):
     return [s for s in painter.strings if s.replace(".", "").replace("-", "").isdigit()]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="emtk gap: the wheel never reaches an implot inside a DockManager window, so no docked plot can be "
-    "zoomed with it (works in a plain im.begin window); see REPORT.md section 10",
-)
 def test_the_wheel_zooms_the_distribution_plot(app):
     draw(app)
     before = tick_labels(draw(app))

@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
+from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -155,11 +157,23 @@ def test_the_baseline_rows_the_qt_tool_showed_are_matched_cell_for_cell(discover
     """The committed Qt capture (``qt_rows_listed.json``) is the independent reference for the Depends-on cells."""
     baseline = json.loads((EVIDENCE / "qt_rows_listed.json").read_text())["rows"]
     rows = PluginCheckModel(*discovered).check_rows()
-    now = {r["plugin"]: r["depends"] for r in rows}
-    old = {name: depends for name, _status, _source, depends, _error in baseline}
+    # The menu path (``Category:Group:Leaf``) is the registry's to reorganise, so the rows are matched by leaf
+    # caption (unique ones only); the optional-dependency *count* of a hub plugin follows the hubs' members.
+    def leaf(name):
+        return name.rsplit(":", 1)[-1]
+
+    def unique(pairs):
+        counts = Counter(leaf(name) for name, _ in pairs)
+        return {leaf(name): depends for name, depends in pairs if counts[leaf(name)] == 1}
+
+    def stable(depends):
+        return re.sub(r"\(\+\d+ optional\)", "(+N optional)", depends)
+
+    now = unique([(r["plugin"], r["depends"]) for r in rows])
+    old = unique([(name, depends) for name, _status, _source, depends, _error in baseline])
     common = set(now) & set(old)
     assert len(common) > 100
-    assert {n: now[n] for n in common} == {n: old[n] for n in common}
+    assert {n: stable(now[n]) for n in common} == {n: stable(old[n]) for n in common}
 
 
 def test_the_status_line_counts_plugins_and_dependency_problems_like_the_qt_tool(

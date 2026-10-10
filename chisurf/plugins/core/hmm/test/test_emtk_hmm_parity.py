@@ -630,4 +630,6 @@ def test_the_port_is_qt_free():
 
 
 def test_zzz_the_real_chisurf_folder_was_not_touched():
-    assert snapshot_real() == REAL_BEFORE
+    now = snapshot_real()
+    changed = sorted(k for k in now.keys() | REAL_BEFORE.keys() if now.get(k) != REAL_BEFORE.get(k))
+    assert not changed, f"the real ~/.chisurf was touched: {changed}"

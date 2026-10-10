@@ -2,6 +2,10 @@
 
 ## 2026-10-10
 
+- Core plugin tests no longer write the developer's real `~/.chisurf`: `chisurf/plugins/core/conftest.py`
+  redirects the settings dirs at import; lightpath easy mode and pda2c used `Path.home()/".chisurf"` and
+  now use `get_path("settings")`. About's wrapped button row (German, 320 px) clipped Close; its height now
+  follows the drawn lines. Rule in [testing](workflows/testing.md).
 - mmfdb `32e108d`: the project archiver's restore reads v5 fit records and the version's dependency edges;
   `test/fio` builds v5 payloads through `capture_session` (`test/fio/v5_payload.py`). mmfdb `806d19a`: the
   FLR export writes dictionary item names instead of database columns (`mmfdb_flr_ext.dic` 1.11), and

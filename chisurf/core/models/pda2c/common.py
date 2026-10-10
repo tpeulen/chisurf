@@ -1008,7 +1008,9 @@ class Pda2cModelMixin:
 
         source = str(self.lightpath_graph or "").strip()
         if not source:
-            source = str(pathlib.Path.home() / ".chisurf" / "settings" / "lightpath_easy_last.json")
+            from chisurf.core.settings.path_utils import get_path
+
+            source = str(get_path("settings") / "settings" / "lightpath_easy_last.json")
         path = pathlib.Path(source)
         if not path.is_file():
             self._lightpath_status = (

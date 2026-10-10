@@ -16,6 +16,8 @@ import pytest
 import yaml
 from emtk.testing import RecordingPainter
 
+from chisurf.plugins.emtk_layout import action_caption
+
 PLUGIN = Path(__file__).resolve().parents[1]
 SPEC_FILE = PLUGIN / "switch_user_emtk.view.json"
 GUIDE_FILE = PLUGIN / "guide.json"
@@ -512,13 +514,13 @@ def test_a_refusal_opens_the_message_and_ok_closes_it(world):
 
 
 def test_cancel_button_requests_close(app):
-    assert click(app, "Cancel")
+    assert click(app, action_caption("cancel"))
     assert app.close_requested and app.model.closed
 
 
 def test_declining_changes_nothing_in_the_settings(world, app):
     before = copy.deepcopy(world.cs.cs_settings["mmfdb"])
-    click(app, "Cancel")
+    click(app, action_caption("cancel"))
     assert world.cs.cs_settings["mmfdb"] == before and world.yaml is None
 
 
@@ -530,7 +532,7 @@ def test_app_draws_empty_and_populated(size, world):
     painter = frames(app, size)
     for text in (
         "Login",
-        "Cancel",
+        action_caption("cancel"),
         "Server",
         "Port",
         "User",
@@ -540,8 +542,8 @@ def test_app_draws_empty_and_populated(size, world):
         "Sign in to the MMFDB workspace",
         "Recent servers",
         "Select user",
-        "Help",
-        "Guide",
+        action_caption("help"),
+        action_caption("guide"),
     ):
         assert text in painter.strings, text
     assert "lab-server.example.org" in painter.strings and "9100" in painter.strings

@@ -15,6 +15,7 @@ import pytest
 from emtk.testing import RecordingPainter
 
 from chisurf.core.fio.pto import Measurement
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.core.tttr_to_pto.gui.app import TttrToPtoApp, create_app, make_app
 from chisurf.plugins.core.tttr_to_pto.gui.model import TttrToPtoModel
 
@@ -410,7 +411,7 @@ def test_every_control_has_a_tooltip():
         app.close()
     assert inventory["controls_without_tooltip"] == []
     labels = {row["label"] for row in inventory["interactive"]}
-    assert {"Add files...", "Clear history", "Guide", "Help"} <= labels
+    assert {"Add files...", "Clear history", action_caption("guide"), action_caption("help")} <= labels
     spec = json.loads(SPEC_FILE.read_text())
     for section in _walk(spec["sections"]):
         if section.get("type") in ("custom", "info", "button_row"):

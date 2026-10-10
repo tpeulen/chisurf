@@ -126,6 +126,7 @@ class AboutApp(ImApp):
         """Draw the identity content, declared actions and owned help overlays."""
         viewport = im.get_main_viewport()
         self.form.rects.clear()
+        lines = getattr(self, "_button_lines", 1)
         im.begin("##about", (*viewport.pos, *viewport.size))
         if self.logo is not None:
             im.set_cursor_pos_x(max(8.0, (viewport.size[0] - 64) / 2))
@@ -153,14 +154,21 @@ class AboutApp(ImApp):
                     button["description"] += " " + tr(self.copy_status)
         x, y = im.get_cursor_screen_pos()
         row_height = im.get_frame_height() + 4
-        height = max(row_height, viewport.size[1] - (y - viewport.pos[1]) - 8) if self.copy_status else row_height
+        # A narrow window or a long locale wraps the buttons onto further lines; the child must be as tall as the
+        # lines the previous frame drew, or the wrapped buttons sit outside it and cannot be pressed.
+        rows_height = row_height * lines
+        height = max(rows_height, viewport.size[1] - (y - viewport.pos[1]) - 8) if self.copy_status else rows_height
         im.begin_child((x, y, max(viewport.size[0] - 16, 1), height), scrollable=False)
         try:
             draw_sections([{**section, "buttons": buttons}, *self.spec["sections"][1:]], self, self.form, titles=False)
         finally:
             im.end_child()
-        im.set_cursor_screen_pos((x, y + row_height + 4))
+        im.set_cursor_screen_pos((x, y + rows_height + 4))
         im.end()
+        drawn = len({round(rect[1]) for rect in self.form.rects.values()}) or 1
+        if drawn != lines:
+            self._button_lines = drawn
+            self.request_frame()
         self.help_window.draw((*viewport.pos, *viewport.size))
         if not self.help_window.open:
             self.tour.draw(*viewport.size)

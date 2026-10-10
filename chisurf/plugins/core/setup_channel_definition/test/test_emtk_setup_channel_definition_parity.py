@@ -20,6 +20,7 @@ import pytest
 
 from chisurf.plugins.core.setup_channel_definition.test import driver
 from chisurf.plugins.core.setup_channel_definition.test.driver import DATA, norm
+from chisurf.plugins.emtk_layout import action_caption
 
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
@@ -510,7 +511,7 @@ def test_the_guide_advances_when_the_user_presses_save(setups_file):
     tool.tour.start(2)  # the "Save under a name" step awaits the Save button
     driver.settle(tool)
     assert tool.tour.awaiting
-    assert driver.click_text(tool, "Save")
+    assert driver.click_text(tool, action_caption("save"))
     assert not tool.tour.awaiting
     assert tool.toolbar.dialog == "save"
     tool.close()

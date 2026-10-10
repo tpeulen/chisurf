@@ -341,7 +341,8 @@ def test_confirmation_dialog_opens_on_screen_and_cancel_leaves_state(fake_regist
     model.ask_drop_stale()
     painter = draw(app)
     assert app.confirm_window.open
-    assert "Drop stale entries" in painter.strings and "Cancel" in painter.strings
+    assert "Drop stale entries" in painter.strings
+    assert action_caption("cancel") in painter.strings
     assert any("Gone" in s for s in painter.strings)
     model.confirm_no()
     draw(app)

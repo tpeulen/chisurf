@@ -21,6 +21,8 @@ from chisurf.plugins.core.setup_channel_definition.test.driver import DATA, norm
 from chisurf.plugins.tttr.tttr_count_rate_analysis.tests.pointer import KEY_BACKSPACE, Pointer
 from chisurf.plugins.emtk_layout import action_caption
 
+SAVE = action_caption("save")
+
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 SAMPLE = REPO / "test" / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc"
@@ -149,11 +151,11 @@ def test_setup_combo_lists_the_saved_setups_and_choosing_one_loads_it(make):
 
 def test_save_button_opens_the_prompt_and_a_typed_name_stores_the_setup(make):
     app, ui = make()
-    ui.click("Save")
+    ui.click(SAVE)
     assert app.toolbar.dialog == "save" and ui.drawn("Enter a name for this setup:")
     ui.click("Save", nth=-1)  # empty name: nothing is stored
     assert not (Path(app.model.file_path)).exists()
-    ui.click("Save")
+    ui.click(SAVE)
     ui.press(
         ui.painter.texts[[t[5] for t in ui.painter.texts].index("Enter a name for this setup:")][:2]
     )  # focus stays in the window
@@ -657,7 +659,7 @@ def test_adjust_shifts_needs_a_calibration_then_shifts_channels_and_ok_or_cancel
     assert (
         app.page._shift_draft.get(8) == 12 and app.model.data["channel_shifts"] == {}
     )  # nothing applied before OK
-    ui.click("Cancel", nth=-1)
+    ui.click(action_caption("cancel"), nth=-1)
     assert not app.page.shift_window.open and app.model.data["channel_shifts"] == {}
     ui.click("Adjust shifts...")
     ch8 = [t for t in ui.painter.texts if t[5] == "ch 8"][0]
@@ -810,7 +812,7 @@ def test_the_page_fits_the_width_and_the_setup_row_wraps_instead_of_clipping(mak
     app, ui = make(size)
     for t in ui.painter.texts:
         assert t[0] + t[2] <= size[0] + 1, (t[5], t[:4])
-    labels = ("Setup:", "Save", "Rename", "Delete", "Public", "Calibration:", "?")
+    labels = ("Setup:", SAVE, "Rename", "Delete", "Public", "Calibration:", "?")
     texts = {}
     for t in reversed(
         ui.painter.texts
@@ -820,7 +822,7 @@ def test_the_page_fits_the_width_and_the_setup_row_wraps_instead_of_clipping(mak
         assert label in texts
     if size[0] >= 1200:
         assert (
-            len({round(texts[label][1]) for label in ("Save", "Rename", "Delete", "?")}) == 1
+            len({round(texts[label][1]) for label in (SAVE, "Rename", "Delete", "?")}) == 1
         )  # one row
 
 
@@ -1008,7 +1010,7 @@ def test_the_guide_waits_for_the_save_button_and_a_press_advances_it(make):
     app.tour.start(2)  # the "Save under a name" step awaits the Save button
     ui.frame(3)
     assert app.tour.awaiting
-    ui.click("Save", nth=0)
+    ui.click(SAVE, nth=0)
     assert not app.tour.awaiting and app.toolbar.dialog == "save"
 
 
