@@ -5,6 +5,7 @@ description: ChiMOL must also run in a web page embedded via JavaScript. WebGPU 
 resource: chisurf/plugins/chimol/
 tags: [plugins, structure, viewer, webgpu, wgsl, web, pyodide, compute]
 timestamp: '2026-08-10T00:00:00Z'
+convention-exempt: true
 ---
 
 # Where to pick this up (2026-08-12, latest) — Qt is an option now

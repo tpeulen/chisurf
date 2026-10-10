@@ -320,7 +320,7 @@ decides only whether its range filters.
 
 ## Where to pick this up
 
-1. **Leakage through compound derived columns in the gate-separation ranking.**
+1. Open: **Leakage through compound derived columns in the gate-separation ranking.**
    Gating on `Tau (green)` excludes it and every column monotone in it
    (Spearman |ρ| ≥ 0.98: `E_tau`), but `(1-E)*E_tau` still carries τ and tops
    the MFD ranking (κ 0.924 with `R_FRET(PIE)`). Measure: open the MFD folder,
@@ -329,7 +329,7 @@ decides only whether its range filters.
    knows each derived column's inputs): exclude every column downstream of a
    gated one. Tried and rejected: a Spearman test against combinations (too
    slow, and a threshold would drop genuinely correlated parameters).
-2. **Population structure and point masses.** 2-means reads a pile-up at a fit
+2. Open: **Population structure and point masses.** 2-means reads a pile-up at a fit
    bound or sentinel as a population: on the MFD folder the top structure pairs
    are the red-channel fit columns with `-1` in 22 % of bursts (unfitted,
    mostly donor-only) — interpretable, but an artefact of the fit's sentinel.
@@ -338,16 +338,16 @@ decides only whether its range filters.
    masses with a gap test — it also strips an exact `E = 0` donor-only
    population. The honest fix is sentinels declared per feature
    (`burst_features.yaml` already names them for chisurf's own writers).
-3. **Ranking is 12–16 s for ~1 500 pairs** (5 000 bursts; kNN ~8 ms,
+3. Measure: **Ranking is 12–16 s for ~1 500 pairs** (5 000 bursts; kNN ~8 ms,
    structure ~11 ms per pair on the arm64 box). Fine streamed; a table of 100
    columns (4 950 pairs) would take a minute. Measure with
    `ProjectionRanker(...).compute_score` over `iterate_states()`; batching
    states per worker call is the obvious next step before any C++.
-4. **Not yet ranked:** fit models by χ²ᵣ/AIC and gate combinations by purity
-   (the other two uses the Orange3 mining note lists); applying a z row enables
+4. Open: **Not yet ranked:** fit models by χ²ᵣ/AIC and gate combinations by purity
+   (the other two uses the data-mining-suite note lists); applying a z row enables
    the z gate checkbox but leaves the folded *z axis* panel folded.
 
-5. **Playback on a real burst folder.** The gate, the panel and the axis
+5. Measure: **Playback on a real burst folder.** The gate, the panel and the axis
    detection are covered headlessly
    (`ndxplorer/tests/test_playback_controller.py`,
    `tests/test_ui/test_playback_panel.py`,
@@ -357,21 +357,21 @@ decides only whether its range filters.
    the measurement by timing `update_plots` over a loaded `.bur` folder at
    several step counts before deciding whether the speed cap needs lowering or
    the redraw needs to skip a tick it cannot keep up with.
-   - **The trap:** the mask is cached on
+   - Measure: **The trap:** the mask is cached on
      `(axis, mode, position, n_steps, bounds, data_version)` and the *identity*
      of the array returned by `DataManager.get_value_mask` is load-bearing
      downstream. A benchmark that rebuilds the controller per step measures the
      uncached path and reports a cost the app never pays.
-6. **`integrate` mode has no normalisation.** Each step draws more points than
+6. Open: **`integrate` mode has no normalisation.** Each step draws more points than
    the last, so a colour scale that autoranges makes the early steps look empty
    and a fixed one makes the late ones saturate. Neither is wrong; there is
    simply no decision recorded. Deciding it (autorange per step vs. fix on the
    final frame) is what makes integrate mode readable rather than merely correct.
-7. **Nothing exports a playback.** The obvious next thing a user asks for after
+7. Open: **Nothing exports a playback.** The obvious next thing a user asks for after
    watching a population move is a GIF/MP4 of it, and the screenshot helper
    (`utils/screenshot_helpers.py`) already grabs a single frame. Stepping it over
    the range and encoding is a small job that has not been done.
-8. **ndX still owes a `?` and a Guide.** It is on
+8. Open: **ndX still owes a `?` and a Guide.** It is on
    `test/plugin_help_guide_allowlist.txt`: no `add_toolbar_help`, no
    `gui/guide.json` anywhere in the module. Every *control* now carries a
    `description` (the playback panel's are in its view spec, and AutoForm turns
@@ -379,7 +379,7 @@ decides only whether its range filters.
    unusable without a tour that says which control to touch first. The playback
    panel is the natural opening step of one, since it is the only control that
    changes what the plot means rather than how it looks.
-9. **Tried and rejected: a fixed window width in seconds.** It was the first
+9. Tried and reverted: **Tried and rejected: a fixed window width in seconds.** It was the first
    design, and it makes playback duration proportional to acquisition length — a
    three-minute playback of a one-hour measurement and an instant one of a short
    file. A fixed *step count* was chosen instead, so the wall-clock length of a
@@ -395,8 +395,8 @@ the axes. They started as buttons under the y picker and in the z panel; the
 user found that position bad, so they became two `QAction`s declared in
 `plotting/plot_main.ui` beside `actionUMAP` (one action per panel, as UMAP is one
 action) -- which also puts them under `update_ui_enabled_state`, the same
-data-gating UMAP gets, with no enable logic of their own. It is Orange3's VizRank
-([what was taken and how it departs](../references/orange3-adopted.md)); the
+data-gating UMAP gets, with no enable logic of their own. It is the data-mining suite's VizRank
+(what was taken and how it departs: `okf/references/orange3-adopted.md`); the
 theory of the three scores is `docs/concepts/multidimensional_exploration.md`
 (*ranking the views*), the workflow `docs/guides/46_ndxplorer.md`.
 

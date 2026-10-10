@@ -1,3 +1,7 @@
+---
+convention-exempt: true
+---
+
 # ChiSurf Target Specifications
 
 These concepts describe the **clean architecture ChiSurf should steer toward** —

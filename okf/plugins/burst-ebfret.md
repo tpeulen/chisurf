@@ -12,13 +12,13 @@ tags:
 timestamp: '2026-09-17T11:38:23+02:00'
 ---
 
-# ebFRET — the MATLAB GUI and analysis, ported onto emtk
+# ebFRET — the original GUI and analysis, ported onto emtk
 
 `chisurf/plugins/burst/burst_ebfret/` is a **plain port** of the ebFRET GUI
 (`junk/ebFRET`, github.com/ebfret/ebfret-gui at 28e548a, MIT): the
 `ebfret.ui.MainWindow` window with its panels, menus, dialogs and defaults, and
-the MATLAB analysis behind it. Plain means reproduced, not redesigned: every
-control of the MATLAB window is present under its MATLAB name with its MATLAB
+the original analysis behind it. Plain means reproduced, not redesigned: every
+control of the original window is present under its original name with its original
 default, every numerical function is transcribed line by line and checked
 against ebFRET running under GNU Octave. The theory is in
 [ebfret-theory](../references/ebfret-theory.md); the user docs are
@@ -26,7 +26,7 @@ against ebFRET running under GNU Octave. The theory is in
 
 ## Where to pick this up
 
-1. **Speed of the analysis loop.** Pure NumPy, serial: about 3 ms per `vbayes`
+1. Open: **Speed of the analysis loop.** Pure NumPy, serial: about 3 ms per `vbayes`
    call and about 5 s per empirical-Bayes iteration at K = 2 on the 350-trace
    `simulated-K04-N350` set (measured by fork A, `tests/test_recovery.py` slow
    test: K = 2 full dataset in 24 s). ebFRET's MEX forward-backward plus
@@ -39,26 +39,26 @@ against ebFRET running under GNU Octave. The theory is in
    already delegates to — but that module's Baum-Welch is maximum likelihood,
    not the VB e-step, so it needs a VB forward-backward entry point there first.
    Re-measure with `pytest -m slow chisurf/plugins/burst/burst_ebfret/tests`.
-2. **Random restarts are A/B'd statistically only.** `init_posterior` with
+2. Open: **Random restarts are A/B'd statistically only.** `init_posterior` with
    `draw_params` draws from `gamrnd`/`wishrnd`/`mvnrnd`; NumPy's generator gives
    different numbers, so the Octave fixtures use `restarts <= 1` (deterministic)
    and the default `restarts = 2` is checked by recovery instead: on the demo
    with seed 7, one restart ends at E = [0.20, 0.38, 0.50, 0.72], two recover
    [0.10, 0.35, 0.55, 0.75] (`tests/test_session.py`). A trap for whoever
-   compares runs: a session's seed fixes the draws, MATLAB's do not repeat.
-3. **Cosmetics that emtk's implot shim decides.** The y-axis label shares the
+   compares runs: a session's seed fixes the draws, the original's do not repeat.
+3. Blocked: **Cosmetics that emtk's implot shim decides.** The y-axis label shares the
    plot's title row (emtk cannot rotate text), so *Probability* sits left of
    *Histograms* and *Donor / Acceptor* above its axes; the ensemble's y tick
-   numbers are hidden with `AXIS_FLAGS_NO_TICK_LABELS` as MATLAB blanks them.
+   numbers are hidden with `AXIS_FLAGS_NO_TICK_LABELS` as the original blanks them.
    A rotated axis title would need a painter operation emtk does not have.
-4. **Tables are ChiSurf additions.** View → *Series List* (`data_table`,
+4. Open: **Tables are ChiSurf additions.** View → *Series List* (`data_table`,
    selection drives *Select Series*) and *States Table* (`table`, the selected
    model per state) are declared in `gui/main.view.json` and drawn by emtk's
    view-spec table support (emtk fbf3290). They float over the right half of the
-   Time Series / Ensemble panel because the MATLAB layout has no room; a
+   Time Series / Ensemble panel because the original layout has no room; a
    docked placement is open.
 
-## What the MATLAB app consists of
+## What the original app consists of
 
 * **One window** (`@MainWindow/MainWindow.m`, 1200×800): *Time Series* panel
   (signal `Signal [Efret]` over `Donor / Acceptor`, x `Time [Δ t]`, Viterbi path
@@ -86,13 +86,13 @@ against ebFRET running under GNU Octave. The theory is in
 
 ## Where it landed
 
-| MATLAB | port |
+| original | port |
 | --- | --- |
 | `@MainWindow/*.m` callbacks | `core/session.py::Session` (one method per file), dialogs' answers as arguments |
 | panels, menus, layout | `gui/app.py` (`GEOMETRY` = the constructor's normalized positions), `gui/main.view.json` + `gui/controls.py` |
 | `+ui/+dialog/*`, `inputdlg` | `gui/{remove_bleaching,set_priors,clip_outliers,select_channels,assign_smd_channels,select_analysis}.view.json` + `gui/dialogs.py` forms |
 | `refresh.m`, `+plot/*` | `core/plots.py`, `core/views.py` (JSON view), drawn by `gui/app.py::_plot` |
-| `+analysis/+hmm`, `+dist`, `photobleach_index`, `x_lim` | `core/hmm.py`, `core/dist.py`, `core/_matlab.py` (MATLAB `hist`/`linspace`/`median`/`std` semantics) |
+| `+analysis/+hmm`, `+dist`, `photobleach_index`, `x_lim` | `core/hmm.py`, `core/dist.py`, `core/_matlab.py` (original `hist`/`linspace`/`median`/`std` semantics) |
 | `run_ebayes.m`, `run_vbayes.m` | `core/ebayes.py`; runs in `backend/services.py::SessionStore.run` |
 | `+io/*`, session, exports | `io.py` |
 | — | `api/client.py` (GUI → RPC), `gui/tool.py` (Qt host, tour anchors), `demo.py`, `gui/guide.json`, `gui/help.md` |
@@ -131,27 +131,27 @@ panel frames and the generic question/message boxes.
   Octave 11 cannot run `import`, so the driver patches a *temporary copy* of the
   sources (the `hmm.`/`dist.` shortcuts and one unparseable dead condition in
   `dirichlet/h_step.m`); the junk files are only annotated.
-* **Core vs MATLAB** (the shipped session `.mat`, K = 4, compiled kernels):
+* **Core vs original** (the shipped session `.mat`, K = 4, compiled kernels):
   restarting VBEM from the saved posteriors reproduces the saved lower bounds to
   ≤ 1.9e-8 on 24 series with identical Viterbi paths. Full dataset K = 2:
   [0.303, 0.547] vs ebFRET's [0.30, 0.55].
-* **Formats** (`tests/test_io.py`): raw load gives the MATLAB session's 350
+* **Formats** (`tests/test_io.py`): raw load gives the original session's 350
   series exactly; K = 4 traces export byte-identical to
   `simulated-K04-N350-traces-K04.dat`; SMD `.json.gz` line-identical over
-  107 241 lines except ids and version string; SMD `.mat` to 1e-9; the MATLAB
+  107 241 lines except ids and version string; SMD `.mat` to 1e-9; the original
   session loads and re-saves unchanged; Octave loads a Python session with
   identical fields/shapes; `write_report` byte-identical to Octave.
 * **Workflow/GUI**: `tests/test_session.py`, `test_services.py`,
   `test_gui.py` (emtk window driven by clicks, every declared control drawn,
   tour anchors exist), `test_tool_qt.py` (offscreen Qt host, tour resolution).
 
-## Control parity (MATLAB → port)
+## Control parity (original → port)
 
 All present: the 6 File entries, 3 Analysis entries, 4 View entries; the 7
 panels and their 14 controls (series edit/slider, crop min/max, exclude, states
 edit/slider, min/max states, All|Current, restarts, precision, Run, Stop, Reset);
 every dialog control listed above with its default. **Deliberate differences:**
-dark emtk theme instead of MATLAB grey; `uipanel` borders drawn as etched boxes;
+dark emtk theme instead of the original grey; `uipanel` borders drawn as etched boxes;
 popups are a button with a list; the file dialog is emtk's, not the OS one;
 the loading `waitbar` is dropped (loads are synchronous and short); the
 "Number of Sates" label typo is shown as "Number of States"; `questdlg`'s
@@ -166,10 +166,10 @@ not exist in the checkout; nothing calls it) and `normwish/h_step.m` that only
 it uses; `gmm/map.m` and the k-means restarts (never enabled by the GUI);
 `jitter_filter.m` (`ignore='none'` always); MEX/C++ kernels; `+batch/*`
 (command-line drivers; `core/analysis.py::analyse` and the CLI are the headless
-path); invgamma and unused dist moments; MATLAB-only checks
+path); invgamma and unused dist moments; original-only checks
 (`check_parfor`, `check_matlab_version`). SMD ids are MD5 of the values
-(DataHash's MATLAB serialisation is not reproducible); SMD load sets `group`
-(MATLAB's SMD branch never does, which breaks later grouping); the SMD export
+(DataHash's original serialisation is not reproducible); SMD load sets `group`
+(the original's SMD branch never does, which breaks later grouping); the SMD export
 writes the stored Viterbi path whole (`write_smd.m` crops an already-cropped
 path, misaligning series cropped at the start).
 

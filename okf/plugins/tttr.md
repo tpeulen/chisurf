@@ -60,15 +60,14 @@ Packages 📚) distinct.
 
 ### Where to pick this up
 
-1. **Legacy Qt hubs** (`NavigationPanelTool`, e.g. `tttr_toolbox/gui/tool.py`)
+1. Open: **Legacy Qt hubs** (`NavigationPanelTool`, e.g. `tttr_toolbox/gui/tool.py`)
    already show the emoji in their Qt list; nothing to port, they retire with Qt.
-2. **New hub**: pass `icon=entry_icon(entry, <child entrypoint or plugin path>)`
+2. Open: **New hub**: pass `icon=entry_icon(entry, <child entrypoint or plugin path>)`
    to `im.selectable`; a test that pins "no emoji in the list" is now wrong —
    the filetools and calculator-hub tests show the replacement assertion (emoji
    only as row icons).
-3. **Re-check duplicates** when adding a child: list a hub's icons with
+3. Open: **Re-check duplicates** when adding a child: list a hub's icons with
    `entry_icon` over its registry (one line of Python) before committing.
-
 
 ## Where to pick this up — cancellable native trace fitting (2026-10-07)
 

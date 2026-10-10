@@ -25,13 +25,13 @@ use the MyST `` ```{figure} `` directive, so a naive markdown-image count report
 
 Currently **3 remain**, and the reason each is still open is the point:
 
-1. `47_ndxplorer_bridges` and `52_send_bursts_to_analysis` — **blocked on the
+1. Blocked: `47_ndxplorer_bridges` and `52_send_bursts_to_analysis` — **blocked on the
    same thing, and it is a hard block**: both document the ndX gate → ChiSurf
    bridge, and `import ndxplorer` fails in this environment (the package is not
    installed, not merely out of tree). One figure of the gate-plus-bridge menu
    serves both, which is why they are listed together; neither can be taken
    until ndX is installed.
-2. `53_reusing_results` — the subject is *when a step recomputes*, whose only
+2. Open: `53_reusing_results` — the subject is *when a step recomputes*, whose only
    observable is a status line (`Unchanged — kept the previous BVA result`).
    That needs the burst wizard driven through **two** runs over a real burst
    folder and a before/after pair of the status bar; a single grab of a panel
@@ -56,17 +56,17 @@ The chimol ones are blocked on defects recorded in
 
 **Approaches tried and reverted.**
 
-* Grabbing Lumis Quest with `LumisQuestWidget().grab()` returns a blank
+* Tried and reverted: Grabbing Lumis Quest with `LumisQuestWidget().grab()` returns a blank
   surface — the game draws through wgpu, which `QWidget.grab()` cannot see. Use
   the plugin's own offscreen harness
   (`chisurf.plugins.misc.games.lumis_quest.test.capture`), which is what
   `_grab_lumis_quest` does.
-* Regenerating `chimol_objects_panel` / `chimol_groups_panel` from chimol's
+* Tried and reverted: Regenerating `chimol_objects_panel` / `chimol_groups_panel` from chimol's
   viewport overlay. The Qt dock those figures show is retired, so porting the
   grab looks like the obvious fix — but the overlay that replaced it lists only
   `all` and `sele` even with three objects loaded, so the "fixed" figures would
   be wrong where the current ones are merely dated. Left alone on purpose.
-* Taking `chimol_molmap` through the ray tracer. The scene is right and the
+* Tried and reverted: Taking `chimol_molmap` through the ray tracer. The scene is right and the
   commands work, but `ray` draws the mesh as long streaks where the WebGPU path
   draws a clean cage. Both in [known issues](../references/known-issues.md).
 

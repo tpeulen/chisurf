@@ -23,6 +23,77 @@ timestamp: '2026-09-08T17:01:52+02:00'
 
 ## Where to pick this up
 
+0a. Open: **The alternation gates are editable now — the remaining half is the
+   *period*.** Detection writes the period and both gates into spin boxes, the
+   shaded bands on the plot are the same values (drag or type, they stay in
+   step), and a gate change republishes the setup without reconverting, because
+   the fold uses only the period. `detect_and_convert(period=...)` accepts a
+   typed period, but changing it means pressing Detect again — the containers
+   were folded with the old one. **Trap if you go to make that automatic:** the
+   `.pto` is already written and its micro-time *is* the old phase, so honouring
+   a new period means re-running the conversion from the original vendor files,
+   which the panel no longer holds after step 2 replaced them with the
+   containers.
+
+0b. Open: **The setup step's own combo does not show the detected setup's name.** The
+   *tables* are filled in correctly (step 3 writes them through
+   `load_data_into_tables`), and everything downstream uses the right
+   definition — but the `Setup:` combo at the top of step 1 stays blank, because
+   the name lives in a store the page's own selector does not read. Same root
+   cause as the next item; harmless but it looks unfinished.
+
+0c. Open: **Detector setups have two stores and a picker sees one of them.** The RPC
+   store (`detector_setups.*`, what this workflow publishes through) writes the
+   settings JSON; every `SetupSelector` reads the wizard loader, which reads
+   MMFDB and never falls back to that JSON. So a setup this step saves is
+   invisible in every picker. Worked around here only — the alternation step's
+   own picker reads a *merge* of both (`_merged_setups`), and the step writes to
+   both. **Trap when you go to fix it properly:** `save_detector_setups`
+   swallows an MMFDB failure and reports success (`FOREIGN KEY constraint
+   failed` on a database with no user row), so a store that is rejecting writes
+   is indistinguishable from an empty one. Full entry in
+   [known-issues](../references/known-issues.md).
+
+1. Open: **The rate-vs-count defect in `.bur` is only half fixed.** The gated stream
+   columns now come in two flavours — `S {window} {detector} (kHz)` and
+   `… (photons)` — and every reader that goes through
+   `chisurf.core.fluorescence.burst.table.guess_columns` prefers the counts. But
+   **ndX's shipped MFD equations still read the kHz columns**
+   (`modules/ndxplorer/ndxplorer/settings/mfd.equations.yaml`: `Sg`, `Sr`,
+   `Sg(PIE)`, `Sr(PIE)`, `Sy(PIE)`), so ndX's `Proximity ratio` and
+   `Stoichiometry (PIE)` still carry the bias. **Measure it before changing
+   anything**: `count_rate_khz` in `_span_features`
+   (`chisurf/core/fio/fluorescence/burst.py`) divides each stream's photons by
+   *that stream's own span*, so the four rates of one burst have four different
+   denominators. Switching the equations to the `(photons)` columns changes every
+   existing ndX session's numbers — that is why it was not done here.
+   Trap: an old `.bur` has no `(photons)` column at all, so the equations cannot
+   simply be swapped; they need a fallback or a re-run.
+2. Open: **Container run paths are accepted by four tools, rejected by four more.**
+   A burst search over a `.pto` writes no folder — its output is
+   `m000.pto/sliding_window_All 0.1500#60`, which `is_dir()` answers `False`
+   for. Fixed here: `burst_browser.load_folder`, `burst_bva._set_folder`,
+   `chisurf.core.fluorescence.burst.table.read_burst_table`, and the workflow
+   shell's own `analysis_path()`. **Still silent:** `burst_2cde`
+   (`gui/tool.py:270,299`), `burst_h2mm` (`gui/tool.py:852`),
+   `burst_fcs_correlator` (`gui/tool.py:301`), `burst_fusion`
+   (`gui/view_model.py:255`). The pattern is one line —
+   `p.is_dir() or burst_tree.is_container_path(p)` — but each needs its own
+   read path checked, because rejecting the path is not the whole bug: the
+   *reader* behind it must handle a container too.
+3. Open: **The alternation step converts, it does not gate.** It refuses below
+   `MIN_CONFIDENCE` (50×), which catches continuous-wave data. It does **not**
+   catch a file whose donor/acceptor channels are swapped: the contrast is just
+   as high, the windows come back swapped, and the analysis proceeds with *E*
+   reflected about ½. The check is the plot and the donor-only population, and
+   both are prose in `help.md`/`guide.json` rather than anything enforced.
+4. Open: **Not attempted:** per-population γ (the old *Populations* panel gave each
+   tagged population its own γ/β). ndX plus Accurate FRET cover the common case;
+   a per-population γ needs the selection to reach the calibration, which is the
+   `ndxplorer/calibration_bridge.py` seam.
+
+### History (moved out of "Where to pick this up")
+
 0. **Arriving converts — and it has to, because Next does not.** The step is
    declared `optional`, and the shell's `process_current_step` returns early on
    an optional panel *by design* ("walking past a step must not silently change
@@ -53,75 +124,6 @@ timestamp: '2026-09-08T17:01:52+02:00'
    re-arrival with a *different* file set re-detects, which is right, but there
    is no cache keyed on the files, so bouncing between two selections re-measures
    each time.
-
-0a. **The alternation gates are editable now — the remaining half is the
-   *period*.** Detection writes the period and both gates into spin boxes, the
-   shaded bands on the plot are the same values (drag or type, they stay in
-   step), and a gate change republishes the setup without reconverting, because
-   the fold uses only the period. `detect_and_convert(period=...)` accepts a
-   typed period, but changing it means pressing Detect again — the containers
-   were folded with the old one. **Trap if you go to make that automatic:** the
-   `.pto` is already written and its micro-time *is* the old phase, so honouring
-   a new period means re-running the conversion from the original vendor files,
-   which the panel no longer holds after step 2 replaced them with the
-   containers.
-
-0b. **The setup step's own combo does not show the detected setup's name.** The
-   *tables* are filled in correctly (step 3 writes them through
-   `load_data_into_tables`), and everything downstream uses the right
-   definition — but the `Setup:` combo at the top of step 1 stays blank, because
-   the name lives in a store the page's own selector does not read. Same root
-   cause as the next item; harmless but it looks unfinished.
-
-0c. **Detector setups have two stores and a picker sees one of them.** The RPC
-   store (`detector_setups.*`, what this workflow publishes through) writes the
-   settings JSON; every `SetupSelector` reads the wizard loader, which reads
-   MMFDB and never falls back to that JSON. So a setup this step saves is
-   invisible in every picker. Worked around here only — the alternation step's
-   own picker reads a *merge* of both (`_merged_setups`), and the step writes to
-   both. **Trap when you go to fix it properly:** `save_detector_setups`
-   swallows an MMFDB failure and reports success (`FOREIGN KEY constraint
-   failed` on a database with no user row), so a store that is rejecting writes
-   is indistinguishable from an empty one. Full entry in
-   [known-issues](../references/known-issues.md).
-
-1. **The rate-vs-count defect in `.bur` is only half fixed.** The gated stream
-   columns now come in two flavours — `S {window} {detector} (kHz)` and
-   `… (photons)` — and every reader that goes through
-   `chisurf.core.fluorescence.burst.table.guess_columns` prefers the counts. But
-   **ndX's shipped MFD equations still read the kHz columns**
-   (`modules/ndxplorer/ndxplorer/settings/mfd.equations.yaml`: `Sg`, `Sr`,
-   `Sg(PIE)`, `Sr(PIE)`, `Sy(PIE)`), so ndX's `Proximity ratio` and
-   `Stoichiometry (PIE)` still carry the bias. **Measure it before changing
-   anything**: `count_rate_khz` in `_span_features`
-   (`chisurf/core/fio/fluorescence/burst.py`) divides each stream's photons by
-   *that stream's own span*, so the four rates of one burst have four different
-   denominators. Switching the equations to the `(photons)` columns changes every
-   existing ndX session's numbers — that is why it was not done here.
-   Trap: an old `.bur` has no `(photons)` column at all, so the equations cannot
-   simply be swapped; they need a fallback or a re-run.
-2. **Container run paths are accepted by four tools, rejected by four more.**
-   A burst search over a `.pto` writes no folder — its output is
-   `m000.pto/sliding_window_All 0.1500#60`, which `is_dir()` answers `False`
-   for. Fixed here: `burst_browser.load_folder`, `burst_bva._set_folder`,
-   `chisurf.core.fluorescence.burst.table.read_burst_table`, and the workflow
-   shell's own `analysis_path()`. **Still silent:** `burst_2cde`
-   (`gui/tool.py:270,299`), `burst_h2mm` (`gui/tool.py:852`),
-   `burst_fcs_correlator` (`gui/tool.py:301`), `burst_fusion`
-   (`gui/view_model.py:255`). The pattern is one line —
-   `p.is_dir() or burst_tree.is_container_path(p)` — but each needs its own
-   read path checked, because rejecting the path is not the whole bug: the
-   *reader* behind it must handle a container too.
-3. **The alternation step converts, it does not gate.** It refuses below
-   `MIN_CONFIDENCE` (50×), which catches continuous-wave data. It does **not**
-   catch a file whose donor/acceptor channels are swapped: the contrast is just
-   as high, the windows come back swapped, and the analysis proceeds with *E*
-   reflected about ½. The check is the plot and the donor-only population, and
-   both are prose in `help.md`/`guide.json` rather than anything enforced.
-4. **Not attempted:** per-population γ (the old *Populations* panel gave each
-   tagged population its own γ/β). ndX plus Accurate FRET cover the common case;
-   a per-population γ needs the selection to reach the calibration, which is the
-   `ndxplorer/calibration_bridge.py` seam.
 
 ## What it is
 

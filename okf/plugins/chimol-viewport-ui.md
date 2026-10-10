@@ -15,6 +15,18 @@ timestamp: '2026-09-16T19:20:27+02:00'
 
 ## Where to pick this up
 
+- Open: performance objective with a named baseline (PRD-102): systems up to 30x the NPC, gigastructure and pet molecules, clones/instancing plus the hierarchy (one mesh per distinct type, N instanced draws); interior culling, dynamic LOD and fog from the 430 s / 11 GB to 2 s / 0.7 GB round are the items that matter. Read the second reference viewer (`junk/ChimeraX`) for scale handling first.
+- Open: Qt as an option, not the default: strike the two stale entries from `test_engine_is_portable.py`'s `HOSTS` (`app/hierarchy_panel.py`, `plugins/density/model.py`), turn `controls_panel`, `objects_panel`, `rmf_panel`, `sequence_dock` (about 50 call sites) into pure view models as `VolumeViewModel` was, delete `hosts/qt/settings_table.py`, `renderer/gui_overlay.py` and the dead `app/timeline_panel.py`, and declare `glfw` in `pixi.toml`/`pyproject.toml` so a Qt-free run has a window.
+- Open: the Dear ImGui widget stack is ported but nothing consumes it yet; `chrome/menus.py` could replace ~250 lines of inline menu code in `internal_gui.py`, `tables.DataTable`/`tabs.TabBar` supersede `widgets.Table`/`widgets.Tabs`, and four things were deliberately not ported (Image/ImageButton, colour wheel, Box-Select, nav/docking/.ini).
+- Measure: the 30 fps ceiling reported for the NPC demo; read the `wait` column in nerd mode first (large means presentation/vsync, small means our scene, the `scene`/`chrome` split says which half).
+- Open: `camera.orthoscopic` is a registered setting that nothing reads ([known issues](../references/known-issues.md)).
+- Open: `layout()` still runs every frame (0.25 ms of a 16.7 ms budget); skipping it needs a cheap pre-layout key because the chrome fingerprint is taken after layout.
+- Open: `PkTB` and `TorF` mouse-mode cells are reference-viewer bond editing, which chimol has no subsystem for; `pk1` survives as a single-atom highlight.
+
+### Session journal (moved out of "Where to pick this up")
+
+The dated entries below were the body of the resume section; the open items they contain are summarised above and each keeps its full text here.
+
 **2026-08-13 — the object list's eye is drawn, and the `sele` row's eye works.**
 Two reports, one row.
 
@@ -234,7 +246,7 @@ independent defects, and the **second is the one that mattered**:
    frame, so only a pixel measurement finds this; `test_sequence_scrollbar.py`
    asserts in pixels for that reason.
 
-*Still open here.* `PkTB` and `TorF` are PyMOL **bond editing**, which chimol
+*Still open here.* `PkTB` and `TorF` are reference-viewer **bond editing**, which chimol
 has no subsystem for. They now say so in the status line rather than doing
 nothing — an unimplemented cell indistinguishable from a broken one costs the
 same afternoon twice — but if bond editing ever lands, they are the two cells
@@ -272,7 +284,7 @@ distinct type, drawn N times with per-instance transforms, instead of N built
 meshes. That collapses build time *and* VRAM by the copy count, which is the
 only kind of factor that reaches 30x.
 
-Read **ChimeraX** (`junk/ChimeraX`) for how a molecular viewer does this at
+Read **the second reference viewer** (`junk/ChimeraX`) for how a molecular viewer does this at
 scale before designing anything — it is already the reference this plugin used
 for density-map contouring, and its headers there record what was taken.
 
@@ -460,17 +472,17 @@ reported:
    size as the camera moves; tpeulen: *"voxel must be size of grid not hollow
    points"*. A voxel has to be a **box of `grid.step`** in scene units, which
    also changes the budget (250 000 boxes is three million triangles, and the
-   point cloud is capped at 250 000 today). Read `junk/` first — ChimeraX's own
+   point cloud is capped at 250 000 today). Read `junk/` first — the second reference viewer's own
    solid mode is ray-cast volume rendering with a **transfer function**, which
    is where the requested colour and alpha controls come from, so the two are
    one design. The widgets are ImGui's `ColorEdit4` and `SliderFloat`, and
    `emtk/` has neither a slider nor a colour swatch yet — both are
    reusable, so they belong there rather than inside `density_window.py`.
 2. **Density maps are "super slow"**, with the instruction to *learn from
-   ChimeraX how to do it right*. Recorded with the ChimeraX guidance in
+   the second reference viewer how to do it right*. Recorded with the second reference viewer guidance in
    [known-issues](../references/known-issues.md). The measurement to re-derive
    first: time one contour rebuild at the map's native step, then at step 2 and
-   step 4 — ChimeraX picks the step from the voxel count and re-contours the
+   step 4 — the second reference viewer picks the step from the voxel count and re-contours the
    *displayed region* only. The trap is that the drag already defers its rebuild
    to `release()` (`plugins/density/window.py`), so a naive "the drag is smooth
    now" reading says the problem is fixed when the single rebuild is still the
@@ -571,7 +583,7 @@ after it is moving existing panels into one.
    The part worth not re-deriving is *why the rows are derived*. A panel with a
    hand-written row per setting shows the settings somebody remembered — and
    the ones it omits are exactly the new ones. So `build_model()` walks the
-   live `_DISPLAY_CONFIG` (270 rows across 28 sections today), takes the PyMOL
+   live `_DISPLAY_CONFIG` (270 rows across 28 sections today), takes the reference viewer
    name and the documentation from a registered `SettingSpec` where one exists,
    and addresses registered settings **by name** so their stored/shown
    transforms run (`transparency` edits as transparency, is kept as
@@ -602,7 +614,7 @@ written here.
   out as torn shards of triangles rather than a closed skin (two screenshots).
   Suspected the Gaussian-splat path they share. The user's instruction is
   explicit: **use the next slower variant for surfaces** rather than the splat.
-* **Mesh looks identical to surface.** In PyMOL `mesh` is a *wireframe* of the
+* **Mesh looks identical to surface.** In the reference viewer `mesh` is a *wireframe* of the
   same isosurface — check `RepMesh` before changing anything.
 * **Density maps need three display modes: surface, mesh and voxel.** Voxel is
   missing entirely.
@@ -610,8 +622,8 @@ written here.
   unload — it is showing content from a map that is no longer loaded.
 * **`ray` output is too dark** against what the live view shows (screenshot).
 * **`show as ribbon` does nothing.** And **`trace` should come out of the menu**:
-  in PyMOL a *ribbon* is the backbone trace, so the two entries are one thing —
-  confirm against PyMOL's `RepRibbon` before removing the entry.
+  in the reference viewer a *ribbon* is the backbone trace, so the two entries are one thing —
+  confirm against the reference viewer's `RepRibbon` before removing the entry.
 * **`cell` draws wrongly** — the box is not around the molecule (screenshot).
 * **Dots do not scale with zoom.** Their size looks wrong as the camera moves;
   `dots.px_mode` is the flag to check, and it is the same "flag read by nothing"
@@ -619,9 +631,9 @@ written here.
 
 ## Done, 2026-08-11
 
-**C ▸ by element** is PyMOL's, at last: `cnc` (H/N/O/S by element, **carbon
+**C ▸ by element** is the reference viewer's, at last: `cnc` (H/N/O/S by element, **carbon
 untouched**), `cba <carbon>` and `cbh <hydrogen>` are commands, and the submenu
-is PyMOL's **49** entries rather than one. The old leaf issued
+is the reference viewer's **49** entries rather than one. The old leaf issued
 `color byelement` — a colour *mode*, which is a property of an **object**, so
 selecting a side chain repainted the whole protein and cleared every per-atom
 override on the way. Measured: `cnc resi 20-25` now changes exactly the 19

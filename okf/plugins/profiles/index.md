@@ -5,6 +5,7 @@ description: Evidence records for plugin documentation and follow-up work.
 resource: chisurf/plugins/
 tags: [plugins, documentation, worklist]
 timestamp: '2026-07-05T00:00:00Z'
+convention-exempt: true
 ---
 
 # Purpose

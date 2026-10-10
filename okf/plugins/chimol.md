@@ -9,19 +9,19 @@ timestamp: '2026-10-07T00:00:00Z'
 
 # Where to pick this up
 
-1. Audit the current host surfaces, not the old embedded package path. The
+1. Open: Audit the current host surfaces, not the old embedded package path. The
    [ChiSurf manifest](../../chisurf/plugins/chimol/manifest.json) selects
    `chimol.hosts.qt:MolViewPluginWindow` or `chisurf.plugins.chimol.app:make_app`;
    the standalone source is under `modules/chimol/chimol/`. Compare the native,
    Qt and browser paths with the same loaded 148L scene, selection, labels,
    groups and trajectory state before declaring host parity.
-2. Serve a browser repro through `python -m chimol.hosts.web.serve`, whose
+2. Open: Serve a browser repro through `python -m chimol.hosts.web.serve`, whose
    [bundle](../../modules/chimol/chimol/hosts/web/serve.py) delegates hosting and
    input forwarding to emtk. Verify molecular pixels and real input handling,
    not merely HTTP 200 or a nonempty canvas. The old session's remote-browser
    connection failure does not establish a current tool limitation; use a
    browser reachable from the actual serving machine.
-3. Use the [surface continuation](../subsystems/molecular-surface.md) for mesh
+3. Measure: Use the [surface continuation](../subsystems/molecular-surface.md) for mesh
    versus splat quality and mixed-depth validation. Re-measure the selected
    compute route before optimizing neighbour counting: the current
    [router](../../modules/chimol/chimol/render/compute.py) has a general 20,000

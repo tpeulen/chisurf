@@ -456,7 +456,7 @@ Sphinx warning.**
   It was one of only two warnings in an otherwise clean build, which erodes the
   value of "the docs build is warning-free" as a signal.
 - The user-facing docs are not supposed to link into the knowledge bundle at all, so
-  the fix inlines the material the link pointed at (the PyMOL cartoon-parity harness
+  the fix inlines the material the link pointed at (the reference viewer cartoon-parity harness
   and its 0.428 Å number on 148L) instead of pointing readers at the bundle.
 - Fixing it exposed a second, previously masked warning on the same page family —
   `docs/development/plugin_architecture.md` carried a placeholder `[GUI startup](#)`

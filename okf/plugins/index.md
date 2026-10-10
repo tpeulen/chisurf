@@ -1,3 +1,7 @@
+---
+convention-exempt: true
+---
+
 # Plugin groups
 
 * [Plugin documentation standard](documentation-standard.md) - Required README and optional docs/ format for individual plugin documentation.

@@ -5,6 +5,7 @@ description: OKF profile for the ChiMOL structure viewer — PyMOL-style command
 resource: chisurf/plugins/chimol/
 tags: [plugins, structure, viewer, cmd, renderer]
 timestamp: '2026-07-06T00:00:00Z'
+convention-exempt: true
 ---
 
 # Identity

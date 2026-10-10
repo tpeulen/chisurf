@@ -5,6 +5,7 @@ description: Measured gap between ChiMOL and PyMOL, with a prioritised route to 
 resource: chisurf/plugins/chimol/
 tags: [plugins, structure, viewer, pymol, parity]
 timestamp: '2026-07-25T00:00:00Z'
+convention-exempt: true
 ---
 
 # Why this file exists
@@ -47,6 +48,23 @@ useful question is not "how do we write 500 000 lines" but **which parts are loa
 bearing for this group's work**, and those are tiered below.
 
 # Where to pick this up
+
+- Open: resume from the harvested reference pages in chimol's own OKF, `~/dev/chimol/okf/references/pymol/index.md` (command language, viewing/selecting, setting levels, editing/IO, colours, representations, cartoon, data model, mmCIF, maps/picking, internal GUI, UX); they supersede this file where they disagree (the closed `nonbonded_size` finding in the journal is wrong: sphere radius is always `vdw*sphere_scale`, see `representations.md`). PyMOL-syntax binding landed in chimol `db07093`.
+- Measure: what to read next in the PyMOL source. Every file in the reading preset (480) carries a `CHISURF-VALUE: <rank> <facets>` header, 25 are read; `python -m build_tools.dev_utils.reference_coverage junk/pymol-open-source --rank A` prints the 36 that matter (overlay GUI, menu bar as data, keyboard/shortcuts/tab completion, representations, data readers; see journal entry 0a-bis).
+- Open: `S/H > valence`. `analysis/bond_orders.py` (258 doubles of 1384 bonds on 148L in 4 ms; 3564 of 18434 on 1RTD in 50 ms) and `geometry/wireframe.py` (`valence_offsets()`, `orders=`) are done and tested, but nothing is user-visible; the wiring is open in the order given in journal entry 0-bis (compute orders where bonds are inferred, `valence`/`valence_size` settings, `_update_lines`, sticks, strike the `DISABLED_ENTRIES`). The earlier "valence is blocked on data" paragraph describes the state before `bond_orders` landed.
+- Measure: does `ray` frame the molecule as the viewport does? Open and unmeasured: both earlier attempts were wrong (whole-frame correlation is ~90 % black background; a brightness bounding box counts the chrome drawn inside the GL widget). Redo it masked to the scene column, on silhouette bounding boxes, with the chrome hidden rather than cropped around.
+- Open: settings gap. 790 PyMOL settings, 55 registered here; the proxy that matters is the 228 that PyMOL's own Python layer references. Re-derive from `layer1/SettingInfo.h` (strip `/* ... */` comments first or the total reads 770 instead of 790). Register a name only if code reads it; count what the setting produces, not whether it stores.
+- Open: the refusals are the worklist: `DISABLED_ENTRIES` in `test/test_menu_coverage.py` (21 menu leaves) and `_UNSUPPORTED_FLAGS` in `core/selection/parser.py`; re-read both whenever one is closed (six were stale in one day, 2026-08-07).
+- Open: Tier 2 leftovers, in rough order of use: `matrix_copy`, `ramp_new`, `cartoon_dumbbell`, `ellipsoid`, `slice`.
+- Open: density maps: the mid-drag to release "pop" on noisy maps (stride-2/3 preview), the histogram paint loop (`density_window._draw_histogram`, chrome-wide), the GPU marching-cubes route (`compute.marching_cubes_active`); fresh-grid timing for the cold number, the second ask is memoised (benchmark `test/benchmarks/benchmark_map_contour.py`).
+- Open: `molmap`/`fitmap` follow-ups: a global search (many starts) on top of the fit, `volume zone`, and a difference map (90 deg start does not recover and still reports an ordinary score).
+- Open: structural undo beyond PyMOL's coordinate scope (topology snapshots so `remove`/`bond`/`unbond` can be undone); measurement wizard measures within the active object only; selection levels omit Segments and Molecules (no segi is parsed).
+- Open: the mutagenesis wizard leaves a stale `mutation` row in the Sequence strip (filed 2026-08-11, `_wizard_finish` refreshes the sequence view inside `_wizard_commit` while the preview still exists).
+- Open: trajectory-as-simulation: spheres only, so buried strata are not visible through a mound; PyMOL's answer is `clip slab`. Measure before assuming that the per-frame read (`O(frames x particles)` Python calls) is affordable on a pore-sized multi-frame RMF.
+
+## Session journal (moved out of "Where to pick this up")
+
+The dated entries below were the body of the resume section; the open items they contain are summarised above and each keeps its full text here.
 
 **2026-09-17: the PyMOL source is now harvested into chimol's own OKF, and that
 is the resume point.** chimol lives at `~/dev/chimol`; the per-area reference

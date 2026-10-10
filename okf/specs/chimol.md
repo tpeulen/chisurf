@@ -5,6 +5,7 @@ description: A PyMOL clone that is command-compatible with PyMOL and better than
 resource: chisurf/plugins/chimol/
 tags: [target, chimol, viewer, structure, pymol, chimerax]
 timestamp: '2026-07-26T00:00:00Z'
+convention-exempt: true
 ---
 
 > The target for the molecular viewer. Measured current state and findings:

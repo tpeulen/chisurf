@@ -215,7 +215,7 @@ slanted to match that face's own foreshortened plane.
    magnifies ~1.17x and the farthest shrinks to ~0.87x — a ~1.34x ratio,
    checked in `test_perspective_is_modest_not_extreme` against the
    reference's "genuine but not wide-angle" read. `_layout_cube`'s corner
-   loop and `_draw_axis_indicator`'s origin/tip both route through
+   loop and `_draw_axis_indicator`'s base/tip both route through
    `_project` now instead of the old bare `_view`; face
    visibility/depth-sort/shading are untouched (they key on `_view`'s own
    unscaled depth component, unaffected by the screen-space perspective
@@ -237,7 +237,7 @@ slanted to match that face's own foreshortened plane.
      "only draw glyphs the atlas has baked"). Fires `InternalGui.on_gizmo_home`
      immediately on press (like the grip, not deferred like a cube
      face/edge/corner press) — wired to `MolView.reset_view` in `view.py`
-     (orientation *and* re-framing, PyMOL's own `reset` semantics), not
+     (orientation *and* re-framing, the reference viewer's own `reset` semantics), not
      `CameraState.set_orientation` alone, because `on_gizmo_home` is wired
      one layer above `canvas_base.CanvasRenderer` (which only has
      `CameraState`, no notion of "what to frame").
@@ -338,7 +338,7 @@ ViewCube.** Every dated entry below this one, back through "Phase 4 landed",
 describes the **six-axis-ball** gizmo (`ImViewGuizmo.h` ported faithfully) —
 accurate when written, and **now superseded**: the user showed a reference
 screenshot and said "make the gimbal like that", which turned out to be the
-classic Blender/3ds Max/ChimeraX ViewCube the reference header itself said
+classic ViewCube of Blender, 3ds Max and the second reference viewer the reference header itself said
 this port was *not*. `emtk/gizmo.py` was rewritten outright (not kept behind
 a flag); every mention below of balls, spokes, a centre disc, or
 `AXIS_ORIENTATIONS` as a hand-solved six-entry table describes code that no
@@ -381,7 +381,7 @@ catch-all for whatever neither claims. Returns `"face:<name>"` /
 resolved to an orientation via `orientation_for_key`.
 
 **Interaction model: press-then-release snaps, press-then-drag orbits.** The
-standard ViewCube split (Blender/3ds Max/ChimeraX all do this), replacing the
+standard ViewCube split (Blender, 3ds Max and the second reference viewer all do this), replacing the
 old "handle vs. big invisible disc" split that stopped making sense once the
 cube is solid and covers most of the footprint. A press on the cube
 (face/edge/corner, anywhere) is held pending in `InternalGui._gizmo_pressed`;
