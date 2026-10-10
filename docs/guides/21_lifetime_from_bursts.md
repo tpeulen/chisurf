@@ -163,13 +163,36 @@ Select **Fit model** before running the preview or batch:
 | Fit23 | `tau`, `gamma`, `r0`, `rho` | Single lifetime with polarization. |
 | Fit24 | `tau1`, `gamma`, `tau2`, `A2`, `offset` | Two-lifetime mixture; `A2` is the effective second-component amplitude. |
 | Fit25 | `tau1`, `tau2`, `tau3`, `tau4`, `gamma` | Four editable, fixed candidate lifetimes; the result reports the winning `selected_index` (0-based). |
+| Tail fit (multi-exp) | `tail_start`, `tau1`, `tau2` | Sum of exponentials fitted to the tail of the VV+VH decay from channel `tail_start`; no IRF is deconvolved, so it needs only a background. A preview of the current decay: it is not offered for **Fit bursts**. |
 
 Double-click **Start** to edit a value; use **Fixed** to hold a fitted parameter.
 Each model retains its own edits when you switch away and back, including in
 saved settings. Fit25 candidate lifetimes remain fixed inputs; `r0` is supplied
 by its provider and is not a free table parameter. Fit26 needs two reference
 patterns and `fit_nexp` needs its array-input workflow, so neither is offered by
-this tool. The legacy wizard's tail fit remains preview-only.
+this tool.
+
+#### Measured IRF and background, Opt, Save fit
+
+The tab **IRF/BG files** replaces the estimate from the non-burst
+photons by measurements. **Add IRF files** and **Add background files** take any
+TTTR measurement; each detector reads its own channels, the histograms of
+several files are summed, the IRF is normalised to one per polarisation and the
+background to counts per second. With **one for all** the files serve every
+detector, without it only the selected one. **Auto IRF/background** keeps a
+measured pattern and estimates only the other one; a new binning re-reads the
+files. **Save VV/VHs** writes each file's VV|VH histogram beside it
+(`<file>_<channels>.dat`). **IRF model** (Gaussian, Skewed, Experimental) is the
+shape that **Auto IRF/background** estimates; changing it re-estimates.
+
+**Opt** searches the VH shift, the sub-bin shifts, the IRF window and the IRF
+thresholds (**Opt iterations** in the **IRF** tab) for the lowest 2I* of the
+current decay: a Latin-hypercube exploration, then a coordinate line search,
+starting from the current settings, so the result is never worse than them. The
+fit window is not searched, because a narrower window lowers 2I* by leaving out
+the bins the model describes badly. **Save fit** stores the detector's window,
+thresholds, shifts, 2I*/BIFL options and fix flags on the selected detector
+setup; selecting that detector applies them again.
 
 For a self-contained walk-through, press **Guide**, then press the highlighted
 **Generate synthetic demo** yourself. It replaces working inputs with 16

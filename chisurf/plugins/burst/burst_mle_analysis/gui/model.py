@@ -21,7 +21,7 @@ import numpy as np
 
 from chisurf.core.support.i18n import tr
 
-from .. import engine
+from .. import engine, hpo
 from ..engine import MleSession
 from . import fit_view
 
@@ -48,6 +48,12 @@ SETTING_ATTRS: dict[str, tuple[type, bool]] = {
     "p2s_twoIstar": (bool, False),
     "BIFL_scatter": (bool, False),
 }
+
+#: The per-detector settings "Save fit" stores on the detector setup (the keys the wizard stored).
+SETUP_KEYS = (
+    "micro_time_start", "micro_time_stop", "irf_threshold_vv", "irf_threshold_vh", "shift", "shift_sp", "shift_ss",
+    "irf_start", "irf_stop", "p2s_twoIstar", "BIFL_scatter", "fix_tau", "fix_gamma", "fix_r0", "fix_rho", "min_photons",
+)
 
 #: Values of the settings file this app writes and reads.
 SETTINGS_KIND = "burst_mle_native"
@@ -165,6 +171,7 @@ class MleViewModel:
         self._ensure_editable()
         self.session.set_definition(settings)
         if self.session.current_tttr() is not None:
+            self._refresh_measured()
             if self.auto_patterns:
                 self.session.extract_irf_background()
             self.session.build_decay()
@@ -216,8 +223,48 @@ class MleViewModel:
         self._ensure_editable()
         if value in self.session.detectors and value != self.session.current_detector:
             self.session.current_detector = value
+            self._apply_setup_settings(value)
             self.session.build_decay()
             self.refit()
+
+    def _apply_setup_settings(self, det: str) -> None:
+        """Take the fit settings saved on the detector setup (``mle_settings``) when its detector is selected."""
+        saved = (self.session.detectors.get(det) or {}).get("mle_settings")
+        if not isinstance(saved, dict):
+            return
+        settings = self.session.settings_of(det)
+        for key in SETUP_KEYS:
+            if key in saved:
+                kind = SETTING_ATTRS[key][0]
+                setattr(settings, key, kind(saved[key]))
+
+    def save_fit_to_setup(self, definition) -> str:
+        """Store the current detector's window, thresholds, shifts, 2I*/BIFL flags and fix flags on the selected setup.
+
+        ``definition`` is the detector-setup store of the editor (``setups``, ``current_name`` and ``_persist``); the
+        values go to ``setups[name]["detectors"][detector]["mle_settings"]`` and are applied again whenever that
+        detector is selected on this setup. Returns the status line.
+        """
+        det = self.session.current_detector
+        name = getattr(definition, "current_name", "")
+        if not name or name not in definition.setups:
+            self.status_text = str(tr("No detector setup selected: pick or save a setup in the Detector setup tab first."))
+            return self.status_text
+        setup = definition.setups[name]
+        detectors = setup.get("detectors") or {}
+        if det not in detectors:
+            self.status_text = str(tr("Detector {detector} is not in setup {setup}.")).format(detector=det, setup=name)
+            return self.status_text
+        settings = self.session.settings
+        params = {key: SETTING_ATTRS[key][0](getattr(settings, key)) for key in SETUP_KEYS}
+        existing = detectors[det].get("mle_settings")
+        merged = dict(existing) if isinstance(existing, dict) else {}
+        merged.update(params)
+        detectors[det]["mle_settings"] = merged
+        definition._persist()
+        self.session.detectors.setdefault(det, {})["mle_settings"] = dict(merged)
+        self.status_text = str(tr("MLE settings of detector {detector} saved to setup {setup}.")).format(detector=det, setup=name)
+        return self.status_text
 
     # -- files ----------------------------------------------------------------------------------------------- #
     def file_rows(self) -> list[dict]:
@@ -335,6 +382,7 @@ class MleViewModel:
         if value == self.binning:
             return
         self.session.set_binning(value)
+        self._refresh_measured()
         if self.auto_patterns and self.session.current_tttr() is not None:
             self.session.extract_irf_background()
         self.session.build_decay()
@@ -342,6 +390,181 @@ class MleViewModel:
 
     def binning_options(self) -> list[int]:
         return list(engine.BINNING_CHOICES)
+
+    # -- measured IRF and background -------------------------------------------------------------------------- #
+    def _refresh_measured(self) -> None:
+        """Re-read the measured IRF / background files after the binning or the channels changed."""
+        try:
+            self.session.refresh_pattern_files()
+        except Exception as exc:
+            self.status_text = str(tr("Could not re-read the measured IRF / background files: {error}")).format(error=exc)
+
+    @property
+    def irf_one_for_all(self) -> bool:
+        """The IRF files serve every detector (each reads its own channels)."""
+        return bool(self.session.irf_one_for_all)
+
+    @irf_one_for_all.setter
+    def irf_one_for_all(self, value: bool) -> None:
+        self._ensure_editable()
+        self.session.irf_one_for_all = bool(value)
+
+    @property
+    def bg_one_for_all(self) -> bool:
+        """The background files serve every detector (each reads its own channels)."""
+        return bool(self.session.bg_one_for_all)
+
+    @bg_one_for_all.setter
+    def bg_one_for_all(self, value: bool) -> None:
+        self._ensure_editable()
+        self.session.bg_one_for_all = bool(value)
+
+    @property
+    def save_vv_vhs(self) -> bool:
+        """Write the VV | VH histogram of each IRF / background file beside it when it is read."""
+        return bool(self.session.save_vv_vhs)
+
+    @save_vv_vhs.setter
+    def save_vv_vhs(self, value: bool) -> None:
+        self._ensure_editable()
+        self.session.save_vv_vhs = bool(value)
+
+    @property
+    def irf_model(self) -> str:
+        """IRF model of Auto IRF/background: gaussian, skewed or experimental."""
+        return str(self.session.settings.irf_model)
+
+    @irf_model.setter
+    def irf_model(self, value: str) -> None:
+        self._ensure_editable()
+        known = [name for name, _label in engine.IRF_MODELS]
+        if value not in known:
+            raise ValueError(f"Unknown IRF model {value!r}: use one of {known}.")
+        if value == self.irf_model:
+            return
+        self.session.template.irf_model = value
+        for settings in self.session.det_settings.values():
+            settings.irf_model = value
+        if self.auto_patterns and self.session.current_tttr() is not None:
+            self.session.extract_irf_background()
+            self.session.build_decay()
+            self.refit()
+        self.notify("settings")
+
+    def irf_model_choices(self) -> list[tuple[str, str]]:
+        """(value, label) pairs of the IRF models."""
+        return [(name, str(tr(label))) for name, label in engine.IRF_MODELS]
+
+    def _pattern_rows(self, files: dict) -> list[dict]:
+        det = self.session.current_detector
+        return [{"file": Path(p).name, "folder": str(Path(p).parent), "path": str(p)} for p in files.get(det, [])]
+
+    def irf_file_rows(self) -> list[dict]:
+        """The measured IRF files of the current detector."""
+        return self._pattern_rows(self.session.irf_files)
+
+    def bg_file_rows(self) -> list[dict]:
+        """The measured background files of the current detector."""
+        return self._pattern_rows(self.session.bg_files)
+
+    def _add_pattern_files(self, kind: str, paths) -> int:
+        self._ensure_editable()
+        det = self.session.current_detector
+        files, _np, _n, _one = self.session._pattern_store(kind)
+        current = list(files.get(det, []))
+        new = [Path(p) for p in paths if Path(p).is_file() and Path(p) not in current]
+        label = "IRF" if kind == "irf" else "background"
+        if not new:
+            self.status_text = str(tr("No new {kind} file among the given paths.")).format(kind=label)
+            return 0
+        try:
+            done = self.session.set_pattern_files(kind, det, current + new)
+        except Exception as exc:
+            self.status_text = str(tr("Could not read the {kind} file: {error}")).format(kind=label, error=exc)
+            return 0
+        self.status_text = str(tr("{count} measured {kind} file(s) for {detectors}.")).format(
+            count=len(current) + len(new), kind=label, detectors=", ".join(done)
+        )
+        self.session.build_decay()
+        self.refit()
+        return len(new)
+
+    def add_irf_files(self, paths) -> int:
+        """Use measured files as the IRF of the current detector (all detectors with "one for all")."""
+        return self._add_pattern_files("irf", paths)
+
+    def add_bg_files(self, paths) -> int:
+        """Use measured files as the background of the current detector (all detectors with "one for all")."""
+        return self._add_pattern_files("bg", paths)
+
+    def _remove_pattern_row(self, kind: str, record) -> None:
+        if not (isinstance(record, dict) and record.get("path")):
+            return
+        self._ensure_editable()
+        det = self.session.current_detector
+        files, _np, _n, _one = self.session._pattern_store(kind)
+        keep = [p for p in files.get(det, []) if str(p) != record["path"]]
+        if keep:
+            self.session.set_pattern_files(kind, det, keep)
+            self.session.build_decay()
+            self.refit()
+        else:
+            self._clear_pattern(kind)
+
+    def remove_irf_file_row(self, record) -> None:
+        """Delete pressed on a row of the IRF file table."""
+        self._remove_pattern_row("irf", record)
+
+    def remove_bg_file_row(self, record) -> None:
+        """Delete pressed on a row of the background file table."""
+        self._remove_pattern_row("bg", record)
+
+    def clear_irf_files(self) -> None:
+        """Forget the measured IRF files; Auto IRF/background estimates the IRF again."""
+        self._clear_pattern("irf")
+
+    def clear_bg_files(self) -> None:
+        """Forget the measured background files; Auto IRF/background estimates the background again."""
+        self._clear_pattern("bg")
+
+    def _clear_pattern(self, kind: str) -> None:
+        self._ensure_editable()
+        self.session.clear_pattern_files(kind, self.session.current_detector)
+        self.session.outcome = None
+        self.status_text = str(tr("Measured {kind} files cleared.")).format(kind="IRF" if kind == "irf" else "background")
+        self.notify("fit")
+
+    # -- hyperparameter optimisation ------------------------------------------------------------------------ #
+    @property
+    def opt_iterations(self) -> int:
+        """Number of fits Opt may spend."""
+        return int(getattr(self, "_opt_iterations", 50))
+
+    @opt_iterations.setter
+    def opt_iterations(self, value: int) -> None:
+        self._opt_iterations = max(5, min(999, int(value)))
+
+    def optimize(self) -> None:
+        """Search shift, IRF window and thresholds for the lowest 2I* of the current decay, then apply them."""
+        self._cancel.clear()
+
+        def progress(done, total):
+            self.status_text = str(tr("Optimising ... {done}/{total} fits")).format(done=done, total=total)
+            self.notify("progress")
+
+        try:
+            result = hpo.optimize_hyperparameters(
+                self.session, self.opt_iterations, seed=0, should_stop=self._cancel.is_set, progress=progress
+            )
+            if result["stopped"]:
+                self.status_text = str(tr("Optimisation stopped; settings restored."))
+            else:
+                self.status_text = str(tr("Opt: 2I* {before:.3g} to {after:.3g} in {count} fits.")).format(
+                    before=result["start_loss"], after=result["loss"], count=result["evaluations"]
+                )
+            self.notify("fit")
+        finally:
+            self._release_snapshot()
 
     # -- derived read-only ----------------------------------------------------------------------------------- #
     @property
@@ -380,6 +603,10 @@ class MleViewModel:
         outcome = self.session.outcome
         if outcome is None:
             return str(tr("No fit result yet."))
+        if self.fit_model == engine.TAIL_MODEL:
+            return str(tr("Tail lifetimes: {lifetimes} ns; score: {score:.4g}.")).format(
+                lifetimes=" / ".join(f"{float(v):.4g}" for v in outcome.x[1:]), score=outcome.two_istar
+            )
         text = str(tr("Primary lifetime: {tau:.4g} ns; 2I*: {score:.4g}.")).format(
             tau=self.tau_result, score=outcome.two_istar
         )
@@ -398,7 +625,9 @@ class MleViewModel:
     def tau_result(self) -> float:
         """Return the provider's primary lifetime, including a classified Fit25 winner."""
         outcome = self.session.outcome
-        return float(outcome.x[0]) if outcome is not None else float("nan")
+        if outcome is None:
+            return float("nan")
+        return float(outcome.x[1] if self.fit_model == engine.TAIL_MODEL else outcome.x[0])
 
     @property
     def gamma_result(self) -> float:
@@ -476,10 +705,9 @@ class MleViewModel:
     def input_status(self) -> tuple[bool, int]:
         """Whether the current detector has an IRF and a background, and how many burst files are loaded."""
         det = self.session.current_detector
-        ready = (
-            det in self.session.irf_np
-            and det in self.session.bg_np
-            and np.asarray(self.session.irf_np[det]).size > 0
+        needs_irf = self.session.settings.model != engine.TAIL_MODEL
+        ready = det in self.session.bg_np and (
+            not needs_irf or (det in self.session.irf_np and np.asarray(self.session.irf_np[det]).size > 0)
         )
         return bool(ready), len(self.session.bur_files)
 
@@ -497,9 +725,10 @@ class MleViewModel:
         if outcome is None and self.session.status:
             self.status_text = self.session.status
         elif outcome is not None:
-            self.status_text = (
-                self.session.status
-                or f"tau = {self.tau_result:.3f} ns (2I* = {self.two_istar:.3f})"
+            self.status_text = self.session.status or (
+                self.model_result_text()
+                if self.fit_model == engine.TAIL_MODEL
+                else f"tau = {self.tau_result:.3f} ns (2I* = {self.two_istar:.3f})"
             )
         self.notify("fit")
 
@@ -579,7 +808,10 @@ class MleViewModel:
     def values_snapshot(self) -> SimpleNamespace:
         """The spec's values as a throw-away object: edits made while a job runs go nowhere."""
         ns = SimpleNamespace(**{name: getattr(self, name) for name in SETTING_ATTRS})
-        for name in ("binning", "current_detector", "current_file", "nav_burst", "fit_model"):
+        for name in (
+            "binning", "current_detector", "current_file", "nav_burst", "fit_model", "irf_model", "irf_one_for_all",
+            "bg_one_for_all", "save_vv_vhs", "opt_iterations",
+        ):
             setattr(ns, name, getattr(self, name))
         for method in (
             "detector_names",
@@ -589,11 +821,16 @@ class MleViewModel:
             "model_availability",
             "model_result_text",
             "file_rows",
+            "irf_file_rows",
+            "bg_file_rows",
+            "irf_model_choices",
             "parameter_records",
             "parameter_cell_editable",
             "lifetime_rows",
             "select_file",
             "remove_file_row",
+            "remove_irf_file_row",
+            "remove_bg_file_row",
         ):
             setattr(ns, method, getattr(self, method))
         ns.edit_parameter = lambda *a, **k: None

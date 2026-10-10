@@ -15,6 +15,11 @@ placeholder.
   **Stop**, **Save results** and **Save/Load settings**; below them the burst-file table, the detector and fit window,
   the IRF settings and the editable *Fit parameters* table (start value, fixed flag, fitted value). A change refits the
   current decay. **Detector setup** is the shared detector editor.
+* **IRF/BG files** tab: **Add IRF files** / **Add background files** (measured patterns, per detector or
+  *one for all*), **IRF model** of Auto IRF/background, **Save VV/VHs**. **Opt** (in the *Burst MLE* tab) searches the
+  shifts, IRF window and thresholds for the lowest 2I*; **Save fit** stores a detector's fit settings on the selected
+  detector setup. The fit model **Tail fit (multi-exp)** previews a multi-exponential tail fit (no IRF; not used by
+  **Fit bursts**).
 * **Decay and IRF fit**: the micro-time decay of the current file (data), the fitted model, the IRF and the
   background, VV window followed by VH window, on a log axis. IRF and background are scaled to the area of the data for
   display only; their fit weight is the scatter parameter.

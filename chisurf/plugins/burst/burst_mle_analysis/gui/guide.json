@@ -51,10 +51,24 @@
       }
     },
     {
+      "title": "A measured IRF and background",
+      "text": "A <b>measured</b> IRF (scatter or a short-lifetime reference) and a sample-free background are better than the estimate. Open the <b>IRF/BG files</b> tab and add them: with <b>one for all</b> the files serve every detector. <b>IRF model</b> chooses the shape Auto IRF/background estimates.",
+      "target": {
+        "name": "add_irf_files"
+      }
+    },
+    {
       "title": "The fit window",
       "text": "The <b>window</b> is the range of micro-time bins that enter the likelihood. Leave out the empty bins before the prompt and the noisy tail. A change refits the current decay.",
       "target": {
         "name": "window_start"
+      }
+    },
+    {
+      "title": "Optimise the settings",
+      "text": "<b>Opt</b> searches the VH shift, the sub-bin shifts, the IRF window and the IRF thresholds for the lowest 2I* of this decay (the number of fits is <b>Opt iterations</b> in the IRF tab) and applies the best; it is never worse than what you had. <b>Save fit</b> keeps the settings on the selected detector setup.",
+      "target": {
+        "name": "optimize"
       }
     },
     {

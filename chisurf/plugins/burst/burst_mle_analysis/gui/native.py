@@ -13,6 +13,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 from emtk import im, implot
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
@@ -49,6 +50,8 @@ class MleNativeApp(TourTarget, ImApp):
         "add_folder": ("Add burst folder", "folder", None),
         "save_settings": ("Save burst-MLE settings", "save", [("JSON", ["*.json"])]),
         "load_settings": ("Load burst-MLE settings", "open", [("JSON", ["*.json"])]),
+        "add_irf_files": ("Open measured IRF files", "open", None),
+        "add_bg_files": ("Open measured background files", "open", None),
     }
 
     def __init__(self, model: MleViewModel | None = None) -> None:
@@ -61,7 +64,12 @@ class MleNativeApp(TourTarget, ImApp):
         spec = load_view_spec(str(HERE / "mle_native.view.json"))
         sections = spec["sections"]
         self.sections = [
-            s for s in sections if s.get("title") not in ("Burst", "Burst lifetimes", "IRF")
+            s
+            for s in sections
+            if s.get("title") not in ("Burst", "Burst lifetimes", "IRF", "Measured IRF and background")
+        ]
+        self.pattern_sections = [
+            s for s in sections if s.get("title") == "Measured IRF and background"
         ]
         self.irf_sections = [s for s in sections if s.get("title") == "IRF"]
         for s in self.irf_sections:
@@ -70,7 +78,7 @@ class MleNativeApp(TourTarget, ImApp):
         self.tables = [s for s in sections if s.get("type") == "table"]
         for table in self.tables:
             table["height"] = 90
-        cap_widths(self.sections + self.burst_sections + self.irf_sections)
+        cap_widths(self.sections + self.burst_sections + self.irf_sections + self.pattern_sections)
         self.labels = LabelColumn()
         self._measured = False
         self.dialog = None
@@ -113,6 +121,7 @@ class MleNativeApp(TourTarget, ImApp):
         add = self.docks.add_window
         add("controls", "Burst MLE", self._controls, dock="controls", closable=False)
         add("irf", "IRF", self._irf, dock="controls", closable=False)
+        add("patterns", "IRF/BG files", self._patterns, dock="controls", closable=False)
         add("detectors", "Detector setup", self._detectors, dock="controls", closable=False)
         add("decay", "Decay and fit", self._decay, dock="plots_a", closable=False)
         add("inspect", "Inspected burst", self._inspect, dock="plots_a", closable=False)
@@ -123,7 +132,10 @@ class MleNativeApp(TourTarget, ImApp):
     # -- tour / help -------------------------------------------------------------------------------------- #
     def _tour_step(self, index, step) -> None:
         """Expose the real example control when the tour awaits its use."""
-        if (step.get("target") or {}).get("name") == "load_example":
+        name = (step.get("target") or {}).get("name")
+        if name == "add_irf_files":
+            self.docks.focus("patterns")
+        elif name in ("load_example", "optimize", "window_start"):
             self.docks.focus("controls")
 
     def start_guide(self) -> None:
@@ -153,6 +165,23 @@ class MleNativeApp(TourTarget, ImApp):
         self.model.status_text = "Fitting bursts ..."
         self.job.start("run_batch")
 
+    def optimize(self) -> None:
+        """Run Opt on a snapshot: the search refits many times and applies the best configuration at the end."""
+        if not self.model.input_status()[0]:
+            self.model.status_text = str(
+                tr("Nothing to optimise yet: press Auto IRF/background or load an IRF and a background.")
+            )
+            return
+        self.model.status_text = str(tr("Optimising ..."))
+        self.job.start("optimize")
+
+    def save_fit(self) -> None:
+        """Store the current detector's fit settings on the selected detector setup."""
+        try:
+            self.model.save_fit_to_setup(self.editor.model)
+        except Exception as exc:
+            self.model.status_text = f"Error: {exc}"
+
     def stop(self) -> None:
         self.model.stop()
 
@@ -164,10 +193,12 @@ class MleNativeApp(TourTarget, ImApp):
         options: dict[str, Any] = {"filters": filters} if filters else {}
         files = self.model.session.bur_files
         if files:
-            options["directory"] = str(files[0].parent)
+            # burst tables sit in <measurement folder>/<analysis>/<ending>/; measured IRF / background files beside the raw data
+            pattern = action in ("add_irf_files", "add_bg_files")
+            options["directory"] = str(files[0].parents[2] if pattern else files[0].parent)
         filename = "burst_mle_settings.json" if action == "save_settings" else ""
         self.dialog = FileDialog(
-            title, mode=mode, filename=filename, multiselect=action == "add_files", **options
+            title, mode=mode, filename=filename, multiselect=action in ("add_files", "add_irf_files", "add_bg_files"), **options
         )
         self.dialog_action = action
         self._dialog_window = DialogWindow(title, size=(640.0, 460.0), key="burst-mle-file")
@@ -178,6 +209,10 @@ class MleNativeApp(TourTarget, ImApp):
         try:
             if action in ("add_files", "add_folder"):
                 self.model.add_files(result)
+            elif action == "add_irf_files":
+                self.model.add_irf_files(result)
+            elif action == "add_bg_files":
+                self.model.add_bg_files(result)
             elif action == "save_settings":
                 self.model.save_settings(result[0])
                 self.model.status_text = f"Settings saved to {result[0]}"
@@ -197,7 +232,7 @@ class MleNativeApp(TourTarget, ImApp):
     # -- drawing ------------------------------------------------------------------------------------------ #
     def _fields(self):
         if not self._measured:
-            fields = list(labelled(self.sections + self.irf_sections))
+            fields = list(labelled(self.sections + self.irf_sections + self.pattern_sections))
             self.labels.measure([f["label"] for f in fields])
             self.labels.pad(fields)
             self._measured = True
@@ -248,6 +283,20 @@ class MleNativeApp(TourTarget, ImApp):
                     else "Needs an IRF and a background.",
                 },
                 {
+                    "label": str(tr("Opt")),
+                    "key": "optimize",
+                    "enabled": ready and not running,
+                    "tip": str(
+                        tr(
+                            "Optimise the VH shift, the sub-bin shifts, the IRF window and the IRF thresholds "
+                            "(Opt iterations in the IRF tab) for the lowest 2I*, then refit. The result is never "
+                            "worse than the current settings."
+                        )
+                    )
+                    if ready
+                    else str(tr("Needs an IRF and a background.")),
+                },
+                {
                     "label": "Fit bursts",
                     "key": "toolAction_run",
                     "enabled": has_data and ready and not running,
@@ -270,6 +319,17 @@ class MleNativeApp(TourTarget, ImApp):
                     "tip": "Write the per-burst fits as b?4 tables beside the burst folders."
                     if has_results
                     else "Fit the bursts first.",
+                },
+                {
+                    "label": str(tr("Save fit")),
+                    "key": "save_fit",
+                    "enabled": not running,
+                    "tip": str(
+                        tr(
+                            "Store this detector's window, IRF thresholds, shifts, 2I*/BIFL options and fix flags "
+                            "on the selected detector setup; they are applied again whenever the detector is selected."
+                        )
+                    ),
                 },
                 {
                     "label": "Save settings",
@@ -304,6 +364,11 @@ class MleNativeApp(TourTarget, ImApp):
         elif pressed == "auto":
             self.track("auto")
             self.auto_extract()
+        elif pressed == "optimize":
+            self.track("optimize")
+            self.optimize()
+        elif pressed == "save_fit":
+            self.save_fit()
         elif pressed == "Stop":
             self.stop()
         elif pressed == "clear_files":
@@ -364,6 +429,56 @@ class MleNativeApp(TourTarget, ImApp):
         )
         draw_sections(self.irf_sections, self.model, self.form)
 
+    def _patterns(self, box=None) -> None:
+        self.remember("patterns", box)
+        running = self.job.busy
+        im.text_wrapped(
+            tr(
+                "Measured IRF and background files replace the estimate from the non-burst photons "
+                "for the detectors they are set for."
+            )
+        )
+        target = self.model.values_snapshot() if running else self.model
+        im.begin_disabled(running)
+        draw_sections(self.pattern_sections, target, self.form)
+        pressed = button_row(
+            [
+                {
+                    "label": str(tr("Add IRF files")),
+                    "key": "add_irf_files",
+                    "enabled": not running,
+                    "tip": str(tr("Choose measured IRF files (scatter or short-lifetime reference).")),
+                },
+                {
+                    "label": str(tr("Clear IRF")),
+                    "key": "clear_irf_files",
+                    "enabled": bool(self.model.irf_file_rows()) and not running,
+                    "tip": str(tr("Forget the measured IRF files; Auto IRF/background estimates the IRF again.")),
+                },
+                {
+                    "label": str(tr("Add background files")),
+                    "key": "add_bg_files",
+                    "enabled": not running,
+                    "tip": str(tr("Choose measured background files (a sample-free measurement).")),
+                },
+                {
+                    "label": str(tr("Clear background")),
+                    "key": "clear_bg_files",
+                    "enabled": bool(self.model.bg_file_rows()) and not running,
+                    "tip": str(tr("Forget the measured background files; Auto IRF/background estimates the background again.")),
+                },
+            ],
+            remember=self.remember,
+        )
+        im.end_disabled()
+        if pressed == "clear_irf_files":
+            self.model.clear_irf_files()
+        elif pressed == "clear_bg_files":
+            self.model.clear_bg_files()
+        elif pressed in self.DIALOGS:
+            self.track(pressed)
+            self.browse(pressed)
+
     def _detectors(self, box=None) -> None:
         self.remember("detectors", box)
         if self.job.busy:
@@ -383,7 +498,8 @@ class MleNativeApp(TourTarget, ImApp):
             implot.setup_axes("Micro-time window (channels, VV then VH)", "Photons")
             implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
             implot.plot_scatter("Data (VV|VH)", curves.x, curves.data, size=2.5)
-            implot.plot_line("Model (fit)", curves.x, curves.model)
+            drawn = np.isfinite(curves.model) & (curves.model > 0)  # a log axis cannot show the empty part before a tail
+            implot.plot_line("Model (fit)", curves.x[drawn], curves.model[drawn])
             if curves.irf is not None:
                 implot.plot_line("IRF", curves.x, curves.irf)
             implot.plot_line("Background", curves.x, curves.background)

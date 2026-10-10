@@ -314,7 +314,7 @@ def test_guide_targets_are_drawn_and_the_awaited_steps_are_released_by_presses(a
     steps = json.loads((GUI / "guide.json").read_text())["steps"]
     for step in steps:
         key = app.tour._target_key(step.get("target"))
-        if key and key not in ("decay", "distribution"):  # those two are in the plot tabs
+        if key and key not in ("decay", "distribution", "add_irf_files"):  # in the plot tabs / the files tab
             assert key in app.item_rects or key in app.form.rects, key
     auto_step = next(
         i for i, step in enumerate(steps)

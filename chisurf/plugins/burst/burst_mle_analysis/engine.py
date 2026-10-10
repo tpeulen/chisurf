@@ -487,6 +487,13 @@ def burst_histogram(
     return np.hstack([cp, cs_hist])
 
 
+#: The IRF models of the Auto IRF/background estimate: (value, label).
+IRF_MODELS = [
+    ("gaussian", "Gaussian"),
+    ("skewed", "Skewed"),
+    ("experimental", "Experimental"),
+]
+
 #: The binnings the detector page offers (the Qt combo's items).
 BINNING_CHOICES = [1, 2, 4, 8, 16, 32, 64, 128, 256]
 
@@ -537,13 +544,55 @@ def read_burst_analysis(
 # --------------------------------------------------------------------------------------------------------------------
 # the session
 # --------------------------------------------------------------------------------------------------------------------
+#: Name of the multi-exponential tail fit: a different estimator family (``tttrlib.DecayFitNExp``), not a fit2x model.
+TAIL_MODEL = "tail"
+
+#: Parameters of the tail fit: the first channel of the tail and two lifetimes (set both equal for a mono-exponential tail).
+TAIL_SCHEMA: dict = {
+    "properties": {
+        "tail_start": {
+            "title": "Tail start (ch.)",
+            "default": 20.0,
+            "minimum": 0.0,
+            "maximum": 100000.0,
+            "fixed_default": True,
+            "description": "First channel of the tail; earlier channels (the rise and the prompt) are excluded.",
+        },
+        "tau1": {
+            "title": "Lifetime tau1 (ns)",
+            "default": 2.0,
+            "minimum": 0.01,
+            "maximum": 100.0,
+            "fixed_default": False,
+            "description": "First tail lifetime.",
+        },
+        "tau2": {
+            "title": "Lifetime tau2 (ns)",
+            "default": 0.5,
+            "minimum": 0.01,
+            "maximum": 100.0,
+            "fixed_default": False,
+            "description": "Second tail lifetime.",
+        },
+    },
+    "required": ["tail_start", "tau1", "tau2"],
+}
+
+
 def fit_model_specs() -> dict[str, dict]:
-    """Return registry models supported by the existing acquisition-input facade."""
+    """Return registry models supported by the existing acquisition-input facade, plus the tail fit."""
     from chisurf.core.fluorescence.mle.fit2x import Fit2xModel
     from chisurf.core.fluorescence.mle.registry import fit_models
 
     supported = {model.value for model in Fit2xModel}
-    return {name: spec for name, spec in fit_models().items() if name in supported}
+    specs = {name: spec for name, spec in fit_models().items() if name in supported}
+    specs[TAIL_MODEL] = {
+        "label": "Tail fit (multi-exp)",
+        "params_schema": TAIL_SCHEMA,
+        "description": "Multi-exponential fit of the decay tail only (no IRF deconvolution); preview of the current "
+        "decay, not offered for the batch over every burst.",
+    }
+    return specs
 
 
 def validate_fit_model(name: str) -> str:
@@ -577,6 +626,8 @@ def fit_result_names(model: str) -> tuple[str, ...]:
     """Return declared derived outputs that add information beyond the parameter vector."""
     from chisurf.core.fluorescence.mle.registry import fit_models
 
+    if model == TAIL_MODEL:
+        return ()
     properties = fit_models()[model].get("results_schema", {}).get("properties", {})
     return tuple(name for name in properties if name == "selected_index")
 
@@ -682,7 +733,7 @@ class MleSettings:
         from chisurf.core.fluorescence.mle.fit2x import parameter_names_of
 
         name = validate_fit_model(self.model)
-        names = list(parameter_names_of(name))
+        names = list(TAIL_SCHEMA["properties"]) if name == TAIL_MODEL else list(parameter_names_of(name))
         if name == "fit23":
             values = [getattr(self, key) for key in names]
             fixed = [getattr(self, f"fix_{key}") for key in names]
@@ -751,6 +802,14 @@ class MleSession:
     split_by_state: bool = False
     #: Photon floor of a per-state burst fit (a state sees far fewer photons than the whole burst).
     state_min_photons: int = 20
+    #: Measured IRF / background files per detector (their summed histograms are the patterns of that detector).
+    irf_files: dict[str, list[Path]] = field(default_factory=dict)
+    bg_files: dict[str, list[Path]] = field(default_factory=dict)
+    #: One list of IRF / background files serves every detector (each reads its own channels from the files).
+    irf_one_for_all: bool = True
+    bg_one_for_all: bool = True
+    #: Write the VV | VH histogram of every IRF / background file beside it.
+    save_vv_vhs: bool = False
 
     def __post_init__(self) -> None:
         self.tttrs = LazyTTTRs(self.tttr_paths, self.file_type, self.definition)
@@ -1000,10 +1059,90 @@ class MleSession:
         n = 0
         for det, pat in patterns.items():
             if det:
-                self.irf_np[det] = np.asarray(pat["irf"], dtype=float)
-                self.bg_np[det] = np.asarray(pat["bg"], dtype=float)
+                if not self.irf_files.get(det):
+                    self.irf_np[det] = np.asarray(pat["irf"], dtype=float)
+                if not self.bg_files.get(det):
+                    self.bg_np[det] = np.asarray(pat["bg"], dtype=float)
                 n += 1
         return n
+
+    # -- measured IRF / background files --------------------------------------------------------------------- #
+    def _open_pattern_tttr(self, path: Path) -> Any:
+        """Open one IRF / background measurement with the reader settings of the burst files."""
+        from chisurf.core.fio.staging import open_tttr
+
+        file_type = self.file_type
+        if not file_type or str(file_type).lower() == "auto":
+            file_type = None
+        return open_tttr(Path(path), file_type, cache=False, **self.tttrs.read_kwargs)
+
+    def pattern_histogram(self, det: str, paths: list[Path], normalize: int) -> np.ndarray:
+        """Summed VV | VH histogram of *paths* on the channels of *det* at the current binning.
+
+        ``normalize`` is 2 for an IRF (each polarisation sums to one) and 3 for a background (counts per second).
+        """
+        from chisurf.core.fio import write_vv_vh
+
+        info = self.detectors[det]
+        chs = info.get("chs", [])
+        binning = int(self.settings.micro_time_binning)
+        rows = []
+        for path in paths:
+            tttr = self._open_pattern_tttr(path)
+            row = vv_vh_histogram(
+                tttr,
+                chs,
+                (0, 0),
+                binning,
+                detector_ranges=info.get("micro_time_ranges"),
+                normalize_counts=normalize,
+                apply_vh_shift=False,
+            )
+            rows.append(row)
+            if self.save_vv_vhs:
+                half = row.size // 2
+                name = f"{Path(path).with_suffix('').as_posix()}_{''.join(map(str, chs))}.dat"
+                write_vv_vh(name, vv=row[:half], vh=row[half:])
+        return np.sum(rows, axis=0)
+
+    def set_pattern_files(self, kind: str, det: str, paths: list[Path]) -> list[str]:
+        """Use the measurements *paths* as the IRF (``kind="irf"``) or background (``"bg"``); returns the detectors set.
+
+        With "one for all" the same files serve every detector. Each detector's pattern is the sum of the files'
+        histograms on its own channels, so a file measured on all detectors at once gives every detector its pattern.
+        """
+        files, np_dict, normalize, one = self._pattern_store(kind)
+        paths = [Path(p) for p in paths]
+        dets = list(self.detectors) if one else [det]
+        for d in dets:
+            files[d] = list(paths)
+            np_dict[d] = self.pattern_histogram(d, paths, normalize)
+        self.outcome = None
+        return dets
+
+    def clear_pattern_files(self, kind: str, det: str) -> list[str]:
+        """Forget the measured files (and the pattern read from them) of *det*, or of every detector with "one for all"."""
+        files, np_dict, _normalize, one = self._pattern_store(kind)
+        dets = list(self.detectors) if one else [det]
+        for d in dets:
+            if files.pop(d, None) is not None:
+                np_dict.pop(d, None)
+        self.outcome = None
+        return dets
+
+    def refresh_pattern_files(self) -> None:
+        """Re-read every measured pattern at the current binning and channels (after either changed)."""
+        for kind in ("irf", "bg"):
+            files, np_dict, normalize, _one = self._pattern_store(kind)
+            for det in [d for d in files if d in self.detectors and files[d]]:
+                np_dict[det] = self.pattern_histogram(det, files[det], normalize)
+
+    def _pattern_store(self, kind: str):
+        if kind == "irf":
+            return self.irf_files, self.irf_np, 2, self.irf_one_for_all
+        if kind == "bg":
+            return self.bg_files, self.bg_np, 3, self.bg_one_for_all
+        raise ValueError(f"Unknown pattern kind {kind!r}: use 'irf' or 'bg'.")
 
     def auto_extract(self) -> None:
         """One click: binning, IRF / background, fit window, fit (the wizard's ``auto_extract_irf_bg``)."""
@@ -1064,7 +1203,9 @@ class MleSession:
         det = self.current_detector
         if not det:
             return "no detector selected"
-        if det not in self.irf_np or np.asarray(self.irf_np.get(det, [])).size == 0:
+        if self.settings.model != TAIL_MODEL and (
+            det not in self.irf_np or np.asarray(self.irf_np.get(det, [])).size == 0
+        ):
             return f"no IRF for detector {det!r} (load or send an IRF)"
         if det not in self.bg_np or np.asarray(self.bg_np.get(det, [])).size == 0:
             return f"no background for detector {det!r}"
@@ -1081,6 +1222,8 @@ class MleSession:
         x0, fixed = self.parameter_vector()
         d = np.asarray(self.decay, dtype=np.float64)
         irf_len = int(np.asarray(self.irf_np.get(self.current_detector, [])).size)
+        if self.settings.model == TAIL_MODEL:
+            return self._fit_tail(d, x0, fixed)
         if irf_len and len(d) != irf_len:
             self.status = f"Cannot fit: decay length {len(d)} != IRF length {irf_len} (rebuild IRF at the current binning)"
             return None
@@ -1111,6 +1254,57 @@ class MleSession:
             res,
         )
         self.status = "" if not diverged else "Fit diverged: invalid fit quality (2I* < 0)"
+        return self.outcome
+
+    def _fit_tail(self, d: np.ndarray, x0: np.ndarray, fixed: np.ndarray) -> FitOutcome:
+        """Fit the tail of the total decay (VV + VH) with a sum of exponentials; no IRF is deconvolved.
+
+        Each exponential decays from ``tail_start`` (a channel of the binned decay) and the rise and prompt before it
+        are left out. The model is drawn on both polarisations in proportion to their photons in the window.
+        """
+        import tttrlib
+
+        n = d.size // 2
+        total = d[:n] + d[n:]
+        bg = np.asarray(self.background(), dtype=np.float64)
+        bg_total = bg[:n] + bg[n : 2 * n] if bg.size >= 2 * n else np.zeros(n)
+        if bg_total.sum() > 0:
+            bg_total = bg_total / bg_total.sum()
+        tttr = self.current_tttr()
+        dt, period = self.timing_ns(tttr, self.settings.micro_time_binning)
+        if dt is None or period is None:
+            self.status = "Cannot fit: the file has no timing (channel width, excitation period)."
+            return None
+        tail_start = int(round(float(x0[0])))
+        lifetimes = [float(v) for v in x0[1:]]
+        options = tttrlib.DecayFitNExpOptions()
+        options.dt = float(dt)
+        options.period = float(period)
+        options.tail_start = tail_start
+        options.include_model = True
+        res = tttrlib.DecayFitNExp.fit(
+            total.tolist(),
+            [0.0] * n,
+            bg_total.tolist(),
+            lifetimes,
+            [1.0 / len(lifetimes)] * len(lifetimes),
+            [int(v) for v in np.asarray(fixed)[1:]],
+            options,
+        )
+        model_total = np.asarray(res.model, dtype=float)
+        if model_total.size != n:
+            model_total = np.zeros(n)
+        model_total[:tail_start] = 0.0  # before the tail the model is not defined
+        share = float(d[:n].sum() / total.sum()) if total.sum() > 0 else 0.5
+        model = np.hstack([model_total * share, model_total * (1.0 - share)])
+        x = np.asarray([float(tail_start)] + [float(v) for v in res.lifetimes], dtype=float)
+        score = float(res.negative_log_likelihood)
+        irf = self.irf() if self.current_detector in self.irf_np else np.zeros_like(d)
+        curves = decay_curves(
+            d, model, irf, self.background(), self.window_ranges(), tail=True, diverged=False
+        )
+        self.outcome = FitOutcome(x, score, list(TAIL_SCHEMA["properties"]), curves, model, d, res)
+        self.status = "" if np.isfinite(score) else "Tail fit failed: non-finite score"
         return self.outcome
 
     # -- batch ------------------------------------------------------------------------------------------------- #
@@ -1181,6 +1375,10 @@ class MleSession:
 
         if self.df_bursts is None or not len(self.tttrs):
             raise ValueError("No burst data loaded.")
+        if self.settings.model == TAIL_MODEL:
+            raise ValueError(
+                "The tail fit previews the current decay; choose a Fit2x model to fit every burst."
+            )
         det_order = list(self.detectors)
         binning = int(self.settings.micro_time_binning)
         configs = {det: self.batch_config(det) for det in det_order}
@@ -1379,6 +1577,11 @@ class MleSession:
             "definition": self.definition_payload(),
             "micro_time_binning": int(self.template.micro_time_binning),
             "detector_settings": self.channel_settings(),
+            "irf_files": {d: [str(p) for p in v] for d, v in self.irf_files.items()},
+            "bg_files": {d: [str(p) for p in v] for d, v in self.bg_files.items()},
+            "irf_one_for_all": bool(self.irf_one_for_all),
+            "bg_one_for_all": bool(self.bg_one_for_all),
+            "save_vv_vhs": bool(self.save_vv_vhs),
         }
 
     def apply_settings_payload(self, payload: dict) -> None:
@@ -1396,6 +1599,16 @@ class MleSession:
         self.det_settings.update(restored)
         if payload.get("micro_time_binning"):
             self.set_binning(int(payload["micro_time_binning"]))
+        self.irf_one_for_all = bool(payload.get("irf_one_for_all", self.irf_one_for_all))
+        self.bg_one_for_all = bool(payload.get("bg_one_for_all", self.bg_one_for_all))
+        self.save_vv_vhs = bool(payload.get("save_vv_vhs", self.save_vv_vhs))
+        for kind, key in (("irf", "irf_files"), ("bg", "bg_files")):
+            files, np_dict, normalize, _one = self._pattern_store(kind)
+            for det, paths in (payload.get(key) or {}).items():
+                found = [Path(p) for p in paths if Path(p).is_file()]
+                if det in self.detectors and found:
+                    files[det] = found
+                    np_dict[det] = self.pattern_histogram(det, found, normalize)
 
     # -- inspected burst --------------------------------------------------------------------------------------- #
     def inspect_burst(self, idx: int) -> dict[str, np.ndarray]:

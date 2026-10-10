@@ -131,6 +131,99 @@
       ]
     },
     {
+      "type": "panel",
+      "title": "Measured IRF and background",
+      "collapsed": false,
+      "description": "Measured instrument response and background files instead of the estimate from the non-burst photons.",
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "irf_model",
+          "label": "IRF model",
+          "options_source": "irf_model_choices",
+          "description": "Shape of the IRF that Auto IRF/background estimates from the non-burst photons. Gaussian: a Gaussian fitted to the prompt, which cannot follow the slow fluorescent tail (recommended). Skewed: a skew-normal fit for an asymmetric detector response. Experimental: the raw baseline-subtracted histogram. A measured IRF file replaces the estimate."
+        },
+        {
+          "type": "toggle",
+          "attr": "irf_one_for_all",
+          "label": "IRF: one for all",
+          "description": "The IRF files serve every detector; each detector reads its own channels from them. Off: files are set for the selected detector only."
+        },
+        {
+          "type": "custom",
+          "key": "data_table",
+          "title": "",
+          "description": "Measured IRF files of the selected detector (their VV and VH histograms are summed and each polarisation normalised to one). Delete removes a file.",
+          "options": {
+            "source": "irf_file_rows",
+            "row_key": "path",
+            "delete_call": "remove_irf_file_row",
+            "editable": false,
+            "height": 70,
+            "fit_columns": false,
+            "min_column_width": 70,
+            "tooltip_key": "path",
+            "columns": [
+              {
+                "key": "file",
+                "title": "File",
+                "width": 120,
+                "tooltip": "The measurement file's name; hover a row for the full path."
+              },
+              {
+                "key": "folder",
+                "title": "Folder",
+                "width": 220,
+                "tooltip": "The folder the file is in."
+              }
+            ]
+          }
+        },
+        {
+          "type": "toggle",
+          "attr": "bg_one_for_all",
+          "label": "Background: one for all",
+          "description": "The background files serve every detector; each detector reads its own channels from them. Off: files are set for the selected detector only."
+        },
+        {
+          "type": "custom",
+          "key": "data_table",
+          "title": "",
+          "description": "Measured background files of the selected detector (histograms in counts per second, summed). Delete removes a file.",
+          "options": {
+            "source": "bg_file_rows",
+            "row_key": "path",
+            "delete_call": "remove_bg_file_row",
+            "editable": false,
+            "height": 70,
+            "fit_columns": false,
+            "min_column_width": 70,
+            "tooltip_key": "path",
+            "columns": [
+              {
+                "key": "file",
+                "title": "File",
+                "width": 120,
+                "tooltip": "The measurement file's name; hover a row for the full path."
+              },
+              {
+                "key": "folder",
+                "title": "Folder",
+                "width": 220,
+                "tooltip": "The folder the file is in."
+              }
+            ]
+          }
+        },
+        {
+          "type": "toggle",
+          "attr": "save_vv_vhs",
+          "label": "Save VV/VHs",
+          "description": "Write the VV and VH histogram of every IRF or background file beside it (<file>_<channels>.dat) when it is read."
+        }
+      ]
+    },
+    {
       "description": "Instrument-response settings: VH shift, sub-bin shifts, IRF range and thresholds for the 2I* fit.",
       "type": "panel",
       "title": "IRF",
@@ -214,6 +307,15 @@
           "attr": "BIFL_scatter",
           "label": "BIFL scatter",
           "description": "Treat the scattered light as burst-integrated fluorescence lifetime scatter (soft)."
+        },
+        {
+          "type": "value",
+          "attr": "opt_iterations",
+          "label": "Opt iterations",
+          "kind": "int",
+          "minimum": 5,
+          "maximum": 999,
+          "description": "Number of fits the Opt button may spend searching the VH shift, sub-bin shifts, IRF window and IRF thresholds for the lowest 2I*."
         }
       ]
     },
