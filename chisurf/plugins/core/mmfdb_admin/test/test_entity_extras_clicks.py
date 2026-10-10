@@ -139,21 +139,70 @@ def test_delete_archived_version_removes_only_the_chosen_one(driver, app, client
     assert restored["project_payload"] == v2["project_payload"]  # the other is intact
 
 
-def test_row_helpers_copy_and_tick(driver, app):
+def _right_click(driver, rect):
+    x, y, w, h = rect
+    cx, cy = x + w / 2, y + h / 2
+    driver.app.pointer_move(cx, cy)
+    driver.draw(2)
+    driver.app.pointer_press(cx, cy, 2)
+    driver.draw(2)
+    driver.app.pointer_release(cx, cy, 2)
+    driver.draw(2)
+
+
+def _pick(driver, label):
+    driver.click(Driver.text_rect(driver.draw(2), label))
+    driver.draw(2)
+
+
+def test_row_context_menu_copies_and_ticks(driver, app):
     copied = []
     original = app.model.copy
     app.model.copy = lambda text: (copied.append(str(text)), original(text))
     open_panel(driver, "device", "Devices")
-    driver.click(_row(driver, "dev_gui"))
-    driver.click_name("x_copy_row")
+    # The old helper buttons are gone; the table's right-click menu replaces them.
+    assert "x_copy_row" not in app.item_rects and "x_check_all" not in app.item_rects
+    cell = _row(driver, "dev_gui")
+    _right_click(driver, cell)
+    shown = driver.draw(2).strings
+    assert {"Copy row", "Copy selected cell", "Copy checked IDs", "Select all rows",
+            "Check all", "Uncheck all", "Invert checks"} <= set(shown)
+    _pick(driver, "Copy selected cell")
+    assert copied[-1] == "dev_gui"
+    _right_click(driver, _row(driver, "dev_gui"))
+    _pick(driver, "Copy row")
     assert "dev_gui" in copied[-1] and "\t" in copied[-1]
-    driver.click_name("x_check_all")
+    _right_click(driver, _row(driver, "dev_gui"))
+    _pick(driver, "Check all")
     n = len(app.model.current.rows)
     assert len(app.model.current.checked_ids()) == n
-    driver.click_name("x_copy_checked")
+    _right_click(driver, _row(driver, "dev_gui"))
+    _pick(driver, "Copy checked IDs")
     assert copied[-1].splitlines() == app.model.current.checked_ids()
-    driver.click_name("x_invert_checks")
+    _right_click(driver, _row(driver, "dev_gui"))
+    _pick(driver, "Invert checks")
     assert app.model.current.checked_ids() == []
-    driver.click_name("x_check_all")
-    driver.click_name("x_uncheck_all")
+    _right_click(driver, _row(driver, "dev_gui"))
+    _pick(driver, "Check all")
+    _right_click(driver, _row(driver, "dev_gui"))
+    _pick(driver, "Uncheck all")
     assert app.model.current.checked_ids() == []
+    # Select all rows marks every listed row in the table itself.
+    _right_click(driver, _row(driver, "dev_gui"))
+    _pick(driver, "Select all rows")
+    driver.draw(2)
+    control = driver.app.form(f"entity:{app.model.current.key}").tables["table_rows"].control
+    assert len(control.selected_indices()) == n
+
+
+def test_context_menu_closes_on_escape_and_outside_click(driver, app):
+    open_panel(driver, "device", "Devices")
+    _right_click(driver, _row(driver, "dev_gui"))
+    assert "Copy row" in driver.draw(2).strings
+    driver.escape()
+    driver.draw(2)
+    assert "Copy row" not in driver.draw(2).strings
+    _right_click(driver, _row(driver, "dev_gui"))
+    assert "Copy row" in driver.draw(2).strings
+    driver.click((5.0, 5.0, 2.0, 2.0))
+    assert "Copy row" not in driver.draw(2).strings

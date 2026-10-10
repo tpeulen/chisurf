@@ -1,5 +1,5 @@
 {
-  "_comment": "Sections appended below an entity panel's generated form. Key = entity key; '*' = every entity. Their sources and actions are 'x_' names that EntityForm routes to gui/native/entity_extras.py (ExtrasMixin).",
+  "_comment": "Sections appended below an entity panel's generated form. Key = entity key ('*' = every entity; unused now, the row helpers live in admin.view.json's context_menu). Their sources and actions are 'x_' names that EntityForm routes to gui/native/entity_extras.py (ExtrasMixin).",
   "experiment": [
     {
       "type": "button_row",
@@ -97,40 +97,6 @@
         "fit_columns": true,
         "min_column_width": 70
       }
-    }
-  ],
-  "*": [
-    {
-      "type": "button_row",
-      "weight": 0,
-      "description": "Row helpers: copy and tick rows.",
-      "buttons": [
-        {
-          "action": "x_copy_row",
-          "label": "Copy row",
-          "description": "Copy the selected row as tab-separated text."
-        },
-        {
-          "action": "x_copy_checked",
-          "label": "Copy checked IDs",
-          "description": "Copy the IDs of the ticked rows, one per line."
-        },
-        {
-          "action": "x_check_all",
-          "label": "Check all",
-          "description": "Tick every listed row."
-        },
-        {
-          "action": "x_uncheck_all",
-          "label": "Uncheck all",
-          "description": "Clear every tick."
-        },
-        {
-          "action": "x_invert_checks",
-          "label": "Invert checks",
-          "description": "Tick the unticked rows and clear the ticked ones."
-        }
-      ]
     }
   ]
 }

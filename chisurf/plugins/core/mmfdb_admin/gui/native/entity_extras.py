@@ -58,6 +58,7 @@ class ExtrasMixin:
         self.version_rows: list[dict] = []
         self.version_selected = ""
         self.validation_text = ""
+        self.select_all_pending = False
         self._extras = load_extras()
 
     # ── spec ───────────────────────────────────────────────────────────
@@ -67,10 +68,6 @@ class ExtrasMixin:
     def x_enabled(self, name: str) -> bool:
         if not self.admin.connected:
             return False
-        if name in ("x_check_all", "x_uncheck_all", "x_invert_checks"):
-            return bool(self.rows)
-        if name == "x_copy_checked":
-            return bool(self.checked_ids())
         return bool(self.selected_id)
 
     # ── selection hook ─────────────────────────────────────────────────
@@ -345,29 +342,48 @@ class ExtrasMixin:
             )
         )
 
-    # ── row helpers (the old right-click menu) ─────────────────────────
-    def x_copy_row(self) -> None:
-        row = next((r for r in self.rows if r["_id"] == self.selected_id), None)
+    # ── row helpers (the table's right-click menu) ─────────────────────
+    def x_menu_has_rows(self, _record: Any = None) -> bool:
+        return bool(self.rows)
+
+    def x_menu_has_checked(self, _record: Any = None) -> bool:
+        return bool(self.checked_ids())
+
+    def x_copy_row(self, record: dict | None = None) -> None:
+        """Copy a row (the right-clicked one, else the selected one) as tab-separated text."""
+        wanted = (record or {}).get("_id") or self.selected_id
+        row = next((r for r in self.rows if r["_id"] == wanted), None)
         if row is None:
             return
         self.admin.copy("\t".join(str(row.get(k, "")) for k, _ in self.columns))
-        self.say("Copied the selected row.")
+        self.say("Copied the row.")
 
-    def x_copy_checked(self) -> None:
+    def x_copy_cell(self, record: dict | None = None, key: str | None = None) -> None:
+        """Copy the text of one cell: the row and column the menu was opened on."""
+        if not record or not key:
+            return
+        self.admin.copy(str(record.get(key, "")))
+        self.say("Copied the cell.")
+
+    def x_copy_checked(self, _record: Any = None) -> None:
         ids = self.checked_ids()
         if ids:
             self.admin.copy("\n".join(ids))
             self.say(f"Copied {len(ids)} IDs")
 
-    def x_check_all(self) -> None:
+    def x_select_all_rows(self, _record: Any = None) -> None:
+        """Ask the table to select every listed row (the view applies it on its next frame)."""
+        self.select_all_pending = True
+
+    def x_check_all(self, _record: Any = None) -> None:
         for r in self.rows:
             r["checked"] = True
 
-    def x_uncheck_all(self) -> None:
+    def x_uncheck_all(self, _record: Any = None) -> None:
         for r in self.rows:
             r["checked"] = False
 
-    def x_invert_checks(self) -> None:
+    def x_invert_checks(self, _record: Any = None) -> None:
         for r in self.rows:
             r["checked"] = not r.get("checked")
 

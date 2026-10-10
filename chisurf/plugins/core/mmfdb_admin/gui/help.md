@@ -65,7 +65,7 @@ Some entities have their own actions:
 | Experiments | **Experiment data / links** sub-table under the form: **Add data**, **Save data**, **Delete data** (asks), **Open data**; click a cell to edit it |
 | Setups | **Validate setup** (the server checks name and version; the result shows below the button) |
 | Projects | **Archived versions** table: **Restore project to ChiSurf** (the picked version, else the latest) and **Delete archived version** (only the picked one, asks) |
-| every panel | **Copy row**, **Copy checked IDs**, **Check all**, **Uncheck all**, **Invert checks** (the old right-click menu's row helpers) |
+| every panel (right-click a row, or Shift+F10) | **Copy row**, **Copy selected cell**, **Copy checked IDs**, **Select all rows**, **Check all**, **Uncheck all**, **Invert checks** |
 
 ## The other panels
 

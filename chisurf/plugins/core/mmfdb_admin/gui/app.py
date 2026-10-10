@@ -403,6 +403,10 @@ class MMFDBAdminApp(ImApp):
         top, bottom = self._split("entity", area)
         draw_sections([self.shell["entity"]["sections"][1]], panel, state, titles=False)
         self._sync_selection(state, "table_rows", panel.selected_id)
+        if panel.select_all_pending:
+            panel.select_all_pending = False
+            if "table_rows" in state.tables:
+                state.tables["table_rows"].control.select_all()
         if "table_rows" in state.rects:
             self.item_rects["row_selected"] = state.rects["table_rows"]
         if panel.selected_id and self._last_selected.get(panel.key) != panel.selected_id:

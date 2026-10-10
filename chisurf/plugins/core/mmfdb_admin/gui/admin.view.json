@@ -101,7 +101,24 @@
            "source": "table_rows", "columns_source": "table_columns", "row_key": "_id",
            "selected_call": "select_row", "activated_cell_call": "activate_cell", "edited_call": "edited",
            "filter": true, "status": true, "column_picker": true, "fit_columns": true,
-           "min_column_width": 96, "expand": true
+           "min_column_width": 96, "expand": true,
+           "context_menu": [
+             {"label": "Copy row", "call": "x_copy_row", "enabled_when": "x_menu_has_rows",
+              "description": "Copy the row as tab-separated text."},
+             {"label": "Copy selected cell", "call": "x_copy_cell", "enabled_when": "x_menu_has_rows",
+              "description": "Copy the text of the cell you right-clicked."},
+             {"label": "Copy checked IDs", "call": "x_copy_checked", "enabled_when": "x_menu_has_checked",
+              "description": "Copy the IDs of the ticked rows, one per line."},
+             {"separator": true},
+             {"label": "Select all rows", "call": "x_select_all_rows", "enabled_when": "x_menu_has_rows",
+              "description": "Select every listed row in the table."},
+             {"label": "Check all", "call": "x_check_all", "enabled_when": "x_menu_has_rows",
+              "description": "Tick every listed row."},
+             {"label": "Uncheck all", "call": "x_uncheck_all", "enabled_when": "x_menu_has_rows",
+              "description": "Clear every tick."},
+             {"label": "Invert checks", "call": "x_invert_checks", "enabled_when": "x_menu_has_rows",
+              "description": "Tick the unticked rows and clear the ticked ones."}
+           ]
          }}
       ]
     },
