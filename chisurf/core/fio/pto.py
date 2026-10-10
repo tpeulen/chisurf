@@ -1227,6 +1227,28 @@ class Measurement:
                 queue.append(parent)
         return [self.provenance(uid) for uid in order]
 
+    def untraceable(self) -> list[str]:
+        """Return the names of derived objects whose lineage misses the primary data.
+
+        The completeness check behind the guarantee that every result can be
+        walked back to the instrument file: an empty list means it holds.
+        Objects with no operation (the primary data, the readme, sample
+        metadata) are not derived and are not examined.
+
+        Returns
+        -------
+        list of str
+            Names of the objects that do not reach a primary object.
+        """
+        primary = set(self.instrument_uids)
+        missing = []
+        for obj in self.artifacts():
+            if obj.uid in primary or not self.tag(obj.uid, _OPERATION_TYPE):
+                continue
+            if not primary.intersection(step["uid"] for step in self.lineage(obj.uid)):
+                missing.append(obj.name)
+        return missing
+
     def describe_lineage(self, ref: int | str) -> str:
         """Return :meth:`lineage` as readable text.
 
@@ -1758,6 +1780,13 @@ class Measurement:
             extension_dictionary_hash,
             extension_dictionary_version,
         )
+
+        # A result that names no parent is not a root: when the container holds
+        # primary data, that is what it was computed from. Leaving the parent
+        # out would produce a result whose lineage ends nowhere, which is the
+        # one thing the profile promises never to contain.
+        if operation_type and not list(_as_uids(derived_from)):
+            derived_from = [u for u in self.instrument_uids if u != uid]
 
         _tttrlib().pto_describe(
             self._f,

@@ -9,24 +9,33 @@ timestamp: '2026-07-06T00:00:00Z'
 
 # Where to pick this up
 
-1. Open: (W13 of the programme plan) the public-databank picture is guarded
-   but not finished. Done: the written-names guard
+1. Open: (W13 of the programme plan) steps 1-7 landed; what is left is the documentation debt and the live ELN check.
+   Done: the written-names guard
    [test_written_categories_are_declared](../../modules/mmfdb/tests/test_written_categories_are_declared.py),
    the glob-discovered feature-term guard
    [test_analysis_feature_terms](../../test/core/test_analysis_feature_terms.py),
    the description guard
-   [test_extension_dictionary_is_documented](../../modules/mmfdb/tests/test_extension_dictionary_is_documented.py)
-   and the generated [flrCIF vocabulary](../../docs/concepts/flrcif_vocabulary.md).
+   [test_extension_dictionary_is_documented](../../modules/mmfdb/tests/test_extension_dictionary_is_documented.py),
+   the generated [flrCIF vocabulary](../../docs/concepts/flrcif_vocabulary.md), the
+   [`.pto` -> mmCIF -> python-ihm -> database round trip](../../modules/mmfdb/tests/test_pto_cif_roundtrip.py)
+   (`mmfdb project export-cif|import-cif`, `mmfdb.provenance.pto_graph`; it carries provenance, never state: the
+   project snapshot and object bytes stay in the container), the lineage-reaches-primary guard (`untraceable`,
+   `Measurement.untraceable`) and the ELN gateway (`mmfdb.eln`, [PRD-48](../prds/prd-48.md)).
    Still open, in order: (a) document the ~368 `_mmfdb_` items listed in
    `tests/dictionary_item_description_baseline.txt` (the baseline only shrinks;
    a trap: the parser reads a `;`-block description up to its first lone `;`
    line, so a multi-paragraph item description is truncated in the parsed
-   view); (b) the `.pto` -> mmCIF -> `python-ihm` -> import round trip and
-   the lineage-reaches-primary-photons guard; (c) the ELN gateway (Chemotion
-   read and deposit paths, [PRD-48](../prds/prd-48.md)). Measure (a) with
-   `wc -l` of the baseline. Not tried: adding `ihm` to the pixi `test`
-   environment, which the warnings-as-errors filter needs there (it runs green
-   in the `arm64` env).
+   view); (b) the standard FLR export writes database column names under flrCIF categories
+   ([known issue](../references/known-issues.md)) — python-ihm warns on those keywords, and
+   `read_graph_cif` only escalates `_mmfdb_` ones until it is fixed; (c) run the Chemotion gateway once against a
+   live server and replay its list calls over `tests/fixtures/chemotion/` (shapes are from the public API
+   documentation, not captured), then PRD-48 phases 2-4 (id write-back, reconcile, second backend). Traps: python-ihm
+   has no handler for `_audit_conform` or any `_mmfdb_` category, so a reader must pass handlers
+   (`pto_graph.category_handlers`) or every file is full of `UnknownCategoryWarning` — under a strict filter
+   `import_structure_file` used to swallow that as "parse failed"; a measurement `.pto` groups the outputs of one run
+   (same type, settings hash and parents) under one operation, so equality is on the graph, not on object counts.
+   Not tried: adding `ihm` to the pixi `test` environment, which the warnings-as-errors filter needs there (it runs
+   green in the `arm64` env: 882 passed).
 
 2. Open: Reconcile the old INC-04 follow-up against
    [the current API](../../modules/mmfdb/src/mmfdb/api.py): setup updates call

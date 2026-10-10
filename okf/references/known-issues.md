@@ -4,6 +4,31 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## The sample/analysis export writes database column names under flrCIF categories (found 2026-10-10)
+
+status: open — owner: mmfdb (`MFDatabase.export_flr_cif`, `modules/mmfdb/src/mmfdb/repository.py`).
+
+`MFDatabase().export_flr_cif_to_text()` serialises SQL column names, not dictionary items: `_flr_fret_analysis.analysis_id`,
+`.sample_id`, `.method`, `.details` where flrCIF defines `_flr_fret_analysis.id`, `.experiment_id`, `.type`. python-ihm
+therefore raises `UnknownKeywordWarning` for them (category warnings are clean). Measure:
+`python -W error -c "import ihm.reader as r; r.read(open('x.cif'), warn_unknown_keyword=True)"` on any
+`write_single_cif` output. The provenance categories are unaffected and `read_graph_cif` only escalates keyword warnings for
+`_mmfdb_` categories, which is why the round-trip tests are green. Fix: map columns to dictionary items through the
+`_mmfdb_schema.column_name` mapping when exporting, then make `read_graph_cif` strict about every keyword.
+
+## Project round-trip tests still build the pre-v5 project payload (found 2026-10-10)
+
+status: open — owner: whoever next touches `test/fio/test_mmfdb_project_roundtrip.py`.
+
+mmfdb's archiver (`project_archiver.archive_project_to_mmfdb`, since "the validated canonical payload is the sole restore
+authority") needs v5 fit records (`fit["uid"]`, `members[].model.parameters[].uid`). 26 tests in `test/fio`
+(`test_mmfdb_project_roundtrip.py`, `test_fdb_analysis.py`, `test_mmfdb_chinet_*`, `test_sample_manager.py`) still hand-build
+the older shape and die with `KeyError: 'uid'`. Measure: `pytest test/fio -q --deselect <the cross-writer CLI test>` ->
+27 failed (26 here + the CLI one below). Port the fixtures to the v5 shape (see `mmfdb/tests/test_pto_cif_roundtrip.py::_project_payload`
+for a minimal valid one); do not loosen the archiver.
+Five `test/fio/test_container_cross_writer.py` tests also fail here only because `/Users/tpeulen/dev/tttrlib/build/bin/tttr`
+cannot load `libhdf5.200.dylib` (environment, see the IDE-roots note); the Python writer is unaffected.
+
 ## A project no longer stores the live bff node graph (found 2026-10-10)
 
 status: open — owner: project persistence (`chisurf/core/project/`, `chisurf/core/fio/pto.py`); needs a product decision.

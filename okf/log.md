@@ -2,6 +2,13 @@
 
 ## 2026-10-10
 
+- PRD-154 W13 steps 3, 4, 6: a `.pto` / `.cs.pto` exports to `_mmfdb_provenance_*` mmCIF
+  (`mmfdb project export-cif`), reads back through python-ihm with no `UnknownCategoryWarning`, and imports
+  (`import-cif`) to an equal set of operations, artifacts, edges and parameters (project and a multi-run
+  measurement tested); `untraceable()` + `Measurement.untraceable()` guard that every derived table reaches the primary
+  data, and `put_*` now defaults a missing `derived_from` to the container's primary streams; ELN gateway
+  (`mmfdb.eln`: neutral model, Chemotion read of chemicals/instruments into reagent lots/setups, deposit of a
+  container plus its mmCIF, keystore tokens). Details: [mmfdb](architecture/mmfdb.md), [PRD-48](prds/prd-48.md).
 - PRD-154 W11 first frames: all 122 measurable emtk plugins draw their first frame in < 100 ms at
   1100x720 (worst ndxplorer 85 ms; was 26 over, chimol 1634 ms). Hubs build the shown tool on a worker
   (`chisurf/emtk/background_build.py`) behind an "Opening …" placeholder; chimol starts off-thread;

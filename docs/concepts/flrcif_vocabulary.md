@@ -2,7 +2,7 @@
 type: Concept
 title: The flrCIF and MMFDB vocabulary
 description: Generated reference of the categories and items ChiSurf persists, defined in the mmfdb extension dictionaries.
-tags: [concepts, database, mmfdb]
+tags: [concepts, mmfdb, flrcif, vocabulary]
 anchor: concept-flrcif-vocabulary
 ---
 
@@ -1042,6 +1042,7 @@ One data node in the provenance graph (a source, intermediate, or result).
 | `_mmfdb_provenance_artifact.checksum_algorithm` | code |  |
 | `_mmfdb_provenance_artifact.data_format` | line |  |
 | `_mmfdb_provenance_artifact.ordinal` | int |  |
+| `_mmfdb_provenance_artifact.row_grain` | line | What one row of a tabular artifact is (the _mmfdb_artifact.row_grain term), for example burst or bin. Absent for non-tabular artifacts. |
 
 ## `_mmfdb_provenance_edge`
 
@@ -1049,12 +1050,16 @@ A directed edge in the provenance graph (e.g. an output derived_from an input, o
 
 | Item | Type | Description |
 |---|---|---|
+| `_mmfdb_provenance_edge.operation_id` | line | Operation that created the edge, when the edge was recorded as part of one. |
 | `_mmfdb_provenance_edge.ordinal` | int |  |
 | `_mmfdb_provenance_edge.relationship_type` | line |  |
+| `_mmfdb_provenance_edge.role` | line | Role of the artifact in the operation, for an input_to or produced edge (for example source_file or fit_state). |
 | `_mmfdb_provenance_edge.source_node_id` | line |  |
 | `_mmfdb_provenance_edge.source_node_type` | code |  |
+| `_mmfdb_provenance_edge.source_row_column` | line | Column of the source table that holds the join key, when source and target differ in row grain. |
 | `_mmfdb_provenance_edge.target_node_id` | line |  |
 | `_mmfdb_provenance_edge.target_node_type` | code |  |
+| `_mmfdb_provenance_edge.target_row_column` | line | Column of the target table that the join key is matched to; equal to the source column when omitted. |
 
 ## `_mmfdb_provenance_operation`
 
@@ -1062,16 +1067,39 @@ One recorded operation node: the exact tool invocation that produced a result, w
 
 | Item | Type | Description |
 |---|---|---|
+| `_mmfdb_provenance_operation.algorithm` | line | Algorithm term of the operation (the _mmfdb_operation.algorithm value), when the operation type alone does not name it. |
 | `_mmfdb_provenance_operation.command_line` | text |  |
 | `_mmfdb_provenance_operation.ended_at` | yyyy-mm-dd:hh:mm |  |
 | `_mmfdb_provenance_operation.operation_id` | line |  |
 | `_mmfdb_provenance_operation.operation_type` | line |  |
 | `_mmfdb_provenance_operation.ordinal` | int |  |
 | `_mmfdb_provenance_operation.parameters` | text | JSON object of the step parameters, recorded for exact re-run. |
+| `_mmfdb_provenance_operation.settings_hash` | line | Hash of the complete settings of the operation. Two operations of one type with equal hashes ran with the same settings. |
+| `_mmfdb_provenance_operation.settings_json` | text | The complete settings of the operation as one JSON object, verbatim. A partial record is not written: a reader reproduces the run from this item alone. |
 | `_mmfdb_provenance_operation.software_package` | line |  |
 | `_mmfdb_provenance_operation.software_version` | line |  |
 | `_mmfdb_provenance_operation.started_at` | yyyy-mm-dd:hh:mm |  |
 | `_mmfdb_provenance_operation.status` | code |  |
+
+## `_mmfdb_provenance_parameter`
+
+One named, typed parameter value of a recorded operation: a fitted or fixed model parameter with its uncertainty and bounds.
+
+| Item | Type | Description |
+|---|---|---|
+| `_mmfdb_provenance_parameter.bounds_on` | line | Whether the bounds apply to the value itself or to a transformed variable. |
+| `_mmfdb_provenance_parameter.initial_value` | float | Value the parameter started from. |
+| `_mmfdb_provenance_parameter.lower_bound` | float | Lower bound, in the units of the parameter. |
+| `_mmfdb_provenance_parameter.name` | line | Parameter name as the model defines it. |
+| `_mmfdb_provenance_parameter.operation_id` | line | Operation the parameter belongs to; matches _mmfdb_provenance_operation.operation_id. |
+| `_mmfdb_provenance_parameter.ordinal` | int | Row number of the parameter in the file. |
+| `_mmfdb_provenance_parameter.parameter_id` | line | Identifier of the parameter node, which an edge between two parameters (for example a link of one parameter to another) refers to. |
+| `_mmfdb_provenance_parameter.parameter_type` | line | free, fixed or linked. |
+| `_mmfdb_provenance_parameter.role` | line | Role of the parameter in the operation. |
+| `_mmfdb_provenance_parameter.standard_error` | float | Standard error of the value, when estimated. |
+| `_mmfdb_provenance_parameter.units` | line | Units of the value. |
+| `_mmfdb_provenance_parameter.upper_bound` | float | Upper bound, in the units of the parameter. |
+| `_mmfdb_provenance_parameter.value` | float | Value of the parameter. |
 
 ## `_mmfdb_reagent_lot`
 

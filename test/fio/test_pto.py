@@ -702,3 +702,46 @@ def test_every_derived_object_in_a_real_container_can_be_traced(measurement: Pat
             assert m.lineage(obj.uid)[-1]["uid"] in primary, (
                 f"{obj.name} does not trace back to the primary data"
             )
+
+
+def test_a_result_that_names_no_parent_still_traces_to_the_photons(measurement: Path):
+    """Omitting ``derived_from`` must not produce a lineage that ends nowhere.
+
+    A container with primary data defaults the parent to it, for tables, curves
+    and blobs alike; ``untraceable`` is the completeness check.
+    """
+    with Measurement.open(measurement, writable=True) as m:
+        m.put_table(
+            "forgot its parent",
+            _bursts(5),
+            artifact_kind="burst_table",
+            operation_type="burst_selection",
+            row_grain="burst",
+            parameters={"min_photons": 30},
+        )
+        m.put_curve(
+            "decay",
+            np.arange(4.0),
+            np.ones(4),
+            artifact_kind="tcspc_decay",
+            operation_type="tcspc_histogram_computation",
+        )
+    with Measurement.open(measurement) as m:
+        assert m.untraceable() == []
+        for name in ("forgot its parent", "decay"):
+            assert m.provenance(m._resolve(name))["parents"] == [m.instrument_uid]
+
+
+def test_untraceable_names_a_derived_object_with_no_path_to_the_photons(tmp_path: Path):
+    """With no primary data in the file, a derived object has nothing to reach, and says so."""
+    with Measurement.create_empty(tmp_path / "bare.pto") as m:
+        m.put_table(
+            "bursts",
+            _bursts(3),
+            artifact_kind="burst_table",
+            operation_type="burst_selection",
+            row_grain="burst",
+            parameters={"min_photons": 1},
+        )
+    with Measurement.open(tmp_path / "bare.pto") as m:
+        assert m.untraceable() == ["bursts"]

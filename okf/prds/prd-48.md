@@ -3,7 +3,7 @@ type: PRD
 prd: "48"
 title: "PRD-48: Provider-Agnostic ELN Integration"
 description: A provider-agnostic ELN integration layer for MMFDB with a single gateway abstraction and two concrete electronic-lab-notebook backends, supporting bidirectional deposit, import, and reconciliation.
-status: draft
+status: in-progress
 phase: "unassigned"
 resource: modules/mmfdb/src/mmfdb/
 tags: [prd, mmfdb, eln]
@@ -14,7 +14,8 @@ timestamp: '2026-07-05T00:00:00Z'
 MMFDB is the prototype implementation for a planned public fluorescence databank, so it must interoperate with the community's electronic lab notebook (ELN) platforms rather than live as an island. This PRD specifies a provider-agnostic `ElnGateway` abstraction under `chisurf/core/mmfdb/eln/`, with a neutral entity model (Record, Resource, Chemical, Instrument, Link, Scope) and two concrete adapters plus a declared capability set so callers degrade gracefully. Integration is bidirectional — push (deposit records + attachments + links), pull (import chemicals/resources/instruments with CAS/InChIKey dedup), and conflict reconciliation — keeping a clean split between deposition and DOI dissemination. The guiding invariant is one identity per real-world object; users and groups are matched, never provisioned, and credentials live in the OS store per PRD-37.
 
 # Status
-Draft / unassigned (STATUS TABLE authoritative). Design complete; phased 1–4 from prime-backend push through import, secondary backend, and reconciliation/dissemination/GUI.
+In progress (PRD-154 W13). Landed in `modules/mmfdb/src/mmfdb/eln/` (mmfdb `0655b9d`): the neutral model (`ElnChemical`, `ElnInstrument`, `ElnRecord`, `ElnAttachment`, `ExternalRef`, `ElnUnavailable`), `ChemotionGateway` (read of samples/devices, deposit of a research plan with attachments), `pull()` into `mmfdb_reagent_lot` / `flr_instrument` + `mmfdb_setup` under ids `eln:<backend>:<kind>:<remote id>`, `deposit_pto()` (a `.pto` / `.cs.pto` plus its `_mmfdb_provenance_*` mmCIF), tokens in the OS credential store (`keyring` or the macOS Keychain; else `MMFDB_CHEMOTION_TOKEN`; no file fallback), CLI `mmfdb eln login|pull|deposit`. Tests replay recorded-shape responses (`tests/test_eln_chemotion.py`, `tests/fixtures/chemotion/`). The package lives in mmfdb, not under `chisurf/core/mmfdb/eln/` as drafted below.
+Not built: the second backend, `ElnGateway` as a Protocol, user match, `sync.push` for operations (only whole-container deposit), id write-back into `metadata_json.eln`, `reconcile`, DOI minting, the event subscriber, opt-in live smoke. The fixtures follow the documented API shapes and were not captured from a live server.
 
 # Goal / Motivation
 ChiSurf's **MMFDB** (`chisurf/core/mmfdb/`) is the prototype implementation for a planned **public fluorescence databank for chemical biology** under a national research-data initiative (grant in preparation). For that vision the databank must interoperate with the community's electronic lab notebooks, not live as an island.
