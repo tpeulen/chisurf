@@ -10,17 +10,17 @@ timestamp: '2026-07-29T00:00:00Z'
 
 # Where to pick this up
 
-1. Native caller retirement and detector persistence are complete. Re-derive
+1. Measure: Native caller retirement and detector persistence are complete. Re-derive
    acceptance with the targeted files/receipts in
    [W1 G-factor evidence](../validation/release-readiness-w1/gfactor-retirement/acceptance.json).
    The native guide is [here](../../docs/guides/91_vv_vh_g_factor.md).
-2. Scientific review remains open for the historical RF-173 estimator/spread
+2. Open: Scientific review remains open for the historical RF-173 estimator/spread
    and RF-919 background-default measurements below. The implemented G is
    the mean of valid per-bin ratios and G SD is their population spread.
    The 5–15% default is not a measured pre-pulse calibration; choose bounds
    from real data. Root fixes for these scientific questions require owning
    numerical regressions, and are not implied by UI retirement.
-3. The July Qt observations below are historical. Native main/batch controls
+3. Open: The July Qt observations below are historical. Native main/batch controls
    now include real help/guide, export/archive, Folder/Database/Remove and
    separate backgrounds. Reproduce remaining claims against the native model
    and real files before closing their known-issue entries. No fixture ratio

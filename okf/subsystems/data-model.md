@@ -5,6 +5,7 @@ description: How ChiSurf represents experimental datasets — the Base/Curve/Dat
 resource: chisurf/core/data.py
 tags: [core, data-model, datasets, curves, experiments]
 timestamp: '2026-07-05T00:00:00Z'
+convention-exempt: true
 ---
 
 # Object hierarchy

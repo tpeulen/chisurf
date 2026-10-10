@@ -10,25 +10,25 @@ timestamp: '2026-09-17T00:00:00Z'
 
 PAM (Schrimpf et al. 2018) is used as the reference implementation for ChiSurf's
 Fluorescence Correlation Spectroscopy (FCS) fit models and its filtered-FCS
-(FLCS) lifetime-filter maths. Ports are **A/B-verified**: each PAM model's MATLAB
+(FLCS) lifetime-filter maths. Ports are **A/B-verified**: each PAM model's numerical-environment
 `fit` lambda (`Models/fcs/*.m`, gitlab.com/PAM-PIE/PAM at `7319d15d`) is transcribed verbatim as the reference
 and asserted equal, over random parameters, to the ChiSurf implementation.
 
 ## Where to pick this up
 
-1. **FLCS `empty_bins` default.** Both PAM filter routines are pinned by
+1. Open: **FLCS `empty_bins` default.** Both PAM filter routines are pinned by
    `test/fitting/test_fcs_filters.py` against `test/data/flcs/`. Open: whether the
    default becomes `"exclude"` and whether the Filter Calculator exposes it (see
    "What is missing"). Measure on a PIE-gated real file before deciding; the
    synthetic fixture exaggerates (it zeroes bins by hand).
-2. **Order-dependent Filter Calculator widget tests.** `test_widgets.py` passes
+2. Open: **Order-dependent Filter Calculator widget tests.** `test_widgets.py` passes
    on its own but 9 of its tests fail when any `test/` file runs first in the same
    session (e.g. `pytest test/fitting/test_flcs_correlation.py
    chisurf/plugins/fcs/fcs_filter_calculator/test/test_widgets.py`):
    `detector_selection.get_selected()` comes back empty, so `test/conftest.py`
    evidently changes the detector/settings state the widget reads. Pre-existing
    (same result with the pre-change `filtered.py`); not fixed.
-3. **N&B cross channel with a moment filter.** PAM smooths √covariance (complex
+3. Open: **N&B cross channel with a moment filter.** PAM smooths √covariance (complex
    where the covariance is negative) and smooths the already-smoothed auto means a
    second time; ChiSurf smooths the covariance and the geometric mean once. Only
    the unfiltered cross channel is pinned (`test/microscopy/test_number_brightness.py`,
@@ -36,6 +36,11 @@ and asserted equal, over random parameters, to the ChiSurf implementation.
    cross numbers bit-for-bit, the recorded `cross_gaussian__*` arrays in
    `test/data/nb/pam_nb_reference.npz` already hold them — add a `pam_cross_filter`
    mode rather than changing the default.
+
+### Resume history (moved out of Where to pick this up)
+
+Moved here unchanged: notes that are history, done work or standing rules rather than the next step.
+
 4. **The PAM checkout is gone.** Everything above runs from recorded fixtures. To
    extend an A/B, `junk/clone.sh` re-clones PAM (upstream
    https://gitlab.com/PAM-PIE/PAM, harvested at `7319d15d`) and every generator
@@ -100,7 +105,7 @@ Deliberate differences / not taken:
   baseline `min(smooth(Decay, 250 ps))`, species `[Decay−baseline, flat]`, filter
   on the PIE `From:To` window only) is not ported as a one-click mode: ChiSurf's
   equivalent is a measured/fitted pattern plus `uniform_pattern` as a nuisance
-  species, and `smooth` is a MATLAB toolbox function with no Octave A/B.
+  species, and `smooth` is a numerical-environment toolbox function with no Octave A/B.
 - PAM's automatic scatter / donor-only columns (BurstBrowser l. 19-29) — see
   "What is missing".
 

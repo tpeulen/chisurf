@@ -213,7 +213,7 @@ git clone --depth 1 https://github.com/mdtraj/mdtraj.git junk/mdtraj   # 0ca6ffc
 ```
 
 **Port from the vendored C, not from the `.pyx`.** `mdtraj/formats/dcd/src/`
-holds VMD's `dcdplugin.c` under the University of Illinois Open Source Licence,
+holds the reference molecular viewer's `dcdplugin.c` under the University of Illinois Open Source Licence,
 and `mdtraj/formats/xtc/src/` holds GROMACS' `xdrfile` under BSD-2-clause —
 both permissive, both compatible with ChiSurf's GPL-2.0, both requiring only
 that the copyright notice travels with the code. The `.pyx` wrappers around
@@ -224,7 +224,7 @@ reference implementation underneath is permissive.
 # Landed: the DCD codec
 
 `chisurf/core/fio/trajectory/dcd.py` — `read_dcd`, `write_dcd`, `dcd_info`.
-Ported from VMD's `dcdplugin.c` (UIUC licence, permissive) rather than from
+Ported from the reference molecular viewer's `dcdplugin.c` (UIUC licence, permissive) rather than from
 mdtraj's LGPL `.pyx` wrapper, to NumPy rather than a compiled extension: a
 frame is three contiguous `float32` blocks, so reading one is a
 `np.frombuffer` and no C is needed to be fast.

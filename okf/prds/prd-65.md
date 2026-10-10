@@ -72,7 +72,7 @@ matters as much as the fit: a method sold on measuring joint motion must be
 shown *not* inventing correlation when there is none.
 
 **A/B-verified against the incumbent (2026-07-25):**
-`test/models/test_pda3c_pam_ab.py` transcribes the incumbent's MATLAB
+`test/models/test_pda3c_pam_ab.py` transcribes the incumbent's numerical-environment
 expressions verbatim and asserts equality over randomised distances and
 correction sets — the precedent set by
 [fcs-pam-port](/references/fcs-pam-port.md) and `test_fcs_pam_ab.py`.
@@ -108,9 +108,9 @@ term for term.
   *likelihoods* agree; this only concerns what the burst-size distribution
   means, and each is self-consistent.
 
-**The reference's own C kernel, executed (2026-07-25).** The surrounding MATLAB
+**The reference's own C kernel, executed (2026-07-25).** The surrounding numerical-environment
 is inline in a GUI reading a global struct and has no callable entry point, and
-the shipped MEX binaries are x86_64 MATLAB-ABI objects — but the kernel itself is
+the shipped MEX binaries are x86_64 numerical-environment-ABI objects — but the kernel itself is
 a self-contained MEX function with a plain numeric signature, so Octave's
 `mkoctfile` compiles it from source on arm64 and it can be driven directly.
 `test/models/test_pda3c_octave_ab.py` does exactly that and finds ChiSurf's

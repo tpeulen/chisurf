@@ -57,16 +57,23 @@ leaving `ModelCurve`'s zeroed placeholder to pass as "buildable".
 
 # Where to pick this up
 
+4. Open: The MFD statistic decision, before any MFD port — still open, and unrelated
+   to the curve-honesty fix above: the loud no-op tells you the model wasn't
+   fitted, not what the right objective is once it is.
+
+## Resume history (moved out of Where to pick this up)
+
+Moved here unchanged: notes that are history, done work or standing rules rather than the next step.
+
 1. ~~The ICS `_member_objective` generalisation~~ — done 2026-09-02 (see the
    ICS row). The door it opened: any model can now declare its own evaluation
    axes via `graph_axes()`, which is what the FCS composition layer (step 2
    of the FCS row) and future multi-axis parse models build on.
+
 2. ~~The census's non-degenerate-curve column~~ — done 2026-09-02 (PRD-121,
    see "What the census fixture hid" above).
+
 3. ~~`FidaModel`'s axis refusal; the `pch_mixture` upstream filing~~ — done
    2026-09-02 (PRD-121). `pch_mixture` turned out to be fixed upstream already
    (tttrlib, 2026-08-10) by the time this was picked up; only the wrapper's
    stale docstring and this repo's `known-issues.md` needed updating.
-4. The MFD statistic decision, before any MFD port — still open, and unrelated
-   to the curve-honesty fix above: the loud no-op tells you the model wasn't
-   fitted, not what the right objective is once it is.

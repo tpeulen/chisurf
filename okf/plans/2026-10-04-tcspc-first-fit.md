@@ -9,17 +9,17 @@ timestamp: '2026-10-07T00:00:00Z'
 
 # Where to pick this up
 
-1. Finish repeated successful-action `Main.onAddFit` before/after pairs using
+1. Open: Finish repeated successful-action `Main.onAddFit` before/after pairs using
    the [validation record](../validation/tcspc-first-fit.md). An isolated fit
    window's timings do not measure the Add-button action. Earlier Main pairs
    whose history checkpoint failed remain rejected, even if the window and
    4096 channels looked correct.
-2. Re-materialize the paired probes and immutable original sources from
+2. Open: Re-materialize the paired probes and immutable original sources from
    [the evidence JSON](../validation/tcspc-first-fit.json); private cache paths
    in the original session are not reproducible artifacts. Keep domain/history
    hashes fixed across pairs and assert the completed action/checkpoint,
    errors/status, native model and scientific output before collecting timing.
-3. Preserve scientific history, all samples and the complete metadata/code-view
+3. Open: Preserve scientific history, all samples and the complete metadata/code-view
    surface. Optional further coverage is vertical/diagonal/fractional/transformed
    Qt stroke thickness; joins are not claimed pixel-identical. Use the current
    [targeted testing workflow](../workflows/testing.md), without repeating old

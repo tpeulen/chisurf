@@ -130,7 +130,7 @@ rates.
 ## Mapping to ChiSurf
 
 The `chisurf/plugins/burst/burst_ebfret/` plugin is a plain port of the ebFRET
-GUI and its MATLAB analysis (single-prior, `D = 1`, as the GUI runs it):
+GUI and its numerical-environment analysis (single-prior, `D = 1`, as the GUI runs it):
 
 - **Per-trace VBEM with restarts.** `core/hmm.py` — `e_step`, `forwback`,
   `m_step`, `kl_div`, `vbayes` in ebFRET's Normal-Wishart names
@@ -149,7 +149,7 @@ GUI and its MATLAB analysis (single-prior, `D = 1`, as the GUI runs it):
 - **Interfaces.** The ebFRET window (`gui/`), `burst_ebfret.session.*` RPC
   methods, `ebfret compute` CLI; formats in `io.py`.
 
-Validated against ebFRET under Octave and MATLAB — see
+Validated against ebFRET under Octave and the numerical computing environment — see
 [burst-ebfret](../plugins/burst-ebfret.md). The prior-mixture (subpopulation)
 model of the ebFRET paper is not reachable from the ebFRET GUI and not ported.
 

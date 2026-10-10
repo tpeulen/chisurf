@@ -98,18 +98,18 @@ from `_item_enumeration`. The 6 core tables (`mmfdb_object`, `mmfdb_artifact`,
 are still DDL-authored in `_CANONICAL_TABLE_DEFS` (Python dataclasses), not
 dictionary-generated:
 
-1. **Extend the generator for UNIQUE and AUTOINCREMENT.** The dictionary
+1. Open: **Extend the generator for UNIQUE and AUTOINCREMENT.** The dictionary
    generator (`schema_from_dictionary.py`) currently emits columns, PKs, FKs,
    defaults, and CHECKs — but not `UNIQUE` or `INTEGER PRIMARY KEY
    AUTOINCREMENT`. Add `_mmfdb_schema.unique` and a PK-type hint so the
    generated DDL matches `_CANONICAL_TABLE_DEFS` exactly.
-2. **Swap the 6 tables to `_get_dict_ddl`.** Once the generator matches, replace
+2. Open: **Swap the 6 tables to `_get_dict_ddl`.** Once the generator matches, replace
    the `_CANONICAL_TABLE_DEFS` entries with `_get_dict_ddl("<table>")` calls in
    `CREATE_TABLES_SQL`, and delete the now-unused `_CANONICAL_TABLE_DEFS` /
    `_build_canonical_ddl` / `_build_permissive_ddl` machinery.
-3. **Assert the gate.** Add a test that a freshly reconciled DB matches the
+3. Open: **Assert the gate.** Add a test that a freshly reconciled DB matches the
    dictionary exactly (tables/columns/indexes/vocab) — `validate_mapping` is
    the seed.
-4. **Reduce the version chain.** Replace the `SCHEMA_VERSION`/`MIGRATIONS`
+4. Open: **Reduce the version chain.** Replace the `SCHEMA_VERSION`/`MIGRATIONS`
    waterfall with a single `reconcile_schema(conn, dictionary)` on open,
    reserving version stamps only for one-off data backfills.

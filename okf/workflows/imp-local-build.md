@@ -9,15 +9,20 @@ timestamp: '2026-08-10T00:00:00Z'
 
 # Where to pick this up
 
-1. The FRET suite is **6 failed / 122 passed** (from 16/112). All six remaining
+1. Measure: The FRET suite is **6 failed / 122 passed** (from 16/112). All six remaining
    failures are `test_examples.py` wanting `/Users/tpeulen/dev/olga`, a sibling
    checkout not on this machine. Nothing IMP-related is outstanding.
+3. Open: The `imp.bff` fix lives on a local branch (`dev`, commit `124f6bc`) and is
+   **not pushed**. It should go upstream — the same break hits anyone building
+   imp.bff with SWIG ≥ 4.3.
+
+## Resume history (moved out of Where to pick this up)
+
+Moved here unchanged: notes that are history, done work or standing rules rather than the next step.
+
 2. `IMP.npctransport` is disabled in this build — IMP's `FindProtobuf` rejects
    the env's protobuf 6.31.1. Nothing in ChiSurf uses it; revisit only if that
    changes.
-3. The `imp.bff` fix lives on a local branch (`dev`, commit `124f6bc`) and is
-   **not pushed**. It should go upstream — the same break hits anyone building
-   imp.bff with SWIG ≥ 4.3.
 
 # Why IMP is built from source at all
 

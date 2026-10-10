@@ -18,9 +18,14 @@ the root-cause defects are fixed, the nested chains are covered, and the
 CLI's vocabulary is checked. Two edge-case cells remain, documented here as
 decisions rather than open work:
 
-1. **`img_tracking`** — no fixture drives it. The writer is reachable in
+1. Open: **`img_tracking`** — no fixture drives it. The writer is reachable in
    production; the gap is test data, not a provenance defect. Adding a fixture
    is the work; the matrix slot exists.
+
+## Resume history (moved out of Where to pick this up)
+
+Moved here unchanged: notes that are history, done work or standing rules rather than the next step.
+
 2. **A standalone `DataCurve` with no parent** — `create_empty` makes a
    container with no primary, and a curve typed in or computed from a model
    genuinely has no measurement behind it. **Decision: a container with no

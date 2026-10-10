@@ -1,3 +1,7 @@
+---
+convention-exempt: true
+---
+
 # References
 
 * [Architecture Doc](architecture-doc.md) - The maintained source-of-truth architecture document.

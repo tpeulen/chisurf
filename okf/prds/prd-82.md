@@ -26,35 +26,6 @@ shrinking list.
 
 **What's genuinely gone, not just relocated:**
 
-- `chisurf.core.datastore.store_from_dataframe` / `dataframe_from_store` —
-  deleted. `as_store`'s fallback for anything that is not a store, mapping or
-  row-sequence is now a `TypeError`, not a pandas conversion.
-- `chisurf.core.fio.pto.Measurement.get_table` — deleted (`get_store` was
-  always the store-native sibling and had every real caller already; the two
-  test call sites moved to it).
-- `chisurf.gui.widgets.chitable.DataFrameSource`, `set_dataframe`,
-  `edit_dataframe`, `show_dataframe` — deleted. `edit_store`/`show_store`
-  (built on `DataStoreSource`) replace the convenience functions;
-  `ChiTableWidget.set_store()`/`.to_store()` replace the frame-shaped methods.
-  `chitable/source.py`'s `kind_from_dtype` and `is_na` are pure numpy now — no
-  pandas fallback for an extension dtype, because nothing produces one any
-  more. The one real external caller, the *legacy, `USE_LEGACY_GUI=False`*
-  `burst_selector.py`, was ported to match (its `current_df` was already a
-  store under a stale name from an earlier migration pass).
-- `chisurf.core.datastore.read_table_frame` → renamed `read_results_table`,
-  returns a store. Six call sites (production and test) ported.
-- `chisurf.core.fluorescence.imaging.pixel_maps.read_imaging_table` — returns
-  a store now (was mid-flight-patched to rebuild a frame inline when
-  `dataframe_from_store` disappeared underneath it; finished properly here).
-- `chisurf.plugins.burst.burst_analysis.api.workflow`'s two notebook-facing
-  properties, `H2mm.scan` and `DetectorIrfBackground.table` — return stores.
-  `plot_model_selection`, the one internal caller of `.scan`, ported off
-  `.sort_values`/bracket indexing onto `numeric_column` + `np.argsort`.
-- `chisurf.core.structure.topology.Topology.to_dataframe` → `to_store`;
-  `EvaluatorResult` aggregator's `to_dataframe` → `to_store`
-  (`chisurf/plugins/modelling/fret/evaluators/base.py`); chitable's
-  `ChiTableModel.to_dataframe` → `to_store`.
-
 **A real, generically-applicable bug found and fixed on the way:**
 `chisurf.core.datastore.store_from_rows` had no boolean branch — `bool` is a
 `int` subclass in Python and the existing int-branch guard excluded it on
@@ -113,36 +84,6 @@ move; see the non-goals below.
 The 3 ports, and why none was mechanical — kept for whoever needs the same
 pattern elsewhere:
 
-1. `burst_fcs_correlator/wizard.py` — a wide pivot (`groupby` on two keys,
-   `set_index`, `reindex`) fed a **`td4` writer that was untested and violated
-   the companion contract**: its row grid was built from the bursts that
-   produced a result, not from the bursts, so a skipped burst shifted every
-   later diffusion time onto the wrong burst. Fixed alongside the port —
-   `_run_burstwise_fcs` already enumerates each measurement's *full* burst list
-   (`ranges`) to assign `Burst Index`, so `len(ranges)` was threaded through as
-   `burst_counts` and the writer now allocates the true one-row-per-burst grid
-   before routing it through `burst_companion.write_companion`. Pinned by
-   `burst_fcs_correlator/test/test_td4_writer.py`; the known-issues entry is
-   marked resolved.
-2. `burst_mle_analysis/wizard.py` — carried its **own third copy** of
-   `read_burst_analysis` (BVA has one, `photons.load_bur_dataframe` is the
-   shared one). Deleted in favour of `read_bur_file` + `deinterleave_bursts` per
-   file (not `photons.load_bur_dataframe` directly — deinterleaving *after*
-   concatenating several files misaligns whenever the combined row count comes
-   out even, since each file's own interleave parity is independent). Verified
-   byte-for-byte against the old pandas path on a real 10-file, 2980-row burst
-   folder (every column, not just the two spot-checked in the PRD body).
-   `self.df_bursts` itself is a store now, not a frame — every `.iloc`/`.loc`/
-   `.groupby`/`.reindex` call site in the file (30 of them) moved onto
-   `chisurf.core.datastore` or plain dict/numpy grouping.
-3. `bid_to_analysis/__init__.py` — read a `.bur` back in order to append to it.
-   `photons.load_bur_dataframe` and `deinterleave_bursts` are still the general
-   answer for a *fresh* read, but the append path merges an *existing on-disk*
-   `.bur` with an in-memory store, which is exactly `read_csv_table` +
-   `concat_stores` + `take_rows` (to drop the new table's leading zero row) —
-   the CSV-reader migration stage 4 deferred, now landed for this one call site.
-   Pinned by `bid_to_analysis/test/test_bur_append.py`.
-
 **ndX takes a store directly** — `DataSource.from_store(store)` is the zero-copy
 path and both hand-off sites in this tree now use it. Do not build a frame to
 open a window.
@@ -150,18 +91,6 @@ open a window.
 **Read this before porting one of them — the failure mode is silence, not an
 exception.** A store has **both** `names` and `columns`, and its `columns` are
 `Column` objects rather than names. So:
-
-* `if x in df.columns` does not raise where you wrote it. It evaluates an array
-  and dies with *"the truth value of an array with more than one element is
-  ambiguous"* two frames away;
-* `getattr(df, "columns", [])` and `getattr(df, "columns", df.keys())` are
-  **worse** — they match nothing, every lookup answers "absent", and the caller
-  reports an empty table with no error at all. Four sites were on this form and
-  would have shown a burst table with no numeric columns;
-* `len(df)` is rows for a frame, columns for a mapping, and may not exist on a
-  store;
-* `Series.unique()`, `.to_numpy()`, `.dropna()`, `.iloc`, `.loc`, `.groupby` and
-  `.reset_index` have no `Column` equivalent.
 
 The answers are all in `chisurf.core.datastore`: `column_names`, `row_count`,
 `numeric_column`, `take_rows`, `take_where`, `take_columns`, `concat_stores`,
@@ -205,18 +134,7 @@ either), so nothing has to change for it.
 The library gaps that blocked stage 2 are closed, and one was closed the wrong
 way first and reverted — read that before proposing it again:
 
-1. **T1 (a text column materialised in HDF5) is fixed at the library source.**
-   The dataset is the `int32` codes, the labels are a `dictionary` attribute on
-   it. On the 1M-row burst table: **96.0 → 60.0 MB against the frame's 72.6 MB**,
-   write 0.185 → 0.037 s, read 0.191 → 0.011 s. Acceptance criterion 4 is met —
-   the file is *smaller*, not merely faster.
-2. **T13 (one table per file) is fixed**: a store is a tree of named child
-   groups and the file is its serialisation, so the imaging format's `results`
-   plus `meta` back-reference is one write.
-3. **T2 (`write_csv`) has landed** and is in use. Measured 5.0× on 5k rows and
-   7.2× on 200k *including* the frame→store conversion, at byte-identical file
-   size.
-4. **T3 was attempted in the library and REVERTED, deliberately.** A reader for
+4. Tried and reverted: **T3 was attempted in the library and REVERTED, deliberately.** A reader for
    the frame-written layout was written there — both variants, including a
    protocol-0 pickle scan for the column names the compound dataset does not
    carry — and it is the wrong place: a library that reads photon data has no
@@ -246,15 +164,6 @@ deleted.
 Two things the migration turned up in the burst tables themselves, both
 invisible while the frame writer was in the way:
 
-* **A burst table ends in an unnamed column** — the trailing separator of the
-  `.bur` format read as a field. HDF5 cannot name a dataset that. Nothing could
-  address the column anyway, and the frame writer stored it unreadably rather
-  than saying so. Dropped in `write_burst_hdf5`.
-* **`category_map` was write-only.** All three burst writers encoded text
-  columns as `int32` codes and put the labels in a JSON attribute that *nothing
-  in this tree ever read*, so ndX showed `Source File` and `First File` as
-  integers. A dictionary column carries its labels, so they are file names now.
-
 **Removing pandas from the code is now an explicit goal, and it is tracked.**
 `test/pandas_import_allowlist.txt` is a shrinking list of the non-test files that
 still import it — **47 when the tracker was written, 11 now** —
@@ -283,6 +192,116 @@ worth having whether or not the package is installed.
 `store_from_rows` was added for the shape that makes a frame appear in the first
 place — a sequence of row mappings, as an API returns. First-seen column order,
 and a key some rows lack is masked rather than filled.
+
+## Resume history (moved out of Where to pick this up)
+
+Moved here unchanged: notes that are history, done work or standing rules rather than the next step.
+
+- `chisurf.core.datastore.store_from_dataframe` / `dataframe_from_store` —
+  deleted. `as_store`'s fallback for anything that is not a store, mapping or
+  row-sequence is now a `TypeError`, not a pandas conversion.
+
+- `chisurf.core.fio.pto.Measurement.get_table` — deleted (`get_store` was
+  always the store-native sibling and had every real caller already; the two
+  test call sites moved to it).
+
+- `chisurf.gui.widgets.chitable.DataFrameSource`, `set_dataframe`,
+  `edit_dataframe`, `show_dataframe` — deleted. `edit_store`/`show_store`
+  (built on `DataStoreSource`) replace the convenience functions;
+  `ChiTableWidget.set_store()`/`.to_store()` replace the frame-shaped methods.
+  `chitable/source.py`'s `kind_from_dtype` and `is_na` are pure numpy now — no
+  pandas fallback for an extension dtype, because nothing produces one any
+  more. The one real external caller, the *legacy, `USE_LEGACY_GUI=False`*
+  `burst_selector.py`, was ported to match (its `current_df` was already a
+  store under a stale name from an earlier migration pass).
+
+- `chisurf.core.datastore.read_table_frame` → renamed `read_results_table`,
+  returns a store. Six call sites (production and test) ported.
+
+- `chisurf.core.fluorescence.imaging.pixel_maps.read_imaging_table` — returns
+  a store now (was mid-flight-patched to rebuild a frame inline when
+  `dataframe_from_store` disappeared underneath it; finished properly here).
+
+- `chisurf.plugins.burst.burst_analysis.api.workflow`'s two notebook-facing
+  properties, `H2mm.scan` and `DetectorIrfBackground.table` — return stores.
+  `plot_model_selection`, the one internal caller of `.scan`, ported off
+  `.sort_values`/bracket indexing onto `numeric_column` + `np.argsort`.
+
+- `chisurf.core.structure.topology.Topology.to_dataframe` → `to_store`;
+  `EvaluatorResult` aggregator's `to_dataframe` → `to_store`
+  (`chisurf/plugins/modelling/fret/evaluators/base.py`); chitable's
+  `ChiTableModel.to_dataframe` → `to_store`.
+
+1. `burst_fcs_correlator/wizard.py` — a wide pivot (`groupby` on two keys,
+   `set_index`, `reindex`) fed a **`td4` writer that was untested and violated
+   the companion contract**: its row grid was built from the bursts that
+   produced a result, not from the bursts, so a skipped burst shifted every
+   later diffusion time onto the wrong burst. Fixed alongside the port —
+   `_run_burstwise_fcs` already enumerates each measurement's *full* burst list
+   (`ranges`) to assign `Burst Index`, so `len(ranges)` was threaded through as
+   `burst_counts` and the writer now allocates the true one-row-per-burst grid
+   before routing it through `burst_companion.write_companion`. Pinned by
+   `burst_fcs_correlator/test/test_td4_writer.py`; the known-issues entry is
+   marked resolved.
+
+2. `burst_mle_analysis/wizard.py` — carried its **own third copy** of
+   `read_burst_analysis` (BVA has one, `photons.load_bur_dataframe` is the
+   shared one). Deleted in favour of `read_bur_file` + `deinterleave_bursts` per
+   file (not `photons.load_bur_dataframe` directly — deinterleaving *after*
+   concatenating several files misaligns whenever the combined row count comes
+   out even, since each file's own interleave parity is independent). Verified
+   byte-for-byte against the old pandas path on a real 10-file, 2980-row burst
+   folder (every column, not just the two spot-checked in the PRD body).
+   `self.df_bursts` itself is a store now, not a frame — every `.iloc`/`.loc`/
+   `.groupby`/`.reindex` call site in the file (30 of them) moved onto
+   `chisurf.core.datastore` or plain dict/numpy grouping.
+
+3. `bid_to_analysis/__init__.py` — read a `.bur` back in order to append to it.
+   `photons.load_bur_dataframe` and `deinterleave_bursts` are still the general
+   answer for a *fresh* read, but the append path merges an *existing on-disk*
+   `.bur` with an in-memory store, which is exactly `read_csv_table` +
+   `concat_stores` + `take_rows` (to drop the new table's leading zero row) —
+   the CSV-reader migration stage 4 deferred, now landed for this one call site.
+   Pinned by `bid_to_analysis/test/test_bur_append.py`.
+
+* `if x in df.columns` does not raise where you wrote it. It evaluates an array
+  and dies with *"the truth value of an array with more than one element is
+  ambiguous"* two frames away;
+
+* `getattr(df, "columns", [])` and `getattr(df, "columns", df.keys())` are
+  **worse** — they match nothing, every lookup answers "absent", and the caller
+  reports an empty table with no error at all. Four sites were on this form and
+  would have shown a burst table with no numeric columns;
+
+* `len(df)` is rows for a frame, columns for a mapping, and may not exist on a
+  store;
+
+* `Series.unique()`, `.to_numpy()`, `.dropna()`, `.iloc`, `.loc`, `.groupby` and
+  `.reset_index` have no `Column` equivalent.
+
+1. **T1 (a text column materialised in HDF5) is fixed at the library source.**
+   The dataset is the `int32` codes, the labels are a `dictionary` attribute on
+   it. On the 1M-row burst table: **96.0 → 60.0 MB against the frame's 72.6 MB**,
+   write 0.185 → 0.037 s, read 0.191 → 0.011 s. Acceptance criterion 4 is met —
+   the file is *smaller*, not merely faster.
+
+2. **T13 (one table per file) is fixed**: a store is a tree of named child
+   groups and the file is its serialisation, so the imaging format's `results`
+   plus `meta` back-reference is one write.
+
+3. **T2 (`write_csv`) has landed** and is in use. Measured 5.0× on 5k rows and
+   7.2× on 200k *including* the frame→store conversion, at byte-identical file
+   size.
+
+* **A burst table ends in an unnamed column** — the trailing separator of the
+  `.bur` format read as a field. HDF5 cannot name a dataset that. Nothing could
+  address the column anyway, and the frame writer stored it unreadably rather
+  than saying so. Dropped in `write_burst_hdf5`.
+
+* **`category_map` was write-only.** All three burst writers encoded text
+  columns as `int32` codes and put the labels in a JSON attribute that *nothing
+  in this tree ever read*, so ndX showed `Source File` and `First File` as
+  integers. A dictionary column carries its labels, so they are file names now.
 
 # Summary
 

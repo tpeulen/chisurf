@@ -17,10 +17,10 @@ Draft / unassigned (STATUS TABLE authoritative). Roadmap only; authorizes the su
 
 # Context & goal
 
-The incumbent is a mature MATLAB-based integrated suite for quantitative
+The incumbent is a mature numerical-environment-based integrated suite for quantitative
 fluorescence microscopy and spectroscopy — FCS/FCCS/pCF, smFRET/MFD, phasor-FLIM,
 and image-correlation (ICS/RICS/tICS/N&B). It is a large codebase (~730 files
-across ~13 GUI apps), maintained for recent MATLAB releases, and available as a
+across ~13 GUI apps), maintained for recent numerical-environment releases, and available as a
 local read-only checkout under `thirdparty/`.
 
 **Goal.** Reach *feature parity* with the incumbent across every analysis modality,
@@ -50,7 +50,7 @@ a hard requirement inherited by all sub-PRDs.
   one-off widget.
 - Follows **PRD-38** (model/view-spec split) and **PRD-40** (declarative editors);
   verified headlessly via the `test-model-editor` skill.
-- We do **not** port the incumbent's MATLAB GUIs to Qt — we re-express each
+- We do **not** port the incumbent's numerical-environment GUIs to Qt — we re-express each
   capability as a data-driven view spec over a reusable compute core
   (tttrlib / chinet / chisurf.core).
 
@@ -174,7 +174,7 @@ These are net differentiators to *keep and lean into*, not gaps:
   vs. the incumbent's fixed thresholds.
 - **Model-free lifetime:** MaxEnt (`maxent_decay`) and LLTF (`lltf`).
 - **Deployment:** headless/CLI/server modes via `ChiSurfAPI` (local/hybrid/server),
-  ZMQ/JSON-RPC server, plugin architecture, open-source Python — vs. MATLAB license +
+  ZMQ/JSON-RPC server, plugin architecture, open-source Python — vs. numerical-environment license +
   GUI-only.
 
 Design principle for parity work: **reach parity through the data-driven
@@ -250,7 +250,7 @@ implementer builds on.
 
 # Non-goals
 
-- Not reimplementing the incumbent's MATLAB UI or shipping a compiled MATLAB-free clone.
+- Not reimplementing the incumbent's numerical-environment UI or shipping a compiled environment-free clone.
 - Not a single monolithic data-browser "hub" window — ChiSurf stays plugin/AutoForm-driven.
 - No new bespoke Qt widgets for analysis UIs (see the AutoForm mandate above).
 - This PRD implements nothing; it authorizes PRD-50…54 and the rolling backlog.

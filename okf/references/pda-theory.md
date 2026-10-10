@@ -26,7 +26,7 @@ For a fixed true efficiency $E$ the acceptor count follows a **binomial** law
 
 $$P(F_A \mid N, E) = \binom{N}{F_A} E^{F_A} (1-E)^{N-F_A},$$
 
-whose spread $\sqrt{E(1-E)/N}$ is the entire origin of the smFRET histogram
+whose spread $\sqrt{E(1-E)/N}$ is the entire source of the smFRET histogram
 width for a static, homogeneous population. Because that width is *computed, not
 fitted*, PDA can separate stochastic (shot-noise) broadening from genuine
 structural heterogeneity — this is the point of Antonik et al. 2006.

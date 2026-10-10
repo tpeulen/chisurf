@@ -8,6 +8,7 @@ phase: "3-D half landed; 2-D seam is PRD-64"
 resource: test/pyqtgraph_import_allowlist.txt
 tags: [prd, gui, plotting, opengl, dependencies, chimol, chiplot]
 timestamp: '2026-08-06T00:00:00Z'
+convention-exempt: true
 ---
 
 # Where to pick this up
@@ -18,19 +19,19 @@ in the plugin was a 13-line module (`renderer/backend.py`) that computed a
 `_HAVE_GL` flag **nothing imported**, and the shims it left behind are gone with
 it. What remains, in order of how much it blocks the end state:
 
-1. **The 2-D seam — PRD-64**, 14 files still importing pyqtgraph and 12
+1. Open: **The 2-D seam — PRD-64**, 14 files still importing pyqtgraph and 12
    `.native` escapes. That is the bulk and it has its own concept; do not
    duplicate the plan here.
-2. **`pyqtgraph.opengl`, still used twice.** chiplot's own backend builds its
+2. Open: **`pyqtgraph.opengl`, still used twice.** chiplot's own backend builds its
    3-D volume view on it (`backends/pyqtgraph_backend.py`), and the exploration
    tool's UMAP plot does the same. Both are *3-D* views behind a 2-D-shaped
    facade, so PRD-64's "swap the backend" plan does not describe them: chiplot
    needs a 3-D surface of its own, or those two views need to render the way
    ChiMOL now does.
-3. **`pyqtgraph.parametertree`**, in the exploration tool's parameter editor.
+3. Open: **`pyqtgraph.parametertree`**, in the exploration tool's parameter editor.
    Not plotting at all — a property-sheet widget, and the closest thing in the
    tree is AutoForm, which is what a replacement should be measured against.
-4. **`pyqtgraph.dockarea`**, already guarded separately by the seam test, and
+4. Open: **`pyqtgraph.dockarea`**, already guarded separately by the seam test, and
    duplicated in the tree's own dock area.
 
 Only when all four are true does the dependency come out of `pixi.toml`

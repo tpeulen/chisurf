@@ -9,12 +9,7 @@ timestamp: '2026-07-06T00:00:00Z'
 
 # Where to pick this up
 
-1. The old root `HANDOVER.md` is historical, not an active extraction plan.
-   Current code keeps backend/CLI in `modules/mmfdb/src/mmfdb/admin/` and the
-   host-coupled GUI in `chisurf/plugins/core/mmfdb_admin/gui/`; do not recreate
-   the abandoned `modules/mmfdb-admin/src` import/wrapper path. Use the package
-   boundary described below and its own targeted tests.
-2. Reconcile the old INC-04 follow-up against
+2. Open: Reconcile the old INC-04 follow-up against
    [the current API](../../modules/mmfdb/src/mmfdb/api.py): setup updates call
    `_require_existing_write`, semantic parameters check their owning operation,
    and branch-head writes require `PERM_WRITE`. The old blanket claim that these
@@ -23,7 +18,7 @@ timestamp: '2026-07-06T00:00:00Z'
    than direct API calls alone; begin with
    [API auth tests](../../modules/mmfdb/tests/test_api_auth.py) and extend only
    uncovered methods, without adopting a live user's database or daemon.
-3. Lower-priority schema cleanup still has a concrete entry point:
+3. Open: Lower-priority schema cleanup still has a concrete entry point:
    [schema.py](../../modules/mmfdb/src/mmfdb/schema/schema.py) defines historical
    `CREATE_TABLES_SQL` text, replaces canonical entries via `_build_permissive_ddl`,
    then derives `FRESH_DB_TABLES_SQL`. Remove duplication only after proving the
@@ -31,6 +26,16 @@ timestamp: '2026-07-06T00:00:00Z'
    that callers still consume. Removing `security/base.py` was deliberately
    deferred because its client-base type hints require a consumer migration;
    re-count those consumers before attempting that change.
+
+## Resume history (moved out of Where to pick this up)
+
+Moved here unchanged: notes that are history, done work or standing rules rather than the next step.
+
+1. The old root `HANDOVER.md` is historical, not an active extraction plan.
+   Current code keeps backend/CLI in `modules/mmfdb/src/mmfdb/admin/` and the
+   host-coupled GUI in `chisurf/plugins/core/mmfdb_admin/gui/`; do not recreate
+   the abandoned `modules/mmfdb-admin/src` import/wrapper path. Use the package
+   boundary described below and its own targeted tests.
 
 # Purpose
 

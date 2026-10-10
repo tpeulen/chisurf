@@ -66,6 +66,25 @@ Hub scopes that decide where a new tool goes:
 
 ## Where to pick this up
 
+5. Open: **Panel captions are clipped** at the ribbon's default height in offscreen grabs
+   (descenders). This predates the regroup.
+
+Done 2026-10-05, third pass: the TTTR script tools are retired after their gaps were
+closed in the hosted tools. Histogram-Microtime has the inter-photon filter
+(`gap_selection`) and the FCS correlator has a Method choice. Guide 73 now
+describes those two tools.
+
+Done 2026-10-05, second pass: TTTR Tools runs on `chisurf/emtk/tool_hub.py`. Groups
+follow `GROUP_ORDER`. Ribbon icons were letter placeholders for every plugin whose
+emoji lives only in its manifest, because the plugin-tab builder and the toolbar
+did not pass the manifest to `create_plugin_icon_with_fallback`. That function now
+reads `package_dir/manifest.json` itself (guard:
+`test/plugins/test_plugin_icon_manifest.py`).
+
+### Resume history (moved out of Where to pick this up)
+
+Moved here unchanged: notes that are history, done work or standing rules rather than the next step.
+
 1. **Native Burst Analysis: done 2026-10-06 (T-20261005-BURSTEMTK).** The ribbon's
    Burst Analysis opens `burst_analysis/gui/native.py` on `chisurf/emtk/tool_hub.py`
    (`entrypoints.emtk`): the legacy steps in order, each the native app of its plugin
@@ -80,6 +99,7 @@ Hub scopes that decide where a new tool goes:
    around in `AlexHubApp` only, see known-issues) and the Qt shells
    are still on disk; the ordered list is in
    [burst-survey.md](../plugins/emtk-ports/burst-survey.md).
+
 2. **Ribbon buttons that still open Qt:** none. MMFDB Admin is native
    since 2026-10-06 (T-20261005-MMFDBEMTK, `entrypoints.emtk`; parity in
    `okf/plugins/emtk-ports/mmfdb_admin/REPORT.md`). (Intensity
@@ -88,20 +108,6 @@ Hub scopes that decide where a new tool goes:
 
 4. **CLI-only tools have no GUI home:** `fcs_convert`, `proteinmc`. That is correct
    until they gain an app; `test_hub_membership` will then ask for a hub.
-5. **Panel captions are clipped** at the ribbon's default height in offscreen grabs
-   (descenders). This predates the regroup.
-
-Done 2026-10-05, third pass: the TTTR script tools are retired after their gaps were
-closed in the hosted tools. Histogram-Microtime has the inter-photon filter
-(`gap_selection`) and the FCS correlator has a Method choice. Guide 73 now
-describes those two tools.
-
-Done 2026-10-05, second pass: TTTR Tools runs on `chisurf/emtk/tool_hub.py`. Groups
-follow `GROUP_ORDER`. Ribbon icons were letter placeholders for every plugin whose
-emoji lives only in its manifest, because the plugin-tab builder and the toolbar
-did not pass the manifest to `create_plugin_icon_with_fallback`. That function now
-reads `package_dir/manifest.json` itself (guard:
-`test/plugins/test_plugin_icon_manifest.py`).
 
 # Traps
 

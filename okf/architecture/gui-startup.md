@@ -9,21 +9,26 @@ timestamp: '2026-10-05T00:00:00Z'
 
 # Where to pick this up
 
-1. **Embedded server ctor is ~2.2 s** (was 4.3 s on 2026-10-05). Measure with
+1. Measure: **Embedded server ctor is ~2.2 s** (was 4.3 s on 2026-10-05). Measure with
    `python -X importtime -c "from chisurf.server.app import ChiSurfServer; ChiSurfServer(cmd_port=0, pub_port=0)"`
    and walk each heavy leaf (`scipy.*`, `matplotlib`, `fastapi`, `IMP.bff`, `mmfdb.models`)
    up to its nearest `chisurf.plugins.*.backend.services` ancestor -- that ancestor is
    what the registration loop imported. Trap: `ServiceDispatcher` is created and
    torn down in-process, so time the ctor, not `python -m chisurf` wall time
    (that is noise-dominated on a loaded machine, ±1 s).
-2. Left on that path: `IMP.bff` via `core.fitting` (0.3 s; pinned eager by
+2. Open: Left on that path: `IMP.bff` via `core.fitting` (0.3 s; pinned eager by
    `test_bff_is_the_backend`, see `core/fitting/__init__.py`), ebfret `dist`
    (scipy.special, 0.06 s -- goes away with the bff numerics), `mmfdb.models` (0.15 s).
-3. Every RPC method has exactly one owner. The dispatcher's registration
+3. Measure: Every RPC method has exactly one owner. The dispatcher's registration
    transaction raises on a second registration; a startup log line
    `Failed to register services for plugin` means a manifest `services` entry
    duplicates the central config (`server_methods.json`, the mmfdb startup
    service). Drop the manifest entry, keep the central owner.
+
+## Resume history (moved out of Where to pick this up)
+
+Moved here unchanged: notes that are history, done work or standing rules rather than the next step.
+
 4. **Post-show services only see declared dependencies.** The `post_gui_show`
    runner builds `context.dependencies` from `depends_on`; the window comes via
    `context.main_window` (`_get_window`). Model classes are resolved post-show,

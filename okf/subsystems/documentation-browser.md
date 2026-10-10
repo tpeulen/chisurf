@@ -22,7 +22,7 @@ opened* window: open the browser **wide, then narrow it** and read
 the same claim as a page that still fits after a resize, and it was the second
 one that was broken for every window size but the one the page loaded at.
 
-* `pytest chisurf/plugins/core/help/test` — 793 tests. Five are the real
+* Measure: `pytest chisurf/plugins/core/help/test` — 793 tests. Five are the real
   guardrails, all in `test_render.py`: **every formula in `docs/` typesets**;
   **no page in the tree leaks its markup** — no fence, no `$$` and no surviving
   role, checked over *every* `.md` and `.rst` through the same chain the browser
@@ -33,10 +33,10 @@ one that was broken for every window size but the one the page loaded at.
   file at the wrong line); and **no reference is written out by hand** — neither
   as a bare DOI link nor as "Author, A. (1999). Title. *Journal*…", both of
   which drift away from the entry they duplicate.
-* `pytest chisurf/plugins/core/help/test/test_docs_crosslinks.py` — 188 tests:
+* Measure: `pytest chisurf/plugins/core/help/test/test_docs_crosslinks.py` — 188 tests:
   every concept points at a guide, every guide at a concept, and every
   `{doc}`/`{ref}`/`[…](….md)` resolves to a page that is there.
-* `python -m sphinx -b html -q docs <out>` must be **warning-free**. The tree
+* Measure: `python -m sphinx -b html -q docs <out>` must be **warning-free**. The tree
   and the website are built from the same toctrees, so a warning there is a
   wrong tree here.
 
@@ -53,16 +53,6 @@ injected one would be overwritten on the next regeneration.
 
 Two things this cost, and both are the kind that would have been found much
 later:
-
-* The **review banner extension prepended its text to the source**, which hid
-  the front matter from MyST — every stamped page's `<title>` became its own
-  flattened metadata. It also stamped Markdown pages with a *reStructuredText*
-  directive, so `.. warning::` had been reaching the reader as literal text on
-  every unreviewed Markdown page. Both fixed in `docs/_ext/review_banner.py`;
-  guarded in `test/test_docs_okf.py`.
-* The generated plugin pages **linked to a `manifest.json` that is not there**
-  for the 13 plugins that declare themselves in code — thirteen build warnings
-  and thirteen dead links. The Sphinx build is warning-free again.
 
 The guardrail is `test/test_docs_okf.py` (a header on every page, a non-empty
 `type`, a description substantial enough to rank on, a title that agrees with
@@ -90,7 +80,7 @@ because a click lands *between* two characters.
 
 **What is open.**
 
-0. **The packaged copy is proven by a wheel, and only by a wheel.** `pip wheel .
+0. Measure: **The packaged copy is proven by a wheel, and only by a wheel.** `pip wheel .
    --no-deps --no-build-isolation` then unzip it somewhere and put *that* on
    `PYTHONPATH` with the checkout out of the way — the checkout's `docs/` is
    found by the fallback, so a test run from the repository cannot tell the two
@@ -99,7 +89,7 @@ because a click lands *between* two characters.
    package built by `build_tools/build_installer.py`, which assembles a runtime
    on top of `pip install .`; the recipe needs no change, but nobody has opened
    Help in an installed build.
-1. **The manual is AI-reviewed and awaits a human** — `csc help review-list`
+1. Blocked: **The manual is AI-reviewed and awaits a human** — `csc help review-list`
    reports `0 reviewed, 94 AI-reviewed, 0 stale, 231 unreviewed` over the whole
    tree; the manual's own 79 are all AI-reviewed. All 79 pages
    have been read end to end and corrected against the source code; what remains
@@ -112,7 +102,7 @@ because a click lands *between* two characters.
    `fluorescence_lifetime`, `discrete_fret_rate_constants`, `parameter_sampling`,
    `parameter_optimization`, `adding_the_membranediffusion_models`,
    `introduction`, `fit_models`.
-2. **The rest of the documentation has not had its first pass.** Review tracking
+2. Open: **The rest of the documentation has not had its first pass.** Review tracking
    now covers `fundamentals`, `concepts`, `guides`, `getting_started`,
    `reference` and `references` as well as `manual`; `csc help review-list`
    reports `0 reviewed, 92 AI-reviewed, 6 stale, 241 unreviewed (339 tracked)`.
@@ -138,6 +128,80 @@ because a click lands *between* two characters.
    images, broken heading ids) found and fixed everything it could detect. What
    they have not had is somebody reading them for *correctness*, which is what
    `--ai` records.
+
+**Inline mathematics is text; display mathematics is a picture.** An image in
+the middle of a sentence sits at its own baseline, in its own font, at a size
+that stops matching the moment anything around it changes — and a tall one (a
+fraction, a sum with limits) shoves the line apart and floats above the words.
+So inline formulas are converted to **HTML text**: `τ<sub>D</sub>`, slashed
+fractions with precedence-preserving brackets (`(a+b)/c`), big operators with
+their limits as ordinary sub/superscripts, combining accents for `\hat`/`\bar`,
+upright function names. That takes the documentation from **102 rasterised
+inline formulas to 5** — matrices, which are genuinely two-dimensional and get
+`vertical-align: middle` so they at least sit on the line. Display mathematics
+*is* rasterised, onto a **transparent** figure: `mathtext.math_to_image` bakes in
+a white background, which on a dark theme is a bright card behind every
+equation.
+
+**Qt paints a block background behind that block's own lines only.** An
+admonition rendered as a `<div>` shows a coloured stripe behind its title and
+leaves its content on the page background. Both renderers emit a single-cell
+table instead — that is the one element Qt fills as one rectangle.
+
+**A dead cross-reference degrades to words, never to markup.** If a label does
+not resolve, the reader sees the caption, not `{ref}`something``.
+
+**A distribution carries the documentation, inside the package.** Everything
+above is read from disk at runtime, and `docs/` sits *beside* the package, so
+nothing put it in a wheel or a conda package: installed rather than run from a
+checkout, the Help window opened onto an empty tree and every `?` link led
+nowhere. `build_py` (in `setup.py`) copies a selection into
+`chisurf/docs` **in the build directory** — never into the checkout, where a
+copy would shadow the originals and go stale — and `docs_root()` prefers it.
+
+What ships is `_shipped_docs.iter_shipped_docs`, a module rather than a few
+lines inside the build because a test reads it too: the guardrail is that
+**every page the tree lists is a page the distribution carries**, which is the
+one way this fails quietly (a page in a format nobody listed ships as a broken
+link, not as an error). 599 files, 22 MB. Left out: `docs/_build` (Sphinx
+output the browser never reads), `docs/_old_manual` (the retired Word
+original), `docs/_ext` (Sphinx extension code), and the manual's `.emf`
+figures — 103 MB, four fifths of the whole tree, in a vector format neither Qt
+nor a browser can draw, which is why `docs-manual` converts them to PNG in the
+first place. The same selection bounds the sdist, whose `recursive-include`
+had been pulling all of it in.
+
+4. Open: **58 plugins ship without a README** and **80 GUI plugins have no `?` page or
+   guided tour** (`test/plugin_help_guide_allowlist.txt` is the shrinking
+   tracker for the second, owned by
+   [help buttons and guided tours](gui-help-and-guides.md)). Every plugin *is*
+   now in the catalogue: the generator used to walk `manifest.json` only, so 13
+   plugins that declare themselves in code appeared in the menus but had no
+   reference page at all.
+5. Open: **The RST manual has no `docs/manual/_images` scaling policy.** Screenshots
+   are full-resolution and arrive as big blocks with a lot of air around them;
+   `_constrain_image_widths` bounds the width but the vertical rhythm around a
+   block image is still loose.
+6. Open: **Only `.md` files are indexed for cross-reference labels**
+   (`api/xref.py:ref_index`). A `(label)=` in an `.rst` page is therefore not
+   findable — no page needs it yet, and adding it means teaching the index the
+   reStructuredText spelling too.
+
+## Resume history (moved out of Where to pick this up)
+
+Moved here unchanged: notes that are history, done work or standing rules rather than the next step.
+
+* The **review banner extension prepended its text to the source**, which hid
+  the front matter from MyST — every stamped page's `<title>` became its own
+  flattened metadata. It also stamped Markdown pages with a *reStructuredText*
+  directive, so `.. warning::` had been reaching the reader as literal text on
+  every unreviewed Markdown page. Both fixed in `docs/_ext/review_banner.py`;
+  guarded in `test/test_docs_okf.py`.
+
+* The generated plugin pages **linked to a `manifest.json` that is not there**
+  for the 13 plugins that declare themselves in code — thirteen build warnings
+  and thirteen dead links. The Sphinx build is warning-free again.
+
 3. **The Lakowicz pass is closed, and its scope was set by the user.** Written:
    `kappa2_orientation`, `distance_distributions`, `maximum_entropy`,
    `energy_migration`, `acceptor_density`, plus the 11 `fundamentals`
@@ -157,7 +221,7 @@ because a click lands *between* two characters.
    the computed values and say so.
 
    It is now a **fittable model** as well:
-   `the BFF family `tcspc_fret_acceptor_density`` releases `C/C0` against a
+   the BFF family `tcspc_fret_acceptor_density` releases `C/C0` against a
    donor lifetime spectrum, with the dimensionality as a radio button. Two
    design points that a later change could undo by accident — both are asserted
    in `test/models/test_view_spec.py`: the editor has **no Anisotropy panel**
@@ -171,22 +235,6 @@ because a click lands *between* two characters.
    because the parent hands a lifetime *spectrum* to the convolution and this
    model has a decay *curve*. A nuisance term added to one and not the other is
    a silent parity gap between two editors a user reads as the same.
-
-4. **58 plugins ship without a README** and **80 GUI plugins have no `?` page or
-   guided tour** (`test/plugin_help_guide_allowlist.txt` is the shrinking
-   tracker for the second, owned by
-   [help buttons and guided tours](gui-help-and-guides.md)). Every plugin *is*
-   now in the catalogue: the generator used to walk `manifest.json` only, so 13
-   plugins that declare themselves in code appeared in the menus but had no
-   reference page at all.
-5. **The RST manual has no `docs/manual/_images` scaling policy.** Screenshots
-   are full-resolution and arrive as big blocks with a lot of air around them;
-   `_constrain_image_widths` bounds the width but the vertical rhythm around a
-   block image is still loose.
-6. **Only `.md` files are indexed for cross-reference labels**
-   (`api/xref.py:ref_index`). A `(label)=` in an `.rst` page is therefore not
-   findable — no page needs it yet, and adding it means teaching the index the
-   reStructuredText spelling too.
 
 # What it is
 
@@ -430,48 +478,6 @@ affected: each opened on its own `(concept-fret)=` anchor, its formulas read as
 `\frac{1}{\tau_D}`, its admonitions as `:::{note}`, and its cross-references as
 `{ref}`concept-x``. The renderer's contract is that none of those four ever
 appear, and two tests hold it over the whole shipped tree.
-
-**Inline mathematics is text; display mathematics is a picture.** An image in
-the middle of a sentence sits at its own baseline, in its own font, at a size
-that stops matching the moment anything around it changes — and a tall one (a
-fraction, a sum with limits) shoves the line apart and floats above the words.
-So inline formulas are converted to **HTML text**: `τ<sub>D</sub>`, slashed
-fractions with precedence-preserving brackets (`(a+b)/c`), big operators with
-their limits as ordinary sub/superscripts, combining accents for `\hat`/`\bar`,
-upright function names. That takes the documentation from **102 rasterised
-inline formulas to 5** — matrices, which are genuinely two-dimensional and get
-`vertical-align: middle` so they at least sit on the line. Display mathematics
-*is* rasterised, onto a **transparent** figure: `mathtext.math_to_image` bakes in
-a white background, which on a dark theme is a bright card behind every
-equation.
-
-**Qt paints a block background behind that block's own lines only.** An
-admonition rendered as a `<div>` shows a coloured stripe behind its title and
-leaves its content on the page background. Both renderers emit a single-cell
-table instead — that is the one element Qt fills as one rectangle.
-
-**A dead cross-reference degrades to words, never to markup.** If a label does
-not resolve, the reader sees the caption, not `{ref}`something``.
-
-**A distribution carries the documentation, inside the package.** Everything
-above is read from disk at runtime, and `docs/` sits *beside* the package, so
-nothing put it in a wheel or a conda package: installed rather than run from a
-checkout, the Help window opened onto an empty tree and every `?` link led
-nowhere. `build_py` (in `setup.py`) copies a selection into
-`chisurf/docs` **in the build directory** — never into the checkout, where a
-copy would shadow the originals and go stale — and `docs_root()` prefers it.
-
-What ships is `_shipped_docs.iter_shipped_docs`, a module rather than a few
-lines inside the build because a test reads it too: the guardrail is that
-**every page the tree lists is a page the distribution carries**, which is the
-one way this fails quietly (a page in a format nobody listed ships as a broken
-link, not as an error). 599 files, 22 MB. Left out: `docs/_build` (Sphinx
-output the browser never reads), `docs/_old_manual` (the retired Word
-original), `docs/_ext` (Sphinx extension code), and the manual's `.emf`
-figures — 103 MB, four fifths of the whole tree, in a vector format neither Qt
-nor a browser can draw, which is why `docs-manual` converts them to PNG in the
-first place. The same selection bounds the sdist, whose `recursive-include`
-had been pulling all of it in.
 
 # Failure modes seen here
 

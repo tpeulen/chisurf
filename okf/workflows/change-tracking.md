@@ -5,6 +5,7 @@ description: The mandatory loop for every material change — update OKF, keep i
 resource: okf/log.md
 tags: [process, okf, provenance, git]
 timestamp: '2026-07-07T00:00:00Z'
+convention-exempt: true
 ---
 
 # Change tracking — always update OKF and commit

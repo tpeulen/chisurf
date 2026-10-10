@@ -70,19 +70,19 @@ fallback to `resolve_database_path()`). The remaining work is threading the
 injected path from the ~20 `chisurf/` boundary callers that still call
 `resolve_database_path()` directly:
 
-1. **Measure the boundary surface.** `grep -rn 'resolve_database_path' chisurf/ --include='*.py' -l`
+1. Measure: **Measure the boundary surface.** `grep -rn 'resolve_database_path' chisurf/ --include='*.py' -l`
    returns ~20 files (database_connector, project_browser, spectra_downloader,
    dyes/forster, tttr_channeldefinition, etc.). Each is a `chisurf/` file, so
    the edit is "delete the resolver call, accept the injected arg" — never
    change mmfdb internals.
-2. **Pick the highest-leverage caller first** — `chisurf/core/mmfdb_services.py`
+2. Open: **Pick the highest-leverage caller first** — `chisurf/core/mmfdb_services.py`
    and `chisurf/plugins/core/database_connector/services.py` are the composition
    roots that construct `MFDatabase` for the GUI. Thread a resolved path (or
    `SessionContext.db`) through them.
-3. **Add a guard test** asserting no production handler opens its own
+3. Open: **Add a guard test** asserting no production handler opens its own
    database connection (the hermetic harness already prevents the real user DB
    from being touched in tests).
-4. **Confirm order-independence** — the `_resolved_db_path` module global
+4. Open: **Confirm order-independence** — the `_resolved_db_path` module global
    leaks between tests (same as the old `resolve_database_path()`); a
    `monkeypatch`/fixture reset in `conftest.py` would make the suite
    order-independent.

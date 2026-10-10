@@ -15,28 +15,28 @@ timestamp: '2026-08-04T00:00:00Z'
 Nothing is implemented yet. The order below is the intended one, and each item
 says what it unblocks.
 
-1. **The profile seam first (§1–§3).** Every other item depends on
+1. Open: **The profile seam first (§1–§3).** Every other item depends on
    `saturated_curve_shape` taking a profile object instead of `w0, z0`. Until
    that lands, "more PSF shapes" and "fit the PSF" are the same work done twice.
    Read §3.0 before scoping it: the integration is already profile-agnostic, so
    the work is a list of scalars and quadrature defaults, and a change that
    edits `fcs_numerical_g_diff` has gone wrong.
-2. **Take the power-scaling trap seriously when doing §3.**
+2. Open: **Take the power-scaling trap seriously when doing §3.**
    `excitation_rate_peak` hard-codes the *Gaussian* peak flux density
    `2*Phi_total/(pi*w0^2)`. Reusing it with a non-Gaussian profile does not
    fail — it silently rescales the excitation rate by a shape-dependent factor,
    so every recovered rate constant and cross-section comes out wrong while the
    curve still fits. The peak must be derived from the profile's own focal-plane
    area integral (§3.2).
-3. **Measure the bias before building the fitter.** Simulate a curve from the
+3. Measure: **Measure the bias before building the fitter.** Simulate a curve from the
    Enderlein MDF (`enderlein.mdf`, already in the tree) or the tttrlib vectorial
    PSF, fit it with the Gaussian model, and record how far `N`, `V_eff` and `D`
    move. That number is the whole justification for §4 and belongs in this PRD
    once taken. Re-derive it with `pixi run` inside the `arm64` env.
-4. **Then the fitter (§4) on simulated series, then on a real one.** The real
+4. Open: **Then the fitter (§4) on simulated series, then on a real one.** The real
    series needs a reversibility check first (§7, hysteresis = bleaching, not
    saturation) or the recovered profile is a bleaching artefact.
-5. **Not yet attempted, so not yet reverted:** nothing here has been tried and
+5. Tried and reverted: **Not yet attempted, so not yet reverted:** nothing here has been tried and
    abandoned. The one approach deliberately *not* taken is a per-curve
    (non-global) PSF fit — §5 says why it cannot work.
 

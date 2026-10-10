@@ -10,6 +10,35 @@ timestamp: '2026-09-23T00:00:00Z'
 
 ## Where to pick this up
 
+2. **Open: the tttrlib branch is not merged.** `accurate-fret` (worktree
+   `~/dev/worktrees/tttrlib-accurate-fret`) carries `dev` merged in; the arm64
+   env runs its wheel. Another session installing a wheel built from `dev`
+   removes `tttrlib.auto_calibrate` and breaks every caller here with an
+   ImportError -- merge the branch into `dev` before anyone rebuilds from it.
+3. **Open: the multidimensional gating has no real-data validation.** On cal1
+   with `dimensions=["S","E"]` it finds 4 FRET populations and gamma 0.731
+   against 0.826 from the S-only gating (and takes 25 s for 44 270 bursts
+   against 2.4 s). The ground-truth tests are synthetic. Validate on an MFD
+   measurement with lifetimes before making it the default.
+6. Open: **Inherited quirk kept for exactness:** the 1-D gate's EM weights squared
+   residuals by the squared responsibility (the spherical estimator in
+   `chisurf.core.ml` does the same); the port reproduces it. Fixing it changes
+   the gates slightly -- do it in both places or neither.
+
+Accurate single-molecule FRET requires calibration factors that turn raw
+green/red/yellow photon counts into a true efficiency: the detection/quantum-yield
+ratio `gamma`, the donor spectral leakage `alpha`, the direct acceptor excitation
+`delta`, the channel backgrounds and the Förster radius `R0`. ChiSurf models these
+as real **fitting parameters** with a Bayesian workflow:
+
+The light-path value is only the prior; the data refines it. When the data is
+informative the posterior follows the data; when it is scarce the posterior falls
+back to the physically-motivated light-path prior.
+
+### Resume history (moved out of Where to pick this up)
+
+Moved here unchanged: notes that are history, done work or standing rules rather than the next step.
+
 1. **The algorithms live in tttrlib now (2026-09-23).** Corrected E/S
    (`apparent_es`, `corrected_es`, `corrected_es_matrix`,
    `corrected_es_general`), the gating (`gaussian_mixture_1d`,
@@ -27,16 +56,7 @@ timestamp: '2026-09-23T00:00:00Z'
    `fret/lines.py`, and `fret/accurate.py:auto_calibrate`, which reads the
    parameters/priors, builds the static line, calls `tttrlib.auto_calibrate`
    and writes the factors back. `burst/es.py` is deleted.
-2. **Open: the tttrlib branch is not merged.** `accurate-fret` (worktree
-   `~/dev/worktrees/tttrlib-accurate-fret`) carries `dev` merged in; the arm64
-   env runs its wheel. Another session installing a wheel built from `dev`
-   removes `tttrlib.auto_calibrate` and breaks every caller here with an
-   ImportError -- merge the branch into `dev` before anyone rebuilds from it.
-3. **Open: the multidimensional gating has no real-data validation.** On cal1
-   with `dimensions=["S","E"]` it finds 4 FRET populations and gamma 0.731
-   against 0.826 from the S-only gating (and takes 25 s for 44 270 bursts
-   against 2.4 s). The ground-truth tests are synthetic. Validate on an MFD
-   measurement with lifetimes before making it the default.
+
 4. **ndX calibrates without ChiSurf (2026-09-24).** ndX's default backend is
    `ndxplorer.analysis.fret_backend.calibrate_columns` (tttrlib only; column
    roles via `tttrlib.guess_burst_columns`, ndX constants via
@@ -52,6 +72,7 @@ timestamp: '2026-09-23T00:00:00Z'
    *reads* a `.pto` through ChiSurf's `Measurement` (`ndxplorer/io/pto_reader.py`),
    so without ChiSurf the FRET menu works on a loaded table but a `.pto`
    cannot be opened -- see known-issues.
+
 5. **Why "gamma 0.8256" and "gamma 0.7502" are both right for cal1.** 0.8256 is
    `tttrlib.auto_calibrate` on the raw `Number of Photons (green/red/yellow)`
    with zero background; the FRET menu's default is `background="fit"`
@@ -59,26 +80,13 @@ timestamp: '2026-09-23T00:00:00Z'
    gated photon columns, starting from the window's constants: 0.7502. With
    `background="none"` the menu gives 0.8243, with the window's constant
    backgrounds 0.8092. The background choice is the whole difference.
-6. **Inherited quirk kept for exactness:** the 1-D gate's EM weights squared
-   residuals by the squared responsibility (the spherical estimator in
-   `chisurf.core.ml` does the same); the port reproduces it. Fixing it changes
-   the gates slightly -- do it in both places or neither.
-
-Accurate single-molecule FRET requires calibration factors that turn raw
-green/red/yellow photon counts into a true efficiency: the detection/quantum-yield
-ratio `gamma`, the donor spectral leakage `alpha`, the direct acceptor excitation
-`delta`, the channel backgrounds and the Förster radius `R0`. ChiSurf models these
-as real **fitting parameters** with a Bayesian workflow:
 
 - the **light-path calculator** supplies each factor's **prior** — a
   physically-motivated Gaussian centred on the value computed from the optics
   (spectra, filters, detector QE), width = model uncertainty;
+
 - **optimizing against the measured data** yields the **posterior** — the
   factors actually used for accurate FRET.
-
-The light-path value is only the prior; the data refines it. When the data is
-informative the posterior follows the data; when it is scarce the posterior falls
-back to the physically-motivated light-path prior.
 
 ## What is there (implemented)
 

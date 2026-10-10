@@ -67,17 +67,17 @@ the open front.** In `modules/mmfdb/src/mmfdb/`, every resolver
 accepts `session: SessionContext | None`. The remaining DoD ("`resolve_session()`
 has production call sites, threaded from entry points") is boundary work:
 
-1. **Wire `resolve_session()` at the entry points.** It currently has zero
+1. Open: **Wire `resolve_session()` at the entry points.** It currently has zero
    production call sites (only `test/fio/test_session_context.py`). Call it
    at GUI launch and RPC dispatch, construct the `SessionContext` once, and
    thread it through.
-2. **Replace inline `SessionContext` construction.** `chisurf/plugins/ndxplorer/cli.py`
+2. Open: **Replace inline `SessionContext` construction.** `chisurf/plugins/ndxplorer/cli.py`
    and `chisurf/plugins/microscopy/imaging_common/base.py` build `SessionContext`
    inline — switch them to `resolve_session()`.
-3. **Delete the duplicate `_resolve_active_user_id()` resolvers** in
+3. Open: **Delete the duplicate `_resolve_active_user_id()` resolvers** in
    `chisurf/gui/widgets/wizard/tttr_channeldefinition/{tttr_detector_setups,tttr_channel_definition}.py`
    (boundary) so no module re-resolves identity on its own.
-4. **Remove the anonymous→default-user fallback patches** in
+4. Open: **Remove the anonymous→default-user fallback patches** in
    `datasets.browse`/`datasets.open` once the session is threaded.
-5. **Tests:** write→read-same-user round trips under logged-in + no-login
+5. Open: **Tests:** write→read-same-user round trips under logged-in + no-login
    modes; two-user scoping intact.

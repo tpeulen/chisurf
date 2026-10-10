@@ -26,26 +26,17 @@ scripts): `okf/validation/fit-window-settings/`.
 
 Open, in order:
 
-1. **Saved state compatibility is by key, not tested on old projects.** Every
+1. Open: **Saved state compatibility is by key, not tested on old projects.** Every
    page's `get_settings_state` keeps its old controller's keys (stored under
    `"controller"`), so a project saved before 2026-10-06 should restore; only
    the LinePlot and ProteinMC round-trips are tested. Re-derive: load an old
    `.cs.pto` with plot state through `test/gui/restore_probe/session_probe.py`.
-2. **Resolved by the readiness schema work (2026-10-06):** the native
-   reader vocabulary now comes from emtk, with current ndX extensions and
-   application layout metadata. All647 schema cases pass; valid docking keys,
-   named native forms and section templates are retained. There is no
-   `_EMTK_LAYOUT_KEYS` reader authority to extend. Re-derive with
-   `pixi run -e test python -m pytest test/test_ui_schemas.py -q`.
-3. **Done 2026-10-06:** Figure 24 of `docs/manual/reference_curves.md` is a real
-   donor-reference figure (`manual_donor_reference.png`, `manual_fitting.py`).
-   Handover of the whole session: `okf/plans/2026-10-06-handover-fit-window-docs.md`.
-4. **emtk view_form: a `weight: 0` `info` leaf inside an `n_col` panel
+4. Open: **emtk view_form: a `weight: 0` `info` leaf inside an `n_col` panel
    collapses to zero width** (seen on the ProteinMC network settings, worked
    around with `width: 70`). Fix belongs in emtk with a test.
-5. **FitInfo drops only local files**: the emtk host passes local paths, so a
+5. Open: **FitInfo drops only local files**: the emtk host passes local paths, so a
    dropped URL (the Qt table took text drops) is not taken.
-6. **Order-dependent GUI failures, not from this change.** Run together, the
+6. Measure: **Order-dependent GUI failures, not from this change.** Run together, the
    44 page/fit-window test files fail `test_project_reset_and_ranges` (16
    setup errors), two `test_classic_tcspc_editor` tests and two
    `test_fit_window_emtk` tests (fit-range drag, read-only source) -- the same
@@ -68,6 +59,21 @@ added an emtk `FitTabBarControl` that nothing drew; the OKF note describing it
 as "an EMTK tab bar inside ControlHost" was wrong. Styling a Qt dock area dark
 is not an emtk port: the test is what `findChildren(QWidget)` shows inside the
 window -- now exactly one `ControlHost`.
+
+### Resume history (moved out of Where to pick this up)
+
+Moved here unchanged: notes that are history, done work or standing rules rather than the next step.
+
+2. **Resolved by the readiness schema work (2026-10-06):** the native
+   reader vocabulary now comes from emtk, with current ndX extensions and
+   application layout metadata. All647 schema cases pass; valid docking keys,
+   named native forms and section templates are retained. There is no
+   `_EMTK_LAYOUT_KEYS` reader authority to extend. Re-derive with
+   `pixi run -e test python -m pytest test/test_ui_schemas.py -q`.
+
+3. **Done 2026-10-06:** Figure 24 of `docs/manual/reference_curves.md` is a real
+   donor-reference figure (`manual_donor_reference.png`, `manual_fitting.py`).
+   Handover of the whole session: `okf/plans/2026-10-06-handover-fit-window-docs.md`.
 
 ## What it is
 

@@ -212,5 +212,5 @@ R0-from-spectra and κ²-from-dipoles now live in `IMP.bff.fret`
 — decided with the user: bff owns label-pair physics, tttrlib = photon data,
 chisurf = GUI. On the chisurf side `forster.py`/`kappa2.py` are the DUP copies
 to retire against these (imp.bff `spectroscopy/kappa2.py`, the κ² distribution
-toolkit of chisurf origin, is a separate module there; folding it into
+toolkit of chisurf source, is a separate module there; folding it into
 `fret/kappa2.py` is the remaining bff-side item). Details: `imp.bff/okf/cgdye.md`.

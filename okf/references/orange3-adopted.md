@@ -4,6 +4,7 @@ title: What ChiSurf took from Orange3 — the adopted ideas
 description: The design ideas actually harvested from the Orange3 dataflow toolkit — write-locked data, the background-task contract, declared widget messages and VizRank — where each lives in ChiSurf now, how it was translated, and where ChiSurf deliberately departs from the original.
 tags: [reference, architecture, gui, provenance, attribution]
 timestamp: '2026-07-27T00:00:00Z'
+convention-exempt: true
 ---
 
 # What ChiSurf took from Orange3

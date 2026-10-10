@@ -19,25 +19,25 @@ timestamp: '2026-09-16T19:20:27+02:00'
 **2026-08-13 — the code editor and the hex view landed, and the porting path
 they exposed is now tooling.** What is open, in order:
 
-1. **`.native` still exists in the chrome's Qt painter.** Nothing here made it
+1. Open: **`.native` still exists in the chrome's Qt painter.** Nothing here made it
    worse, but the two new controls draw through `Painter`'s six operations
    only, which is the property the whole package rests on; re-run
    `test_engine_is_portable.py` before adding a third and treat a new Qt import
    at module scope as a blocker, not a note.
-2. **The editors are not yet docks.** `cmd/inspect.py` opens them in their own
+2. Open: **The editors are not yet docks.** `cmd/inspect.py` opens them in their own
    top-level windows, deliberately (a dock has to be registered, persisted in
    the saved layout and given a View-menu entry, and none of that is what
    somebody typing `memory instances` is asking for). Promoting either to a
    dock costs nothing at the control level — it is the same object — but must
    go through `molview_main_window`'s dock list, which is the file most likely
    to be under concurrent edit.
-3. **VRAM readback is untested against a real device.** `memory_probe`'s
+3. Measure: **VRAM readback is untested against a real device.** `memory_probe`'s
    `GpuBufferSource` is covered by a fake queue. On a real `wgpu` device, a
    buffer created without `COPY_SRC` raises, and the *measurement* to take is
    how many of chimol's buffers actually carry it — if it is most of them, the
    fallback path is nearly dead code and the honest move is to say so in the
    picker rather than show a block of zeros.
-4. **The scaffolder handles one shape of C++.** It reads Dear ImGui's house
+4. Open: **The scaffolder handles one shape of C++.** It reads Dear ImGui's house
    style (uppercase public methods, `IM_COL32` palettes, `static const char*
    const` word tables). It has not been run against anything outside that
    family, and the next port is where that either holds or does not.

@@ -9,18 +9,23 @@ timestamp: '2026-07-05T00:00:00Z'
 
 # Where to pick this up
 
-1. **The refresh of this concept is partial** (PRD-134): the fitting-flow
+1. Open: **The refresh of this concept is partial** (PRD-134): the fitting-flow
    step, the update-verb contract and the transport-path table are current;
    still missing are a section on the sampler's four-crossing contract
    (`sampler_bff.py` — begin, per-state progress, intermediate saves, end)
    and on `objective_type` (least-squares vs likelihood, the BUG-10
    threshold work). Correct stale statements in place rather than appending.
-2. **The sampler registry landed (2026-09-15)**; see "Which samplers exist" below. Open:
+2. Open: **The sampler registry landed (2026-09-15)**; see "Which samplers exist" below. Open:
    the ensemble/slice/DE results still offer R-hat across *walkers* (`chains` is a
    per-walker reshape in `sampler_bff._result`), which the registry entries' own
    `required_checks` call invalid -- the cross-run R-hat is the decisive one; make the
    report say so per sampler from the entry. Settings YAML comments still name the
    samplers in prose.
+
+## Resume history (moved out of Where to pick this up)
+
+Moved here unchanged: notes that are history, done work or standing rules rather than the next step.
+
 3. The GUI-facing contract (born-consistent fits, `Fit.update()` publishing
    ``fit.updated``, the RPC facade as routing not capability) is documented
    at the fitting-flow step below; the graph seam's own contract lives in
@@ -549,7 +554,7 @@ already been computed, computing nothing — `Fit.posterior_summary` is a loop
 over it), and `AutoEngine` (best available per parameter, still labelled).
 
 Answers are `Marginal` / `Joint` dataclasses carrying the `method` that produced
-them, so a report or a plot consumes one without knowing its origin.
+them, so a report or a plot consumes one without knowing its source.
 `Joint.correlation` is what a global fit is usually really after: a pair at ±1 is
 one measurement, not two.
 

@@ -46,11 +46,16 @@ new code now; existing code moves when it is already being touched. κ²'s two
 functions are the only thing that has left so far, and they left because they
 were touched.
 
-**Standing hazards, both bit during this work:**
+**Standing hazards, both bit during this work (kept under the resume history below):**
+
+## Resume history (moved out of Where to pick this up)
+
+Moved here unchanged: notes that are history, done work or standing rules rather than the next step.
 
 * Running `ctest` from the imp.bff *source* directory leaves `CMakeCache.txt`,
   `CMakeFiles/` and `Testing/` there, and IMP refuses an in-source build. Build
   and test from `imp/cmake-build-arm64`.
+
 * Two sessions committing in one chisurf worktree delete each other's new files:
   a commit builds its tree from the *shared* index, so a file another session
   committed but never added there is dropped by your next commit. Sync the

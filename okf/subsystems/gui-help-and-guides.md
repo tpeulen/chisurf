@@ -119,7 +119,7 @@ thing and that the prose belongs where it sits.
 
 **Next, in priority order** (the user's order: most-used analysis tools first):
 
-1. **`irf_estimator`** — `help.md` and `guide.json` are **written and sitting
+1. Open: **`irf_estimator`** — `help.md` and `guide.json` are **written and sitting
    uncommitted in the tree**, along with the `tool.py` change that deletes its
    `HelpDialog`, names two spin boxes for the tour and attaches the shared pair.
    The static guard passes; the *tour has never been walked*, because the arm64
@@ -127,7 +127,7 @@ thing and that the prose belongs where it sits.
    ([known issues](/references/known-issues.md)). Restore the env, run the
    harness, look at the PNGs, then commit — do not commit it on the strength of
    the guard alone. Then **`maxent_decay`**.
-2. **`microscopy/img_*`** and the rest of the list — every remaining plugin now
+2. Open: **`microscopy/img_*`** and the rest of the list — every remaining plugin now
    needs *both* files written; the cheap "help already exists" set is exhausted.
 
 **What a gap blocks.** Nothing blocks the remaining plugins — the seam is

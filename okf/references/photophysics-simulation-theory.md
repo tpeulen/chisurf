@@ -125,7 +125,7 @@ equally well-conditioned filters. Macro-times must be made ascending
 
 A simulated stream is macro-times + micro-times + channels — formally
 indistinguishable from a measurement. The correlator, burst search, FRET-histogram
-builder and H2MM fitter are agnostic to its origin, so it **correlates, bursts and
+builder and H2MM fitter are agnostic to its source, so it **correlates, bursts and
 Markov-fits exactly like real data**. Recovery of the injected parameters (across
 seeds/bootstrap) is the validation criterion; mismatch isolates bias before real
 data. In the burst workflow the simulated dataset is registered in MMFDB like any

@@ -12,7 +12,7 @@ timestamp: '2026-07-05T00:00:00Z'
 *Left 2026-08-05, after `abe89a55d`.* The server can now build and run fits; the
 work that remains is making `test/server` trustworthy.
 
-1. **Fix the test isolation before chasing any assertion.**
+1. Open: **Fix the test isolation before chasing any assertion.**
    `test/server/test_integration_lifecycle.py` shares one module-scoped server
    and client (`_client()`) and resets only datasets and fits between tests
    (`reset_state` → `fit__clear` / `dataset__clear`). Everything else a test
@@ -22,7 +22,7 @@ work that remains is making `test/server` trustworthy.
    per-test failure here may be the previous test's residue, and **a fix
    verified on one class is not verified**. This blocks the other items: until
    it is fixed, nobody can tell a real defect from a leak.
-2. **Port the rest of the file to the raising error contract.** A failing call
+2. Open: **Port the rest of the file to the raising error contract.** A failing call
    raises `RemoteError` — service errors travel in the JSON-RPC `error` member
    (SV-04) — while these tests still assert `not result.get("ok")`. That never
    described the contract: it also passes on *success*, because a result payload
@@ -31,7 +31,7 @@ work that remains is making `test/server` trustworthy.
    `TestChisurfRunPattern`); use `pytest.raises(RemoteError)`, and where a test
    only means "the server must survive this", assert that with a following
    `meta__ping`. State: **43 failed / 31 passed**, from 51/23.
-3. **Audit the remaining service signatures against the dispatcher.** Two were
+3. Open: **Audit the remaining service signatures against the dispatcher.** Two were
    found by accident — `fit_set_dataset` did not accept `fit_uid` while the
    dispatcher passes it, and `fit_set_result_idx` made `fit_index` a required
    positional — so *addressing a fit by uid*, the documented way, raised

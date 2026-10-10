@@ -12,7 +12,7 @@ timestamp: '2026-08-07T00:00:00Z'
 
 # Where to pick this up
 
-1. **The vocabulary exists and almost nothing uses it.** `_mmfdb_units` declares
+1. Open: **The vocabulary exists and almost nothing uses it.** `_mmfdb_units` declares
    28 codes with their symbols and SI factors, `chisurf/core/units.py` reads it,
    and a `.mmfdb.pto` column carries its unit. Everything else in the tree is
    unchanged. Start where a wrong unit is most expensive, which is not the GUI:
@@ -25,20 +25,20 @@ timestamp: '2026-08-07T00:00:00Z'
    a question with one answer, and the exercise is worth repeating for the next
    boundary rather than trusting a single implementation:
 
-   - **A detector qualifier cost a column its unit.** `BURST_COLUMN_UNITS` keys
+   · **A detector qualifier cost a column its unit.** `BURST_COLUMN_UNITS` keys
      on the exact name, so `Number of Photons` was `photons` and
      `Number of Photons (green)`, *in the same row of the same table*, was
      unitless. `units_for` now drops a trailing non-unit qualifier and asks
      again — which also stops the table needing one row per detector name it
      has never heard of, and makes the hand-listed `Tau (green)` / `Tau (red)` /
      `Tau (yellow)` rows redundant.
-   - **A label carrying both conventions at once found neither.** A burst
+   · **A label carrying both conventions at once found neither.** A burst
      table's window rate is `S prompt green (kHz) | 0-2048`: the bar separates a
      micro-time *range*, and the unit is in the bracket to its left. The bar
      branch gave up when `0-2048` was not a unit, and the suffix regex is
      anchored at the end, so a column that plainly says kHz carried no unit.
      `split_label` now falls through to the bracket on the bar's left.
-   - **`FRET 2CDE` / `ALEX 2CDE` had no entry.** A 2CDE value is a score on a
+   · **`FRET 2CDE` / `ALEX 2CDE` had no entry.** A 2CDE value is a score on a
      fixed scale (≈10 for a static burst), so it is `dimensionless` — which is a
      different claim from the unit being unknown, and the distinction is the
      whole point of leaving a column unitless.
@@ -48,19 +48,24 @@ timestamp: '2026-08-07T00:00:00Z'
    for column — 40/40 on a four-detector burst table, 30/30 with PIE windows).
    The C++ port cannot read the mmCIF dictionary, so it carries the subset a
    burst table needs; that test is what stops the two drifting.
-2. **The four conventions are the inventory.** Grep for them before writing
+2. Measure: **The four conventions are the inventory.** Grep for them before writing
    anything: `"Name (unit)"` suffixes, `"Name | unit"` headers
    (`chisurf/core/expressions.py`), `_TIME_UNIT_US`
    (`core/experiments/deer/csv_loader.py`), `DARK_RATE_UNITS`
    (`core/fluorescence/fcs/saturation.py`). Each is a small table that disagrees
    with the others about spelling.
-3. **One duplicate is still there.** `_flr_chisurf_parameter.R0` and
+3. Open: **One duplicate is still there.** `_flr_chisurf_parameter.R0` and
    `.r0` are the same parameter declared twice — same description, both bound to
    the SQL column `r0`. Both now carry `angstroms`, but removing one is a
    vocabulary *removal* and needs the alias mechanism
    (MMFDB REQUIREMENTS 2.3, "write canonical, read both"), so it belongs with
    the `flr_chisurf_parameter` → `flr_fit_parameter` rename rather than on its
    own.
+
+## Resume history (moved out of Where to pick this up)
+
+Moved here unchanged: notes that are history, done work or standing rules rather than the next step.
+
 4. **Do not add conversion to the fitting engine.** The engine's numbers are
    unitless by design and must stay that way — see *Non-goals*. Every attempt to
    make a solver unit-aware ends with units inside a Jacobian.

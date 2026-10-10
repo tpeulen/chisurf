@@ -9,7 +9,7 @@ timestamp: '2026-07-25T00:00:00Z'
 
 # Where to pick this up
 
-1. **The battery is the measurement, and it is not in the test suite.** Ten
+1. Measure: **The battery is the measurement, and it is not in the test suite.** Ten
    questions against a live provider, scored on *whether a page was opened and
    which one* — that is what found the fabricated citation and the answer built
    out of search excerpts, and neither was visible to a scripted model. It
@@ -20,7 +20,7 @@ timestamp: '2026-07-25T00:00:00Z'
    `ask.ask(..., provider="mistral")` and count `answer.pages`. A single
    question is `csc help ask "what does the gamma factor correct for?"`, which
    should name `docs/concepts/accurate_fret.md`.
-2. **Retrieval is judged by which page comes back, and that is the only way to
+2. Measure: **Retrieval is judged by which page comes back, and that is the only way to
    judge it.** `test/agent/test_documentation_tools.py` is the harness: add a
    `(query, expected_document)` row whenever a question routes wrongly, then
    fix the ranking. Two traps already paid for — a *listing* page (the figure,
@@ -29,14 +29,14 @@ timestamp: '2026-07-25T00:00:00Z'
    an unfiltered natural-language query ranks by how chatty a page is unless
    the question words are dropped. Both are guarded; a third of the same kind
    is likely.
-3. **The synonym map in `doc_index.py` is a stub with 17 entries.** It exists
+3. Open: **The synonym map in `doc_index.py` is a stub with 17 entries.** It exists
    because the interface's spelling and the documentation's are not the same
    word (`chi2r` vs *reduced chi-square*), and every entry was added from a
    query that missed. It is worth growing from real questions rather than from
    imagination — the parameter glossary
    (`docs/reference/parameters.md`) is the obvious source, since it already
    pairs a control's label with its meaning.
-4. **`browse_documentation` truncates at 60 entries with nowhere to go.** It
+4. Open: **`browse_documentation` truncates at 60 entries with nowhere to go.** It
    sets `truncated: true`, so the omission is not silent, but there is no
    second page and no way to ask for the rest — a tag like `plugins` (168
    pages) shows the first 60 sorted by kind and title, which is an arbitrary

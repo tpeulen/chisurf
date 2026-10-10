@@ -39,7 +39,7 @@ missing.
 
 `AV::get_mean_position(include_source)` (`src/AV.cpp:115-131`) seeds
 `sum = 1.0` **unconditionally**. With `include_source=false` the weighted mean
-is divided by `1 + Σw` instead of `Σw`, biasing it toward the origin. With
+is divided by `1 + Σw` instead of `Σw`, biasing it toward the zero point. With
 `include_source=true` the source enters the numerator with weight 1 but the
 denominator gains 2. Either way the "mean position" is not the mean of
 anything. The replacement is the plain density-weighted first moment; whether
@@ -74,7 +74,7 @@ Rules:
    site invalidates mean and covariance atomically. No caching beyond what
    the particle attributes already are.
 3. **Double accumulators, two-pass or shifted.** Tile coordinates are floats
-   on a grid far from the origin; a naive single-pass E[x²]−E[x]² loses the
+   on a grid far from the zero point; a naive single-pass E[x²]−E[x]² loses the
    small variances. Accumulate in double, centered on the first accepted
    tile or two-pass.
 
@@ -88,7 +88,7 @@ Rules:
   closed-form first approximations of inter-dye distance moments — a cheap
   screen before the sampled `DYE_PAIR_DISTANCE` paths (`AV.h:51`), and honest
   error bars on `R_mp` vs `R_DA`.
-- **Visualization**: an AV exports to RMF/ChimeraX as an ellipsoid without
+- **Visualization**: an AV exports to RMF and the reference molecular viewer as an ellipsoid without
   dumping the grid — the shape of the volume at a glance.
 - **Placement** ([prd-93](prd-93.md)): input is coordinates, so this is
   imp.bff code entirely — committed in `../imp.bff`, never the IMP checkout

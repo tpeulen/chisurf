@@ -20,28 +20,28 @@ suite (`tests/test_numba_parity.py`, originals verbatim in
 `pixi.toml`, `pyproject.toml`, the rattler recipe, `setup_runtime.sh` and
 `test/settings/test_py314.toml`, and joined `RETIRED` in
 `test/test_no_retired_dependency_imports.py`, which superseded
-`test/test_numba_seam.py` + its allow-list (deleted). The `threads.numba_*`
+`test/test_numba_seam.py` and its allow-list (deleted). The `threads.numba_*`
 settings and every `NUMBA_*` variable are gone.
 
 The open front, in order:
 
-1. **ProteinMC's potentials are back in C++ (2026-10-06) -- one open item.**
+1. Open: **ProteinMC's potentials are back in C++ (2026-10-06) -- one open item.**
    imp.bff `4ba3c1210` + imp-tricks `9f088a6`. Each term has ONE C++ kernel
    (imp.bff `include/internal/ContactKernels.h`) reached as an **IMP object**
    (usable as a restraint) and as an **array function** (`ContactPotentials.h`,
    what `IMP.cgmol` calls per MC step). Per potential -- IMP door / status:
-   - MJ: `MiyazawaJerniganPairScore` (IMP `score_functor::Statistical`, reused)
+   · MJ: `MiyazawaJerniganPairScore` (IMP `score_functor::Statistical`, reused)
      -- green, 0.88x numba (164 res) / 0.68x (600 res).
-   - UNRES centroid: `UNRESCentroidPairScore` (Statistical, reused) -- green,
+   · UNRES centroid: `UNRESCentroidPairScore` (Statistical, reused) -- green,
      0.93x / 0.59x.
-   - Go: `GoRestraint` on the shared kernel -- green, 0.58x / 0.29x.
-   - clash: new `SoftSphereOverlapPairScore` (with derivatives; IMP's
+   · Go: `GoRestraint` on the shared kernel -- green, 0.58x / 0.29x.
+   · clash: new `SoftSphereOverlapPairScore` (with derivatives; IMP's
      SoftSpherePairScore lacks the bonded-distance exclusion) -- green,
      0.60x / 0.22x.
-   - ASA: new `SiteAccessibleAreaRestraint` -- green, 0.97x / 0.89x.
-   - GB: `GeneralizedBornRestraint` on the shared kernel (IMP has no GB) --
+   · ASA: new `SiteAccessibleAreaRestraint` -- green, 0.97x / 0.89x.
+   · GB: `GeneralizedBornRestraint` on the shared kernel (IMP has no GB) --
      green, 0.28x / 0.20x.
-   - **H-bond: `HydrogenBondRestraint` on the shared kernel -- green but
+   · **H-bond: `HydrogenBondRestraint` on the shared kernel -- green but
      1.69x / 1.61x numba.** The fix, a branch-free gated row scan
      (`for_gated_upper_pairs`, `MatrixGate` overload), is in the imp.bff working
      tree **uncommitted, not built, not tested** (the session ended before the
@@ -57,26 +57,32 @@ The open front, in order:
    convention, restraints measure their particles) in imp.bff
    `okf/contact-potentials.md`. Open beyond H-bond: derivatives for GB/Go;
    phi/psi stays NumPy (not in the slow set).
-2. **quest's residue-contact post-processing**: contact stats 23 -> 363 ms,
+2. Open: **quest's residue-contact post-processing**: contact stats 23 -> 363 ms,
    frame attribution 2.8 -> 201 ms (200k frames x 60 centres, against
    *parallel* numba). Runs once per simulation, small beside the trajectory;
    goes to IMP.bff beside `simulate_traj` only if a profile says it matters.
+4. Open: **Lock files still carry numba.** chisurf's `pixi.lock` is co-edited by other
+   lanes and quest's re-lock re-solved ~250 unrelated packages, so neither was
+   re-solved here; run `pixi lock` in each as its own change.
+6. Open: Adjacent, not done: `traj_remove_clashes`' GUI tests still
+   `importorskip("mdtraj")` (retired) and so always skip; its
+   `view_model.py` docstring still calls `below_min_distance` a numba kernel
+   (file owned by another lane at the time).
+
+## Resume history (moved out of Where to pick this up)
+
+Moved here unchanged: notes that are history, done work or standing rules rather than the next step.
+
 3. **`OMP_NUM_THREADS=1` / `MKL_NUM_THREADS=1` default lost its reason.** It was
    set so numba's pool would not oversubscribe against nested BLAS; it now only
    pins tttrlib's and IMP.bff's OpenMP kernels to one thread. Kept unchanged in
    `env_bootstrap.py` because changing it is a behaviour change -- measure a
    tttrlib-heavy path (correlation, TCSPC histogramming) with 1 vs N first.
-4. **Lock files still carry numba.** chisurf's `pixi.lock` is co-edited by other
-   lanes and quest's re-lock re-solved ~250 unrelated packages, so neither was
-   re-solved here; run `pixi lock` in each as its own change.
+
 5. Two fixes the ports surfaced, both landed: imp-tricks
    `mix_multiple_solutions` started its temperature sum at 298.15 (1 L at
    298 K mixed to 596 K), and the H-bond test fixture indexed 12 atoms of a
    2-atom array -- numba has no bounds checks and read past it silently.
-6. Adjacent, not done: `traj_remove_clashes`' GUI tests still
-   `importorskip("mdtraj")` (retired) and so always skip; its
-   `view_model.py` docstring still calls `below_min_distance` a numba kernel
-   (file owned by another lane at the time).
 
 # How it got here (the 2026-08 ticket set)
 

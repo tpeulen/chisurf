@@ -152,7 +152,7 @@ capability, authored in JSON and available to every plugin:
   Colocalization uses it as the scatter gate; anything needing a 2-D region
   (histogram gating, ROI cropping) now can.
 - **`image` section: `invert_y`** — images that are really plots (a 2-D
-  histogram) read bottom-up instead of following the top-left image origin.
+  histogram) read bottom-up instead of following the top-left image corner.
 - **`table` section: `expand`** — a table fills its panel/dock instead of
   leaving dead space below its rows.
 - **`info` section: `max_height`** — a short live status line can no longer grow

@@ -20,7 +20,7 @@ crystal-mate search, the map's own FFT Gaussian for streamed volumes, guard
 `sys.meta_path` finder that raises `ModuleNotFoundError` for `scipy`/`matplotlib`
 (not plain `ImportError` -- the console's guards catch the former), then import
 the routed modules, construct `ChiSurfServer`, and start the GUI via
-`chisurf.gui.get_win` + `show()`; 2026-10-06: all imports fine, server 0.79 s,
+`chisurf.gui.get_win` and `show()`; 2026-10-06: all imports fine, server 0.79 s,
 GUI 3.0 s with every model registered, console clean.
 
 **Recipes, locks and CI -- swept 2026-10-06.** Runtime manifests across the
@@ -44,23 +44,6 @@ Where each family went: optimisers, root finding, special functions,
 distributions, `expm`/`pinvh`, LSODA -> IMP.bff (via
 `chisurf/core/math/numerics.py`, `chisurf/core/math/special.py`); ndimage,
 spatial, clustering, signal, splines, MAT-files -> tttrlib. Left:
-1. **`pixi.lock` re-solved -- DONE 2026-10-06** (`0a9294207`, locked in a
-   clean worktree at HEAD so another lane's uncommitted `rmf` edit stayed
-   out): scipy and matplotlib-base remain only in `test`/`dev` (and
-   matplotlib-base in `docs`); numba/llvmlite are gone everywhere.
-2. A ParseModel expression may call only `special.ELEMENTWISE` names as
-   `scipy.special.<name>` (item 2 below).
-3. **Sibling repos -- scipy-free 2026-10-06.** quest never used it;
-   imp-tricks' PHREEQC backend moved to `np.linalg.solve` (`3406d3b`) and
-   `IMP.finite` (the last scipy user in the stack) to a NumPy sparse layer
-   (`IMP/finite/_sparse.py`) solving with IMP.bff's `SparseLU` (imp.bff
-   `6bfd3520d`, Eigen SparseLU + COLAMD; imp-tricks `3b951db`). All four FV
-   solves match the scipy path to 1e-10; time per step at 96x96 dropped
-   (solve_transient 208 -> 129 ms, diffuse_steady 168 -> 88 ms). scipy left
-   imp-tricks' pyproject dependencies (kept in its `test` extra) and recipe;
-   guard `tests/test_no_scipy.py`. Trap kept for whoever touches the FV
-   solvers: fixed boundary values are written back after every solve,
-   steady included -- an LU returns an identity row only to round-off.
 
 History of the routes (kept for the traps):
 
@@ -79,18 +62,10 @@ objects carry only the methods chisurf calls). 16 files struck (40 -> 23 at
 HEAD); ndxplorer `897c275` routes projection_scores + mask_helpers.
 Tests: imp.bff `test/numerics/test_special_functions.py` (21), chisurf
 `test/core/test_special_shim.py` (10).
-1. **Traps.** scipy 1.18 computes `fdtr/fdtrc/fdtri` with **Boost**, not the
-   Cephes functions of the same name xsf also carries (those differ ~1e-14) --
-   check `_special_ufuncs.cpp` for which backend a ufunc really uses before
-   porting it. bff is a unity build (`bff_all.cpp`): anonymous-namespace
-   helpers need file-unique names (`kInf` collided).
-2. **Behaviour change:** a saved ParseModel expression may call only the 23
-   names in `special.ELEMENTWISE` as `scipy.special.<name>` (was: any scipy
-   ufunc). Add a name there (backed by bff) if a user model needs one.
-3. **Still on scipy from this lane's scope:** `parameter_transform/models.yaml`
+3. Open: **Still on scipy from this lane's scope:** `parameter_transform/models.yaml`
    three `root_scalar` imports (optimizer lane; its `ncx2` imports are routed),
    and the curve-signal trio below.
-4. **Curve signal -> tttrlib: library LANDED, callers NOT committed.**
+4. Open: **Curve signal -> tttrlib: library LANDED, callers NOT committed.**
    tttrlib `ad86f1bed`: `tttrlib.signal` (lfilter, savgol_coeffs,
    savgol_filter) and `tttrlib.interpolate` (splrep with given knots, splev)
    over `modules/math/Signal.h` -- 60 parity tests bit-identical to scipy 1.18
@@ -106,6 +81,73 @@ Tests: imp.bff `test/numerics/test_special_functions.py` (21), chisurf
    allow-list lines (23 -> 20).
 
 **Route 3 (bff) status, 2026-10-06 (T-20261005-BFFNUM).** This route struck 5 + 6 files (69 -> 64, then minimize -6).
+
+**Route 5 (legacy-io) superseded and landed 2026-10-06** (tttrlib `efc9d9c41`,
+T-20261006-MATIO): the owner's "scipy leaves" overrides the planned
+`chisurf[legacy-io]` extra. MAT-files are curve I/O, so they went to tttrlib:
+module `io_mat` (`modules/io/mat/`, own inflate/deflate -- no zlib dependency)
+and `tttrlib.matfile.loadmat` / `savemat` / `whosmat`, identical to scipy.io
+1.18 under every loader option (tttrlib `test/python/misc/test_matfile_parity.py`,
+82 tests; real MATLAB + Octave fixtures in tttrlib `test/data/matfile/`).
+china.py, ries_mat.py (`MatStruct` replaces `mat_struct`) and burst_ebfret/io.py
+are routed and A/B-identical to their HEAD scipy versions (china on both
+fixtures, Ries on a nested `g` struct, ebfret load/save session + SMD both
+directions); allow-list 51 -> 48. Left from route 5: nothing. Trap: scipy keeps
+a big-endian file's byte order in the dtype (`>f8`, also under `mat_dtype`),
+and `squeeze_me` turns every 0-d non-record result into a Python scalar
+(strings included) -- the module reproduces both; don't "fix" them.
+
+**Route 4 (tttrlib) landed 2026-10-05** (tttrlib `fb2ad5fe7`, T-20261005-TTTRIMG):
+`tttrlib.ndimage` (scipy.ndimage's names, signatures and dtype rules over the
+`NdImage.h` ports), `tttrlib.linear_sum_assignment`, `tttrlib.linkage` /
+`fcluster` / `inconsistent`, `tttrlib.ConvexHull2D`, `tttrlib.pdist`, and
+`KDTree.query` / `.query_ball_point` / `.query_pairs`. Bit-identical to scipy
+1.18.0 in tttrlib's `test/python/misc/test_ndimage_parity.py` (74 tests, exact
+equality incl. dtype). Every route-4 call site in chisurf and ndxplorer is
+routed; 13 allow-list lines struck (64 -> 51). Left from route 4: nothing.
+Traps for whoever continues:
+
+The remaining work is issued as board tickets, not prose here. Each ticket
+names its interface and its parity-test obligation so it can be picked up
+without re-deriving anything. The list that tracks progress is
+`test/scipy_import_allowlist.txt` (79 files at the start); the guard is
+`test/test_scipy_seam.py`. Both directions are enforced: no new scipy, and
+stale entries must be struck.
+
+## Resume history (moved out of Where to pick this up)
+
+Moved here unchanged: notes that are history, done work or standing rules rather than the next step.
+
+1. **`pixi.lock` re-solved -- DONE 2026-10-06** (`0a9294207`, locked in a
+   clean worktree at HEAD so another lane's uncommitted `rmf` edit stayed
+   out): scipy and matplotlib-base remain only in `test`/`dev` (and
+   matplotlib-base in `docs`); numba/llvmlite are gone everywhere.
+
+2. A ParseModel expression may call only `special.ELEMENTWISE` names as
+   `scipy.special.<name>` (item 2 below).
+
+3. **Sibling repos -- scipy-free 2026-10-06.** quest never used it;
+   imp-tricks' PHREEQC backend moved to `np.linalg.solve` (`3406d3b`) and
+   `IMP.finite` (the last scipy user in the stack) to a NumPy sparse layer
+   (`IMP/finite/_sparse.py`) solving with IMP.bff's `SparseLU` (imp.bff
+   `6bfd3520d`, Eigen SparseLU + COLAMD; imp-tricks `3b951db`). All four FV
+   solves match the scipy path to 1e-10; time per step at 96x96 dropped
+   (solve_transient 208 -> 129 ms, diffuse_steady 168 -> 88 ms). scipy left
+   imp-tricks' pyproject dependencies (kept in its `test` extra) and recipe;
+   guard `tests/test_no_scipy.py`. Trap kept for whoever touches the FV
+   solvers: fixed boundary values are written back after every solve,
+   steady included -- an LU returns an identity row only to round-off.
+
+1. **Traps.** scipy 1.18 computes `fdtr/fdtrc/fdtri` with **Boost**, not the
+   Cephes functions of the same name xsf also carries (those differ ~1e-14) --
+   check `_special_ufuncs.cpp` for which backend a ufunc really uses before
+   porting it. bff is a unity build (`bff_all.cpp`): anonymous-namespace
+   helpers need file-unique names (`kInf` collided).
+
+2. **Behaviour change:** a saved ParseModel expression may call only the 23
+   names in `special.ELEMENTWISE` as `scipy.special.<name>` (was: any scipy
+   ufunc). Add a name there (backed by bff) if a user model needs one.
+
 1. **Landed:** `bff.nnls` / `bff.bvls` (imp.bff `b0882780d`,
    `include/LinearLeastSquares.h`; incremental thin QR, parity with scipy 1.18 to
    round-off on 300 problems incl. rank-deficient and cond~1e8; 1-2x scipy speed).
@@ -113,6 +155,7 @@ Tests: imp.bff `test/numerics/test_special_functions.py` (21), chisurf
    (BVLS, scipy result fields), and every nnls/lsq_linear caller is routed
    (inversion, decay, decay_fit, general, titration, fcs_filter_calculator,
    audifier lifetime_analysis, img_pixel_phasor). Test: `test/core/test_numerics_shim.py`.
+
 2. **Landed:** `FitResidualFunction` + `FitMinimizer::set_residual_function`
    (imp.bff `9d862174e`; the `directorout` typemap reads the residual ndarray
    through its buffer).
@@ -129,9 +172,11 @@ Tests: imp.bff `test/numerics/test_special_functions.py` (21), chisurf
    returned unfitted** (bff `db5c6b17e`: asin's 2e-16 residue defeated both
    MINPACK zero-fallbacks; four decay-fit tests caught it). Measure: 1000-point exponential fit 5.0 ms vs scipy
    1.5 ms -- callback overhead per evaluation, not iteration count (29 vs ~28).
+
 3. **Known difference:** with a parameter pinned at its bound, the relative ftol
    stop fires while free parameters are still ~1e-5 off (MINPACK + leastsqbound
    transform, as chisurf's own fitter always behaved; scipy's trf lands exactly).
+
 4. **Landed 2026-10-06 (T-20261006-BFFOPT): bounded scalar `minimize`.**
    imp.bff `e64ba81b5`: `bff.minimize_lbfgsb` runs SciPy's own C translation
    of L-BFGS-B 3.0 (`src/internal/Lbfgsb.cpp`, BSD, BLAS/LAPACK subset
@@ -163,51 +208,22 @@ Tests: imp.bff `test/numerics/test_special_functions.py` (21), chisurf
    **Pending (route 3):** `odeint` (reaction/continuous) -- T-20261006-BFFOPT; special functions +
    distributions, expm, pinvh -- the special-functions lane. **Boost.Math is
    already a header-only bff dependency** (SpecialFunctions.cpp uses it).
+
 5. Trap: imp.bff builds share `cmake-build-arm64` with other agents -- wrap
    every ninja in `until mkdir /tmp/imp-bff-build.lock ...; rmdir` and re-run
    `cmake $B` after adding a header/.i (the build tree symlinks them at configure).
 
-
-**Route 5 (legacy-io) superseded and landed 2026-10-06** (tttrlib `efc9d9c41`,
-T-20261006-MATIO): the owner's "scipy leaves" overrides the planned
-`chisurf[legacy-io]` extra. MAT-files are curve I/O, so they went to tttrlib:
-module `io_mat` (`modules/io/mat/`, own inflate/deflate -- no zlib dependency)
-and `tttrlib.matfile.loadmat` / `savemat` / `whosmat`, identical to scipy.io
-1.18 under every loader option (tttrlib `test/python/misc/test_matfile_parity.py`,
-82 tests; real MATLAB + Octave fixtures in tttrlib `test/data/matfile/`).
-china.py, ries_mat.py (`MatStruct` replaces `mat_struct`) and burst_ebfret/io.py
-are routed and A/B-identical to their HEAD scipy versions (china on both
-fixtures, Ries on a nested `g` struct, ebfret load/save session + SMD both
-directions); allow-list 51 -> 48. Left from route 5: nothing. Trap: scipy keeps
-a big-endian file's byte order in the dtype (`>f8`, also under `mat_dtype`),
-and `squeeze_me` turns every 0-d non-record result into a Python scalar
-(strings included) -- the module reproduces both; don't "fix" them.
-
-**Route 4 (tttrlib) landed 2026-10-05** (tttrlib `fb2ad5fe7`, T-20261005-TTTRIMG):
-`tttrlib.ndimage` (scipy.ndimage's names, signatures and dtype rules over the
-`NdImage.h` ports), `tttrlib.linear_sum_assignment`, `tttrlib.linkage` /
-`fcluster` / `inconsistent`, `tttrlib.ConvexHull2D`, `tttrlib.pdist`, and
-`KDTree.query` / `.query_ball_point` / `.query_pairs`. Bit-identical to scipy
-1.18.0 in tttrlib's `test/python/misc/test_ndimage_parity.py` (74 tests, exact
-equality incl. dtype). Every route-4 call site in chisurf and ndxplorer is
-routed; 13 allow-list lines struck (64 -> 51). Left from route 4: nothing.
-Traps for whoever continues:
 - **FMA contraction is part of identity.** `NdImage.cpp` pins
   `#pragma STDC FP_CONTRACT ON` because scipy's wheels are built with
   clang's default; with it off 162 of 582 cases were 1-8 ulp out. Do not
   copy Cluster.cpp's OFF pragma over it.
+
 - **The arm64 env has a stale scikit-build editable redirect.** To test a
   staged tttrlib build, drop `ScikitBuildRedirectingFinder` from
   `sys.meta_path` before importing, or `PYTHONPATH` is silently ignored.
+
 - `modules/ndxplorer/ndxplorer/utils/mask_helpers.py` sat under the tttrlib
   heading but only uses `scipy.stats.norm.cdf` -- it is route 2 (local erf).
-
-The remaining work is issued as board tickets, not prose here. Each ticket
-names its interface and its parity-test obligation so it can be picked up
-without re-deriving anything. The list that tracks progress is
-`test/scipy_import_allowlist.txt` (79 files at the start); the guard is
-`test/test_scipy_seam.py`. Both directions are enforced: no new scipy, and
-stale entries must be struck.
 
 ## Why scipy is going
 

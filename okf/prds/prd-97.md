@@ -24,18 +24,40 @@ question below.
 
 Decisions taken while landing:
 
+* Open: **C++ parser as the only one** (open decision 1): not taken — the C++
+  reader stays as is, but both readers are now checked against the same
+  written schema by tests, which is the agreement-by-construction the PRD
+  actually needs; collapsing to one parser remains possible later.
+
+What the move surfaced — the "agree by coincidence" claim, proven:
+
+The headline is that the cut is unusually clean: **`imp_engine.py` (1391 lines)
+and `av.py` (742) import IMP twelve and six times respectively, and ChiSurf zero
+times.** They are already independent of the application they live in. Under the
+placement rule in [references/imp-ecosystem](/references/imp-ecosystem.md) —
+coordinates in, structure scored — they are imp.bff's, and moving them is a
+relocation rather than a disentangling.
+
+## Resume history (moved out of Where to pick this up)
+
+Moved here unchanged: notes that are history, done work or standing rules rather than the next step.
+
 * **Rules (user, 2026-08-11): no LabelLib and no numba in imp.bff.** The AV
   backend moved *without* the LabelLib backend/selection (IMP.bff's AV is the
   only path; `select_backend` accepts only `auto`/`imp-bff`), and
   `distance.py`'s two numba kernels were rewritten as vectorised numpy.
+
 * **Forwarders: kept** (open decision 3) — module-alias forwarders are ~10
   lines each, keep every ChiSurf import path and private test symbol working,
   and cost nothing at run time.
+
 * **`engine.py` is not dead** (stage 3 caveat): ChiSurf's staying
   `evaluate.py` uses `RigidBody`/`DistanceRestraint`. Moved anyway — plain
   data classes, coordinates in — with the forwarder carrying the consumers.
+
 * **`olga_greedy.py` moved, `pair_selection.py` stayed** (open decision 2),
   exactly on the algorithm/workflow line.
+
 * **Schema (stage 0)**: `IMP.bff.fret.fps_schema` is the single authored
   definition (union of both dialects, flrCIF item names where flrCIF has
   them: `_flr_FPS_AV_parameter.*`, `_flr_fret_distance_restraint.*`,
@@ -43,16 +65,11 @@ Decisions taken while landing:
   `_flr_FPS_mean_probe_position.mpp_*coord`); `imp.bff/data/fps_json_schema.json`
   is *derived* from it and a drift test holds them equal, mmfdb-style.
   `read_fps_json`/`write_fps_json` take `validate=True`.
-* **C++ parser as the only one** (open decision 1): not taken — the C++
-  reader stays as is, but both readers are now checked against the same
-  written schema by tests, which is the agreement-by-construction the PRD
-  actually needs; collapsing to one parser remains possible later.
-
-What the move surfaced — the "agree by coincidence" claim, proven:
 
 * `AV::set_av_parameter` (imp.bff `src/AV.cpp`) assigned **radius1 to all
   three radii** — an AV3's radius2/radius3 were silently ignored by the C++
   reader. Fixed.
+
 * ChiSurf's `_av_imp_bff` had **two latent crashes** (`if xyz_density:` on a
   numpy array; `DensityHeader.get_origin()` called without its axis argument)
   that the LabelLib fallback had swallowed on every call — the "imp-bff
@@ -61,19 +78,13 @@ What the move surfaced — the "agree by coincidence" claim, proven:
   (`allowed_sphere_radius >= linker_width/2 + grid/2` unless the position
   declares its own), because FPS/LabelLib got clearance by stripping the
   attachment residue and the C++ AV does not.
+
 * The schema validator immediately caught **real data bugs**: `flex.fps.json`'s
   `S1_val_chi2` score set referenced distances without their `S1_` prefix
   (fixed — the `S2_` twin showed the intent) and `hGBP1.fps.json`'s `577_577`
   set references a distance that does not exist (`A577F_eGFP-A577F_mCh`;
   left as is — the intended fix is not obvious, a silent no-op in the C++
   reader today).
-
-The headline is that the cut is unusually clean: **`imp_engine.py` (1391 lines)
-and `av.py` (742) import IMP twelve and six times respectively, and ChiSurf zero
-times.** They are already independent of the application they live in. Under the
-placement rule in [references/imp-ecosystem](/references/imp-ecosystem.md) —
-coordinates in, structure scored — they are imp.bff's, and moving them is a
-relocation rather than a disentangling.
 
 # There are three fps.json readers
 

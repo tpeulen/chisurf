@@ -181,7 +181,7 @@ against what bff actually contains, and kept only with a bff-specific reason.
 
 ## Where to pick this up
 
-1. **Per-dataset Gaussian factors for a global fit** (imp.bff PRD-151 Open 1).
+1. Open: **Per-dataset Gaussian factors for a global fit** (imp.bff PRD-151 Open 1).
    `GaussianEngine` builds one dense form over every parameter; a global fit's
    Laplace approximation factorises by dataset, and
    `IMP.bff.InferenceGaussianElimination` would condition and marginalise at the
@@ -190,24 +190,29 @@ against what bff actually contains, and kept only with a bff-specific reason.
    blocks). Measure: conditional-query time against the dense form on a
    20-dataset star, answers equal to 1e-10. This is what gives the elimination a
    real caller; today it runs in tests only.
-2. **Exact joint for multi-label rotamer weights** (PRD-151 Open 2). Compare
+2. Open: **Exact joint for multi-label rotamer weights** (PRD-151 Open 2). Compare
    `rotamer_mean_field_weights_multi_probe` with the exact `n1 x n2` joint on a
    shipped two-label structure — weights first, then `<R_DA>`/E. Decide on
    discrete exact or loopy inference only if the difference matters and three or
    more labels are common; either is textbook.
-3. **CTBN adoption** (PRD-150 Open):
-   - route `burst/simulate.py`'s `k_nrad`/`k_rad` through `KineticNetwork`;
-   - offer "add a conformation" in the FCS kinetics model instead of a
+3. Open: **CTBN adoption** (PRD-150 Open):
+   · route `burst/simulate.py`'s `k_nrad`/`k_rad` through `KineticNetwork`;
+   · offer "add a conformation" in the FCS kinetics model instead of a
      hand-written 2N-state matrix;
-   - owner question, still open: should imp.bff's
+   · owner question, still open: should imp.bff's
      `fret_efficiency_exact_kinetic_pair` compose transition matrices (Kronecker
      product, today) or generators (Kronecker sum)? Behaviour unchanged until
      answered.
-4. **`junk/aGrUM` can be deleted.** The CLG package and the triangulation are
+4. Open: **`junk/aGrUM` can be deleted.** The CLG package and the triangulation are
    harvested, the CTBN package was earlier, the transcriptions and fixtures in
    imp.bff (`test/factorgraph/agrum_clg_reference.py`,
    `test/kinetics/agrum_ctbn_reference.py`) do not import it, and everything
    else is rejected above. Every file read carries its `CHISURF-*` header.
+
+### Resume history (moved out of Where to pick this up)
+
+Moved here unchanged: notes that are history, done work or standing rules rather than the next step.
+
 5. The structural half of the comparison was closed earlier: model/engine
    separation, junction tree, relevance pruning and the dependence view
    ([PRD-68](/prds/prd-68.md), [PRD-69](/prds/prd-69.md),

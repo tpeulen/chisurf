@@ -16,7 +16,7 @@ timestamp: '2026-08-11T00:00:00Z'
 Requirements 1, 2, 4 and 5 landed on 2026-08-11 (chisurf; tttrlib alongside).
 What is left, in order:
 
-1. **Requirement 3 — the `.pto` sink — is the whole remainder, and it is
+1. Blocked: **Requirement 3 — the `.pto` sink — is the whole remainder, and it is
    blocked on tttrlib PRD-034.** The seam exists and is deliberately small:
    `pipeline.PhotonSink` (`write` / `checkpoint` / `close`) with a `NullSink`
    wired in, so landing the sink is implementing one class and passing it to
@@ -24,28 +24,33 @@ What is left, in order:
    saved rather than pretending; that message is what disappears when the sink
    lands. Do not write a `.pto` from the plugin by hand — the container's
    normative photons table and its checkpoint operation are 034's.
-2. **Live burst QC is a count, not a selection.** `StreamingBurstDetector` runs
+2. Open: **Live burst QC is a count, not a selection.** `StreamingBurstDetector` runs
    over *all* photons regardless of the channel map, so the burst rate is an
    alignment diagnostic and nothing downstream should treat it as a burst
    search. If it is ever to feed a selection, it needs the channel filter the
    correlator pairs already have.
-3. **The phasor's frequency is `PipelineConfig.phasor_frequency_mhz`, not the
+3. Open: **The phasor's frequency is `PipelineConfig.phasor_frequency_mhz`, not the
    device's.** It defaults to 73.5 MHz and no device reports its repetition
    rate today, so the (g, s) numbers are comparable within a session and not
    across instruments. The fix is a device-level laser-period property, which is
    the same gap as the micro-time resolution below.
-4. **Micro-time resolution is known only for the simulator.** The decay window
+4. Open: **Micro-time resolution is known only for the simulator.** The decay window
    labels its axis in nanoseconds when the device states `tac_dt` and in TAC
    channels when it does not (a B&H card does not). It used to be
    `np.linspace(0, 100, n)` — "Assuming 100 ns time range" — under a
    nanosecond label on every device. Reading the TAC range from the SPC
    parameters is the honest fix.
-5. **Do not re-derive these measurements.** Pushing a chunk into a streaming
+5. Measure: **Do not re-derive these measurements.** Pushing a chunk into a streaming
    consumer through `push_np` cost **1.13 µs/photon** before 2026-08-11 because
    the binding looped in *Python*; after numpy typemaps it is 0.007 µs/photon
    for the decay histogram and the MCS, and 0.27 µs/photon for the correlator
    (whose own cascade work now dominates — that part is real). A regression here
    does not crash, it just fails to keep up with a card.
+
+### Resume history (moved out of Where to pick this up)
+
+Moved here unchanged: notes that are history, done work or standing rules rather than the next step.
+
 6. **A screenshot found two defects no assertion did**, both now fixed, both
    worth knowing about because they are shaped like things that will recur: the
    simulator wrote its TAC without B&H reverse start-stop (`reverse_tac`), so

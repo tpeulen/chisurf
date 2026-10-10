@@ -185,16 +185,24 @@ recomputes its own curve for display.
 
 # Where to pick this up
 
+- Measure: **Tests**: `imp.bff/test/minimizer/census_models.py` — the census that
+  asks every model whether it builds a graph **and** whether the graph's
+  curve matches `update_model()`.
+
+## Resume history (moved out of Where to pick this up)
+
+Moved here unchanged: notes that are history, done work or standing rules rather than the next step.
+
 - **Code**: `chisurf/core/fitting/minimizer.py` — `graph_objective` is the
   entry point; `_single_objective`, `_lifetime_objective`, `_group_objective`
   are the three builders.
+
 - **C++ nodes**: `imp.bff/include/` — `Expression`, `ChiSquared`,
   `Minimizer`, `TcspcDecay`, `FretSpectrum`, `AnisotropySpectrum`,
   `FcsMdfCurve`, `JointChiSquared`.
-- **Tests**: `imp.bff/test/minimizer/census_models.py` — the census that
-  asks every model whether it builds a graph **and** whether the graph's
-  curve matches `update_model()`.
+
 - **Fallback**: `director_objective` — the SWIG director path for models
   the graph cannot represent. Same LM algorithm, Python-residual transport.
+
 - **Related**: [fitting](/subsystems/fitting.md) for the overall fit
   lifecycle, [PRD-105](/prds/prd-105.md) for the migration plan.

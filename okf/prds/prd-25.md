@@ -81,16 +81,16 @@ Fail-loud on real errors; one RPC contract; no duplicated read paths; behavior-a
 **N1 (typed IDs), N3 (boundary validation), and H3 (single sample read) are
 done; N2 (units) and H1 (fail-loud audit) remain.** The remaining items:
 
-1. **N2 — first-class units layer.** No `Quantity`/`Unit` class exists;
+1. Open: **N2 — first-class units layer.** No `Quantity`/`Unit` class exists;
    `mmfdb_parameter.units` is free-text. Build a float-zone `units.py` that
    reads `_item_units.code` from the dictionary and validates parameter units
    at the boundary. Wire into `provenance/operation_parameters.py` and
    `queries/parameters.py`.
-2. **H1 — audit the ~100 broad `except Exception` sites.** `register_result`
+2. Open: **H1 — audit the ~100 broad `except Exception` sites.** `register_result`
    is fail-loud (warns only for "no DB", raises on real errors), but
    `repository.py` (319, 414, 493, 500, 510, 1549), `result_registry.py`
    (249, 309, 449, 615, 898), `store/object_store.py`, and `samples/*.py`
    still swallow real errors. Convert "no DB" to warn, everything else to
    raise.
-3. **H3 follow-up.** The manager now delegates to the canonical read; verify
+3. Open: **H3 follow-up.** The manager now delegates to the canonical read; verify
    no other hand-written sample SELECTs remain (`grep -rn 'FROM flr_sample'`).

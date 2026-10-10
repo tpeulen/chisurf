@@ -4,6 +4,7 @@ title: "Filtered FCS (fFCS/FLCS) and 2D-FLCS: theory mapped to ChiSurf"
 description: The micro-time statistical-filter theory behind fFCS/FLCS and 2D-FLCS, and how each piece maps onto ChiSurf's filtered.py, fcs_filter_calculator, and flc_2d code.
 tags: [reference, fcs, flcs, 2d-flcs, lifetime, filters, theory]
 timestamp: '2026-09-17T00:00:00Z'
+convention-exempt: true
 ---
 
 # Filtered FCS (fFCS/FLCS) and 2D-FLCS — theory ↔ ChiSurf

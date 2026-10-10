@@ -86,8 +86,8 @@ shows the image, in the same scene, so a model can be looked at inside its data.
 and a 3x3 `rotation`, built primarily from an array in memory, with a voxel
 budget and automatic striding, a `mean + 1 sigma` default level, a histogram, and
 `isosurface()`. `io/mrc.py` now reads into one of those, honouring the
-`mapc/mapr/maps` axis permutation and the two origin conventions (it previously
-did neither, so a map loaded transposed and at the scene origin); the old
+`mapc/mapr/maps` axis permutation and the two zero-point conventions (it previously
+did neither, so a map loaded transposed and at the scene zero point); the old
 point-cloud entry point is derived from the grid rather than parsing a second
 time. Maps are scene objects with per-level colour and `surface`/`mesh` styles,
 reachable as `load_map`, `isosurface`, `isomesh`, `volume_level` and `map_info`.
@@ -99,11 +99,11 @@ loaded in chisurf.
 
 ## Chimera is the authority here
 
-For voxel maps specifically, Chimera/ChimeraX is the reference for **behaviour**,
+For voxel maps specifically, the reference volume viewer is the reference for **behaviour**,
 not merely for quality — see the carve-out in [the target spec](/specs/chimol.md).
-PyMOL's volume support is thin and this is most of what gets looked at here, so
+The reference viewer's volume support is thin and this is most of what gets looked at here, so
 the data model, the defaults, the terminology and the interface follow Chimera's,
-while PyMOL's command *names* are kept where it has them.
+while the reference viewer's command *names* are kept where it has them.
 
 ## How the reference tool does it
 
@@ -138,12 +138,12 @@ directly: it makes choosing a threshold an act of looking at the data rather tha
 typing numbers and re-rendering, which is exactly the difficulty with an AV or a
 photon-count stack whose scale nobody knows in advance.
 
-Alongside it: a data list, a coordinates panel (origin, step, cell angles) and a
+Alongside it: a data list, a coordinates panel (zero point, step, cell angles) and a
 precomputed-subsamples panel.
 
 ## What has to exist
 
-1. **A map object** on the grid model above — origin, step, cell angles and a
+1. **A map object** on the grid model above — zero point, step, cell angles and a
    full 3x3 rotation. A confocal stack's z step is rarely its xy step, and
    treating a grid as cubic silently squashes the picture. It is a real scene
    object with its own name, visibility and colour, regardless of whether it was
@@ -155,12 +155,12 @@ precomputed-subsamples panel.
    keeping the viewer responsive, and cheap to implement.
 4. **The three styles**: isosurface, mesh, and direct volume rendering. Several
    levels shown at once, coloured separately — this is how an AV is read, a dense
-   core inside a diffuse shell. Volume rendering is the mode with no PyMOL
+   core inside a diffuse shell. Volume rendering is the mode with no reference-viewer
    equivalent worth using and the one that suits microscopy and diffuse
    probability densities, where no single threshold is meaningful.
 5. **A histogram panel with draggable level markers**, per the interface above.
 6. **Colour by value** through a transfer function or ramp, not one flat colour.
-7. **Commands.** `map_new`, `isomesh`, `isosurface`, `volume`, `map_trim` — PyMOL
+7. **Commands.** `map_new`, `isomesh`, `isosurface`, `volume`, `map_trim` — reference-viewer
    names and semantics per the compatibility contract, ChiMOL's additions after
    them rather than in place of them.
 8. **A starting level the eye can find**, derived from the data (a quantile of

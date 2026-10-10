@@ -220,20 +220,6 @@ which reads as a bug in the seam rather than in the call site.
 column by column so dtypes survive, and the argument handed straight back when
 it is already a store. **Two traps in using it:**
 
-* it returns the *same object* for a store, so a caller that then mutates --
-  `tagged["File Idx"] = ...` -- must `.copy()` first, or it grows a column on
-  the caller's cached table every time it runs;
-* convert at the **entry** of a function, not where the helper is reached. Two
-  of the fixes above were first placed one call too deep, which moved the frame
-  past the first `take_*` only to meet the second.
-
-`store_from_dataframe` and `dataframe_from_store` are deleted outright;
-`read_table_frame` is renamed `read_results_table` and returns a store.
-Every caller — production and test, six call sites in all, including
-`burst_selection/tests/test_io.py` — was ported the same day. See the
-"pandas eliminated entirely" resume note below for the full account.
-
-
 **The burst-table layer holds a store** (2026-08-07), which was the item
 everything else waited on: reading a 200k-row burst table costs 541 ms as a
 frame, **71 ms into a store (7.6×)**, and 485 ms into a store and back to a
@@ -244,6 +230,38 @@ burst browser and the MFD preparation are all store-native now. The old
 `test/pandas_import_allowlist.txt` tracker went **47 → 8** here, then **8 → 0**
 and was retired the same day (see the resume note above) once the scope
 changed from "pandas as documented interop" to "pandas out of the tree".
+
+2. Open: **The `.dstore` native file** is worth a look for anything written and read
+   only by ChiSurf. It keeps the row selection and the whole tree, needs no
+   HDF5 at all, and on a compressed table it is dramatically faster — but it is
+   not readable by anything else, so it is wrong for the burst and imaging
+   files, which are interchange formats. Measured a wash against uncompressed
+   HDF5 on bulk I/O.
+
+.. seealso::
+
+   [chitable](gui-tables.md) — the table widget family whose fourth adapter this
+   store backs.
+   [burst companions](burst-companions.md) — the numpy-only contract that is
+   deliberately untouched.
+
+## Resume history (moved out of Where to pick this up)
+
+Moved here unchanged: notes that are history, done work or standing rules rather than the next step.
+
+* it returns the *same object* for a store, so a caller that then mutates --
+  `tagged["File Idx"] = ...` -- must `.copy()` first, or it grows a column on
+  the caller's cached table every time it runs;
+
+* convert at the **entry** of a function, not where the helper is reached. Two
+  of the fixes above were first placed one call too deep, which moved the frame
+  past the first `take_*` only to meet the second.
+
+`store_from_dataframe` and `dataframe_from_store` are deleted outright;
+`read_table_frame` is renamed `read_results_table` and returns a store.
+Every caller — production and test, six call sites in all, including
+`burst_selection/tests/test_io.py` — was ported the same day. See the
+"pandas eliminated entirely" resume note below for the full account.
 
 1. **The three ports that emptied the tracker**, none of them mechanical:
    `burst_fcs_correlator/wizard.py`'s `td4` writer built its row grid from the
@@ -263,16 +281,12 @@ changed from "pandas as documented interop" to "pandas out of the tree".
    `columns` is the dangerous one, because a store has both `names` and
    `columns` and its `columns` are `Column` objects, so a lookup answers
    "absent" rather than raising.
-2. **The `.dstore` native file** is worth a look for anything written and read
-   only by ChiSurf. It keeps the row selection and the whole tree, needs no
-   HDF5 at all, and on a compressed table it is dramatically faster — but it is
-   not readable by anything else, so it is wrong for the burst and imaging
-   files, which are interchange formats. Measured a wash against uncompressed
-   HDF5 on bulk I/O.
+
 3. **The CSV *reader* is deliberately not migrated.** Same measurement as
    above from the other side: 7.6× into a store, 1.1× into a store and back to
    a frame. It is worth doing for a consumer that has already moved, and worth
    nothing for one that has not — so it follows point 1 rather than leading it.
+
 4. **`write_csv_table` no longer copies the table to write it.** The library's
    `nan_rep` says what a `NaN` is written as, which is a question `na_rep` does
    not answer: `na_rep` covers a cell the *mask* says was never measured, and a
@@ -280,10 +294,3 @@ changed from "pandas as documented interop" to "pandas out of the tree".
    first — and the mask is part of the table, so doing it in place meant
    **writing a table changed it**. Kept here because the shape recurs: any
    formatting choice expressed by editing the table is the same bug.
-
-.. seealso::
-
-   [chitable](gui-tables.md) — the table widget family whose fourth adapter this
-   store backs.
-   [burst companions](burst-companions.md) — the numpy-only contract that is
-   deliberately untouched.

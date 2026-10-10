@@ -5,6 +5,7 @@ description: junk/ holds ~40 reference implementations ChiSurf is built against.
 resource: build_tools/dev_utils/reference_coverage.py
 tags: [workflow, references, provenance, junk, transcription]
 timestamp: '2026-08-06T00:00:00Z'
+convention-exempt: true
 ---
 
 # Why

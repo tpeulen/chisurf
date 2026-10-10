@@ -12,7 +12,18 @@ timestamp: '2026-10-05T00:00:00Z'
 Allow-list `test/matplotlib_import_allowlist.txt`: **31 -> 0** (2026-10-05/06),
 guard `test/test_matplotlib_seam.py`. Routes done: **colormap** (all 12, via
 `emtk.colormaps`), **delete** (1), **figure** (all but the two below, via
-`emtk.figure`). Open, in order:
+`emtk.figure`). Nothing is open; the finished routes and notes are kept under the resume history below.
+
+Trap when committing here: the tree is shared and most of these files carry
+other lanes' edits. Save `git diff <file>` before editing, stage via a temp
+`GIT_INDEX_FILE` with `git merge-file` (HEAD, HEAD+foreign, working tree);
+where hunks overlap, stage HEAD with only your function swapped in. One
+concurrent commit in ndXplorer took this lane's content under another
+session's message (`ea40470` = the report port).
+
+## Resume history (moved out of Where to pick this up)
+
+Moved here unchanged: notes that are history, done work or standing rules rather than the next step.
 
 1. **trace browser DOCX picture -- DONE 2026-10-06.** The cause was not
    nesting: the export runs on a job thread (`chisurf/emtk/jobs.py`), and
@@ -23,6 +34,7 @@ guard `test/test_matplotlib_seam.py`. Routes done: **colormap** (all 12, via
    (3/3). Before/after picture on BH_SPC132 (ALEX): same title, labels,
    legend, channels. **Rule for any off-thread emtk drawing: it goes through
    `frame()`/`emtk.figure`, never a hand-made Context.**
+
 2. **ndXplorer publication figure -- DONE 2026-10-06** (ndxplorer `88318a6`,
    emtk `0797f09`). emtk gained `SvgPainter`/`PdfPainter`
    (`emtk/vector_painter.py`: text laid out with the atlas exactly as
@@ -36,6 +48,7 @@ guard `test/test_matplotlib_seam.py`. Routes done: **colormap** (all 12, via
    ships it to Pyodide. Known gap: `transparent=True` is accepted but the
    figure is drawn on white paper. Checking a vector file by eye: `rsvg-convert`
    (SVG) and `sips` (PDF) render them independently of emtk.
+
 3. **plot route -- DONE 2026-10-06 (the Qt LLTF wizard is retired).**
    `lltf_gui.py` (`LLTFGUIWizard`, `FigureCanvasQTAgg`) is deleted. Parity
    re-checked before deletion with `test.gui.emtk_port_parity before/after/
@@ -52,6 +65,7 @@ guard `test/test_matplotlib_seam.py`. Routes done: **colormap** (all 12, via
    three things on the emtk app, and guide 76's `lltf_output.png` (the last
    Qt-hub grab) is redrawn from the emtk window by
    `make_screenshots._grab_lltf`.
+
 4. **math route -- DONE 2026-10-06.** emtk `e1e04d5` (+ `11d64c4`, sans)
    adds `emtk/tex.py`, a TeX box-layout typesetter (scripts, fractions, roots,
    grown delimiters, big operators with limits, accents on ink, font commands,
@@ -67,9 +81,11 @@ guard `test/test_matplotlib_seam.py`. Routes done: **colormap** (all 12, via
    the mask, `tex._ink`); STIX Two Text has no bold face; TeX puts no space
    around `+` in script style, so a fraction's parts look tighter than
    matplotlib drew them -- correct, not a bug.
+
 5. **Static exports go through emtk.figure, not chiplot**: `chisurf.gui`
    imports Qt, and callers include Qt-free api/server/agent code. chiplot
    stays the API for plots *inside* GUIs.
+
 6. **Manifests and guard -- DONE 2026-10-06** (chisurf `106b25521`,
    `2b9ea8d3d`). The list is empty; `matplotlib-base` is declared only under
    `[feature.test]` (colormap oracle) and `[feature.docs]`
@@ -85,13 +101,6 @@ guard `test/test_matplotlib_seam.py`. Routes done: **colormap** (all 12, via
    files when matplotlib is absent (it printed a traceback into every new
    console). **Left:** `pixi.lock` is not re-solved (other lanes co-edit it) --
    the next `pixi install` drops matplotlib from the default env.
-
-Trap when committing here: the tree is shared and most of these files carry
-other lanes' edits. Save `git diff <file>` before editing, stage via a temp
-`GIT_INDEX_FILE` with `git merge-file` (HEAD, HEAD+foreign, working tree);
-where hunks overlap, stage HEAD with only your function swapped in. One
-concurrent commit in ndXplorer took this lane's content under another
-session's message (`ea40470` = the report port).
 
 # Why
 

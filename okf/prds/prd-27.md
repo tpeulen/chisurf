@@ -88,16 +88,16 @@ remaining in-place mutations are the open front.** `test_reconstructability.py`
 tombstones preserve records, and operation status changes log transitions.
 The remaining in-place UPDATEs on recorded facts:
 
-1. **`settings_json`** (`queries/artifacts.py:133` `update_operation_settings`)
+1. Open: **`settings_json`** (`queries/artifacts.py:133` `update_operation_settings`)
    — mutates the operation's recorded settings in place. Decide: append a new
    settings revision row, or accept settings as a mutable "current config"
    (not a recorded fact) and document that.
-2. **`software_package`** (`workflow/runner.py:277`) — the host-neutralizer
+2. Open: **`software_package`** (`workflow/runner.py:277`) — the host-neutralizer
    rewrites the recorded software identity. This is a provenance fact; it
    should be a new row or a documented correction, not an in-place UPDATE.
-3. **Generic `update_operation` / `update_artifact` bags** (`artifacts.py:127`,
+3. Open: **Generic `update_operation` / `update_artifact` bags** (`artifacts.py:127`,
    `:259`, `analysis.py:100`) — these mutate recorded facts (checksum,
    validation_status, metadata). Audit each column: which are "current state"
    (mutable) vs "recorded fact" (append-only).
-4. **Wire PRD-12/PRD-21 as formal projections** over the transition log once
+4. Open: **Wire PRD-12/PRD-21 as formal projections** over the transition log once
    the mutation audit is done.

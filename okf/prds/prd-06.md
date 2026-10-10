@@ -142,7 +142,7 @@ hand-rolled. The work is **integration + curation**, not building from scratch.
   probes/spectra/optical-properties into the target MMFDB (idempotent, dedup by
   name+source), stamping every imported row as unverified (Task 8).
 - **7.3 Add `source` provenance.** Add a `source` column to `probes` identifying
-  the origin (a specific public fluorophore database, dye manufacturer,
+  the source (a specific public fluorophore database, dye manufacturer,
   filter/optics vendor, `user`, or `literature`) plus `source_ref` (URL/accession)
   and `retrieved_at`. Follow the `.dic`-driven schema rule (PRD-19): if `probes`
   becomes a `.dic`-declared table, add these via the dictionary +

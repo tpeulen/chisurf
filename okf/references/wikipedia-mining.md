@@ -223,23 +223,54 @@ anything a page wants. The dump's standing use is the last item below.
 ## Where to pick this up
 
 **Latest (2026-09-23, round 3) — every guide has a real screenshot; citing corrects.**
-1. **Measure coverage again before writing**: guides without a screenshot
+1. Measure: **Measure coverage again before writing**: guides without a screenshot
    (compare `figures/*.png` referenced by a guide against the grab modules in
-   `docs/guides/screenshots/` + `make_screenshots.py`), concept pages by
+   `docs/guides/screenshots/` · `make_screenshots.py`), concept pages by
    `{cite}` count. After round 3 the lowest pages carry ≥2 citations; the next
    thin tier (3–5) is the front.
-2. **Citing a page is an audit of it**: 12 of 14 pages had a wrong claim,
-   found only because each citation forced re-reading against the code.
-3. **Screenshot agents stall on hung GUI scripts**: run every grab as a
-   subprocess with a hard timeout (macOS has no `timeout`); the three that
-   stalled all resumed from their `progress.md`.
-4. **Grab traps**: never let an agent run the acquisition tool against the
-   default output folder (it wrote m000–m043.spc into ~/chisurf/acquisition);
-   the flow grab would overwrite the intended-result figure.
 
 **Earlier (2026-09-23, round 2) — guides 72–82 done; ports lose help silently.**
 Guides 76–82 + concepts `hydrodynamics`, `dye_quenching`, `structure_trajectories`
 added 45 entries (312 total). Open, in order:
+
+2. Open: **Ports drop references.** The sweep (all deleted `.ui` + GUI diffs,
+   2026-09-23) is complete for citations and cautions; long uncited help prose
+   in Python was not searched exhaustively.
+3. Open: **Undocumented plugins left** are admin/core tools and `menu_hidden` ones
+   with no hub (Synthetic Decay Generator is documented but unreachable).
+4. Open: **QuEst import blocker** and LLTF's mis-specified component test are the
+   highest-value code fixes the docs exposed (known-issues, second 09-23 section).
+
+**Earlier (2026-09-23) — page-driven harvest works; plugin coverage is the front.**
+Guides 72–75 + concepts `point_spread_function`, `intensity_traces` drew 40
+Crossref-verified entries from dump citations (commit `226b7f845`). Open, in order:
+
+1. Measure: **Undocumented plugins.** Re-measure with the loop that found them: for each
+   `chisurf/plugins/**/manifest.json`, grep its directory name in
+   `docs/guides docs/concepts` — 0 hits = no page. *Trap:* the name test misses
+   pages that use the menu label only, so check `display_name` too before writing.
+   Menu-visible and still undocumented: none of the five taken; the rest
+   (`traj/*`, `spot_finder`, `proteinmc`, `mfd_prepare`, core admin tools) are
+   `menu_hidden` — document only if they are reachable from a hub.
+
+Done since this page was written, in order: the seed extension and second
+harvest (item 1, item 2), the `sources:` renderer and its test (item 3), the
+cross-reference guardrail (item 4). What remains is a usage note on the dump, kept under the resume history below.
+
+### Resume history (moved out of Where to pick this up)
+
+Moved here unchanged: notes that are history, done work or standing rules rather than the next step.
+
+2. **Citing a page is an audit of it**: 12 of 14 pages had a wrong claim,
+   found only because each citation forced re-reading against the code.
+
+3. **Screenshot agents stall on hung GUI scripts**: run every grab as a
+   subprocess with a hard timeout (macOS has no `timeout`); the three that
+   stalled all resumed from their `progress.md`.
+
+4. **Grab traps**: never let an agent run the acquisition tool against the
+   default output folder (it wrote m000–m043.spc into ~/chisurf/acquisition);
+   the flow grab would overwrite the intended-result figure.
 
 1. **A help file that nothing draws is invisible to the seam test.**
    `test_plugin_help_guide_seam` passes when `help.md`/`guide.json` exist;
@@ -247,37 +278,16 @@ added 45 entries (312 total). Open, in order:
    `ensure_help_toolbar` / `attach_help_and_guide`. Check by constructing the
    widget and looking for the buttons (`findChildren(QAbstractButton)` texts
    "Guide", "?"), not by the file. A guard for this would pay.
-2. **Ports drop references.** The sweep (all deleted `.ui` + GUI diffs,
-   2026-09-23) is complete for citations and cautions; long uncited help prose
-   in Python was not searched exhaustively.
-3. **Undocumented plugins left** are admin/core tools and `menu_hidden` ones
-   with no hub (Synthetic Decay Generator is documented but unreachable).
-4. **QuEst import blocker** and LLTF's mis-specified component test are the
-   highest-value code fixes the docs exposed (known-issues, second 09-23 section).
 
-**Earlier (2026-09-23) — page-driven harvest works; plugin coverage is the front.**
-Guides 72–75 + concepts `point_spread_function`, `intensity_traces` drew 40
-Crossref-verified entries from dump citations (commit `226b7f845`). Open, in order:
-
-1. **Undocumented plugins.** Re-measure with the loop that found them: for each
-   `chisurf/plugins/**/manifest.json`, grep its directory name in
-   `docs/guides docs/concepts` — 0 hits = no page. *Trap:* the name test misses
-   pages that use the menu label only, so check `display_name` too before writing.
-   Menu-visible and still undocumented: none of the five taken; the rest
-   (`traj/*`, `spot_finder`, `proteinmc`, `mfd_prepare`, core admin tools) are
-   `menu_hidden` — document only if they are reachable from a hub.
 2. **Writing a page measures the tool.** All four passes found real defects
    (~30, in known-issues 2026-09-23). The highest-value ones are blockers, not
    cosmetics: FCS Channel Definitions → correlator disconnected; TTTR Correlate
    error bars inverted; PSF calculator does not open on the emtk backend;
    tttrlib radial PSF E_z 2× (fix upstream). Fix these before more docs.
+
 3. **Docs that quote numbers must re-derive them.** The PSF help's widths were
    5–40 % off because they were typed, not measured; `PSFModel` scripts in the
    guide reproduce the table.
-
-Done since this page was written, in order: the seed extension and second
-harvest (item 1, item 2), the `sources:` renderer and its test (item 3), the
-cross-reference guardrail (item 4). What remains:
 
 1. **The dump is a general resource, not a bibliography tool.** It is equally
    the way to check a claim in a concept page without a network round-trip.

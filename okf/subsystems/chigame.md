@@ -187,7 +187,7 @@ engine fixes now pinned in `test/gui/test_chigame_port.py`:
 `GameHost.bind_pack()` (a pack swapped on `scene.pack` alone left the batch
 sampling the old texture — every sprite flat white) and `Weapon` anchoring
 its damage area in `update()` (an undrawn enemy weapon struck from a stale
-origin) with a recharge so polled swings cannot machine-gun. pygame is **not**
+position) with a recharge so polled swings cannot machine-gun. pygame is **not**
 an option for the engine (user rule); the pyzelda-rpg checkout is annotated
 read-and-skipped.
 

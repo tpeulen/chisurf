@@ -201,7 +201,7 @@ screenshots inspected at every step and every tab.
   scrollbar appears under the list instead of eliding or wrapping. The selected
   row's label is invisible on this palette (already RF-075 / RF-109).
 - **Label the second mosaic tile fully.** The Browser draws each tile's label at
-  the tile origin, so the `red` tile's `ch: 4,5` is clipped to `ch: 4` at the
+  the tile corner, so the `red` tile's `ch: 4,5` is clipped to `ch: 4` at the
   panel edge.
 
 ## Bugs filed

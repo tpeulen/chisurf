@@ -103,7 +103,7 @@ image stacks — core quantitative-imaging measurements. ChiSurf can currently
 headline STICS deliverable: a spatially resolved flow **vector field** overlaid
 on the image, obtained without assuming a transport model.
 
-# Port target — the reference Matlab ICS packages
+# Port target — the reference numerical-environment ICS packages
 
 Two vendored copies exist, and **the one to port from is not the obvious one**:
 
@@ -256,7 +256,7 @@ built from `xvals[:fitsize]` where it should use `xvals[fitsize:]` (benign only
 because both halves currently carry identical values). Whatever we port must have a
 multi-component RICS test, which is exactly what the reference never ran.
 
-**Do not port the Matlab structure.** Both packages wire GUI handles (`gcbf`,
+**Do not port the numerical-environment structure.** Both packages wire GUI handles (`gcbf`,
 `waitbar`, `roipoly`, `inputdlg`) into the numerics, and the 2015 driver hard-codes
 Windows paths and writes `.mat`/PDF side effects from inside the analysis. The port
 keeps the *physics and the estimators* and re-expresses them headlessly:

@@ -9,21 +9,21 @@ timestamp: '2026-10-07T00:00:00Z'
 
 # Where to pick this up
 
-1. Re-capture 148L at one fixed camera/settings state for `splat` and the meshed
+1. Measure: Re-capture 148L at one fixed camera/settings state for `splat` and the meshed
    levels, with atoms/cartoon/sticks also visible. Read the PNGs and compare
    intersections, interior relief, silhouette and opacity. The historical claim
    that splats never write depth is obsolete: the current
    [resolve shader](../../modules/chimol/chimol/render/wgsl/gauss_resolve.wgsl)
    exports `frag_depth`. That source fact is not a substitute for a mixed-scene
    render or browser verification.
-2. Audit molecular-surface-specific coverage separately from
+2. Open: Audit molecular-surface-specific coverage separately from
    [the current splat picture tests](../../modules/chimol/tests/test_splat_picture.py),
    which cover chunk/SMLM depth entries and a splat profile. Verify quality
    routing/config-copy behavior, the actual molecular accumulation/resolve
    path and the browser's supported blendable formats. The old assertion of
    "no tests at all" is no longer accurate, but those existing tests do not
    establish all molecular-surface parity.
-3. Profile current mesh builds before moving the density grid to another
+3. Measure: Profile current mesh builds before moving the density grid to another
    compute route. The handover measured roughly 253 ms for a 1,363-atom mesh
    (106 ms grid, 63 ms marching cubes, 65 ms occlusion); these are historical
    stage measurements, not current latency guarantees or values to add to a

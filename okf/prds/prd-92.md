@@ -19,6 +19,29 @@ coupling this PRD exists to break is broken**: `fit_regions` resolves the
 regions it is handed and finds none of its own. What remains is the batch half
 for the MLE side, the spot finder's GUI, and docs.
 
+2. Open: **Then the container contract (§4), before either plugin is written.** The
+   burst side learned this the expensive way: a companion format that merges by
+   position fails *silently* when a row is missing rather than absent
+   ([burst companions](/subsystems/burst-companions.md)). A region table has
+   the same shape and needs the same rule — one row per detected region
+   including the ones the fit skipped.
+4. Open: **Batch is a stage of its own, not a loop around the new cores (§6).** Read
+   §6's inventory before touching it: there are *two* batch loops today with
+   different persistence (the GUI one writes no container), every failure mode
+   is a `continue` that shortens the result silently, and the IRF is rebuilt
+   once per file from the same measurement. Replacing the loop without fixing
+   those reproduces them in two plugins instead of one.
+5. Open: **Reuse, do not re-derive, the estimator half (§5.2).** `Fit2x` /
+   `fit_many` / `assemble_vv_vh` / the IRF preparation / the `min_photons`
+   sentinel path are all shared machinery already
+   ([MLE lifetime fitting](/subsystems/mle-lifetime-fitting.md)); the region
+   MLE keeps them unchanged. A stage that edits `chisurf/core/fluorescence/mle/`
+   has gone wrong.
+
+## Resume history (moved out of Where to pick this up)
+
+Moved here unchanged: notes that are history, done work or standing rules rather than the next step.
+
 1. ~~**Settle the pixel-membership question first (§3).**~~ **Settled and
    landed (2026-08-10):** option B, the raster/table pair, in
    `chisurf/core/fio/fluorescence/region_container.py`
@@ -34,12 +57,7 @@ for the MLE side, the spot finder's GUI, and docs.
    not the caller's — `region_table`, `region_detection` and the `region` grain
    were added to `mmfdb_flr_ext.dic`, and `radians`/`pixels` were already there
    under those spellings (`rad` is not a term).
-2. **Then the container contract (§4), before either plugin is written.** The
-   burst side learned this the expensive way: a companion format that merges by
-   position fails *silently* when a row is missing rather than absent
-   ([burst companions](/subsystems/burst-companions.md)). A region table has
-   the same shape and needs the same rule — one row per detected region
-   including the ones the fit skipped.
+
 3. ~~**The rename and the de-segmentation of the MLE (§5.2).**~~ **Landed
    (2026-08-10)**, and the equivalence is *proven*, not asserted: the baseline
    was captured before the change (`region_mle/test/data/` — the intensity
@@ -54,18 +72,6 @@ for the MLE side, the spot finder's GUI, and docs.
    regions it is handed, and after the split it will be handed regions from a
    detector it does not know about. Doing the rename first means the split is
    written against the final names.
-4. **Batch is a stage of its own, not a loop around the new cores (§6).** Read
-   §6's inventory before touching it: there are *two* batch loops today with
-   different persistence (the GUI one writes no container), every failure mode
-   is a `continue` that shortens the result silently, and the IRF is rebuilt
-   once per file from the same measurement. Replacing the loop without fixing
-   those reproduces them in two plugins instead of one.
-5. **Reuse, do not re-derive, the estimator half (§5.2).** `Fit2x` /
-   `fit_many` / `assemble_vv_vh` / the IRF preparation / the `min_photons`
-   sentinel path are all shared machinery already
-   ([MLE lifetime fitting](/subsystems/mle-lifetime-fitting.md)); the region
-   MLE keeps them unchanged. A stage that edits `chisurf/core/fluorescence/mle/`
-   has gone wrong.
 
 ## Traps recorded in advance
 
@@ -233,7 +239,7 @@ failure mode is identical:
   it and the position rule becomes a belt rather than the only brace.
 * **`label` is first and is the raster key**, contiguous from 1, after
   `relabel_sequential`.
-* **Column names are namespaced by origin** — `region.area`,
+* **Column names are namespaced by source** — `region.area`,
   `region.centroid_y`, `spot.sigma_x`, `fit.tau` — so a fit table and a
   detection table can sit in the same run without a name collision, and a reader
   can tell which stage produced a column.

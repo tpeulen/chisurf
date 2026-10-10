@@ -9,10 +9,24 @@ timestamp: '2026-09-03T00:00:00Z'
 
 # Where to pick this up
 
+2. Open: **Next**: `imaging/pixel_maps.py` — the `kind` if/elif chain and each
+   branch's fixed map-name dict; the meaningful conversion is a
+   requested-kinds list plus declared output-map names per kind (a run
+   currently cannot even ask for a *set* of maps), and
+   `MFD_INTENSITY_COLUMNS` (line ~452) belongs in the same declaration.
+3. Open: Then sweep: any new analysis lands with its declaration from day one;
+   any touched analysis converts in the same change (the same
+   walk-past-it rule as chiplot).
+
+## Resume history (moved out of Where to pick this up)
+
+Moved here unchanged: notes that are history, done work or standing rules rather than the next step.
+
 0. **Vocabulary anchored (2026-09-03)**: all three declarations carry
    `term:` keys resolving into `mmfdb_flr_ext.dic` (mmfdb `32c70a8`), and
    the guard test refuses unanchored or unresolvable terms. New analyses
    follow the same two steps: define the term in mmfdb, reference it.
+
 1. **Converted (2026-09-03)**: the `.bur` burst-summary schema
    (`chisurf/core/fio/fluorescence/burst_features.yaml`, walked by
    `generate_burst_dataframe`; cell-for-cell parity pinned in
@@ -23,14 +37,6 @@ timestamp: '2026-09-03T00:00:00Z'
    parameter registry); the region-MLE shape features
    (`plugins/microscopy/region_mle/core/result_columns.yaml`, one list
    serving the fitted table and the preview).
-2. **Next**: `imaging/pixel_maps.py` — the `kind` if/elif chain and each
-   branch's fixed map-name dict; the meaningful conversion is a
-   requested-kinds list plus declared output-map names per kind (a run
-   currently cannot even ask for a *set* of maps), and
-   `MFD_INTENSITY_COLUMNS` (line ~452) belongs in the same declaration.
-3. Then sweep: any new analysis lands with its declaration from day one;
-   any touched analysis converts in the same change (the same
-   walk-past-it rule as chiplot).
 
 # The rule (owner, 2026-09-03)
 
