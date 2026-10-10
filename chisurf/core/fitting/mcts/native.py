@@ -120,6 +120,8 @@ class NativeSearchPreparation:
     problem: Any | None = None
     binding: NativeSearchBinding | None = None
     reasons: tuple[NativeSearchReason, ...] = ()
+    #: Whether the problem also searches how each candidate is fitted.
+    search_fit_settings: bool = False
 
     @property
     def supported(self) -> bool:

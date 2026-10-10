@@ -70,6 +70,8 @@ class FittingControlsModel:
         self.chain_format = str(chain_format)
         self.result_index = 1
         self.local_first = True
+        #: Whether MCTS also searches how each candidate is fitted.
+        self.search_fit_settings = False
 
     # -- AutoForm plumbing -------------------------------------------------
 

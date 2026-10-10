@@ -97,6 +97,12 @@
           "attr": "local_first",
           "label": "Local first",
           "description": "Optimise each dataset on its own before the global fit, which usually starts the global step much closer to the optimum."
+        },
+        {
+          "type": "toggle",
+          "attr": "search_fit_settings",
+          "label": "Search fit settings",
+          "description": "Let MCTS also try other ways of fitting each candidate structure: looser and tighter tolerances, the first declared start only, the parent's values as the start, a smaller first step. Each is scored like a structure, so one only wins by fitting better. Slower; use it when a structure fails to converge from its declared start. Saved to your settings."
         }
       ]
     }

@@ -2,6 +2,13 @@
 
 ## 2026-10-10
 
+- PRD-154 W10: bff's model search gains a modality token (state width 78), a
+  `request_information` outcome for moves whose measurement is missing, smFRET/MFD and PIE/ALEX
+  self-play games, and a fit-settings action space; the retrained policy passes the gate (all
+  games, seed 91000: 296/315/324 of 330 vs priors 277/302/319, ~22 % fewer evaluations).
+  ChiSurf: `prepare_model_search(search_fit_settings=)`, a "Search fit settings" checkbox in the
+  fit controls, `optimization.mcts` defaults in `settings_chisurf.yaml`, and a search that asks
+  for a measurement leaves the model alone. Resume: [PRD-152](prds/prd-152-native-experiment-self-play.md).
 - Docs for visible plugins that had none: concepts `file_tools`, `tttr_stream_tools`, `code_editor`,
   `molecular_viewer`; plugin sections in `games`, `us_alex`, `global_analysis`, `live_streaming_analysis`,
   `accurate_fret`; guide `104_lightpath_simulator`. The plugin-docs generator skips the cookiecutter template.

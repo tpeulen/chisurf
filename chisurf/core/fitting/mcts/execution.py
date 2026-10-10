@@ -32,6 +32,62 @@ class NativeSearchSettings:
     action_policy: str | bytes = "shipped"
 
 
+def configure_action_space(problem: Any, search_fit_settings: bool) -> bool:
+    """Search structures only, or structures and how each one is fitted.
+
+    With ``search_fit_settings`` bff's fit-settings action space is switched
+    on: a state is a structure fitted one particular way (optimiser
+    tolerances, evaluation budget, start values, step bound), and a move may
+    refit the same structure another way. Both are scored by the same reward,
+    so a different way of fitting only wins by fitting better. Without it the
+    problem is put back to structures only, which a live model needs because
+    it keeps its problem between searches.
+
+    Parameters
+    ----------
+    problem : IMP.bff.FittingModelSearchProblem
+        The problem a search is about to run on.
+    search_fit_settings : bool
+        Whether to search fit settings too.
+
+    Returns
+    -------
+    bool
+        Whether the problem now searches what was asked; ``False`` when this
+        bff build has no fit-settings action space and it was asked for.
+    """
+    import IMP.bff as bff
+
+    if not hasattr(problem, "set_action_space"):
+        return not search_fit_settings
+    if search_fit_settings:
+        problem.add_default_fit_settings_candidates()
+        problem.set_action_space(bff.ACTION_SPACE_FIT_SETTINGS)
+    elif problem.get_action_space() != bff.ACTION_SPACE_STRUCTURE:
+        problem.set_action_space(bff.ACTION_SPACE_STRUCTURE)
+    return True
+
+
+def search_outcome(result: Any) -> tuple[str, tuple[str, ...]]:
+    """How a search ended, and what it asks to be measured.
+
+    Parameters
+    ----------
+    result : IMP.bff.ModelSearchResult
+        A finished search.
+
+    Returns
+    -------
+    tuple
+        ``(outcome, missing)``: ``outcome`` is ``"selected"``,
+        ``"request_information"`` or ``"cancelled"``; ``missing`` names the
+        measurements a ``request_information`` outcome needs.
+    """
+    if hasattr(result, "get_outcome"):
+        return str(result.get_outcome()), tuple(str(m) for m in result.get_missing_observables())
+    return ("cancelled" if result.get_cancelled() else "selected"), ()
+
+
 def run_native_search(
     problem: Any,
     settings: NativeSearchSettings,

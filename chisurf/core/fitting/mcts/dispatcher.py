@@ -7,7 +7,7 @@ and every refusal is returned to the caller as ``NativeSearchReason`` data.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from chisurf.core.fitting.mcts.native import (
@@ -125,13 +125,44 @@ def model_search_available(fit: Any) -> bool:
     return True
 
 
-def prepare_model_search(fit: Any) -> NativeSearchPreparation:
+def prepare_model_search(fit: Any, *, search_fit_settings: bool = False) -> NativeSearchPreparation:
     """Prepare the one native search appropriate for ``fit``.
 
     Multi-member and explicit global models are indivisible.  A refusal from
     their joint capability is returned as-is; members are never searched one
     at a time because that would violate shared-parameter semantics.
+
+    Parameters
+    ----------
+    fit : Any
+        The fit (or fit group) to search.
+    search_fit_settings : bool, optional
+        Also search how each candidate structure is fitted -- optimiser
+        tolerances, evaluation budget, start values -- as a second action
+        space scored by the same reward. Off by default: it costs more fits.
+
+    Returns
+    -------
+    NativeSearchPreparation
+        A ready problem and binding, or the reasons there is none.
     """
+    prepared = _prepare(fit)
+    if not prepared.supported:
+        return prepared
+    from chisurf.core.fitting.mcts.execution import configure_action_space
+
+    if not configure_action_space(prepared.problem, bool(search_fit_settings)):
+        return unsupported(
+            CAPABILITY_ID,
+            "fit_settings_unavailable",
+            "this IMP.bff build cannot search fit settings; update it or untick "
+            "'Search fit settings'",
+        )
+    return replace(prepared, search_fit_settings=bool(search_fit_settings))
+
+
+def _prepare(fit: Any) -> NativeSearchPreparation:
+    """The preparation :func:`prepare_model_search` configures."""
     members = list(getattr(fit, "grouped_fits", []) or [])
     model = getattr(fit, "model", None)
     is_explicit_global = False

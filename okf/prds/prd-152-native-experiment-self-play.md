@@ -13,6 +13,33 @@ timestamp: '2026-09-23T21:13:31+02:00'
 
 # PRD-152: native experiment-generating self-play for residual-aware model search
 
+## Where to pick this up
+
+1. **Gate margin at budget 8 is one run.** Measure:
+   `$E/bin/python test/mcts/bench_action_policy.py --measurements 30 --seed 91000`
+   from `~/dev/imp.bff` (`$E` = arm64 env, IMP built from `../imp`, see
+   [imp-local-build](../workflows/imp-local-build.md)); all games ship
+   296/315/324 vs priors 277/302/319 of 330. Trap: comparing with the
+   pre-2026-10-10 benchmark needs `--games` restricted to its nine games (the
+   rng stream is shared across games in sorted order); there one
+   `fcs_analytical` measurement at budget 8 is lost (266 vs 267) by every
+   candidate tried (hidden 16/32/32-16, five seeds, temperature 3/4). The FCS
+   family has the lowest held-out accuracy (0.69); more FCS episodes or an FCS
+   kind-specific feature is the next lever. Retraining from saved episodes
+   takes 2 min (`--episodes-file`); playing them takes 36 min, 22 of it
+   `tcspc_anisotropy`.
+2. **ChiSurf's pixi env still runs the old bff** (pypi git dep, commit
+   e6137af): the old 71-wide policy and no fit-settings space. Until imp.bff
+   `dev` is pushed and the env rebuilt, `test_mcts_fit_settings.py` and the
+   fit-settings test in `test_mcts_execution.py` skip there; they pass in the
+   arm64 env. The checkbox refuses with `fit_settings_unavailable` on an old bff.
+3. **Three FRET families play no episodes** (`tcspc_fret_ising_chain`,
+   `saw_nu`, `worm_like_chain`: 0 episodes, ising costs 380 s). Their moves
+   offer no choice from the bound fixture; fix the moves or drop them from
+   `_games.GAMES`.
+4. **Open from the contract:** invalid-acquisition validation before
+   simulation; one photon stream reduced to several observables.
+
 ## Decision
 
 The model-search policy is trained on newly generated experiments, not only on
@@ -138,6 +165,53 @@ action policy for every game"):
 - Block-aware state features (the worst member block of a joint residual) are
   in the shipped policy.
 
-Still open: a modality token in the state, `request_information`,
+## Closing the open items and a second action space (spec, 2026-10-10)
+
+Status: **done 2026-10-10** (imp.bff b7a7049c1, policy 13a19829d; chisurf
+commit in `okf/log.md`). Each item names where it landed in bff and how it is
+proven.
+
+1. **Modality token.** `ModelSearchBlockKind` (`generic, tcspc, polarized,
+   fcs, burst_mfd, pie_alex`). A description declares
+   `"dataset_kinds": {<dataset>: <kind>}`; `ModelSearchSpec::build` reads the
+   kind of every joint member's bound dataset, in block order, into
+   `FittingModelSearchProblem::set_structure_block_kinds`. The policy state
+   gains a one-hot of the worst block's kind and log of the number of distinct
+   kinds (state width 71 -> 78). Every shipped family declares its kinds. The
+   width change invalidates the shipped network; it ships again only after a
+   retrain passes the bench gate.
+2. **`request_information`.** A move may say `"requires": [<dataset>]`. When
+   one is unbound the move is not offered but recorded
+   (`add_withheld_action`). `ModelSearchResult::get_outcome()` is
+   `selected | request_information | cancelled`: `request_information` when
+   the best state is not an acceptable fit (`acceptable_above`) and a move out
+   of it was withheld; `get_missing_observables()` names the datasets. ChiSurf
+   warns with the missing observable and keeps the user's model.
+3. **smFRET/MFD and PIE/ALEX games.** `smfret_mfd` (DD, DA; AA optional) and
+   `pie_alex` (prompt DD/DA, delayed AA): FRET species share quenched donor
+   lifetimes across channels; an acceptor term adds the acceptor lifetime to
+   DA. In `smfret_mfd` that move requires `decay_aa`. A stage present only when
+   a dataset is bound is written `"when_bound"` (nodes, joint members, free
+   entries), so every topology is scored on the same data. Both are self-play
+   games: the generating structure's curves are recorded as photons through
+   TTTRLib, so each episode's answer is known.
+4. **Fit-settings action space.** `ModelSearchFitSettings` (algorithm,
+   ftol/xtol/gtol, maxfev, step factor, start `declared|primary|parent`,
+   bounds on/off). `set_action_space(ACTION_SPACE_FIT_SETTINGS)`: a state is
+   a structure fitted with one candidate; structural moves keep the
+   candidate, settings moves refit the same structure with another one
+   (declared prior share 0.25). Scored by the same reward and read by the same
+   residual features. The tree tells states apart by
+   `ModelSearchState::get_search_key()` (`<structure>|<settings>`); the
+   structure key stays the structure. Default candidates keep bounds on.
+   ChiSurf: `prepare_model_search(fit, search_fit_settings=...)`, one
+   checkbox in the fit controls.
+5. **Retrain + gate.** `train_action_policy.py` over all games including the
+   two new ones; `bench_action_policy.py` must match or beat the priors at
+   every budget and the previously shipped benchmark's `right` counts.
+
+Closed 2026-10-10 (section above): the modality token, `request_information`,
+the smFRET/MFD and PIE/ALEX games and the retrained policy. Still open:
 invalid-acquisition validation before simulation, and one full photon stream
-reduced to several observables for multi-observable families.
+reduced to several observables (the MFD/PIE games simulate each channel's
+curve separately).

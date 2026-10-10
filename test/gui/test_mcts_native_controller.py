@@ -49,6 +49,7 @@ class _Result:
 def _controller():
     controller = FittingControllerWidget.__new__(FittingControllerWidget)
     controller.fit = SimpleNamespace(name="global fit", unique_identifier="fit-1")
+    controller.controls = SimpleNamespace(search_fit_settings=False)
     controller._snapshots = iter(([{"value": 1.0}], [{"value": 2.0}]))
     controller._collect_parameter_snapshot = lambda: next(controller._snapshots)
     controller.history = []
@@ -82,7 +83,7 @@ def test_unsupported_fit_reports_reason_without_running_or_mutating(monkeypatch)
     )
     monkeypatch.setattr(
         "chisurf.core.fitting.mcts.dispatcher.prepare_model_search",
-        lambda _fit: prepared,
+        lambda _fit, **_kw: prepared,
     )
     monkeypatch.setattr(cs.logging, "warning", warnings.append)
     monkeypatch.setattr(
@@ -120,7 +121,7 @@ def test_native_winner_is_applied_once_and_records_one_accepted_event(monkeypatc
     prepared = NativeSearchPreparation("test.native", problem=problem, binding=binding)
     monkeypatch.setattr(
         "chisurf.core.fitting.mcts.dispatcher.prepare_model_search",
-        lambda _fit: prepared,
+        lambda _fit, **_kw: prepared,
     )
     searches = []
 
@@ -156,7 +157,7 @@ def test_cancelled_native_search_never_applies_or_records(monkeypatch):
     )
     monkeypatch.setattr(
         "chisurf.core.fitting.mcts.dispatcher.prepare_model_search",
-        lambda _fit: prepared,
+        lambda _fit, **_kw: prepared,
     )
     monkeypatch.setattr(
         "chisurf.core.fitting.mcts.execution.run_native_search",
@@ -192,6 +193,7 @@ def test_controller_runs_a_real_parse_fit_through_bff(monkeypatch):
 
     controller = FittingControllerWidget.__new__(FittingControllerWidget)
     controller.fit = fit
+    controller.controls = SimpleNamespace(search_fit_settings=False)
     controller.history = []
     controller._record_history = lambda **entry: controller.history.append(entry)
     controller._refresh_mcts_structure_ui = lambda _fit: None
@@ -224,3 +226,91 @@ def test_the_search_button_is_shown_only_when_bff_can_search(monkeypatch, availa
     controller._refresh_mcts_availability()
 
     assert shown == [available] and enabled == [available]
+
+
+def test_search_fit_settings_reaches_the_preparation_and_is_kept(monkeypatch):
+    controller = _controller()
+    controller.controls = SimpleNamespace(search_fit_settings=True)
+    asked, stored = [], []
+    prepared = NativeSearchPreparation(
+        "test.native",
+        problem=object(),
+        binding=SimpleNamespace(apply_state=lambda *_args: None),
+    )
+
+    def prepare(_fit, *, search_fit_settings=False):
+        asked.append(search_fit_settings)
+        return prepared
+
+    monkeypatch.setattr("chisurf.core.fitting.mcts.dispatcher.prepare_model_search", prepare)
+    monkeypatch.setattr(
+        "chisurf.gui.widgets.fitting.fit_controller._store_mcts_setting",
+        lambda key, value: stored.append((key, value)),
+    )
+    monkeypatch.setattr(
+        "chisurf.core.fitting.mcts.execution.run_native_search",
+        lambda *_args, **_kwargs: _Result(),
+    )
+    _run_inline(monkeypatch)
+
+    controller.onRunMCTS()
+
+    assert asked == [True]
+    assert stored == [("search_fit_settings", True)]
+    assert len(controller.history) == 1
+
+
+class _AskingResult(_Result):
+    def get_outcome(self):
+        return "request_information"
+
+    def get_missing_observables(self):
+        return ["decay_aa"]
+
+
+def test_a_search_asking_for_a_measurement_keeps_the_users_model(monkeypatch):
+    import chisurf as cs
+
+    controller = _controller()
+    applied, restored, warnings = [], [], []
+    prepared = NativeSearchPreparation(
+        "test.native",
+        problem=object(),
+        binding=SimpleNamespace(
+            apply_state=lambda *_args: applied.append(True),
+            restore=lambda problem: restored.append(problem),
+        ),
+    )
+    monkeypatch.setattr(
+        "chisurf.core.fitting.mcts.dispatcher.prepare_model_search",
+        lambda _fit, **_kw: prepared,
+    )
+    monkeypatch.setattr(
+        "chisurf.core.fitting.mcts.execution.run_native_search",
+        lambda *_args, **_kwargs: _AskingResult(),
+    )
+    monkeypatch.setattr(cs.logging, "warning", warnings.append)
+    _run_inline(monkeypatch)
+
+    controller.onRunMCTS()
+
+    assert applied == [] and controller.history == []
+    assert restored == [prepared.problem]
+    assert len(warnings) == 1 and "decay_aa" in warnings[0]
+
+
+def test_the_fit_settings_checkbox_is_declared_with_a_tooltip():
+    import json
+    import pathlib
+
+    import chisurf.gui.widgets.fitting.fitting_controls as controls
+
+    spec = json.loads(pathlib.Path(controls._VIEW).read_text())
+    fields = {
+        section.get("attr"): section
+        for panel in spec["sections"]
+        for section in panel.get("sections", [])
+    }
+    toggle = fields["search_fit_settings"]
+    assert toggle["type"] == "toggle" and toggle["description"]
+    assert controls.FittingControlsModel(None).search_fit_settings is False

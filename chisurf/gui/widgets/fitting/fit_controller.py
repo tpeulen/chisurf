@@ -28,6 +28,29 @@ from chisurf.gui.widgets.general import Controller
 _PROTEINMC_CLASS_NAMES = ("ProteinMCModel", "ProteinMCModelWidget")
 
 
+def _mcts_setting(key: str, default: typing.Any) -> typing.Any:
+    """One ``optimization.mcts`` setting, or ``default`` when it is unset."""
+    try:
+        return type(default)(cs.core.settings.cs_settings["optimization"]["mcts"].get(key, default))
+    except (KeyError, TypeError, AttributeError, ValueError):
+        return default
+
+
+def _store_mcts_setting(key: str, value: typing.Any) -> None:
+    """Keep one ``optimization.mcts`` setting for the session and the settings file."""
+    if _mcts_setting(key, None if value is None else type(value)()) == value:
+        return
+    try:
+        optimization = cs.core.settings.cs_settings.setdefault("optimization", {})
+        optimization.setdefault("mcts", {})[key] = value
+        from chisurf.core.settings.settings_utils import set_optimization_settings
+
+        if not set_optimization_settings(mcts={key: value}):
+            cs.logging.warning(f"optimization.mcts.{key} could not be written to the settings file")
+    except Exception:
+        cs.logging.exception(f"could not keep optimization.mcts.{key}")
+
+
 class FittingControllerWidget(Controller):
     @staticmethod
     def _iter_fit_parameters_to_finalize(fit):
@@ -153,6 +176,7 @@ class FittingControllerWidget(Controller):
         self.controls = FittingControlsModel(
             self, dataset_labels=dataset_labels, chain_format=chain_format
         )
+        self.controls.search_fit_settings = _mcts_setting("search_fit_settings", False)
         self.form = AutoForm(self.controls, parent=self)
 
         layout = QtWidgets.QVBoxLayout(self)
@@ -1211,13 +1235,16 @@ class FittingControllerWidget(Controller):
         from chisurf.core.fitting.mcts.execution import (
             NativeSearchSettings,
             run_native_search,
+            search_outcome,
         )
         from chisurf.gui.task import run_in_background
 
         fit = self.fit
         before_snapshot = self._collect_parameter_snapshot()
+        search_fit_settings = bool(self.controls.search_fit_settings)
+        _store_mcts_setting("search_fit_settings", search_fit_settings)
         try:
-            prepared = prepare_model_search(fit)
+            prepared = prepare_model_search(fit, search_fit_settings=search_fit_settings)
         except Exception:
             cs.logging.exception("BFF model-search preparation failed")
             return
@@ -1254,11 +1281,23 @@ class FittingControllerWidget(Controller):
 
         def _apply(result):
             restore = getattr(prepared.binding, "restore", None)
-            if result.get_cancelled():
+            outcome, missing = search_outcome(result)
+            if outcome == "cancelled":
                 # A search over a live model moved its ports while it ran.
                 if callable(restore):
                     restore(prepared.problem)
                 cs.logging.info("BFF model search cancelled; the fit was not changed.")
+                return
+            if outcome == "request_information":
+                # The best fit does not describe the data, and the move that
+                # might needs a measurement this fit does not have: the
+                # answer is what to measure, so the user's model stays.
+                if callable(restore):
+                    restore(prepared.problem)
+                cs.logging.warning(
+                    f"BFF model search needs {', '.join(missing)} to go further: the best "
+                    f"model it could fit does not describe the data. The fit was not changed."
+                )
                 return
             try:
                 best_state = result.get_best_state()
@@ -1271,8 +1310,11 @@ class FittingControllerWidget(Controller):
             after_snapshot = self._collect_parameter_snapshot()
             structure = str(best_state.get_structure_key())
             accepted = bool(result.get_acceptable())
+            fit_settings = str(getattr(best_state, "get_fit_settings_key", lambda: "")())
             cs.logging.info(
-                f"BFF model search selected {structure!r}; "
+                f"BFF model search selected {structure!r}"
+                + (f" fitted with {fit_settings!r} settings" if fit_settings else "")
+                + "; "
                 f"reward={float(best_state.get_reward()):.6g}, "
                 f"improvement={float(result.get_improvement()):.6g}, "
                 f"acceptable={accepted}."
@@ -1286,6 +1328,7 @@ class FittingControllerWidget(Controller):
                     "operation": "bff_model_search",
                     "capability_id": str(prepared.capability_id),
                     "structure": structure,
+                    "fit_settings": fit_settings,
                     "acceptable": accepted,
                     "reward": float(best_state.get_reward()),
                     "improvement": float(result.get_improvement()),

@@ -396,6 +396,7 @@ def set_fret_rda_axis(
 def set_optimization_settings(
     sampling: dict = None,
     leastsq: dict = None,
+    mcts: dict = None,
 ) -> bool:
     """Persist optimisation settings in the user's settings YAML.
 
@@ -410,6 +411,8 @@ def set_optimization_settings(
         Keys to merge into ``optimization.sampling``.
     leastsq : dict, optional
         Keys to merge into ``optimization.leastsq``.
+    mcts : dict, optional
+        Keys to merge into ``optimization.mcts`` (the model search).
 
     Returns
     -------
@@ -430,7 +433,7 @@ def set_optimization_settings(
         if not isinstance(optimization, dict):
             optimization = {}
             data["optimization"] = optimization
-        for key, values in (("sampling", sampling), ("leastsq", leastsq)):
+        for key, values in (("sampling", sampling), ("leastsq", leastsq), ("mcts", mcts)):
             if not values:
                 continue
             section = optimization.get(key)

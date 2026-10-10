@@ -12,7 +12,9 @@ bff = pytest.importorskip("IMP.bff")
 
 from chisurf.core.fitting.mcts.execution import (
     NativeSearchSettings,
+    configure_action_space,
     run_native_search,
+    search_outcome,
 )
 
 
@@ -111,3 +113,43 @@ def test_the_shipped_policy_is_the_default_and_none_means_declared_priors(monkey
     monkeypatch.setattr(bff, "get_shipped_action_policy", lambda: b"shipped")
     assert run_native_search(_PolicyProblem(), NativeSearchSettings()) == b"shipped"
     assert run_native_search(_PolicyProblem(), NativeSearchSettings(action_policy="")) is None
+
+
+class _SpaceProblem:
+    """A fitting problem as far as the action space is concerned."""
+
+    def __init__(self):
+        self.space = 0
+        self.candidates = 0
+
+    def set_action_space(self, space):
+        self.space = space
+
+    def get_action_space(self):
+        return self.space
+
+    def add_default_fit_settings_candidates(self):
+        self.candidates += 1
+
+
+@pytest.mark.skipif(
+    not hasattr(bff, "ACTION_SPACE_FIT_SETTINGS"),
+    reason="this IMP.bff has no fit-settings action space",
+)
+def test_the_action_space_follows_the_flag_every_time():
+    problem = _SpaceProblem()
+    assert configure_action_space(problem, True)
+    assert problem.space == bff.ACTION_SPACE_FIT_SETTINGS and problem.candidates == 1
+    # A live model keeps its problem between searches: off puts it back.
+    assert configure_action_space(problem, False)
+    assert problem.space == bff.ACTION_SPACE_STRUCTURE
+
+
+def test_a_problem_without_fit_settings_refuses_only_when_asked():
+    assert configure_action_space(_problem(), False)
+    assert not configure_action_space(_problem(), True)
+
+
+def test_the_outcome_of_a_search():
+    result = run_native_search(_problem(), NativeSearchSettings(simulations=5))
+    assert search_outcome(result) == ("selected", ())
