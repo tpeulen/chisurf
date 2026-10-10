@@ -94,3 +94,7 @@ available, latest, error = check_for_updates()
 ```
 
 Package management is the **Package Manager** window above.
+
+## Theory
+
+- [Application identity](../concepts/application_identity.md): what the version you are running establishes, and what is still needed to reproduce an analysis.

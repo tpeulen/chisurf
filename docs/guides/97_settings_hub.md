@@ -42,10 +42,10 @@ opened (an unsaved edit, a selected row, which sections are folded) while you lo
 | ChiSurf Settings | the typed editor of `settings_chisurf.yaml`: **Language**, search, typed fields, **Edit source**, **Validate**, **Save**, **Reload**, **Help** | {numref}`fig-settings-chisurf` |
 | Acquisition | output folder (**Browse...**), chunk size, real-time simulation, device type and the simulator's parameters; every change is stored at once | {numref}`fig-settings-acquisition` |
 | Styles | the style-sheet editor ([Styles](../reference/plugins/style_manager.md)) | |
-| Plots | colours, appearance and the live preview ([Plot settings](plot_settings.md)); the wheel zooms the preview, a drag pans it | |
+| Plots | colours, appearance and the live preview ([Plot settings](../reference/plugins/plot_settings.md)); the wheel zooms the preview, a drag pans it | |
 | Models | the model table with its search and detail pane | |
 | User Editor | accounts of the MMFDB | |
-| AI Settings | provider, models and generation settings ([AI settings](ai_settings.md)) | |
+| AI Settings | provider, models and generation settings ([AI settings](../reference/plugins/ai_settings.md)) | |
 | Plugins | the plugin manager | |
 | Updates | [Updating ChiSurf](90_updater.md) | |
 | Packages | the conda package manager of the same tool | |
@@ -78,3 +78,8 @@ their stored values; the other simulator parameters are edited here.
 The wheel scrolls the list under the pointer and the panel under the pointer (tables, forms) and zooms plots. Typed keys
 go to the search box until you click into a panel, and to that panel afterwards. Files dropped on the window reach the
 open panel (TTTR LUT Tools and Channel Definition read photon files).
+
+## Theory
+
+- [Detector setups](../concepts/detector_setup.md): the theory behind the Channel Definition panel.
+- [Application identity](../concepts/application_identity.md): what the version and support details in the settings establish.

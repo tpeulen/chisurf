@@ -21,7 +21,7 @@ findings in this file where those findings have already been fixed.
 - `chisurf/core/mmfdb/`
 - `chisurf/core/fio/mmcif/db/` compatibility shims
 - `chisurf/plugins/core/mmfdb_admin/`
-- `chisurf/plugins/sample_database/` compatibility services
+- compatibility sample-database services (formerly a separate `sample_database` plugin, now folded into the `mmfdb_admin` plugin above)
 - MMFDB/FDB tests under `test/fio/`
 - Provenance plugin tests under `test/plugins/`
 - `docs/prd_mmfdb_architecture.md`
@@ -142,7 +142,8 @@ Evidence:
   processed inputs and products in additional steps:
   `chisurf/plugins/core/mmfdb_admin/backend/measurement_services.py:1070`.
 - The compatibility sample-database service has the same shape:
-  `chisurf/plugins/sample_database/backend/measurement_services.py:1070`.
+  formerly in the separate `sample_database` plugin; the same code now lives in
+  `chisurf/plugins/core/mmfdb_admin/backend/measurement_services.py`.
 
 Manual probe:
 

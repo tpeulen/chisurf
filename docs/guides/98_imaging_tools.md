@@ -88,3 +88,8 @@ its own **Help** and **Guide**.
   [Particle tracking](50_particle_tracking.md), [Number and brightness](67_number_and_brightness.md),
   [Spot finder](84_spot_finder.md), [Regions](48_regions.md), [Detector setup](87_channel_definition.md).
 * [Plugin reference: Image Tools](../reference/plugins/imaging_tools.md)
+
+## Theory
+
+- [Detector setups](../concepts/detector_setup.md): the shared detector definition the hub keeps.
+- [FLIM and the phasor](../concepts/imaging_flim_phasor.md): what the numbered imaging steps compute.

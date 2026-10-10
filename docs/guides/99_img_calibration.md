@@ -75,3 +75,9 @@ retains precedence. Photon/IRF histograms, fit/background windows and the
 published deep calibration snapshot retain their values across window changes.
 An absent IRF still uses raw data; the concise empty-state caption makes this
 fallback visible in the smaller initial host.
+
+## Theory
+
+- [Detector setups](../concepts/detector_setup.md): routing, windows and timing a calibration belongs to.
+- [FLIM and the phasor](../concepts/imaging_flim_phasor.md): why the IRF and background matter for the phasor.
+- [Micro-time shift](../concepts/microtime_shift.md): the shift typed into the calibration.

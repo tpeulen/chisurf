@@ -84,6 +84,9 @@ equilibrium.
 - Concepts: {ref}`concept-fcs-correlation` (equilibrium fluctuations vs
   imposed bleaches) · {ref}`concept-particle-tracking` (single-particle
   transport) · {ref}`concept-image-correlation`.
+- Workflow: there is no dedicated FRAP window yet; the recovery curve is taken from
+  regions drawn as in [Regions](../guides/48_regions.md) on images opened as in the
+  [Image browser](../guides/86_image_browser.md), and fitted through the Python API below.
 - Implementation:
   {src}`chisurf/core/fluorescence/imaging/frap.py#fit_rfrap` ·
   {src}`chisurf/core/fluorescence/imaging/frap.py#recovery_curve`.

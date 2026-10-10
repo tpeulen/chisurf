@@ -2149,3 +2149,1912 @@ manual/figures/manual_global_view.png:
     in a ControlHost 1200x760, follower record selected with model.select_parameter.'
   pages:
   - docs/manual/linking_parameters.md
+
+# --- Figures recorded to clear the unrecorded worklist ---
+# Entries whose origin names a script were found by locating the code that saves the file;
+# the others have no generating script and say so in their recipe.
+
+guides/figures/02_rasp_p_same.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_02_14.py::_grab_02_rasp_p_same
+  recipe: >-
+    Run the script named in origin (see the function that saves 02_rasp_p_same.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/02_recurrence_rasp.md
+
+guides/figures/03_ising_chain_editor.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_02_14.py::_grab_03_polymer_editors
+  recipe: >-
+    Run the script named in origin (see the function that saves 03_ising_chain_editor.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/03_polymer_distance_distributions.md
+
+guides/figures/03_saw_nu_editor.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_02_14.py::_grab_03_polymer_editors
+  recipe: >-
+    Run the script named in origin (see the function that saves 03_saw_nu_editor.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/03_polymer_distance_distributions.md
+
+guides/figures/04_fida_editor.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_02_14.py::_grab_04_fida_editor
+  recipe: >-
+    Run the script named in origin (see the function that saves 04_fida_editor.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/04_fida_pch.md
+
+guides/figures/04_pch_tool.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_02_14.py::_grab_04_pch_tool
+  recipe: >-
+    Run the script named in origin (see the function that saves 04_pch_tool.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/04_fida_pch.md
+
+guides/figures/05_mdf_editor.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_02_14.py::_grab_05_mdf_editor
+  recipe: >-
+    Run the script named in origin (see the function that saves 05_mdf_editor.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/05_enderlein_mdf_two_focus_fcs.md
+
+guides/figures/08_bva_tool.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_02_14.py::_grab_08_bva_tool
+  recipe: >-
+    Run the script named in origin (see the function that saves 08_bva_tool.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/08_burst_variance_analysis.md
+
+guides/figures/102_mmfdb_admin.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/102_mmfdb_admin.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/102_mmfdb_admin.png.
+  pages:
+  - docs/guides/102_mmfdb_admin.md
+
+guides/figures/12_tttr_to_pto.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_02_14.py::_grab_12_tttr_to_pto
+  recipe: >-
+    Run the script named in origin (see the function that saves 12_tttr_to_pto.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/12_handling_tttr_files.md
+
+guides/figures/13_burst_selection_filter.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_02_14.py::_grab_13_burst_selection
+  recipe: >-
+    Run the script named in origin (see the function that saves 13_burst_selection_filter.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/13_burst_identification.md
+
+guides/figures/13_burst_selection_mcs.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_02_14.py::_grab_13_burst_selection
+  recipe: >-
+    Run the script named in origin (see the function that saves 13_burst_selection_mcs.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/13_burst_identification.md
+
+guides/figures/14_accurate_fret.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_02_14.py::_grab_14_accurate_fret
+  recipe: >-
+    Run the script named in origin (see the function that saves 14_accurate_fret.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/14_multiparameter_es.md
+
+guides/figures/15_burst_background.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_15_25.py::_grab_15_background
+  recipe: >-
+    Run the script named in origin (see the function that saves 15_burst_background.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/15_background_rates.md
+
+guides/figures/15_burst_background_fit.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_15_25.py::_grab_15_background
+  recipe: >-
+    Run the script named in origin (see the function that saves 15_burst_background_fit.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/15_background_rates.md
+
+guides/figures/17_filter_calculator.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_15_25.py::_grab_17_filter_calculator
+  recipe: >-
+    Run the script named in origin (see the function that saves 17_filter_calculator.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/17_filtered_fcs.md
+
+guides/figures/17_filter_calculator_autofit.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_15_25.py::_grab_17_filter_calculator
+  recipe: >-
+    Run the script named in origin (see the function that saves 17_filter_calculator_autofit.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/17_filtered_fcs.md
+
+guides/figures/18_lfcs_sim.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_15_25.py::_grab_18_lfcs_sim
+  recipe: >-
+    Run the script named in origin (see the function that saves 18_lfcs_sim.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/18_tttr_simulation.md
+
+guides/figures/18_sim_setup.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_15_25.py::_grab_18_sim_setup
+  recipe: >-
+    Run the script named in origin (see the function that saves 18_sim_setup.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/18_tttr_simulation.md
+
+guides/figures/19_h2mm_tool.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_15_25.py::_grab_19_h2mm
+  recipe: >-
+    Run the script named in origin (see the function that saves 19_h2mm_tool.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/19_h2mm_hidden_markov.md
+
+guides/figures/21_burst_mle.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_15_25.py::_grab_21_burst_mle
+  recipe: >-
+    Run the script named in origin (see the function that saves 21_burst_mle.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/21_lifetime_from_bursts.md
+
+guides/figures/21_burst_mle_model_selection.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/21_lifetime_from_bursts.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/21_burst_mle_model_selection.png.
+  pages:
+  - docs/guides/21_lifetime_from_bursts.md
+
+guides/figures/21_burst_mle_synthetic_demo.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/21_lifetime_from_bursts.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/21_burst_mle_synthetic_demo.png.
+  pages:
+  - docs/guides/21_lifetime_from_bursts.md
+
+guides/figures/22_trace_browser.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_15_25.py::frames
+  recipe: >-
+    Run the script named in origin (see the function that saves 22_trace_browser.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/22_binned_photon_traces.md
+
+guides/figures/23_fps_editor.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_15_25.py::_grab_23_fps_editor
+  recipe: >-
+    Run the script named in origin (see the function that saves 23_fps_editor.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/23_accessible_volume.md
+
+guides/figures/23_fps_editor_3d.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_15_25.py::_grab_23_fps_editor
+  recipe: >-
+    Run the script named in origin (see the function that saves 23_fps_editor_3d.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/23_accessible_volume.md
+
+guides/figures/23_fps_editor_distances.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_15_25.py::_grab_23_fps_editor
+  recipe: >-
+    Run the script named in origin (see the function that saves 23_fps_editor_distances.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/23_accessible_volume.md
+
+guides/figures/24_clsm_draw.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_15_25.py::_grab_24_clsm_draw
+  recipe: >-
+    Run the script named in origin (see the function that saves 24_clsm_draw.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/24_scan_images.md
+
+guides/figures/24_clsm_draw_rois.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_15_25.py::_grab_24_clsm_draw
+  recipe: >-
+    Run the script named in origin (see the function that saves 24_clsm_draw_rois.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/24_scan_images.md
+
+guides/figures/24_clsm_draw_window.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/24_scan_images.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/24_clsm_draw_window.png.
+  pages:
+  - docs/guides/24_scan_images.md
+
+guides/figures/24_intensity_tool.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/24_scan_images.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/24_intensity_tool.png.
+  pages:
+  - docs/guides/24_scan_images.md
+
+guides/figures/24_micro_time_tool.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/24_scan_images.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/24_micro_time_tool.png.
+  pages:
+  - docs/guides/24_scan_images.md
+
+guides/figures/24_mle_tool.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/24_scan_images.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/24_mle_tool.png.
+  pages:
+  - docs/guides/24_scan_images.md
+
+guides/figures/24_phasor_tool.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/24_scan_images.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/24_phasor_tool.png.
+  pages:
+  - docs/guides/24_scan_images.md
+
+guides/figures/25_accurate_fret.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_15_25.py::_grab_25_accurate_fret
+  recipe: >-
+    Run the script named in origin (see the function that saves 25_accurate_fret.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/25_rcm_from_fret_samples.md
+
+guides/figures/25_accurate_fret_factors.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_15_25.py::_grab_25_accurate_fret
+  recipe: >-
+    Run the script named in origin (see the function that saves 25_accurate_fret_factors.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/25_rcm_from_fret_samples.md
+
+guides/figures/26_ndx_2d_gaussians.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_26_36.py::_grab_ndx_2d_gaussians
+  recipe: >-
+    Run the script named in origin (see the function that saves 26_ndx_2d_gaussians.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/26_2d_peak_fitting.md
+
+guides/figures/27_burst_analysis_pipeline.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_26_36.py::_grab_burst_analysis_pipeline
+  recipe: >-
+    Run the script named in origin (see the function that saves 27_burst_analysis_pipeline.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/27_alex_smfret_workflow.md
+
+guides/figures/29_burst_selection_gmm.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_26_36.py::_grab_burst_selection_guides
+  recipe: >-
+    Run the script named in origin (see the function that saves 29_burst_selection_gmm.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/29_fret_histogram_fitting.md
+
+guides/figures/30_h2mm_results.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_26_36.py::_grab_h2mm_real
+  recipe: >-
+    Run the script named in origin (see the function that saves 30_h2mm_results.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/30_h2mm_workflow_results.md
+  - docs/guides/h2mm.md
+
+guides/figures/31_h2mm_simulated.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_26_36.py::_grab_h2mm_simulated
+  recipe: >-
+    Run the script named in origin (see the function that saves 31_h2mm_simulated.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/31_h2mm_simulation_validation.md
+
+guides/figures/32_h2mm_state_decays.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_26_36.py::_grab_h2mm_real
+  recipe: >-
+    Run the script named in origin (see the function that saves 32_h2mm_state_decays.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/32_nsalex_lifetime.md
+
+guides/figures/33_burst_selection_dt.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_26_36.py::_grab_burst_selection_guides
+  recipe: >-
+    Run the script named in origin (see the function that saves 33_burst_selection_dt.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/33_timestamps_and_bursts.md
+
+guides/figures/35_burst_selection_files.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_26_36.py::_grab_burst_selection_guides
+  recipe: >-
+    Run the script named in origin (see the function that saves 35_burst_selection_files.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/35_combining_repeats.md
+
+guides/figures/39_chain_diagnostics.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_39_53.py::_grab_39_posterior_plots
+  recipe: >-
+    Run the script named in origin (see the function that saves 39_chain_diagnostics.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/39_parameter_uncertainty.md
+
+guides/figures/39_posterior_dependence.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_39_53.py::_grab_39_posterior_plots
+  recipe: >-
+    Run the script named in origin (see the function that saves 39_posterior_dependence.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/39_parameter_uncertainty.md
+
+guides/figures/39_sampling_controls.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_39_53.py::_grab_39_sampling_controls
+  recipe: >-
+    Run the script named in origin (see the function that saves 39_sampling_controls.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/39_parameter_uncertainty.md
+
+guides/figures/47_ndx_bridge_pda.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_47_52.py::_grab_47_pda_bridge
+  recipe: >-
+    Run the script named in origin (see the function that saves 47_ndx_bridge_pda.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/47_ndxplorer_bridges.md
+
+guides/figures/52_send_selection_menu.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_47_52.py::_grab_52_send_menu
+  recipe: >-
+    Run the script named in origin (see the function that saves 52_send_selection_menu.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/52_send_bursts_to_analysis.md
+
+guides/figures/53_bva_unchanged.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_39_53.py::_grab_53_bva_unchanged
+  recipe: >-
+    Run the script named in origin (see the function that saves 53_bva_unchanged.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/53_reusing_results.md
+
+guides/figures/57_mfd_fit_window.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_56_65.py::_grab_57_mfd_fit
+  recipe: >-
+    Run the script named in origin (see the function that saves 57_mfd_fit_window.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/57_mfd_fitting.md
+
+guides/figures/57_mfd_marginals.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_56_65.py::_grab_57_mfd_fit
+  recipe: >-
+    Run the script named in origin (see the function that saves 57_mfd_marginals.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/57_mfd_fitting.md
+
+guides/figures/65_live_acquisition.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_56_65.py::emit
+  recipe: >-
+    Run the script named in origin (see the function that saves 65_live_acquisition.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/65_live_acquisition.md
+
+guides/figures/82_fret_lines_in_ndx.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/82_fret_lines.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/82_fret_lines_in_ndx.png.
+  pages:
+  - docs/guides/82_fret_lines.md
+
+guides/figures/88_docking_results.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/88_structure_tools.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/88_docking_results.png.
+  pages:
+  - docs/guides/88_structure_tools.md
+
+guides/figures/88_fps_positions.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/88_structure_tools.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/88_fps_positions.png.
+  pages:
+  - docs/guides/88_structure_tools.md
+
+guides/figures/88_fps_split.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/88_structure_tools.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/88_fps_split.png.
+  pages:
+  - docs/guides/88_structure_tools.md
+
+guides/figures/88_microtime_shifter.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/88_microtime_shifter.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/88_microtime_shifter.png.
+  pages:
+  - docs/guides/88_microtime_shifter.md
+
+guides/figures/94_audifier_waterfall.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/94_tttr_audifier.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/94_audifier_waterfall.png.
+  pages:
+  - docs/guides/94_tttr_audifier.md
+
+guides/figures/97_settings_acquisition.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/97_settings_hub.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/97_settings_acquisition.png.
+  pages:
+  - docs/guides/97_settings_hub.md
+
+guides/figures/97_settings_chisurf.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/97_settings_hub.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/97_settings_chisurf.png.
+  pages:
+  - docs/guides/97_settings_hub.md
+
+guides/figures/97_settings_getting_started.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/97_settings_hub.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/97_settings_getting_started.png.
+  pages:
+  - docs/guides/97_settings_hub.md
+
+guides/figures/98_clsm_generator.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/98_clsm_generator.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/98_clsm_generator.png.
+  pages:
+  - docs/guides/98_clsm_generator.md
+
+guides/figures/about_application_details.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/103_application_identity.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/about_application_details.png.
+  pages:
+  - docs/guides/103_application_identity.md
+
+guides/figures/accurate_fret_native_identification.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/41_accurate_fret.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/accurate_fret_native_identification.png.
+  pages:
+  - docs/guides/41_accurate_fret.md
+
+guides/figures/alex_creator.png:
+  kind: screenshot
+  origin: chisurf/plugins/tttr/tttr_toolbox/test/test_emtk_toolbox_parity.py::test_the_search_matches_what_the_qt_search_does
+  recipe: >-
+    Run the script named in origin (see the function that saves alex_creator.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/100_alex_creator.md
+
+guides/figures/alex_regions.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/100_alex_creator.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/alex_regions.png.
+  pages:
+  - docs/guides/100_alex_creator.md
+
+guides/figures/alex_suite_alternation.png:
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::row
+  recipe: >-
+    Run the script named in origin (see the function that saves alex_suite_alternation.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/66_alex_suite.md
+
+guides/figures/alex_suite_hub.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/66_alex_suite.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/alex_suite_hub.png.
+  pages:
+  - docs/guides/66_alex_suite.md
+
+guides/figures/alex_suite_titration.png:
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_alex_suite_titration
+  recipe: >-
+    Run the script named in origin (see the function that saves alex_suite_titration.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/66_alex_suite.md
+
+guides/figures/anis_wizard_native_primary_window.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/10_lifetime_anisotropy_fitting.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/anis_wizard_native_primary_window.png.
+  pages:
+  - docs/guides/10_lifetime_anisotropy_fitting.md
+
+guides/figures/batch_analysis_loaded.png:
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_batch_analysis
+  recipe: >-
+    Run the script named in origin (see the function that saves batch_analysis_loaded.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/78_model_comparison_and_batch.md
+
+guides/figures/batch_analysis_run.png:
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_batch_analysis
+  recipe: >-
+    Run the script named in origin (see the function that saves batch_analysis_run.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/78_model_comparison_and_batch.md
+
+guides/figures/burst_2cde_native_primary_window.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/01_fret_2cde.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/burst_2cde_native_primary_window.png.
+  pages:
+  - docs/guides/01_fret_2cde.md
+
+guides/figures/burst_background_native_primary_window.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/15_background_rates.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/burst_background_native_primary_window.png.
+  pages:
+  - docs/guides/15_background_rates.md
+
+guides/figures/burst_browser_native_columns.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/28_selecting_fret_populations.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/burst_browser_native_columns.png.
+  pages:
+  - docs/guides/28_selecting_fret_populations.md
+
+guides/figures/burst_fcs_native_primary_window.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/16_fret_fcs.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/burst_fcs_native_primary_window.png.
+  pages:
+  - docs/guides/16_fret_fcs.md
+
+guides/figures/burst_fusion_native_primary_window.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/58_burst_fusion.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/burst_fusion_native_primary_window.png.
+  pages:
+  - docs/guides/58_burst_fusion.md
+
+guides/figures/burst_gs_native_primary_window.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/49_photon_by_photon_kinetics.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/burst_gs_native_primary_window.png.
+  pages:
+  - docs/guides/49_photon_by_photon_kinetics.md
+
+guides/figures/burst_irf_bg_native_primary_window.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/21_lifetime_from_bursts.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/burst_irf_bg_native_primary_window.png.
+  pages:
+  - docs/guides/21_lifetime_from_bursts.md
+
+guides/figures/burst_mle_native_pooled_window.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/21_lifetime_from_bursts.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/burst_mle_native_pooled_window.png.
+  pages:
+  - docs/guides/21_lifetime_from_bursts.md
+
+guides/figures/burst_native_selection_verified.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/13_burst_identification.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/burst_native_selection_verified.png.
+  pages:
+  - docs/guides/13_burst_identification.md
+
+guides/figures/burst_shared_mle.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/27_alex_smfret_workflow.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/burst_shared_mle.png.
+  pages:
+  - docs/guides/27_alex_smfret_workflow.md
+
+guides/figures/burst_shared_setup.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/27_alex_smfret_workflow.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/burst_shared_setup.png.
+  pages:
+  - docs/guides/27_alex_smfret_workflow.md
+
+guides/figures/bva_native_primary_window.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/08_burst_variance_analysis.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/bva_native_primary_window.png.
+  pages:
+  - docs/guides/08_burst_variance_analysis.md
+
+guides/figures/channel_definition_json_editor.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/87_channel_definition.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/channel_definition_json_editor.png.
+  pages:
+  - docs/guides/87_channel_definition.md
+
+guides/figures/channel_definition_page.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/channel_editor_emtk.py::shot
+  recipe: >-
+    Run the script named in origin (see the function that saves channel_definition_page.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/87_channel_definition.md
+
+guides/figures/channel_definition_plot.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/channel_editor_emtk.py::shot
+  recipe: >-
+    Run the script named in origin (see the function that saves channel_definition_plot.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/87_channel_definition.md
+
+guides/figures/channel_definition_reference_calibration.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/87_channel_definition.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/channel_definition_reference_calibration.png.
+  pages:
+  - docs/guides/87_channel_definition.md
+
+guides/figures/channel_definition_reference_mixing.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/87_channel_definition.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/channel_definition_reference_mixing.png.
+  pages:
+  - docs/guides/87_channel_definition.md
+
+guides/figures/channel_definition_wizard_after_export.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/87_channel_definition.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/channel_definition_wizard_after_export.png.
+  pages:
+  - docs/guides/87_channel_definition.md
+
+guides/figures/decay_analysis_hub.png:
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_decay_analysis_hub
+  recipe: >-
+    Run the script named in origin (see the function that saves decay_analysis_hub.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/76_decay_analysis_tools.md
+
+guides/figures/decay_gap_filter.png:
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_decay_gap_filter
+  recipe: >-
+    Run the script named in origin (see the function that saves decay_gap_filter.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/73_tttr_decay_and_correlation.md
+
+guides/figures/ebfret_gui.png:
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_ebfret_tool
+  recipe: >-
+    Run the script named in origin (see the function that saves ebfret_gui.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/20_ebfret_binned_hmm.md
+
+guides/figures/ebfret_native_primary_window.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/20_ebfret_binned_hmm.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/ebfret_native_primary_window.png.
+  pages:
+  - docs/guides/20_ebfret_binned_hmm.md
+
+guides/figures/f_test_tool.png:
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_f_test
+  recipe: >-
+    Run the script named in origin (see the function that saves f_test_tool.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/78_model_comparison_and_batch.md
+
+guides/figures/fcs_correlator_step.png:
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_fcs_correlator_step
+  recipe: >-
+    Run the script named in origin (see the function that saves fcs_correlator_step.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/73_tttr_decay_and_correlation.md
+
+guides/figures/fcs_filter_primary_window.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/17_filtered_fcs.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/fcs_filter_primary_window.png.
+  pages:
+  - docs/guides/17_filtered_fcs.md
+
+guides/figures/fcs_merger_primary_window.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/75_fcs_toolbox.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/fcs_merger_primary_window.png.
+  pages:
+  - docs/guides/75_fcs_toolbox.md
+
+guides/figures/fcs_native_bh132_burst_settings.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/16_fret_fcs.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/fcs_native_bh132_burst_settings.png.
+  pages:
+  - docs/guides/16_fret_fcs.md
+
+guides/figures/fcs_native_bh132_burst_simple.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/16_fret_fcs.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/fcs_native_bh132_burst_simple.png.
+  pages:
+  - docs/guides/16_fret_fcs.md
+
+guides/figures/fcs_native_bh132_correlator.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/75_fcs_toolbox.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/fcs_native_bh132_correlator.png.
+  pages:
+  - docs/guides/75_fcs_toolbox.md
+
+guides/figures/fcs_native_bh132_filter.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/75_fcs_toolbox.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/fcs_native_bh132_filter.png.
+  pages:
+  - docs/guides/75_fcs_toolbox.md
+
+guides/figures/fcs_native_bh132_merger.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/75_fcs_toolbox.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/fcs_native_bh132_merger.png.
+  pages:
+  - docs/guides/75_fcs_toolbox.md
+
+guides/figures/fcs_saturation_tool.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_56_65.py::_grab_56_fcs_saturation
+  recipe: >-
+    Run the script named in origin (see the function that saves fcs_saturation_tool.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/56_fcs_saturation.md
+
+guides/figures/fcs_toolbox_channels.png:
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::go
+  recipe: >-
+    Run the script named in origin (see the function that saves fcs_toolbox_channels.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/75_fcs_toolbox.md
+
+guides/figures/fcs_toolbox_files.png:
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::go
+  recipe: >-
+    Run the script named in origin (see the function that saves fcs_toolbox_files.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/75_fcs_toolbox.md
+
+guides/figures/file_tools.png:
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_panel
+  recipe: >-
+    Run the script named in origin (see the function that saves file_tools.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/74_intensity_traces_and_file_tools.md
+
+guides/figures/file_tools_split.png:
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_panel
+  recipe: >-
+    Run the script named in origin (see the function that saves file_tools_split.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/74_intensity_traces_and_file_tools.md
+
+guides/figures/forster_calculator.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/spectra_mfd.py::_grab_forster_calculator
+  recipe: >-
+    Run the script named in origin (see the function that saves forster_calculator.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/83_spectra_and_r0.md
+
+guides/figures/fret_line_tool.png:
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::front
+  recipe: >-
+    Run the script named in origin (see the function that saves fret_line_tool.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/82_fret_lines.md
+
+guides/figures/fret_line_tool_lines.png:
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::front
+  recipe: >-
+    Run the script named in origin (see the function that saves fret_line_tool_lines.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/82_fret_lines.md
+
+guides/figures/fret_pair_entry.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/82_fret_lines.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/fret_pair_entry.png.
+  pages:
+  - docs/guides/82_fret_lines.md
+
+guides/figures/games_breakout.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/95_games.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/games_breakout.png.
+  pages:
+  - docs/guides/95_games.md
+
+guides/figures/games_number_quest_header.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/95_games.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/games_number_quest_header.png.
+  pages:
+  - docs/guides/95_games.md
+
+guides/figures/gfactor_native_primary_window.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/91_vv_vh_g_factor.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/gfactor_native_primary_window.png.
+  pages:
+  - docs/guides/91_vv_vh_g_factor.md
+
+guides/figures/h2mm_native_primary_window.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/19_h2mm_hidden_markov.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/h2mm_native_primary_window.png.
+  pages:
+  - docs/guides/19_h2mm_hidden_markov.md
+
+guides/figures/hmm_window.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/92_hmm_binned_traces.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/hmm_window.png.
+  pages:
+  - docs/guides/92_hmm_binned_traces.md
+
+guides/figures/hydro_native_primary_window.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/79_hydropro.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/hydro_native_primary_window.png.
+  pages:
+  - docs/guides/79_hydropro.md
+
+guides/figures/hydropro_exe_dialog.png:
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_hydropro_exe_dialog
+  recipe: >-
+    Run the script named in origin (see the function that saves hydropro_exe_dialog.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/79_hydropro.md
+
+guides/figures/hydropro_tool.png:
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_hydropro
+  recipe: >-
+    Run the script named in origin (see the function that saves hydropro_tool.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/79_hydropro.md
+
+guides/figures/image_browser_mosaic.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/86_image_browser.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/image_browser_mosaic.png.
+  pages:
+  - docs/guides/86_image_browser.md
+
+guides/figures/image_browser_setup.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/channel_editor_emtk.py::shot
+  recipe: >-
+    Run the script named in origin (see the function that saves image_browser_setup.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/86_image_browser.md
+
+guides/figures/image_browser_zoomed.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/86_image_browser.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/image_browser_zoomed.png.
+  pages:
+  - docs/guides/86_image_browser.md
+
+guides/figures/imaging_tools.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/98_imaging_tools.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/imaging_tools.png.
+  pages:
+  - docs/guides/98_imaging_tools.md
+
+guides/figures/img_calibration.png:
+  kind: screenshot
+  origin: chisurf/plugins/microscopy/img_calibration/test/test_emtk_calibration_parity.py::test_port_is_qt_free
+  recipe: >-
+    Run the script named in origin (see the function that saves img_calibration.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/99_img_calibration.md
+
+guides/figures/intensity_trace.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/74_intensity_traces_and_file_tools.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/intensity_trace.png.
+  pages:
+  - docs/guides/74_intensity_traces_and_file_tools.md
+
+guides/figures/irf_estimator_native_window.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/irf_estimation.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/irf_estimator_native_window.png.
+  pages:
+  - docs/guides/irf_estimation.md
+
+guides/figures/lltf_native_optimizer_warning.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/76_decay_analysis_tools.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/lltf_native_optimizer_warning.png.
+  pages:
+  - docs/guides/76_decay_analysis_tools.md
+
+guides/figures/lltf_output.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/76_decay_analysis_tools.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/lltf_output.png.
+  pages:
+  - docs/guides/76_decay_analysis_tools.md
+
+guides/figures/lltf_results.png:
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::draw
+  recipe: >-
+    Run the script named in origin (see the function that saves lltf_results.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/76_decay_analysis_tools.md
+
+guides/figures/lltf_settings.png:
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::draw
+  recipe: >-
+    Run the script named in origin (see the function that saves lltf_settings.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/76_decay_analysis_tools.md
+
+guides/figures/maxent_decay_window.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/62_maxent_decay.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/maxent_decay_window.png.
+  pages:
+  - docs/guides/62_maxent_decay.md
+
+guides/figures/maxent_native_amplitudes.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/62_maxent_decay.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/maxent_native_amplitudes.png.
+  pages:
+  - docs/guides/62_maxent_decay.md
+
+guides/figures/mfd_prepare_native_primary_window.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/85_mfd_prepare.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/mfd_prepare_native_primary_window.png.
+  pages:
+  - docs/guides/85_mfd_prepare.md
+
+guides/figures/mfd_prepare_report.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/spectra_mfd.py::_grab_mfd_prepare
+  recipe: >-
+    Run the script named in origin (see the function that saves mfd_prepare_report.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/85_mfd_prepare.md
+
+guides/figures/microtime_native_bh132.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/89_microtime_histogram.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/microtime_native_bh132.png.
+  pages:
+  - docs/guides/89_microtime_histogram.md
+
+guides/figures/microtime_native_detector.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/89_microtime_histogram.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/microtime_native_detector.png.
+  pages:
+  - docs/guides/89_microtime_histogram.md
+
+guides/figures/microtime_native_unpolarized.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/89_microtime_histogram.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/microtime_native_unpolarized.png.
+  pages:
+  - docs/guides/89_microtime_histogram.md
+
+guides/figures/nb_brightness_map.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/67_number_and_brightness.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/nb_brightness_map.png.
+  pages:
+  - docs/guides/67_number_and_brightness.md
+
+guides/figures/nb_parameter_plane.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/67_number_and_brightness.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/nb_parameter_plane.png.
+  pages:
+  - docs/guides/67_number_and_brightness.md
+
+guides/figures/ndxplorer_chisurf_phasor.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/46_ndxplorer.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/ndxplorer_chisurf_phasor.png.
+  pages:
+  - docs/guides/46_ndxplorer.md
+
+guides/figures/ndxplorer_curve_populations.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/46_ndxplorer.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/ndxplorer_curve_populations.png.
+  pages:
+  - docs/guides/46_ndxplorer.md
+
+guides/figures/ndxplorer_find_projections.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/46_ndxplorer.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/ndxplorer_find_projections.png.
+  pages:
+  - docs/guides/46_ndxplorer.md
+
+guides/figures/ndxplorer_gaussian_populations.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/manual_general.py::tools_montage
+  recipe: >-
+    Run the script named in origin (see the function that saves ndxplorer_gaussian_populations.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/46_ndxplorer.md
+
+guides/figures/ndxplorer_phasor_corrected.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/46_ndxplorer.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/ndxplorer_phasor_corrected.png.
+  pages:
+  - docs/guides/46_ndxplorer.md
+
+guides/figures/ndxplorer_phasor_reference_dialog.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/46_ndxplorer.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/ndxplorer_phasor_reference_dialog.png.
+  pages:
+  - docs/guides/46_ndxplorer.md
+
+guides/figures/ndxplorer_phasor_uncorrected.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/46_ndxplorer.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/ndxplorer_phasor_uncorrected.png.
+  pages:
+  - docs/guides/46_ndxplorer.md
+
+guides/figures/ndxplorer_session_restored.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/46_ndxplorer.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/ndxplorer_session_restored.png.
+  pages:
+  - docs/guides/46_ndxplorer.md
+
+guides/figures/phasor_calculator.png:
+  kind: screenshot
+  origin: chisurf/plugins/calculator/phasor_calculator/tests/test_emtk_phasor_parity.py::test_port_is_qt_free
+  recipe: >-
+    Run the script named in origin (see the function that saves phasor_calculator.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/77_phasor_calculator.md
+
+guides/figures/phasor_calculator_controls.png:
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_phasor_calculator
+  recipe: >-
+    Run the script named in origin (see the function that saves phasor_calculator_controls.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/77_phasor_calculator.md
+
+guides/figures/plugin_check.png:
+  kind: screenshot
+  origin: chisurf/plugins/core/plugin_check/test/test_emtk_plugin_check_parity.py
+  recipe: >-
+    Run the script named in origin (see the function that saves plugin_check.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/96_plugin_check.md
+
+guides/figures/plugin_check_failure.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/96_plugin_check.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/plugin_check_failure.png.
+  pages:
+  - docs/guides/96_plugin_check.md
+
+guides/figures/psf_calculator.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/72_psf_calculator.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/psf_calculator.png.
+  pages:
+  - docs/guides/72_psf_calculator.md
+
+guides/figures/psf_determination.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/93_psf_determination.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/psf_determination.png.
+  pages:
+  - docs/guides/93_psf_determination.md
+
+guides/figures/quest_native_failure.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/80_quenching_estimator.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/quest_native_failure.png.
+  pages:
+  - docs/guides/80_quenching_estimator.md
+
+guides/figures/ribbon_spectroscopy_imaging.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/98_imaging_tools.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/ribbon_spectroscopy_imaging.png.
+  pages:
+  - docs/guides/98_imaging_tools.md
+
+guides/figures/spectra_browse.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/spectra_mfd.py::_grab_spectra_tool
+  recipe: >-
+    Run the script named in origin (see the function that saves spectra_browse.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/83_spectra_and_r0.md
+
+guides/figures/spectra_native_primary_window.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/83_spectra_and_r0.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/spectra_native_primary_window.png.
+  pages:
+  - docs/guides/83_spectra_and_r0.md
+
+guides/figures/spectra_overview.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/spectra_mfd.py::_grab_spectra_tool
+  recipe: >-
+    Run the script named in origin (see the function that saves spectra_overview.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/83_spectra_and_r0.md
+
+guides/figures/spot_finder_detection.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/spot_finder.py::_grab_spot_finder
+  recipe: >-
+    Run the script named in origin (see the function that saves spot_finder_detection.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/84_spot_finder.md
+
+guides/figures/spot_finder_hub.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/spot_finder.py::_grab_spot_finder_hub
+  recipe: >-
+    Run the script named in origin (see the function that saves spot_finder_hub.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/84_spot_finder.md
+
+guides/figures/spot_finder_regions.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/spot_finder.py::_grab_spot_finder
+  recipe: >-
+    Run the script named in origin (see the function that saves spot_finder_regions.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/84_spot_finder.md
+
+guides/figures/structure_hub_native_primary_window.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/88_structure_tools.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/structure_hub_native_primary_window.png.
+  pages:
+  - docs/guides/88_structure_tools.md
+
+guides/figures/synthetic_decay_native_window.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/76_decay_analysis_tools.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/synthetic_decay_native_window.png.
+  pages:
+  - docs/guides/76_decay_analysis_tools.md
+
+guides/figures/synthetic_decay_vm.png:
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_synthetic_decay
+  recipe: >-
+    Run the script named in origin (see the function that saves synthetic_decay_vm.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/76_decay_analysis_tools.md
+
+guides/figures/synthetic_decay_vvvh.png:
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_synthetic_decay
+  recipe: >-
+    Run the script named in origin (see the function that saves synthetic_decay_vvvh.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/76_decay_analysis_tools.md
+
+guides/figures/traj_tools_align.png:
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::idx
+  recipe: >-
+    Run the script named in origin (see the function that saves traj_tools_align.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/81_trajectory_tools.md
+
+guides/figures/traj_tools_clashes.png:
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::idx
+  recipe: >-
+    Run the script named in origin (see the function that saves traj_tools_clashes.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/81_trajectory_tools.md
+
+guides/figures/traj_tools_convert.png:
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::idx
+  recipe: >-
+    Run the script named in origin (see the function that saves traj_tools_convert.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/81_trajectory_tools.md
+
+guides/figures/traj_tools_energy.png:
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::idx
+  recipe: >-
+    Run the script named in origin (see the function that saves traj_tools_energy.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/81_trajectory_tools.md
+
+guides/figures/traj_tools_fret_native_hgbp.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/81_trajectory_tools.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/traj_tools_fret_native_hgbp.png.
+  pages:
+  - docs/guides/81_trajectory_tools.md
+
+guides/figures/tttr_toolbox.png:
+  kind: screenshot
+  origin: chisurf/plugins/tttr/tttr_toolbox/test/test_emtk_toolbox_parity.py::test_the_port_is_qt_free
+  recipe: >-
+    Run the script named in origin (see the function that saves tttr_toolbox.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/101_tttr_toolbox.md
+
+guides/figures/tttr_toolbox_shared_audifier.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/101_tttr_toolbox.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/tttr_toolbox_shared_audifier.png.
+  pages:
+  - docs/guides/101_tttr_toolbox.md
+
+guides/figures/tttr_toolbox_shared_setup.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/101_tttr_toolbox.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/tttr_toolbox_shared_setup.png.
+  pages:
+  - docs/guides/101_tttr_toolbox.md
+
+guides/figures/updater_checked.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/90_updater.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/updater_checked.png.
+  pages:
+  - docs/guides/90_updater.md
+
+guides/figures/updater_pm_envs.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/90_updater.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/updater_pm_envs.png.
+  pages:
+  - docs/guides/90_updater.md
+
+guides/figures/updater_pm_installed.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/90_updater.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/updater_pm_installed.png.
+  pages:
+  - docs/guides/90_updater.md
+
+guides/figures/updater_pm_search_results.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/90_updater.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/updater_pm_search_results.png.
+  pages:
+  - docs/guides/90_updater.md
+
+guides/figures/vv_vh_g_factor_native_batch.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/91_vv_vh_g_factor.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/vv_vh_g_factor_native_batch.png.
+  pages:
+  - docs/guides/91_vv_vh_g_factor.md
+
+guides/figures/vv_vh_g_factor_native_reference.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/91_vv_vh_g_factor.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/vv_vh_g_factor_native_reference.png.
+  pages:
+  - docs/guides/91_vv_vh_g_factor.md
+
+guides/figures/vv_vh_native_primary_window.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the tool described in docs/guides/10_lifetime_anisotropy_fitting.md,
+    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
+    native windows) into the state the surrounding text describes, using the
+    data that page names, and save the grab as guides/figures/vv_vh_native_primary_window.png.
+  pages:
+  - docs/guides/10_lifetime_anisotropy_fitting.md

@@ -55,3 +55,8 @@ same stream. Finite photon counts, map quantization and the excitation period
 must be included when comparing fitted lifetimes with the input maps.
 
 ![Native generator after real map simulation](figures/clsm_generator_native_window.png)
+
+## Theory
+
+- [Point spread function](../concepts/point_spread_function.md): the focus that shapes the simulated scan.
+- [FLIM and the phasor](../concepts/imaging_flim_phasor.md): how the lifetime maps you put in come back out of the scan.

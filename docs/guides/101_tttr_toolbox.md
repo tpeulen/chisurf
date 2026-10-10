@@ -96,3 +96,8 @@ screen; reopening through the native launcher retains the saved dimensions.
 Qt clamps the initial window to the available display. A narrow setup pane
 scrolls to reach the LUT and optical setup controls. Geometry changes leave
 photon counts and analysis settings unchanged.
+
+## Theory
+
+- [The photon container](../concepts/photon_container.md): what a TTTR measurement stores, which the photon tools read and rewrite.
+- [Micro-time shift](../concepts/microtime_shift.md): why the micro-time shifter exists and what it corrects.

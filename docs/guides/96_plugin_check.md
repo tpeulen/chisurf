@@ -109,3 +109,7 @@ print(model.message, model.status_of("about"))
 
 - [Plugin reference: Plugin-Check](../reference/plugins/plugin_check.md)
 - [Plugin manager](../reference/plugins/plugin_manager.md): switch plugins off, read the dependency graph.
+
+## Theory
+
+- [Application identity](../concepts/application_identity.md): the version and environment a plugin check reports belong to the same record of what produced a result.

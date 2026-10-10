@@ -96,3 +96,8 @@ in `okf/subsystems/project-persistence.md`.
 
 The native Project Browser starts at 1200×800. Its project, version and artifact
 views use the same persisted data; a saved custom window size takes precedence.
+
+## Theory
+
+- [The photon container](../concepts/photon_container.md): how a measurement and its results are stored together.
+- [The measurement database](../concepts/measurement_database.md): the optional provenance store a project does not require.

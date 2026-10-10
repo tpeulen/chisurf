@@ -107,3 +107,7 @@ The notebook tab is a widget of the code editor plugin
 behind it is `chisurf.core.console.shell.Shell` — the same class documented in
 [Driving ChiSurf from its console](59_console.md). Every panel of that window,
 Kernel included, is a `ChisurfDock`, so they move, float and tab together.
+
+## Theory
+
+- [Global analysis](../concepts/global_analysis.md): the fits and datasets a notebook sees are the ones the global analysis holds.
