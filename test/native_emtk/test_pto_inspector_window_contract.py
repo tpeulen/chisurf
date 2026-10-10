@@ -87,6 +87,6 @@ def test_viewer_default_retains_all_payload_and_provenance_docks(tmp_path, monke
             assert app.docks.window(key) is not None
             app.docks.focus(key)
             drv.draw(2)
-        assert {"Open", "Verify", "Export", "Fit graph"} <= app.rects.keys()
+        assert {"open", "Verify", "export", "Fit graph"} <= app.rects.keys()
     finally:
         app.close()

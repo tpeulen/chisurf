@@ -9,6 +9,7 @@ import sys
 import click
 
 from ..core import av, evaluate, io, pair_selection, results, screening
+from ..core.olga_greedy import select_informative_pairs
 
 
 def _parse_pdb_paths(pdb_arg: str) -> list[str]:
@@ -256,7 +257,7 @@ def select_pairs_cmd(
     )
     clean_pair_names = [pair_names[i] for i in valid_indices]
 
-    selected_indices, decay = pair_selection.select_informative_pairs(
+    selected_indices, decay = select_informative_pairs(
         effs_clean, rmsds_clean, err=err, max_pairs=max_pairs
     )
     selected_pair_names = [clean_pair_names[i] for i in selected_indices]

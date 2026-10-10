@@ -150,8 +150,10 @@ def real_settings_state() -> dict:
     if root.exists():
         for dirpath, dirs, files in os.walk(root):
             # chisurf's own session logger ignores CHISURF_SETTINGS_DIR and writes a log for every process that imports
-            # chisurf (other test runs and agents too): a log is not a setting.
-            dirs[:] = [d for d in dirs if d != "logs"]
+            # chisurf (other test runs and agents too): a log or a .pyc is not a setting.
+            # The bytecode cache (``PYTHONPYCACHEPREFIX``) is written by every python process that imports chisurf.
+            if pathlib.Path(dirpath) == root:
+                dirs[:] = [d for d in dirs if d not in {"logs", "cache"}]
             for name in files:
                 f = pathlib.Path(dirpath) / name
                 try:

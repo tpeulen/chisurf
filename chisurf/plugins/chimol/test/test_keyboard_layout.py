@@ -103,5 +103,6 @@ def test_the_browser_host_passes_the_character_the_page_produced():
     surface.sink = _Sink()
     page = object.__new__(WebPage)
     page.surface = surface
+    page._pressed_keys = {}  # object.__new__ skips __init__; the page tracks the keys it has seen go down
     page.key(name="y", text="z")
     assert seen == ["z"], f"the browser host typed {seen!r}"

@@ -73,11 +73,11 @@ def test_about_uses_translated_identity_and_real_close_action(monkeypatch):
     app.io.wall_clock = False
     driver = Driver(app, app.window_size)
     painter = driver.frame(2)
-    assert "ChiSurf localisé" in painter.strings and "Fermer" in painter.strings
+    assert "ChiSurf localisé" in painter.strings and "✕  Fermer" in painter.strings
     assert not app.close_requested
-    driver.hover("Fermer")
+    driver.hover("close_about")
     app.io.now += 1.0
     painter = driver.frame(2)
     assert translations["Close the About ChiSurf window."] in " ".join(painter.strings)
-    driver.click("Fermer")
+    driver.click("close_about")
     assert app.close_requested

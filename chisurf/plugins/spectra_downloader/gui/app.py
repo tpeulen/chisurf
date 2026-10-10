@@ -662,21 +662,10 @@ class SpectraApp(TourTarget, ImApp):
                     self.item_rects["dialog." + label] = im.get_item_rect()
             im.end()
         if self.tour.active:
-            if self.tour.awaiting:
-                self.tour.draw(width, height)  # the highlighted control must stay clickable
-            else:
-                # A window of its own over the others, so the card's buttons are hovered (a button answers only when no
-                # other window is under the pointer).
-                flags = (
-                    im.WindowFlags.NO_DECORATION
-                    | im.WindowFlags.NO_BACKGROUND
-                    | im.WindowFlags.NO_SAVED_SETTINGS
-                    | im.WindowFlags.NO_MOVE
-                    | im.WindowFlags.NO_NAV
-                )
-                im.begin("##spectra_tour", (0.0, 0.0, width, height), flags)
-                self.tour.draw(width, height)
-                im.end()
+            # The card is a bounded window of its own (see EmTkGuidedTour.draw): it takes its own presses and leaves the
+            # highlighted control outside its rectangle clickable. A full-frame overlay window around it appeared on top
+            # of the card once a step stopped awaiting, and swallowed Close, Prev and Next.
+            self.tour.draw(width, height)
         if self.help.open:
             self.help.draw((0.0, 0.0, width, height))
         self.io.mouse_wheel = self.io.mouse_wheel_h = 0.0

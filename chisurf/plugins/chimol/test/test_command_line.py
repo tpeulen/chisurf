@@ -312,7 +312,10 @@ def test_the_dom_key_names_translate():
     assert keys.key_from_dom("ArrowUp") == keys.KEY_UP
     assert keys.key_from_dom("Enter") == keys.KEY_RETURN
     assert keys.key_from_dom("a") == 0, "a printable key carries its own text"
-    assert keys.modifiers_from_dom(True, False, False, False) == events.CONTROL_MODIFIER
-    assert keys.modifiers_from_dom(False, True, False, True) == (
+    assert keys.modifiers_from_dom(True, False, False, False, mac=False) == events.CONTROL_MODIFIER
+    assert keys.modifiers_from_dom(False, True, False, True, mac=False) == (
         events.SHIFT_MODIFIER | events.META_MODIFIER
     )
+    # on a Mac Command (metaKey) is the primary modifier and ctrlKey the secondary one
+    assert keys.modifiers_from_dom(False, False, False, True, mac=True) == events.CONTROL_MODIFIER
+    assert keys.modifiers_from_dom(True, False, False, False, mac=True) == events.META_MODIFIER

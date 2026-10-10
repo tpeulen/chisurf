@@ -342,7 +342,7 @@ fit the pixels that matter.
   `img_pixel_micro_time/`, and `img_pixel_mle/` for per-pixel fitting; CLSM
   reconstruction via `tttrlib.CLSMImage`.
 - Key literature: {cite}`digman2008` is the phasor approach to FLIM itself;
-  {cite}`colyer2012` the polar plot as the visual basis of it;
+  {cite}`colyer2012` phasor imaging with a photon-counting detector;
   {cite}`malacrida2021` a review of the universal circle and how to read a
   phasor plot without fitting. For the origins: {cite}`lakowicz1992b` is the
   method paper for lifetime imaging, and {cite}`lakowicz1992` the measurement

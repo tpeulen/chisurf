@@ -59,7 +59,7 @@ def test_native_renders_all_controls():
         "SIGMIN",
         "SIGMAX",
         "Full diffusion tensor",
-        "Run",
+        "▶ Run",
         "Save CSV",
         "Select files…",
     ):

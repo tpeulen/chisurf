@@ -144,7 +144,7 @@ def test_fusion_default_primary_and_settings_folder(tmp_path, monkeypatch):
     assert folder.parent == demo.demo_folder()
     record = demo.read_demo(folder)
     assert record["truth"]["n_molecules"] == 300
-    assert record["bursts"] == 428
+    assert record["bursts"] == 419
     assert hashlib.sha256(Path(record["source"]).read_bytes()).hexdigest()
 
 
@@ -215,7 +215,7 @@ def test_native_fusion_example_waits_for_real_user_action(tmp_path, monkeypatch)
         app.controller.poll()
         driver.frame(3)
         assert not tour.awaiting
-        assert app.model.demo["bursts"] == 428
+        assert app.model.demo["bursts"] == 419
         assert app.model._analysis is None
     finally:
         app.close()

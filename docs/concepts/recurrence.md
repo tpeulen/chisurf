@@ -158,8 +158,10 @@ buys timescale at a steep cost in precision.
 RASP in ChiSurf operates purely on the **per-burst table** (arrival time plus
 proximity ratio / efficiency) — no photon-level access is needed. The routines in
 {src}`chisurf/core/fluorescence/burst/recurrence.py` compute $P_\text{same}(\tau)$
-from the burst arrival times and the recurrence histogram for a chosen efficiency
-sub-population and recurrence window. See {doc}`/guides/02_recurrence_rasp` for the
+from the burst arrival times and the recurrence histogram $H_\text{rec}$ (with the
+overall $H_\text{all}$, both unit-area) for a chosen efficiency sub-population and
+recurrence window. The $H_\text{same}$ subtraction above is not applied by the
+routines; do it with the returned $P_\text{same}$ at the window's lag. See {doc}`/guides/02_recurrence_rasp` for the
 worked example.
 
 The same $P_\text{same}(\tau)$ answers a second, quite different question. Read

@@ -50,17 +50,19 @@ API workflow.
 
 A measurement is a long timestamp stream that is mostly background with
 occasional bright bursts. The **sliding-window** search runs a window of $m$
-consecutive photons along the stream and computes the instantaneous count rate
-($m$ divided by the time those photons span). A burst opens where that rate rises
-above a threshold set **relative to the local background** — typically $F\approx6$
-times the background rate, with $m\approx10$ — and closes when it falls back. Tying
-the threshold to the background (estimated in adjacent time windows, see
-{doc}`/guides/15_background_rates`) lets it track slow drift in laser power or
-buffer over a long acquisition.
+consecutive photons along the stream and opens a burst where those $m$ photons
+fall inside a time $T$, i.e. where the local count rate exceeds the threshold
+$m/T$; it closes when the rate falls back. The defaults are $m=10$, $T=0.5$ ms
+(2 × 10⁴ s⁻¹) and a minimum burst size $L=20$. The threshold is one global rate,
+so it should sit well above the background rate (estimated in
+{doc}`/guides/15_background_rates`); a threshold defined as a multiple of the
+background ($\approx 6\times$ in FRETBursts) is set by choosing $T$ accordingly.
+Other searches (CUSUM, Kalman, BOCPD, max-tree, Bayesian blocks) are listed in
+{doc}`/guides/13_burst_identification`.
 
-The search can run on **all photons** (most sensitive) or, in ALEX, demand a
-coincident rate rise in both excitation streams (dual-channel burst search, which
-rejects singly-labelled species early). A found burst is kept only if its total
+The search can run on **all photons** (most sensitive) or demand a coincident
+rate rise in several detector groups (the coincident search, which rejects
+singly-labelled species early). A found burst is kept only if its total
 size exceeds a minimum $L$; best practice is to search permissively ($L=m$) and
 impose the real size cut afterward on the background-corrected size, as an
 unbiased selection step. See {doc}`/guides/13_burst_identification`.
@@ -283,7 +285,8 @@ dye artefacts above.
 - Guides: {doc}`/guides/13_burst_identification` · {doc}`/guides/14_multiparameter_es`
   · {doc}`/guides/15_background_rates` · {doc}`/guides/27_alex_smfret_workflow`.
 - Implementation: per-burst E/S in tttrlib (`tttrlib.corrected_es`, the accurate-FRET kernels shared with ndXplorer);
-  correction algebra {src}`chisurf/core/fluorescence/crosstalk.py`; calibration
+  three-cube correction forwarded in
+  {src}`chisurf/core/fluorescence/crosstalk.py`; calibration
   factors {src}`chisurf/core/fluorescence/fret/calibration.py`; burst search
   {src}`chisurf/core/fluorescence/burst/tttrlib_search.py#search`; background
   estimation

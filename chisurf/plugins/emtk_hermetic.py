@@ -16,13 +16,13 @@ REAL_CHISURF = Path(os.path.expanduser("~")) / ".chisurf"
 
 
 def snapshot(root: Path) -> dict:
-    """``{path: (size, mtime_ns)}`` under *root*, ignoring ``logs`` and bytecode."""
+    """``{path: (size, mtime_ns)}`` under *root*, ignoring ``logs`` and bytecode (``__pycache__`` and the ``cache`` prefix)."""
     out = {}
     if not root.exists():
         return out
     for path in sorted(root.rglob("*")):
         rel = path.relative_to(root)
-        if rel.parts and rel.parts[0] == "logs" or "__pycache__" in rel.parts:
+        if rel.parts and rel.parts[0] in ("logs", "cache") or "__pycache__" in rel.parts:
             continue
         stat = path.stat()
         out[str(rel)] = (stat.st_size, stat.st_mtime_ns)

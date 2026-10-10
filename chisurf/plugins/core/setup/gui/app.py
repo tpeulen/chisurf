@@ -823,6 +823,10 @@ class UnifiedSettingsApp(ImApp):
 
     # -- persistence --------------------------------------------------------------------------------------------- #
     def export_settings(self):
+        if self.selected not in self.children:
+            # The shown destination is built lazily (or on the worker thread); exporting must not depend on whether
+            # that has finished, or an export taken before it and one taken after a restore would differ.
+            self.select(self.selected)
         children = dict(self.pending_state)
         for key, child in self.children.items():
             if callable(getattr(child, "export_settings", None)):

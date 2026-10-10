@@ -82,8 +82,7 @@ photon counts.
 The kernel time constant $\tau$ sets the timescale over which brightness is
 averaged. It should be short enough to resolve within-burst changes yet long
 enough to accumulate several photons per kernel. Tomov used
-$\tau = 45\ \mu\mathrm{s}$ for FRET-2CDE and $75\ \mu\mathrm{s}$ for
-ALEX-2CDE, and recommends 30–500 µs for typical data {cite}`tomov2012` — well
+$\tau = 100\ \mu\mathrm{s}$ {cite}`tomov2012`, ChiSurf's default; useful values lie between tens and a few hundred µs, well
 below the millisecond burst duration and above the microsecond inter-photon
 spacing.
 

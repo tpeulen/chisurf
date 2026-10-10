@@ -610,7 +610,8 @@ def test_every_tab_has_a_message_when_empty(app, drv):
     for tab in TABS:
         app.docks.focus(tab)
         strings = drv.draw(3).strings
-        assert any(s.startswith("No ") or s.startswith("Run") or "No " in s for s in strings), (
+        # an empty tab says so ("No scatter yet...") or tells what to do ("... and press Run.")
+        assert any("No " in s or s.startswith("Run") or "press Run" in s for s in strings), (
             tab,
             strings[:30],
         )

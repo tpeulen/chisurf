@@ -100,9 +100,10 @@ def test_project_save_load():
             name="test_proj", description="Mock project", ui_state={"fret_dock_wizard": ui_fret}
         )
 
-        # Save (a directory target becomes ``project.csp`` inside it)
-        project.save(proj_dir)
-        assert os.path.exists(os.path.join(proj_dir, "project.csp"))
+        # Save (a directory target becomes ``project.cs.pto`` inside it)
+        saved = project.save(proj_dir)
+        assert saved.name == "project.cs.pto"
+        assert os.path.exists(os.path.join(proj_dir, "project.cs.pto"))
 
         # Load
         loaded_project = Project.load(proj_dir)

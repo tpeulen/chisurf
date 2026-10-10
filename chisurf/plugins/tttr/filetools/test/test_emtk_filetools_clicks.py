@@ -38,7 +38,7 @@ def _snapshot(root: Path) -> dict:
     if root.exists():
         for path in sorted(root.rglob("*")):
             rel = path.relative_to(root)
-            if (rel.parts and rel.parts[0] == "logs") or "__pycache__" in rel.parts:
+            if (rel.parts and rel.parts[0] in ("logs", "cache")) or "__pycache__" in rel.parts:
                 continue
             stat = path.stat()
             out[str(rel)] = (stat.st_size, stat.st_mtime_ns)

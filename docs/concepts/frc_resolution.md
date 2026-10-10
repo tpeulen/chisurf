@@ -99,7 +99,7 @@ its criterion is not a result.** Quote both.
 :name: fig-frc-thresholds
 :width: 100%
 
-**One curve, three criteria, three answers.** An FRC curve against the fixed 1/7 threshold, the ½-bit criterion and the $2\sigma$ criterion, each marked where the curve *falls through* it — 8, 11 and 10 nm on the same data. The count-dependent criteria start above 1 on the innermost rings, which is why a crossing counts only after the curve has been above the threshold; without that rule they both 'cross' in the first ring and report the field of view.
+**One curve, three criteria, three answers.** An FRC curve against the fixed 1/7 threshold, the ½-bit criterion and the $2\sigma$ criterion, each marked where the curve *falls through* it — 8, 11 and 10 nm on the same data. The count-dependent criteria start at or above 1 (clipped to 1) on the innermost rings, which is why a crossing counts only after the curve has been above the threshold; without that rule they both 'cross' in the first ring and report the field of view.
 ```
 
 ## What the number does and does not mean

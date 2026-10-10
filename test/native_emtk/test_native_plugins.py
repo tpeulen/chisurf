@@ -26,6 +26,6 @@ def test_factory_initialization_does_not_override_selected_language():
         i18n.install("de")
         i18n.install()
         assert toolkit_i18n.get_locale() == "de"
-        assert toolkit_i18n.tr("💾 Save") == "💾 Speichern"
+        assert toolkit_i18n.tr("💾 Export CSV") == "💾 CSV exportieren"
     finally:
         i18n.set_locale("en")

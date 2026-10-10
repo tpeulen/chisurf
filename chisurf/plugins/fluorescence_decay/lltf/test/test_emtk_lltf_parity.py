@@ -144,7 +144,11 @@ def fitted(tmp_path_factory):
 def test_a_fixed_count_fit_returns_that_count_and_follows_the_data(fitted):
     app, out = fitted
     result = app.model.result
-    assert app.model.status == "LLTF fit completed."
+    # the status states the optimizer's verdict (MINPACK stopping code), it does not just say "completed"
+    assert result["optimizer_source"] == "minpack" and isinstance(result["converged"], bool)
+    assert app.model.status == (
+        "LLTF fit completed." if result["converged"] else "LLTF fit completed with an optimizer warning."
+    )
     assert result["n_lifetimes"] == 2  # -n 2 beats the file's find_optimal: true
     assert "optimal_fitting" not in result
     taus = sorted(row["lifetime"] for row in result["lifetimes"])

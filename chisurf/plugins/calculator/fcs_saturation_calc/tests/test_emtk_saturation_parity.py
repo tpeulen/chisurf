@@ -490,11 +490,12 @@ def test_every_tab_draws_and_the_layout_is_clean(app, size, tab, preset):
         "Save scheme",
         "Load session",
         "Save session",
-        "Guide",
-        "Help",
         "Scheme",
         "Laser power",
     } <= set(painter.strings)
+    # the shared toolbar vocabulary prefixes the icon: "❓  Help", "📖  Guide"
+    for label in ("Guide", "Help"):
+        assert any(s.strip().endswith(label) for s in painter.strings), label
     assert set(TABS) <= set(painter.strings)  # every tab button is whole
     state_labels = app.model.saturation.state_labels
     assert set(state_labels) <= set(

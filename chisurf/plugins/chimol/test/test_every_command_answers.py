@@ -33,6 +33,7 @@ SKIP = {
     "fetch",  # reaches the network
     "demo",
     "tour",  # covered, and slowly, by test_demos_and_tours
+    "smlm_npc",  # loads six measured density maps and the 7R5J scaffold (~7 min a call); chimol's test_large_demos
     "plugins",  # re-imports every plugin module
     "sleep",
     "wait",  # block the sweep

@@ -507,3 +507,12 @@ window/dock geometry does not identify the repeated measurements or their
 screening choices. Reload and screen those curves explicitly, as described in
 {doc}`/guides/75_fcs_toolbox`; changing the window size leaves the mean,
 uncertainty and duration-weighted count rate unchanged.
+
+## The FCS toolbox
+
+The `chisurf/plugins/fcs/fcs_toolbox/` window hosts the correlator workflow behind a left rail: channel definitions,
+files and steps, photon/burst filter, correlator (multi-tau settings and **Splits**, the number of chunks correlated
+separately), and the merger. Splits give the merger repeats to average and reject; the mean and its standard error are
+saved as a `.cor` file. 2D-FLCS, Lifetime-FCS Sim, Burst-wise FCS, the diffusion/volume calculator and the fFCS filter
+calculator sit in the same window. Settings, the `.cor` format and the headless equivalent:
+[FCS toolbox](../guides/75_fcs_toolbox.md).

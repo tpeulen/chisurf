@@ -219,7 +219,8 @@ rather than assuming the ideal profile.
 - Guide: {doc}`/guides/04_fida_pch`; related FCS concept:
   {doc}`/concepts/fcs_correlation`.
 - ChiSurf source: single-species and mixture PCH in
-  {src}`chisurf/plugins/pch/api/algorithms.py`; the FIDA generating-function
+  {src}`chisurf/core/models/pch/pch.py` (re-exported by
+  {src}`chisurf/plugins/pch/api/algorithms.py`); the FIDA generating-function
   model in {src}`chisurf/core/models/pch/fida.py`; the **PCH** plugin
   (`chisurf/plugins/pch/`, RPC `pch.compute` / `pch.fit`).
 - Tools in ChiSurf: the **PCH** plugin (`chisurf/plugins/pch/`) fits the histogram, and **Number & Brightness** (`chisurf/plugins/microscopy/img_pixel_nb/`) reads the same two moments per pixel of an image.

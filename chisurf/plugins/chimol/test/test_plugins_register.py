@@ -40,6 +40,7 @@ ONE_COMMAND_PER_PLUGIN = {
     "dbg": "dbg",
     "scores": "scores",
     "annotations": "annotations_load",
+    "smlm": "smlm_npc",
 }
 
 #: Plugins that register no command at all -- what each contributes is named
@@ -57,7 +58,12 @@ def _cmd(**kw) -> Cmd:
 def test_a_fresh_cmd_carries_every_builtin_plugin():
     cmd = _cmd()
     expected = set(ONE_COMMAND_PER_PLUGIN) | set(PLUGIN_WITHOUT_COMMAND)
-    assert set(cmd.plugins.names()) == expected
+    # Plugins beyond the built-ins (an in-tree extra such as smlm, a drop-in, an installed distribution such as
+    # labelizer) come with the checkout and the machine: the built-ins are exactly these, whatever else was found.
+    loaded = cmd.plugins.loaded
+    builtin = {name for name, entry in loaded.items() if entry.source == "builtin"}
+    assert builtin == expected, (builtin ^ expected)
+    assert set(loaded) - builtin <= {n for n, e in loaded.items() if e.source in ("in-tree", "drop-in", "entry_point")}
     assert cmd.plugins.failed == {}
     for plugin, name in ONE_COMMAND_PER_PLUGIN.items():
         spec = cmd._registry.resolve(name)

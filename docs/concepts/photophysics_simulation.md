@@ -56,9 +56,9 @@ $$
 $$
 
 Trajectories are built by cumulatively summing independent Gaussian steps
-$\Delta\mathbf{r}\sim\mathcal{N}(0,\,2D\,\Delta t)$ per axis. At the box faces
-molecules are reflected or re-injected from the opposite face (a
-mirror/periodic boundary) so the mean occupancy stays constant. The occupancy
+$\Delta\mathbf{r}\sim\mathcal{N}(0,\,2D\,\Delta t)$ per axis. The simulated volume is
+open: an absorbing ellipsoid whose surface is fed by a steady influx of new
+molecules, so the mean occupancy stays constant. The occupancy
 itself — the mean number $N$ of molecules in the box — sets the amplitude of the
 fluctuations, exactly the $1/N$ that FCS reports as a concentration
 (see {ref}`concept-fcs-correlation`).

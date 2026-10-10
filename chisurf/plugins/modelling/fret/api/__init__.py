@@ -7,6 +7,8 @@ available when ``fastapi`` is installed.
 
 from __future__ import annotations
 
+import importlib
+
 from . import models, operations
 
 
@@ -20,7 +22,9 @@ def __getattr__(name: str):
     if name not in ("app", "router"):
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
     try:
-        from . import router as _router_module
+        # ``import_module``, not ``from . import router``: the latter asks this very ``__getattr__`` for ``router``
+        # first and would hand back the APIRouter instead of the submodule (whose ``app`` is then APIRouter.app).
+        _router_module = importlib.import_module(f"{__name__}.router")
     except Exception:  # pragma: no cover - fastapi not installed
         value = None
     else:

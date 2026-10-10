@@ -217,25 +217,10 @@ class HydroProApp(ImApp):
         self._draw_dialogs(box)
         self.help_window.draw(box)
         if self.tour.active and not self._dialog_open():
-            if self.tour.awaiting:
-                self.tour.draw(*viewport.size)  # the highlighted control must stay clickable
-            else:
-                # A window of its own over the docks, so the card's buttons are hovered (a button answers only when no
-                # other window is under the pointer).
-                flags = (
-                    im.WindowFlags.NO_DECORATION
-                    | im.WindowFlags.NO_BACKGROUND
-                    | im.WindowFlags.NO_SAVED_SETTINGS
-                    | im.WindowFlags.NO_MOVE
-                    | im.WindowFlags.NO_NAV
-                )
-                im.begin(
-                    "##hydropro_tour",
-                    (0.0, 0.0, float(viewport.size[0]), float(viewport.size[1])),
-                    flags,
-                )
-                self.tour.draw(*viewport.size)
-                im.end()
+            # The card is a bounded window of its own (see EmTkGuidedTour.draw): it takes its own presses and leaves the
+            # highlighted control outside its rectangle clickable. A full-frame overlay window around it appeared on top
+            # of the card once a step stopped awaiting, and swallowed Close, Prev and Next.
+            self.tour.draw(*viewport.size)
 
     def _dialog_open(self) -> bool:
         return bool(self.dialog or self.model.exe_prompt or self.model.notices)

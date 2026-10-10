@@ -183,9 +183,9 @@ window* {cite}`torella2011`. Filtered FCS {cite}`felekyan2012` and ns-FCS
   and figures. Complementary dynamics test:
   {doc}`FRET-2CDE </guides/01_fret_2cde>`.
 - ChiSurf source: the `burst_bva` plugin
-  (`chisurf/plugins/burst/burst_bva/`); the reference NumPy/pandas
-  implementation {src}`chisurf/core/fluorescence/burst/bva.py`; the fast parallel
-  engine `tttrlib.BVA` (base class `tttrlib.BurstFeature`), with the static-line
-  helper `tttrlib.BVA.compute_static_bva_line`.
+  (`chisurf/plugins/burst/burst_bva/`); the static-line wrapper
+  {src}`chisurf/core/fluorescence/burst/bva.py`; the per-burst engine
+  `tttrlib.BVA` (base class `tttrlib.BurstFeature`), whose
+  `compute_static_bva_line` evaluates the line.
 - Primary literature: {cite}`torella2011` is burst variance analysis itself —
   the statistic, the static line, and the false positives it warns about.

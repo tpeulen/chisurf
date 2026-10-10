@@ -151,7 +151,7 @@ def test_real_demo_pooled_fit_preserves_photons_models_and_settings(tmp_path, mo
             for key, (micro, channels) in photons.items():
                 np.testing.assert_array_equal(session.tttrs[key].micro_times, micro)
                 np.testing.assert_array_equal(session.tttrs[key].routing_channels, channels)
-        assert app.model.fit_model_options() == ["fit23", "fit24", "fit25"]
+        assert app.model.fit_model_options() == ["fit23", "fit24", "fit25", "tail"]
         assert 1.5 < app.model.tau_result < 2.5
     finally:
         app.close()

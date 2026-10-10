@@ -62,16 +62,20 @@ unpolarized (e.g. tail-region emission, horizontally polarized excitation, or a
 freely tumbling small dye). Getting $G$ wrong shifts the whole $r(t)$ curve up
 or down and biases the recovered $r_0$ and $r_\infty$. ChiSurf additionally
 carries two small **channel-mixing** factors $l_1, l_2$ that account for
-cross-talk of each polarized channel into the other — chiefly the geometric
+leakage between the polarized channels — chiefly the geometric
 depolarization of a high-aperture objective {cite}`koshioka1995`, with
 imperfect polarizers adding to it; the same correction is used for
 single-molecule MFD {cite}`schaffer1999` and TIRF anisotropy imaging
-{cite}`erdelyi2014`:
+{cite}`erdelyi2014`. They enter the anisotropy as
 
 $$
-I_{\parallel,\mathrm{m}} = (1-l_1)\,I_\parallel + l_1\,I_\perp, \qquad
-I_{\perp,\mathrm{m}}     = l_2\,I_\parallel + (1-l_2)\,I_\perp .
+r(t) = \frac{I_\parallel - G\,I_\perp}
+{(1-3l_2)\,I_\parallel + (2-3l_1)\,G\,I_\perp},
 $$
+
+applied after the $G$ correction, and the forward model builds
+$f_\parallel = f_\mathrm{VM}\,[1 + (2-3l_1)\,r]$ and
+$f_\perp = f_\mathrm{VM}\,[1 - (1-3l_2)\,r]/G$ so the two invert exactly.
 
 Tail-matched G = VV/VH must multiply the perpendicular signal in both the
 anisotropy and linked-mixing equations. An isotropic reference with VV = 2 VH
@@ -304,8 +308,7 @@ perpendicular channel records $1/G$ of what an equally sensitive one would: $G$
 *divides* the whole perpendicular channel rather than scaling only its
 depolarization term. That placement is the one the estimator at the top of this
 page inverts — $r = (f_\parallel - G\,f_\perp)/(f_\parallel + 2\,G\,f_\perp)$
-returns exactly the $r(t)$ the pair was built from, for any $G$. The channel
-mixing $l_1, l_2$ is applied on top, as above.
+returns exactly the $r(t)$ the pair was built from, for any $G$. With $l_1, l_2$ the prefactors of $r(t)$ become $(2-3l_1)$ and $(1-3l_2)$, as above.
 
 Both channels are then reconvolved with the IRF and compared to the measured
 VV and VH histograms in **one combined fit**, with the lifetimes shared (linked)

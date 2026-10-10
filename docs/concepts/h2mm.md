@@ -124,7 +124,7 @@ $$
 $$
 
 with $p$ free parameters and $n$ photons (**Bayesian Information Criterion**,
-adapted to H2MM in {cite}`lerner2018`), and the **Integrated Complete
+applied to H2MM in {cite}`pirchi2016`), and the **Integrated Complete
 Likelihood** ($\mathrm{ICL}$), which adds a term for the entropy of the Viterbi
 state assignment — rewarding models whose states are *cleanly separable* and
 distrusting extra states that merely overlap. Plot both against $K$ and take the

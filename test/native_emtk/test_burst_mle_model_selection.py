@@ -134,7 +134,7 @@ def test_registered_vectors_and_per_model_edits_survive_settings(name, tmp_path)
 def test_unavailable_model_rejects_without_changing_selected_fit(name):
     """A model that needs different inputs cannot silently become Fit23."""
     model = MleViewModel()
-    assert model.fit_model_options() == ["fit23", "fit24", "fit25"]
+    assert model.fit_model_options() == ["fit23", "fit24", "fit25", "tail"]
     assert "fit26" in model.model_availability()
     with pytest.raises(ValueError):
         model.fit_model = name

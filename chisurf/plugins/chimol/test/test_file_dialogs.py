@@ -154,8 +154,10 @@ _DRIVE = """
     win3.on_key.layout(body3)
     boxes = win3.on_key._boxes
     def px(box):
-        y = int(min(max(boxes[box].y + boxes[box].h / 2, 0), arr.shape[0] - 1))
-        x = int(min(max(boxes[box].x + boxes[box].w / 2, 0), arr.shape[1] - 1))
+        # Inside the box near its corner: the centre of a button is where its caption's glyphs are drawn, and an
+        # antialiased glyph pixel is not the button's fill.
+        y = int(min(max(boxes[box].y + 4, 0), arr.shape[0] - 1))
+        x = int(min(max(boxes[box].x + 4, 0), arr.shape[1] - 1))
         return tuple(int(v) for v in arr[y, x])
     emit("up_px", px("up"))
     emit("choose_px", px("choose"))

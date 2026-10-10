@@ -38,7 +38,7 @@ def native(tmp_path, monkeypatch):
     monkeypatch.setattr(
         dataset_picker.DatasetPicker, "open", lambda self: setattr(self, "is_open", True)
     )
-    mfd = Path(__file__).resolve().parents[4] / "modules/ndxplorer/test/mfd/burstwise_All 0.1500#30"
+    mfd = Path(__file__).resolve().parents[4] / "modules/ndxplorer/tests/mfd/burstwise_All 0.1500#30"
     copied = tmp_path / mfd.name
     shutil.copytree(mfd, copied)
     with MFDatabase(str(tmp_path / "mmfdb.db")) as db:

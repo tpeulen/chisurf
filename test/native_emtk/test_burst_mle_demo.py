@@ -1,5 +1,6 @@
 """The shipped demonstration is real synthetic TTTR data with declared ground truth."""
 
+import time
 import numpy as np
 
 
@@ -69,6 +70,11 @@ def test_actual_native_demo_button_loads_and_syncs_definition(tmp_path, monkeypa
         )
         app.tour.start(step)
         assert app.tour.awaiting
+        from chisurf.core.registry import catalog
+
+        while not catalog.prefetch():  # the registries are read on a worker thread; the choice lists them once read
+            time.sleep(0.01)
+        driver.frame(3)
         driver.click("fit_model")
         driver.click(dict(app.model.fit_model_choices())["fit24"])
         assert app.model.fit_model == "fit24"

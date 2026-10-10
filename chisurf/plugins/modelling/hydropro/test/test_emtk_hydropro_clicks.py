@@ -13,6 +13,8 @@ import webbrowser
 from pathlib import Path
 
 import pytest
+
+from chisurf.plugins.emtk_layout import action_caption
 from emtk import keys
 
 from chisurf.plugins.core.project_browser.test.driving import draw_clip, layout_problems
@@ -604,12 +606,13 @@ def test_help_button_opens_the_help_window_whose_buttons_work(drv):
     drv.click("help")
     assert window.open
     painter = drv.draw(2)
-    assert {"Start Guided Tour", "Close", "Close Help"} <= set(painter.strings)
+    close = action_caption("close")  # the shared action vocabulary, icon included
+    assert {"Start Guided Tour", close, "Close Help"} <= set(painter.strings)
     drv.click_text("Start Guided Tour")
     assert not window.open and drv.app.tour.active
     drv.app.tour.stop()
     drv.draw(2)
-    for closer in ("Close Help", "Close"):
+    for closer in ("Close Help", close):
         drv.click("help")
         drv.click_text(closer, last=closer == "Close Help")
         assert not window.open, closer

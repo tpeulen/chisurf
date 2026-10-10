@@ -289,10 +289,6 @@ def test_the_filter_field_is_typed_and_narrows_the_table(ui):
     assert ui.drawn("EGFP") and ui.drawn("5 / 5")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="emtk gap: Enter in an emptied str field does not commit the empty text (a click away does); see REPORT.md",
-)
 def test_enter_commits_an_emptied_filter_field(ui):
     goto(ui, "Browse")
     ui.type_into_name("search", "alexa")

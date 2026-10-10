@@ -38,6 +38,10 @@
   settings and help pass the click-all (wrong notify ids, a toggle callback that raised before notifying,
   steps that awaited what no click can do, demos for the folder steps). Open: user_editor needs a seeded
   account to select.
+- W7 demos: f_test, hydropro, pch, burst_selection, img_pixel_mle, img_coloc and tr_anisotropy ship a
+  cached `demo.py` whose answer is known, a Load example control and a tour step that awaits it; all seven
+  pass the click-all. emtk `fb317a4`: a control disabled while held releases its active id (img_coloc).
+  hydropro's demo solver is Stokes–Einstein only and says so.
 - PRD-154 W10: bff's model search gains a modality token (state width 78), a
   `request_information` outcome for moves whose measurement is missing, smFRET/MFD and PIE/ALEX
   self-play games, and a fit-settings action space; the retrained policy passes the gate (all

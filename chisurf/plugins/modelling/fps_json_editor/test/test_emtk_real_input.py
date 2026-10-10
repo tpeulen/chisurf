@@ -143,7 +143,7 @@ def test_every_position_field_is_reachable_and_typed(fps, size):
 
 def test_typed_values_are_clamped_to_the_qt_ranges(fps):
     ui = _open(fps, (800, 600))
-    _select(ui, "p51_E194C")
+    _select(ui, "p51_K173C")
     _expand(ui, "Advanced")
     for key, text, value in (
         ("linker_length", "-5", 0.0),

@@ -753,6 +753,10 @@ def test_layout_empty_and_populated_has_no_clipped_or_overlapping_text(app, file
     for tab in ("Lifetime map", "Settings"):
         app.docks.focus(tab)
         C.texts_apart(draw(app, size), ignore=tuple(str(p) for p in files))
+    # Pressing the folds scrolled the Settings form to reach them; the controls that sit above are checked from the top.
+    for _ in range(6):
+        drv.wheel(60.0, 90.0, 6)
+    draw(app, size)
     rects = {
         k: app.form.rects[k]
         for k in (

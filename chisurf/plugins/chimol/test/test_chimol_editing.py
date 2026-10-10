@@ -212,7 +212,7 @@ def test_chimol_cmd_get_set_view(editing_context):
     cmd.set_view(view)
     assert viewer.get_view_state() == view
 
-    text = cmd.get_view()
+    text = str(cmd.get_view())  # a ViewTuple: indexable like PyMOL's, printed as set_view
     assert text.startswith("set_view (")
 
     viewer.set_view_state([0.0] * 18)
