@@ -13,6 +13,7 @@ import json
 from pathlib import Path
 
 from emtk import im
+from emtk.i18n import tr
 from emtk.app import ImApp
 
 from chisurf.plugins.emtk_layout import window_size
@@ -99,17 +100,17 @@ class SwitchUserApp(ImApp):
             im.image(_logo(), size=(48.0, 48.0))
             im.same_line()
         im.heading("ChiSurf", level=1)
-        im.text("Sign in to the MMFDB workspace")
-        if im.button("Help"):
+        im.text(tr("Sign in to the MMFDB workspace"))
+        if im.button(tr("Help")):
             self.help_window.show()
         im.set_item_tooltip(
-            "Explain the fields, the two remember options and what happens on Login."
+            tr("Explain the fields, the two remember options and what happens on Login.")
         )
         self.item_rects["help"] = im.get_item_rect()
         im.same_line()
-        if im.button("Guide"):
+        if im.button(tr("Guide")):
             self.tour.start()
-        im.set_item_tooltip("Walk through signing in as another account.")
+        im.set_item_tooltip(tr("Walk through signing in as another account."))
         self.item_rects["guide"] = im.get_item_rect()
         im.separator()
 

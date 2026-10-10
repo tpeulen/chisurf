@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from emtk import im
+from emtk.i18n import tr
 from emtk.app import ImApp
 
 from chisurf.plugins.emtk_layout import window_size
@@ -112,11 +113,11 @@ class SetupChannelDefinitionApp(ImApp):
             max(im.get_content_region_avail()[0] - width - im.get_style().item_spacing[0], 0.0), 1.0
         )
         im.same_line()
-        if im.button("Guide"):
+        if im.button(tr("Guide")):
             self.tour.start()
         self._item("guide", "Walk through choosing, editing and saving a setup.")
         im.same_line()
-        if im.button("Help"):
+        if im.button(tr("Help")):
             self.help_window.show()
         self._item(
             "help",

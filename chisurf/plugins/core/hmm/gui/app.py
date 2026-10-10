@@ -216,7 +216,7 @@ class HmmApp(ImApp):
         if self.message:
             im.text_wrapped(self.message)
         im.separator()
-        im.text("Traces")
+        im.text(tr("Traces"))
         self.form("files")
         pressed = button_row(
             [
@@ -254,12 +254,12 @@ class HmmApp(ImApp):
         self.form("model")
         opened = im.collapsing_header("Fitting")
         im.set_item_tooltip(
-            "Baum-Welch settings: iterations, tolerance, decoder, seed, acceleration."
+            tr("Baum-Welch settings: iterations, tolerance, decoder, seed, acceleration.")
         )
         if opened:
             self.form("fitting")
         opened = im.collapsing_header("State scan range")
-        im.set_item_tooltip("The range of state counts the scan scores.")
+        im.set_item_tooltip(tr("The range of state counts the scan scores."))
         if opened:
             self.form("scan")
 
@@ -326,10 +326,10 @@ class HmmApp(ImApp):
 
     def states_window(self, box):
         if self.model.fit is None:
-            im.text_wrapped("No fit yet: press Fit.")
+            im.text_wrapped(tr("No fit yet: press Fit."))
             return
         self.form("states")
-        im.text("Transitions")
+        im.text(tr("Transitions"))
         self.form("transitions")
 
     # -- frame --------------------------------------------------------------------------------- #

@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from emtk import im
+from emtk.i18n import tr
 from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.view_form import FormState, draw_sections
@@ -164,20 +165,20 @@ class UpdaterApp(ImApp):
 
     def _toolbar(self) -> None:
         """Help and Guide (a spec cannot draw the tour's entry points)."""
-        if im.button("Help"):
+        if im.button(tr("Help")):
             self.help_window.show()
-        im.set_item_tooltip("Explain the version list, the changelog and what Update Now does.")
+        im.set_item_tooltip(tr("Explain the version list, the changelog and what Update Now does."))
         self.item_rects["help"] = im.get_item_rect()
         im.same_line()
-        if im.button("Guide"):
+        if im.button(tr("Guide")):
             self.tour.start()
-        im.set_item_tooltip("Walk through checking for an update and reading what changed.")
+        im.set_item_tooltip(tr("Walk through checking for an update and reading what changed."))
         self.item_rects["guide"] = im.get_item_rect()
         im.separator()
 
     def _draw_version(self, section: dict, model: Any, state: FormState, width: float) -> None:
         """The ``version_line`` custom section: the installed version next to its caption."""
-        im.text("Current version:")
+        im.text(tr("Current version:"))
         left = im.get_item_rect()
         im.set_item_tooltip(str(section.get("description", "")))
         im.same_line()
@@ -221,7 +222,7 @@ class UpdaterApp(ImApp):
                 im.same_line()
                 if im.text_link(url):
                     self.open_link(url)
-                im.set_item_tooltip("Open the page in your browser.")
+                im.set_item_tooltip(tr("Open the page in your browser."))
             elif kind == "empty":
                 im.text_disabled(text)
             else:

@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from emtk import im
+from emtk.i18n import tr
 from emtk.app import ImApp
 
 from chisurf.plugins.emtk_layout import window_size
@@ -140,14 +141,14 @@ class PluginManagerApp(ImApp):
 
     def draw_selected(self, box: Any) -> None:
         """The right window: Help / Guide, the details, the switches, the dependencies."""
-        if im.button("Help"):
+        if im.button(tr("Help")):
             self.help_window.show()
-        im.set_item_tooltip("Explain the table, the dependency columns and the switches.")
+        im.set_item_tooltip(tr("Explain the table, the dependency columns and the switches."))
         self.item_rects["help"] = im.get_item_rect()
         im.same_line()
-        if im.button("Guide"):
+        if im.button(tr("Guide")):
             self.tour.start()
-        im.set_item_tooltip("Walk through picking a plugin, switching it off and saving.")
+        im.set_item_tooltip(tr("Walk through picking a plugin, switching it off and saving."))
         self.item_rects["guide"] = im.get_item_rect()
         im.separator()
         draw_sections(self.panels[_SELECTED]["sections"], self.model, self.form, titles=False)
@@ -176,7 +177,7 @@ class PluginManagerApp(ImApp):
         if texture is not None:
             im.image(texture, (96.0, 96.0))
         else:
-            im.text_disabled("no icon")
+            im.text_disabled(tr("no icon"))
         im.set_item_tooltip(str(section.get("description", "")))
         state.rects["icon_preview"] = im.get_item_rect()
 

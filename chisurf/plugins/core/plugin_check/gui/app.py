@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from emtk import im
+from emtk.i18n import tr
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
 from emtk.view_form import FormState, draw_sections
@@ -149,14 +150,14 @@ class PluginCheckApp(ImApp):
     # -- windows ---------------------------------------------------------------------- #
     def draw_plugins(self, box: Any) -> None:
         """The left window: Help / Guide, then the spec's actions, options, progress, status and table."""
-        if im.button("Help"):
+        if im.button(tr("Help")):
             self.help_window.show()
-        im.set_item_tooltip("Explain the table, the sweep and what a check proves.")
+        im.set_item_tooltip(tr("Explain the table, the sweep and what a check proves."))
         self.item_rects["help"] = im.get_item_rect()
         im.same_line()
-        if im.button("Guide"):
+        if im.button(tr("Guide")):
             self.tour.start()
-        im.set_item_tooltip("Walk through a safe sweep and the details of a plugin.")
+        im.set_item_tooltip(tr("Walk through a safe sweep and the details of a plugin."))
         self.item_rects["guide"] = im.get_item_rect()
         draw_sections(self.panels["checks"]["sections"], self.model, self.form, titles=False)
 
@@ -168,7 +169,7 @@ class PluginCheckApp(ImApp):
         top = im.get_cursor_screen_pos()
         blocks = model.details()
         if not blocks:
-            im.text_wrapped("Select a plugin to inspect its details.")
+            im.text_wrapped(tr("Select a plugin to inspect its details."))
         for caption, text in blocks:
             im.text_disabled(caption)
             im.text_wrapped(text)

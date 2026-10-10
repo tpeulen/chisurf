@@ -8,6 +8,7 @@ import re
 import shutil
 
 from emtk import im
+from emtk.i18n import tr
 from emtk.app import ImApp
 
 from chisurf.plugins.emtk_layout import window_size
@@ -331,58 +332,58 @@ class StyleManagerApp(ImApp):
         selected = m.files.index(m.current_file) if m.current_file in m.files else -1
         im.set_next_item_width(max(160, min(320, im.get_content_region_avail()[0] - 120)))
         changed, index = im.combo("Style File", selected, choices)
-        im.set_item_tooltip("Browse editable QSS files copied to your user settings directory")
+        im.set_item_tooltip(tr("Browse editable QSS files copied to your user settings directory"))
         if changed:
             self.request_load(m.files[index])
-        if im.button("New"):
+        if im.button(tr("New")):
             if m.modified:
                 self.pending = ("new", None)
             else:
                 self.new_visible = True
-        im.set_item_tooltip("Create a new QSS file without replacing an existing style")
+        im.set_item_tooltip(tr("Create a new QSS file without replacing an existing style"))
         im.same_line()
-        if im.button("Open"):
+        if im.button(tr("Open")):
             self.request_file("open")
         im.set_item_tooltip(
-            "Choose a style sheet from another directory; unsaved changes require confirmation"
+            tr("Choose a style sheet from another directory; unsaved changes require confirmation")
         )
         im.same_line()
-        if im.button("Save"):
+        if im.button(tr("Save")):
             if m.current_file:
                 m.save()
             else:
                 self.request_file("save")
-        im.set_item_tooltip("Save the current buffer without applying it")
+        im.set_item_tooltip(tr("Save the current buffer without applying it"))
         im.same_line()
-        if im.button("Save As"):
+        if im.button(tr("Save As")):
             self.request_file("save")
         im.set_item_tooltip(
-            "Choose another destination; existing files require replacement confirmation"
+            tr("Choose another destination; existing files require replacement confirmation")
         )
         if wide_toolbar:
             im.same_line()
-        if im.button("Apply"):
+        if im.button(tr("Apply")):
             m.apply()
         im.set_item_tooltip(
-            "Save and apply supported palette rules to this native window; Qt-only rules remain in the file"
+            tr("Save and apply supported palette rules to this native window; Qt-only rules remain in the file")
         )
         im.same_line()
-        if im.button("Reset styles"):
+        if im.button(tr("Reset styles")):
             self.pending = ("reset", None)
-        im.set_item_tooltip("Confirm deletion of user QSS files and restore packaged defaults")
+        im.set_item_tooltip(tr("Confirm deletion of user QSS files and restore packaged defaults"))
         im.text_wrapped(str(m.current_file or "No style selected") + (" *" if m.modified else ""))
         if m.ignored_rules:
             if im.collapsing_header(f"Qt-only declarations ({len(m.ignored_rules)})"):
                 im.text_wrapped(", ".join(dict.fromkeys(m.ignored_rules)))
             im.set_item_tooltip(
-                "Native widgets use palette roles; Qt selectors, images, dimensions and gradients cannot be applied verbatim"
+                tr("Native widgets use palette roles; Qt selectors, images, dimensions and gradients cannot be applied verbatim")
             )
         im.text_wrapped(m.status)
         im.text_editor(
             "##style_source", m.editor, (0, max(100, im.get_content_region_avail()[1] - 8))
         )
         im.set_item_tooltip(
-            "Edit QSS source with syntax highlighting, selection, clipboard and undo/redo"
+            tr("Edit QSS source with syntax highlighting, selection, clipboard and undo/redo")
         )
 
     def _draw_dialogs(self):
@@ -405,29 +406,29 @@ class StyleManagerApp(ImApp):
                         self.model.editor.set_text(self.model.saved_text)
                     self.pending = None
                 im.set_item_tooltip(
-                    "Confirm the requested operation; discarded content cannot be restored"
+                    tr("Confirm the requested operation; discarded content cannot be restored")
                 )
                 im.same_line()
-                if im.button("Cancel change"):
+                if im.button(tr("Cancel change")):
                     self.pending = None
-                im.set_item_tooltip("Keep the current buffer and files")
+                im.set_item_tooltip(tr("Keep the current buffer and files"))
             im.end()
         if self.new_visible:
             im.set_next_window_size((480, 190), im.Cond.FIRST_USE_EVER)
             if im.begin("New style"):
                 _, self.new_name = im.input_text("File name", self.new_name)
                 im.set_item_tooltip(
-                    "Enter a file name; .qss is added automatically and directory components are rejected"
+                    tr("Enter a file name; .qss is added automatically and directory components are rejected")
                 )
-                if im.button("Create style") and self.model.new(self.new_name):
+                if im.button(tr("Create style")) and self.model.new(self.new_name):
                     self.new_visible = False
                 im.set_item_tooltip(
-                    "Create the file in your styles directory; existing names are preserved"
+                    tr("Create the file in your styles directory; existing names are preserved")
                 )
                 im.same_line()
-                if im.button("Cancel new"):
+                if im.button(tr("Cancel new")):
                     self.new_visible = False
-                im.set_item_tooltip("Leave the current style unchanged")
+                im.set_item_tooltip(tr("Leave the current style unchanged"))
                 im.text_wrapped(self.model.status)
             im.end()
         if self.file_dialog:

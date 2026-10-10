@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from emtk import im
+from emtk.i18n import tr
 from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
@@ -114,14 +115,14 @@ class ModelManagerApp(ImApp):
 
     def draw_selected(self, box: Any) -> None:
         """The right window: Help / Guide, the selected model's details, Disabled."""
-        if im.button("Help"):
+        if im.button(tr("Help")):
             self.help_window.show()
-        im.set_item_tooltip("Explain the table, the Disabled switch and stale entries.")
+        im.set_item_tooltip(tr("Explain the table, the Disabled switch and stale entries."))
         self.item_rects["help"] = im.get_item_rect()
         im.same_line()
-        if im.button("Guide"):
+        if im.button(tr("Guide")):
             self.tour.start()
-        im.set_item_tooltip("Walk through picking a model, disabling it and saving.")
+        im.set_item_tooltip(tr("Walk through picking a model, disabling it and saving."))
         self.item_rects["guide"] = im.get_item_rect()
         im.separator()
         draw_sections(self.panels[_SELECTED]["sections"], self.model, self.form, titles=False)

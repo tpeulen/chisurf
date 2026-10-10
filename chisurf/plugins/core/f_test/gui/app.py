@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from emtk import im
+from emtk.i18n import tr
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
 from emtk.view_form import FormState, draw_form
@@ -142,7 +143,7 @@ class FTestApp(ImApp):
         im.begin_menu_bar()
         opened = im.begin_menu("From fit")
         self.item_rects["From fit"] = im.get_item_rect()
-        im.set_item_tooltip("Load n_points / n_free / χ²r from an open fit.")
+        im.set_item_tooltip(tr("Load n_points / n_free / χ²r from an open fit."))
         if opened:
             if not self.menu_open:
                 self.refresh_fits()
@@ -158,14 +159,14 @@ class FTestApp(ImApp):
         else:
             self.menu_open = False
         im.same_line()
-        if im.button("Guide"):
+        if im.button(tr("Guide")):
             self.tour.start()
-        im.set_item_tooltip("Walk through loading fit statistics and comparing nested models.")
+        im.set_item_tooltip(tr("Walk through loading fit statistics and comparing nested models."))
         self.item_rects["guide"] = im.get_item_rect()
         im.same_line()
         if im.button("?"):
             self.help_window.show()
-        im.set_item_tooltip("Explain the F-test, confidence threshold and chi-square upper limit.")
+        im.set_item_tooltip(tr("Explain the F-test, confidence threshold and chi-square upper limit."))
         self.item_rects["help"] = im.get_item_rect()
         im.end_menu_bar()
         if self.status:
