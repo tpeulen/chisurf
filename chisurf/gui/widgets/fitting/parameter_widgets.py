@@ -1330,9 +1330,15 @@ class ParameterActionsMixin:
                 # trace redraw follows exactly as on the RPC path -- without
                 # this, an edited value changed the parameter but never the
                 # displayed curve.
-                for fit in list(getattr(cs, "fits", []) or []):
+                # Fits that follow it through a parameter link are refreshed
+                # too, exactly as the ``fit.update`` service does.
+                from chisurf.core.fitting.link_propagation import refresh_link_followers
+
+                fits = list(getattr(cs, "fits", []) or [])
+                for fit in fits:
                     if str(getattr(fit, "unique_identifier", "")) == fit_uid:
                         fit.update()
+                        refresh_link_followers(fits, fit)
                         try:
                             fit.model.finalize()
                         except Exception:

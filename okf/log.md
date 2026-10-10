@@ -2,6 +2,11 @@
 
 ## 2026-10-10
 
+- Linked fits refresh on an edit: `chisurf/core/fitting/link_propagation.py` finds every fit whose
+  parameters follow the edited fit (transitively, once each, masters first, cycle-safe) and updates it
+  after the owner's update on every edit path (server `fit.update`, the action, the local API, the GUI
+  fallback); not in `Fit.update`, which fit runs and samplers call thousands of times. Record:
+  [parameters](subsystems/parameters.md).
 - Help browser and code editor regain their Qt-era shortcuts: Ctrl+F, Alt+Left/Right, Alt+Home,
   Ctrl+Shift+A and zoom keys in help; F3/Shift+F3, F12, Ctrl+Space and a caret back/forward history
   (Cmd+[ / Cmd+] on macOS) in the editor. emtk `fde732c` (TextEditor.find_previous) and `c5d80ed`

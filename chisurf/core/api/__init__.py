@@ -855,7 +855,10 @@ class ChiSurfAPI:
             return {"ok": False, "error": "fit not found"}
         try:
             if hasattr(fit, "update"):
+                from chisurf.core.fitting.link_propagation import refresh_link_followers
+
                 fit.update()
+                refresh_link_followers(_local_fits(), fit)
                 return {"ok": True}
             return {"ok": False, "error": "fit has no update method"}
         except Exception as e:
@@ -901,7 +904,10 @@ class ChiSurfAPI:
         try:
             p.value = float(value)
             if hasattr(fit.model, "update_model"):
+                from chisurf.core.fitting.link_propagation import refresh_link_followers
+
                 fit.model.update()
+                refresh_link_followers(_local_fits(), fit)
             if hasattr(fit.model, "finalize"):
                 fit.model.finalize()
             return {"ok": True}

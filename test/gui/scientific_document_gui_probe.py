@@ -1217,11 +1217,10 @@ def run(directory, stage, report):
                 f"requires an explicit exposed scientific edit: {changes}"
             )
             report["control"] = _edit_structural_control(main, app, structural, directory)
-        # Do not manually call update on the edited fit: the actual control must
-        # recompute it. A fit that merely *follows* the edited parameter through a
-        # cross-fit link (ParameterTransformModel -> consumer) pulls its value at
-        # its own update, so it is refreshed here, after the owner has been
-        # shown to have recomputed on its own.
+        # Do not manually call update on any fit: the actual control must
+        # recompute the edited fit, and the ``fit.update`` it issues refreshes
+        # every fit that follows the edited parameter through a cross-fit link
+        # (ParameterTransformModel -> consumer) as well.
         edited = live_parameters.get(report["control"].get("parameter_uid"))
         if edited is not None:
             owners = [
@@ -1234,9 +1233,6 @@ def run(directory, stage, report):
             assert [scientific_observables(member) for member in owners] != [
                 before for member, before in zip(_members(cs.fits), actual) if id(member) in owner_ids
             ], "GUI edit did not recompute the owning fit"
-            for member in _members(cs.fits):
-                if id(member) not in owner_ids:
-                    member.model.update()
         changed = [scientific_observables(fit) for fit in _members(cs.fits)]
         expected_second = json.loads((directory / "expected-1.json").read_text())
         assert changed != actual, "GUI edit did not recompute dependent scientific outputs"

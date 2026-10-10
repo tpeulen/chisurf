@@ -49,8 +49,20 @@ graph is kept acyclic: `chinet.Port.would_create_cycle` (Kahn's algorithm)
 rejects links that would form a cycle, surfaced by the side-effect-free predicate
 `Parameter.check_recursive_link(current, target)` and enforced in the `link`
 setter (raising `ValueError` on a recursive link). Passing `link = None` unlinks.
-Because links live in the port graph, changing a master propagates to all
-followers without extra bookkeeping.
+Because links live in the port graph, a follower's *value* tracks its master
+without extra bookkeeping — but a follower's *fit* is pulled, not pushed: its
+prediction changes only when its own model evaluates. So an edit is pushed
+explicitly where it is turned into a recomputation:
+`chisurf.core.fitting.link_propagation.refresh_link_followers(fits, source)`
+updates every local fit whose parameters reach the recomputed fit's through a
+link (directly, through a chain, or through an output of another refreshed fit),
+once each, masters before followers, cycles broken in discovery order, unrelated
+fits untouched. It runs after the owner's update in the `fit.update` service (the
+path every GUI value editor takes through `FittingClient.update_fit`), the
+`fit.update` action, `ChiSurfAPI.fit_update` / `set_parameter_value` (local
+mode) and the GUI's no-transport fallback — **not** inside `Fit.update`, which a
+fit run, scan or sampler calls thousands of times without any edit a follower
+must see. Guard: `test/fitting/test_link_propagation.py`.
 
 # Out-of-fit parameters and the Global View
 

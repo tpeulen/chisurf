@@ -143,8 +143,12 @@ def update_fit(fit_index: int = 0):
     ``derived``: it follows an edit and is part of that edit's undo step, not a
     step of its own.
     """
+    from chisurf.core.fitting.link_propagation import refresh_link_followers
+
     fit_obj = cs.fits[int(fit_index)]
     fit_obj.update()
+    # Fits following this one through a parameter link are stale too.
+    refresh_link_followers(cs.fits, fit_obj)
     return {"source_uid": str(getattr(fit_obj, "unique_identifier", ""))}
 
 

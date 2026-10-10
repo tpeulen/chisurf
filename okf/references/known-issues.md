@@ -6,7 +6,7 @@ description: Open, resolved and withdrawn defects with their measurement, owner 
 
 ## A linked parameter edited in one fit does not refresh the fits that follow it (found 2026-10-10)
 
-status: open — owner: fitting core (`chisurf/core/parameter.py`, `chisurf/core/fitting/parameter.py`).
+status: resolved 2026-10-10 — the `fit.update` service/action, `ChiSurfAPI` local paths and the GUI no-transport fallback now call `chisurf.core.fitting.link_propagation.refresh_link_followers`, which updates every fit linked (transitively) to the recomputed one once each; the probe's manual `update()` of non-owning fits is gone; guard `test/fitting/test_link_propagation.py`.
 
 Editing `E` of a `ParameterTransformModel` fit in its GUI recomputes that fit, but a fit linked to it
 (`Pda2cSimpleModel` in the all-model document probe) keeps its old prediction until its own `update()` runs:

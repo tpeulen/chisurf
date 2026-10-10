@@ -597,6 +597,11 @@ def fit_update(
     try:
         if hasattr(fit, "update"):
             fit.update()
+            # A fit following this one through a parameter link reads the new
+            # value only when it is itself updated; push the edit to it.
+            from chisurf.core.fitting.link_propagation import refresh_link_followers
+
+            refresh_link_followers(state.fits, fit)
             if event_bus is not None:
                 event_bus.publish(
                     "fit.updated",
