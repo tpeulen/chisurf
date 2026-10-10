@@ -8,11 +8,49 @@ from threading import Event
 
 import numpy as np
 
+from chisurf.plugins.core.pto_inspector.core import RunPickerMixin
+
 from ..core import algorithms as core
 from .view_model import _BurstFcsModel
 
 
-class BurstFcsController:
+class BurstFcsController(RunPickerMixin):
+    """Files, pairs and computation of the window.
+
+    A ``.pto`` among the inputs is a measurement container: the Runs table lists its burst searches and the one
+    picked is the burst table that is correlated (:meth:`select_run`); the photons are the container's own.
+    """
+
+    run_picker_attr = "run_container"
+
+    @property
+    def run_container(self) -> str:
+        """The first input that is a ``.pto`` (or a run in one); the Runs table lists its runs."""
+        from chisurf.core.fio.analysis_path import is_container_path
+
+        return next((p for p in self.files if is_container_path(p)), "")
+
+    def select_run(self, row) -> None:
+        """Correlate the run picked in the Runs table: it replaces the container's entry among the inputs."""
+        if self.running:
+            return
+        super().select_run(row)
+        if not self.run_path:
+            return
+        from chisurf.core.fio.analysis_path import is_container_path, split_container_path
+
+        container = split_container_path(self.run_path)[0]
+        for i, path in enumerate(self.files):
+            if is_container_path(path) and split_container_path(path)[0] == container:
+                if path != self.run_path:
+                    if path in self.unchecked:
+                        self.unchecked.discard(path)
+                        self.unchecked.add(self.run_path)
+                    self.files[i] = self.run_path
+                    self._curves, self._model._selected = [], None
+                    self.status = f"Run {Path(self.run_path).name} selected."
+                break
+
     def __init__(self):
         self._model = _BurstFcsModel()
         self.files = []
@@ -203,9 +241,17 @@ class BurstFcsController:
     def resolve_files(self):
         results = []
         self._resolved_roots = []
+        from chisurf.core.fio.analysis_path import is_container_path
+
         for entry in self.checked_files():
             path = Path(entry)
             candidates = []
+            if is_container_path(path):
+                raw, ranges = core.parse_burst_container(path)
+                if raw is not None and ranges:
+                    results.append((raw, ranges))
+                    self._resolved_roots.append(raw.parent)
+                continue
             if path.is_dir():
                 bur = list(path.glob("bi4_bur/*.bur")) + list(path.glob("bur/*.bur"))
                 bur += list(path.glob("*.bur"))

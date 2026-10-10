@@ -35,6 +35,7 @@ from chisurf.plugins.emtk_layout import (
     window_size,
 )
 
+from .. import engine
 from . import fit_view
 from .model import MleViewModel
 
@@ -46,7 +47,7 @@ class MleNativeApp(TourTarget, ImApp):
     """Immediate-mode burst-MLE app: files, detector editor, settings, fit, batch, plots."""
 
     DIALOGS = {
-        "add_files": ("Open burst tables", "open", [("BUR", ["*.bur"])]),
+        "add_files": ("Open burst tables", "open", [("BUR / PTO", ["*.bur", "*.pto"])]),
         "add_folder": ("Add burst folder", "folder", None),
         "save_settings": ("Save burst-MLE settings", "save", [("JSON", ["*.json"])]),
         "load_settings": ("Load burst-MLE settings", "open", [("JSON", ["*.json"])]),
@@ -195,7 +196,13 @@ class MleNativeApp(TourTarget, ImApp):
         if files:
             # burst tables sit in <measurement folder>/<analysis>/<ending>/; measured IRF / background files beside the raw data
             pattern = action in ("add_irf_files", "add_bg_files")
-            options["directory"] = str(files[0].parents[2] if pattern else files[0].parent)
+            first = files[0]
+            if engine._is_container(first):  # a run in a .pto is not a directory: start beside the container
+                from chisurf.core.fio.analysis_path import split_container_path
+
+                options["directory"] = str(split_container_path(first)[0].parent)
+            else:
+                options["directory"] = str(first.parents[2] if pattern else first.parent)
         filename = "burst_mle_settings.json" if action == "save_settings" else ""
         self.dialog = FileDialog(
             title, mode=mode, filename=filename, multiselect=action in ("add_files", "add_irf_files", "add_bg_files"), **options

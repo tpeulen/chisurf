@@ -203,6 +203,16 @@ Choose a model, press **Auto IRF/background**, inspect the decay, then press
 finite-photon estimates fluctuate. With measured inputs, add your `.bur` files
 and use your measured IRF/background wherever available.
 
+A measurement's `.pto` can be added instead of a `.bur` (**Add files**, or drop
+it on the window). The **Runs** table under the burst files lists the burst
+searches stored in the container; the run you click is the burst table that is
+fitted, over the photons stored in the same file (a bare container opens its
+newest run). **Save results** then writes the per-detector fits (`mle green`,
+`mle red`, ...), the pooled states and the IRF/background curves into the
+container instead of `bg4`/`br4` folders; **Export legacy...** in the PTO
+inspector makes those folders on request. **Split by H2MM state** still reads
+the loose `h2mm` folder and does not apply to a container.
+
 Saved detector definitions carry LUTs and channel shifts to the canonical
 photon reader in both interfaces. Physical header timing is used unless
 **Override timing** is explicitly selected; setup micro-time values are in ps,

@@ -2,6 +2,9 @@
 
 ## 2026-10-10
 
+- W4 follow-up: burst MLE and burst FCS take a `.pto` (or `m000.pto/<run>`) with the Runs picker and
+  write their results into the container (`mle <detector>`, `burst fcs`); legacy `.bur`/`.bst` inputs
+  keep their folders. Open items in [burst companions](subsystems/burst-companions.md).
 - One action vocabulary, HELD emptied: the last ten files (help window, code editor, help browser,
   setup, lightpath simulator, ALEX suite, ALEX creator) draw their Help/Guide/Close/Cancel/Save/Open
   buttons through `action_button`; `test/test_ui_vocabulary.py` has no exemptions left. ~30 plugin tests

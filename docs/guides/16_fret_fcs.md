@@ -83,10 +83,17 @@ headless calculations use the core API below, without launching a window:
 
 - **Inputs** — the **Burst folders or BUR/BST files** table (**Files...**,
   **Folder...**, **Database...**, **All**, **None**, **Remove**, **Clear**; files
-  and folders can be dropped on the window) and the **FCS channel pairs** table
+  and folders can be dropped on the window), the **Runs** table and the
+  **FCS channel pairs** table
   (tick the pairs to compute — GG, RR and the GR cross term for FRET-FCS; double-click
   a cell to edit the channels or the micro-time gates; **Add pair**, **Remove
   pair**, **Load pairs...**, **Save pairs...**, **Show JSON**);
+  A measurement's `.pto` can be added instead of a `.bur`/`.bst` (drop it, or
+  **Files...**): its burst searches are listed in **Runs**, and the run you click
+  is the burst table that is correlated, over the photons stored in the same
+  file. The diffusion times are written back into that container as the
+  `burst fcs` object, one row per burst keyed by `Burst Index`; no `td4` folder
+  is made (**Export legacy...** in the PTO inspector writes one on request);
 - **Settings** — **Correlator**: **FCS bins (B)** (linear bins per cascade, 3),
   **Cascades** (20), **Fine grid** (micro-time-resolved lags), **Padding ±
   (ms)** (100); **Fitting**: **Mode** *None* / *Simple* (one diffusion component)

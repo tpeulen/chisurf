@@ -166,6 +166,50 @@ def parse_bur_file(
     return tttr_path, ranges
 
 
+def parse_burst_container(path: pathlib.Path) -> tuple[pathlib.Path | None, list[tuple[int, int]]]:
+    """Return ``(container, [(start, end), ...])`` for a run in a measurement's ``.pto``.
+
+    The container twin of :func:`parse_bur_file`: the photons are in the container itself, so the "TTTR path" is the
+    container. One range per row of the run's burst table, **in row order** -- a row that is not a usable range (no
+    photons, or last before first) keeps its slot as an empty range ``(0, -1)`` instead of being dropped, because the
+    ``Burst Index`` the results are joined on is the row position.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        A ``.pto``, or a run in one (``m000.pto/<run>``); without a run the newest burst search is read.
+
+    Returns
+    -------
+    container : pathlib.Path or None
+        The resolved container; ``None`` when *path* holds no burst table.
+    ranges : list of tuple of int
+    """
+    from chisurf.core.datastore import column_names, numeric_column
+    from chisurf.core.fio.analysis_path import split_container_path
+    from chisurf.core.fio.fluorescence.burst import _read_burst_analysis_from_container
+
+    container, _run = split_container_path(pathlib.Path(path))
+    if container is None or not container.exists():
+        return None, []
+    try:
+        table, _tttrs = _read_burst_analysis_from_container(pathlib.Path(path))
+    except (FileNotFoundError, KeyError, OSError):
+        return None, []
+    names = column_names(table)
+    if "First Photon" not in names or "Last Photon" not in names:
+        return None, []
+    first = numeric_column(table, "First Photon")
+    last = numeric_column(table, "Last Photon")
+    ranges: list[tuple[int, int]] = []
+    for s, e in zip(first, last):
+        if not (np.isfinite(s) and np.isfinite(e)) or e < s or (s == 0 and e == 0):
+            ranges.append((0, -1))
+        else:
+            ranges.append((int(s), int(e)))
+    return container.resolve(), ranges
+
+
 def open_tttr(path: pathlib.Path, filetype=None) -> tttrlib.TTTR | None:
     """Open a TTTR file through the project's single TTTR-opening seam.
 

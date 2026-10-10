@@ -23,6 +23,7 @@ from chisurf.core.support.i18n import tr
 
 from .. import engine, hpo
 from ..engine import MleSession
+from chisurf.plugins.core.pto_inspector.core import RunPickerMixin
 from . import fit_view
 
 #: Per-detector settings exposed as attributes: name -> (type, rebuilds the decay, rebuilds the patterns).
@@ -74,8 +75,14 @@ def _setting_property(name: str, kind: type, rebuild_decay: bool):
     return property(getter, setter)
 
 
-class MleViewModel:
-    """State and actions of the burst-MLE lifetime tool (no Qt, no emtk)."""
+class MleViewModel(RunPickerMixin):
+    """State and actions of the burst-MLE lifetime tool (no Qt, no emtk).
+
+    A ``.pto`` among the burst files is a measurement container: the Runs table lists its burst searches and the
+    one picked is the burst table the fit reads (:meth:`select_run`).
+    """
+
+    run_picker_attr = "run_container"
 
     def __init__(self, session: MleSession | None = None) -> None:
         self.session = session or MleSession()
@@ -281,18 +288,54 @@ class MleViewModel:
             else 0
         )
 
+    @property
+    def run_container(self) -> str:
+        """The first burst input that is a ``.pto`` (or a run in one); the Runs table lists its runs."""
+        for path in self.session.bur_files:
+            if engine._is_container(path):
+                return str(path)
+        return ""
+
+    def select_run(self, row) -> None:
+        """Fit the run picked in the Runs table: it replaces the container's entry among the burst files."""
+        self._ensure_editable()
+        super().select_run(row)
+        chosen = Path(self.run_path) if self.run_path else None
+        if chosen is None or not engine._is_container(chosen):
+            return
+        from chisurf.core.fio.analysis_path import split_container_path
+
+        container = split_container_path(chosen)[0]
+        files = [
+            chosen if engine._is_container(p) and split_container_path(p)[0] == container else p
+            for p in self.session.bur_files
+        ]
+        if files == self.session.bur_files:
+            return
+        self.session.bur_files = []
+        self.session.df_bursts = None
+        self.session.add_burst_files(files)
+        self.session.build_decay()
+        self.session.outcome = None
+        self.burst_results = []
+        self.session.burst_results = []
+        self.status_text = f"Run {chosen.name}: {self.n_bursts} bursts."
+        self.notify("files")
+
     def add_files(self, paths) -> int:
-        """Add ``.bur`` tables (a folder adds the tables under it); returns how many were new."""
+        """Add ``.bur`` tables, ``.pto`` containers (a folder adds the tables under it); returns how many were new."""
         self._ensure_editable()
         found: list[Path] = []
         for value in map(Path, paths):
-            if value.is_dir():
+            if engine._is_container(value):
+                found.append(value)
+            elif value.is_dir():
                 found.extend(sorted(value.rglob("*.bur")))
             elif value.suffix.lower() == ".bur":
                 found.append(value)
         new = [p for p in found if p not in self.session.bur_files]
         if not new:
-            self.status_text = "No new .bur burst table among the given paths."
+            self.status_text = "No new .bur burst table or .pto container among the given paths."
             return 0
         self.session.add_burst_files(new)
         self.session.build_decay()

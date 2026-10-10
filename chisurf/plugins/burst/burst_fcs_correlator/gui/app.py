@@ -30,7 +30,7 @@ WHITE, RED, YELLOW = (255, 255, 255, 255), (230, 40, 40, 255), (250, 204, 21, 25
 #: Width the controls get at least in a narrow window.
 MIN_CONTROLS = 430.0
 DIALOGS = {
-    "files": ("Open BUR/BST files", "open", True, "BUR/BST (*.bur *.bst);;All files (*)", ""),
+    "files": ("Open BUR/BST/PTO files", "open", True, "BUR/BST/PTO (*.bur *.bst *.pto);;All files (*)", ""),
     "folder": ("Add analysis folder", "folder", True, "", ""),
     "load_settings": ("Load settings", "open", False, "Settings (*.json)", ""),
     "save_settings": (

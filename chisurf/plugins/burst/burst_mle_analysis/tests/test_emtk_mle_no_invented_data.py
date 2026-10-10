@@ -378,8 +378,15 @@ def test_the_fit_step_waits_for_the_real_press_of_fit_bursts(monkeypatch, fresh_
     drv = Driver(app)
     tour = app.mle_gui.tour
     app.mle_gui.start_guide()
-    while tour.step_idx < next(i for i, s in enumerate(tour.steps) if s.get("await")):
-        tour.next()
+    fit_step = next(
+        i
+        for i, s in enumerate(tour.steps)
+        if s.get("await") and (s.get("target") or {}).get("name") == "toolAction_run"
+    )
+    # Earlier steps await their own presses (Demo, fit model); jump to the one before Fit.
+    tour.step_idx = fit_step - 1
+    tour.next()
+    assert tour.step_idx == fit_step
     drv.draw()
     assert tour.awaiting
     drv.click_name("toolAction_run")

@@ -11,7 +11,7 @@ Press **Guide** for the walk-through. **Demo** loads 16 generated bursts of 1000
 Everything in the windows is read from the wizard that did the work. With no fit they say so; nothing is drawn as a
 placeholder.
 
-* **Burst MLE** tab: **Add files** / **Add folder** (or drop .bur files), **Auto IRF/background**, **Refit**, **Fit bursts**,
+* **Burst MLE** tab: **Add files** / **Add folder** (or drop .bur files or a measurement .pto; the **Runs** table then picks which burst search of the container is fitted), **Auto IRF/background**, **Refit**, **Fit bursts**,
   **Stop**, **Save results** and **Save/Load settings**; below them the burst-file table, the detector and fit window,
   the IRF settings and the editable *Fit parameters* table (start value, fixed flag, fitted value). A change refits the
   current decay. **Detector setup** is the shared detector editor.

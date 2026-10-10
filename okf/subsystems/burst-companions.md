@@ -15,17 +15,22 @@ is made is
 [`legacy_export.export_legacy`](../../chisurf/core/fio/fluorescence/legacy_export.py) (PTO inspector
 *Export legacy…*, `csg_pto_inspect export-legacy`). Open front, in order:
 
-1. Open: **Burst MLE and burst FCS have no run picker.** Both read loose `.bur`/`.bst` files by path
-   (`burst_mle_analysis/engine.py:read_burst_analysis` and `MleSession.add_burst_files`, which derive
-   the raw files from `path.parent.parent`; the correlator reads `.bst` ranges). A `.pto` input needs
-   the container branch `_read_burst_analysis_from_container` that BVA, 2CDE and H2MM already take
-   (`burst_h2mm/backend/services.py:run_analysis` is the pattern). Then: `class MleViewModel(RunPickerMixin)`
-   with `run_picker_attr = "run_container"`, and `RUN_PICKER_SECTION` after the *Burst files*
-   `data_table` of `mle_native.view.json`. Measure with `grep -n run_rows chisurf/plugins/burst/*/gui/*.json`.
-2. Open: **The legacy export skips, and logs, a per-burst result of an operation that is not in
+1. Open: **MLE and burst FCS write beside no particular run.** Both now read a run picked in the Runs table
+   (`MleViewModel(RunPickerMixin)`, `BurstFcsController(RunPickerMixin)`; `engine.read_burst_container`,
+   `algorithms.parse_burst_container`) and write `mle <detector>` / `burst fcs` into the container, but under the
+   container's top level, not under the picked run, and `derived_from="bursts"` names the burst table without saying
+   which run. Two runs fitted with different settings therefore give two objects of the same name that only the
+   settings hash tells apart. Scope the name by run (as the burst search does) before a reader has to choose.
+   Measure with `grep -n run_rows chisurf/plugins/burst/*/gui/*.json` (burst_selection, h2mm, mle, fcs) and
+   `Measurement.artifacts()` after fitting two runs.
+2. Open: **MLE "Split by H2MM state" does not apply to a container**: the per-photon states are read from the loose
+   `h2mm/` folder next to a `.bur` (`state_split.load_state_arrays`), and the H2MM run now lives in the container.
+   `MleSession.run_batch` silently skips the split when every input is a container. Needs `state_split` to read the
+   H2MM run from the `.pto`.
+3. Open: **The legacy export skips, and logs, a per-burst result of an operation that is not in
    `COMPANIONS`** (`model_fitting`: ebfret, burst_gs). Pass `operations=[...]` to make it raise instead.
    A zero in an exported companion is the sentinel for "skipped"; the container keeps the real NaN.
-3. Open: **The run table's `Order` column is the write order**, because the container records no timestamp;
+4. Open: **The run table's `Order` column is the write order**, because the container records no timestamp;
    if the dictionary gains one, show it instead.
 
 Tried and reverted: coercing run `parameters` to scalars before hashing (`scalar_parameters`) — the

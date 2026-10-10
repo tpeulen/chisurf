@@ -37,6 +37,54 @@ from .interpolate import interpolate_shift
 # --------------------------------------------------------------------------------------------------------------------
 # pure steps (the wizard calls these)
 # --------------------------------------------------------------------------------------------------------------------
+def _is_container(path: Any) -> bool:
+    """Whether *path* names a ``.pto`` (or a run in one) rather than a ``.bur`` file."""
+    from chisurf.core.fio.analysis_path import is_container_path
+
+    return is_container_path(path)
+
+
+def _burst_file_stem(path: Any) -> str:
+    """The measurement stem a burst input stands for: the container's for a run in a ``.pto``, the file's otherwise."""
+    if _is_container(path):
+        from chisurf.core.fio.analysis_path import split_container_path
+
+        return split_container_path(path)[0].stem
+    return Path(path).stem
+
+
+def read_burst_container(path: Any) -> tuple[Any, Path]:
+    """Read one run of a measurement container into the burst table the session works on.
+
+    The container twin of :func:`read_burst_analysis`: the bursts and the photons are both in the one ``.pto``, so
+    there is no folder to search and the raw file *is* the container.
+
+    Parameters
+    ----------
+    path : str or Path
+        A ``.pto``, or a run in one (``m000.pto/<run>``); without a run the most recent burst search is read.
+
+    Returns
+    -------
+    table : tttrlib.DataStore
+        The bursts, tagged with ``burst_file`` and the resolved identities ``_burst_path`` (the run) and
+        ``_measurement_path`` (the container).
+    container : Path
+        The resolved container, which is also the measurement's photon source.
+    """
+    from chisurf.core.fio.analysis_path import split_container_path
+    from chisurf.core.fio.fluorescence.burst import _read_burst_analysis_from_container
+
+    container, _run = split_container_path(path)
+    table, _tttrs = _read_burst_analysis_from_container(Path(path))
+    container = container.resolve()
+    n = row_count(table)
+    set_constant(table, "burst_file", Path(path).name)
+    set_constant(table, "_burst_path", str(Path(path).resolve()))
+    table["_measurement_path"] = [str(container)] * n
+    return table, container
+
+
 def burst_photon_indices(df_bursts: Any, current_filename: str) -> list[int]:
     """Photon indices of every burst of the file *current_filename* (a ``.bur`` file), merged and ascending."""
     if not current_filename or df_bursts is None:
@@ -46,7 +94,7 @@ def burst_photon_indices(df_bursts: Any, current_filename: str) -> list[int]:
         df_bursts["stem"] = [
             re.split(r"[\\/]", str(v))[-1].rsplit(".", 1)[0] for v in first_file_vals
         ]
-    curr_stem = Path(current_filename).stem
+    curr_stem = _burst_file_stem(current_filename)
     mask = np.asarray(df_bursts["stem"], dtype=object) == curr_stem
     if not mask.any():
         return []
@@ -450,6 +498,61 @@ def write_b4_tables(
         if tick is not None and tick(done):
             return None
     return written_files, by_stem, written_dirs
+
+
+def write_container_tables(results, det_meta, parameters, *, state_rows=None, experiment=None, tick=None):
+    """Write the per-burst fits of measurements that live in a ``.pto`` into that container.
+
+    The container twin of :func:`write_b4_tables`: no ``b?4`` folder, no ``channel_settings.json`` -- one object per
+    detector at burst grain (plus the pooled states and the IRF / background curves), in the container the bursts
+    were read from.
+
+    Parameters
+    ----------
+    results : list of dict
+        Batch rows carrying ``First Stem`` (the container path) and ``Detector``.
+    det_meta : mapping
+        Detector -> ``(colour, letter, columns)``.
+    parameters : mapping
+        The fit settings; their hash is the identity of the run.
+    state_rows, experiment : optional
+        Forwarded to :func:`~.core.export.write_mle_container`.
+    tick : callable, optional
+        ``tick(done) -> bool``; ``True`` cancels (the function then returns ``None``).
+
+    Returns
+    -------
+    list of Path or None
+        The containers written, or ``None`` when cancelled.
+    """
+    from chisurf.core.datastore import store_from_arrays
+
+    from .core.export import write_mle_container
+
+    groups: dict[tuple, list[dict]] = {}
+    for row in results:
+        groups.setdefault((row["First Stem"], row.get("Detector")), []).append(row)
+    tables: dict[str, dict[str, Any]] = {}
+    done = 0
+    for (container, det), rows_g in groups.items():
+        meta = det_meta.get(det)
+        if meta is not None:
+            cols = meta[2]
+            arr = np.array([[coerce_float(row.get(c)) for c in cols] for row in rows_g], dtype=float)
+            tables.setdefault(container, {})[det] = store_from_arrays(
+                {c: arr[:, i] for i, c in enumerate(cols)}
+            )
+        done += 1
+        if tick is not None and tick(done):
+            return None
+    return [
+        Path(
+            write_mle_container(
+                container, by_det, state_rows=state_rows, experiment=experiment, parameters=parameters
+            )
+        )
+        for container, by_det in tables.items()
+    ]
 
 
 class NumpyEncoder(__import__("json").JSONEncoder):
@@ -892,13 +995,20 @@ class MleSession:
         tables = []
         raw_paths = {}
         setup_info = None
-        roots = dict.fromkeys(path.parent.parent.resolve() for path in self.bur_files)
+        roots = dict.fromkeys(
+            path.parent.parent.resolve() for path in self.bur_files if not _is_container(path)
+        )
         for index, root in enumerate(roots):
             table, raw, setup = read_burst_analysis(root)
             tables.append(table)
             raw_paths.update({str(path.resolve()): path.resolve() for path in raw.values()})
             if index == 0:
                 setup_info = setup
+        # A run in a container is its own burst table and its own photon source.
+        for path in (p for p in self.bur_files if _is_container(p)):
+            table, container = read_burst_container(path)
+            tables.append(table)
+            raw_paths[str(container)] = container
         self.df_bursts = concat_stores(tables)
         changed_paths = self.tttr_paths != raw_paths
         self.tttr_paths.clear()
@@ -952,7 +1062,9 @@ class MleSession:
         from . import state_split
 
         arrays, count, messages = {}, 0, []
-        roots = dict.fromkeys(path.parent.parent.resolve() for path in self.bur_files)
+        roots = dict.fromkeys(
+            path.parent.parent.resolve() for path in self.bur_files if not _is_container(path)
+        )
         for root in roots:
             selected = np.array([Path(str(path)).parent.parent == root
                                  for path in self.df_bursts["_burst_path"]])
@@ -1399,7 +1511,7 @@ class MleSession:
             groups[fname] = list(zip(fp[mask].tolist(), lp[mask].tolist()))
         # Per-photon H2MM states, when the batch is split by state (the wizard's ``_load_state_arrays``).
         state_arrays, n_states = {}, 0
-        if self.split_by_state and self.bur_files:
+        if self.split_by_state and any(not _is_container(p) for p in self.bur_files):
             from . import state_split
 
             state_arrays, n_states, self.status = self.state_arrays_by_measurement()
@@ -1561,13 +1673,40 @@ class MleSession:
                 color[0],
                 state_result_columns(color, st.model, names, self.n_states),
             )
-        written = write_b4_tables(rows, files_by_stem, det_meta, settings, tick=tick)
-        paths = [] if written is None else list(written[0])
+        in_container = [r for r in rows if _is_container(files_by_stem[r["First Stem"]])]
+        legacy = [r for r in rows if not _is_container(files_by_stem[r["First Stem"]])]
+        paths: list[Path] = []
+        if legacy:
+            written = write_b4_tables(legacy, files_by_stem, det_meta, settings, tick=tick)
+            paths = [] if written is None else list(written[0])
+        if in_container:
+            # `First Stem` of a container row is the container itself: one container is one measurement.
+            containers = write_container_tables(
+                [dict(r, **{"First Stem": r["First File"]}) for r in in_container],
+                det_meta,
+                settings,
+                state_rows=self.state_lifetimes or None,
+                experiment=self.experiment_payload(),
+                tick=tick,
+            )
+            paths += containers or []
         if self.state_lifetimes:
             from . import state_split
 
-            paths += state_split.write_state_lifetimes(self.state_lifetimes, {p.parent.parent for p in self.bur_files})
+            roots = {p.parent.parent for p in self.bur_files if not _is_container(p)}
+            if roots:
+                paths += state_split.write_state_lifetimes(self.state_lifetimes, roots)
         return paths
+
+    def experiment_payload(self) -> dict:
+        """The IRF and background each detector's fit used, in the layout the container writer takes."""
+        detectors = {}
+        for det in self.detectors:
+            detectors[det] = {
+                key: np.asarray(source.get(det, []), dtype=float).ravel().tolist()
+                for key, source in (("irf", self.irf_np), ("background", self.bg_np))
+            }
+        return {"format": "chisurf-burst-experiment", "version": 1, "detectors": detectors}
 
     def settings_payload(self) -> dict:
         """Everything a settings file holds: the detector definition and every detector's settings."""

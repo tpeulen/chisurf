@@ -115,6 +115,14 @@ class BurstFcsPanel:
             for p in c.files
         ]
 
+    def run_rows(self):
+        """Rows of the Runs table: the burst searches of the container among the inputs."""
+        return self.c.run_rows()
+
+    def select_run(self, row):
+        """A row of the Runs table was picked."""
+        self.c.select_run(row)
+
     def edit_file(self, record, key, value):
         if key == "use" and not self.c.running:
             (self.c.unchecked.discard if value else self.c.unchecked.add)(record["_path"])
