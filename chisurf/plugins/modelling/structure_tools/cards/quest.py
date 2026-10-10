@@ -124,6 +124,8 @@ def quest_spec() -> dict:
     for panel in copy.deepcopy(project["sections"]):
         panel["sections"] = [s for s in panel["sections"] if s.get("type") != "table"]
         panel["collapsible"] = True
+        # The fold header is a control: it carries the tooltip the spec's title alone does not.
+        panel.setdefault("description", f"Show or hide the {str(panel.get('title', 'section')).lower()} settings.")
         for sec in panel["sections"]:
             if sec.get("attr") == "pdb":
                 sec["kind"] = "str"

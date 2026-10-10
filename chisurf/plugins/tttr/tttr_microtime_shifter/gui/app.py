@@ -1018,7 +1018,9 @@ class MicrotimeShifterApp(TourTarget, ImApp):
             body_height = max(80.0, im.get_content_region_avail()[1] - 34.0)
             im.begin_child("sample_fields", (-1.0, body_height))
             self.draw_sample_form()
-            if im.collapsing_header("Advanced sample definition"):
+            opened = im.collapsing_header("Advanced sample definition")
+            im.set_item_tooltip(tr("Show the complete sample definition as editable JSON."))
+            if opened:
                 _, self.sample_definition = im.input_text_multiline(
                     "##sample-json", self.sample_definition, (-1, 150)
                 )
