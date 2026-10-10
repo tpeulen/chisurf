@@ -206,9 +206,14 @@ def container_for(source: str | Path, out_dir: str | Path | None = None) -> Path
     -------
     Path
     """
+    from chisurf.core.fio.analysis_path import split_container_path
+
     src = Path(source)
     if src.suffix == ".pto":
         return src
+    inside, _run = split_container_path(src)  # `m.pto/<run>` addresses the container
+    if inside is not None:
+        return inside
     return (Path(out_dir) if out_dir is not None else src.parent) / (src.stem + ".pto")
 
 
@@ -232,6 +237,65 @@ def open_measurement(source: str | Path, out_dir: str | Path | None = None) -> A
     if is_measurement(target):
         return Measurement.open(target, writable=True)
     return Measurement.create(source, out_dir=out_dir)
+
+
+def analysis_run(
+    source: str | Path,
+    kind: str,
+    parameters: Mapping[str, Any] | None = None,
+    *,
+    out_dir: str | Path | None = None,
+) -> tuple[str, str]:
+    """Name the run an analysis of a burst table is written as, and find its parent.
+
+    MLE, H2MM and burst-wise FCS each compute from one burst search. Written at the
+    container's top level they were indistinguishable to a run picker (one
+    ``(top level)`` row) and recorded the photon stream, not the burst run, as
+    their parent. A run of their own, derived from the burst table they read,
+    keeps ``lineage()`` reaching the photons *through* the selection.
+
+    Parameters
+    ----------
+    source : str or Path
+        The container, a run inside it (``m.pto/<run>`` names the burst search
+        read), or the instrument file. Without a run the most recent burst
+        search of the container is the source.
+    kind : str
+        What the analysis is (``"mle"``, ``"h2mm"``, ``"burst fcs"``); the run is
+        ``"<kind> <settings hash>"``, so a re-run with the same settings
+        replaces it and other settings add a run.
+    parameters : mapping, optional
+        The settings, hashed exactly as :meth:`Measurement.put_table` hashes them.
+    out_dir : str or Path, optional
+
+    Returns
+    -------
+    run : str
+        The run name; table names are ``artifact_name(run, table)``.
+    parent : str
+        Name of the burst table read, or ``""`` when the container has none yet
+        (the writer then falls back to the photon stream).
+    """
+    from chisurf.core.fio.analysis_path import split_artifact_name, split_container_path
+    from chisurf.core.fio.pto import Measurement, _tttrlib, is_measurement
+
+    container, source_run = split_container_path(source)
+    target = container if container is not None else container_for(source, out_dir)
+    digest = str(_tttrlib().pto_settings_hash(dict(parameters) if parameters else None))[:8]
+    run = f"{kind} {digest}"
+    parent = ""
+    if target.exists() and is_measurement(target):
+        with Measurement.open(target, writable=False) as m:
+            for obj in m.artifacts():
+                if m.tag(obj.uid, "_mmfdb_operation.operation_type") != "burst_selection":
+                    continue
+                name = str(obj.name)
+                if not name.endswith(".bur"):
+                    continue
+                if source_run and split_artifact_name(name)[0] != source_run:
+                    continue
+                parent = name  # the most recent burst table of the run
+    return run, parent
 
 
 def write_burst_artifact(

@@ -318,7 +318,9 @@ def export_legacy(
         # fused bursts) owns its grid.
         parent_uids = set(entry["parents"])
         same_run = [b for b in bursts if b["run"] == entry["run"]]
-        if entry["run"] and not same_run:
+        # A result with a burst table among its parents (MLE, H2MM, FCS: runs of their
+        # own, derived from the search they read) uses that table as its grid.
+        if entry["run"] and not same_run and not any(b["uid"] in parent_uids for b in bursts):
             grid = None
             owns_grid = True
         else:

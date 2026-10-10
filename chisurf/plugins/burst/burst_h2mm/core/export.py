@@ -366,28 +366,31 @@ def write_h2mm_container(
     str
         Path of the container written.
     """
-    from chisurf.core.fio.fluorescence.burst_container import write_burst_artifact
+    from chisurf.core.fio.analysis_path import artifact_name
+    from chisurf.core.fio.fluorescence.burst_container import analysis_run, write_burst_artifact
 
+    # A run of its own, derived from the burst table the HMM read.
+    run, parent = analysis_run(source, "h2mm", parameters)
     written = write_burst_artifact(
         source,
         burst_df,
-        name="h2mm",
+        name=artifact_name(run, "h2mm"),
         artifact_kind="burst_table",
         operation_type="photon_hmm",
         row_grain="burst",
         parameters=parameters,
-        derived_from="bursts",
+        derived_from=parent or "bursts",
     )
     if dwell_df is not None and len(dwell_df):
         write_burst_artifact(
             source,
             dwell_df,
-            name="h2mm dwells",
+            name=artifact_name(run, "h2mm dwells"),
             artifact_kind="dwell_table",
             operation_type="photon_hmm",
             row_grain="dwell",
             parameters=parameters,
-            derived_from="h2mm",
+            derived_from=artifact_name(run, "h2mm"),
             source_row_column="Burst",
             units={
                 "Dwell Time (ms)": "milliseconds",

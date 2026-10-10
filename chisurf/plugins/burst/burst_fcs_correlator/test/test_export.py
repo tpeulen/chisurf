@@ -65,11 +65,11 @@ def test_native_run_writes_the_frozen_real_grid_and_indexed_container(source):
             table = measurement.get_store("burst fcs")
             np.testing.assert_array_equal(numeric_column(table, "Burst Index"), [0, 1, 2])
             np.testing.assert_allclose(numeric_column(table, columns[0]), full[:, 0], atol=5e-7)
-            uid = measurement._f.find("burst fcs")
+            uid = measurement._resolve("burst fcs")
             assert measurement.tag(uid, "_mmfdb_edge.source_row_column") == "Burst Index"
             assert measurement.tag(uid, "_mmfdb_artifact.row_grain") == "burst"
             assert measurement.column_units(table, columns[0]) == "milliseconds"
-            uid = measurement._f.find("burst fcs")
+            uid = measurement._resolve("burst fcs")
             assert measurement.tag(uid, "_mmfdb_operation.operation_type") == "burst_correlation"
     finally:
         app.close()

@@ -202,3 +202,39 @@ def test_the_companion_values_read_back_from_the_container(measurement: Path, tm
     written = export_legacy(container_for(measurement), tmp_path / "legacy")
     bv4 = next(p for p in written if p.suffix == ".bv4")
     np.testing.assert_allclose(read_companion(bv4)[1][:, 0], np.asarray(stored), atol=1e-6)
+
+
+def test_mle_h2mm_fcs_are_runs_of_their_own_derived_from_the_burst_table(
+    measurement: Path, tmp_path: Path
+):
+    """Each analysis is its own picker row, traces to the photons through the search, and exports."""
+    from chisurf.core.fio.pto import Measurement
+    from chisurf.plugins.burst.burst_fcs_correlator.core.export import write_fcs_container
+    from chisurf.plugins.burst.burst_h2mm.core.export import write_h2mm_container
+    from chisurf.plugins.burst.burst_mle_analysis.core.export import write_mle_container
+    from chisurf.plugins.core.pto_inspector.core import run_rows_for
+
+    box = container_for(measurement)
+    green = store_from_arrays({"Tau (green)": np.linspace(1.0, 4.0, N)})
+    write_mle_container(box, {"green": green}, parameters={"model": "a"})
+    write_h2mm_container(box, store_from_arrays({"H2MM State": np.arange(N, dtype=float)}),
+                         None, parameters={"states": 2})
+    write_fcs_container(box, store_from_arrays({"Burst Index": np.array([0.0, 5.0]),
+                                                "td_a": np.array([1.0, 2.0])}),
+                        parameters={"pairs": "a"})
+
+    rows = run_rows_for(box, operation="")
+    assert len(rows) == 4 and all(r["run_name"] for r in rows), rows
+    with Measurement.open(box, writable=False) as m:
+        for obj in m.artifacts():
+            if obj.kind in ("readme", "tttr_photon_stream"):
+                continue
+            chain = m.lineage(obj.uid)
+            assert chain[-1]["name"] == "m000.ptu", chain
+            if obj.name.rpartition("/")[2] in ("mle green", "h2mm", "burst fcs"):
+                assert chain[1]["name"].endswith("m000.bur"), chain
+    out = tmp_path / "legacy"
+    export_legacy(box, out)
+    assert (out / RUN / "bg4" / "m000.bg4").is_file()
+    assert (out / RUN / "bh4" / "m000.bh4").is_file()
+    assert (out / RUN / "td4" / "m000.td4").is_file()

@@ -36,14 +36,7 @@ OUT = REPO / "renders" / "e2e" / "release_scenario"
 RESULT = OUT / "result.json"
 
 #: Steps whose product half is missing. Strict: the day one starts to pass, the test says so.
-XFAIL = {
-    "run_picker": (
-        "MLE, H2MM and burst-wise FCS write their tables at the container's top level "
-        "('mle green', 'h2mm', 'burst fcs'), not as runs of their own, so run_rows_for "
-        "folds them into one '(top level)' row: the picker lists 2 runs, not 5 "
-        "(known-issues: 'The run picker cannot tell the burst analyses apart')."
-    ),
-}
+XFAIL: dict[str, str] = {}
 
 STEPS = [
     "start_app",
@@ -239,7 +232,7 @@ class Scenario:
         assert len(model.burst_results) == 2 * demo.N_BURSTS, model.status_text  # green and red
         assert model.export_results() >= 1, model.status_text
         tables = self._tables(operation="burst_lifetime_fitting")
-        assert {"mle green", "mle red"} <= set(tables), tables
+        assert {"mle green", "mle red"} <= {n.rpartition("/")[2] for n in tables}, tables
         assert all(rows == demo.N_BURSTS for rows in tables.values()), tables
         return {"status": model.status_text, "tables": tables}
 
@@ -326,8 +319,16 @@ class Scenario:
         }
         self.results["run_picker"]["observed"] = observed
         operations = {r["operation"] for r in rows}
-        assert len(rows) == 5, f"the picker lists {len(rows)} runs: {observed['rows']}"
-        assert operations >= {"burst_selection", "burst_lifetime_fitting", "photon_hmm"}, operations
+        # Burst search, MLE (with its IRFs), H2MM and burst-wise FCS: one run each, the
+        # sub-ensemble decay sits under the search it was selected from.
+        assert len(rows) == 4, f"the picker lists {len(rows)} runs: {observed['rows']}"
+        assert operations >= {
+            "burst_selection", "burst_lifetime_fitting", "photon_hmm", "burst_correlation"
+        }, operations
+        assert all(r["run_name"] for r in rows), observed["rows"]  # no "(top level)" row
+        for name, chain in lineage.items():
+            if name.split("/")[-1] in ("mle green", "mle red", "h2mm", "burst fcs"):
+                assert chain[1].endswith(".bur"), (name, chain)  # through the search
         return observed
 
     def sampling(self):
@@ -516,7 +517,7 @@ class Scenario:
         with Measurement.open(self.state["pto"]) as m:
             for obj in m.artifacts():
                 op = str(m.tag(obj.uid, "_mmfdb_operation.operation_type"))
-                if (operation and op == operation) or (name and str(obj.name) == name):
+                if (operation and op == operation) or (name and str(obj.name).rpartition("/")[2] == name):
                     out[str(obj.name)] = int(getattr(obj, "rows", 0) or 0)
         return out
 

@@ -70,7 +70,7 @@ def test_a_skipped_burst_leaves_a_gap_and_not_a_shift(source: Path):
 def test_the_join_is_declared_rather_than_counted(source: Path):
     written = write_fcs_container(source, _table(), parameters=SETTINGS)
     with Measurement.open(written) as m:
-        uid = m._f.find("burst fcs")
+        uid = m._resolve("burst fcs")
         assert m.tag(uid, "_mmfdb_artifact.row_grain") == "burst"
         assert m.tag(uid, "_mmfdb_edge.source_row_column") == "Burst Index"
 

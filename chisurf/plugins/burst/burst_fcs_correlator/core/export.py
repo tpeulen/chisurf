@@ -91,17 +91,20 @@ def write_fcs_container(
         Path of the container written.
     """
     from chisurf.core.datastore import column_names
-    from chisurf.core.fio.fluorescence.burst_container import write_burst_artifact
+    from chisurf.core.fio.analysis_path import artifact_name
+    from chisurf.core.fio.fluorescence.burst_container import analysis_run, write_burst_artifact
 
+    # A run of its own, derived from the burst table it correlated.
+    run, parent = analysis_run(source, "burst fcs", parameters, out_dir=out_dir)
     return write_burst_artifact(
         source,
         table,
-        name="burst fcs",
+        name=artifact_name(run, "burst fcs"),
         artifact_kind="fcs_correlation",
         operation_type="burst_correlation",
         row_grain="burst",
         parameters=parameters,
-        derived_from="bursts",
+        derived_from=parent or "bursts",
         # The join the legacy format did by counting. Declaring it is the whole
         # difference: a burst the correlator skipped is an absent row rather
         # than a one-row shift in everything after it.

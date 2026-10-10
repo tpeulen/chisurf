@@ -148,8 +148,14 @@ def write_mle_container(
         Path of the container written.
     """
     from chisurf.core.datastore import column_names, store_from_arrays, store_from_rows
-    from chisurf.core.fio.fluorescence.burst_container import write_burst_artifact
+    from chisurf.core.fio.analysis_path import artifact_name
+    from chisurf.core.fio.fluorescence.burst_container import analysis_run, write_burst_artifact
 
+    # One run per fit settings, derived from the burst table that was fitted: the
+    # run picker lists it beside the burst search, and lineage() runs
+    # fit -> burst table -> photons.
+    run, parent = analysis_run(source, "mle", parameters, out_dir=out_dir)
+    parent_of = parent or "bursts"
     written = ""
     for detector, table in tables.items():
         if table is None:
@@ -157,13 +163,13 @@ def write_mle_container(
         written = write_burst_artifact(
             source,
             table,
-            name=f"mle {str(detector).lower()}",
+            name=artifact_name(run, f"mle {str(detector).lower()}"),
             artifact_kind="fit_result",
             operation_type="burst_lifetime_fitting",
             algorithm="mle",
             row_grain="burst",
             parameters=parameters,
-            derived_from="bursts",
+            derived_from=parent_of,
             units=_units_by_prefix(column_names(table)),
             out_dir=out_dir,
         )
@@ -172,13 +178,13 @@ def write_mle_container(
         written = write_burst_artifact(
             source,
             store_from_rows(list(state_rows)),
-            name="mle state lifetimes",
+            name=artifact_name(run, "mle state lifetimes"),
             artifact_kind="fit_result",
             operation_type="burst_lifetime_fitting",
             algorithm="mle",
             row_grain="state",
             parameters=parameters,
-            derived_from=[f"mle {str(d).lower()}" for d in tables] or "bursts",
+            derived_from=[artifact_name(run, f"mle {str(d).lower()}") for d in tables] or parent_of,
             source_row_column="State",
             units={
                 "Tau": "nanoseconds",
@@ -210,7 +216,7 @@ def write_mle_container(
         written = write_burst_artifact(
             source,
             store_from_arrays(curve),
-            name=f"irf {str(detector).lower()}",
+            name=artifact_name(run, f"irf {str(detector).lower()}"),
             artifact_kind="irf_curve",
             operation_type="calibration",
             algorithm=_IRF_ALGORITHM.get(str((parameters or {}).get("irf_model", "")).lower(), ""),
