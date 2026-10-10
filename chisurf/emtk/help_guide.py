@@ -207,16 +207,16 @@ class EmTkHelpWindow:
         if callable(self.on_start_guide):
             place_button("Start Guided Tour")
             im.push_style_color(Col.BUTTON, ACCENT_GREEN)
-            if im.button("Start Guided Tour##help"):
+            if im.button(tr("Start Guided Tour") + "##help"):
                 self.hide()
                 self.on_start_guide()
-            im.set_item_tooltip("Walk through the tool controls and workflow step by step.")
+            im.set_item_tooltip(tr("Walk through the tool controls and workflow step by step."))
             im.pop_style_color()
 
         place_button("Close")
-        if im.button("Close##help_top"):
+        if im.button(tr("Close") + "##help_top"):
             pressed = "close"
-        im.set_item_tooltip("Close this help window.")
+        im.set_item_tooltip(tr("Close this help window."))
 
         im.separator()
 
@@ -261,9 +261,9 @@ class EmTkHelpWindow:
 
         # Footer action bar
         im.separator()
-        if im.button("Close Help##footer"):
+        if im.button(tr("Close Help") + "##footer"):
             pressed = "close"
-        im.set_item_tooltip("Close this help window.")
+        im.set_item_tooltip(tr("Close this help window."))
 
         self.dlg.end()
 

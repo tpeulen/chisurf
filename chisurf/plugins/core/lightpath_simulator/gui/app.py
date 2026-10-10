@@ -10,6 +10,7 @@ from emtk import nodes as _nodes
 from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
+from emtk.i18n import tr
 from emtk.im_core import Col
 from emtk.view_form import FormState, draw_form
 
@@ -62,17 +63,17 @@ class TextInputDialog(_Modal):
         im.text(self.label)
         im.set_next_item_width(-1.0)
         _, self.value = im.input_text("##prompt_value", self.value)
-        im.set_item_tooltip("Type the name, then press OK.")
+        im.set_item_tooltip(tr("Type the name, then press OK."))
         im.spacing()
-        if im.button("OK"):
+        if im.button(tr("OK")):
             if callable(self.on_ok) and self.value.strip():
                 self.on_ok(self.value.strip())
             self.finished = True
-        im.set_item_tooltip("Use this name. An empty name does nothing.")
+        im.set_item_tooltip(tr("Use this name. An empty name does nothing."))
         im.same_line()
-        if im.button("Cancel"):
+        if im.button(tr("Cancel")):
             self.finished = True
-        im.set_item_tooltip("Close without doing anything.")
+        im.set_item_tooltip(tr("Close without doing anything."))
 
 
 class OpticalGraphControl(GraphControl):
@@ -231,9 +232,9 @@ class MessageDialog(_Modal):
     def body(self) -> None:
         im.text_wrapped(self.text)
         im.spacing()
-        if im.button("OK"):
+        if im.button(tr("OK")):
             self.finished = True
-        im.set_item_tooltip("Close this message.")
+        im.set_item_tooltip(tr("Close this message."))
 
 
 class SavedChooser(_Modal):
@@ -251,16 +252,16 @@ class SavedChooser(_Modal):
         self.state.rects.clear()
         draw_form(SPEC["mmfdb_list"], panel, self.state, titles=False)
         im.begin_disabled(not panel.selected_saved)
-        if im.button("Load"):
+        if im.button(tr("Load")):
             panel.load_saved()
             self.finished = True
-        im.set_item_tooltip("Load the selected simulation: its graph and its numerical result.")
+        im.set_item_tooltip(tr("Load the selected simulation: its graph and its numerical result."))
         im.end_disabled()
         im.same_line()
-        if im.button("Cancel"):
+        if im.button(tr("Cancel")):
             panel.want_list = False
             self.finished = True
-        im.set_item_tooltip("Close this list without loading anything.")
+        im.set_item_tooltip(tr("Close this list without loading anything."))
 
 
 class FileChooser(_Modal):
@@ -452,8 +453,8 @@ class LightPathApp(TourTarget, ImApp):
             # A right press on the canvas asks for the component menu (the node under it is resolved on the next draw).
             self.graph_control.context = ("pending", px, py)
         im.set_item_tooltip(
-            "Drag nodes to arrange; drag pins to connect; wheel zooms; right-click for the component menu; "
-            "select items and use Delete Selected to remove them."
+            tr("Drag nodes to arrange; drag pins to connect; wheel zooms; right-click for the component menu; "
+            "select items and use Delete Selected to remove them.")
         )
         self.item_rects["graph"] = canvas
 
@@ -493,7 +494,7 @@ class LightPathApp(TourTarget, ImApp):
             im.text_wrapped(status)
         if not controller.result and not controller.running:
             im.text_wrapped(
-                "Press Calculate Emission Intensity to simulate the light path; the results appear in these tabs."
+                tr("Press Calculate Emission Intensity to simulate the light path; the results appear in these tabs.")
             )
         if im.begin_tab_bar("lightpath_results"):
             for title in self.panel.TABS:

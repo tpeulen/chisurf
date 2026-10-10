@@ -11,6 +11,7 @@ from emtk.app import ImApp
 
 from chisurf.plugins.emtk_layout import window_size
 from emtk.dialog_window import DialogWindow
+from emtk.i18n import tr
 from emtk.file_dialog import FileDialog
 from emtk.keys import KEY_ENTER, KEY_RETURN
 
@@ -100,7 +101,7 @@ class ConfigurationApp(ImApp):
         im.set_next_item_width(180)
         changed, index = im.combo("##Language", codes.index(self.language()), [n for _, n in LANGUAGES])
         im.set_item_tooltip(
-            "UI language. Applies to newly opened tools immediately; restart to fully retranslate open windows."
+            tr("UI language. Applies to newly opened tools immediately; restart to fully retranslate open windows.")
         )
         self.item_rects["language"] = im.get_item_rect()
         if changed:
@@ -186,9 +187,9 @@ class ConfigurationApp(ImApp):
                 im.set_item_tooltip(tip)
                 im.same_line()
             im.new_line()
-            _, self.source_mode = im.checkbox("Edit source", self.source_mode)
+            _, self.source_mode = im.checkbox(tr("Edit source"), self.source_mode)
             im.set_item_tooltip(
-                "Switch between typed setting fields and the complete YAML/JSON source."
+                tr("Switch between typed setting fields and the complete YAML/JSON source.")
             )
             # The status line stays below the body; two lines leave room for a wrapped error.
             status_h = 2.0 * im.get_text_line_height_with_spacing()
@@ -198,7 +199,7 @@ class ConfigurationApp(ImApp):
                     "##Configuration", self.document.text, size=(-1, max(150.0, avail_h - status_h))
                 )
                 im.set_item_tooltip(
-                    "YAML or JSON source. Comments and exact string/list types are preserved when saving. Invalid content cannot replace the existing file."
+                    tr("YAML or JSON source. Comments and exact string/list types are preserved when saving. Invalid content cannot replace the existing file.")
                 )
             else:
                 self.draw_search()
@@ -236,7 +237,7 @@ class ConfigurationApp(ImApp):
         im.set_next_item_width(-1)
         _, self.setting_filter = im.input_text("##Setting search", self.setting_filter)
         im.set_item_tooltip(
-            "Search full setting names; matching entries retain their parent section names."
+            tr("Search full setting names; matching entries retain their parent section names.")
         )
         self.item_rects["setting_search"] = im.get_item_rect()
 
@@ -375,7 +376,7 @@ class ConfigurationApp(ImApp):
                     im.pop_id()
             else:
                 im.text_wrapped(
-                    "This document has a list at its root; use Edit source to edit list records."
+                    tr("This document has a list at its root; use Edit source to edit list records.")
                 )
 
         draw_values(data)
@@ -419,11 +420,11 @@ class UnavailablePanel(ImApp):
         im.set_next_window_size(vp.size, im.Cond.ALWAYS)
         if im.begin(self.panel.label + " unavailable", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE):
             im.heading(self.panel.label, level=2)
-            im.text_wrapped("This settings panel could not be opened.")
+            im.text_wrapped(tr("This settings panel could not be opened."))
             im.text_wrapped(self.error)
-            if im.button("Retry##unavailable_retry"):
+            if im.button(tr("Retry") + "##unavailable_retry"):
                 self.retry()
-            im.set_item_tooltip("Try to build this panel again.")
+            im.set_item_tooltip(tr("Try to build this panel again."))
             self.item_rects["retry"] = im.get_item_rect()
         im.end()
 
@@ -612,7 +613,7 @@ class UnifiedSettingsApp(ImApp):
         if im.begin("Settings destinations", flags=flags):
             im.set_next_item_width(-1)
             changed, self.filter = im.input_text_with_hint("##Find settings", self.filter, "Search...")
-            im.set_item_tooltip("Filter the destinations by name.")
+            im.set_item_tooltip(tr("Filter the destinations by name."))
             self.item_rects["search"] = im.get_item_rect()
             if changed and self.filter:
                 self.tour.notify_used("search")
@@ -632,7 +633,7 @@ class UnifiedSettingsApp(ImApp):
                 im.set_item_tooltip(panel.description or panel.label)
                 self.item_rects["dest_" + panel.key] = im.get_item_rect()
             if not shown:
-                im.text_disabled("No matching settings.")
+                im.text_disabled(tr("No matching settings."))
             im.end_child()
         im.end()
 
@@ -642,14 +643,14 @@ class UnifiedSettingsApp(ImApp):
             avail = im.get_content_region_avail()[0]
             cx = im.get_cursor_pos()[0]
             im.set_cursor_pos_x(cx + max(0.0, avail - 96.0))
-            if im.button("Guide##settings_guide", size=(60, 0)):
+            if im.button(tr("Guide") + "##settings_guide", size=(60, 0)):
                 self.tour.start()
-            im.set_item_tooltip("Walk through searching, choosing a destination and the Back / Next buttons.")
+            im.set_item_tooltip(tr("Walk through searching, choosing a destination and the Back / Next buttons."))
             self.item_rects["guide"] = im.get_item_rect()
             im.same_line()
-            if im.button("?##settings_help", size=(28, 0)):
+            if im.button(tr("?") + "##settings_help", size=(28, 0)):
                 self.help.show()
-            im.set_item_tooltip("Read how the Settings hub, its destinations and its stepper work.")
+            im.set_item_tooltip(tr("Read how the Settings hub, its destinations and its stepper work."))
             self.item_rects["help"] = im.get_item_rect()
         im.end()
 
@@ -663,10 +664,10 @@ class UnifiedSettingsApp(ImApp):
             im.same_line()
             im.set_cursor_pos_x(cx + max(0.0, avail - 196.0))
             im.begin_disabled(not self.can_step(-1))
-            if im.button("< Back##settings_back", size=(70, 0)):
+            if im.button(tr("< Back") + "##settings_back", size=(70, 0)):
                 self.previous_step()
             im.end_disabled()
-            im.set_item_tooltip("Go to the previous destination.")
+            im.set_item_tooltip(tr("Go to the previous destination."))
             self.item_rects["back"] = im.get_item_rect()
             im.same_line()
             if im.button(("||" if self.fast_forward else ">>") + "##settings_ff", size=(40, 0)):
@@ -679,11 +680,11 @@ class UnifiedSettingsApp(ImApp):
             self.item_rects["ff"] = im.get_item_rect()
             im.same_line()
             im.begin_disabled(not self.can_step(1))
-            if im.button("Next >##settings_next", size=(70, 0)):
+            if im.button(tr("Next >") + "##settings_next", size=(70, 0)):
                 if self.next_step():
                     self.tour.notify_used("next")
             im.end_disabled()
-            im.set_item_tooltip("Go to the next destination.")
+            im.set_item_tooltip(tr("Go to the next destination."))
             self.item_rects["next"] = im.get_item_rect()
         im.end()
 

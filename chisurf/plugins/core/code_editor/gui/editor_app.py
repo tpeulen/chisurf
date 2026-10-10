@@ -26,6 +26,7 @@ from urllib.parse import unquote, urlparse
 import emtk.im as im
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
+from emtk.i18n import tr
 from emtk.file_dialog import FileDialog
 from emtk.im_core import Col
 from emtk.widgets.text_editor import Language, TextEditor
@@ -1186,7 +1187,7 @@ class CodeEditorGui:
         if not self.find_open or self._find_editor() is None:
             return
         flags = im.InputTextFlags.ENTER_RETURNS_TRUE
-        im.text("Find")
+        im.text(tr("Find"))
         im.same_line()
         im.set_next_item_width(170.0)
         if self._find_focus:
@@ -1196,40 +1197,40 @@ class CodeEditorGui:
             im.set_keyboard_focus_here()
             self._find_focus = False
         entered, self.find_text = im.input_text("##find_text", self.find_text, "text to find", flags)
-        im.set_item_tooltip("Text to find in the active document; Enter selects the next match")
+        im.set_item_tooltip(tr("Text to find in the active document; Enter selects the next match"))
         if entered:
             self.find_next()
         im.same_line()
-        if im.button("Next"):
+        if im.button(tr("Next")):
             self.find_next()
-        im.set_item_tooltip("Select the next match (wraps around at the end)")
+        im.set_item_tooltip(tr("Select the next match (wraps around at the end)"))
         im.same_line()
-        if im.button("All"):
+        if im.button(tr("All")):
             self.find_all()
-        im.set_item_tooltip("Put a caret on every match; typing then edits all of them")
+        im.set_item_tooltip(tr("Put a caret on every match; typing then edits all of them"))
         im.same_line()
-        _, self.find_case = im.checkbox("Match case##find_case", self.find_case)
-        im.set_item_tooltip("Match upper and lower case exactly")
+        _, self.find_case = im.checkbox(tr("Match case") + "##find_case", self.find_case)
+        im.set_item_tooltip(tr("Match upper and lower case exactly"))
         im.same_line()
-        _, self.find_whole = im.checkbox("Whole word##find_whole", self.find_whole)
-        im.set_item_tooltip("Match only whole words")
-        im.text("Replace")
+        _, self.find_whole = im.checkbox(tr("Whole word") + "##find_whole", self.find_whole)
+        im.set_item_tooltip(tr("Match only whole words"))
+        im.text(tr("Replace"))
         im.same_line()
         im.set_next_item_width(170.0)
         _, self.replace_text = im.input_text("##replace_text", self.replace_text, "replacement")
-        im.set_item_tooltip("Text that replaces a match")
+        im.set_item_tooltip(tr("Text that replaces a match"))
         im.same_line()
-        if im.button("Replace"):
+        if im.button(tr("Replace")):
             self.replace_one()
-        im.set_item_tooltip("Replace the selected match and select the next one")
+        im.set_item_tooltip(tr("Replace the selected match and select the next one"))
         im.same_line()
-        if im.button("Replace all"):
+        if im.button(tr("Replace all")):
             self.replace_all()
-        im.set_item_tooltip("Replace every match in the document")
+        im.set_item_tooltip(tr("Replace every match in the document"))
         im.same_line()
-        if im.button("Close find"):
+        if im.button(tr("Close find")):
             self.close_find()
-        im.set_item_tooltip("Hide the find bar (Escape)")
+        im.set_item_tooltip(tr("Hide the find bar (Escape)"))
         if self.find_status:
             im.text_disabled(self.find_status)
         im.separator()
@@ -1277,13 +1278,13 @@ class CodeEditorGui:
             doc = self._pending_reload
             if doc in self.model.documents:
                 im.text_wrapped(f"Discard unsaved changes and reload {doc.name}?")
-                if im.button("Reload and discard"):
+                if im.button(tr("Reload and discard")):
                     if self.model.reload_document(self.model.documents.index(doc), discard_changes=True):
                         im.close_current_popup()
-                im.set_item_tooltip("Replace this buffer with the file on disk")
-                if im.button("Cancel reload"):
+                im.set_item_tooltip(tr("Replace this buffer with the file on disk"))
+                if im.button(tr("Cancel reload")):
                     im.close_current_popup()
-                im.set_item_tooltip("Keep your current notebook and unsaved changes")
+                im.set_item_tooltip(tr("Keep your current notebook and unsaved changes"))
             im.end_popup()
 
     def _finish_save(self, path: pathlib.Path) -> None:
@@ -1309,13 +1310,13 @@ class CodeEditorGui:
         if im.begin("Choose document##editor_file_dialog"):
             if self._overwrite_path is not None:
                 im.text_wrapped(f"Replace existing file {self._overwrite_path}?")
-                if im.button("Replace file"):
+                if im.button(tr("Replace file")):
                     self._finish_save(self._overwrite_path)
-                im.set_item_tooltip("Replace the selected file with this document's contents")
+                im.set_item_tooltip(tr("Replace the selected file with this document's contents"))
                 im.same_line()
-                if im.button("Choose another path"):
+                if im.button(tr("Choose another path")):
                     self._overwrite_path = None
-                im.set_item_tooltip("Return to choosing a destination")
+                im.set_item_tooltip(tr("Return to choosing a destination"))
             else:
                 result = self._file_dialog.draw()
                 if result is False:
@@ -1368,19 +1369,19 @@ class CodeEditorGui:
         if im.menu_item("Save document"):
             self._request_save(doc)
             self._tab_context = None
-        im.set_item_tooltip('Save document')
+        im.set_item_tooltip(tr('Save document'))
         if im.menu_item("Save document as…"):
             self._request_save(doc, save_as=True)
             self._tab_context = None
-        im.set_item_tooltip("Save this document to a chosen destination")
+        im.set_item_tooltip(tr("Save this document to a chosen destination"))
         if im.menu_item("Close document"):
             self._request_close(doc)
             self._tab_context = None
-        im.set_item_tooltip('Close document')
+        im.set_item_tooltip(tr('Close document'))
         if im.menu_item("Copy file path", enabled=bool(doc.path)):
             im.set_clipboard_text(doc.path)
             self._tab_context = None
-        im.set_item_tooltip('Copy file path')
+        im.set_item_tooltip(tr('Copy file path'))
         ctx.end()
 
     def _draw_file_tree(self, box: tuple[float, float, float, float]) -> None:
@@ -1390,7 +1391,7 @@ class CodeEditorGui:
         if self.model.recent_files:
             if im.small_button("Recent files"):
                 im.open_popup("recent_files")
-            im.set_item_tooltip("Reopen a recently opened or saved document")
+            im.set_item_tooltip(tr("Reopen a recently opened or saved document"))
             if im.begin_popup("recent_files"):
                 for index, path in enumerate(self.model.recent_files):
                     if im.menu_item(f"{path}##recent_{index}"):
@@ -1401,12 +1402,12 @@ class CodeEditorGui:
         if self.model.project_root.parent != self.model.project_root:
             if im.small_button("↑ Parent"):
                 self.model.project_root = self.model.project_root.parent
-            im.set_item_tooltip('↑ Parent')
+            im.set_item_tooltip(tr('↑ Parent'))
 
         avail_w = box[2]
         im.set_next_item_width(avail_w)
-        _, self.file_filter = im.input_text("##file_filter", self.file_filter, hint="🔍 Filter files...")
-        im.set_item_tooltip("Filter project files by name")
+        _, self.file_filter = im.input_text("##file_filter", self.file_filter, hint=tr("🔍 Filter files..."))
+        im.set_item_tooltip(tr("Filter project files by name"))
         im.separator()
 
         def _file_icon(name: str) -> str:
@@ -1478,20 +1479,20 @@ class CodeEditorGui:
             if entry.is_file() and im.menu_item("Open in editor"):
                 self.model.open_file(entry)
                 im.close_current_popup()
-            im.set_item_tooltip('Open in editor')
+            im.set_item_tooltip(tr('Open in editor'))
             if entry.is_dir() and im.menu_item("Use as project root"):
                 self.model.project_root = entry
                 self.file_filter = ""
                 im.close_current_popup()
-            im.set_item_tooltip('Use as project root')
+            im.set_item_tooltip(tr('Use as project root'))
             if im.menu_item("Copy full path"):
                 im.set_clipboard_text(str(entry.resolve()))
                 im.close_current_popup()
-            im.set_item_tooltip('Copy full path')
+            im.set_item_tooltip(tr('Copy full path'))
             if im.menu_item("Copy relative path"):
                 im.set_clipboard_text(os.path.relpath(entry, self.model.project_root))
                 im.close_current_popup()
-            im.set_item_tooltip('Copy relative path')
+            im.set_item_tooltip(tr('Copy relative path'))
             im.end_popup()
 
     @staticmethod
@@ -1581,69 +1582,69 @@ class CodeEditorGui:
         # Slim action row: small buttons, one line tall, an emoticon beside
         # each label the way the Qt toolbar had icons beside text. Default
         # frame style -- the rounding that made them read as tiles is gone.
-        if im.button("➕ New"):
+        if im.button(tr("➕ New")):
             self.model.new_document()
-        im.set_item_tooltip("New — create an empty document")
+        im.set_item_tooltip(tr("New — create an empty document"))
         self._same_line_or_wrap(box, im.calc_text_size("📂 Open")[0] + 14.0)
-        if im.button("📂 Open"):
+        if im.button(tr("📂 Open")):
             self._request_open()
-        im.set_item_tooltip("Open… — choose files to open in the editor")
+        im.set_item_tooltip(tr("Open… — choose files to open in the editor"))
         self._same_line_or_wrap(box, im.calc_text_size("💾 Save")[0] + 14.0)
-        if im.button("💾 Save"):
+        if im.button(tr("💾 Save")):
             self._request_save(self.model.active_doc)
-        im.set_item_tooltip("Save — save the active document to disk")
+        im.set_item_tooltip(tr("Save — save the active document to disk"))
         self._same_line_or_wrap(box, im.calc_text_size("📝 Save As")[0] + 14.0)
-        if im.button("📝 Save As"):
+        if im.button(tr("📝 Save As")):
             self._request_save(self.model.active_doc, save_as=True)
-        im.set_item_tooltip("Save As… — save the active document under a chosen name")
+        im.set_item_tooltip(tr("Save As… — save the active document under a chosen name"))
         if self.model.documents:
             self._same_line_or_wrap(box, im.calc_text_size("✖ Close")[0] + 14.0)
-            if im.button("✖ Close"):
+            if im.button(tr("✖ Close")):
                 self._request_close(self.model.active_doc)
-            im.set_item_tooltip("Close — close the active document; ask before discarding changes")
+            im.set_item_tooltip(tr("Close — close the active document; ask before discarding changes"))
         self._same_line_or_wrap(box, 70.0)
         if self.model.is_running_script or notebook_running:
             im.push_style_color(Col.BUTTON, (160, 60, 60, 255))
-            if im.button("■ Stop"):
+            if im.button(tr("■ Stop")):
                 self.model.stop_active_script()
-            im.set_item_tooltip("Stop — stop the running script subprocess")
+            im.set_item_tooltip(tr("Stop — stop the running script subprocess"))
             im.pop_style_color()
         else:
             im.push_style_color(Col.BUTTON, (46, 140, 67, 255))
-            if im.button("▶ Run"):
+            if im.button(tr("▶ Run")):
                 self.model.run_active_script()
-            im.set_item_tooltip("Run Script — run the active Python document and display its output")
+            im.set_item_tooltip(tr("Run Script — run the active Python document and display its output"))
             im.pop_style_color()
         self._same_line_or_wrap(box, 150.0)
         im.set_next_item_width(150.0)
         changed, endpoint = im.combo("##run_endpoint", 1 if self.model.run_endpoint == "console" else 0,
             ["Separate process", "In ChiSurf console"])
-        im.set_item_tooltip("Process: isolated, stoppable execution. Console: main-thread macros with access to ChiSurf state; long macros block interaction.")
+        im.set_item_tooltip(tr("Process: isolated, stoppable execution. Console: main-thread macros with access to ChiSurf state; long macros block interaction."))
         if changed:
             self.model.run_endpoint = "console" if endpoint == 1 else "process"
         self._same_line_or_wrap(box, im.calc_text_size("🧹 Check")[0] + 14.0)
-        if im.button("🧹 Check"):
+        if im.button(tr("🧹 Check")):
             self.model.start_ruff()
-        im.set_item_tooltip("Ruff Check — check the unsaved Python buffer using the optional Ruff executable")
+        im.set_item_tooltip(tr("Ruff Check — check the unsaved Python buffer using the optional Ruff executable"))
         self._same_line_or_wrap(box, im.calc_text_size("🛠 Fix")[0] + 14.0)
-        if im.button("🛠 Fix"):
+        if im.button(tr("🛠 Fix")):
             self.model.start_ruff(fix=True)
-        im.set_item_tooltip("Ruff Fix — apply Ruff's safe fixes to the unsaved buffer; save explicitly afterwards")
+        im.set_item_tooltip(tr("Ruff Fix — apply Ruff's safe fixes to the unsaved buffer; save explicitly afterwards"))
         self._same_line_or_wrap(box, im.calc_text_size("📓 Notebook")[0] + 14.0)
-        if im.button("📓 Notebook"):
+        if im.button(tr("📓 Notebook")):
             self.model.new_document("Untitled.ipynb")
-        im.set_item_tooltip("New notebook — create an empty notebook with editable cells and a persistent ChiSurf shell")
+        im.set_item_tooltip(tr("New notebook — create an empty notebook with editable cells and a persistent ChiSurf shell"))
         self._same_line_or_wrap(box, im.calc_text_size("⚙ Settings")[0] + 14.0)
-        if im.button("⚙ Settings"):
+        if im.button(tr("⚙ Settings")):
             self.settings_open = True
             self.docks.focus("editor_settings")
-        im.set_item_tooltip("Settings… — open the native editor appearance and diagnostics settings")
+        im.set_item_tooltip(tr("Settings… — open the native editor appearance and diagnostics settings"))
         symbols = self.model.document_symbols()
         if symbols:
             im.set_next_item_width(max(120.0, box[2]))
             changed, selected = im.combo("##python_symbol", 0, ["Jump to symbol…"] +
                 [f"{symbol.display_name} · line {symbol.line}" for symbol in symbols])
-            im.set_item_tooltip("Jump to a class, function, method or section in the unsaved Python source")
+            im.set_item_tooltip(tr("Jump to a class, function, method or section in the unsaved Python source"))
             if changed and selected > 0:
                 symbol = symbols[selected - 1]
                 self.model.goto_line(symbol.line, symbol.column)
@@ -1653,22 +1654,22 @@ class CodeEditorGui:
             if pending in self.model.documents:
                 im.text_wrapped(f"Save changes to {pending.name} before closing?")
                 index = self.model.documents.index(pending)
-                if im.button("Save and close"):
+                if im.button(tr("Save and close")):
                     self._request_save(pending, close_after=True)
                     im.close_current_popup()
-                im.set_item_tooltip('Save and close')
-                if im.button("Discard changes"):
+                im.set_item_tooltip(tr('Save and close'))
+                if im.button(tr("Discard changes")):
                     self.model.close_document(index)
                     im.close_current_popup()
-                im.set_item_tooltip('Discard changes')
-                if im.button("Cancel"):
+                im.set_item_tooltip(tr('Discard changes'))
+                if im.button(tr("Cancel")):
                     im.close_current_popup()
-                im.set_item_tooltip('Cancel')
+                im.set_item_tooltip(tr('Cancel'))
             im.end_popup()
 
         if not self.model.documents:
             im.dummy(0.0, 40.0)
-            im.text_disabled("No open documents. Click 'New' or pick a file on the left.")
+            im.text_disabled(tr("No open documents. Click 'New' or pick a file on the left."))
             return
 
         self._draw_find_bar()
@@ -1713,7 +1714,7 @@ class CodeEditorGui:
                 )
             else:
                 im.text_editor(f"##editor_{id(active)}", active.editor, (avail_w, editor_h))
-                im.set_item_tooltip("Edit the active document; use standard keyboard shortcuts for editing")
+                im.set_item_tooltip(tr("Edit the active document; use standard keyboard shortcuts for editing"))
             im.pop_font_scale()
             im.pop_font()
 
@@ -1739,17 +1740,17 @@ class CodeEditorGui:
 
     def _draw_output_console(self, box: tuple[float, float, float, float]) -> None:
         """Render the execution logs and output terminal."""
-        if im.button("🗑 Clear"):
+        if im.button(tr("🗑 Clear")):
             self.model.output_logs.clear()
-        im.set_item_tooltip('🗑 Clear')
+        im.set_item_tooltip(tr('🗑 Clear'))
         im.same_line()
-        if im.button("📋 Copy"):
+        if im.button(tr("📋 Copy")):
             try:
                 from emtk.clipboard import set_clipboard_text
                 set_clipboard_text("\n".join(self.model.output_logs))
             except Exception:
                 pass
-        im.set_item_tooltip('📋 Copy')
+        im.set_item_tooltip(tr('📋 Copy'))
         im.same_line()
         im.text_disabled(f"  {len(self.model.output_logs)} lines")
         im.separator()
@@ -1773,9 +1774,9 @@ class CodeEditorGui:
     def _draw_diagnostics(self, box: tuple[float, float, float, float]) -> None:
         doc = self.model.active_doc
         if self.model._ruff_running:
-            im.text_disabled("Ruff is checking the document…")
+            im.text_disabled(tr("Ruff is checking the document…"))
         if doc is None or not (doc.diagnostics or doc.lsp_diagnostics):
-            im.text_disabled("No diagnostics. Run Ruff Check on a Python document.")
+            im.text_disabled(tr("No diagnostics. Run Ruff Check on a Python document."))
             return
         im.begin_child((*im.get_cursor_screen_pos(), box[2], box[3]), child_id="ruff_diagnostics")
         for index, diagnostic in enumerate(doc.diagnostics + doc.lsp_diagnostics):
@@ -1783,7 +1784,7 @@ class CodeEditorGui:
             label = f"{diagnostic.get('code', '')}: {diagnostic.get('message', '')} (line {line})##diagnostic_{index}"
             if im.selectable(label):
                 self.model.goto_line(line, diagnostic.get("column", 0))
-            im.set_item_tooltip("Jump to the diagnostic's source location")
+            im.set_item_tooltip(tr("Jump to the diagnostic's source location"))
         im.end_child()
 
     def _draw_settings_window(self) -> None:
@@ -1802,18 +1803,18 @@ class CodeEditorGui:
 
     def _draw_settings_content(self, box=None) -> None:
         """The settings panel body, docked like the other editor panels."""
-        if im.button("Apply & Save"):
+        if im.button(tr("Apply & Save")):
             if self.save_preferences is not None and self.save_preferences():
                 self.settings_status = "Editor settings saved."
             else:
                 self.settings_status = "Could not save editor settings."
-        im.set_item_tooltip("Apply and persist the declared editor preferences; no buffers or credentials are saved")
+        im.set_item_tooltip(tr("Apply and persist the declared editor preferences; no buffers or credentials are saved"))
         im.same_line()
-        if im.button("Close settings"):
+        if im.button(tr("Close settings")):
             self.settings_open = False
             self.docks.hide("editor_settings")
             self.docks.hide("editor_settings")
-        im.set_item_tooltip("Close this configuration panel")
+        im.set_item_tooltip(tr("Close this configuration panel"))
         if self.settings_status:
             im.text_wrapped(self.settings_status)
         im.begin_child((*im.get_cursor_screen_pos(), *im.get_content_region_avail()), child_id="editor_settings_fields")
@@ -1824,49 +1825,49 @@ class CodeEditorGui:
     def _draw_settings_panel(self) -> None:
         languages = list(LANGUAGES)
         changed, selected = im.combo("Syntax language", languages.index(self.model.language), languages)
-        im.set_item_tooltip("Choose highlighting or Auto to follow each document's file extension")
+        im.set_item_tooltip(tr("Choose highlighting or Auto to follow each document's file extension"))
         if changed:
             self.model.language = languages[selected]
         families = list(font_choices())
         family_index = families.index(self.model.font_family) if self.model.font_family in families else 0
         changed, selected = im.combo("Font family", family_index, families)
-        im.set_item_tooltip("Select an available monospaced font supported by the native renderer")
+        im.set_item_tooltip(tr("Select an available monospaced font supported by the native renderer"))
         if changed:
             self.model.font_family = families[selected]
         changed, size = im.slider_int("Font size (pt)", self.model.font_size, 0, 72)
-        im.set_item_tooltip("Point size; 0 preserves the native baked font's default metrics")
+        im.set_item_tooltip(tr("Point size; 0 preserves the native baked font's default metrics"))
         if changed:
             self.model.font_size = size
         schemes = list(COLOR_SCHEMES)
         changed, selected = im.combo("Color scheme", schemes.index(self.model.color_scheme), schemes)
-        im.set_item_tooltip("Apply a preset editor palette, background, margins, selection and current-line colors")
+        im.set_item_tooltip(tr("Apply a preset editor palette, background, margins, selection and current-line colors"))
         if changed:
             self.model.set_color_scheme(schemes[selected])
         for name, label in [("paper_color", "Paper"), ("default_color", "Text"), ("margins_background_color", "Margins"),
             ("marker_background_color", "Selection / marker"), ("caret_line_background_color", "Current line")]:
             color = rgba(self.model.display_colors[name])
             changed, value = im.color_edit3(label, color[:3])
-            im.set_item_tooltip("Choose the editor color without changing the application's global theme")
+            im.set_item_tooltip(tr("Choose the editor color without changing the application's global theme"))
             if changed:
                 self.model.set_display_color(name, "#" + "".join(f"{max(0, min(255, int(channel))):02x}" for channel in value[:3]))
-        changed, value = im.checkbox("Highlight current line", self.model.caret_line_visible)
-        im.set_item_tooltip("Show or hide the configured background behind the caret's line")
+        changed, value = im.checkbox(tr("Highlight current line"), self.model.caret_line_visible)
+        im.set_item_tooltip(tr("Show or hide the configured background behind the caret's line"))
         if changed:
             self.model.caret_line_visible = value
-        changed, enabled = im.checkbox("Enable Ruff", self.model.enable_ruff)
-        im.set_item_tooltip("Enable optional Ruff checks and fixes for editor buffers")
+        changed, enabled = im.checkbox(tr("Enable Ruff"), self.model.enable_ruff)
+        im.set_item_tooltip(tr("Enable optional Ruff checks and fixes for editor buffers"))
         if changed:
             self.model.enable_ruff = enabled
-        changed, enabled = im.checkbox("Ruff after save", self.model.run_ruff_on_save)
-        im.set_item_tooltip("Check the active document asynchronously after a successful save")
+        changed, enabled = im.checkbox(tr("Ruff after save"), self.model.run_ruff_on_save)
+        im.set_item_tooltip(tr("Check the active document asynchronously after a successful save"))
         if changed:
             self.model.run_ruff_on_save = enabled
         changed, timeout = im.slider_int("Ruff timeout (ms)", self.model.ruff_timeout_ms, 1000, 60000)
-        im.set_item_tooltip("Maximum time allowed for the optional Ruff subprocess")
+        im.set_item_tooltip(tr("Maximum time allowed for the optional Ruff subprocess"))
         if changed:
             self.model.ruff_timeout_ms = timeout
         changed, arguments = im.input_text("Ruff extra arguments", shlex.join(self.model.ruff_extra_args))
-        im.set_item_tooltip("Extra Ruff command arguments; quoted values are supported")
+        im.set_item_tooltip(tr("Extra Ruff command arguments; quoted values are supported"))
         if changed:
             try:
                 self.model.ruff_extra_args = shlex.split(arguments)
@@ -1874,22 +1875,22 @@ class CodeEditorGui:
                 self.model.log_output("Ruff arguments have an unterminated quote.")
         im.separator()
         changed, scale = im.slider_float("Text zoom", self.model.font_scale, 0.5, 3.0)
-        im.set_item_tooltip("Adjust editor text size; saved as a native preference")
+        im.set_item_tooltip(tr("Adjust editor text size; saved as a native preference"))
         if changed:
             self.model.font_scale = scale
         for label, name in [("Line numbers", "show_line_numbers"), ("Show whitespace", "show_whitespace"), ("Spaces for tabs", "insert_spaces")]:
             changed, value = im.checkbox(label, getattr(self.model, name))
-            im.set_item_tooltip("Configure how editor source is displayed and indented")
+            im.set_item_tooltip(tr("Configure how editor source is displayed and indented"))
             if changed:
                 setattr(self.model, name, value)
         changed, size = im.slider_int("Tab width", self.model.tab_size, 1, 16)
-        im.set_item_tooltip("Number of columns used for tab indentation")
+        im.set_item_tooltip(tr("Number of columns used for tab indentation"))
         if changed:
             self.model.tab_size = size
         im.separator()
         im.begin_disabled(self.model.enable_rpc)
         _, self.model.rpc_host = im.input_text("RPC host", self.model.rpc_host)
-        im.set_item_tooltip("Loopback host for the editor's optional JSON-RPC service")
+        im.set_item_tooltip(tr("Loopback host for the editor's optional JSON-RPC service"))
         for name, label, tip in (
             ("rpc_cmd_port", "RPC command port", "Command port used by editor RPC clients"),
             ("rpc_pub_port", "RPC event port", "Event port used by editor RPC clients"),
@@ -1903,27 +1904,27 @@ class CodeEditorGui:
             if port is not None:
                 setattr(self.model, name, port)
         im.end_disabled()
-        changed, enabled = im.checkbox("Enable editor RPC", self.model.enable_rpc)
-        im.set_item_tooltip("Expose open-buffer operations through the existing local ZeroMQ service")
+        changed, enabled = im.checkbox(tr("Enable editor RPC"), self.model.enable_rpc)
+        im.set_item_tooltip(tr("Expose open-buffer operations through the existing local ZeroMQ service"))
         if changed:
             self.model.start_rpc() if enabled else self.model.stop_rpc()
         im.text_wrapped(self.model.rpc_status)
         im.separator()
 
     def _draw_lsp(self, box) -> None:
-        if im.button("Editor settings…"):
+        if im.button(tr("Editor settings…")):
             self.settings_open = True
             self.docks.focus("editor_settings")
-        im.set_item_tooltip("Configure font, colors, language, editing behavior, Ruff and the editor RPC service")
+        im.set_item_tooltip(tr("Configure font, colors, language, editing behavior, Ruff and the editor RPC service"))
         im.text_wrapped(self.model.lsp_status)
         if self.model.lsp_client is None:
-            if im.button("Enable Python LSP"):
+            if im.button(tr("Enable Python LSP")):
                 self.model.start_lsp()
-            im.set_item_tooltip("Start an installed optional python-lsp-server; no packages are installed automatically")
+            im.set_item_tooltip(tr("Start an installed optional python-lsp-server; no packages are installed automatically"))
         else:
-            if im.button("Disable Python LSP"):
+            if im.button(tr("Disable Python LSP")):
                 self.model.stop_lsp()
-            im.set_item_tooltip("Stop the language server and close its document sessions")
+            im.set_item_tooltip(tr("Stop the language server and close its document sessions"))
         for action, label, tip in [("completion", "Complete", "Ask for completions at the active editor cursor"),
             ("definition", "Go to definition", "Open the Python definition at the active cursor"),
             ("hover", "Documentation", "Show language-server documentation for the active cursor")]:

@@ -1427,15 +1427,15 @@ class HelpGui:
                 statuses.index(self.model.review_filter),
                 ["All pages", "Unreviewed", "AI-reviewed", "Human-reviewed", "Stale"],
             )
-            im.set_item_tooltip("Filter tracked documentation by its review status")
+            im.set_item_tooltip(tr("Filter tracked documentation by its review status"))
             if changed_filter:
                 self.model.review_filter = statuses[selected]
         # Search bar
         im.set_next_item_width(avail_w)
         changed, new_q = im.input_text(
-            "##doc_search", self.model.search_query, hint="Search documentation..."
+            "##doc_search", self.model.search_query, hint=tr("Search documentation...")
         )
-        im.set_item_tooltip("Search documentation titles and text")
+        im.set_item_tooltip(tr("Search documentation titles and text"))
         if changed:
             self.model.update_search(new_q)
 
@@ -1451,7 +1451,7 @@ class HelpGui:
             im.dummy(0.0, 4.0)
 
             if not self.model.search_results:
-                im.text_disabled("No matching documentation found.")
+                im.text_disabled(tr("No matching documentation found."))
             else:
                 for idx, res in enumerate(self.model.search_results):
                     im.push_id(f"sr_{idx}")
@@ -1465,7 +1465,7 @@ class HelpGui:
                     )
                     if im.selectable(title, active):
                         self.model.open_page(path_str)
-                    im.set_item_tooltip("Open this documentation item")
+                    im.set_item_tooltip(tr("Open this documentation item"))
                     self._draw_document_context_menu(path_str)
 
                     if excerpt:
@@ -1478,7 +1478,7 @@ class HelpGui:
                 for idx, section in enumerate(self.model.toc.children):
                     self._draw_toc_node(section, f"sec_{idx}")
             else:
-                im.text_disabled("Documentation TOC is unavailable.")
+                im.text_disabled(tr("Documentation TOC is unavailable."))
 
         im.end_child()
         self._reveal_keys = set()
@@ -1551,14 +1551,14 @@ class HelpGui:
             return
         if im.menu_item("Open document"):
             self.model.open_page(path)
-        im.set_item_tooltip("Open document")
+        im.set_item_tooltip(tr("Open document"))
         if im.menu_item("View source"):
             if self.model.open_page(path):
                 self.model.edit_mode = True
-        im.set_item_tooltip("View source")
+        im.set_item_tooltip(tr("View source"))
         if im.menu_item("Copy path"):
             im.set_clipboard_text(str(pathlib.Path(path).resolve()))
-        im.set_item_tooltip("Copy path")
+        im.set_item_tooltip(tr("Copy path"))
         im.end_popup()
 
     # -- Center Pane: Document Reader & Editor --------------------------------
@@ -1568,69 +1568,69 @@ class HelpGui:
         changed, address = im.input_text(
             "##doc_address",
             self.model.address_text,
-            hint="docs/page.md#anchor, src:path#symbol, cite:key, URL or search",
+            hint=tr("docs/page.md#anchor, src:path#symbol, cite:key, URL or search"),
         )
         self.model.address_text = address
         im.set_item_tooltip(
-            "Enter a document, source symbol, citation key or web address; press Enter or Go"
+            tr("Enter a document, source symbol, citation key or web address; press Enter or Go")
         )
         entered = im.is_item_active() and im.is_key_pressed(im.Key.ENTER)
         if changed and self.model.address_suggestions(address):
             im.open_popup("address_suggestions")
         im.same_line()
-        if im.button("Go") or entered:
+        if im.button(tr("Go")) or entered:
             self.model.navigate_address(address)
-        im.set_item_tooltip("Navigate to this address or search for its text")
+        im.set_item_tooltip(tr("Navigate to this address or search for its text"))
         if im.begin_popup("address_suggestions"):
             for index, suggestion in enumerate(self.model.address_suggestions(address)):
                 if im.selectable(f"{suggestion}##address_{index}"):
                     self.model.navigate_address(suggestion)
                     im.close_current_popup()
-                im.set_item_tooltip("Open this documentation address")
+                im.set_item_tooltip(tr("Open this documentation address"))
             im.end_popup()
         if self.model.navigation_error:
             im.text_wrapped(self.model.navigation_error)
         # Navigation toolbar with clear emoticons and tooltips
-        if im.button("Home"):
+        if im.button(tr("Home")):
             self.model.show_home()
-        im.set_item_tooltip("Show documentation start page")
+        im.set_item_tooltip(tr("Show documentation start page"))
         im.same_line()
         can_back = self.model.history_idx > 0
         im.begin_disabled(not can_back)
-        if im.button("Back"):
+        if im.button(tr("Back")):
             self.model.go_back()
-        im.set_item_tooltip("Return to the previous page in navigation history")
+        im.set_item_tooltip(tr("Return to the previous page in navigation history"))
         im.end_disabled()
 
         im.same_line()
         can_fwd = self.model.history_idx < len(self.model.history) - 1
         im.begin_disabled(not can_fwd)
-        if im.button("Fwd"):
+        if im.button(tr("Fwd")):
             self.model.go_forward()
-        im.set_item_tooltip("Advance to the next page in navigation history")
+        im.set_item_tooltip(tr("Advance to the next page in navigation history"))
         im.end_disabled()
 
         im.same_line()
-        if im.button("Prev"):
+        if im.button(tr("Prev")):
             self.model.go_prev_order()
-        im.set_item_tooltip("Open the previous document in the table of contents")
+        im.set_item_tooltip(tr("Open the previous document in the table of contents"))
         im.same_line()
-        if im.button("Next"):
+        if im.button(tr("Next")):
             self.model.go_next_order()
-        im.set_item_tooltip("Open the next document in the table of contents")
+        im.set_item_tooltip(tr("Open the next document in the table of contents"))
 
         im.dummy(0.0, 2.0)
         import webbrowser
 
-        if im.button("Online docs"):
+        if im.button(tr("Online docs")):
             from chisurf.core.info import help_url
 
             webbrowser.open_new(help_url)
-        im.set_item_tooltip("Open the documentation website in a browser")
+        im.set_item_tooltip(tr("Open the documentation website in a browser"))
         im.same_line()
-        if im.button("Videos"):
+        if im.button(tr("Videos")):
             webbrowser.open_new("https://www.peulen.xyz/tutorial/")
-        im.set_item_tooltip("Open tutorial videos in your web browser")
+        im.set_item_tooltip(tr("Open tutorial videos in your web browser"))
 
         im.same_line()
         im.text_disabled("|")
@@ -1642,15 +1642,15 @@ class HelpGui:
         if im.button(mode_btn_label):
             self.model.edit_mode = not self.model.edit_mode
         im.set_item_tooltip(
-            "Switch between reading the document and editing its source; the virtual Home page has no source file"
+            tr("Switch between reading the document and editing its source; the virtual Home page has no source file")
         )
         im.end_disabled()
 
         if self.model.edit_mode:
             im.same_line()
-            if im.button("Save"):
+            if im.button(tr("Save")):
                 self.model.save_current_page()
-            im.set_item_tooltip("Save changes to the current documentation source")
+            im.set_item_tooltip(tr("Save changes to the current documentation source"))
 
         im.same_line()
         # Review status badge with explicit icon
@@ -1660,7 +1660,7 @@ class HelpGui:
         im.same_line()
         if im.small_button("A−"):
             self.model.zoom(-1)
-        im.set_item_tooltip("Reduce document text by half a point")
+        im.set_item_tooltip(tr("Reduce document text by half a point"))
         im.same_line()
         if im.small_button("Reset zoom"):
             self.model.reset_zoom()
@@ -1668,10 +1668,10 @@ class HelpGui:
         im.same_line()
         if im.small_button("A+"):
             self.model.zoom(1)
-        im.set_item_tooltip("Increase document text by half a point; Ctrl/Command+wheel also zooms")
-        changed_authoring, authoring = im.checkbox("Authoring tools", self.model.authoring_mode)
+        im.set_item_tooltip(tr("Increase document text by half a point; Ctrl/Command+wheel also zooms"))
+        changed_authoring, authoring = im.checkbox(tr("Authoring tools"), self.model.authoring_mode)
         im.set_item_tooltip(
-            "Show human and AI review sign-off actions, status filters and manual review summary"
+            tr("Show human and AI review sign-off actions, status filters and manual review summary")
         )
         if changed_authoring:
             self.model.authoring_mode = authoring
@@ -1681,9 +1681,9 @@ class HelpGui:
                 self.model.review_filter = "all"
         if self.model.authoring_mode:
             im.same_line()
-            changed_dev, include_dev = im.checkbox("Developer docs", self.model.include_development)
+            changed_dev, include_dev = im.checkbox(tr("Developer docs"), self.model.include_development)
             im.set_item_tooltip(
-                "Also list architecture notes and the bundled modules' documentation."
+                tr("Also list architecture notes and the bundled modules' documentation.")
             )
             if changed_dev:
                 self.model.set_include_development(include_dev)
@@ -1699,12 +1699,12 @@ class HelpGui:
                     if im.small_button(label):
                         self.model.set_review_status(status)
                     im.set_item_tooltip(
-                        "Record this saved page's review status; later edits make the sign-off stale"
+                        tr("Record this saved page's review status; later edits make the sign-off stale")
                     )
                     im.same_line()
                 im.text_disabled("")
             else:
-                im.text_disabled("Review sign-off is available for tracked documentation pages.")
+                im.text_disabled(tr("Review sign-off is available for tracked documentation pages."))
             im.text_wrapped(self.model.review_summary)
         crumbs = self.model.breadcrumb()
         if crumbs:
@@ -1717,9 +1717,9 @@ class HelpGui:
 
         if self.model.source_view and self.model.source_path:
             # Embedded Source Code Viewer
-            if im.button("Back to document"):
+            if im.button(tr("Back to document")):
                 self.model.source_view = False
-            im.set_item_tooltip("Return from the source view to the document")
+            im.set_item_tooltip(tr("Return from the source view to the document"))
 
             im.same_line()
             im.text_disabled("|")
@@ -1738,13 +1738,13 @@ class HelpGui:
 
                 t = f"{self.model.source_path}#{self.model.source_symbol or (self.model.source_line or '')}"
                 open_source(t)
-            im.set_item_tooltip("Open this source file in the code editor")
+            im.set_item_tooltip(tr("Open this source file in the code editor"))
 
             im.separator()
             curr_v_y = im.get_cursor_screen_pos()[1]
             rem_h = max(20.0, box[1] + box[3] - curr_v_y)
             im.text_editor("##doc_source_viewer", self.model.source_editor, (avail_w, rem_h))
-            im.set_item_tooltip("Read the referenced source; open the full code editor to edit it")
+            im.set_item_tooltip(tr("Read the referenced source; open the full code editor to edit it"))
             return
 
         if self.model.edit_mode:
@@ -1752,7 +1752,7 @@ class HelpGui:
             im.text_editor("##doc_source_editor", self.model.editor, (avail_w, avail_h))
             self.model.is_modified = self.model.editor.text != self.model.current_content
             im.set_item_tooltip(
-                "Edit the documentation source; Save writes your changes to the document"
+                tr("Edit the documentation source; Save writes your changes to the document")
             )
         else:
             # Formatted Reader view
@@ -1829,7 +1829,7 @@ class HelpGui:
 
         if not self.model.current_blocks:
             im.dummy(0.0, 20.0)
-            im.text_disabled("No document content loaded.")
+            im.text_disabled(tr("No document content loaded."))
             im.end_child()
             return
 
@@ -1962,7 +1962,7 @@ class HelpGui:
                         set_clipboard_text(block.text)
                     except Exception:
                         pass
-                im.set_item_tooltip("Copy this code block to the clipboard")
+                im.set_item_tooltip(tr("Copy this code block to the clipboard"))
 
                 im.push_font("monospace")
                 im.push_style_color(Col.FRAME_BG, (20, 24, 30, 255))
@@ -2079,9 +2079,9 @@ class HelpGui:
             return
         im.set_next_window_size((700, 660), im.Cond.FIRST_USE_EVER)
         if im.begin("Provider settings##help_provider_settings"):
-            if im.button("Close provider settings"):
+            if im.button(tr("Close provider settings")):
                 self.provider_settings_open = False
-            im.set_item_tooltip("Close the shared provider configuration form")
+            im.set_item_tooltip(tr("Close the shared provider configuration form"))
             im.begin_child(
                 (*im.get_cursor_screen_pos(), *im.get_content_region_avail()),
                 child_id="help_provider_fields",
@@ -2096,7 +2096,7 @@ class HelpGui:
         avail_w = box[2]
 
         im.text_colored((140, 170, 210, 255), "Ask Documentation AI")
-        im.text_disabled("Grounded Q&A from ChiSurf docs")
+        im.text_disabled(tr("Grounded Q&A from ChiSurf docs"))
         if im.small_button("Provider settings…"):
             if self.provider_settings is None:
                 from chisurf.plugins.ai_settings.gui.app import AISettingsGui
@@ -2104,7 +2104,7 @@ class HelpGui:
                 self.provider_settings = AISettingsGui()
             self.provider_settings_open = True
         im.set_item_tooltip(
-            "Configure the shared API provider, masked credential, models and sampling"
+            tr("Configure the shared API provider, masked credential, models and sampling")
         )
         im.separator()
 
