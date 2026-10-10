@@ -13,7 +13,7 @@ from pathlib import Path
 from mmfdb.repository import MFDatabase
 from mmfdb.schema.dictionary_schema_map import build_dictionary_schema_map
 
-from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
+from chisurf.core.data_io.detector_setups import (
     _save_setup_row,
     setup_id_for_name,
 )

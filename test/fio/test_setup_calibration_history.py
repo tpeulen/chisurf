@@ -16,9 +16,7 @@ from pathlib import Path
 
 from mmfdb.repository import MFDatabase
 
-from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
-    setup_id_for_name,
-)
+from chisurf.core.data_io.detector_setups import setup_id_for_name
 
 # ---------------------------------------------------------------------------
 # Helpers

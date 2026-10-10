@@ -124,12 +124,17 @@ def save_setup(
         from chisurf.core.data_io.detector_setups import save_detector_setups
 
         payload = {"setups": {name: dict(settings)}, "last_used": name}
-        save_detector_setups(payload, file_path=file_path, is_public=is_public)
+        saved = save_detector_setups(payload, file_path=file_path, is_public=is_public)
     except Exception as exc:  # pragma: no cover - depends on MMFDB/disk
         return service_error(
             f"Failed to save detector setup {name!r}: {exc}",
             error_code=OPERATION_FAILED,
             exception=exc,
+        )
+    if not saved:
+        return service_error(
+            f"Detector setup {name!r} was not saved; see the log.",
+            error_code=OPERATION_FAILED,
         )
     # Mirror the saved definition into the session-active slot.
     _store(state)["active"] = dict(settings)

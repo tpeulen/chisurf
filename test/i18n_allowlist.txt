@@ -278,12 +278,6 @@ chisurf/plugins/burst/burst_bva/gui/app.py#call@478:22/hint:untranslated-literal
 chisurf/plugins/burst/burst_bva/gui/app.py#call@479:8/arg0:untranslated-literal
 chisurf/plugins/burst/burst_ebfret/gui/dialogs.py#call@201:11/arg0:untranslated-literal
 chisurf/plugins/burst/burst_fcs_correlator/gui/app.py#call@313:12/arg0:untranslated-literal
-chisurf/plugins/burst/burst_fusion/gui/controller.py#call@244:8/arg0:untranslated-literal
-chisurf/plugins/burst/burst_fusion/gui/controller.py#call@248:8/arg0:untranslated-literal
-chisurf/plugins/burst/burst_fusion/gui/controller.py#call@254:8/arg0:untranslated-literal
-chisurf/plugins/burst/burst_fusion/gui/controller.py#call@261:12/arg0:untranslated-literal
-chisurf/plugins/burst/burst_fusion/gui/controller.py#call@266:15/arg0:untranslated-literal
-chisurf/plugins/burst/burst_fusion/gui/controller.py#call@271:12/arg0:untranslated-literal
 chisurf/plugins/burst/burst_gs/gui/app.py#call@270:45/arg0:untranslated-literal
 chisurf/plugins/burst/burst_gs/gui/app.py#call@273:8/arg0:untranslated-literal
 chisurf/plugins/burst/burst_gs/gui/controller.py#call@209:12/arg0:untranslated-literal
@@ -1145,3 +1139,9 @@ chisurf/plugins/vv_vh_g_factor/gui/app.py#call@351:12/arg0:untranslated-literal
 chisurf/plugins/vv_vh_g_factor/gui/app.py#call@385:12/arg0:untranslated-literal
 chisurf/plugins/vv_vh_g_factor/gui/app.py#call@389:12/arg0:untranslated-literal
 chisurf/plugins/vv_vh_g_factor/gui/app.py#call@451:12/arg0:untranslated-literal
+chisurf/plugins/burst/burst_fusion/gui/controller.py#call@244:8/arg0:untranslated-literal
+chisurf/plugins/burst/burst_fusion/gui/controller.py#call@248:8/arg0:untranslated-literal
+chisurf/plugins/burst/burst_fusion/gui/controller.py#call@254:8/arg0:untranslated-literal
+chisurf/plugins/burst/burst_fusion/gui/controller.py#call@261:12/arg0:untranslated-literal
+chisurf/plugins/burst/burst_fusion/gui/controller.py#call@266:15/arg0:untranslated-literal
+chisurf/plugins/burst/burst_fusion/gui/controller.py#call@271:12/arg0:untranslated-literal

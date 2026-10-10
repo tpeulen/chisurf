@@ -15,7 +15,7 @@ from pathlib import Path
 
 from mmfdb.repository import MFDatabase
 
-from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
+from chisurf.core.data_io.detector_setups import (
     _load_mmfdb_detector_setups,
     _migrate_json_setups_to_mmfdb,
     _save_setup_row,
@@ -238,13 +238,13 @@ def test_save_records_owner(tmp_path: Path) -> None:
     try:
         user_id = "user_default"
         import chisurf.core.fio.setup_store as utils
-        import chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups as dsu
+        import chisurf.core.data_io.detector_setups as dsu
 
-        original_resolve = dsu._resolve_active_user_id
-        dsu._resolve_active_user_id = lambda: user_id
+        original_resolve = dsu.resolve_active_user_id
+        dsu.resolve_active_user_id = lambda: user_id
         utils.resolve_active_user_id = lambda: user_id
         original_db = dsu._db
-        dsu._db = lambda: db
+        dsu._db = lambda db_path=None: db
         original_get_db = utils.get_db
         utils.get_db = lambda: db
         try:
@@ -261,7 +261,7 @@ def test_save_records_owner(tmp_path: Path) -> None:
             assert row is not None
             assert row["created_by_user_id"] == user_id
         finally:
-            dsu._resolve_active_user_id = original_resolve
+            dsu.resolve_active_user_id = original_resolve
             dsu._db = original_db
             utils.resolve_active_user_id = original_resolve
             utils.get_db = original_get_db

@@ -487,13 +487,6 @@ chisurf/plugins/burst/burst_fcs_correlator/gui/burst_fcs.view.json#/sections/1/s
 chisurf/plugins/burst/burst_fcs_correlator/gui/burst_fcs.view.json#/sections/1/sections/0/descriptions/2:radio-tooltip
 chisurf/plugins/burst/burst_fcs_correlator/gui/burst_fcs.view.json#/sections/1:section-tooltip
 chisurf/plugins/burst/burst_fcs_correlator/gui/burst_fcs_plots.view.json#/sections/0:section-tooltip
-chisurf/plugins/burst/burst_fusion/gui/fusion.view.json#/sections/0/sections/0/sections/4:section-tooltip
-chisurf/plugins/burst/burst_fusion/gui/fusion.view.json#/sections/0/sections/0/sections/6/columns/0:column-tooltip
-chisurf/plugins/burst/burst_fusion/gui/fusion.view.json#/sections/0/sections/0/sections/6/columns/1:column-tooltip
-chisurf/plugins/burst/burst_fusion/gui/fusion.view.json#/sections/0/sections/0/sections/6/columns/2:column-tooltip
-chisurf/plugins/burst/burst_fusion/gui/fusion.view.json#/sections/0/sections/0/sections/7:section-tooltip
-chisurf/plugins/burst/burst_fusion/gui/fusion.view.json#/sections/0/sections/0:section-tooltip
-chisurf/plugins/burst/burst_fusion/gui/fusion.view.json#/sections/0:section-tooltip
 chisurf/plugins/burst/burst_gs/gui/burst_gs.view.json#/sections/0/sections/0/sections/0/sections/0:section-tooltip
 chisurf/plugins/burst/burst_gs/gui/burst_gs.view.json#/sections/0/sections/0/sections/0:section-tooltip
 chisurf/plugins/burst/burst_gs/gui/burst_gs.view.json#/sections/0/sections/0/sections/2:section-tooltip
@@ -1024,3 +1017,10 @@ modules/ndxplorer/ndxplorer/app/views/plot_controls.view.json#/sections/4/sectio
 modules/ndxplorer/ndxplorer/plotting/playback.view.json#/sections/0/sections/4/descriptions/0:radio-tooltip
 modules/ndxplorer/ndxplorer/plotting/playback.view.json#/sections/0/sections/4/descriptions/1:radio-tooltip
 modules/ndxplorer/ndxplorer/plotting/playback.view.json#/sections/0/sections/4/descriptions/2:radio-tooltip
+chisurf/plugins/burst/burst_fusion/gui/fusion.view.json#/sections/0:section-tooltip
+chisurf/plugins/burst/burst_fusion/gui/fusion.view.json#/sections/0/sections/0:section-tooltip
+chisurf/plugins/burst/burst_fusion/gui/fusion.view.json#/sections/0/sections/0/sections/4:section-tooltip
+chisurf/plugins/burst/burst_fusion/gui/fusion.view.json#/sections/0/sections/0/sections/6/columns/0:column-tooltip
+chisurf/plugins/burst/burst_fusion/gui/fusion.view.json#/sections/0/sections/0/sections/6/columns/1:column-tooltip
+chisurf/plugins/burst/burst_fusion/gui/fusion.view.json#/sections/0/sections/0/sections/6/columns/2:column-tooltip
+chisurf/plugins/burst/burst_fusion/gui/fusion.view.json#/sections/0/sections/0/sections/7:section-tooltip

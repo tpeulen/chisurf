@@ -12,9 +12,7 @@ from mmfdb.provenance.result_registry import read_result, register_raw_measureme
 from mmfdb.repository import MFDatabase
 from mmfdb.samples.sample_manager import create_sample, get_artifacts_for_sample
 
-from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
-    setup_id_for_name,
-)
+from chisurf.core.data_io.detector_setups import setup_id_for_name
 from chisurf.plugins.burst.burst_selection.api import selection as selection_module
 from chisurf.plugins.burst.burst_selection.api.mmfdb import BurstMMFDBPipeline
 from chisurf.plugins.burst.burst_selection.api.models import (

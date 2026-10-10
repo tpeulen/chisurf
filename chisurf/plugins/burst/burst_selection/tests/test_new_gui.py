@@ -14,9 +14,7 @@ from mmfdb.samples.sample_manager import create_sample
 from chisurf.core.datastore import column_names, numeric_column
 from chisurf.core.runtime import analysis_cache
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
-from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
-    setup_id_for_name,
-)
+from chisurf.core.data_io.detector_setups import setup_id_for_name
 from chisurf.plugins.burst.burst_selection.api.models import BurstFilterMode
 from chisurf.plugins.burst.burst_selection.gui import tool as tool_module
 from chisurf.plugins.burst.burst_selection.gui.client import BurstSelectionClient

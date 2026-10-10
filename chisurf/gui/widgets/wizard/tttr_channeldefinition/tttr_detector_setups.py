@@ -1,244 +1,31 @@
+"""GUI entry to the detector-setup store: the store itself is ``chisurf.core.data_io.detector_setups``.
+
+Only the interactive "setups file not found" prompt lives here; Qt is imported
+lazily inside it, so the module stays import-time Qt-free.
+"""
+
 from __future__ import annotations
 
 import pathlib
-from typing import TYPE_CHECKING, Any
 
-# NOTE: Qt is imported lazily inside ``load_detector_setups`` (only the
-# missing-file warning dialog needs it).  Keeping this module import-time
-# Qt-free lets the Qt-free server reuse ``load_detector_setups`` /
-# ``save_detector_setups`` from ``chisurf.server.services.detector_setups``.
-from chisurf.core.fio.setup_store import (
-    SetupTypeConfig,
-    json_loads,
-    load_mmfdb_setups,
-    resolve_active_user_id,
-    save_setups,
+from chisurf.core.data_io.detector_setups import (
+    DETECTOR_SETUPS_FILE,
+    _db_available,
+    _use_mmfdb,
 )
-from chisurf.core.fio.setup_store import (
-    save_setup_row as _save_row,
-)
-from chisurf.core.settings.path_utils import get_path
-
-if TYPE_CHECKING:
-    from mmfdb.repository import MFDatabase
-
-DETECTOR_SETUPS_FILE = get_path("settings") / "detector_setups.json"
-DETECTOR_SETUP_TYPE = "tttr_detector_setup"
-DETECTOR_SETUP_PREFS_ID = "tttr_detector_setup_preferences"
-
-DETECTOR_CONFIG = SetupTypeConfig(
-    setup_type=DETECTOR_SETUP_TYPE,
-    id_prefix="tttr_detector_setup",
-    prefs_id=DETECTOR_SETUP_PREFS_ID,
-    canonical_file=DETECTOR_SETUPS_FILE,
-    description="TTTR detector and PIE-window setup",
-)
-
-
-def setup_id_for_name(name: str, user_id: str = "") -> str:
-    from chisurf.core.fio.setup_store import setup_id_for_name as _sifn
-
-    return _sifn(name, user_id, "tttr_detector_setup")
-
-
-def _resolve_active_user_id() -> str:
-    return resolve_active_user_id()
-
-
-def _json_loads(value):
-    return json_loads(value)
-
-
-def _db(db_path=None):
-    from chisurf.core.fio.setup_store import get_db
-
-    return get_db(db_path)
-
-
-def _use_mmfdb(file_path=None) -> bool:
-    from chisurf.core.fio.setup_store import use_mmfdb
-
-    return use_mmfdb(file_path, DETECTOR_SETUPS_FILE)
-
-
-def _setup_row_data(
-    row: dict,
-    detector_channels: list | None = None,
-    pie_windows: list | None = None,
-) -> dict:
-    """Extract detector setup payload from an MMFDB row with child tables."""
-    configuration = json_loads(row.get("configuration_json"))
-    setup_data = configuration.get("setup_data")
-    if isinstance(setup_data, dict):
-        return setup_data
-    data = dict(configuration)
-    data.pop("setup_type", None)
-    data.pop("setup_data", None)
-
-    if detector_channels:
-        dets = {}
-        for ch in detector_channels:
-            name = ch.get("name", "")
-            if not name:
-                continue
-            entry: dict[str, Any] = {}
-            chs = ch.get("channels")
-            if chs:
-                entry["chs"] = json_loads(chs) if isinstance(chs, str) else chs
-            mtr = ch.get("micro_time_ranges")
-            if mtr:
-                entry["micro_time_ranges"] = json_loads(mtr) if isinstance(mtr, str) else mtr
-            if ch.get("g_factor") is not None:
-                entry["g_factor"] = ch["g_factor"]
-            if ch.get("l1") is not None:
-                entry["l1"] = ch["l1"]
-            if ch.get("l2") is not None:
-                entry["l2"] = ch["l2"]
-            gfc = ch.get("g_factor_channels")
-            if gfc:
-                entry["g_factor_channels"] = json_loads(gfc) if isinstance(gfc, str) else gfc
-            if ch.get("g_factor_decay_uuid") is not None:
-                entry["g_factor_decay_uuid"] = ch["g_factor_decay_uuid"]
-            if ch.get("g_factor_calibration_id") is not None:
-                entry["g_factor_calibration_id"] = ch["g_factor_calibration_id"]
-            dets[name] = entry
-        if dets:
-            data["detectors"] = dets
-    elif row.get("detectors_json"):
-        data["detectors"] = json_loads(row.get("detectors_json"))
-
-    if pie_windows:
-        wins = {}
-        for pw in pie_windows:
-            name = pw.get("name", "")
-            if not name:
-                continue
-            start = pw.get("start")
-            end = pw.get("end")
-            if start is not None and end is not None:
-                wins[name] = (int(start), int(end))
-        if wins:
-            data["windows"] = wins
-
-    timing = {}
-    mtr = row.get("macro_time_resolution")
-    mir = row.get("micro_time_resolution")
-    mib = row.get("micro_time_binning")
-    if mtr is not None:
-        timing["macro_time_resolution"] = mtr
-    if mir is not None:
-        timing["micro_time_resolution"] = mir
-    if mib is not None:
-        timing["micro_time_binning"] = mib
-    if not timing:
-        timing = json_loads(row.get("timing_resolution_json"))
-    if timing:
-        data["tttr_reading"] = timing
-    burst_defaults = json_loads(row.get("burst_defaults_json"))
-    if burst_defaults:
-        data["burst_selection"] = burst_defaults
-    owner = row.get("created_by_user_id")
-    if owner is not None:
-        data["_owner"] = owner
-    if row.get("is_public") is not None:
-        data["_is_public"] = bool(row["is_public"])
-    return data
-
-
-def _detector_row_to_data(row: dict, db: MFDatabase) -> dict:
-    """Callback for ``load_mmfdb_setups`` to extract detector data with child
-    table priority.
-    """
-    full = None
-    dcs, pws = None, None
-    if row.get("setup_id"):
-        full = db.get_setup(row["setup_id"])
-        if full:
-            dcs = full.get("detector_channels")
-            pws = full.get("pie_windows")
-    return _setup_row_data(row, detector_channels=dcs, pie_windows=pws)
-
-
-def _save_setup_row(
-    db: MFDatabase,
-    setup_name: str,
-    data: dict,
-    user_id: str | None = None,
-    is_public: bool | int | None = None,
-) -> None:
-    _save_row(
-        db,
-        DETECTOR_CONFIG,
-        setup_name,
-        data,
-        user_id=user_id,
-        is_public=is_public,
-        detectors=data.get("detectors") or {},
-        windows=data.get("windows") or {},
-        timing_resolution=data.get("tttr_reading") or {},
-        burst_defaults=data.get("burst_selection") or {},
-    )
-
-
-def _detector_save_row_fn(
-    db: MFDatabase,
-    setup_name: str,
-    data: dict,
-    user_id: str | None = None,
-    is_public: bool | int | None = None,
-) -> None:
-    _save_setup_row(db, setup_name, data, user_id=user_id, is_public=is_public)
-
-
-def _load_mmfdb_detector_setups(db: MFDatabase, user_id: str | None = None) -> dict:
-    from chisurf.core.fio.setup_store import load_mmfdb_setups
-
-    return load_mmfdb_setups(db, DETECTOR_CONFIG, user_id, row_to_data=_detector_row_to_data)
-
-
-def _set_last_used(db: MFDatabase, setup_name: str) -> None:
-    from chisurf.core.fio.setup_store import set_last_used
-
-    set_last_used(db, DETECTOR_CONFIG, setup_name)
-
-
-def _migrate_json_setups_to_mmfdb(
-    db: MFDatabase,
-    path: pathlib.Path,
-    user_id: str | None = None,
-) -> bool:
-    from chisurf.core.fio.setup_store import migrate_json_to_mmfdb
-
-    return migrate_json_to_mmfdb(
-        db, DETECTOR_CONFIG, path, user_id=user_id, save_row_fn=_detector_save_row_fn
-    )
-
-
-def _load_json_detector_setups(path: pathlib.Path, file_path=None) -> dict:
-    from chisurf.core.fio.setup_store import load_json_setups
-
-    return load_json_setups(path, file_path=file_path)
+from chisurf.core.data_io.detector_setups import load_detector_setups as _load
 
 
 def load_detector_setups(file_path=None, db_path=None, skip_migration=False, user_id=None):
+    """Load setups from :mod:`chisurf.core.data_io.detector_setups`, offering the wizard when none exist.
+
+    The data comes from the one shared store; this GUI variant only adds the
+    "setups file not found" prompt for an interactive session with no MMFDB and
+    no canonical JSON file.
+    """
     path = pathlib.Path(file_path or DETECTOR_SETUPS_FILE)
-    if _use_mmfdb(file_path):
-        db = _db(db_path) if db_path is not None else _db()
-        if db is not None:
-            try:
-                uid = user_id if user_id is not None else _resolve_active_user_id()
-                if not skip_migration:
-                    imported = _migrate_json_setups_to_mmfdb(db, path, user_id=uid)
-                    # Only remove legacy file when data was actually imported
-                    if imported:
-                        try:
-                            if path.exists():
-                                path.unlink()
-                        except Exception:
-                            pass
-                return _load_mmfdb_detector_setups(db, user_id=uid)
-            finally:
-                db.close()
+    if _use_mmfdb(file_path) and _db_available(db_path):
+        return _load(file_path, db_path=db_path, skip_migration=skip_migration, user_id=user_id)
 
     try:
         import chisurf.core.settings
@@ -320,13 +107,13 @@ def load_detector_setups(file_path=None, db_path=None, skip_migration=False, use
                     wiz = DetectorWizard()
                     wiz.exec_()
                     if path.exists():
-                        return _load_json_detector_setups(path, file_path=file_path)
+                        return _load(file_path)
             except Exception:
                 pass
 
         return {"setups": {}}
 
-    return _load_json_detector_setups(path, file_path=file_path)
+    return _load(file_path)
 
 
 def _module_warning_shown(key: str) -> bool:
@@ -339,23 +126,3 @@ def _mark_warning_shown(key: str) -> None:
     from chisurf.gui.widgets.warning_once import mark_warning_shown
 
     mark_warning_shown(key)
-
-
-def save_detector_setups(
-    setups_data, file_path=None, replace=False, is_public=None, db_path=None, user_id=None
-):
-    get_db_fn = (lambda: _db(db_path)) if db_path is not None else _db
-    resolve_user_fn = (lambda: user_id) if user_id is not None else _resolve_active_user_id
-    return save_setups(
-        setups_data,
-        DETECTOR_CONFIG,
-        file_path=file_path,
-        replace=replace,
-        is_public=is_public,
-        save_row_fn=_detector_save_row_fn,
-        load_scoped_fn=lambda db, cfg, uid: load_mmfdb_setups(
-            db, cfg, uid, row_to_data=_detector_row_to_data
-        ),
-        get_db_fn=get_db_fn,
-        resolve_user_fn=resolve_user_fn,
-    )

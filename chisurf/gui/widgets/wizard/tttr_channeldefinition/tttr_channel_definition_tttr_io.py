@@ -17,7 +17,8 @@ from chisurf.core.fio import write_vv_vh
 from chisurf.core.fio.fluorescence.bhfiles import BeckerHicklSetReader
 from chisurf.gui.widgets.staged_loading import load_with_progress
 
-from .tttr_detector_setups import load_detector_setups, save_detector_setups
+from .tttr_detector_setups import load_detector_setups
+from chisurf.core.data_io.detector_setups import save_detector_setups
 
 
 def _create_gfactor_host(parent=None, on_close=None):

@@ -1,3 +1,175 @@
+---
+type: Reference
+title: Known issues
+description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
+---
+
+## tttrlib dev build: `build/bin/tttr` links a libhdf5 the environment no longer has (found 2026-10-10)
+
+status: open
+
+`test/fio/test_container_cross_writer.py` prefers `~/dev/tttrlib/build/bin/tttr` when it exists; that binary aborts with
+`dyld: Library not loaded: @rpath/libhdf5.200.dylib` (exit -6), so the four cross-writer tests fail on this machine while
+they pass where the binary is absent (the CLI from the environment is used). Cause: a stale local build, not source.
+Owner: tttrlib (rebuild the build tree against the current environment's HDF5; the memory recipe "tttrlib editable
+rebuild" applies). The test should also not prefer an unlinkable binary silently.
+
+## ALEX hub: Accurate FRET opens no table from the container run (found 2026-10-10)
+
+status: open
+
+**Measured** with `chisurf/plugins/burst/alex_suite/tests/test_emtk_native_hub.py::test_next_alone_takes_the_demo_from_files_to_an_es_histogram`
+(identical on HEAD 4a4278771 and with the single detector-setup store): Next walks Setup → Files → Alternation → Burst
+search (>300 bursts, `ctx.burst_folder` is `alex_demo_alex.pto`) → Background (diagnostics computed) → Accurate FRET, whose
+`model.filename` stays `""` instead of naming the `sliding_window` run. The log shows `MMFDB RPC failed:
+mmfdb.objects.put: Authentication required` during the walk. Owner: W4 (`.pto`-first burst workflow, run picker) — the
+Accurate FRET step must read the selected run from the container. Not worked around.
+
+## Detector setups have two stores, and a picker sees only one of them
+
+status: resolved 2026-10-10 — `chisurf.core.data_io.detector_setups` is the one store (MMFDB when available, else the canonical JSON, for both save and load); the RPC service, every picker and the wizard read it, a rejected write is a service error, and the ALEX double-write is gone. Guard: `test/fio/test_detector_setup_single_store.py`.
+
+**Found 2026-09-08.** A detector setup can be written two ways and read two ways,
+and the pairs do not line up:
+
+| | writes to | reads from |
+|---|---|---|
+| `detector_setups.*` RPC (`DetectorSetupClient`) | the settings **JSON** (`chisurf.core.data_io.detector_setups`) | the same JSON |
+| every `SetupSelector` picker in the GUI | — | `chisurf.gui.widgets.wizard.tttr_channeldefinition.load_detector_setups` |
+
+The wizard loader reads **MMFDB** when MMFDB is in use, and in that branch it
+never falls back to the JSON — the pickers pass `skip_migration=True`, so the
+JSON is not imported either. A setup saved through the RPC store is therefore
+invisible in every picker, permanently and silently.
+
+Found because the ALEX Suite's alternation step publishes a setup through the
+RPC store and then shows it in a `SetupSelector` beside it: the combo listed
+nothing while the workflow, the burst search and Accurate FRET all had the setup
+and were using it.
+
+Worked around locally, not fixed: that one picker reads a **merge** of both
+stores (`_merged_setups` in
+`chisurf/plugins/burst/alex_suite/gui/alternation.py`), and the step writes to
+both. Every other picker in the application still reads MMFDB only.
+
+The real fix is a ruling on which store is authoritative, and it is not a
+drive-by: `save_detector_setups` swallows an MMFDB failure (seen here as
+`FOREIGN KEY constraint failed` in a scratch database with no user row) and
+reports success, so a store that is silently rejecting writes looks like one
+that is empty.
+
+## A simulated molecule's photon yield depends on its *index*, not its physics
+
+status: resolved 2026-10-10 — re-measured on tttrlib 0.27.0: six identical molecules via `simulate_clsm_molecules` yield 411/385/344/353/352/348 photons (5×5 sums), Poisson scatter with no index dependence.
+
+**Found 2026-08-10** while building the mixture test set for segmentation and
+region-wise MLE ([PRD-92](/prds/prd-92.md)).
+
+In tttrlib's `SimEngine`, the photons a fluorophore emits are a fixed function
+of the order it was added to the system. Measured with identical species,
+identical brightness and identical lifetimes:
+
+| index | 0 | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|---|
+| photons | 659 | 32,336 | 169,099 | 97,421 | 473 | 2,947 |
+
+The numbers do not move when the molecules are placed anywhere else on the
+grid, and adding more molecules extends the sequence without changing the
+earlier entries — `n=2` gives `[659, 32336]`, `n=6` gives the whole row above.
+A molecule measured **alone** yields 20–45 photons wherever it is put, so the
+index is doing all the work.
+
+Ruled out by measurement rather than by reasoning: the lifetime (a uniform-τ
+field gives the same row as a mixed one), the species layout (one shared
+species with four fluorophores equals one species each), `independent_molecules`
+(`True`/`False`/default identical), and the excitation PSF (widening it 2.3×
+scales every entry and leaves the ratios alone). The photons land *at* the
+molecule, so this is not misattribution to the wrong pixel.
+
+**Compensated, visibly, in one place.** `test/data/mixture/make_mixture.py`
+scales each blob's brightness by the measured per-index yield, which is linear
+and exact (60294 / 59958 / 64110 / 74950 photons for a target of 60000). It is
+written in the fixture generator rather than inside the simulator so that
+deleting it is a one-line change once the engine is fixed — and so that nobody
+reads the even test field as evidence the simulator produces one.
+
+Fix belongs in tttrlib's `SimEngine`, in whatever indexes per-molecule
+excitation or RNG streams.
+
+## A simulated photon stream cannot be persisted, and the HDF5 path aborts the process
+
+status: resolved 2026-10-10 — re-measured on tttrlib 0.27.0: an in-memory stream (record type -1) writes PTO, SPC-130, PTU and HDF5 with `True` and non-empty files; HDF5 no longer aborts.
+
+**Found 2026-08-10** while capturing a pre-split baseline for
+[PRD-92](/prds/prd-92.md), which wanted the simulated CLSM stream stored beside
+the labels it produced so an equivalence test could re-derive the whole chain
+rather than its two ends.
+
+**`TTTR.write` itself is fine**, including the `"PTO"` container: a stream read
+from a real file (`m000.spc`, 174,438 photons) writes a 1.2 MB `.pto` and a
+1.2 MB `.spc`, both returning `True`. The limitation is specific to a stream
+**built in memory** — what `simulate_clsm_molecules` returns. It carries
+`get_tttr_record_type() == -1`, `TTTRHeader.ensure_minimal_tags(header, 20, n)`
+does not give it one, and PTO header writing is not implemented in the installed
+build (`Error in TTTR::write, writing of headers not implemented`). The write
+then returns `False` and leaves a **0-byte file**, with nothing raised — so a
+caller that does not check the return value gets an empty container and
+discovers it later.
+
+**The HDF5 path is worse and is a separate defect.** `tttr.write(path)` with the
+HDF5 default `abort()`s the interpreter — the installed tttrlib was compiled
+against HDF5 headers 1.14.6 and links a 2.1.1 library, and the library's version
+check kills the process rather than raising. A dependency mismatch should not be
+able to end a user's session.
+
+Neither is worked around in ChiSurf, and neither should be: **ChiSurf persists
+to `.mmfdb.pto`**, and the container writers (`Measurement.create`,
+`write_imaging_table`, `write_image`, `write_regions`) all embed files that
+already exist on disk, so nothing in the shipped tree hits either path. It is
+recorded because the *tests* want it — a simulated measurement that cannot be
+stored is a fixture that has to be a pile of derived arrays instead — and
+because the next person to try will spend the same half hour on `record type -1`.
+
+Fix belongs in tttrlib: a record type for in-memory streams (or a PTO header
+writer), and an HDF5 version check that raises instead of aborting.
+
+## A simulated photon stream cannot be persisted, and the HDF5 path aborts the process
+
+status: resolved 2026-10-10 — re-measured on tttrlib 0.27.0: an in-memory stream (record type -1) writes PTO, SPC-130, PTU and HDF5 with `True` and non-empty files; HDF5 no longer aborts.
+
+**Found 2026-08-10** while capturing a pre-split baseline for
+[PRD-92](/prds/prd-92.md), which wanted the simulated CLSM stream stored beside
+the labels it produced so an equivalence test could re-derive the whole chain
+rather than its two ends.
+
+**`TTTR.write` itself is fine**, including the `"PTO"` container: a stream read
+from a real file (`m000.spc`, 174,438 photons) writes a 1.2 MB `.pto` and a
+1.2 MB `.spc`, both returning `True`. The limitation is specific to a stream
+**built in memory** — what `simulate_clsm_molecules` returns. It carries
+`get_tttr_record_type() == -1`, `TTTRHeader.ensure_minimal_tags(header, 20, n)`
+does not give it one, and PTO header writing is not implemented in the installed
+build (`Error in TTTR::write, writing of headers not implemented`). The write
+then returns `False` and leaves a **0-byte file**, with nothing raised — so a
+caller that does not check the return value gets an empty container and
+discovers it later.
+
+**The HDF5 path is worse and is a separate defect.** `tttr.write(path)` with the
+HDF5 default `abort()`s the interpreter — the installed tttrlib was compiled
+against HDF5 headers 1.14.6 and links a 2.1.1 library, and the library's version
+check kills the process rather than raising. A dependency mismatch should not be
+able to end a user's session.
+
+Neither is worked around in ChiSurf, and neither should be: **ChiSurf persists
+to `.mmfdb.pto`**, and the container writers (`Measurement.create`,
+`write_imaging_table`, `write_image`, `write_regions`) all embed files that
+already exist on disk, so nothing in the shipped tree hits either path. It is
+recorded because the *tests* want it — a simulated measurement that cannot be
+stored is a fixture that has to be a pile of derived arrays instead — and
+because the next person to try will spend the same half hour on `record type -1`.
+
+Fix belongs in tttrlib: a record type for in-memory streams (or a PTO header
+writer), and an HDF5 version check that raises instead of aborting.
+
 ## ALEX French batch label exceeds its pane (2026-10-09)
 
 status: queued
@@ -667,37 +839,6 @@ whoever owns the reader, not for a plugin. A large *table* is a different case:
 it compresses inside its own `dstore` encoding, column by column, so the
 directory still reads without decoding anything.
 
-## Detector setups have two stores, and a picker sees only one of them
-
-**Found 2026-09-08.** A detector setup can be written two ways and read two ways,
-and the pairs do not line up:
-
-| | writes to | reads from |
-|---|---|---|
-| `detector_setups.*` RPC (`DetectorSetupClient`) | the settings **JSON** (`chisurf.core.data_io.detector_setups`) | the same JSON |
-| every `SetupSelector` picker in the GUI | — | `chisurf.gui.widgets.wizard.tttr_channeldefinition.load_detector_setups` |
-
-The wizard loader reads **MMFDB** when MMFDB is in use, and in that branch it
-never falls back to the JSON — the pickers pass `skip_migration=True`, so the
-JSON is not imported either. A setup saved through the RPC store is therefore
-invisible in every picker, permanently and silently.
-
-Found because the ALEX Suite's alternation step publishes a setup through the
-RPC store and then shows it in a `SetupSelector` beside it: the combo listed
-nothing while the workflow, the burst search and Accurate FRET all had the setup
-and were using it.
-
-Worked around locally, not fixed: that one picker reads a **merge** of both
-stores (`_merged_setups` in
-`chisurf/plugins/burst/alex_suite/gui/alternation.py`), and the step writes to
-both. Every other picker in the application still reads MMFDB only.
-
-The real fix is a ruling on which store is authoritative, and it is not a
-drive-by: `save_detector_setups` swallows an MMFDB failure (seen here as
-`FOREIGN KEY constraint failed` in a scratch database with no user row) and
-reports success, so a store that is silently rejecting writes looks like one
-that is empty.
-
 ## A burst table's per-stream count *rates* are not proportional to its counts
 
 **Found 2026-09-08.** `E` and `S` are ratios of photon counts. The `.bur` schema
@@ -1050,77 +1191,6 @@ vanish, and ChiSurf's HMM stops working with an error that points at a rebuild
 rather than at the real cause. Check `python -c "import tttrlib;
 tttrlib.hmm_forward_log"` before believing any other diagnosis.
 
-## A simulated molecule's photon yield depends on its *index*, not its physics
-
-**Found 2026-08-10** while building the mixture test set for segmentation and
-region-wise MLE ([PRD-92](/prds/prd-92.md)).
-
-In tttrlib's `SimEngine`, the photons a fluorophore emits are a fixed function
-of the order it was added to the system. Measured with identical species,
-identical brightness and identical lifetimes:
-
-| index | 0 | 1 | 2 | 3 | 4 | 5 |
-|---|---|---|---|---|---|---|
-| photons | 659 | 32,336 | 169,099 | 97,421 | 473 | 2,947 |
-
-The numbers do not move when the molecules are placed anywhere else on the
-grid, and adding more molecules extends the sequence without changing the
-earlier entries — `n=2` gives `[659, 32336]`, `n=6` gives the whole row above.
-A molecule measured **alone** yields 20–45 photons wherever it is put, so the
-index is doing all the work.
-
-Ruled out by measurement rather than by reasoning: the lifetime (a uniform-τ
-field gives the same row as a mixed one), the species layout (one shared
-species with four fluorophores equals one species each), `independent_molecules`
-(`True`/`False`/default identical), and the excitation PSF (widening it 2.3×
-scales every entry and leaves the ratios alone). The photons land *at* the
-molecule, so this is not misattribution to the wrong pixel.
-
-**Compensated, visibly, in one place.** `test/data/mixture/make_mixture.py`
-scales each blob's brightness by the measured per-index yield, which is linear
-and exact (60294 / 59958 / 64110 / 74950 photons for a target of 60000). It is
-written in the fixture generator rather than inside the simulator so that
-deleting it is a one-line change once the engine is fixed — and so that nobody
-reads the even test field as evidence the simulator produces one.
-
-Fix belongs in tttrlib's `SimEngine`, in whatever indexes per-molecule
-excitation or RNG streams.
-
-## A simulated photon stream cannot be persisted, and the HDF5 path aborts the process
-
-**Found 2026-08-10** while capturing a pre-split baseline for
-[PRD-92](/prds/prd-92.md), which wanted the simulated CLSM stream stored beside
-the labels it produced so an equivalence test could re-derive the whole chain
-rather than its two ends.
-
-**`TTTR.write` itself is fine**, including the `"PTO"` container: a stream read
-from a real file (`m000.spc`, 174,438 photons) writes a 1.2 MB `.pto` and a
-1.2 MB `.spc`, both returning `True`. The limitation is specific to a stream
-**built in memory** — what `simulate_clsm_molecules` returns. It carries
-`get_tttr_record_type() == -1`, `TTTRHeader.ensure_minimal_tags(header, 20, n)`
-does not give it one, and PTO header writing is not implemented in the installed
-build (`Error in TTTR::write, writing of headers not implemented`). The write
-then returns `False` and leaves a **0-byte file**, with nothing raised — so a
-caller that does not check the return value gets an empty container and
-discovers it later.
-
-**The HDF5 path is worse and is a separate defect.** `tttr.write(path)` with the
-HDF5 default `abort()`s the interpreter — the installed tttrlib was compiled
-against HDF5 headers 1.14.6 and links a 2.1.1 library, and the library's version
-check kills the process rather than raising. A dependency mismatch should not be
-able to end a user's session.
-
-Neither is worked around in ChiSurf, and neither should be: **ChiSurf persists
-to `.mmfdb.pto`**, and the container writers (`Measurement.create`,
-`write_imaging_table`, `write_image`, `write_regions`) all embed files that
-already exist on disk, so nothing in the shipped tree hits either path. It is
-recorded because the *tests* want it — a simulated measurement that cannot be
-stored is a fixture that has to be a pile of derived arrays instead — and
-because the next person to try will spend the same half hour on `record type -1`.
-
-Fix belongs in tttrlib: a record type for in-memory streams (or a PTO header
-writer), and an HDF5 version check that raises instead of aborting.
-
 ## `test/gui/test_chiplot.py` segfaults in the shared working tree, and not from chiplot
 
 **Found 2026-08-10** while landing the WebGPU plot backend. `pytest
@@ -1234,41 +1304,6 @@ does. Almost none of that is real:
 So a red `test/gui` is not evidence that a change broke something. Until the
 contamination and the two crashes are fixed, verify a GUI change by running the
 suites that cover it, individually, and say which ones.
-
-## A simulated photon stream cannot be persisted, and the HDF5 path aborts the process
-
-**Found 2026-08-10** while capturing a pre-split baseline for
-[PRD-92](/prds/prd-92.md), which wanted the simulated CLSM stream stored beside
-the labels it produced so an equivalence test could re-derive the whole chain
-rather than its two ends.
-
-**`TTTR.write` itself is fine**, including the `"PTO"` container: a stream read
-from a real file (`m000.spc`, 174,438 photons) writes a 1.2 MB `.pto` and a
-1.2 MB `.spc`, both returning `True`. The limitation is specific to a stream
-**built in memory** — what `simulate_clsm_molecules` returns. It carries
-`get_tttr_record_type() == -1`, `TTTRHeader.ensure_minimal_tags(header, 20, n)`
-does not give it one, and PTO header writing is not implemented in the installed
-build (`Error in TTTR::write, writing of headers not implemented`). The write
-then returns `False` and leaves a **0-byte file**, with nothing raised — so a
-caller that does not check the return value gets an empty container and
-discovers it later.
-
-**The HDF5 path is worse and is a separate defect.** `tttr.write(path)` with the
-HDF5 default `abort()`s the interpreter — the installed tttrlib was compiled
-against HDF5 headers 1.14.6 and links a 2.1.1 library, and the library's version
-check kills the process rather than raising. A dependency mismatch should not be
-able to end a user's session.
-
-Neither is worked around in ChiSurf, and neither should be: **ChiSurf persists
-to `.mmfdb.pto`**, and the container writers (`Measurement.create`,
-`write_imaging_table`, `write_image`, `write_regions`) all embed files that
-already exist on disk, so nothing in the shipped tree hits either path. It is
-recorded because the *tests* want it — a simulated measurement that cannot be
-stored is a fixture that has to be a pile of derived arrays instead — and
-because the next person to try will spend the same half hour on `record type -1`.
-
-Fix belongs in tttrlib: a record type for in-memory streams (or a PTO header
-writer), and an HDF5 version check that raises instead of aborting.
 
 ## `test/gui/test_chiplot.py` segfaults in the shared working tree, and not from chiplot
 

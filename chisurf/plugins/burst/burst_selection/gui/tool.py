@@ -40,10 +40,8 @@ from chisurf.gui.widgets.tools import PathDropListWidget as DropListWidget
 from chisurf.gui.widgets.wizard.tttr_channeldefinition import (
     DetectorWizardPage,
 )
-from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
-    load_detector_setups,
-    setup_id_for_name,
-)
+from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import load_detector_setups
+from chisurf.core.data_io.detector_setups import setup_id_for_name
 from chisurf.gui.widgets.wizard.tttr_photonfilter.tttr_photon_filter import WizardTTTRPhotonFilter
 from chisurf.server.rpc_logging import RpcLogWriter
 

@@ -112,7 +112,7 @@ def test_next_alone_takes_the_demo_from_files_to_an_es_histogram(hub, settings):
     press_next(drv)  # 1. Setup -> 2. Files (nothing to run)
     assert hub.selected == "data"
     data = hub.children["data"]
-    drv.click(hub._target_rect("demo"))  # the files step's own Load demo data button
+    drv.click(hub._target_rect("load_example"))  # the files step's own Load demo data button
     drv.draw(2)
     demo = [Path(p) for p in hub.context.raw_files]
     assert [p.name for p in demo] == ["alex_demo.spc"]
@@ -231,7 +231,7 @@ def test_a_long_status_does_not_cover_back_and_next(hub):
 def test_guide_steps_point_at_real_controls(hub):
     steps = json.loads((GUI / "guide.json").read_text(encoding="utf-8"))["steps"]
     drv = Driver(hub, (1200, 800))
-    where = {"demo": "data", "phase_plot": "alternation"}
+    where = {"load_example": "data", "phase_plot": "alternation"}
     for step in steps:
         key = hub.tour._target_key(step.get("target"))
         if not key:

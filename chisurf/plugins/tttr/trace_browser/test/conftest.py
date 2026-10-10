@@ -24,7 +24,7 @@ _SETUPS_FILE_CONSTANTS = (
 #: (module, attribute) pairs holding a SetupTypeConfig whose ``canonical_file`` is that path.
 _SETUP_CONFIGS = (
     ("chisurf.core.setup_channel_definition", "CONFIG"),
-    ("chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups", "DETECTOR_CONFIG"),
+    ("chisurf.core.data_io.detector_setups", "DETECTOR_CONFIG"),
 )
 
 

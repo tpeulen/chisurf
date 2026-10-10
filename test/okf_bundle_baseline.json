@@ -1503,15 +1503,6 @@
     },
     {
       "rule": "FM",
-      "path": "references/known-issues.md",
-      "line": 1,
-      "message": "missing non-empty fields: type, title, description",
-      "source": "## ALEX French batch label exceeds its pane (2026-10-09)",
-      "owner": "W0b",
-      "acceptance": "Remove this finding and its baseline record; final baseline must be empty."
-    },
-    {
-      "rule": "FM",
       "path": "references/photophysics-simulation-theory.md",
       "line": 1,
       "message": "missing non-empty fields: type, title, description",
@@ -2863,15 +2854,6 @@
     {
       "rule": "KI",
       "path": "references/known-issues.md",
-      "line": 517,
-      "message": "first nonblank line must be status: open|resolved DATE|withdrawn DATE",
-      "source": "## Detector setups have two stores, and a picker sees only one of them",
-      "owner": "W0b",
-      "acceptance": "Remove this finding and its baseline record; final baseline must be empty."
-    },
-    {
-      "rule": "KI",
-      "path": "references/known-issues.md",
       "line": 548,
       "message": "first nonblank line must be status: open|resolved DATE|withdrawn DATE",
       "source": "## A burst table's per-stream count *rates* are not proportional to its counts",
@@ -2953,24 +2935,6 @@
     {
       "rule": "KI",
       "path": "references/known-issues.md",
-      "line": 900,
-      "message": "first nonblank line must be status: open|resolved DATE|withdrawn DATE",
-      "source": "## A simulated molecule's photon yield depends on its *index*, not its physics",
-      "owner": "W0b",
-      "acceptance": "Remove this finding and its baseline record; final baseline must be empty."
-    },
-    {
-      "rule": "KI",
-      "path": "references/known-issues.md",
-      "line": 936,
-      "message": "first nonblank line must be status: open|resolved DATE|withdrawn DATE",
-      "source": "## A simulated photon stream cannot be persisted, and the HDF5 path aborts the process",
-      "owner": "W0b",
-      "acceptance": "Remove this finding and its baseline record; final baseline must be empty."
-    },
-    {
-      "rule": "KI",
-      "path": "references/known-issues.md",
       "line": 971,
       "message": "first nonblank line must be status: open|resolved DATE|withdrawn DATE",
       "source": "## `test/gui/test_chiplot.py` segfaults in the shared working tree, and not from chiplot",
@@ -3018,15 +2982,6 @@
       "path": "references/known-issues.md",
       "line": 1085,
       "message": "duplicate title: A simulated photon stream cannot be persisted, and the HDF5 path aborts the process",
-      "source": "## A simulated photon stream cannot be persisted, and the HDF5 path aborts the process",
-      "owner": "W0b",
-      "acceptance": "Remove this finding and its baseline record; final baseline must be empty."
-    },
-    {
-      "rule": "KI",
-      "path": "references/known-issues.md",
-      "line": 1085,
-      "message": "first nonblank line must be status: open|resolved DATE|withdrawn DATE",
       "source": "## A simulated photon stream cannot be persisted, and the HDF5 path aborts the process",
       "owner": "W0b",
       "acceptance": "Remove this finding and its baseline record; final baseline must be empty."

@@ -666,7 +666,7 @@ def test_qt_widget_and_emtk_app_agree_on_the_rows(
     widget = TraceBrowser()
     qtbot.addWidget(widget)
     # the Qt page starts on its built-in SPC-130 detectors; take a file type of Auto, as the app has
-    widget.detector_page._load_data(json.loads(json.dumps(OVERLAP)))
+    widget.detector_page.set_settings(json.loads(json.dumps(OVERLAP)))
     widget._on_continue()
     # the trace of the selected row is card T3's business: do not compute it in this comparison
     monkeypatch.setattr(widget, "_plot_file", lambda *a, **k: None)

@@ -47,7 +47,15 @@ the non-replayable action dispatcher, refuses before importing the target when a
 required main window is absent (`available: False`), and turns a raised handler
 into a reported failure. Menu, ribbon and registry entries all reach it, and none
 falls back to executing `__init__.py`. Menu Switch is the shipped example: it
-toggles the owning window between menu bar and ribbon and saves the preference. `PluginRegistry.register_gui()` creates menu actions lazily:
+toggles the owning window between menu bar and ribbon and saves the preference.
+
+Detector setups live in one store, `chisurf.core.data_io.detector_setups`:
+MMFDB when it opens, otherwise the canonical `detector_setups.json`, for save and
+load alike. The `detector_setups.*` RPC service, every setup picker and the
+wizard read and write it, so a setup published by one step is listed by the
+picker beside it; `save_detector_setups` returns `False` (and the RPC an error)
+when the store refuses a write. The wizard's `load_detector_setups` only adds
+the interactive "no setups file" prompt on top. `PluginRegistry.register_gui()` creates menu actions lazily:
 the current explicit Qt/emtk mode and preview gate are applied when an action is
 triggered, without importing an unavailable alternative during menu construction.
 The registry retains the injected loader and each opened window until Qt destroys

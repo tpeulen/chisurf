@@ -50,9 +50,7 @@ def _channel_definition(detectors_file: str | None, setup_name: str | None):
         payload = json.loads(pathlib.Path(detectors_file).read_text(encoding="utf-8"))
         return payload.get("detectors") or payload, payload.get("windows") or {}
     if setup_name:
-        from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
-            load_detector_setups,
-        )
+        from chisurf.core.data_io.detector_setups import load_detector_setups
 
         setup = (load_detector_setups().get("setups") or {}).get(setup_name)
         if not setup:

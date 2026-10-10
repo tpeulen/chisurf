@@ -409,7 +409,7 @@ def test_the_qt_widget_and_the_emtk_app_export_the_same_csv(
 
     widget = widget_module.TraceBrowser()
     qtbot.addWidget(widget)
-    widget.detector_page._load_data(json.loads(json.dumps(ALEX)))
+    widget.detector_page.set_settings(json.loads(json.dumps(ALEX)))
     widget._on_continue()
     monkeypatch.setattr(widget, "_plot_file", lambda *a, **k: None)
     monkeypatch.setattr(widget, "_precompute_all_traces", lambda *a, **k: None)
