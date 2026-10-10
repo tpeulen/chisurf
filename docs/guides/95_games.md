@@ -33,8 +33,12 @@ starts with the game defaults; an existing saved round is restored when availabl
 
 ### Help, Restart and Guide
 
-Each game has a shared **Help / Restart / Guide** row beside its existing Sound
-control. The game canvas, scores and any pause behavior remain below it.
+Each game has a shared **❓ Help / 🔁 Restart / 📖 Guide** row beside the shared
+**Sound** toggle. All five games draw these controls identically, with the same
+icons, captions and tooltips as every other ChiSurf tool. Sound
+stays pressed with 🔊 while on, shows 🔇 while off, and is greyed where the
+window has no audio output. The game canvas, scores and any pause behavior
+remain below the row.
 
 1. Select a game. It supplies its own playable round; no measurement file or
    generated-data import is needed.
@@ -56,20 +60,24 @@ for it does not also reveal a cell, submit a guess or move a paddle underneath.
 :name: fig-games-native-header
 :width: 560px
 
-Number Quest with the shared Help, Restart and Guide controls. Sound remains
-unavailable when no audio output has been supplied; the existing lifetime dial,
-hint and footer controls stay in the canvas.
+Number Quest with the shared Sound toggle and the Help, Restart and Guide
+controls, in the same dark theme as the other games. Sound is greyed because no
+audio output has been supplied; the lifetime dial, hint and footer controls stay
+in the canvas.
 ```
 
 ## 2. Keys and pointer
 
 | Game | Keys | Pointer |
 |---|---|---|
-| Number Quest | Left/Right dial, Q/E steps of ten, Enter/Space submit, R new round | click the decay plot to dial a lifetime; click the left half of the second caption to submit, the right half for a new round |
-| Minesweeper | Arrows move (held keys repeat), Enter/Space scan, F flag, Q/E board size, R reset | left click scans, right click flags, click the preset name to cycle the board size |
-| Tetris | Left/Right move, Down soft drop, Up rotate, Space drop, P pause, R reset | none |
-| Pong | Up/Down paddle, W/S second player, P pause, M opponent mode, N mute, R reset | drag in either half of the court to move that paddle |
-| Breakout | Left/Right paddle (hold), Space or Enter launch, P pause, M mute, R reset | drag in the field to move the paddle; a stuck ball goes with it |
+| Number Quest | Arrows dial (hold for steps of one; Left/Down lower, Right/Up raise), Q/E steps of ten, Enter/Space submit, M sound, R/Esc new round | click the decay plot to dial an estimate between 0.1 and 10.0 ns; the left half of the lower footer submits, the right half starts a new round |
+| Minesweeper | Arrows move (held keys repeat), Enter/Space reveal, F flag, Q/E previous or next board preset, M sound, R/Esc reset | left click reveals, right click toggles a flag; click the preset name to cycle the difficulty |
+| Tetris | Left/Right move, Down soft drop, Up or Enter rotate, Space drop, P pause, M mute, R/Esc reset | none |
+| Pong | Up/Down or Left/Right paddle, W/S second player (two-player mode), P pause, M opponent mode, N mute, R/Esc reset, Enter/Space next round after a winner | drag in either half of the court to move that paddle |
+| Breakout | Left/Right or Down/Up paddle (hold), Space or Enter launch, P pause, M mute, R/Esc reset | drag in the field to move the paddle; a resting ball moves with it |
+
+Esc is an alias for R in every game: both discard the current round and start a fresh one. Restart in the header uses
+the same reset. Minesweeper has no pause control, since it is turn-based.
 
 A key that is released stops its action; losing the window focus releases every held key, so a paddle never keeps
 running after you switch windows. Pending second-player input is cleared too.
