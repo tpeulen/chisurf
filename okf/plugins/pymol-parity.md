@@ -2636,7 +2636,7 @@ speedup that large is rarely a property of the geometry, it is usually the
 complexity class.
 
 The tree is a binned-SAH BVH in
-[`render/bvh.py`](/chisurf/plugins/chimol/chimol/renderer/bvh.py); spheres and
+`renderer/bvh.py` (chimol repository); spheres and
 triangles share one index space so a mixed scene is one tree and one descent.
 The guardrails are in `test/test_bvh.py`, and the one that matters is the last:
 every correctness test there passes just as well against an exhaustive search,

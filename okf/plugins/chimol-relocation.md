@@ -441,7 +441,7 @@ it stay green.
 
 ## See also
 
-* [`HANDOVER_CHIMOL.md`](../../HANDOVER_CHIMOL.md) §3 — the refactor plan whose
+* `HANDOVER_CHIMOL.md` (retired) §3 — the refactor plan whose
   §3.4 (delete the Qt `app/` panels) is most of step 2 above.
 * [PRD-101](../prds/prd-101.md) — one UI drawn in the viewport; the reason the
   `app/` panels are deleted rather than ported.

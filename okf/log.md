@@ -2,6 +2,9 @@
 
 ## 2026-10-10
 
+- W0b closed: the OKF bundle lints clean (2332 findings at the start of the day → 0) and
+  `test/okf_bundle_baseline.json` is empty; the board was cleaned in tttrlib.
+
 - ALEX creator parity audit: range table and region auto-detect present (new click tests);
   period auto-detect had been dropped and is restored as Detect period (known-answer tests on a
   5000-tick planted stream and the suite demo); wrapped regions list once in the legend.
@@ -15362,7 +15365,7 @@ front, not this).
   pyqtgraph importer**; the fix was to use `Plot.line(x, y, pen=…, width=…,
   style=…, name=…)`, not to add the file to the allow-list. Three things landed
   so the trap cannot recur: the rule is written into
-  [`CLAUDE.md`](../CLAUDE.md) (new code never imports pyqtgraph; the allow-list
+  `CLAUDE.md` (new code never imports pyqtgraph; the allow-list
   is a shrinking record, not a place to add yourself; **if chiplot cannot do it,
   grow chiplot**); `_passthrough._RENAMED` maps the pyqtgraph names chiplot
   *does* cover to their chiplot spelling, so those warnings now name the

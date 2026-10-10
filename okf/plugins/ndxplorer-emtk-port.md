@@ -343,7 +343,7 @@ Open front:
 State: ChiSurf opens only the emtk app. `build_ndxplorer_window` (plugin
 `window.py`) hosts `NdxApp` in a `ChisurfDockTool` through
 `emtk.qt_host.ControlHost` (QPainter host; why not the wgpu host:
-[ndxplorer](plugins/ndxplorer.md) "One window"). Every route uses it: ribbon
+[ndxplorer](ndxplorer.md) "One window"). Every route uses it: ribbon
 and menu (manifest `entrypoints.gui`), `__init__.py`, trace browser, MMFDB
 admin, imaging, H2MM, ALEX Suite E-S, `mmfdb_launcher` (burst selection,
 MMFDB). The host sets `app.chisurf_rpc` (in-process client) and

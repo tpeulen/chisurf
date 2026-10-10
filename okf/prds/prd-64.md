@@ -275,7 +275,7 @@ not a direct import). New code must not use `.native`.
 ## The rule (repo-wide)
 
 **Plot through chiplot, never pyqtgraph.** This is a standing rule in
-[`CLAUDE.md`](../../CLAUDE.md), not merely the direction of a migration:
+`CLAUDE.md`, not merely the direction of a migration:
 
 * new code must not `import pyqtgraph`; the allow-list is a **shrinking** record
   of files not yet ported, never a place to add a new one;

@@ -314,7 +314,7 @@ the envelope sits half a radius inside every atom.
 **It is not finished** — no `frag_depth`, so it draws over other geometry rather
 than intersecting it; two guard tests are pending; no tests of its own; the
 browser has not run it. The full state, the traps and the order to pick it up in
-are in [`HANDOVER_CHISURF_SURFACE.md`](/HANDOVER_CHISURF_SURFACE.md) at the
+are in `HANDOVER_CHISURF_SURFACE.md` (retired) at the
 repository root.
 
 ## Next, in this order
@@ -1278,7 +1278,7 @@ Next, in order:
 
 1. ✅ **Done — GL baselines captured (2026-08-10).** 23 scenes, 46 PNGs, in
    `chisurf/plugins/chimol/test/renders/gl_baseline/`, by
-   [`test/capture_gl_baseline.py`](chisurf/plugins/chimol/test/capture_gl_baseline.py).
+   [`test/capture_gl_baseline.py`](../../chisurf/plugins/chimol/test/capture_gl_baseline.py).
    Each scene records the **18-float camera** in `manifest.json`, so the WebGPU
    half replays `set_view` and produces a directly comparable frame; each also
    records its full command sequence including a `RESET` preamble, so scenes are
@@ -1380,7 +1380,7 @@ Next, in order:
    commands without `set_error_callback`, so every refusal was silent and the
    symptom surfaced as a rendering difference. `capture_gl_baseline.py` hooks both
    callbacks and collects them into the manifest; any harness driving `Cmd` must
-   do the same. See [[always-produce-pngs]] — the numbers said "mirrored camera"
+   do the same. See the always-produce-PNGs rule — the numbers said "mirrored camera"
    and "reversed ordering", and both were wrong; the four-panel image said
    "different palette" immediately.
 

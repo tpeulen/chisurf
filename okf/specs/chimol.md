@@ -278,7 +278,7 @@ it intact.
 **Ruled 2026-08-15: new ChiSurf code MUST NOT use `chisurf.Structure`
 (`chisurf.core.structure.structure.Structure`).** Structure data lives in
 chimol; ChiSurf imports and derives from chimol, never the other way round
-(the relocation invariant, [chimol-relocation](chimol-relocation.md)). So a
+(the relocation invariant, [chimol-relocation](../plugins/chimol-relocation.md)). So a
 place that needs a structure object reaches for **chimol's** atoms/payload
 path (`chimol.io.structure.load_structure_payload` →
 `MolView.apply_payload`), and ChiSurf code that already carries structure

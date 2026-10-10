@@ -37,7 +37,7 @@ monochrome masks — it comes out **blank**, silently. Everything else that look
 close (`◉ ◎ ⊙ ⦿`) is a circle: a marker, not an eye. Verified by rasterising
 each candidate and counting ink, which is the check to repeat before reaching
 for a character. So the pictogram is *drawn*, from `fill_rect` runs, in
-[`emtk/icons.py`](../../chisurf/plugins/chimol/chimol/emtk/icons.py)
+`emtk/icons.py` (removed)
 — written as a picture in the source, scaled to **whole** pixels (a fractional
 scale turns a one-pixel outline into a grey smear that reads as blurred rather
 than small), and centred in one character cell. The density panel's eye shares

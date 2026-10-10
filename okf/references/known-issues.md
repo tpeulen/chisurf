@@ -177,7 +177,7 @@ writer), and an HDF5 version check that raises instead of aborting.
 
 ## ALEX French batch label exceeds its pane (2026-10-09)
 
-status: queued
+status: open
 
 Actual en/de/fr radio-help tests found an existing French Merge label rectangle
 (327,260,185,20) ending at x512 beyond the control pane x400(default)/384(narrow).
@@ -231,7 +231,7 @@ records the actual215/216-photon discrepancy and unchanged kernel normalization.
 
 ## Workflow and batch OS IPC verification — resolved (2026-10-09)
 
-status: resolved
+status: resolved 2026-10-09
 
 With unrestricted runtime permissions, the actual BurstWorkflow.demo loopback
 service and Burst MLE SharedMemory workers execute. The original targeted group
@@ -270,7 +270,7 @@ widen Any or suppress errors. See [current job](../validation/release-readiness-
 
 ## TTTR calibration report identification — resolved (2026-10-09)
 
-status: resolved
+status: resolved 2026-10-09
 
 Owning TTTRlib formatter3023f892f uses explicit estimated.gamma: identified
 estimate, unidentified retained value, or unknown legacy identification. It no
