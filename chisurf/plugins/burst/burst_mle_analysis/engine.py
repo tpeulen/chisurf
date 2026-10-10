@@ -1,9 +1,9 @@
 """The Qt-free engine of the burst-MLE lifetime analysis (cards ML0 and ML1).
 
-What the wizard did with its widgets is here as functions of explicit inputs and a session object that holds the
-state those widgets held (detectors, burst files, the micro-time window, the IRF / background patterns, the fit
-settings). The wizard delegates its pure steps to the module functions below, so both front ends compute the same
-numbers; ``tests/test_mle_engine.py`` compares the session with the wizard on the in-repository BH sample.
+What the (retired) Qt wizard did with its widgets is here as functions of explicit inputs and a session object that
+holds the state those widgets held (detectors, burst files, the micro-time window, the IRF / background patterns, the
+fit settings). ``tests/test_mle_engine.py`` compares the session with the numbers the wizard gave on the
+in-repository BH sample (``tests/qt_reference.json``).
 
 No Qt and no emtk are imported here.
 """

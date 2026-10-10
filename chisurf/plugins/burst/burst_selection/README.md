@@ -39,7 +39,7 @@ Integration surfaces:
   - `burst_selection.diagnostics.load`
   - `burst_selection.contract.describe`
 
-The GUI is an adapter over `BurstSelectionClient`; analysis behavior belongs in
+The GUI (the emtk app `gui/native.py` over the Qt-free `gui/model.py`) is an adapter over `BurstSelectionClient`; analysis behavior belongs in
 `api/` and JSON/RPC adaptation belongs in `backend/services.py`.
 
 ### MMFDB Reference Implementation
@@ -104,7 +104,6 @@ f(x) = ∑(i=1 to k) A_i * exp(-0.5 * ((x - μ_i) / σ_i)²)
 ## Requirements
 
 - Python packages:
-  - PyQt5
   - numpy
   - scipy (for Gaussian fitting)
   - matplotlib (for plotting)

@@ -3,7 +3,7 @@
 The workflow shell asks each step to run on every *Next*, and hands a panel its
 burst folder again on every visit — which the panel reads as "a setting changed,
 recompute". Walking back through the steps therefore recomputed BVA, 2CDE, the
-burst MLE export and the H2MM scan over byte-identical inputs, which on a real
+H2MM scan over byte-identical inputs, which on a real
 burst folder is minutes each time.
 
 These drive the decision, not the computation: each test replaces the expensive
@@ -219,56 +219,6 @@ def test_every_step_fingerprints_its_own_inputs(bva, two_cde, burst_folder):
     )
 
 
-# ── MLE batch export ─────────────────────────────────────────────────
-
-
-def test_mle_export_is_skipped_when_the_files_on_disk_are_current(qapp, burst_folder, monkeypatch):
-    """The batch's product is the b{g,r,y}4 files, so current files are the answer.
-
-    This one is deliberately disk-based rather than in-memory: the wizard keeps
-    no batch result in memory, and a fresh session that still has the exported
-    fits must not refit every burst to end up writing the same numbers.
-    """
-    from chisurf.core.runtime import analysis_cache
-    from chisurf.plugins.burst.burst_mle_analysis.wizard import (
-        MLELifetimeAnalysisWizard,
-    )
-
-    wizard = MLELifetimeAnalysisWizard()
-    try:
-        bur = burst_folder / "bi4_bur" / "m000.bur"
-        # The stamp sits beside the selected burst files, so the selection is
-        # what has to be stubbed — the fingerprint's input list is wider than it.
-        monkeypatch.setattr(wizard.burst_files_list, "get_selected_files", lambda: [str(bur)])
-        # Enough state to get past the "no data" guard.
-        wizard.df_bursts = object()
-        wizard.tttrs = {"m000": object()}
-
-        saved = _runs(monkeypatch, wizard, "_save_burst_results_fast")
-
-        out = burst_folder / "bg4" / "m000.bg4"
-        out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text("fit results")
-        analysis_cache.write_stamp(
-            wizard.batch_stamp_path(),
-            wizard.batch_fingerprint(),
-            outputs=[out],
-            tool="burst_mle",
-        )
-
-        wizard.process_bursts()
-        assert saved == [], "current exports must not be refitted"
-        assert "Unchanged" in wizard.statusBar().currentMessage()
-
-        # A changed threshold is a different fit, so the gate must open again.
-        wizard.min_photons = float(wizard.min_photons) + 5
-        assert not analysis_cache.is_current(
-            wizard.batch_stamp_path(), wizard.batch_fingerprint()
-        ), "a changed setting must invalidate the exported fits"
-    finally:
-        wizard.close()
-
-
 # ── burst search (step 2) ────────────────────────────────────────────
 
 
@@ -365,45 +315,6 @@ def test_a_changed_lut_recomputes_every_photon_reading_step(two_cde):
     finally:
         lut_context.clear_active_setup_lut()
     assert two_cde.model.analysis_fingerprint() == before, "and switching back is the old state"
-
-
-def test_a_corrected_estimator_does_not_inherit_the_old_exports(qapp, burst_folder, monkeypatch):
-    """MLE is the only gate that survives a restart — and the only one that could
-    hand back another version's numbers without saying so.
-    """
-    from chisurf.core.runtime import analysis_cache
-    from chisurf.plugins.burst.burst_mle_analysis import wizard as wizard_mod
-
-    wizard = wizard_mod.MLELifetimeAnalysisWizard()
-    try:
-        bur = burst_folder / "bi4_bur" / "m000.bur"
-        monkeypatch.setattr(wizard.burst_files_list, "get_selected_files", lambda: [str(bur)])
-        wizard.df_bursts = object()
-        wizard.tttrs = {"m000": object()}
-        saved = _runs(monkeypatch, wizard, "_save_burst_results_fast")
-
-        out = burst_folder / "bg4" / "m000.bg4"
-        out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text("fit results")
-        analysis_cache.write_stamp(
-            wizard.batch_stamp_path(),
-            wizard.batch_fingerprint(),
-            outputs=[out],
-            tool="burst_mle",
-        )
-        wizard.process_bursts()
-        assert saved == [], "current exports are not refitted"
-
-        # The estimator is corrected; the burst files and settings are untouched.
-        # Relative to whatever the shipped version is: pinning a literal here
-        # made this a no-op the day the estimator was bumped to that number,
-        # and the test then asserted that nothing had changed.
-        monkeypatch.setattr(wizard_mod, "ALGORITHM_VERSION", wizard_mod.ALGORITHM_VERSION + 1)
-        assert not analysis_cache.is_current(
-            wizard.batch_stamp_path(), wizard.batch_fingerprint()
-        ), "results from the previous estimator are not current"
-    finally:
-        wizard.close()
 
 
 def test_h2mm_fits_the_same_answer_twice(burst_folder):

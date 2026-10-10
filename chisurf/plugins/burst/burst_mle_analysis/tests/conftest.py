@@ -58,8 +58,8 @@ def hermetic_settings(tmp_path, monkeypatch):
 
 
 # --------------------------------------------------------------------------------------------------------------------
-# The in-repository real data (BH SPC-132 smFRET DNA, burst_selection/tests/data) as a ready-to-use wizard.
-# Real photons and a real fit: no invented or externally downloaded fixture. The wizard writes beside the burst
+# The in-repository real data (BH SPC-132 smFRET DNA, burst_selection/tests/data).
+# Real photons and a real fit: no invented or externally downloaded fixture. The engine writes beside the burst
 # files, so everything runs on a temporary copy.
 # --------------------------------------------------------------------------------------------------------------------
 REPO_DATA = (
@@ -93,9 +93,8 @@ CHANNEL_SETTINGS = {
 def hermetic_env(tmp_path_factory):
     """Settings, MMFDB and HOME in a temp folder for the whole module.
 
-    Module-scoped fixtures (a wizard that is closed after the last test) outlive the per-test environment above, and
-    a wizard saves its dock layout when it closes: without this they wrote into the real ``~/.chisurf``. Every
-    module fixture below depends on this one, so it is still set when they are torn down.
+    Module-scoped fixtures outlive the per-test environment above: without this they wrote into the real
+    ``~/.chisurf``. Every module fixture below depends on this one, so it is still set when they are torn down.
     """
     root = tmp_path_factory.mktemp("module_env")
     patch = pytest.MonkeyPatch()
@@ -119,53 +118,16 @@ def sample_copy(tmp_path_factory, hermetic_env):
     return target
 
 
-@pytest.fixture(scope="module")
-def qapp_module(hermetic_env):
-    from qtpy import QtWidgets
-
-    yield QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+REFERENCE = Path(__file__).with_name("qt_reference.json")
 
 
-def build_wizard(sample: Path):
-    """A wizard with detectors and one burst file loaded (no IRF/background, no fit yet)."""
-    from qtpy import QtWidgets
+@pytest.fixture(scope="session")
+def qt_reference():
+    """The numbers the retired Qt ``MLELifetimeAnalysisWizard`` gave on the in-repo sample (``qt_reference.json``).
 
-    from chisurf.plugins.burst.burst_mle_analysis.wizard import MLELifetimeAnalysisWizard
-
-    w = MLELifetimeAnalysisWizard()
-    QtWidgets.QApplication.processEvents()
-    w.channel_definer.load_data_into_tables(CHANNEL_SETTINGS)
-    w.channel_definer.filetype = "SPC-130"
-    w._init_channels_from_wizard()
-    w.burst_files_list.add_file(str(sample / BURST_TABLE))
-    w.load_burst_data()
-    w.update_burst_files()
-    w.comboBox_window.setCurrentText("green")
-    QtWidgets.QApplication.processEvents()
-    return w
-
-
-@pytest.fixture(scope="module")
-def fresh_wizard(qapp_module):
-    """A wizard nothing was loaded into: the honest empty state of every window.
-
-    (Loading a burst file already builds an IRF/background and fits, so "no fit" needs a wizard with no file.)
+    Recorded once with the Qt code present: burst indices, header timing, the green and red fits, the IRF and
+    background patterns, the displayed curves, the per-burst lifetimes of the batch and the exported tables.
     """
-    from chisurf.plugins.burst.burst_mle_analysis.wizard import MLELifetimeAnalysisWizard
+    import json
 
-    w = MLELifetimeAnalysisWizard()
-    yield w
-    w.close()
-
-
-@pytest.fixture(scope="module")
-def fitted_green(qapp_module, sample_copy):
-    """Auto IRF/background and one fit of the green detector on the real photons."""
-    from qtpy import QtWidgets
-
-    w = build_wizard(sample_copy)
-    w.auto_extract_irf_bg()
-    QtWidgets.QApplication.processEvents()
-    assert w.fit_curves is not None
-    yield w
-    w.close()
+    return json.loads(REFERENCE.read_text())

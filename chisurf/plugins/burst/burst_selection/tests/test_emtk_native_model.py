@@ -1,7 +1,8 @@
 """The Qt-free Burst Selection model (card BS0): same search, same bursts as the Qt tool, no toolkit.
 
-The parity test runs the Qt ``BurstSelectionTool`` and :class:`BurstSelectionModel` on copies of the same two raw
-files with the same detector setup and asserts identical burst tables (the measured baseline is 198 bursts).
+The parity test runs :class:`BurstSelectionModel` on copies of the same two raw files with the same detector setup
+and asserts the burst tables the Qt ``BurstSelectionTool`` gave (recorded in ``qt_reference.json``; the measured
+baseline is 198 bursts).
 """
 
 from __future__ import annotations
@@ -79,64 +80,40 @@ def test_model_is_qt_free():
     assert done.returncode == 0, done.stderr[-2000:]
 
 
-def test_same_bursts_as_the_qt_tool(hermetic, qapp, tmp_path):
-    """Run the Qt tool and the model on separate copies; the burst tables must be identical."""
-    from chisurf.plugins.burst.burst_selection.gui.model import BurstSelectionModel
-    from chisurf.plugins.burst.burst_selection.gui.tool import BurstSelectionTool
+@pytest.fixture(scope="session")
+def qt_reference():
+    """What the retired Qt ``BurstSelectionTool`` gave on the two raw files (``qt_reference.json``).
 
-    qt_dir = tmp_path / "qt"
-    qt_dir.mkdir()
-    qt_paths = [Path(shutil.copy(p, qt_dir / p.name)) for p in hermetic]
-    tool = BurstSelectionTool(embedded=True)
-    try:
-        tool._apply_detector_setup("probe")
-        tool._add_paths(qt_paths)
-        qs = tool._settings_from_controls()
-        qt = tool._client.analyze_files(
-            qt_paths,
-            settings=asdict(qs),
-            windows=tool.wizard.windows,
-            detectors=tool.wizard.detectors,
-            filetype=tool._selected_filetype,
-            legacy_output=True,
-            selected_setup=tool.wizard.comboBox.currentText(),
-            legacy_parameters=tool._legacy_parameters(),
-            mmfdb=None,
-        )
-    finally:
-        tool.close()
+    Recorded once with the Qt tool present: the burst tables of both files (every column of every row), the search
+    settings the tool derived from its controls, the burst count and the output folder name.
+    """
+    return json.loads((Path(__file__).with_name("qt_reference.json")).read_text())
+
+
+def test_same_bursts_as_the_qt_tool(hermetic, qt_reference):
+    """Run the model on copies of the two raw files; the burst tables must be the ones the Qt tool gave."""
+    from chisurf.plugins.burst.burst_selection.gui.model import BurstSelectionModel
 
     m = BurstSelectionModel()
     assert m.select_setup("probe")
     m.add_paths(hermetic)
     ms = m.analysis_settings()
     # every setting the registry search reads equals the Qt tool's
-    pq, pm = asdict(qs)["photon_filter"], asdict(ms)["photon_filter"]
-    for key in (
-        "channels",
-        "microtime_ranges",
-        "filter_active",
-        "invert_filter",
-        "tttrlib_search",
-        "delta_macro_time_filter",
-        "use_gap_fill",
-        "max_gap",
-        "used_filter",
-    ):
-        assert pm[key] == pq[key], key
-    assert ms.burst_detection.min_photons == qs.burst_detection.min_photons == 60
-    assert ms.output_formats == qs.output_formats == ["bur"]
+    pm = asdict(ms)["photon_filter"]
+    for key, value in qt_reference["photon_filter"].items():
+        got = pm[key]
+        # JSON has no tuples and no enum members
+        assert json.loads(json.dumps(got, default=lambda o: getattr(o, "value", str(o)))) == value, key
+    assert ms.burst_detection.min_photons == qt_reference["min_photons"] == 60
+    assert ms.output_formats == qt_reference["output_formats"] == ["bur"]
     assert m.prepare_run() is None
     mine = m.run()
 
-    assert qt["metadata"]["n_bursts"] == mine["metadata"]["n_bursts"] == 198
-    assert (
-        Path(mine["metadata"]["output_folder"]).name == Path(qt["metadata"]["output_folder"]).name
-    )
-    by_name_qt = {Path(k).name: v for k, v in qt["dataframes"].items()}
+    assert mine["metadata"]["n_bursts"] == qt_reference["n_bursts"] == 198
+    assert Path(mine["metadata"]["output_folder"]).name == qt_reference["output_folder_name"]
     by_name = {Path(k).name: v for k, v in mine["dataframes"].items()}
-    assert by_name.keys() == by_name_qt.keys()
-    for name, rows in by_name_qt.items():
+    assert by_name.keys() == qt_reference["frames"].keys()
+    for name, rows in qt_reference["frames"].items():
         assert len(by_name[name]) == len(rows)
         for a, b in zip(rows, by_name[name]):
             assert a.keys() == b.keys()
@@ -144,13 +121,15 @@ def test_same_bursts_as_the_qt_tool(hermetic, qapp, tmp_path):
                 if "path" in key.lower():
                     continue
                 other = b[key]
-                if isinstance(value, float) and np.isnan(value):
+                if value is None:  # a recorded NaN
                     assert isinstance(other, float) and np.isnan(other), key
+                elif isinstance(value, float):
+                    assert other == pytest.approx(value, rel=1e-12, abs=1e-12), key
                 else:
                     assert other == value, key
     assert [r["bursts"] for r in m.file_rows()] == ["71", "127"]
     # the deliberate corrections: the macro-time cut in seconds, not min_photons / 1000
-    assert qs.burst_detection.time_window == pytest.approx(0.06)
+    assert qt_reference["time_window"] == pytest.approx(0.06)
     assert ms.burst_detection.time_window == pytest.approx(0.15 / 1000.0)
     assert m.burst_selection_parameters()["dT_min"] == m.dt_min == 0.001
 

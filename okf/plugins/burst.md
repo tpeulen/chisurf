@@ -9,6 +9,12 @@ timestamp: '2026-07-05T00:00:00Z'
 
 The `burst/` group covers the confocal single-molecule FRET (smFRET) burst workflow: bursts are selected from Time-Tagged Time-Resolved (TTTR) photon streams, background is estimated, and each burst yields FRET, variance, lifetime and correlation observables that a browser inspects. This pipeline is the subject of [PRD-04](/prds/prd-04.md) (burst pipeline).
 
+> **Qt tools retired (2026-10-11).** `burst_selection` and `burst_mle_analysis` are emtk apps over Qt-free models and engines
+> (`gui/native.py`, `gui/model.py`, `engine.py`); the Qt `BurstSelectionTool`, `MLELifetimeAnalysisWizard`, their `wizard.py`
+> launchers and the hosted emtk shells are gone. Sections below that describe docks, toolbars, `QMainWindow` embedding or
+> `BurstSelectionTool._setup_viewport_toolbar` describe the retired tools; the live behaviour is in
+> [the burst port survey](emtk-ports/burst-survey.md) and the `qt-retirement/` evidence beside each plugin.
+
 | Plugin dir | Display name | What it does |
 |---|---|---|
 | `burst_analysis` | Burst Analysis | Integrated burst workflow bundling selection, BVA, MLE, browser and background estimation in one navigation-shell window. Also ships a Qt-free `api/workflow.py` facade (`BurstWorkflow`) for non-programmers. |

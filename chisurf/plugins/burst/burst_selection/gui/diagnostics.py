@@ -1,8 +1,7 @@
-"""Burst-selection diagnostics shared by the Qt tool and the emtk app: plain numpy over TTTR objects and burst tables.
+"""Burst-selection diagnostics of the emtk app: plain numpy over TTTR objects and burst tables.
 
-Everything here used to live in the Qt ``BurstSelectionTool`` (``gui/tool.py``), so the native app could not reach
-it without importing Qt. The Qt tool now imports these functions from here; nothing in this module imports a
-toolkit.
+Everything here used to live in the Qt ``BurstSelectionTool`` (retired), so the native app could not reach it
+without importing Qt. Nothing in this module imports a toolkit.
 """
 
 from __future__ import annotations
@@ -28,7 +27,7 @@ from .adapter import (
     proximity_ratio_from_frame,
 )
 
-#: Display defaults of the Qt tool (``gui/tool.py``), kept identical so the two show the same thing.
+#: Display defaults (the retired Qt tool's, kept so the numbers on screen are the ones users knew).
 DEFAULT_HISTOGRAM_BINS = 61
 DEFAULT_TRACE_BIN_WIDTH_MS = 0.25
 DEFAULT_DECAY_BINS = 8

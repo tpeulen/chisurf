@@ -1,63 +1,22 @@
-"""What the emtk burst-MLE windows show, read from the wizard that computed it.
+"""What the emtk burst-MLE windows show of the per-burst lifetimes, read from the rows the batch computed.
 
-The wizard owns the fit. This module reads its state and nothing else: the curves ``plot_fit_result`` last drew
-(``wizard.fit_curves``), the fit-parameter rows, the per-burst lifetimes of the last ``process_bursts`` run
-(``wizard.burst_results``) and the pooled state lifetimes. With no fit (or no batch run) each function returns
-``None`` / an empty list and the windows draw an empty-state message: nothing is ever invented.
+The engine owns the fit. This module turns the rows of the last batch run (``MleViewModel.burst_results``) into the
+lifetime series and their common-grid histograms. With no batch run each function returns an empty result and the
+windows draw an empty-state message: nothing is ever invented.
 
-Qt-free: the wizard is read through its public attributes only, so the tests can feed a stand-in object.
+Qt-free and engine-free: plain rows in, arrays out, so the tests can feed literal rows.
 """
 
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
-from typing import Any
 
 import numpy as np
-
-from ..fit_display import DecayCurves
 
 #: Bins of the lifetime histogram.
 LIFETIME_BINS = 30
 
 _TAU_COLUMN = re.compile(r"^Tau(?: S(?P<state>\d+))? \((?P<colour>.+)\)$")
-
-
-@dataclass(frozen=True)
-class ParameterRow:
-    """One fit parameter as the wizard holds it: start value, whether it is held fixed, and the fitted value."""
-
-    name: str
-    initial: float
-    fixed: bool
-    result: float
-
-
-def fit_curves(wizard: Any) -> DecayCurves | None:
-    """The curves of the fit that last ran (``None`` before the first fit or when it could not be drawn)."""
-    return getattr(wizard, "fit_curves", None)
-
-
-def parameter_rows(wizard: Any) -> list[ParameterRow]:
-    """The fit parameters of the selected model with their start, fix flag and fitted value."""
-    dyn = getattr(wizard, "_dyn_params", None)
-    if getattr(wizard, "fit_model", "fit23") != "fit23" and dyn is not None and len(dyn):
-        return [
-            ParameterRow(str(n), float(v), bool(f), float(r))
-            for n, v, f, r in zip(dyn.names, dyn.values, dyn.fixed, dyn.results)
-        ]
-    try:
-        return [
-            ParameterRow("tau", float(wizard.tau), bool(wizard.fix_tau), float(wizard.tau_result)),
-            ParameterRow(
-                "gamma", float(wizard.gamma), bool(wizard.fix_gamma), float(wizard.gamma_result)
-            ),
-            ParameterRow("r0", float(wizard.r0), bool(wizard.fix_r0), float(wizard.r0_result)),
-            ParameterRow("rho", float(wizard.rho), bool(wizard.fix_rho), float(wizard.rho_result)),
-        ]
-    except AttributeError:
-        return []
 
 
 def burst_lifetimes(rows: list[dict] | None) -> dict[str, np.ndarray]:
@@ -107,32 +66,3 @@ def lifetime_histograms(
         (key, centres, np.histogram(values, bins=edges)[0].astype(np.float64), width)
         for key, values in lifetimes.items()
     ]
-
-
-def state_lifetime_rows(wizard: Any) -> list[dict]:
-    """The pooled per-state lifetimes of the last segment-level run (empty before one)."""
-    return list(getattr(wizard, "state_lifetimes", None) or [])
-
-
-def burst_file_count(wizard: Any) -> int:
-    """How many burst files the wizard has selected."""
-    files = getattr(wizard, "burst_files_list", None)
-    if files is None:
-        return 0
-    try:
-        return len(files.get_selected_files())
-    except Exception:
-        return 0
-
-
-def irf_background_ready(wizard: Any) -> bool:
-    """Whether the current detector has both an IRF and a background loaded."""
-    det = getattr(wizard, "current_detector", "")
-    irf, bg = getattr(wizard, "irf_np", {}), getattr(wizard, "bg_np", {})
-    return (
-        bool(det)
-        and det in irf
-        and det in bg
-        and np.asarray(irf[det]).size > 0
-        and np.asarray(bg[det]).size > 0
-    )

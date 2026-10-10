@@ -280,6 +280,25 @@ class MleViewModel(RunPickerMixin):
             for p in self.session.bur_files
         ]
 
+    def current_file_text(self) -> str:
+        """Name of the burst file whose decay is shown (the Qt wizard's Filename field), with its position."""
+        files = self.session.bur_files
+        if not files:
+            return ""
+        index = max(0, min(int(self.session.current_index), len(files) - 1))
+        return str(tr("Current file: {name} ({index} of {count})")).format(
+            name=files[index].name, index=index + 1, count=len(files)
+        )
+
+    def inspected_file_name(self) -> str:
+        """Name of the measurement the inspected burst belongs to (its ``First File``), or an empty string."""
+        table = self.session.df_bursts
+        if table is None or not 0 <= int(self.nav_burst) < self.n_bursts:
+            return ""
+        if "First File" not in engine.column_names(table):
+            return ""
+        return Path(str(table["First File"][int(self.nav_burst)])).name
+
     @property
     def n_bursts(self) -> int:
         return (
@@ -665,11 +684,41 @@ class MleViewModel(RunPickerMixin):
         text = str(tr("Primary lifetime: {tau:.4g} ns; 2I*: {score:.4g}.")).format(
             tau=self.tau_result, score=outcome.two_istar
         )
+        anisotropy = self.anisotropy_text()
+        if anisotropy:
+            text += " " + anisotropy
         for name in engine.fit_result_names(self.fit_model):
             text += str(tr(" {name}: {value:.0f} (0-based).")).format(
                 name=name, value=outcome.result.result(name)
             )
         return text
+
+    def calibration_text(self) -> str:
+        """The current detector's polarisation corrections and the scatter rate of its background.
+
+        The G factor and the leakages l1, l2 are the detector definition's (edit them in the Detector setup tab);
+        the scatter rate is the summed background, in counts per second.
+        """
+        g, l1, l2 = self.session.polarisation()
+        text = str(tr("G {g:.4f}, l1 {l1:.4f}, l2 {l2:.4f}.")).format(g=g, l1=l1, l2=l2)
+        background = self.session.bg_np.get(self.session.current_detector)
+        if background is not None and np.asarray(background).size:
+            text += str(tr(" Scatter (background) rate: {rate:.4g} Hz.")).format(
+                rate=float(np.sum(self.session.background()))
+            )
+        return text
+
+    def anisotropy_text(self) -> str:
+        """The scatter and experimental anisotropy of the last single-lifetime (Fit23) fit, or nothing."""
+        outcome = self.session.outcome
+        result = getattr(outcome, "result", None)
+        if self.fit_model != "fit23" or result is None:
+            return ""
+        r_scatter = getattr(result, "r_scatter", float("nan"))
+        r_experimental = getattr(result, "r_experimental", float("nan"))
+        return str(tr("r scatter {scatter:.4g}, r experimental {experimental:.4g}.")).format(
+            scatter=float(r_scatter), experimental=float(r_experimental)
+        )
 
     @property
     def fit_curves(self):
@@ -855,13 +904,37 @@ class MleViewModel(RunPickerMixin):
         )
 
     def load_settings(self, path: str | Path) -> None:
-        """Restore all detectors and per-model parameter edits from a settings file."""
+        """Restore all detectors and per-model parameter edits from a settings file or a burst-analysis folder.
+
+        A burst folder records how its data was read and what it was analysed with (``Info/analysis.json``), which is
+        what the tool needs to be put back into the state that produced it: passing the folder, or any ``.bur``
+        inside it, is equivalent to picking a settings file. A source that holds no settings is reported on the
+        status line, not raised.
+        """
         self._ensure_editable()
-        payload = json.loads(Path(path).read_text(encoding="utf-8"))
-        if payload.get("kind") != SETTINGS_KIND:
-            raise ValueError("Not a burst-MLE settings file written by this tool.")
+        source = Path(path)
+        if source.is_dir() or source.suffix.lower() != ".json":
+            from chisurf.core.fio.fluorescence.burst_manifest import read_analysis_manifest
+
+            manifest = read_analysis_manifest(source)
+            payload = (manifest or {}).get("mle_settings") or (manifest or {}).get("settings")
+            if not payload:
+                self.status_text = f"No stored settings found under {source}."
+                return
+        else:
+            try:
+                payload = json.loads(source.read_text(encoding="utf-8"))
+            except (OSError, ValueError) as exc:
+                self.status_text = f"Could not read settings from {source}: {exc}"
+                return
+            if not isinstance(payload, dict):
+                self.status_text = f"The settings in {source} are not a mapping."
+                return
+            if payload.get("kind") != SETTINGS_KIND:
+                raise ValueError("Not a burst-MLE settings file written by this tool.")
         self.session.apply_settings_payload(payload)
         self.auto_patterns = bool(payload.get("auto_patterns"))
+        self.status_text = f"Settings restored from {source}."
         self.notify("settings")
 
     # -- snapshot for a running job -------------------------------------------------------------------------- #
@@ -880,6 +953,7 @@ class MleViewModel(RunPickerMixin):
             "fit_model_choices",
             "model_availability",
             "model_result_text",
+            "calibration_text",
             "file_rows",
             "irf_file_rows",
             "bg_file_rows",

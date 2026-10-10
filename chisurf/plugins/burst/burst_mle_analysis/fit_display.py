@@ -1,10 +1,10 @@
 """The curves of a burst-MLE fit as they are displayed, computed once for every front end.
 
-The Qt wizard's ``plot_fit_result`` and the emtk app both show the same four curves of the fit that last ran:
+The retired Qt wizard's ``plot_fit_result`` and the emtk app show the same four curves of the fit that last ran:
 the decay (data), the model, the IRF and the background overlays, and the weighted residuals, each cut to the
 per-polarisation fit windows. They used to be computed inside the wizard only; the emtk app then drew an invented
-decay instead. :func:`decay_curves` is that computation as a pure function so both draw the same numbers, and the
-parity test compares them with the wizard's own plot.
+decay instead. :func:`decay_curves` is that computation as a pure function; its numbers equal the wizard's own plot
+(``tests/test_mle_engine.py``).
 
 Qt-free and emtk-free.
 """

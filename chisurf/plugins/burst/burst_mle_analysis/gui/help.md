@@ -8,7 +8,7 @@ Press **Guide** for the walk-through. **Demo** loads 16 generated bursts of 1000
 
 ## What the windows show
 
-Everything in the windows is read from the wizard that did the work. With no fit they say so; nothing is drawn as a
+Everything in the windows is read from the fit that the engine computed. With no fit they say so; nothing is drawn as a
 placeholder.
 
 * **Burst MLE** tab: **Add files** / **Add folder** (or drop .bur files or a measurement .pto; the **Runs** table then picks which burst search of the container is fitted), **Auto IRF/background**, **Refit**, **Fit bursts**,
@@ -35,7 +35,7 @@ quantity minimised is the likelihood statistic $2I^*$; it is about one per degre
 curve is the exponential decay convolved with the IRF, plus the scaled background and the scattered light.
 
 * The **IRF** and **background** belong to the setup, not to a burst: they are taken from measured files or estimated
-  from the photons between bursts (Auto IRF/background in the wizard).
+  from the photons between bursts (Auto IRF/background).
 * The **fit window** is given in micro-time bins after binning. Leave out the empty bins before the prompt and the
   noisy tail.
 * A fit whose $\gamma$ ran to its bound is marked as diverged; the displayed model is then clipped and the status line
@@ -49,7 +49,7 @@ curve is the exponential decay convolved with the IRF, plus the scaled backgroun
 * **Fit24:** tau1, gamma, tau2, A2 and offset; a two-lifetime mixture. A2 reports the effective second-component amplitude.
 * **Fit25:** four fixed candidate lifetimes and gamma. Candidate values are editable but remain fixed inputs; the winner is reported as selected_index (0-based). Its r0 is supplied by the provider.
 
-Fit26 needs two reference patterns and fit_nexp needs array inputs, so neither is offered here. The existing wizard's tail fitter is preview-only. A completed batch retains its original model and output schema even if you change the selector before saving.
+Fit26 needs two reference patterns and fit_nexp needs array inputs, so neither is offered here. The tail fitter is preview-only. A completed batch retains its original model and output schema even if you change the selector before saving.
 
 The saved detector definition supplies channel LUTs and shifts to the canonical reader. Header timing is used unless Override timing is explicitly selected; setup micro-time values are in ps and period values in ns. Binning is applied once.
 

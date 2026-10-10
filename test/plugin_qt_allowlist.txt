@@ -2,28 +2,6 @@
 # plugin half of the Qt retirement (test/test_plugin_qt_free.py). Strike a path when its
 # plugin moves to emtk; adding a path is a test failure. Goal: empty.
 chisurf/plugins/__init__.py
-chisurf/plugins/burst/burst_mle_analysis/gui/app.py
-chisurf/plugins/burst/burst_mle_analysis/tests/conftest.py
-chisurf/plugins/burst/burst_mle_analysis/tests/test_dock_shell.py
-chisurf/plugins/burst/burst_mle_analysis/tests/test_emtk_mle_no_invented_data.py
-chisurf/plugins/burst/burst_mle_analysis/tests/test_file_list.py
-chisurf/plugins/burst/burst_mle_analysis/tests/test_mle_gui_end_to_end.py
-chisurf/plugins/burst/burst_mle_analysis/utils.py
-chisurf/plugins/burst/burst_mle_analysis/wizard.py
-chisurf/plugins/burst/burst_selection/gui/app.py
-chisurf/plugins/burst/burst_selection/gui/gmm_settings_dialog.py
-chisurf/plugins/burst/burst_selection/gui/sections.py
-chisurf/plugins/burst/burst_selection/gui/tool.py
-chisurf/plugins/burst/burst_selection/tests/test_construction_smoke.py
-chisurf/plugins/burst/burst_selection/tests/test_display_form.py
-chisurf/plugins/burst/burst_selection/tests/test_emtk_parity.py
-chisurf/plugins/burst/burst_selection/tests/test_filter_settings_form.py
-chisurf/plugins/burst/burst_selection/tests/test_filter_ui_elements.py
-chisurf/plugins/burst/burst_selection/tests/test_gmm_settings_dialog.py
-chisurf/plugins/burst/burst_selection/tests/test_new_gui.py
-chisurf/plugins/burst/burst_selection/tests/test_photon_range_controls.py
-chisurf/plugins/burst/burst_selection/tests/test_tttrlib_wizard_modes.py
-chisurf/plugins/burst/burst_selection/wizard.py
 chisurf/plugins/calculator/fret_calculator/tests/test_emtk_fret_calculator_clicks.py
 chisurf/plugins/calculator/hub/test/test_emtk_hub_parity.py
 chisurf/plugins/chimol/__init__.py

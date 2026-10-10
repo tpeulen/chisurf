@@ -31,12 +31,8 @@ classes of issue need actual rendered states:
 pixi run -e test python -m chisurf
 ```
 
-Open the native **Burst Analysis** hub selection step. For the separately
-retained modern Qt wizard, use:
-
-```bash
-pixi run -e test python -m chisurf.plugins.burst.burst_selection.wizard
-```
+Open the native **Burst Analysis** hub selection step, or the selection app on its own
+(**Spectroscopy → Single-Molecule → Burst Selection**). The earlier Qt wizard is retired.
 
 ### 2. Visual checklist
 

@@ -24,6 +24,7 @@ from emtk.widgets.view_spec import load_view_spec
 from chisurf.core.registry import catalog
 from chisurf.core.support.i18n import tr
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
+from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.jobs import SnapshotJob
 from chisurf.plugins.emtk_layout import (
@@ -89,6 +90,12 @@ class MleNativeApp(TourTarget, ImApp):
         self.gate_min: float | None = None
         self.gate_max: float | None = None
         self._editor_read_only_before_job: bool | None = None
+        #: MMFDB pickers (the Qt tool's "Database" buttons): burst tables, measured IRF files, measured background files.
+        self.pickers = {
+            "db_files": DatasetPicker(on_paths=lambda paths: self.model.add_files(paths)),
+            "db_irf_files": DatasetPicker(on_paths=lambda paths: self.model.add_irf_files(paths)),
+            "db_bg_files": DatasetPicker(on_paths=lambda paths: self.model.add_bg_files(paths)),
+        }
         self.editor = ChannelDefinitionWidget(
             self.model.session.definition_payload(),
             on_changed=self.model.set_setup,
@@ -266,6 +273,12 @@ class MleNativeApp(TourTarget, ImApp):
                     "tip": "Add every burst table below a folder.",
                 },
                 {
+                    "label": "From database",
+                    "key": "db_files",
+                    "enabled": not running,
+                    "tip": "Select a dataset from the MMFDB database (including S3-backed object stores) and add its burst tables.",
+                },
+                {
                     "label": "Clear",
                     "key": "clear_files",
                     "enabled": has_data and not running,
@@ -386,6 +399,8 @@ class MleNativeApp(TourTarget, ImApp):
                 self.model.export_results()
             except Exception as exc:
                 self.model.status_text = f"Error: {exc}"
+        elif pressed in self.pickers:
+            self.pickers[pressed].open()
         elif pressed in self.DIALOGS:
             self.browse(pressed)
         elif pressed == "guide":
@@ -458,6 +473,12 @@ class MleNativeApp(TourTarget, ImApp):
                     "tip": str(tr("Choose measured IRF files (scatter or short-lifetime reference).")),
                 },
                 {
+                    "label": str(tr("IRF from database")),
+                    "key": "db_irf_files",
+                    "enabled": not running,
+                    "tip": str(tr("Select a measured IRF dataset from the MMFDB database (including S3-backed object stores).")),
+                },
+                {
                     "label": str(tr("Clear IRF")),
                     "key": "clear_irf_files",
                     "enabled": bool(self.model.irf_file_rows()) and not running,
@@ -468,6 +489,12 @@ class MleNativeApp(TourTarget, ImApp):
                     "key": "add_bg_files",
                     "enabled": not running,
                     "tip": str(tr("Choose measured background files (a sample-free measurement).")),
+                },
+                {
+                    "label": str(tr("Background from database")),
+                    "key": "db_bg_files",
+                    "enabled": not running,
+                    "tip": str(tr("Select a measured background dataset from the MMFDB database (including S3-backed object stores).")),
                 },
                 {
                     "label": str(tr("Clear background")),
@@ -483,6 +510,9 @@ class MleNativeApp(TourTarget, ImApp):
             self.model.clear_irf_files()
         elif pressed == "clear_bg_files":
             self.model.clear_bg_files()
+        elif pressed in self.pickers:
+            self.track(pressed)
+            self.pickers[pressed].open()
         elif pressed in self.DIALOGS:
             self.track(pressed)
             self.browse(pressed)
@@ -512,6 +542,7 @@ class MleNativeApp(TourTarget, ImApp):
                 implot.plot_line("IRF", curves.x, curves.irf)
             implot.plot_line("Background", curves.x, curves.background)
             implot.end_plot()
+        im.text(self.model.current_file_text())
 
     def _inspect(self, box=None) -> None:
         bursts = self.model.n_bursts
@@ -530,7 +561,8 @@ class MleNativeApp(TourTarget, ImApp):
             for det, hist in data.items():
                 implot.plot_line(det, list(range(hist.size)), hist)
             implot.end_plot()
-        im.text(f"burst {self.model.nav_burst} of {bursts}")
+        origin = self.model.inspected_file_name()
+        im.text(f"burst {self.model.nav_burst} of {bursts}" + (f" - {origin}" if origin else ""))
 
     def _lifetimes(self, box=None) -> None:
         self.remember("distribution", box)
@@ -597,6 +629,8 @@ class MleNativeApp(TourTarget, ImApp):
         im.begin_disabled(self.editor.read_only)
         self.editor.draw_dialogs(frame)
         im.end_disabled()
+        for picker in self.pickers.values():
+            picker.render(frame)
         if self.dialog is not None:
             pressed = self._dialog_window.begin(frame)
             result = self.dialog.draw()
@@ -633,6 +667,8 @@ class MleNativeApp(TourTarget, ImApp):
             self.editor.read_only = self._editor_read_only_before_job
             self._editor_read_only_before_job = None
         self.editor.close()
+        for picker in self.pickers.values():
+            picker.close()
 
 
 def create_app(**kwargs) -> MleNativeApp:

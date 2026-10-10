@@ -109,37 +109,34 @@ def _front_tab(widget, text) -> None:
 
 
 def _grab_13_burst_selection(work: pathlib.Path | None = None, grab: bool = True) -> pathlib.Path:
-    """Burst Selection on the ten SPC-132 dsDNA files, searched; returns the burst folder."""
-    from chisurf.plugins.burst.burst_selection.gui.tool import BurstSelectionTool
+    """Burst Selection (emtk app) on the ten SPC-132 dsDNA files, searched; returns the burst folder."""
+    from emtk.testing import Driver
+
+    from emtk_shot import app_from, render, wait
 
     _bh_setup()
     work = work or _sm_dna_copy()
-    tool = BurstSelectionTool()
-    tool.resize(1600, 1150)
-    tool.show()
-    _pump(1)
-    tool._add_paths(sorted(work.glob("m00*.spc")))
-    tool.file_list.setCurrentRow(0)
-    _pump(3)
-    tool.analyze_files(force=True)
-    _pump(15)
-    summary = json.loads(tool.summary.toPlainText())
-    print("burst selection:", {k: summary[k] for k in ("n_files", "n_bursts", "n_photons", "n_selected")})
+    app = app_from("burst_selection")
+    app.apply_setup({}, _BH_SETUP)  # the setup _bh_setup() just stored
+    driver = Driver(app, (1600, 1000))
+    driver.frame(3)
+    app.model.add_paths(sorted(work.glob("m00*.spc")))
+    app.model.select_file(0)
+    assert app.run(force=True), app.model.status_text
+    wait(driver, lambda: not app.job.busy, timeout=400)
+    meta = app.model.result["metadata"]
+    print("burst selection:", {k: meta[k] for k in ("n_files", "n_bursts", "n_photons", "n_selected")})
+    app.model.window_start_s, app.model.window_length_s = 0.0, 10.0
+    app.model.load_diagnostics()
     if grab:
-        from qtpy.QtWidgets import QAbstractButton
-
-        _front_tab(tool, "Filter Settings")
-        # Fold the Info box (its numbers are the Summary tab's) so the whole
-        # burst-search block fits beside the filter mode without scrolling.
-        for button in tool.wizard.findChildren(QAbstractButton):
-            if button.text().strip().endswith("Info"):
-                button.click()
-        _pump(0.3)
-        _grab(tool, "13_burst_selection_filter.png")
-        _front_tab(tool, "MCS")
-        _grab(tool, "13_burst_selection_mcs.png")
-    tool.close()
-    return pathlib.Path(summary["output_folder"])
+        app.docks.focus("settings")
+        app.docks.focus("dt")
+        render(app, "13_burst_selection_filter.png", size=(1600, 1000), driver=driver)
+        app.docks.focus("trace")
+        render(app, "13_burst_selection_mcs.png", size=(1600, 1000), driver=driver)
+    folder = pathlib.Path(meta["output_folder"])
+    app.close()
+    return folder
 
 
 # ── guide 08: BVA ───────────────────────────────────────────────────────

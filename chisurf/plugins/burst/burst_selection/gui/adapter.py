@@ -87,7 +87,7 @@ def proximity_ratio_from_frame(frame):
 
 
 def analysis_settings_from_wizard(wizard: Any) -> AnalysisSettings:
-    """Create API analysis settings from a BurstSelectionTool instance."""
+    """Create API analysis settings from the photon-filter wizard (any object with its accessors)."""
 
     # Always the container; the legacy folder is an extra beside it. The two
     # extras are read defensively because they are *extras*: a caller that has
@@ -297,8 +297,8 @@ def apply_analysis_settings_to_wizard(wizard: Any, settings: Any) -> list[str]:
 
     Parameters
     ----------
-    wizard : BurstSelectionTool
-        The tool to repopulate.
+    wizard : object
+        The photon-filter page to repopulate.
     settings : AnalysisSettings or mapping
         Settings to apply.
 
@@ -403,8 +403,8 @@ def apply_analysis_folder(wizard: Any, folder: Any) -> list[str]:
 
     Parameters
     ----------
-    wizard : BurstSelectionTool
-        The tool to repopulate.
+    wizard : object
+        The photon-filter page to repopulate.
     folder : path-like
         A ``.bur`` file, the folder holding it, or the analysis folder.
 

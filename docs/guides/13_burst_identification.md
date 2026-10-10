@@ -32,12 +32,9 @@ max-tree and Bayesian Blocks — trade sensitivity against false positives.
 
 ### Open the tool
 
-The Burst Analysis workflow hosts the existing native emtk selection panel.
-Its public modern Qt tool and wizard remain available to existing callers
-while the shell migration continues. The earlier legacy fallback, its assets
-and the USE_LEGACY_GUI switch are retired; restarting or changing a switch
-cannot select that implementation. The search/API/backend and output contracts
-are unchanged.
+The Burst Analysis workflow hosts the native emtk selection panel, which is also
+the tool's own window. The earlier Qt tool, its wizard launcher and the legacy
+fallback are retired. The search/API/backend and output contracts are unchanged.
 
 ```{figure} figures/burst_native_selection_verified.png
 :name: fig-burst-native-selection-verified
@@ -53,9 +50,9 @@ example below and is not an instrument-calibration claim.
 
 **Spectroscopy → Single-Molecule → Burst Analysis → 2. Burst Selection**. The same panel opens on
 its own as *Spectroscopy:Single-Molecule:Burst Selection*; in the workflow the
-files of step 1 carry over. Add files with 📂 (or drop them on the **Files**
-tab), pick a **Detector setup** on **Filter Settings**, then ▶ (*Process all
-loaded files*). 🔁 searches again even when nothing changed.
+files of step 1 carry over. Add files with **Add files** / **Add folder** (or
+drop them on the window), pick the detectors on the **Detector setup** tab,
+then **Run**. **Restart** searches again even when nothing changed.
 
 ```{figure} figures/13_burst_selection_filter.png
 :name: fig-burst-selection-filter
@@ -63,39 +60,40 @@ loaded files*). 🔁 searches again even when nothing changed.
 
 Burst Selection with the ten bundled SPC-132 dsDNA measurements
 (`chisurf/plugins/burst/burst_selection/tests/data/bh_spc132_sm_dna/`) and a
-two-detector setup (green 0/8, red 1/9). Top: the search settings; bottom: the
-inter-photon time dT against photon index for the first 10 s of `m000.spc`,
-all photons (yellow) and the selected, burst photons (cyan); the shaded band is
-the accepted **Macro time interval**.
+two-detector setup (green 0/8, red 1/9). Left: the **Filter settings** tab;
+top right: the inter-photon time dT against photon index for the first 10 s of
+`m000.spc`, all photons (blue) and the selected, burst photons (orange); the
+white line is the accepted maximum dT of the **Macro time interval**. Bottom
+right: the proximity-ratio histogram of that window's eight preview bursts.
 ```
 
-The **Filter Settings** tab holds:
+The **Filter settings** tab holds:
 
 | Control | Default | Meaning |
 |---|---|---|
-| **Detector setup** | last used | Detectors, PIE windows and file type; 💾 stores the burst parameters as the setup's defaults. |
-| **Filter mode** | Sliding window | The search: Sliding window, Cumulative (CUSUM / SPRT), Kalman (rate change), Bayesian changepoint (BOCPD), Coincident (multi-detector), Max-tree (threshold-free), Bayesian Blocks (optimal segmentation). |
-| **Channel selection** | All | Detector and PIE-window gate applied before the search. |
-| **Macro time interval** | upper bound 0.15 ms, merge gap 3 | Accepted inter-photon times dT (*min dMT* / *max dMT*); gaps of up to **Merge gap** photons are bridged. |
-| **Filter** → **Enable** / **Invert** | on / off | Apply the search; **Invert** keeps the photons it rejects. |
+| **Search** | Sliding window | The search: Sliding window, Cumulative (CUSUM / SPRT), Kalman (rate change), Bayesian changepoint (BOCPD), Coincident (multi-detector), Max-tree (threshold-free), Bayesian Blocks (optimal segmentation). Its parameters appear below the choice. |
 | **Sliding window** → **Min photons (L)**, **Photons per window**, **Window duration (T)** | 20, 10, 0.0005 s | A burst is where `m` consecutive photons fall inside `T`, at least `L` photons long. |
-| **Info** | — | Burst count, mean duration and photons of the selected file. |
+| **Save as setup default** | — | Stores the burst parameters as the selected detector setup's defaults. |
+| **Channel selection** → **Detector**, **Micro-time window** | All | Detector and PIE-window gate applied before the search. |
+| **Macro time interval** | upper bound 0.15 ms, merge gap 3 | Accepted inter-photon times dT (**Use min dT** / **Use max dT**); gaps of up to **Merge gap** photons are bridged (**Fill gaps**). |
+| **Filter** → **Filter on** / **Invert** | on / off | Apply the search; **Invert** keeps the photons it rejects. |
+| **Display** | window 10 s | The visible window of the active file (**Window start**, **Window length**), the bin widths of the plots and **Pool all files**. |
 
-The **Files** tab lists the inputs and says where results go. The destination
+The **Burst Selection** tab lists the inputs and says where results go. The destination
 follows the input: vendor files get a `bi4_bur/` folder beside them
 (*Results go to: a bi4_bur/ folder beside each file*), a `.pto` keeps its bursts
 inside. The ten files above gave 1130 bursts from 1 791 775 photons (264 806
 selected) in `sliding_window_All 0.1500#60/`; `m000.spc` alone gives 71 bursts
-(mean 4.28 ms, 211 photons). **Summary** shows the run as JSON, **Bursts** the
+(mean 4.28 ms, 211 photons). **Summary** shows the figures of the run, **Bursts** the
 per-burst table, **Histogram** a feature histogram with an optional GMM, and
-**dT**, **MCS**, **Decay** the diagnostics.
+**Inter-photon time**, **Count rate**, **Micro-time decay** the diagnostics.
 
 ```{figure} figures/13_burst_selection_mcs.png
 :name: fig-burst-selection-mcs
 :width: 100%
 
-The **MCS** tab: count rate in 0.25 ms bins over the same 10 s window, all
-photons (yellow) and burst photons (cyan).
+The **Count rate** tab: count rate in 0.25 ms bins over the same 10 s window, all
+photons (blue) and burst photons (orange).
 ```
 
 ### Headless
@@ -140,23 +138,22 @@ Burst identification.
 
 ## Reading the diagnostic plots
 
-The plots draw a **window of the measurement**, not all of it. Ten seconds by
-default: a six-file selection is half an hour and millions of photons, and drawn
-whole it is an envelope with no individual burst visible in it.
+The plots draw a **window of the active file**, not all of it. Ten seconds by
+default: a long measurement is millions of photons, and drawn whole it is an
+envelope with no individual burst visible in it.
 
-The control sits in its own toolbar row across the top of the window rather than
-in one of the docks, because it decides what *all* of them draw.
+**Window length** (in the **Display** panel) sets the length and **Window start**
+walks it through the file; a length of 0 draws the whole file. Select another
+file in the file list to look at that one. The bursts of the window are previewed
+before any search has run; **Run** searches every photon of every file.
 
-**Show a window of** sets the length and the slider walks it through the
-selection. The caption under the slider says where you are and, because the
-files are laid end to end on one timeline, which file you are looking at —
-`1074.0–1084.0 s of 1800.0 s · 004_….sm (4/6)`. Unchecking it draws everything,
-which is what the plots did before.
+**Pool all files** (also in **Display**) makes the burst table, the histogram, the
+scatter plot and the summary show the bursts of every searched file together, which
+is what fitting the proximity-ratio histogram of a whole measurement needs
+([FRET-histogram fitting](29_fret_histogram_fitting.md)); the diagnostic plots
+stay on the active file.
 
-The window is the same setting as the **First photon** / **Last photon** boxes in
-the Display panel; type there when you want an exact photon range.
-
-The MCS trace is a **count rate**, in kHz, not counts per bin — so changing the
+The count-rate trace is a **count rate**, in Hz, not counts per bin — so changing the
 bin width sharpens or smooths the trace without moving it up and down, and a
 burst can be compared against the background rate (the **Background** step of
 Burst Analysis) directly. With 0.25 ms bins one photon is 4 kHz, which is why the
@@ -173,7 +170,7 @@ background in {numref}`fig-burst-selection-mcs` sits in 4 kHz steps.
   MMFDB stamped with the active user, `user_default`
   (`chisurf/core/fio/setup_store.py`, `resolve_active_user_id`), which a new
   database does not contain; `save_setup` fails with *FOREIGN KEY constraint
-  failed* and `BurstSelectionTool()` raises
+  failed* and the panel does not open
   (`tttr_detector_setups.py`, `load_detector_setups`). Reproduced with an empty
   `CHISURF_SETTINGS_DIR` plus one setup file.
 - **The search writes beside the input.** Running it on the bundled test files

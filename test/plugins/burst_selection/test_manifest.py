@@ -44,7 +44,8 @@ class TestBurstSelectionManifest:
     def test_manifest_has_entrypoints(self):
         manifest = load_manifest(_MANIFEST_PATH)
         assert manifest is not None
-        assert manifest.entrypoints.gui is not None
+        assert manifest.entrypoints.gui is None, "the Qt tool is retired"
+        assert manifest.entrypoints.emtk is not None
         assert manifest.entrypoints.cli is not None
         assert manifest.entrypoints.services is not None
 

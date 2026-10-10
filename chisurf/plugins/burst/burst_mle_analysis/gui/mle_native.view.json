@@ -252,6 +252,11 @@
       "collapsed": true,
       "sections": [
         {
+          "type": "info",
+          "source": "calibration_text",
+          "description": "The detector's G factor and leakages l1, l2 (set in the Detector setup tab) and the scatter rate of its background in counts per second."
+        },
+        {
           "type": "value",
           "attr": "shift",
           "label": "VH shift [bin]",

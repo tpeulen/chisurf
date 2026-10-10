@@ -53,7 +53,7 @@ On `m000.spc` of the double-labelled DNA fixture
 photons and returns 223 bursts; the first three are `[382, 401]`,
 `[1785, 1807]` and `[1995, 2034]`.
 
-The **Burst Selection** tool draws exactly this representation. Its **dT** tab
+The **Burst Selection** tool draws exactly this representation. Its **Inter-photon time** tab
 plots the inter-photon time against the photon *index* — the x axis is the
 index into the three arrays — and colours the photons inside bursts:
 
@@ -61,9 +61,9 @@ index into the three arrays — and colours the photons inside bursts:
 :name: fig-33-burst-selection-dt
 :width: 100%
 
-Burst Selection, **dT** tab, the first second of `m000.spc` (**Show a window
-of** 1.00 s). Outside bursts the photons (orange: all photons) arrive
-~0.1–1 ms apart; the three dips to ~0.01 ms (cyan: selected photons) are bursts, at photon indices 382–401, 1785–1807 and
+Burst Selection, **Inter-photon time** tab, the first second of `m000.spc` (**Window
+length** 1.00 s). Outside bursts the photons (blue: all photons) arrive
+~0.1–1 ms apart; the three dips to ~0.01 ms (orange: selected photons) are bursts, at photon indices 382–401, 1785–1807 and
 1995–2034 — the same ranges `burst_search` returns above. The **Bursts** tab
 lists the search result as rows of `First Photon` / `Last Photon` with the
 reductions over each slice (duration, mean macro time, photon counts per

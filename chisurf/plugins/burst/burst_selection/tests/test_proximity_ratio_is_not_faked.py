@@ -8,7 +8,9 @@ one answer worse than none.
 
 The way in is ordinary: a micro-second ALEX file carries the alternation in the
 macro time, so before the Alternation step its micro time is empty and any
-micro-time gate selects nothing.
+micro-time gate selects nothing. (The gate-mismatch sentence and the refusal to
+search such data are tested in ``test_diagnostics.py`` and
+``test_emtk_native_behaviour.py``.)
 """
 
 from __future__ import annotations
@@ -65,27 +67,6 @@ def test_a_real_ratio_is_still_computed():
     np.testing.assert_allclose(np.asarray(proximity_ratio(frame), dtype=float), [0.25, 0.75])
 
 
-def test_the_gate_mismatch_is_named():
-    """The sentence that explains an all-zero table, rather than a silent one."""
-    from chisurf.plugins.burst.burst_selection.gui.tool import BurstSelectionTool
-
-    class _Tttr:
-        micro_times = np.zeros(1000, dtype=int)
-
-    gated = {"green": {"chs": [1], "micro_time_ranges": [[616, 3784]]}}
-    message = BurstSelectionTool._gate_mismatch_warning(_Tttr(), gated)
-    assert message is not None and "micro-time" in message
-    assert "Alternation" in message, "the message must say what to do about it"
-
-    # A file that *has* a micro time is not warned about.
-    class _Pie:
-        micro_times = np.arange(1000)
-
-    assert BurstSelectionTool._gate_mismatch_warning(_Pie(), gated) is None
-    # Nor is an ungated setup.
-    assert BurstSelectionTool._gate_mismatch_warning(_Tttr(), {"green": {"chs": [1]}}) is None
-
-
 def test_an_uncomputable_feature_does_not_discard_every_burst():
     """Dropping a *column* is not the same as dropping the bursts.
 
@@ -112,43 +93,3 @@ def test_an_uncomputable_feature_does_not_discard_every_burst():
     assert result["n_components"] >= 1, "an all-NaN feature discarded every burst"
     assert "fret" not in result["features"]
     assert len(result["means"][0]) == len(result["features"])
-
-
-def test_the_search_refuses_unconverted_alex_data():
-    """A warning was not enough: by the time it is read, files exist.
-
-    A search whose detectors gate on a micro-time the data does not have writes
-    a burst run — and a container to hold it — in which every per-detector count
-    is zero. The setup persists between sessions, so arriving here with last
-    week's ``ALEX Suite (auto)`` and this week's raw files is ordinary.
-    """
-    from pathlib import Path
-
-    from chisurf.plugins.burst.burst_selection.gui.tool import BurstSelectionTool
-
-    class _Tttr:
-        micro_times = np.zeros(1000, dtype=int)
-
-    tool = BurstSelectionTool.__new__(BurstSelectionTool)
-    tool._file_paths = [Path("/data/a.sm")]
-
-    class _Wizard:
-        detectors = {"green": {"chs": [1], "micro_time_ranges": [[616, 3784]]}}
-
-    tool.wizard = _Wizard()
-
-    import chisurf.core.fio.staging as staging
-
-    real = staging.open_tttr
-    staging.open_tttr = lambda *_a, **_k: _Tttr()
-    try:
-        reason = BurstSelectionTool._blocked_reason(tool)
-        assert reason is not None
-        assert "Nothing was written" in reason
-        assert "Alternation" in reason
-
-        # An ungated setup is not blocked.
-        _Wizard.detectors = {"green": {"chs": [1]}}
-        assert BurstSelectionTool._blocked_reason(tool) is None
-    finally:
-        staging.open_tttr = real

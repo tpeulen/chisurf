@@ -125,7 +125,7 @@ performs.
 ```json
 {
   "id": "burst_mle_analysis",
-  "entrypoints": {"gui": "chisurf.plugins.burst.burst_mle_analysis.wizard:MLELifetimeAnalysisWizard"},
+  "entrypoints": {"emtk": "chisurf.plugins.burst.burst_mle_analysis.gui.native:create_app"},
   "operation_types": ["burst_lifetime_fitting", "calibration"]
 }
 ```

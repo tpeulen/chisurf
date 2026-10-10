@@ -3,7 +3,8 @@
 The H2MM photon table is written here for the in-repository BH sample: within every burst of ``m000`` the first half
 of the photons is state 0 and the second half state 1. ``MleSession.run_batch`` with ``split_by_state`` must then give
 ``Tau S0 (green)`` / ``Tau S1 (green)`` beside ``Tau (green)``, a pooled lifetime per state and detector, and write
-``Info/state_lifetimes.csv`` beside the analysis. The wizard's state methods are the same functions.
+``Info/state_lifetimes.csv`` beside the analysis. (The Qt wizard's state methods delegated to the same
+``state_split`` functions; the wizard is retired.)
 """
 
 from __future__ import annotations
@@ -97,18 +98,3 @@ def test_without_an_h2mm_run_the_split_says_why(sample_copy, tmp_path):
     arrays, n_states, message = state_split.load_state_arrays(tmp_path, {})
     assert (arrays, n_states) == ({}, 0) and message.startswith("Split by state:")
     assert state_split.load_state_arrays(None, {})[1] == 0
-
-
-def test_the_wizard_delegates_to_the_same_functions():
-    from chisurf.plugins.burst.burst_mle_analysis import wizard
-
-    source = open(wizard.__file__).read()
-    for name in (
-        "load_state_arrays",
-        "pool_state_decays",
-        "fit_pooled_state_decays",
-        "state_lifetime_rows",
-        "seed_state_fits",
-        "write_state_lifetimes",
-    ):
-        assert f"state_split.{name}(" in source, name

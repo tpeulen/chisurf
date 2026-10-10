@@ -206,6 +206,57 @@ def test_opt_that_is_stopped_restores_the_settings(inputs):
     assert (session.settings.shift, session.settings.shift_ss, session.settings.irf_start) == before
 
 
+class _SurrogateSession:
+    """The part of a session the search touches, with a loss that is a known function of the settings."""
+
+    def __init__(self):
+        self.settings = engine.MleSettings()
+        self.irf_np = {}
+        self.current_detector = "d"
+        self.det_settings = {}
+
+    def blocked_reason(self):
+        return None
+
+    def build_decay(self):
+        pass
+
+    def fit(self):
+        return None
+
+
+def test_the_search_budget_the_caller_asks_for_is_the_budget_it_gets(monkeypatch):
+    """``max(8, ...)`` on the exploration stage once silently inflated small budgets.
+
+    Every extra evaluation is a full refit of the decay, and the bar sits at 100 % while they run.
+    """
+    for budget in (1, 5, 11):
+        session = _SurrogateSession()
+        calls = []
+
+        def loss(sess, calls=calls):
+            calls.append(1)
+            return float(len(calls))
+
+        monkeypatch.setattr(hpo, "_loss", loss)
+        hpo.optimize_hyperparameters(session, budget, seed=0)
+        assert len(calls) <= budget + 1, f"n_iter={budget} evaluated {len(calls)}"  # +1: the final refit
+
+
+def test_an_improvement_is_recognised_as_one(monkeypatch):
+    """A step that lowered the loss must keep its step size and be followed, not shrunk as if it had not.
+
+    Every refinement decision once read "no improvement" (the helper had already lowered the best loss itself), so
+    the step of a dimension that had just improved was shrunk anyway and the search exited on the three-quiet-rounds
+    break instead of on its budget. With a loss that is a bowl in the shift, a long walk down it needs the step kept.
+    """
+    session = _SurrogateSession()
+    session.settings.shift = 0
+    monkeypatch.setattr(hpo, "_loss", lambda sess: 1.0 + abs(sess.settings.shift - 5) * 0.1)
+    result = hpo.optimize_hyperparameters(session, 200, seed=0, bounds={"shift": (-5, 5, "int")})
+    assert result["config"]["shift"] == 5 and result["loss"] == pytest.approx(1.0)
+
+
 # -- the native app: real presses ------------------------------------------------------------------------------- #
 @pytest.fixture
 def app(hermetic_env):

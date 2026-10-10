@@ -86,38 +86,6 @@ def test_actual_existing_caller_hosts_native_settings_and_preserves_semantics(qa
         page.close()
 
 
-@pytest.mark.parametrize("kind", ["burst_dialog"])
-def test_existing_modal_settings_callers_consume_actual_native_definition(qapp, monkeypatch, kind):
-    """The existing accept callback consumes the native definition, not old combo/table fields."""
-    from qtpy import QtWidgets
-
-    from chisurf.gui.widgets.wizard.tttr_channeldefinition import DetectorWizardPage
-
-    captured = []
-    def accept(dialog):
-        page = dialog.findChild(DetectorWizardPage)
-        assert page is not None and page.host.control is page.app
-        page.set_settings(copy.deepcopy(SETTINGS))
-        captured.append(page)
-        dialog.accept()
-        return QtWidgets.QDialog.Accepted
-    monkeypatch.setattr(QtWidgets.QDialog, "exec_", accept)
-    from chisurf.plugins.burst.burst_selection.gui.tool import BurstSelectionTool
-    parent = BurstSelectionTool()
-    try:
-        parent._show_channel_settings()
-        assert parent._selected_filetype == "SPC-130"
-        assert parent.wizard.detectors == SETTINGS["detectors"]
-        assert len(captured) == 1
-    finally:
-        parent.close()
-        for page in captured:
-            try:
-                page.close()
-            except RuntimeError:
-                pass
-
-
 def test_actual_setup_wizard_can_save_a_definition_and_then_finish(qapp, qtbot, tmp_path):
     """The existing enclosing wizard has a real save action before requiring its completion."""
     import json

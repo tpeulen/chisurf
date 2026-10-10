@@ -368,44 +368,37 @@ def _grab_19_h2mm():
 
 # ---------------------------------------------------------------- guide 21
 def _grab_21_burst_mle():
-    """Burst MLE wizard on m000.bur of the BH SPC-132 sample, one-click IRF/bg + fit.
+    """Burst MLE (emtk app) on m000.bur of the BH SPC-132 sample, one-click IRF/bg + fit.
 
-    Same drive as ``tests/test_mle_gui_end_to_end.py`` (channels, .bur, Auto
-    IRF/background, fit), on the in-repo sample with its own channel map
-    (green = routing 0/8, red = 1/9 per the folder's burst-analysis handoff).
+    The same drive as ``tests/test_emtk_mle_native.py`` (detectors, a dropped .bur, Auto IRF/background), on the
+    in-repo sample with its own channel map (green = routing 0/8, red = 1/9 per the folder's burst-analysis handoff).
     """
-    from chisurf.plugins.burst.burst_mle_analysis.wizard import MLELifetimeAnalysisWizard
+    from emtk.testing import Driver
+
+    from emtk_shot import app_from, render, wait
 
     work, folder = _sm_dna_copy()
-    w = MLELifetimeAnalysisWizard()
-    w.resize(1400, 900)
-    w.show()
-    _settle()
-    w.channel_definer.load_data_into_tables(
-        {
-            "detectors": {
-                name: dict(d, g_factor=1.0, l1=0.0308, l2=0.0368)
-                for name, d in _BH_DETECTORS.items()
-            },
-            "windows": {},
-            "file_type": "SPC-130",
-        }
-    )
-    w.channel_definer.file_type_combo.setCurrentText("SPC-130")
-    w._init_channels_from_wizard()
-    w.burst_files_list.add_file(str(folder / "bi4_bur" / "m000.bur"))
-    w.load_burst_data()
-    w.update_burst_files()
-    w.comboBox_window.setCurrentText("green")
-    _settle()
-    w.auto_extract_irf_bg()
-    _settle(30)
-    print("tau green:", w.doubleSpinBox_tau_result.value(), "binning", w.micro_time_binning,
-          "range", w.micro_time_range)
-    if os.environ.get("SHOT_PROBE"):
-        _probe_tabs(w, "21")
-    _grab(w, "21_burst_mle.png")
-    return w
+    app = app_from("burst_mle_analysis")
+    definition = {
+        "detectors": {
+            name: dict(d, g_factor=1.0, l1=0.0308, l2=0.0368) for name, d in _BH_DETECTORS.items()
+        },
+        "windows": {},
+        "file_type": "SPC-130",
+    }
+    app.editor.model.data["detectors"] = definition["detectors"]
+    app.model.set_setup(definition)
+    driver = Driver(app, (1400, 900))
+    driver.frame(3)
+    assert app.model.add_files([folder / "bi4_bur" / "m000.bur"])
+    app.model.current_detector = "green"
+    driver.frame(3)
+    app.auto_extract()
+    wait(driver, lambda: not app.job.busy, timeout=400)
+    print("tau green:", app.model.tau_result, "binning", app.model.binning,
+          "range", app.model.session.micro_time_range)
+    render(app, "21_burst_mle.png", size=(1400, 900), driver=driver)
+    return app
 
 
 # ---------------------------------------------------------------- guide 22

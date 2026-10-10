@@ -120,44 +120,52 @@ def _grab_h2mm_simulated():
 
 
 def _grab_burst_selection_guides():
-    """Guides 29, 33, 35: Burst Selection on the ten sm-DNA SPC-130 files."""
-    from chisurf.plugins.burst.burst_selection.gui import sections
-    from chisurf.plugins.burst.burst_selection.gui.tool import BurstSelectionTool
+    """Guides 29, 33, 35: Burst Selection (emtk app) on the ten sm-DNA SPC-130 files (29 and 35 pool all ten)."""
+    from emtk.testing import Driver
+
+    from emtk_shot import app_from, render, wait
 
     data = _sm_dna_copy()
     folder = data.parent / "spc"
     folder.mkdir()
     for spc in data.glob("*.spc"):
         shutil.copy(spc, folder)
-    tool = BurstSelectionTool()
-    tool.resize(1400, 860)
-    tool.show()
-    _pump(1)
-    tool._add_paths([folder])
-    t0 = time.time()
-    tool.analyze_files(force=True)
-    while not tool._has_processed and time.time() - t0 < 240:
-        QApplication.instance().processEvents()
-        time.sleep(0.05)
-    _pump(1)
-    window = tool.findChildren(sections._TimeWindowSection)[0]
-    window.length_spin.setValue(1.0)
-    _pump(2)
-    _select_tab(tool, "dT")
-    _grab(tool, "33_burst_selection_dt.png")
-    tool.file_list.selectAll()
-    _pump(1)
-    window.enabled_box.setChecked(False)
-    _pump(3)
-    _select_tab(tool, "dT")
-    _grab(tool, "35_burst_selection_files.png")
-    _select_tab(tool, "Histogram")
-    tool.feature_combo.setCurrentText("Proximity Ratio")
-    tool.gmm_components_spin.setValue(3)
-    tool._fit_gmm()
-    _pump(1)
-    _grab(tool, "29_burst_selection_gmm.png")
-    tool.close()
+    app = app_from("burst_selection")
+    # SPC-130 detector channels of the double-labelled DNA sample: green 0/8, red 1/9
+    app.apply_setup(
+        {
+            "windows": {"prompt": [0, 4096]},
+            "detectors": {
+                name: {"chs": chs, "micro_time_ranges": [[0, 4096]], "g_factor": 1.0, "l1": 0.0, "l2": 0.0}
+                for name, chs in (("green", [0, 8]), ("red", [1, 9]))
+            },
+            "tttr_reading": {"file_type": "SPC-130", "micro_time_binning": 1},
+        },
+        "BH SPC-130 dsDNA",
+    )
+    driver = Driver(app, (1400, 860))
+    driver.frame(3)
+    app.model.add_paths(sorted(folder.glob("*.spc")))
+    app.model.select_file(0)
+    assert app.run(force=True), app.model.status_text
+    wait(driver, lambda: not app.job.busy, timeout=400)
+    # 33: the first second of m000.spc
+    app.model.window_start_s, app.model.window_length_s = 0.0, 1.0
+    app.model.load_diagnostics()
+    app.docks.focus("dt")
+    render(app, "33_burst_selection_dt.png", size=(1400, 860), driver=driver)
+    # 35: the ten files and their burst counts, the bursts of all of them pooled in one histogram
+    app.model.window_length_s = 0.0
+    app.model.load_diagnostics()
+    app.model.pool_files = True
+    app.model.hist_feature = "Proximity Ratio"
+    app.docks.focus("histogram")
+    render(app, "35_burst_selection_files.png", size=(1400, 860), driver=driver)
+    # 29: the proximity ratio of all bursts, three Gaussians
+    app.model.gmm_components = 3
+    app.model.fit_gmm()
+    render(app, "29_burst_selection_gmm.png", size=(1400, 860), driver=driver)
+    app.close()
 
 
 def _grab_burst_analysis_pipeline():

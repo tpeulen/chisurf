@@ -340,3 +340,82 @@ def test_the_engine_session_not_the_wizard_is_behind_the_app():
     )
     done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
     assert done.returncode == 0, done.stdout + done.stderr
+
+
+def test_the_fit_step_of_the_guide_waits_for_the_real_press_of_fit_bursts(monkeypatch, fitted):
+    """The press is real; the batch behind it is not the point, so it is replaced by a counter."""
+    window, drv = fitted
+    calls = []
+    monkeypatch.setattr(window, "fit_bursts", lambda: calls.append(1))
+    steps = json.loads((GUI / "guide.json").read_text())["steps"]
+    fit_step = next(
+        i
+        for i, step in enumerate(steps)
+        if step.get("await") and step.get("target", {}).get("name") == "toolAction_run"
+    )
+    window.start_guide()
+    # Earlier steps await their own presses (Demo, fit model); jump to the one before Fit.
+    window.tour.step_idx = fit_step - 1
+    window.tour.next()
+    assert window.tour.step_idx == fit_step
+    drv.draw(2)
+    assert window.tour.awaiting
+    drv.click_name("toolAction_run")
+    assert calls == [1] and not window.tour.awaiting
+
+
+def test_a_dropped_folder_adds_the_burst_tables_under_it(app, sample_copy):
+    """A folder is expanded to the ``.bur`` tables below it (and only those); other files are ignored."""
+    (sample_copy / "note.txt").write_text("ignored")
+    assert app.model.add_files([sample_copy]) >= 1
+    names = {p.name for p in app.model.session.bur_files}
+    assert "m000.bur" in names and all(p.suffix == ".bur" for p in app.model.session.bur_files)
+    assert app.model.add_files([sample_copy]) == 0, "tables already listed are not added twice"
+
+
+def test_the_database_buttons_open_their_pickers(monkeypatch, app):
+    """The Qt tool's three "Database" buttons: burst tables, measured IRF files, measured background files."""
+    opened = []
+    for key, picker in app.pickers.items():
+        monkeypatch.setattr(picker, "open", lambda key=key: opened.append(key))
+    drv = Driver(app)
+    drv.click_name("db_files")
+    drv.click_text("IRF/BG files")
+    drv.draw(2)
+    drv.click_name("db_irf_files")
+    drv.click_name("db_bg_files")
+    assert opened == ["db_files", "db_irf_files", "db_bg_files"]
+
+
+def test_a_picked_dataset_reaches_the_model(monkeypatch, app, burst_table):
+    """What the picker resolves to a local path goes where its button said: burst tables, IRF, background."""
+    added = []
+    monkeypatch.setattr(app.model, "add_files", lambda paths: added.append(("bur", list(paths))) or 1)
+    monkeypatch.setattr(app.model, "add_irf_files", lambda paths: added.append(("irf", list(paths))))
+    monkeypatch.setattr(app.model, "add_bg_files", lambda paths: added.append(("bg", list(paths))))
+    for key in ("db_files", "db_irf_files", "db_bg_files"):
+        app.pickers[key].on_paths([burst_table])
+    assert [kind for kind, _ in added] == ["bur", "irf", "bg"]
+
+
+def test_the_detector_calibration_and_the_anisotropies_are_drawn(fitted):
+    """G, l1, l2 and the scatter rate of the detector, and rScatter / rExp of the Fit23 fit, are shown as text."""
+    window, drv = fitted
+    shown = " ".join(texts(drv.draw(3)))
+    assert "r scatter" in shown and "r experimental" in shown
+    drv.click_text("IRF")
+    shown = " ".join(texts(drv.draw(3)))
+    assert "G 1.0000, l1 0.0308, l2 0.0368." in shown
+    assert "Scatter (background) rate:" in shown
+
+
+def test_the_current_file_and_the_inspected_bursts_file_are_named(fitted):
+    """The Qt wizard showed the file whose decay is on screen in a Filename field; the app says it under the plot."""
+    window, drv = fitted
+    drv.click_text("Decay and fit")
+    shown = texts(drv.draw(3))
+    assert "Current file: m000.bur (1 of 1)" in shown
+    assert window.model.inspected_file_name() == "m000.spc"
+    drv.click_text("Inspected burst")
+    assert any(t.startswith("burst ") and t.endswith("- m000.spc") for t in texts(drv.draw(3)))
+    drv.click_text("Decay and fit")

@@ -122,6 +122,7 @@ _DISPLAY_ATTRS = (
     "trace_bin_ms",
     "decay_bins",
     "burst_bins",
+    "pool_files",
     "hist_feature",
     "hist_bins",
     "hist_min",
@@ -359,6 +360,7 @@ class BurstSelectionModel(RunPickerMixin):
         self.trace_bin_ms = diag_mod.DEFAULT_TRACE_BIN_WIDTH_MS
         self.decay_bins = diag_mod.DEFAULT_DECAY_BINS
         self.burst_bins = diag_mod.DEFAULT_BURST_BINS
+        self._pool_files = False
         self.hist_feature = PROXIMITY_RATIO_COLUMN
         self.hist_bins = diag_mod.DEFAULT_HISTOGRAM_BINS
         self.hist_min = 0.0
@@ -1012,12 +1014,19 @@ class BurstSelectionModel(RunPickerMixin):
         ]
         if frame is not None and row_count(frame):
             data = _display_rows_frame(frame)
-            for name, label in (
+            names = column_names(data)
+            means = [
                 ("Number of Photons", "Mean photons"),
                 ("Duration (ms)", "Mean duration (ms)"),
                 ("Count Rate (KHz)", "Mean rate (kHz)"),
-            ):
-                if name in column_names(data):
+            ]
+            # mean photons per burst in each detector (the Qt info box's "Mean ph (green)" rows)
+            for detector in self.detectors:
+                column = f"Number of Photons ({detector})"
+                if column in names:
+                    means.append((column, f"Mean photons ({detector})"))
+            for name, label in means:
+                if name in names:
                     values = numeric_column(data, name)
                     values = values[np.isfinite(values)]
                     if values.size:
@@ -1031,7 +1040,37 @@ class BurstSelectionModel(RunPickerMixin):
         )
 
     # -- the displayed burst table ----------------------------------------------------------------------- #
+    @property
+    def pool_files(self) -> bool:
+        """Whether the burst table, histogram, scatter and summary show the bursts of every file together.
+
+        The Qt tool stacked the tables of all selected files; fitting the proximity-ratio histogram of a whole
+        measurement (ten repeats, say) needs exactly that. The diagnostic plots stay on the active file.
+        """
+        return bool(self._pool_files)
+
+    @pool_files.setter
+    def pool_files(self, value: bool) -> None:
+        value = bool(value)
+        if value == self._pool_files:
+            return
+        self._pool_files = value
+        self.gmm_result = None
+        self._refresh_display_frame()
+        self.notify("files")
+
     def _refresh_display_frame(self) -> None:
+        if self._pool_files:
+            stacked = [
+                (index, self.frames_by_file.get(str(path)))
+                for index, path in enumerate(self.files)
+            ]
+            stacked = [(i, f) for i, f in stacked if f is not None and row_count(f)]
+            if stacked:
+                self.display_frame = diag_mod.display_frame(
+                    [f for _i, f in stacked], [i for i, _f in stacked]
+                )
+                return
         path = self.active_file
         frame = self.frames_by_file.get(str(path)) if path is not None else None
         if frame is None or row_count(frame) == 0:

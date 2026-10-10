@@ -1,4 +1,4 @@
-"""Burst Selection retirement retains its real native factory and adapter namespace."""
+"""Burst Selection retirement retains its real native factory and adapter namespace; the Qt tool stays retired."""
 
 import json
 from importlib import import_module
@@ -47,10 +47,20 @@ def test_declared_native_factory_and_adapter_api_remain_available():
     assert public.selected_histogram_data is adapter.selected_histogram_data
 
 
-def test_current_public_tool_and_wizard_bind_to_the_migrated_tool():
-    """Legacy-source deletion must retain the current public launcher identity."""
+def test_the_qt_tool_and_its_launchers_are_gone():
+    """The Qt tool, its wizard launcher and the dead module shadowed by the ``gui`` package are retired."""
     package = import_module("chisurf.plugins.burst.burst_selection")
-    current = import_module("chisurf.plugins.burst.burst_selection.gui.tool")
-    wizard = import_module("chisurf.plugins.burst.burst_selection.wizard")
-    assert package.BurstSelectionTool is current.BurstSelectionTool
-    assert wizard.BurstSelectionTool is current.BurstSelectionTool
+    assert not hasattr(package, "BurstSelectionTool")
+    for relative in (
+        "gui/tool.py",
+        "gui/app.py",
+        "gui/sections.py",
+        "gui/gmm_settings_dialog.py",
+        "gui/display_view_model.py",
+        "gui/timeline.py",
+        "gui/burst_display.view.json",
+        "gui.py",
+        "wizard.py",
+    ):
+        assert not (PLUGIN / relative).exists(), relative
+    assert "gui" not in json.loads((PLUGIN / "manifest.json").read_text())["entrypoints"]

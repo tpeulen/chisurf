@@ -29,7 +29,6 @@ statistics.
 ## Requirements
 
 - Python packages:
-  - PyQt5
   - numpy
   - scipy
   - matplotlib

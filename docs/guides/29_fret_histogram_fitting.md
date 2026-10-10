@@ -27,30 +27,30 @@ for the peak positions.
 ## In ChiSurf
 
 In the **Burst Selection** tool (also step 2 of **Burst Analysis**), run the
-search (▶), then open the **Histogram** tab:
+search (**Run**), then open the **Histogram** tab:
 
 - **Feature** — the burst column to histogram; `Proximity Ratio` for this fit.
-- **# Bins**, **Range** (**⚡ Auto** fits it to the data) and **Log x**.
-- **GMM** — the number of components; **Auto components** instead picks the
-  count with the lowest BIC (up to the maximum set under **⚙️**).
-- **🎯 Fit GMM** — fits once and draws the components (dashed) and their sum
-  (red) over the histogram; the table lists each component's weight, mean and
-  standard deviation.
-- **⚙️** — covariance type, random seed, initialisations, iterations,
+- **Bins**, **Range from** / **Range to** (**Auto range** fits it to the data) and **Log counts**.
+- **GMM components** — the number of components; **Auto components** instead picks
+  the count with the lowest BIC (up to the maximum set under **GMM settings**).
+- **Fit GMM** — fits once and draws the components and their sum over the
+  histogram; the table lists each component's weight, mean and standard
+  deviation.
+- **GMM settings** — covariance type, random seed, initialisations, iterations,
   tolerance, regularisation and the maximum component count of the mixture.
 
-The histogram is built from the bursts on screen. With **Show a window of**
-ticked (the default) that is only the bursts of the visible window, so untick
-it and select all files in **Files** before fitting the whole measurement.
+The histogram is built from the bursts of the file on show. Tick **Pool all files**
+(**Display** panel) to histogram and fit the bursts of every searched file together,
+which is what the whole measurement needs.
 
 ```{figure} figures/29_burst_selection_gmm.png
 :name: fig-29-burst-selection-gmm
 :width: 100%
 
-Burst Selection, **Histogram** tab: the proximity ratio of all 1130 bursts
+Burst Selection, **Histogram** tab with **Pool all files** on: the proximity ratio of all 1130 bursts
 from ten BH SPC-130 files of a double-labelled DNA sample, fitted with three
-Gaussians. The donor-only peak sits at PR = 0.023 (σ = 0.014, weight 0.35),
-the FRET population at PR = 0.400 (σ = 0.063, weight 0.46); the third
+Gaussians. The donor-only peak sits at PR = 0.031 (σ = 0.016, weight 0.35),
+the FRET population at PR = 0.428 (σ = 0.063, weight 0.47); the third
 component (σ = 0.24, weight 0.19) absorbs the flat background between them.
 ```
 

@@ -1,4 +1,8 @@
-"""Single Molecule Burst Selection Plugin."""
+"""Single Molecule Burst Selection Plugin.
+
+The tool is the emtk app ``gui.native:create_app`` over the Qt-free model ``gui.model``; the search, the CLI and the
+backend services are Qt-free as well.
+"""
 
 from __future__ import annotations
 
@@ -15,17 +19,3 @@ else:
     # Legacy fallback
     name = "Spectroscopy:Single-Molecule:Burst-Selection"
     cli_entrypoint = "burst-selection=chisurf.plugins.burst.burst_selection.cli:cli"
-
-__all__ = ["BurstSelectionTool"]
-
-
-def __getattr__(name: str):
-    """Lazily import the current GUI tool without a Qt package import side effect.
-
-    Keeps ``from ...burst_selection import BurstSelectionTool`` working while the
-    Qt-free ``api``/``cli`` submodules can be imported headlessly (no Qt needed).
-    """
-    if name == "BurstSelectionTool":
-        from .gui.tool import BurstSelectionTool
-        return BurstSelectionTool
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

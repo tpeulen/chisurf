@@ -25,8 +25,8 @@ quality control. Each file should be background-corrected on its **own** rate
 ## In ChiSurf
 
 **Burst Selection** (and step 2 of **Burst Analysis**) takes any number of
-files: drop a folder on the **Files** tab or add files with the toolbar, and
-▶ Run searches every file with the same settings, writing one `.bur` per file
+files: drop a folder on the window or use **Add files** / **Add folder**, and
+**Run** searches every file with the same settings, writing one `.bur` per file
 into one output folder. Each burst row keeps its `First File`, so per-file
 provenance survives pooling. Background is a separate step
 ([background rates](15_background_rates.md)) and is estimated per file there.
@@ -36,10 +36,10 @@ provenance survives pooling. Background is a separate step
 :width: 100%
 
 Burst Selection on ten repeats of a double-labelled DNA measurement
-(`m000.spc` … `m009.spc`, BH SPC-130), **Show a window of** unticked and all
-files selected: the **dT** tab on the pooled photon index, one colour per file
-(1.79 M photons), burst photons in cyan. The search finds 71–134 bursts per
-file, 1130 in total, and the **Histogram** tab then histograms and fits all of
+(`m000.spc` … `m009.spc`, BH SPC-130): the file list with the bursts found in
+each (71–134 per file, 1130 in total) and, with **Pool all files** on, the
+proximity-ratio histogram of all of them together — 1.79 M photons searched,
+the bursts of all ten repeats in one histogram. The **Histogram** tab then fits
 them together ([FRET-histogram fitting](29_fret_histogram_fitting.md)).
 ```
 
@@ -68,13 +68,6 @@ pool. The facade's `BurstWorkflow.register_all([...])` followed by
 call and keeps their MMFDB provenance
 ({src}`chisurf/plugins/burst/burst_analysis/api/workflow.py`).
 
-:::{admonition} Known defects
-:class: warning
-With **Show a window of** unticked, the caption and the time-axis plots (MCS)
-place files 2–10 on top of each other: the ten files last 642 s together, the
-caption says *Whole measurement — 126.3 s*. The photon-index plots (dT) are
-unaffected.
-:::
 
 ## Result
 

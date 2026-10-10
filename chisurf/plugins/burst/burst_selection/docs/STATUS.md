@@ -1,9 +1,12 @@
 # Burst Selection — Current entry points
 
 The production Burst Analysis hub constructs the native emtk/AutoForm selection
-app with `gui.native.create_app`. The public `BurstSelectionTool` and `wizard.py`
-retain the implemented modern Qt tool in `gui/tool.py` until the later shell
-retirement. The older fallback, private assets and runtime chooser are retired.
+app with `gui.native.create_app`. The Qt `BurstSelectionTool` (`gui/tool.py`), its
+`wizard.py` launcher and the hosted emtk shell over it are retired (see the
+"Burst plugins whose Qt tool is still shipped" entry of
+`okf/references/known-issues.md`); the Qt-run numbers are kept in
+`tests/qt_reference.json`. The older fallback, private assets and runtime chooser are
+retired.
 
 The legacy cleanup's 26 scoped runtime checks pass. A real two-file SPC
 comparison preserves all ten numeric columns, settings and 72 controls:

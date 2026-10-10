@@ -296,7 +296,7 @@ Every plugin MUST have a `manifest.json` in its root package directory. This rep
   },
 
   "entrypoints": {
-    "gui": "chisurf.plugins.burst.burst_selection.gui.tool:BurstSelectionTool",
+    "emtk": "chisurf.plugins.burst.burst_selection.gui.native:create_app",
     "cli": "burst-selection=chisurf.plugins.burst.burst_selection.cli:cli",
     "services": "chisurf.plugins.burst.burst_selection.backend.services:register_services"
   },

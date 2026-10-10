@@ -1,11 +1,11 @@
-"""The curves the wizard plots after a fit, without needing a data set.
+"""The curves the burst-MLE tool plots after a fit, without needing a data set.
 
-``test_mle_gui_end_to_end.py`` covers this path properly but is skipped
-everywhere the BH smFRET DNA files are absent — which is everywhere except one
-machine. That gap let a real regression ship: ``plot_fit_result`` read
-``self.fit.data`` and ``self.fit.model``, attributes the *old* per-estimator
-tttrlib fitter carried. The migrated ``Fit2x`` facade is reusable and holds no
-per-fit state, so those attributes no longer exist and the wizard raised
+``test_mle_session_end_to_end.py`` covers this path properly but is skipped
+wherever the BH smFRET DNA files are absent. That gap let a real regression
+ship (in the retired Qt wizard): ``plot_fit_result`` read ``self.fit.data`` and
+``self.fit.model``, attributes the *old* per-estimator tttrlib fitter carried.
+The migrated ``Fit2x`` facade is reusable and holds no per-fit state, so those
+attributes no longer exist and the tool raised
 ``AttributeError: 'Fit2x' object has no attribute 'data'`` the moment anyone hit
 auto-optimise.
 
@@ -129,7 +129,16 @@ def test_residuals_can_be_formed_from_data_and_model():
     assert abs(float(np.mean(residuals[mask]))) < 1.0
 
 
-def test_no_wizard_code_reads_curves_off_the_fitter():
+#: The Qt-free sources that fit, plot and export (the retired wizard's duties).
+SOURCES = ("engine.py", "state_split.py", "hpo.py", "fit_display.py", "gui/model.py", "gui/native.py")
+
+
+def _sources():
+    root = pathlib.Path(__file__).resolve().parents[1]
+    return [(name, (root / name).read_text()) for name in SOURCES]
+
+
+def test_no_burst_mle_code_reads_curves_off_the_fitter():
     """A guard for the whole class of bug, not one call site.
 
     This was fixed twice and missed twice, because ``Fit2x.data`` raises while
@@ -137,23 +146,22 @@ def test_no_wizard_code_reads_curves_off_the_fitter():
     crash finds one site and leaves the other, and ``getattr(self.fit, "model",
     [])`` is worse still: the default never fires and numpy is handed an enum.
 
-    The curves live on ``self._fit_view``, recorded when the fit ran. Nothing in
-    the wizard may read them off ``self.fit``, whatever the spelling.
+    The curves live on the ``FitOutcome``, recorded when the fit ran. Nothing in
+    the tool may read them off ``self.fit``, whatever the spelling.
     """
     import re
 
-    source = (pathlib.Path(__file__).resolve().parents[1] / "wizard.py").read_text()
-
     offenders = []
-    for n, line in enumerate(source.splitlines(), start=1):
-        code = line.split("#", 1)[0]  # ignore prose about the bug
-        if re.search(r"self\.fit\.(data|model)\b", code) or re.search(
-            r"getattr\(\s*self\.fit\s*,\s*[\"']\s*(data|model)", code
-        ):
-            offenders.append(f"{n}: {line.strip()}")
+    for name, source in _sources():
+        for n, line in enumerate(source.splitlines(), start=1):
+            code = line.split("#", 1)[0]  # ignore prose about the bug
+            if re.search(r"self\.fit\.(data|model)\b", code) or re.search(
+                r"getattr\(\s*self\.fit\s*,\s*[\"']\s*(data|model)", code
+            ):
+                offenders.append(f"{name}:{n}: {line.strip()}")
 
     assert not offenders, (
-        "read the fitted curves from self._fit_view, not from the fitter:\n" + "\n".join(offenders)
+        "read the fitted curves from the FitOutcome, not from the fitter:\n" + "\n".join(offenders)
     )
 
 
@@ -192,21 +200,20 @@ def test_a_result_is_read_by_name_and_not_subscripted():
         assert isinstance(float(value), float)
 
 
-def test_the_wizard_does_not_subscript_a_fit_result():
+def test_burst_mle_code_does_not_subscript_a_fit_result():
     """A guard for the call sites, since the end-to-end test is skipped here."""
     import re
 
-    source = (pathlib.Path(__file__).resolve().parents[1] / "wizard.py").read_text()
-
     offenders = []
-    for n, line in enumerate(source.splitlines(), start=1):
-        code = line.split("#", 1)[0]
-        # Named keys only: `res` is also a DataFrame in the export path, where
-        # subscripting it is exactly right.
-        if re.search(
-            r"\bres\[[\"'](x|twoIstar|fixed|results|model_curve)[\"']\]", code
-        ) or re.search(r"[\"'](x|twoIstar)[\"']\s+in\s+res\b", code):
-            offenders.append(f"{n}: {line.strip()}")
+    for name, source in _sources():
+        for n, line in enumerate(source.splitlines(), start=1):
+            code = line.split("#", 1)[0]
+            # Named keys only: `res` is also a DataFrame in the export path, where
+            # subscripting it is exactly right.
+            if re.search(
+                r"\bres\[[\"'](x|twoIstar|fixed|results|model_curve)[\"']\]", code
+            ) or re.search(r"[\"'](x|twoIstar)[\"']\s+in\s+res\b", code):
+                offenders.append(f"{name}:{n}: {line.strip()}")
 
     assert not offenders, (
         "a Fit2xResult is read by attribute (res.x, res.twoIstar, "

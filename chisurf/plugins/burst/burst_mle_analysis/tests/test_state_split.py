@@ -16,6 +16,7 @@ import pytest
 
 pytest.importorskip("tttrlib")
 
+from chisurf.plugins.burst.burst_mle_analysis import state_split  # noqa: E402
 from chisurf.plugins.burst.burst_mle_analysis._mp_worker import (  # noqa: E402
     process_one_file_worker,
 )
@@ -236,13 +237,9 @@ def test_the_pooled_decay_holds_every_burst_photon_of_its_state():
 
 def test_the_pooled_fit_is_the_state_lifetime_and_beats_a_single_burst():
     """Pooling is what makes the per-state lifetime a number worth quoting."""
-    from chisurf.plugins.burst.burst_mle_analysis.wizard import (
-        MLELifetimeAnalysisWizard as W,
-    )
-
     pooled = _pool()
-    fits = W._fit_pooled_state_decays(pooled, ["green"], {"green": _cfg()}, 0)
-    rows = W._state_lifetime_rows(fits, "fit23", ["tau", "gamma", "r0", "rho"])
+    fits = state_split.fit_pooled_state_decays(pooled, ["green"], {"green": _cfg()}, 0)
+    rows = state_split.state_lifetime_rows(fits, "fit23", ["tau", "gamma", "r0", "rho"])
 
     by_state = {r["State"]: r for r in rows}
     assert set(by_state) == {0, 1}
@@ -277,27 +274,19 @@ def test_a_states_burst_fits_start_from_that_states_pooled_lifetime():
     assert (df["Tau (green)"] == 2.0).all(), df["Tau (green)"].tolist()
 
 
-def test_the_pooled_step_fits_writes_and_seeds_in_one_go(qapp, tmp_path):
+def test_the_pooled_step_fits_writes_and_seeds_in_one_go(tmp_path):
     """The whole global-lifetime step, over the real process pool.
 
-    Pools across files, fits each state, writes the table beside the analysis,
-    and puts each fitted lifetime into the job payloads as that state's start
-    value — the piece the per-burst pass then reads.
+    Pools across files, fits each state, and puts each fitted lifetime into the job payloads as that state's start
+    value -- the piece the per-burst pass then reads. The table is written beside the analysis.
     """
     import multiprocessing as mp
 
-    from chisurf.plugins.burst.burst_mle_analysis.wizard import (
-        MLELifetimeAnalysisWizard,
-    )
-
     analysis = tmp_path / "burstwise_All 0.1000#15"
     (analysis / "bi4_bur").mkdir(parents=True)
-    bur = analysis / "bi4_bur" / "m000.bur"
-    bur.write_text("")
 
     mt, rc, st, bursts = _synth()
     blocks = _in_shared_memory([rc, mt, st])
-    w = MLELifetimeAnalysisWizard()
     try:
         rc_sh, mt_sh, st_sh = blocks
         cfg = _cfg()
@@ -317,28 +306,21 @@ def test_the_pooled_step_fits_writes_and_seeds_in_one_go(qapp, tmp_path):
                 (st_sh.name, st.shape, str(st.dtype), 2),
             )
         ]
-        w.burst_files_list.get_selected_files = lambda: [str(bur)]
-        rows, written = w._apply_pooled_state_fits(
-            jobs,
-            ["green"],
-            mp.get_context("spawn"),
-            2,
-            "fit23",
-            ["tau", "gamma", "r0", "rho"],
+        rows, seeded, message = state_split.pooled_state_fits(
+            jobs, ["green"], mp.get_context("spawn"), 2, "fit23", ["tau", "gamma", "r0", "rho"], 0
         )
     finally:
         for sh in blocks:
             sh.close()
             sh.unlink()
-        w.close()
 
     assert [r["State"] for r in rows] == [0, 1]
     assert abs(rows[0]["Tau"] - 3.6) < 0.25, rows[0]["Tau"]
+    assert seeded == 2 and message.startswith("Pooled state lifetimes (2 seeded)")
+    written = state_split.write_state_lifetimes(rows, {analysis})
     table = analysis / "Info" / "state_lifetimes.csv"
     assert table.exists()
-    # The files it wrote come back, so the reuse gate can cover them: a stamp
-    # that names only the b?4 exports reports "Unchanged" after this table is
-    # deleted, and never rewrites it.
+    # The files it wrote come back, so a reuse gate can cover them.
     assert written == [table]
 
     seeds = jobs[0][9]["green"]["state_x0"]
@@ -348,35 +330,23 @@ def test_the_pooled_step_fits_writes_and_seeds_in_one_go(qapp, tmp_path):
     assert list(seeds[0][1:]) == list(cfg["x0"][1:])
 
 
-def test_a_file_without_raw_data_does_not_cost_the_pooled_fit(qapp, tmp_path):
+def test_a_file_without_raw_data_does_not_cost_the_pooled_fit():
     """The shared configuration must come from a *real* job, not from job zero.
 
-    Jobs follow the burst table's file order, and a measurement whose raw TTTR
-    is missing contributes a job carrying an empty per-detector mapping. Reading
-    the configuration from that one produced no fit, no table and no start
-    values while the run otherwise completed and exported a full table — the
-    per-burst state fits then fell back to the panel's single guess, which is
-    the bias the seeding exists to remove.
+    Jobs follow the burst table's file order, and a measurement whose raw TTTR is missing contributes a job
+    carrying an empty per-detector mapping. Reading the configuration from that one produced no fit, no table and
+    no start values while the run otherwise completed and exported a full table -- the per-burst state fits then
+    fell back to the panel's single guess, which is the bias the seeding exists to remove.
     """
     import multiprocessing as mp
 
-    from chisurf.plugins.burst.burst_mle_analysis.wizard import (
-        MLELifetimeAnalysisWizard,
-    )
-
-    analysis = tmp_path / "burstwise_All 0.1000#15"
-    (analysis / "bi4_bur").mkdir(parents=True)
-    bur = analysis / "bi4_bur" / "m000.bur"
-    bur.write_text("")
-
     mt, rc, st, bursts = _synth()
     blocks = _in_shared_memory([rc, mt, st])
-    w = MLELifetimeAnalysisWizard()
     try:
         rc_sh, mt_sh, st_sh = blocks
         cfg = _cfg()
-        # First: a file whose raw measurement could not be read (this is exactly
-        # what ``process_bursts`` appends for it — no shm names, no config).
+        # First: a file whose raw measurement could not be read (this is exactly what the batch appends for it --
+        # no shm names, no config).
         broken = ("missing.spc", bursts, None, None, None, None, None, None, ["green"], {}, 0, None)
         real = (
             "m000.spc",
@@ -393,100 +363,53 @@ def test_a_file_without_raw_data_does_not_cost_the_pooled_fit(qapp, tmp_path):
             (st_sh.name, st.shape, str(st.dtype), 2),
         )
         jobs = [broken, real]
-        w.burst_files_list.get_selected_files = lambda: [str(bur)]
-        rows, written = w._apply_pooled_state_fits(
-            jobs,
-            ["green"],
-            mp.get_context("spawn"),
-            2,
-            "fit23",
-            ["tau", "gamma", "r0", "rho"],
+        rows, seeded, _message = state_split.pooled_state_fits(
+            jobs, ["green"], mp.get_context("spawn"), 2, "fit23", ["tau", "gamma", "r0", "rho"], 0
         )
     finally:
         for sh in blocks:
             sh.close()
             sh.unlink()
-        w.close()
 
     assert [r["State"] for r in rows] == [0, 1], "the good file still describes the states"
-    assert written, "the table is written"
+    assert seeded == 2
     assert set(real[9]["green"]["state_x0"]) == {0, 1}, "and the real job is seeded"
 
 
-def test_state_lifetimes_are_written_beside_the_analysis_not_as_a_companion(qapp, tmp_path):
-    """One row per *state* — a companion is one row per burst, merged by position.
+def test_state_lifetimes_are_written_beside_the_analysis_not_as_a_companion(tmp_path):
+    """One row per *state* -- a companion is one row per burst, merged by position.
 
-    Written into a ``b?4`` folder this table would shift every burst after the
-    first, which is exactly what the companion contract exists to prevent.
+    Written into a ``b?4`` folder this table would shift every burst after the first, which is exactly what the
+    companion contract exists to prevent.
     """
-    from chisurf.plugins.burst.burst_mle_analysis.wizard import (
-        MLELifetimeAnalysisWizard,
-    )
-
     analysis = tmp_path / "burstwise_All 0.1000#15"
     (analysis / "bi4_bur").mkdir(parents=True)
-    bur = analysis / "bi4_bur" / "m000.bur"
-    bur.write_text("")
-
-    w = MLELifetimeAnalysisWizard()
-    try:
-        w.burst_files_list.get_selected_files = lambda: [str(bur)]
-        rows = [
-            {
-                "Detector": "green",
-                "Colour": "green",
-                "State": 0,
-                "Photons (parallel)": 10,
-                "Photons (perpendicular)": 8,
-                "Photons": 18,
-                "Tau": 3.6,
-                "2I*": 1.0,
-            },
-            {
-                "Detector": "green",
-                "Colour": "green",
-                "State": 1,
-                "Photons (parallel)": 5,
-                "Photons (perpendicular)": 4,
-                "Photons": 9,
-                "Tau": 1.0,
-                "2I*": 1.1,
-            },
-        ]
-        written = w.write_state_lifetimes(rows)
-    finally:
-        w.close()
+    rows = [
+        {
+            "Detector": "green",
+            "Colour": "green",
+            "State": 0,
+            "Photons (parallel)": 10,
+            "Photons (perpendicular)": 8,
+            "Photons": 18,
+            "Tau": 3.6,
+            "2I*": 1.0,
+        },
+        {
+            "Detector": "green",
+            "Colour": "green",
+            "State": 1,
+            "Photons (parallel)": 5,
+            "Photons (perpendicular)": 4,
+            "Photons": 9,
+            "Tau": 1.0,
+            "2I*": 1.1,
+        },
+    ]
+    written = state_split.write_state_lifetimes(rows, {analysis})
 
     assert written == [analysis / "Info" / "state_lifetimes.csv"]
     text = written[0].read_text()
     assert text.splitlines()[0].startswith("Detector,Colour,State")
     assert len(text.strip().splitlines()) == 3  # header + one row per state
     assert not list(analysis.glob("b?4")), "not a companion folder"
-
-
-def test_ticking_the_split_invalidates_the_reuse_gate(qapp):
-    """Otherwise Run reports 'Unchanged' and never produces the state columns.
-
-    The export is skipped when the fingerprint matches what is already on disk.
-    Splitting by state changes what is fitted *and* what is written, so it must
-    move the fingerprint — the whole workflow is walked with Next, and the
-    natural order is to fit, run H2MM, then come back and tick the box.
-    """
-    from chisurf.plugins.burst.burst_mle_analysis.wizard import (
-        MLELifetimeAnalysisWizard,
-    )
-
-    w = MLELifetimeAnalysisWizard()
-    try:
-        w.checkBox_split_by_state.setChecked(False)
-        plain = w.batch_settings()
-        w.checkBox_split_by_state.setChecked(True)
-        split = w.batch_settings()
-        assert plain != split, "the split must be part of the settings fingerprint"
-        assert split["split_by_state"] is True
-
-        before = dict(split)
-        w.spinBox_state_min_photons.setValue(w.state_min_photons + 5)
-        assert w.batch_settings() != before, "the state floor changes the fit too"
-    finally:
-        w.close()

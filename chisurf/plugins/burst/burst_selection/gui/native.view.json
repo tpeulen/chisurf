@@ -128,7 +128,8 @@
         {"type": "value", "attr": "window_length_s", "label": "Window length", "kind": "float", "decimals": 2, "minimum": 0.0, "maximum": 100000.0, "suffix": " s", "description": "Length of the visible window; 0 shows the whole file."},
         {"type": "value", "attr": "trace_bin_ms", "label": "MCS bin width", "kind": "float", "decimals": 3, "minimum": 0.05, "maximum": 9999.0, "suffix": " ms", "description": "Bin width of the count-rate trace."},
         {"type": "value", "attr": "decay_bins", "label": "Decay coarsening", "kind": "int", "minimum": 1, "maximum": 9999, "description": "Micro-time channels summed per decay bin."},
-        {"type": "value", "attr": "burst_bins", "label": "Burst bins", "kind": "int", "minimum": 3, "maximum": 999, "description": "Bins of the burst-duration histogram."}
+        {"type": "value", "attr": "burst_bins", "label": "Burst bins", "kind": "int", "minimum": 3, "maximum": 999, "description": "Bins of the burst-duration histogram."},
+        {"type": "toggle", "attr": "pool_files", "label": "Pool all files", "description": "The burst table, histogram, scatter and summary show the bursts of every searched file together instead of the active file only. The diagnostic plots always show the active file."}
       ]
     },
     {

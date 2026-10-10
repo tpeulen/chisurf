@@ -6,8 +6,8 @@ A burst analysed by H2MM carries one state per photon. Splitting the burst-MLE f
 pooled lifetime is the number to quote (one burst's state holds tens of photons) and the start value of every
 per-burst fit of the state.
 
-These functions were methods of the Qt ``MLELifetimeAnalysisWizard``; the wizard and the Qt-free
-:class:`.engine.MleSession` both call them now, so the two give the same numbers.
+These functions were methods of the Qt ``MLELifetimeAnalysisWizard`` (retired); the Qt-free
+:class:`.engine.MleSession` calls them.
 """
 
 from __future__ import annotations

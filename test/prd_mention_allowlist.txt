@@ -55,8 +55,6 @@ chisurf/plugins/burst/burst_selection/api/replay.py
 chisurf/plugins/burst/burst_selection/api/transformer.py
 chisurf/plugins/burst/burst_selection/docs/REFERENCE_IMPLEMENTATION.md
 chisurf/plugins/burst/burst_selection/tests/test_api_mmfdb.py
-chisurf/plugins/burst/burst_selection/tests/test_construction_smoke.py
-chisurf/plugins/burst/burst_selection/tests/test_gmm_settings_dialog.py
 chisurf/plugins/burst/burst_selection/tests/test_replay.py
 chisurf/plugins/calculator/phasor_calculator/__init__.py
 chisurf/plugins/calculator/phasor_calculator/tests/test_phasor_calculator.py
