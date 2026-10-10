@@ -75,8 +75,8 @@ widths    = np.sqrt(gm.covariances_.ravel())
 fractions = gm.weights_
 ```
 
-On the same ten files this returns the numbers in the figure (centres 0.023 /
-0.400 / 0.387, weights 0.351 / 0.456 / 0.193). The search folder name encodes
+On the same ten files this returns the numbers in the figure (centres 0.031 /
+0.428 / 0.405, weights 0.349 / 0.466 / 0.185). The search folder name encodes
 the filter settings; a repeated search writes a new folder with a `_0`, `_1`, …
 suffix, so glob one folder, not all of them.
 
