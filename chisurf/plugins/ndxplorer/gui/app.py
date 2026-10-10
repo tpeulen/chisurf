@@ -234,3 +234,46 @@ def make_app(session_autosave: bool = True, chisurf_rpc=None):
 
     attach_native_state("ndxplorer", app)
     return app
+
+
+def open_in_ndx(path) -> object:
+    """Open *path* in ndX: the open window when there is one, else a new one.
+
+    A ``.cs.pto`` opens its stored sampling chain (ndX asks which, when the
+    project holds several).
+
+    Parameters
+    ----------
+    path : str or pathlib.Path
+        What to open: anything ndX's File > Import reads.
+
+    Returns
+    -------
+    object
+        The ndX app the path went to.
+
+    Raises
+    ------
+    RuntimeError
+        When no ndX window is open and none can be started (no main window).
+    """
+    _load_ndx_app_factory()
+    from ndxplorer.app.frame import live_apps
+
+    apps = [app for app in live_apps() if not getattr(app, "_chisurf_closed", False)]
+    if not apps:
+        import chisurf as cs
+
+        window = getattr(cs, "cs", None)
+        if window is None or not hasattr(window, "load_and_show_plugin"):
+            raise RuntimeError("ndX is not open and there is no ChiSurf window to open it in")
+        window.load_and_show_plugin("chisurf.plugins.ndxplorer")
+        apps = [app for app in live_apps() if not getattr(app, "_chisurf_closed", False)]
+        if not apps:
+            raise RuntimeError("ndX did not start")
+    app = apps[-1]
+    app.open_path(str(path))
+    request = getattr(app, "request_frame", None)
+    if callable(request):
+        request()
+    return app

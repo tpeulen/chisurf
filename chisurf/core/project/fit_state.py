@@ -7,6 +7,8 @@ They are meant to be used by higher‑level project save/load code.
 
 from __future__ import annotations
 
+import copy
+import json
 import uuid
 from typing import TYPE_CHECKING, Any
 
@@ -532,3 +534,221 @@ def apply_fit_record(fit: Fit, record: dict[str, Any]) -> None:
     if not isinstance(state, dict):
         return
     apply_state_to_fit(fit, state)
+
+
+# -- sampling chains ------------------------------------------------------------
+#
+# A sampling run leaves its draws on the fit (``fit.sampling_chain``) and its
+# convergence report beside them (``fit.sampling_diagnostics``). Both are
+# scientific results, so a project keeps them: as named entries of the
+# ``.cs.pto`` -- a tab-separated chain table in the ``.er4`` layout ``sample_fit``
+# writes to disk (``chain``/``draw`` columns beside the parameters) and the report
+# as JSON -- and a small stub in the member's record that names them. Text
+# tables are what keep ndX able to open the chain without importing ChiSurf.
+
+#: Prefix of every project entry holding a sampling run; the fingerprint and the
+#: capture's resource merge recognise these entries by it.
+SAMPLING_ENTRY_PREFIX = "sampling/"
+
+#: Serialised entries of the chains captured last, keyed by the identity of the
+#: chain dict and its arrays. An autosave tick or a history snapshot captures the
+#: whole project; without this every capture would re-format a chain that has not
+#: changed. The objects themselves are held so their ids cannot be reused.
+_SAMPLING_CACHE: dict[tuple, tuple] = {}
+_SAMPLING_CACHE_SIZE = 8
+
+
+def _sampling_columns(parameter_names: list[str], n_parameters: int) -> list[str]:
+    """Return unique table column labels for the sampled parameters.
+
+    Parameters
+    ----------
+    parameter_names : list of str
+        Names as the sampler reported them; may repeat (the members of a group
+        share parameter names) or be shorter than the chain.
+    n_parameters : int
+        Number of parameter columns in the chain.
+
+    Returns
+    -------
+    list of str
+        ``n_parameters`` distinct labels, none of them ``chain`` or ``draw``.
+    """
+    labels: list[str] = []
+    seen: set[str] = {"chain", "draw"}
+    for k in range(n_parameters):
+        base = str(parameter_names[k]) if k < len(parameter_names) else f"p{k}"
+        base = base.replace("\t", " ").replace("\n", " ") or f"p{k}"
+        label, n = base, 2
+        while label in seen:
+            label, n = f"{base}#{n}", n + 1
+        seen.add(label)
+        labels.append(label)
+    return labels
+
+
+def _json_safe(value: Any) -> Any:
+    """Return *value* as strict JSON data: numpy scalars unwrapped, non-finite -> None."""
+    import math
+
+    import numpy as np
+
+    if isinstance(value, dict):
+        return {str(k): _json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(v) for v in value]
+    if isinstance(value, np.ndarray):
+        return [_json_safe(v) for v in value.tolist()]
+    if isinstance(value, (bool, np.bool_)):
+        return bool(value)
+    if isinstance(value, (int, np.integer)):
+        return int(value)
+    if isinstance(value, (float, np.floating)):
+        return float(value) if math.isfinite(float(value)) else None
+    return value
+
+
+def sampling_entries(
+    member_uid: str, chain: Any, diagnostics: Any
+) -> tuple[dict[str, Any] | None, dict[str, bytes]]:
+    """Serialise a fit's sampling run as project entries and a record stub.
+
+    Parameters
+    ----------
+    member_uid : str
+        UID of the fit (member) that owns the run; names the entries.
+    chain : dict or None
+        ``fit.sampling_chain``: ``chains`` of shape ``(n_chains, n_draws,
+        n_parameters)`` (after burn-in), ``parameter_names`` and ``burn_in``.
+    diagnostics : dict or None
+        ``fit.sampling_diagnostics``, the convergence report.
+
+    Returns
+    -------
+    stub : dict or None
+        ``{"chain", "diagnostics", "burn_in", "parameter_names"}`` -- the entry
+        names (``None`` for a part that is absent) and what the table does not
+        say; ``None`` when there is neither a chain nor a report.
+    entries : dict of str to bytes
+        The chain as a tab-separated ``.er4`` table (one row per draw, with
+        ``chain`` and ``draw`` index columns) and the report as strict JSON.
+    """
+    import numpy as np
+
+    has_chain = isinstance(chain, dict) and chain.get("chains") is not None
+    has_report = isinstance(diagnostics, dict)
+    if not has_chain and not has_report:
+        return None, {}
+    uid = str(member_uid)
+    key = (uid, id(chain), id(chain.get("chains")) if has_chain else None, id(diagnostics))
+    cached = _SAMPLING_CACHE.get(key)
+    if cached is not None:
+        return copy.deepcopy(cached[0]), dict(cached[1])
+
+    base = f"{SAMPLING_ENTRY_PREFIX}{uid}"
+    stub: dict[str, Any] = {"chain": None, "diagnostics": None, "burn_in": 0, "parameter_names": []}
+    entries: dict[str, bytes] = {}
+    if has_chain:
+        from chisurf.core.datastore import store_from_arrays, write_csv_table
+
+        chains = np.asarray(chain["chains"], dtype=np.float64)
+        if chains.ndim != 3:
+            raise ValueError(f"sampling chain of {uid!r} must be 3-D, got {chains.shape}")
+        n_chains, n_draws, n_parameters = chains.shape
+        names = [str(n) for n in (chain.get("parameter_names") or [])]
+        labels = _sampling_columns(names, n_parameters)
+        columns: dict[str, Any] = {
+            label: chains[:, :, k].reshape(-1) for k, label in enumerate(labels)
+        }
+        columns["chain"] = np.repeat(np.arange(n_chains, dtype=np.int64), n_draws)
+        columns["draw"] = np.tile(np.arange(n_draws, dtype=np.int64), n_chains)
+        text = write_csv_table(None, store_from_arrays(columns))
+        stub["chain"] = f"{base}/chain.er4"
+        stub["burn_in"] = int(chain.get("burn_in", 0) or 0)
+        stub["parameter_names"] = names
+        entries[stub["chain"]] = text.encode("utf-8")
+    if has_report:
+        stub["diagnostics"] = f"{base}/diagnostics.json"
+        entries[stub["diagnostics"]] = json.dumps(
+            _json_safe(diagnostics), allow_nan=False, sort_keys=True
+        ).encode("utf-8")
+
+    if len(_SAMPLING_CACHE) >= _SAMPLING_CACHE_SIZE:
+        _SAMPLING_CACHE.pop(next(iter(_SAMPLING_CACHE)))
+    _SAMPLING_CACHE[key] = (copy.deepcopy(stub), dict(entries), chain, diagnostics)
+    return stub, entries
+
+
+def sampling_from_entries(
+    stub: dict[str, Any], entries: Any
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """Rebuild ``(sampling_chain, sampling_diagnostics)`` from project entries.
+
+    The inverse of :func:`sampling_entries`.
+
+    Parameters
+    ----------
+    stub : dict
+        The member record's ``"sampling"`` stub.
+    entries : mapping of str to bytes
+        The project's resource entries.
+
+    Returns
+    -------
+    chain : dict or None
+        ``{"chains", "parameter_values", "parameter_names", "burn_in"}`` with
+        ``chains`` of shape ``(n_chains, n_draws, n_parameters)``.
+    diagnostics : dict or None
+        The convergence report.
+
+    Raises
+    ------
+    KeyError
+        When the stub names an entry the project does not hold.
+    ValueError
+        When the chain table is not the layout :func:`sampling_entries` writes.
+    """
+    import os
+    import tempfile
+
+    import numpy as np
+
+    chain = diagnostics = None
+    if not isinstance(stub, dict):
+        return None, None
+    if stub.get("diagnostics"):
+        diagnostics = json.loads(bytes(entries[stub["diagnostics"]]).decode("utf-8"))
+    if stub.get("chain"):
+        from chisurf.core.datastore import read_csv_table
+
+        raw = bytes(entries[stub["chain"]])
+        handle, path = tempfile.mkstemp(suffix=".er4")
+        try:
+            with os.fdopen(handle, "wb") as out:
+                out.write(raw)
+            store = read_csv_table(path)
+        finally:
+            os.unlink(path)
+        if store is None:
+            raise ValueError(f"sampling chain {stub['chain']!r} is not a readable table")
+        names = [str(n) for n in (stub.get("parameter_names") or [])]
+        columns = [store.column(i).name() for i in range(store.n_columns())]
+        labels = [c for c in columns if c not in ("chain", "draw")]
+        if names and labels != _sampling_columns(names, len(labels)):
+            raise ValueError(f"sampling chain {stub['chain']!r} columns do not match its record")
+        chain_index = np.asarray(store["chain"], dtype=np.int64)
+        draw_index = np.asarray(store["draw"], dtype=np.int64)
+        n_chains = int(chain_index.max()) + 1 if chain_index.size else 0
+        n_draws = int(draw_index.max()) + 1 if draw_index.size else 0
+        if chain_index.size != n_chains * n_draws:
+            raise ValueError(f"sampling chain {stub['chain']!r} is not rectangular")
+        chains = np.empty((n_chains, n_draws, len(labels)), dtype=np.float64)
+        for k, label in enumerate(labels):
+            chains[chain_index, draw_index, k] = np.asarray(store[label], dtype=np.float64)
+        chain = {
+            "parameter_names": names or labels,
+            "parameter_values": chains.reshape(-1, chains.shape[2]),
+            "chains": chains,
+            "burn_in": int(stub.get("burn_in", 0) or 0),
+        }
+    return chain, diagnostics

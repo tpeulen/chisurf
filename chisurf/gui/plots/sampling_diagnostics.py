@@ -19,6 +19,7 @@ import numpy as np
 
 import chisurf.core.fitting
 from chisurf.core.fitting import diagnostics as dg
+from chisurf.core.support.i18n import tr
 from chisurf.gui import chiplot as cp
 from chisurf.gui.chiplot import style as S
 from chisurf.gui.plots import emtk_notes as N
@@ -73,9 +74,16 @@ class SamplingDiagnosticsPlot(Plot):
             PanelItem(self.rank_plot, self.rank_plot.control()),
             PanelItem(self.ess_plot, self.ess_plot.control()),
         ]
+        # The fit window's right-click menu offers a panel's own entries.
+        self._extra_menu_actions = [(tr("Open in ndX"), self._open_in_ndx)]
+        for plot in (self.rank_plot, self.ess_plot):
+            plot.add_menu_action(*self._extra_menu_actions[0])
 
         self._chains = None
         self._names = []
+        self._draws = 0
+        #: What the last :meth:`update` found (see :meth:`_load`).
+        self.state = "none"
 
     @property
     def parameters(self) -> list:
@@ -112,34 +120,71 @@ class SamplingDiagnosticsPlot(Plot):
 
     # -- data ---------------------------------------------------------------
 
-    def _load(self) -> bool:
-        """Pull the stored chain off the fit. Return whether there is one."""
-        chain = getattr(self.fit, "sampling_chain", None)
+    #: Number of draws per chain below which neither panel means anything.
+    MIN_DRAWS = 8
+
+    def _owner(self):
+        """The fit holding the run: the fit, else a group's selected member.
+
+        ``sample_fit`` leaves the run on both; a restored project keeps it on the
+        member that owns it.
+        """
+        fit = self.fit
+        if getattr(fit, "sampling_chain", None) is None and not getattr(
+            fit, "sampling_diagnostics", None
+        ):
+            selected = getattr(fit, "selected_fit", None) if hasattr(fit, "grouped_fits") else None
+            if selected is not None:
+                return selected
+        return fit
+
+    def _load(self) -> str:
+        """Pull the stored chain off the fit and say what was found.
+
+        Returns
+        -------
+        str
+            ``"ok"`` (a chain to draw), ``"none"`` (neither a chain nor a
+            report), ``"external"`` (a report but no draws: the run happened in
+            another process and only its summary reached this fit) or
+            ``"short"`` (fewer than :attr:`MIN_DRAWS` draws per chain).
+        """
+        owner = self._owner()
+        chain = getattr(owner, "sampling_chain", None)
+        report = getattr(owner, "sampling_diagnostics", None)
+        self._chains, self._names, self._draws = None, [], 0
         if not isinstance(chain, dict) or chain.get("chains") is None:
-            self._chains, self._names = None, []
-            return False
+            return "external" if isinstance(report, dict) else "none"
         chains = np.asarray(chain["chains"], dtype=float)
-        if chains.ndim != 3 or chains.shape[1] < 8:
-            self._chains, self._names = None, []
-            return False
+        if chains.ndim != 3 or chains.shape[1] < self.MIN_DRAWS:
+            self._draws = int(chains.shape[1]) if chains.ndim == 3 else 0
+            return "short"
         self._chains = chains
         self._names = [str(n).split(":")[-1] for n in chain.get("parameter_names", [])]
         while len(self._names) < chains.shape[2]:
             self._names.append(f"p{len(self._names)}")
-        return True
+        return "ok"
+
+    def reason(self, state: str) -> str:
+        """The line a page shows when there is nothing to draw, for a ``_load`` state."""
+        if state == "short":
+            return tr("chain has {n} draws; at least {m} are needed").format(
+                n=self._draws, m=self.MIN_DRAWS
+            )
+        if state == "external":
+            return tr("chain was produced in another process — open its folder in ndX")
+        return tr(
+            "no chain stored for this fit — run a sampling job (Chain "
+            "diagnostics describes what it produced, it does not sample)"
+        )
 
     def update(self, *args, **kwargs) -> None:
         """Reload the chain and redraw both tabs."""
         super().update(*args, **kwargs)
         previous = self._names[self.parameter] if self.parameter < len(self._names) else None
-        if not self._load():
-            message = [
-                N.Line(
-                    "no chain stored for this fit — run a sampling job (Chain "
-                    "diagnostics describes what it produced, it does not sample)",
-                    N.MUTED,
-                )
-            ]
+        self.state = self._load()
+        if self.state != "ok":
+            message = [N.Line(self.reason(self.state), N.MUTED)]
             for plot in (self.rank_plot, self.ess_plot):
                 plot.clear()
             self.rank_notes, self.ess_notes = list(message), list(message)
@@ -150,6 +195,23 @@ class SamplingDiagnosticsPlot(Plot):
         self.parameter = self._names.index(previous) if previous in self._names else 0
         self._draw_rank()
         self._draw_ess()
+
+    # -- ndX ------------------------------------------------------------------
+
+    def _open_in_ndx(self) -> None:
+        """Open the project's stored chain in ndX.
+
+        The saved document is opened when it holds what is on screen; otherwise
+        the live project is written to a scratch ``.cs.pto`` first, so ndX sees
+        the run that was just made.
+        """
+        try:
+            path = project_path_for_ndx()
+            from chisurf.plugins.ndxplorer.gui.app import open_in_ndx
+
+            open_in_ndx(path)
+        except Exception as exc:
+            chisurf.logging.warning(f"Open in ndX: {exc}")
 
     # -- drawing ------------------------------------------------------------
 
@@ -280,3 +342,33 @@ class SamplingDiagnosticsPlot(Plot):
                 )
             ),
         ]
+
+
+def project_path_for_ndx() -> str:
+    """A ``.cs.pto`` holding the live project, for ndX to open.
+
+    The window's saved document when it is unmodified; else the live project
+    saved to a scratch folder.
+
+    Returns
+    -------
+    str
+        Path of the project file.
+    """
+    import tempfile
+    from pathlib import Path
+
+    import chisurf as cs
+    from chisurf.core.project import storage
+    from chisurf.macros.core_fit import get_project_payload
+
+    window = getattr(cs, "cs", None)
+    document = window._get_project_document() if window is not None else None
+    name = str(getattr(document, "name", "") or "chisurf_project")
+    project = get_project_payload(name)
+    if document is not None and document.path is not None and not document.is_modified(project):
+        return str(document.path)
+    stem = Path(name).name
+    stem = stem[:-7] if stem.lower().endswith(".cs.pto") else stem
+    target = Path(tempfile.mkdtemp(prefix="chisurf-ndx-")) / f"{stem or 'chisurf_project'}.cs.pto"
+    return str(storage.save_file(project, target))

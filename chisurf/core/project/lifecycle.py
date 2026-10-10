@@ -6,6 +6,7 @@ This module provides that independent lifecycle, without Qt or MMFDB dependencie
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import math
@@ -15,6 +16,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from .fit_state import SAMPLING_ENTRY_PREFIX
 from .project import Project
 
 
@@ -74,7 +76,22 @@ def snapshot_fingerprint(project: Project) -> str:
         catalogue are not edits to scientific state; save/load itself changes them.
     """
     payload = project.to_dict()
-    payload["resources"] = project.resources.to_transport_dict()
+    # A sampling chain can be megabytes and an autosave tick fingerprints the
+    # whole project; its name and size stand in for its bytes, which are never
+    # encoded. A new run still changes the digest: its diagnostics report (small,
+    # hashed in full) differs.
+    resources = project.resources
+    payload["resources"] = {
+        "entries": {
+            name: (
+                f"bytes:{len(content)}"
+                if name.startswith(SAMPLING_ENTRY_PREFIX) and name.endswith(".er4")
+                else base64.b64encode(content).decode("ascii")
+            )
+            for name, content in resources.entries.items()
+        },
+        "sources": resources.encoded_sources(),
+    }
     payload["meta"] = dict(payload.get("meta", {}))
     payload["meta"].pop("created", None)
     payload["extra"] = dict(payload.get("extra", {}))

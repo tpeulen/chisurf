@@ -2,6 +2,10 @@
 
 ## 2026-10-10
 
+- W3: sampling chains and diagnostics are stored in the `.cs.pto` (`sampling/<uid>/` entries,
+  hashed by size for autosave), survive undo and reload; the chain page redraws when a run ends
+  and says why it is empty; Open in ndX; ndX imports `*.cs.pto` stores and has a bottom status bar.
+
 - W2: projects autosave to a sibling `*.autosave.cs.pto` (setting `project.autosave`, default 120 s,
   never a dialog; deleted after an explicit save); the history audit binds every recorded action
   to a registered replayable one (four repaired); undo→redo→save→reload is proven lossless.

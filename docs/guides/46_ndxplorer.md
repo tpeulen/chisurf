@@ -54,7 +54,9 @@ is one burst; each numeric column is a selectable axis.
 ### ndX in ChiSurf
 
 In ChiSurf, **Tools › Views › ndX** (the ribbon button) opens the same emtk
-application in a ChiSurf window. So do the tools that hand ndX a table: the
+application in a ChiSurf window. Messages ("Loaded 500 rows from …", what a
+fit or a save did) appear in the **status bar** along the window's bottom edge,
+with the axes — and, over the map, the point under the pointer — at its right. So do the tools that hand ndX a table: the
 trace browser's one-click ndX, the MMFDB admin's *Open in ndX*, the imaging
 tools' pixel table, H2MM's dwell table, the burst-selection output and the
 ALEX Suite's E–S step. Hosted, the window gets what only ChiSurf has:
@@ -69,6 +71,11 @@ ALEX Suite's E–S step. Hosted, the window gets what only ChiSurf has:
   identity; select it again through MMFDB before expecting write-back. If login
   expires or recording fails, the burst-ID files remain saved and the status
   reports the failure.
+- **Open in ndX** on the right-click menu of a fit's *Chain diagnostics* panels
+  opens the project's stored sampling chain here (see {doc}`39_parameter_uncertainty`
+  §10). Outside ChiSurf the same file opens through **File › Import › ChiSurf
+  project (\*.cs.pto)** or a drop; a project with several stored chains asks
+  which one.
 - The **constants** appear in the **Global View** as the group *ndX*, where a
   fit parameter can be linked to one; closing the window withdraws them.
 - The **FRET** menu (calibration, save, load) and the **calibration restore**

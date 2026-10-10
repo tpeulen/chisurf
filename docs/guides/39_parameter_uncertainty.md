@@ -360,6 +360,22 @@ you can filter on the data misfit alone.
 Ensemble-sampler chains stored in HDF5 (`mcmc/chain`) open the same way through
 **Open MFD HDF5**; there `chain` is the walker index and `draw` the step.
 
+### The chain is part of the project
+
+The draws a run leaves on the fit (after burn-in) and its `diagnostics.json`
+report are saved **inside the `.cs.pto`**, beside the fit: a tab-separated table
+`sampling/<fit uid>/chain.er4` (the parameters, then `chain` and `draw`) and
+`sampling/<fit uid>/diagnostics.json`. Undo, redo, autosave and reopening the
+project all keep them, so the Chain diagnostics page and a reweighting (§9) work
+on a reopened project without the sampling folder.
+
+nDXplorer opens a project directly: **File → Import → ChiSurf project
+(\*.cs.pto)**, or drop the file on its window. A project with one stored chain
+opens it; one with several (one per sampled fit) asks which. From ChiSurf, the
+right-click menu of either Chain diagnostics panel has **Open in ndX**, which
+opens the current project in ndX — saved first to a scratch file when it has
+unsaved changes, so ndX shows the run you just made.
+
 ## 11. Looking at the posterior instead of reading about it
 
 Every fit window carries three pages after the model's own: **Posterior graph**,
@@ -444,6 +460,11 @@ with noise" means it, and a warning is worth acting on. The second tab plots
 effective sample size against draws, which should grow in a straight line; its
 note gives the lowest ESS and the efficiency (1978 from 19920 draws, 9.9 %, for
 the run above).
+
+The page redraws itself when a sampling job finishes (or fails). When there is
+nothing to draw it says why: *no chain stored* (nothing was sampled), *chain was
+produced in another process* (only the report reached this fit — open the run's
+folder in nDXplorer), or *chain has N draws; at least 8 are needed*.
 
 Every symmetric interval carries this check automatically once a chain exists.
 `posterior_summary()` rows, and the `diagnostics` of any `laplace` or `gaussian`

@@ -932,6 +932,7 @@ class FittingControllerWidget(Controller):
                 return
             if state == "failed":
                 cs.logging.error(f"Sampling failed: {status.get('error')}")
+                _publish()
                 return
             warnings = status.get("warnings") or []
             if warnings:
@@ -945,6 +946,17 @@ class FittingControllerWidget(Controller):
                     f"({report.get('n_chains', '?')} chains x "
                     f"{report.get('n_draws', '?')} draws)."
                 )
+            _publish()
+
+        def _publish():
+            # The job wrote the chain onto the fit (the server's state shares
+            # the GUI's fit objects); ``Fit.update`` publishes ``fit.updated``,
+            # which is what redraws the fit window's pages -- the Chain
+            # diagnostics page among them. Nothing else would.
+            try:
+                self.fit.update()
+            except Exception as exc:
+                cs.logging.warning(f"Sampling: could not refresh the fit window: {exc}")
 
         QtCore.QTimer.singleShot(interval_ms, _poll)
 

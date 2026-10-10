@@ -17,6 +17,7 @@ from typing import Any, Iterable
 
 import numpy as np
 
+from .fit_state import SAMPLING_ENTRY_PREFIX, sampling_entries, sampling_from_entries
 from .project import Project, ResourceContext
 
 _MODEL_REGISTRY: dict[tuple[str, str], type] = {}
@@ -897,6 +898,10 @@ def capture_session(
     parameter_refs: dict[int, tuple[str, str, str]] = {}
     fit_records: list[dict[str, Any]] = []
     live_models: dict[tuple[str, str], Any] = {}
+    # Sampling runs are derived from the live fits, so they are rebuilt here on
+    # every capture; any ``sampling/`` entry still held by a resource context is
+    # a previous capture's and is superseded by these.
+    sampling_blobs: dict[str, bytes] = {}
     for fit in fits or []:
         members = _local_fits(fit)
         fit_uid = _uid(fit, "fit")
@@ -932,17 +937,32 @@ def capture_session(
                 curve = getattr(owner, attr, None) if owner is not None else None
                 if curve is not None and hasattr(curve, "x"):
                     dependencies[label] = register(curve)
-            member_records.append(
-                {
-                    "uid": member_uid,
-                    "dataset_uid": register(member.data),
-                    "fit_range": list(getattr(member, "fit_range", (0, 0))),
-                    "mask": _json_value(getattr(member, "mask", None)),
-                    "noise_model": str(getattr(member, "noise_model", "default")),
-                    "model": state,
-                    "dependencies": dependencies,
-                }
-            )
+            member_record = {
+                "uid": member_uid,
+                "dataset_uid": register(member.data),
+                "fit_range": list(getattr(member, "fit_range", (0, 0))),
+                "mask": _json_value(getattr(member, "mask", None)),
+                "noise_model": str(getattr(member, "noise_model", "default")),
+                "model": state,
+                "dependencies": dependencies,
+            }
+            try:
+                sampling_stub, blobs = sampling_entries(
+                    member_uid,
+                    getattr(member, "sampling_chain", None),
+                    getattr(member, "sampling_diagnostics", None),
+                )
+            except Exception as exc:
+                raise SessionCodecError(
+                    f"cannot serialise the sampling run of {member_uid!r}: {exc}"
+                ) from exc
+            if sampling_stub is not None:
+                member_record["sampling"] = sampling_stub
+                for label, content in blobs.items():
+                    if label in sampling_blobs and sampling_blobs[label] != content:
+                        raise SessionCodecError(f"conflicting resource label {label!r}")
+                    sampling_blobs[label] = content
+            member_records.append(member_record)
         record: dict[str, Any] = {
             "uid": fit_uid,
             "kind": "group" if hasattr(fit, "grouped_fits") else "fit",
@@ -1028,10 +1048,16 @@ def capture_session(
             raise SessionCodecError("resources require an owned ResourceContext")
         for target, incoming in ((entries, context.entries), (sources, context.sources)):
             for label, content in incoming.items():
+                if target is entries and label.startswith(SAMPLING_ENTRY_PREFIX):
+                    continue
                 if label in target and target[label] != content:
                     raise SessionCodecError(f"conflicting resource label {label!r}")
                 target[label] = content
-    project.resources = ResourceContext(entries, sources)
+    entries.update(sampling_blobs)
+    try:
+        project.resources = ResourceContext(entries, sources)
+    except (TypeError, ValueError) as exc:
+        raise SessionCodecError(str(exc)) from exc
     project.metadata["session_codec"] = "detached-v2"
     detached = restore_session(project)
     restored_models = {
@@ -1768,6 +1794,18 @@ def restore_session(
                     f"model {type(local.model).__name__} cannot accept {label} dependency"
                 )
             setattr(owner, attr, dependency)
+        # A payload validated on its own (``pto._validate_project_payload``)
+        # carries no resource entries at all; the run is then not part of what
+        # is being checked. With entries present, a missing one is an error.
+        if saved.get("sampling") and project.resources.entries:
+            try:
+                local.sampling_chain, local.sampling_diagnostics = sampling_from_entries(
+                    saved["sampling"], project.resources.entries
+                )
+            except Exception as exc:
+                raise SessionCodecError(
+                    f"cannot restore the sampling run of {saved['uid']!r}: {exc}"
+                ) from exc
 
     for parameter, target in pending_links:
         link_key = (
