@@ -791,7 +791,7 @@ side by side and controls must stay narrow. Therefore, for **all** UI (AutoForm
   or a unit-laden sentence in a label.
 - **The full meaning goes in the tooltip** — the complete description, units,
   and examples. In AutoForm this is the section `description` (mapped to the
-  widget tooltip, [[viewspec-description-tooltip]]); in hand-built widgets call
+  widget tooltip, the view-spec description→tooltip note); in hand-built widgets call
   `setToolTip`. App-wide tooltip folding ([`chisurf/gui/tooltip.py`](/workflows/build-and-env.md))
   keeps long tooltips readable, so descriptions can be as complete as needed.
   When a field section (`value`/`choice`/`toggle`) carries no explicit
@@ -800,7 +800,7 @@ side by side and controls must stay narrow. Therefore, for **all** UI (AutoForm
   on the bound `attr` (scoped by the target group's class) via
   `chisurf.core.settings.describe_parameter` — so any field bound to a
   registered parameter gets inline help for free, matching the description its
-  fitting widget already shows (see [[parameters]]).
+  fitting widget already shows (see [Parameters](parameters.md)).
 - **Prefer vertical stacking over wide side-by-side rows** when horizontal space
   is tight (AutoForm panel `n_col: 1`); prefer compact controls (short spin-box
   widths, emoji `QToolButton`s over text buttons). Default to the layout that

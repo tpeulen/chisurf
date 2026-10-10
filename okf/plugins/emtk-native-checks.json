@@ -1,0 +1,2377 @@
+{
+  "checks": [
+    {
+      "id": "ai_settings",
+      "manifest": "chisurf/plugins/ai_settings/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.ai_settings.gui.app:make_ai_settings_app",
+      "status": "pass",
+      "seconds": 0.296,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "accurate_fret",
+      "manifest": "chisurf/plugins/burst/accurate_fret/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.burst.accurate_fret.gui.app:create_app",
+      "status": "pass",
+      "seconds": 1.565,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "alex_suite",
+      "manifest": "chisurf/plugins/burst/alex_suite/manifest.json",
+      "status": "pending",
+      "reason": "No declared native factory"
+    },
+    {
+      "id": "bid_to_analysis",
+      "manifest": "chisurf/plugins/burst/bid_to_analysis/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.burst.bid_to_analysis.gui.app:create_app",
+      "status": "pass",
+      "seconds": 0.975,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "burst_2cde",
+      "manifest": "chisurf/plugins/burst/burst_2cde/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.burst.burst_2cde.gui.app:create_app",
+      "status": "pass",
+      "seconds": 0.693,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "burst_analysis",
+      "manifest": "chisurf/plugins/burst/burst_analysis/manifest.json",
+      "status": "pending",
+      "reason": "No declared native factory"
+    },
+    {
+      "id": "burst_background",
+      "manifest": "chisurf/plugins/burst/burst_background/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.burst.burst_background.gui.app:create_app",
+      "status": "pass",
+      "seconds": 0.547,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "burst_browser",
+      "manifest": "chisurf/plugins/burst/burst_browser/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.burst.burst_browser.gui.app:create_app",
+      "status": "pass",
+      "seconds": 0.675,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "burst_bva",
+      "manifest": "chisurf/plugins/burst/burst_bva/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.burst.burst_bva.gui.app:create_app",
+      "status": "pass",
+      "seconds": 0.685,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "burst_ebfret",
+      "manifest": "chisurf/plugins/burst/burst_ebfret/manifest.json",
+      "status": "pending",
+      "reason": "No declared native factory"
+    },
+    {
+      "id": "burst_fcs_correlator",
+      "manifest": "chisurf/plugins/burst/burst_fcs_correlator/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.burst.burst_fcs_correlator.gui.app:create_app",
+      "status": "pass",
+      "seconds": 1.019,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "burst_fusion",
+      "manifest": "chisurf/plugins/burst/burst_fusion/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.burst.burst_fusion.gui.app:create_app",
+      "status": "pass",
+      "seconds": 0.333,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "burst_gs",
+      "manifest": "chisurf/plugins/burst/burst_gs/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.burst.burst_gs.gui.app:create_app",
+      "status": "pass",
+      "seconds": 0.766,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "burst_h2mm",
+      "manifest": "chisurf/plugins/burst/burst_h2mm/manifest.json",
+      "status": "pending",
+      "reason": "No declared native factory"
+    },
+    {
+      "id": "burst_irf_bg",
+      "manifest": "chisurf/plugins/burst/burst_irf_bg/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.burst.burst_irf_bg.gui.app:create_app",
+      "status": "pass",
+      "seconds": 0.509,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "burst_mle_analysis",
+      "manifest": "chisurf/plugins/burst/burst_mle_analysis/manifest.json",
+      "status": "pending",
+      "reason": "No declared native factory"
+    },
+    {
+      "id": "burst_selection",
+      "manifest": "chisurf/plugins/burst/burst_selection/manifest.json",
+      "status": "pending",
+      "reason": "No declared native factory"
+    },
+    {
+      "id": "mfd_prepare",
+      "manifest": "chisurf/plugins/burst/mfd_prepare/manifest.json",
+      "status": "pending",
+      "reason": "No declared native factory"
+    },
+    {
+      "id": "fcs_saturation",
+      "manifest": "chisurf/plugins/calculator/fcs_saturation_calc/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.calculator.fcs_saturation_calc.gui.app:make_app",
+      "status": "pass",
+      "seconds": 1.73,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "fret_calculator",
+      "manifest": "chisurf/plugins/calculator/fret_calculator/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.calculator.fret_calculator.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.709,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "calculators",
+      "manifest": "chisurf/plugins/calculator/hub/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.calculator.hub.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.732,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "kappa2_dist",
+      "manifest": "chisurf/plugins/calculator/kappa2_dist/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.calculator.kappa2_dist.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.561,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "phasor_calculator",
+      "manifest": "chisurf/plugins/calculator/phasor_calculator/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.calculator.phasor_calculator.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.542,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "psf_calculator",
+      "manifest": "chisurf/plugins/calculator/psf_calculator/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.calculator.psf_calculator.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.342,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "rics_precision",
+      "manifest": "chisurf/plugins/calculator/rics_precision/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.calculator.rics_precision.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.899,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "chimol",
+      "manifest": "chisurf/plugins/chimol/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.chimol.app:make_app",
+      "status": "pass",
+      "seconds": 2.019,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "about",
+      "manifest": "chisurf/plugins/core/about/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.core.about.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.287,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "acq",
+      "manifest": "chisurf/plugins/core/acq/manifest.json",
+      "status": "pending",
+      "reason": "No declared native factory"
+    },
+    {
+      "id": "batch_analysis",
+      "manifest": "chisurf/plugins/core/batch_analysis/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.core.batch_analysis.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.95,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "boarding",
+      "manifest": "chisurf/plugins/core/boarding/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.core.boarding.app:make_app",
+      "status": "pass",
+      "seconds": 0.466,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "code_editor",
+      "manifest": "chisurf/plugins/core/code_editor/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.core.code_editor.gui.editor_app:make_editor_app",
+      "status": "pass",
+      "seconds": 0.07,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "database_connector",
+      "manifest": "chisurf/plugins/core/database_connector/manifest.json",
+      "status": "non_gui",
+      "reason": "No declared native factory"
+    },
+    {
+      "id": "f_test",
+      "manifest": "chisurf/plugins/core/f_test/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.core.f_test.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.882,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "globalview",
+      "manifest": "chisurf/plugins/core/globalview/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.core.globalview.gui.app:make_app",
+      "status": "pass",
+      "seconds": 1.537,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "help",
+      "manifest": "chisurf/plugins/core/help/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.core.help.gui.help_app:make_help_app",
+      "status": "pass",
+      "seconds": 1.138,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "hmm",
+      "manifest": "chisurf/plugins/core/hmm/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.core.hmm.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.378,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "lightpath_simulator",
+      "manifest": "chisurf/plugins/core/lightpath_simulator/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.core.lightpath_simulator.gui.app:create_app",
+      "status": "pass",
+      "seconds": 0.498,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "menu_switch",
+      "manifest": "chisurf/plugins/core/menu_switch/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.core.menu_switch.app:make_app",
+      "status": "pass",
+      "seconds": 0.394,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "mmfdb_admin",
+      "manifest": "chisurf/plugins/core/mmfdb_admin/manifest.json",
+      "status": "pending",
+      "reason": "No declared native factory"
+    },
+    {
+      "id": "model_manager",
+      "manifest": "chisurf/plugins/core/model_manager/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.core.model_manager.gui.app:make_app",
+      "status": "pass",
+      "seconds": 2.013,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "plot_settings",
+      "manifest": "chisurf/plugins/core/plot_settings/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.core.plot_settings.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.17,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "plugin_check",
+      "manifest": "chisurf/plugins/core/plugin_check/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.core.plugin_check.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.394,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "plugin_manager",
+      "manifest": "chisurf/plugins/core/plugin_manager/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.core.plugin_manager.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.508,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "project_browser",
+      "manifest": "chisurf/plugins/core/project_browser/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.core.project_browser.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.032,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "pto_inspector",
+      "manifest": "chisurf/plugins/core/pto_inspector/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.core.pto_inspector.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.329,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "screenshot",
+      "manifest": "chisurf/plugins/core/screenshot/manifest.json",
+      "status": "pending",
+      "reason": "No declared native factory"
+    },
+    {
+      "id": "setup",
+      "manifest": "chisurf/plugins/core/setup/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.core.setup.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.277,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "setup_channel_definition",
+      "manifest": "chisurf/plugins/core/setup_channel_definition/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.core.setup_channel_definition.gui.app:create_app",
+      "status": "pass",
+      "seconds": 0.458,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "style_manager",
+      "manifest": "chisurf/plugins/core/style_manager/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.core.style_manager.gui.app:make_style_manager_app",
+      "status": "pass",
+      "seconds": 0.215,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "switch_user",
+      "manifest": "chisurf/plugins/core/switch_user/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.core.switch_user.app:make_app",
+      "status": "pass",
+      "seconds": 0.177,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "tttr_to_pto",
+      "manifest": "chisurf/plugins/core/tttr_to_pto/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.core.tttr_to_pto.gui.app:create_app",
+      "status": "pass",
+      "seconds": 0.093,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "updater",
+      "manifest": "chisurf/plugins/core/updater/manifest.json",
+      "status": "pending",
+      "reason": "No declared native factory"
+    },
+    {
+      "id": "user_editor",
+      "manifest": "chisurf/plugins/core/user_editor/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.core.user_editor.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.355,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "wizards",
+      "manifest": "chisurf/plugins/core/wizards/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.core.wizards.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.909,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "fcs_calculator",
+      "manifest": "chisurf/plugins/fcs/fcs_calculator/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.fcs.fcs_calculator.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.458,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "fcs_channel_preset",
+      "manifest": "chisurf/plugins/fcs/fcs_channel_preset/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.fcs.fcs_channel_preset.gui.app:create_app",
+      "status": "pass",
+      "seconds": 0.521,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "fcs_convert",
+      "manifest": "chisurf/plugins/fcs/fcs_convert/manifest.json",
+      "status": "non_gui",
+      "reason": "No declared native factory"
+    },
+    {
+      "id": "fcs_correlator",
+      "manifest": "chisurf/plugins/fcs/fcs_correlator/manifest.json",
+      "status": "pending",
+      "reason": "No declared native factory"
+    },
+    {
+      "id": "fcs_filter_calculator",
+      "manifest": "chisurf/plugins/fcs/fcs_filter_calculator/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.fcs.fcs_filter_calculator.gui.app:create_app",
+      "status": "pass",
+      "seconds": 0.971,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "fcs-lfcs-sim",
+      "manifest": "chisurf/plugins/fcs/fcs_lfcs_sim/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.fcs.fcs_lfcs_sim.app:make_app",
+      "status": "pass",
+      "seconds": 0.443,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "fcs_merger",
+      "manifest": "chisurf/plugins/fcs/fcs_merger/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.fcs.fcs_merger.gui.app:create_app",
+      "status": "pass",
+      "seconds": 0.229,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "fcs_toolbox",
+      "manifest": "chisurf/plugins/fcs/fcs_toolbox/manifest.json",
+      "status": "pending",
+      "reason": "No declared native factory"
+    },
+    {
+      "id": "flc-2d",
+      "manifest": "chisurf/plugins/fcs/flc_2d/manifest.json",
+      "status": "pending",
+      "reason": "No declared native factory"
+    },
+    {
+      "id": "irf_estimator",
+      "manifest": "chisurf/plugins/fluorescence_decay/irf_estimator/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.fluorescence_decay.irf_estimator.gui.app:make_app",
+      "status": "pass",
+      "seconds": 1.257,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "lifetime_analysis",
+      "manifest": "chisurf/plugins/fluorescence_decay/lifetime_analysis/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.fluorescence_decay.lifetime_analysis.gui.app:make_app",
+      "status": "pass",
+      "seconds": 1.376,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "lltf",
+      "manifest": "chisurf/plugins/fluorescence_decay/lltf/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.fluorescence_decay.lltf.gui.app:make_app",
+      "status": "pass",
+      "seconds": 1.465,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "maxent_decay",
+      "manifest": "chisurf/plugins/fluorescence_decay/maxent_decay/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.fluorescence_decay.maxent_decay.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.122,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "synthetic_decay",
+      "manifest": "chisurf/plugins/fluorescence_decay/synthetic_decay/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.fluorescence_decay.synthetic_decay.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.283,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "tr_anisotropy",
+      "manifest": "chisurf/plugins/fluorescence_decay/tr_anisotropy/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.fluorescence_decay.tr_anisotropy.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.885,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "fret_line",
+      "manifest": "chisurf/plugins/fret_line/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.fret_line.gui.app:make_app",
+      "status": "pass",
+      "seconds": 1.606,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "clsm",
+      "manifest": "chisurf/plugins/microscopy/clsm/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.microscopy.clsm.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.368,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "clsm_generator",
+      "manifest": "chisurf/plugins/microscopy/clsm_generator/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.microscopy.clsm_generator.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.335,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "imaging_common",
+      "manifest": "chisurf/plugins/microscopy/imaging_common/manifest.json",
+      "status": "non_gui",
+      "reason": "No declared native factory"
+    },
+    {
+      "id": "imaging_tools",
+      "manifest": "chisurf/plugins/microscopy/imaging_tools/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.microscopy.imaging_tools.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.74,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "img_calibration",
+      "manifest": "chisurf/plugins/microscopy/img_calibration/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.microscopy.img_calibration.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.318,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "img_coloc",
+      "manifest": "chisurf/plugins/microscopy/img_coloc/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.microscopy.img_coloc.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.353,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "img_drift",
+      "manifest": "chisurf/plugins/microscopy/img_drift/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.microscopy.img_drift.app:make_app",
+      "status": "pass",
+      "seconds": 0.472,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "img_flow",
+      "manifest": "chisurf/plugins/microscopy/img_flow/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.microscopy.img_flow.app:make_app",
+      "status": "pass",
+      "seconds": 1.152,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "img_frc",
+      "manifest": "chisurf/plugins/microscopy/img_frc/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.microscopy.img_frc.app:make_app",
+      "status": "pass",
+      "seconds": 0.487,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "img_pixel_intensity",
+      "manifest": "chisurf/plugins/microscopy/img_pixel_intensity/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.microscopy.img_pixel_intensity.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.318,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "img_pixel_micro_time",
+      "manifest": "chisurf/plugins/microscopy/img_pixel_micro_time/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.microscopy.img_pixel_micro_time.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.327,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "img_pixel_mle",
+      "manifest": "chisurf/plugins/microscopy/img_pixel_mle/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.microscopy.img_pixel_mle.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.418,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "img_pixel_nb",
+      "manifest": "chisurf/plugins/microscopy/img_pixel_nb/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.microscopy.img_pixel_nb.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.328,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "img_pixel_phasor",
+      "manifest": "chisurf/plugins/microscopy/img_pixel_phasor/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.microscopy.img_pixel_phasor.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.311,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "img_tracking",
+      "manifest": "chisurf/plugins/microscopy/img_tracking/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.microscopy.img_tracking.app:make_app",
+      "status": "pass",
+      "seconds": 0.441,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "mle_common",
+      "manifest": "chisurf/plugins/microscopy/mle_common/manifest.json",
+      "status": "non_gui",
+      "reason": "No declared native factory"
+    },
+    {
+      "id": "psf_determination",
+      "manifest": "chisurf/plugins/microscopy/psf_determination/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.microscopy.psf_determination.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.668,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "region_mle",
+      "manifest": "chisurf/plugins/microscopy/region_mle/manifest.json",
+      "status": "pending",
+      "reason": "No declared native factory"
+    },
+    {
+      "id": "spot_finder",
+      "manifest": "chisurf/plugins/microscopy/spot_finder/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.microscopy.spot_finder.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.645,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "breakout",
+      "manifest": "chisurf/plugins/misc/games/breakout/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.misc.games.breakout.app:make_app",
+      "status": "pass",
+      "seconds": 0.337,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "games",
+      "manifest": "chisurf/plugins/misc/games/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.misc.games.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.166,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "minesweeper",
+      "manifest": "chisurf/plugins/misc/games/minesweeper/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.misc.games.minesweeper.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.274,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "number_quest",
+      "manifest": "chisurf/plugins/misc/games/number_quest/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.misc.games.number_quest.app:make_app",
+      "status": "pass",
+      "seconds": 0.328,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "pong",
+      "manifest": "chisurf/plugins/misc/games/pong/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.misc.games.pong.app:make_app",
+      "status": "pass",
+      "seconds": 0.288,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "tetris",
+      "manifest": "chisurf/plugins/misc/games/tetris/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.misc.games.tetris.app:make_app",
+      "status": "pass",
+      "seconds": 0.277,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "fps_json_editor",
+      "manifest": "chisurf/plugins/modelling/fps_json_editor/manifest.json",
+      "status": "pending",
+      "reason": "No declared native factory"
+    },
+    {
+      "id": "fret_docking",
+      "manifest": "chisurf/plugins/modelling/fret/manifest.json",
+      "status": "pending",
+      "reason": "No declared native factory"
+    },
+    {
+      "id": "hydropro",
+      "manifest": "chisurf/plugins/modelling/hydropro/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.modelling.hydropro.app:make_app",
+      "status": "pass",
+      "seconds": 0.17,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "proteinmc",
+      "manifest": "chisurf/plugins/modelling/proteinmc/manifest.json",
+      "status": "non_gui",
+      "reason": "No declared native factory"
+    },
+    {
+      "id": "structure_tools",
+      "manifest": "chisurf/plugins/modelling/structure_tools/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.modelling.structure_tools.app:make_app",
+      "status": "pass",
+      "seconds": 0.167,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "ndxplorer",
+      "manifest": "chisurf/plugins/ndxplorer/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.ndxplorer.gui.app:make_app",
+      "status": "pass",
+      "seconds": 1.04,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "pch",
+      "manifest": "chisurf/plugins/pch/manifest.json",
+      "status": "pending",
+      "reason": "No declared native factory"
+    },
+    {
+      "id": "quenching_estimator",
+      "manifest": "chisurf/plugins/quenching_estimator/manifest.json",
+      "status": "pending",
+      "reason": "No declared native factory"
+    },
+    {
+      "id": "spectra_downloader",
+      "manifest": "chisurf/plugins/spectra_downloader/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.spectra_downloader.gui.app:create_app",
+      "status": "pass",
+      "seconds": 0.866,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "traj_fret",
+      "manifest": "chisurf/plugins/traj/fret_trajectory/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.traj.fret_trajectory.app:make_app",
+      "status": "pass",
+      "seconds": 0.699,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "traj_energy_calculator",
+      "manifest": "chisurf/plugins/traj/potential_energy/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.traj.potential_energy.app:make_app",
+      "status": "pass",
+      "seconds": 0.358,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "traj_align",
+      "manifest": "chisurf/plugins/traj/traj_align/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.traj.traj_align.app:make_app",
+      "status": "pass",
+      "seconds": 0.21,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "traj_convert",
+      "manifest": "chisurf/plugins/traj/traj_convert/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.traj.traj_convert.app:make_app",
+      "status": "pass",
+      "seconds": 0.163,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "traj_energy",
+      "manifest": "chisurf/plugins/traj/traj_energy/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.traj.potential_energy.app:make_app",
+      "status": "pass",
+      "seconds": 0.346,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "traj_join",
+      "manifest": "chisurf/plugins/traj/traj_join/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.traj.traj_join.app:make_app",
+      "status": "pass",
+      "seconds": 0.204,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "traj_remove_clashes",
+      "manifest": "chisurf/plugins/traj/traj_remove_clashes/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.traj.traj_remove_clashes.app:make_app",
+      "status": "pass",
+      "seconds": 0.204,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "traj_rotate_translate",
+      "manifest": "chisurf/plugins/traj/traj_rotate_translate/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.traj.traj_rotate_translate.app:make_app",
+      "status": "pass",
+      "seconds": 0.206,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "traj_save_topology",
+      "manifest": "chisurf/plugins/traj/traj_save_topology/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.traj.traj_save_topology.app:make_app",
+      "status": "pass",
+      "seconds": 0.165,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "traj_tools",
+      "manifest": "chisurf/plugins/traj/traj_tools/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.traj.traj_tools.app:make_app",
+      "status": "pass",
+      "seconds": 0.206,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "tttr_audifier",
+      "manifest": "chisurf/plugins/tttr/audifier/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.tttr.audifier.gui.app:create_app",
+      "status": "pass",
+      "seconds": 0.368,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "filetools",
+      "manifest": "chisurf/plugins/tttr/filetools/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.tttr.filetools.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.324,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "intensity_trace",
+      "manifest": "chisurf/plugins/tttr/intensity_trace/manifest.json",
+      "status": "pending",
+      "reason": "No declared native factory"
+    },
+    {
+      "id": "microtime_histogram",
+      "manifest": "chisurf/plugins/tttr/microtime_histogram/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.tttr.microtime_histogram.gui.app:create_app",
+      "status": "pass",
+      "seconds": 0.377,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "photon_table",
+      "manifest": "chisurf/plugins/tttr/photon_table/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.tttr.photon_table.gui.controller:create_app",
+      "status": "pass",
+      "seconds": 0.074,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "ptu_alex_creator",
+      "manifest": "chisurf/plugins/tttr/ptu_alex_creator/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.tttr.ptu_alex_creator.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.356,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "trace_browser",
+      "manifest": "chisurf/plugins/tttr/trace_browser/manifest.json",
+      "status": "pending",
+      "reason": "No declared native factory"
+    },
+    {
+      "id": "tttr_correlate",
+      "manifest": "chisurf/plugins/tttr/tttr_correlate/manifest.json",
+      "status": "pending",
+      "reason": "No declared native factory"
+    },
+    {
+      "id": "tttr_count_rate_analysis",
+      "manifest": "chisurf/plugins/tttr/tttr_count_rate_analysis/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.tttr.tttr_count_rate_analysis.gui.controller:create_app",
+      "status": "pass",
+      "seconds": 0.411,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "tttr_header_edit",
+      "manifest": "chisurf/plugins/tttr/tttr_header_edit/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.tttr.tttr_header_edit.gui.native:create_app",
+      "status": "pass",
+      "seconds": 0.124,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "tttr_histogram",
+      "manifest": "chisurf/plugins/tttr/tttr_histogram/manifest.json",
+      "status": "pending",
+      "reason": "No declared native factory"
+    },
+    {
+      "id": "tttr_image_browser",
+      "manifest": "chisurf/plugins/tttr/tttr_image_browser/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.tttr.tttr_image_browser.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.49,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "tttr_lut_tools",
+      "manifest": "chisurf/plugins/tttr/tttr_lut_tools/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.tttr.tttr_lut_tools.gui.app:create_app",
+      "status": "pass",
+      "seconds": 0.306,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "microtime_shifter",
+      "manifest": "chisurf/plugins/tttr/tttr_microtime_shifter/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.tttr.tttr_microtime_shifter.gui.app:create_app",
+      "status": "pass",
+      "seconds": 0.197,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "tttr_splitter",
+      "manifest": "chisurf/plugins/tttr/tttr_splitter/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.tttr.tttr_splitter.gui.controller:create_app",
+      "status": "pass",
+      "seconds": 0.121,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "tttr_time_windows",
+      "manifest": "chisurf/plugins/tttr/tttr_time_windows/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.tttr.tttr_time_windows.gui.controller:create_app",
+      "status": "pass",
+      "seconds": 0.12,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "tttr_toolbox",
+      "manifest": "chisurf/plugins/tttr/tttr_toolbox/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.tttr.tttr_toolbox.gui.app:make_app",
+      "status": "pass",
+      "seconds": 0.438,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "vv_vh_anisotropy",
+      "manifest": "chisurf/plugins/vv_vh_anisotropy/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.vv_vh_anisotropy.gui.app:create_app",
+      "status": "pass",
+      "seconds": 0.105,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    },
+    {
+      "id": "vv_vh_g_factor",
+      "manifest": "chisurf/plugins/vv_vh_g_factor/manifest.json",
+      "exit_code": 0,
+      "factory": "chisurf.plugins.vv_vh_g_factor.gui.app:create_app",
+      "status": "pass",
+      "seconds": 0.123,
+      "qt_modules": [],
+      "sizes": [
+        [
+          1200,
+          800
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "parity_verified": false,
+      "tooltips_verified": false
+    }
+  ]
+}

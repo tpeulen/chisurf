@@ -131,7 +131,7 @@ This three-step resolution is factored into the shared helper
 which takes the owning class name explicitly (rather than walking the call
 stack). `Parameter.__init__` calls it with `owner=_owning_class_name()`; the
 AutoForm renderer reuses the same helper (see
-[[gui-autoform]]) so a description shown in a fitting widget and one shown on an
+[GUI/AutoForm](gui-autoform.md)) so a description shown in a fitting widget and one shown on an
 AutoForm field are resolved identically.
 
 # Groups

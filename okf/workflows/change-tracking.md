@@ -46,7 +46,7 @@ the same loop**. This is the process rule that the root
 6. **Commit** — a focused commit per file or small coherent batch, with a message
    that states the change, the verification (e.g. "suite: 420 passed"), and any
    audit-number delta. Commit **locally only — never push** (see
-   [[feedback-no-push]]). **No commit trailers of any kind** — no
+   the no-push rule). **No commit trailers of any kind** — no
    `Co-Authored-By`, no "Generated with" / tool attribution. Commits are authored
    by tpeulen only; the message body is plain text with no trailer block.
 7. **Leave a resume point** — see below. A session that ends without one costs
@@ -130,7 +130,7 @@ questions and neither substitutes for the other:
   assumptions, what the parameters mean physically, what a defensible result
   looks like, and citations. Written so a reader can judge whether the method
   fits their question at all. Reference-quality prose is the target (see
-  [[quickfit3-docs-for-concepts]]).
+  the QuickFit3-help-as-reference note).
 * **Application** — `docs/guides/`: the numbered step-by-step workflow in
   ChiSurf — which tool, which settings in which order, what the panels show,
   the headless CLI equivalent, the Python API, and a real screenshot. Written so
@@ -168,7 +168,7 @@ in-flight work, so it is **banned**:
   (`okf/log.md`, `okf/prds/index.md`, `pixi.toml`) will often be swept into another
   instance's commit — that is fine, the content lands; just do not be the one who
   sweeps theirs.
-- **Do not push** (see [[feedback-no-push]]) and do not rebase/amend shared history.
+- **Do not push** (see the no-push rule) and do not rebase/amend shared history.
 - If a git command *would* discard work that is not yours, stop and report to the
   user instead of running it.
 
