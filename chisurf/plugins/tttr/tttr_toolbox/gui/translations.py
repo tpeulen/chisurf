@@ -33,6 +33,8 @@ Go to the next tool in the list.|Zum nächsten Werkzeug der Liste gehen.|Aller �
 ALEX Creator|ALEX-Ersteller|Créateur ALEX|Creador ALEX|Criador ALEX|Создатель ALEX
 Count Rate Analysis|Zählratenanalyse|Analyse des taux de comptage|Análisis de tasas de recuento|Análise de taxas de contagem|Анализ скоростей счёта
 Micro-time Shifter|Mikrozeit-Verschieber|Décaleur de microtemps|Desplazador de microtiempo|Deslocador de microtempo|Сдвиг микровремени
+0. Setup|0. Einrichtung|0. Réglages|0. Configuración|0. Configuração|0. Настройка
+Detector setup shared by every step: routing, PIE windows and LUTs.|Gemeinsames Detektor-Setup aller Schritte: Routing, PIE-Fenster und LUTs.|Réglage des détecteurs partagé par toutes les étapes : routage, fenêtres PIE et LUT.|Configuración de detectores compartida por todos los pasos: enrutamiento, ventanas PIE y LUT.|Configuração de detectores compartilhada por todas as etapas: roteamento, janelas PIE e LUTs.|Настройка детекторов общая для всех шагов: маршрутизация, окна PIE и LUT.
 Split / Convert|Teilen / Konvertieren|Découper / Convertir|Dividir / Convertir|Dividir / Converter|Разделить / Преобразовать"""
 
 

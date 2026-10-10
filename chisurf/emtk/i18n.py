@@ -63,7 +63,9 @@ def install(locale: str | None = None, directory: str | Path | None = None) -> s
                 default.setdefault(source, translation)
         default.update(contexts.get(core_i18n.DEFAULT_CONTEXT, {}))
         toolkit_i18n.add_translations(language, default, context="default")
-    selected = locale or (toolkit_i18n.get_locale() if _installed else core_i18n.get_locale())
+    # A language already switched live (set_locale, not persisted) must survive a child tool's install().
+    live = toolkit_i18n.get_locale() != "en"
+    selected = locale or (toolkit_i18n.get_locale() if (_installed or live) else core_i18n.get_locale())
     toolkit_i18n.set_locale(selected)
     _installed = True
     core_i18n.set_translation_backend(lambda context, text: toolkit_i18n.tr(text, context=context))

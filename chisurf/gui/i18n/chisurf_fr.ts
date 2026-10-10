@@ -1993,6 +1993,5746 @@ p, li { white-space: pre-wrap; }
     <context>
         <name>chisurf</name>
         <message>
+            <source>   1. Vary the threshold by a factor of 2 — real populations persist.</source>
+            <translation>   1. Modifiez le seuil d’un facteur 2 : les vraies populations persistent.</translation>
+        </message>
+        <message>
+            <source>   1D distribution with customizable bins and optional log-Y scaling.</source>
+            <translation>   Distribution 1D avec classes personnalisables et échelle Y logarithmique facultative.</translation>
+        </message>
+        <message>
+            <source>   2. Inspect the MCS intensity trace across the entire acquisition.</source>
+            <translation>   2. Inspectez la trace d’intensité MCS sur toute l’acquisition.</translation>
+        </message>
+        <message>
+            <source>   3. Verify donor-only and acceptor-only populations land at expected positions.</source>
+            <translation>   3. Vérifiez que les populations donneur seul et accepteur seul se trouvent aux positions attendues.</translation>
+        </message>
+        <message>
+            <source>   A swapped assignment reflects E around 0.5 without producing any fit error.</source>
+            <translation>   Une affectation inversée donne E autour de 0,5 sans produire d’erreur d’ajustement.</translation>
+        </message>
+        <message>
+            <source>   Accumulates log-likelihood ratios to detect abrupt rate increases.</source>
+            <translation>   Accumule les rapports de log-vraisemblance pour détecter les hausses brusques de taux.</translation>
+        </message>
+        <message>
+            <source>   Adaptive hierarchical threshold-free segmentation and Scargle optimal partitioning.</source>
+            <translation>   Segmentation hiérarchique adaptative sans seuil et partition optimale de Scargle.</translation>
+        </message>
+        <message>
+            <source>   Applying a size cut during the search biases against dim bursts,</source>
+            <translation>   Un seuil de taille appliqué pendant la recherche défavorise les bursts faibles,</translation>
+        </message>
+        <message>
+            <source>   Background is an exponential decay; bursts produce a short-time excess peak.</source>
+            <translation>   Le fond est une décroissance exponentielle ; les bursts produisent un pic d’excès de courte durée.</translation>
+        </message>
+        <message>
+            <source>   Bivariate scatter (E vs S) with interactive draggable gating box.</source>
+            <translation>   Nuage bivarié (E en fonction de S) avec fenêtre de sélection interactive et déplaçable.</translation>
+        </message>
+        <message>
+            <source>   Burst opens when R exceeds F * background, and closes when R drops.</source>
+            <translation>   Un burst commence lorsque R dépasse F × fond et se termine lorsque R chute.</translation>
+        </message>
+        <message>
+            <source>   Confirm detector setup once against a known reference sample.</source>
+            <translation>   Vérifiez une fois la configuration des détecteurs avec un échantillon de référence connu.</translation>
+        </message>
+        <message>
+            <source>   Continuously estimates count rate with Kalman gain. Flags bursts when</source>
+            <translation>   Estime en continu le taux de comptage avec un gain de Kalman. Marque les bursts lorsque</translation>
+        </message>
+        <message>
+            <source>   Distribution of burst transit times. Smooth decay without minimum spikes.</source>
+            <translation>   Distribution des temps de transit des bursts. Décroissance lisse sans pics aux minima.</translation>
+        </message>
+        <message>
+            <source>   Guarantees bounds on false-alarm probability (alpha) and missed-detection (beta).</source>
+            <translation>   Garantit des bornes pour la probabilité de fausse alarme (alpha) et de non-détection (bêta).</translation>
+        </message>
+        <message>
+            <source>   Lifetime decay comparing all photons vs selected burst photons.</source>
+            <translation>   Décroissance de durée de vie comparant tous les photons aux photons des bursts sélectionnés.</translation>
+        </message>
+        <message>
+            <source>   Local background thresholding protects against buffer/laser drift.</source>
+            <translation>   Le seuillage local du fond protège contre la dérive du tampon et du laser.</translation>
+        </message>
+        <message>
+            <source>   Macro-time trace: reveals photobleaching, focus drift, and aggregate crossings.</source>
+            <translation>   Trace en macrotemps : révèle le photoblanchiment, la dérive de mise au point et les franchissements d’agrégats.</translation>
+        </message>
+        <message>
+            <source>   Microtime windows (prompt vs delayed) distinguish direct acceptor excitation from FRET.</source>
+            <translation>   Les fenêtres de microtemps (prompt contre retardé) distinguent l’excitation directe de l’accepteur du FRET.</translation>
+        </message>
+        <message>
+            <source>   Paginated table of detected bursts with photon counts, durations, and rates.</source>
+            <translation>   Tableau paginé des bursts détectés avec nombres de photons, durées et taux.</translation>
+        </message>
+        <message>
+            <source>   Recursive exact Bayesian inference with Poisson-Gamma conjugate priors.</source>
+            <translation>   Inférence bayésienne exacte récursive avec a priori conjugués de Poisson-Gamma.</translation>
+        </message>
+        <message>
+            <source>   Rejects donor-only or acceptor-only singly-labeled species.</source>
+            <translation>   Rejette les espèces marquées une seule fois, donneur seul ou accepteur seul.</translation>
+        </message>
+        <message>
+            <source>   Requires simultaneous rate rise in both donor and acceptor excitation.</source>
+            <translation>   Exige une hausse simultanée du taux lors de l’excitation du donneur et de l’accepteur.</translation>
+        </message>
+        <message>
+            <source>   Search permissively with consecutive photons (m), then apply the size cut</source>
+            <translation>   Recherche permissive avec des photons consécutifs (m), puis application du seuil de taille</translation>
+        </message>
+        <message>
+            <source>   Slides a window of m photons. Instantaneous rate R = m / dt.</source>
+            <translation>   Fenêtre glissante de m photons. Taux instantané R = m / dt.</translation>
+        </message>
+        <message>
+            <source>   The detector setup binds hardware routing channels to excitation periods.</source>
+            <translation>   La configuration des détecteurs associe les canaux de routage matériels aux périodes d’excitation.</translation>
+        </message>
+        <message>
+            <source>   afterwards on the background-corrected burst size.</source>
+            <translation>   ensuite sur la taille de burst corrigée du fond.</translation>
+        </message>
+        <message>
+            <source>   distorting FRET efficiency distributions.</source>
+            <translation>   déforme les distributions d’efficacité FRET.</translation>
+        </message>
+        <message>
+            <source>   residual Z-score exceeds threshold. Highly robust for variable burst lengths.</source>
+            <translation>   le résidu Z dépasse le seuil. Très robuste pour des longueurs de burst variables.</translation>
+        </message>
+        <message>
+            <source>(No TTTR file loaded)</source>
+            <translation>   (Aucun fichier TTTR chargé)</translation>
+        </message>
+        <message>
+            <source>(No TTTR file loaded. Click Add Files)</source>
+            <translation>   (Aucun fichier TTTR chargé. Cliquez sur Ajouter des fichiers)</translation>
+        </message>
+        <message>
+            <source>(No bursts detected)</source>
+            <translation>   (Aucun burst détecté)</translation>
+        </message>
+        <message>
+            <source>(No bursts detected. Click Find Bursts)</source>
+            <translation>   (Aucun burst détecté. Cliquez sur Rechercher les bursts)</translation>
+        </message>
+        <message>
+            <source>1-D acceptor distribution (helix / filament): stretch exponent 1/6.</source>
+            <translation>   Distribution d’accepteurs 1D (hélice / filament) : exposant d’étirement 1/6.</translation>
+        </message>
+        <message>
+            <source>2-D acceptor distribution (membrane): stretch exponent 1/3.</source>
+            <translation>   Distribution d’accepteurs 2D (membrane) : exposant d’étirement 1/3.</translation>
+        </message>
+        <message>
+            <source>3-D acceptor distribution (solution): stretch exponent d/6 = 1/2.</source>
+            <translation>   Distribution d’accepteurs 3D (solution) : exposant d’étirement d/6 = 1/2.</translation>
+        </message>
+        <message>
+            <source>? Help</source>
+            <translation>   ? Aide</translation>
+        </message>
+        <message>
+            <source>A correlation pair of the detector setup's FCS presets (step 1): fills the channels, micro-time ranges and correlator settings.</source>
+            <translation>   Une paire de corrélation des préréglages FCS de la configuration des détecteurs (étape 1) : remplit les canaux, les plages de microtemps et les réglages du corrélateur.</translation>
+        </message>
+        <message>
+            <source>A file with R_DA in the first column and p(R_DA) in the second; one header line.</source>
+            <translation>   Un fichier avec R_DA dans la première colonne et p(R_DA) dans la seconde ; une ligne d’en-tête.</translation>
+        </message>
+        <message>
+            <source>A step-by-step walk through a conversion.</source>
+            <translation>   Un guide pas à pas d’une conversion.</translation>
+        </message>
+        <message>
+            <source>A step-by-step walk through signing in, picking a panel and editing a record.</source>
+            <translation>   Un guide pas à pas : connexion, choix d’un panneau et modification d’un enregistrement.</translation>
+        </message>
+        <message>
+            <source>A step-by-step walk through the calculator.</source>
+            <translation>   Un guide pas à pas du calculateur.</translation>
+        </message>
+        <message>
+            <source>ALEX alternation period in macro-time units; leave 0 to measure it from the data.</source>
+            <translation>   Période d’alternance ALEX en unités de macrotemps ; laisser 0 pour la mesurer à partir des données.</translation>
+        </message>
+        <message>
+            <source>Accept detector setup and open trace browser</source>
+            <translation>   Valider la configuration des détecteurs et ouvrir le navigateur de traces</translation>
+        </message>
+        <message>
+            <source>Accept the settings and close.</source>
+            <translation>   Valider les réglages et fermer.</translation>
+        </message>
+        <message>
+            <source>Acceptor anisotropy components: amplitude and rotational correlation time [ns] per row.</source>
+            <translation>   Composantes d’anisotropie de l’accepteur : amplitude et temps de corrélation rotationnel [ns] par ligne.</translation>
+        </message>
+        <message>
+            <source>Acceptor intensity threshold in counts per frame.</source>
+            <translation>   Seuil d’intensité de l’accepteur en comptages par image.</translation>
+        </message>
+        <message>
+            <source>Acceptor lifetime components: relative amplitude and lifetime [ns] per row.</source>
+            <translation>   Composantes de durée de vie de l’accepteur : amplitude relative et durée de vie [ns] par ligne.</translation>
+        </message>
+        <message>
+            <source>Acceptor routing channels:</source>
+            <translation>   Canaux de routage de l’accepteur :</translation>
+        </message>
+        <message>
+            <source>Acceptors distributed in space around the donor (no fixed distance): geometry and acceptor density determining the stretched-exponential decay.</source>
+            <translation>   Accepteurs répartis dans l’espace autour du donneur (sans distance fixe) : la géométrie et la densité des accepteurs déterminent la décroissance exponentielle étirée.</translation>
+        </message>
+        <message>
+            <source>Accessible volumes (points), mean positions and distance lines; drag to rotate, wheel to zoom.</source>
+            <translation>   Volumes accessibles (points), positions moyennes et lignes de distance ; glisser pour tourner, molette pour zoomer.</translation>
+        </message>
+        <message>
+            <source>Account fields of the selected user: name, e-mail, role, contact details and login options.</source>
+            <translation>   Champs du compte de l’utilisateur sélectionné : nom, e-mail, rôle, coordonnées et options de connexion.</translation>
+        </message>
+        <message>
+            <source>Accurate FRET: correct burst E and S for gamma, beta, crosstalk and direct excitation, with uncertainties.</source>
+            <translation>   FRET précis : corrige E et S des bursts pour gamma, bêta, diaphonie et excitation directe, avec incertitudes.</translation>
+        </message>
+        <message>
+            <source>Add BID files or drop them here, or press Load example.</source>
+            <translation>   Ajoutez des fichiers BID ou déposez-les ici, ou appuyez sur Charger l’exemple.</translation>
+        </message>
+        <message>
+            <source>Add Files</source>
+            <translation>   Ajouter des fichiers</translation>
+        </message>
+        <message>
+            <source>Add Folder</source>
+            <translation>   Ajouter un dossier</translation>
+        </message>
+        <message>
+            <source>Add a tag</source>
+            <translation>   Ajouter une étiquette</translation>
+        </message>
+        <message>
+            <source>Add burst files as titration points (one concentration each).</source>
+            <translation>   Ajouter les fichiers de bursts comme points de titration (une concentration chacun).</translation>
+        </message>
+        <message>
+            <source>Add files</source>
+            <translation>   Ajouter des fichiers</translation>
+        </message>
+        <message>
+            <source>Add matching selection files from one folder.</source>
+            <translation>   Ajouter les fichiers de sélection correspondants depuis un dossier.</translation>
+        </message>
+        <message>
+            <source>Adds an ALEX (alternating laser excitation) channel to a TTTR file.</source>
+            <translation>   Ajoute à un fichier TTTR un canal ALEX (excitation laser alternée).</translation>
+        </message>
+        <message>
+            <source>Adjust analysis and display parameters.</source>
+            <translation>   Ajuster les paramètres d’analyse et d’affichage.</translation>
+        </message>
+        <message>
+            <source>All 2D-FLCS settings: correlation, inversion, IRF, dynamics, kinetics and simulator.</source>
+            <translation>   Tous les réglages 2D-FLCS : corrélation, inversion, IRF, dynamique, cinétique et simulateur.</translation>
+        </message>
+        <message>
+            <source>All Photons</source>
+            <translation>   Tous les photons</translation>
+        </message>
+        <message>
+            <source>All files are merged into a single ALEX output.</source>
+            <translation>   Tous les fichiers sont fusionnés en une seule sortie ALEX.</translation>
+        </message>
+        <message>
+            <source>All parameters of the FRET species decay model.</source>
+            <translation>   Tous les paramètres du modèle de décroissance des espèces FRET.</translation>
+        </message>
+        <message>
+            <source>All parameters of the synthetic decay.</source>
+            <translation>   Tous les paramètres de la décroissance synthétique.</translation>
+        </message>
+        <message>
+            <source>Allowed inter-photon macro-time interval dMT (ms); photons outside the limits are dropped.</source>
+            <translation>   Intervalle de macrotemps dMT admissible entre photons (ms) ; les photons hors limites sont supprimés.</translation>
+        </message>
+        <message>
+            <source>Alpha cutoff:</source>
+            <translation>   Seuil alpha :</translation>
+        </message>
+        <message>
+            <source>Alternation period (macro-time units) and phase shift of the ALEX excitation modulation.</source>
+            <translation>   Période d’alternance (unités de macrotemps) et décalage de phase de la modulation d’excitation ALEX.</translation>
+        </message>
+        <message>
+            <source>Amplitude/lifetime spectrum of the acceptor in the absence of donor.</source>
+            <translation>   Spectre amplitude/durée de vie de l’accepteur en l’absence de donneur.</translation>
+        </message>
+        <message>
+            <source>Amplitude/lifetime spectrum of the donor in the absence of acceptor.</source>
+            <translation>   Spectre amplitude/durée de vie du donneur en l’absence d’accepteur.</translation>
+        </message>
+        <message>
+            <source>Amplitude/lifetime spectrum of the simulated decay.</source>
+            <translation>   Spectre amplitude/durée de vie de la décroissance simulée.</translation>
+        </message>
+        <message>
+            <source>Amplitudes and lifetimes (ns) of the exponential components of the simulated decay.</source>
+            <translation>   Amplitudes et durées de vie (ns) des composantes exponentielles de la décroissance simulée.</translation>
+        </message>
+        <message>
+            <source>Analysis folder:</source>
+            <translation>   Dossier d’analyse :</translation>
+        </message>
+        <message>
+            <source>Anisotropic Gaussian ACF: widths sigma_x, sigma_y (um) and rotation angle of the principal axes.</source>
+            <translation>   ACF gaussienne anisotrope : largeurs sigma_x, sigma_y (µm) et angle de rotation des axes principaux.</translation>
+        </message>
+        <message>
+            <source>Anisotropy r(inf), region and status per queued file.</source>
+            <translation>   Anisotropie r(inf), zone et état par fichier en file d’attente.</translation>
+        </message>
+        <message>
+            <source>Answer the question with this choice and close the dialog.</source>
+            <translation>   Répondre à la question avec ce choix et fermer la boîte de dialogue.</translation>
+        </message>
+        <message>
+            <source>Antibunching / anticorrelation terms (e.g. FRET dynamics): negative amplitude and relaxation time (us).</source>
+            <translation>   Termes d’antibunching / d’anticorrélation (p. ex. dynamique FRET) : amplitude négative et temps de relaxation (µs).</translation>
+        </message>
+        <message>
+            <source>Apparent diffusion time as a function of laser power.</source>
+            <translation>   Temps de diffusion apparent en fonction de la puissance laser.</translation>
+        </message>
+        <message>
+            <source>Apparent diffusion time tau_D (ms) from a single-component fit versus laser power (mW); saturation shortens it.</source>
+            <translation>   Temps de diffusion apparent tau_D (ms) issu d’un ajustement à une composante en fonction de la puissance laser (mW) ; la saturation le raccourcit.</translation>
+        </message>
+        <message>
+            <source>Append a Markdown cell</source>
+            <translation>   Ajouter une cellule Markdown</translation>
+        </message>
+        <message>
+            <source>Append a Python code cell</source>
+            <translation>   Ajouter une cellule de code Python</translation>
+        </message>
+        <message>
+            <source>Apply detector definitions</source>
+            <translation>   Appliquer les définitions des détecteurs</translation>
+        </message>
+        <message>
+            <source>Apply settings</source>
+            <translation>   Appliquer les réglages</translation>
+        </message>
+        <message>
+            <source>Apply setup</source>
+            <translation>   Appliquer la configuration</translation>
+        </message>
+        <message>
+            <source>Apply the differential non-linearity (DNL) table to the model to account for uneven channel widths.</source>
+            <translation>   Appliquer la table de non-linéarité différentielle (DNL) au modèle pour tenir compte des largeurs de canal inégales.</translation>
+        </message>
+        <message>
+            <source>Apply the lower and upper limits to this parameter.</source>
+            <translation>   Appliquer les bornes inférieure et supérieure à ce paramètre.</translation>
+        </message>
+        <message>
+            <source>Apply valid JSON preferences to the next MEM job.</source>
+            <translation>   Appliquer des préférences JSON valides au prochain travail MEM.</translation>
+        </message>
+        <message>
+            <source>Arrow scale, tile step and mean-flow subtraction for the displayed field.</source>
+            <translation>   Échelle des flèches, pas des tuiles et soustraction du flux moyen pour le champ affiché.</translation>
+        </message>
+        <message>
+            <source>Assign detector and routing channels to the burst detectors that get a background rate.</source>
+            <translation>   Affecter les canaux de détecteur et de routage aux détecteurs de bursts qui reçoivent un taux de fond.</translation>
+        </message>
+        <message>
+            <source>Assign detector channels to burst detectors.</source>
+            <translation>   Affecter les canaux de détecteur aux détecteurs de bursts.</translation>
+        </message>
+        <message>
+            <source>Audio rendering: bin width, envelope, sample rate, gain, floor, scale, attack and release.</source>
+            <translation>   Rendu audio : largeur de classe, enveloppe, fréquence d’échantillonnage, gain, plancher, échelle, attaque et relâchement.</translation>
+        </message>
+        <message>
+            <source>Averaging window τ in microseconds used when computing the 2CDE metric.</source>
+            <translation>   Fenêtre de moyenne τ en microsecondes utilisée pour calculer la métrique 2CDE.</translation>
+        </message>
+        <message>
+            <source>Axis ranges of the plot.</source>
+            <translation>   Plages des axes du graphique.</translation>
+        </message>
+        <message>
+            <source>BID conversion paths</source>
+            <translation>   Chemins de conversion BID</translation>
+        </message>
+        <message>
+            <source>BID file</source>
+            <translation>   Fichier BID</translation>
+        </message>
+        <message>
+            <source>BID files and conversion</source>
+            <translation>   Fichiers BID et conversion</translation>
+        </message>
+        <message>
+            <source>BID selections</source>
+            <translation>   Sélections BID</translation>
+        </message>
+        <message>
+            <source>BID → Analysis</source>
+            <translation>   BID → Analyse</translation>
+        </message>
+        <message>
+            <source>BID → Analysis help</source>
+            <translation>   BID → Analyse, aide</translation>
+        </message>
+        <message>
+            <source>Back to the maps</source>
+            <translation>   Retour aux cartes</translation>
+        </message>
+        <message>
+            <source>Backend selection and controls used to evaluate the optical path.</source>
+            <translation>   Choix du backend et commandes utilisées pour évaluer le trajet optique.</translation>
+        </message>
+        <message>
+            <source>Background and IRF results per file and detector.</source>
+            <translation>   Résultats de fond et d’IRF par fichier et par détecteur.</translation>
+        </message>
+        <message>
+            <source>Background count rate and total-number terms that scale the species contributions.</source>
+            <translation>   Taux de comptage de fond et termes du nombre total qui mettent à l’échelle les contributions des espèces.</translation>
+        </message>
+        <message>
+            <source>Background count rate in kHz (1000 counts per second).</source>
+            <translation>   Taux de comptage de fond en kHz (1000 comptages par seconde).</translation>
+        </message>
+        <message>
+            <source>Background decays subtracted from the signal, per polarization.</source>
+            <translation>   Décroissances de fond soustraites du signal, par polarisation.</translation>
+        </message>
+        <message>
+            <source>Background rate per file and detector.</source>
+            <translation>   Taux de fond par fichier et par détecteur.</translation>
+        </message>
+        <message>
+            <source>Background rates (kHz) in the donor and acceptor channels added to the burst photons.</source>
+            <translation>   Taux de fond (kHz) dans les canaux donneur et accepteur, ajoutés aux photons du burst.</translation>
+        </message>
+        <message>
+            <source>Background subtraction and intensity thresholds applied per channel before the coefficients are computed.</source>
+            <translation>   Soustraction du fond et seuils d’intensité appliqués par canal avant le calcul des coefficients.</translation>
+        </message>
+        <message>
+            <source>Bead detection thresholds and sizes.</source>
+            <translation>Seuils et tailles de détection des billes.</translation>
+        </message>
+        <message>
+            <source>Beam waist and sample temperature convert a diffusion time into a hydrodynamic radius (Stokes-Einstein with the viscosity of water).</source>
+            <translation>Le col du faisceau et la température de l’échantillon convertissent un temps de diffusion en rayon hydrodynamique (Stokes-Einstein avec la viscosité de l’eau).</translation>
+        </message>
+        <message>
+            <source>Beta direct-excitation correction used by the fit.</source>
+            <translation>Correction bêta de l’excitation directe utilisée par l’ajustement.</translation>
+        </message>
+        <message>
+            <source>Bg rate (Hz):</source>
+            <translation>Taux de fond (Hz) :</translation>
+        </message>
+        <message>
+            <source>Bin width (ms):</source>
+            <translation>Largeur de classe (ms) :</translation>
+        </message>
+        <message>
+            <source>Binding model fitted to the fractions across the series.</source>
+            <translation>Modèle de liaison ajusté aux fractions sur toute la série.</translation>
+        </message>
+        <message>
+            <source>Binning and range of the plots below.</source>
+            <translation>Classement et plage des graphiques ci-dessous.</translation>
+        </message>
+        <message>
+            <source>Binning of the two-dimensional proximity-ratio versus mean-micro-time histogram.</source>
+            <translation>Découpage de l’histogramme bidimensionnel du ratio de proximité en fonction du microtemps moyen.</translation>
+        </message>
+        <message>
+            <source>Bins X:</source>
+            <translation>Classes X :</translation>
+        </message>
+        <message>
+            <source>Bins Y:</source>
+            <translation>Classes Y :</translation>
+        </message>
+        <message>
+            <source>Bins with fewer counts than this are ignored when fitting the tail.</source>
+            <translation>Les classes ayant moins de comptages que cette valeur sont ignorées lors de l’ajustement de la queue.</translation>
+        </message>
+        <message>
+            <source>Bootstrap</source>
+            <translation>Bootstrap</translation>
+        </message>
+        <message>
+            <source>Bounds enabled</source>
+            <translation>Bornes activées</translation>
+        </message>
+        <message>
+            <source>Brightness versus intensity histogram; draw gates to select pixels by oligomer state.</source>
+            <translation>Histogramme luminosité en fonction de l’intensité ; tracez des fenêtres pour sélectionner les pixels selon l’état d’oligomérisation.</translation>
+        </message>
+        <message>
+            <source>Browse each found region across all input files and inspect its measured geometry.</source>
+            <translation>Parcourir chaque région trouvée dans tous les fichiers d’entrée et examiner sa géométrie mesurée.</translation>
+        </message>
+        <message>
+            <source>Browse for the folder containing the burst analysis files.</source>
+            <translation>Choisir le dossier contenant les fichiers d’analyse des bursts.</translation>
+        </message>
+        <message>
+            <source>Browse input brightness, each detector lifetime and reconstructed photon counts.</source>
+            <translation>Parcourir la luminosité d’entrée, la durée de vie de chaque détecteur et les nombres de photons reconstruits.</translation>
+        </message>
+        <message>
+            <source>Browse single bursts of a burst-analysis folder and inspect their photon streams and histograms.</source>
+            <translation>Parcourir des bursts individuels d’un dossier d’analyse et examiner leurs flux de photons et histogrammes.</translation>
+        </message>
+        <message>
+            <source>Browser of the images in the loaded folder.</source>
+            <translation>Navigateur des images du dossier chargé.</translation>
+        </message>
+        <message>
+            <source>Brush size and mode for selecting pixels; the decay below follows the selection.</source>
+            <translation>Taille et mode du pinceau pour sélectionner les pixels ; la décroissance ci-dessous suit la sélection.</translation>
+        </message>
+        <message>
+            <source>Buffer description written into the CSV metadata.</source>
+            <translation>Description du tampon inscrite dans les métadonnées CSV.</translation>
+        </message>
+        <message>
+            <source>Burst analysis folder …</source>
+            <translation>Dossier d’analyse des bursts …</translation>
+        </message>
+        <message>
+            <source>Burst file (from the burst search) whose data is exported.</source>
+            <translation>Fichier de bursts (issu de la recherche de bursts) dont les données sont exportées.</translation>
+        </message>
+        <message>
+            <source>Burst files to fit and the fit model.</source>
+            <translation>Fichiers de bursts à ajuster et modèle d’ajustement.</translation>
+        </message>
+        <message>
+            <source>Burst folder and the donor, acceptor and acceptor-excitation detectors.</source>
+            <translation>Dossier des bursts et détecteurs donneur, accepteur et d’excitation de l’accepteur.</translation>
+        </message>
+        <message>
+            <source>Burst folder or file to browse.</source>
+            <translation>Dossier ou fichier de bursts à parcourir.</translation>
+        </message>
+        <message>
+            <source>Burst folder …</source>
+            <translation>Dossier de bursts …</translation>
+        </message>
+        <message>
+            <source>Burst folder:</source>
+            <translation>Dossier de bursts :</translation>
+        </message>
+        <message>
+            <source>Burst inspected in the result plots.</source>
+            <translation>Burst affiché dans les graphiques de résultats.</translation>
+        </message>
+        <message>
+            <source>Burst quantity compared before and after fusion.</source>
+            <translation>Nombre de bursts comparé avant et après fusion.</translation>
+        </message>
+        <message>
+            <source>Burst quantity, selection and display controls.</source>
+            <translation>Commandes de quantité, de sélection et d’affichage des bursts.</translation>
+        </message>
+        <message>
+            <source>Burst selection applied before the histogram is built.</source>
+            <translation>Sélection de bursts appliquée avant la construction de l’histogramme.</translation>
+        </message>
+        <message>
+            <source>Burst selection applied to every point: minimum photons, E histogram bins, stoichiometry gate and the gamma and beta corrections.</source>
+            <translation>Sélection de bursts appliquée à chaque point : photons minimum, classes de l’histogramme E, fenêtre de stœchiométrie et corrections gamma et bêta.</translation>
+        </message>
+        <message>
+            <source>Burst shown in the result plot.</source>
+            <translation>Burst affiché dans le graphique de résultats.</translation>
+        </message>
+        <message>
+            <source>Burst table, channels, dye and photophysics inputs and the correction procedure.</source>
+            <translation>Tableau des bursts, canaux, entrées de colorant et de photophysique, et procédure de correction.</translation>
+        </message>
+        <message>
+            <source>Burst-wise FCS correlator: binning, cascades, fine grid and padding around each burst.</source>
+            <translation>Corrélateur FCS par burst : classement, cascades, grille fine et remplissage autour de chaque burst.</translation>
+        </message>
+        <message>
+            <source>Button that opens a dialog to choose the folder of correlation chunks.</source>
+            <translation>Bouton ouvrant une boîte de dialogue pour choisir le dossier des blocs de corrélation.</translation>
+        </message>
+        <message>
+            <source>Calculate the count rates and save the results.</source>
+            <translation>Calculer les taux de comptage et enregistrer les résultats.</translation>
+        </message>
+        <message>
+            <source>Calibration of the detection: background rates, G factor and crosstalk.</source>
+            <translation>Étalonnage de la détection : taux de fond, facteur G et diaphonie.</translation>
+        </message>
+        <message>
+            <source>Cancel after current file</source>
+            <translation>Annuler après le fichier en cours</translation>
+        </message>
+        <message>
+            <source>Cancel at the next file boundary and retain the previous results.</source>
+            <translation>Annuler à la prochaine limite de fichier et conserver les résultats précédents.</translation>
+        </message>
+        <message>
+            <source>Cancel execution</source>
+            <translation>Annuler l’exécution</translation>
+        </message>
+        <message>
+            <source>Cancel generation</source>
+            <translation>Annuler la génération</translation>
+        </message>
+        <message>
+            <source>Cancel setup</source>
+            <translation>Annuler la configuration</translation>
+        </message>
+        <message>
+            <source>Cancel the input request and interrupt the running cell</source>
+            <translation>Annuler la demande de saisie et interrompre la cellule en cours</translation>
+        </message>
+        <message>
+            <source>Category the plugin is listed under.</source>
+            <translation>Catégorie sous laquelle le module est répertorié.</translation>
+        </message>
+        <message>
+            <source>Change the cell type between Python, Markdown and raw source</source>
+            <translation>Changer le type de cellule entre Python, Markdown et source brute</translation>
+        </message>
+        <message>
+            <source>Changepoint prob:</source>
+            <translation>Probabilité de changement de régime :</translation>
+        </message>
+        <message>
+            <source>Channel combo boxes for the two correlated signals.</source>
+            <translation>Listes de canaux pour les deux signaux corrélés.</translation>
+        </message>
+        <message>
+            <source>Channel definition</source>
+            <translation>Définition des canaux</translation>
+        </message>
+        <message>
+            <source>Channel images, scatter plots and result plots of the colocalization.</source>
+            <translation>Images de canaux, nuages de points et graphiques de résultats de la colocalisation.</translation>
+        </message>
+        <message>
+            <source>Channel-to-detector assignment for the IRF and background estimate.</source>
+            <translation>Affectation des canaux aux détecteurs pour l’IRF et l’estimation du fond.</translation>
+        </message>
+        <message>
+            <source>Channel-to-detector assignment table for the background estimate.</source>
+            <translation>Tableau d’affectation des canaux aux détecteurs pour l’estimation du fond.</translation>
+        </message>
+        <message>
+            <source>Channel:</source>
+            <translation>Canal :</translation>
+        </message>
+        <message>
+            <source>Chemical species of the reaction scheme: initial concentrations and signal contribution.</source>
+            <translation>Espèces chimiques du schéma réactionnel : concentrations initiales et contribution au signal.</translation>
+        </message>
+        <message>
+            <source>Choose BID, BST or TXT photon-index selections.</source>
+            <translation>Choisir les sélections d’indices de photons BID, BST ou TXT.</translation>
+        </message>
+        <message>
+            <source>Choose a fit for the observed data, the fit range and the instrument values.</source>
+            <translation>Choisir un ajustement pour les données observées, la plage d’ajustement et les valeurs de l’instrument.</translation>
+        </message>
+        <message>
+            <source>Choose an existing measured curve.</source>
+            <translation>Choisir une courbe mesurée existante.</translation>
+        </message>
+        <message>
+            <source>Choose at least one output format.</source>
+            <translation>Choisir au moins un format de sortie.</translation>
+        </message>
+        <message>
+            <source>Choose conversion paths</source>
+            <translation>Choisir les chemins de conversion</translation>
+        </message>
+        <message>
+            <source>Choose manual laser lines or a measured source spectrum.</source>
+            <translation>Choisir des raies laser manuelles ou un spectre source mesuré.</translation>
+        </message>
+        <message>
+            <source>Choose output folder</source>
+            <translation>Choisir le dossier de sortie</translation>
+        </message>
+        <message>
+            <source>Choose outputs</source>
+            <translation>Choisir les sorties</translation>
+        </message>
+        <message>
+            <source>Choose the .pto container to inspect.</source>
+            <translation>Choisir le conteneur .pto à inspecter.</translation>
+        </message>
+        <message>
+            <source>Choose the IRF and background source and their windows for the micro-time calibration.</source>
+            <translation>Choisir la source de l’IRF et du fond ainsi que leurs fenêtres pour l’étalonnage du microtemps.</translation>
+        </message>
+        <message>
+            <source>Choose the assistant provider</source>
+            <translation>Choisir le fournisseur de l’assistant</translation>
+        </message>
+        <message>
+            <source>Choose the burst source and the quantities shown.</source>
+            <translation>Choisir la source des bursts et les grandeurs affichées.</translation>
+        </message>
+        <message>
+            <source>Choose the input</source>
+            <translation>Choisir l’entrée</translation>
+        </message>
+        <message>
+            <source>Choose the input container and the output container, then the chunk size and binning. Disable Split into files for a single output. Keep original protects the source.</source>
+            <translation>Choisir le conteneur d’entrée et de sortie, puis la taille des blocs et le regroupement. Désactiver « Scinder en fichiers » pour une seule sortie. « Conserver l’original » protège la source.</translation>
+        </message>
+        <message>
+            <source>Choose the input file and the output folder.</source>
+            <translation>Choisir le fichier d’entrée et le dossier de sortie.</translation>
+        </message>
+        <message>
+            <source>Choose the input trajectory with its topology and the output file.</source>
+            <translation>Choisir la trajectoire d’entrée avec sa topologie et le fichier de sortie.</translation>
+        </message>
+        <message>
+            <source>Choose the measured optical component spectrum assigned to this node.</source>
+            <translation>Choisir le spectre mesuré du composant optique affecté à ce nœud.</translation>
+        </message>
+        <message>
+            <source>Choose the output</source>
+            <translation>Choisir la sortie</translation>
+        </message>
+        <message>
+            <source>Choose the output folder manually.</source>
+            <translation>Choisir manuellement le dossier de sortie.</translation>
+        </message>
+        <message>
+            <source>Choose the reference dye whose known diffusion coefficient sets the calibration.</source>
+            <translation>Choisir le colorant de référence dont le coefficient de diffusion connu fixe l’étalonnage.</translation>
+        </message>
+        <message>
+            <source>Choose the trajectory and its topology to pick the atoms.</source>
+            <translation>Choisir la trajectoire et sa topologie pour sélectionner les atomes.</translation>
+        </message>
+        <message>
+            <source>Choose this 2CDE variant.</source>
+            <translation>Choisir cette variante 2CDE.</translation>
+        </message>
+        <message>
+            <source>Choose this smoothing kernel.</source>
+            <translation>Choisir ce noyau de lissage.</translation>
+        </message>
+        <message>
+            <source>Choose which tools the assistant may use</source>
+            <translation>Choisir les outils que l’assistant peut utiliser</translation>
+        </message>
+        <message>
+            <source>Chunk size in thousands of photons when Split into files is enabled.</source>
+            <translation>Taille des blocs en milliers de photons lorsque « Scinder en fichiers » est activé.</translation>
+        </message>
+        <message>
+            <source>Circular cursor at (g, s) with a radius, used to read the lifetimes inside it.</source>
+            <translation>Curseur circulaire en (g, s) avec un rayon, pour lire les durées de vie qu’il contient.</translation>
+        </message>
+        <message>
+            <source>Clear Sel</source>
+            <translation>Vider la sélection</translation>
+        </message>
+        <message>
+            <source>Clear displayed logs without interrupting the analysis.</source>
+            <translation>Vider les journaux affichés sans interrompre l’analyse.</translation>
+        </message>
+        <message>
+            <source>Clear output</source>
+            <translation>Effacer la sortie</translation>
+        </message>
+        <message>
+            <source>Clear outputs</source>
+            <translation>Effacer les sorties</translation>
+        </message>
+        <message>
+            <source>Clear the whole titration series.</source>
+            <translation>Effacer toute la série de titration.</translation>
+        </message>
+        <message>
+            <source>Click an image to add or inspect a spot at that position.</source>
+            <translation>Cliquez sur une image pour ajouter ou examiner un point à cette position.</translation>
+        </message>
+        <message>
+            <source>Click to preview this file's intensity trace with the window boundaries.</source>
+            <translation>Cliquer pour afficher la trace d’intensité de ce fichier avec les limites de fenêtre.</translation>
+        </message>
+        <message>
+            <source>Close Help</source>
+            <translation>Fermer l’aide</translation>
+        </message>
+        <message>
+            <source>Close editor</source>
+            <translation>Fermer l’éditeur</translation>
+        </message>
+        <message>
+            <source>Close provider settings</source>
+            <translation>Fermer les réglages du fournisseur</translation>
+        </message>
+        <message>
+            <source>Close settings</source>
+            <translation>Fermer les réglages</translation>
+        </message>
+        <message>
+            <source>Close the MMFDB Admin window.</source>
+            <translation>Fermer la fenêtre MMFDB Admin.</translation>
+        </message>
+        <message>
+            <source>Close the editor; unsaved edits remain available to the next run.</source>
+            <translation>Fermer l’éditeur ; les modifications non enregistrées restent disponibles pour la prochaine exécution.</translation>
+        </message>
+        <message>
+            <source>Close the provider form; field edits use the shared provider store</source>
+            <translation>Fermer le formulaire du fournisseur ; les modifications de champs utilisent le magasin partagé des fournisseurs</translation>
+        </message>
+        <message>
+            <source>Close this confirmation without changing the database.</source>
+            <translation>Fermer cette confirmation sans modifier la base de données.</translation>
+        </message>
+        <message>
+            <source>Close this settings editor.</source>
+            <translation>Fermer cet éditeur de réglages.</translation>
+        </message>
+        <message>
+            <source>Close without applying changes.</source>
+            <translation>Fermer sans appliquer les modifications.</translation>
+        </message>
+        <message>
+            <source>Closed-form regularised inversion; fastest, may give negative amplitudes.</source>
+            <translation>Inversion régularisée sous forme fermée ; la plus rapide, peut donner des amplitudes négatives.</translation>
+        </message>
+        <message>
+            <source>Coarser aperture quadrature; fast enough for live editing.</source>
+            <translation>Quadrature d’ouverture plus grossière ; assez rapide pour l’édition en direct.</translation>
+        </message>
+        <message>
+            <source>Colocalization coefficients (Pearson, Manders, ...) of the current selection; see the ? help for each.</source>
+            <translation>Coefficients de colocalisation (Pearson, Manders, …) de la sélection actuelle ; voir l’aide ? pour chacun.</translation>
+        </message>
+        <message>
+            <source>Colocalization of two image channels: coefficients, scatter gates and significance tests.</source>
+            <translation>Colocalisation de deux canaux d’image : coefficients, fenêtres de dispersion et tests de significativité.</translation>
+        </message>
+        <message>
+            <source>Color scale of the density; the counts themselves are unchanged.</source>
+            <translation>Échelle de couleurs de la densité ; les comptages eux-mêmes ne changent pas.</translation>
+        </message>
+        <message>
+            <source>Column assignment used when the FCS curve is read from a CSV file.</source>
+            <translation>Affectation des colonnes utilisée lorsque la courbe FCS est lue depuis un fichier CSV.</translation>
+        </message>
+        <message>
+            <source>Columnar burst table with source file provenance.</source>
+            <translation>Tableau de bursts en colonnes avec la provenance du fichier source.</translation>
+        </message>
+        <message>
+            <source>Comma-separated TTTR routing channels assigned to the acceptor (e.g. 1,9).</source>
+            <translation>Canaux de routage TTTR de l’accepteur séparés par des virgules (p. ex. 1,9).</translation>
+        </message>
+        <message>
+            <source>Comma-separated TTTR routing channels assigned to the donor (e.g. 0,8).</source>
+            <translation>Canaux de routage TTTR du donneur séparés par des virgules (p. ex. 0,8).</translation>
+        </message>
+        <message>
+            <source>Complete sample schema: name, description, entities, probes, FRET pairs, buffer, pH, temperature and external-reference annotations.</source>
+            <translation>Schéma complet de l’échantillon : nom, description, entités, sondes, paires FRET, tampon, pH, température et annotations de référence externe.</translation>
+        </message>
+        <message>
+            <source>Compressed photon-selection mask.</source>
+            <translation>Masque de sélection de photons compressé.</translation>
+        </message>
+        <message>
+            <source>Compute and save the lookup table.</source>
+            <translation>Calculer et enregistrer la table de correspondance.</translation>
+        </message>
+        <message>
+            <source>Compute count rates for all queued files.</source>
+            <translation>Calculer les taux de comptage pour tous les fichiers en file d’attente.</translation>
+        </message>
+        <message>
+            <source>Compute engine and number of parallel workers for the per-pixel fits.</source>
+            <translation>Moteur de calcul et nombre de travailleurs parallèles pour les ajustements par pixel.</translation>
+        </message>
+        <message>
+            <source>Compute start/stop photon indices per time window for every queued file and write one .bst (BID) file each.</source>
+            <translation>Calculer les indices de photons de début et de fin par fenêtre temporelle pour chaque fichier en file d’attente et écrire un fichier .bst (BID) pour chacun.</translation>
+        </message>
+        <message>
+            <source>Compute the 2CDE metric for every burst and plot FRET efficiency vs 2CDE.</source>
+            <translation>Calculer la métrique 2CDE pour chaque burst et tracer l’efficacité FRET en fonction de 2CDE.</translation>
+        </message>
+        <message>
+            <source>Compute the HMM (HMM tab) to see its results here.</source>
+            <translation>Calculer le HMM (onglet HMM) pour voir ses résultats ici.</translation>
+        </message>
+        <message>
+            <source>Compute the correlation dynamics and set the number of correlator cascades.</source>
+            <translation>Calculer la dynamique de corrélation et régler le nombre de cascades du corrélateur.</translation>
+        </message>
+        <message>
+            <source>Compute the histogram, load a demo and autosave the result.</source>
+            <translation>Calculer l’histogramme, charger une démo et enregistrer automatiquement le résultat.</translation>
+        </message>
+        <message>
+            <source>Computing ...</source>
+            <translation>Calcul en cours ...</translation>
+        </message>
+        <message>
+            <source>Computing in background...</source>
+            <translation>Calcul en arrière-plan...</translation>
+        </message>
+        <message>
+            <source>Concentration of this titration point (see Unit below).</source>
+            <translation>Concentration de ce point de titration (voir l’unité ci-dessous).</translation>
+        </message>
+        <message>
+            <source>Concentration unit label used on the axes (e.g. nM).</source>
+            <translation>Libellé de l’unité de concentration sur les axes (p. ex. nM).</translation>
+        </message>
+        <message>
+            <source>Configure API endpoint, masked credential, models, sampling or the ACP command</source>
+            <translation>Configurer le point d’accès API, les identifiants masqués, les modèles, l’échantillonnage ou la commande ACP</translation>
+        </message>
+        <message>
+            <source>Configure fit model and parameters.</source>
+            <translation>Configurer le modèle d’ajustement et ses paramètres.</translation>
+        </message>
+        <message>
+            <source>Configure photon and stoichiometry filters.</source>
+            <translation>Configurer les filtres de photons et de stœchiométrie.</translation>
+        </message>
+        <message>
+            <source>Confirm soft deletion of this exact selected version.</source>
+            <translation>Confirmer la suppression logique de cette version exacte sélectionnée.</translation>
+        </message>
+        <message>
+            <source>Container the output files are written in — the same format when it matches the input, a transcode otherwise.</source>
+            <translation>Conteneur dans lequel les fichiers de sortie sont écrits : même format si celui de l’entrée convient, sinon une conversion.</translation>
+        </message>
+        <message>
+            <source>Continue</source>
+            <translation>Continuer</translation>
+        </message>
+        <message>
+            <source>Continue to the next workflow step.</source>
+            <translation>Passer à l’étape suivante du flux de travail.</translation>
+        </message>
+        <message>
+            <source>Conversion log</source>
+            <translation>Journal de conversion</translation>
+        </message>
+        <message>
+            <source>Conversion running</source>
+            <translation>Conversion en cours</translation>
+        </message>
+        <message>
+            <source>Convert a TTTR file to another format or split it into several files.</source>
+            <translation>Convertir un fichier TTTR dans un autre format ou le scinder en plusieurs fichiers.</translation>
+        </message>
+        <message>
+            <source>Convert each selection with its inferred TTTR and current detector setup; preserve BID provenance.</source>
+            <translation>Convertir chaque sélection avec son TTTR déduit et la configuration actuelle des détecteurs ; conserver la provenance BID.</translation>
+        </message>
+        <message>
+            <source>Convert one file and set formats and ALEX modulation.</source>
+            <translation>Convertir un fichier et définir les formats ainsi que la modulation ALEX.</translation>
+        </message>
+        <message>
+            <source>Convert or merge several files in one run.</source>
+            <translation>Convertir ou fusionner plusieurs fichiers en une seule exécution.</translation>
+        </message>
+        <message>
+            <source>Convert or split the loaded file.</source>
+            <translation>Convertir ou scinder le fichier chargé.</translation>
+        </message>
+        <message>
+            <source>Converting; current file finishes before cancellation.</source>
+            <translation>Conversion en cours ; le fichier actuel se termine avant l’annulation.</translation>
+        </message>
+        <message>
+            <source>Convolution of the model decay with the instrument response function (IRF): IRF curve, excitation mode, convolve switch and IRF time shift.</source>
+            <translation>Convolution de la décroissance modèle avec la fonction de réponse instrumentale (IRF) : courbe IRF, mode d’excitation, commutateur de convolution et décalage temporel de l’IRF.</translation>
+        </message>
+        <message>
+            <source>Convolve the decay with the IRF.</source>
+            <translation>Convoluer la décroissance avec l’IRF.</translation>
+        </message>
+        <message>
+            <source>Convolve the model with the IRF. Switch off to compare the bare decay.</source>
+            <translation>Convoluer le modèle avec l’IRF. Désactiver pour comparer la décroissance brute.</translation>
+        </message>
+        <message>
+            <source>Copy the complete fit result and model arrays to a JSON file.</source>
+            <translation>Copier le résultat complet de l’ajustement et les tableaux du modèle dans un fichier JSON.</translation>
+        </message>
+        <message>
+            <source>Correct pile-up distortion of the TCSPC histogram (early photons over-represented at high count rates).</source>
+            <translation>Corriger la distorsion par empilement (pile-up) de l’histogramme TCSPC (les photons précoces sont surreprésentés à fort taux de comptage).</translation>
+        </message>
+        <message>
+            <source>Corrected and uncorrected projections of the stack; blur of the uncorrected one shows the drift.</source>
+            <translation>Projections corrigées et non corrigées de la pile ; le flou de la version non corrigée révèle la dérive.</translation>
+        </message>
+        <message>
+            <source>Corrections for photobleaching and drift applied to the frame stack before the moments are taken.</source>
+            <translation>Corrections du photoblanchiment et de la dérive appliquées à la pile d’images avant le calcul des moments.</translation>
+        </message>
+        <message>
+            <source>Correlate the photons of the ticked files (or the filtered photons).</source>
+            <translation>Corréler les photons des fichiers cochés (ou des photons filtrés).</translation>
+        </message>
+        <message>
+            <source>Correlation curve and diffusion-time distribution of the selected bursts.</source>
+            <translation>Courbe de corrélation et distribution des temps de diffusion des bursts sélectionnés.</translation>
+        </message>
+        <message>
+            <source>Cosine component g of the per-pixel phasor, dimensionless.</source>
+            <translation>Composante cosinus g du phasor par pixel, sans dimension.</translation>
+        </message>
+        <message>
+            <source>Costes randomization test, cross-correlation shift range and histogram binning.</source>
+            <translation>Test de randomisation de Costes, plage de décalage de la corrélation croisée et classement de l’histogramme.</translation>
+        </message>
+        <message>
+            <source>Count rate (kHz) per file and channel.</source>
+            <translation>Taux de comptage (kHz) par fichier et par canal.</translation>
+        </message>
+        <message>
+            <source>Count rate of all photons and of the photons kept by the filter.</source>
+            <translation>Taux de comptage de tous les photons et des photons conservés par le filtre.</translation>
+        </message>
+        <message>
+            <source>Count rate of all photons and of the photons the filter keeps.</source>
+            <translation>Taux de comptage de tous les photons et des photons que le filtre conserve.</translation>
+        </message>
+        <message>
+            <source>Count rate per channel (kHz), one series per detector.</source>
+            <translation>Taux de comptage par canal (kHz), une série par détecteur.</translation>
+        </message>
+        <message>
+            <source>Count rate per detector for one or many TTTR files.</source>
+            <translation>Taux de comptage par détecteur pour un ou plusieurs fichiers TTTR.</translation>
+        </message>
+        <message>
+            <source>Count rate per pixel in kHz: photons divided by pixel dwell time.</source>
+            <translation>Taux de comptage par pixel en kHz : photons divisés par le temps de séjour du pixel.</translation>
+        </message>
+        <message>
+            <source>Count rate/burst filter</source>
+            <translation>Filtre taux de comptage / burst</translation>
+        </message>
+        <message>
+            <source>Count-rate filter: mode, minimum photons per window and window length; invert keeps the rejected photons.</source>
+            <translation>Filtre de taux de comptage : mode, photons minimum par fenêtre et longueur de fenêtre ; inverser conserve les photons rejetés.</translation>
+        </message>
+        <message>
+            <source>Counts per time bin of the selected file, one line per series and their sum. Scroll to zoom, drag to pan, double click to fit. The histogram on the right counts how many bins hold each count.</source>
+            <translation>Comptages par classe temporelle du fichier sélectionné, une ligne par série et leur somme. Molette pour zoomer, glisser pour déplacer, double-clic pour ajuster. L’histogramme à droite compte combien de classes contiennent chaque valeur.</translation>
+        </message>
+        <message>
+            <source>Create and save at least one FCS channel setup that names the detector channels or pairs to correlate.</source>
+            <translation>Créer et enregistrer au moins une configuration de canaux FCS qui nomme les canaux ou paires de détecteurs à corréler.</translation>
+        </message>
+        <message>
+            <source>Create connections by choosing source and target node ports; the table lists existing connections.</source>
+            <translation>Créer des connexions en choisissant les ports source et cible des nœuds ; le tableau liste les connexions existantes.</translation>
+        </message>
+        <message>
+            <source>Create fits</source>
+            <translation>Créer des ajustements</translation>
+        </message>
+        <message>
+            <source>Cross-correlated number and brightness between two detector windows.</source>
+            <translation>Nombre et luminosité corrélés entre deux fenêtres de détecteur.</translation>
+        </message>
+        <message>
+            <source>Crosstalk corrections between the donor and acceptor channels.</source>
+            <translation>Corrections de diaphonie entre les canaux donneur et accepteur.</translation>
+        </message>
+        <message>
+            <source>Current Environment:</source>
+            <translation>Environnement actuel :</translation>
+        </message>
+        <message>
+            <source>Current calculator settings as JSON; copy it out or paste one in to restore them.</source>
+            <translation>Réglages actuels de la calculatrice en JSON ; copiez-les ou collez-en un pour les restaurer.</translation>
+        </message>
+        <message>
+            <source>Current value of the setting; the type of its default is kept.</source>
+            <translation>Valeur actuelle du réglage ; le type de sa valeur par défaut est conservé.</translation>
+        </message>
+        <message>
+            <source>Define and save the detector and PIE channel windows of your hardware; the setup is kept in your user settings.</source>
+            <translation>Définir et enregistrer les fenêtres de canaux des détecteurs et PIE de votre matériel ; la configuration est conservée dans vos réglages utilisateur.</translation>
+        </message>
+        <message>
+            <source>Define detector routing and PIE windows when a legacy source folder has no reading manifest.</source>
+            <translation>Définir le routage des détecteurs et les fenêtres PIE lorsqu’un ancien dossier source n’a pas de manifeste de lecture.</translation>
+        </message>
+        <message>
+            <source>Define detector routing channels, inclusive micro-time gates and excitation-window ranges.</source>
+            <translation>Définir les canaux de routage des détecteurs, les fenêtres de microtemps incluses et les plages des fenêtres d’excitation.</translation>
+        </message>
+        <message>
+            <source>Delete This Version</source>
+            <translation>Supprimer cette version</translation>
+        </message>
+        <message>
+            <source>Delete this cell and its outputs</source>
+            <translation>Supprimer cette cellule et ses sorties</translation>
+        </message>
+        <message>
+            <source>Deselect all rows in the table.</source>
+            <translation>Désélectionner toutes les lignes du tableau.</translation>
+        </message>
+        <message>
+            <source>Details and lineage of the selected object.</source>
+            <translation>Détails et lignée de l’objet sélectionné.</translation>
+        </message>
+        <message>
+            <source>Details of the selected model and whether it is disabled.</source>
+            <translation>Détails du modèle sélectionné et indication de son éventuelle désactivation.</translation>
+        </message>
+        <message>
+            <source>Details of the selected plugin: whether it is disabled, in the toolbar, its statefulness and its dependencies.</source>
+            <translation>Détails du module sélectionné : s’il est désactivé, s’il figure dans la barre d’outils, son caractère avec état et ses dépendances.</translation>
+        </message>
+        <message>
+            <source>Detect diffraction-limited spots in the images and measure each one.</source>
+            <translation>Détecter les spots limités par la diffraction dans les images et mesurer chacun d’eux.</translation>
+        </message>
+        <message>
+            <source>Detect particles in every frame: size, threshold and sub-pixel localization.</source>
+            <translation>Détecter les particules dans chaque image : taille, seuil et localisation sous-pixel.</translation>
+        </message>
+        <message>
+            <source>Detect the alternation period without converting the data.</source>
+            <translation>Détecter la période d’alternance sans convertir les données.</translation>
+        </message>
+        <message>
+            <source>Detect the µs-ALEX period and fold the photons into donor/acceptor excitation periods.</source>
+            <translation>Détecter la période µs-ALEX et replier les photons dans les périodes d’excitation donneur et accepteur.</translation>
+        </message>
+        <message>
+            <source>Detect, link and analyse particle trajectories in a movie.</source>
+            <translation>Détecter, relier et analyser les trajectoires de particules dans un film.</translation>
+        </message>
+        <message>
+            <source>Detection mode and polarization-related settings.</source>
+            <translation>Mode de détection et réglages liés à la polarisation.</translation>
+        </message>
+        <message>
+            <source>Detector (channel group) whose bursts are shown.</source>
+            <translation>Détecteur (groupe de canaux) dont les bursts sont affichés.</translation>
+        </message>
+        <message>
+            <source>Detector (channel) the rate belongs to.</source>
+            <translation>Détecteur (canal) auquel appartient le taux.</translation>
+        </message>
+        <message>
+            <source>Detector channel and geometry used to read the image stack.</source>
+            <translation>Canal de détecteur et géométrie utilisés pour lire la pile d’images.</translation>
+        </message>
+        <message>
+            <source>Detector channels A and B and their micro-time ranges; A = B gives an autocorrelation.</source>
+            <translation>Canaux de détecteur A et B et leurs plages de microtemps ; A = B donne une autocorrélation.</translation>
+        </message>
+        <message>
+            <source>Detector channels and micro-time range of the photons that enter the filter.</source>
+            <translation>Canaux de détecteur et plage de microtemps des photons qui entrent dans le filtre.</translation>
+        </message>
+        <message>
+            <source>Detector channels of the TTTR file.</source>
+            <translation>Canaux de détecteur du fichier TTTR.</translation>
+        </message>
+        <message>
+            <source>Detector corrections: DNL linearization table, pile-up and channel smoothing applied to the decay.</source>
+            <translation>Corrections du détecteur : table de linéarisation DNL, correction de pile-up et lissage des canaux appliqués à la décroissance.</translation>
+        </message>
+        <message>
+            <source>Detector offset, gain and noise needed to convert counts to photons.</source>
+            <translation>Décalage, gain et bruit du détecteur nécessaires pour convertir les comptages en photons.</translation>
+        </message>
+        <message>
+            <source>Detector pairs that are auto- and cross-correlated by the FCS correlator.</source>
+            <translation>Paires de détecteurs autocorrélées et corrélées croisées par le corrélateur FCS.</translation>
+        </message>
+        <message>
+            <source>Detector settings are supplied by the embedding host.</source>
+            <translation>Les réglages des détecteurs sont fournis par l’application hôte.</translation>
+        </message>
+        <message>
+            <source>Detector settings of the image series.</source>
+            <translation>Réglages des détecteurs de la série d’images.</translation>
+        </message>
+        <message>
+            <source>Detector setup and channels used; polarization resolved gives VV and VH decays.</source>
+            <translation>Configuration des détecteurs et canaux utilisés ; la résolution en polarisation donne les décroissances VV et VH.</translation>
+        </message>
+        <message>
+            <source>Detector setup whose named windows and channels are applied to the analysis.</source>
+            <translation>Configuration des détecteurs dont les fenêtres et canaux nommés sont appliqués à l’analyse.</translation>
+        </message>
+        <message>
+            <source>Detector setup, routing channels and gates that define the channels.</source>
+            <translation>Configuration des détecteurs, canaux de routage et fenêtres qui définissent les canaux.</translation>
+        </message>
+        <message>
+            <source>Detector setup:</source>
+            <translation>Configuration des détecteurs :</translation>
+        </message>
+        <message>
+            <source>Detector whose photon counts are histogrammed.</source>
+            <translation>Détecteur dont les nombres de photons sont histogrammés.</translation>
+        </message>
+        <message>
+            <source>Detector, micro-time binning and fit window (bins), and minimum photons per burst.</source>
+            <translation>Détecteur, regroupement en microtemps et fenêtre d’ajustement (classes), ainsi que photons minimum par burst.</translation>
+        </message>
+        <message>
+            <source>Detector, spot-size and filter settings.</source>
+            <translation>Réglages du détecteur, de la taille des spots et du filtre.</translation>
+        </message>
+        <message>
+            <source>Detector:</source>
+            <translation>Détecteur :</translation>
+        </message>
+        <message>
+            <source>Detectors found in the data and their roles.</source>
+            <translation>Détecteurs trouvés dans les données et leurs rôles.</translation>
+        </message>
+        <message>
+            <source>Diagram of the photophysical states and their transition rates, with the optics and measurement parameters.</source>
+            <translation>Diagramme des états photophysiques et de leurs taux de transition, avec les paramètres optiques et de mesure.</translation>
+        </message>
+        <message>
+            <source>Diffraction model used to compute the PSF.</source>
+            <translation>Modèle de diffraction utilisé pour calculer la PSF.</translation>
+        </message>
+        <message>
+            <source>Diffusing species: diffusion time (ms) or D, and the fraction/brightness of each component.</source>
+            <translation>Espèces diffusantes : temps de diffusion (ms) ou D, et fraction/luminosité de chaque composante.</translation>
+        </message>
+        <message>
+            <source>Diffusion coefficient, number of particles in the focus and molecular brightness.</source>
+            <translation>Coefficient de diffusion, nombre de particules dans le foyer et luminosité moléculaire.</translation>
+        </message>
+        <message>
+            <source>Diffusion model and the focus geometry it assumes.</source>
+            <translation>Modèle de diffusion et géométrie du foyer qu’il suppose.</translation>
+        </message>
+        <message>
+            <source>Diffusion time, diffusion coefficient, hydrodynamic radius, structure parameter S = wz/wxy and effective volume, tied by the Stokes-Einstein relation at temperature T and viscosity η.</source>
+            <translation>Temps de diffusion, coefficient de diffusion, rayon hydrodynamique, paramètre de structure S = wz/wxy et volume effectif, liés par la relation de Stokes-Einstein à la température T et à la viscosité η.</translation>
+        </message>
+        <message>
+            <source>Discard the current channel-definition edit.</source>
+            <translation>Abandonner la modification en cours de la définition des canaux.</translation>
+        </message>
+        <message>
+            <source>Discard the pending result. A file write already running may finish.</source>
+            <translation>Abandonner le résultat en attente. Une écriture de fichier déjà en cours peut se terminer.</translation>
+        </message>
+        <message>
+            <source>Discard the running simulation's result; the C++ calculation finishes safely in the background.</source>
+            <translation>Abandonner le résultat de la simulation en cours ; le calcul C++ se termine en toute sécurité en arrière-plan.</translation>
+        </message>
+        <message>
+            <source>Discrete FRET species: FRET efficiency and fraction of each.</source>
+            <translation>Espèces FRET discrètes : efficacité FRET et fraction de chacune.</translation>
+        </message>
+        <message>
+            <source>Discrete donor-acceptor distances R_DA (A) with their amplitudes (fractions); each distance yields one FRET-quenched decay component.</source>
+            <translation>Distances donneur-accepteur discrètes R_DA (Å) avec leurs amplitudes (fractions) ; chaque distance produit une composante de décroissance éteinte par FRET.</translation>
+        </message>
+        <message>
+            <source>Dismiss the message.</source>
+            <translation>Fermer le message.</translation>
+        </message>
+        <message>
+            <source>Display name of the plugin.</source>
+            <translation>Nom d’affichage du module.</translation>
+        </message>
+        <message>
+            <source>Display name of the user.</source>
+            <translation>Nom d’affichage de l’utilisateur.</translation>
+        </message>
+        <message>
+            <source>Display of the inter-label distance network.</source>
+            <translation>Affichage du réseau des distances entre marqueurs.</translation>
+        </message>
+        <message>
+            <source>Display options of the correlation surface.</source>
+            <translation>Options d’affichage de la surface de corrélation.</translation>
+        </message>
+        <message>
+            <source>Distance axis r (nm) on which P(r) is evaluated: range and number of points.</source>
+            <translation>Axe des distances r (nm) sur lequel P(r) est évalué : plage et nombre de points.</translation>
+        </message>
+        <message>
+            <source>Divide the micro-time resolution of the output by this factor.</source>
+            <translation>Diviser la résolution en microtemps de la sortie par ce facteur.</translation>
+        </message>
+        <message>
+            <source>Donor and acceptor detectors of the burst tables.</source>
+            <translation>Détecteurs donneur et accepteur des tableaux de bursts.</translation>
+        </message>
+        <message>
+            <source>Donor and acceptor detectors of the photon stream.</source>
+            <translation>Détecteurs donneur et accepteur du flux de photons.</translation>
+        </message>
+        <message>
+            <source>Donor and acceptor dyes and medium from the dye database; they fix R0 and the dynamic-line parameters.</source>
+            <translation>Colorants donneur et accepteur et milieu issus de la base de colorants ; ils fixent R0 et les paramètres de la ligne dynamique.</translation>
+        </message>
+        <message>
+            <source>Donor and acceptor dyes of the sample.</source>
+            <translation>Colorants donneur et accepteur de l’échantillon.</translation>
+        </message>
+        <message>
+            <source>Donor anisotropy components: amplitude and rotational correlation time [ns] per row.</source>
+            <translation>Composantes d’anisotropie du donneur : amplitude et temps de corrélation rotationnel [ns] par ligne.</translation>
+        </message>
+        <message>
+            <source>Donor intensity threshold in counts per frame.</source>
+            <translation>Seuil d’intensité du donneur en comptages par image.</translation>
+        </message>
+        <message>
+            <source>Donor lifetime components: relative amplitude and lifetime [ns] per row.</source>
+            <translation>Composantes de durée de vie du donneur : amplitude relative et durée de vie [ns] par ligne.</translation>
+        </message>
+        <message>
+            <source>Donor lifetime without acceptor, Foerster radius R0 and linker width used for the FRET lines and the lifetime-based gamma.</source>
+            <translation>Durée de vie du donneur sans accepteur, rayon de Förster R0 et largeur du lieur utilisés pour les lignes FRET et le gamma basé sur la durée de vie.</translation>
+        </message>
+        <message>
+            <source>Donor routing channels:</source>
+            <translation>Canaux de routage du donneur :</translation>
+        </message>
+        <message>
+            <source>Donor-acceptor distance distribution (mean, width, amplitudes) mapped to FRET efficiency.</source>
+            <translation>Distribution des distances donneur-accepteur (moyenne, largeur, amplitudes) projetée sur l’efficacité FRET.</translation>
+        </message>
+        <message>
+            <source>Drag green target-bin and yellow threshold lines; align on release. Log Y uses actual count units.</source>
+            <translation>Glisser les lignes verte (classe cible) et jaune (seuil) ; alignement au relâchement. L’échelle Y log utilise les unités de comptage réelles.</translation>
+        </message>
+        <message>
+            <source>Drag the two vertical lines to choose the k range of the fit; the χ² of an existing fit is recomputed over it.</source>
+            <translation>Faire glisser les deux lignes verticales pour choisir la plage k de l’ajustement ; le χ² d’un ajustement existant y est recalculé.</translation>
+        </message>
+        <message>
+            <source>Drag the vertical lines to edit the fitted TAC range; Compute applies the new range.</source>
+            <translation>Faire glisser les lignes verticales pour modifier la plage TAC ajustée ; Calculer applique la nouvelle plage.</translation>
+        </message>
+        <message>
+            <source>Drop TTTR files here (.ptu, .ht3, .phu, …) — or use the buttons.</source>
+            <translation>Déposez ici des fichiers TTTR (.ptu, .ht3, .phu, …) ou utilisez les boutons.</translation>
+        </message>
+        <message>
+            <source>Drop a TTTR file onto this window to load it.</source>
+            <translation>Déposez un fichier TTTR sur cette fenêtre pour le charger.</translation>
+        </message>
+        <message>
+            <source>Drop or add the TTTR files whose background is estimated.</source>
+            <translation>Déposez ou ajoutez les fichiers TTTR dont le fond est estimé.</translation>
+        </message>
+        <message>
+            <source>Drop the file queue and any computed results.</source>
+            <translation>Vider la file de fichiers et tous les résultats calculés.</translation>
+        </message>
+        <message>
+            <source>Dual-focus 3-D Gaussian with known inter-focus distance (absolute D).</source>
+            <translation>Gaussienne 3D à double foyer avec distance inter-foyers connue (D absolu).</translation>
+        </message>
+        <message>
+            <source>Dye labelling positions and accessible-volume (AV) parameters used to compute donor-acceptor distances from the structure.</source>
+            <translation>Positions de marquage des colorants et paramètres du volume accessible (AV) utilisés pour calculer les distances donneur-accepteur à partir de la structure.</translation>
+        </message>
+        <message>
+            <source>Dye, excitation power and the rate constants of the multi-state photophysical scheme.</source>
+            <translation>Colorant, puissance d’excitation et constantes de vitesse du schéma photophysique à plusieurs états.</translation>
+        </message>
+        <message>
+            <source>E Range (not available)</source>
+            <translation>Plage E (non disponible)</translation>
+        </message>
+        <message>
+            <source>E-mail address of the user.</source>
+            <translation>Adresse e-mail de l’utilisateur.</translation>
+        </message>
+        <message>
+            <source>EM engine, restarts, iterations and photon thresholds of the H2MM fit.</source>
+            <translation>Moteur EM, redémarrages, itérations et seuils de photons de l’ajustement H2MM.</translation>
+        </message>
+        <message>
+            <source>Each detector's trace with its count histogram, the sum, and after Compute HMM the hidden states and FRET efficiency.</source>
+            <translation>La trace de chaque détecteur avec son histogramme de comptage, la somme et, après « Calculer HMM », les états cachés et l’efficacité FRET.</translation>
+        </message>
+        <message>
+            <source>Edge length of one pixel in the sample plane [nm]; converts pixel lags to distances.</source>
+            <translation>Longueur d’arête d’un pixel dans le plan de l’échantillon [nm] ; convertit les décalages en pixels en distances.</translation>
+        </message>
+        <message>
+            <source>Edit declared grids, nuisance controls, regularization and sampling preferences; live arrays are not persisted.</source>
+            <translation>Modifier les grilles déclarées, les commandes de paramètres parasites, la régularisation et les préférences d’échantillonnage ; les tableaux en direct ne sont pas conservés.</translation>
+        </message>
+        <message>
+            <source>Edit detector setup…</source>
+            <translation>Modifier la configuration des détecteurs…</translation>
+        </message>
+        <message>
+            <source>Edit routing channels, detector gates and excitation windows.</source>
+            <translation>Modifier les canaux de routage, les fenêtres des détecteurs et les fenêtres d’excitation.</translation>
+        </message>
+        <message>
+            <source>Edit the complete LLTF YAML configuration; the next run uses this buffer.</source>
+            <translation>Modifier la configuration YAML LLTF complète ; la prochaine exécution utilise ce tampon.</translation>
+        </message>
+        <message>
+            <source>Edit the header tags of a TTTR file.</source>
+            <translation>Modifier les balises d’en-tête d’un fichier TTTR.</translation>
+        </message>
+        <message>
+            <source>Edit this cell; Shift+Enter runs it and moves to the next cell</source>
+            <translation>Modifier cette cellule ; Maj+Entrée l’exécute et passe à la cellule suivante</translation>
+        </message>
+        <message>
+            <source>Editable JSON text of all calculator settings.</source>
+            <translation>Texte JSON modifiable de tous les réglages de la calculatrice.</translation>
+        </message>
+        <message>
+            <source>Editable table of header tags.</source>
+            <translation>Tableau modifiable des balises d’en-tête.</translation>
+        </message>
+        <message>
+            <source>Effective detection volume relative to its low-power value as a function of laser power.</source>
+            <translation>Volume de détection effectif relatif à sa valeur à faible puissance, en fonction de la puissance laser.</translation>
+        </message>
+        <message>
+            <source>Empty the batch queue.</source>
+            <translation>Vider la file du lot.</translation>
+        </message>
+        <message>
+            <source>Empty the file queue and reset the preview and the log.</source>
+            <translation>Vider la file de fichiers et réinitialiser l’aperçu et le journal.</translation>
+        </message>
+        <message>
+            <source>Energy terms of the scoring function with their weights and evaluation interval; select a term to edit its settings.</source>
+            <translation>Termes énergétiques de la fonction de score avec leurs poids et leur intervalle d’évaluation ; sélectionnez un terme pour modifier ses réglages.</translation>
+        </message>
+        <message>
+            <source>Energy terms of the scoring function: term, evaluation interval and weight.</source>
+            <translation>Termes énergétiques de la fonction de score : terme, intervalle d’évaluation et poids.</translation>
+        </message>
+        <message>
+            <source>Enter a Python command using the same variables as notebook cells</source>
+            <translation>Saisir une commande Python utilisant les mêmes variables que les cellules du notebook</translation>
+        </message>
+        <message>
+            <source>Enter the value requested by the running notebook cell</source>
+            <translation>Saisir la valeur demandée par la cellule du notebook en cours</translation>
+        </message>
+        <message>
+            <source>Equation of the model, from the catalogue or typed in Python syntax; every free name becomes a fitted parameter.</source>
+            <translation>Équation du modèle, issue du catalogue ou saisie en syntaxe Python ; chaque nom libre devient un paramètre ajusté.</translation>
+        </message>
+        <message>
+            <source>Estimate Background</source>
+            <translation>Estimer le fond</translation>
+        </message>
+        <message>
+            <source>Estimate IRF and background for every listed file.</source>
+            <translation>Estimer l’IRF et le fond pour chaque fichier listé.</translation>
+        </message>
+        <message>
+            <source>Estimate P(same molecule) as a function of the gap from pair statistics of neighbouring bursts.</source>
+            <translation>Estimer P(même molécule) en fonction de l’écart à partir des statistiques de paires des bursts voisins.</translation>
+        </message>
+        <message>
+            <source>Estimate and correct sample drift between frames of an image stack.</source>
+            <translation>Estimer et corriger la dérive de l’échantillon entre les images d’une pile.</translation>
+        </message>
+        <message>
+            <source>Estimate background and instrument response from the non-burst photons of a measurement.</source>
+            <translation>Estimer le fond et la réponse instrumentale à partir des photons hors bursts d’une mesure.</translation>
+        </message>
+        <message>
+            <source>Estimate parameter uncertainties by bootstrapping the fit.</source>
+            <translation>Estimer les incertitudes des paramètres par bootstrap de l’ajustement.</translation>
+        </message>
+        <message>
+            <source>Estimate the background rate for every listed file.</source>
+            <translation>Estimer le taux de fond pour chaque fichier listé.</translation>
+        </message>
+        <message>
+            <source>Estimate the instrument response and background used by the pixel-wise fits.</source>
+            <translation>Estimer la réponse instrumentale et le fond utilisés par les ajustements pixel par pixel.</translation>
+        </message>
+        <message>
+            <source>Estimate the per-detector background count rate from the inter-photon-time distribution of a measurement.</source>
+            <translation>Estimer le taux de comptage de fond par détecteur à partir de la distribution des temps inter-photons d’une mesure.</translation>
+        </message>
+        <message>
+            <source>Estimated alpha, beta, gamma and delta with bootstrap uncertainties.</source>
+            <translation>Alpha, bêta, gamma et delta estimés avec incertitudes bootstrap.</translation>
+        </message>
+        <message>
+            <source>Estimated background rates and IRF per detector.</source>
+            <translation>Taux de fond et IRF estimés par détecteur.</translation>
+        </message>
+        <message>
+            <source>Estimated displacement of each frame relative to the reference, in pixels.</source>
+            <translation>Déplacement estimé de chaque image par rapport à la référence, en pixels.</translation>
+        </message>
+        <message>
+            <source>Estimates D of a sphere, ellipsoid or cylinder from its size (nm) and aspect ratio.</source>
+            <translation>Estime D d’une sphère, d’un ellipsoïde ou d’un cylindre à partir de sa taille (nm) et de son rapport d’aspect.</translation>
+        </message>
+        <message>
+            <source>Every file gets its own ALEX output.</source>
+            <translation>Chaque fichier reçoit sa propre sortie ALEX.</translation>
+        </message>
+        <message>
+            <source>Example queued: six simulated bursts. Press Process.</source>
+            <translation>Exemple en file : six bursts simulés. Appuyez sur Traiter.</translation>
+        </message>
+        <message>
+            <source>Exchange rate k (1/ms) between the species, number of photons and random seed.</source>
+            <translation>Taux d’échange k (1/ms) entre les espèces, nombre de photons et graine aléatoire.</translation>
+        </message>
+        <message>
+            <source>Excitation coupling of each state; multiplied by the local excitation intensity it gives the power-dependent transition rate.</source>
+            <translation>Couplage d’excitation de chaque état ; multiplié par l’intensité d’excitation locale, il donne le taux de transition dépendant de la puissance.</translation>
+        </message>
+        <message>
+            <source>Excitation scheme for the IRF convolution.</source>
+            <translation>Schéma d’excitation pour la convolution avec l’IRF.</translation>
+        </message>
+        <message>
+            <source>Excitation wavelengths and relative powers, for example 488:1.0, 640:1.0.</source>
+            <translation>Longueurs d’onde d’excitation et puissances relatives, par exemple 488:1.0, 640:1.0.</translation>
+        </message>
+        <message>
+            <source>Excitation window, file format, binning and the inter-photon filter that selects photons.</source>
+            <translation>Fenêtre d’excitation, format de fichier, regroupement et filtre inter-photons qui sélectionne les photons.</translation>
+        </message>
+        <message>
+            <source>Execute the terminal command in the notebook's persistent shell</source>
+            <translation>Exécuter la commande du terminal dans le shell persistant du notebook</translation>
+        </message>
+        <message>
+            <source>Execute this cell; Shift+Enter runs it and moves to the next cell</source>
+            <translation>Exécuter cette cellule ; Maj+Entrée l’exécute et passe à la cellule suivante</translation>
+        </message>
+        <message>
+            <source>Expand or collapse photon chunking, timing and source retention settings.</source>
+            <translation>Déplier ou replier les réglages de découpage des photons, de temporisation et de conservation de la source.</translation>
+        </message>
+        <message>
+            <source>Expand or collapse the input and output container settings.</source>
+            <translation>Déplier ou replier les réglages des conteneurs d’entrée et de sortie.</translation>
+        </message>
+        <message>
+            <source>Experiment type the model is used for.</source>
+            <translation>Type d’expérience pour lequel le modèle est utilisé.</translation>
+        </message>
+        <message>
+            <source>Explain input indices, detector setup, outputs and provenance.</source>
+            <translation>Expliquer les indices d’entrée, la configuration des détecteurs, les sorties et la provenance.</translation>
+        </message>
+        <message>
+            <source>Explain polarized decays, background correction and parameter linking.</source>
+            <translation>Expliquer les décroissances polarisées, la correction du fond et le couplage des paramètres.</translation>
+        </message>
+        <message>
+            <source>Explain the Trace Browser: the setup page, the file table, the trace plot, exporting, deleting and the hand-offs to other tools.</source>
+            <translation>Expliquer le navigateur de traces : la page de configuration, le tableau des fichiers, le graphique de trace, l’export, la suppression et les transferts vers d’autres outils.</translation>
+        </message>
+        <message>
+            <source>Explain the complementary lifetime-analysis workflows.</source>
+            <translation>Expliquer les flux de travail complémentaires d’analyse de durée de vie.</translation>
+        </message>
+        <message>
+            <source>Explain the detector setup and the browser.</source>
+            <translation>Expliquer la configuration des détecteurs et le navigateur.</translation>
+        </message>
+        <message>
+            <source>Explain the four pages and what each button runs.</source>
+            <translation>Expliquer les quatre pages et ce que lance chaque bouton.</translation>
+        </message>
+        <message>
+            <source>Explain the output folder, the chunk size, the device type and the simulator parameters.</source>
+            <translation>Expliquer le dossier de sortie, la taille des blocs, le type de périphérique et les paramètres du simulateur.</translation>
+        </message>
+        <message>
+            <source>Explain the photon counting histogram, the settings and the outputs.</source>
+            <translation>Expliquer l’histogramme de comptage de photons, les réglages et les sorties.</translation>
+        </message>
+        <message>
+            <source>Explain the providers, the key, the models and the buttons.</source>
+            <translation>Expliquer les fournisseurs, la clé, les modèles et les boutons.</translation>
+        </message>
+        <message>
+            <source>Explain what the fit does, what a region needs and how to read the decay.</source>
+            <translation>Expliquer ce que fait l’ajustement, ce qu’une région requiert et comment lire la décroissance.</translation>
+        </message>
+        <message>
+            <source>Explains how a TAC lookup table is computed.</source>
+            <translation>Explique comment une table de correspondance TAC est calculée.</translation>
+        </message>
+        <message>
+            <source>Explains the instrument and calibration parameters.</source>
+            <translation>Explique les paramètres de l’instrument et de l’étalonnage.</translation>
+        </message>
+        <message>
+            <source>Explains which detector channels or channel pairs a correlation setup groups for FCS.</source>
+            <translation>Explique quels canaux de détecteur ou paires de canaux une configuration de corrélation regroupe pour la FCS.</translation>
+        </message>
+        <message>
+            <source>Explains why TTTR workflows need a detector and channel definition and where it is stored.</source>
+            <translation>Explique pourquoi les flux de travail TTTR ont besoin d’une définition des détecteurs et des canaux, et où elle est stockée.</translation>
+        </message>
+        <message>
+            <source>Export Python</source>
+            <translation>Exporter en Python</translation>
+        </message>
+        <message>
+            <source>Export cell source to a Python script without changing the notebook's save path</source>
+            <translation>Exporter le code source de la cellule vers un script Python sans modifier le chemin d’enregistrement du notebook</translation>
+        </message>
+        <message>
+            <source>Export the titration series and fit results to a CSV file.</source>
+            <translation>Exporter la série de titration et les résultats d’ajustement dans un fichier CSV.</translation>
+        </message>
+        <message>
+            <source>FCS Preset:</source>
+            <translation>Préréglage FCS :</translation>
+        </message>
+        <message>
+            <source>FCS autocorrelation G(tau) versus lag time (ms) at several laser powers; saturation changes amplitude and shape.</source>
+            <translation>Autocorrélation FCS G(tau) en fonction du temps de retard (ms) à plusieurs puissances laser ; la saturation modifie l’amplitude et la forme.</translation>
+        </message>
+        <message>
+            <source>FCS merger</source>
+            <translation>Fusion FCS</translation>
+        </message>
+        <message>
+            <source>FRC curve against spatial frequency with the threshold; the crossing gives the resolution.</source>
+            <translation>Courbe FRC en fonction de la fréquence spatiale avec le seuil ; l’intersection donne la résolution.</translation>
+        </message>
+        <message>
+            <source>FRC curve, diagnostics and ring table.</source>
+            <translation>Courbe FRC, diagnostics et tableau des anneaux.</translation>
+        </message>
+        <message>
+            <source>FRC per ring: frequency, period and correlation.</source>
+            <translation>FRC par anneau : fréquence, période et corrélation.</translation>
+        </message>
+        <message>
+            <source>FRET efficiency and Foerster radius of the donor-acceptor pair.</source>
+            <translation>Efficacité FRET et rayon de Förster de la paire donneur-accepteur.</translation>
+        </message>
+        <message>
+            <source>FRET needs two detectors (first detector over the sum).</source>
+            <translation>Le FRET nécessite deux détecteurs (premier détecteur par rapport à la somme).</translation>
+        </message>
+        <message>
+            <source>FRET parameters: Foerster radius R0, donor lifetime, quantum yields and FRET efficiency/distance of the species.</source>
+            <translation>Paramètres FRET : rayon de Förster R0, durée de vie du donneur, rendements quantiques et efficacité FRET/distance des espèces.</translation>
+        </message>
+        <message>
+            <source>FRET threshold (efficiency, 0 to 1).</source>
+            <translation>Seuil FRET (efficacité, de 0 à 1).</translation>
+        </message>
+        <message>
+            <source>FRET-2CDE uses donor excitation only; ALEX-2CDE also uses acceptor excitation.</source>
+            <translation>Le FRET-2CDE n’utilise que l’excitation du donneur ; l’ALEX-2CDE utilise aussi l’excitation de l’accepteur.</translation>
+        </message>
+        <message>
+            <source>False alarm (α):</source>
+            <translation>Fausse alarme (α) :</translation>
+        </message>
+        <message>
+            <source>False pos (p0):</source>
+            <translation>Faux positifs (p0) :</translation>
+        </message>
+        <message>
+            <source>File type:</source>
+            <translation>Type de fichier :</translation>
+        </message>
+        <message>
+            <source>File, detector channels and bin time (us) from which the photon counting histogram is built.</source>
+            <translation>Fichier, canaux de détecteur et intervalle de temps (µs) à partir desquels l’histogramme de comptage de photons est construit.</translation>
+        </message>
+        <message>
+            <source>Files of the folder with the rating filter.</source>
+            <translation>Fichiers du dossier avec le filtre d’évaluation.</translation>
+        </message>
+        <message>
+            <source>Files queued for the batch run.</source>
+            <translation>Fichiers en file pour l’exécution par lot.</translation>
+        </message>
+        <message>
+            <source>Files:</source>
+            <translation>Fichiers :</translation>
+        </message>
+        <message>
+            <source>Filter Calc...</source>
+            <translation>Calcul du filtre...</translation>
+        </message>
+        <message>
+            <source>Filter detected-region names; measurements and image picking remain available.</source>
+            <translation>Filtrer les noms des régions détectées ; les mesures et la sélection d’images restent disponibles.</translation>
+        </message>
+        <message>
+            <source>Filter the decay-analysis tools by their name or purpose.</source>
+            <translation>Filtrer les outils d’analyse par nom ou par finalité.</translation>
+        </message>
+        <message>
+            <source>Find Bursts</source>
+            <translation>Rechercher les bursts</translation>
+        </message>
+        <message>
+            <source>Find a panel by name or description.</source>
+            <translation>Rechercher un panneau par nom ou description.</translation>
+        </message>
+        <message>
+            <source>Finest aperture quadrature; slow for the vectorial model, use once parameters are settled.</source>
+            <translation>Quadrature d’ouverture la plus fine ; lente pour le modèle vectoriel, à utiliser une fois les paramètres fixés.</translation>
+        </message>
+        <message>
+            <source>Finished: {done}/{total} files converted.</source>
+            <translation>Terminé : {done}/{total} fichiers convertis.</translation>
+        </message>
+        <message>
+            <source>First frame kept in the analysis.</source>
+            <translation>Première image prise en compte dans l’analyse.</translation>
+        </message>
+        <message>
+            <source>First photon:</source>
+            <translation>Premier photon :</translation>
+        </message>
+        <message>
+            <source>Fit Bursts</source>
+            <translation>Ajuster les bursts</translation>
+        </message>
+        <message>
+            <source>Fit GMM with these settings</source>
+            <translation>Ajuster le GMM avec ces réglages</translation>
+        </message>
+        <message>
+            <source>Fit diagnostics and helpers: fill leakage, direct excitation and gamma from a simulated light path, and check the fit against the burst data.</source>
+            <translation>Diagnostic d’ajustement et outils auxiliaires : fuite, excitation directe et gamma à partir d’un trajet lumineux simulé, et vérification de l’ajustement sur les données de bursts.</translation>
+        </message>
+        <message>
+            <source>Fit from (ms):</source>
+            <translation>Ajustement à partir de (ms) :</translation>
+        </message>
+        <message>
+            <source>Fit of the burst-wise correlation curve: mode, MaxEnt regularisation and diffusion-time and lag ranges.</source>
+            <translation>Ajustement de la courbe de corrélation par burst : mode, régularisation MaxEnt et plages de temps de diffusion et de retard.</translation>
+        </message>
+        <message>
+            <source>Fit of the histogram with a sum of species, each with brightness epsilon and mean occupancy N.</source>
+            <translation>Ajustement de l’histogramme par une somme d’espèces, chacune avec une luminosité epsilon et une occupation moyenne N.</translation>
+        </message>
+        <message>
+            <source>Fit options: maximum iterations, convergence tolerance, acceleration, decoding and random seed.</source>
+            <translation>Options d’ajustement : nombre maximal d’itérations, tolérance de convergence, accélération, décodage et graine aléatoire.</translation>
+        </message>
+        <message>
+            <source>Fit parameters found in the equation: value, bounds, fixed and linked state.</source>
+            <translation>Paramètres d’ajustement trouvés dans l’équation : valeur, bornes, état fixe et lié.</translation>
+        </message>
+        <message>
+            <source>Fit plots appear after a successful analysis.</source>
+            <translation>Les graphiques d’ajustement apparaissent après une analyse réussie.</translation>
+        </message>
+        <message>
+            <source>Fit results: state summaries, dwell times and the state-count scan.</source>
+            <translation>Résultats d’ajustement : résumés des états, temps de séjour et balayage du nombre d’états.</translation>
+        </message>
+        <message>
+            <source>Fit the current burst file's decay again with the current start values and fit window.</source>
+            <translation>Réajuster la décroissance du fichier de bursts actuel avec les valeurs de départ et la fenêtre d’ajustement actuelles.</translation>
+        </message>
+        <message>
+            <source>Fit the lifetime model to the micro-time decays of all bursts by maximum likelihood.</source>
+            <translation>Ajuster le modèle de durée de vie aux décroissances en microtemps de tous les bursts par maximum de vraisemblance.</translation>
+        </message>
+        <message>
+            <source>Fit the photon-by-photon HMM to the bursts to find states and transition rates.</source>
+            <translation>Ajuster le HMM photon par photon aux bursts pour trouver les états et les taux de transition.</translation>
+        </message>
+        <message>
+            <source>Fit the selected binding model to the titration series.</source>
+            <translation>Ajuster le modèle de liaison choisi à la série de titration.</translation>
+        </message>
+        <message>
+            <source>Fit the tail of the inter-photon-time distribution to get the per-detector background rates.</source>
+            <translation>Ajuster la queue de la distribution des temps inter-photons pour obtenir les taux de fond par détecteur.</translation>
+        </message>
+        <message>
+            <source>Fit to (ms):</source>
+            <translation>Ajustement jusqu’à (ms) :</translation>
+        </message>
+        <message>
+            <source>Fit-free lifetime analysis of every pixel via the phasor transform of its decay.</source>
+            <translation>Analyse de durée de vie sans ajustement de chaque pixel, par transformation phasor de sa décroissance.</translation>
+        </message>
+        <message>
+            <source>Fit23 maximum-likelihood decay model and its fixed and free parameters.</source>
+            <translation>Modèle de décroissance Fit23 par maximum de vraisemblance, avec ses paramètres fixes et libres.</translation>
+        </message>
+        <message>
+            <source>Fitted 3-D Gaussian widths of each bead in nm.</source>
+            <translation>Largeurs gaussiennes 3D ajustées de chaque bille, en nm.</translation>
+        </message>
+        <message>
+            <source>Fitted FRET populations: mean efficiency, width, fraction and burst count.</source>
+            <translation>Populations FRET ajustées : efficacité moyenne, largeur, fraction et nombre de bursts.</translation>
+        </message>
+        <message>
+            <source>Fitted background rate per file and detector.</source>
+            <translation>Fond ajusté par fichier et par détecteur.</translation>
+        </message>
+        <message>
+            <source>Fitted background rates, one row per file and detector.</source>
+            <translation>Taux de fond ajustés, une ligne par fichier et par détecteur.</translation>
+        </message>
+        <message>
+            <source>Fitted flow per tile: position in um and velocity components.</source>
+            <translation>Flux ajusté par tuile : position en µm et composantes de vitesse.</translation>
+        </message>
+        <message>
+            <source>Fitted lifetime components with species fractions and lifetimes in ns.</source>
+            <translation>Composantes de durée de vie ajustées, avec fractions des espèces et durées de vie en ns.</translation>
+        </message>
+        <message>
+            <source>Fitted lifetime of each burst.</source>
+            <translation>Durée de vie ajustée de chaque burst.</translation>
+        </message>
+        <message>
+            <source>Fitted lifetimes and amplitudes with the fit report.</source>
+            <translation>Durées de vie et amplitudes ajustées avec le rapport d’ajustement.</translation>
+        </message>
+        <message>
+            <source>Fitted lifetimes between the two edges of the dragged box.</source>
+            <translation>Durées de vie ajustées entre les deux bords du rectangle tracé.</translation>
+        </message>
+        <message>
+            <source>Fitted parameters and goodness of fit.</source>
+            <translation>Paramètres ajustés et qualité de l’ajustement.</translation>
+        </message>
+        <message>
+            <source>Fitted parameters of each hidden state.</source>
+            <translation>Paramètres ajustés de chaque état caché.</translation>
+        </message>
+        <message>
+            <source>Fitted state efficiencies and populations.</source>
+            <translation>Efficacités et populations d’états ajustées.</translation>
+        </message>
+        <message>
+            <source>Fitted state efficiencies, stoichiometries and populations.</source>
+            <translation>Efficacités, stœchiométries et populations d’états ajustées.</translation>
+        </message>
+        <message>
+            <source>Fitted state intensities, transition rates and BIC of the HMM.</source>
+            <translation>Intensités d’états, taux de transition et BIC du HMM ajustés.</translation>
+        </message>
+        <message>
+            <source>Fitted state parameters for the selected number of states.</source>
+            <translation>Paramètres d’état ajustés pour le nombre d’états choisi.</translation>
+        </message>
+        <message>
+            <source>Fitted transition probabilities between the hidden states.</source>
+            <translation>Probabilités de transition ajustées entre les états cachés.</translation>
+        </message>
+        <message>
+            <source>Fitted transition rates between states in 1/s.</source>
+            <translation>Taux de transition ajustés entre les états, en 1/s.</translation>
+        </message>
+        <message>
+            <source>Flat-illumination files used to compute the lookup table.</source>
+            <translation>Fichiers d’illumination uniforme utilisés pour calculer la table de correspondance.</translation>
+        </message>
+        <message>
+            <source>Flow field, profile and per-tile table.</source>
+            <translation>Champ d’écoulement, profil et tableau par tuile.</translation>
+        </message>
+        <message>
+            <source>Flow vectors over the image and their profile along the chosen axis.</source>
+            <translation>Vecteurs d’écoulement sur l’image et leur profil le long de l’axe choisi.</translation>
+        </message>
+        <message>
+            <source>Fluorescence lifetimes (ns) and amplitudes of the decay components.</source>
+            <translation>Durées de vie de fluorescence (ns) et amplitudes des composantes de décroissance.</translation>
+        </message>
+        <message>
+            <source>Foerster radius R0, orientation factor kappa-squared, refractive index and donor lifetime/FRET-rate settings that turn distances into FRET rates.</source>
+            <translation>Rayon de Förster R0, facteur d’orientation kappa², indice de réfraction et réglages de durée de vie du donneur et du taux FRET qui convertissent les distances en taux FRET.</translation>
+        </message>
+        <message>
+            <source>Follow a guided tour through the real wizard controls.</source>
+            <translation>Suivre une visite guidée des commandes réelles de l’assistant.</translation>
+        </message>
+        <message>
+            <source>Follow this live parameter value; recursive links are rejected by the core model.</source>
+            <translation>Suivre cette valeur de paramètre en direct ; les liens récursifs sont rejetés par le modèle central.</translation>
+        </message>
+        <message>
+            <source>Fourier ring correlation estimate of the image resolution in nm.</source>
+            <translation>Estimation de la résolution de l’image en nm par corrélation d’anneaux de Fourier.</translation>
+        </message>
+        <message>
+            <source>Frame range of the current series that enters the analysis, and whether to exclude it.</source>
+            <translation>Plage d’images de la série actuelle entrant dans l’analyse, et indication de son exclusion éventuelle.</translation>
+        </message>
+        <message>
+            <source>Free text about the selected file. It is the Notes column of the table: both show and edit the same text, saved beside the data in the folder's .trace_browser_meta.json shortly after you stop typing.</source>
+            <translation>Texte libre concernant le fichier sélectionné. Il correspond à la colonne Notes du tableau : les deux affichent et modifient le même texte, enregistré à côté des données dans le fichier .trace_browser_meta.json du dossier peu après la fin de la saisie.</translation>
+        </message>
+        <message>
+            <source>Full (numpy) convolution of one excitation with the model, without wrap-around.</source>
+            <translation>Convolution complète (numpy) d’une excitation avec le modèle, sans enroulement.</translation>
+        </message>
+        <message>
+            <source>Functional form of the intermolecular background: hom3d = homogeneous 3-D, exp = exponential, strexp = stretched exponential.</source>
+            <translation>Forme fonctionnelle du fond intermoléculaire : hom3d = 3D homogène, exp = exponentielle, strexp = exponentielle étirée.</translation>
+        </message>
+        <message>
+            <source>Fuse fragments of one molecule that burst search split into separate bursts, and compare before and after.</source>
+            <translation>Fusionner les fragments d’une même molécule que la recherche de bursts a découpés en bursts distincts, et comparer avant et après.</translation>
+        </message>
+        <message>
+            <source>Fusion criterion and actions: P(same molecule) threshold, maximum gap and fragments.</source>
+            <translation>Critère de fusion et actions : seuil de P(même molécule), écart maximal et fragments.</translation>
+        </message>
+        <message>
+            <source>G factor and polarization leakage l1, l2 applied to the VV/VH channels.</source>
+            <translation>Facteur G et fuites de polarisation l1, l2 appliqués aux canaux VV/VH.</translation>
+        </message>
+        <message>
+            <source>G-factor and residual anisotropy.</source>
+            <translation>Facteur G et anisotropie résiduelle.</translation>
+        </message>
+        <message>
+            <source>Gamma detection-efficiency correction used by the fit.</source>
+            <translation>Correction gamma de l’efficacité de détection utilisée par l’ajustement.</translation>
+        </message>
+        <message>
+            <source>Gate on the channel A versus B intensity scatter to restrict the analysis to selected pixels.</source>
+            <translation>Fenêtre sur le nuage d’intensité des canaux A et B pour restreindre l’analyse aux pixels sélectionnés.</translation>
+        </message>
+        <message>
+            <source>Gauss-Lorentz molecule detection function (absolute volume and concentration).</source>
+            <translation>Fonction de détection moléculaire gauss-lorentzienne (volume absolu et concentration).</translation>
+        </message>
+        <message>
+            <source>Gaussian components of the distance distribution P(r): mean distance (nm), width sigma (nm) and amplitude.</source>
+            <translation>Composantes gaussiennes de la distribution des distances P(r) : distance moyenne (nm), largeur sigma (nm) et amplitude.</translation>
+        </message>
+        <message>
+            <source>Gaussian components of the distance distribution: mean, width and amplitude per row.</source>
+            <translation>Composantes gaussiennes de la distribution des distances : moyenne, largeur et amplitude par ligne.</translation>
+        </message>
+        <message>
+            <source>Gaussian distance distribution between donor and acceptor [A].</source>
+            <translation>Distribution gaussienne des distances donneur-accepteur [Å].</translation>
+        </message>
+        <message>
+            <source>Gaussian donor-acceptor distance distribution(s): mean distance R (A), width sigma (A) and amplitude of each component.</source>
+            <translation>Distribution(s) gaussienne(s) des distances donneur-accepteur : distance moyenne R (Å), largeur sigma (Å) et amplitude de chaque composante.</translation>
+        </message>
+        <message>
+            <source>Generate simulated burst trains instead of reading .bur files, to test the fitting.</source>
+            <translation>Générer des trains de bursts simulés au lieu de lire des fichiers .bur, pour tester l’ajustement.</translation>
+        </message>
+        <message>
+            <source>Global maximum-entropy analysis of the kinetics and the number of lags used.</source>
+            <translation>Analyse globale par entropie maximale de la cinétique et nombre de retards utilisés.</translation>
+        </message>
+        <message>
+            <source>Go to the next tool in the order the analyses depend on each other.</source>
+            <translation>Passer à l’outil suivant dans l’ordre où les analyses dépendent les unes des autres.</translation>
+        </message>
+        <message>
+            <source>Go to the previous tool in the order the analyses depend on each other.</source>
+            <translation>Passer à l’outil précédent dans l’ordre où les analyses dépendent les unes des autres.</translation>
+        </message>
+        <message>
+            <source>Graph of the states and the transitions between them for the selected scheme.</source>
+            <translation>Graphe des états et des transitions entre eux pour le schéma choisi.</translation>
+        </message>
+        <message>
+            <source>Graph view actions and the minimap toggle of the optical path.</source>
+            <translation>Actions de la vue en graphe et bascule de la mini-carte du trajet optique.</translation>
+        </message>
+        <message>
+            <source>Halves and ring table used to check the FRC estimate.</source>
+            <translation>Moitiés et tableau des anneaux pour vérifier l’estimation FRC.</translation>
+        </message>
+        <message>
+            <source>Header as JSON; edit the text and apply it.</source>
+            <translation>En-tête au format JSON ; modifiez le texte puis appliquez-le.</translation>
+        </message>
+        <message>
+            <source>Help for the FRET species decay editor.</source>
+            <translation>Aide de l’éditeur de décroissance des espèces FRET.</translation>
+        </message>
+        <message>
+            <source>Help for the synthetic decay editor.</source>
+            <translation>Aide de l’éditeur de décroissance synthétique.</translation>
+        </message>
+        <message>
+            <source>Hidden Markov model analysis of binned traces: set up the model, fit it and inspect the trace and the states.</source>
+            <translation>Analyse par modèle de Markov caché de traces regroupées : configurer le modèle, l’ajuster et examiner la trace et les états.</translation>
+        </message>
+        <message>
+            <source>Histogram bin width of the inter-photon-time distribution in milliseconds.</source>
+            <translation>Largeur de classe de la distribution des temps inter-photons, en millisecondes.</translation>
+        </message>
+        <message>
+            <source>Histogram binning of the burst data: number of bins, range of the axis and minimum photons per burst.</source>
+            <translation>Regroupement des données de bursts : nombre de classes, plage de l’axe et photons minimum par burst.</translation>
+        </message>
+        <message>
+            <source>Histogram column:</source>
+            <translation>Colonne de l’histogramme :</translation>
+        </message>
+        <message>
+            <source>Histogram of distances in pixels between objects of the two channels.</source>
+            <translation>Histogramme des distances en pixels entre objets des deux canaux.</translation>
+        </message>
+        <message>
+            <source>Histogram of inter-photon times dT with the min / max dMT limits; drag the lines to change them.</source>
+            <translation>Histogramme des temps inter-photons dT avec les limites dMT min/max ; faire glisser les lignes pour les modifier.</translation>
+        </message>
+        <message>
+            <source>Histogram of the chosen burst quantity over all listed bursts.</source>
+            <translation>Histogramme de la grandeur de burst choisie sur tous les bursts listés.</translation>
+        </message>
+        <message>
+            <source>Histogram of the mosaic's pixel values (logarithmic counts). The two lines are the display levels: drag them to change Min and Max (Auto levels switches off).</source>
+            <translation>Histogramme des valeurs de pixels de la mosaïque (comptages logarithmiques). Les deux lignes sont les niveaux d’affichage : les faire glisser pour modifier Min et Max (Niveaux automatiques désactive cette option).</translation>
+        </message>
+        <message>
+            <source>Histogram of the photon micro-times for each time bin.</source>
+            <translation>Histogramme des microtemps des photons pour chaque classe temporelle.</translation>
+        </message>
+        <message>
+            <source>Histogram only the rows currently selected in the bursts table.</source>
+            <translation>Histogrammer uniquement les lignes actuellement sélectionnées dans le tableau des bursts.</translation>
+        </message>
+        <message>
+            <source>Hold this parameter constant during fitting; its manually entered value remains editable.</source>
+            <translation>Maintenir ce paramètre constant pendant l’ajustement ; sa valeur saisie manuellement reste modifiable.</translation>
+        </message>
+        <message>
+            <source>Horizontal axis: elapsed macro-time; vertical axis: micro-time bins or lifetime. Brightness encodes amplitude and hue identifies detectors. Wheel zooms, drag pans.</source>
+            <translation>Axe horizontal : macrotemps écoulé ; axe vertical : classes de microtemps ou durée de vie. La luminosité code l’amplitude et la teinte identifie les détecteurs. La molette zoome, glisser déplace.</translation>
+        </message>
+        <message>
+            <source>How alpha is chosen automatically: gcv = generalized cross-validation, lcurve = corner of the L-curve.</source>
+            <translation>Choix automatique d’alpha : gcv = validation croisée généralisée, lcurve = coin de la courbe en L.</translation>
+        </message>
+        <message>
+            <source>How gamma is obtained and how many FRET populations are fitted; bootstrap resamples set the uncertainty on each factor.</source>
+            <translation>Mode d’obtention de gamma et nombre de populations FRET ajustées ; les rééchantillonnages bootstrap fixent l’incertitude de chaque facteur.</translation>
+        </message>
+        <message>
+            <source>How many items are listed (of how many in the database).</source>
+            <translation>Nombre d’entrées listées (sur le total de la base).</translation>
+        </message>
+        <message>
+            <source>How regions are defined: from saved masks or detected spots.</source>
+            <translation>Définition des régions : à partir de masques enregistrés ou de spots détectés.</translation>
+        </message>
+        <message>
+            <source>How the CSV file is parsed.</source>
+            <translation>Mode d’analyse du fichier CSV.</translation>
+        </message>
+        <message>
+            <source>How the curves are drawn: scales, grid and symbols.</source>
+            <translation>Tracé des courbes : échelles, grille et symboles.</translation>
+        </message>
+        <message>
+            <source>How the mean and variance of the intensity are estimated from the frames.</source>
+            <translation>Estimation de la moyenne et de la variance de l’intensité à partir des images.</translation>
+        </message>
+        <message>
+            <source>How the other plugin is related, for example requires or is required by.</source>
+            <translation>Lien avec l’autre module, par exemple requis par ou requiert.</translation>
+        </message>
+        <message>
+            <source>How the parameter graph is drawn: representation, layout, node size and scale, and whether owners and fixed parameters are included.</source>
+            <translation>Tracé du graphe des paramètres : représentation, disposition, taille des nœuds et échelle, et inclusion ou non des propriétaires et des paramètres fixes.</translation>
+        </message>
+        <message>
+            <source>How the weights of the correlation curve are derived for fitting.</source>
+            <translation>Dérivation des poids de la courbe de corrélation pour l’ajustement.</translation>
+        </message>
+        <message>
+            <source>How this tool works: queue files, set the window, Process.</source>
+            <translation>Fonctionnement de cet outil : mettre les fichiers en file, régler la fenêtre, puis Traiter.</translation>
+        </message>
+        <message>
+            <source>How to read the input file. Auto detects the container from its content; pick the vendor format when the extension lies.</source>
+            <translation>Lecture du fichier d’entrée. Auto détecte le conteneur à partir de son contenu ; choisissez le format du fabricant si l’extension est trompeuse.</translation>
+        </message>
+        <message>
+            <source>IRF and background as the fit sees them: the estimated or loaded patterns after shift, window and threshold.</source>
+            <translation>IRF et fond tels que vus par l’ajustement : les motifs estimés ou chargés après décalage, fenêtre et seuil.</translation>
+        </message>
+        <message>
+            <source>Image or photon stream to analyse; TTTR and .pto files are binned into frames using the pixel and frame markers.</source>
+            <translation>Image ou flux de photons à analyser ; les fichiers TTTR et .pto sont regroupés en images à l’aide des marqueurs de pixels et d’images.</translation>
+        </message>
+        <message>
+            <source>Image sampling: pixel size (um) that converts pixel lags to physical lengths.</source>
+            <translation>Échantillonnage de l’image : taille de pixel (µm) qui convertit les décalages en pixels en longueurs physiques.</translation>
+        </message>
+        <message>
+            <source>Import this checked archive, remapping conflicting IDs when required.</source>
+            <translation>Importer cette archive vérifiée en réattribuant les identifiants en conflit si nécessaire.</translation>
+        </message>
+        <message>
+            <source>Include this file in the histogram calculation.</source>
+            <translation>Inclure ce fichier dans le calcul de l’histogramme.</translation>
+        </message>
+        <message>
+            <source>Include this part in the CSV export.</source>
+            <translation>Inclure cette partie dans l’export CSV.</translation>
+        </message>
+        <message>
+            <source>Independent second image of the same field; FRC correlates the two images instead of splitting one.</source>
+            <translation>Deuxième image indépendante du même champ ; la FRC corrèle les deux images au lieu d’en découper une.</translation>
+        </message>
+        <message>
+            <source>Index of the first photon shown (within the filtered selection).</source>
+            <translation>Indice du premier photon affiché (dans la sélection filtrée).</translation>
+        </message>
+        <message>
+            <source>Information criterion used to pick the best state number (BIC or ICL).</source>
+            <translation>Critère d’information utilisé pour choisir le meilleur nombre d’états (BIC ou ICL).</translation>
+        </message>
+        <message>
+            <source>Input and output file and format.</source>
+            <translation>Fichier d’entrée et de sortie et format.</translation>
+        </message>
+        <message>
+            <source>Input and output file formats.</source>
+            <translation>Formats des fichiers d’entrée et de sortie.</translation>
+        </message>
+        <message>
+            <source>Input and output trajectories, frame stride and the rotation and translation to apply.</source>
+            <translation>Trajectoires d’entrée et de sortie, pas d’images et rotation et translation à appliquer.</translation>
+        </message>
+        <message>
+            <source>Input data, model and fit settings of the pixel-wise fit.</source>
+            <translation>Données d’entrée, modèle et réglages de l’ajustement pixel par pixel.</translation>
+        </message>
+        <message>
+            <source>Input data, regions and fit settings.</source>
+            <translation>Données d’entrée, régions et réglages d’ajustement.</translation>
+        </message>
+        <message>
+            <source>Input file, detector windows and micro-time window.</source>
+            <translation>Fichier d’entrée, fenêtres des détecteurs et fenêtre de microtemps.</translation>
+        </message>
+        <message>
+            <source>Input file, harmonic, IRF calibration and filtering settings.</source>
+            <translation>Fichier d’entrée, harmonique, étalonnage de l’IRF et réglages de filtrage.</translation>
+        </message>
+        <message>
+            <source>Input file, pixel and frame binning and detector windows.</source>
+            <translation>Fichier d’entrée, regroupement des pixels et des images, et fenêtres des détecteurs.</translation>
+        </message>
+        <message>
+            <source>Input image, channel assignment and analysis settings for the colocalization.</source>
+            <translation>Image d’entrée, affectation des canaux et réglages d’analyse de la colocalisation.</translation>
+        </message>
+        <message>
+            <source>Input image, scan geometry and estimator settings of the flow map.</source>
+            <translation>Image d’entrée, géométrie de balayage et réglages de l’estimateur de la carte d’écoulement.</translation>
+        </message>
+        <message>
+            <source>Input images and FRC settings.</source>
+            <translation>Images d’entrée et réglages FRC.</translation>
+        </message>
+        <message>
+            <source>Input stack and N&amp;B estimator settings.</source>
+            <translation>Pile d’entrée et réglages de l’estimateur N&amp;B.</translation>
+        </message>
+        <message>
+            <source>Input stack and drift-estimation settings.</source>
+            <translation>Pile d’entrée et réglages d’estimation de la dérive.</translation>
+        </message>
+        <message>
+            <source>Input stack, voxel sizes, bead detection and fit settings.</source>
+            <translation>Pile d’entrée, tailles de voxels, détection des billes et réglages d’ajustement.</translation>
+        </message>
+        <message>
+            <source>Inputs for the RICS precision prediction and the predicted error of the diffusion coefficient.</source>
+            <translation>Données pour la prévision de précision RICS et erreur prédite du coefficient de diffusion.</translation>
+        </message>
+        <message>
+            <source>Inputs of the Foerster radius calculation.</source>
+            <translation>Données du calcul du rayon de Förster.</translation>
+        </message>
+        <message>
+            <source>Insert an empty code cell below this one</source>
+            <translation>Insérer une cellule de code vide sous celle-ci</translation>
+        </message>
+        <message>
+            <source>Inspect a photon container: choose the file, then browse its provenance, data and details.</source>
+            <translation>Examiner un conteneur de photons : choisir le fichier, puis parcourir sa provenance, ses données et ses détails.</translation>
+        </message>
+        <message>
+            <source>Installed version of the plugin.</source>
+            <translation>Version installée du module.</translation>
+        </message>
+        <message>
+            <source>Instrument response file, shot noise, photon count and random seed.</source>
+            <translation>Fichier de réponse instrumentale, bruit de grenaille, nombre de photons et graine aléatoire.</translation>
+        </message>
+        <message>
+            <source>Instrument response function (IRF) used for the convolution.</source>
+            <translation>Fonction de réponse instrumentale (IRF) utilisée pour la convolution.</translation>
+        </message>
+        <message>
+            <source>Instrument response function: source, centre (ns), FWHM (ns), skew and rise.</source>
+            <translation>Fonction de réponse instrumentale : source, centre (ns), FWHM (ns), asymétrie et temps de montée.</translation>
+        </message>
+        <message>
+            <source>Instrument-response settings: VH shift, sub-bin shifts, IRF range and thresholds for the 2I* fit.</source>
+            <translation>Réglages de la réponse instrumentale : décalage VH, décalages sous-classe, plage de l’IRF et seuils pour l’ajustement 2I*.</translation>
+        </message>
+        <message>
+            <source>Intensity image and one fluorescence-lifetime map per detector that define the simulated sample.</source>
+            <translation>Image d’intensité et une carte de durée de vie de fluorescence par détecteur, qui définissent l’échantillon simulé.</translation>
+        </message>
+        <message>
+            <source>Intensity of each frame as a movie.</source>
+            <translation>Intensité de chaque image sous forme de film.</translation>
+        </message>
+        <message>
+            <source>Intensity of each frame as a movie; use the slider to scrub frames.</source>
+            <translation>Intensité de chaque image sous forme de film ; utilisez le curseur pour parcourir les images.</translation>
+        </message>
+        <message>
+            <source>Intensity threshold, gamma and colormap of the 3-D rendering.</source>
+            <translation>Seuil d’intensité, gamma et table de couleurs du rendu 3D.</translation>
+        </message>
+        <message>
+            <source>Inter-photon-time histogram with the fitted exponential background tail.</source>
+            <translation>Histogramme des temps inter-photons avec la queue de fond exponentielle ajustée.</translation>
+        </message>
+        <message>
+            <source>Inter-photon-time window and binning for the exponential tail fit that gives the background rate.</source>
+            <translation>Fenêtre et regroupement des temps inter-photons pour l’ajustement de la queue exponentielle qui fournit le taux de fond.</translation>
+        </message>
+        <message>
+            <source>Interactive 3-D rendering of the computed PSF intensity volume.</source>
+            <translation>Rendu 3D interactif du volume d’intensité de la PSF calculée.</translation>
+        </message>
+        <message>
+            <source>Intermolecular background decay (exp, stretched exp or homogeneous 3-D) divided out of the DEER signal; its decay rate/dimension is fitted.</source>
+            <translation>Décroissance du fond intermoléculaire (exponentielle, exponentielle étirée ou 3D homogène) divisée hors du signal DEER ; son taux de décroissance ou sa dimension est ajusté.</translation>
+        </message>
+        <message>
+            <source>Interpret each stored width as a percentage of its mean distance: sigma = (p/100) * R.</source>
+            <translation>Interpréter chaque largeur enregistrée comme un pourcentage de sa distance moyenne : sigma = (p/100) × R.</translation>
+        </message>
+        <message>
+            <source>Interrupt the running cell or cancel its input prompt</source>
+            <translation>Interrompre la cellule en cours ou annuler sa demande de saisie</translation>
+        </message>
+        <message>
+            <source>Inverse Laplace transform of the 2D map to a lifetime distribution: solver, grid, tau range and regularisation.</source>
+            <translation>Transformation de Laplace inverse de la carte 2D en distribution de durées de vie : solveur, grille, plage de tau et régularisation.</translation>
+        </message>
+        <message>
+            <source>Ising-chain model of a flexible linker: distance distribution from the chain's segment statistics (parameters below).</source>
+            <translation>Modèle de chaîne d’Ising d’un lieur flexible : distribution des distances à partir des statistiques de segments de la chaîne (paramètres ci-dessous).</translation>
+        </message>
+        <message>
+            <source>Iterations or sweep points done by the running job.</source>
+            <translation>Itérations ou points de balayage effectués par la tâche en cours.</translation>
+        </message>
+        <message>
+            <source>JSON with named detectors (chs and micro_time_ranges) and named PIE windows.</source>
+            <translation>JSON avec des détecteurs nommés (chs et micro_time_ranges) et des fenêtres PIE nommées.</translation>
+        </message>
+        <message>
+            <source>Keep the files where they are. Nothing changes.</source>
+            <translation>Garder les fichiers à leur emplacement. Rien ne change.</translation>
+        </message>
+        <message>
+            <source>Keep the peak positions fixed across concentrations while fitting.</source>
+            <translation>Maintenir les positions des pics fixes d’une concentration à l’autre pendant l’ajustement.</translation>
+        </message>
+        <message>
+            <source>Kernel:</source>
+            <translation>Noyau :</translation>
+        </message>
+        <message>
+            <source>LL Scan</source>
+            <translation>Balayage LL</translation>
+        </message>
+        <message>
+            <source>Labeling state of the species and the detection channel it is shown in.</source>
+            <translation>État de marquage de l’espèce et canal de détection dans lequel elle est affichée.</translation>
+        </message>
+        <message>
+            <source>Largest number of photons per event that is kept.</source>
+            <translation>Nombre maximal de photons par événement conservé.</translation>
+        </message>
+        <message>
+            <source>Last frame kept in the analysis.</source>
+            <translation>Dernière image prise en compte dans l’analyse.</translation>
+        </message>
+        <message>
+            <source>Last ⏭</source>
+            <translation>Dernier ⏭</translation>
+        </message>
+        <message>
+            <source>Lateral and axial waist of the focus and the pixel size.</source>
+            <translation>Col latéral et axial du foyer et taille du pixel.</translation>
+        </message>
+        <message>
+            <source>Leakage, direct excitation and detection-efficiency correction factors.</source>
+            <translation>Facteurs de correction des fuites, de l’excitation directe et de l’efficacité de détection.</translation>
+        </message>
+        <message>
+            <source>Legacy BUR burst table and MTI measurement summary.</source>
+            <translation>Tableau de bursts au format BUR hérité et résumé de mesure MTI.</translation>
+        </message>
+        <message>
+            <source>Lifetime components: amplitude and lifetime in ns; double-click a cell to edit.</source>
+            <translation>Composantes de durée de vie : amplitude et durée de vie en ns ; double-cliquer sur une cellule pour la modifier.</translation>
+        </message>
+        <message>
+            <source>Lifetime components: relative amplitude and lifetime [ns] per row.</source>
+            <translation>Composantes de durée de vie : amplitude relative et durée de vie [ns] par ligne.</translation>
+        </message>
+        <message>
+            <source>Lifetime distribution from an inverse Laplace transform for each time bin.</source>
+            <translation>Distribution des durées de vie issue d’une transformation de Laplace inverse pour chaque classe temporelle.</translation>
+        </message>
+        <message>
+            <source>Lifetime tau (ns) and diffusion coefficient D (um2/ms) of the two simulated species.</source>
+            <translation>Durée de vie tau (ns) et coefficient de diffusion D (µm²/ms) des deux espèces simulées.</translation>
+        </message>
+        <message>
+            <source>Lifetime waterfall: time bin width, tau range and grid points, and regularisation.</source>
+            <translation>Cascade des durées de vie : largeur des classes temporelles, plage de tau et points de grille, et régularisation.</translation>
+        </message>
+        <message>
+            <source>Line joining two phasor positions (g, s); any mixture of the two components lies on it.</source>
+            <translation>Droite joignant deux positions de phasor (g, s) ; tout mélange des deux composantes s’y trouve.</translation>
+        </message>
+        <message>
+            <source>Linear range, required TAC channels, offset, preview photons and normalisation.</source>
+            <translation>Plage linéaire, canaux TAC requis, décalage, photons d’aperçu et normalisation.</translation>
+        </message>
+        <message>
+            <source>Link detections across frames into tracks: search radius in pixels and gap tolerance.</source>
+            <translation>Relier les détections d’une image à l’autre en trajectoires : rayon de recherche en pixels et tolérance aux trous.</translation>
+        </message>
+        <message>
+            <source>Linked tracks with their length in points and fitted parameters.</source>
+            <translation>Trajectoires reliées avec leur longueur en points et leurs paramètres ajustés.</translation>
+        </message>
+        <message>
+            <source>List of the decay and IRF files; drop files here or add them with the buttons.</source>
+            <translation>Liste des fichiers de décroissance et d’IRF ; déposez des fichiers ici ou ajoutez-les avec les boutons.</translation>
+        </message>
+        <message>
+            <source>Load DA Distribution...</source>
+            <translation>Charger la distribution DA...</translation>
+        </message>
+        <message>
+            <source>Load a VV/VH decay (button, or drop a file on the window).</source>
+            <translation>Charger une décroissance VV/VH (bouton, ou déposer un fichier sur la fenêtre).</translation>
+        </message>
+        <message>
+            <source>Load a photon stream and choose detectors and their colours.</source>
+            <translation>Charger un flux de photons et choisir les détecteurs et leurs couleurs.</translation>
+        </message>
+        <message>
+            <source>Load a photon stream, compute and fit the histogram, and export the results.</source>
+            <translation>Charger un flux de photons, calculer et ajuster l’histogramme, et exporter les résultats.</translation>
+        </message>
+        <message>
+            <source>Load a stream or define detectors to choose the detector colours.</source>
+            <translation>Charger un flux ou définir des détecteurs pour choisir leurs couleurs.</translation>
+        </message>
+        <message>
+            <source>Load a stream or define detectors to configure channel notes.</source>
+            <translation>Charger un flux ou définir des détecteurs pour configurer les notes des canaux.</translation>
+        </message>
+        <message>
+            <source>Load an intensity image and one lifetime map per detector, then Generate.</source>
+            <translation>Charger une image d’intensité et une carte de durée de vie par détecteur, puis Générer.</translation>
+        </message>
+        <message>
+            <source>Load filters...</source>
+            <translation>Charger les filtres...</translation>
+        </message>
+        <message>
+            <source>Load lifetime (FLCS) filters from a Filter-Calculator JSON, or a .npy/.npz filter matrix. Correlation then gives species auto-/cross-correlations; A/B pick species.</source>
+            <translation>Charger des filtres de durée de vie (FLCS) depuis un JSON du calculateur de filtres ou une matrice de filtres .npy/.npz. La corrélation fournit alors les autocorrélations et corrélations croisées des espèces ; A/B choisissent les espèces.</translation>
+        </message>
+        <message>
+            <source>Load or remove lifetime (FLCS) filters used instead of detector channels.</source>
+            <translation>Charger ou retirer les filtres de durée de vie (FLCS) utilisés à la place des canaux de détecteur.</translation>
+        </message>
+        <message>
+            <source>Load selected</source>
+            <translation>Charger la sélection</translation>
+        </message>
+        <message>
+            <source>Load the data to see the IRFs.</source>
+            <translation>Charger les données pour voir les IRF.</translation>
+        </message>
+        <message>
+            <source>Load the example</source>
+            <translation>Charger l’exemple</translation>
+        </message>
+        <message>
+            <source>Load the measured decay and IRF, edit YAML settings if needed, choose a fixed or automatically selected lifetime count, then Fit. Analysis runs separately; inspect its output, fitted lifetimes and weighted residuals before interpreting the model.</source>
+            <translation>Charger la décroissance mesurée et l’IRF, modifier au besoin les réglages YAML, choisir un nombre de durées de vie fixe ou sélectionné automatiquement, puis Ajuster. L’analyse s’exécute séparément ; examinez sa sortie, les durées de vie ajustées et les résidus pondérés avant d’interpréter le modèle.</translation>
+        </message>
+        <message>
+            <source>Loaded time series with their length, crop range and exclusion flag.</source>
+            <translation>Séries temporelles chargées avec leur longueur, leur plage de recadrage et leur indicateur d’exclusion.</translation>
+        </message>
+        <message>
+            <source>Loading the photons...</source>
+            <translation>Chargement des photons...</translation>
+        </message>
+        <message>
+            <source>Log</source>
+            <translation>Log</translation>
+        </message>
+        <message>
+            <source>Log Counts</source>
+            <translation>Comptages log</translation>
+        </message>
+        <message>
+            <source>Log Y Axis</source>
+            <translation>Axe Y logarithmique</translation>
+        </message>
+        <message>
+            <source>Logarithmic tau axis and logarithmic amplitude scale.</source>
+            <translation>Axe tau logarithmique et échelle d’amplitude logarithmique.</translation>
+        </message>
+        <message>
+            <source>Login name of the user.</source>
+            <translation>Nom de connexion de l’utilisateur.</translation>
+        </message>
+        <message>
+            <source>Lower edge of the inter-photon-time tail window (in ms) fitted as background.</source>
+            <translation>Borne inférieure de la fenêtre de la queue des temps inter-photons (en ms) ajustée comme fond.</translation>
+        </message>
+        <message>
+            <source>Lower edge of the micro-time window in TAC channels; earlier photons are ignored.</source>
+            <translation>Borne inférieure de la fenêtre de microtemps en canaux TAC ; les photons plus précoces sont ignorés.</translation>
+        </message>
+        <message>
+            <source>Lower stoichiometry gate applied before fitting.</source>
+            <translation>Limite inférieure de stœchiométrie appliquée avant l’ajustement.</translation>
+        </message>
+        <message>
+            <source>Magic-angle (total) decay.</source>
+            <translation>Décroissance à l’angle magique (totale).</translation>
+        </message>
+        <message>
+            <source>Magic-angle decay; carries no anisotropy.</source>
+            <translation>Décroissance à l’angle magique ; ne contient pas d’anisotropie.</translation>
+        </message>
+        <message>
+            <source>Make a per-routing-channel LUT from a flat measurement.</source>
+            <translation>Créer une LUT par canal de routage à partir d’une mesure uniforme.</translation>
+        </message>
+        <message>
+            <source>Map</source>
+            <translation>Carte</translation>
+        </message>
+        <message>
+            <source>Map the direction and speed of flow from the pixel-time correlation of a line- or raster-scanned stack.</source>
+            <translation>Cartographier la direction et la vitesse de l’écoulement à partir de la corrélation pixel-temps d’une pile balayée ligne par ligne ou en trame.</translation>
+        </message>
+        <message>
+            <source>Maximum number of photons per burst.</source>
+            <translation>Nombre maximal de photons par burst.</translation>
+        </message>
+        <message>
+            <source>Maximum number of states tried during model selection.</source>
+            <translation>Nombre maximal d’états testés lors de la sélection du modèle.</translation>
+        </message>
+        <message>
+            <source>Maximum-entropy distribution of diffusion times.</source>
+            <translation>Distribution d’entropie maximale des temps de diffusion.</translation>
+        </message>
+        <message>
+            <source>Maximum-entropy distribution of diffusion times: grid and regularisation of the inversion.</source>
+            <translation>Distribution d’entropie maximale des temps de diffusion : grille et régularisation de l’inversion.</translation>
+        </message>
+        <message>
+            <source>Maximum-entropy distribution of hydrodynamic radii Rh (nm): grid and regularisation of the inversion.</source>
+            <translation>Distribution d’entropie maximale des rayons hydrodynamiques Rh (nm) : grille et régularisation de l’inversion.</translation>
+        </message>
+        <message>
+            <source>Maximum-entropy inversion: amplitude distribution over lifetimes (ns); grid and regularisation weight.</source>
+            <translation>Inversion d’entropie maximale : distribution des amplitudes en fonction des durées de vie (ns) ; grille et poids de régularisation.</translation>
+        </message>
+        <message>
+            <source>Maximum-entropy inversion: distribution over donor-acceptor distances / FRET rates; grid and regularisation weight.</source>
+            <translation>Inversion d’entropie maximale : distribution sur les distances donneur-accepteur ou les taux FRET ; grille et poids de régularisation.</translation>
+        </message>
+        <message>
+            <source>Maximum-entropy inversion; most faithful, slowest.</source>
+            <translation>Inversion d’entropie maximale ; la plus fidèle, mais la plus lente.</translation>
+        </message>
+        <message>
+            <source>Maximum-entropy regularisation: strength alpha of the entropy term that stabilises P(r).</source>
+            <translation>Régularisation d’entropie maximale : force alpha du terme d’entropie qui stabilise P(r).</translation>
+        </message>
+        <message>
+            <source>Maximum-likelihood lifetime fit of every pixel decay.</source>
+            <translation>Ajustement de durée de vie par maximum de vraisemblance de la décroissance de chaque pixel.</translation>
+        </message>
+        <message>
+            <source>Maximum-likelihood lifetime fit of the summed decay of each region.</source>
+            <translation>Ajustement de durée de vie par maximum de vraisemblance de la décroissance sommée de chaque région.</translation>
+        </message>
+        <message>
+            <source>Mean background counts per burst in each channel, subtracted before the correction factors are estimated.</source>
+            <translation>Comptages de fond moyens par burst dans chaque canal, soustraits avant l’estimation des facteurs de correction.</translation>
+        </message>
+        <message>
+            <source>Mean micro-time of each frame in ns as a movie.</source>
+            <translation>Microtemps moyen de chaque image en ns sous forme de film.</translation>
+        </message>
+        <message>
+            <source>Mean number of molecules N in the effective volume (G(0) = 1/N) and the corresponding concentration in nM.</source>
+            <translation>Nombre moyen de molécules N dans le volume effectif (G(0) = 1/N) et la concentration correspondante en nM.</translation>
+        </message>
+        <message>
+            <source>Mean photon arrival time per pixel in ns after the micro-time offset and IRF correction.</source>
+            <translation>Temps d’arrivée moyen des photons par pixel en ns, après décalage de microtemps et correction IRF.</translation>
+        </message>
+        <message>
+            <source>Mean photon arrival time per pixel, a model-free lifetime contrast.</source>
+            <translation>Temps d’arrivée moyen des photons par pixel, un contraste de durée de vie sans modèle.</translation>
+        </message>
+        <message>
+            <source>Mean photon count per pixel over the frames.</source>
+            <translation>Nombre moyen de photons par pixel sur les images.</translation>
+        </message>
+        <message>
+            <source>Meas. scale (R):</source>
+            <translation>Échelle de mesure (R) :</translation>
+        </message>
+        <message>
+            <source>Measure the point-spread function from images of sub-resolution beads.</source>
+            <translation>Mesurer la fonction d’étalement du point à partir d’images de billes sous-résolues.</translation>
+        </message>
+        <message>
+            <source>Measured bead intensity and its fitted 3-D Gaussian evaluated along this axis.</source>
+            <translation>Intensité mesurée de la bille et son gaussien 3D ajusté évalué le long de cet axe.</translation>
+        </message>
+        <message>
+            <source>Measured decay and instrument response files read by the LLTF analysis.</source>
+            <translation>Fichiers de décroissance et de réponse instrumentale mesurés, lus par l’analyse LLTF.</translation>
+        </message>
+        <message>
+            <source>Measured polarization: vm = magic angle, vv / vh = parallel / perpendicular detection, vv/vh = both fitted together.</source>
+            <translation>Polarisation mesurée : vm = angle magique, vv / vh = détection parallèle / perpendiculaire, vv/vh = les deux ajustés ensemble.</translation>
+        </message>
+        <message>
+            <source>Measurement container with embedded original BID and derived burst table.</source>
+            <translation>Conteneur de mesure avec le BID d’origine intégré et le tableau de bursts dérivé.</translation>
+        </message>
+        <message>
+            <source>Measurement series: one burst-file set per titration point with its concentration.</source>
+            <translation>Série de mesures : un jeu de fichiers de bursts par point de titration, avec sa concentration.</translation>
+        </message>
+        <message>
+            <source>Measurements &amp; detectors</source>
+            <translation>Mesures et détecteurs</translation>
+        </message>
+        <message>
+            <source>Merge gap:</source>
+            <translation>Écart de fusion :</translation>
+        </message>
+        <message>
+            <source>Micro-time and macro-time window of the photons that are histogrammed.</source>
+            <translation>Fenêtre de microtemps et de macrotemps des photons histogrammés.</translation>
+        </message>
+        <message>
+            <source>Micro-time histogram: number of bins and bin width [ns].</source>
+            <translation>Histogramme des microtemps : nombre de classes et largeur de classe [ns].</translation>
+        </message>
+        <message>
+            <source>Micro-time shift per detector channel.</source>
+            <translation>Décalage de microtemps par canal de détecteur.</translation>
+        </message>
+        <message>
+            <source>Micro-time step (ns), G-factor and VV / VH channel shifts applied to the histogram.</source>
+            <translation>Pas de microtemps (ns), facteur G et décalages des canaux VV / VH appliqués à l’histogramme.</translation>
+        </message>
+        <message>
+            <source>Microtime gates in channel bins, written as start:end pairs separated by commas.</source>
+            <translation>Fenêtres de microtemps en classes de canaux, sous forme de paires début:fin séparées par des virgules.</translation>
+        </message>
+        <message>
+            <source>Microtime range: Full decay (unfiltered)</source>
+            <translation>Plage de microtemps : décroissance complète (non filtrée)</translation>
+        </message>
+        <message>
+            <source>Min counts / bin:</source>
+            <translation>Comptages min. par classe :</translation>
+        </message>
+        <message>
+            <source>Min counts:</source>
+            <translation>Comptages min. :</translation>
+        </message>
+        <message>
+            <source>Min length:</source>
+            <translation>Longueur min. :</translation>
+        </message>
+        <message>
+            <source>Min photons (L):</source>
+            <translation>Photons min. (L) :</translation>
+        </message>
+        <message>
+            <source>Min window length (s):</source>
+            <translation>Longueur de fenêtre min. (s) :</translation>
+        </message>
+        <message>
+            <source>Minimum number of photons per burst.</source>
+            <translation>Nombre minimal de photons par burst.</translation>
+        </message>
+        <message>
+            <source>Minimum number of states tried during model selection.</source>
+            <translation>Nombre minimal d’états testés lors de la sélection du modèle.</translation>
+        </message>
+        <message>
+            <source>Minimum photons per burst included in the histograms.</source>
+            <translation>Photons minimum par burst inclus dans les histogrammes.</translation>
+        </message>
+        <message>
+            <source>Minimum window length in seconds used to slice bursts into photon subsets.</source>
+            <translation>Longueur minimale de fenêtre en secondes utilisée pour découper les bursts en sous-ensembles de photons.</translation>
+        </message>
+        <message>
+            <source>Missed det. (β):</source>
+            <translation>Non-détection (β) :</translation>
+        </message>
+        <message>
+            <source>Mixer rows: one per detector channel.</source>
+            <translation>Lignes du mélangeur : une par canal de détecteur.</translation>
+        </message>
+        <message>
+            <source>Mixture of independent decay components; the fractions give the relative amplitude of each.</source>
+            <translation>Mélange de composantes de décroissance indépendantes ; les fractions donnent l’amplitude relative de chacune.</translation>
+        </message>
+        <message>
+            <source>Model setup: trace files to analyse, number of states, covariance type and time step.</source>
+            <translation>Configuration du modèle : fichiers de trace à analyser, nombre d’états, type de covariance et pas de temps.</translation>
+        </message>
+        <message>
+            <source>Models offered by the provider and the one that is used.</source>
+            <translation>Modèles proposés par le fournisseur et celui utilisé.</translation>
+        </message>
+        <message>
+            <source>Modulation depth lambda and its settings: fraction of spins excited by the pump pulse (0-1).</source>
+            <translation>Profondeur de modulation lambda et ses réglages : fraction de spins excités par l’impulsion de pompe (0-1).</translation>
+        </message>
+        <message>
+            <source>Modulation frequency, harmonic and lifetimes of the single-exponential references, plus the optional overlays.</source>
+            <translation>Fréquence de modulation, harmonique et durées de vie des références mono-exponentielles, ainsi que les superpositions facultatives.</translation>
+        </message>
+        <message>
+            <source>Molecular entity: name, type, sequence, UniProt and PDB identifiers, organism.</source>
+            <translation>Entité moléculaire : nom, type, séquence, identifiants UniProt et PDB, organisme.</translation>
+        </message>
+        <message>
+            <source>Monte Carlo sampling: number of trials, save interval, move scale and thermal energy kT, plus start / stop of the background run.</source>
+            <translation>Échantillonnage Monte-Carlo : nombre d’essais, intervalle de sauvegarde, échelle de déplacement et énergie thermique kT, ainsi que démarrage/arrêt de l’exécution de fond.</translation>
+        </message>
+        <message>
+            <source>Move the listed files to the .trash folder of the opened folder. They are not deleted for good.</source>
+            <translation>Déplacer les fichiers listés dans le dossier .trash du dossier ouvert. Ils ne sont pas supprimés définitivement.</translation>
+        </message>
+        <message>
+            <source>Move this cell down</source>
+            <translation>Déplacer cette cellule vers le bas</translation>
+        </message>
+        <message>
+            <source>Move this cell up</source>
+            <translation>Déplacer cette cellule vers le haut</translation>
+        </message>
+        <message>
+            <source>Movie and the three tracking steps: detect, link, transport.</source>
+            <translation>Film et les trois étapes de suivi : détecter, relier, transporter.</translation>
+        </message>
+        <message>
+            <source>Movie file, channel and maximum number of frames to read.</source>
+            <translation>Fichier film, canal et nombre maximal d’images à lire.</translation>
+        </message>
+        <message>
+            <source>Multiple-tau correlator geometry: bins per cascade, cascades, splits and algorithm.</source>
+            <translation>Géométrie du corrélateur multi-tau : classes par cascade, cascades, découpages et algorithme.</translation>
+        </message>
+        <message>
+            <source>N and baseline b scale the curve; focal radius w0 and shape s are what the calibration determines; temp sets the water viscosity the dye D is scaled with.</source>
+            <translation>N et la ligne de base b mettent la courbe à l’échelle ; le rayon focal w0 et la forme s sont ce que détermine l’étalonnage ; temp fixe la viscosité de l’eau à laquelle le D du colorant est mis à l’échelle.</translation>
+        </message>
+        <message>
+            <source>N-state exchange: rate matrix (1/ms) between states with their FRET efficiencies.</source>
+            <translation>Échange à N états : matrice des taux (1/ms) entre les états, avec leurs efficacités FRET.</translation>
+        </message>
+        <message>
+            <source>Name for the saved painted mask.</source>
+            <translation>Nom du masque peint enregistré.</translation>
+        </message>
+        <message>
+            <source>Name of the fit entering the global analysis.</source>
+            <translation>Nom de l’ajustement entrant dans l’analyse globale.</translation>
+        </message>
+        <message>
+            <source>Name of the fitting model.</source>
+            <translation>Nom du modèle d’ajustement.</translation>
+        </message>
+        <message>
+            <source>Name of the operation under which the optical path is recorded in the MMFDB database.</source>
+            <translation>Nom de l’opération sous laquelle le trajet optique est enregistré dans la base MMFDB.</translation>
+        </message>
+        <message>
+            <source>Name of the parameter of the selected energy term.</source>
+            <translation>Nom du paramètre du terme énergétique choisi.</translation>
+        </message>
+        <message>
+            <source>Name of this optical detector; it labels the calculated signal and crosstalk columns.</source>
+            <translation>Nom de ce détecteur optique ; il étiquette les colonnes de signal calculé et de diaphonie.</translation>
+        </message>
+        <message>
+            <source>Name, description and buffer of the sample.</source>
+            <translation>Nom, description et tampon de l’échantillon.</translation>
+        </message>
+        <message>
+            <source>Next page of bursts.</source>
+            <translation>Page suivante de bursts.</translation>
+        </message>
+        <message>
+            <source>Next ▶</source>
+            <translation>Suivant ▶</translation>
+        </message>
+        <message>
+            <source>No H2MM fit yet. Select a burst folder and press Run H2MM.</source>
+            <translation>Pas encore d’ajustement H2MM. Sélectionnez un dossier de bursts et appuyez sur Lancer H2MM.</translation>
+        </message>
+        <message>
+            <source>No H2MM fit yet. Select a burst folder, define the detectors and press Run H2MM.</source>
+            <translation>Pas encore d’ajustement H2MM. Sélectionnez un dossier de bursts, définissez les détecteurs et appuyez sur Lancer H2MM.</translation>
+        </message>
+        <message>
+            <source>No IRF data available. Load TTTR files, define detectors, and compute.</source>
+            <translation>Aucune donnée IRF disponible. Chargez des fichiers TTTR, définissez les détecteurs et calculez.</translation>
+        </message>
+        <message>
+            <source>No burst lifetimes yet: press Fit Bursts. The histogram of the fitted lifetimes of all bursts appears here.</source>
+            <translation>Pas encore de durées de vie de bursts : appuyez sur Ajuster les bursts. L’histogramme des durées de vie ajustées de tous les bursts apparaît ici.</translation>
+        </message>
+        <message>
+            <source>No burst lifetimes yet: press Fit bursts. The histogram of the fitted lifetimes appears here.</source>
+            <translation>Pas encore de durées de vie de bursts : appuyez sur Ajuster les bursts. L’histogramme des durées de vie ajustées apparaît ici.</translation>
+        </message>
+        <message>
+            <source>No bursts detected yet. Click Find Bursts.</source>
+            <translation>Aucun burst détecté pour l’instant. Cliquez sur Rechercher les bursts.</translation>
+        </message>
+        <message>
+            <source>No bursts loaded. Open a .bur folder or file.</source>
+            <translation>Aucun burst chargé. Ouvrez un dossier ou un fichier .bur.</translation>
+        </message>
+        <message>
+            <source>No bursts loaded: add burst files to inspect one burst's decay per detector.</source>
+            <translation>Aucun burst chargé : ajoutez des fichiers de bursts pour examiner la décroissance d’un burst par détecteur.</translation>
+        </message>
+        <message>
+            <source>No curve ticked: the merge averages all of them, as the Qt page does.</source>
+            <translation>Aucune courbe cochée : la fusion calcule la moyenne de toutes, comme la page Qt.</translation>
+        </message>
+        <message>
+            <source>No detector setups are saved yet — define one in the Detector Configuration wizard and it appears here.</source>
+            <translation>Aucune configuration de détecteurs enregistrée pour l’instant : définissez-en une dans l’assistant de configuration des détecteurs, elle apparaîtra ici.</translation>
+        </message>
+        <message>
+            <source>No dwell FRET states yet: they are drawn here once an H2MM fit has finished.</source>
+            <translation>Pas encore d’états FRET de séjour : ils sont tracés ici dès qu’un ajustement H2MM est terminé.</translation>
+        </message>
+        <message>
+            <source>No dwell times yet: they are drawn here once an H2MM fit has finished.</source>
+            <translation>Pas encore de temps de séjour : ils sont tracés ici dès qu’un ajustement H2MM est terminé.</translation>
+        </message>
+        <message>
+            <source>No file selected. Click a file in the table to see its details.</source>
+            <translation>Aucun fichier sélectionné. Cliquez sur un fichier du tableau pour voir ses détails.</translation>
+        </message>
+        <message>
+            <source>No file. Add files or a folder, or drop them here.</source>
+            <translation>Aucun fichier. Ajoutez des fichiers ou un dossier, ou déposez-les ici.</translation>
+        </message>
+        <message>
+            <source>No file. Add or drop one.</source>
+            <translation>Aucun fichier. Ajoutez-en un ou déposez-le.</translation>
+        </message>
+        <message>
+            <source>No files loaded</source>
+            <translation>Aucun fichier chargé</translation>
+        </message>
+        <message>
+            <source>No files loaded.</source>
+            <translation>Aucun fichier chargé.</translation>
+        </message>
+        <message>
+            <source>No files loaded. Click Add Files.</source>
+            <translation>Aucun fichier chargé. Cliquez sur Ajouter des fichiers.</translation>
+        </message>
+        <message>
+            <source>No files queued — add PTU files or a folder.</source>
+            <translation>Aucun fichier en file – ajoutez des fichiers PTU ou un dossier.</translation>
+        </message>
+        <message>
+            <source>No files queued.</source>
+            <translation>Aucun fichier en file.</translation>
+        </message>
+        <message>
+            <source>No files queued. Add VV/VH decays to evaluate their steady anisotropy with this calibration.</source>
+            <translation>Aucun fichier en file. Ajoutez des décroissances VV/VH pour évaluer leur anisotropie stationnaire avec cet étalonnage.</translation>
+        </message>
+        <message>
+            <source>No files yet: add TTTR files or a folder, or drop them on this window.</source>
+            <translation>Aucun fichier pour l’instant : ajoutez des fichiers TTTR ou un dossier, ou déposez-les sur cette fenêtre.</translation>
+        </message>
+        <message>
+            <source>No fit yet. Add burst files and press Auto IRF/background: the decay, the model, the IRF and the background of the current file appear here.</source>
+            <translation>Pas encore d’ajustement. Ajoutez des fichiers de bursts et appuyez sur IRF/fond auto : la décroissance, le modèle, l’IRF et le fond du fichier actuel apparaissent ici.</translation>
+        </message>
+        <message>
+            <source>No fit yet. Load burst files, an IRF and a background in the wizard, then press Fit Bursts or Refit: the decay, the model, the IRF and the background of the current file appear here.</source>
+            <translation>Pas encore d’ajustement. Chargez des fichiers de bursts, une IRF et un fond dans l’assistant, puis appuyez sur Ajuster les bursts ou Réajuster : la décroissance, le modèle, l’IRF et le fond du fichier actuel apparaissent ici.</translation>
+        </message>
+        <message>
+            <source>No fit; correlation curve only.</source>
+            <translation>Pas d’ajustement ; courbe de corrélation seule.</translation>
+        </message>
+        <message>
+            <source>No histogram data available.</source>
+            <translation>Aucune donnée d’histogramme disponible.</translation>
+        </message>
+        <message>
+            <source>No inter-photon time distribution data. Load TTTR files and estimate.</source>
+            <translation>Aucune donnée de distribution des temps inter-photons. Chargez des fichiers TTTR et estimez.</translation>
+        </message>
+        <message>
+            <source>No lifetime table yet: press Fit bursts.</source>
+            <translation>Pas encore de tableau de durées de vie : appuyez sur Ajuster les bursts.</translation>
+        </message>
+        <message>
+            <source>No likelihood scan yet: press LL scan after a fit.</source>
+            <translation>Pas encore de balayage de vraisemblance : après un ajustement, appuyez sur Balayage LL.</translation>
+        </message>
+        <message>
+            <source>No matching panels.</source>
+            <translation>Aucun panneau correspondant.</translation>
+        </message>
+        <message>
+            <source>No matching projects. Refresh, save the current session or import a project archive.</source>
+            <translation>Aucun projet correspondant. Actualisez, enregistrez la session en cours ou importez une archive de projet.</translation>
+        </message>
+        <message>
+            <source>No model selection yet: BIC and ICL of every fitted state count appear here after a fit.</source>
+            <translation>Pas encore de sélection de modèle : les BIC et ICL de chaque nombre d’états ajusté apparaissent ici après un ajustement.</translation>
+        </message>
+        <message>
+            <source>No per-state decays: they need the photons' micro times, which a fit of this folder did not carry.</source>
+            <translation>Pas de décroissances par état : elles nécessitent les microtemps des photons, que cet ajustement de dossier ne contenait pas.</translation>
+        </message>
+        <message>
+            <source>No photons loaded.</source>
+            <translation>Aucun photon chargé.</translation>
+        </message>
+        <message>
+            <source>No photons: tick files in Files &amp; Steps first.</source>
+            <translation>Aucun photon : cochez d’abord des fichiers dans Fichiers &amp; étapes.</translation>
+        </message>
+        <message>
+            <source>No pooled state lifetimes yet: press Fit Bursts to fit every H2MM state.</source>
+            <translation>Pas encore de durées de vie d’états regroupées : appuyez sur Ajuster les bursts pour ajuster chaque état H2MM.</translation>
+        </message>
+        <message>
+            <source>No rate data available.</source>
+            <translation>Aucune donnée de taux disponible.</translation>
+        </message>
+        <message>
+            <source>No rating; clears the stored rating.</source>
+            <translation>Aucune note ; efface la note enregistrée.</translation>
+        </message>
+        <message>
+            <source>No regions yet. Run or Preview, or open saved results.</source>
+            <translation>Aucune région pour l’instant. Lancez Exécuter ou Aperçu, ou ouvrez des résultats enregistrés.</translation>
+        </message>
+        <message>
+            <source>No result yet: set the structure and the dye, then press Simulate.</source>
+            <translation>Pas encore de résultat : définissez la structure et le colorant, puis appuyez sur Simuler.</translation>
+        </message>
+        <message>
+            <source>No results yet — press Calculate.</source>
+            <translation>Pas encore de résultats – appuyez sur Calculer.</translation>
+        </message>
+        <message>
+            <source>No results yet: add the structures and the fps.json, then press Run.</source>
+            <translation>Pas encore de résultats : ajoutez les structures et le fps.json, puis appuyez sur Exécuter.</translation>
+        </message>
+        <message>
+            <source>No score trace yet: it is drawn while a docking run is going on.</source>
+            <translation>Pas encore de courbe de score : elle est tracée pendant une exécution de docking.</translation>
+        </message>
+        <message>
+            <source>No search yet: add TTTR files and press Run. The key figures of the run appear here.</source>
+            <translation>Pas encore de recherche : ajoutez des fichiers TTTR et appuyez sur Exécuter. Les chiffres clés de l’exécution apparaissent ici.</translation>
+        </message>
+        <message>
+            <source>No state has a dwell that ended inside a burst, so there is no dwell-time distribution.</source>
+            <translation>Aucun état n’a de temps de séjour se terminant dans un burst ; il n’y a donc pas de distribution des temps de séjour.</translation>
+        </message>
+        <message>
+            <source>No state path yet: after a fit, pick a burst to see its photons coloured by decoded state.</source>
+            <translation>Pas encore de chemin d’états : après un ajustement, choisissez un burst pour voir ses photons colorés selon l’état décodé.</translation>
+        </message>
+        <message>
+            <source>No structure loaded: press Load PDB... (or drop a .pdb file on the window).</source>
+            <translation>Aucune structure chargée : appuyez sur Charger un PDB… (ou déposez un fichier .pdb sur la fenêtre).</translation>
+        </message>
+        <message>
+            <source>No structure to show: select a structure of the list or a result.</source>
+            <translation>Aucune structure à afficher : sélectionnez une structure de la liste ou un résultat.</translation>
+        </message>
+        <message>
+            <source>No tool matches the search.</source>
+            <translation>Aucun outil ne correspond à la recherche.</translation>
+        </message>
+        <message>
+            <source>No trace to show for this file.</source>
+            <translation>Aucune trace à afficher pour ce fichier.</translation>
+        </message>
+        <message>
+            <source>No trace: load a TTTR file (Load TTTR, or drop one here).</source>
+            <translation>Aucune trace : chargez un fichier TTTR (Charger TTTR ou déposez-en un ici).</translation>
+        </message>
+        <message>
+            <source>No transition density yet: it shows the FRET efficiency before and after every decoded transition once an H2MM fit has finished.</source>
+            <translation>Pas encore de densité de transition : elle affiche l’efficacité FRET avant et après chaque transition décodée, une fois un ajustement H2MM terminé.</translation>
+        </message>
+        <message>
+            <source>No transition rates yet: they appear here once an H2MM fit has finished.</source>
+            <translation>Pas encore de taux de transition : ils apparaissent ici une fois un ajustement H2MM terminé.</translation>
+        </message>
+        <message>
+            <source>No µs-ALEX measurement at hand?</source>
+            <translation>Pas de mesure µs-ALEX sous la main ?</translation>
+        </message>
+        <message>
+            <source>Non-negative least squares; amplitudes are strictly non-negative.</source>
+            <translation>Moindres carrés non négatifs ; les amplitudes sont strictement non négatives.</translation>
+        </message>
+        <message>
+            <source>Normalise the species amplitudes to sum to one.</source>
+            <translation>Normaliser les amplitudes des espèces pour que leur somme soit égale à un.</translation>
+        </message>
+        <message>
+            <source>Normalization of the IRFs of the polarized channels.</source>
+            <translation>Normalisation des IRF des canaux polarisés.</translation>
+        </message>
+        <message>
+            <source>Not yet generated.</source>
+            <translation>Pas encore généré.</translation>
+        </message>
+        <message>
+            <source>Notebook terminal</source>
+            <translation>Terminal du notebook</translation>
+        </message>
+        <message>
+            <source>Nothing queued.</source>
+            <translation>Rien en file.</translation>
+        </message>
+        <message>
+            <source>Nothing to show: give a position a structure (Positions tab, PDB file or ID), and compute its accessible volume with Compute AVs.</source>
+            <translation>Rien à afficher : attribuez une structure à une position (onglet Positions, fichier PDB ou identifiant) et calculez son volume accessible avec Calculer les AV.</translation>
+        </message>
+        <message>
+            <source>Nuisance parameters of the burst data: background rates, crosstalk/direct-excitation and detection-efficiency corrections.</source>
+            <translation>Paramètres parasites des données de bursts : taux de fond, corrections de diaphonie / d’excitation directe et d’efficacité de détection.</translation>
+        </message>
+        <message>
+            <source>Nuisance terms of the decay: scattered light, constant background (and its curve) and photon counts.</source>
+            <translation>Termes parasites de la décroissance : lumière diffusée, fond constant (et sa courbe) et nombres de photons.</translation>
+        </message>
+        <message>
+            <source>Number and brightness analysis from the intensity fluctuations of each pixel.</source>
+            <translation>Analyse nombre et luminosité à partir des fluctuations d’intensité de chaque pixel.</translation>
+        </message>
+        <message>
+            <source>Number of FRET populations fitted in each histogram.</source>
+            <translation>Nombre de populations FRET ajustées dans chaque histogramme.</translation>
+        </message>
+        <message>
+            <source>Number of bins and count range of the count histogram.</source>
+            <translation>Nombre de classes et plage de comptages de l’histogramme de comptage.</translation>
+        </message>
+        <message>
+            <source>Number of bins of the FRET efficiency histograms.</source>
+            <translation>Nombre de classes des histogrammes d’efficacité FRET.</translation>
+        </message>
+        <message>
+            <source>Number of frames in the series.</source>
+            <translation>Nombre d’images dans la série.</translation>
+        </message>
+        <message>
+            <source>Number of frames removed before the detected point.</source>
+            <translation>Nombre d’images retirées avant le point détecté.</translation>
+        </message>
+        <message>
+            <source>Number of hidden states of the HMM and the fit buttons.</source>
+            <translation>Nombre d’états cachés du HMM et boutons d’ajustement.</translation>
+        </message>
+        <message>
+            <source>Number of histogram bins along the mean proximity-ratio axis.</source>
+            <translation>Nombre de classes de l’histogramme le long de l’axe du ratio de proximité moyen.</translation>
+        </message>
+        <message>
+            <source>Number of histogram bins along the standard-deviation axis.</source>
+            <translation>Nombre de classes de l’histogramme le long de l’axe de l’écart type.</translation>
+        </message>
+        <message>
+            <source>Number of lifetime components, automatic model selection and the settings that control it.</source>
+            <translation>Nombre de composantes de durée de vie, sélection automatique du modèle et réglages qui la pilotent.</translation>
+        </message>
+        <message>
+            <source>Number of micro-time bins and bin width of the simulated histogram.</source>
+            <translation>Nombre de classes de microtemps et largeur de classe de l’histogramme simulé.</translation>
+        </message>
+        <message>
+            <source>Number of photons per slice when splitting bursts for the variance analysis.</source>
+            <translation>Nombre de photons par tranche lors du découpage des bursts pour l’analyse de variance.</translation>
+        </message>
+        <message>
+            <source>Number of states of the model to select.</source>
+            <translation>Nombre d’états du modèle à sélectionner.</translation>
+        </message>
+        <message>
+            <source>Number of states the priors apply to.</source>
+            <translation>Nombre d’états auxquels s’appliquent les a priori.</translation>
+        </message>
+        <message>
+            <source>Number of states, starting transition rates and optimiser settings.</source>
+            <translation>Nombre d’états, taux de transition de départ et réglages de l’optimiseur.</translation>
+        </message>
+        <message>
+            <source>Number of time bins, bin width and start bin of the simulated histogram.</source>
+            <translation>Nombre de classes temporelles, largeur de classe et classe de départ de l’histogramme simulé.</translation>
+        </message>
+        <message>
+            <source>Number, brightness and intensity maps.</source>
+            <translation>Cartes du nombre, de la luminosité et de l’intensité.</translation>
+        </message>
+        <message>
+            <source>Number-of-states model shown in the ensemble panel.</source>
+            <translation>Modèle à nombre d’états affiché dans le panneau d’ensemble.</translation>
+        </message>
+        <message>
+            <source>Numeric fitting limit; use inf or -inf for an unbounded side.</source>
+            <translation>Limite numérique d’ajustement ; utilisez inf ou -inf pour un côté non borné.</translation>
+        </message>
+        <message>
+            <source>Numerical aperture, immersion refractive index and wavelength of the objective.</source>
+            <translation>Ouverture numérique, indice de réfraction d’immersion et longueur d’onde de l’objectif.</translation>
+        </message>
+        <message>
+            <source>Numerical integration over the distributions: nodes per axis and weight cutoff below which nodes are dropped.</source>
+            <translation>Intégration numérique sur les distributions : nœuds par axe et seuil de poids en dessous duquel les nœuds sont supprimés.</translation>
+        </message>
+        <message>
+            <source>Object-based analysis of punctate signal: segment objects and measure distances between channels.</source>
+            <translation>Analyse par objets de signaux ponctuels : segmenter les objets et mesurer les distances entre canaux.</translation>
+        </message>
+        <message>
+            <source>Objective, PSF model, illumination polarization, sampling and display settings.</source>
+            <translation>Objectif, modèle de PSF, polarisation d’illumination, échantillonnage et réglages d’affichage.</translation>
+        </message>
+        <message>
+            <source>Observed signal as a linear combination of species concentrations: autoscale switch, offset and per-species signal coefficients.</source>
+            <translation>Signal observé comme combinaison linéaire des concentrations des espèces : commutateur d’autoéchelle, décalage et coefficients de signal par espèce.</translation>
+        </message>
+        <message>
+            <source>Offsets that shift the curves against each other.</source>
+            <translation>Décalages qui déplacent les courbes les unes par rapport aux autres.</translation>
+        </message>
+        <message>
+            <source>One star.</source>
+            <translation>Une étoile.</translation>
+        </message>
+        <message>
+            <source>One-dimensional maximum-entropy lifetime fit with Gaussian peaks: regularisation, prior and number of peaks.</source>
+            <translation>Ajustement de durée de vie unidimensionnel à entropie maximale avec pics gaussiens : régularisation, a priori et nombre de pics.</translation>
+        </message>
+        <message>
+            <source>Open Dwells in ndX</source>
+            <translation>Ouvrir les séjours dans ndX</translation>
+        </message>
+        <message>
+            <source>Open File</source>
+            <translation>Ouvrir un fichier</translation>
+        </message>
+        <message>
+            <source>Open Folder</source>
+            <translation>Ouvrir un dossier</translation>
+        </message>
+        <message>
+            <source>Open a TTTR file (.ptu, .ht3, .phu, …). Dropping one on the window does the same.</source>
+            <translation>Ouvrir un fichier TTTR (.ptu, .ht3, .phu, …). Déposer un fichier sur la fenêtre a le même effet.</translation>
+        </message>
+        <message>
+            <source>Open a TTTR file — or drop one on this window — to inspect its photons.</source>
+            <translation>Ouvrir un fichier TTTR, ou le déposer sur cette fenêtre, pour examiner ses photons.</translation>
+        </message>
+        <message>
+            <source>Open a folder of .bur burst files (with their companions).</source>
+            <translation>Ouvrir un dossier de fichiers de bursts .bur (avec leurs fichiers associés).</translation>
+        </message>
+        <message>
+            <source>Open a single .bur burst file or .pto container.</source>
+            <translation>Ouvrir un fichier de burst .bur seul ou un conteneur .pto.</translation>
+        </message>
+        <message>
+            <source>Open setup library…</source>
+            <translation>Ouvrir la bibliothèque de configurations…</translation>
+        </message>
+        <message>
+            <source>Open the CLSM measurement and pick the scanner setup it was acquired on.</source>
+            <translation>Ouvrir la mesure CLSM et choisir la configuration du scanner avec laquelle elle a été acquise.</translation>
+        </message>
+        <message>
+            <source>Open the complete detector setup, timing, calibration, PIE, TAC and optical editor.</source>
+            <translation>Ouvrir l’éditeur complet de la configuration des détecteurs, du timing, de l’étalonnage, PIE, TAC et de l’optique.</translation>
+        </message>
+        <message>
+            <source>Open the fFCS Filter Calculator to compute lifetime filters from decay patterns.</source>
+            <translation>Ouvrir le calculateur de filtres fFCS pour calculer des filtres de durée de vie à partir de motifs de décroissance.</translation>
+        </message>
+        <message>
+            <source>Open the help and reference documentation.</source>
+            <translation>Ouvrir l’aide et la documentation de référence.</translation>
+        </message>
+        <message>
+            <source>Open the next panel of the rail.</source>
+            <translation>Ouvrir le panneau suivant de la barre.</translation>
+        </message>
+        <message>
+            <source>Open the previous panel of the rail.</source>
+            <translation>Ouvrir le panneau précédent de la barre.</translation>
+        </message>
+        <message>
+            <source>Open, convert and save the current file.</source>
+            <translation>Ouvrir, convertir et enregistrer le fichier actuel.</translation>
+        </message>
+        <message>
+            <source>Optimizer used: fast float32 EM, exact float64 EM, or a neural surrogate.</source>
+            <translation>Optimiseur utilisé : EM rapide en float32, EM exact en float64 ou substitut neuronal.</translation>
+        </message>
+        <message>
+            <source>Optional MMFDB database path for dyes and saved optical priors; empty uses the configured database.</source>
+            <translation>Chemin facultatif de la base MMFDB pour les colorants et les a priori optiques enregistrés ; vide utilise la base configurée.</translation>
+        </message>
+        <message>
+            <source>Optional exports: photon table, decoded state paths and state photons.</source>
+            <translation>Exports facultatifs : table des photons, chemins d’états décodés et photons des états.</translation>
+        </message>
+        <message>
+            <source>Optional extras: transition-time scan, state-path decoding and cross-check against H2MM.</source>
+            <translation>Options supplémentaires : balayage des temps de transition, décodage du chemin d’états et contre-vérification avec H2MM.</translation>
+        </message>
+        <message>
+            <source>Optional fit terms such as the 2I* criterion and scatter treatment.</source>
+            <translation>Termes d’ajustement facultatifs, comme le critère 2I* et le traitement de la diffusion.</translation>
+        </message>
+        <message>
+            <source>Orientation factor used in the Förster-radius calculation.</source>
+            <translation>Facteur d’orientation utilisé dans le calcul du rayon de Förster.</translation>
+        </message>
+        <message>
+            <source>Output / remove</source>
+            <translation>Sortie / supprimer</translation>
+        </message>
+        <message>
+            <source>Output folder:</source>
+            <translation>Dossier de sortie :</translation>
+        </message>
+        <message>
+            <source>Output next to each file</source>
+            <translation>Sortie à côté de chaque fichier</translation>
+        </message>
+        <message>
+            <source>Overlay the shot-noise limited static line on the BVA plot.</source>
+            <translation>Superposer la ligne statique limitée par le bruit de grenaille au graphique BVA.</translation>
+        </message>
+        <message>
+            <source>Overlays for orientation: grid, lifetime ticks on the semicircle, polar grid and the FRET trajectory from the donor lifetime.</source>
+            <translation>Superpositions d’orientation : grille, graduations de durée de vie sur le demi-cercle, grille polaire et trajectoire FRET à partir de la durée de vie du donneur.</translation>
+        </message>
+        <message>
+            <source>Overview of the prepared burst folder.</source>
+            <translation>Aperçu du dossier de bursts préparé.</translation>
+        </message>
+        <message>
+            <source>PDB ensemble whose dye-label distances give the FRET rate distribution, and the fitted fraction of each structure.</source>
+            <translation>Ensemble PDB dont les distances entre marqueurs de colorant donnent la distribution des taux FRET, et fraction ajustée de chaque structure.</translation>
+        </message>
+        <message>
+            <source>PDB rigid bodies (one per body)</source>
+            <translation>Corps rigides PDB (un par corps)</translation>
+        </message>
+        <message>
+            <source>PIPELINE STEPS</source>
+            <translation>ÉTAPES DU PIPELINE</translation>
+        </message>
+        <message>
+            <source>PSF parameters on the left and the rendered 3-D intensity volume on the right.</source>
+            <translation>Paramètres de la PSF à gauche et volume d’intensité 3D calculé à droite.</translation>
+        </message>
+        <message>
+            <source>PTO preserves the measurement and embedded intensity; NPZ exports photon arrays. Other formats use tttrlib writers.</source>
+            <translation>PTO conserve la mesure et l’intensité intégrée ; NPZ exporte les tableaux de photons. Les autres formats utilisent les écrivains tttrlib.</translation>
+        </message>
+        <message>
+            <source>PTO stores the burst table and the original BID inside the measurement container. BUR, SL5 and HDF5 write the legacy table, a photon mask and a columnar table. The detector setup on the left decides the per-detector columns.</source>
+            <translation>PTO enregistre le tableau des bursts et le BID d’origine dans le conteneur de mesure. BUR, SL5 et HDF5 écrivent le tableau hérité, un masque de photons et un tableau en colonnes. La configuration des détecteurs à gauche détermine les colonnes par détecteur.</translation>
+        </message>
+        <message>
+            <source>Paint selection</source>
+            <translation>Peindre la sélection</translation>
+        </message>
+        <message>
+            <source>Parallel (VV) decay.</source>
+            <translation>Décroissance parallèle (VV).</translation>
+        </message>
+        <message>
+            <source>Parallel and perpendicular channels generated from the rotation spectrum.</source>
+            <translation>Canaux parallèle et perpendiculaire générés à partir du spectre de rotation.</translation>
+        </message>
+        <message>
+            <source>Parameters of the Gauss-Lorentz molecule detection function: focal radius w0 (nm), z0 / aspect ratio and the diffusion times.</source>
+            <translation>Paramètres de la fonction gauss-lorentzienne de détection moléculaire : rayon focal w0 (nm), z0 / rapport d’aspect et temps de diffusion.</translation>
+        </message>
+        <message>
+            <source>Parameters of the change-point detectors (Bayesian online, Kalman, CUSUM) that segment the count-rate trace.</source>
+            <translation>Paramètres des détecteurs de points de rupture (bayésien en ligne, Kalman, CUSUM) qui segmentent la trace du taux de comptage.</translation>
+        </message>
+        <message>
+            <source>Parameters of the micro-time or lifetime waterfall.</source>
+            <translation>Paramètres de la cascade de microtemps ou de durée de vie.</translation>
+        </message>
+        <message>
+            <source>Parameters of the selected fit and their links to other fits.</source>
+            <translation>Paramètres de l’ajustement choisi et leurs liens avec d’autres ajustements.</translation>
+        </message>
+        <message>
+            <source>Parameters of the transformation: values, bounds and links.</source>
+            <translation>Paramètres de la transformation : valeurs, bornes et liens.</translation>
+        </message>
+        <message>
+            <source>Path to the burst analysis folder; type a path or use Folder to browse.</source>
+            <translation>Chemin du dossier d’analyse des bursts ; saisissez un chemin ou utilisez Dossier pour parcourir.</translation>
+        </message>
+        <message>
+            <source>Path to the folder with the bursts to analyze; type a path or use Folder to browse.</source>
+            <translation>Chemin du dossier contenant les bursts à analyser ; saisissez un chemin ou utilisez Dossier pour parcourir.</translation>
+        </message>
+        <message>
+            <source>Pearson correlation as a function of intensity, to locate the pixels that drive the coefficient.</source>
+            <translation>Corrélation de Pearson en fonction de l’intensité, pour localiser les pixels qui déterminent le coefficient.</translation>
+        </message>
+        <message>
+            <source>Pearson correlation of channel A against channel B shifted by n pixels; a peak at zero shift indicates colocalization.</source>
+            <translation>Corrélation de Pearson du canal A avec le canal B décalé de n pixels ; un pic à décalage nul indique une colocalisation.</translation>
+        </message>
+        <message>
+            <source>Per-channel intensity images used for the colocalization.</source>
+            <translation>Images d’intensité par canal pour la colocalisation.</translation>
+        </message>
+        <message>
+            <source>Per-detector volume, note and chord of the audio mix.</source>
+            <translation>Volume, note et accord par détecteur dans le mixage audio.</translation>
+        </message>
+        <message>
+            <source>Per-group search parameters</source>
+            <translation>Paramètres de recherche par groupe</translation>
+        </message>
+        <message>
+            <source>Per-point series entries; edit the concentration or point label in place.</source>
+            <translation>Entrées de la série de points ; modifiez directement la concentration ou le libellé du point.</translation>
+        </message>
+        <message>
+            <source>Period: auto — measured from the data on arrival.</source>
+            <translation>Période : auto – mesurée à partir des données à l’arrivée.</translation>
+        </message>
+        <message>
+            <source>Periodic excitation: the decay wraps around the repetition period (pulsed laser, tails overlap).</source>
+            <translation>Excitation périodique : la décroissance se replie sur la période de répétition (laser pulsé, queues superposées).</translation>
+        </message>
+        <message>
+            <source>Perpendicular (VH) decay.</source>
+            <translation>Décroissance perpendiculaire (VH).</translation>
+        </message>
+        <message>
+            <source>Phasor controls and the phasor plot with the universal semicircle, reference lifetimes and overlays.</source>
+            <translation>Commandes du phasor et diagramme phasor avec le demi-cercle universel, les durées de vie de référence et les superpositions.</translation>
+        </message>
+        <message>
+            <source>Phasor g of each frame as a movie.</source>
+            <translation>Phasor g de chaque image sous forme de film.</translation>
+        </message>
+        <message>
+            <source>Phasor s of each frame as a movie.</source>
+            <translation>Phasor s de chaque image sous forme de film.</translation>
+        </message>
+        <message>
+            <source>Photon Size Range:</source>
+            <translation>Plage de taille de photons :</translation>
+        </message>
+        <message>
+            <source>Photon arrival-time histogram of the selected pixels and saved regions; time axis in ns from the TTTR header.</source>
+            <translation>Histogramme des temps d’arrivée des photons des pixels sélectionnés et des régions enregistrées ; axe temporel en ns à partir de l’en-tête TTTR.</translation>
+        </message>
+        <message>
+            <source>Photon count image of the selected detector window.</source>
+            <translation>Image de comptage de photons de la fenêtre de détecteur sélectionnée.</translation>
+        </message>
+        <message>
+            <source>Photon histograms from saved regions and the current selected pixels; time is calibrated from the TTTR header.</source>
+            <translation>Histogrammes de photons des régions enregistrées et des pixels sélectionnés ; le temps est étalonné à partir de l’en-tête TTTR.</translation>
+        </message>
+        <message>
+            <source>Photon intensity images and count rates from the photon stream.</source>
+            <translation>Images d’intensité de photons et taux de comptage à partir du flux de photons.</translation>
+        </message>
+        <message>
+            <source>Photon source, kinetic model and extra analyses.</source>
+            <translation>Source de photons, modèle cinétique et analyses supplémentaires.</translation>
+        </message>
+        <message>
+            <source>Photon-by-photon kinetic analysis of bursts with a hidden Markov model.</source>
+            <translation>Analyse cinétique photon par photon des bursts à l’aide d’un modèle de Markov caché.</translation>
+        </message>
+        <message>
+            <source>Photon-count channels that enter the correction: donor, FRET (sensitised acceptor) and acceptor-after-acceptor-excitation, plus the donor lifetime.</source>
+            <translation>Canaux de comptage de photons entrant dans la correction : donneur, FRET (accepteur sensibilisé) et accepteur après excitation de l’accepteur, ainsi que la durée de vie du donneur.</translation>
+        </message>
+        <message>
+            <source>Photon-number range of the bursts included in the fit: minimum and maximum total counts per burst.</source>
+            <translation>Plage du nombre de photons des bursts inclus dans l’ajustement : nombre total de comptages minimum et maximum par burst.</translation>
+        </message>
+        <message>
+            <source>Photon-number window of the events entering the analysis.</source>
+            <translation>Fenêtre du nombre de photons des événements entrant dans l’analyse.</translation>
+        </message>
+        <message>
+            <source>Photons per file, micro-time binning and what to keep.</source>
+            <translation>Photons par fichier, regroupement en microtemps et éléments à conserver.</translation>
+        </message>
+        <message>
+            <source>Photons per slice:</source>
+            <translation>Photons par tranche :</translation>
+        </message>
+        <message>
+            <source>Photons/window (m):</source>
+            <translation>Photons/fenêtre (m) :</translation>
+        </message>
+        <message>
+            <source>Photophysical bunching terms (triplet, blinking): amplitude and relaxation time (us) each.</source>
+            <translation>Termes de bunching photophysiques (triplet, clignotement) : amplitude et temps de relaxation (µs) pour chacun.</translation>
+        </message>
+        <message>
+            <source>Photophysical state scheme: number and names of states and the rate matrices (excitation, dark transitions) driving saturation and bunching.</source>
+            <translation>Schéma des états photophysiques : nombre et noms des états et matrices de taux (excitation, transitions sombres) qui pilotent la saturation et le bunching.</translation>
+        </message>
+        <message>
+            <source>Photophysics inputs, state diagram and the resulting FCS curves, volume profiles and diffusion times as a function of laser power.</source>
+            <translation>Entrées de photophysique, diagramme d’états et courbes FCS, profils de volume et temps de diffusion résultants en fonction de la puissance laser.</translation>
+        </message>
+        <message>
+            <source>Physical parameters of the diffusing species (diffusion time or D, number of molecules).</source>
+            <translation>Paramètres physiques des espèces diffusantes (temps de diffusion ou D, nombre de molécules).</translation>
+        </message>
+        <message>
+            <source>Pick TTTR files (.ptu, .ht3, .phu, …) and queue them for splitting.</source>
+            <translation>Choisir des fichiers TTTR (.ptu, .ht3, .phu, …) et les mettre en file pour le découpage.</translation>
+        </message>
+        <message>
+            <source>Pick a group or a probe to compare its spectra.</source>
+            <translation>Choisir un groupe ou une sonde pour comparer leurs spectres.</translation>
+        </message>
+        <message>
+            <source>Pick a stored FCS channel preset of the detector setup.</source>
+            <translation>Choisir un préréglage de canal FCS enregistré de la configuration des détecteurs.</translation>
+        </message>
+        <message>
+            <source>Pick datasets that are already loaded in ChiSurf to add them to the batch instead of choosing files from disk.</source>
+            <translation>Choisir des jeux de données déjà chargés dans ChiSurf pour les ajouter au lot, au lieu de choisir des fichiers sur le disque.</translation>
+        </message>
+        <message>
+            <source>Pick or edit the detector setup that defines the reported channels.</source>
+            <translation>Choisir ou modifier la configuration des détecteurs qui définit les canaux signalés.</translation>
+        </message>
+        <message>
+            <source>Pixel dwell time, line overhead, image size and number of images.</source>
+            <translation>Temps de séjour par pixel, surcoût de ligne, taille de l’image et nombre d’images.</translation>
+        </message>
+        <message>
+            <source>Pixel dwell, line and frame times with the predicted relative error on D.</source>
+            <translation>Temps de séjour par pixel, par ligne et par image, avec l’erreur relative prédite sur D.</translation>
+        </message>
+        <message>
+            <source>Pixel size and pixel, line and frame times of the scanner; they set the velocity scale.</source>
+            <translation>Taille de pixel et temps par pixel, par ligne et par image du scanner ; ils fixent l’échelle des vitesses.</translation>
+        </message>
+        <message>
+            <source>Pixel size in um and frame interval in s convert tracks to MSD and diffusion; tracks shorter than the minimum are dropped.</source>
+            <translation>Taille de pixel en µm et intervalle entre images en s convertissent les trajectoires en MSD et diffusion ; les trajectoires plus courtes que le minimum sont écartées.</translation>
+        </message>
+        <message>
+            <source>Play the frame stack; it stops at the last frame unless Loop is on.</source>
+            <translation>Lire la pile d’images ; elle s’arrête à la dernière image, sauf si Boucle est activé.</translation>
+        </message>
+        <message>
+            <source>Play, pause and stop the audio and set the playback position.</source>
+            <translation>Lire, mettre en pause et arrêter l’audio, et régler la position de lecture.</translation>
+        </message>
+        <message>
+            <source>Playback of the Monte Carlo trajectory on the structure.</source>
+            <translation>Lecture de la trajectoire Monte Carlo sur la structure.</translation>
+        </message>
+        <message>
+            <source>Plot of the correlation curves G(tau) against lag time.</source>
+            <translation>Graphique des courbes de corrélation G(tau) en fonction du temps de retard.</translation>
+        </message>
+        <message>
+            <source>Poisson (shot) noise added to the simulated histogram.</source>
+            <translation>Bruit de Poisson (grenaille) ajouté à l’histogramme simulé.</translation>
+        </message>
+        <message>
+            <source>Polarization channel(s) read from the file.</source>
+            <translation>Canal(aux) de polarisation lu(s) depuis le fichier.</translation>
+        </message>
+        <message>
+            <source>Polarization state of the light entering the pupil.</source>
+            <translation>État de polarisation de la lumière entrant dans la pupille.</translation>
+        </message>
+        <message>
+            <source>Pooled state lifetimes exist only for the segment-level analysis (split by H2MM state).</source>
+            <translation>Des durées de vie d’états regroupées n’existent que pour l’analyse au niveau des segments (découpée par état H2MM).</translation>
+        </message>
+        <message>
+            <source>Populations and binding isotherm fitted to the population fractions across the titration series.</source>
+            <translation>Populations et isotherme de liaison ajustées aux fractions de population sur toute la série de titration.</translation>
+        </message>
+        <message>
+            <source>Position along the two-component line set by the fraction of component 1.</source>
+            <translation>Position sur la droite à deux composantes, déterminée par la fraction de la composante 1.</translation>
+        </message>
+        <message>
+            <source>Posterior standard deviation of the state centre (FRET efficiency).</source>
+            <translation>Écart type a posteriori du centre de l’état (efficacité FRET).</translation>
+        </message>
+        <message>
+            <source>Power-independent rate constants between states (relaxation, intersystem crossing, triplet decay), in the chosen rate unit.</source>
+            <translation>Constantes de vitesse indépendantes de la puissance entre états (relaxation, croisement intersystème, décroissance du triplet), dans l’unité de taux choisie.</translation>
+        </message>
+        <message>
+            <source>Predicted error against pixel dwell time, as a plot and a table.</source>
+            <translation>Erreur prédite en fonction du temps de séjour par pixel, sous forme de graphique et de tableau.</translation>
+        </message>
+        <message>
+            <source>Preserve completed output and stop the remaining queue.</source>
+            <translation>Conserver la sortie terminée et arrêter le reste de la file.</translation>
+        </message>
+        <message>
+            <source>Presets, lifetime filters, channel choice and correlator settings.</source>
+            <translation>Préréglages, filtres de durée de vie, choix des canaux et réglages du corrélateur.</translation>
+        </message>
+        <message>
+            <source>Press Add in the header tags panel.</source>
+            <translation>Appuyer sur Ajouter dans le panneau des balises d’en-tête.</translation>
+        </message>
+        <message>
+            <source>Press Add to append a tag, then edit its name, type, value and index in the table. Invalid edits block saving.</source>
+            <translation>Appuyer sur Ajouter pour ajouter une balise, puis modifier son nom, son type, sa valeur et son index dans le tableau. Les saisies invalides bloquent l’enregistrement.</translation>
+        </message>
+        <message>
+            <source>Press BIC Elbow (HMM tab) to fit models of 1 to 15 states.</source>
+            <translation>Appuyer sur Coude BIC (onglet HMM) pour ajuster des modèles de 1 à 15 états.</translation>
+        </message>
+        <message>
+            <source>Press Convert / Split in the Input / Output panel.</source>
+            <translation>Appuyer sur Convertir / Scinder dans le panneau Entrée / Sortie.</translation>
+        </message>
+        <message>
+            <source>Press Convert / Split when the input and options are ready. The guide waits for this action; progress and status report whether the operation completes successfully.</source>
+            <translation>Appuyer sur Convertir / Scinder lorsque l’entrée et les options sont prêtes. Le guide attend cette action ; la progression et l’état indiquent si l’opération se termine avec succès.</translation>
+        </message>
+        <message>
+            <source>Press Inspect Stored Version to load this information.</source>
+            <translation>Appuyer sur Examiner la version enregistrée pour charger ces informations.</translation>
+        </message>
+        <message>
+            <source>Press Load example.</source>
+            <translation>Appuyer sur Charger l’exemple.</translation>
+        </message>
+        <message>
+            <source>Press Load example. It writes a simulated photon stream with six known bursts and its BID selection, and queues the BID file. Your own files go in with Add files or Folder.</source>
+            <translation>Appuyer sur Charger l’exemple. Cela écrit un flux de photons simulé avec six bursts connus et sa sélection BID, puis met le fichier BID en file. Vos propres fichiers s’ajoutent avec Ajouter des fichiers ou Dossier.</translation>
+        </message>
+        <message>
+            <source>Press Open to choose a supported TTTR file, then select your source. The guide waits for your Open click; it does not choose or load a file for you.</source>
+            <translation>Appuyer sur Ouvrir pour choisir un fichier TTTR pris en charge, puis sélectionner votre source. Le guide attend votre clic sur Ouvrir ; il ne choisit ni ne charge de fichier à votre place.</translation>
+        </message>
+        <message>
+            <source>Press Open, then choose a TTTR file.</source>
+            <translation>Appuyer sur Ouvrir, puis choisir un fichier TTTR.</translation>
+        </message>
+        <message>
+            <source>Press Process.</source>
+            <translation>Appuyer sur Traiter.</translation>
+        </message>
+        <message>
+            <source>Press Process. Each queued selection is converted with its TTTR file and the current detector setup.</source>
+            <translation>Appuyer sur Traiter. Chaque sélection en file est convertie avec son fichier TTTR et la configuration actuelle des détecteurs.</translation>
+        </message>
+        <message>
+            <source>Press Save as PTU to choose a destination after loading a source and checking the tags. The saved copy retains the original photon events; inspect the status for completion or errors.</source>
+            <translation>Appuyer sur Enregistrer en PTU pour choisir une destination après avoir chargé une source et vérifié les balises. La copie enregistrée conserve les événements photon d’origine ; consultez l’état pour l’achèvement ou les erreurs.</translation>
+        </message>
+        <message>
+            <source>Press Save as PTU, then choose a new output file.</source>
+            <translation>Appuyer sur Enregistrer en PTU, puis choisir un nouveau fichier de sortie.</translation>
+        </message>
+        <message>
+            <source>Press the browse button beside Input file and choose a TTTR measurement. The guide does not choose a file for you.</source>
+            <translation>Appuyer sur le bouton Parcourir à côté de Fichier d’entrée et choisir une mesure TTTR. Le guide ne choisit pas de fichier à votre place.</translation>
+        </message>
+        <message>
+            <source>Press the browse button beside Input file.</source>
+            <translation>Appuyer sur le bouton Parcourir à côté de Fichier d’entrée.</translation>
+        </message>
+        <message>
+            <source>Press the browse button beside Output folder and select a destination.</source>
+            <translation>Appuyer sur le bouton Parcourir à côté de Dossier de sortie et choisir une destination.</translation>
+        </message>
+        <message>
+            <source>Press the browse button beside Output folder.</source>
+            <translation>Appuyer sur le bouton Parcourir à côté de Dossier de sortie.</translation>
+        </message>
+        <message>
+            <source>Preview and apply the fusion to the burst folder.</source>
+            <translation>Prévisualiser et appliquer la fusion au dossier de bursts.</translation>
+        </message>
+        <message>
+            <source>Preview of the micro-time histogram and the computed LUT.</source>
+            <translation>Aperçu de l’histogramme de microtemps et de la LUT calculée.</translation>
+        </message>
+        <message>
+            <source>Preview of the micro-time histograms with the shifts applied.</source>
+            <translation>Aperçu des histogrammes de microtemps avec les décalages appliqués.</translation>
+        </message>
+        <message>
+            <source>Previous</source>
+            <translation>Précédent</translation>
+        </message>
+        <message>
+            <source>Previous page of bursts.</source>
+            <translation>Page précédente de bursts.</translation>
+        </message>
+        <message>
+            <source>Prior count:</source>
+            <translation>Nombre de priors :</translation>
+        </message>
+        <message>
+            <source>Prior duration(s):</source>
+            <translation>Durée a priori (s) :</translation>
+        </message>
+        <message>
+            <source>Prior expectation: range of state centres (FRET efficiency), noise and dwell time.</source>
+            <translation>Espérance a priori : plage des centres d’états (efficacité FRET), bruit et temps de séjour.</translation>
+        </message>
+        <message>
+            <source>Priors for gamma and beta computed from the detection light path: quantum yields and detection efficiencies of donor and acceptor.</source>
+            <translation>A priori de gamma et bêta calculés à partir du trajet lumineux de détection : rendements quantiques et efficacités de détection du donneur et de l’accepteur.</translation>
+        </message>
+        <message>
+            <source>Process noise (Q):</source>
+            <translation>Bruit de processus (Q) :</translation>
+        </message>
+        <message>
+            <source>Processing log will appear here…</source>
+            <translation>Le journal de traitement apparaîtra ici…</translation>
+        </message>
+        <message>
+            <source>Progress of the running 2CDE computation; Stop cancels it.</source>
+            <translation>Progression du calcul 2CDE en cours ; Arrêter l’annule.</translation>
+        </message>
+        <message>
+            <source>Progress of the running fit; Stop fit cancels it.</source>
+            <translation>Progression de l’ajustement en cours ; Arrêter l’ajustement l’annule.</translation>
+        </message>
+        <message>
+            <source>Provenance graph: an arrow is a recorded derivation. Double-click a node to open the tool that performs its step.</source>
+            <translation>Graphe de provenance : une flèche est une dérivation enregistrée. Double-cliquez sur un nœud pour ouvrir l’outil qui exécute son étape.</translation>
+        </message>
+        <message>
+            <source>Provider, endpoint and API key used to reach the language model.</source>
+            <translation>Fournisseur, point d’accès et clé API utilisés pour joindre le modèle de langage.</translation>
+        </message>
+        <message>
+            <source>Python command…</source>
+            <translation>Commande Python…</translation>
+        </message>
+        <message>
+            <source>Python module that provides the model.</source>
+            <translation>Module Python qui fournit le modèle.</translation>
+        </message>
+        <message>
+            <source>QuEst cannot start here</source>
+            <translation>QuEst ne peut pas démarrer ici</translation>
+        </message>
+        <message>
+            <source>QuEst needs the IMP.bff quenching tables (IMP.bff.quenching), which this Python environment does not provide. The reason it reported:</source>
+            <translation>QuEst a besoin des tables de extinction IMP.bff (IMP.bff.quenching), que cet environnement Python ne fournit pas. Raison signalée :</translation>
+        </message>
+        <message>
+            <source>Quantity and value of the G-factor tail match.</source>
+            <translation>Grandeur et valeur de l’accord de la queue du facteur G.</translation>
+        </message>
+        <message>
+            <source>Quantity and value of the mixing estimate.</source>
+            <translation>Grandeur et valeur de l’estimation du mélange.</translation>
+        </message>
+        <message>
+            <source>Queue .ptu files recursively from a folder, sorted by name.</source>
+            <translation>Mettre en file les fichiers .ptu d’un dossier et de ses sous-dossiers, triés par nom.</translation>
+        </message>
+        <message>
+            <source>Queue PTU datasets from the session MMFDB database.</source>
+            <translation>Mettre en file les jeux de données PTU de la base MMFDB de la session.</translation>
+        </message>
+        <message>
+            <source>Queue PTU files for the batch run.</source>
+            <translation>Mettre en file les fichiers PTU pour l’exécution par lot.</translation>
+        </message>
+        <message>
+            <source>Queue TTTR files (.ptu, .ht3, .spc, …) for the analysis.</source>
+            <translation>Mettre en file les fichiers TTTR (.ptu, .ht3, .spc, …) pour l’analyse.</translation>
+        </message>
+        <message>
+            <source>Queue a simulated photon stream with six known bursts and its BID selection.</source>
+            <translation>Mettre en file un flux de photons simulé avec six bursts connus et sa sélection BID.</translation>
+        </message>
+        <message>
+            <source>Queue cleared.</source>
+            <translation>File vidée.</translation>
+        </message>
+        <message>
+            <source>Queued files and the calculate button.</source>
+            <translation>Fichiers en file et bouton Calculer.</translation>
+        </message>
+        <message>
+            <source>Radial profiles of excitation, state populations and detected fluorescence across the focal volume.</source>
+            <translation>Profils radiaux de l’excitation, des populations d’états et de la fluorescence détectée à travers le volume focal.</translation>
+        </message>
+        <message>
+            <source>Radial profiles versus position r (nm): fraction of molecules per state and excitation rate relative to its peak.</source>
+            <translation>Profils radiaux en fonction de la position r (nm) : fraction de molécules par état et taux d’excitation relatif à son maximum.</translation>
+        </message>
+        <message>
+            <source>Radio buttons: Fix D, Fix rh or Fix Veff.</source>
+            <translation>Boutons radio : fixer D, fixer rh ou fixer Veff.</translation>
+        </message>
+        <message>
+            <source>Random seed, low-count threshold and wrap-spike mitigation.</source>
+            <translation>Graine aléatoire, seuil de faible comptage et atténuation des pics de repliement.</translation>
+        </message>
+        <message>
+            <source>Range of Gaussian sigma in pixels searched for spots and the allowed overlap between neighbours.</source>
+            <translation>Plage des sigma gaussiens en pixels pour la recherche des spots et chevauchement admis entre voisins.</translation>
+        </message>
+        <message>
+            <source>Range of state numbers (HMM complexity) fitted in the analysis.</source>
+            <translation>Plage des nombres d’états (complexité du HMM) ajustés dans l’analyse.</translation>
+        </message>
+        <message>
+            <source>Range of state numbers to scan so the model orders can be compared.</source>
+            <translation>Plage des nombres d’états à balayer afin de comparer les ordres de modèles.</translation>
+        </message>
+        <message>
+            <source>Range of state numbers tried and the information criterion that picks the best.</source>
+            <translation>Plage des nombres d’états testés et critère d’information qui retient le meilleur.</translation>
+        </message>
+        <message>
+            <source>Rate constants (1/us) of transitions between states that do not depend on excitation power (relaxation, ISC, blinking).</source>
+            <translation>Constantes de vitesse (1/µs) des transitions entre états indépendantes de la puissance d’excitation (relaxation, ISC, clignotement).</translation>
+        </message>
+        <message>
+            <source>Rate cutoff (kHz):</source>
+            <translation>Seuil de taux (kHz) :</translation>
+        </message>
+        <message>
+            <source>Rate matrix (1/ms) of the exchange between states: entry (i, j) is the rate from state j to state i.</source>
+            <translation>Matrice des taux (1/ms) d’échange entre états : l’élément (i, j) est le taux de l’état j vers l’état i.</translation>
+        </message>
+        <message>
+            <source>Rates, states, populations and transition-time views.</source>
+            <translation>Vues des taux, des états, des populations et des temps de transition.</translation>
+        </message>
+        <message>
+            <source>Ratio V_eff / V_0 of the effective to the low-power detection volume versus laser power (mW).</source>
+            <translation>Rapport V_eff / V_0 du volume de détection effectif au volume à faible puissance, en fonction de la puissance laser (mW).</translation>
+        </message>
+        <message>
+            <source>Reaction steps with rate constants (1/s or 1/(M s)).</source>
+            <translation>Étapes réactionnelles avec constantes de vitesse (1/s ou 1/(M s)).</translation>
+        </message>
+        <message>
+            <source>Read authoritative Detector Definition setups from MMFDB or JSON.</source>
+            <translation>Lire les configurations de définition des détecteurs faisant foi depuis MMFDB ou JSON.</translation>
+        </message>
+        <message>
+            <source>Read detector definitions from another setup library JSON file.</source>
+            <translation>Lire les définitions de détecteurs depuis un autre fichier JSON de bibliothèque de configurations.</translation>
+        </message>
+        <message>
+            <source>Read how MMFDB Admin works.</source>
+            <translation>Lire comment fonctionne MMFDB Admin.</translation>
+        </message>
+        <message>
+            <source>Read how MMFDB Admin works: the connection, the panels, editing and the dialogs.</source>
+            <translation>Lire comment fonctionne MMFDB Admin : connexion, panneaux, édition et boîtes de dialogue.</translation>
+        </message>
+        <message>
+            <source>Read or publish ndX data, export/store factors, or refresh optical catalogues.</source>
+            <translation>Lire ou publier des données ndX, exporter ou enregistrer des facteurs, ou actualiser les catalogues optiques.</translation>
+        </message>
+        <message>
+            <source>Read-only derived quantities of the MDF fit: effective volume Veff, concentration and diffusion coefficient.</source>
+            <translation>Grandeurs dérivées en lecture seule de l’ajustement MDF : volume effectif Veff, concentration et coefficient de diffusion.</translation>
+        </message>
+        <message>
+            <source>Read-only derived quantities of the fit: effective volume, concentration and diffusion coefficient.</source>
+            <translation>Grandeurs dérivées en lecture seule de l’ajustement : volume effectif, concentration et coefficient de diffusion.</translation>
+        </message>
+        <message>
+            <source>Rebuild detector colours and audio channels from the current setup.</source>
+            <translation>Recréer les couleurs des détecteurs et les canaux audio à partir de la configuration actuelle.</translation>
+        </message>
+        <message>
+            <source>Recompute</source>
+            <translation>Recalculer</translation>
+        </message>
+        <message>
+            <source>Recompute the BVA automatically whenever a parameter changes.</source>
+            <translation>Recalculer automatiquement le BVA à chaque modification d’un paramètre.</translation>
+        </message>
+        <message>
+            <source>Reference dye with a known diffusion coefficient at 25 °C in water; its D is rescaled to the current temperature and viscosity.</source>
+            <translation>Colorant de référence dont le coefficient de diffusion est connu à 25 °C dans l’eau ; son D est remis à l’échelle pour la température et la viscosité actuelles.</translation>
+        </message>
+        <message>
+            <source>Reference dye with known diffusion coefficient, used to calibrate the focal volume (D in um^2/s).</source>
+            <translation>Colorant de référence de coefficient de diffusion connu, utilisé pour étalonner le volume focal (D en µm²/s).</translation>
+        </message>
+        <message>
+            <source>Reference frame, algorithm and sub-pixel precision of the frame-to-frame shift estimate.</source>
+            <translation>Image de référence, algorithme et précision sous-pixel de l’estimation du décalage d’une image à l’autre.</translation>
+        </message>
+        <message>
+            <source>Reference sample of the shifts.</source>
+            <translation>Échantillon de référence des décalages.</translation>
+        </message>
+        <message>
+            <source>Refit</source>
+            <translation>Réajuster</translation>
+        </message>
+        <message>
+            <source>Refit the histogram with the settings above.</source>
+            <translation>Réajuster l’histogramme avec les réglages ci-dessus.</translation>
+        </message>
+        <message>
+            <source>Refractive index used in the spectral overlap calculation.</source>
+            <translation>Indice de réfraction utilisé dans le calcul du recouvrement spectral.</translation>
+        </message>
+        <message>
+            <source>Refresh saved setups</source>
+            <translation>Actualiser les configurations enregistrées</translation>
+        </message>
+        <message>
+            <source>Refresh the graph of fits and parameters, unlink all parameters and run the other global-view actions.</source>
+            <translation>Actualiser le graphe des ajustements et des paramètres, dissocier tous les paramètres et exécuter les autres actions de la vue globale.</translation>
+        </message>
+        <message>
+            <source>Region name or file</source>
+            <translation>Nom de la région ou fichier</translation>
+        </message>
+        <message>
+            <source>Region of interest (pixels) of each frame that enters the correlation.</source>
+            <translation>Région d’intérêt (pixels) de chaque image entrant dans la corrélation.</translation>
+        </message>
+        <message>
+            <source>Region of interest and preprocessing applied before the correlation is computed.</source>
+            <translation>Région d’intérêt et prétraitement appliqués avant le calcul de la corrélation.</translation>
+        </message>
+        <message>
+            <source>Register the shifted file as artifact of a sample in the database.</source>
+            <translation>Enregistrer le fichier décalé comme artefact d’un échantillon dans la base de données.</translation>
+        </message>
+        <message>
+            <source>Reject spots by size, intensity or shape.</source>
+            <translation>Rejeter les spots selon leur taille, leur intensité ou leur forme.</translation>
+        </message>
+        <message>
+            <source>Relative excitation cross-sections of the state transitions driven by light; multiplied by the excitation intensity.</source>
+            <translation>Sections efficaces d’excitation relatives des transitions d’états induites par la lumière ; multipliées par l’intensité d’excitation.</translation>
+        </message>
+        <message>
+            <source>Reload notebook</source>
+            <translation>Recharger le notebook</translation>
+        </message>
+        <message>
+            <source>Reload this notebook from disk; confirm before discarding unsaved changes</source>
+            <translation>Recharger ce notebook depuis le disque ; confirmer avant d’abandonner les modifications non enregistrées</translation>
+        </message>
+        <message>
+            <source>Remove all cell outputs and execution counts</source>
+            <translation>Supprimer toutes les sorties de cellules et les compteurs d’exécution</translation>
+        </message>
+        <message>
+            <source>Remove all queued selections and log entries.</source>
+            <translation>Supprimer toutes les sélections en file et les entrées du journal.</translation>
+        </message>
+        <message>
+            <source>Remove every region; all pixels are selected again.</source>
+            <translation>Supprimer toutes les régions ; tous les pixels sont à nouveau sélectionnés.</translation>
+        </message>
+        <message>
+            <source>Remove the last row of the titration series.</source>
+            <translation>Supprimer la dernière ligne de la série de titration.</translation>
+        </message>
+        <message>
+            <source>Remove the lifetime filters and return to detector-channel correlation.</source>
+            <translation>Retirer les filtres de durée de vie et revenir à la corrélation par canaux de détecteur.</translation>
+        </message>
+        <message>
+            <source>Remove this file without deleting it from disk.</source>
+            <translation>Retirer ce fichier sans le supprimer du disque.</translation>
+        </message>
+        <message>
+            <source>Remove this input without deleting it from disk.</source>
+            <translation>Retirer cette entrée sans la supprimer du disque.</translation>
+        </message>
+        <message>
+            <source>Remove this input without deleting its source file.</source>
+            <translation>Retirer cette entrée sans supprimer son fichier source.</translation>
+        </message>
+        <message>
+            <source>Remove this stored image/representation; retained sources stay available.</source>
+            <translation>Supprimer cette image ou cette représentation enregistrée ; les sources conservées restent disponibles.</translation>
+        </message>
+        <message>
+            <source>Rendering…</source>
+            <translation>Rendu en cours…</translation>
+        </message>
+        <message>
+            <source>Replace the table by the reference PET chemistry.</source>
+            <translation>Remplacer le tableau par la chimie PET de référence.</translation>
+        </message>
+        <message>
+            <source>Report and result views.</source>
+            <translation>Vues des rapports et des résultats.</translation>
+        </message>
+        <message>
+            <source>Reserve left-mouse dragging for selecting/erasing pixels; use the middle button to pan.</source>
+            <translation>Le glissement au bouton gauche est réservé à la sélection ou à l’effacement des pixels ; utilisez le bouton central pour déplacer la vue.</translation>
+        </message>
+        <message>
+            <source>Reset Defaults</source>
+            <translation>Rétablir les valeurs par défaut</translation>
+        </message>
+        <message>
+            <source>Reset notebook variables; saved cell outputs remain</source>
+            <translation>Réinitialiser les variables du notebook ; les sorties enregistrées restent conservées</translation>
+        </message>
+        <message>
+            <source>Reset the analysis state and recompute the 2CDE values from scratch.</source>
+            <translation>Réinitialiser l’état de l’analyse et recalculer les valeurs 2CDE depuis le début.</translation>
+        </message>
+        <message>
+            <source>Reset the fit state and re-run the optimization from scratch.</source>
+            <translation>Réinitialiser l’état de l’ajustement et relancer l’optimisation depuis le début.</translation>
+        </message>
+        <message>
+            <source>Restore scanner markers, file type and reading routine from a named acquisition preset.</source>
+            <translation>Restaurer les repères du scanner, le type de fichier et la routine de lecture depuis un préréglage d’acquisition nommé.</translation>
+        </message>
+        <message>
+            <source>Restore the default panel splits and open the Overview.</source>
+            <translation>Rétablir la répartition par défaut des panneaux et ouvrir la vue d’ensemble.</translation>
+        </message>
+        <message>
+            <source>Restrict the analysis to saved regions; pixels outside are ignored.</source>
+            <translation>Restreindre l’analyse aux régions enregistrées ; les pixels situés en dehors sont ignorés.</translation>
+        </message>
+        <message>
+            <source>Restrict the photons to bursts: queue .bst/.bur photon-index files (inclusive bounds).</source>
+            <translation>Restreindre les photons aux bursts : mettre en file des fichiers d’indices de photons .bst/.bur (bornes incluses).</translation>
+        </message>
+        <message>
+            <source>Result views: correction factors and populations as tables, and the corrected E-S, E-lifetime and E plots.</source>
+            <translation>Vues de résultats : facteurs de correction et populations sous forme de tableaux, et graphiques E-S, E-durée de vie et E corrigés.</translation>
+        </message>
+        <message>
+            <source>Resume notebook execution with this value</source>
+            <translation>Reprendre l’exécution du notebook avec cette valeur</translation>
+        </message>
+        <message>
+            <source>Return to the maps; ndX keeps its selection.</source>
+            <translation>Retour aux cartes ; ndX conserve sa sélection.</translation>
+        </message>
+        <message>
+            <source>Return to the previous workflow step.</source>
+            <translation>Revenir à l’étape précédente du flux de travail.</translation>
+        </message>
+        <message>
+            <source>Reverse the time axis of the data (for reverse start-stop acquisition).</source>
+            <translation>Inverser l’axe temporel des données (pour les acquisitions à départ et arrêt inversés).</translation>
+        </message>
+        <message>
+            <source>Rice-distribution components of P(r): mean distance (nm), width sigma (nm) and amplitude.</source>
+            <translation>Composantes de distribution de Rice de P(r) : distance moyenne (nm), largeur sigma (nm) et amplitude.</translation>
+        </message>
+        <message>
+            <source>Ring width, threshold criterion and pixel size used to read the resolution off the FRC curve.</source>
+            <translation>Largeur d’anneau, critère de seuil et taille de pixel utilisés pour lire la résolution sur la courbe FRC.</translation>
+        </message>
+        <message>
+            <source>Role that determines the permissions of the user.</source>
+            <translation>Rôle qui détermine les droits de l’utilisateur.</translation>
+        </message>
+        <message>
+            <source>Rotational (anisotropy) parameters of donor and acceptor.</source>
+            <translation>Paramètres rotationnels (anisotropie) du donneur et de l’accepteur.</translation>
+        </message>
+        <message>
+            <source>Rotational components: amplitude and correlation time in ns; double-click a cell to edit.</source>
+            <translation>Composantes rotationnelles : amplitude et temps de corrélation en ns ; double-cliquer sur une cellule pour la modifier.</translation>
+        </message>
+        <message>
+            <source>Rotational correlation times with amplitudes b_i; the initial anisotropy r0 is their sum.</source>
+            <translation>Temps de corrélation rotationnels avec amplitudes b_i ; l’anisotropie initiale r0 est leur somme.</translation>
+        </message>
+        <message>
+            <source>Rotational depolarization: polarization channel, rotational correlation times and the G factor and related polarization corrections.</source>
+            <translation>Dépolarisation rotationnelle : canal de polarisation, temps de corrélation rotationnels, facteur G et corrections de polarisation associées.</translation>
+        </message>
+        <message>
+            <source>Routing channels and detector that define the photon stream.</source>
+            <translation>Canaux de routage et détecteur définissant le flux de photons.</translation>
+        </message>
+        <message>
+            <source>Routing channels of the acceptor; leave 'auto' to detect them from the data.</source>
+            <translation>Canaux de routage de l’accepteur ; laisser « auto » pour les détecter à partir des données.</translation>
+        </message>
+        <message>
+            <source>Routing channels of the donor; leave 'auto' to detect them from the data.</source>
+            <translation>Canaux de routage du donneur ; laisser « auto » pour les détecter à partir des données.</translation>
+        </message>
+        <message>
+            <source>Routing channels that define the donor and acceptor detectors.</source>
+            <translation>Canaux de routage définissant les détecteurs donneur et accepteur.</translation>
+        </message>
+        <message>
+            <source>Routing channels: All (unfiltered)</source>
+            <translation>Canaux de routage : tous (non filtrés)</translation>
+        </message>
+        <message>
+            <source>Rows shown at once (1–20000). Large pages are fine; the table only draws what fits the window.</source>
+            <translation>Lignes affichées à la fois (1–20000). De grandes pages conviennent ; le tableau ne dessine que ce qui tient dans la fenêtre.</translation>
+        </message>
+        <message>
+            <source>Rows:</source>
+            <translation>Lignes :</translation>
+        </message>
+        <message>
+            <source>Run H2MM</source>
+            <translation>Lancer H2MM</translation>
+        </message>
+        <message>
+            <source>Run and configure the fit of the selected dataset.</source>
+            <translation>Lancer et configurer l’ajustement du jeu de données sélectionné.</translation>
+        </message>
+        <message>
+            <source>Run command</source>
+            <translation>Exécuter la commande</translation>
+        </message>
+        <message>
+            <source>Run every code cell in order (Ctrl+Shift+Enter)</source>
+            <translation>Exécuter chaque cellule de code dans l’ordre (Ctrl+Maj+Entrée)</translation>
+        </message>
+        <message>
+            <source>Run the LLTF command line in a background process with these inputs and options; needs a decay and an IRF.</source>
+            <translation>Exécuter la ligne de commande LLTF dans un processus d’arrière-plan avec ces entrées et options ; nécessite une décroissance et une IRF.</translation>
+        </message>
+        <message>
+            <source>Run the analysis to see this map.</source>
+            <translation>Lancer l’analyse pour voir cette carte.</translation>
+        </message>
+        <message>
+            <source>Run the optimizer with this engine.</source>
+            <translation>Exécuter l’optimiseur avec ce moteur.</translation>
+        </message>
+        <message>
+            <source>Run the titration analysis over all series points.</source>
+            <translation>Exécuter l’analyse de titration sur tous les points de la série.</translation>
+        </message>
+        <message>
+            <source>S Range (not available)</source>
+            <translation>Plage S (non disponible)</translation>
+        </message>
+        <message>
+            <source>S/B ratio:</source>
+            <translation>Rapport S/B :</translation>
+        </message>
+        <message>
+            <source>SIDE TOOLS</source>
+            <translation>OUTILS LATÉRAUX</translation>
+        </message>
+        <message>
+            <source>SPC-130</source>
+            <translation>SPC-130</translation>
+        </message>
+        <message>
+            <source>Sample description written into the CSV metadata.</source>
+            <translation>Description de l’échantillon inscrite dans les métadonnées CSV.</translation>
+        </message>
+        <message>
+            <source>Sample to own the registered shifted TTTR artifacts.</source>
+            <translation>Échantillon auquel appartiennent les artefacts TTTR décalés enregistrés.</translation>
+        </message>
+        <message>
+            <source>Sample, optics, scan and estimator settings of the prediction.</source>
+            <translation>Réglages de l’échantillon, de l’optique, du balayage et de l’estimateur de la prévision.</translation>
+        </message>
+        <message>
+            <source>Samples available in the database.</source>
+            <translation>Échantillons disponibles dans la base de données.</translation>
+        </message>
+        <message>
+            <source>Sampling options of the model, such as temperature and maximum length.</source>
+            <translation>Options d’échantillonnage du modèle, comme la température et la longueur maximale.</translation>
+        </message>
+        <message>
+            <source>Save Bursts</source>
+            <translation>Enregistrer les bursts</translation>
+        </message>
+        <message>
+            <source>Save as setup default</source>
+            <translation>Enregistrer comme valeur par défaut de la configuration</translation>
+        </message>
+        <message>
+            <source>Save configuration</source>
+            <translation>Enregistrer la configuration</translation>
+        </message>
+        <message>
+            <source>Save or load a portable settings file, or assign LUTs by hand.</source>
+            <translation>Enregistrer ou charger un fichier de réglages portable, ou affecter les LUT à la main.</translation>
+        </message>
+        <message>
+            <source>Save the edited YAML configuration to a chosen file.</source>
+            <translation>Enregistrer la configuration YAML modifiée dans un fichier choisi.</translation>
+        </message>
+        <message>
+            <source>Save the results table as tab-separated text.</source>
+            <translation>Enregistrer le tableau des résultats au format texte séparé par des tabulations.</translation>
+        </message>
+        <message>
+            <source>Scan the log-likelihood over state numbers to help choose the model.</source>
+            <translation>Balayer la log-vraisemblance selon le nombre d’états pour aider à choisir le modèle.</translation>
+        </message>
+        <message>
+            <source>Scan timing, laser and detector settings of the simulated measurement.</source>
+            <translation>Examiner les réglages de timing, du laser et des détecteurs de la mesure simulée.</translation>
+        </message>
+        <message>
+            <source>Scanner geometry and marker channels that turn the photon stream into pixels and frames.</source>
+            <translation>Géométrie du scanner et canaux de repères qui transforment le flux de photons en pixels et en images.</translation>
+        </message>
+        <message>
+            <source>Scoring group / set:</source>
+            <translation>Groupe / jeu de scoring :</translation>
+        </message>
+        <message>
+            <source>Screen and merge the correlation curves after correlating (step 5).</source>
+            <translation>Examiner et fusionner les courbes de corrélation après la corrélation (étape 5).</translation>
+        </message>
+        <message>
+            <source>Select a calculator on the left to get started.</source>
+            <translation>Sélectionner une calculatrice à gauche pour commencer.</translation>
+        </message>
+        <message>
+            <source>Select a channel row to change its chord.</source>
+            <translation>Sélectionner une ligne de canal pour modifier son accord.</translation>
+        </message>
+        <message>
+            <source>Select a destination for generated analysis files.</source>
+            <translation>Choisir une destination pour les fichiers d’analyse générés.</translation>
+        </message>
+        <message>
+            <source>Select a file to write an annotation for it.</source>
+            <translation>Sélectionner un fichier pour y écrire une annotation.</translation>
+        </message>
+        <message>
+            <source>Select a project to restore its latest version, or expand it to select an exact version.</source>
+            <translation>Sélectionner un projet pour restaurer sa dernière version, ou le déplier pour choisir une version précise.</translation>
+        </message>
+        <message>
+            <source>Select a region with a fitted decay.</source>
+            <translation>Sélectionner une région avec une décroissance ajustée.</translation>
+        </message>
+        <message>
+            <source>Select this cell for Run Script and code insertion</source>
+            <translation>Sélectionner cette cellule pour Exécuter le script et l’insertion de code</translation>
+        </message>
+        <message>
+            <source>Select this information criterion.</source>
+            <translation>Choisir ce critère d’information.</translation>
+        </message>
+        <message>
+            <source>Selected Bursts</source>
+            <translation>Bursts sélectionnés</translation>
+        </message>
+        <message>
+            <source>Selected region</source>
+            <translation>Région sélectionnée</translation>
+        </message>
+        <message>
+            <source>Selection and display of the trajectory curves.</source>
+            <translation>Sélection et affichage des courbes de trajectoire.</translation>
+        </message>
+        <message>
+            <source>Self-avoiding-walk polymer model of the linker: distance distribution set by the chain length and the scaling exponent nu.</source>
+            <translation>Modèle polymère de marche auto-évitante du lieur : distribution des distances fixée par la longueur de chaîne et l’exposant d’échelle nu.</translation>
+        </message>
+        <message>
+            <source>Send the fitted dwell-time segments to ndXplorer for inspection.</source>
+            <translation>Envoyer les segments de temps de séjour ajustés à ndXplorer pour examen.</translation>
+        </message>
+        <message>
+            <source>Series is left out of the analysis when set.</source>
+            <translation>Lorsque ce réglage est activé, la série est exclue de l’analyse.</translation>
+        </message>
+        <message>
+            <source>Set detector routing and microtime gates.</source>
+            <translation>Définir le routage des détecteurs et les fenêtres de microtemps.</translation>
+        </message>
+        <message>
+            <source>Set formats and split options</source>
+            <translation>Définir les formats et les options de découpage</translation>
+        </message>
+        <message>
+            <source>Set:</source>
+            <translation>Jeu :</translation>
+        </message>
+        <message>
+            <source>Settings of the Monte Carlo estimator: lag count, repeats and random seed.</source>
+            <translation>Réglages de l’estimateur Monte-Carlo : nombre de retards, répétitions et graine aléatoire.</translation>
+        </message>
+        <message>
+            <source>Setup preset</source>
+            <translation>Préréglage de configuration</translation>
+        </message>
+        <message>
+            <source>Setup:</source>
+            <translation>Configuration :</translation>
+        </message>
+        <message>
+            <source>Shape type, size (nm) and aspect ratio; apply writes the resulting D into the calculator.</source>
+            <translation>Type de forme, taille (nm) et rapport d’aspect ; Appliquer écrit le D obtenu dans la calculatrice.</translation>
+        </message>
+        <message>
+            <source>Shift of each channel in micro-time bins.</source>
+            <translation>Décalage de chaque canal en classes de microtemps.</translation>
+        </message>
+        <message>
+            <source>Shift the zero-lag peak to the centre of the correlation surface.</source>
+            <translation>Décaler le pic de retard nul au centre de la surface de corrélation.</translation>
+        </message>
+        <message>
+            <source>Show only files whose name contains this text.</source>
+            <translation>N’afficher que les fichiers dont le nom contient ce texte.</translation>
+        </message>
+        <message>
+            <source>Show only the photons of one routing channel. 'All channels' keeps the file's order.</source>
+            <translation>N’afficher que les photons d’un canal de routage. « Tous les canaux » conserve l’ordre du fichier.</translation>
+        </message>
+        <message>
+            <source>Show only the restraints of one scoring group, or all of them.</source>
+            <translation>N’afficher que les restreintes d’un groupe de scoring, ou toutes.</translation>
+        </message>
+        <message>
+            <source>Show or hide a command terminal sharing the notebook shell</source>
+            <translation>Afficher ou masquer un terminal de commandes partageant le shell du notebook</translation>
+        </message>
+        <message>
+            <source>Show or hide this node’s input, output and characteristic spectra.</source>
+            <translation>Afficher ou masquer l’entrée, la sortie et les spectres caractéristiques de ce nœud.</translation>
+        </message>
+        <message>
+            <source>Show or hide this trace group, or change the intensity scale.</source>
+            <translation>Afficher ou masquer ce groupe de traces, ou modifier l’échelle d’intensité.</translation>
+        </message>
+        <message>
+            <source>Show static line</source>
+            <translation>Afficher la ligne statique</translation>
+        </message>
+        <message>
+            <source>Simulate &amp; Correlate button with a status line.</source>
+            <translation>Bouton Simuler et corréler avec une ligne d’état.</translation>
+        </message>
+        <message>
+            <source>Simulate a TTTR CLSM measurement from an intensity image and lifetime maps.</source>
+            <translation>Simuler une mesure CLSM TTTR à partir d’une image d’intensité et de cartes de durée de vie.</translation>
+        </message>
+        <message>
+            <source>Simulate the photon stream and correlate it.</source>
+            <translation>Simuler le flux de photons et le corréler.</translation>
+        </message>
+        <message>
+            <source>Simulated FCS curves at several laser powers and the residual against a single diffusion component.</source>
+            <translation>Courbes FCS simulées à plusieurs puissances laser et résidu par rapport à une seule composante de diffusion.</translation>
+        </message>
+        <message>
+            <source>Simulated two-state data: lifetimes, transition rates k12 and k21, count rate and duration.</source>
+            <translation>Données simulées à deux états : durées de vie, taux de transition k12 et k21, taux de comptage et durée.</translation>
+        </message>
+        <message>
+            <source>Sine component s of the per-pixel phasor, dimensionless.</source>
+            <translation>Composante sinus s du phasor par pixel, sans dimension.</translation>
+        </message>
+        <message>
+            <source>Single excitation, truncated at the histogram window; no wrap-around.</source>
+            <translation>Excitation unique, tronquée à la fenêtre de l’histogramme ; pas de repliement.</translation>
+        </message>
+        <message>
+            <source>Single-component diffusion model.</source>
+            <translation>Modèle de diffusion à une composante.</translation>
+        </message>
+        <message>
+            <source>Single-focus 3-D Gaussian PSF approximation.</source>
+            <translation>Approximation de la PSF gaussienne 3D à un foyer.</translation>
+        </message>
+        <message>
+            <source>Single-focus 3-D Gaussian PSF: diffusion time t_diff (ms), structure parameter z0/w0 and number of molecules N.</source>
+            <translation>PSF gaussienne 3D à un foyer : temps de diffusion t_diff (ms), paramètre de structure z0/w0 et nombre de molécules N.</translation>
+        </message>
+        <message>
+            <source>Size Range (not available)</source>
+            <translation>Plage de taille (non disponible)</translation>
+        </message>
+        <message>
+            <source>Smallest number of photons per event that is kept.</source>
+            <translation>Nombre minimal de photons par événement conservé.</translation>
+        </message>
+        <message>
+            <source>Smoothing kernel applied to the 2CDE values (laplace or gaussian).</source>
+            <translation>Noyau de lissage appliqué aux valeurs 2CDE (laplace ou gaussian).</translation>
+        </message>
+        <message>
+            <source>Source TTTR file to convert.</source>
+            <translation>Fichier TTTR source à convertir.</translation>
+        </message>
+        <message>
+            <source>Source file and detector settings of the audified stream.</source>
+            <translation>Fichier source et réglages des détecteurs du flux audifié.</translation>
+        </message>
+        <message>
+            <source>Source file of the series.</source>
+            <translation>Fichier source de la série.</translation>
+        </message>
+        <message>
+            <source>Source of the per-point uncertainty: taken from the file, uniform, or estimated from photon noise, Starchev or a spline of the local variance.</source>
+            <translation>Source de l’incertitude par point : lue dans le fichier, uniforme, ou estimée à partir du bruit de photons, selon Starchev ou par spline de la variance locale.</translation>
+        </message>
+        <message>
+            <source>Species described by their anisotropy: fractions and anisotropy values.</source>
+            <translation>Espèces décrites par leur anisotropie : fractions et valeurs d’anisotropie.</translation>
+        </message>
+        <message>
+            <source>Species of the photon-counting histogram: mean brightness (counts per molecule and sampling time) and mean number of molecules.</source>
+            <translation>Espèces de l’histogramme de comptage de photons : luminosité moyenne (comptages par molécule et par temps d’échantillonnage) et nombre moyen de molécules.</translation>
+        </message>
+        <message>
+            <source>Spectra database path:</source>
+            <translation>Chemin de la base de données des spectres :</translation>
+        </message>
+        <message>
+            <source>Split every queued file with the options set above.</source>
+            <translation>Scinder chaque fichier en file avec les options définies ci-dessus.</translation>
+        </message>
+        <message>
+            <source>Split into files, reset macro times and keep the original.</source>
+            <translation>Scinder en fichiers, réinitialiser les macrotemps et conserver l’original.</translation>
+        </message>
+        <message>
+            <source>Split the data into variable-duration bursts or into fixed-duration time bins.</source>
+            <translation>Découper les données en bursts de durée variable ou en classes temporelles de durée fixe.</translation>
+        </message>
+        <message>
+            <source>Split the loaded TTTR file into the output folder, one file per photon chunk, converting the container format when it differs.</source>
+            <translation>Scinder le fichier TTTR chargé dans le dossier de sortie, un fichier par bloc de photons, en convertissant le format du conteneur s’il diffère.</translation>
+        </message>
+        <message>
+            <source>Spot detection algorithm (e.g. LoG, DoG) applied to the image.</source>
+            <translation>Algorithme de détection de spots (p. ex. LoG, DoG) appliqué à l’image.</translation>
+        </message>
+        <message>
+            <source>Stack, projections and per-frame shifts of the drift correction.</source>
+            <translation>Pile, projections et décalages par image de la correction de dérive.</translation>
+        </message>
+        <message>
+            <source>Start / stop the background sampling run and show its progress.</source>
+            <translation>Démarrer ou arrêter l’échantillonnage de fond et afficher sa progression.</translation>
+        </message>
+        <message>
+            <source>Start Guided Tour</source>
+            <translation>Démarrer la visite guidée</translation>
+        </message>
+        <message>
+            <source>Start a step-by-step guided tour of this tool.</source>
+            <translation>Démarrer une visite guidée pas à pas de cet outil.</translation>
+        </message>
+        <message>
+            <source>Start lifetime and the micro-time window (bins) of the burst-wise lifetime MLE.</source>
+            <translation>Durée de vie initiale et fenêtre de microtemps (classes) du MLE de durée de vie par burst.</translation>
+        </message>
+        <message>
+            <source>Start or stop the correlation of the ticked files.</source>
+            <translation>Démarrer ou arrêter la corrélation des fichiers cochés.</translation>
+        </message>
+        <message>
+            <source>Start the batch run.</source>
+            <translation>Démarrer l’exécution par lot.</translation>
+        </message>
+        <message>
+            <source>Start the guided tour of the ALEX Suite.</source>
+            <translation>Démarrer la visite guidée de la suite ALEX.</translation>
+        </message>
+        <message>
+            <source>Starting structure (PDB ID or local file) and the other inputs of the Monte Carlo run.</source>
+            <translation>Structure de départ (identifiant PDB ou fichier local) et autres entrées de l’exécution Monte Carlo.</translation>
+        </message>
+        <message>
+            <source>Starting values and fitted brightness epsilon and mean molecule number per species.</source>
+            <translation>Valeurs de départ et luminosité epsilon ajustée et nombre moyen de molécules par espèce.</translation>
+        </message>
+        <message>
+            <source>Static FRET Line</source>
+            <translation>Ligne FRET statique</translation>
+        </message>
+        <message>
+            <source>Std of the proximity ratio per burst against its mean, with the static line.</source>
+            <translation>Écart type du ratio de proximité par burst par rapport à sa moyenne, avec la ligne statique.</translation>
+        </message>
+        <message>
+            <source>Steps:</source>
+            <translation>Étapes :</translation>
+        </message>
+        <message>
+            <source>Stop after the current chunk (the chunks done are kept).</source>
+            <translation>Arrêter après le bloc en cours (les blocs terminés sont conservés).</translation>
+        </message>
+        <message>
+            <source>Stop analysis</source>
+            <translation>Arrêter l’analyse</translation>
+        </message>
+        <message>
+            <source>Stop at the next checkpoint of the running calculation and discard the unfinished result.</source>
+            <translation>S’arrêter au prochain point de contrôle du calcul en cours et abandonner le résultat inachevé.</translation>
+        </message>
+        <message>
+            <source>Stop before the next file; let the current conversion finish consistently.</source>
+            <translation>Arrêter avant le fichier suivant ; laisser la conversion en cours se terminer proprement.</translation>
+        </message>
+        <message>
+            <source>Stop between file reads and discard incomplete computation results.</source>
+            <translation>S’arrêter entre les lectures de fichiers et abandonner les résultats de calcul incomplets.</translation>
+        </message>
+        <message>
+            <source>Stop computation</source>
+            <translation>Arrêter le calcul</translation>
+        </message>
+        <message>
+            <source>Stop the running 2CDE analysis.</source>
+            <translation>Arrêter l’analyse 2CDE en cours.</translation>
+        </message>
+        <message>
+            <source>Stop the running H2MM optimization (nothing is running).</source>
+            <translation>Arrêter l’optimisation H2MM en cours (rien ne tourne).</translation>
+        </message>
+        <message>
+            <source>Stop the running H2MM optimization.</source>
+            <translation>Arrêter l’optimisation H2MM en cours.</translation>
+        </message>
+        <message>
+            <source>Store the current filter and search as the defaults of the selected detector setup (read again whenever the setup is chosen).</source>
+            <translation>Enregistrer le filtre et la recherche actuels comme valeurs par défaut de la configuration de détecteurs choisie (relue à chaque sélection de la configuration).</translation>
+        </message>
+        <message>
+            <source>Store this file in the MMFDB object store and register it as raw TTTR data.</source>
+            <translation>Enregistrer ce fichier dans le magasin d’objets MMFDB et l’inscrire comme données TTTR brutes.</translation>
+        </message>
+        <message>
+            <source>Submit input</source>
+            <translation>Envoyer la saisie</translation>
+        </message>
+        <message>
+            <source>Subtract Background</source>
+            <translation>Soustraire le fond</translation>
+        </message>
+        <message>
+            <source>Subtract the mean intensity of each frame or of the whole stack before correlating, which removes immobile or slowly varying background.</source>
+            <translation>Soustraire l’intensité moyenne de chaque image ou de toute la pile avant la corrélation, ce qui élimine les fonds immobiles ou lentement variables.</translation>
+        </message>
+        <message>
+            <source>Summary of detections, tracks and fitted diffusion.</source>
+            <translation>Résumé des détections, des trajectoires et de la diffusion ajustée.</translation>
+        </message>
+        <message>
+            <source>Summary of the loaded measurement and the LUT.</source>
+            <translation>Résumé de la mesure chargée et de la LUT.</translation>
+        </message>
+        <message>
+            <source>Summary of the model, its assumptions and the derived saturation quantities.</source>
+            <translation>Résumé du modèle, de ses hypothèses et des grandeurs de saturation dérivées.</translation>
+        </message>
+        <message>
+            <source>Summary of the photons kept and dropped by the current filter.</source>
+            <translation>Résumé des photons conservés et rejetés par le filtre actuel.</translation>
+        </message>
+        <message>
+            <source>Switch this Markdown cell between source and formatted preview</source>
+            <translation>Basculer cette cellule Markdown entre la source et l’aperçu mis en forme</translation>
+        </message>
+        <message>
+            <source>Switches for the amplitude normalisation of the species.</source>
+            <translation>Commutateurs de normalisation des amplitudes des espèces.</translation>
+        </message>
+        <message>
+            <source>TTTR file the rate was estimated from.</source>
+            <translation>Fichier TTTR à partir duquel le taux a été estimé.</translation>
+        </message>
+        <message>
+            <source>TTTR file type</source>
+            <translation>Type de fichier TTTR</translation>
+        </message>
+        <message>
+            <source>TTTR file type of the source measurements (e.g. SPC-130).</source>
+            <translation>Type de fichier TTTR des mesures source (p. ex. SPC-130).</translation>
+        </message>
+        <message>
+            <source>TTTR file type of the source measurements (e.g. SPC-130, PTO).</source>
+            <translation>Type de fichier TTTR des mesures source (p. ex. SPC-130, PTO).</translation>
+        </message>
+        <message>
+            <source>TTTR files (or folders of them) to correlate; only the ticked ones are used.</source>
+            <translation>Fichiers TTTR (ou dossiers) à corréler ; seuls les fichiers cochés sont utilisés.</translation>
+        </message>
+        <message>
+            <source>TTTR files and the burst-free window parameters used for the estimate.</source>
+            <translation>Fichiers TTTR et paramètres de la fenêtre sans burst utilisés pour l’estimation.</translation>
+        </message>
+        <message>
+            <source>TTTR files or burst folders to analyse.</source>
+            <translation>Fichiers TTTR ou dossiers de bursts à analyser.</translation>
+        </message>
+        <message>
+            <source>TTTR files queued for the analysis.</source>
+            <translation>Fichiers TTTR en file pour l’analyse.</translation>
+        </message>
+        <message>
+            <source>TTTR files to analyse.</source>
+            <translation>Fichiers TTTR à analyser.</translation>
+        </message>
+        <message>
+            <source>TTTR files to analyse; one background rate per file and detector.</source>
+            <translation>Fichiers TTTR à analyser ; un taux de fond par fichier et par détecteur.</translation>
+        </message>
+        <message>
+            <source>TTTR input and burst selection: channels, macro-time tick, minimum photons and burst count.</source>
+            <translation>Entrée TTTR et sélection des bursts : canaux, pas de macrotemps, photons minimum et nombre de bursts.</translation>
+        </message>
+        <message>
+            <source>TTTR not found</source>
+            <translation>TTTR introuvable</translation>
+        </message>
+        <message>
+            <source>TTTR sources that supply the photons.</source>
+            <translation>Sources TTTR fournissant les photons.</translation>
+        </message>
+        <message>
+            <source>Table and plot of the count rates.</source>
+            <translation>Tableau et graphique des taux de comptage.</translation>
+        </message>
+        <message>
+            <source>Table column whose distribution is plotted in the histogram.</source>
+            <translation>Colonne du tableau dont la distribution est tracée dans l’histogramme.</translation>
+        </message>
+        <message>
+            <source>Table has no columns.</source>
+            <translation>Le tableau ne contient aucune colonne.</translation>
+        </message>
+        <message>
+            <source>Table of bursts with their summary values; select a row to inspect it.</source>
+            <translation>Tableau des bursts avec leurs valeurs récapitulatives ; sélectionnez une ligne pour l’examiner.</translation>
+        </message>
+        <message>
+            <source>Table of channel pairs; one row per correlation.</source>
+            <translation>Tableau des paires de canaux ; une ligne par corrélation.</translation>
+        </message>
+        <message>
+            <source>Table of instrument and calibration parameters (alpha, beta, gamma, delta, G, l1, l2, R0, period).</source>
+            <translation>Tableau des paramètres de l’instrument et de l’étalonnage (alpha, bêta, gamma, delta, G, l1, l2, R0, période).</translation>
+        </message>
+        <message>
+            <source>Table of the fits and datasets shown in the graph; select rows to highlight them.</source>
+            <translation>Tableau des ajustements et jeux de données du graphique ; sélectionnez des lignes pour les mettre en évidence.</translation>
+        </message>
+        <message>
+            <source>Table of the lifetime and rotational components of the model.</source>
+            <translation>Tableau des composantes de durée de vie et de rotation du modèle.</translation>
+        </message>
+        <message>
+            <source>Tag names and values of the file header.</source>
+            <translation>Noms et valeurs des balises de l’en-tête du fichier.</translation>
+        </message>
+        <message>
+            <source>Take the entered distance as the separation between the Gaussians rather than from the donor.</source>
+            <translation>Prendre la distance saisie comme séparation entre les gaussiennes plutôt qu’à partir du donneur.</translation>
+        </message>
+        <message>
+            <source>Terminate the running fit; its captured output stays in Analysis Output.</source>
+            <translation>Terminer l’ajustement en cours ; sa sortie capturée reste dans Sortie d’analyse.</translation>
+        </message>
+        <message>
+            <source>Text report of the fit.</source>
+            <translation>Rapport textuel de l’ajustement.</translation>
+        </message>
+        <message>
+            <source>The .pto to inspect: one measurement in one file. Dropping a vendor photon file offers to pack it into a container first.</source>
+            <translation>Le fichier .pto à examiner : une mesure dans un fichier. Déposer un fichier de photons du fabricant propose de l’empaqueter d’abord dans un conteneur.</translation>
+        </message>
+        <message>
+            <source>The CA / P trace of the structure with the donor (blue) and acceptor (red) attachment sites.</source>
+            <translation>Le tracé CA/P de la structure avec les sites d’attache du donneur (bleu) et de l’accepteur (rouge).</translation>
+        </message>
+        <message>
+            <source>The CA / P trace of the structure, one colour per chain; drag to rotate, wheel to zoom.</source>
+            <translation>Le tracé CA/P de la structure, une couleur par chaîne ; glisser pour tourner, molette pour zoomer.</translation>
+        </message>
+        <message>
+            <source>The FlexFit set whose residues and bonds are shown.</source>
+            <translation>L’ensemble FlexFit dont les résidus et liaisons sont affichés.</translation>
+        </message>
+        <message>
+            <source>The anisotropy r(t) of the loaded decays appears here.</source>
+            <translation>L’anisotropie r(t) des décroissances chargées apparaît ici.</translation>
+        </message>
+        <message>
+            <source>The binned trace with the decoded state path and the intensity histogram.</source>
+            <translation>La trace regroupée avec le chemin d’états décodé et l’histogramme d’intensité.</translation>
+        </message>
+        <message>
+            <source>The channel names the results table and plot will report.</source>
+            <translation>Le nom du canal sous lequel le tableau de résultats et le graphique font rapport.</translation>
+        </message>
+        <message>
+            <source>The correlation equation currently active (diffusion, triplet / bunching terms), or the catalogue / typed Python equation for a user-defined model.</source>
+            <translation>L’équation de corrélation actuellement active (diffusion, termes triplet / bunching), ou l’équation du catalogue ou saisie en Python pour un modèle défini par l’utilisateur.</translation>
+        </message>
+        <message>
+            <source>The decades the L-curve sweep covers and the Q-MCMC sampling options.</source>
+            <translation>Les décades couvertes par le balayage de la courbe en L et les options d’échantillonnage Q-MCMC.</translation>
+        </message>
+        <message>
+            <source>The detector-window mosaic of the selected file. Scroll the mouse wheel to zoom, drag to pan, Reset view to see it all.</source>
+            <translation>La mosaïque des fenêtres de détecteur du fichier sélectionné. Molette pour zoomer, glisser pour déplacer, Réinitialiser la vue pour tout afficher.</translation>
+        </message>
+        <message>
+            <source>The five CSV files the old ALEX-Suite wrote — for scripts built on that layout. The analysis itself stays in the .pto container and the burst companions beside it.</source>
+            <translation>Les cinq fichiers CSV qu’écrivait l’ancienne suite ALEX, pour les scripts basés sur cette structure. L’analyse elle-même reste dans le conteneur .pto et les fichiers associés aux bursts à côté.</translation>
+        </message>
+        <message>
+            <source>The help page for the FRET calculator.</source>
+            <translation>La page d’aide du calculateur FRET.</translation>
+        </message>
+        <message>
+            <source>The last thing that happened.</source>
+            <translation>Le dernier événement survenu.</translation>
+        </message>
+        <message>
+            <source>The name; press OK or Enter.</source>
+            <translation>Saisissez le nom ; appuyez sur OK ou Entrée.</translation>
+        </message>
+        <message>
+            <source>The next docked model.</source>
+            <translation>Le modèle suivant ancré.</translation>
+        </message>
+        <message>
+            <source>The payload of the selected object, with column headers that carry their units.</source>
+            <translation>La charge utile de l’objet sélectionné, avec des en-têtes de colonnes portant leurs unités.</translation>
+        </message>
+        <message>
+            <source>The plugin that is related to the selected plugin.</source>
+            <translation>Le module lié au module sélectionné.</translation>
+        </message>
+        <message>
+            <source>The previous docked model.</source>
+            <translation>Le modèle ancré précédent.</translation>
+        </message>
+        <message>
+            <source>The raw photon file of this burst could not be read.</source>
+            <translation>Le fichier de photons brut de ce burst n’a pas pu être lu.</translation>
+        </message>
+        <message>
+            <source>The results appear here once QuEst can run.</source>
+            <translation>Les résultats apparaîtront ici dès que QuEst pourra s’exécuter.</translation>
+        </message>
+        <message>
+            <source>The saved detector setup whose detectors and micro-time windows define the channels this analysis reports.</source>
+            <translation>La configuration de détecteurs enregistrée dont les détecteurs et fenêtres de microtemps définissent les canaux rapportés par cette analyse.</translation>
+        </message>
+        <message>
+            <source>The selected burst's correlation curve (white) and its fit (red). Drag the two vertical lines to set the fit window t_min and t_max; the wheel zooms.</source>
+            <translation>La courbe de corrélation du burst sélectionné (blanc) et son ajustement (rouge). Faire glisser les deux lignes verticales pour définir la fenêtre d’ajustement t_min et t_max ; la molette zoome.</translation>
+        </message>
+        <message>
+            <source>The short help page, also behind Help ▸ About.</source>
+            <translation>La page d’aide succincte, également accessible via Aide ▸ À propos.</translation>
+        </message>
+        <message>
+            <source>The spectra plot: pick a row, or tick several to overlay them.</source>
+            <translation>Le graphique des spectres : sélectionnez une ligne ou cochez-en plusieurs pour les superposer.</translation>
+        </message>
+        <message>
+            <source>The status line counts converted files and the table shows each output folder. The example gives six bursts, each with last minus first plus one photons from its BID row.</source>
+            <translation>La ligne d’état compte les fichiers convertis, et le tableau affiche chaque dossier de sortie. L’exemple donne six bursts, chacun avec dernier moins premier photon plus un, à partir de sa ligne BID.</translation>
+        </message>
+        <message>
+            <source>The structure as cartoon; drag to rotate, wheel to zoom.</source>
+            <translation>La structure en cartoon ; glisser pour tourner, molette pour zoomer.</translation>
+        </message>
+        <message>
+            <source>The structure could not be read.</source>
+            <translation>La structure n’a pas pu être lue.</translation>
+        </message>
+        <message>
+            <source>The structures as cartoon, the accessible volumes as surfaces with their mean positions, and the distance lines; the selected position's attachment atom is the white sphere. Drag to rotate, wheel to zoom; click an atom to attach the selected position to it, click a mean sphere to select its position.</source>
+            <translation>Les structures en cartoon, les volumes accessibles en surfaces avec leurs positions moyennes, et les lignes de distance ; l’atome d’attache de la position sélectionnée est la sphère blanche. Glisser pour tourner, molette pour zoomer ; cliquer sur un atome pour y attacher la position sélectionnée, cliquer sur une sphère moyenne pour sélectionner sa position.</translation>
+        </message>
+        <message>
+            <source>The two image halves (or the two files) that are correlated.</source>
+            <translation>Les deux moitiés d’image (ou les deux fichiers) corrélées.</translation>
+        </message>
+        <message>
+            <source>The version constraint declared for the dependency.</source>
+            <translation>La contrainte de version déclarée pour la dépendance.</translation>
+        </message>
+        <message>
+            <source>The version of the related plugin that is installed.</source>
+            <translation>La version installée du module lié.</translation>
+        </message>
+        <message>
+            <source>The version, the connection and the database in use.</source>
+            <translation>La version, la connexion et la base de données utilisée.</translation>
+        </message>
+        <message>
+            <source>This tool declares itself experimental in its manifest.</source>
+            <translation>Cet outil se déclare expérimental dans son manifeste.</translation>
+        </message>
+        <message>
+            <source>This tool turns burst selections (BID files: first and last photon index of each burst) into burst tables, using the TTTR file with the same stem. The next step loads a ready example so you can watch one conversion end to end.</source>
+            <translation>Cet outil transforme des sélections de bursts (fichiers BID : premier et dernier indice de photon de chaque burst) en tableaux de bursts, à l’aide du fichier TTTR de même racine. L’étape suivante charge un exemple prêt pour suivre une conversion de bout en bout.</translation>
+        </message>
+        <message>
+            <source>Three stars.</source>
+            <translation>Trois étoiles.</translation>
+        </message>
+        <message>
+            <source>Threshold and parallel/perpendicular shifts in channels applied to the measured IRF before fitting.</source>
+            <translation>Seuil et décalages parallèle / perpendiculaire en canaux, appliqués à l’IRF mesurée avant l’ajustement.</translation>
+        </message>
+        <message>
+            <source>Threshold on donor plus acceptor intensity in counts per frame.</source>
+            <translation>Seuil sur l’intensité du donneur plus celle de l’accepteur, en comptages par image.</translation>
+        </message>
+        <message>
+            <source>Tikhonov regularisation: smoothing strength alpha and how it is chosen.</source>
+            <translation>Régularisation de Tikhonov : force de lissage alpha et mode de choix.</translation>
+        </message>
+        <message>
+            <source>Time axis of the decay.</source>
+            <translation>Axe temporel de la décroissance.</translation>
+        </message>
+        <message>
+            <source>Time bin width (ms) used to build the intensity trace.</source>
+            <translation>Largeur de classe temporelle (ms) utilisée pour construire la trace d’intensité.</translation>
+        </message>
+        <message>
+            <source>Time bin width, number of micro-time bins and logarithmic intensity scale.</source>
+            <translation>Largeur de classe temporelle, nombre de classes de microtemps et échelle d’intensité logarithmique.</translation>
+        </message>
+        <message>
+            <source>Time binning and micro-time window of the photon counting histogram.</source>
+            <translation>Regroupement temporel et fenêtre de microtemps de l’histogramme de comptage de photons.</translation>
+        </message>
+        <message>
+            <source>Time series currently shown and edited.</source>
+            <translation>Série temporelle actuellement affichée et modifiée.</translation>
+        </message>
+        <message>
+            <source>Time series group whose analysis is selected.</source>
+            <translation>Groupe de séries temporelles dont l’analyse est sélectionnée.</translation>
+        </message>
+        <message>
+            <source>Time window of the events when segmenting by fixed time bins.</source>
+            <translation>Fenêtre temporelle des événements lors d’une segmentation par classes temporelles fixes.</translation>
+        </message>
+        <message>
+            <source>Total restraint score against the step of the run (CG iteration or MC frame).</source>
+            <translation>Score total des restreintes en fonction de l’étape de l’exécution (itération CG ou image MC).</translation>
+        </message>
+        <message>
+            <source>Trace files loaded for the HMM analysis. Select a row and press Delete to drop it.</source>
+            <translation>Fichiers de trace chargés pour l’analyse HMM. Sélectionnez une ligne et appuyez sur Suppr pour la retirer.</translation>
+        </message>
+        <message>
+            <source>Track report and views.</source>
+            <translation>Rapport et vues des trajectoires.</translation>
+        </message>
+        <message>
+            <source>Trajectories over the movie, MSD curves and the track table.</source>
+            <translation>Trajectoires sur le film, courbes MSD et tableau des trajectoires.</translation>
+        </message>
+        <message>
+            <source>Transfer efficiency, Foerster radius and related FRET scalars.</source>
+            <translation>Efficacité de transfert, rayon de Förster et scalaires FRET associés.</translation>
+        </message>
+        <message>
+            <source>Transform chosen from the catalogue, with its code; it maps the source parameters to the transformed ones.</source>
+            <translation>Transformation choisie dans le catalogue, avec son code ; elle associe les paramètres source aux paramètres transformés.</translation>
+        </message>
+        <message>
+            <source>Transitions whose E before and E after both lie inside the dragged box.</source>
+            <translation>Transitions dont les E avant et après se trouvent tous deux dans le rectangle tracé.</translation>
+        </message>
+        <message>
+            <source>Translation [Ang.]</source>
+            <translation>Translation [Å]</translation>
+        </message>
+        <message>
+            <source>Try to load QuEst again (after installing the IMP.bff quenching module).</source>
+            <translation>Essayer de charger QuEst à nouveau (après installation du module de quenching IMP.bff).</translation>
+        </message>
+        <message>
+            <source>Turns photon streams into sound and a waterfall display of micro-time versus macro-time.</source>
+            <translation>Transforme les flux de photons en son et en affichage en cascade du microtemps en fonction du macrotemps.</translation>
+        </message>
+        <message>
+            <source>Two stars.</source>
+            <translation>Deux étoiles.</translation>
+        </message>
+        <message>
+            <source>Two-dimensional fluorescence decay correlation: lag, window, micro-time range and binning.</source>
+            <translation>Corrélation bidimensionnelle de la décroissance de fluorescence : retard, fenêtre, plage de microtemps et regroupement.</translation>
+        </message>
+        <message>
+            <source>Two-dimensional fluorescence lifetime correlation spectroscopy: settings and result maps.</source>
+            <translation>Spectroscopie de corrélation de durée de vie de fluorescence bidimensionnelle : réglages et cartes de résultats.</translation>
+        </message>
+        <message>
+            <source>Two-dimensional fluorescence lifetime correlation spectroscopy: toolbar, settings and result maps.</source>
+            <translation>Spectroscopie de corrélation de durée de vie de fluorescence bidimensionnelle : barre d’outils, réglages et cartes de résultats.</translation>
+        </message>
+        <message>
+            <source>Two-focus 3-D Gaussian model: diffusion time, focal radii and the known inter-focus distance (nm).</source>
+            <translation>Modèle gaussien 3D à deux foyers : temps de diffusion, rayons focaux et distance inter-foyers connue (nm).</translation>
+        </message>
+        <message>
+            <source>Two-state exchange: rate constants k12, k21 (1/ms) and the FRET efficiencies of the states.</source>
+            <translation>Échange à deux états : constantes de vitesse k12, k21 (1/ms) et efficacités FRET des états.</translation>
+        </message>
+        <message>
+            <source>Unique identifier of the plugin.</source>
+            <translation>Identifiant unique du module.</translation>
+        </message>
+        <message>
+            <source>Unload</source>
+            <translation>Décharger</translation>
+        </message>
+        <message>
+            <source>Update channels</source>
+            <translation>Mettre à jour les canaux</translation>
+        </message>
+        <message>
+            <source>Update computes a waterfall using the enabled detectors. Audio channel selection is independent of detector visibility.</source>
+            <translation>Mettre à jour calcule une cascade à partir des détecteurs activés. Le choix des canaux audio est indépendant de la visibilité des détecteurs.</translation>
+        </message>
+        <message>
+            <source>Upper edge of the inter-photon-time tail window (in ms) fitted as background.</source>
+            <translation>Borne supérieure de la fenêtre de la queue des temps inter-photons (en ms) ajustée comme fond.</translation>
+        </message>
+        <message>
+            <source>Upper edge of the micro-time window in TAC channels; later photons are ignored.</source>
+            <translation>Borne supérieure de la fenêtre de microtemps en canaux TAC ; les photons plus tardifs sont ignorés.</translation>
+        </message>
+        <message>
+            <source>Upper stoichiometry gate applied before fitting.</source>
+            <translation>Limite supérieure de stœchiométrie appliquée avant l’ajustement.</translation>
+        </message>
+        <message>
+            <source>Use Simulation Mode</source>
+            <translation>Utiliser le mode simulation</translation>
+        </message>
+        <message>
+            <source>Use absolute amplitudes (mean number of molecules) instead of relative fractions.</source>
+            <translation>Utiliser des amplitudes absolues (nombre moyen de molécules) au lieu de fractions relatives.</translation>
+        </message>
+        <message>
+            <source>Use auto for header detection or specify SPC-130, PTU, HT3 or HDF; a source manifest takes precedence.</source>
+            <translation>Utiliser « auto » pour la détection de l’en-tête, ou indiquer SPC-130, PTU, HT3 ou HDF ; un manifeste source a la priorité.</translation>
+        </message>
+        <message>
+            <source>Use max dMT</source>
+            <translation>Utiliser le dMT max</translation>
+        </message>
+        <message>
+            <source>Use min dMT</source>
+            <translation>Utiliser le dMT min</translation>
+        </message>
+        <message>
+            <source>Use settings and close</source>
+            <translation>Appliquer les réglages et fermer</translation>
+        </message>
+        <message>
+            <source>Use setup and continue</source>
+            <translation>Utiliser la configuration et continuer</translation>
+        </message>
+        <message>
+            <source>Use table selection for hist</source>
+            <translation>Utiliser la sélection du tableau pour l’histogramme</translation>
+        </message>
+        <message>
+            <source>Use the chosen curve's time axis and counts for the estimate.</source>
+            <translation>Utiliser l’axe temporel et les comptages de la courbe choisie pour l’estimation.</translation>
+        </message>
+        <message>
+            <source>Use these detector routing, PIE window, reading and calibration settings for the mosaics of the browser, then show the browser.</source>
+            <translation>Utiliser ces réglages de routage des détecteurs, de fenêtres PIE, de lecture et d’étalonnage pour les mosaïques du navigateur, puis afficher le navigateur.</translation>
+        </message>
+        <message>
+            <source>Use this file.</source>
+            <translation>Utiliser ce fichier.</translation>
+        </message>
+        <message>
+            <source>Use this provider configuration for subsequent chat turns</source>
+            <translation>Utiliser cette configuration de fournisseur pour les prochains échanges de chat</translation>
+        </message>
+        <message>
+            <source>VV and VH stacked for anisotropy analysis.</source>
+            <translation>VV et VH empilés pour l’analyse d’anisotropie.</translation>
+        </message>
+        <message>
+            <source>Validate and adopt this detector/window definition.</source>
+            <translation>Valider et adopter cette définition de détecteur / fenêtre.</translation>
+        </message>
+        <message>
+            <source>Validate and apply detector definitions used to regenerate fused burst tables.</source>
+            <translation>Valider et appliquer les définitions de détecteurs utilisées pour régénérer les tableaux de bursts fusionnés.</translation>
+        </message>
+        <message>
+            <source>Value for the fused bursts.</source>
+            <translation>Valeur pour les bursts fusionnés.</translation>
+        </message>
+        <message>
+            <source>Value for the selected bursts before fusion.</source>
+            <translation>Valeur pour les bursts sélectionnés avant fusion.</translation>
+        </message>
+        <message>
+            <source>Variant:</source>
+            <translation>Variante :</translation>
+        </message>
+        <message>
+            <source>Variational HMM settings: state range, random restarts and convergence precision.</source>
+            <translation>Réglages du HMM variationnel : plage d’états, redémarrages aléatoires et précision de convergence.</translation>
+        </message>
+        <message>
+            <source>Velocity profile and the table of fitted tiles.</source>
+            <translation>Profil de vitesse et tableau des tuiles ajustées.</translation>
+        </message>
+        <message>
+            <source>Views of the selected container: provenance graph, stored data and details.</source>
+            <translation>Vues du conteneur sélectionné : graphe de provenance, données enregistrées et détails.</translation>
+        </message>
+        <message>
+            <source>Volume view of the PSF; drag to rotate, wheel to zoom.</source>
+            <translation>Vue volumique de la PSF ; glisser pour tourner, molette pour zoomer.</translation>
+        </message>
+        <message>
+            <source>Voxel grid of the computed volume: pixels per side, planes, pixel size and axial step in nm.</source>
+            <translation>Grille de voxels du volume calculé : pixels par côté, plans, taille de pixel et pas axial en nm.</translation>
+        </message>
+        <message>
+            <source>Voxel size in nm and ROI size around each bead.</source>
+            <translation>Taille des voxels en nm et taille de la ROI autour de chaque bille.</translation>
+        </message>
+        <message>
+            <source>Voxel sizes, ROI and bead selection used for the PSF fit.</source>
+            <translation>Tailles de voxels, ROI et sélection des billes pour l’ajustement de la PSF.</translation>
+        </message>
+        <message>
+            <source>Walk through accepting a setup, opening a folder, selecting files and exporting them.</source>
+            <translation>Pas à pas : accepter une configuration, ouvrir un dossier, sélectionner des fichiers et les exporter.</translation>
+        </message>
+        <message>
+            <source>Walk through choosing a provider, fetching models and testing it.</source>
+            <translation>Pas à pas : choisir un fournisseur, récupérer les modèles et le tester.</translation>
+        </message>
+        <message>
+            <source>Walk through choosing the output folder and the device type.</source>
+            <translation>Pas à pas : choisir le dossier de sortie et le type de périphérique.</translation>
+        </message>
+        <message>
+            <source>Walk through finding and installing a package.</source>
+            <translation>Pas à pas : trouver et installer un paquet.</translation>
+        </message>
+        <message>
+            <source>Walk through inputs, detector gates, calculation and export.</source>
+            <translation>Pas à pas : entrées, fenêtres des détecteurs, calcul et export.</translation>
+        </message>
+        <message>
+            <source>Walk through loading a file, computing the histogram and fitting it.</source>
+            <translation>Pas à pas : charger un fichier, calculer l’histogramme et l’ajuster.</translation>
+        </message>
+        <message>
+            <source>Walk through loading the inputs and running a real lifetime analysis.</source>
+            <translation>Pas à pas : charger les entrées et lancer une véritable analyse de durée de vie.</translation>
+        </message>
+        <message>
+            <source>Walk through the demo: load it, preview the regions, run and read a decay.</source>
+            <translation>Pas à pas dans la démo : la charger, prévisualiser les régions, lancer une décroissance et la lire.</translation>
+        </message>
+        <message>
+            <source>Walk through the real analysis panels and their purpose.</source>
+            <translation>Pas à pas dans les panneaux d’analyse réels et leur finalité.</translation>
+        </message>
+        <message>
+            <source>Walk through the tool step by step; each step waits for you to use the control it points at.</source>
+            <translation>Pas à pas à travers l’outil ; chaque étape attend que vous utilisiez la commande désignée.</translation>
+        </message>
+        <message>
+            <source>Waterfall image and playback controls.</source>
+            <translation>Image en cascade et commandes de lecture.</translation>
+        </message>
+        <message>
+            <source>Waterfall of macro-time (horizontal) against micro-time or lifetime (vertical).</source>
+            <translation>Cascade du macrotemps (horizontal) en fonction du microtemps ou de la durée de vie (vertical).</translation>
+        </message>
+        <message>
+            <source>Weight of the prior against the data for state centre, noise and dwell time.</source>
+            <translation>Poids de l’a priori par rapport aux données pour le centre d’état, le bruit et le temps de séjour.</translation>
+        </message>
+        <message>
+            <source>Weighted residuals of the fit; a systematic trend lines up with the channel below.</source>
+            <translation>Résidus pondérés de l’ajustement ; une tendance systématique s’aligne sur le canal situé en dessous.</translation>
+        </message>
+        <message>
+            <source>What the fit decides by rule, what it reports, and what to check before believing it.</source>
+            <translation>Ce que l’ajustement décide selon des règles, ce qu’il rapporte et ce qu’il faut vérifier avant d’y croire.</translation>
+        </message>
+        <message>
+            <source>What the hub is and how the embedded calculators are used.</source>
+            <translation>Ce qu’est le centre de contrôle et comment utiliser les calculatrices intégrées.</translation>
+        </message>
+        <message>
+            <source>What the tool does, what it writes, and the known limits.</source>
+            <translation>Ce que fait l’outil, ce qu’il écrit et ses limites connues.</translation>
+        </message>
+        <message>
+            <source>Where and in which format the histogram is written.</source>
+            <translation>Où et dans quel format l’histogramme est écrit.</translation>
+        </message>
+        <message>
+            <source>Where the .bst files go. Leave empty to create a folder next to the first input file.</source>
+            <translation>Où écrire les fichiers .bst. Laisser vide pour créer un dossier à côté du premier fichier d’entrée.</translation>
+        </message>
+        <message>
+            <source>Where the plugin comes from, for example built-in or user.</source>
+            <translation>Origine du module, par exemple intégré ou utilisateur.</translation>
+        </message>
+        <message>
+            <source>Whether the dependency is satisfied.</source>
+            <translation>Indique si la dépendance est satisfaite.</translation>
+        </message>
+        <message>
+            <source>Whether the model is available, disabled or failed to load.</source>
+            <translation>Indique si le modèle est disponible, désactivé ou non chargé.</translation>
+        </message>
+        <message>
+            <source>Whether the plugin has a button in the toolbar.</source>
+            <translation>Indique si le module a un bouton dans la barre d’outils.</translation>
+        </message>
+        <message>
+            <source>Whether the plugin window is currently open, hidden or closed.</source>
+            <translation>Indique si la fenêtre du module est ouverte, masquée ou fermée.</translation>
+        </message>
+        <message>
+            <source>Which CSV columns hold the lag time, correlation G(tau) and, optionally, the uncertainty.</source>
+            <translation>Quelles colonnes CSV contiennent le temps de retard, la corrélation G(tau) et, facultativement, l’incertitude.</translation>
+        </message>
+        <message>
+            <source>Which photons of the burst to draw: all, selected, first and last.</source>
+            <translation>Quels photons du burst tracer : tous, sélectionnés, premier et dernier.</translation>
+        </message>
+        <message>
+            <source>Which quantity is fixed (D, rh or Veff); the other two are computed from it and are read-only.</source>
+            <translation>Quelle grandeur est fixée (D, rh ou Veff) ; les deux autres en sont calculées et sont en lecture seule.</translation>
+        </message>
+        <message>
+            <source>Width of the counting time bin [us]; counts per bin are histogrammed.</source>
+            <translation>Largeur de l’intervalle de comptage [µs] ; les comptages par intervalle sont histogrammés.</translation>
+        </message>
+        <message>
+            <source>Window dur (T ms):</source>
+            <translation>Durée de fenêtre (T ms) :</translation>
+        </message>
+        <message>
+            <source>Window used to smooth the linearization (DNL) table before it is applied; flat = no smoothing.</source>
+            <translation>Fenêtre utilisée pour lisser la table de linéarisation (DNL) avant son application ; plat = aucun lissage.</translation>
+        </message>
+        <message>
+            <source>Worm-like-chain model of a flexible linker: distance distribution set by contour length and persistence length.</source>
+            <translation>Modèle de chaîne vermiforme d’un lieur flexible : distribution des distances fixée par la longueur de contour et la longueur de persistance.</translation>
+        </message>
+        <message>
+            <source>Wrap around to the first frame at the end of the stack.</source>
+            <translation>Revenir à la première image en fin de pile.</translation>
+        </message>
+        <message>
+            <source>Write a simulated µs-ALEX measurement (100 µs alternation, donor channel 0, acceptor channel 1; low FRET, high FRET, donor-only and acceptor-only molecules) into this plugin’s generated-data folder and add it.</source>
+            <translation>Écrire une mesure µs-ALEX simulée (alternance de 100 µs, canal donneur 0, canal accepteur 1 ; molécules à FRET faible et élevé, donneur seul et accepteur seul) dans le dossier de données générées de ce module, et l’ajouter.</translation>
+        </message>
+        <message>
+            <source>Write each file's output into its own folder instead of the shared output folder.</source>
+            <translation>Écrire la sortie de chaque fichier dans son propre dossier plutôt que dans le dossier de sortie commun.</translation>
+        </message>
+        <message>
+            <source>Write each result next to its source file.</source>
+            <translation>Écrire chaque résultat à côté de son fichier source.</translation>
+        </message>
+        <message>
+            <source>Write the five ALEX-Suite CSV files beside the selected burst file.</source>
+            <translation>Écrire les cinq fichiers CSV de la suite ALEX à côté du fichier de burst sélectionné.</translation>
+        </message>
+        <message>
+            <source>Write the shifted TTTR file.</source>
+            <translation>Écrire le fichier TTTR décalé.</translation>
+        </message>
+        <message>
+            <source>Z threshold:</source>
+            <translation>Seuil Z :</translation>
+        </message>
+        <message>
+            <source>dT between consecutive photons; drag the blue lines to set min / max dMT.</source>
+            <translation>dT entre photons consécutifs ; faire glisser les lignes bleues pour définir dMT min / max.</translation>
+        </message>
+        <message>
+            <source>file name contains</source>
+            <translation>Le nom de fichier contient</translation>
+        </message>
+        <message>
+            <source>g scales every anisotropy: a 10 % error in g is about 10 % in r(t). l1 and l2 compensate the polarization mixing of a high-aperture objective (zero on a low-NA setup).</source>
+            <translation>g met à l’échelle chaque anisotropie : une erreur de 10 % sur g correspond à environ 10 % sur r(t). l1 et l2 compensent le mélange de polarisation d’un objectif à grande ouverture (zéro pour un montage à faible ON).</translation>
+        </message>
+        <message>
+            <source>spectrum</source>
+            <translation>Spectre</translation>
+        </message>
+        <message>
+            <source>to ndX</source>
+            <translation>vers ndX</translation>
+        </message>
+        <message>
+            <source>{n} BID file(s) queued.</source>
+            <translation>{n} fichier(s) BID en file.</translation>
+        </message>
+        <message>
+            <source>µs-ALEX only — already PIE / ns-ALEX? Skip this step; the setup step already has your detector definition.</source>
+            <translation>Seulement µs-ALEX : déjà PIE / ns-ALEX ? Ignorez cette étape ; l’étape de configuration contient déjà votre définition des détecteurs.</translation>
+        </message>
+        <message>
+            <source>τ (window):</source>
+            <translation>τ (fenêtre) :</translation>
+        </message>
+        <message>
+            <source>• Mean Duration: —</source>
+            <translation>• Durée moyenne : —</translation>
+        </message>
+        <message>
+            <source>• Mean Photons: —</source>
+            <translation>• Photons moyens : —</translation>
+        </message>
+        <message>
+            <source>• Mean Rate: —</source>
+            <translation>• Taux moyen : —</translation>
+        </message>
+        <message>
+            <source>↻ Restart</source>
+            <translation>↻ Redémarrer</translation>
+        </message>
+        <message>
+            <source>⏩ Run</source>
+            <translation>⏩ Exécuter</translation>
+        </message>
+        <message>
+            <source>⏮ First</source>
+            <translation>⏮ Premier</translation>
+        </message>
+        <message>
+            <source>⏹  Stop</source>
+            <translation>⏹  Arrêter</translation>
+        </message>
+        <message>
+            <source>■  Stop execution</source>
+            <translation>■  Arrêter l’exécution</translation>
+        </message>
+        <message>
+            <source>▶ Run all</source>
+            <translation>▶ Tout exécuter</translation>
+        </message>
+        <message>
+            <source>▶ Run · Shift+Enter</source>
+            <translation>▶ Exécuter · Maj+Entrée</translation>
+        </message>
+        <message>
+            <source>▶ Start batch</source>
+            <translation>▶ Lancer le lot</translation>
+        </message>
+        <message>
+            <source>◀</source>
+            <translation>◀</translation>
+        </message>
+        <message>
+            <source>◀ Back</source>
+            <translation>◀ Retour</translation>
+        </message>
+        <message>
+            <source>◀ Prev</source>
+            <translation>◀ Précédent</translation>
+        </message>
+        <message>
+            <source>✂ Convert / Split</source>
+            <translation>✂ Convertir / Scinder</translation>
+        </message>
+        <message>
+            <source>➕ Files</source>
+            <translation>➕ Fichiers</translation>
+        </message>
+        <message>
+            <source>＋ Code cell</source>
+            <translation>＋ Cellule de code</translation>
+        </message>
+        <message>
+            <source>＋ Markdown</source>
+            <translation>＋ Markdown</translation>
+        </message>
+        <message>
+            <source>💾  Export result JSON</source>
+            <translation>💾  Exporter le résultat JSON</translation>
+        </message>
+        <message>
+            <source>💾 Export CSV</source>
+            <translation>💾 Exporter le CSV</translation>
+        </message>
+        <message>
+            <source>💾 Write ALEX-Suite CSVs</source>
+            <translation>💾 Écrire les CSV ALEX-Suite</translation>
+        </message>
+        <message>
+            <source>📁 Folder</source>
+            <translation>📁 Dossier</translation>
+        </message>
+        <message>
+            <source>📂 Open TTTR…</source>
+            <translation>📂 Ouvrir un TTTR…</translation>
+        </message>
+        <message>
+            <source>📈 Fit series</source>
+            <translation>📈 Ajuster la série</translation>
+        </message>
+        <message>
+            <source>📋 Copy visible</source>
+            <translation>📋 Copier le visible</translation>
+        </message>
+        <message>
+            <source>🔄 Restart</source>
+            <translation>🔄 Redémarrer</translation>
+        </message>
+        <message>
+            <source>🔎 Detect only</source>
+            <translation>🔎 Détecter seulement</translation>
+        </message>
+        <message>
+            <source>🗄 Database</source>
+            <translation>🗄 Base de données</translation>
+        </message>
+        <message>
+            <source>🗑️ Clear</source>
+            <translation>🗑️ Vider</translation>
+        </message>
+        <message>
+            <source>🚀 Run</source>
+            <translation>🚀 Exécuter</translation>
+        </message>
+        <message>
+            <source>🚦 Detect alternation and convert</source>
+            <translation>🚦 Détecter l’alternance et convertir</translation>
+        </message>
+        <message>
+            <source>🧭 Guide</source>
+            <translation>🧭 Guide</translation>
+        </message>
+        <message>
+            <source>A step-by-step walk through the tools, pointing at each control.</source>
+            <translation>Un parcours pas à pas des outils, qui désigne chaque commande.</translation>
+        </message>
+        <message>
+            <source>AND intersects, OR unions and XOR keeps pixels included by an odd number of enabled regions.</source>
+            <translation>ET fait l’intersection, OU fait l’union et XOR conserve les pixels inclus par un nombre impair de régions activées.</translation>
+        </message>
+        <message>
+            <source>Adjust this node setting.</source>
+            <translation>Ajuster ce réglage du nœud.</translation>
+        </message>
+        <message>
+            <source>Append regions from JSON, masks, label images or Cellpose segmentation files.</source>
+            <translation>Ajouter des régions depuis des fichiers JSON, des masques, des images d’étiquettes ou des segmentations Cellpose.</translation>
+        </message>
+        <message>
+            <source>Apply TAC linearization (LUT) when reading</source>
+            <translation>Appliquer la linéarisation TAC (LUT) à la lecture</translation>
+        </message>
+        <message>
+            <source>Automatic levels</source>
+            <translation>Niveaux automatiques</translation>
+        </message>
+        <message>
+            <source>Baum-Welch settings: iterations, tolerance, decoder, seed, acceleration.</source>
+            <translation>Réglages Baum-Welch : itérations, tolérance, décodeur, graine, accélération.</translation>
+        </message>
+        <message>
+            <source>Browse editable QSS files copied to your user settings directory</source>
+            <translation>Parcourir les fichiers QSS modifiables copiés dans le dossier de réglages utilisateur</translation>
+        </message>
+        <message>
+            <source>Browse the axial stack; image picks and bead overlays refer to this slice.</source>
+            <translation>Parcourir la pile axiale ; les sélections d’images et les superpositions de billes se rapportent à cette tranche.</translation>
+        </message>
+        <message>
+            <source>Build the tool again.</source>
+            <translation>Recompiler l’outil.</translation>
+        </message>
+        <message>
+            <source>Built-in template:</source>
+            <translation>Modèle intégré :</translation>
+        </message>
+        <message>
+            <source>Calibration:</source>
+            <translation>Étalonnage :</translation>
+        </message>
+        <message>
+            <source>Cancel calibration read</source>
+            <translation>Annuler la lecture de l’étalonnage</translation>
+        </message>
+        <message>
+            <source>Cancel change</source>
+            <translation>Annuler la modification</translation>
+        </message>
+        <message>
+            <source>Cancel new</source>
+            <translation>Annuler la création</translation>
+        </message>
+        <message>
+            <source>Cancel staged reading and keep previous calibration values.</source>
+            <translation>Annuler la lecture échelonnée et conserver les valeurs d’étalonnage précédentes.</translation>
+        </message>
+        <message>
+            <source>Choose a dichroic splitter or polarization splitter.</source>
+            <translation>Choisir un séparateur dichroïque ou un séparateur de polarisation.</translation>
+        </message>
+        <message>
+            <source>Choose a style sheet from another directory; unsaved changes require confirmation</source>
+            <translation>Choisir une feuille de style dans un autre dossier ; les modifications non enregistrées demandent confirmation</translation>
+        </message>
+        <message>
+            <source>Choose a value for this node setting.</source>
+            <translation>Choisir une valeur pour ce réglage du nœud.</translation>
+        </message>
+        <message>
+            <source>Choose another destination; existing files require replacement confirmation</source>
+            <translation>Choisir une autre destination ; les fichiers existants demandent confirmation avant remplacement</translation>
+        </message>
+        <message>
+            <source>Click a bead/spot to fit it. Drag to pan, scroll to zoom; blue handles edit analysis regions. Found and picked outlines are measured results.</source>
+            <translation>Cliquer sur une bille ou un spot pour l’ajuster. Glisser pour déplacer, molette pour zoomer ; les poignées bleues modifient les régions d’analyse. Les contours trouvés et choisis sont des résultats mesurés.</translation>
+        </message>
+        <message>
+            <source>Close the picker without opening a dataset.</source>
+            <translation>Fermer le sélecteur sans ouvrir de jeu de données.</translation>
+        </message>
+        <message>
+            <source>Close the picker; the database operation can finish in the background.</source>
+            <translation>Fermer le sélecteur ; l’opération de base de données peut se terminer en arrière-plan.</translation>
+        </message>
+        <message>
+            <source>Close this prompt; nothing changes.</source>
+            <translation>Fermer cette invite ; rien ne change.</translation>
+        </message>
+        <message>
+            <source>Close without changing the shifts.</source>
+            <translation>Fermer sans modifier les décalages.</translation>
+        </message>
+        <message>
+            <source>Color scale of the image; pixel values and fits remain unchanged.</source>
+            <translation>Échelle de couleurs de l’image ; les valeurs des pixels et les ajustements restent inchangés.</translation>
+        </message>
+        <message>
+            <source>Comma-separated excitation lines in nanometers with relative powers, for example 488:1.0, 640:1.0.</source>
+            <translation>Raies d’excitation en nanomètres séparées par des virgules, avec puissances relatives, par exemple 488:1.0, 640:1.0.</translation>
+        </message>
+        <message>
+            <source>Confirm deletion of user QSS files and restore packaged defaults</source>
+            <translation>Confirmer la suppression des fichiers QSS utilisateur et restaurer les valeurs par défaut fournies</translation>
+        </message>
+        <message>
+            <source>Confirm the requested operation; discarded content cannot be restored</source>
+            <translation>Confirmer l’opération demandée ; le contenu supprimé ne peut pas être restauré</translation>
+        </message>
+        <message>
+            <source>Copy the selected region including its enabled/inverted state.</source>
+            <translation>Copier la région sélectionnée, y compris son état activé / inversé.</translation>
+        </message>
+        <message>
+            <source>Create a new QSS file without replacing an existing style</source>
+            <translation>Créer un nouveau fichier QSS sans remplacer un style existant</translation>
+        </message>
+        <message>
+            <source>Create style</source>
+            <translation>Créer un style</translation>
+        </message>
+        <message>
+            <source>Create the file in your styles directory; existing names are preserved</source>
+            <translation>Créer le fichier dans votre dossier de styles ; les noms existants sont conservés</translation>
+        </message>
+        <message>
+            <source>Current version:</source>
+            <translation>Version actuelle :</translation>
+        </message>
+        <message>
+            <source>Define detectors or read a measurement to discover routing channels.</source>
+            <translation>Définir des détecteurs ou lire une mesure pour découvrir les canaux de routage.</translation>
+        </message>
+        <message>
+            <source>Delete the selected analysis region from the collection.</source>
+            <translation>Supprimer la région d’analyse sélectionnée de la collection.</translation>
+        </message>
+        <message>
+            <source>Duplicate region</source>
+            <translation>Dupliquer la région</translation>
+        </message>
+        <message>
+            <source>Edit QSS source with syntax highlighting, selection, clipboard and undo/redo</source>
+            <translation>Modifier la source QSS avec coloration syntaxique, sélection, presse-papiers et annuler/rétablir</translation>
+        </message>
+        <message>
+            <source>Enabled</source>
+            <translation>Activé</translation>
+        </message>
+        <message>
+            <source>Enter a file name; .qss is added automatically and directory components are rejected</source>
+            <translation>Saisir un nom de fichier ; .qss est ajouté automatiquement et les chemins de dossier sont refusés</translation>
+        </message>
+        <message>
+            <source>Explain the F-test, confidence threshold and chi-square upper limit.</source>
+            <translation>Expliquer le test F, le seuil de confiance et la limite supérieure du khi carré.</translation>
+        </message>
+        <message>
+            <source>Explain the fields, the two remember options and what happens on Login.</source>
+            <translation>Expliquer les champs, les deux options de mémorisation et ce qui se passe à la connexion.</translation>
+        </message>
+        <message>
+            <source>Explain the sections, Apply, Save and Reset.</source>
+            <translation>Expliquer les sections, Appliquer, Enregistrer et Réinitialiser.</translation>
+        </message>
+        <message>
+            <source>Explain the table, the Disabled switch and stale entries.</source>
+            <translation>Expliquer le tableau, le commutateur Désactivé et les entrées obsolètes.</translation>
+        </message>
+        <message>
+            <source>Explain the table, the account form, passwords and deleting.</source>
+            <translation>Expliquer le tableau, le formulaire du compte, les mots de passe et la suppression.</translation>
+        </message>
+        <message>
+            <source>Explain the table, the dependency columns and the switches.</source>
+            <translation>Expliquer le tableau, les colonnes de dépendance et les commutateurs.</translation>
+        </message>
+        <message>
+            <source>Explain the table, the sweep and what a check proves.</source>
+            <translation>Expliquer le tableau, le balayage et ce que prouve une vérification.</translation>
+        </message>
+        <message>
+            <source>Explain the version list, the changelog and what Update Now does.</source>
+            <translation>Expliquer la liste des versions, le journal des modifications et l’action de Mettre à jour maintenant.</translation>
+        </message>
+        <message>
+            <source>Find tools by name or description.</source>
+            <translation>Rechercher des outils par nom ou description.</translation>
+        </message>
+        <message>
+            <source>Geometric coordinate in image pixels; ellipse rotation is in radians.</source>
+            <translation>Coordonnée géométrique en pixels de l’image ; la rotation de l’ellipse est en radians.</translation>
+        </message>
+        <message>
+            <source>Horizontal image coordinate of this polygon vertex.</source>
+            <translation>Coordonnée horizontale de l’image de ce sommet du polygone.</translation>
+        </message>
+        <message>
+            <source>Include this region in detection; disabled entries remain available for later use.</source>
+            <translation>Inclure cette région dans la détection ; les entrées désactivées restent disponibles pour plus tard.</translation>
+        </message>
+        <message>
+            <source>Keep reading the channels without a LUT raw.</source>
+            <translation>Continuer à lire les canaux sans LUT en brut.</translation>
+        </message>
+        <message>
+            <source>Keep the current buffer and files</source>
+            <translation>Conserver le tampon et les fichiers actuels</translation>
+        </message>
+        <message>
+            <source>Keep the shifts shown.</source>
+            <translation>Conserver les décalages affichés.</translation>
+        </message>
+        <message>
+            <source>Laser lines wavelength:power:</source>
+            <translation>Raies laser longueur d’onde:puissance :</translation>
+        </message>
+        <message>
+            <source>Leave the current style unchanged</source>
+            <translation>Laisser le style actuel inchangé</translation>
+        </message>
+        <message>
+            <source>Lift dim structures with gamma above one; display changes do not affect detection or fitting.</source>
+            <translation>Éclaircir les structures sombres avec un gamma supérieur à un ; les changements d’affichage n’affectent ni la détection ni l’ajustement.</translation>
+        </message>
+        <message>
+            <source>Load a packaged instrument light-path template.</source>
+            <translation>Charger un modèle fourni de trajet lumineux de l’instrument.</translation>
+        </message>
+        <message>
+            <source>Load n_points / n_free / χ²r from an open fit.</source>
+            <translation>Charger n_points / n_free / χ²r depuis un ajustement ouvert.</translation>
+        </message>
+        <message>
+            <source>Load regions</source>
+            <translation>Charger les régions</translation>
+        </message>
+        <message>
+            <source>Map the minimum and maximum finite image values to the color range.</source>
+            <translation>Associer les valeurs minimale et maximale finies de l’image à la plage de couleurs.</translation>
+        </message>
+        <message>
+            <source>Name of the optical detector channel to add.</source>
+            <translation>Nom du canal de détecteur optique à ajouter.</translation>
+        </message>
+        <message>
+            <source>Name the selected region; names are kept unique when saved and restored.</source>
+            <translation>Nommer la région sélectionnée ; les noms restent uniques à l’enregistrement et à la restauration.</translation>
+        </message>
+        <message>
+            <source>Native widgets use palette roles; Qt selectors, images, dimensions and gradients cannot be applied verbatim</source>
+            <translation>Les widgets natifs utilisent les rôles de palette ; les sélecteurs, images, dimensions et dégradés Qt ne peuvent pas être appliqués tels quels</translation>
+        </message>
+        <message>
+            <source>New optical detector name:</source>
+            <translation>Nom du nouveau détecteur optique :</translation>
+        </message>
+        <message>
+            <source>No datasets match these filters.</source>
+            <translation>Aucun jeu de données ne correspond à ces filtres.</translation>
+        </message>
+        <message>
+            <source>No fit yet: press Fit.</source>
+            <translation>Pas encore d’ajustement : appuyez sur Ajuster.</translation>
+        </message>
+        <message>
+            <source>Open selected</source>
+            <translation>Ouvrir la sélection</translation>
+        </message>
+        <message>
+            <source>Open the LUT tools to compute a LUT now.</source>
+            <translation>Ouvrir les outils LUT pour calculer une LUT maintenant.</translation>
+        </message>
+        <message>
+            <source>Open the page in your browser.</source>
+            <translation>Ouvrir la page dans votre navigateur.</translation>
+        </message>
+        <message>
+            <source>Open the selected dataset in this tool; remote objects are downloaded by MMFDB.</source>
+            <translation>Ouvrir le jeu de données sélectionné dans cet outil ; MMFDB télécharge les objets distants.</translation>
+        </message>
+        <message>
+            <source>Optical Setup...</source>
+            <translation>Configuration optique...</translation>
+        </message>
+        <message>
+            <source>PIE Windows</source>
+            <translation>Fenêtres PIE</translation>
+        </message>
+        <message>
+            <source>Parameter used in the Förster-radius calculation for the selected fluorophores.</source>
+            <translation>Paramètre utilisé dans le calcul du rayon de Förster pour les fluorophores sélectionnés.</translation>
+        </message>
+        <message>
+            <source>Plot</source>
+            <translation>Graphique</translation>
+        </message>
+        <message>
+            <source>Read</source>
+            <translation>Lire</translation>
+        </message>
+        <message>
+            <source>Read a measurement to see the micro-time decay of every routing channel.</source>
+            <translation>Lire une mesure pour voir le décroissement en microtemps de chaque canal de routage.</translation>
+        </message>
+        <message>
+            <source>Read help for the selected tool.</source>
+            <translation>Lire l’aide de l’outil sélectionné.</translation>
+        </message>
+        <message>
+            <source>Read the conversion rules and verification guarantees.</source>
+            <translation>Lire les règles de conversion et les garanties de vérification.</translation>
+        </message>
+        <message>
+            <source>Reload datasets with the current scope, search, kind and format filters.</source>
+            <translation>Recharger les jeux de données avec la portée, la recherche, le type et les filtres de format actuels.</translation>
+        </message>
+        <message>
+            <source>Remove region</source>
+            <translation>Supprimer la région</translation>
+        </message>
+        <message>
+            <source>Reset styles</source>
+            <translation>Réinitialiser les styles</translation>
+        </message>
+        <message>
+            <source>Restore the full-image view after zooming or panning.</source>
+            <translation>Restaurer la vue complète de l’image après un zoom ou un déplacement.</translation>
+        </message>
+        <message>
+            <source>Restrict detection to named regions; empty or disabled regions use the entire frame.</source>
+            <translation>Restreindre la détection aux régions nommées ; les régions vides ou désactivées utilisent toute l’image.</translation>
+        </message>
+        <message>
+            <source>Routing channel whose LUT is computed, assigned, exported or removed.</source>
+            <translation>Canal de routage dont la LUT est calculée, affectée, exportée ou supprimée.</translation>
+        </message>
+        <message>
+            <source>Routing channel:</source>
+            <translation>Canal de routage :</translation>
+        </message>
+        <message>
+            <source>Save As</source>
+            <translation>Enregistrer sous</translation>
+        </message>
+        <message>
+            <source>Save all regions as JSON with flags, or export their raster labels as TIFF/NumPy.</source>
+            <translation>Enregistrer toutes les régions en JSON avec leurs indicateurs, ou exporter leurs étiquettes raster en TIFF/NumPy.</translation>
+        </message>
+        <message>
+            <source>Save and apply supported palette rules to this native window; Qt-only rules remain in the file</source>
+            <translation>Enregistrer et appliquer les règles de palette prises en charge à cette fenêtre native ; les règles propres à Qt restent dans le fichier</translation>
+        </message>
+        <message>
+            <source>Save regions</source>
+            <translation>Enregistrer les régions</translation>
+        </message>
+        <message>
+            <source>Save the current buffer without applying it</source>
+            <translation>Enregistrer le tampon actuel sans l’appliquer</translation>
+        </message>
+        <message>
+            <source>Search dataset names and metadata; press Refresh to apply.</source>
+            <translation>Rechercher dans les noms et métadonnées des jeux de données ; appuyez sur Actualiser pour appliquer.</translation>
+        </message>
+        <message>
+            <source>Select a plugin to inspect its details.</source>
+            <translation>Sélectionner un module pour en examiner les détails.</translation>
+        </message>
+        <message>
+            <source>Select this analysis region for renaming, geometry edits, duplication or removal.</source>
+            <translation>Sélectionner cette région d’analyse pour la renommer, modifier sa géométrie, la dupliquer ou la supprimer.</translation>
+        </message>
+        <message>
+            <source>Set the lower display level without changing stored pixel values.</source>
+            <translation>Régler le niveau d’affichage inférieur sans modifier les valeurs de pixels enregistrées.</translation>
+        </message>
+        <message>
+            <source>Set the upper display level without changing stored pixel values.</source>
+            <translation>Régler le niveau d’affichage supérieur sans modifier les valeurs de pixels enregistrées.</translation>
+        </message>
+        <message>
+            <source>Show the next page of datasets.</source>
+            <translation>Afficher la page suivante de jeux de données.</translation>
+        </message>
+        <message>
+            <source>Show the previous page of datasets.</source>
+            <translation>Afficher la page précédente de jeux de données.</translation>
+        </message>
+        <message>
+            <source>Sign in to the MMFDB workspace</source>
+            <translation>Se connecter à l’espace de travail MMFDB</translation>
+        </message>
+        <message>
+            <source>TTTR Reading Routine:</source>
+            <translation>Routine de lecture TTTR :</translation>
+        </message>
+        <message>
+            <source>The name the setup is stored under.</source>
+            <translation>Le nom sous lequel la configuration est enregistrée.</translation>
+        </message>
+        <message>
+            <source>The range of state counts the scan scores.</source>
+            <translation>La plage des nombres d’états évaluée par le balayage.</translation>
+        </message>
+        <message>
+            <source>Toggle this node setting.</source>
+            <translation>Basculer ce réglage du nœud.</translation>
+        </message>
+        <message>
+            <source>Tool help</source>
+            <translation>Aide de l’outil</translation>
+        </message>
+        <message>
+            <source>Transitions</source>
+            <translation>Transitions</translation>
+        </message>
+        <message>
+            <source>Use pixels outside this region instead of inside it.</source>
+            <translation>Utiliser les pixels situés hors de cette région plutôt qu’à l’intérieur.</translation>
+        </message>
+        <message>
+            <source>Vertical image coordinate of this polygon vertex.</source>
+            <translation>Coordonnée verticale de l’image de ce sommet du polygone.</translation>
+        </message>
+        <message>
+            <source>Walk through a safe sweep and the details of a plugin.</source>
+            <translation>Parcourir un balayage sûr et les détails d’un module.</translation>
+        </message>
+        <message>
+            <source>Walk through changing a colour and applying it.</source>
+            <translation>Parcourir le changement d’une couleur et son application.</translation>
+        </message>
+        <message>
+            <source>Walk through checking for an update and reading what changed.</source>
+            <translation>Parcourir la recherche d’une mise à jour et la lecture des changements.</translation>
+        </message>
+        <message>
+            <source>Walk through loading fit statistics and comparing nested models.</source>
+            <translation>Parcourir le chargement des statistiques d’ajustement et la comparaison de modèles imbriqués.</translation>
+        </message>
+        <message>
+            <source>Walk through packing, unpacking and sidecar handling.</source>
+            <translation>Parcourir l’empaquetage, le dépaquetage et la gestion des fichiers associés.</translation>
+        </message>
+        <message>
+            <source>Walk through picking a model, disabling it and saving.</source>
+            <translation>Parcourir la sélection d’un modèle, sa désactivation et son enregistrement.</translation>
+        </message>
+        <message>
+            <source>Walk through picking a plugin, switching it off and saving.</source>
+            <translation>Parcourir la sélection d’un module, sa désactivation et son enregistrement.</translation>
+        </message>
+        <message>
+            <source>Walk through picking an account, editing it and saving.</source>
+            <translation>Parcourir la sélection d’un compte, sa modification et son enregistrement.</translation>
+        </message>
+        <message>
+            <source>Walk through signing in as another account.</source>
+            <translation>Parcourir la connexion avec un autre compte.</translation>
+        </message>
+        <message>
+            <source>no icon</source>
+            <translation>aucune icône</translation>
+        </message>
+        <message>
             <source>&lt;b&gt;Max pairs&lt;/b&gt; says how many pairs to choose and &lt;b&gt;Expected E error&lt;/b&gt; how precisely you can measure an efficiency. Press &lt;b&gt;Run selection&lt;/b&gt;.</source>
             <translation>&lt;b&gt;Paires max&lt;/b&gt; indique combien de paires choisir et &lt;b&gt;Erreur attendue sur E&lt;/b&gt; avec quelle précision une efficacité peut être mesurée. Appuyez sur &lt;b&gt;Lancer la sélection&lt;/b&gt;.</translation>
         </message>
