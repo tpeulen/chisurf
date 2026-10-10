@@ -40,6 +40,15 @@ field's right edge, or turn the mouse wheel over the field (one notch is one ste
 The histogram folds again at once and the window stays usable while it does. **Input** forces the container type
 (**Auto** detects it); **Output** is the container written.
 
+**Detect period** (grey until a file is loaded) measures the period from the photons instead: the two busiest
+detector groups (the **Detectors** field, or the two busiest routing channels when it is blank) alternate with the
+lasers, and the sharpest line in the power spectrum of their signed difference, refined to the exact integer on all
+photons, is the period. **Period** is set to it and the histogram and excitation regions fold again; the message
+above the histogram gives the measured period and its alternation contrast (peak over band median). A stream whose
+contrast is below 50 does not alternate (PIE / ns-ALEX data, or the wrong detectors) and is refused with that
+contrast; **Period** keeps its value. **Shift** is not changed: a region that crosses phase zero is shown as one
+wrapped region.
+
 ## 3. Write one file
 
 **Save as…** (grey until a file is loaded) opens a file chooser with a suggested name; the input file is never
@@ -111,9 +120,10 @@ measured candidates include explicit transition warnings; the three-phase input
 retains all three regions and all 90,000 photons.
 ```
 
-Period remains an instrument setting in macro-time ticks. Generic region
-inference does not infer an unknown period; an incorrect period smears the
-phases. Single-file, convert-each and merge exports retain their original
+Period remains an instrument setting in macro-time ticks. Region inference
+works at the configured period and does not infer it; an incorrect period
+smears the phases into many short "regions". Press **Detect period** to
+measure it from the data first (section 2). Single-file, convert-each and merge exports retain their original
 folding behavior, photon arrays, routing/event types and clock/header contract.
 The input file is unchanged. The full user-operated Guide remains available.
 
@@ -122,6 +132,8 @@ from chisurf.plugins.tttr.ptu_alex_creator import core
 
 tttr = core.load("measurement.ptu", "PTU")
 period, shift = 8000, 0  # the measured instrument setting, in macro-time ticks
+measured = core.measure_alex_period(tttr.macro_times, tttr.routing_channels)
+print(measured["period"], measured["confidence"])  # what Detect period sets
 phase = core.apply_alex(tttr, period, shift).micro_times
 result = core.auto_excitation_regions(phase, tttr.routing_channels,
                                       alex_period=period)

@@ -3,7 +3,7 @@
 The left window is the Qt tool's controls as a spec form (``alex_emtk.view.json``, drawn by ``emtk.view_form`` with
 this app as the model): the file row, the input / output formats, the Period and Shift spin fields, and the batch
 queue (a ``data_table``) with its output folder. The right window shows the live histogram and editable neutral
-excitation-phase candidates at the configured period, including transition warnings and wrapped range overlays.
+excitation-phase candidates at the configured period (typed, or measured from the data with Detect period), including transition warnings and wrapped range overlays.
 Candidates never filter the converted photon stream. Loading,
 the preview, saving and the batch run are workers (one at a time) published on the UI thread; the conversion itself
 is the plugin's Qt-free :mod:`core` / :mod:`api`, shared with the Qt tool, the CLI and the RPC backend.
@@ -156,6 +156,8 @@ class AlexApp(TourTarget, ImApp):
             return bool(str(self.model.input_file).strip())
         if name == "choose_save":
             return self.model.has_data
+        if name == "detect_period":
+            return self.model.has_data and not self.preview_job.running
         if name == "redetect_regions":
             return self.model.has_data and not self.preview_job.running
         if name == "remove_selected":
@@ -326,6 +328,45 @@ class AlexApp(TourTarget, ImApp):
             publish,
             self.error,
         )
+
+    def detect_period(self):
+        """Measure the alternation period of the loaded stream and set Period to it (the preview then refolds)."""
+        if self.job.running or not self.model.has_data:
+            return False
+        try:
+            groups = self.model.channel_groups()
+        except ValueError as exc:
+            self.error(ValueError(tr(str(exc))))
+            return False
+        tttr, path = self.model._tttr, self.loaded_path
+        macro, routing = tttr.macro_times, tttr.routing_channels
+
+        def work():
+            return core.measure_alex_period(macro, routing, channel_groups=groups)
+
+        def publish(found):
+            if path != self.loaded_path:
+                return
+            period = int(found["period"])
+            low, high = PERIOD_LIMITS
+            if not low <= period <= high:
+                self.error(
+                    ValueError(
+                        tr("Measured period is outside the Period range")
+                        + f": {period} ({low}–{high})"
+                    )
+                )
+                return
+            self.model.alex_period = period
+            self.notice(
+                tr("Measured period")
+                + f": {period} ("
+                + tr("alternation contrast")
+                + f" {found['confidence']:.0f}×)"
+            )
+
+        self.notice(tr("Measuring the period…"))
+        return self.job.start(work, publish, self.error)
 
     def redetect_regions(self):
         """Re-detect all phases at the configured period, replacing previous region edits."""
@@ -629,8 +670,13 @@ class AlexApp(TourTarget, ImApp):
                     )[index % 4]
                     for part, (lo, hi) in enumerate(region["ranges"]):
                         implot.set_next_fill_style(colour, 0.16)
+                        # A wrapped region is two bands but one legend entry ("##" hides the second).
+                        label = region["label"] if part == 0 else ""
                         implot.plot_shaded(
-                            region["label"] + f"##range{part}", [lo, hi], [maximum, maximum], yref=0
+                            label + f"##{region['name']}-range{part}",
+                            [lo, hi],
+                            [maximum, maximum],
+                            yref=0,
                         )
                 implot.plot_line(tr("ALEX phase"), list(range(len(self.histogram))), self.histogram)
             implot.end_plot()

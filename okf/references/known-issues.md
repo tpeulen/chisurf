@@ -4,6 +4,16 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## emtk: a one-line field keeps the keyboard after a click elsewhere (found 2026-10-10)
+
+status: open
+
+After typing in a one-line field (ALEX creator's file path or Period) and pressing Enter, a click on another control
+clears the field's click focus but not its keyboard focus, so a following double-click into a table cell sends the
+typed keys to the old field ("2400" tried to load a file named 2400). Cause: `~/dev/emtk/emtk/im_widgets.py` near
+line 1700 clears only the active id; `text_editor` near line 4977 clears both. Owner: emtk (fix there with a test).
+Strict xfail in `chisurf/plugins/tttr/ptu_alex_creator/test/test_ranges_and_autodetect.py` flips when fixed.
+
 ## Pre-existing red plugin tests seen during the W6 UI-debt sweep (found 2026-10-10)
 
 status: open

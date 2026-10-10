@@ -2,6 +2,10 @@
 
 ## 2026-10-10
 
+- ALEX creator parity audit: range table and region auto-detect present (new click tests);
+  period auto-detect had been dropped and is restored as Detect period (known-answer tests on a
+  5000-tick planted stream and the suite demo); wrapped regions list once in the legend.
+
 - W3: sampling chains and diagnostics are stored in the `.cs.pto` (`sampling/<uid>/` entries,
   hashed by size for autosave), survive undo and reload; the chain page redraws when a run ends
   and says why it is empty; Open in ndX; ndX imports `*.cs.pto` stores and has a bottom status bar.

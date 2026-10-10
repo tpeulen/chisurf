@@ -814,6 +814,73 @@ def detect_alex_channels(
     }
 
 
+#: Alternation contrast (spectral peak over the band median) below which a measured period is refused: a stream
+#: that does not alternate still has a largest noise peak. Alternating data comes back in the thousands; the ALEX
+#: Suite's arrival detection uses the same threshold.
+MIN_PERIOD_CONFIDENCE = 50.0
+
+
+def measure_alex_period(
+    macro_times,
+    routing_channels,
+    *,
+    channel_groups=None,
+    min_confidence: float = MIN_PERIOD_CONFIDENCE,
+) -> dict:
+    """Measure the µs-ALEX alternation period of an unfolded photon stream.
+
+    The detector assignment only flips the sign of the alternating signal that
+    :func:`detect_alex_period` analyses, so any two detection bands work: the two
+    busiest detector groups (``channel_groups``) or, without groups, the two
+    busiest routing channels.
+
+    Parameters
+    ----------
+    macro_times, routing_channels : array_like
+        The raw photon stream; never modified.
+    channel_groups : sequence of sequence of int, optional
+        Physical detection bands, as for :func:`auto_excitation_regions`.
+    min_confidence : float
+        Refuse a period whose alternation contrast is below this.
+
+    Returns
+    -------
+    dict
+        ``{"period": int, "confidence": float, "channels": [[...], [...]]}``,
+        the two bands that were compared.
+
+    Raises
+    ------
+    ValueError
+        Fewer than two detection bands carry photons, or the stream does not
+        alternate clearly (contrast below ``min_confidence``).
+    """
+    rc = np.asarray(routing_channels)
+    present, counts = np.unique(rc, return_counts=True)
+    if channel_groups:
+        groups = [sorted({int(c) for c in group}) for group in channel_groups]
+        totals = [int(counts[np.isin(present, group)].sum()) for group in groups]
+    else:
+        groups = [[int(c)] for c in present]
+        totals = [int(n) for n in counts]
+    busy = [groups[i] for i in np.argsort(totals)[::-1] if totals[i] > 0][:2]
+    if len(busy) < 2:
+        raise ValueError(
+            "an ALEX period is measured from two detection bands; only one carries photons"
+        )
+    busy.sort()
+    detected = detect_alex_period(
+        macro_times, rc, donor_channels=busy[0], acceptor_channels=busy[1]
+    )
+    confidence = float(detected["confidence"])
+    if confidence < min_confidence:
+        raise ValueError(
+            f"no clear laser alternation (contrast {confidence:.0f}x, expected > "
+            f"{min_confidence:.0f}x): not µs-ALEX data, or the detector groups are wrong"
+        )
+    return {"period": int(detected["period"]), "confidence": confidence, "channels": busy}
+
+
 def alex_stream_masks(
     micro_times,
     routing_channels,
@@ -1008,6 +1075,8 @@ __all__ = [
     "auto_excitation_regions",
     "detect_alex_period",
     "detect_alex_channels",
+    "measure_alex_period",
+    "MIN_PERIOD_CONFIDENCE",
     "alex_stream_masks",
     "convert_file",
     "merge_files",

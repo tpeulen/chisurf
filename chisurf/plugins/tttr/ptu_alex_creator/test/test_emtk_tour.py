@@ -89,6 +89,9 @@ def test_the_tour_is_walked_with_the_user_operating_each_awaited_control(ui, sou
                 ui.dialog_pick(source.name)
                 settle(ui)
                 assert ui.app.model.has_data
+            elif key == "detect_period":
+                ui.click("detect_period")
+                settle(ui)  # the sample does not alternate: the measurement is refused, Period is kept
             elif key == "timing":
                 before = ui.app.model.period_shift
                 ui.type_into("period_shift", "23")  # a spin field: type the value, Enter
@@ -101,4 +104,4 @@ def test_the_tour_is_walked_with_the_user_operating_each_awaited_control(ui, sou
             ui.draw(2)
         ui.press_text("Finish ✓" if tour.step_idx == len(tour.steps) - 1 else "Next ►")
     assert not tour.active
-    assert seen == ["choose_input", "timing", "choose_save", "choose_files"]
+    assert seen == ["choose_input", "detect_period", "timing", "choose_save", "choose_files"]

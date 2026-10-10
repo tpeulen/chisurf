@@ -2,7 +2,9 @@
 
 Load a TTTR file (including .sm: Open…, a typed path with Enter, or a drop), select input and output container formats,
 then choose the ALEX period and shift (type a value, or use the arrows or the mouse wheel). The histogram previews the converted
-micro-time phase. Period and shift are in macro-time units, not seconds.
+micro-time phase. Period and shift are in macro-time units, not seconds. **Detect period** measures the period from
+the loaded photons (the two busiest detector groups alternate) and sets Period; a stream that does not alternate is
+refused with its contrast and Period is kept.
 
 Save as writes a new converted file through the same conversion API used by
 the Qt tool. The input file is preserved. Photon channels, events and header

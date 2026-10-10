@@ -1,6 +1,6 @@
 {
   "window": {"width": 1100, "height": 720},
-  "_comment": "Native ALEX Creator: existing file, formats, period/shift and batch controls, plus configured-period excitation candidates in the right preview pane. Both queues and editable phase candidates use declarative data_table sections.",
+  "_comment": "Native ALEX Creator: existing file, formats, period/shift (typed or measured by Detect period) and batch controls, plus configured-period excitation candidates in the right preview pane. Both queues and editable phase candidates use declarative data_table sections.",
   "sections": [
     {
       "type": "panel",
@@ -75,6 +75,23 @@
           "maximum": 1000000,
           "step": 1,
           "description": "Phase shift of the ALEX period before the macro-time to micro-time mapping."
+        },
+        {
+          "type": "panel",
+          "title": "",
+          "n_col": 1,
+          "sections": [
+            {
+              "type": "button_row",
+              "buttons": [
+                {
+                  "label": "Detect period",
+                  "action": "detect_period",
+                  "description": "Measure the alternation period from the loaded photon stream (the two busiest detector groups alternate) and set Period to it; the histogram and excitation regions refold. Grey until a file is loaded."
+                }
+              ]
+            }
+          ]
         },
         {"type": "custom", "key": "events", "description": "Number of photon events of the loaded file."}
       ]

@@ -12,6 +12,16 @@
    }
   },
   {
+   "title": "Measure the period",
+   "text": "Press <b>Detect period</b> to measure the alternation period from the photons themselves: the two busiest detectors alternate, and the strongest line of that alternation sets <b>Period</b>. A stream that does not alternate is refused with its contrast and Period stays as it was. The histogram and the excitation regions fold again at the measured period.",
+   "target": {
+    "name": "detect_period"
+   },
+   "await": {
+    "hint": "Press <b>Detect period</b>."
+   }
+  },
+  {
    "title": "Set the period and the shift",
    "text": "<b>Period</b> is the alternation period in macro-time units (not seconds) and <b>Shift</b> moves the phase. Type a value and press Enter, or use the arrows or the mouse wheel over a field: the histogram on the right folds again at once. Set them to the known instrument period and phase. Re-detect updates all excitation-region candidates; inspect Start/End, transition warnings and detector groups before confirming Review. Regions are overlays and do not filter photons.",
    "target": {
@@ -19,6 +29,13 @@
    },
    "await": {
     "hint": "Change <b>Shift</b> (or <b>Period</b>) and watch the histogram."
+   }
+  },
+  {
+   "title": "Define the excitation ranges",
+   "text": "Each row is one excitation phase found in the folded histogram and drawn as a shaded band. Double-click <b>Start</b> or <b>End</b> to define a range by hand (Start above End wraps across phase zero), and tick <b>Review</b> once checked. <b>Re-detect</b> replaces your edits with the measured ranges. Regions never filter the exported photons.",
+   "target": {
+    "name": "redetect_regions"
    }
   },
   {

@@ -46,7 +46,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | Mode | `batch_mode` | choice |  | choices: convert, merge | Convert every file to its own ALEX output, or merge them all into one. |
-| batch_files | `batch_files` | path_list |  |  |  |
+| batch_files | `batch_files` | path_list |  |  | Files queued for the batch run. |
 | Output folder | `batch_output_folder` | directory |  |  | Convert requires a folder; merge defaults to the folder of the first input. |
 
 ### Input file
