@@ -122,11 +122,6 @@ def test_the_chunk_size_field_is_typed_clicked_away_clamped_and_stepped_by_its_a
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="emtk gap: the wheel does not reach a field inside a DockManager window "
-    "(repro in the report); the Qt spin box steps on the wheel",
-)
 def test_the_wheel_steps_the_chunk_size():
     before, after = wheel_steps_a_number_field(make_app, "chunk_size")
     assert after != before

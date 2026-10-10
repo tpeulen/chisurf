@@ -1805,6 +1805,7 @@ class ChannelDefinitionWidget:
                 self.model.data.get("optical_config"),
                 list(self.model.data["detectors"]),
                 on_changed=self._optical_changed,
+                auto_recalculate=False,
             )
         self.optical.draw()
 

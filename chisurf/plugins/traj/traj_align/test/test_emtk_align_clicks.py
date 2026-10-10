@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from emtk import keys
 
 from chisurf.plugins.traj.traj_align.app import make_app
-from chisurf.plugins.traj.traj_save_topology.test.real_input import Ui, check_action_flow, check_browse_row, check_guide_and_help_buttons, check_log_scrolls_with_the_wheel, check_number_field, check_row_is_read_only, check_text_field, dead_tour_buttons, enter_commits_an_emptied_field, read_xyz, wheel_steps_a_number_field
+from chisurf.plugins.traj.traj_save_topology.test.real_input import Ui, check_action_flow, check_browse_row, check_guide_and_help_buttons, check_log_scrolls_with_the_wheel, check_number_field, check_row_is_read_only, dead_tour_buttons, enter_commits_an_emptied_field, read_xyz, wheel_steps_a_number_field
 
 
 def test_guide_and_help_buttons_are_pressed():
@@ -75,26 +76,31 @@ def test_the_stride_field_is_typed_clicked_away_clamped_and_stepped_by_its_arrow
 
 
 def test_the_atom_selection_field_is_typed_and_may_be_emptied():
-    check_text_field(make_app, "atom_selection", start="", typed="0, 1, 2, 3")
+    # The selection is a multi-line box: Enter starts a new line, a click away commits (as the Qt box does).
+    ui = Ui(make_app())
+    try:
+        ui.draw(1)
+        ui.click("atom_selection", fx=0.3)
+        ui.type_text("0, 1, 2, 3")
+        ui.click("log", fy=0.9)
+        assert ui.app.model.atom_selection == "0, 1, 2, 3"
+        ui.draw(1)
+        ui.click("atom_selection", fx=0.3)
+        ui.type_text("")  # select everything
+        ui.key(keys.KEY_BACKSPACE, "")
+        ui.click("log", fy=0.9)
+        assert ui.app.model.atom_selection == ""
+    finally:
+        ui.app.close()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="emtk gap: Enter in a text field that was just emptied is not seen as Enter "
-    "(repro in the report); a click away commits the empty value",
-)
 def test_enter_commits_an_emptied_atom_selection():
     assert enter_commits_an_emptied_field(make_app, "atom_selection", "0, 1") == ""
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="emtk gap: the wheel does not reach a field inside a DockManager window "
-    "(repro in the report); the Qt spin box steps on the wheel",
-)
 def test_the_wheel_steps_the_stride_field():
     before, after = wheel_steps_a_number_field(make_app, "stride")
-    assert after != before
+    assert before == 1 and after == before + 3  # three notches up, one step each
 
 
 def test_aligning_through_the_ui_writes_the_superposition_the_core_computes(

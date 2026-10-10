@@ -253,8 +253,20 @@ class DistancesView(_View):
             self.ed.set_distance(record["row"], "visible", value in (True, "True", "true", 1))
             self.card.sync_status()
 
+    #: the records of every selected row (the table's ``selection_attr``): ctrl/shift-click
+    picked_rows: list = []
+
+    def picked_ids(self) -> list[str]:
+        """The restraints of the selection that still exist, in table order."""
+        return [r["row"] for r in self.picked_rows if isinstance(r, dict) and self.ed._dist(r["row"]) is not None]
+
     def delete_row(self, record) -> None:
-        if isinstance(record, dict):
+        if not isinstance(record, dict):
+            return
+        picked = self.picked_ids()
+        if len(picked) > 1 and record["row"] in picked:
+            self.card.ask_delete_distances(picked)
+        else:
             self.card.ask_delete_distance(record["row"])
 
     def _params(self) -> dict:
@@ -512,6 +524,31 @@ class FpsJsonCard(CardShell):
     def _delete_distance(self, rid: str) -> None:
         self.editor.delete_distance(rid)
         self.sync_status()
+
+    def ask_delete_distances(self, rids: list[str]) -> None:
+        """One question for the whole selection (Delete Row(s), the Delete key on several restraints)."""
+        if len(rids) == 1:
+            self.ask_delete_distance(rids[0])
+            return
+        self.ask(
+            "Remove Restraints?",
+            f"Are you sure you want to remove these {len(rids)} restraints?",
+            lambda: self._delete_distances(list(rids)),
+            yes="Remove",
+            no="Keep",
+        )
+
+    def _delete_distances(self, rids: list[str]) -> None:
+        self.editor.delete_distances(rids)
+        self.sync_status()
+
+    def distance_targets(self) -> list[str]:
+        """The restraints the Delete button applies to: the selection, else the current row."""
+        picked = self.views["distances"].picked_ids()
+        if picked:
+            return picked
+        rid = self.editor.selected_dist
+        return [rid] if rid and self.editor._dist(rid) is not None else []
 
     def browse_pdb(self) -> None:
         rid = self.editor.selected_pos
@@ -811,10 +848,10 @@ class FpsJsonCard(CardShell):
                     "tip": "Add an empty restraint row; choose its two labels below.",
                 },
                 {
-                    "label": "Delete Row",
+                    "label": "Delete Row(s)",
                     "key": "delete_dist",
-                    "enabled": bool(ed.selected_dist) and ed._dist(ed.selected_dist) is not None,
-                    "tip": "Remove the selected restraint (asks first).",
+                    "enabled": bool(self.distance_targets()),
+                    "tip": "Remove the selected restraints (ctrl- or shift-click to select several; asks first).",
                 },
                 {
                     "label": "Add Scoring Group",
@@ -833,7 +870,7 @@ class FpsJsonCard(CardShell):
             ed.add_distance_row()
             self.sync_status()
         elif pressed == "delete_dist":
-            self.ask_delete_distance(ed.selected_dist)
+            self.ask_delete_distances(self.distance_targets())
         elif pressed == "add_set":
             self.prompt("New Scoring Group", "Scoring group name:", self._add_set)
         elif pressed == "remove_set":

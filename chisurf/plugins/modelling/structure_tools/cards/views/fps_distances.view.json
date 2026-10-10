@@ -6,7 +6,7 @@
       "description": "The distance restraints. A name is label1_label2. Click a row to edit it below; the Show box is the restraint's visible flag.",
       "options": {
         "source": "dist_rows", "editable": true, "expand": true, "reserve": 190, "row_key": "row", "status": true,
-        "selected_call": "select_row", "edited_call": "edit_row", "delete_call": "delete_row",
+        "selected_call": "select_row", "selection_attr": "picked_rows", "edited_call": "edit_row", "delete_call": "delete_row",
         "columns": [
           {"key": "show", "min_width": 44, "title": "Show", "width": 54, "editable": true, "description": "Whether the restraint's line is drawn in the 3D tab."},
           {"key": "name", "min_width": 150, "title": "Name", "description": "label1_label2, built from the two labels."},

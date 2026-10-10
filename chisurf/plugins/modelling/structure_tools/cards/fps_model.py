@@ -951,6 +951,13 @@ class FpsEditor:
         self._changed()
         return True
 
+    def delete_distances(self, rids: list[str]) -> int:
+        """Remove several restraints at once (each as :meth:`delete_distance`); returns how many went."""
+        removed = sum(1 for rid in list(rids) if self.delete_distance(rid))
+        if removed > 1:
+            self.say(f"Removed {removed} restraints.")
+        return removed
+
     def toggle_distance(self, rid: str) -> None:
         params = self._dist(rid)
         if params is not None:

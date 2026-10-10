@@ -2,6 +2,7 @@
 
 import copy
 import json
+import time
 from pathlib import Path
 from emtk.i18n import tr
 
@@ -14,7 +15,14 @@ from chisurf.core.optical_configuration import (
 
 
 class OpticalConfigurationWidget:
-    def __init__(self, config=None, detector_names=None, on_changed=None, on_open_graph=None):
+    def __init__(
+        self,
+        config=None,
+        detector_names=None,
+        on_changed=None,
+        on_open_graph=None,
+        auto_recalculate=True,
+    ):
         self.config = copy.deepcopy(
             config
             or {
@@ -27,6 +35,11 @@ class OpticalConfigurationWidget:
             }
         )
         self.on_changed = on_changed
+        # "Auto recalculate": a changed input re-runs the simulation after a short pause.
+        self.auto_recalculate = bool(auto_recalculate)
+        self.recalculate_delay = 0.3
+        self._recalculate_due = None
+        self._quiet = False
         self.on_open_graph = on_open_graph
         self.advanced_app = None
         self.advanced_window = None
@@ -51,6 +64,8 @@ class OpticalConfigurationWidget:
         self.template_index = 0
 
     def changed(self):
+        if self.auto_recalculate and not self._quiet:
+            self._recalculate_due = time.monotonic() + self.recalculate_delay
         if self.graph_override is not None:
             self.graph_override = apply_easy_graph_parameters(self.graph_override, self.config)
             self.config["_graph"] = copy.deepcopy(self.graph_override)
@@ -77,7 +92,11 @@ class OpticalConfigurationWidget:
             "forster": extract_forster(self.results),
             "crosstalk_matrices": self.results.get("crosstalk_matrices", {}),
         }
-        self.changed()
+        self._quiet = True  # storing the result is not an edit that needs another run
+        try:
+            self.changed()
+        finally:
+            self._quiet = False
         self.status = "Optical simulation completed."
         return self.results
 
@@ -94,7 +113,11 @@ class OpticalConfigurationWidget:
         self.config = copy.deepcopy(config)
         self.graph_override = copy.deepcopy(config.get("_graph"))
         self.results = copy.deepcopy(config.get("_cached_results") or {})
-        self.changed()
+        self._quiet = True  # a loaded setup carries its own results
+        try:
+            self.changed()
+        finally:
+            self._quiet = False
 
     def save(self, path):
         Path(path).write_text(json.dumps(self.config, indent=2))
@@ -319,6 +342,13 @@ class OpticalConfigurationWidget:
                 lambda i=index: self._remove_detector(i),
             )
             im.pop_id()
+        changed, value = im.checkbox(tr("Auto recalculate") + "##optical_auto", self.auto_recalculate)
+        im.set_item_tooltip(
+            tr("Re-run the simulation shortly after any input changes; off, only the button below recalculates.")
+        )
+        if changed:
+            self.auto_recalculate = value
+            self._recalculate_due = time.monotonic() + self.recalculate_delay if value else None
         self._button(
             "Simulate optical setup",
             "Calculate Förster radii and excitation/emission/detection crosstalk using the original optical backend.",
@@ -332,6 +362,17 @@ class OpticalConfigurationWidget:
                 self._draw_matrix(f"{title.title()} crosstalk", matrix)
         if self.status:
             im.text_wrapped(self.status)
+        self._run_due_recalculation()
+
+    def _run_due_recalculation(self):
+        """Run the simulation once the pause after the last edit has passed (kept while one is running)."""
+        due = self._recalculate_due
+        if due is None or not self.auto_recalculate or time.monotonic() < due:
+            return
+        self._recalculate_due = None
+        started = self._action(self.simulate)
+        if started is False:  # a backend call is still running: try again shortly
+            self._recalculate_due = time.monotonic() + self.recalculate_delay
 
     @staticmethod
     def _draw_matrix(title, matrix):

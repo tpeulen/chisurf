@@ -2,6 +2,13 @@
 
 ## 2026-10-10
 
+- Secondary Qt-to-emtk parity losses restored: Lightpath Simulator "Auto recalculate"
+  (shared Easy Mode widget, 0.3 s debounce, off in the channel wizard); FPS JSON editor
+  Distances multi-select and one-question bulk delete; trajectory number fields step on
+  the wheel again (stale xfails dropped). ndX gains a "FRET trajectory (WLC distance)"
+  phasor overlay from the exact Kratky-Porod distance distribution. Open: help browser and
+  code editor keyboard shortcuts (see the
+  [functional parity audit](validation/functional-parity-audit-2026-10-10.md)).
 - PRD-154 W11: `build_tools/dev_utils/plugin_frame_times.py` measures first/steady frame of every emtk plugin
   (table in `docs/development/benchmarks.md`); steady frames all < 16 ms after fixes (emtk font-measure cache,
   fcs_saturation dye list, PSF 3-D view); 26 first frames still > 100 ms (lazy imports, see

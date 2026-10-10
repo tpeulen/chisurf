@@ -114,3 +114,39 @@ def test_delete_avs_and_save_selected_avs_as_mrc(ui, tmp_path):
     ui.draw(2)
     assert a not in ed.av_cache and b not in ed.av_cache and c in ed.av_cache
     assert a in names(app) and b in names(app)
+
+
+def test_distances_ctrl_and_shift_click_select_restraints_and_delete_removes_them_after_one_question(ui):
+    app = ui.app
+    view = app.views["distances"]
+    ui.click("tab_Distances")
+    ui.draw(3)
+    ids = list(app.editor.doc.distances)
+    first, second, third, fourth = "p66_T27C_p_1bp", "p66_T27C_p_19bp", "p66_E194C_p_1bp", "p66_E194C_p_19bp"
+    assert {first, second, third, fourth} <= set(ids)
+    click_row(ui, first)
+    click_row(ui, third, CTRL)
+    assert view.picked_ids() == [first, third]
+    click_row(ui, fourth, SHIFT)  # from the ctrl-clicked row to this one
+    assert view.picked_ids() == ids[ids.index(third) : ids.index(fourth) + 1]
+    click_row(ui, second)
+    click_row(ui, fourth, SHIFT)
+    assert view.picked_ids() == ids[ids.index(second) : ids.index(fourth) + 1]
+    click_row(ui, third, CTRL)
+    picked = view.picked_ids()
+    assert third not in picked and second in picked and fourth in picked
+    before = len(ids)
+    ui.click("delete_dist")
+    assert app.modal is not None and f"{len(picked)} restraints" in app.modal["text"]
+    ui.press_text("Keep")
+    assert len(app.editor.doc.distances) == before
+    ui.click("delete_dist")
+    ui.press_text("Remove")
+    left = list(app.editor.doc.distances)
+    assert len(left) == before - len(picked) and third in left and not set(picked) & set(left)
+    # one selected restraint still asks the single question and removes only that one
+    click_row(ui, third)
+    ui.click("delete_dist")
+    assert app.modal is not None and "this restraint" in app.modal["text"]
+    ui.press_text("Remove")
+    assert third not in app.editor.doc.distances and len(app.editor.doc.distances) == len(left) - 1
