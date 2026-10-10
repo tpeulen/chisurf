@@ -401,6 +401,22 @@ def _editor_bindings(editor, live_parameters):
     return tables
 
 
+def _expected_plot_count(declared):
+    """Declared model plots plus the fit-level pages every fit window appends.
+
+    The fit-level pages (``FIT_PLOT_KEYS``) read the fit, not the model, so no
+    model declares them; one a model already declares is not added twice. The
+    declared plots are resolved independently of ``model_plot_specs`` so a
+    declared plot that fails to resolve still shows up as a shortfall.
+    """
+    from chisurf.gui.autoform.sections.registry import get_plot_class
+    from chisurf.gui.widgets.models.model_editor import FIT_PLOT_KEYS
+
+    declared_classes = {get_plot_class(entry.key) for entry in declared} - {None}
+    fit_level = {get_plot_class(key) for key in FIT_PLOT_KEYS} - {None}
+    return len(declared) + len(fit_level - declared_classes)
+
+
 def _capture(main, app, directory, stage):
     """Visit every registered plot and retain real/constrained Main renders."""
     main.dockWidgetAnalysis.show()
@@ -410,7 +426,8 @@ def _capture(main, app, directory, stage):
     for window in main.mdiarea.subWindowList():
         main.mdiarea.setActiveSubWindow(window)
         declared = window.fit.model.view_spec().plots
-        if len(window._plot_specs) != len(declared):
+        expected = _expected_plot_count(declared)
+        if len(window._plot_specs) != expected:
             for width, height in ((1500, 950), (900, 650)):
                 main.resize(width, height)
                 app.processEvents()
@@ -418,10 +435,10 @@ def _capture(main, app, directory, stage):
                     directory / f"{stage}-{window.fit.unique_identifier}-missing-plots-{width}.png"
                 )
                 assert main.grab().save(str(path)), path
-        assert len(window._plot_specs) == len(declared), (
+        assert len(window._plot_specs) == expected, (
             "registered plots were silently dropped",
             len(window._plot_specs),
-            len(declared),
+            expected,
         )
         # A declared tool without plots still needs a render of its real editor.
         if not declared:
@@ -1169,7 +1186,21 @@ def run(directory, stage, report):
             and not parameter.get("is_output", False)
             and not parameter.get("link_target")
         ]
-        if len(changes) == 1:
+        structural = None
+        display_fits = [
+            member for member in _members(cs.fits) if type(member.model).__name__ == "AcquisitionModel"
+        ]
+        if not changes and display_fits:
+            # A parameterless display model (AcquisitionModel): there is no
+            # control to drive, its curve is the data's. The producer edited
+            # that curve; mirror it, as test_all_model_catalogue_roundtrip does.
+            for member in display_fits:
+                curve = member.data
+                curve.set_data(x=curve.x, y=curve.y * 1.01 + 0.001, ey=curve.ey)
+                member.model.update()
+            app.processEvents()
+            report["control"] = {"display_model_data_edit": len(display_fits)}
+        elif len(changes) == 1:
             uid, changed_parameter = changes[0]
             report["control"] = _edit_control(main, app, uid, float(changed_parameter["value"]))
         else:
@@ -1186,11 +1217,32 @@ def run(directory, stage, report):
                 f"requires an explicit exposed scientific edit: {changes}"
             )
             report["control"] = _edit_structural_control(main, app, structural, directory)
-        # Do not manually call update here: the actual control must recompute.
+        # Do not manually call update on the edited fit: the actual control must
+        # recompute it. A fit that merely *follows* the edited parameter through a
+        # cross-fit link (ParameterTransformModel -> consumer) pulls its value at
+        # its own update, so it is refreshed here, after the owner has been
+        # shown to have recomputed on its own.
+        edited = live_parameters.get(report["control"].get("parameter_uid"))
+        if edited is not None:
+            owners = [
+                member
+                for member in _members(cs.fits)
+                if any(p is edited for p in member.model.parameters_all)
+            ]
+            assert owners, "edited parameter has no owning fit"
+            owner_ids = {id(member) for member in owners}
+            assert [scientific_observables(member) for member in owners] != [
+                before for member, before in zip(_members(cs.fits), actual) if id(member) in owner_ids
+            ], "GUI edit did not recompute the owning fit"
+            for member in _members(cs.fits):
+                if id(member) not in owner_ids:
+                    member.model.update()
         changed = [scientific_observables(fit) for fit in _members(cs.fits)]
         expected_second = json.loads((directory / "expected-1.json").read_text())
         assert changed != actual, "GUI edit did not recompute dependent scientific outputs"
         if structural is None:
+            if changed != expected_second["observables"]:
+                (directory / "gui-edit-observables-actual.json").write_text(json.dumps(changed))
             assert changed == expected_second["observables"]
         else:
             if not _observables_close(changed, expected_second["observables"]):

@@ -4,6 +4,17 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## A linked parameter edited in one fit does not refresh the fits that follow it (found 2026-10-10)
+
+status: open — owner: fitting core (`chisurf/core/parameter.py`, `chisurf/core/fitting/parameter.py`).
+
+Editing `E` of a `ParameterTransformModel` fit in its GUI recomputes that fit, but a fit linked to it
+(`Pda2cSimpleModel` in the all-model document probe) keeps its old prediction until its own `update()` runs:
+followers pull a linked value only when they update, nothing pushes the edit to them. Measured by
+`test/gui/test_all_model_document_gui.py` (ParameterTransformModel case); the probe
+`test/gui/scientific_document_gui_probe.py` currently calls `update()` on the non-owning fits itself, which
+hides the defect. Fix in the product (refresh link followers on a parameter edit), then drop that probe step.
+
 ## Two click tests fail only when run after their neighbours (found 2026-10-10)
 
 status: open — owner: whoever next touches the burst_fusion or lightpath_simulator tests.
