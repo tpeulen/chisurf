@@ -4,6 +4,7 @@
     {
       "type": "panel",
       "title": "Trajectory playback",
+      "description": "Playback of the Monte Carlo trajectory on the structure.",
       "sections": [
         {"type": "button_row", "buttons": [
           {"action": "goto_first", "label": "|<", "description": "First frame."},

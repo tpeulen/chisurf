@@ -25,20 +25,24 @@
             "exp",
             "full"
           ],
-          "style": "radio"
+          "style": "radio",
+          "description": "Excitation scheme for the IRF convolution.",
+          "descriptions": ["Periodic excitation: the decay wraps around the repetition period (pulsed laser, tails overlap).", "Single excitation, truncated at the histogram window; no wrap-around.", "Full (numpy) convolution of one excitation with the model, without wrap-around."]
         },
         {
           "type": "toggle",
           "target": "convolve",
           "attr": "do_convolution",
-          "label": "Convolve"
+          "label": "Convolve",
+          "description": "Convolve the model with the IRF. Switch off to compare the bare decay."
         },
         {
           "type": "parameter_group_table",
           "target": "convolve",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Convolution of the model decay with the instrument response function (IRF): IRF curve, excitation mode, convolve switch and IRF time shift."
     },
     {
       "type": "panel",
@@ -49,7 +53,8 @@
           "target": "generic",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Nuisance terms of the decay: scattered light, constant background (and its curve) and photon counts."
     },
     {
       "type": "panel",
@@ -60,7 +65,8 @@
           "parameters_source": "_mem_parameter_rows",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Maximum-entropy inversion: distribution over donor-acceptor distances / FRET rates; grid and regularisation weight."
     },
     {
       "type": "panel",
@@ -90,7 +96,8 @@
           "key": "kappa2_controls",
           "description": "Orientation factor: dynamic averaging uses the scalar kappa-squared, static averaging uses its distribution. 'show' plots the current distribution, 'compute' derives one from anisotropies, 'calc R0' opens the Foerster-radius calculator."
         }
-      ]
+      ],
+      "description": "Foerster radius R0, orientation factor kappa-squared, refractive index and donor lifetime/FRET-rate settings that turn distances into FRET rates."
     }
   ],
   "plots": [

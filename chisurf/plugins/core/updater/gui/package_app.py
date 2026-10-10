@@ -21,6 +21,7 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_sections
+from emtk.i18n import tr
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.jobs import SnapshotJob
@@ -123,7 +124,7 @@ class PackagePanel:
 
     # -- custom sections --------------------------------------------------------------------------------------------------- #
     def _draw_env(self, section: dict, model: Any, state: FormState, width: float) -> None:
-        im.text("Current Environment:")
+        im.text(tr("Current Environment:"))
         im.same_line()
         im.text(model.current_env_text)
         im.set_item_tooltip(str(section.get("description", "")))
@@ -245,14 +246,14 @@ class PackageApp(ImApp):
         im.set_next_window_pos(vp.pos, im.Cond.ALWAYS)
         im.set_next_window_size(vp.size, im.Cond.ALWAYS)
         if im.begin("ChiSurf Package Manager", box):
-            if im.button("Help"):
+            if im.button(tr("Help")):
                 self.help_window.show()
-            im.set_item_tooltip("Explain the four pages and what each button runs.")
+            im.set_item_tooltip(tr("Explain the four pages and what each button runs."))
             self.item_rects["help"] = im.get_item_rect()
             im.same_line()
-            if im.button("Guide"):
+            if im.button(tr("Guide")):
                 self.tour.start()
-            im.set_item_tooltip("Walk through finding and installing a package.")
+            im.set_item_tooltip(tr("Walk through finding and installing a package."))
             self.item_rects["guide"] = im.get_item_rect()
             im.separator()
             self.panel.draw_content()

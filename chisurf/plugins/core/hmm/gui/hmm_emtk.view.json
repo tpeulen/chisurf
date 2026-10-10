@@ -145,6 +145,7 @@
   "files": {
    "sections": [
     {
+     "description": "Trace files loaded for the HMM analysis. Select a row and press Delete to drop it.",
      "type": "custom",
      "key": "data_table",
      "options": {
@@ -167,6 +168,7 @@
   "states": {
    "sections": [
     {
+     "description": "Fitted parameters of each hidden state.",
      "type": "custom",
      "key": "data_table",
      "options": {
@@ -181,6 +183,7 @@
   "transitions": {
    "sections": [
     {
+     "description": "Fitted transition probabilities between the hidden states.",
      "type": "custom",
      "key": "data_table",
      "options": {

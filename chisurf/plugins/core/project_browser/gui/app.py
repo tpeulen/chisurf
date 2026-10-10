@@ -12,6 +12,7 @@ from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_form
 from emtk.widgets.menus import MenuItem, Popup
+from emtk.i18n import tr
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import window_size
@@ -275,13 +276,13 @@ class ProjectBrowserApp(ImApp):
             self.item_rects["versions"] = self.item_rects["tree_rows"]
         if not self.model.projects and not self.jobs.future:
             im.text_wrapped(
-                "No matching projects. Refresh, save the current session or import a project archive."
+                tr("No matching projects. Refresh, save the current session or import a project archive.")
             )
 
     def details(self, box):
         if self.model.selected is None:
             im.text_wrapped(
-                "Select a project to restore its latest version, or expand it to select an exact version."
+                tr("Select a project to restore its latest version, or expand it to select an exact version.")
             )
             return
         if im.begin_tab_bar("project_details"):
@@ -301,7 +302,7 @@ class ProjectBrowserApp(ImApp):
                             "graph": "graph",
                         }[key],
                     ):
-                        im.text_disabled("Press Inspect Stored Version to load this information.")
+                        im.text_disabled(tr("Press Inspect Stored Version to load this information."))
                     else:
                         self._form("details", SPEC["details"][key])
                     im.end_tab_item()
@@ -337,11 +338,11 @@ class ProjectBrowserApp(ImApp):
                 f"ID: {self.pending['version_id']}\nThis soft-deletes the version and requires manage permission."
             )
             im.spacing()
-            if im.button("Delete This Version"):
+            if im.button(tr("Delete This Version")):
                 self.tour.notify_used("confirm_delete")
                 self.error(self.confirm_delete)
                 done = True
-            im.set_item_tooltip("Confirm soft deletion of this exact selected version.")
+            im.set_item_tooltip(tr("Confirm soft deletion of this exact selected version."))
             self.item_rects["confirm_delete"] = im.get_item_rect()
             im.same_line()
             done = self._cancel_button() or done
@@ -400,7 +401,7 @@ class ProjectBrowserApp(ImApp):
                 self.confirm_import()
                 done = True
             im.set_item_tooltip(
-                "Import this checked archive, remapping conflicting IDs when required."
+                tr("Import this checked archive, remapping conflicting IDs when required.")
             )
             self.item_rects["confirm_import"] = im.get_item_rect()
             im.same_line()
@@ -412,8 +413,8 @@ class ProjectBrowserApp(ImApp):
             self.modal = ""
 
     def _cancel_button(self):
-        pressed = im.button("Cancel")
-        im.set_item_tooltip("Close this confirmation without changing the database.")
+        pressed = im.button(tr("Cancel"))
+        im.set_item_tooltip(tr("Close this confirmation without changing the database."))
         self.item_rects["cancel_dialog"] = im.get_item_rect()
         return pressed
 

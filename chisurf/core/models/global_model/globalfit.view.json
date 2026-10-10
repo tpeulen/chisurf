@@ -12,7 +12,8 @@
           "columns": [
             {
               "key": "name",
-              "label": "Fit"
+              "label": "Fit",
+              "description": "Name of the fit entering the global analysis."
             }
           ],
           "height": 140,

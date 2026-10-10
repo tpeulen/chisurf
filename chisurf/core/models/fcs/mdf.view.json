@@ -9,7 +9,8 @@
       "sections": [
         {"type": "info", "source": "equation_html",
          "description": "The compound fitting equation currently active, including any bunching terms."}
-      ]
+      ],
+      "description": "The correlation equation currently active (diffusion, triplet / bunching terms), or the catalogue / typed Python equation for a user-defined model."
     },
     {
       "type": "panel",
@@ -18,7 +19,8 @@
       "collapsed": false,
       "sections": [
         {"type": "parameter_group_table", "target": "physical", "collapsible": false}
-      ]
+      ],
+      "description": "Physical parameters of the diffusing species (diffusion time or D, number of molecules)."
     },
     {
       "type": "panel",
@@ -37,7 +39,8 @@
           "min_rows": 0,
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Photophysical bunching terms (triplet, blinking): amplitude and relaxation time (us) each."
     },
     {
       "type": "panel",
@@ -46,7 +49,8 @@
       "collapsed": true,
       "sections": [
         {"type": "parameter_group_table", "target": "optics", "collapsible": false}
-      ]
+      ],
+      "description": "Beam waist and sample temperature convert a diffusion time into a hydrodynamic radius (Stokes-Einstein with the viscosity of water)."
     },
     {
       "type": "panel",
@@ -55,7 +59,8 @@
       "collapsed": true,
       "sections": [
         {"type": "parameter_group_table", "target": "outputs", "collapsible": false}
-      ]
+      ],
+      "description": "Read-only derived quantities of the fit: effective volume, concentration and diffusion coefficient."
     }
   ],
   "plots": [

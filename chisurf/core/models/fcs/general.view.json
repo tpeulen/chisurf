@@ -22,9 +22,11 @@
           ],
           "style": "radio",
           "rebuild_on_change": true,
-          "description": "MDF = Enderlein Gauss-Lorentz molecule-detection function (accurate absolute Veff/concentration). Gauss = classic single-focus 3D-Gaussian PSF approximation (the default). Two-focus = classic Dertinger dual-focus technique (same 3D-Gaussian term, known inter-focus distance yields an absolute D)."
+          "description": "MDF = Enderlein Gauss-Lorentz molecule-detection function (accurate absolute Veff/concentration). Gauss = classic single-focus 3D-Gaussian PSF approximation (the default). Two-focus = classic Dertinger dual-focus technique (same 3D-Gaussian term, known inter-focus distance yields an absolute D).",
+          "descriptions": ["Gauss-Lorentz molecule detection function (absolute volume and concentration).", "Single-focus 3-D Gaussian PSF approximation.", "Dual-focus 3-D Gaussian with known inter-focus distance (absolute D)."]
         }
-      ]
+      ],
+      "description": "Diffusion model and the focus geometry it assumes."
     },
     {
       "type": "panel",
@@ -37,7 +39,8 @@
           "source": "equation_html",
           "description": "The compound fitting equation currently active: the selected diffusion term times any active bunching/anticorrelation factors."
         }
-      ]
+      ],
+      "description": "The correlation equation currently active (diffusion, triplet / bunching terms), or the catalogue / typed Python equation for a user-defined model."
     },
     {
       "type": "panel",
@@ -59,7 +62,8 @@
           "target": "mdf_optics",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Parameters of the Gauss-Lorentz molecule detection function: focal radius w0 (nm), z0 / aspect ratio and the diffusion times."
     },
     {
       "type": "panel",
@@ -76,7 +80,8 @@
           "target": "gauss",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Single-focus 3-D Gaussian PSF: diffusion time t_diff (ms), structure parameter z0/w0 and number of molecules N."
     },
     {
       "type": "panel",
@@ -94,7 +99,8 @@
           "remove_label": "del",
           "description": "Amplitude x_i and diffusion coefficient D_i per component; the amplitudes are normalised. The components share the focus (w_r, w_z) because they are one molecule in one volume, not two species."
         }
-      ]
+      ],
+      "description": "Diffusing species: diffusion time (ms) or D, and the fraction/brightness of each component."
     },
     {
       "type": "panel",
@@ -111,7 +117,8 @@
           "target": "two_focus",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Two-focus 3-D Gaussian model: diffusion time, focal radii and the known inter-focus distance (nm)."
     },
     {
       "type": "panel",
@@ -130,7 +137,8 @@
           "min_rows": 0,
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Photophysical bunching terms (triplet, blinking): amplitude and relaxation time (us) each."
     },
     {
       "type": "panel",
@@ -149,7 +157,8 @@
           "min_rows": 0,
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Antibunching / anticorrelation terms (e.g. FRET dynamics): negative amplitude and relaxation time (us)."
     },
     {
       "type": "panel",
@@ -162,7 +171,8 @@
           "target": "mdf_outputs",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Read-only derived quantities of the MDF fit: effective volume Veff, concentration and diffusion coefficient."
     }
   ],
   "plots": [

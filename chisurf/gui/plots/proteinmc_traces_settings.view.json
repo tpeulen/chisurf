@@ -4,6 +4,7 @@
     {
       "type": "panel",
       "title": "Trajectory curves",
+      "description": "Selection and display of the trajectory curves.",
       "sections": [
         {"type": "toggle", "attr": "show_rmsd", "label": "RMSD",
          "description": "Show the RMSD of each frame to the starting structure."},

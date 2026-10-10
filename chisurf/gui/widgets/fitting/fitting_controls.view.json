@@ -4,6 +4,7 @@
     {
       "type": "panel",
       "title": "Fit",
+      "description": "Run and configure the fit of the selected dataset.",
       "collapsible": true,
       "collapsed": false,
       "n_col": 2,

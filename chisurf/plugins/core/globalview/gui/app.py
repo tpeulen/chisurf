@@ -22,6 +22,7 @@ from emtk import im
 from emtk.dialog_window import DialogWindow
 from emtk.docking import LayoutStore
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 
@@ -163,9 +164,9 @@ class GlobalViewApp(GlobalViewSurface):
             return
         pressed = self.message_window.begin(frame)
         im.text_wrapped(self.message[1])
-        if im.button("OK"):
+        if im.button(tr("OK")):
             pressed = "close"
-        im.set_item_tooltip("Close this message.")
+        im.set_item_tooltip(tr("Close this message."))
         self.message_window.end()
         if pressed == "close":
             self.message_window.hide()

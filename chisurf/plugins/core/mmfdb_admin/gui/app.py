@@ -27,6 +27,7 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_sections
+from emtk.i18n import tr
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.node_editor.control import GraphControl, NodeContentRenderer
@@ -205,23 +206,23 @@ class MMFDBAdminApp(ImApp):
                 im.separator()
                 if im.menu_item("Close"):
                     self.request_close()
-                im.set_item_tooltip("Close the MMFDB Admin window.")
+                im.set_item_tooltip(tr("Close the MMFDB Admin window."))
                 im.end_menu()
             if im.begin_menu("Settings"):
                 if im.menu_item("Reset window layout"):
                     self.reset_layout()
-                im.set_item_tooltip("Restore the default panel splits and open the Overview.")
+                im.set_item_tooltip(tr("Restore the default panel splits and open the Overview."))
                 im.end_menu()
             if im.begin_menu("Help"):
                 if im.menu_item("Help..."):
                     self.help_window.show()
-                im.set_item_tooltip("Read how MMFDB Admin works.")
+                im.set_item_tooltip(tr("Read how MMFDB Admin works."))
                 if im.menu_item("Guide"):
                     self.tour.start()
-                im.set_item_tooltip("A step-by-step walk through signing in, picking a panel and editing a record.")
+                im.set_item_tooltip(tr("A step-by-step walk through signing in, picking a panel and editing a record."))
                 if im.menu_item("About mmfdb-admin"):
                     model.show_about()
-                im.set_item_tooltip("The version, the connection and the database in use.")
+                im.set_item_tooltip(tr("The version, the connection and the database in use."))
                 im.end_menu()
             im.end_main_menu_bar()
         draw_sections(self.shell["toolbar"]["sections"], model, self.form("toolbar"),
@@ -238,14 +239,14 @@ class MMFDBAdminApp(ImApp):
             im.new_line()
         draw_sections(self.shell["database_actions"]["sections"], model, self.form("database"), titles=False)
         im.same_line()
-        if im.button("Help"):
+        if im.button(tr("Help")):
             self.help_window.show()
-        im.set_item_tooltip("Read how MMFDB Admin works: the connection, the panels, editing and the dialogs.")
+        im.set_item_tooltip(tr("Read how MMFDB Admin works: the connection, the panels, editing and the dialogs."))
         self.remember_item("help")
         im.same_line()
-        if im.button("Guide"):
+        if im.button(tr("Guide")):
             self.tour.start()
-        im.set_item_tooltip("A step-by-step walk through signing in, picking a panel and editing a record.")
+        im.set_item_tooltip(tr("A step-by-step walk through signing in, picking a panel and editing a record."))
         self.remember_item("guide")
         self.top_h = max(48.0, float(im.get_cursor_screen_pos()[1]) + 4.0)
         im.end()
@@ -277,8 +278,8 @@ class MMFDBAdminApp(ImApp):
         x, y, w, h = box
         im.begin("##mmfdb_rail", box)
         im.set_next_item_width(w - 16.0)
-        _, model.search = im.input_text("##mmfdb_search", model.search, hint="Search...")
-        im.set_item_tooltip("Find a panel by name or description.")
+        _, model.search = im.input_text("##mmfdb_search", model.search, hint=tr("Search..."))
+        im.set_item_tooltip(tr("Find a panel by name or description."))
         self.remember_item("search")
         cx, cy = im.get_cursor_screen_pos()
         im.begin_child("##mmfdb_rail_list", (cx, cy, w - 8.0, max(20.0, y + h - cy - 4.0)))
@@ -293,7 +294,7 @@ class MMFDBAdminApp(ImApp):
             im.set_item_tooltip(model.panel_description(value))
             self.remember_item("nav." + value)
         if not any(kind == "panel" for kind, _ in rows):
-            im.text_wrapped("No matching panels.")
+            im.text_wrapped(tr("No matching panels."))
         im.end_child()
         im.end()
 
@@ -302,20 +303,20 @@ class MMFDBAdminApp(ImApp):
         model = self.model
         im.begin("##mmfdb_status", box)
         im.text_unformatted(model.status if not model.busy else "Working...")
-        im.set_item_tooltip("The last thing that happened.")
+        im.set_item_tooltip(tr("The last thing that happened."))
         self.remember_item("status")
         im.same_line(max(160.0, box[2] * 0.36))
         im.begin_disabled(not model.can_step(-1))
-        if im.button("Back"):
+        if im.button(tr("Back")):
             model.step(-1)
-        im.set_item_tooltip("Open the previous panel of the rail.")
+        im.set_item_tooltip(tr("Open the previous panel of the rail."))
         self.remember_item("back")
         im.end_disabled()
         im.same_line()
         im.begin_disabled(not model.can_step(1))
-        if im.button("Next"):
+        if im.button(tr("Next")):
             model.step(1)
-        im.set_item_tooltip("Open the next panel of the rail.")
+        im.set_item_tooltip(tr("Open the next panel of the rail."))
         self.remember_item("next")
         im.end_disabled()
         im.same_line()
@@ -466,7 +467,7 @@ class MMFDBAdminApp(ImApp):
         im.end_child()
         im.set_cursor_screen_pos((x, area[1] + area[3] + 2.0))
         im.text_unformatted(panel.items_text())
-        im.set_item_tooltip("How many items are listed (of how many in the database).")
+        im.set_item_tooltip(tr("How many items are listed (of how many in the database)."))
 
     def plot(self, name: str, traces: list[dict], box, x_label: str, y_label: str, empty: str) -> None:
         """Spectrum traces in a plot filling *box* (the hand-drawn part of the Spectra panel)."""
@@ -478,7 +479,7 @@ class MMFDBAdminApp(ImApp):
             draw.add_rect((x, y), (x + w, y + h), (140, 140, 140, 120))
             tw = im.calc_text_size(empty)[0]
             draw.add_text((x + (w - tw) / 2, y + h / 2 - 8), (130, 130, 130, 255), empty)
-            im.set_item_tooltip("The spectra plot: pick a row, or tick several to overlay them.")
+            im.set_item_tooltip(tr("The spectra plot: pick a row, or tick several to overlay them."))
             self.item_rects[name] = (x, y, w, h)
             return
         if implot.begin_plot(f"##{name}", size=(w, h)):
@@ -585,7 +586,7 @@ class MMFDBAdminApp(ImApp):
         im.begin_child("##dup_right", (rx, y, rw, avail_h))
         im.text_unformatted("Spectra Comparison")
         if not comparison:
-            im.text_wrapped("Pick a group or a probe to compare its spectra.")
+            im.text_wrapped(tr("Pick a group or a probe to compare its spectra."))
         for stype, traces in comparison:
             # The caption names the plot under it (drawn after, it read as the next plot's title).
             im.text_unformatted(f"{stype.title()} Spectrum")

@@ -29,16 +29,19 @@
                 "height": 200,
                 "columns": [
                   {
+                    "description": "Display name of the user.",
                     "key": "user",
                     "title": "User",
                     "width": 170
                   },
                   {
+                    "description": "Login name of the user.",
                     "key": "username",
                     "title": "Username",
                     "width": 130
                   },
                   {
+                    "description": "Role that determines the permissions of the user.",
                     "key": "role",
                     "title": "Role",
                     "width": 140
@@ -62,6 +65,7 @@
                     "tooltip": "The account ChiSurf uses for its own MMFDB connections."
                   },
                   {
+                    "description": "E-mail address of the user.",
                     "key": "email",
                     "title": "E-mail",
                     "width": 200,
@@ -79,6 +83,7 @@
           ]
         },
         {
+          "description": "Account fields of the selected user: name, e-mail, role, contact details and login options.",
           "type": "panel",
           "title": "Account",
           "n_col": 1,

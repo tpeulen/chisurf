@@ -20,6 +20,7 @@ from urllib.parse import unquote, unquote_to_bytes, urlparse
 from emtk import im
 from emtk.texture import Texture
 from emtk.widgets.text_editor import Language, TextEditor
+from emtk.i18n import tr
 
 from .html_output import html_blocks
 
@@ -675,48 +676,48 @@ class NativeNotebook:
         ui_scale = max(0.5, float(ui_scale))
         self._finish_pending_advance()
         if self.is_running:
-            if im.button("■  Stop execution"):
+            if im.button(tr("■  Stop execution")):
                 self.cancel_execution()
-            im.set_item_tooltip("Interrupt the running cell or cancel its input prompt")
+            im.set_item_tooltip(tr("Interrupt the running cell or cancel its input prompt"))
             im.same_line()
             im.text_colored((235, 190, 105, 255), "Executing notebook…")
         else:
-            if im.button("▶ Run all"):
+            if im.button(tr("▶ Run all")):
                 self.start_all()
-            im.set_item_tooltip("Run every code cell in order (Ctrl+Shift+Enter)")
+            im.set_item_tooltip(tr("Run every code cell in order (Ctrl+Shift+Enter)"))
             im.same_line()
-            if im.button("＋ Code cell"):
+            if im.button(tr("＋ Code cell")):
                 self.add_cell("code")
-            im.set_item_tooltip("Append a Python code cell")
+            im.set_item_tooltip(tr("Append a Python code cell"))
             im.same_line()
-            if im.button("＋ Markdown"):
+            if im.button(tr("＋ Markdown")):
                 self.add_cell("markdown")
-            im.set_item_tooltip("Append a Markdown cell")
+            im.set_item_tooltip(tr("Append a Markdown cell"))
             im.same_line()
-            if im.button("↻ Restart"):
+            if im.button(tr("↻ Restart")):
                 self.restart_shell()
-            im.set_item_tooltip("Reset notebook variables; saved cell outputs remain")
+            im.set_item_tooltip(tr("Reset notebook variables; saved cell outputs remain"))
             im.same_line()
-            if im.button("Clear outputs"):
+            if im.button(tr("Clear outputs")):
                 self.clear_outputs()
-            im.set_item_tooltip("Remove all cell outputs and execution counts")
+            im.set_item_tooltip(tr("Remove all cell outputs and execution counts"))
             im.same_line()
             if im.button("Hide terminal" if self.show_terminal else "Terminal"):
                 self.show_terminal = not self.show_terminal
-            im.set_item_tooltip("Show or hide a command terminal sharing the notebook shell")
+            im.set_item_tooltip(tr("Show or hide a command terminal sharing the notebook shell"))
         if on_reload is not None:
             im.same_line()
-            if im.button("Reload notebook"):
+            if im.button(tr("Reload notebook")):
                 on_reload()
             im.set_item_tooltip(
-                "Reload this notebook from disk; confirm before discarding unsaved changes"
+                tr("Reload this notebook from disk; confirm before discarding unsaved changes")
             )
             im.same_line()
         if on_export is not None:
-            if im.button("Export Python"):
+            if im.button(tr("Export Python")):
                 on_export()
             im.set_item_tooltip(
-                "Export cell source to a Python script without changing the notebook's save path"
+                tr("Export cell source to a Python script without changing the notebook's save path")
             )
         if self.error:
             im.text_wrapped(self.error)
@@ -753,35 +754,35 @@ class NativeNotebook:
                 size=(126.0 * ui_scale, 0.0),
             ):
                 self.active_index = index
-            im.set_item_tooltip("Select this cell for Run Script and code insertion")
+            im.set_item_tooltip(tr("Select this cell for Run Script and code insertion"))
             im.same_line()
             if im.button(
-                "▶ Run · Shift+Enter",
+                tr("▶ Run · Shift+Enter"),
                 size=(146.0 * ui_scale, 0.0),
             ):
                 self.start_cell(index)
-            im.set_item_tooltip("Execute this cell; Shift+Enter runs it and moves to the next cell")
+            im.set_item_tooltip(tr("Execute this cell; Shift+Enter runs it and moves to the next cell"))
             im.same_line()
             if im.button("↑"):
                 self.move_cell(index, -1)
-            im.set_item_tooltip("Move this cell up")
+            im.set_item_tooltip(tr("Move this cell up"))
             im.same_line()
             if im.button("↓"):
                 self.move_cell(index, 1)
-            im.set_item_tooltip("Move this cell down")
+            im.set_item_tooltip(tr("Move this cell down"))
             im.same_line()
             if im.button("×"):
                 self.remove_cell(index)
-            im.set_item_tooltip("Delete this cell and its outputs")
+            im.set_item_tooltip(tr("Delete this cell and its outputs"))
             im.same_line()
             if im.button("＋"):
                 self.add_cell(index=index + 1)
-            im.set_item_tooltip("Insert an empty code cell below this one")
+            im.set_item_tooltip(tr("Insert an empty code cell below this one"))
             im.same_line()
             im.set_next_item_width(112.0 * ui_scale)
             types = ["code", "markdown", "raw"]
             changed, selected = im.combo("##cell_type", types.index(cell.cell_type), types)
-            im.set_item_tooltip("Change the cell type between Python, Markdown and raw source")
+            im.set_item_tooltip(tr("Change the cell type between Python, Markdown and raw source"))
             if changed and not self.is_running:
                 cell.set_type(types[selected])
             if cell.cell_type == "markdown":
@@ -789,7 +790,7 @@ class NativeNotebook:
                 if im.button("Preview" if cell.edit_markdown else "Edit Markdown"):
                     cell.edit_markdown = not cell.edit_markdown
                 im.set_item_tooltip(
-                    "Switch this Markdown cell between source and formatted preview"
+                    tr("Switch this Markdown cell between source and formatted preview")
                 )
             if cell.cell_type == "markdown" and not cell.edit_markdown:
                 im.markdown(cell.editor.text, on_link=self._open_link, max_width=width)
@@ -821,7 +822,7 @@ class NativeNotebook:
                 im.unindent(indent)
                 cell.editor.config.read_only = read_only
                 im.set_item_tooltip(
-                    "Edit this cell; Shift+Enter runs it and moves to the next cell"
+                    tr("Edit this cell; Shift+Enter runs it and moves to the next cell")
                 )
                 if im.is_item_active():
                     self.active_index = (
@@ -832,17 +833,17 @@ class NativeNotebook:
             im.separator()
             im.pop_id()
         if self.show_terminal:
-            im.text("Notebook terminal")
+            im.text(tr("Notebook terminal"))
             for line in self.terminal_output[-200:]:
                 im.text_wrapped(line)
             _, self.terminal_input = im.input_text(
-                "##notebook_terminal", self.terminal_input, hint="Python command…"
+                "##notebook_terminal", self.terminal_input, hint=tr("Python command…")
             )
-            im.set_item_tooltip("Enter a Python command using the same variables as notebook cells")
-            if im.button("Run command"):
+            im.set_item_tooltip(tr("Enter a Python command using the same variables as notebook cells"))
+            if im.button(tr("Run command")):
                 self.start_terminal(self.terminal_input)
                 self.terminal_input = ""
-            im.set_item_tooltip("Execute the terminal command in the notebook's persistent shell")
+            im.set_item_tooltip(tr("Execute the terminal command in the notebook's persistent shell"))
         im.end_child()
         if self.pending_input is not None:
             request = self.pending_input
@@ -853,12 +854,12 @@ class NativeNotebook:
                 _, self.input_response = im.input_text(
                     "##input_response", self.input_response, flags=flags
                 )
-                im.set_item_tooltip("Enter the value requested by the running notebook cell")
-                if im.button("Submit input"):
+                im.set_item_tooltip(tr("Enter the value requested by the running notebook cell"))
+                if im.button(tr("Submit input")):
                     self.respond_input(self.input_response)
-                im.set_item_tooltip("Resume notebook execution with this value")
+                im.set_item_tooltip(tr("Resume notebook execution with this value"))
                 im.same_line()
-                if im.button("Cancel execution"):
+                if im.button(tr("Cancel execution")):
                     self.cancel_execution()
-                im.set_item_tooltip("Cancel the input request and interrupt the running cell")
+                im.set_item_tooltip(tr("Cancel the input request and interrupt the running cell"))
             im.end()

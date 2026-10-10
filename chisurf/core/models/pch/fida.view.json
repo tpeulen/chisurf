@@ -21,7 +21,8 @@
           "collapsible": false,
           "description": "Molecular brightness q and mean number N per species; a zero in either switches that species off."
         }
-      ]
+      ],
+      "description": "Species of the photon-counting histogram: mean brightness (counts per molecule and sampling time) and mean number of molecules."
     },
     {
       "type": "panel",
@@ -33,7 +34,8 @@
           "collapsible": false,
           "description": "Background counts per bin, and the resulting mean count per bin (computed)."
         }
-      ]
+      ],
+      "description": "Background count rate and total-number terms that scale the species contributions."
     }
   ],
   "plots": [

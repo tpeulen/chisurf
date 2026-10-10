@@ -100,6 +100,7 @@
   "view": {
     "sections": [
       {
+        "description": "Graph view actions and the minimap toggle of the optical path.",
         "type": "panel",
         "title": "Graph view",
         "collapsible": true,
@@ -138,6 +139,7 @@
   "backend": {
     "sections": [
       {
+        "description": "Backend selection and controls used to evaluate the optical path.",
         "type": "panel",
         "title": "Backend",
         "collapsible": true,
@@ -190,6 +192,7 @@
   "mmfdb": {
     "sections": [
       {
+        "description": "Name of the operation under which the optical path is recorded in the MMFDB database.",
         "type": "panel",
         "title": "MMFDB",
         "collapsible": true,
@@ -372,6 +375,7 @@
   "connections": {
     "sections": [
       {
+        "description": "Create connections by choosing source and target node ports; the table lists existing connections.",
         "type": "panel",
         "title": "Connections",
         "collapsible": true,

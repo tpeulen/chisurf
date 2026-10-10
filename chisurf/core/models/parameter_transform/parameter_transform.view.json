@@ -27,7 +27,8 @@
           "expand": true,
           "description": "The Python function. Its arguments become input parameters and its returns become outputs, which other fits can link to."
         }
-      ]
+      ],
+      "description": "Transform chosen from the catalogue, with its code; it maps the source parameters to the transformed ones."
     },
     {
       "type": "panel",
@@ -39,7 +40,8 @@
           "collapsible": false,
           "description": "Inputs are editable; outputs are computed and stay fixed so other fits can link to them. Read from `_parameters` because this model holds them on its transform node rather than in `parameters_all`."
         }
-      ]
+      ],
+      "description": "Parameters of the transformation: values, bounds and links."
     }
   ],
   "plots": [

@@ -3,14 +3,16 @@
     {
       "type": "panel",
       "title": "Detector",
+      "description": "Detector channels of the TTTR file.",
       "collapsed": false,
       "sections": [
-        {"type": "custom", "key": "tcspc_tttr_detector"}
+        {"type": "custom", "key": "tcspc_tttr_detector", "description": "Routing channels and detector that define the photon stream."}
       ]
     },
     {
       "type": "panel",
       "title": "Acquisition",
+      "description": "Micro-time and macro-time window of the photons that are histogrammed.",
       "collapsed": false,
       "sections": [
         {
@@ -36,6 +38,7 @@
     {
       "type": "panel",
       "title": "Anisotropy (VV/VH)",
+      "description": "Polarization channel(s) read from the file.",
       "collapsed": false,
       "sections": [
         {
@@ -45,6 +48,7 @@
           "style": "radio",
           "options": ["vm", "vv", "vh", "vv/vh"],
           "labels": ["VM", "VV", "VH", "VV,VH"],
+          "descriptions": ["Magic-angle (total) decay.", "Parallel (VV) decay.", "Perpendicular (VH) decay.", "VV and VH stacked for anisotropy analysis."],
           "description": "Polarization channel(s) to read when multiple routing channels are selected."
         },
         {

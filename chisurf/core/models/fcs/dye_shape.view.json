@@ -15,7 +15,8 @@
           "editable": true,
           "description": "Reference species from MMFDB carrying a diffusion coefficient D(25 °C, water); curate them in the MMFDB admin tool. Type to search — matching is on any part of the name."
         }
-      ]
+      ],
+      "description": "Reference dye with known diffusion coefficient, used to calibrate the focal volume (D in um^2/s)."
     },
     {
       "type": "panel",
@@ -29,7 +30,8 @@
           "collapsible": false,
           "description": "N and the baseline b scale the curve; w0 and s are the confocal volume shape this calibration determines. temp sets the water viscosity the dye's D is scaled with."
         }
-      ]
+      ],
+      "description": "N and baseline b scale the curve; focal radius w0 and shape s are what the calibration determines; temp sets the water viscosity the dye D is scaled with."
     },
     {
       "type": "panel",
@@ -43,7 +45,8 @@
           "collapsible": false,
           "description": "One global bunching term: amplitude b_a and relaxation time b_t. b_a also sets the dark fraction that separates cpm from cpm_all."
         }
-      ]
+      ],
+      "description": "Photophysical bunching terms (triplet, blinking): amplitude and relaxation time (us) each."
     },
     {
       "type": "panel",
@@ -57,7 +60,8 @@
           "collapsible": false,
           "description": "Derived, not fitted: D from the dye and the temperature, tauD from D and w0, and the counts per molecule over the bright (cpm) and all (cpm_all) molecules."
         }
-      ]
+      ],
+      "description": "Read-only derived quantities of the fit: effective volume, concentration and diffusion coefficient."
     }
   ],
   "plots": [

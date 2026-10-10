@@ -25,13 +25,13 @@
                 "editable": false,
                 "height": 380,
                 "columns": [
-                  {"key": "name", "title": "Model", "width": 190},
-                  {"key": "experiment", "title": "Experiment", "width": 110},
-                  {"key": "status", "title": "Status", "width": 90},
+                  {"description": "Name of the fitting model.", "key": "name", "title": "Model", "width": 190},
+                  {"description": "Experiment type the model is used for.", "key": "experiment", "title": "Experiment", "width": 110},
+                  {"description": "Whether the model is available, disabled or failed to load.", "key": "status", "title": "Status", "width": 90},
                   {"key": "spec", "title": "Spec", "width": 90, "tooltip": "Whether the model declares a view spec and whether that file resolves."},
                   {"key": "ui", "title": "Parameter UI", "width": 110, "tooltip": "spec-driven models are Qt-free; a Qt class is remaining migration debt."},
                   {"key": "shared", "title": "Shared", "width": 150, "tooltip": "Disabling matches on the display name, so a shared name disables all of them."},
-                  {"key": "module", "title": "Module", "width": 260, "visible": false}
+                  {"description": "Python module that provides the model.", "key": "module", "title": "Module", "width": 260, "visible": false}
                 ]
               }
             },
@@ -50,6 +50,7 @@
           ]
         },
         {
+          "description": "Details of the selected model and whether it is disabled.",
           "type": "panel",
           "title": "Selected model",
           "n_col": 1,

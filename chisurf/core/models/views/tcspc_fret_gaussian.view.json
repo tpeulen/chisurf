@@ -25,20 +25,24 @@
             "exp",
             "full"
           ],
-          "style": "radio"
+          "style": "radio",
+          "description": "Excitation scheme for the IRF convolution.",
+          "descriptions": ["Periodic excitation: the decay wraps around the repetition period (pulsed laser, tails overlap).", "Single excitation, truncated at the histogram window; no wrap-around.", "Full (numpy) convolution of one excitation with the model, without wrap-around."]
         },
         {
           "type": "toggle",
           "target": "convolve",
           "attr": "do_convolution",
-          "label": "Convolve"
+          "label": "Convolve",
+          "description": "Convolve the model with the IRF. Switch off to compare the bare decay."
         },
         {
           "type": "parameter_group_table",
           "target": "convolve",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Convolution of the model decay with the instrument response function (IRF): IRF curve, excitation mode, convolve switch and IRF time shift."
     },
     {
       "type": "panel",
@@ -59,7 +63,8 @@
           "target": "generic",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Nuisance terms of the decay: scattered light, constant background (and its curve) and photon counts."
     },
     {
       "type": "panel",
@@ -80,7 +85,8 @@
           "target": "corrections",
           "attr": "window_function",
           "label": "Smoothing",
-          "options_source": "window_function_types"
+          "options_source": "window_function_types",
+          "description": "Window used to smooth the linearization (DNL) table before it is applied; flat = no smoothing."
         },
         {
           "type": "toggle_row",
@@ -88,26 +94,31 @@
             {
               "target": "corrections",
               "attr": "correct_pile_up",
-              "label": "Pile-up"
+              "label": "Pile-up",
+              "description": "Correct pile-up distortion of the TCSPC histogram (early photons over-represented at high count rates)."
             },
             {
               "target": "corrections",
               "attr": "correct_dnl",
-              "label": "DNL"
+              "label": "DNL",
+              "description": "Apply the differential non-linearity (DNL) table to the model to account for uneven channel widths."
             },
             {
               "target": "corrections",
               "attr": "reverse",
-              "label": "Reverse"
+              "label": "Reverse",
+              "description": "Reverse the time axis of the data (for reverse start-stop acquisition)."
             }
-          ]
+          ],
+          "description": "Switches for the amplitude normalisation of the species."
         },
         {
           "type": "parameter_group_table",
           "target": "corrections",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Detector corrections: DNL linearization table, pile-up and channel smoothing applied to the decay."
     },
     {
       "type": "panel",
@@ -141,7 +152,8 @@
           "key": "kappa2_controls",
           "description": "Orientation factor: dynamic averaging uses the scalar kappa-squared, static averaging uses its distribution. 'show' plots the current distribution, 'compute' derives one from anisotropies, 'calc R0' opens the Foerster-radius calculator."
         }
-      ]
+      ],
+      "description": "Foerster radius R0, orientation factor kappa-squared, refractive index and donor lifetime/FRET-rate settings that turn distances into FRET rates."
     },
     {
       "type": "panel",
@@ -151,7 +163,8 @@
           "type": "toggle",
           "target": "gaussians",
           "attr": "is_distance_between_gaussians",
-          "label": "Distance between gaussians"
+          "label": "Distance between gaussians",
+          "description": "Take the entered distance as the separation between the Gaussians rather than from the donor."
         },
         {
           "type": "dynamic_group",
@@ -164,7 +177,8 @@
           "min_rows": 1,
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Gaussian donor-acceptor distance distribution(s): mean distance R (A), width sigma (A) and amplitude of each component."
     },
     {
       "type": "panel",
@@ -185,7 +199,8 @@
             "vv",
             "vh",
             "vv/vh"
-          ]
+          ],
+          "description": "Measured polarization: vm = magic angle, vv / vh = parallel / perpendicular detection, vv/vh = both fitted together."
         },
         {
           "type": "parameter_group_table",
@@ -210,7 +225,8 @@
           "target": "anisotropy",
           "description": "Background-corrected VV/VH integrals, and r(t) for data and model with the correction factors as live controls."
         }
-      ]
+      ],
+      "description": "Rotational depolarization: polarization channel, rotational correlation times and the G factor and related polarization corrections."
     }
   ],
   "plots": [

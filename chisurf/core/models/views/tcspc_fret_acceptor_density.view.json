@@ -25,20 +25,24 @@
             "exp",
             "full"
           ],
-          "style": "radio"
+          "style": "radio",
+          "description": "Excitation scheme for the IRF convolution.",
+          "descriptions": ["Periodic excitation: the decay wraps around the repetition period (pulsed laser, tails overlap).", "Single excitation, truncated at the histogram window; no wrap-around.", "Full (numpy) convolution of one excitation with the model, without wrap-around."]
         },
         {
           "type": "toggle",
           "target": "convolve",
           "attr": "do_convolution",
-          "label": "Convolve"
+          "label": "Convolve",
+          "description": "Convolve the model with the IRF. Switch off to compare the bare decay."
         },
         {
           "type": "parameter_group_table",
           "target": "convolve",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Convolution of the model decay with the instrument response function (IRF): IRF curve, excitation mode, convolve switch and IRF time shift."
     },
     {
       "type": "panel",
@@ -59,7 +63,8 @@
           "target": "generic",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Nuisance terms of the decay: scattered light, constant background (and its curve) and photon counts."
     },
     {
       "type": "panel",
@@ -80,7 +85,8 @@
           "target": "corrections",
           "attr": "window_function",
           "label": "Smoothing",
-          "options_source": "window_function_types"
+          "options_source": "window_function_types",
+          "description": "Window used to smooth the linearization (DNL) table before it is applied; flat = no smoothing."
         },
         {
           "type": "toggle_row",
@@ -88,26 +94,31 @@
             {
               "target": "corrections",
               "attr": "correct_pile_up",
-              "label": "Pile-up"
+              "label": "Pile-up",
+              "description": "Correct pile-up distortion of the TCSPC histogram (early photons over-represented at high count rates)."
             },
             {
               "target": "corrections",
               "attr": "correct_dnl",
-              "label": "DNL"
+              "label": "DNL",
+              "description": "Apply the differential non-linearity (DNL) table to the model to account for uneven channel widths."
             },
             {
               "target": "corrections",
               "attr": "reverse",
-              "label": "Reverse"
+              "label": "Reverse",
+              "description": "Reverse the time axis of the data (for reverse start-stop acquisition)."
             }
-          ]
+          ],
+          "description": "Switches for the amplitude normalisation of the species."
         },
         {
           "type": "parameter_group_table",
           "target": "corrections",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Detector corrections: DNL linearization table, pile-up and channel smoothing applied to the decay."
     },
     {
       "type": "panel",
@@ -124,7 +135,8 @@
           ],
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Fluorescence lifetimes (ns) and amplitudes of the decay components."
     },
     {
       "type": "panel",
@@ -145,7 +157,8 @@
             "1-D (helix)"
           ],
           "style": "radio",
-          "description": "Geometry the acceptors occupy. Sets the stretch exponent d/6 of the decay, so the three cases are distinguishable in the fit."
+          "description": "Geometry the acceptors occupy. Sets the stretch exponent d/6 of the decay, so the three cases are distinguishable in the fit.",
+          "descriptions": ["3-D acceptor distribution (solution): stretch exponent d/6 = 1/2.", "2-D acceptor distribution (membrane): stretch exponent 1/3.", "1-D acceptor distribution (helix / filament): stretch exponent 1/6."]
         },
         {
           "type": "parameter_group_table",
@@ -159,7 +172,8 @@
           "max_height": 40,
           "description": "Transfer efficiency and absolute acceptor density implied by the fitted C/C0 -- computed, not fitted, so neither carries an error bar of its own."
         }
-      ]
+      ],
+      "description": "Acceptors distributed in space around the donor (no fixed distance): geometry and acceptor density determining the stretched-exponential decay."
     }
   ],
   "plots": [

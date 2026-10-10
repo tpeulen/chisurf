@@ -12,7 +12,8 @@
           "target": "nuisance",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Calibration of the detection: background rates, G factor and crosstalk."
     },
     {
       "type": "panel",
@@ -31,7 +32,8 @@
           "collapsible": false,
           "style": "table"
         }
-      ]
+      ],
+      "description": "Species described by their anisotropy: fractions and anisotropy values."
     },
     {
       "type": "panel",
@@ -104,7 +106,8 @@
                 "kind": "int"
               }
             ]
-          }
+          },
+          "description": "Histogram binning of the burst data: number of bins, range of the axis and minimum photons per burst."
         }
       ]
     },
@@ -155,7 +158,8 @@
           "source": "consistency_html",
           "max_height": 90
         }
-      ]
+      ],
+      "description": "Fit diagnostics and helpers: fill leakage, direct excitation and gamma from a simulated light path, and check the fit against the burst data."
     }
   ],
   "plots": [

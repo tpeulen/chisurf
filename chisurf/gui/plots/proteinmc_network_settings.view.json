@@ -4,6 +4,7 @@
     {
       "type": "panel",
       "title": "Distance network",
+      "description": "Display of the inter-label distance network.",
       "sections": [
         {"type": "button_row", "buttons": [
           {"action": "goto_first", "label": "|<", "description": "Stop playback and go to the first frame."},

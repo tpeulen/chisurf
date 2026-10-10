@@ -3,6 +3,7 @@
     {
       "type": "panel",
       "title": "Detectors",
+      "description": "Donor and acceptor detectors of the burst tables.",
       "collapsed": false,
       "sections": [
         {
@@ -24,6 +25,7 @@
     {
       "type": "panel",
       "title": "Histogram",
+      "description": "Binning of the two-dimensional proximity-ratio versus mean-micro-time histogram.",
       "collapsed": false,
       "sections": [
         {
@@ -69,6 +71,7 @@
     {
       "type": "panel",
       "title": "Selection",
+      "description": "Burst selection applied before the histogram is built.",
       "collapsed": true,
       "sections": [
         {

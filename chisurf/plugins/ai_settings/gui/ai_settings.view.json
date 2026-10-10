@@ -3,6 +3,7 @@
     {
       "type": "panel",
       "title": "API Configuration",
+      "description": "Provider, endpoint and API key used to reach the language model.",
       "collapsible": true,
       "collapsed": false,
       "sections": [
@@ -46,6 +47,7 @@
     {
       "type": "panel",
       "title": "Models",
+      "description": "Models offered by the provider and the one that is used.",
       "collapsible": true,
       "collapsed": false,
       "sections": [
@@ -80,6 +82,7 @@
     {
       "type": "panel",
       "title": "Generation Settings",
+      "description": "Sampling options of the model, such as temperature and maximum length.",
       "collapsible": true,
       "collapsed": true,
       "sections": [

@@ -2,12 +2,14 @@
   "_comment": "Generic hidden-Markov-model tool. AutoForm over HmmViewModel: a settings dock (trace files, state count, covariance type, EM controls) and a result dock with the trace + decoded path, the intensity histogram with the fitted emissions, dwell-time histograms, the state table, the transition matrix and the state-count scan. All plots go through the AutoForm plot section, which renders with chiplot.",
   "sections": [
     {
+      "description": "Hidden Markov model analysis of binned traces: set up the model, fit it and inspect the trace and the states.",
       "type": "dock_area",
       "title": "Hidden Markov model",
       "split": "horizontal",
       "persist": "hmm",
       "sections": [
         {
+          "description": "Model setup: trace files to analyse, number of states, covariance type and time step.",
           "type": "panel",
           "title": "Model",
           "n_col": 1,
@@ -24,7 +26,7 @@
              "description": "Shape of the emission covariance: full = an unrestricted matrix per state; diag = one variance per channel; spherical = one variance per state; tied = one matrix shared by all states. Fewer parameters are more stable on short traces."},
             {"type": "value", "attr": "time_step", "kind": "float", "label": "Bin width (s)", "decimals": 6, "minimum": 0.0, "maximum": 1000.0,
              "description": "Duration of one time bin. Dwell times and transition rates are reported in these units; leave at 1 to report them in bins."},
-            {"type": "panel", "title": "Fitting", "n_col": 2, "collapsed": true, "sections": [
+            {"description": "Fit options: maximum iterations, convergence tolerance, acceleration, decoding and random seed.", "type": "panel", "title": "Fitting", "n_col": 2, "collapsed": true, "sections": [
               {"type": "value", "attr": "n_iter", "kind": "int", "label": "Max EM maps", "minimum": 1, "maximum": 100000,
                "description": "Upper bound on Baum-Welch maps. With acceleration, one SQUAREM cycle spends three."},
               {"type": "value", "attr": "tol", "kind": "float", "label": "Tolerance", "decimals": 6, "minimum": 0.0, "maximum": 1000.0,
@@ -36,7 +38,7 @@
               {"type": "value", "attr": "random_state", "kind": "int", "label": "Seed", "minimum": 0, "maximum": 1000000,
                "description": "Seed of the k-means initialisation. A fixed seed makes the fit reproducible."}
             ]},
-            {"type": "panel", "title": "State scan", "n_col": 2, "collapsed": true, "sections": [
+            {"description": "Range of state numbers to scan so the model orders can be compared.", "type": "panel", "title": "State scan", "n_col": 2, "collapsed": true, "sections": [
               {"type": "value", "attr": "min_states", "kind": "int", "label": "From", "minimum": 1, "maximum": 32,
                "description": "Smallest state count to score."},
               {"type": "value", "attr": "max_states", "kind": "int", "label": "To", "minimum": 1, "maximum": 32,
@@ -51,6 +53,7 @@
           ]
         },
         {
+          "description": "The binned trace with the decoded state path and the intensity histogram.",
           "type": "panel",
           "title": "Trace",
           "sections": [
@@ -63,6 +66,7 @@
           ]
         },
         {
+          "description": "Fit results: state summaries, dwell times and the state-count scan.",
           "type": "panel",
           "title": "States",
           "sections": [

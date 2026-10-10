@@ -4,6 +4,7 @@
     {
       "type": "panel",
       "title": "Display",
+      "description": "How the curves are drawn: scales, grid and symbols.",
       "n_col": 2,
       "sections": [
         {
@@ -76,6 +77,7 @@
     {
       "type": "panel",
       "title": "Range",
+      "description": "Axis ranges of the plot.",
       "n_col": 4,
       "sections": [
         {
@@ -151,6 +153,7 @@
     {
       "type": "panel",
       "title": "Shift",
+      "description": "Offsets that shift the curves against each other.",
       "n_col": 2,
       "sections": [
         {

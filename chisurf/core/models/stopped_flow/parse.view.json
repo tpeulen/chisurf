@@ -26,7 +26,8 @@
           "is_markdown": false,
           "max_height": 90
         }
-      ]
+      ],
+      "description": "Equation of the model, from the catalogue or typed in Python syntax; every free name becomes a fitted parameter."
     },
     {
       "type": "panel",
@@ -38,7 +39,8 @@
           "collapsible": false,
           "description": "One row per free name in the equation."
         }
-      ]
+      ],
+      "description": "Fit parameters found in the equation: value, bounds, fixed and linked state."
     }
   ],
   "plots": [

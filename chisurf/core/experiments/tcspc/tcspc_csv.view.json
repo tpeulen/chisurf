@@ -3,6 +3,7 @@
     {
       "type": "panel",
       "title": "CSV input",
+      "description": "How the CSV file is parsed.",
       "collapsed": false,
       "n_col": 2,
       "sections": [
@@ -124,6 +125,7 @@
     {
       "type": "panel",
       "title": "Timing",
+      "description": "Time axis of the decay.",
       "collapsed": false,
       "sections": [
         {
@@ -183,6 +185,7 @@
     {
       "type": "panel",
       "title": "Anisotropy (VV/VH)",
+      "description": "Polarization channel(s) read from the file.",
       "collapsed": false,
       "sections": [
         {
@@ -208,6 +211,7 @@
             "VH",
             "VV,VH"
           ],
+          "descriptions": ["Magic-angle (total) decay.", "Parallel (VV) decay.", "Perpendicular (VH) decay.", "VV and VH stacked for anisotropy analysis."],
           "description": "Polarization channel(s) to read: magic-angle, parallel, perpendicular, or stacked VV,VH."
         },
         {

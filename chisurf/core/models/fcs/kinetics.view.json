@@ -50,7 +50,8 @@
             "unit": "1/µs",
             "popup": false,
             "title": "Power-independent rates K_dark"
-          }
+          },
+          "description": "Rate constants (1/us) of transitions between states that do not depend on excitation power (relaxation, ISC, blinking)."
         },
         {
           "type": "custom",
@@ -64,7 +65,8 @@
             "unit": "cross-section",
             "popup": false,
             "title": "Excitation cross-sections K_exc"
-          }
+          },
+          "description": "Relative excitation cross-sections of the state transitions driven by light; multiplied by the excitation intensity."
         },
         {
           "type": "parameter_group_table",
@@ -84,7 +86,8 @@
           "source": "saturation.status_html",
           "description": "What the model is computing right now: the peak excitation rate the scheme is being driven at, or a note that P = 0 leaves you with the analytical Gaussian."
         }
-      ]
+      ],
+      "description": "Photophysical state scheme: number and names of states and the rate matrices (excitation, dark transitions) driving saturation and bunching."
     }
   ],
   "plots": [

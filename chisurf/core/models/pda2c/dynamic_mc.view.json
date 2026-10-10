@@ -12,7 +12,8 @@
           "target": "fret_parameters",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "FRET parameters: Foerster radius R0, donor lifetime, quantum yields and FRET efficiency/distance of the species."
     },
     {
       "type": "panel",
@@ -45,14 +46,16 @@
             "diagonal": false,
             "unit": "Hz",
             "maximum": 1000000.0
-          }
+          },
+          "description": "Rate matrix (1/ms) of the exchange between states: entry (i, j) is the rate from state j to state i."
         },
         {
           "type": "parameter_group_table",
           "target": "states",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "N-state exchange: rate matrix (1/ms) between states with their FRET efficiencies."
     },
     {
       "type": "panel",
@@ -65,7 +68,8 @@
           "target": "nuisance",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Nuisance parameters of the burst data: background rates, crosstalk/direct-excitation and detection-efficiency corrections."
     },
     {
       "type": "panel",
@@ -114,7 +118,8 @@
           "source": "consistency_html",
           "max_height": 90
         }
-      ]
+      ],
+      "description": "Fit diagnostics and helpers: fill leakage, direct excitation and gamma from a simulated light path, and check the fit against the burst data."
     },
     {
       "type": "panel",
@@ -191,7 +196,8 @@
                 "kind": "int"
               }
             ]
-          }
+          },
+          "description": "Histogram binning of the burst data: number of bins, range of the axis and minimum photons per burst."
         }
       ]
     }

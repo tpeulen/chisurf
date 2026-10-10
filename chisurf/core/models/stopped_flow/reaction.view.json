@@ -31,7 +31,8 @@
           "collapsible": false,
           "description": "Concentration at t=0 and brightness per species. The observed signal is the concentrations weighted by the brightnesses, so a dark intermediate is a species with Q = 0, not an absent one."
         }
-      ]
+      ],
+      "description": "Chemical species of the reaction scheme: initial concentrations and signal contribution."
     },
     {
       "type": "panel",
@@ -85,7 +86,8 @@
           "collapsible": false,
           "description": "The rate constants, in reaction order — these are what the fit determines."
         }
-      ]
+      ],
+      "description": "Reaction steps with rate constants (1/s or 1/(M s))."
     },
     {
       "type": "panel",
@@ -105,7 +107,8 @@
           "collapsible": false,
           "description": "Overall scaling, an additive background and a shift of the time axis (mixing dead time)."
         }
-      ]
+      ],
+      "description": "Observed signal as a linear combination of species concentrations: autoscale switch, offset and per-species signal coefficients."
     },
     {
       "type": "panel",

@@ -2,6 +2,10 @@
 
 ## 2026-10-10
 
+- W6f UI-debt sweep: 455 tooltip and 95 literal allowances closed in core/models, core/experiments,
+  gui view specs, ai_settings and the clean plugins/core files (tooltips 1023→568, literals
+  1144→1049). 259 core literals remain in files holding another instance's uncommitted edits.
+
 - Detector setups have one store (`core/data_io/detector_setups`: MMFDB, else the canonical JSON,
   for save and load); RPC, pickers and wizard share it and a refused write is an error. Simulator
   yield-by-index and in-memory persistence re-measured fixed in tttrlib 0.27.0. Stale trace-browser

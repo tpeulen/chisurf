@@ -3,6 +3,7 @@
   "_comment": "PTO inspector. AutoForm over PtoInspectorViewModel. Left: the file, what it is, and every object in it. Right: four docks answering the four questions a container gets asked — how did this come to be (the provenance graph), what are the numbers (the table), what does it look like (the curve), and what exactly was recorded (the details, including the settings that are the recipe). Open / verify / open-the-tool live in the host toolbar.",
   "sections": [
     {
+      "description": "Inspect a photon container: choose the file, then browse its provenance, data and details.",
       "type": "dock_area",
       "title": "PTO inspector",
       "split": "horizontal",
@@ -10,11 +11,13 @@
       "persist": "pto_inspector",
       "sections": [
         {
+          "description": "Choose the .pto container to inspect.",
           "type": "panel",
           "title": "Container",
           "n_col": 1,
           "sections": [
             {
+              "description": "The .pto to inspect: one measurement in one file. Dropping a vendor photon file offers to pack it into a container first.",
               "type": "custom",
               "key": "data_source",
               "options": {
@@ -55,12 +58,14 @@
           ]
         },
         {
+          "description": "Views of the selected container: provenance graph, stored data and details.",
           "type": "dock_area",
           "title": "Views",
           "split": "vertical",
           "sizes": [36, 20, 16, 28],
           "sections": [
             {
+              "description": "Provenance graph: an arrow is a recorded derivation. Double-click a node to open the tool that performs its step.",
               "type": "custom",
               "key": "node_graph",
               "title": "Provenance",
@@ -73,6 +78,7 @@
               }
             },
             {
+              "description": "The payload of the selected object, with column headers that carry their units.",
               "type": "custom",
               "key": "store_table",
               "title": "Data",
@@ -91,6 +97,7 @@
               "description": "The selected object drawn, when it is a curve — a decay, a correlation, an anisotropy, an IRF, a model or a residual. The axes take their units and their scale from the stored columns."
             },
             {
+              "description": "Details and lineage of the selected object.",
               "type": "panel",
               "title": "Details",
               "n_col": 1,

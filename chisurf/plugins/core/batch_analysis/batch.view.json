@@ -21,6 +21,7 @@
           "subtitle": "Optionally pick datasets already loaded in ChiSurf.",
           "sections": [
             {
+              "description": "Pick datasets that are already loaded in ChiSurf to add them to the batch instead of choosing files from disk.",
               "type": "custom",
               "key": "embed",
               "options": {

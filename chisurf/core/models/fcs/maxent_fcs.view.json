@@ -20,7 +20,8 @@
           "collapsible": false,
           "description": "reg is log10 of the entropy weight. td_min/td_max/n_td set the log-spaced diffusion-time grid the distribution is recovered on; s is the structure parameter and b the baseline."
         }
-      ]
+      ],
+      "description": "Maximum-entropy distribution of diffusion times: grid and regularisation of the inversion."
     },
     {
       "type": "panel",

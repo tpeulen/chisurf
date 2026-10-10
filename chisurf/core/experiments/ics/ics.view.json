@@ -4,23 +4,26 @@
     {
       "type": "panel",
       "title": "Detector",
+      "description": "Detector settings of the image series.",
       "collapsed": false,
       "sections": [
-        {"type": "custom", "key": "ics_detector"}
+        {"type": "custom", "key": "ics_detector", "description": "Detector channel and geometry used to read the image stack."}
       ]
     },
     {
       "type": "panel",
       "title": "Acquisition",
+      "description": "Region of interest and preprocessing applied before the correlation is computed.",
       "collapsed": false,
       "sections": [
-        {"type": "custom", "key": "ics_roi"},
+        {"type": "custom", "key": "ics_roi", "description": "Region of interest (pixels) of each frame that enters the correlation."},
         {
           "type": "choice",
           "attr": "subtract_average",
           "label": "Subtract avg",
           "options": ["", "frame", "stack"],
-          "labels": ["None", "Frame", "Stack"]
+          "labels": ["None", "Frame", "Stack"],
+          "description": "Subtract the mean intensity of each frame or of the whole stack before correlating, which removes immobile or slowly varying background."
         },
         {
           "type": "value",
@@ -42,8 +45,9 @@
         {
           "type": "toggle_row",
           "items": [
-            {"attr": "fftshift", "label": "Center zero lag"}
-          ]
+            {"attr": "fftshift", "label": "Center zero lag", "description": "Shift the zero-lag peak to the centre of the correlation surface."}
+          ],
+          "description": "Display options of the correlation surface."
         },
         {
           "type": "value",
@@ -82,7 +86,8 @@
           "kind": "float",
           "decimals": 2,
           "minimum": 0.0,
-          "maximum": 1000000.0
+          "maximum": 1000000.0,
+          "description": "Edge length of one pixel in the sample plane [nm]; converts pixel lags to distances."
         }
       ]
     }

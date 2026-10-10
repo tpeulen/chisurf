@@ -36,7 +36,8 @@
           "collapsible": false,
           "description": "Molecular brightness ε and mean occupancy N per species; a zero in either switches that species off."
         }
-      ]
+      ],
+      "description": "Species of the photon-counting histogram: mean brightness (counts per molecule and sampling time) and mean number of molecules."
     }
   ],
   "plots": [

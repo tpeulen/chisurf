@@ -3,14 +3,16 @@
     {
       "type": "panel",
       "title": "Detector",
+      "description": "Detector whose photon counts are histogrammed.",
       "collapsed": false,
       "sections": [
-        {"type": "custom", "key": "pch_detector"}
+        {"type": "custom", "key": "pch_detector", "description": "Routing channels and detector that define the photon stream."}
       ]
     },
     {
       "type": "panel",
       "title": "Acquisition",
+      "description": "Time binning and micro-time window of the photon counting histogram.",
       "collapsed": false,
       "sections": [
         {
@@ -20,7 +22,8 @@
           "kind": "float",
           "decimals": 3,
           "minimum": 0.1,
-          "maximum": 1000000.0
+          "maximum": 1000000.0,
+          "description": "Width of the counting time bin [us]; counts per bin are histogrammed."
         },
         {
           "type": "value",
@@ -28,7 +31,8 @@
           "label": "µtime min",
           "kind": "int",
           "minimum": 0,
-          "maximum": 65535
+          "maximum": 65535,
+          "description": "Lower edge of the micro-time window in TAC channels; earlier photons are ignored."
         },
         {
           "type": "value",
@@ -36,7 +40,8 @@
           "label": "µtime max",
           "kind": "int",
           "minimum": 0,
-          "maximum": 65535
+          "maximum": 65535,
+          "description": "Upper edge of the micro-time window in TAC channels; later photons are ignored."
         }
       ]
     }

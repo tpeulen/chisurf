@@ -25,20 +25,24 @@
             "exp",
             "full"
           ],
-          "style": "radio"
+          "style": "radio",
+          "description": "Excitation scheme for the IRF convolution.",
+          "descriptions": ["Periodic excitation: the decay wraps around the repetition period (pulsed laser, tails overlap).", "Single excitation, truncated at the histogram window; no wrap-around.", "Full (numpy) convolution of one excitation with the model, without wrap-around."]
         },
         {
           "type": "toggle",
           "target": "convolve",
           "attr": "do_convolution",
-          "label": "Convolve"
+          "label": "Convolve",
+          "description": "Convolve the model with the IRF. Switch off to compare the bare decay."
         },
         {
           "type": "parameter_group_table",
           "target": "convolve",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Convolution of the model decay with the instrument response function (IRF): IRF curve, excitation mode, convolve switch and IRF time shift."
     },
     {
       "type": "panel",
@@ -59,7 +63,8 @@
           "target": "generic",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Nuisance terms of the decay: scattered light, constant background (and its curve) and photon counts."
     },
     {
       "type": "panel",
@@ -80,7 +85,8 @@
           "target": "corrections",
           "attr": "window_function",
           "label": "Smoothing",
-          "options_source": "window_function_types"
+          "options_source": "window_function_types",
+          "description": "Window used to smooth the linearization (DNL) table before it is applied; flat = no smoothing."
         },
         {
           "type": "toggle_row",
@@ -88,26 +94,31 @@
             {
               "target": "corrections",
               "attr": "correct_pile_up",
-              "label": "Pile-up"
+              "label": "Pile-up",
+              "description": "Correct pile-up distortion of the TCSPC histogram (early photons over-represented at high count rates)."
             },
             {
               "target": "corrections",
               "attr": "correct_dnl",
-              "label": "DNL"
+              "label": "DNL",
+              "description": "Apply the differential non-linearity (DNL) table to the model to account for uneven channel widths."
             },
             {
               "target": "corrections",
               "attr": "reverse",
-              "label": "Reverse"
+              "label": "Reverse",
+              "description": "Reverse the time axis of the data (for reverse start-stop acquisition)."
             }
-          ]
+          ],
+          "description": "Switches for the amplitude normalisation of the species."
         },
         {
           "type": "parameter_group_table",
           "target": "corrections",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Detector corrections: DNL linearization table, pile-up and channel smoothing applied to the decay."
     },
     {
       "type": "panel",
@@ -124,7 +135,8 @@
           ],
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Fluorescence lifetimes (ns) and amplitudes of the decay components."
     }
   ],
   "plots": [

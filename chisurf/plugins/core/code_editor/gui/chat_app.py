@@ -22,6 +22,7 @@ from emtk.widgets.chat import (
     draw_chat_input_bar,
     draw_chat_transcript,
 )
+from emtk.i18n import tr
 
 from chisurf.plugins.core.code_editor.acp_client import AcpClient
 
@@ -489,15 +490,15 @@ class ChatGui:
             return
         im.set_next_window_size((700, 660), im.Cond.FIRST_USE_EVER)
         if im.begin("Provider settings##chat_provider_settings"):
-            if im.button("Use settings and close"):
+            if im.button(tr("Use settings and close")):
                 if self.model.use_provider_settings(self.provider_settings.model):
                     self.provider_settings_open = False
-            im.set_item_tooltip("Use this provider configuration for subsequent chat turns")
+            im.set_item_tooltip(tr("Use this provider configuration for subsequent chat turns"))
             im.same_line()
-            if im.button("Close provider settings"):
+            if im.button(tr("Close provider settings")):
                 self.provider_settings_open = False
             im.set_item_tooltip(
-                "Close the provider form; field edits use the shared provider store"
+                tr("Close the provider form; field edits use the shared provider store")
             )
             im.begin_child(
                 (*im.get_cursor_screen_pos(), *im.get_content_region_avail()),
@@ -564,7 +565,7 @@ class ChatGui:
         )
         p_labels = [PROVIDER_LABELS.get(p, p) for p in PROVIDERS]
         changed_p, new_p_idx = im.combo("##p_select", current_p_idx, p_labels)
-        im.set_item_tooltip("Choose the assistant provider")
+        im.set_item_tooltip(tr("Choose the assistant provider"))
         if changed_p:
             self.model.provider = PROVIDERS[new_p_idx]
 
@@ -575,7 +576,7 @@ class ChatGui:
         current_m_idx = MODES.index(self.model.mode) if self.model.mode in MODES else 0
         m_labels = [MODE_LABELS.get(m, m) for m in MODES]
         changed_m, new_m_idx = im.combo("##m_select", current_m_idx, m_labels)
-        im.set_item_tooltip("Choose which tools the assistant may use")
+        im.set_item_tooltip(tr("Choose which tools the assistant may use"))
         if changed_m:
             self.model.mode = MODES[new_m_idx]
             if self.model.acp_client and self.model.acp_client.is_running:
@@ -589,7 +590,7 @@ class ChatGui:
             self.provider_settings.select_provider(self.model.provider)
             self.provider_settings_open = True
         im.set_item_tooltip(
-            "Configure API endpoint, masked credential, models, sampling or the ACP command"
+            tr("Configure API endpoint, masked credential, models, sampling or the ACP command")
         )
         im.end_disabled()
         im.separator()

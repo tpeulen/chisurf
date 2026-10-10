@@ -37,6 +37,7 @@ import typing
 
 import numpy as np
 from emtk import im, implot, nodes
+from emtk.i18n import tr
 
 from chisurf.emtk.node_editor.control import NodeContentRenderer
 from chisurf.emtk.node_editor.document import GraphNode
@@ -242,7 +243,7 @@ class BeampathContent(NodeContentRenderer):
         """
         edited, value = im.input_text("name", str(node.config.get("detector_name", "Detector")))
         im.set_item_tooltip(
-            "Name of this optical detector; it labels the calculated signal and crosstalk columns."
+            tr("Name of this optical detector; it labels the calculated signal and crosstalk columns.")
         )
         if edited and not read_only:
             node.config["detector_name"] = value
@@ -272,7 +273,7 @@ class BeampathContent(NodeContentRenderer):
         index = next((i for i, (_, pid) in enumerate(options) if pid == current), 0)
 
         moved, chosen = im.combo("component", index, labels)
-        im.set_item_tooltip("Choose the measured optical component spectrum assigned to this node.")
+        im.set_item_tooltip(tr("Choose the measured optical component spectrum assigned to this node."))
         if moved and not read_only:
             node.config["probe_id"] = options[chosen][1]
             # The two keys are alternatives, and leaving the old one behind
@@ -315,7 +316,7 @@ class BeampathContent(NodeContentRenderer):
         changed = False
 
         moved, chosen = im.combo("mode", index, modes)
-        im.set_item_tooltip("Choose manual laser lines or a measured source spectrum.")
+        im.set_item_tooltip(tr("Choose manual laser lines or a measured source spectrum."))
         if moved and not read_only:
             node.config["source_mode"] = modes[chosen]
             changed = True
@@ -329,7 +330,7 @@ class BeampathContent(NodeContentRenderer):
             )
             edited, value = im.input_text("lines", text)
             im.set_item_tooltip(
-                "Excitation wavelengths and relative powers, for example 488:1.0, 640:1.0."
+                tr("Excitation wavelengths and relative powers, for example 488:1.0, 640:1.0.")
             )
             if edited and not read_only:
                 node.config["manual_lines"] = value
@@ -357,12 +358,12 @@ class BeampathContent(NodeContentRenderer):
         moved, kappa = im.slider_float(
             "kappa2", float(node.config.get("kappa2", 2.0 / 3.0)), 0.0, 4.0
         )
-        im.set_item_tooltip("Orientation factor used in the Förster-radius calculation.")
+        im.set_item_tooltip(tr("Orientation factor used in the Förster-radius calculation."))
         if moved and not read_only:
             node.config["kappa2"] = kappa
             changed = True
         moved, refractive = im.slider_float("n", float(node.config.get("n", 1.33)), 1.0, 2.0)
-        im.set_item_tooltip("Refractive index used in the spectral overlap calculation.")
+        im.set_item_tooltip(tr("Refractive index used in the spectral overlap calculation."))
         if moved and not read_only:
             node.config["n"] = refractive
             changed = True
@@ -400,8 +401,8 @@ class BeampathContent(NodeContentRenderer):
             return False
 
         shown = node.id not in self.hidden_plots
-        toggled, shown = im.checkbox("spectrum", shown)
-        im.set_item_tooltip("Show or hide this node’s input, output and characteristic spectra.")
+        toggled, shown = im.checkbox(tr("spectrum"), shown)
+        im.set_item_tooltip(tr("Show or hide this node’s input, output and characteristic spectra."))
         if toggled:
             self.hidden_plots.discard(node.id) if shown else self.hidden_plots.add(node.id)
         if not shown:

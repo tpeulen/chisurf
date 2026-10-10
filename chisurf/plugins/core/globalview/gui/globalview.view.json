@@ -4,6 +4,7 @@
   "description": "The parameter network of every open fit and registered parameter group, and the links that make a fit global.",
   "sections": [
     {
+      "description": "Refresh the graph of fits and parameters, unlink all parameters and run the other global-view actions.",
       "type": "panel",
       "title": "Toolbar",
       "n_col": 8,
@@ -88,6 +89,7 @@
       ]
     },
     {
+      "description": "How the parameter graph is drawn: representation, layout, node size and scale, and whether owners and fixed parameters are included.",
       "type": "panel",
       "title": "View",
       "sections": [
@@ -163,6 +165,7 @@
       ]
     },
     {
+      "description": "Table of the fits and datasets shown in the graph; select rows to highlight them.",
       "type": "panel",
       "title": "Selection",
       "sections": [
@@ -230,6 +233,7 @@
       ]
     },
     {
+      "description": "Parameters of the selected fit and their links to other fits.",
       "type": "panel",
       "title": "Parameters",
       "sections": [

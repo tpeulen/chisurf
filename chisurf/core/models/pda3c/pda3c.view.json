@@ -91,7 +91,8 @@
             "diagonal": false,
             "unit": "Hz",
             "maximum": 1000000.0
-          }
+          },
+          "description": "Rate matrix (1/ms) of the exchange between states: entry (i, j) is the rate from state j to state i."
         },
         {
           "type": "parameter_group_table",
@@ -137,7 +138,8 @@
                 "label": "Weight cutoff"
               }
             ]
-          }
+          },
+          "description": "Numerical integration over the distributions: nodes per axis and weight cutoff below which nodes are dropped."
         }
       ]
     }

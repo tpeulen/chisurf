@@ -26,11 +26,13 @@
     {
       "type": "panel",
       "title": "Detector",
+      "description": "Donor and acceptor detectors of the photon stream.",
       "collapsed": false,
       "sections": [
         {
           "type": "custom",
-          "key": "pda_detector"
+          "key": "pda_detector",
+          "description": "Routing channels that define the donor and acceptor detectors."
         }
       ]
     },
@@ -51,13 +53,15 @@
           "labels": [
             "Burst search (variable duration)",
             "Fixed time bins (constant duration)"
-          ]
+          ],
+          "description": "Split the data into variable-duration bursts or into fixed-duration time bins."
         }
       ]
     },
     {
       "type": "panel",
       "title": "Acquisition",
+      "description": "Photon-number window of the events entering the analysis.",
       "collapsed": false,
       "sections": [
         {
@@ -66,7 +70,8 @@
           "label": "nPh min",
           "kind": "int",
           "minimum": 1,
-          "maximum": 9999
+          "maximum": 9999,
+          "description": "Smallest number of photons per event that is kept."
         },
         {
           "type": "value",
@@ -74,11 +79,13 @@
           "label": "nPh max",
           "kind": "int",
           "minimum": 1,
-          "maximum": 9999
+          "maximum": 9999,
+          "description": "Largest number of photons per event that is kept."
         },
         {
           "type": "custom",
-          "key": "pda_tw"
+          "key": "pda_tw",
+          "description": "Time window of the events when segmenting by fixed time bins."
         }
       ]
     }

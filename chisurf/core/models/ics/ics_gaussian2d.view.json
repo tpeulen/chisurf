@@ -12,7 +12,8 @@
           "target": "gaussian",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Anisotropic Gaussian ACF: widths sigma_x, sigma_y (um) and rotation angle of the principal axes."
     },
     {
       "type": "panel",
@@ -25,7 +26,8 @@
           "target": "imaging",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Image sampling: pixel size (um) that converts pixel lags to physical lengths."
     }
   ],
   "plots": [

@@ -12,7 +12,8 @@
           "target": "regularization",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Maximum-entropy regularisation: strength alpha of the entropy term that stabilises P(r)."
     },
     {
       "type": "panel",
@@ -25,7 +26,8 @@
           "target": "modulation",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Modulation depth lambda and its settings: fraction of spins excited by the pump pulse (0-1)."
     },
     {
       "type": "panel",
@@ -42,14 +44,16 @@
             "hom3d",
             "exp",
             "strexp"
-          ]
+          ],
+          "description": "Functional form of the intermolecular background: hom3d = homogeneous 3-D, exp = exponential, strexp = stretched exponential."
         },
         {
           "type": "parameter_group_table",
           "target": "background",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Intermolecular background decay (exp, stretched exp or homogeneous 3-D) divided out of the DEER signal; its decay rate/dimension is fitted."
     },
     {
       "type": "panel",
@@ -62,7 +66,8 @@
           "target": "grid",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Distance axis r (nm) on which P(r) is evaluated: range and number of points."
     }
   ],
   "plots": [

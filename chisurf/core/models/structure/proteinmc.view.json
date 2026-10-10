@@ -40,7 +40,8 @@
           "label": "Output",
           "description": "Where proteinmc.rmf3 and the autosaved project are written. Choosing it before starting is what makes a run resumable."
         }
-      ]
+      ],
+      "description": "Starting structure (PDB ID or local file) and the other inputs of the Monte Carlo run."
     },
     {
       "type": "panel",
@@ -102,7 +103,8 @@
               "label": "Weight",
               "description": "Multiplies this term's contribution to the total energy."
             }
-          ]
+          ],
+          "description": "Energy terms of the scoring function: term, evaluation interval and weight."
         },
         {
           "type": "choice",
@@ -136,16 +138,19 @@
             {
               "key": "name",
               "label": "Setting",
-              "width": 150
+              "width": 150,
+              "description": "Name of the parameter of the selected energy term."
             },
             {
               "key": "value",
-              "label": "Value"
+              "label": "Value",
+              "description": "Current value of the setting; the type of its default is kept."
             }
           ],
           "description": "The selected term's own parameters. Each keeps the type of its default, so a checkbox setting cannot reach the sampler as the string \"True\"."
         }
-      ]
+      ],
+      "description": "Energy terms of the scoring function with their weights and evaluation interval; select a term to edit its settings."
     },
     {
       "type": "panel",
@@ -208,9 +213,11 @@
             "start_description": "Start sampling in the background. A run continues from the frames already in hand rather than discarding them, so a saved project resumes.",
             "stop_description": "Ask the sampler to stop after the current step.",
             "interval_ms": 500
-          }
+          },
+          "description": "Start / stop the background sampling run and show its progress."
         }
-      ]
+      ],
+      "description": "Monte Carlo sampling: number of trials, save interval, move scale and thermal energy kT, plus start / stop of the background run."
     },
     {
       "type": "panel",

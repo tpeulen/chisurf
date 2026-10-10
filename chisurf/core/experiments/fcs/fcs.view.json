@@ -3,17 +3,20 @@
     {
       "type": "panel",
       "title": "Columns (CSV only)",
+      "description": "Column assignment used when the FCS curve is read from a CSV file.",
       "collapsed": true,
       "sections": [
         {
           "type": "custom",
-          "key": "fcs_columns"
+          "key": "fcs_columns",
+          "description": "Which CSV columns hold the lag time, correlation G(tau) and, optionally, the uncertainty."
         }
       ]
     },
     {
       "type": "panel",
       "title": "Noise model",
+      "description": "How the weights of the correlation curve are derived for fitting.",
       "collapsed": false,
       "sections": [
         {
@@ -27,7 +30,8 @@
             "Photon-noise (Suren)",
             "Starchev",
             "Spline local variance (5 knots)"
-          ]
+          ],
+          "description": "Source of the per-point uncertainty: taken from the file, uniform, or estimated from photon noise, Starchev or a spline of the local variance."
         }
       ]
     }

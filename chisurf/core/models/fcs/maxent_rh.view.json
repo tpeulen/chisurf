@@ -20,7 +20,8 @@
           "collapsible": false,
           "description": "reg is log10 of the entropy weight. rh_min/rh_max/n_rh set the log-spaced radius grid the distribution is recovered on; s is the structure parameter and b the baseline."
         }
-      ]
+      ],
+      "description": "Maximum-entropy distribution of hydrodynamic radii Rh (nm): grid and regularisation of the inversion."
     },
     {
       "type": "panel",
@@ -34,7 +35,8 @@
           "collapsible": false,
           "description": "The beam waist and the sample temperature convert a diffusion time into a hydrodynamic radius (Stokes-Einstein through the water viscosity)."
         }
-      ]
+      ],
+      "description": "Beam waist and sample temperature convert a diffusion time into a hydrodynamic radius (Stokes-Einstein with the viscosity of water)."
     },
     {
       "type": "panel",

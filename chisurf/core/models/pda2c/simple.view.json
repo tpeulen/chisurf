@@ -12,7 +12,8 @@
           "target": "nuisance",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Photon-number range of the bursts included in the fit: minimum and maximum total counts per burst."
     },
     {
       "type": "panel",
@@ -25,7 +26,8 @@
           "target": "background",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Background rates (kHz) in the donor and acceptor channels added to the burst photons."
     },
     {
       "type": "panel",
@@ -39,14 +41,17 @@
             {
               "target": "pch0",
               "attr": "absolute_amplitudes",
-              "label": "Abs."
+              "label": "Abs.",
+              "description": "Use absolute amplitudes (mean number of molecules) instead of relative fractions."
             },
             {
               "target": "pch0",
               "attr": "normalize_amplitudes",
-              "label": "Norm."
+              "label": "Norm.",
+              "description": "Normalise the species amplitudes to sum to one."
             }
-          ]
+          ],
+          "description": "Switches for the amplitude normalisation of the species."
         },
         {
           "type": "dynamic_group",
@@ -59,7 +64,8 @@
           "collapsible": false,
           "style": "table"
         }
-      ]
+      ],
+      "description": "Discrete FRET species: FRET efficiency and fraction of each."
     },
     {
       "type": "panel",
@@ -136,7 +142,8 @@
                 "kind": "int"
               }
             ]
-          }
+          },
+          "description": "Histogram binning of the burst data: number of bins, range of the axis and minimum photons per burst."
         }
       ]
     },
@@ -187,7 +194,8 @@
           "source": "consistency_html",
           "max_height": 90
         }
-      ]
+      ],
+      "description": "Fit diagnostics and helpers: fill leakage, direct excitation and gamma from a simulated light path, and check the fit against the burst data."
     }
   ],
   "plots": [

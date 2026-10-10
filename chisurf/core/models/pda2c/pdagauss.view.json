@@ -12,7 +12,8 @@
           "target": "fret_parameters",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "FRET parameters: Foerster radius R0, donor lifetime, quantum yields and FRET efficiency/distance of the species."
     },
     {
       "type": "panel",
@@ -24,7 +25,8 @@
           "type": "toggle",
           "target": "distances",
           "attr": "limited_width",
-          "label": "Limited width (\u03c3 = p%\u00b7R)"
+          "label": "Limited width (\u03c3 = p%\u00b7R)",
+          "description": "Interpret each stored width as a percentage of its mean distance: sigma = (p/100) * R."
         },
         {
           "type": "dynamic_group",
@@ -37,7 +39,8 @@
           "collapsible": false,
           "style": "table"
         }
-      ]
+      ],
+      "description": "Donor-acceptor distance distribution (mean, width, amplitudes) mapped to FRET efficiency."
     },
     {
       "type": "panel",
@@ -50,7 +53,8 @@
           "target": "nuisance",
           "collapsible": false
         }
-      ]
+      ],
+      "description": "Nuisance parameters of the burst data: background rates, crosstalk/direct-excitation and detection-efficiency corrections."
     },
     {
       "type": "panel",
@@ -99,7 +103,8 @@
           "source": "consistency_html",
           "max_height": 90
         }
-      ]
+      ],
+      "description": "Fit diagnostics and helpers: fill leakage, direct excitation and gamma from a simulated light path, and check the fit against the burst data."
     },
     {
       "type": "panel",
@@ -176,7 +181,8 @@
                 "kind": "int"
               }
             ]
-          }
+          },
+          "description": "Histogram binning of the burst data: number of bins, range of the axis and minimum photons per burst."
         }
       ]
     }

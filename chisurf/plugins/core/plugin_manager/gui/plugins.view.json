@@ -29,6 +29,7 @@
                 "height": 380,
                 "columns": [
                   {
+                    "description": "Display name of the plugin.",
                     "key": "name",
                     "title": "Plugin",
                     "width": 210
@@ -40,11 +41,13 @@
                     "tooltip": "enabled, disabled, library, cli only, or a maturity flag."
                   },
                   {
+                    "description": "Category the plugin is listed under.",
                     "key": "category",
                     "title": "Category",
                     "width": 110
                   },
                   {
+                    "description": "Installed version of the plugin.",
                     "key": "version",
                     "title": "Version",
                     "width": 70
@@ -69,24 +72,28 @@
                     "tooltip": "Reached only after startup, from a button press or a guarded import."
                   },
                   {
+                    "description": "Unique identifier of the plugin.",
                     "key": "id",
                     "title": "Id",
                     "visible": false,
                     "width": 150
                   },
                   {
+                    "description": "Where the plugin comes from, for example built-in or user.",
                     "key": "source",
                     "title": "Source",
                     "visible": false,
                     "width": 80
                   },
                   {
+                    "description": "Whether the plugin has a button in the toolbar.",
                     "key": "toolbar",
                     "title": "Toolbar",
                     "visible": false,
                     "width": 70
                   },
                   {
+                    "description": "Whether the plugin window is currently open, hidden or closed.",
                     "key": "state",
                     "title": "Window state",
                     "visible": false,
@@ -110,6 +117,7 @@
           ]
         },
         {
+          "description": "Details of the selected plugin: whether it is disabled, in the toolbar, its statefulness and its dependencies.",
           "type": "panel",
           "title": "Selected plugin",
           "sections": [
@@ -157,22 +165,27 @@
                 "height": 150,
                 "columns": [
                   {
+                    "description": "The plugin that is related to the selected plugin.",
                     "key": "plugin",
                     "title": "Plugin"
                   },
                   {
+                    "description": "How the other plugin is related, for example requires or is required by.",
                     "key": "relation",
                     "title": "Relation"
                   },
                   {
+                    "description": "The version constraint declared for the dependency.",
                     "key": "bound",
                     "title": "Bound"
                   },
                   {
+                    "description": "The version of the related plugin that is installed.",
                     "key": "installed",
                     "title": "Installed"
                   },
                   {
+                    "description": "Whether the dependency is satisfied.",
                     "key": "status",
                     "title": "Status"
                   }
