@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from emtk import keys
 
 from chisurf.plugins.traj.traj_remove_clashes.app import make_app
-from chisurf.plugins.traj.traj_save_topology.test.real_input import Ui, check_action_flow, check_browse_row, check_guide_and_help_buttons, check_log_scrolls_with_the_wheel, check_number_field, check_row_is_read_only, check_text_field, dead_tour_buttons, enter_commits_an_emptied_field, read_xyz, wheel_steps_a_number_field
+from chisurf.plugins.traj.traj_save_topology.test.real_input import Ui, check_action_flow, check_browse_row, check_guide_and_help_buttons, check_log_scrolls_with_the_wheel, check_number_field, check_row_is_read_only, dead_tour_buttons, enter_commits_an_emptied_field, read_xyz, wheel_steps_a_number_field
 
 
 def test_guide_and_help_buttons_are_pressed():
@@ -81,9 +82,22 @@ def test_the_min_distance_field_is_typed_clicked_away_clamped_and_stepped_by_its
 
 
 def test_the_atom_selection_field_is_typed_and_may_be_emptied():
-    check_text_field(
-        make_app, "atom_selection", start="name CA and resSeq 1 to 256", typed="name CA"
-    )
+    # The selection is a multi-line box: Enter starts a new line, a click away commits (as the Qt box does).
+    ui = Ui(make_app())
+    try:
+        ui.draw(1)
+        ui.click("atom_selection", fx=0.3)
+        ui.type_text("name CA")  # replaces the selected start value
+        ui.click("log", fy=0.9)
+        assert ui.app.model.atom_selection == "name CA"
+        ui.draw(1)
+        ui.click("atom_selection", fx=0.3)
+        ui.type_text("")  # select everything
+        ui.key(keys.KEY_BACKSPACE, "")
+        ui.click("log", fy=0.9)
+        assert ui.app.model.atom_selection == ""
+    finally:
+        ui.app.close()
 
 
 @pytest.mark.xfail(
@@ -95,11 +109,6 @@ def test_enter_commits_an_emptied_atom_selection():
     assert enter_commits_an_emptied_field(make_app, "atom_selection", "name CA") == ""
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="emtk gap: the wheel does not reach a field inside a DockManager window "
-    "(repro in the report); the Qt spin box steps on the wheel",
-)
 @pytest.mark.parametrize("key", ["stride", "min_distance"])
 def test_the_wheel_steps_a_number_field(key):
     before, after = wheel_steps_a_number_field(make_app, key)

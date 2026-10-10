@@ -158,11 +158,6 @@ def test_each_frame_range_field_is_typed_clicked_away_clamped_and_stepped_by_its
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="emtk gap: the wheel does not reach a field inside a DockManager window "
-    "(repro in the report); the Qt spin box steps on the wheel",
-)
 @pytest.mark.parametrize("key", ["first_frame", "last_frame", "stride"])
 def test_the_wheel_steps_a_number_field(key):
     before, after = wheel_steps_a_number_field(make_app, key, size=SIZE)
@@ -366,11 +361,6 @@ def test_the_log_scrolls_under_the_wheel_and_back():
     assert back_up > scrolled_down  # a turn the other way brings them back
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="emtk gap: a text field keeps the keyboard after a click on a checkbox or a "
-    "button elsewhere (repro in the report); a Qt line edit loses its focus",
-)
 def test_a_text_field_gives_up_the_keyboard_when_a_checkbox_elsewhere_is_clicked():
     ui = _ui()
     try:
