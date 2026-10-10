@@ -436,3 +436,31 @@ def test_translated_independent_contexts_deliver_same_named_buttons(tmp_path, mo
     assert used[-1] == 0, "the authoritative global guide target belongs to child zero"
     assert len(result["clicked"]) == 2
     assert len(set(result["clicked_ids"])) == 2
+
+
+def test_action_entrypoints_are_not_windows():
+    """Action-only manifests are classified as actions, not failed for lacking a window."""
+    assert "menu_switch" in harness.IDS_ACTION
+    assert "menu_switch" not in set(harness.IDS_EMTK) | set(harness.IDS_QT)
+
+
+def test_demo_choice_feeds_matching_file_and_folder_never_save(tmp_path):
+    """A demo satisfies open/folder pickers; a save dialog is always cancelled."""
+    (tmp_path / "a.txt").write_text("x")
+    (tmp_path / "b.ptu").write_text("x")
+    assert harness.demo_choice(tmp_path, "open", [("PTU", ["*.PTU"])]) == [str(tmp_path / "b.ptu")]
+    assert harness.demo_choice(tmp_path, "folder", ()) == [str(tmp_path)]
+    assert harness.demo_choice(tmp_path, "save", ()) == []
+    assert harness.demo_choice(None, "open", ()) == []
+    assert harness.demo_choice(tmp_path, "open", [("none", ["*.zzz"])]) == []
+
+
+def test_tour_await_on_tagged_hardware_stays_refused():
+    """The name-based exclusion is gone, but a declared hardware tag still blocks."""
+    from chisurf.emtk.help_guide import EmTkGuidedTour
+    tour = EmTkGuidedTour([{"title": "Go", "target": "go", "await": True}], wait_for_controls=True)
+    tour.start()
+    spec = {"sections": [{"type": "button_row", "buttons": [{"action": "go", "tags": ["hardware"]}]}]}
+    driver = SimpleNamespace(rect=lambda _: (1, 1, 10, 10))
+    with pytest.raises(AssertionError, match="unsafe control"):
+        harness.advance_tour(driver, tour, {}, SimpleNamespace(rows=[], input_values={}), spec)

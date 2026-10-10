@@ -2,6 +2,10 @@
 
 ## 2026-10-10
 
+- W7 click-all harness policy: awaited tour steps are driven through the plugin's demo (file/folder
+  pickers fed from `demo.make_demo` or a stub, modals confirmed, browser/network/process blocked as
+  `OSError`), action entrypoints classified as actions, region/dock-tab/drop-down reach. 92 of 123 native
+  plugins pass (45 before); owners in [release-readiness W7](validation/release-readiness-w7.md).
 - W4 follow-up: burst MLE and burst FCS take a `.pto` (or `m000.pto/<run>`) with the Runs picker and
   write their results into the container (`mle <detector>`, `burst fcs`); legacy `.bur`/`.bst` inputs
   keep their folders. Open items in [burst companions](subsystems/burst-companions.md).
