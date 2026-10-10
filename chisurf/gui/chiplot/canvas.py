@@ -853,6 +853,30 @@ class PlotAPI:
                 self._canvas.set_axis_visible(side, bool(vis))
         return self
 
+    def set_axis_style(self, *, line=None, text=None) -> Plot:
+        """Colour the axis lines (``line``) and the tick/label text (``text``).
+
+        Colours take any spelling :func:`~chisurf.gui.chiplot.style.to_pen`
+        accepts (name, ``"#rrggbb"``, RGB tuple). Only the given parts change.
+        Returns ``self``.
+        """
+        self._canvas.set_axis_style(line=line, text=text)
+        return self
+
+    def set_tick_labels(self, side, ticks) -> Plot:
+        """Replace the numeric labels of one axis by ``[(position, text), ...]``.
+
+        Use it for categorical axes (detector names under bars). ``ticks=None``
+        restores numeric labels. Returns ``self``.
+        """
+        self._canvas.set_tick_labels(side, None if ticks is None else list(ticks))
+        return self
+
+    def set_legend_style(self, *, text=None) -> Plot:
+        """Colour the legend text. Returns ``self``."""
+        self._canvas.set_legend_style(text=text)
+        return self
+
     def set_compact(self, compact: bool = True, *, font_size: int = 8) -> Plot:
         """Shrink the panel's chrome so a small panel is mostly data.
 

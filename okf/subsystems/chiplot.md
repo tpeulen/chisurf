@@ -455,6 +455,32 @@ unexercised.
 
 # Where to pick this up — the emtk backend
 
+**W8 state (2026-10-10): the `.native` allow-list is empty; two importers remain.**
+`test/chiplot_native_allowlist.txt` has no entries (`spectrum_view`, `burst_background`,
+`fret_line` ported). New chiplot verbs, on both backends: `Plot.set_axis_style(line=, text=)`,
+`Plot.set_tick_labels(side, [(pos, text)])` (categorical axes), `Plot.set_legend_style(text=)`;
+the emtk backend now draws and drags **horizontal regions** (the dT gate of the photon filter;
+bounds are in axis units, i.e. log10 on a log axis). `set_downsampling` / `set_clip_to_view`
+already existed. `test/pyqtgraph_import_allowlist.txt` lost `burst_h2mm/gui/tool.py` (Qt tool
+and its `gui/app.py` deleted, parity per the functional-parity audit) and the whole
+`tttr_photonfilter` wizard (plots now chiplot). What blocks deleting the backend and the
+dependency, in order:
+
+1. `chisurf/gui/autoform/sections/builtin.py` — `ImageMapWidget` (the Qt AutoForm `image`
+   section, ~800 lines: `pg.ImageView`, brush painting on an overlay `ImageItem`, markers via
+   `ScatterPlotItem`/`TextItem`/`CircleROI`, `RectROI` gate) and `apply_colormap`. Port to
+   `chiplot.ImageView` (has `set_image`, `add_overlay`, `add_roi`, `enable_picking`); brush
+   painting and the movie controls are the parts chiplot lacks.
+2. `chisurf/plugins/tttr/intensity_trace/qt_tool.py` — the audit lists no missing feature in the
+   native app, but the legacy `trace_browser/widget.py` (Qt oracle of ~10 test files, all
+   `importorskip("pyqtgraph")`) and `trace_browser/gui/host.py` still import `IntensityTrace` /
+   `IntensityPlotWidget` and poke `plot_widget.clear()/grab()` and `trace_plot.setYRange`.
+   Retire both together, or port `IntensityPlotWidget` to `chiplot.Grid` (the sideways
+   filled count histograms need a horizontal fill that chiplot lacks).
+3. `grep -rn pyqtgraph chisurf` still hits ~60 files (tests with `importorskip`, READMEs,
+   `settings_chisurf.yaml`, `backends/pyqtgraph_backend.py`, `_passthrough.py`); the backend is
+   opt-in (`CHISURF_PLOT_BACKEND=pyqtgraph`), emtk is the default.
+
 **Current verified contract (2026-10-07):** the native backend already exists
 in `chisurf/gui/chiplot/backends/emtk_backend.py`; the older package-design
 text below is historical and awaits W0 reconciliation. Axis units now travel

@@ -398,17 +398,18 @@ def test_a_search_parameter_changes_the_number_of_bursts(qapp, page, photons):
 
 
 def _region_ms(page):
-    low, high = page.region_selector.getRegion()
-    if page.pw_dT.getAxis("left").logMode:
+    low, high = page.region_selector.bounds
+    if page._dT_log:
         return 10**low, 10**high
     return low, high
 
 
 def _set_region_ms(page, low, high):
-    if page.pw_dT.getAxis("left").logMode:
+    if page._dT_log:
         low, high = np.log10(low), np.log10(high)
-    page.region_selector.setRegion((low, high))
-    page.region_selector.sigRegionChangeFinished.emit(page.region_selector)
+    page.region_selector.set_bounds(low, high)
+    # A drag announces itself when it finishes; a programmatic move is silent.
+    page._on_region_finished(low, high)
 
 
 def test_dragging_the_region_reaches_the_analysis(qapp, page):

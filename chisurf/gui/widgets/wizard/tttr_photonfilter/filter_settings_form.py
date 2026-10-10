@@ -802,15 +802,11 @@ def _mirror_region(page) -> None:
 
     low, high = float(settings.dt_min), float(settings.dt_max)
     try:
-        if page.pw_dT.getAxis("left").logMode:
+        if page._dT_log:
             if low <= 0.0 or high <= 0.0:
                 return  # a log axis cannot show a non-positive bound
             low, high = np.log10(low), np.log10(high)
-        blocked = region.blockSignals(True)
-        try:
-            region.setRegion((low, high))
-        finally:
-            region.blockSignals(blocked)
+        region.set_bounds(low, high)  # a programmatic move does not notify
     except Exception:
         pass
 

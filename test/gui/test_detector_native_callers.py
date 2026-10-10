@@ -76,7 +76,6 @@ def actual_caller(kind):
         "core_tool": ("chisurf.plugins.core.setup_channel_definition.gui.tool", "SetupChannelDefinitionWidget", "page"),
         "core_wizard": ("chisurf.plugins.core.setup_channel_definition.wizard", "ChisurfWizard", "filter"),
         "bid": ("chisurf.plugins.burst.bid_to_analysis.gui.legacy", "BidToAnalysisGUI", "detector_page"),
-        "h2mm": ("chisurf.plugins.burst.burst_h2mm.gui.tool", "H2mmTool", "detector_page"),
         "trace": ("chisurf.plugins.tttr.trace_browser.widget", "TraceBrowser", "detector_page"),
         "image": ("chisurf.plugins.tttr.tttr_image_browser.workspace", "TTTRImageBrowser", "detector_page"),
         "intensity": ("chisurf.plugins.tttr.intensity_trace.qt_tool", "IntensityTrace", "detector_wizard_page"),
@@ -87,7 +86,7 @@ def actual_caller(kind):
 
 
 @pytest.mark.parametrize("kind", ["core_tool", "core_wizard", "background", "irf", "count_rate",
-                                  "audifier", "bid", "h2mm", "trace", "image", "intensity"])
+                                  "audifier", "bid", "trace", "image", "intensity"])
 def test_actual_existing_caller_hosts_native_settings_and_preserves_semantics(qapp, kind):
     """Native hosting preserves real callbacks/providers and closes its owned surface."""
     from qtpy.QtWidgets import QWidget

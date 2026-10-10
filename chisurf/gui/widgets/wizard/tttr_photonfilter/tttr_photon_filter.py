@@ -7,7 +7,6 @@ import zipfile
 from datetime import datetime
 
 import numpy as np
-import pyqtgraph as pg
 import tttrlib
 
 import chisurf.core.fio as io
@@ -761,13 +760,13 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
                 n_max = self.plot_max
                 x = np.arange(n_min, n_max)
                 y = selected[n_min:n_max]
-                self.plot_select.setData(x=x, y=y)
+                self.plot_select.set_data(x=x, y=y)
             else:
                 # If selected is not available, clear the plot
-                self.plot_select.setData([], [])
+                self.plot_select.set_data([], [])
         except (AttributeError, IndexError, TypeError):
             # Handle the case when self.selected is not available or returns an error
-            self.plot_select.setData([], [])
+            self.plot_select.set_data([], [])
 
     def update_dt_plot(self):
         """
@@ -784,19 +783,19 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
 
                 mx = np.ma.masked_array(x, mask=~mask)
                 my = np.ma.masked_array(y, mask=~mask)
-                self.plot_selected.setData(x=mx.compressed(), y=my.compressed())
+                self.plot_selected.set_data(x=mx.compressed(), y=my.compressed())
 
                 mx = np.ma.masked_array(x, mask=mask)
                 my = np.ma.masked_array(y, mask=mask)
-                self.plot_unselected.setData(x=mx.compressed(), y=my.compressed())
+                self.plot_unselected.set_data(x=mx.compressed(), y=my.compressed())
             else:
                 # If dT is not available, clear the plots
-                self.plot_selected.setData([], [])
-                self.plot_unselected.setData([], [])
+                self.plot_selected.set_data([], [])
+                self.plot_unselected.set_data([], [])
         except AttributeError:
             # Handle the case when self.dT is not available
-            self.plot_selected.setData([], [])
-            self.plot_unselected.setData([], [])
+            self.plot_selected.set_data([], [])
+            self.plot_unselected.set_data([], [])
 
     @property
     def do_mcs_plot(self) -> bool:
@@ -837,26 +836,26 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
                             tw = self.trace_bin_width / 1000.0
                             trace_selected = tttr[idx].get_intensity_trace(time_window_length=tw)
                             x1 = np.arange(len(trace_selected)) * tw
-                            self.plot_mcs_selected.setData(x1, trace_selected)
+                            self.plot_mcs_selected.set_data(x1, trace_selected)
                         else:
-                            self.plot_mcs_selected.setData([], [])
+                            self.plot_mcs_selected.set_data([], [])
                     except (AttributeError, IndexError, TypeError):
-                        self.plot_mcs_selected.setData([], [])
+                        self.plot_mcs_selected.set_data([], [])
 
                     trace_all = tttr.get_intensity_trace(
                         time_window_length=self.trace_bin_width / 1000.0
                     )
                     x2 = np.arange(len(trace_all)) * (self.trace_bin_width / 1000.0)
-                    self.plot_mcs_all.setData(x2, trace_all)
+                    self.plot_mcs_all.set_data(x2, trace_all)
                 else:
-                    self.plot_mcs_all.setData([], [])
-                    self.plot_mcs_selected.setData([], [])
+                    self.plot_mcs_all.set_data([], [])
+                    self.plot_mcs_selected.set_data([], [])
             except (AttributeError, IndexError, TypeError):
-                self.plot_mcs_all.setData([], [])
-                self.plot_mcs_selected.setData([], [])
+                self.plot_mcs_all.set_data([], [])
+                self.plot_mcs_selected.set_data([], [])
         else:
-            self.plot_mcs_all.setData(x=[1.0], y=[1.0])
-            self.plot_mcs_selected.setData(x=[1.0], y=[1.0])
+            self.plot_mcs_all.set_data(x=[1.0], y=[1.0])
+            self.plot_mcs_selected.set_data(x=[1.0], y=[1.0])
 
     def update_burst_histogram(self):
         """
@@ -869,37 +868,35 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
                     num_bins = self.number_of_burst_bins
                     hist, bin_edges = np.histogram(burst_lengths, bins=num_bins)
 
-                    self.pw_burst_histogram.clear()
-                    self.pw_burst_histogram.addItem(
-                        pg.BarGraphItem(
-                            x0=bin_edges[:-1], x1=bin_edges[1:], y0=0, y1=hist, brush="b", pen="w"
-                        )
-                    )
-                    self.plot_burst_histogram = self.pw_burst_histogram.plot(
-                        bin_edges, hist, pen="b", stepMode=True
+                    plot = self.pw_burst_histogram
+                    plot.clear()
+                    centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
+                    widths = np.diff(bin_edges)
+                    plot.bars(
+                        centers,
+                        hist,
+                        width=float(widths.min()) if widths.size else 1.0,
+                        brush="b",
+                        pen="w",
                     )
 
                     total_bursts = np.sum(hist)
                     pos_x = 0.5 * (bin_edges[0] + bin_edges[-1]) if bin_edges.size > 1 else 0
                     pos_y = (hist.max() * 0.9) if hist.size > 0 else 1.0
-                    self.total_bursts_label = pg.TextItem(
-                        f"Total bursts: {total_bursts}", anchor=(0, 0), color="w"
+                    self.total_bursts_label = plot.text(
+                        f"Total bursts: {total_bursts}", (pos_x, pos_y), color="w", anchor=(0, 0)
                     )
-                    self.total_bursts_label.setPos(pos_x, pos_y)
-                    self.pw_burst_histogram.addItem(self.total_bursts_label)
-                    self.pw_burst_histogram.setYRange(0.0, max(hist) if hist.size > 0 else 1.0)
-                    self.pw_burst_histogram.setXRange(
-                        0.0, max(bin_edges) if bin_edges.size > 0 else 1.0
-                    )
+                    plot.set_ylim(0.0, max(hist) if hist.size > 0 else 1.0)
+                    plot.set_xlim(0.0, max(bin_edges) if bin_edges.size > 0 else 1.0)
                 else:
                     self.pw_burst_histogram.clear()
-                    self.pw_burst_histogram.addItem(
-                        pg.TextItem("No burst data available", anchor=(0.5, 0.5), color="w")
+                    self.pw_burst_histogram.text(
+                        "No burst data available", (0.5, 0.5), color="w", anchor=(0.5, 0.5)
                     )
             except (AttributeError, IndexError, TypeError, ValueError):
                 self.pw_burst_histogram.clear()
-                self.pw_burst_histogram.addItem(
-                    pg.TextItem("Error processing burst data", anchor=(0.5, 0.5), color="w")
+                self.pw_burst_histogram.text(
+                    "Error processing burst data", (0.5, 0.5), color="w", anchor=(0.5, 0.5)
                 )
 
     def update_decay_plot(self):
@@ -920,13 +917,13 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
                                 x = x[:idx_max]
                                 y = y[:idx_max]
                                 x *= 1e9
-                                self.plot_decay_selected.setData(x=x, y=y)
+                                self.plot_decay_selected.set_data(x=x, y=y)
                             else:
-                                self.plot_decay_selected.setData([], [])
+                                self.plot_decay_selected.set_data([], [])
                         else:
-                            self.plot_decay_selected.setData([], [])
+                            self.plot_decay_selected.set_data([], [])
                     except (AttributeError, IndexError, TypeError):
-                        self.plot_decay_selected.setData([], [])
+                        self.plot_decay_selected.set_data([], [])
 
                     y, x = tttr.get_microtime_histogram(self.decay_coarse)
                     if np.any(y > 0):
@@ -934,18 +931,18 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
                         x = x[:idx_max]
                         y = y[:idx_max]
                         x *= 1e9
-                        self.plot_decay_all.setData(x=x, y=y)
+                        self.plot_decay_all.set_data(x=x, y=y)
                     else:
-                        self.plot_decay_all.setData([], [])
+                        self.plot_decay_all.set_data([], [])
                 else:
-                    self.plot_decay_all.setData([], [])
-                    self.plot_decay_selected.setData([], [])
+                    self.plot_decay_all.set_data([], [])
+                    self.plot_decay_selected.set_data([], [])
             except (AttributeError, IndexError, TypeError):
-                self.plot_decay_all.setData([], [])
-                self.plot_decay_selected.setData([], [])
+                self.plot_decay_all.set_data([], [])
+                self.plot_decay_selected.set_data([], [])
         else:
-            self.plot_decay_all.setData(x=[1.0], y=[1.0])
-            self.plot_decay_selected.setData(x=[1.0], y=[1.0])
+            self.plot_decay_all.set_data(x=[1.0], y=[1.0])
+            self.plot_decay_selected.set_data(x=[1.0], y=[1.0])
 
     def _rebuild_channel_labels(self):
         """Rebuild per-detector labels in the info panel from user-defined detectors."""
@@ -1166,7 +1163,7 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
 
         # Determine lb/ub even if region_selector is not yet created
         try:
-            lb, ub = self.region_selector.getRegion()
+            lb, ub = self.region_selector.bounds
         except Exception:
             # Fallback to spin boxes or sane defaults
             try:
@@ -1176,7 +1173,7 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
                 lb, ub = 0.0001, 0.15
             # Convert to log space if axis is in log mode (to match later back-conversion)
             try:
-                if self.pw_dT.getAxis("left").logMode:
+                if self._dT_log:
                     lb = np.log10(lb) if lb > 0 else -4
                     ub = np.log10(ub) if ub > 0 else 0
             except Exception:
@@ -1192,7 +1189,7 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
 
         # Map from (maybe log) lb/ub back to linear if axis is log
         try:
-            is_log = self.pw_dT.getAxis("left").logMode
+            is_log = self._dT_log
         except Exception:
             is_log = False
 
@@ -1237,13 +1234,13 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
             pass
 
         # Clear each plot item
-        self.plot_unselected.setData([], [])
-        self.plot_selected.setData([], [])
-        self.plot_mcs_all.setData([], [])
-        self.plot_mcs_selected.setData([], [])
-        self.plot_decay_all.setData([], [])
-        self.plot_decay_selected.setData([], [])
-        self.plot_select.setData([], [])
+        self.plot_unselected.set_data([], [])
+        self.plot_selected.set_data([], [])
+        self.plot_mcs_all.set_data([], [])
+        self.plot_mcs_selected.set_data([], [])
+        self.plot_decay_all.set_data([], [])
+        self.plot_decay_selected.set_data([], [])
+        self.plot_select.set_data([], [])
 
         # Clear the burst histogram entirely (removes bars/text)
         self.pw_burst_histogram.clear()
@@ -1261,9 +1258,11 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
         Sync the numeric spinBoxes (doubleSpinBox_2/3) with the region item in the dT plot.
         """
         lb, ub = self.doubleSpinBox_2.value(), self.doubleSpinBox_3.value()
-        if self.pw_dT.getAxis("left").logMode:
+        if self._dT_log:
             lb, ub = np.log10(lb), np.log10(ub)
-        self.region_selector.setRegion(rgn=(lb, ub))
+        self.region_selector.set_bounds(lb, ub)
+        # A programmatic move is silent; the plots and settings follow it explicitly.
+        self._on_region_finished(lb, ub)
 
     def get_unique_folder_path(self, base_path: pathlib.Path) -> pathlib.Path:
         """
@@ -1726,9 +1725,9 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
             dict: A dictionary containing all burst selection parameters.
         """
         # Get the region selector values
-        lb, ub = self.region_selector.getRegion()
-        dT_min = 10.0**lb if self.pw_dT.getAxis("left").logMode else lb
-        dT_max = 10.0**ub if self.pw_dT.getAxis("left").logMode else ub
+        lb, ub = self.region_selector.bounds
+        dT_min = 10.0**lb if self._dT_log else lb
+        dT_max = 10.0**ub if self._dT_log else ub
 
         # Collect all parameters
         params = {
@@ -1986,14 +1985,14 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
                 if "dT_min" in burst_params and "dT_max" in burst_params:
                     dT_min = burst_params["dT_min"]
                     dT_max = burst_params["dT_max"]
-                    if self.pw_dT.getAxis("left").logMode:
+                    if self._dT_log:
                         dT_min = (
                             np.log10(dT_min) if dT_min > 0 else -4
                         )  # Default to -4 if dT_min is 0 or negative
                         dT_max = (
                             np.log10(dT_max) if dT_max > 0 else 0
                         )  # Default to 0 if dT_max is 0 or negative
-                    self.region_selector.setRegion((dT_min, dT_max))
+                    self.region_selector.set_bounds(dT_min, dT_max)
                     self._dT_min = burst_params["dT_min"]
                     self._dT_max = burst_params["dT_max"]
                     self.doubleSpinBox_2.setValue(burst_params["dT_min"])

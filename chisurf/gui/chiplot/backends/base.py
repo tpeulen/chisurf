@@ -339,6 +339,21 @@ class Canvas(abc.ABC):
         Default no-op; backends with axis chrome override it.
         """
 
+    def set_axis_style(self, *, line=None, text=None) -> None:
+        """Colour the axis lines (``line``) and the tick/label text (``text``).
+
+        Default no-op; backends with axis chrome override it.
+        """
+
+    def set_tick_labels(self, side: str, ticks) -> None:
+        """Label one axis with ``[(position, text), ...]`` instead of numbers.
+
+        ``None`` restores numeric labels. Default no-op.
+        """
+
+    def set_legend_style(self, *, text=None) -> None:
+        """Colour the legend text. Default no-op."""
+
     def set_compact(self, compact: bool = True, *, font_size: int = 8) -> None:
         """Shrink the panel's chrome so a small panel is mostly data.
 

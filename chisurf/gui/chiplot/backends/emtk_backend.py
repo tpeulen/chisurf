@@ -13,12 +13,12 @@ Python slots connected to C++ destructors: a discarded plot is a Python list
 that the garbage collector frees like any other.
 
 What is drawn here today: curves (with symbols), scatter clouds, images and
-heatmaps, draggable regions (the fit range is one), markers in both
+heatmaps, draggable regions in both orientations (the fit range is one), markers in both
 orientations, the legend, axis labels and title, ranges (explicit, queried and
 auto), log scaling, grid and background, bar graphs, filled bands, error bars
 and text labels, rectangle/ellipse/polygon ROIs, an inverted y-axis, the colour
 bar, arrows, the multi-panel grid and the image view. What is left -- filled
-curves, horizontal regions -- raises :class:`NotImplementedError` naming what is
+curves -- raises :class:`NotImplementedError` naming what is
 missing, because a plot that silently omits half of what it was asked to draw
 is worse than one that says so. Those are the open front recorded in okf/subsystems/chiplot.md.
 
@@ -542,6 +542,11 @@ class EmtkCanvas(base.Canvas):
         self._interactive = True
         self._y_inverted = False
         self._axis_visible = {"left": True, "bottom": True}
+        self._tick_text = _TICK_TEXT
+        self._label_text = _LABEL_TEXT
+        self._axis_line: tuple[int, int, int] | None = None
+        self._legend_text: tuple[int, int, int] | None = None
+        self._custom_ticks: dict[str, list[tuple[float, str]]] = {}
         #: Panels whose x axes move together (see :meth:`link_x`); every member
         #: holds the same list, so linking a third panel reaches all of them.
         self._x_group: list[EmtkCanvas] = [self]
@@ -694,6 +699,9 @@ class EmtkCanvas(base.Canvas):
         if self._axis_visible["left"]:
             ticks = plot._y_axis.ticks(plot.y_tick_target)
             tick_text, label = self._axis_display("left", ticks, plot._y_axis.range)
+            if "left" in self._custom_ticks:
+                ticks = [t for t, _ in self._custom_ticks["left"]]
+                tick_text = [text for _, text in self._custom_ticks["left"]]
             for value, text in zip(ticks, tick_text):
                 py = plot._y_axis.to_pixels(value)
                 if by - 1.0 <= py <= by + bh + 1.0:
@@ -704,7 +712,7 @@ class EmtkCanvas(base.Canvas):
                         row,
                         ALIGN_RIGHT | ALIGN_VCENTER,
                         text,
-                        _TICK_TEXT,
+                        self._tick_text,
                     )
             if label:
                 if hasattr(painter, "text_rotated"):
@@ -717,14 +725,17 @@ class EmtkCanvas(base.Canvas):
                         row,
                         ALIGN_HCENTER | ALIGN_VCENTER,
                         label,
-                        _LABEL_TEXT,
+                        self._label_text,
                         -90.0,
                     )
                 else:
-                    painter.text(x + 2.0, by, bx - x - 4.0, row, ALIGN_VCENTER, label, _LABEL_TEXT)
+                    painter.text(x + 2.0, by, bx - x - 4.0, row, ALIGN_VCENTER, label, self._label_text)
         if self._axis_visible["bottom"]:
             ticks = plot._x_axis.ticks(plot.x_tick_target)
             tick_text, label = self._axis_display("bottom", ticks, plot._x_axis.range)
+            if "bottom" in self._custom_ticks:
+                ticks = [t for t, _ in self._custom_ticks["bottom"]]
+                tick_text = [text for _, text in self._custom_ticks["bottom"]]
             for value, text in zip(ticks, tick_text):
                 px = plot._x_axis.to_pixels(value)
                 if bx - 1.0 <= px <= bx + bw + 1.0:
@@ -735,7 +746,7 @@ class EmtkCanvas(base.Canvas):
                         row,
                         ALIGN_HCENTER | ALIGN_VCENTER,
                         text,
-                        _TICK_TEXT,
+                        self._tick_text,
                     )
             if label:
                 painter.text(
@@ -745,11 +756,11 @@ class EmtkCanvas(base.Canvas):
                     row,
                     ALIGN_HCENTER | ALIGN_VCENTER,
                     label,
-                    _LABEL_TEXT,
+                    self._label_text,
                 )
         if self._title:
             painter.text(
-                bx, y + 1.0, bw, row, ALIGN_HCENTER | ALIGN_VCENTER, self._title, _LABEL_TEXT
+                bx, y + 1.0, bw, row, ALIGN_HCENTER | ALIGN_VCENTER, self._title, self._label_text
             )
 
     def _extent(self, axis: int) -> tuple[tuple[float, float] | None, tuple[float, float] | None]:
@@ -784,7 +795,9 @@ class EmtkCanvas(base.Canvas):
                 start, extent = (x0, width) if axis == 0 else (y0, height)
                 exact_low = min(exact_low, float(start))
                 exact_high = max(exact_high, float(start + extent))
-            elif entry.kind == "region" and axis == 0:
+            elif entry.kind == "region" and (axis == 1) == (
+                entry.state.get("orientation") == "horizontal"
+            ):
                 a, b = entry.bounds
                 exact_low, exact_high = min(exact_low, a), max(exact_high, b)
         if high >= low and self._log["x" if axis == 0 else "y"]:
@@ -927,10 +940,17 @@ class EmtkCanvas(base.Canvas):
             if not entry.visible or entry.kind != "region":
                 continue
             low, high = entry.bounds
-            left, right = sorted((plot._x_axis.to_pixels(low), plot._x_axis.to_pixels(high)))
             fill = entry.state.get("brush", (70, 110, 160, 50))
-            painter.fill_rect(left, top, right - left, height, fill)
             edge = (*fill[:3], 220)
+            if entry.state.get("orientation") == "horizontal":
+                upper, lower = sorted((plot._y_axis.to_pixels(low), plot._y_axis.to_pixels(high)))
+                painter.fill_rect(plot.x, upper, plot.w, lower - upper, fill)
+                for at in (upper, lower):
+                    painter.fill_rect(plot.x, at - 0.75, plot.w, 1.5, edge)
+                entry.state["_pixels"] = (upper, lower)
+                continue
+            left, right = sorted((plot._x_axis.to_pixels(low), plot._x_axis.to_pixels(high)))
+            painter.fill_rect(left, top, right - left, height, fill)
             for at in (left, right):
                 painter.fill_rect(at - 0.75, top, 1.5, height, edge)
             entry.state["_pixels"] = (left, right)
@@ -1243,17 +1263,24 @@ class EmtkCanvas(base.Canvas):
             span = entry.state.get("_pixels")
             if span is None or entry.kind not in ("region", "marker"):
                 continue
+            horizontal = entry.kind == "region" and entry.state.get("orientation") == "horizontal"
+            along, convert = (py, self._from_pixels_y) if horizontal else (px, self._from_pixels)
             if entry.kind == "region":
                 # An edge moves on its own, as pyqtgraph's region does; the
-                # inside moves the whole range.
-                for edge, at in (("low", span[0]), ("high", span[1])):
-                    if abs(px - at) <= 5.0:
-                        self._dragging = (entry, (edge, self._from_pixels(px)))
+                # inside moves the whole range. ``_pixels`` holds the edges in
+                # pixel order, which on a y axis runs top to bottom, i.e. from
+                # the high value to the low one.
+                low_at, high_at = (span[1], span[0]) if horizontal else (span[0], span[1])
+                if horizontal and self._y_inverted:
+                    low_at, high_at = high_at, low_at
+                for edge, at in (("low", low_at), ("high", high_at)):
+                    if abs(along - at) <= 5.0:
+                        self._dragging = (entry, (edge, convert(along)))
                         break
                 if self._dragging is not None:
                     break
-            if span[0] - 3.0 <= px <= span[1] + 3.0:
-                self._dragging = (entry, self._from_pixels(px))
+            if span[0] - 3.0 <= along <= span[1] + 3.0:
+                self._dragging = (entry, convert(along))
                 break
         if self._dragging is None and self._interactive:
             # Nothing under the pointer: the gesture pans the view, which is
@@ -1290,7 +1317,8 @@ class EmtkCanvas(base.Canvas):
         if entry.kind == "region" and isinstance(grabbed_at, tuple):
             edge, _ = grabbed_at
             low, high = entry.bounds
-            at = self._from_pixels(px)
+            horizontal = entry.state.get("orientation") == "horizontal"
+            at = self._from_pixels_y(py) if horizontal else self._from_pixels(px)
             if edge == "low":
                 entry.set_bounds(min(at, high), high)
             else:
@@ -1306,13 +1334,15 @@ class EmtkCanvas(base.Canvas):
             self._dragging = (entry, (now_x, now_y))
             entry._notify(final=False)
             return
-        moved = self._from_pixels(px) - grabbed_at
+        horizontal = entry.kind == "region" and entry.state.get("orientation") == "horizontal"
+        now = self._from_pixels_y(py) if horizontal else self._from_pixels(px)
+        moved = now - grabbed_at
         if entry.kind == "region":
             low, high = entry.bounds
             entry.set_bounds(low + moved, high + moved)
         else:
             entry.set_value(entry.value + moved)
-        self._dragging = (entry, self._from_pixels(px))
+        self._dragging = (entry, now)
         entry._notify(final=False)
 
     def release(self, *_args: Any) -> None:
@@ -1597,6 +1627,27 @@ class EmtkCanvas(base.Canvas):
         """Set the visible range from axis units."""
         self.set_range(x=self._from_axis("x", x), y=self._from_axis("y", y))
 
+    def set_axis_style(self, *, line=None, text=None) -> None:
+        """Colour the axis text (tick numbers and titles); ``line`` is kept for the frame."""
+        if line is not None:
+            self._axis_line = _rgb(line)
+        if text is not None:
+            self._tick_text = self._label_text = _rgb(text)
+        self.refresh()
+
+    def set_tick_labels(self, side: str, ticks) -> None:
+        """Label the left or bottom axis with ``[(position, text), ...]``; ``None`` clears."""
+        if ticks is None:
+            self._custom_ticks.pop(side, None)
+        else:
+            self._custom_ticks[side] = [(float(p), str(t)) for p, t in ticks]
+        self.refresh()
+
+    def set_legend_style(self, *, text=None) -> None:
+        """Remember the legend text colour (the emtk legend draws in the theme colour)."""
+        if text is not None:
+            self._legend_text = _rgb(text)
+
     def set_axis_visible(self, side: str, visible: bool) -> None:
         """Show or hide the left or bottom axis (tick numbers and title)."""
         if side in self._axis_visible:
@@ -1845,11 +1896,6 @@ class EmtkCanvas(base.Canvas):
         self, bounds, *, orientation="vertical", movable=True, brush=None, pen=None
     ) -> H.Region:
         """Draw a draggable interval selector and return its handle."""
-        if _orientation(orientation) != "vertical":
-            raise NotImplementedError(
-                "emtk: a horizontal region is not drawn yet; use "
-                "CHISURF_PLOT_BACKEND=pyqtgraph for one"
-            )
         low, high = (float(bounds[0]), float(bounds[1]))
         fill = _rgba(brush, (70, 110, 160, 50))
         return self._add(

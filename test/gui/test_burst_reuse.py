@@ -233,33 +233,6 @@ def test_2cde_stop_cancels_and_leaves_nothing_to_reuse(two_cde, monkeypatch):
     )
 
 
-# ── H2MM ─────────────────────────────────────────────────────────────
-
-
-def test_h2mm_skips_a_refit_of_the_displayed_model(qapp, burst_folder, monkeypatch):
-    from chisurf.gui.progress import ChiSurfProgress
-    from chisurf.plugins.burst.burst_h2mm.gui.tool import H2mmTool
-
-    tool = H2mmTool(embedded=True)
-    try:
-        tool._set_folder(str(burst_folder))
-        started = _runs(monkeypatch, ChiSurfProgress, "run")
-
-        tool._run_analysis()
-        assert len(started) == 1
-
-        tool._result = object()  # as if that fit had come back
-        tool._result_cache.remember(tool._running_fingerprint)
-        tool._run_analysis()
-        assert len(started) == 1, "an identical fit request must not refit"
-
-        tool.sb_max_states.setValue(tool.sb_max_states.value() + 1)
-        tool._run_analysis()
-        assert len(started) == 2, "a wider state scan is a different fit"
-    finally:
-        tool.close()
-
-
 # ── the shared fingerprint, as the tools use it ──────────────────────
 
 
@@ -352,83 +325,6 @@ def test_burst_search_is_not_repeated_for_an_identical_request(qapp, tmp_path):
     assert not cache.matches(analysis_cache.fingerprint([raw], request, extra="burst_selection")), (
         "re-recorded data must search again"
     )
-
-
-def test_h2mm_fits_when_the_step_is_opened_and_can_be_stopped(qapp, burst_folder, monkeypatch):
-    """Arriving starts the fit; Stop reaches it.
-
-    An H2MM scan with restarts runs for minutes, so a fit that starts on its own
-    is only reasonable if stopping it is one click away — and a stopped scan must
-    not be remembered as the answer for these settings.
-    """
-    from chisurf.gui.progress import ChiSurfProgress
-    from chisurf.plugins.burst.burst_h2mm.gui.tool import H2mmTool
-
-    tool = H2mmTool(embedded=True)
-    try:
-        tool._set_folder(str(burst_folder))
-        task = _RunningTask()
-        started = _runs(monkeypatch, ChiSurfProgress, "run", returns=task)
-
-        assert not tool.btn_stop.isEnabled(), "nothing to stop before a fit"
-        tool.show()
-        _drain_timers()
-        assert len(started) == 1, "being shown with a folder must start the fit"
-        assert tool.btn_stop.isEnabled(), "Stop is offered while the fit runs"
-        assert not tool.btn_run.isEnabled(), "Run is not offered twice over"
-
-        tool.show()
-        _drain_timers()
-        assert len(started) == 1, "a fit in flight must not be doubled by arriving"
-
-        tool._result = object()
-        tool._result_cache.remember(tool._running_fingerprint)
-        tool.stop()
-        assert task.cancelled, "Stop must reach the running fit"
-        assert not tool._result_cache.matches(tool.analysis_fingerprint(tool._gather_settings())), (
-            "a stopped scan is not the answer for these settings"
-        )
-
-        tool._on_fit_done()
-        assert tool.btn_run.isEnabled() and not tool.btn_stop.isEnabled()
-    finally:
-        tool.close()
-
-
-def test_a_stopped_h2mm_fit_does_not_start_itself_again(qapp, burst_folder, monkeypatch):
-    """Stop has to outlast the visit that started the fit.
-
-    Each step computes on arrival, so without this a fit the user deliberately
-    abandoned came straight back on the next *Next* — Stop only postponed
-    minutes of work rather than cancelling it.
-    """
-    from chisurf.gui.progress import ChiSurfProgress
-    from chisurf.plugins.burst.burst_h2mm.gui.tool import H2mmTool
-
-    tool = H2mmTool(embedded=True)
-    try:
-        tool._set_folder(str(burst_folder))
-        started = _runs(monkeypatch, ChiSurfProgress, "run", returns=_RunningTask())
-        tool.show()
-        _drain_timers()
-        assert len(started) == 1
-
-        tool.stop()
-        tool._on_fit_done()
-
-        tool.hide()
-        tool.show()
-        _drain_timers()
-        assert len(started) == 1, "revisiting must not restart what was stopped"
-
-        # Changing the fit is a different request, and is not suppressed.
-        tool.sb_max_states.setValue(tool.sb_max_states.value() + 1)
-        tool.hide()
-        tool.show()
-        _drain_timers()
-        assert len(started) == 2, "a different fit was never the one stopped"
-    finally:
-        tool.close()
 
 
 def test_a_stopped_2cde_run_does_not_start_itself_again(two_cde, monkeypatch):
@@ -546,42 +442,15 @@ def test_a_corrected_estimator_does_not_inherit_the_old_exports(qapp, burst_fold
         wizard.close()
 
 
-def test_h2mm_fits_the_same_answer_twice(qapp, burst_folder):
+def test_h2mm_fits_the_same_answer_twice(burst_folder):
     """A reported state count is only reproducible if its seed travels with it."""
-    from chisurf.plugins.burst.burst_h2mm.gui.tool import H2mmTool
+    from chisurf.plugins.burst.burst_h2mm.gui.model import H2mmViewModel
 
-    tool = H2mmTool(embedded=True)
-    try:
-        tool._set_folder(str(burst_folder))
-        assert tool._gather_settings().seed == tool.sb_seed.value()
-        first = tool.analysis_fingerprint(tool._gather_settings())
-        tool.sb_seed.setValue(tool.sb_seed.value() + 1)
-        assert tool.analysis_fingerprint(tool._gather_settings()) != first, (
-            "a different seed is a different sample, not a cache hit"
-        )
-    finally:
-        tool.close()
-
-
-def test_h2mm_does_not_refit_when_arriving_at_a_finished_step(qapp, burst_folder, monkeypatch):
-    from chisurf.gui.progress import ChiSurfProgress
-    from chisurf.plugins.burst.burst_h2mm.gui.tool import H2mmTool
-
-    tool = H2mmTool(embedded=True)
-    try:
-        tool._set_folder(str(burst_folder))
-        started = _runs(monkeypatch, ChiSurfProgress, "run")
-        tool.show()
-        _drain_timers()
-        assert len(started) == 1
-
-        tool._result = object()  # as if the fit had come back
-        tool._result_cache.remember(tool._running_fingerprint)
-        tool._on_fit_done()
-
-        tool.hide()
-        tool.show()
-        _drain_timers()
-        assert len(started) == 1, "coming back to a fitted step must not refit"
-    finally:
-        tool.close()
+    model = H2mmViewModel()
+    model.data_folder = str(burst_folder)
+    assert model.build_settings().seed == model.seed
+    first = model.analysis_fingerprint(model.build_settings())
+    model.seed += 1
+    assert model.analysis_fingerprint(model.build_settings()) != first, (
+        "a different seed is a different sample, not a cache hit"
+    )

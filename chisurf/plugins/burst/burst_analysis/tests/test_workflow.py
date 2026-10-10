@@ -494,9 +494,8 @@ def test_run_button_is_identical_across_plugins(qapp) -> None:
     from chisurf.gui.glyphs import Glyphs
     from chisurf.plugins.burst.burst_2cde.gui.tool import BurstTwoCdeTool
     from chisurf.plugins.burst.burst_bva.gui.tool import BVATool
-    from chisurf.plugins.burst.burst_h2mm.gui.tool import H2mmTool
 
-    tools = [BVATool(embedded=True), BurstTwoCdeTool(embedded=True), H2mmTool(embedded=True)]
+    tools = [BVATool(embedded=True), BurstTwoCdeTool(embedded=True)]
     try:
         for tool in tools:
             run = tool.findChild(QtWidgets.QToolButton, "toolAction_run")

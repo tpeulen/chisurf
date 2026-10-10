@@ -622,7 +622,9 @@ class BurstSelectionTool(ChisurfDockTool):
         region_selector = getattr(self.wizard, "region_selector", None)
         if region_selector is not None:
             # Already a "finished" signal, so it needs no coalescing of its own.
-            region_selector.sigRegionChangeFinished.connect(self._on_filter_settings_changed)
+            region_selector.on_change(
+                lambda _low, _high: self._on_filter_settings_changed(), final=True
+            )
 
         # The generated forms have no Designer widgets to connect to: their
         # controls are created and destroyed on every rebuild, so connecting them
@@ -3525,30 +3527,30 @@ class BurstSelectionTool(ChisurfDockTool):
             )
             if show_all:
                 all_x, all_y = thin_for_plot(indices, d_t, max_points=budget)
-                wizard.plot_unselected.setData(x=all_x, y=all_y)
+                wizard.plot_unselected.set_data(x=all_x, y=all_y)
             else:
-                wizard.plot_unselected.setData([], [])
+                wizard.plot_unselected.set_data([], [])
             if show_selected:
                 sel_x, sel_y = thin_for_plot(
                     indices[selected_bool], d_t[selected_bool], max_points=budget
                 )
-                wizard.plot_selected.setData(x=sel_x, y=sel_y)
+                wizard.plot_selected.set_data(x=sel_x, y=sel_y)
                 flag_x, flag_y = thin_for_plot(
                     indices, selected_bool.astype(np.uint8), max_points=budget
                 )
-                wizard.plot_select.setData(x=flag_x, y=flag_y)
+                wizard.plot_select.set_data(x=flag_x, y=flag_y)
             else:
-                wizard.plot_selected.setData([], [])
-                wizard.plot_select.setData([], [])
+                wizard.plot_selected.set_data([], [])
+                wizard.plot_select.set_data([], [])
         except (AttributeError, RuntimeError, TypeError, ValueError):
             return
 
     def _clear_filter_settings_diagnostics(self) -> None:
         """Clear the embedded filter-settings diagnostic plots."""
         try:
-            self.wizard.plot_selected.setData([], [])
-            self.wizard.plot_unselected.setData([], [])
-            self.wizard.plot_select.setData([], [])
+            self.wizard.plot_selected.set_data([], [])
+            self.wizard.plot_unselected.set_data([], [])
+            self.wizard.plot_select.set_data([], [])
             self.wizard.tttr = None
         except (AttributeError, RuntimeError):
             pass

@@ -22,6 +22,3 @@
 # This list only SHRINKS. When you touch one of these files, port it and strike
 # the line; adding a NEW line is a test failure, not a fix. Goal: empty.
 # See test/test_pyqtgraph_seam.py and okf/subsystems/chiplot.md.
-chisurf/gui/widgets/spectrum_view.py
-chisurf/plugins/burst/burst_background/gui/sections.py
-chisurf/plugins/fret_line/gui/tool.py

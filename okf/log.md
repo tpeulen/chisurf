@@ -2,6 +2,8 @@
 
 ## 2026-10-10
 
+- W8 (retire pyqtgraph), partial: `.native` allow-list emptied (chiplot `set_axis_style`, `set_tick_labels`, `set_legend_style`; emtk draws horizontal regions); Qt `burst_h2mm` tool + `gui/app.py` deleted (native app is the replacement); photon-filter wizard plots ported to chiplot. Open: `autoform/sections/builtin.py` image section and `intensity_trace/qt_tool.py` (see `okf/subsystems/chiplot.md`).
+
 - One action vocabulary for every emtk app (`ACTIONS` in `chisurf/plugins/emtk_layout.py`):
   Help, Guide, Sound, Restart, Run, Save, Open, Browse, Export, Copy, Reset, Cancel, Close and Load
   example share icon, label, widget kind and tooltip; the five games draw one dark Sound toggle;

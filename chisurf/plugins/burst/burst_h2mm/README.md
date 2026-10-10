@@ -44,7 +44,7 @@ core/        Qt-free numeric core
 api/         models.py (H2mmSettings/H2mmResult), contract.py, serialization.py
 backend/     services.py — register_services + RPC handlers + shared runner
 cli/         main.py — `chisurf h2mm compute`
-gui/         client.py (H2mmClient), tool.py (H2mmTool: toolbar/tabs/plots)
+gui/         client.py (H2mmClient), native.py (emtk app), model.py (H2mmViewModel), plots.py
 ```
 
 The GUI never touches the database or heavy compute directly; it calls the
@@ -79,7 +79,7 @@ channel definitions from earlier steps. It is the step that cuts each burst into
 segments, so everything after it works one level down: step *7. Burst segment
 MLE* fits a lifetime per burst *and* state from its Viterbi assignment.
 
-**Standalone GUI** — launch `H2mmTool`, pick a folder of `.bur` files, set the
+**Standalone GUI** — launch the H2MM app, pick a folder of `.bur` files, set the
 donor/acceptor detectors and the state range, then **Run**.
 
 **CLI**

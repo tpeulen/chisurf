@@ -126,7 +126,7 @@ def test_the_exported_edge_flag_is_the_records_flag(analysis):
     ).all()
 
 
-def test_the_dwell_table_has_a_one_click_route_out_of_the_window(qapp):
+def test_the_dwell_table_has_a_one_click_route_out_of_the_window():
     """The dwell grain now has an automated consumer, not a CSV to open by hand.
 
     ``open_dwells_in_ndx`` builds the *same* table the exporter writes and hands
@@ -142,7 +142,7 @@ def test_the_dwell_table_has_a_one_click_route_out_of_the_window(qapp):
         StreamDef,
         bursts_from_dataframe,
     )
-    from chisurf.plugins.burst.burst_h2mm.gui.tool import H2mmTool
+    from chisurf.plugins.burst.burst_h2mm.gui.model import H2mmViewModel
 
     rng = np.random.default_rng(4)
     times = [
@@ -181,20 +181,16 @@ def test_the_dwell_table_has_a_one_click_route_out_of_the_window(qapp):
     )
     ana = analyze(data, state_counts=(2,), base_time_s=1e-6, n_restarts=1, max_iter=150)
 
-    w = H2mmTool(embedded=True)
-    try:
-        # No fit loaded: the button says so instead of raising.
-        assert w.dwell_table() is None
-        assert w.open_dwells_in_ndx() is False
+    w = H2mmViewModel()
+    # No fit loaded: the model answers "no table" instead of raising.
+    assert w.dwell_table() is None
 
-        bundle = H2mmAnalysisBundle(ana, data, H2mmSettings())
-        bundle.meta = _meta_for(data)
-        w._bundle = bundle
-        table = w.dwell_table()
-        assert table is not None and row_count(table) == len(ana.dwells)
-        assert "Is Edge" in column_names(table)
-    finally:
-        w.close()
+    bundle = H2mmAnalysisBundle(ana, data, H2mmSettings())
+    bundle.meta = _meta_for(data)
+    w.bundle = bundle
+    table = w.dwell_table()
+    assert table is not None and row_count(table) == len(ana.dwells)
+    assert "Is Edge" in column_names(table)
 
 
 def _meta_for(data):

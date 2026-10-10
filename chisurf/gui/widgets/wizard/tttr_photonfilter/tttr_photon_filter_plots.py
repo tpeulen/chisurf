@@ -1,60 +1,52 @@
 import numpy as np
 from emtk.colormaps import to_rgb
-import pyqtgraph as pg
 
-from chisurf.gui import QtCore, QtGui
+from chisurf.gui import chiplot as cp
+
+#: Every plot of the page shares these two pens: the unselected photons faint, the selected ones solid.
+COLOR_ALL = (255, 255, 0, 64)
+COLOR_SELECTED = (0, 255, 255, 255)
 
 
 def create_plots(page, colors):
-    # Create & configure plots
-    page.pw_burst_histogram = pg.PlotWidget(parent=page, title="Burst histogram")
-    page.plot_burst_histogram = page.pw_burst_histogram.getPlotItem()
-    page.pw_burst_histogram.setLabel("left", "Counts")
-    page.pw_burst_histogram.setLabel("bottom", "Burst size (Nbr. Photons)")
+    """Build the page's plots (chiplot panels) and the draggable dT region."""
+    page.pw_burst_histogram = cp.Plot(parent=page, title="Burst histogram")
+    page.pw_burst_histogram.set_labels(left="Counts", bottom="Burst size (Nbr. Photons)")
     page.pw_burst_histogram.resize(100, 80)
 
-    color_all = QtGui.QColor(255, 255, 0, 64)
-    color_selected = QtGui.QColor(0, 255, 255, 255)
-    pen2 = pg.mkPen(color_all, width=1, style=QtCore.Qt.SolidLine)
-    pen1 = pg.mkPen(color_selected, width=1, style=QtCore.Qt.SolidLine)
+    pen_all = cp.to_pen(COLOR_ALL, width=1)
+    pen_selected = cp.to_pen(COLOR_SELECTED, width=1)
 
-    page.pw_dT = pg.PlotWidget(parent=page, title="Delta macro-time")
-    page.pw_dT.setLabel("left", "dT (ms)")
-    page.pw_dT.setLabel("bottom", "Photon Index")
-    page.plot_item_dt = page.pw_dT.getPlotItem()
-    page.plot_unselected = page.plot_item_dt.plot(x=[1.0], y=[1.0], pen=pen2)
-    page.plot_selected = page.plot_item_dt.plot(x=[1.0], y=[1.0], pen=pen1)
+    page.pw_dT = cp.Plot(parent=page, title="Delta macro-time")
+    page.pw_dT.set_labels(left="dT (ms)", bottom="Photon Index")
+    page.plot_unselected = page.pw_dT.line([1.0], [1.0], pen=pen_all)
+    page.plot_selected = page.pw_dT.line([1.0], [1.0], pen=pen_selected)
     page.pw_dT.resize(200, 40)
 
-    page.pw_mcs = pg.PlotWidget(parent=page, title="Count rate display")
-    page.pw_mcs.setLabel("left", "Intensity (kHz)")
-    page.pw_mcs.setLabel("bottom", "Time (s)")
-    page.plot_item_mcs = page.pw_mcs.getPlotItem()
-    page.plot_mcs_all = page.plot_item_mcs.plot(x=[1.0], y=[1.0], pen=pen2)
-    page.plot_mcs_selected = page.plot_item_mcs.plot(x=[1.0], y=[1.0], pen=pen1)
+    page.pw_mcs = cp.Plot(parent=page, title="Count rate display")
+    page.pw_mcs.set_labels(left="Intensity (kHz)", bottom="Time (s)")
+    page.plot_mcs_all = page.pw_mcs.line([1.0], [1.0], pen=pen_all)
+    page.plot_mcs_selected = page.pw_mcs.line([1.0], [1.0], pen=pen_selected)
     page.pw_mcs.resize(200, 80)
 
-    page.pw_decay = pg.PlotWidget(parent=page, title="Microtime histogram")
-    page.pw_decay.setLabel("left", "Counts")
-    page.pw_decay.setLabel("bottom", "Microtime (ns)")
-    page.plot_item_decay = page.pw_decay.getPlotItem()
-    page.plot_decay_all = page.plot_item_decay.plot(x=[1.0], y=[1.0], pen=pen2)
-    page.plot_decay_selected = page.plot_item_decay.plot(x=[1.0], y=[1.0], pen=pen1)
+    page.pw_decay = cp.Plot(parent=page, title="Microtime histogram")
+    page.pw_decay.set_labels(left="Counts", bottom="Microtime (ns)")
+    page.plot_decay_all = page.pw_decay.line([1.0], [1.0], pen=pen_all)
+    page.plot_decay_selected = page.pw_decay.line([1.0], [1.0], pen=pen_selected)
     page.pw_decay.resize(200, 80)
 
-    page.pw_filter = pg.PlotWidget(parent=page, title="Filter/selection")
-    page.pw_filter.setLabel("left", "Selected (1) / Unselected (0)")
-    page.pw_filter.setLabel("bottom", "Photon Index")
-    page.pw_filter.setXLink(page.pw_dT)
-    page.pw_dT.setMouseEnabled(x=False, y=False)
-    page.pw_filter.setMouseEnabled(x=False, y=False)
-    page.plot_item_sel = page.pw_filter.getPlotItem()
-    page.plot_select = page.plot_item_sel.plot(x=[1.0], y=[1.0])
+    page.pw_filter = cp.Plot(parent=page, title="Filter/selection")
+    page.pw_filter.set_labels(left="Selected (1) / Unselected (0)", bottom="Photon Index")
+    page.pw_filter.link_x(page.pw_dT)
+    page.pw_dT.set_interactive(mouse=False)
+    page.pw_filter.set_interactive(mouse=False)
+    page.plot_select = page.pw_filter.line([1.0], [1.0])
     page.pw_filter.resize(200, 20)
 
-    page.plot_item_dt.setLogMode(False, True)
-    page.plot_item_decay.setLogMode(False, True)
-    page.plot_item_sel.setLogMode(False, False)
+    #: The dT axis is logarithmic, so the region below lives in log10 units.
+    page._dT_log = True
+    page.pw_dT.set_log(y=True)
+    page.pw_decay.set_log(y=True)
 
     # The three plots holding a raw per-photon series get the viewport's own
     # decimation. This is the single most expensive thing in the burst-selection
@@ -63,25 +55,24 @@ def create_plots(page, colors):
     # tab switch and every resize. Measured in isolation, `auto`/`peak`
     # downsampling with `clipToView` takes a 660k-point curve from 0.121 s to
     # 0.009 s per paint and makes the cost nearly independent of the point
-    # count, because Qt then lays out what is *visible* rather than everything.
-    # `peak` keeps each bin's extremes, for the same reason
+    # count, because the renderer then lays out what is *visible* rather than
+    # everything. `peak` keeps each bin's extremes, for the same reason
     # `chisurf.core.fio.decimate.thin_for_plot` is min/max-per-bin: a stride
     # aliases the bursts away, which is worse than slow.
-    for _item in (page.plot_item_dt, page.plot_item_sel, page.plot_item_mcs):
-        _item.setDownsampling(auto=True, mode="peak")
-        _item.setClipToView(True)
+    for _plot in (page.pw_dT, page.pw_filter, page.pw_mcs):
+        _plot.set_downsampling(auto=True, mode="peak")
+        _plot.set_clip_to_view(True)
 
     ca = list(to_rgb(colors["region_selector"]))
-    co = [ca[0] * 255, ca[1] * 255, ca[2] * 255, colors["region_selector_alpha"]]
-    page.region_selector = pg.LinearRegionItem(
-        brush=co, orientation="horizontal", values=(np.log10(page._dT_min), np.log10(page._dT_max))
+    co = (ca[0] * 255, ca[1] * 255, ca[2] * 255, colors["region_selector_alpha"])
+    page.region_selector = page.pw_dT.region(
+        (np.log10(page._dT_min), np.log10(page._dT_max)),
+        orientation="horizontal",
+        brush=co,
     )
-    page.pw_dT.addItem(page.region_selector)
 
-    def onRegionUpdate(evt):
-        lb, ub = page.region_selector.getRegion()
-        if page.pw_dT.getAxis("left").logMode:
-            lb, ub = 10**lb, 10**ub
+    def onRegionUpdate(lb, ub):
+        lb, ub = 10**lb, 10**ub  # the region lives in log10 units
         page._dT_min = lb
         page._dT_max = ub
         page.doubleSpinBox_2.blockSignals(True)
@@ -106,7 +97,8 @@ def create_plots(page, colors):
         page.update_plots()
         page.update_output_path()
 
-    page.region_selector.sigRegionChangeFinished.connect(onRegionUpdate)
+    page._on_region_finished = onRegionUpdate
+    page.region_selector.on_change(onRegionUpdate, final=True)
 
 
 def place_plots(page):

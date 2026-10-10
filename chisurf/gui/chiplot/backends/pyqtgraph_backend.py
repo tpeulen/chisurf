@@ -1240,6 +1240,27 @@ class _PgCanvas(base.Canvas):
             axis.picture = None
             axis.update()
 
+    def set_axis_style(self, *, line=None, text=None) -> None:
+        """Colour the axis lines and tick text."""
+        import pyqtgraph as pg
+
+        for side in ("left", "bottom", "right", "top"):
+            axis = self._pi.getAxis(side)
+            if line is not None:
+                axis.setPen(pg.mkPen(line))
+            if text is not None:
+                axis.setTextPen(pg.mkPen(text))
+
+    def set_tick_labels(self, side, ticks) -> None:
+        """Label one axis with ``[(position, text), ...]`` (``None`` restores numbers)."""
+        self._pi.getAxis(side).setTicks(None if ticks is None else [list(ticks)])
+
+    def set_legend_style(self, *, text=None) -> None:
+        """Colour the legend text."""
+        legend = getattr(self._pi, "legend", None)
+        if legend is not None and text is not None:
+            legend.setLabelTextColor(text)
+
     def set_axis_visible(self, side, visible) -> None:
         """Show or hide one axis."""
         self._pi.showAxis(side, bool(visible))

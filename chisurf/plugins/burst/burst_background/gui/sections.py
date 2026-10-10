@@ -262,8 +262,5 @@ class _RatePlotSection(QtWidgets.QWidget):
         # takes a single brush per call).
         for xi, r in zip(x.tolist(), rows):
             self.plot.bars([xi], [r["rate"]], width=0.6, brush=r["color"])
-        # Detector names as bottom-axis tick labels — a pyqtgraph-specific verb
-        # reached via the backend escape hatch (migration gap).
-        self.plot.native.getAxis("bottom").setTicks(
-            [list(zip(x.tolist(), [r["detector"] for r in rows]))]
-        )
+        # Detector names as bottom-axis tick labels.
+        self.plot.set_tick_labels("bottom", list(zip(x.tolist(), [r["detector"] for r in rows])))

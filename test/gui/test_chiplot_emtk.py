@@ -250,6 +250,48 @@ def test_dragging_a_region_moves_it_and_reports(plot):
     assert seen[-1] == region.bounds
 
 
+def test_a_horizontal_region_is_drawn_and_dragged_along_y(plot):
+    """The dT gate of the photon filter: a band across the plot, moved up and down."""
+    x, y = _decay()
+    plot.line(x, y, name="decay")
+    plot.set_ylim(0.0, 100.0)
+    region = plot.region((20.0, 80.0), orientation="horizontal")
+    seen: list[tuple[float, float]] = []
+    region.on_change(lambda low, high: seen.append((low, high)))
+
+    _paint(plot)
+    canvas = plot._canvas
+    upper_px, lower_px = region.native["_pixels"]
+    assert upper_px < lower_px, "the band has a height"
+    middle = (upper_px + lower_px) / 2.0
+
+    canvas.press(150.0, middle, 0.0, 0.0, 300.0, 200.0)
+    canvas.drag(150.0, middle - 20.0, 0.0, 0.0, 300.0, 200.0)
+    canvas.release()
+
+    low, high = region.bounds
+    assert low > 20.0 and high > 80.0, "dragging up raises both edges"
+    assert abs((high - low) - 60.0) < 1e-6, "and keeps the height"
+    assert seen and seen[-1] == region.bounds
+
+
+def test_dragging_the_edge_of_a_horizontal_region_resizes_it(plot):
+    x, y = _decay()
+    plot.line(x, y, name="decay")
+    plot.set_ylim(0.0, 100.0)
+    region = plot.region((20.0, 80.0), orientation="horizontal")
+    _paint(plot)
+    canvas = plot._canvas
+    upper_px, lower_px = region.native["_pixels"]
+
+    canvas.press(150.0, upper_px, 0.0, 0.0, 300.0, 200.0)  # the high edge
+    canvas.drag(150.0, upper_px - 15.0, 0.0, 0.0, 300.0, 200.0)
+    canvas.release()
+
+    low, high = region.bounds
+    assert low == 20.0 and high > 80.0
+
+
 def test_a_press_that_misses_every_band_starts_no_drag(plot):
     """Otherwise a click on the data would drag whatever was nearest."""
     x, y = _decay()

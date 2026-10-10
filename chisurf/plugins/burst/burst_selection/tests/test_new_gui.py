@@ -814,7 +814,7 @@ def test_burst_plot_update_refreshes_embedded_filter_settings_plot(tmp_path: Pat
             self.args: tuple[object, ...] = ()
             self.kwargs: dict[str, object] = {}
 
-        def setData(self, *args: object, **kwargs: object) -> None:
+        def set_data(self, *args: object, **kwargs: object) -> None:
             self.args = args
             self.kwargs = kwargs
 
@@ -830,6 +830,21 @@ def test_burst_plot_update_refreshes_embedded_filter_settings_plot(tmp_path: Pat
 
         def plot(self, *args: object, **kwargs: object) -> None:
             self.plots.append({"args": args, "kwargs": kwargs})
+
+        def line(self, *args: object, **kwargs: object) -> None:
+            self.plot(*args, **kwargs)
+
+        def set_labels(self, **labels: object) -> None:
+            self.labels = labels
+
+        def set_title(self, *args: object, **kwargs: object) -> None:
+            self.title = (args, kwargs)
+
+        def set_ylim(self, *args: object, **kwargs: object) -> None:
+            self.y_range = (args, kwargs)
+
+        def set_xlim(self, *args: object, **kwargs: object) -> None:
+            self.x_range = (args, kwargs)
 
         def setYRange(self, *args: object, **kwargs: object) -> None:
             self.y_range = (args, kwargs)
@@ -992,6 +1007,15 @@ def test_mcs_plot_offsets_use_seconds_for_time_axis() -> None:
         def plot(self, *args: object, **kwargs: object) -> None:
             self.plots.append({"args": args, "kwargs": kwargs})
 
+        def line(self, *args: object, **kwargs: object) -> None:
+            self.plot(*args, **kwargs)
+
+        def set_labels(self, **labels: object) -> None:
+            self.labels = labels
+
+        def set_title(self, *args: object, **kwargs: object) -> None:
+            self.title = (args, kwargs)
+
         def setLabel(self, *_args: object, **_kwargs: object) -> None:
             return
 
@@ -1060,6 +1084,15 @@ def test_mcs_plot_draws_all_before_selected_and_respects_toggles() -> None:
 
         def plot(self, *args: object, **kwargs: object) -> None:
             self.plots.append({"args": args, "kwargs": kwargs})
+
+        def line(self, *args: object, **kwargs: object) -> None:
+            self.plot(*args, **kwargs)
+
+        def set_labels(self, **labels: object) -> None:
+            self.labels = labels
+
+        def set_title(self, *args: object, **kwargs: object) -> None:
+            self.title = (args, kwargs)
 
         def setLabel(self, *_args: object, **_kwargs: object) -> None:
             return
@@ -1159,6 +1192,15 @@ def test_shared_photon_toggles_apply_to_dt_and_filter_plots() -> None:
 
         def plot(self, *args: object, **kwargs: object) -> None:
             self.plots.append({"args": args, "kwargs": kwargs})
+
+        def line(self, *args: object, **kwargs: object) -> None:
+            self.plot(*args, **kwargs)
+
+        def set_labels(self, **labels: object) -> None:
+            self.labels = labels
+
+        def set_title(self, *args: object, **kwargs: object) -> None:
+            self.title = (args, kwargs)
 
         def setYRange(self, *_args: object, **_kwargs: object) -> None:
             return
@@ -1267,6 +1309,15 @@ def test_dt_and_filter_plots_are_thinned_for_a_large_measurement(monkeypatch) ->
         def plot(self, *args: object, **kwargs: object) -> None:
             self.plots.append({"args": args, "kwargs": kwargs})
 
+        def line(self, *args: object, **kwargs: object) -> None:
+            self.plot(*args, **kwargs)
+
+        def set_labels(self, **labels: object) -> None:
+            self.labels = labels
+
+        def set_title(self, *args: object, **kwargs: object) -> None:
+            self.title = (args, kwargs)
+
         def setYRange(self, *_args: object, **_kwargs: object) -> None:
             return
 
@@ -1345,6 +1396,15 @@ def test_shared_photon_toggles_apply_to_decay_plot() -> None:
 
         def plot(self, *args: object, **kwargs: object) -> None:
             self.plots.append({"args": args, "kwargs": kwargs})
+
+        def line(self, *args: object, **kwargs: object) -> None:
+            self.plot(*args, **kwargs)
+
+        def set_labels(self, **labels: object) -> None:
+            self.labels = labels
+
+        def set_title(self, *args: object, **kwargs: object) -> None:
+            self.title = (args, kwargs)
 
     class FakeTTTR:
         """TTTR stand-in with separate all/selected histogram calls."""

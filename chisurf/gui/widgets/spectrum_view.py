@@ -119,25 +119,10 @@ class SpectrumView(QtWidgets.QWidget):
         self.layout().setContentsMargins(0, 0, 0, 0)
 
         self.plot = cp.Plot(background=None)
-        # Axis lines/text theming + legend text colour are pyqtgraph-specific
-        # cosmetics reached via the backend escape hatch (chiplot has no native
-        # axis-pen / SI-prefix / legend-colour verbs yet; a migration gap).
-        _axis = "#b0b0b0"
-        _text = "#d0d0d0"
-        try:
-            raw = cp.get_backend().raw_module()
-            for _ax in ("left", "bottom"):
-                axis = self.plot.native.getAxis(_ax)
-                axis.setPen(raw.mkPen(_axis))
-                axis.setTextPen(raw.mkPen(_text))
-                axis.enableAutoSIPrefix(False)
-        except Exception:
-            pass
+        self.plot.set_axis_style(line="#b0b0b0", text="#d0d0d0")
+        self.plot.set_si_prefix(x=False, y=False)
         self.plot.legend()
-        try:
-            self.plot.native.getPlotItem().legend.setLabelTextColor(_text)
-        except Exception:
-            pass
+        self.plot.set_legend_style(text="#d0d0d0")
         self.plot.set_labels(bottom="Wavelength (nm)", left="Normalized Value (a.u.)")
         self.plot.grid(x=True, y=True, alpha=0.3)
         self.layout().addWidget(self.plot)

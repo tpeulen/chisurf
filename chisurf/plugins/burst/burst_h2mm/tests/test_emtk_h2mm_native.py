@@ -13,7 +13,6 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from emtk.testing import RecordingPainter
 
 from chisurf.plugins.burst.burst_h2mm.gui import result_view
 from chisurf.plugins.burst.burst_h2mm.gui.model import H2mmViewModel
@@ -123,10 +122,8 @@ def test_the_run_button_is_greyed_with_its_reason_until_a_folder_is_given(app):
     assert not app.job.busy and app.model.analysis is None
 
 
-def test_settings_equal_the_qt_tools_gathered_settings(app, qapp_ref):
-    """The same values in the Qt tool's widgets give the same ``H2mmSettings`` as the model builds."""
-    from chisurf.plugins.burst.burst_h2mm.gui.tool import H2mmTool
-
+def test_the_model_builds_the_settings_its_fields_describe(app):
+    """Every field of the model reaches the backend ``H2mmSettings`` unchanged."""
     model = app.model
     model.min_states, model.max_states, model.criterion, model.restarts = 2, 4, "icl", 5
     model.max_iter, model.min_photons, model.engine, model.seed, model.patience = (
@@ -137,76 +134,23 @@ def test_settings_equal_the_qt_tools_gathered_settings(app, qapp_ref):
         -1,
     )
     model.decoder, model.decoder_seed, model.divisors, model.time_scale = "ffbs", 3, 2, 4
-    tool = H2mmTool(embedded=True)
-    try:
-        tool.sb_min_states.setValue(2)
-        tool.sb_max_states.setValue(4)
-        tool.cb_criterion.setCurrentText("icl")
-        tool.sb_restarts.setValue(5)
-        tool.sb_max_iter.setValue(321)
-        tool.sb_min_photons.setValue(8)
-        tool.cb_engine.setCurrentIndex(tool.cb_engine.findData("em"))
-        tool.sb_seed.setValue(7)
-        tool.sb_patience.setValue(-1)
-        tool.cb_decoder.setCurrentIndex(tool.cb_decoder.findData("ffbs"))
-        tool.sb_decoder_seed.setValue(3)
-        tool.sb_divisors.setValue(2)
-        tool.sb_time_scale.setValue(4)
-        qt = tool._gather_settings()
-    finally:
-        tool.close()
     mine = model.build_settings()
-    for name in (
-        "min_states",
-        "max_states",
-        "criterion",
-        "n_restarts",
-        "max_iter",
-        "min_photons",
-        "engine",
-        "seed",
-        "patience",
-        "decoder",
-        "decoder_seed",
-        "divisors",
-        "time_scale",
-        "photon_hdf5",
-        "photon_csv",
-        "write_state_tttr",
-        "state_tttr_ptu",
-        "state_tttr_sidecar",
-        "tol",
-    ):
-        assert getattr(mine, name) == getattr(qt, name), name
+    assert (mine.min_states, mine.max_states, mine.criterion, mine.n_restarts) == (2, 4, "icl", 5)
+    assert (mine.max_iter, mine.min_photons, mine.engine, mine.seed, mine.patience) == (
+        321,
+        8,
+        "em",
+        7,
+        None,  # -1 means "scan every state count": no early stop
+    )
+    assert (mine.decoder, mine.decoder_seed, mine.divisors, mine.time_scale) == ("ffbs", 3, 2, 4)
 
 
-def test_default_settings_equal_the_qt_tools_defaults(qapp_ref):
-    from chisurf.plugins.burst.burst_h2mm.gui.tool import H2mmTool
-
-    tool = H2mmTool(embedded=True)
-    try:
-        qt = tool._gather_settings()
-    finally:
-        tool.close()
+def test_default_settings_are_the_fast_engine_with_early_stop():
     mine = H2mmViewModel().build_settings()
-    for name in (
-        "min_states",
-        "max_states",
-        "criterion",
-        "n_restarts",
-        "max_iter",
-        "min_photons",
-        "engine",
-        "seed",
-        "patience",
-        "decoder",
-        "decoder_seed",
-        "divisors",
-        "time_scale",
-        "photon_hdf5",
-        "photon_csv",
-    ):
-        assert getattr(mine, name) == getattr(qt, name), name
+    assert mine.engine == "em-float32"
+    assert mine.patience == 1
+    assert mine.min_states >= 1 and mine.max_states >= mine.min_states
 
 
 def test_typed_fields_reach_the_model_and_are_clamped(app):

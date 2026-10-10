@@ -101,7 +101,7 @@ def _make_plot_widget(parent=None):
         pw.setMinimumHeight(140)
         return pw, True
     except Exception:
-        lbl = QtWidgets.QLabel("(install pyqtgraph for inline plots)", parent=parent)
+        lbl = QtWidgets.QLabel("(inline plots are unavailable)", parent=parent)
         lbl.setAlignment(QtCore.Qt.AlignCenter)
         lbl.setStyleSheet("color:#888; font-style:italic;")
         lbl.setMinimumHeight(50)
@@ -672,10 +672,6 @@ class FRETLineTool(QtWidgets.QWidget):
 
         for pw in (self._plot_e, self._plot_taux):
             pw.clear()
-            try:
-                pw.native.getPlotItem().legend.clear()
-            except Exception:
-                pass
 
         tau_max = 1.0
         for ln in self._lines:
