@@ -23,11 +23,25 @@ def _working_path() -> pathlib.Path:
     return pathlib.Path(getattr(cs, "working_path", None) or pathlib.Path.home())
 
 
-def _capture_live_project(name: str):
+def _fit_objects() -> list:
+    """Snapshot of the session's fit objects, read through the API seam."""
+    from chisurf.core.api import fit_objects
+
+    return fit_objects()
+
+
+def _dataset_objects() -> list:
+    """Snapshot of the session's dataset objects, read through the API seam."""
+    from chisurf.core.api import dataset_objects
+
+    return dataset_objects()
+
+
+def _capture_live_project(name: str, *, skip_if_busy: bool = False):
     """Capture the complete live project (science, UI state, history) as ``name``."""
     from chisurf.macros.core_fit import get_project_payload
 
-    return get_project_payload(name)
+    return get_project_payload(name, skip_if_busy=skip_if_busy)
 
 
 def _discard_autosave(*documents) -> None:
@@ -75,7 +89,7 @@ class ProjectMixin:
                 name = str(getattr(dataset, "name", "")).lower()
                 if name not in {"global-fit", "global_fit"}:
                     return True
-        fits = getattr(cs, "fits", None)
+        fits = _fit_objects()
         if fits:
             for fit in fits:
                 if str(getattr(fit, "name", "")).lower() not in {"global-fit", "global_fit"}:
@@ -102,14 +116,14 @@ class ProjectMixin:
         except (TypeError, ValueError):
             return SaveDecision.CANCEL
 
-    def _live_project_payload(self: Main, name: str | None = None):
+    def _live_project_payload(self: Main, name: str | None = None, *, skip_if_busy: bool = False):
         """Capture the complete live project under ``name`` (default: its own)."""
         if name is None:
             document = self._get_project_document()
             name = self._project_display_name(
                 document.name or getattr(self, "_current_project_name", None) or "chisurf_project"
             )
-        return _capture_live_project(name)
+        return _capture_live_project(name, skip_if_busy=skip_if_busy)
 
     def _autosave_tick(self: Main) -> None:
         """Write the silent autosave copy when due and changed.
@@ -127,14 +141,18 @@ class ProjectMixin:
             return
         try:
             from chisurf.core.project import storage
+            from chisurf.core.project.capture import ProjectCaptureBusy
 
             autosave.run(
-                self._live_project_payload(),
+                self._live_project_payload(skip_if_busy=True),
                 storage.save_file,
                 self._get_project_document(),
                 _working_path(),
                 time.monotonic(),
             )
+        except ProjectCaptureBusy:
+            # A sampling job owns the fits; the next tick captures a settled state.
+            cs.logging.debug("Project autosave deferred: a sampling job is running")
         except Exception:
             cs.logging.exception("Project autosave failed")
 
@@ -493,7 +511,7 @@ class ProjectMixin:
             return
 
         input_processed_data_ids = []
-        for dc in getattr(cs, "imported_datasets", []):
+        for dc in _dataset_objects():
             pid = getattr(dc, "processed_data_id", None)
             if not pid and hasattr(dc, "metadata") and isinstance(dc.metadata, dict):
                 pid = dc.metadata.get("processed_data_id")
@@ -1558,7 +1576,7 @@ class StateMixin:
             state = state or {}
             src_param_uid = str(state.get("source_parameter_uid") or "")
             if src_param_uid:
-                for fit_group in getattr(cs, "fits", []):
+                for fit_group in _fit_objects():
                     for local_fit in fit_group:
                         model = getattr(local_fit, "model", None)
                         if model is None:
@@ -1571,7 +1589,7 @@ class StateMixin:
             if isinstance(link_uid, tuple):
                 target_param_uid = str(link_uid[2] or "")
                 if target_param_uid:
-                    for fit_group in getattr(cs, "fits", []):
+                    for fit_group in _fit_objects():
                         for local_fit in fit_group:
                             model = getattr(local_fit, "model", None)
                             if model is None:
@@ -1582,7 +1600,7 @@ class StateMixin:
                                     return p
 
             fit_group_name, local_fit_name, parameter_name = key
-            for fit_group in getattr(cs, "fits", []):
+            for fit_group in _fit_objects():
                 if str(getattr(fit_group, "name", "")) != str(fit_group_name):
                     continue
                 for local_fit in fit_group:
@@ -1611,7 +1629,7 @@ class StateMixin:
                 unresolved_keys.append(format_key(key))
                 continue
             fit_group_name = key[0]
-            for fg in getattr(cs, "fits", []):
+            for fg in _fit_objects():
                 if str(getattr(fg, "name", "")) == fit_group_name:
                     touched_fit_groups.add(fg)
                     break
@@ -1718,7 +1736,7 @@ class StateMixin:
 
     def _refresh_parameter_widgets(self: Main) -> None:
         try:
-            for fit_group in getattr(cs, "fits", []):
+            for fit_group in _fit_objects():
                 for local_fit in fit_group:
                     model = getattr(local_fit, "model", None)
                     if model is None:
@@ -1763,7 +1781,7 @@ class StateMixin:
                 continue
 
             target_fit = None
-            for fg in getattr(cs, "fits", []):
+            for fg in _fit_objects():
                 if str(getattr(fg, "name", "")) == str(fit_group_name):
                     target_fit = fg
                     break
@@ -1823,7 +1841,7 @@ class StateMixin:
 
             # Find the target fit group by UID
             target_fit_group = None
-            for fg in getattr(cs, "fits", []):
+            for fg in _fit_objects():
                 if str(getattr(fg, "unique_identifier", "")) == str(fit_group_uid):
                     target_fit_group = fg
                     break
@@ -2265,7 +2283,7 @@ class StateMixin:
             target_uid = str(dataset_uid or "")
             if not target and not target_uid:
                 return
-            datasets = list(getattr(cs, "imported_datasets", []))
+            datasets = list(_dataset_objects())
             for idx, dataset in enumerate(datasets):
                 if target_uid and str(getattr(dataset, "unique_identifier", "")) == target_uid:
                     self.dataset_selector.selected_curve_index = idx
@@ -2281,7 +2299,7 @@ class StateMixin:
 
     def _select_fit_by_identity(self: Main, fit_name: str = "", fit_uid: str = "") -> None:
         try:
-            for idx, fit_group in enumerate(getattr(cs, "fits", [])):
+            for idx, fit_group in enumerate(_fit_objects()):
                 current_uid = str(getattr(fit_group, "unique_identifier", ""))
                 name = str(getattr(fit_group, "name", ""))
                 if fit_uid:
@@ -2409,7 +2427,7 @@ class DevMixin:
             return
 
         try:
-            for fit in cs.fits:
+            for fit in _fit_objects():
                 try:
                     model = getattr(fit, "model", None)
                     if model is None:

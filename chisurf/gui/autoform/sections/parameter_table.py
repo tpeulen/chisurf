@@ -446,7 +446,9 @@ def _recompute_owning_model(param: FittingParameter) -> None:
     if index is None or index < 0:
         return
     try:
-        fit = cs.fits[index]
+        from chisurf.core.api import fit_objects
+
+        fit = fit_objects()[index]
     except (IndexError, TypeError, AttributeError):
         return
     for member in list(getattr(fit, "grouped_fits", None) or [fit]):

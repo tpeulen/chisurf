@@ -15,13 +15,13 @@ from ..core.solver import solve_fret_mem, solve_lifetime_mem
 
 
 def open_fits():
-    import chisurf
+    from chisurf.core.api import fit_objects
 
-    return [fit for group in chisurf.fits for fit in getattr(group, "grouped_fits", [group])]
+    return [fit for group in fit_objects() for fit in getattr(group, "grouped_fits", [group])]
 
 
 def open_datasets():
-    import chisurf
+    from chisurf.core.api import dataset_objects
     from chisurf.core.data import DataGroup
 
     result = []
@@ -33,7 +33,7 @@ def open_datasets():
         elif hasattr(data, "x") and hasattr(data, "y"):
             result.append(data)
 
-    for data in chisurf.imported_datasets:
+    for data in dataset_objects():
         collect(data)
     return result
 

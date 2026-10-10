@@ -94,6 +94,34 @@ def _global_fits() -> list[Any]:
     return fits
 
 
+def dataset_objects() -> list[Any]:
+    """Return a snapshot of the in-process imported-dataset objects.
+
+    This is the API seam for GUI code that has to *read* dataset objects
+    (pickers, lookups) instead of reaching into ``chisurf.imported_datasets``.
+    Mutations go through :class:`ChiSurfAPI`.
+
+    Returns
+    -------
+    list
+        A new list; editing it does not change the session.
+    """
+    return list(_global_datasets())
+
+
+def fit_objects() -> list[Any]:
+    """Return a snapshot of the in-process fit (group) objects.
+
+    The read-only counterpart of :func:`dataset_objects` for ``chisurf.fits``.
+
+    Returns
+    -------
+    list
+        A new list; editing it does not change the session.
+    """
+    return list(_global_fits())
+
+
 def _local_datasets() -> list[Any]:
     return list(_global_datasets())
 

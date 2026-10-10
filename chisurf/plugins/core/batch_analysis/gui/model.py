@@ -119,9 +119,9 @@ class BatchModel(Stepper, BatchViewModel):
     def _all_datasets(self) -> list:
         if self.session is not None:
             return list(self.session.datasets)
-        import chisurf as cs
+        from chisurf.core.api import dataset_objects
 
-        return list(getattr(cs, "imported_datasets", []))
+        return dataset_objects()
 
     def imported_datasets(self) -> list:
         """The loaded datasets (the global one excluded), of the injected session or the process."""

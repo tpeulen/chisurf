@@ -40,70 +40,26 @@ SCAN_DIRECTORIES = [
 # to regenerate this dict from the current state.
 EXPECTED_VIOLATIONS: dict[str, int] = {
     "chisurf/gui/autoform/auto_form.py": 1,
-    "chisurf/gui/autoform/sections/builtin.py": 6,
-    "chisurf/gui/autoform/sections/parameter_table.py": 6,
+    "chisurf/gui/autoform/sections/builtin.py": 2,
+    "chisurf/gui/autoform/sections/parameter_table.py": 5,
     "chisurf/gui/autoform/sections/rate_matrix_section.py": 2,
     "chisurf/gui/main.py": 9,
-    "chisurf/gui/main_helper.py": 24,
+    "chisurf/gui/main_helper.py": 12,
     "chisurf/gui/widgets/experiments/ics.py": 1,
     "chisurf/gui/widgets/experiments/widgets.py": 5,
-    "chisurf/gui/widgets/fitting/fit_controller.py": 16,
-    "chisurf/gui/widgets/fitting/parameter_widgets.py": 14,
+    "chisurf/gui/widgets/fitting/fit_controller.py": 8,
+    "chisurf/gui/widgets/fitting/parameter_widgets.py": 7,
     "chisurf/plugins/burst/accurate_fret/parameters.py": 3,
-    "chisurf/plugins/burst/burst_selection/api/io.py": 3,
-    "chisurf/plugins/burst/burst_selection/tests/test_run_picker.py": 1,
     "chisurf/plugins/burst/mfd_prepare/cli/main.py": 1,
-    "chisurf/plugins/calculator/fcs_saturation_calc/gui/model.py": 11,
-    "chisurf/plugins/calculator/fcs_saturation_calc/gui/panel.py": 5,
-    "chisurf/plugins/calculator/fcs_saturation_calc/tests/test_emtk_saturation_clicks.py": 2,
-    "chisurf/plugins/calculator/fcs_saturation_calc/tests/test_emtk_saturation_parity.py": 1,
-    "chisurf/plugins/calculator/fcs_saturation_calc/tests/test_gui.py": 2,
-    "chisurf/plugins/calculator/native_form.py": 4,
-    "chisurf/plugins/chimol/test/test_density_labelling.py": 2,
-    "chisurf/plugins/chimol/test/test_fps_circle.py": 1,
-    "chisurf/plugins/core/acq/tcspc_devices/picoquant/wrapper.py": 2,
     "chisurf/plugins/core/batch_analysis/core/runner.py": 1,
-    "chisurf/plugins/core/batch_analysis/gui/model.py": 1,
     "chisurf/plugins/core/batch_analysis/gui/view_model.py": 1,
-    "chisurf/plugins/core/batch_analysis/test/fakes.py": 5,
-    "chisurf/plugins/core/batch_analysis/test/test_runner.py": 4,
-    "chisurf/plugins/core/code_editor/gui/editor_app.py": 1,
-    "chisurf/plugins/core/code_editor/gui/notebook_app.py": 1,
     # backend/services.py: server-side RPC handlers — direct param.link = is LEGITIMATE here
     "chisurf/plugins/core/globalview/backend/services.py": 3,
-    # tests/test_model.py: a fake mutator standing in for the server applies the
-    # edits the fitting client would, plus the fixture's own link setup.
-    "chisurf/plugins/core/globalview/tests/test_model.py": 9,
     "chisurf/plugins/core/lightpath_simulator/core/parameters.py": 2,
-    "chisurf/plugins/core/lightpath_simulator/gui/app.py": 2,
-    "chisurf/plugins/core/lightpath_simulator/tests/test_emtk_lightpath_clicks.py": 2,
-    "chisurf/plugins/core/mmfdb_admin/gui/native/dialogs.py": 2,
-    "chisurf/plugins/core/mmfdb_admin/test/test_native_model.py": 4,
-    "chisurf/plugins/core/project_browser/test/test_native.py": 8,
-    "chisurf/plugins/core/project_browser/test/test_project_browser_services.py": 6,
-    "chisurf/plugins/fcs/fcs_filter_calculator/gui/app.py": 1,
-    "chisurf/plugins/fcs/fcs_filter_calculator/gui/panel.py": 3,
-    "chisurf/plugins/fcs/fcs_filter_calculator/test/test_filter_model.py": 3,
     "chisurf/plugins/fluorescence_decay/irf_estimator/backend/services.py": 1,
-    "chisurf/plugins/fluorescence_decay/irf_estimator/gui/app.py": 1,
-    "chisurf/plugins/fluorescence_decay/maxent_decay/core/solver.py": 3,
-    "chisurf/plugins/fluorescence_decay/maxent_decay/gui/model.py": 2,
     "chisurf/plugins/fluorescence_decay/synthetic_decay/gui/view_model.py": 1,
-    "chisurf/plugins/fluorescence_decay/synthetic_decay/test/test_native.py": 2,
-    "chisurf/plugins/fluorescence_decay/synthetic_decay/test/test_widgets.py": 5,
-    "chisurf/plugins/fluorescence_decay/tr_anisotropy/core/native_fits.py": 4,
     "chisurf/plugins/fluorescence_decay/tr_anisotropy/gui/view_model.py": 3,
-    "chisurf/plugins/fluorescence_decay/tr_anisotropy/test/test_emtk_tr_anisotropy_parity.py": 3,
-    "chisurf/plugins/fluorescence_decay/tr_anisotropy/test/test_native.py": 5,
-    "chisurf/plugins/fret_line/gui/model.py": 6,
     "chisurf/plugins/fret_line/gui/tool.py": 1,
-    "chisurf/plugins/fret_line/test/test_emtk_fret_line_parity.py": 2,
-    "chisurf/plugins/microscopy/imaging_tools/test/test_emtk_imaging_tools_parity.py": 4,
-    "chisurf/plugins/microscopy/imaging_tools/test/test_native.py": 4,
-    "chisurf/plugins/modelling/fret/test/test_engine.py": 1,
-    "chisurf/plugins/modelling/fret/test/test_fps_outputs.py": 7,
-    "chisurf/plugins/tttr/tttr_lut_tools/tests/test_emtk_tttr_lut_tools_parity.py": 1,
-    "chisurf/plugins/tttr/tttr_toolbox/test/test_emtk_toolbox_parity.py": 1,
 }
 
 # Files that are entirely exempt from scanning
@@ -150,13 +106,40 @@ FORBIDDEN_PATTERNS: list[tuple[str, re.Pattern]] = [
     ),
 ]
 
+# An assignment, not a comparison: ``x.value == 1`` must not match.
 PARAM_MUTATION = re.compile(
-    r"\.link\s*=\s*"
-    r"|\.fixed\s*=\s*"
-    r"|\.bounds\s*=\s*"
-    r"|\.bounds_on\s*=\s*"
-    r"|(?<=[a-zA-Z_])(?:\.value)\s*=\s*"
+    r"\.link\s*=(?!=)\s*"
+    r"|\.fixed\s*=(?!=)\s*"
+    r"|\.bounds\s*=(?!=)\s*"
+    r"|\.bounds_on\s*=(?!=)\s*"
+    r"|(?<=[a-zA-Z_])(?:\.value)\s*=(?!=)\s*"
 )
+
+# Parameter/fit-method patterns are only a *communication* violation in a module
+# that can reach a chisurf fit: one that names the process-global fit state, a
+# fit group / parameter list, or the fitting client/API.  A plugin whose own
+# parameter objects, dialog values or test fakes carry ``.value`` never touches a
+# chisurf fit, so its assignments are not counted.  Derived from the module's
+# code, not from a list of file names.
+FIT_CONTEXT = re.compile(
+    r"\b(?:chisurf|cs)\.(?:fits|current_fit|cs)\b"
+    r"|getattr\(\s*cs\s*,\s*[\"']fits[\"']"
+    r"|get_fitting_client|FittingClient|ChiSurfAPI|FittingParameter"
+    r"|\bfit\.(?:run|update|fit_range)\b"
+)
+
+# ``{"cs": chisurf.cs}`` hands the session module to a user-script / console
+# namespace; no widget reaches a fit through it.
+_NAMESPACE_INJECTION = re.compile(r"[\"']cs[\"']\s*:\s*chisurf\.cs\b")
+
+# ``self.value = ...`` / ``self.fixed = ...`` assign the object's own attribute;
+# only a longer chain (``self.fit.x.value``) reaches another object.
+_OWN_ATTRIBUTE = re.compile(r"^self\.\w+\s*(?:,\s*self\.\w+\s*)*=(?!=)")
+
+
+def _has_fit_context(text: str) -> bool:
+    """Return True if the module source can reach a chisurf fit object."""
+    return bool(FIT_CONTEXT.search(text))
 
 FIT_METHOD_CALLS = re.compile(
     r"(?<!self\.)fit\.run\s*\("
@@ -167,8 +150,25 @@ FIT_METHOD_CALLS = re.compile(
 )
 
 
+def _is_test_module(rel: str) -> bool:
+    """Return True for a test module (``test/``, ``tests/`` or ``test_*.py``).
+
+    Tests assert on, and set up, the process-global session on purpose; they are
+    the harness, not a GUI client talking to a fit.
+    """
+    parts = rel.split("/")
+    return (
+        any(part in ("test", "tests") for part in parts[:-1])
+        or parts[-1].startswith("test_")
+        or parts[-1] == "conftest.py"
+        or parts[-1] == "fakes.py"
+    )
+
+
 def _is_allowed_file(filepath: pathlib.Path) -> bool:
     rel = filepath.relative_to(ROOT).as_posix()
+    if _is_test_module(rel):
+        return True
     for allowed in ALLOWED_FILES:
         if rel == allowed or rel.endswith(f"/{allowed}"):
             return True
@@ -179,18 +179,25 @@ def _scan_file(filepath: pathlib.Path) -> list[tuple[str, int, str]]:
     if _is_allowed_file(filepath):
         return []
 
-    violations: list[tuple[str, int, str]] = []
     try:
         with open(filepath, encoding="utf-8", errors="replace") as f:
             lines = f.readlines()
     except Exception:
         return []
+    return _scan_lines(lines)
 
+
+def _scan_lines(lines: list[str]) -> list[tuple[str, int, str]]:
+    """Return the violations in the source ``lines`` of one (non-test) module."""
+    violations: list[tuple[str, int, str]] = []
+    fit_context = _has_fit_context("".join(lines))
     in_docstring = False
     docstring_delim = None
     for lineno, line in enumerate(lines, 1):
         stripped = line.strip()
         if not stripped:
+            continue
+        if _NAMESPACE_INJECTION.search(stripped):
             continue
 
         # Track multi-line docstrings ("""...""" or '''...''')
@@ -220,11 +227,11 @@ def _scan_file(filepath: pathlib.Path) -> list[tuple[str, int, str]]:
                 violations.append((name, lineno, stripped))
                 break  # Only report one violation per line
 
-        if PARAM_MUTATION.search(stripped):
+        if fit_context and PARAM_MUTATION.search(stripped) and not _OWN_ATTRIBUTE.match(stripped):
             violations.append(("direct parameter mutation", lineno, stripped))
             continue
 
-        if FIT_METHOD_CALLS.search(stripped):
+        if fit_context and FIT_METHOD_CALLS.search(stripped):
             violations.append(("direct fit method call", lineno, stripped))
             continue
 
@@ -232,13 +239,15 @@ def _scan_file(filepath: pathlib.Path) -> list[tuple[str, int, str]]:
 
 
 def _collect_files() -> list[pathlib.Path]:
-    files: list[pathlib.Path] = []
+    # SCAN_DIRECTORIES nest (``chisurf/gui`` contains ``chisurf/gui/plots`` ...);
+    # a file reachable from two roots must be scanned once or its count doubles.
+    files: dict[pathlib.Path, None] = {}
     for rel_dir in SCAN_DIRECTORIES:
         scan_dir = ROOT / rel_dir
         if scan_dir.is_dir():
             for py_file in scan_dir.rglob("*.py"):
-                files.append(py_file)
-    return files
+                files[py_file] = None
+    return sorted(files)
 
 
 def _collect_violations() -> list[tuple[str, str, int, str]]:
@@ -408,6 +417,48 @@ def test_allowed_pattern_not_falsely_detected(code):
         if code.strip().startswith("self._") and ".value =" in code:
             return  # model widget internal variables
         pytest.fail(f"Allowed code '{code}' was falsely detected by parameter mutation pattern")
+
+
+def _scan_text(code: str) -> list[tuple[str, int, str]]:
+    return _scan_lines(code.splitlines(keepends=True))
+
+
+def test_new_violation_is_caught():
+    """A fit poke added to a module that can reach a chisurf fit must be counted."""
+    code = "import chisurf as cs\n\ndef f(p):\n    p.fixed = True\n    cs.fits[0].update()\n"
+    names = [n for n, _l, _s in _scan_text("from chisurf.fits import x\n" + code)]
+    assert "direct parameter mutation" in names
+    assert _scan_text("def g(client):\n    for f in cs.fits:\n        pass\n")
+
+
+def test_own_parameters_are_not_counted():
+    """A module with no path to a chisurf fit may mutate its own parameter objects."""
+    code = (
+        "class Panel:\n"
+        "    def set(self, p, v):\n"
+        "        p.value = v\n"
+        "        p.fixed = True\n"
+        "        self.dialog.value = v\n"
+    )
+    assert _scan_text(code) == []
+
+
+def test_comparison_is_not_a_mutation():
+    """``x.value == 1`` reads; only assignment is a mutation."""
+    code = "from chisurf.core.api import ChiSurfAPI\nassert x.value == 1\nok = p.fixed == True\n"
+    assert _scan_text(code) == []
+
+
+def test_fit_context_makes_mutation_count():
+    """The same assignment counts once the module goes through a fit."""
+    code = "from chisurf.core.api import ChiSurfAPI\np.value = 2\n"
+    assert [n for n, _l, _s in _scan_text(code)] == ["direct parameter mutation"]
+
+
+def test_nested_scan_roots_scan_each_file_once():
+    """Overlapping SCAN_DIRECTORIES must not double a file's count."""
+    files = _collect_files()
+    assert len(files) == len(set(files))
 
 
 def test_violations_print(capsys):

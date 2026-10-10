@@ -325,8 +325,11 @@ def _register_decay(store, name: str) -> int | None:
         curve.experiment = experiment_types["tcspc"]
     except Exception:  # noqa: BLE001 - a session without experiments still keeps the curve
         pass
-    before = len(getattr(cs, "imported_datasets", []))
+    from chisurf.core.api import dataset_objects
+
+    before = len(dataset_objects())
     result = api.load_dataset(dataset=curve, name=curve.name)
-    if isinstance(result, dict) and result.get("ok") and len(cs.imported_datasets) > before:
-        return len(cs.imported_datasets) - 1
+    after = len(dataset_objects())
+    if isinstance(result, dict) and result.get("ok") and after > before:
+        return after - 1
     return None

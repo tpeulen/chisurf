@@ -6,13 +6,19 @@ description: Open, resolved and withdrawn defects with their measurement, owner 
 
 ## The forbidden-communication guard's counts grew instead of shrinking (found 2026-10-10)
 
-status: open — owner: the guard (`test/test_forbidden_communication.py`) and the four `chisurf/gui` files below.
+status: resolved 2026-10-10 — `EXPECTED_VIOLATIONS` re-derived; every file is at or below its value at `2ae50a0a6~1` (69 hits in 20 files).
 
-After the W9 retirements `EXPECTED_VIOLATIONS` was regenerated (+36/-6 lines). Most new entries are emtk-native
-plugin files whose own parameter objects and dialog `.value =` match the regex, so the guard should exempt a
-plugin's own parameters rather than count them. Four shell files grew in earlier commits and were raised to
-match: `autoform/sections/builtin.py` 5→6, `parameter_table.py` 5→6, `main_helper.py` 23→24,
-`fit_controller.py` 12→16 — check each new hit is a real fit-client call routed through the API, then lower.
+Causes and fixes in `test/test_forbidden_communication.py`:
+
+* **Files were scanned twice.** `SCAN_DIRECTORIES` nest (`chisurf/gui` contains `gui/widgets/fitting`, `gui/plots`, ...), so those files were collected from two roots and their counts doubled (`fit_controller.py` 16 was 8 real hits). `_collect_files` now dedupes.
+* **`x.value == 1` counted as a mutation.** The parameter-mutation regex now requires an assignment (`=(?!=)`).
+* **A plugin's own parameters counted.** Parameter-mutation and fit-method patterns count only in a module that can reach a chisurf fit (`FIT_CONTEXT`: names `chisurf.fits`/`cs.fits`/`current_fit`, the fitting client / `ChiSurfAPI`, `FittingParameter`, or `fit.run/update/fit_range`), and `self.x = ...` (the object's own attribute) never counts. Derived from the module's code, not from file names.
+* **Test modules** (`test/`, `tests/`, `test_*.py`, `conftest.py`, `fakes.py`) are no longer scanned: they set up and assert on the process-global session on purpose and are not GUI clients. `{"cs": chisurf.cs}` handed to a console/script namespace (code_editor) is exempt.
+* Negative tests added: a new fit poke is caught, own parameters / comparisons are not, nested roots scan once.
+
+The shell files: `builtin.py` 6 to 2 (four copies of the `cs.fits` index lookup became one `_fit_index_of`), `parameter_table.py` 6 to 5, `main_helper.py` 24 to 12, `fit_controller.py` 12 to 8. Reads of the session's fit/dataset objects now go through the new `chisurf.core.api.fit_objects()` / `dataset_objects()` snapshots (also used by burst_selection `api/io.py`, batch_analysis, irf_estimator, maxent_decay) instead of `chisurf.fits` / `chisurf.imported_datasets`.
+
+Still open (counted, not fixed): the remaining 69 hits are real writes to fit parameters / fit methods (`main_helper` restore-state, `parameter_table` fallback when no controller, `fit_controller` `fit.update()`/`fit_range`) that need `FittingClient.set_parameter_*` / `link_parameters` / `set_fit_range` routing with their dialogs' behaviour tests; `accurate_fret/parameters.py` and `lightpath_simulator/core/parameters.py` hold plugin-own `FittingParameter`s and still match because the type name is in `FIT_CONTEXT`.
 
 ## Burst plugins whose Qt tool is still shipped: W9 phase 1 skips (found 2026-10-10)
 

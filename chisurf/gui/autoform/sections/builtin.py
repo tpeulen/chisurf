@@ -127,6 +127,22 @@ def _resolve_accessor(accessor: str):
 
 
 # --- curve inputs ----------------------------------------------------------
+def _fit_index_of(fit) -> int:
+    """Return the index of the session fit (group) holding ``fit``, or ``-1`` if unknown.
+
+    Read through the API's fit snapshot rather than ``chisurf.fits``.
+    """
+    try:
+        from chisurf.core.api import fit_objects
+
+        for i, fg in enumerate(fit_objects()):
+            if fg is fit or fit in list(fg):
+                return i
+    except Exception:
+        pass
+    return -1
+
+
 class CurveInputWidget(QtWidgets.QWidget):
     """Generic data-curve picker for a :class:`CurveInputSection`.
 
@@ -196,14 +212,7 @@ class CurveInputWidget(QtWidgets.QWidget):
         have dispatched the edit at whichever fit happened to be first.
         Fit-targeted dispatch is skipped for a negative index instead.
         """
-        try:
-            fit = getattr(self._model, "fit", None)
-            for i, fg in enumerate(cs.fits):
-                if fg is fit or fit in list(fg):
-                    return i
-        except Exception:
-            pass
-        return -1
+        return _fit_index_of(getattr(self._model, "fit", None))
 
     def _open_selector(self):
         from chisurf.gui.widgets.experiments import ExperimentalDataSelector
@@ -442,14 +451,7 @@ class _BoundControlMixin:
         have dispatched the edit at whichever fit happened to be first.
         Fit-targeted dispatch is skipped for a negative index instead.
         """
-        try:
-            fit = getattr(self._model, "fit", None)
-            for i, fg in enumerate(cs.fits):
-                if fg is fit or fit in list(fg):
-                    return i
-        except Exception:
-            pass
-        return -1
+        return _fit_index_of(getattr(self._model, "fit", None))
 
     def _current_value(self):
         """Read the bound attribute, following a dotted path if the spec uses one.
@@ -1576,14 +1578,7 @@ class LifetimeAmplitudeOptions(QtWidgets.QWidget):
         have dispatched the edit at whichever fit happened to be first.
         Fit-targeted dispatch is skipped for a negative index instead.
         """
-        try:
-            fit = getattr(self._model, "fit", None)
-            for i, fg in enumerate(cs.fits):
-                if fg is fit or fit in list(fg):
-                    return i
-        except Exception:
-            pass
-        return -1
+        return _fit_index_of(getattr(self._model, "fit", None))
 
     def _read_values(self, target):
         """Copy parameter values from ``target`` into this group via dispatch."""
@@ -2845,16 +2840,7 @@ class FitMixerWidget(QtWidgets.QWidget):
         have dispatched the edit at whichever fit happened to be first.
         Fit-targeted dispatch is skipped for a negative index instead.
         """
-        try:
-            import chisurf as cs
-
-            fit = getattr(self._model, "fit", None)
-            for i, fg in enumerate(cs.fits):
-                if fg is fit or fit in list(fg):
-                    return i
-        except Exception:
-            pass
-        return -1
+        return _fit_index_of(getattr(self._model, "fit", None))
 
     def _dispatch_update(self) -> None:
         try:

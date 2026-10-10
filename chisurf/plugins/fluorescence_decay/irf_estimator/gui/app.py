@@ -61,7 +61,7 @@ ESTIMATION_INPUTS = {
 
 def open_datasets():
     """The decay curves open in this ChiSurf process; a group contributes each member."""
-    import chisurf
+    from chisurf.core.api import dataset_objects
     from chisurf.core.data import DataGroup
 
     curves = []
@@ -73,7 +73,7 @@ def open_datasets():
         elif (hasattr(dataset, "y") and hasattr(dataset, "x")) or hasattr(dataset, "data"):
             curves.append(dataset)
 
-    for dataset in chisurf.imported_datasets:
+    for dataset in dataset_objects():
         collect(dataset)
     return curves
 
