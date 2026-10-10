@@ -764,10 +764,11 @@ def test_the_drawn_colours_are_the_colormap_of_the_value_between_the_levels(
     texture = canvas.texture(mosaic)
     low, high = float(mosaic.min()), float(mosaic.max())
     for y, x in ((10, 10), (100, 150), (200, 90), (255, 511), (130, 400)):
+        # emtk's colormaps round to the nearest byte (matplotlib's bytes=True truncates).
         expected = tuple(
-            (np.asarray(colormaps[colormap]((mosaic[y, x] - low) / (high - low))) * 255).astype(
-                np.uint8
-            )
+            np.round(
+                np.asarray(colormaps[colormap]((mosaic[y, x] - low) / (high - low))) * 255
+            ).astype(np.uint8)
         )
         assert tuple(texture.get_pixel(x, y)) == expected, (colormap, y, x)
     # gamma lifts a dim pixel; fixed levels clip
@@ -778,5 +779,5 @@ def test_the_drawn_colours_are_the_colormap_of_the_value_between_the_levels(
     clipped = canvas.texture(mosaic)
     y, x = np.argwhere(mosaic == 0)[0]
     assert tuple(clipped.get_pixel(int(x), int(y))) == tuple(
-        (np.asarray(colormaps[colormap](0.0)) * 255).astype(np.uint8)
+        np.round(np.asarray(colormaps[colormap](0.0)) * 255).astype(np.uint8)
     )

@@ -9,6 +9,8 @@ for the client. ``carry_local_state`` (session tokens) is replaced by a recorder
 
 from __future__ import annotations
 
+from chisurf.plugins.emtk_layout import action_caption
+
 import csv
 import json
 import threading
@@ -629,7 +631,7 @@ def test_confirmation_dialog_opens_on_screen_and_cancel_leaves_state():
     app.model.ask_revert()
     painter = draw(app)
     assert app.confirm_window.open
-    assert "Discard changes" in painter.strings and "Cancel" in painter.strings
+    assert "Discard changes" in painter.strings and action_caption("cancel") in painter.strings
     assert "Discard the edits to this account?" in painter.strings
     app.model.confirm_no()
     draw(app)
@@ -947,7 +949,8 @@ def test_app_draws_populated_and_empty_at_both_sizes(size):
     app = loaded_app()
     click_row(app, "bob")
     painter = draw(app, size)
-    strings = painter.strings
+    # an icon button is drawn "<icon>  <label>"; compare on the label
+    strings = [t.split("  ", 1)[-1] for t in painter.strings]
     for expected in (
         "Accounts",
         "Account",
@@ -1066,7 +1069,7 @@ def test_the_populated_app_has_no_untooltipped_control_either():
     inventory = emtk_inventory(app)
     # the shared dialog window's close button is emtk's and has no tooltip (reported)
     assert set(inventory["controls_without_tooltip"]) <= {"button: ×"}
-    labels = {row["label"] for row in inventory["interactive"]}
+    labels = {row["label"].split("  ", 1)[-1] for row in inventory["interactive"]}
     assert {
         "Save",
         "Revert",

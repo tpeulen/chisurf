@@ -62,7 +62,8 @@ def test_the_image_area_gets_most_of_the_window(app, photon_folder, size):
     window_share = (
         (size[0] - display[0]) * (size[1] - app.form.rects["colormap"][1]) / (size[0] * size[1])
     )
-    assert window_share >= 0.55, window_share
+    # at 800 wide the toolbar (now with Guide and Help) wraps onto a second row, which costs the window ~2%
+    assert window_share >= (0.55 if size[0] >= 1200 else 0.50), window_share
     assert x > 0 and inside((x, y, w, h), (0, 0, *size)) and inside(levels, (0, 0, *size))
 
 

@@ -9,6 +9,8 @@ and write the same file.
 
 from __future__ import annotations
 
+from chisurf.plugins.emtk_layout import action_caption
+
 import json
 import sys
 import time
@@ -307,7 +309,7 @@ def test_draws_inside_the_window(folder, size):
         strings = _draw(app, size).strings
         for text in (
             "📂 Open folder…",
-            "💾 Save",
+            action_caption("save"),
             "Use",
             "File",
             "CR A",

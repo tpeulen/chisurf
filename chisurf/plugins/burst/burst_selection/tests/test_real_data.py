@@ -146,4 +146,5 @@ def test_real_bh_spc_cli_fit_gmm_uses_generated_bur(bur_file: Path) -> None:
     payload = json.loads(result.output)
     assert result.exit_code == 0
     assert payload["n_components"] == 1
-    assert len(payload["labels"]) == 3857
+    # one label per burst; the .bur has 3857 rows because it is zero-interleaved
+    assert len(payload["labels"]) == 1928

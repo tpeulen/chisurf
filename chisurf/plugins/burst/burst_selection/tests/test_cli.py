@@ -66,7 +66,8 @@ def test_fit_gmm_command(tmp_path: Path) -> None:
     payload = json.loads(result.output)
     assert result.exit_code == 0
     assert payload["n_components"] == 1
-    assert len(payload["labels"]) == 3857
+    # one label per burst; the .bur has 3857 rows because it is zero-interleaved
+    assert len(payload["labels"]) == 1928
 
 
 def test_entrypoint_is_discoverable() -> None:

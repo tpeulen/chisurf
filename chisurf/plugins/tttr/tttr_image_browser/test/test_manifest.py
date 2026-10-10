@@ -9,7 +9,7 @@ def test_manifest_loads():
     assert manifest is not None
     assert manifest.id == "tttr_image_browser"
     assert manifest.version == "2.0.0"
-    assert manifest.display_name == "Imaging:Tools:Image Browser"
+    assert manifest.display_name == "Spectroscopy:Imaging:Tools:Image Browser"
     assert (
         manifest.entrypoints.gui
         == "chisurf.plugins.tttr.tttr_image_browser.gui.tool:TTTRImageBrowserTool"

@@ -128,7 +128,8 @@ def test_zmq_client_can_call_analyze_and_fit_gmm(tmp_path: Path) -> None:
 
     assert analysis["metadata"]["n_photons"] == 174438
     assert fit["gmm"]["n_components"] == 1
-    assert len(fit["gmm"]["labels"]) == 3857
+    # one label per burst; the .bur has 3857 rows because it is zero-interleaved
+    assert len(fit["gmm"]["labels"]) == 1928
 
 
 def test_zmq_client_can_call_inspect_bur(tmp_path: Path) -> None:
