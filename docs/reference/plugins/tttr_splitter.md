@@ -45,8 +45,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| batch_files | `batch_files` | path_list |  |  |  |
-| Use file's parent as output folder | `batch_use_parent` | bool |  |  |  |
+| batch_files | `batch_files` | path_list |  |  | Files queued for the batch run. |
+| Use file's parent as output folder | `batch_use_parent` | bool |  |  | Write each result next to its source file. |
 
 ## Source
 

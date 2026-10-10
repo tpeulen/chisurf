@@ -32,7 +32,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| files | `files` | path_list |  |  |  |
+| files | `files` | path_list |  |  | Drop or add the TTTR files whose background is estimated. |
 
 ### Fit
 

@@ -283,23 +283,19 @@ def _grab_17_filter_calculator():
 # ---------------------------------------------------------------- guide 18
 def _grab_18_lfcs_sim():
     """Lifetime-FCS simulator after *Simulate* with its default two species."""
-    from chisurf.plugins.fcs.fcs_lfcs_sim.gui.tool import LifetimeFcsSimWidget
+    from emtk.testing import Driver
 
-    tool = LifetimeFcsSimWidget()
-    tool.resize(1100, 620)
-    tool.show()
-    _settle()
-    from qtpy import QtWidgets
+    from emtk_shot import app_from, render, wait
 
-    button = next(
-        b for b in tool.findChildren(QtWidgets.QPushButton) if b.text() == "Simulate + Correlate"
-    )
-    button.click()  # the promoted toolbar button: runs and writes the status line
-    m = tool._model
+    app = app_from("fcs-lfcs-sim")
+    driver = Driver(app, (1100, 620))
+    driver.frame(2)
+    driver.click("Simulate + Correlate")  # the real button: runs on a worker and writes the status line
+    wait(driver, lambda: not app.running)
+    m = app.model
     print("datasets", [d["name"] for d in m.datasets], "cond", m.condition_number)
-    _settle()
-    _grab(tool, "18_lfcs_sim.png")
-    return tool
+    render(app, "18_lfcs_sim.png", driver=driver)
+    return app
 
 
 def _grab_18_sim_setup():
@@ -351,34 +347,29 @@ def _sm_dna_copy():
 
 def _grab_19_h2mm():
     """H2MM on the BH SPC-132 smFRET burst folder: a real 1-3 state scan."""
-    import time
+    from emtk.testing import Driver
 
-    from chisurf.plugins.burst.burst_h2mm.gui.tool import H2mmTool
+    from emtk_shot import app_from, render, wait
 
-    _ensure_bh_setup()
     work, folder = _sm_dna_copy()
-    tool = H2mmTool()
-    tool.resize(1400, 900)
-    tool.show()
-    _settle()
-    print("detector combos:", [tool.cb_donor.itemText(i) for i in range(tool.cb_donor.count())])
-    print("donor/acceptor:", tool.cb_donor.currentText(), tool.cb_acceptor.currentText())
-    tool._set_folder(str(folder))
-    tool._run_analysis(force=True)
-    app = QApplication.instance()
-    deadline = time.time() + float(os.environ.get("H2MM_WAIT", "400"))
-    while tool._result is None and time.time() < deadline:
-        app.processEvents()
-        time.sleep(0.05)
-    r = tool._result
+    app = app_from("burst_h2mm")
+    m = app.model
+    driver = Driver(app, (1400, 900))
+    driver.frame(2)
+    print("detectors:", m.detector_names(), "donor/acceptor:", m.donor, m.acceptor)
+    m.data_folder = str(folder)
+    m.min_states, m.max_states, m.restarts, m.seed = 2, 3, 1, 0
+    app.run()
+    wait(driver, lambda: not app.job.busy, timeout=float(os.environ.get("H2MM_WAIT", "400")))
+    r = m.result
     print("result:", None if r is None else (r.n_states, getattr(r, "populations", None)))
-    print("status:", tool.statusBar().currentMessage() if hasattr(tool, "statusBar") else "")
-    _settle(30)
-    if os.environ.get("SHOT_PROBE"):
-        _probe_tabs(tool, "19")
-    _raise_tab(tool, "H2MM Settings")
-    _grab(tool, "19_h2mm_tool.png")
-    return tool
+    app.bootstrap()
+    wait(driver, lambda: not app.job.busy, timeout=400)
+    app.ll_scan()
+    wait(driver, lambda: not app.job.busy, timeout=400)
+    print("status:", m.status_text)
+    render(app, "19_h2mm_tool.png", driver=driver)
+    return app
 
 
 # ---------------------------------------------------------------- guide 21

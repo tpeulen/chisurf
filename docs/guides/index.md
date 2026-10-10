@@ -46,6 +46,10 @@ saving_projects
 35_combining_repeats
 53_reusing_results
 63_pto_inspector
+89_microtime_histogram
+94_tttr_audifier
+100_alex_creator
+101_tttr_toolbox
 102_mmfdb_admin
 ```
 
@@ -138,9 +142,14 @@ irf_estimation
 88_structure_tools
 90_updater
 97_settings_hub
+95_games
+96_plugin_check
 91_vv_vh_g_factor
 92_hmm_binned_traces
 93_psf_determination
+98_clsm_generator
+98_imaging_tools
+99_img_calibration
 45_scan_precision
 55_pair_correlation
 ```
@@ -291,8 +300,10 @@ widgets under an offscreen Qt platform (needs the full GUI environment):
 QT_QPA_PLATFORM=offscreen PYTHONPATH=. python docs/guides/make_screenshots.py
 ```
 
-The PSF calculator's OpenGL volume view cannot render offscreen; its figure
-comes from `docs/guides/make_screenshot_psf.py`, run in its own process.
+The calculators and generators that are native emtk apps (PSF, RICS precision, phasor, FCS
+saturation, lifetime-FCS simulator, IRF estimator, synthetic decay, H2MM) are rendered headlessly
+by `emtk.testing.Driver` (`docs/guides/screenshots/emtk_shot.py`, no Qt); the PSF figure comes
+from `docs/guides/make_screenshot_psf.py`.
 
 The per-guide screenshots of guides 02–67 and 83–85 live in
 `docs/guides/screenshots/`, one module per range of guides; run one module per

@@ -3,7 +3,7 @@ type: Plugin Reference
 title: Anisotropy-Wizard
 description: 'Guided setup of a linked VV/VH global time-resolved anisotropy fit: load polarised decays, background-correct the IRFs, set instrument corrections and define lifetime/rotation spectra.'
 resource: chisurf/plugins/fluorescence_decay/tr_anisotropy/
-tags: [reference, plugins, tr-anisotropy, spectroscopy, fluorescence-decay]
+tags: [reference, plugins, tr-anisotropy, spectroscopy, fluorescence-decay, decay]
 anchor: plugin-tr_anisotropy
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -19,7 +19,7 @@ Guided setup of a linked VV/VH global time-resolved anisotropy fit: load polaris
 | --- | --- |
 | Plugin id | `tr_anisotropy` |
 | Menu path | Spectroscopy → Decay → **Anisotropy-Wizard** |
-| Categories | Spectroscopy, Fluorescence decay |
+| Categories | Spectroscopy, Fluorescence decay, Decay |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk, gui |
 | State namespace | `tr_anisotropy` |
@@ -58,12 +58,27 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Background from | `region_lb` | int |  | 0 … 1000000 (step 1) | First background channel, inclusive; choose a signal-free region. |
 | Background to | `region_ub` | int |  | 0 … 1000000 (step 1) | Last background channel boundary, exclusive. |
 
+### Instrument corrections
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| g-factor | `g_factor` | float |  | 0.001 … 100.0 (step 0.01) | Detection-efficiency ratio between the VV and VH channels; it scales the anisotropy as a whole. |
+| l1 | `l1` | float |  | -10.0 … 10.0 (step 0.01) | Channel-mixing correction l1 of the parallel channel (high-aperture objectives). |
+| l2 | `l2` | float |  | -10.0 … 10.0 (step 0.01) | Channel-mixing correction l2 of the perpendicular channel. |
+
 ### Lifetime spectrum
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | Amplitude | `new_amplitude` | float |  | 0.0 … 1000000.0 (step 0.1) | Amplitude of the component to add. |
 | Lifetime (ns) | `new_value` | float |  | 0.001 … 1000000.0 (step 0.1) | Lifetime of the component to add, in nanoseconds. |
+
+### Rotation spectrum
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Amplitude | `new_amplitude` | float |  | 0.0 … 1000000.0 (step 0.1) | Amplitude of the component to add. |
+| Correlation time (ns) | `new_value` | float |  | 0.001 … 1000000.0 (step 0.1) | Rotational correlation time of the component to add, in nanoseconds. |
 
 ## Theory and workflow
 

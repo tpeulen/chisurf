@@ -231,7 +231,7 @@ until tttrlib ran the whole pipeline itself; the numbers below are from that
 port). This replaced two external packages, `hdbscan` and `scikit-learn`, both
 of which are the references it has to beat. See the
 [concept page](../concepts/density_clustering.md) for the method and the
-[OKF concept](../../okf/subsystems/machine-learning.md) for the implementation.
+OKF concept `okf/subsystems/machine-learning.md` for the implementation.
 
 The work unit is a **complete clustering**: core distances, the
 mutual-reachability spanning tree, the condensed tree and the excess-of-mass
@@ -306,7 +306,7 @@ Read three things out of it:
    slower here, because its shared candidate state confines it to one core — but
    moving the candidate comparison out of squared-distance space. That removed a
    square root per candidate from the inner loop and, incidentally, fixed a
-   tie-break bug; see the [OKF concept](../../okf/subsystems/machine-learning.md).
+   tie-break bug; see the OKF concept `okf/subsystems/machine-learning.md`.
 3. **The compiled kernel was worth 3× to 60×** over the in-tree fallback, which
    produced identical labels and only cost time. That is why the fallback is
    gone rather than kept: a second implementation that is never exercised is one

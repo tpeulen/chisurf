@@ -3,7 +3,7 @@ type: Plugin Reference
 title: Burst-wise FCS
 description: Compute fluorescence correlation functions on a per-burst basis from Burst-ID (.bst) / BUR files.
 resource: chisurf/plugins/burst/burst_fcs_correlator/
-tags: [reference, plugins, burst-fcs-correlator, spectroscopy, fluorescence-correlation-spectroscopy]
+tags: [reference, plugins, burst-fcs-correlator, spectroscopy, fluorescence-correlation-spectroscopy, correlation]
 anchor: plugin-burst_fcs_correlator
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -19,7 +19,7 @@ Compute fluorescence correlation functions on a per-burst basis from Burst-ID (.
 | --- | --- |
 | Plugin id | `burst_fcs_correlator` |
 | Menu path | Spectroscopy → Correlation → **Burst-wise FCS** |
-| Categories | Spectroscopy, Fluorescence Correlation Spectroscopy |
+| Categories | Spectroscopy, Fluorescence Correlation Spectroscopy, Correlation |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk, gui, services |
 | State namespace | `burst_fcs_correlator` |

@@ -21,7 +21,7 @@ Combined heteroFRET and homoFRET parameter calculator.
 | Menu path | Main → Tools → **FRET-Calculator** |
 | Categories | Main, Tools |
 | Version | 1.0.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `fret_calculator` |
 
 ## Parameters

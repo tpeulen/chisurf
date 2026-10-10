@@ -3,7 +3,7 @@ type: Plugin Reference
 title: CLSM Generator
 description: Generate a synthetic CLSM photon image from an intensity image + per-detector lifetime map(s).
 resource: chisurf/plugins/microscopy/clsm_generator/
-tags: [reference, plugins, clsm-generator, imaging, simulate]
+tags: [reference, plugins, clsm-generator, spectroscopy, imaging, simulate]
 anchor: plugin-clsm_generator
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -19,7 +19,7 @@ Generate a synthetic CLSM photon image from an intensity image + per-detector li
 | --- | --- |
 | Plugin id | `clsm_generator` |
 | Menu path | Spectroscopy → Imaging → Simulate → **CLSM Generator** |
-| Categories | Imaging, Simulate |
+| Categories | Spectroscopy, Imaging, Simulate |
 | Version | 1.0.0 |
 | Surfaces | emtk, gui |
 | State namespace | `clsm_generator` |
@@ -43,7 +43,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Dwell | `dwell` | float |  | 0.0001 … 100.0 | Per-pixel dwell time (simulator macro-time units). |
 | Micro-time channels | `n_micro` | int |  | 8 … 65536 | Number of micro-time (TAC) channels. |
 | Channel width (ns) | `dt` | float |  | 0.0001 … 10.0 | Micro-time channel width; the excitation period is n_micro × dt. |
-| Brightness | `brightness_scale` | float |  | 1.0 … 1000000.0 | Peak per-pixel brightness (the brightest pixel). |
+| Brightness | `brightness_scale` | float |  | 1.0 … 1000000.0 | Peak photon emission rate per detector at the brightest input pixel. Counts also depend on dwell time and the excitation profile. |
 | IRF centre | `irf_center` | float |  | 0.0 … 100000.0 | Gaussian IRF centre (micro-time channels). |
 | IRF σ | `irf_sigma` | float |  | 0.1 … 10000.0 | Gaussian IRF width (micro-time channels). |
 | τ levels | `n_lifetime_levels` | int |  | 1 … 256 | Quantisation levels for the lifetime axis (more = finer, slower). |

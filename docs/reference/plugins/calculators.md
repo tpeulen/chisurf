@@ -21,7 +21,7 @@ Hub that groups ChiSurf's FRET-line, FRET/homoFRET, FCS and phasor-plot calculat
 | Menu path | Tools → Calculators → **Calculators** |
 | Categories | Tools, Calculators |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 | State namespace | `calculators` |
 
 ## Parameters
@@ -32,3 +32,4 @@ This plugin's window is an EMTK app: its controls and tables are described in th
 
 - Plugin package: `chisurf/plugins/calculator/hub/`
 - Manifest: {src}`chisurf/plugins/calculator/hub/manifest.json`
+- UI spec: {src}`chisurf/plugins/calculator/hub/gui/hub.view.json`

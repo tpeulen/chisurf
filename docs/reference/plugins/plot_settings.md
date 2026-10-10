@@ -31,7 +31,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Active backend | `backend` | choice |  | choices: `backends` | Rendering backend for chiplot panels: emtk is the native renderer, pyqtgraph the legacy one. It is used by plots created after you apply the change. |
+| Active backend | `backend` | choice |  | choices: `backends` | Rendering backend for chiplot panels: emtk is the native renderer and the only one (the pyqtgraph backend was removed). It is used by plots created after you apply the change. |
 
 ### Colors
 

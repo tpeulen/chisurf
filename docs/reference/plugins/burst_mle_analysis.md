@@ -54,6 +54,15 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Window stop [bin] | `micro_time_stop` | int |  | 1 … 100000 | Micro-time bin after the last bin of the fit window. Leave out the noisy tail. |
 | Min photons | `min_photons` | int |  | 2 … 100000 | A burst with fewer photons in the fit window is not fitted (its lifetime is left empty). |
 
+### Measured IRF and background
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| IRF model | `irf_model` | choice |  | choices: `irf_model_choices` | Shape of the IRF that Auto IRF/background estimates from the non-burst photons. Gaussian: a Gaussian fitted to the prompt, which cannot follow the slow fluorescent tail (recommended). Skewed: a skew-normal fit for an asymmetric detector response. Experimental: the raw baseline-subtracted histogram. A measured IRF file replaces the estimate. |
+| IRF: one for all | `irf_one_for_all` | bool |  |  | The IRF files serve every detector; each detector reads its own channels from them. Off: files are set for the selected detector only. |
+| Background: one for all | `bg_one_for_all` | bool |  |  | The background files serve every detector; each detector reads its own channels from them. Off: files are set for the selected detector only. |
+| Save VV/VHs | `save_vv_vhs` | bool |  |  | Write the VV and VH histogram of every IRF or background file beside it (<file>_<channels>.dat) when it is read. |
+
 ### IRF
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
@@ -67,6 +76,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | VH threshold | `irf_threshold_vh` | float |  | 0.0 … 1.0 | IRF bins below this fraction of the perpendicular IRF maximum are zeroed. |
 | 2I*: P+2S | `p2s_twoIstar` | bool |  |  | Use the P+2S form of the 2I* statistic. |
 | BIFL scatter | `BIFL_scatter` | bool |  |  | Treat the scattered light as burst-integrated fluorescence lifetime scatter (soft). |
+| Opt iterations | `opt_iterations` | int |  | 5 … 999 | Number of fits the Opt button may spend searching the VH shift, sub-bin shifts, IRF window and IRF thresholds for the lowest 2I*. |
 
 ### H2MM states
 

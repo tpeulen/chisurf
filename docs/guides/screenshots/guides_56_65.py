@@ -13,17 +13,24 @@ import pathlib, tempfile, time
 from common import FIG, _pump  # noqa: F401
 
 def _grab_56_fcs_saturation():
-    from chisurf.plugins.calculator.fcs_saturation_calc.gui.tool import SaturationCalculatorTool
-    tool = SaturationCalculatorTool()
-    tool.resize(1900, 1000); tool.show(); _pump(0.5)
-    tool.power_mW = 2.0
-    tool._on_compute(); _pump(2)
-    tool.form.sync_fields(); _pump(1)
-    import re
-    print("info", re.sub(r"<[^>]+>", " ", tool._info_summary)[:900], flush=True)
-    print("power", tool.power_mW, "wl", tool.wavelength_nm, flush=True)
-    tool.grab().save(str(FIG / "fcs_saturation_tool.png"))
-    return tool
+    """The saturation calculator (emtk window, FCS curve tab) on its default Rhodamine 6G scheme at 2 mW."""
+    from emtk.testing import Driver
+
+    from emtk_shot import app_from, render
+
+    app = app_from("fcs_saturation")
+    driver = Driver(app, (1500, 900))
+    driver.frame(3)
+    app.model.power_mW = 2.0
+    app.compute()
+    app.select_tab("FCS curve")
+    driver.frame(3)
+    print("power", app.model.power_mW, "wl", app.model.wavelength_nm, flush=True)
+    render(app, "fcs_saturation_tool.png", driver=driver)
+    app.select_tab("Info")
+    driver.frame(3)
+    driver.screenshot("/tmp/fcs_saturation_info.png")  # read it: its numbers are the caption's
+    return app
 
 
 def _grab_57_mfd_fit():

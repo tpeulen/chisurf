@@ -16,7 +16,7 @@ The controls live in `modules/chimol/chimol/emtk/` — **emtk**, the
 **Embeddable iMmediate-mode ToolKit** (called cmtk, Canvas Model Toolkit, until 2026-09-16),
 chimol's in-viewport widget/plot namespace. ChiSurf
 reaches emtk **via chimol**, and chimol independence
-([`okf/plugins/chimol-relocation.md`](../../okf/plugins/chimol-relocation.md))
+(`okf/plugins/chimol-relocation.md`)
 comes first — the ChiSurf↔emtk interface is still floating. Until 2026-08-13 the
 widgets lived in a sibling package called `renderer/ui/`; that package was
 merged into `emtk/` so chimol has one widget namespace, alongside the plotting

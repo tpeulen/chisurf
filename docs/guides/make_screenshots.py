@@ -389,15 +389,16 @@ def _grab_precision_tool():
     sits *beside* the optimum rather than on it, so the figure shows the marker
     off the minimum, which is the thing the tool exists to tell you.
     """
-    from chisurf.plugins.calculator.rics_precision.gui.tool import RicsPrecisionTool
+    from screenshots.emtk_shot import app_from, render, wait
 
-    tool = RicsPrecisionTool()
-    tool.model.compute()
-    tool.resize(1400, 760)
-    tool.show()
-    tool._refresh()
-    QApplication.instance().processEvents()
-    _grab(tool, "precision_workspace.png")
+    app = app_from("rics_precision")
+    from emtk.testing import Driver
+
+    driver = Driver(app, (1400, 760))
+    driver.frame(2)
+    app.predict()
+    wait(driver, lambda: not app.job.busy)
+    render(app, "precision_workspace.png", driver=driver)
 
 
 def _grab_frc_tool():
@@ -1228,9 +1229,7 @@ def _grab_irf_estimator():
     response. The guide says so; this figure is the case where the assumption
     holds.
     """
-    from chisurf.plugins.fluorescence_decay.irf_estimator.gui.tool import (
-        IRFEstimatorTool,
-    )
+    from screenshots.emtk_shot import app_from, render, wait
 
     n, dt = 500, 0.1002
     t = np.arange(n) * dt
@@ -1240,18 +1239,17 @@ def _grab_irf_estimator():
     rng = np.random.default_rng(5)
     decay = rng.poisson(4.0e4 * conv / conv.max() + 8.0).astype(float)
 
-    tool = IRFEstimatorTool()
-    tool.resize(1300, 860)
-    tool.show()
-    QApplication.instance().processEvents()
-    tool._process_decay_data(np.column_stack((t, decay)), dt)
-    tool.data_info_label.setText(
-        "simulated decay \u2014 \u03c4 = 4.0 ns, IRF FWHM 1.18 ns at 5.0 ns"
-    )
-    QApplication.instance().processEvents()
-    tool.estimate_irf()
-    QApplication.instance().processEvents()
-    _grab(tool, "irf_estimator.png")
+    app = app_from("irf_estimator")
+    from emtk.testing import Driver
+
+    driver = Driver(app, (1300, 860))
+    driver.frame(2)
+    app.model.load_data(decay, dt=dt)
+    app.model.source_text = "simulated decay \u2014 \u03c4 = 4.0 ns, IRF FWHM 1.18 ns at 5.0 ns"
+    driver.frame(2)
+    app.start_estimate()
+    wait(driver, lambda: app.future is None)
+    render(app, "irf_estimator.png", driver=driver)
 
 
 def _grab_console():
@@ -1985,9 +1983,7 @@ def _grab_synthetic_decay():
     """
     import numpy as np
 
-    from chisurf.plugins.fluorescence_decay.synthetic_decay.gui.tool import (
-        SyntheticDecayTool,
-    )
+    from screenshots.emtk_shot import app_from, render
 
     ex = pathlib.Path("chisurf") / "plugins" / "fluorescence_decay" / "lltf" / "example"
     irf = np.loadtxt(ex / "IRF_D0.dat")[:, 1]
@@ -1996,50 +1992,37 @@ def _grab_synthetic_decay():
     irf_file = pathlib.Path(tempfile.mkdtemp(prefix="synth_")) / "irf_32ps.txt"
     np.savetxt(irf_file, irf32)
 
-    tool = SyntheticDecayTool()
-    tool.resize(760, 1180)
-    m = tool.model
+    app = app_from("synthetic_decay")
+    from emtk.testing import Driver
+
+    driver = Driver(app, (1400, 900))
+    driver.frame(2)
+    m = app.model
     m.n_bins = 1024
     m.bin_width = 0.032
     m.irf_path = str(irf_file)
     m.shot_noise = True
     m.photon_count = 1e6
     m.seed = 1
-    tool.form.sync_fields()
     m.generate()
-    _pump(0.3)
-    _grab(tool, "synthetic_decay_vm.png")
+    render(app, "synthetic_decay_vm.png", driver=driver)
 
-    from qtpy import QtWidgets
-
-    # Switch mode the way a user does: click the radio button (the choice
-    # rebuilds the form), then open the collapsed corrections panel.
-    for rb in tool.findChildren(QtWidgets.QRadioButton):
-        if rb.text().startswith("VV/VH"):
-            rb.click()
-    _pump(0.3)
-    for b in tool.findChildren(QtWidgets.QAbstractButton):
-        if "detection corrections" in b.text():
-            b.click()
-    _pump(0.2)
+    # The same spectrum as a polarized pair, as a user switches the mode.
+    m.polarization = "vv/vh"
     m.g_factor = 1.1
     m.rotation_rows = [{"b": 0.38, "rho": 2.0}]
-    tool.form.sync_fields()
-    for b in tool.findChildren(QtWidgets.QAbstractButton):
-        if b.text().endswith("Generate") and b.isVisible():
-            b.click()
-            break
-    _pump(0.3)
-    _grab(tool, "synthetic_decay_vvvh.png")
+    driver.frame(2)
+    m.generate()
+    render(app, "synthetic_decay_vvvh.png", driver=driver)
 
 
 def _grab_phasor_calculator():
     """Phasor calculator: 80 MHz, grid + ticks, FRET for tau_D0 = 4 ns, a 0.6/5 ns mixture."""
-    from chisurf.plugins.calculator.phasor_calculator.gui.tool import PhasorCalculatorTool
     from chisurf.plugins.microscopy.img_pixel_phasor import analysis
+    from screenshots.emtk_shot import app_from, render
 
-    tool = PhasorCalculatorTool()
-    m = tool._model
+    app = app_from("phasor_calculator")
+    m = app.tool._model
     g1, s1 = analysis.lifetime_to_phasor(0.6, 80.0)
     g2, s2 = analysis.lifetime_to_phasor(5.0, 80.0)
     m.g1, m.s1, m.g2, m.s2 = float(g1), float(s1), float(g2), float(s2)
@@ -2052,21 +2035,16 @@ def _grab_phasor_calculator():
     gm = 0.5 * g1 + 0.5 * g2
     sm = 0.5 * s1 + 0.5 * s2
     m.cursor_g, m.cursor_s, m.cursor_radius = float(gm), float(sm), 0.04
-    tool._form.sync_fields()
-    tool._form.refresh_plots()
-    from qtpy import QtWidgets
-    for b in tool.findChildren(QtWidgets.QPushButton):
-        if "Results" in b.text():
-            b.click()
-    tool.resize(900, 640)
-    _grab(tool, "phasor_calculator_controls.png")
-    for tb in tool.findChildren(QtWidgets.QTabBar):
-        for i in range(tb.count()):
-            if tb.tabText(i) == "Phasor plot":
-                tb.setCurrentIndex(i)
-    tool._form.refresh_plots()
-    _grab(tool, "phasor_calculator.png")
-    return tool
+    driver = render(app, "phasor_calculator.png", (1100, 760))
+    # Open the three collapsed groups the way a user does, then grab the controls again.
+    from emtk.testing import Driver
+
+    driver = Driver(app, (1000, 1100))
+    driver.frame(3)
+    for title in ("Cursor", "Mixing region", "Two-component line"):  # bottom first: opening one moves the rest
+        driver.click(title)
+    render(app, "phasor_calculator_controls.png", driver=driver)
+    return app
 
 
 

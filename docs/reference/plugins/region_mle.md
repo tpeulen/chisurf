@@ -3,7 +3,7 @@ type: Plugin Reference
 title: Region MLE
 description: Region MLE lifetime analysis from TTTR imaging data (PTU).
 resource: chisurf/plugins/microscopy/region_mle/
-tags: [reference, plugins, region-mle, imaging, lifetime]
+tags: [reference, plugins, region-mle, spectroscopy, imaging, lifetime]
 anchor: plugin-region_mle
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -19,7 +19,7 @@ Region MLE lifetime analysis from TTTR imaging data (PTU).
 | --- | --- |
 | Plugin id | `region_mle` |
 | Menu path | Spectroscopy → Imaging → Lifetime → **Region MLE** |
-| Categories | Imaging, Lifetime |
+| Categories | Spectroscopy, Imaging, Lifetime |
 | Version | 2.1.0 |
 | Surfaces | cli, emtk, gui, services |
 | State namespace | `region_mle` |

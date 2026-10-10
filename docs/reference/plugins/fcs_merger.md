@@ -3,7 +3,7 @@ type: Plugin Reference
 title: FCS-Merger
 description: Merge / average multiple FCS correlation curves to improve signal-to-noise.
 resource: chisurf/plugins/fcs/fcs_merger/
-tags: [reference, plugins, fcs-merger, spectroscopy, fluorescence-correlation-spectroscopy]
+tags: [reference, plugins, fcs-merger, spectroscopy, fluorescence-correlation-spectroscopy, correlation]
 anchor: plugin-fcs_merger
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -19,7 +19,7 @@ Merge / average multiple FCS correlation curves to improve signal-to-noise.
 | --- | --- |
 | Plugin id | `fcs_merger` |
 | Menu path | Spectroscopy → Correlation → **FCS-Merger** |
-| Categories | Spectroscopy, Fluorescence Correlation Spectroscopy |
+| Categories | Spectroscopy, Fluorescence Correlation Spectroscopy, Correlation |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk, services |
 | State namespace | `fcs_merger` |

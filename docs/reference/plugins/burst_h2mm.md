@@ -21,7 +21,7 @@ Photon-by-photon Hidden Markov Model (H2MM) analysis of single-molecule FRET bur
 | Menu path | Spectroscopy → Single-Molecule → **H2MM** |
 | Categories | Spectroscopy, Single-Molecule |
 | Version | 1.0.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `burst_h2mm` |
 
 ## Parameters
@@ -32,7 +32,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Burst folder | `data_folder` | directory |  |  | Folder with the burst (.bur) tables of a finished burst analysis; the photons they name are read from beside them. |
+| Burst folder | `data_folder` | directory |  |  | Folder with the burst (.bur) tables of a finished burst analysis, or a measurement .pto container; the photons they name are read from beside them (a container holds them). |
 | Donor detector | `donor` | choice |  | choices: `detector_names` | Detector of the donor photons (stream 0): apparent FRET E = A/(A+D). Define detectors in the Detector setup window. |
 | Acceptor detector | `acceptor` | choice |  | choices: `detector_names` | Detector of the acceptor photons (stream 1). Swapping donor and acceptor still converges and looks plausible: check the assignment. |
 | Aex detector | `aex` | choice |  | choices: `aex_options` | Optional third stream (usALEX / PIE): acceptor photons under acceptor excitation. Gives every state a stoichiometry. |

@@ -3,7 +3,7 @@ type: Plugin Reference
 title: 2D-FLCS
 description: 'Two-dimensional fluorescence lifetime correlation spectroscopy (2D-FLCS): build 2D fluorescence-decay correlation maps from TTTR photon streams and resolve lifetime species and exchange dynamics.'
 resource: chisurf/plugins/fcs/flc_2d/
-tags: [reference, plugins, flc-2d, spectroscopy, fluorescence-correlation-spectroscopy]
+tags: [reference, plugins, flc-2d, spectroscopy, fluorescence-correlation-spectroscopy, correlation]
 anchor: plugin-flc-2d
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -19,9 +19,9 @@ Two-dimensional fluorescence lifetime correlation spectroscopy (2D-FLCS): build 
 | --- | --- |
 | Plugin id | `flc-2d` |
 | Menu path | Spectroscopy → Correlation → **2D-FLCS** |
-| Categories | Spectroscopy, Fluorescence Correlation Spectroscopy |
+| Categories | Spectroscopy, Fluorescence Correlation Spectroscopy, Correlation |
 | Version | 1.1.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `flc_2d` |
 
 ## Parameters

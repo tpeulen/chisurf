@@ -3,7 +3,7 @@ type: Plugin Reference
 title: Diffusion/Volume Calculator
 description: FCS confocal diffusion/volume calculator (tau, D, r_h, Veff, concentration).
 resource: chisurf/plugins/fcs/fcs_calculator/
-tags: [reference, plugins, fcs-calculator, spectroscopy, fluorescence-correlation-spectroscopy]
+tags: [reference, plugins, fcs-calculator, spectroscopy, fluorescence-correlation-spectroscopy, correlation]
 anchor: plugin-fcs_calculator
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -19,7 +19,7 @@ FCS confocal diffusion/volume calculator (tau, D, r_h, Veff, concentration).
 | --- | --- |
 | Plugin id | `fcs_calculator` |
 | Menu path | Spectroscopy → Correlation → **Diffusion/Volume Calculator** |
-| Categories | Spectroscopy, Fluorescence Correlation Spectroscopy |
+| Categories | Spectroscopy, Fluorescence Correlation Spectroscopy, Correlation |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk, gui, services |
 | State namespace | `fcs_calculator` |

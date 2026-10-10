@@ -162,7 +162,7 @@ $f \in \{0, 0.25, 0.5, 0.75, 1\}$.
 - Hidden states from the binned trace: {ref}`concept-hidden-markov-models`;
   without bins: {ref}`concept-photon-by-photon-kinetics`.
 - Implementation: binning per detector
-  {src}`chisurf/plugins/tttr/intensity_trace/__init__.py#process_ptu`, the HMM
+  {src}`chisurf/plugins/tttr/trace_browser/core/binning.py#bin_trace`, the HMM
   fit {src}`chisurf/plugins/core/hmm/core/analysis.py#fit_traces`, dwell times
   {src}`chisurf/plugins/core/hmm/core/analysis.py#dwell_times`.
 - Tools in ChiSurf: **Intensity trace** (`chisurf/plugins/tttr/intensity_trace/`) bins a TTTR file per detector, histograms the counts and fits an HMM.

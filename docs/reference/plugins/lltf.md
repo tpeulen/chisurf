@@ -3,7 +3,7 @@ type: Plugin Reference
 title: Lazy Lifetime Analysis
 description: Lazy Lifetime Analysis for TCSPC fluorescence decay data.
 resource: chisurf/plugins/fluorescence_decay/lltf/
-tags: [reference, plugins, lltf, spectroscopy, fluorescence-decay]
+tags: [reference, plugins, lltf, spectroscopy, fluorescence-decay, decay]
 anchor: plugin-lltf
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -19,7 +19,7 @@ Lazy Lifetime Analysis for TCSPC fluorescence decay data.
 | --- | --- |
 | Plugin id | `lltf` |
 | Menu path | Spectroscopy → Decay → **Lazy Lifetime Analysis** |
-| Categories | Spectroscopy, Fluorescence decay |
+| Categories | Spectroscopy, Fluorescence decay, Decay |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk |
 | State namespace | `lltf` |

@@ -70,7 +70,7 @@ donor.model.parameters_all_dict["tau1"].link = fret.model.parameters_all_dict["t
 ```
 
 Through the action layer, which records the operation in the
-[history](../development/index.rst) projection:
+[history](../development/index.md) projection:
 
 ```python
 chisurf.core.actions.dispatch(

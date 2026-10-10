@@ -3,7 +3,7 @@ type: Plugin Reference
 title: Image Tools
 description: 'Unified imaging toolbox: Image Browser, Drift Correction, FRC Resolution, Flow Maps, Particle Tracking, Colocalization, the per-pixel maps, CLSM Draw, Region MLE, PSF Determination, CLSM Generator.'
 resource: chisurf/plugins/microscopy/imaging_tools/
-tags: [reference, plugins, imaging-tools, imaging]
+tags: [reference, plugins, imaging-tools, spectroscopy, imaging]
 anchor: plugin-imaging_tools
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -19,7 +19,7 @@ Unified imaging toolbox: Image Browser, Drift Correction, FRC Resolution, Flow M
 | --- | --- |
 | Plugin id | `imaging_tools` |
 | Menu path | Spectroscopy → Imaging → **Image Tools** |
-| Categories | Imaging |
+| Categories | Spectroscopy, Imaging |
 | Version | 1.0.0 |
 | Surfaces | emtk, gui |
 

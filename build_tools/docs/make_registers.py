@@ -111,13 +111,34 @@ def _resolve_image(page: pathlib.Path, src: str) -> str:
         return src
 
 
+def _root_links(caption: str, page: pathlib.Path) -> str:
+    """Make a caption's relative ``(x.md)`` links root-relative.
+
+    The register is a page in another directory, so a link that was right beside the
+    figure resolves to nothing there.
+    """
+    def fix(match):
+        target = match.group(2)
+        if target.startswith(("/", "#", "http", "mailto:")) or ".md" not in target:
+            return match.group(0)
+        resolved = (page.parent / target.split("#", 1)[0]).resolve()
+        anchor = target[len(target.split("#", 1)[0]):]
+        try:
+            rel = resolved.relative_to(DOCS.resolve()).as_posix()
+        except ValueError:
+            return match.group(0)
+        return f"{match.group(1)}(/{rel}{anchor})"
+
+    return re.sub(r"(\[[^\]]*\])\(([^)\s]+)\)", fix, caption)
+
+
 def collect_figures() -> list[dict]:
     """Every figure used by a documentation page."""
     figures: list[dict] = []
     for page in pages():
         text = page.read_text(encoding="utf-8", errors="ignore")
         for match in _MYST_FIGURE.finditer(text):
-            caption = " ".join(match.group("caption").split())
+            caption = _root_links(" ".join(match.group("caption").split()), page)
             options = dict(
                 re.findall(r":(\w[\w-]*):\s*(.*)", match.group("options") or "")
             )

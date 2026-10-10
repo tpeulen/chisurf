@@ -2,7 +2,7 @@ API Reference
 =============
 
 Plot axis labels and units
--------------------------
+--------------------------
 
 Use ``chisurf.gui.chiplot`` for plotting. Axis text and units are independent
 metadata on the existing ``Plot.set_labels`` API::
@@ -97,7 +97,7 @@ Server Infrastructure
    :show-inheritance:
 
 Source resolution and shell data
--------------------------------
+--------------------------------
 
 Widget source resolvers use the Python class and its inspectable source line.
 Obsolete Designer-path fallback metadata is no longer produced or read. The

@@ -21,7 +21,7 @@ Single-molecule fluorescence acquisition: stream photons from real TCSPC hardwar
 | Menu path | Tools → Views → **Acquisition** |
 | Categories | Tools, Views, Acquisition |
 | Version | 1.0.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `acq` |
 
 ## Parameters
@@ -57,11 +57,79 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Decay / intensity tab | `show_decay` | bool |  |  | Show the pipeline-derived decay and intensity tab. |
-| Correlation / quality tab | `show_correlation` | bool |  |  | Show the pipeline-derived correlation, burst, and phasor tab. |
-| Overview tab | `show_count_rate` | bool |  |  | Show decoded count, elapsed time, rate, and progress. |
-| Macrotime tab | `show_macrotime` | bool |  |  | Show the bounded macrotime interval count from the pipeline. |
-| MCS trace tab | `show_mcs` | bool |  |  | Show the pipeline MCS trace sample count. |
+| Decay plot | `show_decay` | bool |  |  | Show the live decay plot tab. |
+| Correlation plot | `show_correlation` | bool |  |  | Show the live correlation plot tab. |
+| Count-rate plot | `show_count_rate` | bool |  |  | Show the live count-rate plot tab. |
+| Macrotime plot | `show_macrotime` | bool |  |  | Show the live macrotime plot tab. |
+| MCS plot | `show_mcs` | bool |  |  | Show the live MCS trace tab. |
+
+### Decay
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Curve 0 | `decay_show0` | bool |  |  | Draw decay window 0. |
+| Curve 1 | `decay_show1` | bool |  |  | Draw decay window 1. |
+| Curve 2 | `decay_show2` | bool |  |  | Draw decay window 2. |
+| Curve 3 | `decay_show3` | bool |  |  | Draw decay window 3. |
+| Log Y scale | `decay_log_y` | bool |  |  | Logarithmic counts axis; empty bins are not drawn. |
+| Update every (snapshots) | `decay_every` | int |  | 1 … 1000 (step 1) | Redraw this plot only on every N-th published snapshot (a snapshot is one data chunk batch); raise it to spare the CPU on fast streams. |
+
+### Correlation
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Curve 0 channel A | `corr_a0` | int |  | -1 … 4095 (step 1) | Routing channel of the first side; -1 means every photon. Applied when the acquisition starts. |
+| channel B | `corr_b0` | int |  | -1 … 4095 (step 1) | Routing channel of the second side; equal to A gives the autocorrelation, -1 means every photon. |
+| Curve 0 | `corr_show0` | bool |  |  | Compute and draw this correlation curve. |
+| Curve 1 channel A | `corr_a1` | int |  | -1 … 4095 (step 1) | Routing channel of the first side; -1 means every photon. Applied when the acquisition starts. |
+| channel B | `corr_b1` | int |  | -1 … 4095 (step 1) | Routing channel of the second side; equal to A gives the autocorrelation, -1 means every photon. |
+| Curve 1 | `corr_show1` | bool |  |  | Compute and draw this correlation curve. |
+| Curve 2 channel A | `corr_a2` | int |  | -1 … 4095 (step 1) | Routing channel of the first side; -1 means every photon. Applied when the acquisition starts. |
+| channel B | `corr_b2` | int |  | -1 … 4095 (step 1) | Routing channel of the second side; equal to A gives the autocorrelation, -1 means every photon. |
+| Curve 2 | `corr_show2` | bool |  |  | Compute and draw this correlation curve. |
+| Curve 3 channel A | `corr_a3` | int |  | -1 … 4095 (step 1) | Routing channel of the first side; -1 means every photon. Applied when the acquisition starts. |
+| channel B | `corr_b3` | int |  | -1 … 4095 (step 1) | Routing channel of the second side; equal to A gives the autocorrelation, -1 means every photon. |
+| Curve 3 | `corr_show3` | bool |  |  | Compute and draw this correlation curve. |
+| Log lag axis | `corr_log_x` | bool |  |  | Logarithmic lag axis (the correlator bins are logarithmic). |
+| Update every (snapshots) | `corr_every` | int |  | 1 … 1000 (step 1) | Redraw this plot only on every N-th published snapshot (a snapshot is one data chunk batch); raise it to spare the CPU on fast streams. |
+
+### Count rate
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Curve 0 channel | `rate_ch0` | int |  | -1 … 4095 (step 1) | Routing channel whose count rate is drawn; -1 draws the sum over all channels. |
+| Curve 0 | `rate_show0` | bool |  |  | Draw count-rate curve 0. |
+| Curve 1 channel | `rate_ch1` | int |  | -1 … 4095 (step 1) | Routing channel whose count rate is drawn; -1 draws the sum over all channels. |
+| Curve 1 | `rate_show1` | bool |  |  | Draw count-rate curve 1. |
+| Curve 2 channel | `rate_ch2` | int |  | -1 … 4095 (step 1) | Routing channel whose count rate is drawn; -1 draws the sum over all channels. |
+| Curve 2 | `rate_show2` | bool |  |  | Draw count-rate curve 2. |
+| Curve 3 channel | `rate_ch3` | int |  | -1 … 4095 (step 1) | Routing channel whose count rate is drawn; -1 draws the sum over all channels. |
+| Curve 3 | `rate_show3` | bool |  |  | Draw count-rate curve 3. |
+| All channels | `rate_all_show` | bool |  |  | Draw the sum over all windows. |
+| Log Y scale | `rate_log_y` | bool |  |  | Logarithmic rate axis. |
+| Rolling window | `rate_rolling` | bool |  |  | Show only the most recent points; off shows the whole retained history. |
+| Window size (points) | `rate_window` | int |  | 10 … 10000 (step 1) | Number of most recent count-rate points kept in the rolling window. |
+| Binning (points per bin) | `rate_binning` | int |  | 1 … 100 (step 1) | Average this many consecutive points into one; the bin count shown is the window size divided by this. |
+| Update every (snapshots) | `rate_every` | int |  | 1 … 1000 (step 1) | Redraw this plot only on every N-th published snapshot (a snapshot is one data chunk batch); raise it to spare the CPU on fast streams. |
+
+### MCS
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Bin width (ms) | `mcs_bin_width_ms` | float |  | 0.1 … 100.0 (step 0.1) | Width of one MCS intensity bin. Applied when the acquisition starts. |
+| Rollaround (s) | `mcs_rollaround_s` | float |  | 0.01 … 100.0 (step 0.1) | Length of the displayed MCS window; older bins are dropped, which bounds memory. Applied when the acquisition starts. |
+| Update every (snapshots) | `mcs_every` | int |  | 1 … 100 (step 1) | Redraw this plot only on every N-th published snapshot (a snapshot is one data chunk batch); raise it to spare the CPU on fast streams. |
+| Manual Y range | `mcs_manual_y` | bool |  |  | Fix the counts axis to the limits below instead of fitting the data. |
+| Y min | `mcs_y_min` | float |  | -1000000.0 … 1000000.0 (step 1.0) | Lower counts limit used with Manual Y range. |
+| Y max | `mcs_y_max` | float |  | -1000000.0 … 1000000.0 (step 1.0) | Upper counts limit used with Manual Y range. |
+
+### Macrotime
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Show macrotime plot | `macro_show` | bool |  |  | Draw the macrotime plot. |
+| Plot type | `macro_type` | choice |  | choices: dt, absolute | dt plots the inter-photon time against time; absolute plots the photon time stamps against photon index. |
+| Update every (snapshots) | `macro_every` | int |  | 1 … 1000 (step 1) | Redraw this plot only on every N-th published snapshot (a snapshot is one data chunk batch); raise it to spare the CPU on fast streams. |
 
 ## JSON-RPC methods
 
@@ -78,3 +146,4 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 - Plugin package: `chisurf/plugins/core/acq/`
 - Manifest: {src}`chisurf/plugins/core/acq/manifest.json`
 - UI spec: {src}`chisurf/plugins/core/acq/gui/acq_emtk.view.json`
+- UI spec: {src}`chisurf/plugins/core/acq/gui/live_plots.view.json`

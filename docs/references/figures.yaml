@@ -2673,13 +2673,14 @@ guides/figures/57_mfd_marginals.png:
   pages:
   - docs/guides/57_mfd_fitting.md
 
-guides/figures/65_live_acquisition.png:
+guides/figures/65_acquisition_fit_window.png:
   kind: screenshot
-  origin: docs/guides/screenshots/guides_56_65.py::emit
+  origin: test/gui/acquisition_fit_window_probe.py
   recipe: >-
-    Run the script named in origin (see the function that saves 65_live_acquisition.png);
-    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
-    renderer) into the state the guide describes and writes the PNG here.
+    Run test/gui/test_acquisition_fit_window_screenshot.py with ACQ_SCREENSHOT_DIR
+    set to a folder; copy page_0_Decay.png from it to this path. The probe starts
+    Main offscreen, loads the acquisition plugin, waits for the demo stream to
+    finish and grabs the Acquisition fit window.
   pages:
   - docs/guides/65_live_acquisition.md
 
@@ -3713,7 +3714,7 @@ guides/figures/ndxplorer_session_restored.png:
 
 guides/figures/phasor_calculator.png:
   kind: screenshot
-  origin: chisurf/plugins/calculator/phasor_calculator/tests/test_emtk_phasor_parity.py::test_port_is_qt_free
+  origin: docs/guides/make_screenshots.py::_grab_phasor_calculator
   recipe: >-
     Run the script named in origin (see the function that saves phasor_calculator.png);
     it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk

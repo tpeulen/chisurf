@@ -3,7 +3,7 @@ type: Plugin Reference
 title: IRF Estimation
 description: Blind IRF estimation from fluorescence decay data using truncated exponential fitting and Richardson-Lucy deconvolution.
 resource: chisurf/plugins/fluorescence_decay/irf_estimator/
-tags: [reference, plugins, irf-estimator, spectroscopy, fluorescence-decay]
+tags: [reference, plugins, irf-estimator, spectroscopy, fluorescence-decay, decay]
 anchor: plugin-irf_estimator
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -19,9 +19,9 @@ Blind IRF estimation from fluorescence decay data using truncated exponential fi
 | --- | --- |
 | Plugin id | `irf_estimator` |
 | Menu path | Spectroscopy → Decay → **IRF Estimation** |
-| Categories | Spectroscopy, Fluorescence decay |
+| Categories | Spectroscopy, Fluorescence decay, Decay |
 | Version | 2.0.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `irf_estimator` |
 
 ## Parameters

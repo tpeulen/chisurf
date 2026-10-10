@@ -89,7 +89,7 @@ good FCS curve at every one of those powers, and still fits.
 :name: fig-56-fcs-saturation-tool
 :width: 100%
 
-The calculator (emtk window, FCS curve tab) on its default Rhodamine 6G scheme at 0.2 mW and 488 nm
+The calculator (emtk window, FCS curve tab) on its default Rhodamine 6G scheme at 2 mW and 488 nm
 (ε = 80 000 M⁻¹cm⁻¹, `w_r` = 200 nm, `w_z` = 1000 nm, D = 400 µm²/s). The
 saturated curve (red) sits on its own one-component fit (grey) — residual below
 it — although it is 2.39× slower than the unperturbed Gaussian (blue). The

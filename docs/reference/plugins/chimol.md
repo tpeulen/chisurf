@@ -36,3 +36,4 @@ This plugin's window is an EMTK app: its controls and tables are described in th
 
 - Plugin package: `chisurf/plugins/chimol/`
 - Manifest: {src}`chisurf/plugins/chimol/manifest.json`
+- UI spec: {src}`chisurf/plugins/chimol/window.view.json`

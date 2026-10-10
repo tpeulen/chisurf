@@ -53,4 +53,4 @@ An existing Click parsing limitation remains: an eager option callback can regis
 
 Metadata-only discovery is not a sandbox: invoked plugin code is trusted code. This does not hot-reload already imported modules or refresh commands in an already registered `csc` group. A fresh CLI process sees installation/removal changes. Registry dependency ordering and the production CLI's metadata iteration remain separate concerns; command-alias ties across different IDs are not unified by this change.
 
-This contract is covered by `test/core/test_plugin_cli_robustness.py`, the shipped CLI declaration tests, metadata-reader tests and registry registration tests. See [the CLI architecture concept](../../okf/architecture/plugin-cli.md) for current evidence and the reproducible verification command.
+This contract is covered by `test/core/test_plugin_cli_robustness.py`, the shipped CLI declaration tests, metadata-reader tests and registry registration tests. See the CLI architecture concept `okf/architecture/plugin-cli.md` for current evidence and the reproducible verification command.

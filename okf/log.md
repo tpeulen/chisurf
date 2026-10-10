@@ -2,6 +2,10 @@
 
 ## 2026-10-10
 
+- PRD-154 W14: guide screenshots of the retired Qt tools are rendered from the emtk apps
+  (`docs/guides/screenshots/emtk_shot.py`, emtk Driver); docs registers and plugin pages regenerated;
+  11 orphan pages put in toctrees; `docs-html` exits 0 (1 autodoc warning). `docs-release` stays red only
+  at `docs-check-reviewed` (0 human-reviewed pages, 19 AI sign-offs stale) — the owner's review gate.
 - W7 tours: style_manager, code_editor, the games hub, structure_tools and ndX now build a guided tour
   whose awaited step the click-all drives (ndX gains `chisurf/plugins/ndxplorer/demo.py` and a Help >
   Guide menu); guardrail `test/gui/test_native_guides_wired.py`. Note: `check_plugin_guide.py --live`

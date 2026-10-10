@@ -3,7 +3,7 @@ type: Plugin Reference
 title: VV/VH Anisotropy Decay
 description: Compute and plot the anisotropy decay r(t) of a VV/VH file with a g-factor, backgrounds and a fractional VH shift.
 resource: chisurf/plugins/vv_vh_anisotropy/
-tags: [reference, plugins, vv-vh-anisotropy, spectroscopy, fluorescence-decay]
+tags: [reference, plugins, vv-vh-anisotropy, spectroscopy, fluorescence-decay, decay]
 anchor: plugin-vv_vh_anisotropy
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -19,7 +19,7 @@ Compute and plot the anisotropy decay r(t) of a VV/VH file with a g-factor, back
 | --- | --- |
 | Plugin id | `vv_vh_anisotropy` |
 | Menu path | Spectroscopy → Decay → **VV/VH Anisotropy Decay** |
-| Categories | Spectroscopy, Fluorescence decay |
+| Categories | Spectroscopy, Fluorescence decay, Decay |
 | Version | 1.0.0 |
 | Surfaces | emtk, gui |
 | State namespace | `vv_vh_anisotropy` |

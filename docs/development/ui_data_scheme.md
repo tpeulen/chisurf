@@ -31,7 +31,7 @@ Writing the scheme found nine such defects already shipped:
 
 | What was written | What happened |
 | --- | --- |
-| `rebuild_on_change` on three `value` sections | dropped — only `choice` implements it, [deliberately](#rebuild-on-change) |
+| `rebuild_on_change` on three `value` sections | dropped — only `choice` implements it, {ref}`deliberately <rebuild-on-change>` |
 | `kind: "combo"` on a `choice` | dropped — the key is `style` |
 | `kind: "path"` on two `value` sections | not an implemented kind, so both rendered as a plain string field with **no browse button** |
 | `n_col` on an `info`, `key` on an `info`, `hide_label` on a `value` | dropped |
@@ -127,7 +127,7 @@ spec = generate_starter_view_spec(my_model)
 
 The result passes `validate_view_spec` unchanged; edit it into the final spec.
 
-(#rebuild-on-change)=
+(rebuild-on-change)=
 ## `rebuild_on_change` is a `choice` key on purpose
 
 `ChoiceSection` explains it in its own docstring: a full rebuild is safe for a

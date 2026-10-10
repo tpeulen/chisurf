@@ -3,7 +3,7 @@ type: Plugin Reference
 title: Mean Micro-Time
 description: Per-pixel mean micro-time (arrival time) maps from TTTR imaging data.
 resource: chisurf/plugins/microscopy/img_pixel_micro_time/
-tags: [reference, plugins, img-pixel-micro-time, imaging]
+tags: [reference, plugins, img-pixel-micro-time, spectroscopy, imaging]
 anchor: plugin-img_pixel_micro_time
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -19,7 +19,7 @@ Per-pixel mean micro-time (arrival time) maps from TTTR imaging data.
 | --- | --- |
 | Plugin id | `img_pixel_micro_time` |
 | Menu path | Spectroscopy → Imaging → **Mean Micro-Time** |
-| Categories | Imaging |
+| Categories | Spectroscopy, Imaging |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk, gui |
 | State namespace | `img_pixel_micro_time` |

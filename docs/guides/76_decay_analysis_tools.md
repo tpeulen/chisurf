@@ -336,9 +336,8 @@ $r(t) = \sum_i b_i e^{-t/\rho_i}$. The two channels follow the forward model of
 :width: 70%
 
 The same spectrum as a polarized pair, $g = 1.1$, one rotation of 2 ns with
-$r_0 = 0.38$. VV starts above VH and the two converge as $r(t)$ decays. This
-older Qt capture contains a second action row; the native window keeps one
-**Generate / Save / Fit group** toolbar in both modes.
+$r_0 = 0.38$. VV starts above VH and the two converge as $r(t)$ decays. The
+native window keeps one **Generate / Save / Fit group** toolbar in both modes.
 ```
 
 *Actions* (toolbar) — **🧪 Generate** computes and plots; the status line

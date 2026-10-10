@@ -490,6 +490,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 - UI spec: {src}`chisurf/plugins/core/mmfdb_admin/gui/admin.view.json`
 - UI spec: {src}`chisurf/plugins/core/mmfdb_admin/gui/admin_panels.view.json`
 - UI spec: {src}`chisurf/plugins/core/mmfdb_admin/gui/connection_auth.view.json`
+- UI spec: {src}`chisurf/plugins/core/mmfdb_admin/gui/entity_extras.view.json`
 - UI spec: {src}`chisurf/plugins/core/mmfdb_admin/gui/optical_components/detector.view.json`
 - UI spec: {src}`chisurf/plugins/core/mmfdb_admin/gui/optical_components/dichroic.view.json`
 - UI spec: {src}`chisurf/plugins/core/mmfdb_admin/gui/optical_components/filter.view.json`

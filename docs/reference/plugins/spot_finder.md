@@ -3,7 +3,7 @@ type: Plugin Reference
 title: Spot Finder
 description: Detect spots and regions in imaging data and persist them, with their pixels, into the measurement's container.
 resource: chisurf/plugins/microscopy/spot_finder/
-tags: [reference, plugins, spot-finder, imaging, detection]
+tags: [reference, plugins, spot-finder, spectroscopy, imaging, detection]
 anchor: plugin-spot_finder
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -19,7 +19,7 @@ Detect spots and regions in imaging data and persist them, with their pixels, in
 | --- | --- |
 | Plugin id | `spot_finder` |
 | Menu path | Spectroscopy → Imaging → **Spot Finder** |
-| Categories | Imaging, Detection |
+| Categories | Spectroscopy, Imaging, Detection |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk, gui, services |
 | State namespace | `spot_finder` |

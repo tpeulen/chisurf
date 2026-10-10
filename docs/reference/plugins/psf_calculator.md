@@ -21,7 +21,7 @@ Compute and view a 3-D point-spread function: scalar, Airy or vectorial Richards
 | Menu path | Microscopy → **PSF Calculator** |
 | Categories | Microscopy, Optics |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 | State namespace | `psf_calculator` |
 
 ## Parameters
@@ -84,4 +84,3 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 - Plugin package: `chisurf/plugins/calculator/psf_calculator/`
 - Manifest: {src}`chisurf/plugins/calculator/psf_calculator/manifest.json`
 - UI spec: {src}`chisurf/plugins/calculator/psf_calculator/gui/psf_emtk.view.json`
-- UI spec: {src}`chisurf/plugins/calculator/psf_calculator/psf_calculator.view.json`

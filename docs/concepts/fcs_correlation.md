@@ -61,7 +61,6 @@ Two practical consequences follow from $G$ being a *statistical* quantity:
   indistinguishable by shape alone** — detector afterpulsing mimics fast
   photodynamics, and a slow drift mimics a slow diffusing component.
 
-(concept-fcs-photon-correlation)=
 Burst-wise correlations use selected photon intervals and declared channel
 pairs. This tool’s micro-time windows include the start channel and exclude
 the stop channel, matching BUR detector counts; an empty list is ungated.
@@ -71,6 +70,7 @@ photons contribute and the curve’s physical lag scale. Window resizing changes
 the display. See the [burst-wise workflow](../guides/16_fret_fcs.md) for the
 inputs and exports.
 
+(concept-fcs-photon-correlation)=
 ## Correlating photon time tags
 
 A TTTR file holds no intensity trace to correlate, only arrival times

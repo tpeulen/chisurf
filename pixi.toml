@@ -251,7 +251,7 @@ docs-html = { depends-on = ["docs-plugins", "docs-bibliography", "docs-frontmatt
 # Release gate: fails when a review-tracked page (docs/manual) is unreviewed or
 # has been edited since its sign-off. Sign pages off in the Help browser or with
 # `csc help review-set <path> --reviewer <name>`.
-docs-check-reviewed = { cmd = "python -m chisurf.core.cli help review-check" }
+docs-check-reviewed = { cmd = "csc help review-check" }
 # Production build: refuses to publish human-unchecked documentation.
 docs-release = { depends-on = ["docs-check-frontmatter", "docs-check-reviewed", "docs-html"] }
 

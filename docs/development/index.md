@@ -29,6 +29,7 @@ documentation_maintenance
 architecture
 architecture_client_server
 architecture_mvc_actions
+autoform_matrix_contract
 dialogs_and_progress
 ui_data_scheme
 ui_contracts

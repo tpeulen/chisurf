@@ -3,7 +3,7 @@ type: Plugin Reference
 title: Correlator
 description: 'FCS Correlator This plugin provides a two-pane navigation-based correlator tool for computing and merging fluorescence correlation spectroscopy (FCS) data. Features include: - Detector and PIE window definition - TTTR file selection with drag-and-drop - Optional photon/burst filtering - Multi-tau correlation with configurable parameters (bins, cascades, fine grid) - FCS curve merging and export The existing Qt entry point hosts a native emtk workflow rail and declarative AutoForm controls. The correlator workflow is no longer a standalone menu entry: it is hosted as the first section of the unified FCS tool (fcs_toolbox), which merges the correlator workflow with the optional FCS tools (2D-FLCS, Lifetime-FCS Sim, Burst-wise FCS, calculators). This module remains the reusable building block (FcsCorrelatorTool + the correlator/filter/merger AutoForm panels) and is therefore hidden from the plugin menu.'
 resource: chisurf/plugins/fcs/fcs_correlator/
-tags: [reference, plugins, fcs-correlator, spectroscopy, fluorescence-correlation-spectroscopy]
+tags: [reference, plugins, fcs-correlator, spectroscopy, fluorescence-correlation-spectroscopy, correlation]
 anchor: plugin-fcs_correlator
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -19,7 +19,7 @@ FCS Correlator  This plugin provides a two-pane navigation-based correlator tool
 | --- | --- |
 | Plugin id | `fcs_correlator` |
 | Menu path | Spectroscopy → Correlation → **Correlator** |
-| Categories | Spectroscopy, Fluorescence Correlation Spectroscopy |
+| Categories | Spectroscopy, Fluorescence Correlation Spectroscopy, Correlation |
 | Version | 1.0.0 |
 | Surfaces | emtk, gui |
 
@@ -88,10 +88,10 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Kalman z-thresh | `kalman_z_thresh` | float |  | 0.0 … 100000.0 | Burst-detection threshold (Kalman). |
 | Kalman min len | `kalman_min_len` | int |  | 1 … 100000 | Minimum burst length in bins (Kalman). |
 | Kalman merge gap | `kalman_merge_gap` | int |  | 0 … 100000 | Maximum gap between bursts to merge (Kalman). |
-| CUSUM bg rate | `cusum_bg_rate` | float |  | 0.0 … 1000000.0 | Background rate (CUSUM). |
-| CUSUM s/b ratio | `cusum_sb_ratio` | float |  | 0.0 … 100000.0 | Signal-to-background ratio (CUSUM). |
-| CUSUM alpha | `cusum_alpha` | float |  | 0.0 … 1.0 | False-alarm probability (CUSUM). |
-| CUSUM beta | `cusum_beta` | float |  | 0.0 … 100000.0 | Missed-detection parameter (CUSUM). |
+| CUSUM bg rate | `cusum_bg_rate` | float |  | 0.0 … 1000000.0 | Background count rate in photons per second (Hz, not kHz); default 1000. A value far below the true background keeps no photon. |
+| CUSUM s/b ratio | `cusum_sb_ratio` | float |  | 0.0 … 100000.0 | Expected signal-to-background rate ratio of a burst; 0 (default) estimates it from the data. |
+| CUSUM alpha | `cusum_alpha` | float |  | 0.0 … 1.0 | False-alarm probability of the sequential test, 0-1 (default 0.05). |
+| CUSUM beta | `cusum_beta` | float |  | 0.0 … 1.0 | Missed-detection probability of the sequential test, 0-1 (default 0.05). |
 
 ### Plot settings
 

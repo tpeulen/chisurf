@@ -27,8 +27,9 @@ fret
 kappa2_orientation
 distance_distributions
 energy_migration
-distributed_acceptors
+acceptor_density
 tcspc_lifetime
+microtime_histogram
 anisotropy
 fcs_correlation
 ```

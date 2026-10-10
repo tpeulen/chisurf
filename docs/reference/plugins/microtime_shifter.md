@@ -32,7 +32,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Sample name | `name` | text |  |  | Sample identity recorded with the shifted files' provenance. |
+| Sample name | `name` | str |  |  | Sample identity recorded with the shifted files' provenance. |
 | Description | `description` | text |  |  | Free-text description of the sample and the experiment. |
 | Buffer | `buffer_description` | text |  |  | Buffer composition recorded with the sample. |
 
@@ -40,21 +40,21 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Entity name | `entity_name` | text |  |  | Name of the labelled molecule. |
-| Entity type | `entity_type` | text |  |  | Kind of molecule (protein, DNA, RNA ...). |
+| Entity name | `entity_name` | str |  |  | Name of the labelled molecule. |
+| Entity type | `entity_type` | str |  |  | Kind of molecule (protein, DNA, RNA ...). |
 | Construct sequence | `sequence` | text |  |  | Sequence of the measured construct; compared with the reference to document mutations. |
-| UniProt accession | `uniprot_accession` | text |  |  | UniProt entry the reference sequence is fetched from. |
-| PDB ID | `pdb_id` | text |  |  | PDB entry of the structure. |
-| PDB chain | `pdb_chain_id` | text |  |  | Chain of the PDB entry. |
-| Organism | `organism` | text |  |  | Source organism. |
+| UniProt accession | `uniprot_accession` | str |  |  | UniProt entry the reference sequence is fetched from. |
+| PDB ID | `pdb_id` | str |  |  | PDB entry of the structure. |
+| PDB chain | `pdb_chain_id` | str |  |  | Chain of the PDB entry. |
+| Organism | `organism` | str |  |  | Source organism. |
 | Reference sequence | `reference_sequence` | text |  |  | Reference (wild-type) sequence, fetched from UniProt or typed. |
 
 ### Probes
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Donor dye | `donor` | text |  |  | Name of the donor probe on the first entity. |
-| Acceptor dye | `acceptor` | text |  |  | Name of the acceptor probe on the first entity. |
+| Donor dye | `donor` | str |  |  | Name of the donor probe on the first entity. |
+| Acceptor dye | `acceptor` | str |  |  | Name of the acceptor probe on the first entity. |
 
 ### Alignment
 
@@ -75,7 +75,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Batch folder | `output_folder` | text |  |  | Directory for a batch of shifted files; the inputs stay unchanged. |
+| Batch folder | `output_folder` | str |  |  | Directory for a batch of shifted files; the inputs stay unchanged. |
 
 ### MMFDB
 

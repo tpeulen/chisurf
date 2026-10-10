@@ -3,7 +3,7 @@ type: Plugin Reference
 title: Histogram-Microtime
 description: Create and inspect TTTR microtime histograms.
 resource: chisurf/plugins/tttr/microtime_histogram/
-tags: [reference, plugins, microtime-histogram, spectroscopy, fluorescence-decay, tttr]
+tags: [reference, plugins, microtime-histogram, spectroscopy, fluorescence-decay, tttr, decay]
 anchor: plugin-microtime_histogram
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -19,7 +19,7 @@ Create and inspect TTTR microtime histograms.
 | --- | --- |
 | Plugin id | `microtime_histogram` |
 | Menu path | Spectroscopy → Decay → **Histogram-Microtime** |
-| Categories | Spectroscopy, Fluorescence decay, TTTR |
+| Categories | Spectroscopy, Fluorescence decay, TTTR, Decay |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk |
 | State namespace | `microtime_histogram` |

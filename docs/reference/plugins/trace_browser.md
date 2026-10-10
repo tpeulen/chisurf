@@ -21,7 +21,7 @@ Browse PTU/TTTR intensity traces from a folder, rate and annotate files, preview
 | Menu path | Spectroscopy → Single-Molecule → **Trace Browser** |
 | Categories | Spectroscopy, Single-Molecule |
 | Version | 2.0.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `trace_browser` |
 
 ## Parameters
@@ -51,6 +51,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 ## Theory and workflow
 
+- **Theory** — [Intensity traces: counting photons in time bins](/concepts/intensity_traces.md)
 - **Workflow** — [Binned photon traces (MCS)](/guides/22_binned_photon_traces.md)
 
 ## Source

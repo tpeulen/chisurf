@@ -3,7 +3,7 @@ type: Plugin Reference
 title: FCS Filter Calculator
 description: Compute filtered-FCS (fFCS) lifetime filters from microtime decay patterns.
 resource: chisurf/plugins/fcs/fcs_filter_calculator/
-tags: [reference, plugins, fcs-filter-calculator, spectroscopy, fluorescence-correlation-spectroscopy]
+tags: [reference, plugins, fcs-filter-calculator, spectroscopy, fluorescence-correlation-spectroscopy, correlation]
 anchor: plugin-fcs_filter_calculator
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -19,7 +19,7 @@ Compute filtered-FCS (fFCS) lifetime filters from microtime decay patterns.
 | --- | --- |
 | Plugin id | `fcs_filter_calculator` |
 | Menu path | Spectroscopy → Correlation → **FCS Filter Calculator** |
-| Categories | Spectroscopy, Fluorescence Correlation Spectroscopy |
+| Categories | Spectroscopy, Fluorescence Correlation Spectroscopy, Correlation |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk, gui, services |
 | State namespace | `fcs_filter_calculator` |

@@ -3,7 +3,7 @@ type: Plugin Reference
 title: Pixel-wise MLE
 description: Pixel-wise MLE lifetime analysis for TTTR imaging data.
 resource: chisurf/plugins/microscopy/img_pixel_mle/
-tags: [reference, plugins, img-pixel-mle, imaging, lifetime]
+tags: [reference, plugins, img-pixel-mle, spectroscopy, imaging, lifetime]
 anchor: plugin-img_pixel_mle
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -19,7 +19,7 @@ Pixel-wise MLE lifetime analysis for TTTR imaging data.
 | --- | --- |
 | Plugin id | `img_pixel_mle` |
 | Menu path | Spectroscopy → Imaging → Lifetime → **Pixel-wise MLE** |
-| Categories | Imaging, Lifetime |
+| Categories | Spectroscopy, Imaging, Lifetime |
 | Version | 2.0.0 |
 | Surfaces | cli, emtk, gui, services |
 | State namespace | `img_pixel_mle` |

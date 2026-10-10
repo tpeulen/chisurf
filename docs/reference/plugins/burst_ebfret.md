@@ -41,14 +41,14 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Exclude when number of Outliers exceeds: | `max_outliers` | int |  | 0 … | A series with more points outside the range than this is excluded. |
 | Threshold | `method` | choice |  | choices: Manual, Auto | Manual: crop where a smoothed channel first falls below its threshold. Auto: detect the bleaching step in donor and acceptor. |
 | Donor | `don` | bool |  |  | Crop where the donor intensity falls below the value. |
-| don_value | `don_value` | float |  |  |  |
+| don_value | `don_value` | float |  |  | Donor intensity threshold in counts per frame. |
 | Acceptor | `acc` | bool |  |  | Crop where the acceptor intensity falls below the value. |
-| acc_value | `acc_value` | float |  |  |  |
+| acc_value | `acc_value` | float |  |  | Acceptor intensity threshold in counts per frame. |
 | Don + Acc | `sum` | bool |  |  | Crop where donor plus acceptor falls below the value. |
-| sum_value | `sum_value` | float |  |  |  |
-| fret_value | `fret_value` | float |  |  |  |
+| sum_value | `sum_value` | float |  |  | Threshold on donor plus acceptor intensity in counts per frame. |
+| fret_value | `fret_value` | float |  |  | FRET threshold (efficiency, 0 to 1). |
 | Padding | `pad` | bool |  |  | Frames removed before the detected point. |
-| pad_value | `pad_value` | float |  |  |  |
+| pad_value | `pad_value` | float |  |  | Number of frames removed before the detected point. |
 | Viterbi State | `viterbi_state` | bool |  |  | Most likely state number per frame. |
 | Viterbi Mean | `viterbi_mean` | bool |  |  | Center of the most likely state per frame. |
 

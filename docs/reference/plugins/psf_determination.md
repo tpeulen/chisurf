@@ -3,7 +3,7 @@ type: Plugin Reference
 title: PSF Determination
 description: 3D Gaussian PSF fitting and bead detection for confocal microscopy.
 resource: chisurf/plugins/microscopy/psf_determination/
-tags: [reference, plugins, psf-determination, imaging]
+tags: [reference, plugins, psf-determination, spectroscopy, imaging]
 anchor: plugin-psf_determination
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -19,7 +19,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 | --- | --- |
 | Plugin id | `psf_determination` |
 | Menu path | Spectroscopy → Imaging → **PSF Determination** |
-| Categories | Imaging |
+| Categories | Spectroscopy, Imaging |
 | Version | 2.0.0 |
 | Surfaces | cli, emtk, gui, services |
 | State namespace | `psf_determination` |

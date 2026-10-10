@@ -3,7 +3,7 @@ type: Plugin Reference
 title: Flow Maps
 description: 'Map the velocity field of a sample from its own correlations — one arrow per tile, over the image. No model and no fit: the velocity is read off where a correlation peak is. Ships a simulated demo whose flow profile is known, so the arrows can be checked.'
 resource: chisurf/plugins/microscopy/img_flow/
-tags: [reference, plugins, img-flow, imaging]
+tags: [reference, plugins, img-flow, spectroscopy, imaging]
 anchor: plugin-img_flow
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -19,7 +19,7 @@ Map the velocity field of a sample from its own correlations — one arrow per t
 | --- | --- |
 | Plugin id | `img_flow` |
 | Menu path | Spectroscopy → Imaging → **Flow Maps** |
-| Categories | Imaging |
+| Categories | Spectroscopy, Imaging |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk, gui, services |
 | State namespace | `img_flow` |

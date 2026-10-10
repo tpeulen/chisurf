@@ -3,7 +3,7 @@ type: Plugin Reference
 title: Lifetime-FCS Simulator
 description: Simulate diffusing species with distinct fluorescence lifetimes and optional interconversion, then recover them by lifetime-filtered (FLCS) correlation.
 resource: chisurf/plugins/fcs/fcs_lfcs_sim/
-tags: [reference, plugins, fcs-lfcs-sim, spectroscopy, fluorescence-correlation-spectroscopy]
+tags: [reference, plugins, fcs-lfcs-sim, spectroscopy, fluorescence-correlation-spectroscopy, correlation]
 anchor: plugin-fcs-lfcs-sim
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -19,9 +19,9 @@ Simulate diffusing species with distinct fluorescence lifetimes and optional int
 | --- | --- |
 | Plugin id | `fcs-lfcs-sim` |
 | Menu path | Spectroscopy → Correlation → **Lifetime-FCS Simulator** |
-| Categories | Spectroscopy, Fluorescence Correlation Spectroscopy |
+| Categories | Spectroscopy, Fluorescence Correlation Spectroscopy, Correlation |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 
 ## Parameters
 

@@ -21,7 +21,7 @@ Interactive phasor plot: universal semicircle with reference-lifetime grid/ticks
 | Menu path | Main → Tools → **Phasor-Calculator** |
 | Categories | Main, Tools, Phasor-FLIM |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 | State namespace | `phasor_calculator` |
 
 ## Parameters
@@ -71,6 +71,14 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Cursor g | `cursor_g` | float |  | -0.1 … 1.1 (step 0.01) | Cursor centre g. |
 | Cursor s | `cursor_s` | float |  | -0.1 … 0.7 (step 0.01) | Cursor centre s. |
 | Cursor radius | `cursor_radius` | float |  | 0.001 … 0.5 (step 0.01) | Radius of the circular gating cursor. |
+
+### Excitation
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Frequency | `frequency` | float |  | 0.001 … 10000.0 (step 1.0) | Modulation frequency used to map lifetimes onto the phasor plot. |
+| Harmonic | `harmonic` | int |  | 1 … 16 (step 1) | Harmonic number; the effective frequency is frequency x harmonic. |
+| Lifetimes (ns) | `taus` | str |  |  | Comma-separated reference lifetimes (ns) drawn as the iso-lifetime grid and semicircle ticks. |
 
 ## Theory and workflow
 

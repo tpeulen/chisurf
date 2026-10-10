@@ -110,6 +110,6 @@ collapsed, which a screenshot of an empty table would not have told you.
 ## See also
 
 - {src}`chisurf/plugins/burst/burst_h2mm/core/export.py`, `chisurf/core/fio/fluorescence/legacy_export.py`, `chisurf/plugins/burst/bid_to_analysis/`.
-- The companion contract the export keeps: [burst companions](/subsystems/burst-companions.md).
+- The companion contract the export keeps: `okf/subsystems/burst-companions.md`.
 - What the index ranges being exported mean: [timestamps and bursts](33_timestamps_and_bursts.md).
 - The analysis that produces the `State` column: [H2MM](19_h2mm_hidden_markov.md).

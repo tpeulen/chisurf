@@ -21,7 +21,7 @@ Intensity Trace Analysis for Single-Molecule Data  This plugin provides tools fo
 | Menu path | Spectroscopy → Single-Molecule → **Intensity trace** |
 | Categories | Spectroscopy, Single-Molecule |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui, script |
+| Surfaces | emtk, script |
 
 ## Parameters
 

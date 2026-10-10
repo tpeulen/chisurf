@@ -102,7 +102,7 @@ the same action layer the console does, so a recording is real, runnable Python.
 
 **Run a script into this session:**
 
-```ipython
+```text
 %run -i analysis.py
 ```
 

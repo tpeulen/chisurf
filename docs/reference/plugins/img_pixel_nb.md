@@ -3,7 +3,7 @@ type: Plugin Reference
 title: Number & Brightness
 description: 'Per-pixel Number & Brightness from TTTR imaging stacks: apparent B and N, molecular brightness and number, cross N&B, analog-detector calibration, bleaching detrending, and gating a brightness population back onto the image.'
 resource: chisurf/plugins/microscopy/img_pixel_nb/
-tags: [reference, plugins, img-pixel-nb, imaging]
+tags: [reference, plugins, img-pixel-nb, spectroscopy, imaging]
 anchor: plugin-img_pixel_nb
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -19,7 +19,7 @@ Per-pixel Number & Brightness from TTTR imaging stacks: apparent B and N, molecu
 | --- | --- |
 | Plugin id | `img_pixel_nb` |
 | Menu path | Spectroscopy → Imaging → **Number & Brightness** |
-| Categories | Imaging |
+| Categories | Spectroscopy, Imaging |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk, gui |
 | State namespace | `img_pixel_nb` |
