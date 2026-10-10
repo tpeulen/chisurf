@@ -24,6 +24,8 @@ def snapshot(root: Path) -> dict:
         rel = path.relative_to(root)
         if rel.parts and rel.parts[0] in ("logs", "cache") or "__pycache__" in rel.parts:
             continue
+        if path.name.endswith(("-wal", "-shm")):  # a running ChiSurf rewrites the MMFDB's SQLite journal
+            continue
         stat = path.stat()
         out[str(rel)] = (stat.st_size, stat.st_mtime_ns)
     return out

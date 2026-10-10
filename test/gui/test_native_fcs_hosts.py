@@ -163,7 +163,7 @@ def test_actual_native_fcs_factory_help_and_guide_buttons_are_bound(tmp_path, mo
         driver.click("Next ►")
         assert app.tour.step_idx == 1 and app.tour.awaiting
         driver.draw(3)
-        target = app._target_rect("example")
+        target = app._target_rect("load_example")
         assert target is not None
         driver.click(target)
         assert app.files_step.checked_files

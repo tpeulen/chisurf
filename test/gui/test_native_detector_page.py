@@ -382,6 +382,7 @@ def test_named_save_failure_leaves_finish_false_and_preserves_library(qapp, qtbo
 
     try:
         driver.frame(3)
+        definition.refresh_setups()  # the page reads the library on a worker thread; settle it before the snapshot
         before = copy.deepcopy(definition.setups)
         monkeypatch.setattr(ChannelDefinition, "_persist", fail_store)
         driver.click("save_definition")
@@ -522,6 +523,7 @@ def test_named_export_callback_closure_cannot_enable_finish(qapp, qtbot, definit
     page.completeChanged.connect(lambda: finished.append(True))
     driver = Driver(page.app, (1000, 800))
     driver.frame(3)
+    definition.refresh_setups()  # the library is read on a worker thread; the named save needs it settled
     driver.click("save_definition")
     page.editor.dialog.directory = str(tmp_path)
     driver.frame(2)

@@ -86,22 +86,22 @@ def test_browser_lists_and_shows_detail_on_selection(qapp):
     db.close()
 
 
-def test_spectra_tool_navigation_panels_build(qapp):
-    """The Spectra tool is a NavigationPanelTool whose panels all build."""
-    from qtpy import QtWidgets
+def test_spectra_tool_navigation_panels_build():
+    """The Spectra tool is an emtk app whose four panels all draw."""
+    from emtk.testing import Driver
 
-    from chisurf.gui.widgets.navigation import NavigationPanelTool
+    from chisurf.plugins.spectra_downloader.gui.app import PANELS
     from chisurf.plugins.spectra_downloader.gui.tool import SpectraTool
 
     db = _staging_db()
     tool = SpectraTool(db)
-    assert isinstance(tool, NavigationPanelTool)
-    names = [p.get("name") for p in tool.panels]
-    assert names == ["Overview", "Browse", "Download", "Add to MMFDB"]
-    for i in range(len(tool.panels)):
-        tool.nav_list.setCurrentRow(i)
-        qapp.processEvents()
-        assert isinstance(tool.panels[i].get("instance"), QtWidgets.QWidget)
+    assert list(PANELS) == ["Overview", "Browse", "Download", "Add to MMFDB"]
+    driver = Driver(tool, tool.window_size)
+    for name in PANELS:
+        tool.select_panel(name)
+        painter = driver.draw(3)
+        assert tool.panel == name
+        assert painter.strings, f"panel {name} drew no text"
     db.close()
 
 

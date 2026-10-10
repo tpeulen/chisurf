@@ -48,6 +48,8 @@ main.define_actions()
 main.arrange_widgets()
 main.show()
 main._save_decision = lambda: SaveDecision.DISCARD
+# Startup binds this in its post-show ``bind_history_science`` service, which a bare Main() never runs.
+cs.history.configure_science(main._capture_history_science, main._publish_history_science)
 
 
 def pump(n=15):

@@ -26,10 +26,10 @@ def test_native_acquisition_model_uses_configured_output_path(monkeypatch, tmp_p
     assert AcquisitionNativeModel().output_folder == str(output_path)
 
 
-def test_acquisition_settings_widget_persists_output_path(qtbot, monkeypatch, tmp_path):
-    """The setup panel should persist the standard output folder setting."""
+def test_acquisition_settings_model_persists_output_path(monkeypatch, tmp_path):
+    """The Acquisition destination of the Settings hub persists the standard output folder setting."""
     from chisurf import settings
-    from chisurf.plugins.core.acq.gui.settings_panel import AcquisitionSettingsWidget
+    from chisurf.plugins.core.setup.gui.acq_app import AcquisitionSettingsModel
 
     saved = {}
 
@@ -43,19 +43,11 @@ def test_acquisition_settings_widget_persists_output_path(qtbot, monkeypatch, tm
         fake_save,
     )
     monkeypatch.setitem(settings.gui, "acquisition", {})
-    monkeypatch.setattr(
-        AcquisitionSettingsWidget,
-        "_on_device_type_changed",
-        lambda self, device_type: None,
-    )
 
-    widget = AcquisitionSettingsWidget()
-    qtbot.addWidget(widget)
-
+    model = AcquisitionSettingsModel()
     output_path = tmp_path / "acquisition"
-    widget.output_path_edit.setText(str(output_path))
-    widget._save_settings()
+    model.output_path = str(output_path)
 
     assert saved["output_path"] == str(output_path)
-    assert widget.config["output_path"] == str(output_path)
-    assert widget.output_path_edit.text() == str(output_path)
+    assert model.config["output_path"] == str(output_path)
+    assert model.output_path == str(output_path)

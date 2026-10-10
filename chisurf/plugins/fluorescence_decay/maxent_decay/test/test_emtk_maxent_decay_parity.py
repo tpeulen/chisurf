@@ -28,13 +28,17 @@ PLUGIN = Path(__file__).parent.parent
 REAL_CHISURF = Path(pwd.getpwuid(os.getuid()).pw_dir) / ".chisurf"
 
 
+#: A running ChiSurf keeps the real MMFDB open and rewrites its SQLite journal on its own schedule: not a test's write.
+SQLITE_SIDECARS = ("-wal", "-shm")
+
+
 def snapshot_real():
     if not REAL_CHISURF.is_dir():
         return {}
     return {
         str(p): p.stat().st_mtime_ns
         for p in REAL_CHISURF.rglob("*")
-        if p.is_file() and not {"cache", "logs"} & set(p.parts)
+        if p.is_file() and not {"cache", "logs"} & set(p.parts) and not p.name.endswith(SQLITE_SIDECARS)
     }
 
 

@@ -180,13 +180,13 @@ def test_shipped_embedded_demo_and_model_guide_actions(qapp, tmp_path, monkeypat
     try:
         driver.frame(3)
         demo_step = next(
-            step for step in tour.steps if step.get("target", {}).get("name") == "load_demo"
+            step for step in tour.steps if step.get("target", {}).get("name") == "load_example"
         )
         assert "await" in demo_step
-        assert tour.get_target_rect("load_demo") is not None
+        assert tour.get_target_rect("load_example") is not None
         tour.start(tour.steps.index(demo_step))
         assert tour.awaiting
-        driver.click("load_demo")
+        driver.click("load_example")
         driver.frame(3)
         assert not tour.awaiting
         tour.stop()
@@ -221,7 +221,7 @@ def test_demo_clears_previous_measured_curves_and_parameter_state(qapp, tmp_path
         wizard.fit_curves = object()
         wizard.burst_results = [{"old": 1.0}]
         wizard.fit_model = "fit25"
-        wizard.load_demo()
+        wizard.load_example()
         assert wizard.fit_curves is None
         assert wizard.burst_results == []
         assert wizard.tau == 4.0

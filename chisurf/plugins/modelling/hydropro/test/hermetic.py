@@ -179,6 +179,8 @@ class RealState:
                     path.suffix == ".pyc"
                 ):  # ChiSurf keeps its bytecode cache here (a module edited meanwhile is recompiled)
                     continue
+                if path.name.endswith(("-wal", "-shm")):  # a running ChiSurf rewrites the MMFDB's SQLite journal
+                    continue
                 out[str(path)] = _digest(path)
         return out
 

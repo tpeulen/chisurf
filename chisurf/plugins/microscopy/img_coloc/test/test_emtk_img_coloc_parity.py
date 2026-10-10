@@ -49,6 +49,8 @@ def persistent_settings_state(root=None):
         if Path(directory) == root:
             dirs[:] = [name for name in dirs if name not in {"logs", "cache"}]
         for name in files:
+            if name.endswith(("-wal", "-shm")):  # a running ChiSurf rewrites the MMFDB's SQLite journal
+                continue
             path = Path(directory) / name
             stat = path.stat()
             state[str(path)] = (stat.st_size, stat.st_mtime_ns, path.read_bytes())

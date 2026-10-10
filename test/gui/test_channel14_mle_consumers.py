@@ -39,8 +39,9 @@ def test_mle_detector_consumers_do_not_require_retired_qt_fields():
 
 def test_missing_header_fallback_is_nanoseconds_for_fit_options(mle):
     """Without photon headers, the declared ps channel width must still enter the ns fit API."""
-    assert mle._header_time_ns() is None
     declared_ps = mle.channel_definer.effective_micro_time_resolution
+    # no header: the declared calibration stands in, so the timing is never absent
+    assert mle._header_time_ns()[0] == pytest.approx(declared_ps * 1e-3)
     assert mle.dt_effective == pytest.approx(declared_ps * 1e-3)
     assert mle.excitation_period == mle.channel_definer.excitation_period
 

@@ -28,8 +28,9 @@ def test_solve_linked_l_from_steady_state_recovers_reference() -> None:
     g = 1.17
     l_ref = 0.034
 
-    num = g * sp - ss
-    den = (1.0 - 3.0 * l_ref) * g * sp + (2.0 - 3.0 * l_ref) * ss
+    # physical G convention: r = (Ip - G Is) / (Ip + 2 G Is - 3 l (Ip + G Is))
+    num = sp - g * ss
+    den = (sp + 2.0 * g * ss) - 3.0 * l_ref * (sp + g * ss)
     r_target = num / den
 
     l_est = solve_linked_l_from_steady_state(

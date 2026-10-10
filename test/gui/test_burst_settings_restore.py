@@ -365,13 +365,13 @@ def test_mle_restore_actually_runs(tmp_path, qapp):
     w = MLELifetimeAnalysisWizard()
     try:
         w.load_settings_from(path)
-        assert w.channel_definer.micro_binning_combo.currentText() == "8"
+        assert w.micro_time_binning == 8
         # The source is reported on the status line, which is what the missing
         # name was for (the old settings-file field went with the .ui).
         assert str(path) in w.statusBar().currentMessage()
         # A payload built by a caller carries no source, and must still apply.
         w.apply_settings_payload({"micro_time_binning": 4})
-        assert w.channel_definer.micro_binning_combo.currentText() == "4"
+        assert w.micro_time_binning == 4
     finally:
         w.close()
 
