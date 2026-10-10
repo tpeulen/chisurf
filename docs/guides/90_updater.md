@@ -2,7 +2,7 @@
 type: Guide
 title: Updating ChiSurf (Updater)
 description: Checking whether a newer ChiSurf exists, reading what changed between versions, and installing a version with the package manager, in the window, with the startup switches.
-tags: [guides, setup, updater]
+tags: [guides, updater]
 ---
 
 # Updating ChiSurf (Updater)

@@ -2,7 +2,7 @@
 type: Manual Page
 title: Fit Plots
 description: Fits display (depending on the model) different plots, chosen from the tab bar of the fit window; the settings of the current plot are shown in the Plot settings dock.
-tags: [manual, fitting, plots, plot-settings]
+tags: [manual, fitting, settings]
 ---
 
 # Fit Plots

@@ -2,7 +2,7 @@
 type: Guide
 title: Application details for a support request
 description: Read and copy the running ChiSurf version and contact information with the native About tool.
-tags: [guides, application, support]
+tags: [guides, application, identity]
 ---
 
 # Application details for a support request

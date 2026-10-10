@@ -2,7 +2,7 @@
 type: Guide
 title: IRF and background calibration of an imaging detector (IRF & BG)
 description: Calibrating one detector for the phasor and pixel-wise MLE steps - choosing the source photons, adding IRF files, dragging the fit, IRF and background windows on the decay, typing backgrounds and shifts, and applying the result to the pipeline.
-tags: [guides, imaging, microscopy, calibration, irf]
+tags: [guides, calibration, corrections, imaging, phasor, fitting, tcspc, decay]
 ---
 
 # IRF and background calibration of an imaging detector (IRF & BG)

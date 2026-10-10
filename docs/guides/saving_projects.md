@@ -2,7 +2,7 @@
 type: Guide
 title: Saving and reopening projects
 description: Save complete ChiSurf analysis sessions without requiring MMFDB.
-tags: [guides, project, persistence, mmfdb]
+tags: [guides, database, mmfdb]
 ---
 
 # Saving and reopening projects

@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: AutoForm live rate-matrix contract
+description: AutoForm's existing rate_matrix section is a scientific editor, not a table of independent display values.
+tags: [development, autoform, matrix, contract]
+audience: developer
+---
+
 # AutoForm live rate-matrix contract
 
 AutoForm's existing `rate_matrix` section is a scientific editor, not a table of

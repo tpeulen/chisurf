@@ -1,3 +1,10 @@
+---
+type: Guide
+title: 'Structure Tools: FPS JSON editor, docking and QuEst'
+description: 'Tool: Structure → Modelling → Structure Tools.'
+tags: [guides, structure, tools]
+---
+
 # Structure Tools: FPS JSON editor, docking and QuEst
 
 **Tool:** *Structure → Modelling → Structure Tools*. A list of structure-modelling tools on the left (with a search box and

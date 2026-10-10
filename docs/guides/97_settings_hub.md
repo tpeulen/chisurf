@@ -1,3 +1,10 @@
+---
+type: Guide
+title: 'The Settings window: one list, every settings panel'
+description: 'Tool: Setup → Settings (setup). One window holds the Getting Started assistant and fourteen settings destinations.'
+tags: [guides, settings]
+---
+
 # The Settings window: one list, every settings panel
 
 **Tool:** *Setup → Settings* (`setup`). One window holds the **Getting Started** assistant and fourteen settings

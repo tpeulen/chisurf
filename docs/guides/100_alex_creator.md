@@ -2,7 +2,7 @@
 type: Guide
 title: Turning ALEX alternation into micro-time (ALEX Creator)
 description: How the ALEX Creator folds the alternation of multiple lasers into the micro-time axis of a TTTR file, how to choose period and shift from the live histogram, and how to convert one file, many files or a merged stream, in the window, from the command line and from Python.
-tags: [guides, tttr, alex, converter, tools]
+tags: [guides, tttr, photons, file-formats, python]
 ---
 
 # Turning ALEX alternation into micro-time (ALEX Creator)

@@ -2,7 +2,7 @@
 type: Guide
 title: Checking that every plugin starts (Plugin Check)
 description: What a plugin startup check proves, how to sweep all plugins or a safe subset, how to read the table and a failure's traceback, and the same check from the command line and from Python.
-tags: [guides, plugins, tools, plugin-check]
+tags: [guides, plugins, python]
 ---
 
 # Checking that every plugin starts (Plugin Check)

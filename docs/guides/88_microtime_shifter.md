@@ -2,7 +2,7 @@
 type: Guide
 title: Aligning detectors in micro time (Micro-time Shifter)
 description: Bringing the detectors of one TCSPC measurement onto a common micro-time axis with the Micro-time Shifter — queue files, align on the rising edge, fine-tune per-channel shifts, write shifted copies or archive them in MMFDB — in the window, from the command line and from Python.
-tags: [guides, tttr, tcspc, micro-time, detectors, python, cli]
+tags: [guides, tcspc, database, mmfdb, python]
 ---
 
 # Aligning detectors in micro time (Micro-time Shifter)

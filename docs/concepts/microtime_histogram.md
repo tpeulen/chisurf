@@ -2,7 +2,7 @@
 type: Concept
 title: 'Micro-time histograms: the decay of a detector, a polarization and a window'
 description: How a photon stream becomes a decay histogram per detector, how the parallel and perpendicular streams are combined into the magic-angle-like VV + 2G·VH trace, and what the histogram-level shifts, binning and FWHM mean.
-tags: [concepts, tcspc, tttr, micro-time, polarization, decay]
+tags: [concepts, tcspc, decay, photons]
 anchor: concept-microtime-histogram
 ---
 

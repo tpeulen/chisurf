@@ -2,7 +2,7 @@
 type: Concept
 title: 'Micro-time shift: putting detectors on one time axis'
 description: Why two detectors of one TCSPC measurement need different micro-time offsets, what a cyclic shift does to the photon stream, and how the rising edge of the instrument response is used to align them.
-tags: [concepts, tcspc, tttr, micro-time, detectors, pie]
+tags: [concepts, tcspc, photons]
 anchor: concept-microtime-shift
 ---
 

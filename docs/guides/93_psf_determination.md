@@ -2,7 +2,7 @@
 type: Guide
 title: The PSF measured on beads (PSF Determination)
 description: Fitting three-dimensional Gaussians to the sub-resolution beads of a z-stack to measure the lateral and axial width of the point-spread function of your own objective, with the checks that tell a good measurement from a bad one.
-tags: [guides, imaging, psf, calibration, beads]
+tags: [guides, fitting, determination]
 ---
 
 # The PSF measured on beads (PSF Determination)

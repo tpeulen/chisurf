@@ -1,8 +1,9 @@
 ---
-type: Guide
+type: Development Note
 title: Plugin CLI discovery and invocation contract
 description: Metadata-authoritative command discovery, import identity, invocation and failure contracts for plugin authors.
-tags: [development, plugins, cli, testing]
+tags: [development, plugins, cli, headless]
+audience: developer
 ---
 
 # Plugin CLI discovery and invocation contract

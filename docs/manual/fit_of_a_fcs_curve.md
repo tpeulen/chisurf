@@ -2,7 +2,7 @@
 type: Manual Page
 title: Fit of the green-excitation FCS curve
 description: Load three autocorrelation curves of a free green dye, fit them with a 3D Gaussian diffusion model with one bunching term, link the shared parameters and set up a global fit.
-tags: [manual, fitting, fcs, plugins]
+tags: [manual, fitting, fcs, diffusion, global-analysis]
 ---
 
 # Fit of the green-excitation FCS curve

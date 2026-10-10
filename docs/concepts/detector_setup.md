@@ -2,7 +2,7 @@
 type: Concept
 title: 'Detector setups: routing, windows, timing and calibration'
 description: How a portable detector definition associates routing channels with logical detectors, raw micro-time windows, timing units, calibration and TAC corrections.
-tags: [concepts, detector, setup, tttr, tcspc, calibration]
+tags: [concepts, calibration, detector, setup]
 anchor: concept-detector-setup
 ---
 

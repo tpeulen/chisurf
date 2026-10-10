@@ -2,7 +2,7 @@
 type: Concept
 title: Application identity and support details
 description: What application version and contact details establish, and what remains necessary to reproduce an analysis.
-tags: [concepts, application, support]
+tags: [concepts, application, identity]
 ---
 
 # Application identity and support details

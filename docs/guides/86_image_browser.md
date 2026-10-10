@@ -2,7 +2,7 @@
 type: Guide
 title: Browsing a folder of scan images (Image Browser)
 description: Paging through a folder of confocal photon files with the Image Browser — one tile per detector window, zoom and pan, colormap and levels, star ratings and notes, and raw-copy, TIFF and Word-report exports — in the window, from the command line and from Python.
-tags: [guides, imaging, tttr, python, cli]
+tags: [guides, imaging, photons, python]
 ---
 
 # Browsing a folder of scan images (Image Browser)

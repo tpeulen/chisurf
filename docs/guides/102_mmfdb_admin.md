@@ -2,7 +2,7 @@
 type: Guide
 title: 'Administering the measurement database: MMFDB Admin'
 description: Sign in to the MMFDB, browse and edit its samples, experiments, data and users, trace a product back to its raw data, curate spectra, and import, export and back up the database.
-tags: [guides, database, provenance, administration]
+tags: [guides, database, mmfdb, spectra]
 ---
 
 # Administering the measurement database: MMFDB Admin

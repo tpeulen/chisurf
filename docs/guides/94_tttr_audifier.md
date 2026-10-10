@@ -2,7 +2,7 @@
 type: Guide
 title: 'Audifier: photon streams as sound and as a waterfall'
 description: Render photon counts as sound and inspect a detector-colored micro-time or lifetime waterfall.
-tags: [guides, tttr, audio, waterfall]
+tags: [guides, tttr, photons, tcspc, lifetime]
 ---
 
 # Audifier: photon streams as sound and as a waterfall

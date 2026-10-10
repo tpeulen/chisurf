@@ -1,7 +1,7 @@
 ---
 type: Manual Page
 title: Saving & exporting the results
-description: "To save the results, select the fit window and use File ▸ Fits ▸ Current Fit (Ctrl+Alt+S) and choose a folder; File ▸ Fits ▸ All Fits saves every fit."
+description: To save the results, select the fit window and use File ▸ Fits ▸ Current Fit (Ctrl+Alt+S) and choose a folder; File ▸ Fits ▸ All Fits saves every fit.
 tags: [manual, fitting, file-formats]
 ---
 

@@ -2,7 +2,7 @@
 type: Guide
 title: The G-factor of a polarised setup (VV/VH G-Factor Calculator)
 description: Measuring the detection-efficiency ratio G of two polarisation channels by tail matching on a fast-rotating dye, estimating the linked polarisation mixing from a slow protein, and applying the calibration to a batch of decays.
-tags: [guides, tcspc, anisotropy, calibration, g-factor]
+tags: [guides, fret, calibration]
 ---
 
 # The G-factor of a polarised setup (VV/VH G-Factor Calculator)

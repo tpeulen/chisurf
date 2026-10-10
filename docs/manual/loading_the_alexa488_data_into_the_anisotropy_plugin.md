@@ -1,8 +1,8 @@
 ---
 type: Manual Page
 title: Loading the Alexa488 data into the anisotropy plugin
-description: 'The anisotropy wizard is opened from the ribbon (Tools → Calculators → Wizards, then Anisotropy) and walks from the VV/VH files to the fit windows.'
-tags: [manual, anisotropy, plugins]
+description: The anisotropy wizard is opened from the ribbon (Tools → Calculators → Wizards, then Anisotropy) and walks from the VV/VH files to the fit windows.
+tags: [manual, anisotropy, plugins, fitting]
 ---
 
 # Loading the Alexa488 data into the anisotropy plugin

@@ -2,7 +2,7 @@
 type: Guide
 title: Decays and correlation curves straight from a photon file
 description: Histogramming the micro times of a TTTR file into a fluorescence decay (Histogram-Microtime, with the inter-photon filter for burst or background photons) and correlating its macro times into an FCS curve (the FCS correlator, with its algorithm choice and splits), how to read the result, and the tttrlib calls underneath.
-tags: [guides, tttr, photons, tcspc, decay, correlation, file-formats, fcs]
+tags: [guides, tttr, photons, tcspc, decay, correlation, file-formats, bursts]
 ---
 
 # Decays and correlation curves straight from a photon file

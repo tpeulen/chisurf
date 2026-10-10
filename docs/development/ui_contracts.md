@@ -1,7 +1,9 @@
 ---
-type: Guide
+type: Development Note
 title: Auditing shared UI text and tooltips
 description: Verify authored form strings, translation source coverage and tooltip declarations without importing plugin GUIs.
+tags: [development, plugins, contracts]
+audience: developer
 ---
 
 # Auditing shared UI text and tooltips

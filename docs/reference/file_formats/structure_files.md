@@ -2,7 +2,7 @@
 type: File Format
 title: Single-file structure reader
 description: Select and import one PDB structure with native settings and source-free project restoration.
-tags: [reference, file-formats, structure, pdb]
+tags: [reference, file-formats, structure, settings]
 ---
 
 # Single-file structure reader

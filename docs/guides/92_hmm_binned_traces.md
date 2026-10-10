@@ -2,7 +2,7 @@
 type: Guide
 title: States and rates from a binned trace (Hidden Markov model)
 description: Fitting a Gaussian hidden Markov model to binned time traces with the Hidden Markov model tool, choosing the number of states with the AIC/BIC scan, and reading emissions, dwell times and transition rates.
-tags: [guides, kinetics, hmm, traces]
+tags: [guides, kinetics, hmm, fitting]
 ---
 
 # States and rates from a binned trace (Hidden Markov model)

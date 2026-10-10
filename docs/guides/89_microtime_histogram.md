@@ -2,7 +2,7 @@
 type: Guide
 title: Histogramming micro times per detector and polarization (Histogram-Microtime)
 description: Building the VV/VH decay of one or many photon files with Histogram-Microtime — queue files and burst selections, choose the detector and channels, gate, bin and shift, compute, save and transfer to the TCSPC analysis — in the window and from Python.
-tags: [guides, tttr, tcspc, decay, polarization, python]
+tags: [guides, tcspc, decay, photons, bursts, fret, python]
 ---
 
 # Histogramming micro times per detector and polarization (Histogram-Microtime)

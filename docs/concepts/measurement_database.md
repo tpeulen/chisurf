@@ -2,7 +2,7 @@
 type: Concept
 title: 'The measurement database: records, provenance and who may change them'
 description: What the MMFDB stores about samples, experiments and data, why the derivation of every product is kept as a graph of operations and artifacts, and how the vocabulary and the access rules are fixed.
-tags: [concepts, database, provenance, mmcif]
+tags: [concepts, database, mmfdb, provenance]
 anchor: concept-measurement-database
 ---
 

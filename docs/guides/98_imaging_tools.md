@@ -2,7 +2,7 @@
 type: Guide
 title: The imaging workflow in one window (Imaging Tools)
 description: How the Imaging Tools hub lists the imaging tools, what the tools share (detector setup, photon source, imaging HDF5, calibration), how Back, Next and Run all walk the numbered steps, and what a tool that fails to open shows.
-tags: [guides, imaging, microscopy, hub]
+tags: [guides, imaging, photons, calibration]
 ---
 
 # The imaging workflow in one window (Imaging Tools)

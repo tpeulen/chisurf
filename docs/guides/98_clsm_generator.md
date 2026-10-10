@@ -2,7 +2,7 @@
 type: Guide
 title: 'CLSM Generator: a scan whose answer is known'
 description: Generate confocal photon scans from brightness and per-detector lifetime maps, then inspect and export them.
-tags: [guides, microscopy, simulation]
+tags: [guides, photons, tcspc, lifetime]
 ---
 
 # CLSM Generator: a scan whose answer is known

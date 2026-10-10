@@ -2,7 +2,7 @@
 type: Development Note
 title: Native UI interaction and headless checks
 description: Keyboard navigation, persisted window geometry, and the shared emtk Driver used to verify ChiSurf controls.
-tags: [development, gui, testing]
+tags: [development, headless, emtk, interaction, testing]
 audience: developer
 ---
 

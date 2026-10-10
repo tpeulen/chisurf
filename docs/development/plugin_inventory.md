@@ -1,7 +1,9 @@
 ---
-type: Guide
+type: Development Note
 title: Maintaining the release plugin inventory
 description: Regenerate the committed plugin checklist without importing GUI code or crediting unfinished local ports.
+tags: [development, plugins, gui]
+audience: developer
 ---
 
 # Maintaining the release plugin inventory

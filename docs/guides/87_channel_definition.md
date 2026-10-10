@@ -1,3 +1,10 @@
+---
+type: Guide
+title: 'Detector setup: channels, PIE windows, timing and LUTs'
+description: 'Tool: Setup → Channel Definition (setup_channel_definition); the same editor is embedded in the image browser, the burst tools, the count-rate and trace tools and the onboarding wizard.'
+tags: [guides, imaging, bursts]
+---
+
 # Detector setup: channels, PIE windows, timing and LUTs
 
 **Tool:** *Setup → Channel Definition* (`setup_channel_definition`); the same editor is embedded in the
