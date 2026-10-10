@@ -1,9 +1,6 @@
 # Initial measured release tooltip debt (2026-10-08); only shrink this file.
 # A passing baseline guard does not mean tooltip coverage is complete.
 # All1143declarations remain assigned to their owning GUI families until removed.
-modules/chimol/chimol/ui/data/appearance.view.json#/sections/0:section-tooltip
-modules/chimol/chimol/ui/data/appearance.view.json#/sections/1:section-tooltip
-modules/chimol/chimol/ui/data/appearance.view.json#/sections/2:section-tooltip
 modules/ndxplorer/ndxplorer/analysis/fret_calibration_options.view.json#/sections/3:section-tooltip
 modules/ndxplorer/ndxplorer/analysis/vizrank.view.json#/sections/0:section-tooltip
 modules/ndxplorer/ndxplorer/analysis/vizrank.view.json#/sections/1:section-tooltip
