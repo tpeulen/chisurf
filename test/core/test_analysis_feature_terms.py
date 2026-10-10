@@ -15,13 +15,17 @@ import pathlib
 import pytest
 import yaml
 
-yaml_files = [
-    pathlib.Path("chisurf/core/fio/fluorescence/burst_features.yaml"),
-    pathlib.Path("chisurf/plugins/microscopy/img_pixel_mle/core/result_columns.yaml"),
-    pathlib.Path("chisurf/plugins/microscopy/region_mle/core/result_columns.yaml"),
-    pathlib.Path("chisurf/plugins/burst/accurate_fret/calibration_columns.yaml"),
-    pathlib.Path("chisurf/plugins/burst/burst_fcs_correlator/core/result_columns.yaml"),
-]
+_PATTERNS = ("*_features.yaml", "result_columns.yaml", "*_columns.yaml")
+# Discovered by glob, never hand-kept: a new declaration file is guarded the
+# moment it exists.
+yaml_files = sorted(
+    {p for pattern in _PATTERNS for p in pathlib.Path("chisurf").rglob(pattern)}
+)
+
+
+def test_declaration_files_are_discovered():
+    names = {p.name for p in yaml_files}
+    assert {"burst_features.yaml", "result_columns.yaml", "calibration_columns.yaml"} <= names
 
 
 def _entries(path):
@@ -47,7 +51,7 @@ def dictionary():
 
 
 @pytest.mark.parametrize(
-    "path", yaml_files, ids=[p.name + ":" + p.parent.parent.name for p in yaml_files]
+    "path", yaml_files, ids=[p.parent.parent.name + "/" + p.name for p in yaml_files]
 )
 def test_every_entry_carries_a_term(path):
     missing = [e["column"] for e in _entries(path) if "term" not in e]
@@ -59,7 +63,7 @@ def test_every_entry_carries_a_term(path):
 
 
 @pytest.mark.parametrize(
-    "path", yaml_files, ids=[p.name + ":" + p.parent.parent.name for p in yaml_files]
+    "path", yaml_files, ids=[p.parent.parent.name + "/" + p.name for p in yaml_files]
 )
 def test_every_term_resolves_in_the_dictionaries(path, dictionary):
     unresolved = sorted(

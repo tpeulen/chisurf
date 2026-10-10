@@ -31616,3 +31616,12 @@ front, not this).
   `okf/plugins/emtk-ports/setup/settings_hub_*.png` (+ `_before`), docs
   figure 97 refreshed. Record: [settings audit](plugins/emtk-ports/settings-audit.md).
 
+- **2026-10-10 · mmfdb + flrCIF: written-name, description and vocabulary guards (W13)**
+  Added `tests/test_written_categories_are_declared.py` (static scan of every
+  `_mmfdb_*`/`_flr_*` literal in mmfdb and `core/fio`; found `_flr_poly_probe`
+  -> `_flr_probe_list` in `models.py`, and an undeclared `_mmfdb_edge.source_uid`
+  lookup removed from `pto_reconstruct.py`), `test_extension_dictionary_is_documented.py`
+  (shrinking baseline), the glob-discovered `test_analysis_feature_terms.py`, and
+  the generated `docs/concepts/flrcif_vocabulary.md`. Parser fix: a category kept
+  its description/key only for the last frame of a file. mmfdb filter
+  `error::ihm.reader.UnknownCategoryWarning`. Record: [mmfdb](architecture/mmfdb.md).

@@ -161,4 +161,5 @@ games
 :maxdepth: 1
 
 application_identity
+flrcif_vocabulary
 ```

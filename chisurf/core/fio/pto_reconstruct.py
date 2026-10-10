@@ -63,9 +63,7 @@ class AnalysisReconstructor:
                 settings = {}
 
             # Extract source TTTR photon stream object
-            source_uid = measurement.tag(target_uid, "_mmfdb_edge.source_uid") or measurement.tag(
-                target_uid, "_mmfdb_edge.source_node_id"
-            )
+            source_uid = measurement.tag(target_uid, "_mmfdb_edge.source_node_id")
             if not source_uid:
                 for parent in measurement.parents(target_uid):
                     parent_kind = measurement._f.object(parent).kind

@@ -9,6 +9,25 @@ timestamp: '2026-07-06T00:00:00Z'
 
 # Where to pick this up
 
+1. Open: (W13 of the programme plan) the public-databank picture is guarded
+   but not finished. Done: the written-names guard
+   [test_written_categories_are_declared](../../modules/mmfdb/tests/test_written_categories_are_declared.py),
+   the glob-discovered feature-term guard
+   [test_analysis_feature_terms](../../test/core/test_analysis_feature_terms.py),
+   the description guard
+   [test_extension_dictionary_is_documented](../../modules/mmfdb/tests/test_extension_dictionary_is_documented.py)
+   and the generated [flrCIF vocabulary](../../docs/concepts/flrcif_vocabulary.md).
+   Still open, in order: (a) document the ~368 `_mmfdb_` items listed in
+   `tests/dictionary_item_description_baseline.txt` (the baseline only shrinks;
+   a trap: the parser reads a `;`-block description up to its first lone `;`
+   line, so a multi-paragraph item description is truncated in the parsed
+   view); (b) the `.pto` -> mmCIF -> `python-ihm` -> import round trip and
+   the lineage-reaches-primary-photons guard; (c) the ELN gateway (Chemotion
+   read and deposit paths, [PRD-48](../prds/prd-48.md)). Measure (a) with
+   `wc -l` of the baseline. Not tried: adding `ihm` to the pixi `test`
+   environment, which the warnings-as-errors filter needs there (it runs green
+   in the `arm64` env).
+
 2. Open: Reconcile the old INC-04 follow-up against
    [the current API](../../modules/mmfdb/src/mmfdb/api.py): setup updates call
    `_require_existing_write`, semantic parameters check their owning operation,
@@ -26,6 +45,19 @@ timestamp: '2026-07-06T00:00:00Z'
    that callers still consume. Removing `security/base.py` was deliberately
    deferred because its client-base type hints require a consumer migration;
    re-count those consumers before attempting that change.
+
+## Public fluorescence databank
+
+MMFDB is the prototype of a public fluorescence databank (fdb4chembio,
+NFDI4Chem; Chemotion as the electronic-lab-notebook target). The vocabulary is
+flrCIF, the fluorescence extension of the PDB-IHM dictionary, plus two MMFDB
+extension dictionaries (`mmfdb_flr_ext.dic`, `mmfdb_workflow_ext.dic`); the
+dictionaries are the schema authority, and a project exports to an mmCIF file
+that `python-ihm` reads. Four guards keep that true: every name a writer emits
+resolves in the bundled dictionaries, every declared analysis feature carries a
+resolving `term`, every extension category has a description, and the
+generated vocabulary page matches the dictionaries. A missing term is created
+in the extension dictionary, never invented in a plugin.
 
 ## Resume history (moved out of Where to pick this up)
 
