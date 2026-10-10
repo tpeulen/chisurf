@@ -6,7 +6,7 @@ description: Open, resolved and withdrawn defects with their measurement, owner 
 
 ## The sample/analysis export writes database column names under flrCIF categories (found 2026-10-10)
 
-status: open — owner: mmfdb (`MFDatabase.export_flr_cif`, `modules/mmfdb/src/mmfdb/repository.py`).
+status: resolved 2026-10-10 — the export maps columns to declared items (`_FLR_EXPORT_COLUMNS` in mmfdb `repository.py`; chemical descriptors moved to `_flr_probe_descriptor`; `database_hosted` YES/NO; `mmfdb_flr_ext.dic` 1.11 declares the nine items flrCIF has no home for) and `read_graph_cif` escalates every keyword no dictionary declares, in any category. Guard: mmfdb `tests/test_flr_export_items.py`. Earlier text below is the original finding.
 
 `MFDatabase().export_flr_cif_to_text()` serialises SQL column names, not dictionary items: `_flr_fret_analysis.analysis_id`,
 `.sample_id`, `.method`, `.details` where flrCIF defines `_flr_fret_analysis.id`, `.experiment_id`, `.type`. python-ihm
@@ -18,7 +18,7 @@ therefore raises `UnknownKeywordWarning` for them (category warnings are clean).
 
 ## Project round-trip tests still build the pre-v5 project payload (found 2026-10-10)
 
-status: open — owner: whoever next touches `test/fio/test_mmfdb_project_roundtrip.py`.
+status: resolved 2026-10-10 — fixtures now come from the real v5 writer (`test/fio/v5_payload.py`, `capture_session`); the archiver was not loosened (a pre-v5 fit is refused with a ValueError), and `restore_project_from_artifacts` was ported to v5 fit records and version-scoped dependency edges. Earlier text below is the original finding.
 
 mmfdb's archiver (`project_archiver.archive_project_to_mmfdb`, since "the validated canonical payload is the sole restore
 authority") needs v5 fit records (`fit["uid"]`, `members[].model.parameters[].uid`). 26 tests in `test/fio`

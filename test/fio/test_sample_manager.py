@@ -27,6 +27,7 @@ from mmfdb.samples.sample_manager import (
 
 from chisurf.core.data import DataCurve
 from chisurf.core.experiments.core.reader import ExperimentReader
+from test.fio.v5_payload import make_curve, v5_payload
 
 
 @pytest.fixture
@@ -185,20 +186,8 @@ def test_archive_project_links_dataset_artifacts_to_sample(db, tmp_path):
     sample_id = create_sample(db, SampleDefinition(name="archived_sample"))
     source_path = tmp_path / "measurement.ptu"
     source_path.write_text("dummy", encoding="utf-8")
-    payload = {
-        "meta": {},
-        "datasets": {
-            "ds_1": {
-                "name": "curve",
-                "filename": str(source_path),
-                "x": [0.0, 1.0],
-                "y": [1.0, 2.0],
-                "ex": [0.0, 0.0],
-                "ey": [1.0, 1.0],
-                "meta_data": {"sample_id": sample_id},
-            }
-        },
-    }
+    curve = make_curve("ds_1", filename=str(source_path), sample_id=sample_id)
+    payload = v5_payload([curve], name="sampled")
 
     summary = archive_project_to_mmfdb(
         db,

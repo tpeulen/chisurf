@@ -16,6 +16,8 @@ from mmfdb.admin.backend.measurement_services import (
 )
 from mmfdb.repository import MFDatabase
 
+from test.fio.v5_payload import make_curve, make_single_fit, v5_payload
+
 
 def test_analysis_provenance_and_linkages(tmp_path: pathlib.Path) -> None:
     """Test full analysis CRUD, fit grouping, parameter linkages, and traces."""
@@ -220,51 +222,15 @@ def test_project_archive_and_restore(tmp_path: pathlib.Path) -> None:
             )
 
         # Mock project payload
-        project_payload = {
-            "project_format_version": 4,
-            "meta": {
-                "name": "MyTestProject",
-                "description": "A project for testing project save/restore",
-                "chisurf_version": "1.0.0",
-                "created": "2026-06-11T20:00:00Z",
-            },
-            "datasets": {
-                "ds000": {
-                    "name": "Dataset 1",
-                    "filename": "dataset.bur",
-                    "x": [1.0, 2.0, 3.0],
-                    "y": [10.0, 20.0, 30.0],
-                }
-            },
-            "fits": [
-                {
-                    "id": "fit1",
-                    "name": "Decay Fit 1",
-                    "model_name": "TcspcDecayModel",
-                    "local_fits": [
-                        {
-                            "dataset_id": "ds000",
-                            "fit_state": {
-                                "model_class": "TcspcDecayModel",
-                                "parameters": {
-                                    "tau_param": {
-                                        "name": "tau",
-                                        "value": 1.5,
-                                    }
-                                },
-                            },
-                        }
-                    ],
-                }
-            ],
-            "ui": {"current_fit_index": 0},
-            "extra": {
-                "history": {
-                    "filename": "history.jsonl",
-                    "event_count": 5,
-                }
-            },
-        }
+        curve = make_curve("ds000", filename="dataset.bur")
+        project_payload = v5_payload(
+            [curve],
+            [make_single_fit(curve, "fit1")],
+            name="MyTestProject",
+            ui_state={"current_fit_index": 0},
+        )
+        project_payload["meta"]["description"] = "A project for testing project save/restore"
+        project_payload["extra"] = {"history": {"filename": "history.jsonl", "event_count": 5}}
 
         # Archive the project
         archive_res = archive_project_handler(
@@ -285,7 +251,7 @@ def test_project_archive_and_restore(tmp_path: pathlib.Path) -> None:
         assert restore_res["project_name"] == "MyTestProject"
 
         restored_payload = restore_res["project_payload"]
-        assert restored_payload["project_format_version"] == 4
+        assert restored_payload["project_format_version"] == 5
         assert restored_payload["meta"]["name"] == "MyTestProject"
         assert restored_payload["extra"]["history"]["event_count"] == 5
 
@@ -315,115 +281,44 @@ def test_project_archive_and_restore(tmp_path: pathlib.Path) -> None:
         patcher.stop()
 
 
-def test_project_actions_archive_and_restore(tmp_path: pathlib.Path) -> None:
-    """Test project.archive and project.restore actions."""
-    db_path = tmp_path / "test_actions.db"
+def test_project_actions_archive_and_restore(tmp_path: pathlib.Path, monkeypatch) -> None:
+    """project.archive writes a portable file by default; restore needs a real MMFDB.
 
-    # Import every module that binds ``resolve_database_path`` by value BEFORE the
-    # patch starts. A module first imported while the source is patched copies the
-    # mock into its own namespace, and stopping the patch restores only the source
-    # — the bound copy keeps the mock for the rest of the session, silently
-    # redirecting later tests at this temp database.
-    import mmfdb.admin.backend.services  # noqa: F401
-    import mmfdb.api  # noqa: F401
+    The shipped embedded configuration is not a project backend (see
+    ``chisurf.core.project.storage.select_backend``), so ``project.archive``
+    falls back to a ``.cs.pto`` file and ``project.restore`` refuses rather than
+    inventing a local database. The MMFDB-backed save/restore path is covered by
+    ``test/project/test_project_browser_transport.py``.
+    """
+    import pytest
 
-    patcher = patch(
-        "mmfdb.admin.backend.measurement_services.resolve_database_path",
-        return_value=db_path,
-    )
-    project_browser_patcher = patch(
-        "chisurf.plugins.core.project_browser.backend.services.resolve_database_path",
-        return_value=db_path,
-    )
-    database_resolver_patcher = patch(
-        "mmfdb.store.database_resolver.resolve_database_path",
-        return_value=db_path,
-    )
-    api_patcher = patch("mmfdb.api.resolve_database_path", return_value=db_path)
-    services_patcher = patch(
-        "mmfdb.admin.backend.services.resolve_database_path", return_value=db_path
-    )
-    patcher.start()
-    project_browser_patcher.start()
-    database_resolver_patcher.start()
-    api_patcher.start()
-    services_patcher.start()
+    import chisurf as cs
+    from chisurf.core.actions import dispatch
+    from chisurf.core.project import Project as CSProject
+    from chisurf.core.project import storage
 
-    try:
-        with MFDatabase(db_path) as db:
-            db.add_sample("sample_proj")
-            db.add_experiment("exp_proj", sample_id="sample_proj", status="complete")
+    monkeypatch.setattr(cs, "working_path", tmp_path, raising=False)
+    mock_proj = CSProject.from_dict(v5_payload(name="MyTestActionProject"))
 
-        from chisurf.core.project import Project as CSProject
-
-        project_payload = {
-            "project_format_version": 4,
-            "meta": {
-                "name": "MyTestActionProject",
-                "description": "A project for testing project actions",
-                "chisurf_version": "1.0.0",
-                "created": "2026-06-11T20:00:00Z",
+    with patch("chisurf.macros.core_fit.get_project_payload", return_value=mock_proj):
+        archive_res = dispatch(
+            "project.archive",
+            {
+                "project_id": "act_proj_123",
+                "project_name": "MyTestActionProject",
+                "experiment_id": "exp_proj",
+                "input_processed_data_ids": [],
+                "notes": "Archived via action test",
             },
-            "datasets": {},
-            "fits": [],
-            "ui": {},
-            "extra": {},
-        }
-        mock_proj = CSProject.from_dict(project_payload)
+        )
+    assert archive_res.get("ok") is True
+    assert archive_res["backend"] == "file"
+    saved = pathlib.Path(archive_res["file_path"])
+    assert saved.parent == tmp_path
+    assert storage.load_file(saved).name == "MyTestActionProject"
 
-        with (
-            patch("chisurf.macros.core_fit.get_project_payload", return_value=mock_proj),
-            patch("chisurf.macros.core_fit.load_project_payload") as mock_load,
-        ):
-            from chisurf.core.actions import dispatch
-
-            archive_res = dispatch(
-                "project.archive",
-                {
-                    "project_id": "act_proj_123",
-                    "project_name": "MyTestActionProject",
-                    "experiment_id": "exp_proj",
-                    "input_processed_data_ids": [],
-                    "notes": "Archived via action test",
-                },
-            )
-            assert archive_res.get("ok") is True
-            assert archive_res["project_id"] == "act_proj_123"
-            with MFDatabase(db_path) as db:
-                project_operations = db.conn.execute(
-                    "SELECT COUNT(*) FROM mmfdb_operation WHERE operation_type = 'project' AND deleted_at IS NULL"
-                ).fetchone()[0]
-                legacy_table = db.conn.execute(
-                    "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('mmfdb_analysis_run', 'fdb_analysis_run')"
-                ).fetchone()
-                legacy_runs = 0
-                if legacy_table:
-                    legacy_runs = db.conn.execute(
-                        f"SELECT COUNT(*) FROM {legacy_table[0]} WHERE analysis_type = 'project'"
-                    ).fetchone()[0]
-
-            assert project_operations == 1
-            assert legacy_runs == 0
-
-            restore_res = dispatch(
-                "project.restore",
-                {
-                    "project_id": "act_proj_123",
-                },
-            )
-            assert restore_res.get("ok") is True
-            assert restore_res["project_id"] == "act_proj_123"
-
-            mock_load.assert_called_once()
-            called_proj = mock_load.call_args[0][0]
-            assert called_proj.name == "MyTestActionProject"
-
-    finally:
-        services_patcher.stop()
-        api_patcher.stop()
-        database_resolver_patcher.stop()
-        project_browser_patcher.stop()
-        patcher.stop()
+    with pytest.raises(storage.ProjectStorageError, match="No real MMFDB"):
+        dispatch("project.restore", {"project_id": "act_proj_123"})
 
 
 # ── Project Archiver Tests ──────────────────────────────────────────────
@@ -435,22 +330,8 @@ def test_archive_project_creates_artifacts(tmp_path: pathlib.Path) -> None:
 
     db_path = tmp_path / "test_archiver.db"
 
-    project_payload = {
-        "meta": {"name": "Test Project", "description": "A test"},
-        "datasets": {
-            "ds000": {
-                "name": "VV Decay",
-                "filename": "",
-                "x": [1.0, 2.0, 3.0],
-                "y": [10.0, 20.0, 30.0],
-                "ex": [0.1, 0.1, 0.1],
-                "ey": [1.0, 1.4, 1.7],
-                "data_reader": {"module": "test", "class": "TestReader", "state": {}},
-                "experiment_name": "TCSPC",
-            },
-        },
-        "fits": [],
-    }
+    curve_0 = make_curve("ds000", 0.0, filename="")
+    project_payload = v5_payload([curve_0], name="Test Project")
 
     with MFDatabase(db_path) as db:
         result = archive_project_to_mmfdb(
@@ -497,22 +378,8 @@ def test_archive_project_creates_source_objects(tmp_path: pathlib.Path) -> None:
     source_file = tmp_path / "sample.txt"
     source_file.write_text("test measurement data\n")
 
-    project_payload = {
-        "meta": {"name": "Source Test"},
-        "datasets": {
-            "ds000": {
-                "name": "Test Data",
-                "filename": str(source_file),
-                "x": [1.0, 2.0],
-                "y": [10.0, 20.0],
-                "ex": [0.1, 0.1],
-                "ey": [1.0, 1.4],
-                "data_reader": {},
-                "experiment_name": "TCSPC",
-            },
-        },
-        "fits": [],
-    }
+    curve_0 = make_curve("ds000", 0.0, filename=str(source_file))
+    project_payload = v5_payload([curve_0], name="Source Test")
 
     with MFDatabase(db_path) as db:
         archive_project_to_mmfdb(
@@ -552,11 +419,7 @@ def test_archive_project_version_lineage(tmp_path: pathlib.Path) -> None:
 
     db_path = tmp_path / "test_lineage.db"
 
-    project_payload = {
-        "meta": {"name": "Lineage Test"},
-        "datasets": {},
-        "fits": [],
-    }
+    project_payload = v5_payload(name="Lineage Test")
 
     with MFDatabase(db_path) as db:
         # Create first version
@@ -598,22 +461,8 @@ def test_restore_project_from_artifacts(tmp_path: pathlib.Path) -> None:
 
     db_path = tmp_path / "test_restore.db"
 
-    project_payload = {
-        "meta": {"name": "Restore Test"},
-        "datasets": {
-            "ds000": {
-                "name": "Test Curve",
-                "filename": "",
-                "x": [1.0, 2.0, 3.0],
-                "y": [10.0, 20.0, 30.0],
-                "ex": [0.1, 0.1, 0.1],
-                "ey": [1.0, 1.4, 1.7],
-                "data_reader": {},
-                "experiment_name": "TCSPC",
-            },
-        },
-        "fits": [],
-    }
+    curve_0 = make_curve("ds000", 0.0, filename="")
+    project_payload = v5_payload([curve_0], name="Restore Test")
 
     with MFDatabase(db_path) as db:
         archive_project_to_mmfdb(
@@ -628,7 +477,7 @@ def test_restore_project_from_artifacts(tmp_path: pathlib.Path) -> None:
         assert restored is not None
         assert "ds000" in restored["datasets"]
         ds_data = restored["datasets"]["ds000"]
-        assert ds_data["curves"][0]["name"] == "Test Curve"
+        assert ds_data == project_payload["datasets"]["ds000"]
 
 
 def test_archive_project_deduplicates_objects(tmp_path: pathlib.Path) -> None:
@@ -641,32 +490,9 @@ def test_archive_project_deduplicates_objects(tmp_path: pathlib.Path) -> None:
     source_file = tmp_path / "shared.txt"
     source_file.write_text("shared measurement data\n")
 
-    project_payload = {
-        "meta": {"name": "Dedup Test"},
-        "datasets": {
-            "ds000": {
-                "name": "Curve 1",
-                "filename": str(source_file),
-                "x": [1.0],
-                "y": [10.0],
-                "ex": [0.1],
-                "ey": [1.0],
-                "data_reader": {},
-                "experiment_name": "TCSPC",
-            },
-            "ds001": {
-                "name": "Curve 2",
-                "filename": str(source_file),
-                "x": [2.0],
-                "y": [20.0],
-                "ex": [0.1],
-                "ey": [1.4],
-                "data_reader": {},
-                "experiment_name": "TCSPC",
-            },
-        },
-        "fits": [],
-    }
+    curve_0 = make_curve("ds000", 0.0, filename=str(source_file))
+    curve_1 = make_curve("ds001", 1.0, filename=str(source_file))
+    project_payload = v5_payload([curve_0, curve_1], name="Dedup Test")
 
     with MFDatabase(db_path) as db:
         archive_project_to_mmfdb(
@@ -691,11 +517,7 @@ def test_version_branching(tmp_path: pathlib.Path) -> None:
 
     db_path = tmp_path / "test_branching.db"
 
-    project_payload = {
-        "meta": {"name": "Branch Test"},
-        "datasets": {},
-        "fits": [],
-    }
+    project_payload = v5_payload(name="Branch Test")
 
     with MFDatabase(db_path) as db:
         # Create root version

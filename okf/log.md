@@ -2,6 +2,10 @@
 
 ## 2026-10-10
 
+- mmfdb `32e108d`: the project archiver's restore reads v5 fit records and the version's dependency edges;
+  `test/fio` builds v5 payloads through `capture_session` (`test/fio/v5_payload.py`). mmfdb `806d19a`: the
+  FLR export writes dictionary item names instead of database columns (`mmfdb_flr_ext.dic` 1.11), and
+  `read_graph_cif` escalates every undeclared keyword.
 - PRD-154 W13 steps 3, 4, 6: a `.pto` / `.cs.pto` exports to `_mmfdb_provenance_*` mmCIF
   (`mmfdb project export-cif`), reads back through python-ihm with no `UnknownCategoryWarning`, and imports
   (`import-cif`) to an equal set of operations, artifacts, edges and parameters (project and a multi-run

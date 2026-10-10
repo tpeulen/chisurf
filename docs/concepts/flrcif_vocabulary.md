@@ -295,6 +295,14 @@ Fit/model parameters, by registry key.
 | `_flr_fit_parameter.xB` | float | Model parameter xB used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. |
 | `_flr_fit_parameter.xDOnly` | float | Fraction of donors subject to additional quenching or rate channels (dimensionless). |
 
+## `_flr_fret_analysis`
+
+| Item | Type | Description |
+|---|---|---|
+| `_flr_fret_analysis.details` | text | Free-text description of the analysis. |
+| `_flr_fret_analysis.method` | text | The analysis method (for example PDA, or a screening algorithm), finer than the flrCIF analysis type. |
+| `_flr_fret_analysis.sample_id` | text | The sample the analysis was run on. flrCIF reaches it only through the two sample-probe ids. |
+
 ## `_flr_fret_calibration_parameters`
 
 | Item | Type | Description |
@@ -307,6 +315,7 @@ ChiSurf extensions to the FLR_FRET_FORSTER_RADIUS category. These fields are use
 
 | Item | Type | Description |
 |---|---|---|
+| `_flr_fret_forster_radius.details` | text | Free-text provenance of the Forster radius (how it was measured or computed). |
 | `_flr_fret_forster_radius.forster_radius` | float | The Forster radius of the probe pair, in angstroms. |
 | `_flr_fret_forster_radius.id` |  |  |
 | `_flr_fret_forster_radius.index_of_refraction` | float | Refractive index of the medium for FRET pair. Default is 1.4 for water. |
@@ -323,6 +332,7 @@ ChiSurf schema bindings for the FLR_POLY_PROBE_POSITION category.
 | `_flr_poly_probe_position.atom_id` | code |  |
 | `_flr_poly_probe_position.auth_name` | line |  |
 | `_flr_poly_probe_position.comp_id` |  |  |
+| `_flr_poly_probe_position.details` | text | Free-text description of the labelled position. flrCIF gives the position list no description item. |
 | `_flr_poly_probe_position.id` | int |  |
 | `_flr_poly_probe_position.modification_flag` | ucode |  |
 | `_flr_poly_probe_position.mutation_flag` | ucode |  |
@@ -345,6 +355,7 @@ ChiSurf schema bindings for fluorescence probe list fields stored in the
 | Item | Type | Description |
 |---|---|---|
 | `_flr_probe_list.chromophore_name` | line |  |
+| `_flr_probe_list.details` | text | Free-text description of the probe. flrCIF gives the probe list no description item. |
 | `_flr_probe_list.probe_id` | int |  |
 | `_flr_probe_list.probe_link_type` | code |  |
 | `_flr_probe_list.probe_origin` | code |  |
@@ -390,6 +401,13 @@ ChiSurf schema bindings for sample/probe association fields stored in
 | `_ihm_chemical_component_descriptor.id` |  |  |
 | `_ihm_chemical_component_descriptor.inchi` |  |  |
 | `_ihm_chemical_component_descriptor.smiles` |  |  |
+
+## `_ihm_external_files`
+
+| Item | Type | Description |
+|---|---|---|
+| `_ihm_external_files.md5` | text | MD5 checksum of the external file content, so a reader can detect a changed or substituted file. |
+| `_ihm_external_files.uuid` | text | Store-assigned identifier of the external file, stable across exports. |
 
 ## `_mmfdb_acl_entry`
 
@@ -1354,3 +1372,9 @@ One declared step of the workflow: the tool it runs and how.
 | `_mmfdb_workflow_step.software_package` | line |  |
 | `_mmfdb_workflow_step.software_version` | line |  |
 | `_mmfdb_workflow_step.step_id` | line |  |
+
+## `_struct_ref`
+
+| Item | Type | Description |
+|---|---|---|
+| `_struct_ref.organism` | text | Source organism of the reference sequence. |
