@@ -8,7 +8,8 @@
   ],
   "categories": [
     "Spectroscopy",
-    "Fluorescence Correlation Spectroscopy"
+    "Fluorescence Correlation Spectroscopy",
+    "Correlation"
   ],
   "entrypoints": {
     "cli": "fcs-convert=chisurf.plugins.fcs.fcs_convert.cli:cli"

@@ -6,7 +6,10 @@
   "authors": [
     "Thomas-Otavio Peulen"
   ],
-  "categories": ["Imaging"],
+  "categories": [
+    "Spectroscopy",
+    "Imaging"
+  ],
   "icon": "\ud83d\udd2c",
   "statefulness": {
     "enabled": true,

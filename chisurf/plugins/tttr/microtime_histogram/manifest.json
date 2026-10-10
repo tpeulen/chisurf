@@ -9,7 +9,8 @@
   "categories": [
     "Spectroscopy",
     "Fluorescence decay",
-    "TTTR"
+    "TTTR",
+    "Decay"
   ],
   "state_namespace": "microtime_histogram",
   "statefulness": {

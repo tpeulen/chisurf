@@ -4,7 +4,11 @@
   "display_name": "Spectroscopy:Decay:VV/VH Anisotropy Decay",
   "description": "Compute and plot the anisotropy decay r(t) of a VV/VH file with a g-factor, backgrounds and a fractional VH shift.",
   "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Spectroscopy", "Fluorescence decay"],
+  "categories": [
+    "Spectroscopy",
+    "Fluorescence decay",
+    "Decay"
+  ],
   "icon": "🎏",
   "state_namespace": "vv_vh_anisotropy",
   "entrypoints": {

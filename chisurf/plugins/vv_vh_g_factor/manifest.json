@@ -8,7 +8,8 @@
   ],
   "categories": [
     "Spectroscopy",
-    "Fluorescence decay"
+    "Fluorescence decay",
+    "Decay"
   ],
   "icon": "\u2696\ufe0f",
   "state_namespace": "vv_vh_g_factor",

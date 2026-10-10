@@ -2,7 +2,8 @@
 
 The plugins menu opens a plugin through
 :func:`chisurf.gui.misc_helpers.run_plugin_from_dir`, which tries two things in
-order: the manifest's ``entrypoints.gui``, and — failing that — executing
+order: the manifest (``entrypoints.action`` is run as an action,
+``entrypoints.emtk`` / ``entrypoints.gui`` build the window), and — failing that — executing
 ``wizard.py`` or ``__init__.py`` as a macro with ``__name__`` set to
 ``"plugin"``.
 
@@ -65,14 +66,15 @@ def _has_plugin_launch_block(path: pathlib.Path) -> bool:
 def test_a_menu_plugin_can_be_opened(plugin_dir: pathlib.Path):
     """Either a manifest GUI entry point, or a ``__name__ == "plugin"`` block."""
     manifest = json.loads((plugin_dir / "manifest.json").read_text(encoding="utf-8"))
-    if (manifest.get("entrypoints") or {}).get("gui"):
+    entrypoints = manifest.get("entrypoints") or {}
+    if any(entrypoints.get(kind) for kind in ("action", "emtk", "gui")):
         return
     launchable = any(
         _has_plugin_launch_block(plugin_dir / name) for name in ("wizard.py", "__init__.py")
     )
     assert launchable, (
         f"{plugin_dir.relative_to(REPO_ROOT)} is offered in the plugins menu but "
-        "has no way to open: declare `entrypoints.gui` in its manifest (the "
+        "has no way to open: declare `entrypoints.emtk` (or `.action` / legacy `.gui`) in its manifest (the "
         "current standard), or give its __init__.py an "
         '`if __name__ == "plugin":` block. Without one the menu entry runs the '
         "file and opens nothing, without an error."

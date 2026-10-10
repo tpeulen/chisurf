@@ -8,7 +8,8 @@
   ],
   "categories": [
     "Spectroscopy",
-    "Fluorescence Correlation Spectroscopy"
+    "Fluorescence Correlation Spectroscopy",
+    "Correlation"
   ],
   "icon": "\ud83c\udf00",
   "state_namespace": "burst_fcs_correlator",

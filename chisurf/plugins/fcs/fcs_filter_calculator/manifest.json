@@ -8,7 +8,8 @@
   ],
   "categories": [
     "Spectroscopy",
-    "Fluorescence Correlation Spectroscopy"
+    "Fluorescence Correlation Spectroscopy",
+    "Correlation"
   ],
   "icon": "\ud83c\udf9a\ufe0f",
   "state_namespace": "fcs_filter_calculator",

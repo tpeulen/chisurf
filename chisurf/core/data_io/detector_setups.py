@@ -243,7 +243,7 @@ def load_detector_setups(
                 close_owned_db(db)
     if not path.exists():
         logger.debug("Detector setups file not found: %s", path)
-        return {"setups": {}}
+        return {"setups": {}, "last_used": ""}
     data = load_json_setups(path, file_path=file_path) or {}
     return {"setups": data.get("setups") or {}, "last_used": data.get("last_used") or ""}
 

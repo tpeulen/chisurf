@@ -4,6 +4,17 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## A project no longer stores the live bff node graph (found 2026-10-10)
+
+status: open — owner: project persistence (`chisurf/core/project/`, `chisurf/core/fio/pto.py`); needs a product decision.
+
+Since projects became `.cs.pto` containers holding the scientific snapshot, `Project.save` writes `project.json`
+plus resources and `Project.load` never reads a graph session; nothing calls `write_project(session_bytes=...)`.
+Nodes and free ports that no fit owns are therefore lost on save/load (the old `.csp` kept them in
+`session.jsonl`). `test/core/test_bff_session.py` now pins the current behaviour
+(`test_live_graph_is_not_embedded_in_the_project_file`). Decide: persist the live graph again through
+`session_bytes`, or declare fit-owned state the only persisted state and say so in the docs.
+
 ## A linked parameter edited in one fit does not refresh the fits that follow it (found 2026-10-10)
 
 status: resolved 2026-10-10 — the `fit.update` service/action, `ChiSurfAPI` local paths and the GUI no-transport fallback now call `chisurf.core.fitting.link_propagation.refresh_link_followers`, which updates every fit linked (transitively) to the recomputed one once each; the probe's manual `update()` of non-owning fits is gone; guard `test/fitting/test_link_propagation.py`.
@@ -27,7 +38,7 @@ running the file, then the single node id; bisect by node ids (memory: global-se
 
 ## Guide screenshot scripts still import retired Qt calculator tools (found 2026-10-10)
 
-status: open — owner W14 (docs screenshots move to the W7 e2e renders).
+status: resolved 2026-10-10 — the eight grab functions (psf, rics_precision, phasor, fcs_saturation, lfcs_sim, irf_estimator, synthetic_decay, h2mm) now build the emtk app and render it with `emtk.testing.Driver` (`docs/guides/screenshots/emtk_shot.py`); all PNGs regenerated and read. The fcs_saturation caption said 0.2 mW for numbers that are the 2 mW state; fixed.
 
 The Qt `gui/tool.py` of psf_calculator, rics_precision, phasor_calculator, fcs_saturation_calc, fcs_lfcs_sim,
 irf_estimator and synthetic_decay were deleted (W9 phase 1), but `docs/guides/make_screenshots.py` (lines ~392,

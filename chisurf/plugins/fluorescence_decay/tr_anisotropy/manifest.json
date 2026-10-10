@@ -8,7 +8,8 @@
   ],
   "categories": [
     "Spectroscopy",
-    "Fluorescence decay"
+    "Fluorescence decay",
+    "Decay"
   ],
   "icon": "\ud83d\udd03",
   "state_namespace": "tr_anisotropy",

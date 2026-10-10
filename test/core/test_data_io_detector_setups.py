@@ -14,7 +14,7 @@ from chisurf.core.data_io.detector_setups import (
 class TestDetectorSetupsIO:
     def test_load_no_file_returns_empty(self, tmp_path: pathlib.Path):
         result = load_detector_setups(file_path=tmp_path / "nonexistent.json")
-        assert result == {"setups": {}}
+        assert result == {"setups": {}, "last_used": ""}
 
     def test_save_and_load_roundtrip(self, tmp_path: pathlib.Path):
         f = tmp_path / "setups.json"
@@ -34,7 +34,7 @@ class TestDetectorSetupsIO:
         f = tmp_path / "bad.json"
         f.write_text("not json")
         result = load_detector_setups(file_path=f)
-        assert result == {"setups": {}}
+        assert result == {"setups": {}, "last_used": ""}
 
     def test_save_creates_parent_dirs(self, tmp_path: pathlib.Path):
         f = tmp_path / "a" / "b" / "setups.json"
