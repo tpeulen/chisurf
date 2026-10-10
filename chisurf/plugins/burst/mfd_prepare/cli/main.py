@@ -15,6 +15,8 @@ import sys
 
 import click
 
+from chisurf.core.api import run_fit
+
 from ..api import describe_preparation, prepare_folder
 from ..api.models import PrepareRequest
 
@@ -127,7 +129,7 @@ def fit(
             data=data,
             model_kw={"n_states": n_states},
         )
-        fit.run()
+        run_fit(fit)
 
         params = dict(
             zip(

@@ -31,6 +31,7 @@ from qtpy import QtCore, QtWidgets
 import chisurf as cs
 import chisurf.core.data as _data
 import chisurf.core.fitting.fit as _fit
+from chisurf.core.api import set_current_fit
 from chisurf.gui import dialogs
 from chisurf.gui.widgets.dock_area import DockArea
 from chisurf.gui.widgets.models.model_editor import build_model_editor
@@ -432,11 +433,10 @@ class FRETLineTool(QtWidgets.QWidget):
         self._loading = False
         # Point the global current_fit at this component so the editor's
         # add/remove-component buttons (which dispatch to current_fit) act here.
-        if getattr(cs, "cs", None) is not None:
-            try:
-                cs.cs.current_fit = comp["fit"]
-            except Exception:
-                pass
+        try:
+            set_current_fit(comp["fit"])
+        except Exception:
+            pass
 
     def _on_model_changed(self, label: str) -> None:
         if self._loading or not (0 <= self._cur < len(self._components)):

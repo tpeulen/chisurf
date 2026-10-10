@@ -105,11 +105,11 @@ def load_decay_handler(path: str) -> dict[str, Any]:
 def load_dataset_handler() -> dict[str, Any]:
     """Load decay data from a ChiSurf dataset (stub for RPC)."""
     try:
-        import chisurf as cs
+        from chisurf.core.api import dataset_objects
         from chisurf.core.data import get_data
 
         all_curves = get_data(
-            data_set=getattr(cs, "imported_datasets", []),
+            data_set=dataset_objects(),
             curve_type="experiment",
         )
         datasets = []

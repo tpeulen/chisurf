@@ -19,6 +19,7 @@ class SyntheticDecayViewModel(SyntheticDecayModel):
     @staticmethod
     def _register_gui_fit(group, polarized):
         import chisurf as cs
+        from chisurf.core.api import dataset_objects
         from chisurf.core.models.description import for_family
         from chisurf.macros import core_data
 
@@ -26,5 +27,5 @@ class SyntheticDecayViewModel(SyntheticDecayModel):
         core_data.add_dataset(experiment_reader=None, dataset=group, _from_controller=True)
         cs.core.actions.dispatch(
             name="fit.add",
-            payload={"dataset_indices": [len(cs.imported_datasets) - 1], "model_name": model_name},
+            payload={"dataset_indices": [len(dataset_objects()) - 1], "model_name": model_name},
         )

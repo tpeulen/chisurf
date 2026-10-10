@@ -16,6 +16,7 @@ import chisurf.gui.decorators
 import chisurf.gui.widgets
 import chisurf.gui.widgets.experiments.widgets
 from chisurf.core.actions import record_action
+from chisurf.core.api import edit_parameter, fit_objects, update_fit
 from chisurf.gui import dialogs
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
@@ -898,7 +899,7 @@ class ParameterActionsMixin:
             return
 
         def write():
-            fp.value = value
+            edit_parameter(fp, value=value)
 
         def rpc(fc, source):
             fc.set_parameter_value(value=value, **self._rpc_address(fp, source))
@@ -927,7 +928,7 @@ class ParameterActionsMixin:
             return
 
         def write():
-            fp.fixed = fixed
+            edit_parameter(fp, fixed=fixed)
 
         def rpc(fc, source):
             fc.set_parameter_fixed(fixed=fixed, **self._rpc_address(fp, source))
@@ -952,7 +953,7 @@ class ParameterActionsMixin:
             return
 
         def write():
-            fp.bounds_on = bounds_on
+            edit_parameter(fp, bounds_on=bounds_on)
 
         def rpc(fc, source):
             fc.set_parameter_bounds_on(bounds_on=bounds_on, **self._rpc_address(fp, source))
@@ -982,7 +983,7 @@ class ParameterActionsMixin:
                 return
 
         def write():
-            fp.bounds = (lower, upper)
+            edit_parameter(fp, bounds=(lower, upper))
 
         def rpc(fc, source):
             fc.set_parameter_bounds(bounds=(lower, upper), **self._rpc_address(fp, source))
@@ -1009,7 +1010,7 @@ class ParameterActionsMixin:
         fp = self._target(parameter)
 
         def write():
-            fp.link = None
+            edit_parameter(fp, link=None)
 
         def rpc(fc, source):
             result = fc.unlink_parameter(**self._rpc_address(fp, source))
@@ -1334,10 +1335,10 @@ class ParameterActionsMixin:
                 # too, exactly as the ``fit.update`` service does.
                 from chisurf.core.fitting.link_propagation import refresh_link_followers
 
-                fits = list(getattr(cs, "fits", []) or [])
+                fits = fit_objects()
                 for fit in fits:
                     if str(getattr(fit, "unique_identifier", "")) == fit_uid:
-                        fit.update()
+                        update_fit(fit)
                         refresh_link_followers(fits, fit)
                         try:
                             fit.model.finalize()

@@ -15,6 +15,7 @@ from qtpy import QtCore, QtWidgets
 import chisurf as cs
 import chisurf.core.math.datatools
 from chisurf import logging
+from chisurf.core.api import edit_parameter
 from chisurf.gui.glyphs import Glyphs
 
 from .registry import register_plot, register_section
@@ -1590,7 +1591,7 @@ class LifetimeAmplitudeOptions(QtWidgets.QWidget):
             # Component rows: the i-th amplitude and lifetime of each group.
             try:
                 for mine, theirs in zip(group.parameters_all, target.parameters_all):
-                    mine.value = float(theirs.value)
+                    edit_parameter(mine, value=float(theirs.value))
                 _dispatch_fit_update(fit_index)
             except Exception as exc:
                 logging.warning(f"Failed to read lifetime values: {exc}")
@@ -1617,7 +1618,7 @@ class LifetimeAmplitudeOptions(QtWidgets.QWidget):
         if group is None:
             return
         try:
-            group.link = target
+            edit_parameter(group, link=target)
             _dispatch_fit_update(self._own_fit_index())
         except Exception as exc:
             logging.warning(f"Failed to link lifetime group: {exc}")

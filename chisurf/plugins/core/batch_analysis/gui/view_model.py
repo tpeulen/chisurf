@@ -107,10 +107,10 @@ class BatchViewModel:
 
     def imported_datasets(self) -> list:
         """Return the process-global imported datasets (excluding the global one)."""
-        import chisurf as cs
+        from chisurf.core.api import dataset_objects
 
         out = []
-        for ds in getattr(cs, "imported_datasets", []):
+        for ds in dataset_objects():
             if getattr(ds, "name", None) == "Global Dataset":
                 continue
             out.append(ds)

@@ -37,6 +37,8 @@ from typing import Any
 
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.core.api import edit_parameter
+
 from .registry import register_section
 
 logger = logging.getLogger(__name__)
@@ -457,9 +459,9 @@ class RateMatrixWidget(QtWidgets.QWidget):
 
                         def _on_fix_state_changed(state, p=param, change_style=_update_cell_style):
                             if state == QtCore.Qt.Checked:
-                                p.fixed = True
+                                edit_parameter(p, fixed=True)
                             elif state == QtCore.Qt.Unchecked:
-                                p.fixed = False
+                                edit_parameter(p, fixed=False)
                             change_style()
                             self._binding.notify_changed()
                             self.refresh()

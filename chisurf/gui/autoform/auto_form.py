@@ -16,6 +16,7 @@ from qtpy import QtCore, QtWidgets
 
 import chisurf as cs
 from chisurf import logging
+from chisurf.core.api import fit_objects
 from chisurf.core import dataspec as vs
 from chisurf.gui.widgets.fitting import make_fitting_parameter_widget
 
@@ -1374,7 +1375,7 @@ class AutoForm(QtWidgets.QWidget):
     def _dispatch_fit_update(self):
         try:
             fit = getattr(self.model, "fit", None)
-            fits = cs.fits if hasattr(cs, "fits") else []
+            fits = fit_objects()
             idx = next((i for i, f in enumerate(fits) if f is fit), 0)
             cs.core.actions.dispatch(name="fit.update", payload={"fit_index": int(idx)})
         except Exception:  # pragma: no cover - dispatcher optional in tests

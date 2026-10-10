@@ -13,6 +13,7 @@ import chisurf.core.support.decorators
 import chisurf.gui.widgets
 import chisurf.gui.widgets.fio
 from chisurf import typing
+from chisurf.core.api import add_dataset, dataset_objects, move_dataset
 from chisurf.gui.widgets.tooltip_plot import TooltipTreeItem, dataset_tooltip_html
 
 
@@ -95,7 +96,7 @@ class ExperimentalDataSelector(QtWidgets.QTreeWidget):
             description="Pickled data ", file_type="Pickle files (*.pkl)"
         )
         obj = pickle.load(open(filename, "rb"))
-        chisurf.imported_datasets.append(obj)
+        add_dataset(obj)
         self.update()
 
     def onGroupDatasets(self):
@@ -236,14 +237,8 @@ class ExperimentalDataSelector(QtWidgets.QTreeWidget):
             ds = self.selected_datasets[0]
 
             # Find the index of the selected dataset
-            index_of_ds = chisurf.imported_datasets.index(ds)
-
-            # Remove item from its current position
-            chisurf.imported_datasets.pop(index_of_ds)
-
-            # Insert item at position 1
             idx_new = int(self.currentItem().text(0))
-            chisurf.imported_datasets.insert(idx_new, ds)
+            move_dataset(ds, idx_new)
 
             ds.name = str(self.currentItem().text(1))
             self.update(update_others=True)
@@ -282,7 +277,7 @@ class ExperimentalDataSelector(QtWidgets.QTreeWidget):
         if get_data_sets is None:
 
             def get_data_sets(**kwargs):
-                return chisurf.core.data.get_data(data_set=chisurf.imported_datasets, **kwargs)
+                return chisurf.core.data.get_data(data_set=dataset_objects(), **kwargs)
 
             self.get_data_sets = get_data_sets
         else:

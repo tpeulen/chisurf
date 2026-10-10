@@ -22,6 +22,8 @@ from collections.abc import Callable
 
 import numpy as np
 
+from chisurf.core.api import add_dataset, dataset_objects, update_fit
+
 from ..core import fits as core_fits
 from ..core import irf as core_irf
 from ..core import spectra as core_spectra
@@ -359,16 +361,14 @@ class AnisotropyViewModel:
             return
 
         # make the corrected IRFs and sample decays available as datasets
-        datasets = getattr(cs, "imported_datasets", None)
-        if datasets is not None:
-            for key in ("irf_vv_bg_norm", "irf_vh_bg_norm", "data_vv", "data_vh"):
-                if self.data.get(key) is not None:
-                    datasets.append(self.data[key])
+        for key in ("irf_vv_bg_norm", "irf_vh_bg_norm", "data_vv", "data_vh"):
+            if self.data.get(key) is not None:
+                add_dataset(self.data[key])
         selector = getattr(getattr(cs, "cs", object()), "dataset_selector", None)
         if selector is not None:
             selector.update()
 
-        n = len(getattr(cs, "imported_datasets", []))
+        n = len(dataset_objects())
         fc = get_fitting_client()
 
         chisurf.core.actions.dispatch(
@@ -408,7 +408,7 @@ class AnisotropyViewModel:
         for fit, key in ((fit_vv, "irf_vv_bg_norm"), (fit_vh, "irf_vh_bg_norm")):
             fit.model.convolve._irf = self.data[key]
             fit.model.convolve.lineEdit.setText(self.data[key].name)
-            fit.update()
+            update_fit(fit)
 
         # global fit wrapping VV + VH
         chisurf.core.actions.dispatch(

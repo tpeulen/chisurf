@@ -35,6 +35,7 @@ import re
 import numpy as np
 
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
+from chisurf.core.api import edit_parameter
 
 __all__ = [
     "LightPathParameters",
@@ -177,7 +178,7 @@ class LightPathParameters(FittingParameterGroup):
             return False
         parameter = self._by_key.get(key)
         if parameter is not None:
-            parameter.value = float(value)
+            edit_parameter(parameter, value=float(value))
             return False
         parameter = FittingParameter(
             value=float(value),
@@ -305,7 +306,7 @@ class LightPathParameters(FittingParameterGroup):
         ):
             value = float(factors.get(key, float("nan")))
             if np.isfinite(value):
-                parameter.value = value
+                edit_parameter(parameter, value=value)
         return factors
 
     def as_prior_arguments(self, **overrides) -> dict:

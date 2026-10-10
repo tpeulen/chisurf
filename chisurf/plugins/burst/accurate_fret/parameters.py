@@ -28,6 +28,7 @@ from __future__ import annotations
 import numpy as np
 
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
+from chisurf.core.api import edit_parameter
 
 __all__ = [
     "AccurateFretParameters",
@@ -111,7 +112,7 @@ class AccurateFretParameters(FittingParameterGroup):
             parameter = self._add(key, 0.0, unit=_UNITS.get(key, ""))
             value = float(factors.get(key, float("nan")))
             if np.isfinite(value):
-                parameter.value = value
+                edit_parameter(parameter, value=value)
 
         populations = list(getattr(getattr(result, "calibration", None), "populations", None) or [])
         seen: list[str] = []
@@ -123,14 +124,14 @@ class AccurateFretParameters(FittingParameterGroup):
                 parameter = self._add(key, 0.0, unit=unit)
                 value = float(population.get(field, float("nan")))
                 if np.isfinite(value):
-                    parameter.value = value
+                    edit_parameter(parameter, value=value)
         for label in self.population_labels:
             if label in seen:
                 continue
             for key in (f"E_{label}", f"R_{label}"):
                 parameter = self.parameter(key)
                 if parameter is not None:
-                    parameter.value = float("nan")
+                    edit_parameter(parameter, value=float("nan"))
         self.population_labels = seen
 
 

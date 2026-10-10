@@ -7,6 +7,17 @@ import numpy as np
 
 import chisurf as cs
 from chisurf.core.api.context import PluginContext
+from chisurf.core.api.live_edit import (  # noqa: F401 -- the live-object write seam
+    add_dataset,
+    edit_parameter,
+    move_dataset,
+    restore_parameter_value,
+    run_fit,
+    set_current_fit,
+    set_fit_range,
+    set_parameter_array,
+    update_fit,
+)
 from chisurf.server.session import SessionState
 
 
@@ -107,6 +118,15 @@ def dataset_objects() -> list[Any]:
         A new list; editing it does not change the session.
     """
     return list(_global_datasets())
+
+
+def dataset_container() -> Any:
+    """Return the live imported-dataset container (a list, or a dict of datasets).
+
+    For the rare reader that has to see the container itself, e.g. to ask
+    whether a dict-style session holds a real dataset.  Do not mutate it.
+    """
+    return _global_datasets()
 
 
 def fit_objects() -> list[Any]:

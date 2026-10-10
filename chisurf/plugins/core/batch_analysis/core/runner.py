@@ -380,9 +380,9 @@ def run_batch(
 
         dispatch = chisurf.core.actions.dispatch
     if imported_datasets is None:
-        import chisurf as cs
+        from chisurf.core.api import dataset_objects
 
-        imported_datasets = getattr(cs, "imported_datasets", [])
+        imported_datasets = dataset_objects()
 
     fit_objects = fit_client.get_fit_objects()
     fit = fit_objects[fit_index] if 0 <= fit_index < len(fit_objects) else None

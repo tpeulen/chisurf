@@ -17,6 +17,7 @@ import chisurf.gui.widgets
 import chisurf.gui.widgets.experiments.widgets
 import chisurf.logging
 from chisurf.core.actions import record_action
+from chisurf.core.api import set_fit_range, update_fit
 from chisurf.core.math.optimization import OptimizationCancelled
 from chisurf.gui.widgets.fitting import presentation_fit_members
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
@@ -832,7 +833,7 @@ class FittingControllerWidget(Controller):
                     editor.setValue(int(value))
                 finally:
                     editor.blockSignals(blocked)
-            self.fit.update()
+            update_fit(self.fit)
             try:
                 self.fit.model.finalize()
             except Exception:
@@ -978,7 +979,7 @@ class FittingControllerWidget(Controller):
             # which is what redraws the fit window's pages -- the Chain
             # diagnostics page among them. Nothing else would.
             try:
-                self.fit.update()
+                update_fit(self.fit)
             except Exception as exc:
                 cs.logging.warning(f"Sampling: could not refresh the fit window: {exc}")
 
@@ -1166,7 +1167,7 @@ class FittingControllerWidget(Controller):
                     # `Fit.update()` publishes ``fit.updated``; that is what
                     # redraws the trace on the local path, exactly as the
                     # server's own publish does on the RPC path.
-                    self.fit.update()
+                    update_fit(self.fit)
                 for pa in self._iter_fit_parameters_to_finalize(self.fit):
                     controller = getattr(pa, "controller", None)
                     if controller is None:
@@ -1439,7 +1440,7 @@ class FittingControllerWidget(Controller):
                 xmax=self.xmax,
             )
         else:
-            self.fit.fit_range = (self.xmin, self.xmax)
+            set_fit_range(self.fit, self.xmin, self.xmax)
         if getattr(self, "_is_2d_dataset", False):
             try:
                 self._update_2d_mask_from_spinboxes()
@@ -1457,7 +1458,7 @@ class FittingControllerWidget(Controller):
             # path -- this branch used to end after setting the range, which
             # left the displayed curve stale until something else updated.
             try:
-                self.fit.update()
+                update_fit(self.fit)
             except Exception as e:
                 cs.logging.warning(f"fit update after range change failed: {e}")
 
@@ -1516,7 +1517,7 @@ class FittingControllerWidget(Controller):
                     if fc is not None:
                         fc.set_fit_range(fit_uid=fit_uid_val, xmin=0, xmax=n_flat)
                     else:
-                        self.fit.fit_range = (0, n_flat)
+                        set_fit_range(self.fit, 0, n_flat)
                     try:
                         self._update_2d_mask_from_spinboxes()
                     except Exception as e:
@@ -1526,7 +1527,7 @@ class FittingControllerWidget(Controller):
                     if fc is not None and not range_applied_by_rpc:
                         fc.set_fit_range(fit_uid=fit_uid_val, xmin=xmin_1d, xmax=xmax_1d)
                     elif fc is None:
-                        self.fit.fit_range = (int(xmin_1d), int(xmax_1d))
+                        set_fit_range(self.fit, int(xmin_1d), int(xmax_1d))
 
                 fit = self.fit
                 xmin_val = int(self.xmin)
@@ -1539,7 +1540,7 @@ class FittingControllerWidget(Controller):
                     try:
                         if fc is None:
                             try:
-                                fit.update()
+                                update_fit(fit)
                             except Exception as e:
                                 cs.logging.warning(
                                     f"Local fit update after auto fit range failed: {e}"

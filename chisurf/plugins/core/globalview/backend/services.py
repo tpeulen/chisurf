@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from chisurf.core.api import edit_parameter, fit_objects
 from chisurf.plugins.core.globalview.api.graph import build_graph
 
 
@@ -145,9 +146,7 @@ def _get_fits_from_state(state: Any = None) -> list[Any]:
     """Get fits from state or fall back to chisurf module."""
     if state is not None:
         return list(getattr(state, "fits", []))
-    import chisurf as cs
-
-    return list(getattr(cs, "fits", []))
+    return fit_objects()
 
 
 def parameters_link_handler(
@@ -174,7 +173,7 @@ def parameters_link_handler(
         target_param = target_params.get(target_parameter_name)
         if source_param is None or target_param is None:
             return {"ok": False, "error": "Parameter not found"}
-        source_param.link = target_param
+        edit_parameter(source_param, link=target_param)
         return {"ok": True}
     except Exception as exc:
         return {"ok": False, "error": str(exc)}
@@ -199,7 +198,7 @@ def parameters_unlink_handler(
         param = params_dict.get(parameter_name)
         if param is None:
             return {"ok": False, "error": "Parameter not found"}
-        param.link = None
+        edit_parameter(param, link=None)
         return {"ok": True}
     except Exception as exc:
         return {"ok": False, "error": str(exc)}

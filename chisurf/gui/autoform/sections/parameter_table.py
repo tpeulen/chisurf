@@ -40,6 +40,7 @@ from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf as cs
 from chisurf import typing
+from chisurf.core.api import edit_parameter, set_parameter_array
 from chisurf.core.fitting.parameter import FittingParameter
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.chitable.delegates import (
@@ -343,12 +344,12 @@ def _set_param_value(param: FittingParameter, col_id: str, value: typing.Any) ->
             if ctrl is not None:
                 ctrl.apply_value(float(value), param)
             else:
-                param.value = float(value)
+                edit_parameter(param, value=float(value))
         elif col_id == "fixed":
             if ctrl is not None:
                 ctrl.apply_fixed(_parse_bool(value), param)
             else:
-                param.fixed = _parse_bool(value)
+                edit_parameter(param, fixed=_parse_bool(value))
         elif col_id in ("bounds_lo", "bounds_hi"):
             # Read the partner through lb/ub, not through ``bounds``: with
             # enforcement off the tuple is (None, None), and writing that back
@@ -358,12 +359,12 @@ def _set_param_value(param: FittingParameter, col_id: str, value: typing.Any) ->
             if ctrl is not None:
                 ctrl.apply_bounds(b[0], b[1], param)
             else:
-                param.bounds = tuple(b)
+                edit_parameter(param, bounds=tuple(b))
         elif col_id == "bounds_on":
             if ctrl is not None:
                 ctrl.apply_bounds_on(_parse_bool(value), param)
             else:
-                param.bounds_on = _parse_bool(value)
+                edit_parameter(param, bounds_on=_parse_bool(value))
         else:
             return False
     except Exception:
@@ -386,7 +387,7 @@ def _set_array_element(param: FittingParameter, index: int, value: typing.Any) -
     try:
         values = values.copy()
         values[index] = float(value)
-        param._port.value = values
+        set_parameter_array(param, values)
     except Exception:
         return False
     _notify_edited(param, _editor(param))

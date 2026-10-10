@@ -6,7 +6,7 @@ description: Open, resolved and withdrawn defects with their measurement, owner 
 
 ## The forbidden-communication guard's counts grew instead of shrinking (found 2026-10-10)
 
-status: resolved 2026-10-10 — `EXPECTED_VIOLATIONS` re-derived; every file is at or below its value at `2ae50a0a6~1` (69 hits in 20 files).
+status: resolved 2026-10-10 — 3 hits in 2 files remain (from 69 in 20): the `cs.run(...)` console-macro strings in `chisurf/gui/main.py` (current fit, console init) and `widgets/experiments/ics.py`, kept because the string is the recorded macro. GUI writes go through `chisurf/core/api/live_edit.py`; reads through `fit_objects()`/`dataset_objects()`.
 
 Causes and fixes in `test/test_forbidden_communication.py`:
 
@@ -33,7 +33,7 @@ status: open — `docs/guides/make_screenshots.py` (burst_browser ~286, burst_gs
 
 ## The run picker cannot tell the burst analyses apart (found 2026-10-10)
 
-status: open — owner: W4 (`.pto`-first burst runs, PRD-154); strict xfail `run_picker` in `test/e2e/test_release_scenario.py`.
+status: resolved 2026-10-10 — MLE, H2MM and burst FCS each write a run of their own (`mle <hash>`, `h2mm <hash>`, `burst fcs <hash>`, via `burst_container.analysis_run`) with `derived_from` the burst table they read, so lineage runs result -> `.bur` -> photons and the picker lists 4 runs (search, MLE incl. IRFs, H2MM, FCS). `export_legacy` takes a parent burst table as grid. Guard: `test/fio/test_legacy_export.py::test_mle_h2mm_fcs_are_runs_of_their_own_derived_from_the_burst_table`; e2e `run_picker` is now a plain assertion. Open remainder: batch rows do not carry the burst run, so the parent is the container's most recent search unless the source is `m.pto/<run>`.
 
 After selection → MLE → H2MM → sub-ensemble decay → burst-wise FCS on the Burst Selection demo, the container holds every
 table (`mle green`/`mle red`, `h2mm`, `burst fcs`, `<run>/sub-ensemble decay`), each with `lineage()` ending at the

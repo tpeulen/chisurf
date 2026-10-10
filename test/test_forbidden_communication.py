@@ -39,27 +39,10 @@ SCAN_DIRECTORIES = [
 # Run ``python -m pytest test/test_forbidden_communication.py --update-expected``
 # to regenerate this dict from the current state.
 EXPECTED_VIOLATIONS: dict[str, int] = {
-    "chisurf/gui/autoform/auto_form.py": 1,
-    "chisurf/gui/autoform/sections/builtin.py": 2,
-    "chisurf/gui/autoform/sections/parameter_table.py": 5,
-    "chisurf/gui/autoform/sections/rate_matrix_section.py": 2,
-    "chisurf/gui/main.py": 9,
-    "chisurf/gui/main_helper.py": 12,
+    # cs.run("cs.current_fit = ...") records the console macro; the run string is the point.
+    "chisurf/gui/main.py": 2,
+    # cs.run(...) of the detector-setup macro lines, recorded by the console history.
     "chisurf/gui/widgets/experiments/ics.py": 1,
-    "chisurf/gui/widgets/experiments/widgets.py": 5,
-    "chisurf/gui/widgets/fitting/fit_controller.py": 8,
-    "chisurf/gui/widgets/fitting/parameter_widgets.py": 7,
-    "chisurf/plugins/burst/accurate_fret/parameters.py": 3,
-    "chisurf/plugins/burst/mfd_prepare/cli/main.py": 1,
-    "chisurf/plugins/core/batch_analysis/core/runner.py": 1,
-    "chisurf/plugins/core/batch_analysis/gui/view_model.py": 1,
-    # backend/services.py: server-side RPC handlers — direct param.link = is LEGITIMATE here
-    "chisurf/plugins/core/globalview/backend/services.py": 3,
-    "chisurf/plugins/core/lightpath_simulator/core/parameters.py": 2,
-    "chisurf/plugins/fluorescence_decay/irf_estimator/backend/services.py": 1,
-    "chisurf/plugins/fluorescence_decay/synthetic_decay/gui/view_model.py": 1,
-    "chisurf/plugins/fluorescence_decay/tr_anisotropy/gui/view_model.py": 3,
-    "chisurf/plugins/fret_line/gui/tool.py": 1,
 }
 
 # Files that are entirely exempt from scanning

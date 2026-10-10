@@ -30,6 +30,7 @@ import chisurf.macros
 import chisurf.macros.core_fit
 from chisurf import typing
 from chisurf.core.actions import record_action
+from chisurf.core.api import dataset_objects, fit_objects
 from chisurf.gui import (
     QtCore,
     QtGui,
@@ -322,6 +323,10 @@ class Main(
     #: *Plot settings* collapsed to its title bar.
     _LAYOUT_VERSION = 3
 
+    #: The ribbon interface, once :meth:`load_tools` has set it up; ``None`` before that (and in menu mode), so
+    #: a window restored or filtered before its tools load never meets a missing attribute.
+    _ribbon_integration = None
+
     def _save_window_state(self):
         """Persist dock layout and window geometry via QSettings."""
         settings = QtCore.QSettings("ChiSurf", "MainWindow")
@@ -483,11 +488,12 @@ class Main(
 
             # Handle fit windows first
             if hasattr(sub_window, "fit") and sub_window.fit is not None:
-                for fit_idx, f in enumerate(cs.fits):
+                fits = fit_objects()
+                for fit_idx, f in enumerate(fits):
                     if f == sub_window.fit:
-                        if self.current_fit is not cs.fits[fit_idx]:
+                        if self.current_fit is not fits[fit_idx]:
                             cs.run(f"cs.current_fit = cs.fits[{fit_idx}]")
-                            self.current_fit = cs.fits[fit_idx]
+                            self.current_fit = fits[fit_idx]
                             self._fit_idx = fit_idx
                             break
 
@@ -587,7 +593,7 @@ class Main(
         self.comboBox_Model.blockSignals(True)
         self.comboBox_Model.clear()
         ds = self.current_dataset
-        if cs.imported_datasets and ds is not None:
+        if dataset_objects() and ds is not None:
             experiment = self._experiment_for_dataset(ds)
             if experiment is not None:
                 # Model classes are resolved after the window is shown; a
@@ -2037,7 +2043,7 @@ class Main(
             )
 
             model = cb.model()
-            for ds in getattr(cs, "imported_datasets", []):
+            for ds in dataset_objects():
                 text = str(getattr(ds, "name", repr(ds)))
                 # Hovering an entry previews the curve (see tooltip_plot); falls
                 # back to a plain entry for non-standard combo models.
@@ -2133,7 +2139,7 @@ class Main(
             import chisurf as cs
 
             fit_obj = None
-            for f in getattr(cs, "fits", []):
+            for f in fit_objects():
                 if str(getattr(f, "unique_identifier", "")) == str(fit_uid):
                     fit_obj = f
                     break
@@ -2198,7 +2204,7 @@ class Main(
             for fit_dto in fits_dto:
                 fit_uid = fit_dto.get("uid")
                 fit_obj = None
-                for f in getattr(cs, "fits", []):
+                for f in fit_objects():
                     if str(getattr(f, "unique_identifier", "")) == str(fit_uid):
                         fit_obj = f
                         break

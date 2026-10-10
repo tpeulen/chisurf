@@ -10,6 +10,13 @@ from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf as cs
 import chisurf.gui.widgets as _gw
+from chisurf.core.api import (  # the live-object write seam
+    dataset_container,
+    edit_parameter,
+    restore_parameter_value,
+    set_fit_range,
+    update_fit,
+)
 from chisurf.gui import dialogs, misc_helpers
 from chisurf.gui.progress import ChiSurfProgress
 from chisurf.history import replay as _hr
@@ -79,7 +86,7 @@ class ProjectMixin:
 
     def _project_has_content(self: Main) -> bool:
         """Whether the live session contains scientific work worth protecting."""
-        datasets = getattr(cs, "imported_datasets", None)
+        datasets = dataset_container()
         if isinstance(datasets, dict):
             for key, value in datasets.items():
                 if str(key).lower() not in {"global-fit", "global_fit"} and value is not None:
@@ -1452,6 +1459,12 @@ class HistoryMixin:
             parent_layout.insertWidget(insert_index, browser, 1)
 
             self.historyBrowser = browser
+            # Undo/Redo follow every recorded edit, not only a navigation: an action that was last synced
+            # before the first edit would stay disabled (and with it Ctrl+Z).
+            try:
+                browser.historyChanged.connect(lambda _state: self._sync_history_navigation_actions())
+            except Exception:
+                pass
             self._sync_history_navigation_actions()
         except Exception as exc:
             try:
@@ -1635,29 +1648,26 @@ class StateMixin:
                     break
             try:
                 if "fixed" in state:
-                    param.fixed = bool(state["fixed"])
+                    edit_parameter(param, fixed=bool(state["fixed"]))
                     applied_scalar += 1
             except Exception:
                 pass
             try:
                 if "bounds_on" in state:
-                    param.bounds_on = bool(state["bounds_on"])
+                    edit_parameter(param, bounds_on=bool(state["bounds_on"]))
                     applied_scalar += 1
             except Exception:
                 pass
             try:
                 if "bounds" in state:
                     lb, ub = state["bounds"]
-                    param.bounds = (float(lb), float(ub))
+                    edit_parameter(param, bounds=(float(lb), float(ub)))
                     applied_scalar += 1
             except Exception:
                 pass
             try:
                 if "value" in state:
-                    was_fixed = bool(getattr(param, "fixed", False))
-                    param.fixed = False
-                    param.value = state["value"]
-                    param.fixed = was_fixed
+                    restore_parameter_value(param, state["value"])
                     applied_scalar += 1
             except Exception:
                 pass
@@ -1672,7 +1682,7 @@ class StateMixin:
                 unresolved_keys.append(format_key(key))
                 continue
             try:
-                param.link = None
+                edit_parameter(param, link=None)
                 applied_unlinks += 1
             except Exception:
                 pass
@@ -1690,12 +1700,12 @@ class StateMixin:
             target_uid = state.get("link_uid")
             try:
                 if target_key is None:
-                    param.link = None
+                    edit_parameter(param, link=None)
                     applied_unlinks += 1
                 else:
                     target_param = resolve_param(target_key, link_uid=target_uid)
                     if target_param is not None and target_param is not param:
-                        param.link = target_param
+                        edit_parameter(param, link=target_param)
                         applied_links += 1
             except Exception:
                 pass
@@ -1790,7 +1800,7 @@ class StateMixin:
                 continue
 
             try:
-                target_fit.fit_range = (xmin, xmax)
+                set_fit_range(target_fit, xmin, xmax)
                 applied += 1
             except Exception:
                 continue
@@ -2101,7 +2111,7 @@ class StateMixin:
                 try:
                     model.finalize()
                     if hasattr(target_local_fit, "update"):
-                        target_local_fit.update()
+                        update_fit(target_local_fit)
                 except Exception:
                     pass
 
