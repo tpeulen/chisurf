@@ -21,12 +21,33 @@ import dataclasses
 import sys
 import time
 import typing
+import weakref
 
 from chisurf.core.console import tracebacks, transform
 from chisurf.core.console.interpreter import Interpreter, cell_filename
 from chisurf.core.console.streams import InputStream, OutputStream
 
-__all__ = ["Shell", "ExecutionResult", "Bunch"]
+__all__ = ["Shell", "ExecutionResult", "Bunch", "running_shell"]
+
+#: Shells with a cell running, innermost last (``%run`` inside a cell nests).
+_RUNNING: list = []
+#: The newest shell (weakly), for a figure shown when no cell is running.
+_LAST: list = []
+
+
+def running_shell() -> Shell | None:
+    """Return the shell whose cell is running, else the newest shell.
+
+    ``plt.show()`` reaches the console through this: matplotlib calls the
+    backend with no idea which console the code was typed into.
+
+    Returns
+    -------
+    Shell or None
+    """
+    if _RUNNING:
+        return _RUNNING[-1]
+    return _LAST[0]() if _LAST else None
 
 
 class Bunch(dict):
@@ -193,6 +214,7 @@ class Shell:
         self._matplotlib_backend: str | None = None
 
         self._install_namespace()
+        _LAST[:] = [weakref.ref(self)]
 
     # ------------------------------------------------------------------
     # namespace
@@ -208,6 +230,7 @@ class Shell:
         self.user_ns["Out"] = self.Out
         self.user_ns["_ih"] = self.In
         self.user_ns["_oh"] = self.Out
+        self.user_ns.setdefault("display", self.display)
         # Only fill in ``get_ipython`` globally when nothing else claimed it: a
         # real IPython in the same process must keep its own.
         if not hasattr(builtins, "get_ipython"):
@@ -326,6 +349,42 @@ class Shell:
         if text is not None:
             self.write(text if text.endswith("\n") else text + "\n")
 
+    def display(self, *objects: typing.Any, raw: bool = False, metadata: dict | None = None) -> None:
+        """Show *objects* in the console, richest form first: ``display(obj)``.
+
+        Images (matplotlib figures, emtk figures, PIL images, anything with
+        ``_repr_png_`` / ``_repr_svg_``) appear in the transcript; a numpy
+        array shaped like an image -- ``(h, w)``, ``(h, w, 3)`` or
+        ``(h, w, 4)`` -- is drawn as one.
+
+        Parameters
+        ----------
+        *objects : object
+        raw : bool, optional
+            Each object already is a MIME bundle (a ``dict``).
+        metadata : dict, optional
+        """
+        for value in objects:
+            if raw and isinstance(value, dict):
+                data, extra = dict(value), {}
+            else:
+                data, extra = self.formatter.format(value, images=True)
+            if metadata:
+                extra.update(metadata)
+            self.display_data(data, extra)
+
+    def enable_inline_figures(self) -> bool:
+        """Show matplotlib figures in the console from the first cell on.
+
+        Returns
+        -------
+        bool
+            False when matplotlib is absent or the user chose another backend.
+        """
+        from chisurf.core.console.mpl_inline import install
+
+        return install(self)
+
     def record_output(self, value: typing.Any) -> None:
         """Cache and display the value of a trailing expression.
 
@@ -374,7 +433,15 @@ class Shell:
             from matplotlib.figure import FigureBase
         except Exception:  # noqa: BLE001 - a broken matplotlib is not our error
             return False
-        return isinstance(value, (FigureBase, Axes))
+        if not isinstance(value, (FigureBase, Axes)):
+            return False
+        # Only a figure still open is flushed; one closed by an earlier cell's
+        # flush is shown by the formatter instead (``fig`` in a later cell).
+        figure = getattr(value, "figure", None) if isinstance(value, Axes) else value
+        figure = getattr(figure, "figure", figure) or figure
+        from chisurf.core.console.mpl_inline import _figure_managers
+
+        return any(manager.canvas.figure is figure for manager in _figure_managers())
 
     def clear_screen(self) -> None:
         """Clear the console, for ``%clear``."""
@@ -431,9 +498,11 @@ class Shell:
         if self._read_input is not None:
             sys.stdin = InputStream(self._read_input)
         sys.displayhook = self.interpreter.displayhook
+        _RUNNING.append(self)
         try:
             yield
         finally:
+            _RUNNING.pop()
             sys.stdout, sys.stderr, sys.stdin, sys.displayhook = saved
 
     def run_cell(

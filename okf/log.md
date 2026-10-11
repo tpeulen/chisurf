@@ -17,6 +17,10 @@
 
 ## 2026-10-10
 
+- Console plots show inline again in both consoles: `chisurf.core.console.mpl_backend` (Agg, published into the
+  running console; `plt.show()` never blocks, `%matplotlib inline` selects it), `display()`, PNG/SVG reprs;
+  the emtk console draws images in its transcript (scaled to width, scrollable, Copy/Save image). The shipped
+  console init had dropped `%matplotlib inline` with matplotlib as a dependency.
 - W9 phase 2 slice S2 complete: the emtk shell's model editor draws the IRF/background curve pickers and all
   nine custom sections (server-checked `model.curve.*`/`model.section.call`), matches ten Qt model editors and
   the PDA reader form (logic moved Qt-free into `core/experiments/pda2c`), and ports the parameter link menu,

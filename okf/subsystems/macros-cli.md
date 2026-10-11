@@ -118,6 +118,21 @@ permanent on every install. Both keep working rather than being migrated:
 implemented — the last as a real property, because accepting the assignment and
 ignoring it would reinstate the memory growth that line exists to prevent.
 
+**Inline plots and images (2026-10-11).** Both consoles show figures in the
+transcript like a notebook, with no `%matplotlib` line: the engine selects its
+own matplotlib backend at start-up (`chisurf/core/console/mpl_inline.py`,
+`mpl_backend.py`; see [matplotlib retirement](/subsystems/matplotlib-retirement.md)),
+`plt.show()` publishes at once, `_repr_png_`/`_repr_svg_` objects (emtk and
+chiplot figures, PIL images) render, and `display(arr)` draws a numpy image
+(`formatters.image_array_png`). The Qt view fits each image to the viewport
+width (and height, never below 240 px) on every resize; the emtk console
+(`chisurf/emtk/console.py`) lays an `InlineImage` out as blank transcript rows
+and paints it over them, SVG rasterised by `emtk.svg`, with a right-click
+*Copy image* (`emtk.clipboard.copy_image`) / *Save image as…*. Tests:
+`test/console/test_inline_figures.py`,
+`test/native_emtk/test_emtk_shell_console_plots.py`; screenshots under
+`/private/tmp/chisurf-console-plots` and `/private/tmp/chisurf-native-gpu`.
+
 # Scriptability & tests
 
 Because the [core](/subsystems/core.md) is Qt-free, macros and `csc` run

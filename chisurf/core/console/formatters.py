@@ -13,9 +13,10 @@ cannot be interrupted between chunks.
 from __future__ import annotations
 
 import reprlib
+import sys
 import typing
 
-__all__ = ["DisplayFormatter", "format_text", "MAX_REPR_CHARS"]
+__all__ = ["DisplayFormatter", "format_text", "image_array_png", "MAX_REPR_CHARS"]
 
 #: Longest ``text/plain`` repr rendered in full.
 MAX_REPR_CHARS = 100_000
@@ -63,15 +64,83 @@ def format_text(value: typing.Any) -> str:
     return text
 
 
+def _matplotlib_figure(value: typing.Any) -> typing.Any:
+    """Return the matplotlib figure *value* is, or ``None``.
+
+    matplotlib figures carry no ``_repr_png_`` (IPython registers a formatter
+    for them instead), so the console recognises them by type -- without
+    importing matplotlib when the user has not.
+    """
+    if "matplotlib" not in sys.modules:
+        return None
+    try:
+        from matplotlib.figure import Figure
+    except Exception:  # noqa: BLE001 - a broken matplotlib is not ours
+        return None
+    return value if isinstance(value, Figure) else None
+
+
+def image_array_png(value: typing.Any) -> bytes | None:
+    """Encode a numpy array shaped like an image as PNG, else ``None``.
+
+    ``(h, w)`` is a grey image stretched from its minimum to its maximum (what
+    ``imshow`` does), ``(h, w, 3)`` / ``(h, w, 4)`` are RGB / RGBA -- floats in
+    0..1, integers in 0..255.
+
+    Parameters
+    ----------
+    value : object
+
+    Returns
+    -------
+    bytes or None
+    """
+    numpy = sys.modules.get("numpy")
+    if numpy is None or not isinstance(value, numpy.ndarray):
+        return None
+    array = value
+    if array.ndim == 3 and array.shape[2] == 1:
+        array = array[:, :, 0]
+    if not (
+        array.ndim == 2 or (array.ndim == 3 and array.shape[2] in (3, 4))
+    ) or min(array.shape[:2]) < 1 or array.dtype.kind not in "biuf":
+        return None
+    if array.ndim == 2:
+        data = array.astype(float)
+        finite = numpy.isfinite(data)
+        low = float(data[finite].min()) if finite.any() else 0.0
+        high = float(data[finite].max()) if finite.any() else 1.0
+        span = high - low or 1.0
+        data = numpy.where(finite, (data - low) / span, 0.0)
+        pixels = (data * 255.0 + 0.5).astype(numpy.uint8)
+    else:
+        if array.dtype.kind == "f":
+            pixels = (numpy.clip(numpy.nan_to_num(array), 0.0, 1.0) * 255.0 + 0.5).astype(
+                numpy.uint8
+            )
+        else:
+            pixels = numpy.clip(array, 0, 255).astype(numpy.uint8)
+    import io
+
+    from PIL import Image
+
+    buffer = io.BytesIO()
+    Image.fromarray(numpy.ascontiguousarray(pixels)).save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
 class DisplayFormatter:
     """Builds MIME bundles from Python objects."""
 
-    def format(self, value: typing.Any) -> tuple[dict, dict]:
+    def format(self, value: typing.Any, *, images: bool = False) -> tuple[dict, dict]:
         """Return ``(data, metadata)`` for *value*.
 
         Parameters
         ----------
         value : object
+        images : bool, optional
+            Also draw a numpy array shaped like an image as one (``display``
+            asks; a trailing ``arr`` stays text, as it does in IPython).
 
         Returns
         -------
@@ -81,6 +150,26 @@ class DisplayFormatter:
         """
         data: dict[str, typing.Any] = {}
         metadata: dict[str, typing.Any] = {}
+
+        figure = _matplotlib_figure(value)
+        if figure is not None:
+            from chisurf.core.console.mpl_inline import figure_bundle
+            from chisurf.core.console.shell import running_shell
+
+            try:
+                return figure_bundle(figure, running_shell())
+            except Exception:  # noqa: BLE001 - fall back to the repr
+                pass
+        if images:
+            try:
+                png = image_array_png(value)
+            except Exception:  # noqa: BLE001 - not an image after all
+                png = None
+            if png is not None:
+                height, width = value.shape[:2]
+                data["image/png"] = png
+                data["text/plain"] = f"<image {width}x{height} {value.dtype}>"
+                return data, metadata
 
         bundle = getattr(value, "_repr_mimebundle_", None)
         if callable(bundle):

@@ -36,6 +36,16 @@ _OPTIONAL_INTEGRATIONS = {
     "matplotlib calls in the console",
     "chisurf/core/console/shell.py": "shows a matplotlib Figure/Axes the user's "
     "console expression returned",
+    "chisurf/core/console/formatters.py": "draws a matplotlib Figure the user's "
+    "console expression returned",
+}
+
+#: matplotlib backends: modules matplotlib itself imports, by name, once the
+#: console selected them. They subclass matplotlib's canvas, so they import it
+#: at module scope -- and therefore nothing in the tree may import *them*.
+_BACKEND_MODULES = {
+    "chisurf/core/console/mpl_backend.py": "the console's inline backend "
+    "(module://chisurf.core.console.mpl_backend)",
 }
 
 _PACKAGES = (
@@ -88,7 +98,7 @@ def _current_importers() -> set[str]:
 
 def test_no_new_matplotlib_imports():
     """No shipped file imports matplotlib unless it is allow-listed."""
-    known = _load_allowlist() | set(_OPTIONAL_INTEGRATIONS)
+    known = _load_allowlist() | set(_OPTIONAL_INTEGRATIONS) | set(_BACKEND_MODULES)
     new_offenders = sorted(_current_importers() - known)
     assert not new_offenders, (
         "New matplotlib import(s) detected -- matplotlib is being retired:\n  "
@@ -121,3 +131,21 @@ def test_optional_integrations_guard_their_import():
             f"{relative} imports matplotlib at module scope; an optional "
             "integration must import it where it is used, behind a guard"
         )
+
+
+def test_backend_modules_are_imported_only_by_matplotlib():
+    """No shipped file imports a backend module, so matplotlib stays optional."""
+    offenders = []
+    for relative in _BACKEND_MODULES:
+        dotted = relative[: -len(".py")].replace("/", ".")
+        name = dotted.rsplit(".", 1)
+        pattern = re.compile(
+            rf"^\s*(?:import\s+{re.escape(dotted)}\b|from\s+{re.escape(name[0])}\s+import\s+"
+            rf"[^\n]*\b{re.escape(name[1])}\b)",
+            re.MULTILINE,
+        )
+        for package in _PACKAGES:
+            for path in package.rglob("*.py"):
+                if pattern.search(path.read_text(encoding="utf-8", errors="ignore")):
+                    offenders.append(path.relative_to(_ROOT).as_posix())
+    assert not offenders, f"backend modules are matplotlib's to import: {offenders}"

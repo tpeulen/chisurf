@@ -116,16 +116,45 @@ and streams output to its panel as it goes.
 
 ## Plotting
 
-`%matplotlib inline` (the shipped default) draws figures directly in the
-console:
+Plots appear in the console, under the cell that drew them, as in a notebook —
+no `%matplotlib` line needed:
 
 ```python
-import matplotlib.pyplot as plt
-plt.plot(fit.data.x, fit.data.y)
+import pylab as plt
+x = np.linspace(0, 10); y = np.sin(x)
+plt.plot(x, y)
 ```
 
-`%matplotlib qt` switches to figures in their own windows, which is what you
-want once you need to zoom.
+```{figure} figures/console_inline_plot.png
+:name: fig-console-inline-plot
+:width: 80%
+
+The cell's value (`Out[1]`, the list of lines `plt.plot` returns) and, after
+the cell, the figure itself. It is narrowed to the console's width with its
+aspect kept, re-fitted when the console is resized, and scrolls with the text.
+```
+
+What ends up in the transcript as a picture:
+
+* **matplotlib / pylab figures** — every figure the cell drew, after the cell;
+  `plt.show()` shows them at once (it never blocks or opens a window) and
+  `fig.show()` shows one. Each is closed once shown, so the next cell starts a
+  new figure; evaluate `fig` to show a figure you kept a handle on again.
+  `%config InlineBackend.figure_format = 'svg'` (or `'retina'`) changes the
+  format, `%matplotlib inline` is accepted (older settings files start with
+  it), and `%matplotlib qt` switches to figures in their own windows, which is
+  what you want once you need to zoom. matplotlib is not a ChiSurf dependency:
+  install it into the environment to plot this way.
+* **Anything that draws itself** — an object with `_repr_png_` or `_repr_svg_`
+  (an emtk or chiplot figure, a PIL image) shows as its picture. HTML-only
+  objects show as their text.
+* **Arrays** — `display(arr)` draws a 2-D array as a grey image (minimum to
+  maximum) and an `(h, w, 3)` / `(h, w, 4)` array as RGB(A). A trailing `arr`
+  stays text.
+
+Right-click an image for **Copy image** (a PNG on the clipboard, to paste into a
+slide) and **Save image as…**. Turning `gui.console.images` off shows the text
+form instead.
 
 ## Things worth knowing
 
@@ -151,7 +180,7 @@ help pane under the transcript, `Ctrl+K` / `Ctrl+U` / `Ctrl+Y` cut and paste
 the line, `Ctrl+L` clears. While the console has the keys, `Ctrl+R` is the
 history search, not **Reinitialize**.
 
-Three differences:
+Two differences:
 
 * The input is its own box under the transcript instead of an inline prompt.
 * The session's fits and datasets are reached through **`api`** — the session's
@@ -164,7 +193,10 @@ Three differences:
 
   A command that changes the science is one **Undo** step, named after the
   command.
-* Images, SVG and HTML display as their text form; `input()` raises `EOFError`.
+* HTML displays as its text form, and `input()` raises `EOFError`.
+
+Plots and images appear in the transcript as in the Qt window (see *Plotting* above),
+with the same right-click **Copy image** / **Save image as…**.
 
 **Macro ▸ Record** and **Macro ▸ Run Macro…** record and replay as above; the
 macro is saved through the native file dialog. Dead keys, accented letters and

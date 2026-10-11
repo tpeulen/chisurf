@@ -656,6 +656,26 @@ class PlotAPI:
         if not self._canvas.export_image(path, width=width):
             self._canvas.widget().grab().save(path)
 
+    def _repr_png_(self) -> bytes | None:
+        """The panel as PNG bytes: how the console (and a notebook) shows a plot.
+
+        Returns
+        -------
+        bytes or None
+            ``None`` when the panel cannot be drawn here.
+        """
+        import os
+        import tempfile
+
+        handle, path = tempfile.mkstemp(suffix=".png", prefix="chiplot-")
+        os.close(handle)
+        try:
+            self.export_image(path)
+            with open(path, "rb") as stream:
+                return stream.read() or None
+        finally:
+            os.unlink(path)
+
     def _on_export_csv(self):
         """File-dialog + write for the CSV export menu action."""
         path, _ = QtWidgets.QFileDialog.getSaveFileName(

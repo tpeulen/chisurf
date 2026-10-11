@@ -122,6 +122,19 @@ since 2026-10-05 says "matplotlib is not installed" instead of raising when it
 is absent. It is listed in the guard's `_OPTIONAL_INTEGRATIONS`, not the
 allow-list.
 
+Since 2026-10-11 the console selects that backend **itself** at start-up
+(`mpl_inline.install`, called by both consoles): dropping `%matplotlib inline`
+from the shipped `console_init` had left `plt.plot(x, y)` printing only
+`Out[n]: [<Line2D>]` (owner bug report). The backend is now
+`module://chisurf.core.console.mpl_backend` (Agg, published into the running
+console; `plt.show()` / `fig.show()` publish at once), chosen through
+`MPLBACKEND` while matplotlib is not yet imported -- no import cost at start-up
+-- and kept off when the user's `MPLBACKEND` names an interactive backend.
+`formatters.py` (draws a returned `Figure`) joined `_OPTIONAL_INTEGRATIONS`;
+`mpl_backend.py` subclasses Agg at module scope, so the guard lists it under
+`_BACKEND_MODULES` and fails if anything in the tree imports it (only
+matplotlib may).
+
 # The two new homes
 
 **`emtk.colormaps`** (emtk `363e58e`, `66dae85`): 104 colour tables in one

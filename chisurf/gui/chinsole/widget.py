@@ -214,6 +214,10 @@ class Chinsole(QtWidgets.QWidget):
             ),
         )
 
+        # matplotlib figures land in the transcript, as in a notebook, without
+        # a %matplotlib line first (see chisurf.core.console.mpl_inline).
+        self.shell.enable_inline_figures()
+
         self._connect_view()
         self._codeRequested.connect(self._execute_from_signal, QtCore.Qt.QueuedConnection)
         self._logRequested.connect(self._log_code, QtCore.Qt.QueuedConnection)

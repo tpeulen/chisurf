@@ -49,9 +49,16 @@ Commands that are not Python, prefixed with `%`. `%lsmagic` lists them all and
 | `%time`, `%timeit`, `%prun` | time and profile |
 | `%who`, `%whos` | what is defined |
 | `%history` | what you have typed |
-| `%matplotlib inline` \| `qt` | figures in the console, or in their own windows |
+| `%matplotlib qt` \| `inline` | figures in their own windows, or back in the console |
 | `%edit thing` | open something's source in the ChiSurf editor |
 | `!ls -l` | run a shell command; `files = !ls` captures the output |
+
+## Plots and images
+
+`plt.plot(x, y)` shows the plot under the cell, as in a notebook; `plt.show()`
+shows it at once. Objects that draw themselves (emtk figures, PIL images) show as
+pictures, and `display(array)` draws a numpy image. Right-click an image to
+**Copy image** or **Save image as…**.
 
 ## Asking what something is
 

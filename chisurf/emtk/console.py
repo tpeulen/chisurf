@@ -30,8 +30,13 @@ and ``os``. Fits and datasets are reached through ``api``, which goes through th
 like every dock does. The cell runs on the frame thread, as the Qt console runs it on the GUI thread.
 
 Deliberate differences from the Qt console: the input is its own box under the transcript (Qt types
-at an inline prompt in one document); rich display (images, SVG, HTML) is written as its text form;
-``input()`` raises ``EOFError`` (a frame cannot wait for a line).
+at an inline prompt in one document); ``text/html`` is shown as its text; ``input()`` raises
+``EOFError`` (a frame cannot wait for a line).
+
+Images are drawn in the transcript as they are in the Qt console: a matplotlib figure after the cell
+that drew it (or at ``plt.show()``), anything with ``_repr_png_`` / ``_repr_svg_`` (emtk figures,
+PIL images), and ``display(array)`` for a numpy image. An image is narrowed to the console's width
+with its aspect kept, scrolls with the text, and its right-click menu copies or saves it.
 """
 
 from __future__ import annotations
@@ -77,6 +82,8 @@ MACRO_FILTER = (("Python macro", ("*.cm.py", "*.py")),)
 #: Most input lines the input box grows to before it scrolls.
 INPUT_LINES = 8
 _ENTER = (KEY_RETURN, KEY_ENTER, 13)
+#: Fitting an image to a short console never shrinks it below this height (pixels).
+MIN_IMAGE_HEIGHT = 240.0
 
 #: The transcript's colours: the editor's dark palette, errors readable on it.
 _PALETTE = list(DARK_PALETTE)
@@ -91,6 +98,42 @@ _KIND_TOKEN = {
     "stderr": Token.BRACKET_ERROR,
     "message": Token.COMMENT,
 }
+
+
+class InlineImage:
+    """An image in the transcript: a plot, a picture, anything ``display`` drew.
+
+    Parameters
+    ----------
+    data : bytes
+        The encoded image (PNG, JPEG): what *Copy image* and *Save image as…* hand on.
+    fmt : str
+        ``"png"`` or ``"jpeg"``, the extension a saved file gets.
+    """
+
+    def __init__(self, data: bytes, fmt: str = "png") -> None:
+        from emtk.texture import Texture
+
+        self.data = bytes(data)
+        self.fmt = fmt
+        #: The decoded pixels the painter draws (decoding fails loudly here, not mid-frame).
+        self.texture = Texture.from_bytes(self.data)
+        self.width, self.height = self.texture.width, self.texture.height
+
+    def fitted(self, width: float, height: float | None = None) -> tuple[float, float]:
+        """Its drawn size within *width* (and *height*): its own, or shrunk with the aspect kept."""
+        scale = min(1.0, max(1.0, float(width)) / self.width)
+        if height is not None:
+            scale = min(scale, max(1.0, float(height)) / self.height)
+        return self.width * scale, self.height * scale
+
+
+class _ImageLine(list):
+    """A transcript line that holds an :class:`InlineImage` (``[text, "image"]`` as a list)."""
+
+    def __init__(self, image: InlineImage) -> None:
+        super().__init__(["", "image"])
+        self.image = image
 
 
 class Transcript:
@@ -133,6 +176,19 @@ class Transcript:
         if len(self.lines) > self.max_lines:
             del self.lines[: len(self.lines) - self.max_lines]
         self.revision += 1
+
+    def append_image(self, image: InlineImage) -> None:
+        """Add *image* on lines of its own."""
+        self.open = False
+        self.lines.append(_ImageLine(image))
+        if len(self.lines) > self.max_lines:
+            del self.lines[: len(self.lines) - self.max_lines]
+        self.revision += 1
+
+    @property
+    def images(self) -> list[InlineImage]:
+        """The images in the scrollback, oldest first."""
+        return [line.image for line in self.lines if isinstance(line, _ImageLine)]
 
     def close_line(self) -> None:
         """End an open line, so what follows starts on a new one."""
@@ -181,18 +237,57 @@ class ConsoleControl:
         self._follow = True
         self.boxes: dict[str, tuple[float, float, float, float]] = {}
         self._line_h = 14.0
+        #: ``(first document line, rows, image)`` of each image in the transcript editor.
+        self.image_rows: list[tuple[int, int, InlineImage]] = []
+        #: Where each visible image was last drawn: ``(x, y, w, h, image)``.
+        self.image_boxes: list[tuple[float, float, float, float, InlineImage]] = []
+        self._layout_key: tuple = ()
 
     # ── the transcript ────────────────────────────────────────────────────
 
-    def _sync_output(self) -> None:
+    def _image_limit(self, w: float, h: float, line_h: float) -> tuple[float, float]:
+        """The largest an image may be drawn in an output box *w* by *h*.
+
+        As wide as the text, and no taller than the box less a row, so a whole plot is in
+        view at once -- but never shrunk below :data:`MIN_IMAGE_HEIGHT` for a short dock (a
+        thumbnail nobody can read); there it scrolls instead.
+        """
+        editor = self.output
+        margin = editor.config.text_margin * max(editor._glyph_w, 1.0)
+        return (max(16.0, w - 2.0 * margin - editor.vbar.width - 4.0),
+                max(MIN_IMAGE_HEIGHT, h - line_h - 2.0))
+
+    def _sync_output(self, w: float = 0.0, line_h: float = 0.0, h: float = 0.0) -> None:
+        """Rebuild the transcript editor when the transcript, the width or the font changed.
+
+        An image is laid out as blank rows enough for its fitted height; :meth:`draw` paints it
+        over them. So it scrolls, selects and clears with the text around it.
+        """
         transcript = self.console.transcript
-        if transcript.revision == self._revision:
+        line_h = line_h or self._line_h
+        key = (transcript.revision, round(w), round(h), round(line_h, 2)) if transcript.images else (
+            transcript.revision,)
+        if key == self._layout_key:
             return
         editor = self.output
         at_end = editor.first_visible_line + editor.visible_lines >= len(editor.document) - 1
-        editor.set_text(transcript.text())
+        texts: list[str] = []
+        kinds: list[str] = []
+        self.image_rows = []
+        for line in transcript.lines:
+            if isinstance(line, _ImageLine):
+                limit = self._image_limit(w, h, line_h) if w and h else (line.image.width, None)
+                _dw, dh = line.image.fitted(*limit)
+                rows = max(1, int(-(-dh // max(line_h, 1.0))))
+                self.image_rows.append((len(texts), rows, line.image))
+                texts.extend([""] * rows)
+                kinds.extend(["image"] * rows)
+            else:
+                texts.append(line[0])
+                kinds.append(line[1])
+        editor.set_text("\n".join(texts))
         editor.colorizer.update(editor.config, editor.document)
-        for line, (_text, kind) in zip(editor.document.lines, transcript.lines):
+        for line, kind in zip(editor.document.lines, kinds):
             line.paint(0, len(line.text), _KIND_TOKEN.get(kind, Token.TEXT))
             if kind == "input":
                 prompt = line.text.find(": ")
@@ -201,15 +296,47 @@ class ConsoleControl:
         editor.bracketeer.update(editor.config, editor.document)
         editor.document.updated = False
         self._revision = transcript.revision
+        self._layout_key = key
         self._follow = self._follow or at_end
         if self._follow:
             editor.scroll_to_line(len(editor.document) - 1, align="bottom")
+
+    def _draw_images(self, p, x: float, y: float, w: float, h: float) -> None:
+        """Paint the transcript's images over their blank rows, clipped to the output box."""
+        self.image_boxes = []
+        if not self.image_rows:
+            return
+        from emtk.painter import image as draw_image
+
+        editor = self.output
+        line_h = editor._line_h
+        first = editor.first_visible_line
+        left = editor._text_x
+        limit = self._image_limit(w, h, line_h)
+        p.push_clip(x + 1.0, y + 1.0, max(1.0, w - 2.0), max(1.0, h - 2.0))
+        for line, rows, image in self.image_rows:
+            top = y + (line - first) * line_h
+            if top + rows * line_h < y or top > y + h:
+                continue
+            dw, dh = image.fitted(*limit)
+            draw_image(p, left, top, dw, dh, image.texture)
+            self.image_boxes.append((left, top, dw, dh, image))
+        p.pop_clip()
+
+    def image_at(self, px: float, py: float) -> InlineImage | None:
+        """The image drawn at ``(px, py)``, else ``None``."""
+        out = self.boxes.get("output")
+        if out is None or not (out[1] <= py < out[1] + out[3]):
+            return None
+        for bx, by, bw, bh, image in self.image_boxes:
+            if bx <= px < bx + bw and by <= py < by + bh:
+                return image
+        return None
 
     # ── drawing ───────────────────────────────────────────────────────────
 
     def draw(self, p, x: float, y: float, w: float, h: float) -> None:
         console = self.console
-        self._sync_output()
         line_h = max(float(p.line_height()), 1.0)
         self._line_h = line_h
         rows = max(1, min(INPUT_LINES, len(self.input.document)))
@@ -224,8 +351,10 @@ class ConsoleControl:
             pager_h = 0.0
             out_h = body_h
         self.boxes = {"output": (x, y, w, out_h)}
+        self._sync_output(w, line_h * self.output.config.line_spacing, out_h)
         self.output.config.carets_visible = self.has_focus and self.target == "output"
         self.output.draw(p, x, y, w, out_h)
+        self._draw_images(p, x, y, w, out_h)
         if console.pager_title:
             top = y + out_h + 2.0
             from emtk.painter import ALIGN_LEFT, ALIGN_VCENTER
@@ -383,6 +512,25 @@ class ConsoleControl:
         return True
 
 
+def _as_bytes(payload: Any) -> bytes:
+    """An image payload as bytes: raw, or base64 text (as a Jupyter bundle carries it)."""
+    if isinstance(payload, (bytes, bytearray)):
+        return bytes(payload)
+    import base64
+
+    return base64.b64decode(str(payload))
+
+
+def _html_as_text(html: Any) -> str:
+    """``text/html`` with only its text: what a bundle with no ``text/plain`` shows here."""
+    import html as html_module
+    import re
+
+    text = re.sub(r"(?i)<br\s*/?>|</(p|div|tr|li|h[1-6])>", "\n", str(html))
+    text = re.sub(r"<[^>]+>", "", text)
+    return html_module.unescape(text).strip()
+
+
 def _chord(modifiers: int) -> bool:
     from emtk.events import CONTROL_MODIFIER, META_MODIFIER
 
@@ -461,6 +609,14 @@ class ShellConsole:
         self.item_rects: dict[str, tuple] = {}
         self._help = None
         self._tour = None
+        #: The image the context menu was opened on, and the *Save image as…* dialog.
+        self._menu_image: InlineImage | None = None
+        self.file_dialog: Any = None
+        self._file_window: Any = None
+        self._saving: InlineImage | None = None
+        # matplotlib figures land in the transcript, as in a notebook, without a %matplotlib
+        # line first (chisurf.core.console.mpl_inline).
+        self.engine.enable_inline_figures()
         if self.settings["banner"]:
             self.transcript.append(self._banner(), "message")
         source = console_init_source() if init_source is None else init_source
@@ -504,6 +660,16 @@ class ShellConsole:
         if kind == "page" and self.settings["paging"] != "none" and text is not None:
             self.open_pager(str(text), str((metadata or {}).get("title", "")))
             return
+        if self.settings["images"] and kind != "page":
+            image = self._image_of(data)
+            if image is not None:
+                self.transcript.close_line()
+                if kind == "execute_result" and execution_count is not None:
+                    self.transcript.append(f"Out[{execution_count}]:\n", "result")
+                self.transcript.append_image(image)
+                return
+        if text is None and "text/html" in data:
+            text = _html_as_text(data["text/html"])
         if text is None:
             mime = next(iter(data), "")
             text = f"<{mime}>" if mime else ""
@@ -514,6 +680,52 @@ class ShellConsole:
             self.transcript.append(f"Out[{execution_count}]: {text}\n", "result")
         else:
             self.transcript.append(text + "\n", "stdout")
+
+    def _image_of(self, data: dict) -> InlineImage | None:
+        """The bundle's image, decoded: PNG, then JPEG, then SVG rasterised; else ``None``."""
+        for mime, fmt in (("image/png", "png"), ("image/jpeg", "jpeg")):
+            if mime in data:
+                try:
+                    return InlineImage(_as_bytes(data[mime]), fmt)
+                except Exception as exc:  # noqa: BLE001 - say so, show the text form
+                    self.transcript.append(
+                        tr("could not decode the {fmt} image: {error}").format(fmt=fmt, error=exc)
+                        + "\n", "stderr")
+                    return None
+        if "image/svg+xml" in data:
+            from emtk.svg import svg_to_png
+
+            svg = data["image/svg+xml"]
+            try:
+                return InlineImage(svg_to_png(svg.encode("utf-8") if isinstance(svg, str) else svg))
+            except Exception as exc:  # noqa: BLE001
+                self.transcript.append(
+                    tr("could not draw the SVG image: {error}").format(error=exc) + "\n", "stderr")
+        return None
+
+    def copy_image(self, image: InlineImage) -> bool:
+        """*Copy image*: put *image* on the system clipboard as a PNG."""
+        from emtk import clipboard
+
+        data = image.data
+        if image.fmt != "png":
+            from emtk.testing import png_encode
+
+            data = png_encode(image.width, image.height, image.texture.px)
+        return clipboard.copy_image(data)
+
+    def save_image(self, image: InlineImage, path: str | os.PathLike | None = None) -> None:
+        """*Save image as…*: write *image* to *path*, or ask where with a file dialog."""
+        if path is not None:
+            pathlib.Path(path).write_bytes(image.data)
+            return
+        from emtk.dialog_window import DialogWindow
+        from emtk.file_dialog import FileDialog
+
+        title = tr("Save image")
+        self.file_dialog = FileDialog(title, mode="save", filename=f"figure.{image.fmt}")
+        self._file_window = DialogWindow(title, size=(760, 540))
+        self._saving = image
 
     def _edit_file(self, path: str, line: int = 0) -> None:
         self.transcript.append(f"{path}:{line}\n", "message")
@@ -1002,6 +1214,7 @@ class ShellConsole:
             help_window.show()
         self.item_rects["help"] = im.get_item_rect()
         im.host_control("##chinsole", self.control)
+        self._image_menu()
         if self._focus_requested:
             # The keys come here from the next frame on, as a click on the console would do.
             self._focus_requested = False
@@ -1012,13 +1225,41 @@ class ShellConsole:
             if name in self.control.boxes:
                 self.item_rects[f"console.{name}"] = self.control.boxes[name]
 
+    def _image_menu(self) -> None:
+        """Right-click on an image: *Copy image*, *Save image as…*."""
+        if im.is_item_hovered() and im.is_mouse_clicked(1):
+            self._menu_image = self.control.image_at(*im.get_mouse_pos()[:2])
+        image = self._menu_image
+        if image is None or not im.begin_popup_context_item("##console.image"):
+            return
+        if im.menu_item(tr("Copy image")):
+            self.copy_image(image)
+            self._menu_image = None
+        if im.menu_item(tr("Save image as…")):
+            self.save_image(image)
+            self._menu_image = None
+        im.end_popup()
+
     def focus_input(self) -> None:
         """Give the console's input the keys (after *Macro ▸ Record*, a menu click took them)."""
         self._focus_requested = True
         self.control.target = "input"
 
     def draw_overlays(self, box) -> None:
-        """The help window and the tour, over the whole shell."""
+        """The help window, the tour and the *Save image as…* dialog, over the whole shell."""
+        if self.file_dialog is not None:
+            closed = self._file_window.begin(box)
+            paths = self.file_dialog.draw()
+            self._file_window.end()
+            if closed or paths is False:
+                self.file_dialog = self._saving = None
+            elif paths:
+                image, self._saving, self.file_dialog = self._saving, None, None
+                if image is not None:
+                    try:
+                        self.save_image(image, paths[0])
+                    except OSError as exc:
+                        self.append_error(tr("could not save the image: {error}").format(error=exc))
         if self._help is None:
             return
         self._help.draw(box)
@@ -1032,4 +1273,4 @@ class ShellConsole:
                 self.engine.history.save()
 
 
-__all__ = ["ConsoleControl", "ShellConsole", "Transcript"]
+__all__ = ["ConsoleControl", "InlineImage", "ShellConsole", "Transcript"]

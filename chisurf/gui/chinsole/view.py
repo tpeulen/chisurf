@@ -14,6 +14,7 @@ from __future__ import annotations
 from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.core.console import ansi as ansi_module
+from chisurf.core.support.i18n import tr
 from chisurf.gui.chinsole.theme import ConsoleTheme, resolve_theme, stylesheet
 
 __all__ = ["ConsoleView", "PromptBlockData", "BLOCK_OUTPUT", "BLOCK_INPUT", "BLOCK_CONTINUE"]
@@ -90,6 +91,8 @@ class ConsoleView(QtWidgets.QTextEdit):
         self._input_echo = True
         self._image_counter = 0
         self._image_store: dict[str, tuple[bytes, str]] = {}
+        #: Natural pixel size of each inline image, to rescale on resize.
+        self._image_sizes: dict[str, tuple[int, int]] = {}
         self._ansi = ansi_module.AnsiParser()
         self._max_blocks = 5000
         self._autoscroll = True
@@ -452,14 +455,14 @@ class ConsoleView(QtWidgets.QTextEdit):
         name = f"chinsole-img-{self._image_counter}"
         self._image_counter += 1
         self._image_store[name] = (data, fmt)
+        self._image_sizes[name] = (image.width(), image.height())
         self.document().addResource(QtGui.QTextDocument.ImageResource, QtCore.QUrl(name), image)
 
         image_format = QtGui.QTextImageFormat()
         image_format.setName(name)
-        limit = self._image_limit()
-        if limit and image.width() > limit:
-            image_format.setWidth(limit)
-            image_format.setHeight(image.height() * limit / image.width())
+        width, height = self._fitted_size(name)
+        image_format.setWidth(width)
+        image_format.setHeight(height)
 
         cursor = self._output_cursor()
         if not self._at_line_start(cursor):
@@ -503,6 +506,70 @@ class ConsoleView(QtWidgets.QTextEdit):
         buffer.open(QtCore.QIODevice.WriteOnly)
         image.save(buffer, "PNG")
         self.append_image(bytes(buffer.data()), "png")
+
+    def _fitted_size(self, name: str) -> tuple[float, float]:
+        """Return the size image *name* is drawn at: its own, or shrunk to fit the view.
+
+        Parameters
+        ----------
+        name : str
+
+        Returns
+        -------
+        tuple of float
+            ``(width, height)``, aspect kept.
+        """
+        width, height = self._image_sizes[name]
+        scale = 1.0
+        limit = self._image_limit()
+        if limit and width > limit:
+            scale = limit / width
+        # No taller than the view, so a whole plot is in sight -- but a short dock
+        # scrolls rather than shrinking the plot to an unreadable thumbnail.
+        tall = max(240, self.viewport().height() - 2 * self.fontMetrics().height())
+        if height * scale > tall:
+            scale = tall / height
+        return width * scale, height * scale
+
+    def _rescale_images(self) -> None:
+        """Fit every inline image to the view's current width (on resize)."""
+        if not self._image_sizes:
+            return
+        document = self.document()
+        block = document.begin()
+        while block.isValid():
+            fragments = block.begin()
+            while not fragments.atEnd():
+                fragment = fragments.fragment()
+                fragments += 1
+                if not fragment.isValid() or not fragment.charFormat().isImageFormat():
+                    continue
+                image_format = fragment.charFormat().toImageFormat()
+                name = image_format.name()
+                if name not in self._image_sizes:
+                    continue
+                width, height = self._fitted_size(name)
+                if abs(image_format.width() - width) < 0.5:
+                    continue
+                image_format.setWidth(width)
+                image_format.setHeight(height)
+                cursor = QtGui.QTextCursor(document)
+                cursor.setPosition(fragment.position())
+                cursor.setPosition(
+                    fragment.position() + fragment.length(), QtGui.QTextCursor.KeepAnchor
+                )
+                cursor.setCharFormat(image_format)
+            block = block.next()
+
+    def resizeEvent(self, event) -> None:  # noqa: N802 - Qt override
+        """Keep inline images within the view's width.
+
+        Parameters
+        ----------
+        event : QtGui.QResizeEvent
+        """
+        super().resizeEvent(event)
+        self._rescale_images()
 
     def _image_limit(self) -> int:
         """Return the widest an inline image may be drawn.
@@ -1006,10 +1073,10 @@ class ConsoleView(QtWidgets.QTextEdit):
         image_name = cursor.charFormat().toImageFormat().name()
         if image_name and image_name in self._image_store:
             menu.addSeparator()
-            menu.addAction("Copy image", lambda: self._copy_image(image_name))
-            menu.addAction("Save image as…", lambda: self._save_image(image_name))
+            menu.addAction(tr("Copy image"), lambda: self._copy_image(image_name))
+            menu.addAction(tr("Save image as…"), lambda: self._save_image(image_name))
         menu.addSeparator()
-        menu.addAction("Clear console", self.clear_screen)
+        menu.addAction(tr("Clear console"), self.clear_screen)
         menu.exec_(event.globalPos())
 
     def _copy_image(self, name: str) -> None:
@@ -1032,7 +1099,7 @@ class ConsoleView(QtWidgets.QTextEdit):
         """
         data, fmt = self._image_store[name]
         path, _selected = QtWidgets.QFileDialog.getSaveFileName(
-            self, "Save image", f"figure.{fmt}", f"Images (*.{fmt})"
+            self, tr("Save image"), f"figure.{fmt}", tr("Images") + f" (*.{fmt})"
         )
         if path:
             with open(path, "wb") as handle:
