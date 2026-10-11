@@ -264,6 +264,57 @@ class DescriptionGroup(FittingParameterGroup):
         trace = np.asarray(trace, dtype=float)
         return np.interp(t, t + float(shift), trace) if shift else trace
 
+    #: The correction factors of :meth:`rt_decays`, as its ``defaults`` names them.
+    RT_FACTORS = ("g", "l1", "l2", "bg_vv", "bg_vh", "shift")
+
+    def rt_decays(self, factors: typing.Optional[dict] = None) -> dict:
+        """r(t) of data and model, uncorrected and corrected, for the given correction factors.
+
+        What the anisotropy diagnostics window draws. *factors* overrides any of
+        ``g``, ``l1``, ``l2``, ``bg_vv``, ``bg_vh`` and ``shift`` (the VH-VV time
+        shift); the rest are the values the fit uses now (``defaults``).
+
+        Raises
+        ------
+        ValueError
+            When this group has no VV and VH fits.
+        """
+        t_raw, vv_raw, vh_raw, found = self._extract_vv_vh_raw_for_diag()
+        if t_raw is None or vv_raw is None or vh_raw is None or found is None:
+            raise ValueError("VV/VH channels are not available for anisotropy-decay diagnostics.")
+        defaults = {key: float(found[key]) for key in ("g", "l1", "l2", "bg_vv", "bg_vh")}
+        defaults["shift"] = float(found["shift_vh"]) - float(found["shift_vv"])
+        used = dict(defaults)
+        used.update({k: float(v) for k, v in dict(factors or {}).items() if k in self.RT_FACTORS})
+
+        def rt(t, vv, vh):
+            t = np.asarray(t, dtype=np.float64)
+            vv = np.asarray(vv, dtype=np.float64) - used["bg_vv"]
+            vh = np.asarray(vh, dtype=np.float64) - used["bg_vh"]
+            vh = self._shift_trace_to_reference(t, vh, used["shift"])
+            return self.rt_from_channels(t, vv, vh, used["g"], used["l1"], used["l2"])
+
+        t, r_unc, r_cor = rt(t_raw, vv_raw, vh_raw)
+        out = {
+            "defaults": defaults,
+            "factors": used,
+            "t": np.asarray(t, dtype=float).tolist(),
+            "r_data_unc": np.asarray(r_unc, dtype=float).tolist(),
+            "r_data_cor": np.asarray(r_cor, dtype=float).tolist(),
+            "t_model": None,
+            "r_model_unc": None,
+            "r_model_cor": None,
+        }
+        t_model, vv_model, vh_model = self._extract_vv_vh_model_for_diag()
+        if t_model is not None and vv_model is not None and vh_model is not None:
+            tm, rmu, rmc = rt(t_model, vv_model, vh_model)
+            out.update(
+                t_model=np.asarray(tm, dtype=float).tolist(),
+                r_model_unc=np.asarray(rmu, dtype=float).tolist(),
+                r_model_cor=np.asarray(rmc, dtype=float).tolist(),
+            )
+        return out
+
     @staticmethod
     def rt_from_channels(t, vv, vh, g: float, l1: float, l2: float):
         """``(t, r_uncorrected, r_corrected)`` -- see :func:`chisurf.core.fluorescence.anisotropy.rt.rt_curves`."""
@@ -1263,13 +1314,19 @@ class DescriptionModel(ModelCurve):
             and output in model._document.get("outputs", {})
         )
 
+    #: Where the fits this model may read come from: a callable returning the fits of the
+    #: session that owns it, set by the server's ``fit.create``. A model built outside a
+    #: session falls back to the process's ``chisurf.fits``.
+    fit_pool: typing.Optional[typing.Callable[[], typing.Sequence[typing.Any]]] = None
+
     @property
     def source_fits(self) -> list:
-        """Every open fit whose model publishes what this model reads."""
+        """Every open fit whose model publishes what this model reads (of its own session)."""
         import chisurf
 
+        pool = self.fit_pool() if callable(self.fit_pool) else getattr(chisurf, "fits", [])
         found = []
-        for group in list(getattr(chisurf, "fits", []) or []):
+        for group in list(pool or []):
             for fit in list(group) if hasattr(group, "__iter__") else [group]:
                 if self._publishes(getattr(fit, "model", None)):
                     found.append(fit)
@@ -1937,7 +1994,14 @@ class DescriptionModel(ModelCurve):
         problem = self.problem
         state = {
             "family": self.family,
-            "scalars": dict(self._scalars),
+            # The source count is derived from the sources (``_bind_sources`` writes it), not
+            # set: a fresh mixture has never written it and a restored one has, so keeping it
+            # made the same model two different states.
+            "scalars": {
+                name: value
+                for name, value in self._scalars.items()
+                if name != self.source_info.get("count")
+            },
             "value_ports": {
                 name: np.asarray(port.value, dtype=float).ravel().tolist()
                 for name, port in self.__dict__.get("_value_ports", {}).items()

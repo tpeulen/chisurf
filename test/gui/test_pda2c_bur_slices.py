@@ -3,8 +3,9 @@
 Both of them answer one question — *which photons of which TTTR file does this
 ``.bur`` say a burst is* — and both were a frame pipeline
 (``dropna``/``.loc``/``groupby``) inside a GUI method, so neither could be
-exercised without a window. The shared reader is a plain function now, and this
-pins it against the pandas expression it replaced, on real burst tables.
+exercised without a window. They are plain functions of
+``chisurf.core.experiments.pda2c.inputs`` now, and this pins them against the
+pandas expression they replaced, on real burst tables.
 """
 
 from __future__ import annotations
@@ -37,7 +38,7 @@ def _reference(path):
 
 @pytest.mark.parametrize("path", BUR_FILES[:8])
 def test_the_reader_matches_the_frame_pipeline_it_replaced(path):
-    from chisurf.gui.widgets.experiments.pda2c.controller import read_bur_bursts
+    from chisurf.core.experiments.pda2c.inputs import read_bur_bursts
 
     names, starts, stops = read_bur_bursts(pathlib.Path(path))
     ref_names, ref_starts, ref_stops = _reference(path)
@@ -50,7 +51,7 @@ def test_last_photon_is_inclusive_in_the_format_and_exclusive_in_the_slice(tmp_p
     """The off-by-one the format invites: a .bur names the last photon, a slice
     names the one after it.
     """
-    from chisurf.gui.widgets.experiments.pda2c.controller import read_bur_bursts
+    from chisurf.core.experiments.pda2c.inputs import read_bur_bursts
 
     path = tmp_path / "t.bur"
     path.write_text(
@@ -64,7 +65,7 @@ def test_a_burst_spanning_two_measurements_is_dropped(tmp_path):
     """It has no single photon stream to slice, so there is no right answer --
     and taking First File would silently attribute the other file's photons.
     """
-    from chisurf.gui.widgets.experiments.pda2c.controller import read_bur_bursts
+    from chisurf.core.experiments.pda2c.inputs import read_bur_bursts
 
     path = tmp_path / "t.bur"
     path.write_text(
@@ -78,7 +79,7 @@ def test_a_burst_spanning_two_measurements_is_dropped(tmp_path):
 
 def test_the_header_capitalisation_is_not_fixed(tmp_path):
     """Different programs write this format with different casing."""
-    from chisurf.gui.widgets.experiments.pda2c.controller import read_bur_bursts
+    from chisurf.core.experiments.pda2c.inputs import read_bur_bursts
 
     path = tmp_path / "t.bur"
     path.write_text("FIRST PHOTON\tlast photon\tFirst File\tLAST FILE\n3\t7\ta.spc\ta.spc\n")
@@ -88,7 +89,7 @@ def test_the_header_capitalisation_is_not_fixed(tmp_path):
 
 def test_a_file_without_the_four_columns_declines(tmp_path):
     """None, not an exception and not an empty answer that reads as "no bursts"."""
-    from chisurf.gui.widgets.experiments.pda2c.controller import read_bur_bursts
+    from chisurf.core.experiments.pda2c.inputs import read_bur_bursts
 
     path = tmp_path / "t.bur"
     path.write_text("a\tb\n1\t2\n")
@@ -108,14 +109,10 @@ def _analysis_folder(tmp_path, bur_name, rows):
 
 
 def _resolver():
-    """The resolver, unbound from its widget — it needs two attributes."""
-    import types
+    """The resolver, for the TTTR extensions these fixtures use."""
+    from chisurf.core.experiments.pda2c.inputs import resolve_bur_files
 
-    from chisurf.gui.widgets.experiments.pda2c.controller import Pda2cTTTRWidget
-
-    stub = types.SimpleNamespace(_tttr_exts=(".spc", ".ptu", ".ht3"))
-    stub._merge_intervals = lambda m: Pda2cTTTRWidget._merge_intervals(stub, m)
-    return lambda burs: Pda2cTTTRWidget._resolve_tttr_and_slices_from_bur(stub, burs)
+    return lambda burs: resolve_bur_files(burs, (".spc", ".ptu", ".ht3"))
 
 
 def test_one_bur_naming_one_file_resolves_by_stem(tmp_path):

@@ -71,6 +71,45 @@ list of Gaussian components (mean $R_{P}$, width $s_{P}$, fraction $x_{P}$);
 $\gamma$. These map onto the forward model in {ref}`concept-pda2c`.
 ```
 
+## Reading bursts
+
+The reader (*PDA* → *PTU/HT3/SPC* in **Read data**) has four panels:
+
+- **Detector**: *Setup* picks a saved detector setup; each colour row then takes
+  the setup's detector of that colour, its routing *Channels* and, with two
+  colours, its *Micro time* ranges (`start-end;start-end`). The setup's file type
+  becomes the *Routine*. Without a saved setup, type the channels.
+- **Segmentation**: burst search or fixed time bins (below).
+- **Acquisition**: *nPh min*/*nPh max*, and the time-window list. *TW [ms]* and
+  **+** add an entry `nPh min @ TW`; every entry is read as a dataset of its own.
+  Double-click or press Delete to remove one.
+- **Files**: drop TTTR files, `.bur` burst tables or burst-analysis folders onto
+  the list; only ticked entries are read by **Load dropped files**. With
+  *Auto load* a drop is read at once and the list is emptied afterwards.
+
+What an entry stands for:
+
+| Entry | Read as |
+|---|---|
+| `.bur` table | the bursts it names, in the measurement it names (by the table's stem, else its `First File` column), searched beside the table's analysis folder |
+| folder | its `.bur` tables |
+| TTTR file with a `bi4_bur` (or `bur`) folder up to three levels up | burst-wise, from the tables in that folder |
+| any other TTTR file | whole |
+
+With any table in the list, the TTTR files given beside it are not read: the
+tables select the photons. The same rules apply to a file chosen with **+ Data**,
+and in the emtk shell (`python -m chisurf --emtk-shell`), whose form has the same
+panels; there **+ Data** with an empty *File* field reads the ticked list.
+
+```python
+from chisurf.core.experiments.pda2c import Pda2cReader
+
+reader = Pda2cReader(channels=[[0, 8], [1, 9]], micro_time_ranges=[[0, 4095]] * 2,
+                     reading_routine="SPC-130")
+group = reader.read("burstwise_All 0.1000#15/bi4_bur/m000.bur")   # bursts of m000.spc
+inputs = reader.resolve_inputs(["burstwise_All 0.1000#15"])        # files + photon ranges
+```
+
 ## Fitting a kinetic scheme
 
 The dynamic N-state model exposes the whole transition-rate matrix. Set the

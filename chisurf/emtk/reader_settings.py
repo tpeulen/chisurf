@@ -5,7 +5,7 @@ from __future__ import annotations
 import copy
 import dataclasses
 import math
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
@@ -187,11 +187,23 @@ class ReaderSettingsApp(ImApp):
         self.calibration_host: Any = None
         self.g_factor_factory = g_factor_factory
         self._input_selected: Any = None
+        #: Set by the host: ``load_files(filename)`` reads *filename* with this reader
+        #: on the host's worker (the Read data dock's *+ Data*). A section that reads
+        #: a list it holds itself (the PDA file list) hands it here.
+        self.load_files: Callable[[str], Any] | None = None
+        #: Callables offered a drop before the declared input source; one returning
+        #: ``True`` took it.
+        self.drop_handlers: list[Callable[[list], bool]] = []
         self.spec = native_reader_spec(reader.view_spec())
         from chisurf.emtk.detector_cascade import register as register_photon_sections
+        from chisurf.emtk.pda_sections import register as register_pda_sections
 
         # The photon-stream readers' detector cascade and ROI, drawn natively.
         register_photon_sections(reader, self.form)
+        # The PDA reader's detector rows, time windows and file list.
+        pda = register_pda_sections(reader, self.form, host=self)
+        if pda is not None:
+            self.drop_handlers.append(pda.files_dropped)
         register = getattr(reader, "register_settings_sections", None)
         if callable(register):
             register(self.form)
@@ -363,8 +375,14 @@ class ReaderSettingsApp(ImApp):
             self.picker.render(box)
 
     def on_files_dropped(self, paths) -> bool:
-        """Route a drop only when one declared input accepts its file type."""
-        if self.closed or len(self.sources) != 1 or not paths:
+        """Route a drop to a section that takes it, else to the one declared input that accepts its type."""
+        if self.closed or not paths:
+            return False
+        for handler in self.drop_handlers:
+            if handler([str(p) for p in paths]):
+                self.request_frame()
+                return True
+        if len(self.sources) != 1:
             return False
         source = next(iter(self.sources.values()))
         if source.options.get("read_only"):
@@ -389,6 +407,8 @@ class ReaderSettingsApp(ImApp):
         self.closed = True
         self.set_frame_request_callback(None)
         self._input_selected = None
+        self.load_files = None
+        self.drop_handlers.clear()
         if self.calibration_host is not None:
             from chisurf.gui.qt_lifetime import is_deleted
 

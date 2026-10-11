@@ -17,6 +17,8 @@ Internally, all imported data is managed in a single list (**chisurf.imported_da
 
 To read data using the graphic user interface, first select the corresponding experiment type (**Fig.4**, 1). Afterwards select the file type of the experiment (**Fig.4**, 2). Before reading data, check the parameters that are passed to the data read (**Fig.4**, 3). Finally, you can load the dataset into ChiSurf, either by clicking on the "**+ Data**" button or using the key combination "**Ctrl+N**" (Windows, Linux) or "**⌘+N**" on macOS. Alternatively, multiple files of the same kind can be opened in a single step by selecting the respective files in a file explorer of your choice and dragging the selected files into the user interface to the dataset list (**Fig.5**).
 
+A reader of measurements (FCS, PCH, TTTR, PDA) then asks which MMFDB sample the file is of. **New…** in that question defines a sample on the spot (name, entity and its sequence, donor and acceptor, buffer, UniProt / PDB references with **Fetch** and **Diff vs Reference**, and the mutations), creates it in MMFDB and selects it; **Skip** reads the file without one.
+
 Every action taken in the interface has an equivalent in the shell, and is echoed there as it happens — reading a file appends the same call to the session history:
 
 ```{image} figures/main_datasets_loaded.png

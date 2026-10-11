@@ -4,7 +4,7 @@
       "type": "panel",
       "title": "Colours",
       "collapsed": false,
-      "description": "Two colours build the S1S2 histogram two-colour PDA fits; three build the per-burst photon table three-colour PDA fits. Three colours is a setting of the one PDA experiment, not an experiment of its own — the same reader reads the same files either way, and the loaded dataset decides which models are offered. The micro-time ranges are photon-selection windows for two colours and the blue/green excitation periods for three.",
+      "description": "Two colours build the S1S2 histogram two-colour PDA fits; three build the per-burst photon table three-colour PDA fits. Three colours is a setting of the one PDA experiment, not an experiment of its own \u2014 the same reader reads the same files either way, and the loaded dataset decides which models are offered. The micro-time ranges are photon-selection windows for two colours and the blue/green excitation periods for three.",
       "sections": [
         {
           "type": "choice",
@@ -86,6 +86,19 @@
           "type": "custom",
           "key": "pda_tw",
           "description": "Time window of the events when segmenting by fixed time bins."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Files",
+      "collapsed": false,
+      "description": "The files a read takes. Drop TTTR files, .bur burst tables or burst-analysis folders onto the list; a table reads the bursts it names, a TTTR file with a bi4_bur folder beside it is read burst-wise from that folder.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "pda_files",
+          "description": "The file list: tick what to read, then load it."
         }
       ]
     }

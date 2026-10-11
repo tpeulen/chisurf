@@ -1393,7 +1393,14 @@ class LinePlot(plotbase.Plot):
             y = np.copy(curve.y)
             x = np.copy(curve.x)
 
-            line: cp.handles.Curve = self.lines[curve_key]
+            line: cp.handles.Curve | None = self.lines.get(curve_key)
+            if line is None:
+                # A curve the fit did not have when the page was built (an IRF or a
+                # background attached afterwards) gets its line now.
+                line = self.add_plot(
+                    curves=curves, curve_key=curve_key, plot_dict=self.plots, index=i
+                )
+                self.lines[curve_key] = line
 
             if curve_settings.get("allow_reference_transform", False):
                 result = self._apply_reference_mode_to_curve(

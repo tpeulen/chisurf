@@ -1,0 +1,75 @@
+{
+  "_comment": "New… of the emtk shell's sample question: an MMFDB sample definition, the fields the Qt 'New Sample' dialog asked for. Model: chisurf.emtk.sample_picker.NewSample; OK sends it to mmfdb.samples.create_structured.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Sample",
+      "collapsible": false,
+      "sections": [
+        {"type": "value", "attr": "name", "label": "Sample name", "kind": "str",
+         "description": "The sample's name; required. A sample of this name already in the database is reused."},
+        {"type": "value", "attr": "description", "label": "Description", "kind": "str",
+         "description": "Free text about the sample."},
+        {"type": "value", "attr": "entity_name", "label": "Entity name", "kind": "str",
+         "description": "The molecule measured (the sample name when empty)."},
+        {"type": "value", "attr": "entity_sequence", "label": "Entity sequence", "kind": "str",
+         "description": "The construct's sequence (one-letter code)."},
+        {"type": "value", "attr": "entity_type", "label": "Entity type", "kind": "str",
+         "description": "protein, DNA, RNA, …; protein when empty."},
+        {"type": "value", "attr": "donor", "label": "Donor probe", "kind": "str",
+         "description": "The donor dye; with an acceptor, the two make the sample's FRET pair."},
+        {"type": "value", "attr": "acceptor", "label": "Acceptor probe", "kind": "str",
+         "description": "The acceptor dye."},
+        {"type": "value", "attr": "buffer", "label": "Buffer", "kind": "str",
+         "description": "The buffer the sample is measured in."}
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "External References (UniProt / PDB)",
+      "sections": [
+        {"type": "value", "attr": "uniprot", "label": "UniProt accession", "kind": "str",
+         "placeholder": "e.g. P00720",
+         "description": "The UniProt entry of the entity; Fetch reads its organism and sequence."},
+        {"type": "button_row", "buttons": [
+          {"label": "Fetch", "action": "fetch_uniprot",
+           "description": "Read the organism and the reference sequence of the UniProt accession."}
+        ]},
+        {"type": "value", "attr": "pdb_id", "label": "PDB ID", "kind": "str", "placeholder": "e.g. 2LZM",
+         "description": "A structure of the entity."},
+        {"type": "value", "attr": "pdb_chain", "label": "PDB chain ID", "kind": "str", "placeholder": "e.g. A",
+         "description": "The chain of that structure."},
+        {"type": "value", "attr": "organism", "label": "Organism", "kind": "str",
+         "placeholder": "Auto-populated from UniProt", "description": "The source organism."},
+        {"type": "value", "attr": "reference_sequence", "label": "Reference sequence", "kind": "str",
+         "placeholder": "Canonical / WT sequence from UniProt",
+         "description": "The wild-type sequence the construct is compared with."},
+        {"type": "button_row", "buttons": [
+          {"label": "Diff vs Reference", "action": "diff_reference",
+           "description": "List where the entity sequence differs from the reference as mutations."}
+        ]}
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Mutations (struct_ref_seq_dif)",
+      "sections": [
+        {"type": "table", "source": "mutation_rows", "row_key": "row", "edited_call": "edit_mutation",
+         "delete_call": "delete_mutation", "fit_rows": true, "fit_columns": true,
+         "description": "The construct's differences from the reference; double-click a cell to edit, Delete removes a row.",
+         "columns": [
+           {"key": "seq_id", "label": "seq_id", "editable": true, "description": "Residue number."},
+           {"key": "mut_comp_id", "label": "mut_comp_id", "editable": true, "description": "The residue in the construct."},
+           {"key": "wt_comp_id", "label": "wt_comp_id", "editable": true, "description": "The residue in the reference."},
+           {"key": "auth_name", "label": "auth_name", "editable": true, "description": "A name for the mutation."},
+           {"key": "kind", "label": "kind", "editable": true, "description": "engineered_mutation, conflict, …"}
+         ]},
+        {"type": "button_row", "buttons": [
+          {"label": "Add mutation", "action": "add_mutation", "description": "Add an empty mutation row."},
+          {"label": "Clear", "action": "clear_mutations", "description": "Remove every mutation."}
+        ]}
+      ]
+    },
+    {"type": "info", "source": "message"}
+  ]
+}

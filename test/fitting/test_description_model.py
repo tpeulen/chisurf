@@ -644,6 +644,21 @@ def test_only_a_model_that_publishes_lifetimes_can_be_mixed():
     assert mixture.problem is None and mixture.missing == ["lifetime_spectrum.0"]
 
 
+def test_a_fresh_mixture_and_one_that_bound_its_sources_have_one_state():
+    """The source count is derived: a mixture that never bound a source is the same state as one emptied.
+
+    A fresh *Lifetime mixture* had not written ``number_of_models`` and a restored one had, so
+    the Qt shell's history capture (``capture_session``) refused every action once a mixture
+    fit existed ("state changed after reconstruction").
+    """
+    _, fresh = _mixture_view([])
+    _, fast = _lifetime_view([0.5], [1.0])
+    _, emptied = _mixture_view([fast])
+    emptied.pop_model()
+    assert fresh.get_state()["scalars"] == emptied.get_state()["scalars"]
+    assert fresh.source_info["count"] not in fresh.get_state()["scalars"]
+
+
 def test_a_lifetime_spectrum_is_evaluated_and_the_model_put_back():
     """What the FCS filter calculator asks of a fit: its decay at a spectrum it chose."""
     from chisurf.core.fluorescence.decay import compute_model_decay

@@ -602,6 +602,37 @@ def _scientific_value(value: Any) -> Any:
     raise SessionCodecError(f"unsupported scientific metadata type: {type(value).__name__}")
 
 
+#: The per-curve payloads beside x/y a dataset record may carry: the PDA S1S2
+#: histogram (``pda``), the three-colour burst table (``pda3c``) and MFD data (``mfd``).
+AUXILIARY_FIELDS = frozenset({"pda", "pda3c", "mfd"})
+
+
+def restore_auxiliary(curve: Any, auxiliary: Any) -> None:
+    """Set a dataset record's auxiliary payloads (:data:`AUXILIARY_FIELDS`) on *curve*.
+
+    Parameters
+    ----------
+    curve : DataCurve
+        The restored curve.
+    auxiliary : dict
+        ``{field: encoded value}`` as :func:`_scientific_value` wrote it.
+
+    Raises
+    ------
+    ValueError
+        For a field outside :data:`AUXILIARY_FIELDS` or a malformed record.
+    """
+    if not isinstance(auxiliary, dict) or set(auxiliary) - AUXILIARY_FIELDS:
+        raise ValueError("unsupported dataset auxiliary field")
+    for field, value in auxiliary.items():
+        payload = _restore_scientific_value(value)
+        if field == "mfd":
+            from chisurf.core.fluorescence.mfd.fit import MfdData
+
+            payload = MfdData.from_session_state(payload)
+        setattr(curve, field, payload)
+
+
 def _restore_scientific_value(value: Any) -> Any:
     """Decode data-only metadata tags; no class imports or executable objects."""
     tag = "__chisurf_scientific__"
@@ -1628,16 +1659,7 @@ def restore_session(
                 )
             curve.filename = record.get("filename", "")
             curve.meta_data.update(_restore_scientific_value(record.get("metadata") or {}))
-            auxiliary = record.get("auxiliary", {})
-            if not isinstance(auxiliary, dict) or set(auxiliary) - {"pda", "pda3c", "mfd"}:
-                raise ValueError("unsupported dataset auxiliary field")
-            for field, value in auxiliary.items():
-                payload = _restore_scientific_value(value)
-                if field == "mfd":
-                    from chisurf.core.fluorescence.mfd.fit import MfdData
-
-                    payload = MfdData.from_session_state(payload)
-                setattr(curve, field, payload)
+            restore_auxiliary(curve, record.get("auxiliary", {}))
             curve._project_resources = project.resources
             if reader is not None:
                 reader._project_resources = project.resources

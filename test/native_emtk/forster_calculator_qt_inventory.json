@@ -1,0 +1,49 @@
+{
+  "controls": [
+    "1",
+    "2",
+    "3",
+    "acceptorabsorption",
+    "acceptorεmax",
+    "applyr₀tomodel",
+    "donoremission",
+    "donorqy",
+    "dye488",
+    "dye594",
+    "parameters",
+    "refractiveindexn",
+    "r₀=33.1åj=7.687e+13m⁻¹cm⁻¹nm⁴"
+  ],
+  "labels": [
+    "Acceptor absorption:",
+    "Acceptor ε<sub>max</sub>",
+    "Donor QY",
+    "Donor emission:",
+    "Refractive index n",
+    "R₀ = 33.1 Å    J = 7.687e+13 M⁻¹ cm⁻¹ nm⁴"
+  ],
+  "buttons": [
+    "Apply R₀ to model",
+    "▼  Parameters"
+  ],
+  "line_edits": 5,
+  "combos": 2,
+  "spin_boxes": 3,
+  "tables": 2,
+  "state": {
+    "donor": "Dye488",
+    "acceptor": "Dye594",
+    "result": "R₀ = 33.1 Å    J = 7.687e+13 M⁻¹ cm⁻¹ nm⁴",
+    "apply_enabled": true,
+    "donor_options": [
+      "",
+      "Dye488",
+      "Dye594"
+    ],
+    "acceptor_options": [
+      "",
+      "Dye488",
+      "Dye594"
+    ]
+  }
+}

@@ -21,6 +21,8 @@ from emtk import im
 from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
+from chisurf.plugins.emtk_layout import action_button
+
 
 class SettingsDialog:
     """⚙: the sampling and optimiser settings over the shell.
@@ -74,8 +76,9 @@ class SettingsDialog:
         im.separator()
         ok = im.button(tr("OK") + "##settings-ok")
         self.rects["ok"] = im.get_item_rect()
+        im.set_item_tooltip(tr("Use these settings and save them to your settings file."))
         im.same_line()
-        cancel = im.button(tr("Cancel") + "##settings-cancel")
+        cancel = action_button("cancel", id="settings-cancel")
         self.rects["cancel"] = im.get_item_rect()
         self.rects.update(self.form.rects)
         self.window.end()
@@ -98,13 +101,19 @@ class DatasetPicker:
         ``on_pick(row)`` with the picked row, ``on_pick(None)`` when dismissed.
     """
 
-    def __init__(self, rows: list[dict], anchor: Any, on_pick: Callable[[dict | None], None]):
+    def __init__(
+        self,
+        rows: list[dict],
+        anchor: Any,
+        on_pick: Callable[[dict | None], None],
+        title: str = "",
+    ):
         from emtk.widgets.menus import MenuItem, Popup
 
         self.rows = list(rows)
         self.on_pick = on_pick
         items = [MenuItem(f"{row['name']}  ({row['experiment']})") for row in self.rows]
-        self.panel = Popup(items, title=tr("Attach a dataset to this fit"))
+        self.panel = Popup(items, title=title or tr("Attach a dataset to this fit"))
         if anchor is not None:
             x, y, _w, h = anchor
             self.panel.open_at(float(x), float(y) + float(h))

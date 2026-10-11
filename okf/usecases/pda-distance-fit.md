@@ -24,9 +24,11 @@ plus the burst tables a previous burst search wrote next to them in
 channels 0/8 (green) and 1/9 (red), container `SPC-130`.
 
 **Experiment:** `PDA` / setup `PTU/HT3/SPC`
-(`chisurf.core.experiments.pda2c.Pda2cReader` +
-`chisurf.gui.widgets.experiments.pda2c.controller.Pda2cTTTRWidget`), models
-`chisurf/core/models/pda2c/`.
+(`chisurf.core.experiments.pda2c.Pda2cReader`; the panel binds
+`chisurf.core.experiments.pda2c.settings.PdaReaderSettings`, and `.bur` tables,
+folders and file lists resolve in `chisurf.core.experiments.pda2c.inputs` — the
+Qt panel `Pda2cTTTRWidget` and the emtk form `chisurf.emtk.pda_sections` both
+draw them), models `chisurf/core/models/pda2c/`.
 
 ## Steps
 
@@ -36,7 +38,7 @@ channels 0/8 (green) and 1/9 (red), container `SPC-130`.
    histogram)`), **Detector** (Setup / Routine / Ch0 / Ch1 with channel lists and
    micro-time windows), **Segmentation** (`Burst search (variable duration)`),
    **Acquisition** (`nPh min` / `nPh max`, the `TW [ms]` spin with a **+** button
-   and the time-window list), and the drop list.
+   and the time-window list), and **Files** (the drop list).
 3. Pick a **Setup** — `BS` fills Ch0 = green `8, 0, 3` over micro-time `0-4095`
    and Ch1 = red `9, 1, 2` over `0-2048`. For this SPC-132 file set, edit
    Ch0 = `0,8`, Ch1 = `1,9`, both micro-time ranges `1-4095`, and set
@@ -45,7 +47,8 @@ channels 0/8 (green) and 1/9 (red), container `SPC-130`.
    support is 151×151), and the time-window list, pre-filled with
    `10 ph @ 1 ms`, `20 ph @ 2 ms`, `30 ph @ 3 ms`. Each list entry produces its
    own histogram, so this asks for three. Use **+** to add
-   `(nPh min, TW)` pairs, double-click an entry to edit it, right-click to remove.
+   `(nPh min, TW)` pairs; double-click an entry to remove it, right-click for
+   *Remove selected* / *Clear all*.
 5. Drag the three `.bur` burst tables onto *drop files or analysis folders below*
    (a whole `bi4_bur` folder works too — the list expands it). With **Auto load**
    ticked the read starts on drop; untick it and press **Load dropped files**.

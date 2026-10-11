@@ -113,6 +113,9 @@
     {"rpc": "model.code.files", "service": "model_svc.model_code_files"},
     {"rpc": "model.code.apply", "service": "model_svc.model_code_apply", "event_bus": true, "events": ["fit.updated"]},
     {"rpc": "model.action", "service": "model_svc.model_action", "event_bus": true, "events": ["model.state.changed"]},
+    {"rpc": "model.curve.set", "service": "model_sections.model_curve_set", "event_bus": true, "events": ["model.state.changed"]},
+    {"rpc": "model.curve.unload", "service": "model_sections.model_curve_unload", "event_bus": true, "events": ["model.state.changed"]},
+    {"rpc": "model.section.call", "service": "model_sections.model_section_call", "event_bus": true, "events": ["model.state.changed"]},
 
     {"rpc": "plot.fit_data", "service": "plot_svc.plot_fit_data"}
   ]

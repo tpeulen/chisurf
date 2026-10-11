@@ -677,13 +677,49 @@ def _table_parameters(group: Any, section: Any) -> list:
     return params
 
 
+def _paired_layout(section: Any, group: Any) -> dict[str, Any]:
+    """How a parameter table pairs its rows: ``row_width`` parameters a row, with slot and row captions."""
+    width = max(1, int(getattr(section, "row_width", 1) or 1))
+    if width == 1:
+        return {"row_width": 1}
+    labels = [str(x) for x in (getattr(section, "row_labels", ()) or ())]
+    source = getattr(section, "row_labels_source", None)
+    if not labels and source:
+        produced = getattr(group, source, None)
+        try:
+            labels = [str(x) for x in (produced() if callable(produced) else produced or [])]
+        except Exception:  # noqa: BLE001 - numbered rows instead
+            labels = []
+    return {
+        "row_width": width,
+        "columns": [str(c) for c in (getattr(section, "columns", ()) or ())],
+        "slot_labels": [str(c) for c in (getattr(section, "slot_labels", ()) or ())],
+        "row_labels": labels,
+    }
+
+
+#: Option lists a ``choice`` may name by ``options_source`` without its model providing them.
+def _builtin_options(name: str) -> list | None:
+    if name == "window_function_types":
+        import chisurf.core.math.signal
+
+        return list(chisurf.core.math.signal.window_function_types)
+    return None
+
+
 def _options(section: Any, owner: Any) -> list[list[Any]]:
     """A choice's ``[value, label]`` pairs: its own, or what ``options_source`` returns."""
     values = list(getattr(section, "options", ()) or ())
     labels = list(getattr(section, "labels", ()) or ())
     if not values and getattr(section, "options_source", None):
-        produced = getattr(owner, section.options_source, None)
-        produced = produced() if callable(produced) else produced
+        found, produced = _read_path(owner, str(section.options_source)) if owner is not None else (
+            False,
+            None,
+        )
+        if callable(produced):
+            produced = produced()
+        if not found or produced is None:
+            produced = _builtin_options(str(section.options_source))
         pairs = []
         for item in list(produced or []):
             if isinstance(item, (list, tuple)) and len(item) == 2:
@@ -697,9 +733,22 @@ def _options(section: Any, owner: Any) -> list[list[Any]]:
     ]
 
 
-def _resolve_section(section: Any, model: Any, fit_uid: str, declared: dict) -> dict[str, Any]:
-    """One ``view.json`` section as data the client can draw without the model."""
+def _resolve_section(
+    section: Any,
+    model: Any,
+    fit_uid: str,
+    declared: dict,
+    fit: Any = None,
+    state: SessionState | None = None,
+) -> dict[str, Any]:
+    """One ``view.json`` section as data the client can draw without the model.
+
+    ``curve_input`` and ``custom`` sections are resolved by
+    :mod:`chisurf.server.services.model_sections`; *fit* and *state* are what
+    those read (a mixture's candidate fits, the session's parameters).
+    """
     from chisurf.core import dataspec as vs
+    from chisurf.server.services import model_sections
 
     out: dict[str, Any] = {
         "title": str(getattr(section, "title", "") or ""),
@@ -713,7 +762,7 @@ def _resolve_section(section: Any, model: Any, fit_uid: str, declared: dict) -> 
             collapsed=bool(getattr(section, "collapsed", False)),
             n_col=int(getattr(section, "n_col", None) or 1),
             sections=[
-                _resolve_section(child, model, fit_uid, declared)
+                _resolve_section(child, model, fit_uid, declared, fit, state)
                 for child in getattr(section, "sections", ())
             ],
         )
@@ -769,6 +818,7 @@ def _resolve_section(section: Any, model: Any, fit_uid: str, declared: dict) -> 
             collapsible=bool(getattr(section, "collapsible", True)),
             collapsed=bool(getattr(section, "collapsed", False)),
             rows=[_parameter_row(p, fit_uid) for p in params],
+            **_paired_layout(section, group),
         )
         return out
     if isinstance(section, vs.DynamicGroupSection):
@@ -789,7 +839,22 @@ def _resolve_section(section: Any, model: Any, fit_uid: str, declared: dict) -> 
             remove_label=str(section.remove_label),
             can_add=callable(getattr(group, section.append_method, None)),
             can_remove=callable(getattr(group, section.remove_method, None)),
+            style=str(getattr(section, "style", "grid") or "grid"),
+            columns=[str(c) for c in (getattr(section, "columns", ()) or ())],
+            slot_labels=[str(c) for c in (getattr(section, "slot_labels", ()) or ())],
+            header=[
+                model_sections.resolve_custom(
+                    vs.CustomSection(key=str(key), target=section.target), model, fit, state
+                )
+                for key in section.header_keys
+            ],
         )
+        return out
+    if isinstance(section, vs.CurveInputSection):
+        out.update(model_sections.resolve_curve_input(section, model))
+        return out
+    if isinstance(section, vs.CustomSection):
+        out.update(model_sections.resolve_custom(section, model, fit, state))
         return out
     if isinstance(section, vs.ToggleRowSection):
         items = []
@@ -887,7 +952,7 @@ def model_editor(
     uid = str(getattr(fit, "unique_identifier", "") or "")
     try:
         declared = _declared_controls(model)
-        sections = [_resolve_section(s, model, uid, declared) for s in spec.sections]
+        sections = [_resolve_section(s, model, uid, declared, fit, state) for s in spec.sections]
         values = {}
         for key in declared:
             found, value = _read_path(model, key)

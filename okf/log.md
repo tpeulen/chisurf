@@ -17,6 +17,12 @@
 
 ## 2026-10-10
 
+- W9 phase 2 slice S2 complete: the emtk shell's model editor draws the IRF/background curve pickers and all
+  nine custom sections (server-checked `model.curve.*`/`model.section.call`), matches ten Qt model editors and
+  the PDA reader form (logic moved Qt-free into `core/experiments/pda2c`), and ports the parameter link menu,
+  paired component rows, New… sample and the calc R0 dialog. Fixed: no PDA file could be read into the
+  server, lifetime-mixture history refused every action, an IRF attached late crashed the Fit page, calc R0
+  never changed R0.
 - W9 phase 2 slice S4: the emtk shell's Console dock (`chisurf/emtk/console.py`) matches the Qt console on 25
   driven behaviours (history, Ctrl+R, completion, signature hints, help, kill/yank, live output, macro
   recording through `chisurf.run`, which the emtk shell had silently dropped); Macro menu with Record and Run

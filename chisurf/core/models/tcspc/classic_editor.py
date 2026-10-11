@@ -656,6 +656,8 @@ class Anisotropy(_Group):
             "_extract_vv_vh_model_for_diag",
             "_shift_trace_to_reference",
             "rt_from_channels",
+            "rt_decays",
+            "RT_FACTORS",
         ):
             static, _ = self._groups()
             if static is not None:
@@ -687,6 +689,25 @@ class FRETParameters(_Group):
     @property
     def _kappa2(self):
         return self._parameter("fret.kappa2")
+
+    @property
+    def forster_radius(self) -> float:
+        """R0 in Å, the parameter *calc R0* writes."""
+        p = self._parameter("fret.forster_radius")
+        return float(p.value) if p is not None else float("nan")
+
+    @forster_radius.setter
+    def forster_radius(self, value: float) -> None:
+        # Without this setter the Förster calculator's result landed in a plain attribute
+        # nothing reads, and R0 kept its old value.
+        p = self._parameter("fret.forster_radius")
+        if p is None:
+            raise AttributeError(f"{self._view.family!r} has no Förster radius")
+        p.value = float(value)
+
+    @property
+    def _forster_radius(self):
+        return self._parameter("fret.forster_radius")
 
     @property
     def fret_efficiency(self) -> float:

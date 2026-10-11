@@ -1,0 +1,182 @@
+{
+  "sections": [
+    {
+      "type": "group",
+      "n_col": 1,
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "setup",
+          "label": "Setup",
+          "options_source": "setup_names",
+          "description": "A saved detector setup: choosing one fills each colour row with the setup's detector of that colour, and its file type becomes the routine."
+        },
+        {
+          "type": "choice",
+          "attr": "routine",
+          "label": "Routine",
+          "options_source": "routine_names",
+          "description": "The TTTR container type of the files (the reading routine)."
+        }
+      ]
+    },
+    {
+      "type": "group",
+      "n_col": 3,
+      "hidden_when": {
+        "attr": "three_colours",
+        "equals": true
+      },
+      "description": "Two colours: the green and the red detector, each with its routing channels and its own photon-selection window.",
+      "sections": [
+        {
+          "type": "info",
+          "text": "Detector",
+          "description": "The setup's detector each colour is read from."
+        },
+        {
+          "type": "info",
+          "text": "Channels",
+          "description": "Routing channels of each detector, comma separated."
+        },
+        {
+          "type": "info",
+          "text": "Micro time",
+          "description": "Micro-time ranges of each detector: start-end; separate multiple ranges with ';'."
+        },
+        {
+          "type": "choice",
+          "attr": "detector_0",
+          "label": "Green",
+          "options_source": "detector_names",
+          "description": "The detector of the setup the green photons are read from: its channels and micro-time ranges fill the row."
+        },
+        {
+          "type": "value",
+          "attr": "channels_0",
+          "kind": "str",
+          "placeholder": "e.g. 0, 3",
+          "description": "Routing channels of the green detector, comma separated."
+        },
+        {
+          "type": "value",
+          "attr": "window_0",
+          "kind": "str",
+          "placeholder": "start-end",
+          "description": "Micro-time ranges for the green detector: start-end; separate multiple ranges with ';'."
+        },
+        {
+          "type": "choice",
+          "attr": "detector_1",
+          "label": "Red",
+          "options_source": "detector_names",
+          "description": "The detector of the setup the red photons are read from: its channels and micro-time ranges fill the row."
+        },
+        {
+          "type": "value",
+          "attr": "channels_1",
+          "kind": "str",
+          "placeholder": "e.g. 1, 2",
+          "description": "Routing channels of the red detector, comma separated."
+        },
+        {
+          "type": "value",
+          "attr": "window_1",
+          "kind": "str",
+          "placeholder": "start-end",
+          "description": "Micro-time ranges for the red detector: start-end; separate multiple ranges with ';'."
+        }
+      ]
+    },
+    {
+      "type": "group",
+      "n_col": 2,
+      "hidden_when": {
+        "attr": "three_colours",
+        "equals": false
+      },
+      "description": "Three colours: the blue, green and red detectors. Their micro-time windows are the excitation periods of the PIE cycle, below.",
+      "sections": [
+        {
+          "type": "info",
+          "text": "Detector",
+          "description": "The setup's detector each colour is read from."
+        },
+        {
+          "type": "info",
+          "text": "Channels",
+          "description": "Routing channels of each detector, comma separated."
+        },
+        {
+          "type": "choice",
+          "attr": "detector_0",
+          "label": "Blue",
+          "options_source": "detector_names",
+          "description": "The detector of the setup the blue photons are read from: its channels fill the row."
+        },
+        {
+          "type": "value",
+          "attr": "channels_0",
+          "kind": "str",
+          "placeholder": "e.g. 0",
+          "description": "Routing channels of the blue detector, comma separated."
+        },
+        {
+          "type": "choice",
+          "attr": "detector_1",
+          "label": "Green",
+          "options_source": "detector_names",
+          "description": "The detector of the setup the green photons are read from: its channels fill the row."
+        },
+        {
+          "type": "value",
+          "attr": "channels_1",
+          "kind": "str",
+          "placeholder": "e.g. 1",
+          "description": "Routing channels of the green detector, comma separated."
+        },
+        {
+          "type": "choice",
+          "attr": "detector_2",
+          "label": "Red",
+          "options_source": "detector_names",
+          "description": "The detector of the setup the red photons are read from: its channels fill the row."
+        },
+        {
+          "type": "value",
+          "attr": "channels_2",
+          "kind": "str",
+          "placeholder": "e.g. 2",
+          "description": "Routing channels of the red detector, comma separated."
+        }
+      ]
+    },
+    {
+      "type": "group",
+      "n_col": 2,
+      "hidden_when": {
+        "attr": "three_colours",
+        "equals": false
+      },
+      "description": "The excitation periods of the three-colour PIE cycle: the blue pulse is seen by all three detectors, the green pulse by green and red.",
+      "sections": [
+        {
+          "type": "value",
+          "attr": "window_0",
+          "kind": "str",
+          "label": "Blue excitation",
+          "placeholder": "start-end",
+          "description": "Micro-time range of the blue excitation period. Photons inside it are counted in every detector that can see the blue pulse."
+        },
+        {
+          "type": "value",
+          "attr": "window_1",
+          "kind": "str",
+          "label": "Green excitation",
+          "placeholder": "start-end",
+          "description": "Micro-time range of the green excitation period. Photons inside it are counted in every detector that can see the green pulse."
+        }
+      ]
+    }
+  ]
+}

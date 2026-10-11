@@ -385,6 +385,8 @@ class _Job:
     label: str
     after: Callable[[Any], None] | None = None
     build: BackgroundBuild = field(default_factory=BackgroundBuild)
+    #: Called with the error text when the call fails (the status line says it regardless).
+    failed: Callable[[str], None] | None = None
 
 
 class DataDocks:
@@ -421,8 +423,10 @@ class DataDocks:
         self._file_done: Callable[[str], None] | None = None
         #: The open sampling/fitting settings dialog (``chisurf.emtk.fit_controls.SettingsDialog``).
         self.settings_dialog: Any = None
-        #: The open dataset picker of the controller's ``…``.
+        #: The open dataset picker of the controller's ``…`` (or of a curve picker's).
         self.dataset_picker: Any = None
+        #: An MMFDB dataset picker opened by a model-editor file list.
+        self.model_dialog: Any = None
         #: The MMFDB sample question after a file is chosen (``chisurf.emtk.sample_picker``).
         self.sample_dialog: Any = None
         #: The MMFDB client the sample question lists samples with (``None``: the session's).
@@ -552,14 +556,14 @@ class DataDocks:
             )
         self._dirty |= {"current"}
 
-    def _start(self, label: str, call: Callable[[], Any], after=None) -> bool:
+    def _start(self, label: str, call: Callable[[], Any], after=None, failed=None) -> bool:
         """Run *call* on the worker; one at a time."""
         if self.session is None or self.busy:
             self.status = (
                 tr("Busy: {label}").format(label=self.job.label) if self.job else self.status
             )
             return False
-        job = _Job(label, after, BackgroundBuild(wake=self.request_frame))
+        job = _Job(label, after, BackgroundBuild(wake=self.request_frame), failed)
         self.job = job
         self.status = label
         job.build.start({"call": call}, name="chisurf-shell-call")
@@ -569,11 +573,15 @@ class DataDocks:
         if error is not None:
             self.status = tr("{label} failed: {error}").format(label=job.label, error=error)
             _log.error("%s failed: %s", job.label, error)
+            if job.failed is not None:
+                job.failed(str(error))
         elif isinstance(result, dict) and result.get("ok") is False:
             self.status = tr("{label} failed: {error}").format(
                 label=job.label, error=result.get("error", "?")
             )
             _log.error("%s failed: %s", job.label, result.get("error"))
+            if job.failed is not None:
+                job.failed(str(result.get("error", "?")))
         else:
             self.status = tr("{label} done.").format(label=job.label.rstrip("…"))
             if job.after is not None:
@@ -929,7 +937,9 @@ class DataDocks:
             lambda: api.model_state_set({key: value}, fit_uid=uid),
         )
 
-    def edit_model_parameter(self, record: dict, key: str, value: Any) -> bool:
+    def edit_model_parameter(
+        self, record: dict, key: str, value: Any, owner_uid: str | None = None
+    ) -> bool:
         """A cell of a model-editor table changed: one ``parameter.*`` call by the parameter's uid."""
         uid, api = self.current_uid, self.session.api if self.session is not None else None
         if api is None:
@@ -953,10 +963,11 @@ class DataDocks:
         else:
             return False
         name = str(record.get("name", ""))
+        owner = str(owner_uid or record.get("fit_uid") or uid)
         return self._then_update(
             tr("Setting {name}…").format(name=name),
             lambda: api.edit_parameter(
-                str(record["uid"]), fit_uid=uid, parameter_name=name, **fields
+                str(record["uid"]), fit_uid=owner, parameter_name=name, **fields
             ),
         )
 
@@ -983,6 +994,132 @@ class DataDocks:
             tr("Removing a component…"),
             lambda: api.model_component_remove(target, int(index), fit_uid=uid),
         )
+
+    # -- the model editor's curve pickers and custom sections ---------------------- #
+    def section_call(
+        self,
+        section: str,
+        op: str,
+        args: dict,
+        label: str,
+        after: Callable[[Any], None] | None = None,
+        update: bool = True,
+        failed: Callable[[str], None] | None = None,
+    ) -> bool:
+        """``model.section.call`` of the current fit; then the fit is updated unless *update* is off."""
+        uid, api = self.current_uid, self.session.api if self.session is not None else None
+        if not uid or api is None:
+            return False
+
+        def call() -> Any:
+            result = api.model_section_call(section, op, dict(args or {}), fit_uid=uid)
+            if update and not (isinstance(result, dict) and result.get("ok") is False):
+                api.fit_update(fit_uid=uid)
+            return result
+
+        return self._start(label, call, after=after, failed=failed)
+
+    def pick_curve(self, curve: str, anchor: Any = None) -> None:
+        """``…`` of a curve picker: the session's datasets as a popup; the pick goes to the model."""
+        from chisurf.emtk.fit_controls import DatasetPicker
+
+        rows = [r for r in self.datasets.datasets if r["experiment"] != "Global"]
+        self.dataset_picker = DatasetPicker(
+            rows, anchor, on_pick=lambda row: self.set_curve(curve, row),
+            title=tr("Pick the curve"),
+        )
+        self.request_frame()
+
+    def set_curve(self, curve: str, row: dict | None) -> bool:
+        """Give the curve picker *curve* the dataset *row* (``model.curve.set``)."""
+        self.dataset_picker = None
+        uid, api = self.current_uid, self.session.api if self.session is not None else None
+        if not row or not uid or api is None:
+            return False
+        dataset = str(row.get("uid", ""))
+        return self._then_update(
+            tr("Loading {name}…").format(name=row.get("name", "")),
+            lambda: api.model_curve_set(curve, dataset, fit_uid=uid),
+        )
+
+    def unload_curve(self, curve: str, label: str = "") -> bool:
+        """``✕`` of a curve picker (``model.curve.unload``)."""
+        uid, api = self.current_uid, self.session.api if self.session is not None else None
+        if not uid or api is None:
+            return False
+        return self._then_update(
+            tr("Unloading {name}…").format(name=tr(label) if label else curve),
+            lambda: api.model_curve_unload(curve, fit_uid=uid),
+        )
+
+    def link_model_parameter(self, record: dict, target_uid: str) -> bool:
+        """Link the parameter of *record* to the parameter *target_uid* (any fit's)."""
+        uid, api = self.current_uid, self.session.api if self.session is not None else None
+        if api is None or not record.get("uid") or not target_uid:
+            return False
+        owner = str(record.get("fit_uid") or record.get("owner_uid") or uid)
+        self._dirty |= {"fits"}
+        return self._then_update(
+            tr("Linking {name}…").format(name=record.get("name", "")),
+            lambda: api.link_parameter(str(record["uid"]), target_uid, fit_uid=owner),
+        )
+
+    def unlink_model_parameter(self, record: dict) -> bool:
+        """Drop the link of the parameter of *record*."""
+        uid, api = self.current_uid, self.session.api if self.session is not None else None
+        if api is None or not record.get("uid"):
+            return False
+        owner = str(record.get("fit_uid") or record.get("owner_uid") or uid)
+        return self._then_update(
+            tr("Unlinking {name}…").format(name=record.get("name", "")),
+            lambda: api.unlink_parameter(str(record["uid"]), fit_uid=owner),
+        )
+
+    def read_fits_for_links(self, done: Callable[[list], None]) -> bool:
+        """Read every fit with its parameters (``fit.get``), then call *done* with the list."""
+        api = self.session.api if self.session is not None else None
+        if api is None:
+            return False
+        uids = [row["uid"] for row in self.datasets.fits]
+
+        def call() -> Any:
+            found = []
+            for fit_uid in uids:
+                info = api.get_fit_info(fit_uid=fit_uid) or {}
+                found.append(info.get("fit", info) if isinstance(info, dict) else {})
+            return found
+
+        return self._start(tr("Reading the fits…"), call, after=done)
+
+    def reread_current(self) -> None:
+        """Re-read the current fit and its editor (a list of candidates may have changed)."""
+        self._dirty |= {"current", "fits"}
+        self.request_frame()
+
+    def poll_model_job(self, interval_ms: int = 500) -> None:
+        """While a model's own job runs (a sampler), re-read the editor every *interval_ms*."""
+        import time
+
+        now = time.monotonic()
+        if now - getattr(self, "_model_job_polled", 0.0) >= max(0.05, interval_ms / 1000.0):
+            self._model_job_polled = now
+            self._dirty |= {"current"}
+            for window in self.windows.values():
+                window.refresh()
+        self.request_frame()
+
+    def pick_database_paths(self, kinds: list, done: Callable[[list], None]) -> None:
+        """MMFDB's datasets (of *kinds*) as a popup; the picked one's local path goes to *done*."""
+        from chisurf.emtk.dataset_picker import DatasetPicker as DatabasePicker
+
+        def picked(paths: Any) -> None:
+            if paths:
+                done([str(p) for p in paths])
+
+        picker = DatabasePicker(kinds=list(kinds) if kinds else None, on_paths=picked)
+        picker.open()
+        self.model_dialog = picker
+        self.request_frame()
 
     def remove_fit(self, uid: str) -> bool:
         if not uid or self.session is None:
@@ -1087,6 +1224,8 @@ class DataDocks:
             self._reader_errors[key] = str(exc)
             return None
         app.set_frame_request_callback(self.request_frame)
+        # A form with its own file list (the PDA reader's) reads it through the dock, as + Data does.
+        app.load_files = lambda filename, r=reader: self.load(r, filename)
         self._reader_apps[key] = app
         return app
 
@@ -1225,6 +1364,8 @@ class DataDocks:
             self.file_dialog is not None
             or self.settings_dialog is not None
             or self.sample_dialog is not None
+            or self.model_dialog is not None
+            or self.editor.modal_open()
         )
 
     def draw_file_dialog(self, box) -> None:
@@ -1236,6 +1377,11 @@ class DataDocks:
             self.settings_dialog.draw(box)
         if self.sample_dialog is not None:
             self.sample_dialog.draw(box)
+        self.editor.draw_dialogs(box)
+        if self.model_dialog is not None:
+            self.model_dialog.render(box)
+            if not self.model_dialog.is_open:
+                self.model_dialog = None
         if self.file_dialog is None:
             return
         window = self._file_window

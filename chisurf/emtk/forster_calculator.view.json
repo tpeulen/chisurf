@@ -1,0 +1,120 @@
+{
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Donor / Acceptor",
+      "description": "The dye pair, from the MMFDB probes that carry the spectrum each role needs.",
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "donor",
+          "label": "Donor emission",
+          "options_source": "donor_options",
+          "call": "set_donor",
+          "filter": true,
+          "description": "Donor dye: the MMFDB probes with an emission spectrum. Type to narrow the list. Its stored quantum yield fills Donor QY."
+        },
+        {
+          "type": "choice",
+          "attr": "acceptor",
+          "label": "Acceptor absorption",
+          "options_source": "acceptor_options",
+          "call": "set_acceptor",
+          "filter": true,
+          "description": "Acceptor dye: the MMFDB probes with an absorption spectrum. Type to narrow the list. Its stored extinction coefficient fills Acceptor ε_max."
+        },
+        {
+          "type": "info",
+          "source": "spectra_text",
+          "description": "The spectra the overlap integral uses: kind, number of points and wavelength range."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Parameters",
+      "description": "Inputs of the Foerster radius calculation.",
+      "n_col": 2,
+      "sections": [
+        {
+          "type": "value",
+          "attr": "donor_qy",
+          "label": "Donor QY",
+          "kind": "float",
+          "decimals": 3,
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "step": 0.01,
+          "style": "spin",
+          "call": "changed",
+          "description": "Donor fluorescence quantum yield. Filled from the donor's MMFDB entry when it has one; otherwise it keeps its value."
+        },
+        {
+          "type": "value",
+          "attr": "acceptor_emax",
+          "label": "Acceptor ε_max",
+          "kind": "float",
+          "decimals": 0,
+          "minimum": 0.0,
+          "maximum": 1000000.0,
+          "step": 1000,
+          "suffix": " M⁻¹ cm⁻¹",
+          "style": "spin",
+          "call": "changed",
+          "description": "Acceptor molar extinction coefficient at peak absorption; the absorption spectrum is scaled to it. Filled from the acceptor's MMFDB entry when it has one."
+        },
+        {
+          "type": "value",
+          "attr": "refractive_index",
+          "label": "Refractive index n",
+          "kind": "float",
+          "decimals": 3,
+          "minimum": 1.0,
+          "maximum": 2.0,
+          "step": 0.01,
+          "style": "spin",
+          "call": "changed",
+          "description": "Refractive index of the medium: 1.33 for water, about 1.4 inside a protein."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Result",
+      "description": "R0 of the pair for κ² = 2/3; orientation is set in the model's κ² controls.",
+      "sections": [
+        {
+          "type": "value",
+          "attr": "r0",
+          "label": "R₀",
+          "kind": "float",
+          "decimals": 1,
+          "suffix": " Å",
+          "read_only": true,
+          "description": "Förster radius for κ² = 2/3, in Å: tabulated in MMFDB for the pair if it is (marked cached), else computed from the spectra."
+        },
+        {
+          "type": "info",
+          "source": "detail",
+          "description": "The overlap integral J, or that R₀ is MMFDB's tabulated value, or why there is no result."
+        },
+        {
+          "type": "button_row",
+          "buttons": [
+            {
+              "action": "apply",
+              "label": "Apply R₀ to model",
+              "description": "Write R₀ into the model's Förster radius and close the calculator."
+            },
+            {
+              "action": "close",
+              "icon": "✕",
+              "label": "Close",
+              "description": "Close this window."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

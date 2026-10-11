@@ -99,6 +99,81 @@ def html_to_latex(text: str) -> str:
     return text
 
 
+#: The per-slot columns of a paired table: (field, spec column id, label, editable, format).
+_SLOT_FIELDS = (
+    ("value", "value", None, True, "%.5g"),
+    ("fixed", "fixed", "Fixed", True, None),
+    ("lo", "bounds_lo", "Lo", True, "%.4g"),
+    ("hi", "bounds_hi", "Hi", True, "%.4g"),
+    ("bounds_on", "bounds_on", "Bounds", True, None),
+    ("error", "error", "Error", False, "%.3g"),
+)
+_SLOT_KEY = re.compile(r"^(value|fixed|lo|hi|bounds_on|error)(\d+)$")
+
+
+def _group_header(label: str) -> str:
+    """A slot's column title: its parameter's label without the component number (``x_{L,1}`` → ``x_{L}``)."""
+
+    def strip(match: re.Match) -> str:
+        inner = re.sub(r"[,\s]*\d+\s*$", "", match.group(1)).strip()
+        return f"<sub>{inner}</sub>" if inner else ""
+
+    return re.sub(r"<sub>(.*?)</sub>", strip, str(label or ""), flags=re.IGNORECASE)
+
+
+def _paired(entries: list, width: int, section: dict) -> tuple[list, list]:
+    """Rows and columns of a paired table: ``width`` parameters a row, a column block per slot."""
+    wanted = list(section.get("columns") or [])
+    fields = [f for f in _SLOT_FIELDS if not wanted or f[1] in wanted or f[0] == "value"]
+    slot_labels = list(section.get("slot_labels") or [])
+    row_labels = list(section.get("row_labels") or [])
+    target = str(section.get("key", ""))
+    rows = []
+    for r in range(len(entries) // width):
+        params = [_row(e) for e in entries[r * width : (r + 1) * width]]
+        row = {
+            "uid": f"{target}#{r}",
+            "index": row_labels[r] if r < len(row_labels) else str(r + 1),
+            "_component": r,
+            "_target": target,
+            "_params": params,
+            "muted": all(p["muted"] for p in params),
+        }
+        for j, p in enumerate(params):
+            for field, _sid, _label, _edit, _fmt in fields:
+                row[f"{field}{j}"] = p[field]
+        rows.append(row)
+    columns = [{"key": "index", "label": "" if row_labels else "#",
+                "description": "The component (or the quantity) of the row."}]
+    for j in range(width):
+        if j < len(slot_labels):
+            title = slot_labels[j]
+        elif j < len(entries):
+            title = plain_label(_group_header(entries[j].get("label") or entries[j].get("name", "")))
+        else:
+            title = str(j + 1)
+        for field, _sid, label, editable, fmt in fields:
+            column = {"key": f"{field}{j}", "label": title if field == "value" else label,
+                      "editable": editable}
+            if fmt:
+                column["format"] = fmt
+            columns.append(column)
+    return rows, columns
+
+
+def _slot_parameter(record: Any, key: str) -> dict | None:
+    match = _SLOT_KEY.match(str(key or ""))
+    params = (record or {}).get("_params") or []
+    if match is None or int(match.group(2)) >= len(params):
+        return None
+    return params[int(match.group(2))]
+
+
+def _slot_field(key: str) -> str:
+    match = _SLOT_KEY.match(str(key or ""))
+    return match.group(1) if match else ""
+
+
 class _Rows(list):
     """Table rows with a ``revision``, so a re-read rebinds the table once."""
 
@@ -149,6 +224,11 @@ class ModelEditor:
         self.spec: dict = {"sections": []}
         self.form = FormState()
         self.form.custom["model_info"] = self._draw_info
+        from chisurf.emtk.model_sections import SectionViews
+
+        #: The curve pickers and custom sections (``chisurf.emtk.model_sections``).
+        self.sections = SectionViews(self)
+        self.sections.install(self.form)
         self._sources: dict[str, _Rows] = {}
         self._values: dict[str, Any] = {}
         self._actions: dict[str, Any] = {}
@@ -172,6 +252,10 @@ class ModelEditor:
         self._keyed = {}
         old = self._sources
         self._sources = {}
+        self.sections.reset()
+        self.sections._sources = {
+            k: v for k, v in old.items() if k.startswith(("section_rows_", "mixer_rows_"))
+        }
         counter = iter(range(1_000_000))
 
         def rows_for(name: str, entries: list) -> _Rows:
@@ -251,16 +335,26 @@ class ModelEditor:
                     "muted_key": "muted",
                     "fit_rows": True,
                     "fit_columns": True,
+                    "context_call": "section_context",
                     "columns": PARAMETER_COLUMNS,
                     "description": section.get("description")
                     or tr("Double-click a value or bound to type it; click Fixed or Bounds "
                           "to toggle. Outputs and linked parameters are dimmed and read only."),
                 }
+                width = max(1, int(section.get("row_width") or 1))
+                if width > 1 and (kind == "parameters" or section.get("style") == "table"):
+                    # Paired, as the Qt editor's tables: one component (row_width parameters)
+                    # a row, each slot's columns side by side under the slot's name.
+                    rows, columns = _paired(entries, width, section)
+                    paired_rows = _Rows(rows)
+                    paired_rows.revision = self._sources[source].revision
+                    self._sources[source] = paired_rows
+                    table.update(columns=columns, edited_call="edit_paired",
+                                 editable_call="paired_editable")
                 if kind == "parameters":
                     # A group with no parameters draws nothing, as in the Qt editor.
                     return {**table, **common} if entries else None
                 target = str(section.get("key", ""))
-                width = max(1, int(section.get("row_width") or 1))
                 for position, entry in enumerate(entries):
                     uid = str(entry.get("uid") or entry.get("name"))
                     self._positions[uid] = (target, position, width)
@@ -279,6 +373,9 @@ class ModelEditor:
                 }
                 table["selected_call"] = "row_selected"
                 parts = [buttons]
+                for header in section.get("header") or []:
+                    made = self.sections.convert(header, common, next(counter))
+                    parts.extend(made if isinstance(made, list) else [made])
                 if entries:
                     parts.append({**table, **common})
                 return parts
@@ -319,6 +416,22 @@ class ModelEditor:
                     self._actions[select] = ("select", str(section["selected_key"]), section)
                     table["selected_call"] = select
                 return table
+            if kind in ("curve_input", "custom"):
+                made = self.sections.convert(section, common, n)
+                if section.get("key") == "fit_mixer":
+                    fractions = (section.get("data") or {}).get("fractions") or []
+                    if fractions:
+                        source = f"rows_{n}_fractions"
+                        rows_for(source, fractions)
+                        parts = made if isinstance(made, list) else [made]
+                        return parts + [{
+                            "type": "table", "source": source, "row_key": "uid",
+                            "edited_call": "edit_cell", "editable_call": "cell_editable",
+                            "context_call": "section_context", "muted_key": "muted",
+                            "fit_rows": True, "fit_columns": True,
+                            "columns": PARAMETER_COLUMNS, **common,
+                        }]
+                return made
             return {
                 "type": "info",
                 "text": tr("{kind}: not drawn in this window yet.").format(
@@ -338,7 +451,7 @@ class ModelEditor:
 
     # -- what the form binds ------------------------------------------------- #
     def __getattr__(self, name: str) -> Any:
-        if name.startswith(("rows_", "records_")):
+        if name.startswith(("rows_", "records_", "section_rows_")):
             rows = self.__dict__.get("_sources", {}).get(name)
             if rows is not None:
                 return lambda: rows
@@ -346,6 +459,18 @@ class ModelEditor:
             values = self.__dict__.get("_values", {})
             if name in values:
                 return values[name]
+        sections = self.__dict__.get("sections")
+        forwarded = {
+            "section_edit_scalar": "edit_scalar",
+            "section_edit_rate": "edit_rate",
+            "section_edit_global": "edit_global",
+            "section_editable": "editable",
+            "section_context": "context",
+        }
+        if sections is not None and name in forwarded:
+            return getattr(sections, forwarded[name])
+        if sections is not None and name == "section_shading":
+            return sections.shading
         actions = self.__dict__.get("_actions", {})
         if name in actions:
             kind, target, _section = actions[name]
@@ -396,8 +521,21 @@ class ModelEditor:
         if isinstance(record, dict) and record.get("uid"):
             self.docks.edit_model_parameter(record, key, value)
 
+    def paired_editable(self, record: Any, key: str) -> bool:
+        parameter = _slot_parameter(record, key)
+        return parameter is not None and self.cell_editable(parameter, key)
+
+    def edit_paired(self, record: Any, key: str, value: Any) -> None:
+        """A cell of a paired table: the parameter of its slot, edited as in a one-per-row table."""
+        parameter = _slot_parameter(record, key)
+        if parameter is not None:
+            self.edit_cell(parameter, _slot_field(key), value)
+
     def row_selected(self, record: Any) -> None:
         """Remember which component a component table's selection is in (for *del*)."""
+        if isinstance(record, dict) and "_component" in record:
+            self._selected[str(record.get("_target", ""))] = int(record["_component"])
+            return
         where = self._positions.get(str((record or {}).get("uid", "")))
         if where is not None:
             target, position, width = where
@@ -423,8 +561,13 @@ class ModelEditor:
 
     def draw(self, item_rects: dict | None = None) -> None:
         """Draw the editor into the current window (the Analysis dock, below the controller)."""
+        if item_rects is not None:
+            # Only what is drawn now: another fit's editor left rectangles of controls this one lacks.
+            for key in [k for k in item_rects if k.startswith("editor.")]:
+                del item_rects[key]
         if self.editor is None:
             return
+        self.form.rects.clear()
         draw_form(self.spec, self, self.form, titles=True)
         if item_rects is not None:
             for key, rect in self.form.rects.items():
@@ -448,7 +591,9 @@ class ModelEditor:
     def rows(self, key: str) -> list:
         """The rows the editor shows for section *key* (a parameter group's target)."""
         source = self.table_for(key)
-        return list(self._sources.get(source, [])) if source else []
+        rows = list(self._sources.get(source, [])) if source else []
+        # A paired table holds a component a row; its parameters are the rows asked for.
+        return [p for row in rows for p in row["_params"]] if rows and "_params" in rows[0] else rows
 
     def visible_titles(self) -> list[str]:
         """Titles of the panels drawn now (hidden ones left out)."""
@@ -465,6 +610,17 @@ class ModelEditor:
         walk(self.spec.get("sections", []))
         return titles
 
+    label_markup = staticmethod(label_markup)
+    plain_label = staticmethod(plain_label)
+
+    def modal_open(self) -> bool:
+        """Whether a dialog or menu of a section is open over the shell."""
+        return self.sections.modal_open()
+
+    def draw_dialogs(self, box) -> None:
+        """The sections' dialogs and menus (drawn last, on top)."""
+        self.sections.draw_dialogs(box)
+
     # -- for parity checks ------------------------------------------------------ #
     def inventory(self) -> set[str]:
         """Every label, title and option of the editor, hidden sections included (as plain text)."""
@@ -474,7 +630,8 @@ class ModelEditor:
             for key in ("title", "label", "add_label", "remove_label"):
                 if section.get(key):
                     found.add(plain_label(section[key]))
-            for value, label in section.get("options") or []:
+            options = section.get("options") if section.get("type") == "choice" else None
+            for value, label in options or []:
                 found.add(plain_label(label))
             for row in section.get("rows") or []:
                 found.add(plain_label(row.get("label") or row.get("name", "")))
@@ -487,7 +644,16 @@ class ModelEditor:
 
         for section in (self.editor or {}).get("sections", []):
             walk(section)
-        return found
+        def columns(section: dict) -> None:
+            for column in section.get("columns") or []:
+                if isinstance(column, dict) and column.get("label"):
+                    found.add(plain_label(str(column["label"])))
+            for child in section.get("sections") or []:
+                columns(child)
+
+        for section in self.spec.get("sections", []):
+            columns(section)
+        return found | {plain_label(t) for t in self.sections.inventory()}
 
 
 __all__ = ["ModelEditor", "PARAMETER_COLUMNS", "html_to_latex", "label_markup", "plain_label"]

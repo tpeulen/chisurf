@@ -1341,6 +1341,99 @@ class ChiSurfAPI:
 
         return model_action(self._state, action, fit_index, fit_uid)
 
+    def model_curve_set(
+        self,
+        curve: str,
+        dataset_uid: str,
+        member_uid: str | None = None,
+        fit_uid: str | None = None,
+        fit_index: int | None = None,
+    ) -> dict[str, Any]:
+        """Give a curve picker of the model's editor (``curve`` = its ``key``) a session dataset."""
+        if self.mode == "server" and self.client is not None:
+            return self.client.model__curve_set(
+                curve=str(curve),
+                dataset_uid=str(dataset_uid),
+                member_uid=member_uid,
+                fit_index=fit_index,
+                fit_uid=fit_uid,
+            )
+        from chisurf.server.services.model_sections import model_curve_set
+
+        return model_curve_set(
+            self._state, str(curve), str(dataset_uid), member_uid, fit_index, fit_uid
+        )
+
+    def model_curve_unload(
+        self, curve: str, fit_uid: str | None = None, fit_index: int | None = None
+    ) -> dict[str, Any]:
+        """Unload the curve a curve picker of the model's editor holds."""
+        if self.mode == "server" and self.client is not None:
+            return self.client.model__curve_unload(
+                curve=str(curve), fit_index=fit_index, fit_uid=fit_uid
+            )
+        from chisurf.server.services.model_sections import model_curve_unload
+
+        return model_curve_unload(self._state, str(curve), fit_index, fit_uid)
+
+    def model_section_call(
+        self,
+        section: str,
+        op: str,
+        args: dict[str, Any] | None = None,
+        fit_uid: str | None = None,
+        fit_index: int | None = None,
+    ) -> dict[str, Any]:
+        """Run operation *op* of a custom section of the model's editor (``section`` = its ``id``)."""
+        if self.mode == "server" and self.client is not None:
+            return self.client.model__section_call(
+                section=str(section),
+                op=str(op),
+                args=dict(args or {}),
+                fit_index=fit_index,
+                fit_uid=fit_uid,
+            )
+        from chisurf.server.services.model_sections import model_section_call
+
+        return model_section_call(
+            self._state, str(section), str(op), dict(args or {}), fit_index, fit_uid
+        )
+
+    def link_parameter(
+        self,
+        parameter_uid: str,
+        target_parameter_uid: str,
+        fit_uid: str | None = None,
+        owner_uid: str | None = None,
+    ) -> dict[str, Any]:
+        """Link the parameter *parameter_uid* (of fit *fit_uid*) to *target_parameter_uid*, anywhere."""
+        address = {
+            "parameter_uid": str(parameter_uid),
+            "owner_uid": owner_uid or fit_uid,
+            "fit_uid": fit_uid,
+            "target_parameter_uid": str(target_parameter_uid),
+        }
+        if self.mode == "server" and self.client is not None:
+            return self.client.parameter__link(**address)
+        from chisurf.server.services.parameters import parameter_link
+
+        return parameter_link(self._state, **address)
+
+    def unlink_parameter(
+        self, parameter_uid: str, fit_uid: str | None = None, owner_uid: str | None = None
+    ) -> dict[str, Any]:
+        """Drop the link of the parameter *parameter_uid*."""
+        address = {
+            "parameter_uid": str(parameter_uid),
+            "owner_uid": owner_uid or fit_uid,
+            "fit_uid": fit_uid,
+        }
+        if self.mode == "server" and self.client is not None:
+            return self.client.parameter__unlink(**address)
+        from chisurf.server.services.parameters import parameter_unlink
+
+        return parameter_unlink(self._state, **address)
+
     def model_code_files(
         self, fit_uid: str | None = None, fit_index: int | None = None
     ) -> dict[str, Any]:

@@ -27,6 +27,88 @@ def _sync_editors(fit) -> None:
                 pass
 
 
+def _named_copy(curve, name: str = "") -> cs.core.data.DataCurve:
+    """A copy of *curve* under its name: the model's field shows it, and a later rescale stays local."""
+    return cs.core.data.DataCurve(
+        x=curve.x, y=curve.y, name=getattr(curve, "name", None) or name or ""
+    )
+
+
+def _attach_irf(model, curve, name: str = "", **_fixed) -> None:
+    model.convolve._irf = _named_copy(curve, name)
+
+
+def _attach_background(model, curve, name: str = "", **_fixed) -> None:
+    model.generic.background_curve = _named_copy(curve, name)
+
+
+def _attach_lintable(model, curve, name: str = "", **_fixed) -> None:
+    model.corrections.lintable = _named_copy(curve, name)
+    model.corrections.correct_dnl = True
+
+
+def _attach_dataset(model, curve, name: str = "", slot: str = "", **_fixed) -> None:
+    model.set_dataset(str(slot), curve)
+
+
+#: What each ``curve_input`` ``select_action`` does to one member model with the picked curve.
+#: The keys are the actions the view specs name; :func:`attach_curve` is their one implementation,
+#: shared by the action registry (the Qt editor) and the server (``model.curve.set``).
+CURVE_SELECT = {
+    "model.change_irf": _attach_irf,
+    "model.set_background_curve": _attach_background,
+    "model.set_linearization": _attach_lintable,
+    "model.set_dataset": _attach_dataset,
+}
+#: What each ``curve_input`` ``unload_action`` does to one member model.
+CURVE_UNLOAD = {
+    "model.unload_irf": lambda model, **_fixed: model.convolve.unload_irf(),
+    "model.unload_background_curve": lambda model, **_fixed: (
+        model.generic.unload_background_curve()
+    ),
+    "model.unload_lintable": lambda model, **_fixed: model.corrections.unload_lintable(),
+    "model.unset_dataset": lambda model, slot="", **_fixed: model.unset_dataset(str(slot)),
+}
+
+
+def attach_curve(fit, select_action: str, curve, name: str = "", **fixed) -> None:
+    """Attach *curve* the way the ``curve_input`` whose ``select_action`` it is would.
+
+    Every member from the group's selected fit on takes the curve (a copy), then
+    the group is recomputed.
+
+    Parameters
+    ----------
+    fit : chisurf.core.fitting.fit.FitGroup
+        The fit whose model takes the curve.
+    select_action : str
+        The section's ``select_action`` (a key of :data:`CURVE_SELECT`).
+    curve : chisurf.core.curve.Curve
+        The picked curve.
+    name : str, optional
+        Its name when the curve has none.
+    **fixed
+        The section's ``action_fixed`` (a described model's ``slot``).
+
+    Raises
+    ------
+    KeyError
+        For an action that attaches no curve.
+    """
+    attach = CURVE_SELECT[str(select_action)]
+    for f in fit[fit.selected_fit_index :]:
+        attach(f.model, curve, name, **fixed)
+    fit.update()
+
+
+def detach_curve(fit, unload_action: str, **fixed) -> None:
+    """Unload the curve a ``curve_input`` holds (its ``unload_action``), then recompute."""
+    unload = CURVE_UNLOAD[str(unload_action)]
+    for f in fit[fit.selected_fit_index :]:
+        unload(f.model, **fixed)
+    fit.update()
+
+
 def set_linearization(
     idx: int = None, curve_name: str = None, fit: cs.core.fitting.fit.FitGroup = None
 ) -> None:
@@ -41,13 +123,7 @@ def set_linearization(
     if lin_table is None:
         return
 
-    for f in fit[fit.selected_fit_index :]:
-        # a named copy: the editor's Lin. table field shows the stored curve's name
-        f.model.corrections.lintable = cs.core.data.DataCurve(
-            x=lin_table.x, y=lin_table.y, name=getattr(lin_table, "name", "")
-        )
-        f.model.corrections.correct_dnl = True
-    fit.update()
+    attach_curve(fit, "model.set_linearization", lin_table, str(curve_name or ""))
     _sync_editors(fit)
 
 
@@ -262,12 +338,7 @@ def change_irf(
     if irf_curve is None:
         return
 
-    for f in fit[fit.selected_fit_index :]:
-        f.model.convolve._irf = cs.core.data.DataCurve(
-            x=irf_curve.x, y=irf_curve.y, name=getattr(irf_curve, "name", None) or irf_name
-        )
-
-    fit.update()
+    attach_curve(fit, "model.change_irf", irf_curve, str(irf_name or ""))
     _sync_editors(fit)
     for f in fit[fit.selected_fit_index :]:
         # Presentation only: pure (Qt-free) models have no line edit, and a
@@ -333,13 +404,7 @@ def set_background_curve(
     if curve is None:
         return
 
-    for f in fit[fit.selected_fit_index :]:
-        # a named copy: the editor's Background field shows the stored curve's name
-        f.model.generic.background_curve = cs.core.data.DataCurve(
-            x=curve.x, y=curve.y, name=getattr(curve, "name", "")
-        )
-
-    fit.update()
+    attach_curve(fit, "model.set_background_curve", curve, str(curve_name or ""))
     _sync_editors(fit)
 
 

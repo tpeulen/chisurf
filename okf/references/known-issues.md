@@ -4,6 +4,32 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## Lifetime mixture, FRET structure fit and the shell's recording: found while porting the model editor (2026-10-11)
+
+status: open — measured in W9 S2 (model sections); none is caused by that port, each blocks a model in both shells.
+
+* **Lifetime mixture cannot mix a fit made in the app.** `append_model` of a *Lifetime* (or any TCSPC) fit's model
+  succeeds, then the mixture's `problem` raises `LifetimeSpectrumMixture 'mixture.models.1.mixture': lifetime
+  spectrum 's0' is not (amplitude, lifetime) pairs`: the source's `lifetime_spectrum` output port reads `[0.]` even
+  after `update()` with an IRF. `test/fitting/test_description_model.py`'s mixtures pass because they set the
+  source's ports directly. Reproduce: `fit_create` *Lifetime* and *Lifetime mixture* on `Decay_577D.txt`, attach
+  `Prompt.txt` as IRF, `mixture.model.append_model(lifetime.model)`, read `mixture.model.problem`. Owner: the
+  described-model bindings (IMP.bff output ports).
+* **FRET: Structure fit computes no AV distance.** On `test/data/atomic_coordinates/pdb_files/148l.pdb`,
+  `av_distance_distribution` raises "cannot sample a distance: one or both labels have no states" for residues
+  44/132 and 10/100 (CA), so every PDB added to the ensemble is skipped with a warning. Reproduce with
+  `chisurf.core.models.tcspc.fret_structure.av_distance_distribution(Structure(pdb), axis, res_1=44, res_2=132)`.
+* **ProteinMC's Structure page fails in the emtk shell**: `chisurf/gui/plots/proteinMC.py:468` hands the dataset (a
+  `DataCurve`) to chimol's `add_structure` ("Unsupported structure type"). The Qt shell draws it.
+* **The emtk shell's recording and autosave fail silently** (`chisurf/emtk/shell_session.py`, logged only):
+  "cannot restore dataset …: inconsistent reader identity" once two files are read with one TXT/CSV reader, and
+  "model GeneralFCSModel parameter count changed (44 != 46)" after a bunching term is added. `capture_session` over
+  the same `SessionState` passes headlessly, so the difference is in the shell's channel. Owner: S3.
+* Fixed on the way (same change): the Qt shell's history capture refused every action once a *Lifetime mixture* fit
+  existed ("state changed after reconstruction": the derived source count was part of the state); the fit window's
+  Fit page raised `KeyError: 'IRF'` when an IRF arrived after the page was built; *calc R0* wrote into a plain
+  attribute (`FRETParameters.forster_radius` had no setter), so R0 never changed.
+
 ## Two server/schema tests red at HEAD, outside their owners' lanes (found 2026-10-11)
 
 status: open — seen while verifying W9 S2 (not caused by it; reproduced at HEAD in a clean worktree).

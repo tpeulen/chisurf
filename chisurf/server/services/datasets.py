@@ -259,6 +259,7 @@ def _prepare_cached_dataset(payload: Any, _seen: dict[str, Any] | None = None) -
     from chisurf.core.project.session import (
         _COMMON_READER_FIELDS,
         _READER_FIELDS,
+        AUXILIARY_FIELDS,
         _restore_scientific_value,
         _scientific_value,
     )
@@ -338,8 +339,13 @@ def _prepare_cached_dataset(payload: Any, _seen: dict[str, Any] | None = None) -
     if "unique_identifier" in metadata and metadata["unique_identifier"] != uid:
         raise ValueError("cached curve metadata contradicts its UID")
     _scientific_value(metadata)
-    if payload.get("auxiliary"):
-        raise ValueError("cached curve auxiliary data requires its owning import service")
+    # The PDA histogram / burst table and MFD data a curve carries beside x/y:
+    # the same fields, decoded the same way, as a project file restores.
+    auxiliary = payload.get("auxiliary") or {}
+    if not isinstance(auxiliary, dict) or set(auxiliary) - AUXILIARY_FIELDS:
+        raise ValueError("unsupported cached curve auxiliary field")
+    for value in auxiliary.values():
+        _scientific_value(_restore_scientific_value(value))
     reader = payload.get("reader")
     inputs = payload.get("reader_inputs", {})
     if reader is not None:
@@ -430,7 +436,7 @@ def _restore_cached_dataset(prepared: dict[str, Any]) -> Any:
         ExperimentDataGroup,
     )
     from chisurf.core.experiments.core.experiment import Experiment
-    from chisurf.core.project.session import _resolve_model, _restore_reader
+    from chisurf.core.project.session import _resolve_model, _restore_reader, restore_auxiliary
 
     readers: dict[str, Any] = {}
     curves: dict[str, Any] = {}
@@ -489,6 +495,7 @@ def _restore_cached_dataset(prepared: dict[str, Any]) -> Any:
         )
         curve.filename = record.get("filename", "")
         curve.meta_data.update(record["metadata"])
+        restore_auxiliary(curve, record.get("auxiliary") or {})
         if uid:
             curves[uid] = curve
         return curve

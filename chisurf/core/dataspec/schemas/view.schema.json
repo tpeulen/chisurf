@@ -190,50 +190,54 @@
         {
           "type": "object",
           "properties": {
-            "tree_key": {},
-            "key": {},
             "sort": {},
-            "target": {},
-            "colour_source": {},
-            "activated_cell_call": {},
-            "edited_call": {},
-            "fit_columns": {},
-            "column_picker": {},
-            "expand": {},
-            "columns_source": {},
-            "hidden_when": {},
-            "columns": {},
-            "selected_attr": {},
-            "muted_key": {},
+            "height": {},
             "row_key": {},
-            "context_call": {},
-            "description": {},
-            "label": {},
+            "tree_key": {},
+            "muted_key": {},
+            "editable": {},
+            "filter": {},
+            "activated_call": {},
+            "_comment": {},
+            "fit_rows": {},
+            "elide": {},
+            "weight": {},
             "wrap_indent": {},
+            "attr": {},
             "min_width": {},
+            "drag_call": {},
+            "fit_columns": {},
             "editable_call": {},
             "width": {},
-            "source": {},
+            "activated_cell_call": {},
             "selected_call": {},
             "type": {},
-            "min_chars": {},
-            "tooltip_key": {},
-            "attr": {},
-            "expanded_attr": {},
-            "wrap_before": {},
-            "filter": {},
-            "title": {},
-            "status": {},
-            "weight": {},
-            "reserve": {},
-            "_comment": {},
-            "min_column_width": {},
-            "height": {},
-            "elide": {},
-            "editable": {},
+            "expand": {},
+            "columns": {},
             "delete_call": {},
-            "activated_call": {},
-            "visible": {}
+            "colour_source": {},
+            "target": {},
+            "context_menu": {},
+            "description": {},
+            "hidden_when": {},
+            "edited_call": {},
+            "key": {},
+            "min_column_width": {},
+            "expanded_attr": {},
+            "status": {},
+            "tooltip_key": {},
+            "columns_source": {},
+            "context_call": {},
+            "visible": {},
+            "column_picker": {},
+            "wrap_before": {},
+            "selected_attr": {},
+            "source": {},
+            "reserve": {},
+            "label": {},
+            "min_chars": {},
+            "title": {},
+            "selection_attr": {}
           },
           "required": [
             "source"
@@ -333,19 +337,19 @@
               "window": {},
               "wrap_before": {},
               "wrap_indent": {},
+              "equation": {
+                "type": "boolean"
+              },
               "function": {
                 "type": "boolean"
               },
-              "equation": {
+              "parametric": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
               "points": {
-                "type": "boolean"
-              },
-              "parametric": {
                 "type": "boolean"
               }
             },
@@ -465,19 +469,19 @@
               "panels": {},
               "tab": {},
               "window": {},
+              "equation": {
+                "type": "boolean"
+              },
               "function": {
                 "type": "boolean"
               },
-              "equation": {
+              "parametric": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
               "points": {
-                "type": "boolean"
-              },
-              "parametric": {
                 "type": "boolean"
               }
             },
@@ -645,19 +649,19 @@
               "panels": {},
               "tab": {},
               "window": {},
+              "equation": {
+                "type": "boolean"
+              },
               "function": {
                 "type": "boolean"
               },
-              "equation": {
+              "parametric": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
               "points": {
-                "type": "boolean"
-              },
-              "parametric": {
                 "type": "boolean"
               }
             },
@@ -714,19 +718,19 @@
               "window": {},
               "wrap_before": {},
               "wrap_indent": {},
+              "equation": {
+                "type": "boolean"
+              },
               "function": {
                 "type": "boolean"
               },
-              "equation": {
+              "parametric": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
               "points": {
-                "type": "boolean"
-              },
-              "parametric": {
                 "type": "boolean"
               }
             },
@@ -863,19 +867,19 @@
               "panels": {},
               "tab": {},
               "window": {},
+              "equation": {
+                "type": "boolean"
+              },
               "function": {
                 "type": "boolean"
               },
-              "equation": {
+              "parametric": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
               "points": {
-                "type": "boolean"
-              },
-              "parametric": {
                 "type": "boolean"
               }
             },
@@ -1000,10 +1004,13 @@
               },
               "tab": {},
               "window": {},
+              "equation": {
+                "type": "boolean"
+              },
               "function": {
                 "type": "boolean"
               },
-              "equation": {
+              "parametric": {
                 "type": "boolean"
               },
               "data": {
@@ -1012,38 +1019,39 @@
               "points": {
                 "type": "boolean"
               },
-              "parametric": {
-                "type": "boolean"
-              },
-              "y_label": {},
-              "tree_key": {},
-              "editable_call": {},
               "sort": {},
-              "colour_source": {},
+              "row_key": {},
+              "tree_key": {},
+              "muted_key": {},
+              "editable": {},
+              "activated_call": {},
+              "fit_rows": {},
+              "drag_call": {},
+              "fit_columns": {},
+              "editable_call": {},
               "activated_cell_call": {},
               "selected_call": {},
-              "edited_call": {},
-              "fit_columns": {},
-              "column_picker": {},
-              "x_label": {},
               "expand": {},
+              "columns": {},
+              "selection_attr": {},
+              "delete_call": {},
+              "colour_source": {},
+              "context_menu": {},
+              "y_label": {},
+              "edited_call": {},
+              "min_column_width": {},
+              "expanded_attr": {},
+              "status": {},
               "tooltip_key": {},
               "columns_source": {
                 "type": "string"
               },
-              "expanded_attr": {},
-              "log_x": {},
-              "columns": {},
-              "selected_attr": {},
-              "status": {},
-              "muted_key": {},
-              "reserve": {},
-              "row_key": {},
+              "x_label": {},
               "context_call": {},
-              "min_column_width": {},
-              "editable": {},
-              "delete_call": {},
-              "activated_call": {}
+              "selected_attr": {},
+              "reserve": {},
+              "log_x": {},
+              "column_picker": {}
             },
             "additionalProperties": false,
             "allOf": [
@@ -1416,19 +1424,19 @@
               "panels": {},
               "tab": {},
               "window": {},
+              "equation": {
+                "type": "boolean"
+              },
               "function": {
                 "type": "boolean"
               },
-              "equation": {
+              "parametric": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
               "points": {
-                "type": "boolean"
-              },
-              "parametric": {
                 "type": "boolean"
               }
             },
@@ -1596,19 +1604,19 @@
               "panels": {},
               "tab": {},
               "window": {},
+              "equation": {
+                "type": "boolean"
+              },
               "function": {
                 "type": "boolean"
               },
-              "equation": {
+              "parametric": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
               "points": {
-                "type": "boolean"
-              },
-              "parametric": {
                 "type": "boolean"
               }
             },
@@ -1665,19 +1673,19 @@
               "window": {},
               "wrap_before": {},
               "wrap_indent": {},
+              "equation": {
+                "type": "boolean"
+              },
               "function": {
                 "type": "boolean"
               },
-              "equation": {
+              "parametric": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
               "points": {
-                "type": "boolean"
-              },
-              "parametric": {
                 "type": "boolean"
               }
             },
@@ -1810,19 +1818,19 @@
               "panels": {},
               "tab": {},
               "window": {},
+              "equation": {
+                "type": "boolean"
+              },
               "function": {
                 "type": "boolean"
               },
-              "equation": {
+              "parametric": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
               "points": {
-                "type": "boolean"
-              },
-              "parametric": {
                 "type": "boolean"
               }
             },
@@ -1957,19 +1965,19 @@
               "panels": {},
               "tab": {},
               "window": {},
+              "equation": {
+                "type": "boolean"
+              },
               "function": {
                 "type": "boolean"
               },
-              "equation": {
+              "parametric": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
               "points": {
-                "type": "boolean"
-              },
-              "parametric": {
                 "type": "boolean"
               },
               "include": {
@@ -2110,19 +2118,19 @@
               "panels": {},
               "tab": {},
               "window": {},
+              "equation": {
+                "type": "boolean"
+              },
               "function": {
                 "type": "boolean"
               },
-              "equation": {
+              "parametric": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
               "points": {
-                "type": "boolean"
-              },
-              "parametric": {
                 "type": "boolean"
               }
             },
@@ -2275,19 +2283,19 @@
               "panels": {},
               "tab": {},
               "window": {},
+              "equation": {
+                "type": "boolean"
+              },
               "function": {
                 "type": "boolean"
               },
-              "equation": {
+              "parametric": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
               "points": {
-                "type": "boolean"
-              },
-              "parametric": {
                 "type": "boolean"
               }
             },
@@ -2324,12 +2332,14 @@
                 "type": "string"
               },
               "context_call": {},
+              "context_menu": {},
               "data": {
                 "type": "boolean"
               },
               "delete_call": {},
               "description": {},
               "dock": {},
+              "drag_call": {},
               "editable": {},
               "editable_call": {},
               "edited_call": {},
@@ -2341,6 +2351,7 @@
               "expanded_attr": {},
               "filter": {},
               "fit_columns": {},
+              "fit_rows": {},
               "function": {
                 "type": "boolean"
               },
@@ -2365,6 +2376,7 @@
               "row_key": {},
               "selected_attr": {},
               "selected_call": {},
+              "selection_attr": {},
               "sort": {},
               "source": {
                 "type": [
@@ -2539,19 +2551,19 @@
               "panels": {},
               "tab": {},
               "window": {},
+              "equation": {
+                "type": "boolean"
+              },
               "function": {
                 "type": "boolean"
               },
-              "equation": {
+              "parametric": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
               "points": {
-                "type": "boolean"
-              },
-              "parametric": {
                 "type": "boolean"
               }
             },
@@ -2600,19 +2612,19 @@
               "window": {},
               "wrap_before": {},
               "wrap_indent": {},
+              "equation": {
+                "type": "boolean"
+              },
               "function": {
                 "type": "boolean"
               },
-              "equation": {
+              "parametric": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
               "points": {
-                "type": "boolean"
-              },
-              "parametric": {
                 "type": "boolean"
               }
             },
@@ -2669,19 +2681,19 @@
               "window": {},
               "wrap_before": {},
               "wrap_indent": {},
+              "equation": {
+                "type": "boolean"
+              },
               "function": {
                 "type": "boolean"
               },
-              "equation": {
+              "parametric": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
               "points": {
-                "type": "boolean"
-              },
-              "parametric": {
                 "type": "boolean"
               }
             },
@@ -2738,19 +2750,19 @@
               "window": {},
               "wrap_before": {},
               "wrap_indent": {},
+              "equation": {
+                "type": "boolean"
+              },
               "function": {
                 "type": "boolean"
               },
-              "equation": {
+              "parametric": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
               "points": {
-                "type": "boolean"
-              },
-              "parametric": {
                 "type": "boolean"
               }
             },
@@ -2893,12 +2905,15 @@
                 "type": "string"
               },
               "context_call": {},
+              "context_menu": {},
               "delete_call": {},
               "dock": {},
+              "drag_call": {},
               "editable_call": {},
               "edited_call": {},
               "expanded_attr": {},
               "fit_columns": {},
+              "fit_rows": {},
               "key": {},
               "label": {},
               "min_column_width": {},
@@ -2908,25 +2923,26 @@
               "panels": {},
               "reserve": {},
               "row_key": {},
+              "selection_attr": {},
               "sort": {},
               "status": {},
               "tab": {},
               "tooltip_key": {},
               "tree_key": {},
               "window": {},
+              "equation": {
+                "type": "boolean"
+              },
               "function": {
                 "type": "boolean"
               },
-              "equation": {
+              "parametric": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
               "points": {
-                "type": "boolean"
-              },
-              "parametric": {
                 "type": "boolean"
               }
             },
@@ -2983,19 +2999,19 @@
               "window": {},
               "wrap_before": {},
               "wrap_indent": {},
+              "equation": {
+                "type": "boolean"
+              },
               "function": {
                 "type": "boolean"
               },
-              "equation": {
+              "parametric": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
               "points": {
-                "type": "boolean"
-              },
-              "parametric": {
                 "type": "boolean"
               }
             },
@@ -3128,19 +3144,19 @@
               "panels": {},
               "tab": {},
               "window": {},
+              "equation": {
+                "type": "boolean"
+              },
               "function": {
                 "type": "boolean"
               },
-              "equation": {
+              "parametric": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
               "points": {
-                "type": "boolean"
-              },
-              "parametric": {
                 "type": "boolean"
               }
             },
@@ -3257,19 +3273,19 @@
               "panels": {},
               "tab": {},
               "window": {},
+              "equation": {
+                "type": "boolean"
+              },
               "function": {
                 "type": "boolean"
               },
-              "equation": {
+              "parametric": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
               "points": {
-                "type": "boolean"
-              },
-              "parametric": {
                 "type": "boolean"
               }
             },
@@ -3460,19 +3476,19 @@
               "spin": {},
               "tab": {},
               "window": {},
+              "equation": {
+                "type": "boolean"
+              },
               "function": {
                 "type": "boolean"
               },
-              "equation": {
+              "parametric": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
               "points": {
-                "type": "boolean"
-              },
-              "parametric": {
                 "type": "boolean"
               }
             },
@@ -3601,19 +3617,19 @@
               "panels": {},
               "tab": {},
               "window": {},
+              "equation": {
+                "type": "boolean"
+              },
               "function": {
                 "type": "boolean"
               },
-              "equation": {
+              "parametric": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
               "points": {
-                "type": "boolean"
-              },
-              "parametric": {
                 "type": "boolean"
               }
             },
@@ -3745,19 +3761,19 @@
               "panels": {},
               "tab": {},
               "window": {},
+              "equation": {
+                "type": "boolean"
+              },
               "function": {
                 "type": "boolean"
               },
-              "equation": {
+              "parametric": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
               "points": {
-                "type": "boolean"
-              },
-              "parametric": {
                 "type": "boolean"
               }
             },
@@ -3856,19 +3872,19 @@
                   "null"
                 ]
               },
+              "equation": {
+                "type": "boolean"
+              },
               "function": {
                 "type": "boolean"
               },
-              "equation": {
+              "parametric": {
                 "type": "boolean"
               },
               "data": {
                 "type": "boolean"
               },
               "points": {
-                "type": "boolean"
-              },
-              "parametric": {
                 "type": "boolean"
               },
               "dock_group": {
@@ -3970,50 +3986,54 @@
                   "null"
                 ]
               },
-              "y_label": {
+              "sort": {},
+              "row_key": {},
+              "tree_key": {},
+              "muted_key": {},
+              "activated_call": {
                 "type": "string"
               },
-              "tree_key": {},
+              "fit_rows": {},
+              "drag_call": {},
+              "fit_columns": {},
               "editable_call": {},
-              "sort": {},
-              "colour_source": {},
               "activated_cell_call": {},
               "selected_call": {
-                "type": "string"
-              },
-              "edited_call": {},
-              "fit_columns": {},
-              "column_picker": {},
-              "x_label": {
                 "type": "string"
               },
               "expand": {
                 "type": "boolean"
               },
+              "columns": {
+                "type": "array"
+              },
+              "selection_attr": {},
+              "delete_call": {},
+              "colour_source": {},
+              "context_menu": {},
+              "y_label": {
+                "type": "string"
+              },
+              "edited_call": {},
+              "min_column_width": {},
+              "expanded_attr": {},
+              "status": {},
               "tooltip_key": {},
               "columns_source": {
                 "type": "string"
               },
-              "expanded_attr": {},
-              "log_x": {
-                "type": "boolean"
+              "x_label": {
+                "type": "string"
               },
-              "columns": {
-                "type": "array"
-              },
+              "context_call": {},
               "selected_attr": {
                 "type": "string"
               },
-              "status": {},
-              "muted_key": {},
               "reserve": {},
-              "row_key": {},
-              "context_call": {},
-              "min_column_width": {},
-              "delete_call": {},
-              "activated_call": {
-                "type": "string"
+              "log_x": {
+                "type": "boolean"
               },
+              "column_picker": {},
               "split": {
                 "type": "string"
               },
@@ -4105,9 +4125,6 @@
                 "type": "boolean"
               },
               "legend": {
-                "type": "boolean"
-              },
-              "context_menu": {
                 "type": "boolean"
               },
               "x_range": {

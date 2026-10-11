@@ -34,6 +34,13 @@ from chisurf import logging, typing
 from chisurf.core.experiments.core.reader import ExperimentReader
 
 from .index_map import build_idx_map
+from .inputs import (
+    BURST_EXTENSIONS,
+    ResolvedInputs,
+    resolve_inputs,
+    split_filenames,
+    tttr_extensions,
+)
 
 _VIEW_JSON = pathlib.Path(__file__).parent / "pda.view.json"
 
@@ -84,7 +91,7 @@ class Pda2cReader(ExperimentReader):
 
     def __init__(
         self,
-        channels: typing.Tuple[typing.List[int], typing.List[int]],
+        channels: Sequence[Sequence[int]],
         micro_time_ranges: typing.List[typing.Tuple[int, int]],
         reading_routine: str = "PTU",
         maximum_number_of_photons: int = 500,
@@ -151,6 +158,45 @@ class Pda2cReader(ExperimentReader):
         # count *changes* under them.
         self._n_colors = 3 if int(n_colors or len(channels)) >= 3 else 2
         self.segmentation = str(segmentation)
+        #: The saved detector setup the rows were taken from, and the detector
+        #: of each row (see :class:`~chisurf.core.experiments.pda2c.settings.PdaReaderSettings`).
+        self.detector_setup = ""
+        self.detector_names: list = []
+        #: The file list: ``{"use": bool, "path": str}`` per TTTR file, burst
+        #: table or burst-analysis folder. :attr:`filename` is its ticked part.
+        self.files: list = []
+        #: Read files as soon as they are dropped onto the list, and empty it after.
+        self.auto_load = True
+
+    @property
+    def filename(self) -> str:
+        """The ticked entries of :attr:`files`, ``|``-joined: what a read without a filename takes."""
+        return "|".join(row["path"] for row in self.files if row.get("use", True))
+
+    @filename.setter
+    def filename(self, value) -> None:
+        """Replace the file list by *value* (a path, ``|``-joined paths, or a sequence)."""
+        self.files = [{"use": True, "path": path} for path in split_filenames(value)]
+
+    def resolve_inputs(self, filename=None, progress=None) -> ResolvedInputs:
+        """The TTTR files and burst intervals *filename* (default: :attr:`filename`) stands for.
+
+        ``.bur`` tables select the bursts of the measurements they name, a
+        burst-analysis folder stands for its tables, and a TTTR file with a
+        ``bi4_bur`` folder beside it is read burst-wise from that folder; see
+        :func:`~chisurf.core.experiments.pda2c.inputs.resolve_inputs`.
+
+        Raises
+        ------
+        PdaInputError
+            When there is nothing to read.
+        """
+        paths = split_filenames(self.filename if filename is None else filename)
+        # A file named explicitly is read with the reading routine whatever its
+        # extension says; only burst tables and identifiers are not TTTR data.
+        named = {pathlib.Path(p).suffix.lower() for p in paths if pathlib.Path(p).is_file()}
+        exts = set(tttr_extensions()) | (named - set(BURST_EXTENSIONS))
+        return resolve_inputs(paths, exts, progress)
 
     # -- three-colour path ------------------------------------------------
 
@@ -531,8 +577,16 @@ class Pda2cReader(ExperimentReader):
 
         Parameters
         ----------
-        filename : list of str, optional
-            Path(s) to the TTTR data file(s).
+        filename : str or list of str, optional
+            TTTR files, ``.bur`` burst tables or burst-analysis folders, as a
+            list or ``|``-joined; the ticked entries of :attr:`files` when
+            omitted. Unless ``burst_slices`` is given they are resolved by
+            :meth:`resolve_inputs`: a table reads the bursts it names, a TTTR
+            file with a ``bi4_bur`` folder beside it is read burst-wise from
+            that folder, any other TTTR file is read whole.
+        burst_slices : dict, optional
+            ``{tttr path: [(start, stop), ...]}`` photon intervals to read
+            instead of resolving them.
 
         Returns
         -------
@@ -552,8 +606,16 @@ class Pda2cReader(ExperimentReader):
               string), ``tw_configs`` (list of time-window configurations
               used).
         """
-        if isinstance(filename, str):
-            filename = [filename]
+        # Burst tables, burst-analysis folders and TTTR files with a burst
+        # folder beside them all name photon intervals; resolve them unless
+        # the caller already did (the burst bridge hands its own).
+        burst_slices = kwargs.get("burst_slices", None)
+        if not burst_slices:
+            resolved = self.resolve_inputs(filename)
+            filename, burst_slices = list(resolved.tttr_files), resolved.burst_slices
+            kwargs["burst_slices"] = burst_slices
+        elif isinstance(filename, str):
+            filename = split_filenames(filename)
 
         try:
             logging.info(

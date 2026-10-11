@@ -127,6 +127,25 @@ The result updates as you type. $\kappa^2$ is fixed at 2/3; orientation is
 handled in the FRET model's κ² controls. **Apply R₀ to model** writes the
 value into the model's Förster radius.
 
+In the emtk shell the same calculator opens as a dialog over the window, with
+the same fields: R₀ stands in a read-only field of its own and $J$ on the line
+under it, the spectra used are listed under the two dye lists (the Qt window
+shows them as tooltips of the list entries), and **Apply R₀ to model** closes
+the dialog; **✕ Close** closes it without changing the model. Headless, the
+calculator is `ForsterCalculatorModel` in
+`chisurf.core.fluorescence.fret.forster_calculator`:
+
+```python
+from chisurf.core.fluorescence.fret.forster_calculator import ForsterCalculatorModel
+
+calc = ForsterCalculatorModel()            # reads the MMFDB, read-only
+donors = {name: pid for pid, name in calc.donor_options()[1:]}
+acceptors = {name: pid for pid, name in calc.acceptor_options()[1:]}
+calc.set_donor(donors["Alexa488"])         # fills donor_qy from the MMFDB
+calc.set_acceptor(acceptors["Alexa594"])   # fills acceptor_emax, computes
+print(calc.r0, calc.overlap, calc.status)  # Å, M⁻¹ cm⁻¹ nm⁴, one line
+```
+
 How the calculator builds $J$: both spectra are interpolated onto 1000 points
 spanning the range the two spectra share, the peak-normalised absorption is
 scaled so that its maximum equals ε_max, the emission is area-normalised, and

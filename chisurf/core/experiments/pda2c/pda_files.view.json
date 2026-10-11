@@ -1,0 +1,73 @@
+{
+  "sections": [
+    {
+      "type": "info",
+      "text": "Drop files or analysis folders below",
+      "description": "Drag and drop TTTR files, BID/BUR/BST files, or burst analysis folders (bi4_bur). Checked files are used."
+    },
+    {
+      "type": "table",
+      "source": "file_rows",
+      "columns": [
+        {
+          "key": "use",
+          "label": "Use",
+          "width": 40,
+          "editable": true,
+          "description": "Only checked entries are read."
+        },
+        {
+          "key": "name",
+          "label": "File",
+          "description": "A TTTR file, a .bur burst table, or a burst-analysis folder."
+        },
+        {
+          "key": "folder",
+          "label": "Folder",
+          "description": "Where it is; the whole path is shown under the list for the selected entry."
+        }
+      ],
+      "height": 150,
+      "edited_call": "file_edited",
+      "delete_call": "remove_file",
+      "tooltip_key": "path",
+      "context_menu": [
+        {
+          "label": "Delete selected",
+          "call": "remove_file",
+          "description": "Remove this entry from the list."
+        },
+        {
+          "label": "Clear all",
+          "call": "clear_files",
+          "description": "Remove every entry from the list."
+        }
+      ],
+      "description": "The files a read takes: a .bur table reads the bursts it names, a folder its tables, a TTTR file with a bi4_bur folder beside it is read burst-wise."
+    },
+    {
+      "type": "button_row",
+      "buttons": [
+        {
+          "label": "Load dropped files",
+          "action": "load",
+          "description": "Read checked TTTR files using current PDA settings."
+        },
+        {
+          "label": "Clear",
+          "action": "clear_files",
+          "description": "Clear all dropped files from the list."
+        }
+      ]
+    },
+    {
+      "type": "info",
+      "source": "status",
+      "hidden_when": {
+        "attr": "status",
+        "equals": ""
+      },
+      "description": "What the last load did."
+    }
+  ]
+}

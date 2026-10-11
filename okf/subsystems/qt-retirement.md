@@ -2,7 +2,7 @@
 type: Subsystem
 title: Qt retirement (shell)
 description: Parity ledger for moving the ChiSurf main window from Qt to one emtk surface — every Qt capability the shell uses, its emtk equivalent or gap, the allow-list by area, and the ordered slices that keep the app shippable.
-resource: chisurf/emtk/main_app.py, chisurf/emtk/shell_session.py, chisurf/emtk/console.py, chisurf/emtk/fit_docks.py, chisurf/emtk/fit_window.py, chisurf/emtk/session.py, chisurf/emtk/model_editor.py, chisurf/emtk/fit_controls.py, chisurf/server/services/model_svc.py, chisurf/core/server_events.py, chisurf/gui/main.py, chisurf/gui/gui.ui, chisurf/gui/main_helper.py, test/plugin_qt_allowlist.txt
+resource: chisurf/emtk/main_app.py, chisurf/emtk/shell_session.py, chisurf/emtk/console.py, chisurf/emtk/fit_docks.py, chisurf/emtk/fit_window.py, chisurf/emtk/session.py, chisurf/emtk/model_editor.py, chisurf/emtk/model_sections.py, chisurf/emtk/pda_sections.py, chisurf/emtk/sample_picker.py, chisurf/emtk/fit_controls.py, chisurf/server/services/model_svc.py, chisurf/server/services/model_sections.py, chisurf/core/server_events.py, chisurf/gui/main.py, chisurf/gui/gui.ui, chisurf/gui/main_helper.py, test/plugin_qt_allowlist.txt
 tags: [gui, emtk, qt-retirement, shell, parity, ledger]
 timestamp: '2026-10-11T00:00:00Z'
 ---
@@ -15,6 +15,8 @@ a dock window. Slice S2 reached control parity with the Qt docks on 2026-10-11: 
 `test/native_emtk/test_emtk_shell_fits.py` is empty. The Analysis dock draws each model's own `view.json` editor from
 `model.editor` (`chisurf/emtk/model_editor.py`) and carries the whole fit controller. A fit window turns over to its
 Code face. The session holds the Global Dataset, and a dataset row dragged onto a fit window is attached to that fit.
+The model editor's curve pickers and custom sections, the PDA reader's form, the link menu, paired component rows
+and *New…* sample followed the same day, at parity with the Qt model editors of ten models (item 2).
 Slice S3 reached control parity for the session menus on 2026-10-11 (`chisurf/emtk/shell_session.py`): File, View
 and Settings with the Qt shortcuts, save and reopen of `.cs.pto`, undo and redo, autosave, a close guard that asks
 once, and a fit window `×` that asks and then removes the fit. `KNOWN_GAPS` in
@@ -29,24 +31,25 @@ and *Run Macro…*, `chisurf.run` routed to it, and composed (dead-key and IME) 
    calculator 2, fret_line 2, cookiecutter 1, quenching_estimator 1, vv_vh_anisotropy 1. Trap: about 171 of the 245
    are **tests**. They import Qt to drive the legacy host, not because the plugin needs it. A slice removes a test
    line by porting the test to `emtk.testing.Driver`, never by deleting the test.
-2. Open: model-editor sections that are still drawn as a "not drawn in this window yet" note. Measure: walk the
-   `type`s of `chisurf/core/models/**/*.view.json` (44 specs) against the resolver in
-   `chisurf/server/services/model_svc.py::_resolve_section`. Missing: `curve_input` 38 (the TCSPC IRF and background
-   pickers), and `custom` 37 (`kappa2_controls` 8, `anisotropy_diagnostics` 8, `scalar_table` 8, `rate_matrix` 5,
-   `lcurve` 4, `path_list`, `global_parameter_table`, `fit_mixer`, `background_run` 1 each). Blocks: TCSPC fits in
-   the shell (no IRF), FCS kinetics rate matrices, MaxEnt L-curves, global-parameter links. Next: `curve_input`, as a
-   `choice` of `dataset.list` written by the section's `select_action` through a new spec-declared RPC (the controls
-   with a `set_action` are read only today). The Qt S2 inventory only had the general FCS model, so the parity test
-   does not see these.
-3. Open: the PDA reader (`PTU/HT3/SPC`) is the one reader without a native settings form. Its `pda_detector` rows and
-   `pda_tw` time-window list are wired in the 2,070-line Qt controller
-   (`chisurf/gui/widgets/experiments/pda2c/controller.py`), with `.bur` resolution and file lists. Measure:
-   `KNOWN_GAPS` in `test/native_emtk/test_emtk_shell_readers.py`, where 23 of 24 readers are drawn. Next: move the
-   controller's logic onto the reader, then declare the rows as view sections.
-4. Open: deliberate differences left after the S2 parity. Each one needs a decision, not a port. A component table
-   lists one parameter per row: the Qt editor pairs `row_width` parameters on one row (`a_b1 | τ_b1`). The parameter
-   tables have no link menu (`parameter.link` exists). The sample question has no *New…*: samples are made in MMFDB
-   Admin. The ⚙ dialog writes the user settings directly, because they are preferences and not session state.
+2. Measure: the model editor's curve pickers and the nine `custom` sections (plus a lifetime group's
+   `lifetime_amplitude_options`) are resolved by `chisurf/server/services/model_sections.py` and drawn by
+   `chisurf/emtk/model_sections.py`; writes go through `model.curve.set` / `model.curve.unload` /
+   `model.section.call`, checked against the model's `view.json`. Parity:
+   `test_emtk_shell_model_sections.py::test_parity_with_the_qt_model_editors` against
+   `shell_s2_models_qt_inventory.json` (10 models: TCSPC with IRF and background, mixture, MaxEnt, structure, FCS
+   kinetics, two PDA, global, ProteinMC; `capture_shell_s2_models_qt_before.py`, about 15 min, writes as it goes).
+   `KNOWN_GAPS` is empty. Trap: the Qt inventory's dye names come from the user's MMFDB (`ENVIRONMENT` in the test).
+   Open: `background_run` (ProteinMC start/stop) is drawn but no test presses it; the ProteinMC *Structure* page fails
+   in the shell (chimol gets a `DataCurve`); see known issues "Lifetime mixture" and "FRET: Structure fit".
+3. Open: PDA reader leftovers. The form is native (`chisurf/emtk/pda_sections.py`, logic in
+   `chisurf/core/experiments/pda2c/inputs.py` and `settings.py`); `KNOWN_GAPS` in `test_emtk_shell_readers.py` is
+   empty. The shell's file dialog still picks one file, so several measurements go through the form's drop list or
+   a folder. The Qt form's TW and drop lists stay Qt widgets inside AutoForm custom sections until S6.
+4. Measure: deliberate differences after the model-section parity (each a decision, kept as such): a rate cell's
+   *Fixed* is on its context menu, not a box in the cell; the link menu lists a fit's parameters flat, not grouped
+   twice; a paired table shows every slot column (Qt hides some); *show r(t)* and the κ² windows are dialogs over the
+   shell; the ⚙ dialog writes the user settings, because they are preferences and not session state. The link menu,
+   paired component rows and *New…* sample (`chisurf/emtk/sample_picker.py::NewSampleDialog`) are ported.
 5. Open: S2's allow-list lines (microscopy, tttr and ndxplorer tests) still drive the Qt host; port them to `Driver`.
 6. Measure: the shell's fit pages live under `chisurf.gui`, whose package `__init__` imports `qtpy`; opening the
    first fit window (and registering the experiments) loads the Qt modules, though no `QApplication` is made and Qt
@@ -58,15 +61,17 @@ and *Run Macro…*, `chisurf.run` routed to it, and composed (dead-key and IME) 
    CSV, `fit.json` and a Word report of `QWidget.grab()` screenshots; it needs a Qt-free export service that renders
    the fit window with emtk. Measure: the test's `KNOWN_GAPS` and `SHORTCUT_GAPS`. Also open: the shell's undo history is session-local; it is not written
    into the `.cs.pto` as the Qt `cs.history` is. Login before the session (the ledger's Auth row) is not built.
+   Trap: the shell's recording and autosave fail ("inconsistent reader identity" with two files of one TXT/CSV
+   reader; "parameter count changed" after a bunching term), logged only (known issues, 2026-10-11).
 8. Open: plugins that have only an `action` entrypoint (`menu_switch`) or only a Qt `gui` entrypoint are not offered
    by the emtk shell. `execute_plugin_action` still takes the Qt main window. Measure: `menu_entries()` returns 28
    entries, against 29 visible manifests.
 9. Blocked: S6 (delete the Qt shell) is blocked on W7's click-all passing on the native host
-   (`test/e2e/test_click_all_plugins.py`), on S5 reaching parity, and on items 2, 3 and 7.
+   (`test/e2e/test_click_all_plugins.py`), on S5 reaching parity, and on item 7.
 10. Open: **multi-window** (the emtk gap below) decides whether detached plugin windows survive the move; it goes into
-    `~/dev/emtk` with tests. emtk `aceb942` (message dialogs, close veto, `emtk.ime`, hosted controls owning Tab,
-    rasterised glyphs inside their advance) is installed in both envs but not pushed, so `pixi.lock` still pins
-    `95da067`. Measure: `git -C ~/dev/emtk log --oneline 95da067..HEAD`.
+    `~/dev/emtk` with tests. emtk `84ce461` (message dialogs, close veto, `emtk.ime`, hosted controls owning Tab,
+    rasterised glyphs inside their advance, table keys `fit_rows`/`drag_call`/`selection_attr` declared) is
+    installed in both envs but not pushed, so `pixi.lock` still pins `95da067`. Measure: `git -C ~/dev/emtk log --oneline 95da067..HEAD`.
 11. Measure: `test/native_emtk/capture_shell_s3_qt_before.py` and `capture_shell_s4_qt_before.py` rewrite the S3 and
     S4 before-halves (`shell_s3_qt_inventory.json`, `shell_s4_qt_inventory.json`; PNGs in `renders/w9_s3/`,
     `renders/w9_s4/`). Run S4 with the env's python directly, not `conda run` (which exited 1 with no trace once).
@@ -143,7 +148,7 @@ Each row is one capability the shell uses. Evidence is given as `file:line`. "em
 |---|---|---|---|---|---|
 | Main window, chrome | `gui/main.py:126` `Main(QMainWindow, …mixins)`; `uic.loadUi(gui.ui)` at `main.py:1127`; `closeEvent` order at `main.py:425-477` | `EmtkShellApp` (`chisurf/emtk/main_app.py`) on `emtk.native.NativeHost` | save setup defaults on close | S1 skeleton, S3 close guard done | `test/native_emtk/test_emtk_shell.py`, `test_emtk_shell_session.py::test_the_close_guard_asks_once` |
 | Central area | `QMdiArea mdiarea` (`gui.ui:44`), Tile, Tab and Cascade (`main.py:557-568`) | `emtk.docking.DockManager` centre region: tabs, split, float | tile and cascade arrangements (split presets are enough) | S1 / S2 | same |
-| Docks | 6 `QDockWidget`s in `gui.ui`: Analysis :82, Plot :193, Console :342, Datasets :403, Logging :509, Read data :584; default tabified at `main.py:1490-1514` | `DockManager` regions; Read data, Datasets, Analysis, Plot settings are `chisurf/emtk/fit_docks.py` over `chisurf/emtk/views/*.view.json`; the model editor `chisurf/emtk/model_editor.py` over `model.editor`; controller dialogs `chisurf/emtk/fit_controls.py`; reader sections `chisurf/emtk/detector_cascade.py`; sample question `chisurf/emtk/sample_picker.py` | `curve_input` and nine `custom` model sections, the PDA reader (resume items 2, 3); Console in S4 | S2 done (control parity), S4 | `test/native_emtk/test_emtk_shell_fits.py`, `test_emtk_shell_readers.py`, `test/server/test_model_editor_service.py` |
+| Docks | 6 `QDockWidget`s in `gui.ui`: Analysis :82, Plot :193, Console :342, Datasets :403, Logging :509, Read data :584; default tabified at `main.py:1490-1514` | `DockManager` regions; Read data, Datasets, Analysis, Plot settings are `chisurf/emtk/fit_docks.py` over `chisurf/emtk/views/*.view.json`; the model editor `chisurf/emtk/model_editor.py` over `model.editor`; controller dialogs `chisurf/emtk/fit_controls.py`; reader sections `chisurf/emtk/detector_cascade.py`; sample question `chisurf/emtk/sample_picker.py` | — (curve pickers and custom sections: `chisurf/emtk/model_sections.py`; PDA reader: `chisurf/emtk/pda_sections.py`); Console in S4 | S2 done (control parity), S4 | `test/native_emtk/test_emtk_shell_fits.py`, `test_emtk_shell_readers.py`, `test/server/test_model_editor_service.py` |
 | Layout persistence | QSettings ("ChiSurf","MainWindow") `geometry/state/layout_version` (`main.py:330-369`); `gui/layout_state.py` | `chisurf.emtk.state.attach_native_state` → `<settings>/emtk/emtk_shell.{layout,window,settings}.json` | — | S1 done (open plugins reopen) | `test_restore_reopens_the_plugins_that_were_open` |
 | Ribbon | `widgets/ribbon/**` (22 files, about 6,600 lines); `display_name` "Tab:Group:Name"; QSettings RibbonState | menu bar from the same `display_name` (`menu_entries`) and the Tools dock | ribbon tab strip with icon buttons and quick access; the [Ribbon](ribbon.md) placement guard reads the same manifests | S1 menu done; S5 ribbon | `test_shipped_menus_offer_every_visible_native_plugin` |
 | Toolbar plugins | `main.py:944-1044` `plugins.toolbar_plugins`; `gui/plugin_toolbar.py` | — | a tool strip under the menu bar | S5 | — |

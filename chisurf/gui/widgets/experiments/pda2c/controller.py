@@ -1,160 +1,34 @@
+"""The Qt panel of the PDA reader (legacy; the emtk shell draws the same sections natively).
+
+``pda.view.json`` is rendered by AutoForm; its three custom sections
+(``pda_detector``, ``pda_tw``, ``pda_files``) are the layout widgets below. All
+logic -- which detector a row takes, what a channel or window field means, the
+time-window list, the file list and how files and burst tables are resolved --
+lives Qt-free in :mod:`chisurf.core.experiments.pda2c.settings` and
+:mod:`chisurf.core.experiments.pda2c.inputs`; this panel shows it and pushes
+edits into it.
+"""
+
 import pathlib
 
-import numpy as np
 import tttrlib
 
 import chisurf as cs
 from chisurf import logging
 from chisurf.core.experiments.core import reader
-from chisurf.core.experiments.pda2c import Pda2cReader
+from chisurf.core.experiments.pda2c import Pda2cReader, inputs
+from chisurf.core.experiments.pda2c.settings import PdaReaderSettings
+from chisurf.core.support.i18n import tr
 from chisurf.gui import QtCore, QtWidgets, dialogs
 from chisurf.gui.progress import ChiSurfProgress
 from chisurf.gui.widgets.sample_picker import show_sample_picker_dialog
-from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
 from chisurf.macros import core_data as core_data_macros
-
-_TTTR_INDEX_CACHE = {}
-
-
-#: Row label per detection colour, by colour count. Two-colour PDA counts a
-#: green and a red channel; three-colour adds the blue donor.
-COLOUR_LABELS = {2: ("Green", "Red"), 3: ("Blue", "Green", "Red")}
-
-#: Detector name preferred for each row when the selected setup defines one.
-COLOUR_DEFAULTS = {2: ("green", "red"), 3: ("blue", "green", "red")}
-
-#: Default routing channels per row, used when no setup is available.
-COLOUR_CHANNELS = {2: ("0,3", "1,2"), 3: ("0", "1", "2")}
-
-#: Default micro-time windows per row (two colours) and the two excitation
-#: periods of the PIE cycle (three colours).
-COLOUR_WINDOWS = {2: ("1-16000", "1-16000"), 3: ("0-8000", "8000-16000")}
-
-
-def _parse_micro_time_ranges(text: str) -> list:
-    """Parse ``"start-end;start-end"`` into a list of ``[start, end]`` pairs.
-
-    Parameters
-    ----------
-    text : str
-        Field content. Empty or unparsable segments are skipped.
-
-    Returns
-    -------
-    list of list of int
-        The parsed windows, in the order they were written.
-    """
-    text = (text or "").strip()
-    if not text:
-        return []
-    windows = []
-    for segment in text.split(";"):
-        segment = segment.strip()
-        if not segment:
-            continue
-        try:
-            bounds = [int(j) for j in segment.split("-")]
-        except ValueError:
-            continue
-        if len(bounds) >= 2:
-            windows.append([bounds[0], bounds[1]])
-    return windows
-
-
-def _format_micro_time_ranges(value) -> str:
-    """Render a micro-time window as the ``"start-end;start-end"`` a field shows.
-
-    Accepts a single ``(start, stop)`` pair, a list of them, or a bare integer
-    (mirroring ``PhotonFilter.update_pie_windows``).
-
-    Parameters
-    ----------
-    value : tuple or list or int
-        The window(s) to render.
-
-    Returns
-    -------
-    str
-        Field text; empty when *value* describes no window.
-    """
-    if isinstance(value, (list, tuple)):
-        if len(value) == 2 and all(isinstance(x, int) for x in value):
-            return f"{value[0]}-{value[1]}"
-        parts = []
-        for item in value:
-            if isinstance(item, (list, tuple)) and len(item) >= 2:
-                parts.append(f"{item[0]}-{item[1]}")
-            elif isinstance(item, int):
-                parts.append(f"{item}-{item}")
-        return ";".join(parts)
-    if isinstance(value, int):
-        return f"{value}-{value}"
-    return ""
-
-
-#: The four ``.bur`` columns a burst slice needs, lower-cased. A burst table's
-#: header capitalisation varies between the programs that write one, so every
-#: lookup here is case-insensitive.
-_BUR_REQUIRED = ("first photon", "last photon", "first file", "last file")
-
-
-def read_bur_bursts(path):
-    """Return ``(file names, starts, stops)`` for the usable bursts of a ``.bur``.
-
-    One reader for what the two callers below both need, and the only place that
-    knows the format's quirks:
-
-    * the header's capitalisation is not fixed, so columns are matched
-      lower-cased;
-    * a burst whose ``First File`` and ``Last File`` disagree spans two
-      measurements and has no single photon stream to slice, so it is dropped —
-      as is a burst naming no file at all, which is what the interleaved
-      separator rows carry;
-    * ``Last Photon`` is inclusive in the format and exclusive in a Python
-      slice, hence ``stop = last + 1``.
-
-    Parameters
-    ----------
-    path : pathlib.Path
-        The ``.bur`` file.
-
-    Returns
-    -------
-    tuple of (numpy.ndarray, numpy.ndarray, numpy.ndarray) or None
-        File names as text, and integer start/stop photon indices. ``None`` when
-        the file cannot be read or does not carry the four columns.
-    """
-    from chisurf.core.datastore import column_values, read_csv_table
-
-    store = read_csv_table(path, delimiter="\t")
-    if store is None:
-        return None
-    # np.array, not np.asarray: these outlive the store, which dies here.
-    columns = {
-        str(store[i].name()).strip().lower(): np.array(column_values(store, i))
-        for i in range(store.n_columns())
-    }
-    if not all(name in columns for name in _BUR_REQUIRED):
-        return None
-
-    first_file = np.array([str(v).strip() for v in columns["first file"]], dtype=object)
-    last_file = np.array([str(v).strip() for v in columns["last file"]], dtype=object)
-    keep = (first_file == last_file) & (first_file != "")
-    if not keep.any():
-        return None
-
-    try:
-        starts = np.asarray(columns["first photon"], dtype=float)[keep].astype(np.int64)
-        stops = np.asarray(columns["last photon"], dtype=float)[keep].astype(np.int64) + 1
-    except (TypeError, ValueError):
-        return None
-    return first_file[keep], starts, stops
 
 
 class _PdaDetectorWidget(QtWidgets.QWidget):
     """Container for the PDA detector cascade (Setup / Routine / one row per colour).
 
-    The number of detector rows follows the reader's ``n_colors`` setting —
+    The number of detector rows follows the reader's ``n_colors`` setting --
     three-colour PDA is a setting of the PDA experiment, not an experiment of
     its own, and the setting is what decides whether a burst becomes a row of an
     S1S2 histogram or a row of a five-column photon table.
@@ -168,8 +42,8 @@ class _PdaDetectorWidget(QtWidgets.QWidget):
 
     This is a pure layout widget: it builds and exposes the combo boxes and line
     edits as ``detector_combos`` / ``channel_edits`` / ``window_edits``. All
-    wiring and business logic live on the controller, which grabs the child
-    widgets via ``findChildren`` after AutoForm builds this.
+    wiring lives on the controller, which grabs the child widgets via
+    ``findChildren`` after AutoForm builds this.
     """
 
     def _configured(self, attr: str, defaults, render) -> list:
@@ -190,68 +64,50 @@ class _PdaDetectorWidget(QtWidgets.QWidget):
         list of str
             One text per default, in row order.
         """
-        try:
-            values = list(getattr(self._model, attr, None) or [])
-        except Exception:
-            values = []
-        texts = []
-        for index, default in enumerate(defaults):
-            if index >= len(values):
-                texts.append(default)
-                continue
-            # An entry the reader has but left empty stays empty: that is a
-            # colour whose detector nobody has chosen yet (see
-            # ``Pda2cReader.default_channels``), and filling it with a default
-            # would hand the user a plausible wrong channel.
-            try:
-                texts.append(render(values[index]))
-            except Exception:
-                texts.append(default)
-        return texts
+        values = list(getattr(self._model, attr, None) or [])
+        # An entry the reader has but left empty stays empty: that is a colour
+        # whose detector nobody has chosen yet (see
+        # ``Pda2cReader.default_channels``), and filling it with a default would
+        # hand the user a plausible wrong channel.
+        return [
+            render(values[index]) if index < len(values) else default
+            for index, default in enumerate(defaults)
+        ]
 
     def __init__(self, model, target=None, parent=None, **kwargs):
         super().__init__(parent)
         self._model = model
-        n_colors = 2
-        try:
-            n_colors = int(getattr(model, "n_colors", 2) or 2)
-        except Exception:
-            n_colors = 2
-        self.n_colors = 3 if n_colors >= 3 else 2
+        self.n_colors = inputs.colour_count(getattr(model, "n_colors", 2))
 
-        labels = COLOUR_LABELS[self.n_colors]
+        labels = inputs.COLOUR_LABELS[self.n_colors]
         # Start from what the reader is configured with, so the panel and the
-        # reader agree before anything is touched — the fields are pushed back
-        # to the reader on the first change, and a default that disagreed would
-        # quietly overwrite the configured channels.
+        # reader agree before anything is touched.
         channels = self._configured(
-            "channels",
-            COLOUR_CHANNELS[self.n_colors],
-            lambda group: ", ".join(str(c) for c in group),
+            "channels", inputs.COLOUR_CHANNELS[self.n_colors], inputs.format_channels
         )
         windows = self._configured(
             "micro_time_ranges",
-            COLOUR_WINDOWS[self.n_colors],
-            _format_micro_time_ranges,
+            inputs.COLOUR_WINDOWS[self.n_colors],
+            inputs.format_micro_time_ranges,
         )
 
         grid = QtWidgets.QGridLayout(self)
         grid.setContentsMargins(0, 2, 0, 2)
         grid.setSpacing(3)
 
-        grid.addWidget(QtWidgets.QLabel("Setup:"), 0, 0)
+        grid.addWidget(QtWidgets.QLabel(tr("Setup:")), 0, 0)
         self.comboBox_setup = QtWidgets.QComboBox()
         grid.addWidget(self.comboBox_setup, 0, 1, 1, 3)
 
-        grid.addWidget(QtWidgets.QLabel("Routine:"), 1, 0)
+        grid.addWidget(QtWidgets.QLabel(tr("Routine:")), 1, 0)
         self.comboBox = QtWidgets.QComboBox()
         self.comboBox.insertItems(0, tttrlib.TTTR.get_supported_container_names())
         grid.addWidget(self.comboBox, 1, 1, 1, 3)
 
-        grid.addWidget(QtWidgets.QLabel("Detector"), 2, 1)
-        grid.addWidget(QtWidgets.QLabel("Channels"), 2, 2)
+        grid.addWidget(QtWidgets.QLabel(tr("Detector")), 2, 1)
+        grid.addWidget(QtWidgets.QLabel(tr("Channels")), 2, 2)
         if self.n_colors == 2:
-            grid.addWidget(QtWidgets.QLabel("Micro time"), 2, 3)
+            grid.addWidget(QtWidgets.QLabel(tr("Micro time")), 2, 3)
 
         self.detector_combos = []
         self.channel_edits = []
@@ -259,37 +115,44 @@ class _PdaDetectorWidget(QtWidgets.QWidget):
 
         for index, label in enumerate(labels):
             row = 3 + index
-            grid.addWidget(QtWidgets.QLabel(f"{label}:"), row, 0)
+            grid.addWidget(QtWidgets.QLabel(f"{tr(label)}:"), row, 0)
             combo = QtWidgets.QComboBox()
             grid.addWidget(combo, row, 1)
             self.detector_combos.append(combo)
             edit = QtWidgets.QLineEdit(channels[index])
-            edit.setToolTip(f"Routing channels of the {label.lower()} detector, comma separated.")
+            edit.setToolTip(
+                tr("Routing channels of the {colour} detector, comma separated.").format(
+                    colour=tr(label).lower()
+                )
+            )
             grid.addWidget(edit, row, 2)
             self.channel_edits.append(edit)
             if self.n_colors == 2:
                 window = QtWidgets.QLineEdit(windows[index])
                 window.setToolTip(
-                    f"Micro-time ranges for the {label.lower()} detector: start-end; "
-                    "separate multiple ranges with ';'."
+                    tr(
+                        "Micro-time ranges for the {colour} detector: start-end; "
+                        "separate multiple ranges with ';'."
+                    ).format(colour=tr(label).lower())
                 )
                 grid.addWidget(window, row, 3)
                 self.window_edits.append(window)
 
         if self.n_colors == 3:
             row = 3 + len(labels)
-            grid.addWidget(QtWidgets.QLabel("Excitation:"), row, 0)
+            grid.addWidget(QtWidgets.QLabel(tr("Excitation:")), row, 0)
             excitation = QtWidgets.QWidget()
             box = QtWidgets.QHBoxLayout(excitation)
             box.setContentsMargins(0, 0, 0, 0)
             box.setSpacing(3)
-            for label, default in zip(("Blue", "Green"), windows):
-                caption = QtWidgets.QLabel(label)
+            for label, default in zip(inputs.EXCITATION_LABELS, windows):
+                caption = QtWidgets.QLabel(tr(label))
                 window = QtWidgets.QLineEdit(default)
                 window.setToolTip(
-                    f"Micro-time range of the {label.lower()} excitation period. "
-                    "Photons inside it are counted in every detector that can see "
-                    f"the {label.lower()} pulse."
+                    tr(
+                        "Micro-time range of the {colour} excitation period. Photons inside it "
+                        "are counted in every detector that can see the {colour} pulse."
+                    ).format(colour=tr(label).lower())
                 )
                 box.addWidget(caption)
                 box.addWidget(window, 1)
@@ -312,7 +175,7 @@ class _PdaTimeWindowWidget(QtWidgets.QWidget):
         grid.setContentsMargins(0, 2, 0, 2)
         grid.setSpacing(3)
 
-        grid.addWidget(QtWidgets.QLabel("TW [ms]:"), 0, 0)
+        grid.addWidget(QtWidgets.QLabel(tr("TW [ms]:")), 0, 0)
         self.toolButton_add_tw = QtWidgets.QToolButton()
         self.toolButton_add_tw.setText("+")
         grid.addWidget(self.toolButton_add_tw, 0, 1)
@@ -320,7 +183,7 @@ class _PdaTimeWindowWidget(QtWidgets.QWidget):
         self.doubleSpinBox.setRange(0.01, 9999.0)
         self.doubleSpinBox.setValue(2.0)
         grid.addWidget(self.doubleSpinBox, 0, 2)
-        self.checkBox = QtWidgets.QCheckBox("Auto load")
+        self.checkBox = QtWidgets.QCheckBox(tr("Auto load"))
         self.checkBox.setChecked(True)
         grid.addWidget(self.checkBox, 0, 3)
 
@@ -334,283 +197,163 @@ class _PdaTimeWindowWidget(QtWidgets.QWidget):
         grid.setColumnStretch(2, 1)
 
 
+class DropFileList(QtWidgets.QListWidget):
+    """The PDA file list: a view of :meth:`PdaReaderSettings.file_rows` that takes drops.
+
+    Only the first :attr:`max_visible_items` entries become list items, so that
+    dropping thousands of files cannot overload the widget; a summary row counts
+    the rest, which are read like ticked ones.
+    """
+
+    max_visible_items = 128
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.settings: PdaReaderSettings | None = None
+        self.setAcceptDrops(True)
+        self.setDragDropMode(QtWidgets.QAbstractItemView.DropOnly)
+        self.setDefaultDropAction(QtCore.Qt.CopyAction)
+        self.setDropIndicatorShown(True)
+        self.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
+        self.itemChanged.connect(self._on_item_changed)
+
+    def sync(self) -> None:
+        """Rebuild the items from the settings' file list."""
+        self.blockSignals(True)
+        try:
+            self.clear()
+            rows = self.settings.file_rows() if self.settings is not None else []
+            for row in rows[: self.max_visible_items]:
+                item = QtWidgets.QListWidgetItem(row["path"])
+                item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
+                item.setCheckState(QtCore.Qt.Checked if row["use"] else QtCore.Qt.Unchecked)
+                self.addItem(item)
+            extra = len(rows) - self.max_visible_items
+            if extra > 0:
+                summary = QtWidgets.QListWidgetItem(
+                    tr("... and {n} more file(s) not shown").format(n=extra)
+                )
+                summary.setFlags(QtCore.Qt.NoItemFlags)
+                self.addItem(summary)
+        finally:
+            self.blockSignals(False)
+
+    def _on_item_changed(self, item) -> None:
+        if self.settings is not None:
+            self.settings.set_use(item.text(), item.checkState() == QtCore.Qt.Checked)
+
+    def add_paths(self, paths) -> int:
+        """Add dropped paths through the settings; returns how many were taken."""
+        added = self.settings.add_paths(paths) if self.settings is not None else 0
+        self.sync()
+        return added
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dragMoveEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        if not event.mimeData().hasUrls():
+            event.ignore()
+            return
+        paths = [url.toLocalFile() for url in event.mimeData().urls() if url.toLocalFile()]
+        event.acceptProposedAction()
+        if self.add_paths(paths) and self.settings is not None and self.settings.auto_load:
+            # Load on the event loop, not inside dropEvent: reading many files
+            # re-entrantly in a drop handler destabilises the drag machinery.
+            owner = self.parent()
+            while owner is not None and not hasattr(owner, "_on_load_dropped_files_clicked"):
+                owner = owner.parent()
+            if owner is not None:
+                QtCore.QTimer.singleShot(0, owner._on_load_dropped_files_clicked)
+
+    def remove_selected(self):
+        """Remove the selected entries."""
+        if self.settings is not None:
+            chosen = self.selectedItems()
+            self.settings.remove_paths(
+                item.text() for item in chosen if item.flags() != QtCore.Qt.NoItemFlags
+            )
+        self.sync()
+
+    def clear_all(self):
+        """Remove every entry."""
+        if self.settings is not None:
+            self.settings.clear_files()
+        self.sync()
+
+    def get_all_paths(self):
+        """Every entry, ticked or not."""
+        return [row["path"] for row in self.settings.file_rows()] if self.settings else []
+
+    def get_checked_paths(self):
+        """The ticked entries: what a load reads."""
+        return self.settings.checked_paths() if self.settings is not None else []
+
+    def contextMenuEvent(self, event):
+        menu = QtWidgets.QMenu(self)
+        act_delete = menu.addAction(tr("Delete selected"))
+        act_clear = menu.addAction(tr("Clear all"))
+        chosen = menu.exec_(event.globalPos())
+        if chosen == act_delete:
+            self.remove_selected()
+        elif chosen == act_clear:
+            self.clear_all()
+
+
+class _PdaFilesWidget(QtWidgets.QWidget):
+    """Container for the PDA file list: a caption, the drop list, *Load dropped files* and *Clear*."""
+
+    def __init__(self, model, target=None, parent=None, **kwargs):
+        super().__init__(parent)
+        box = QtWidgets.QVBoxLayout(self)
+        box.setContentsMargins(0, 2, 0, 2)
+        box.setSpacing(2)
+        self.drop_label = QtWidgets.QLabel(tr("Drop files or analysis folders below"))
+        self.drop_label.setFrameShape(QtWidgets.QFrame.StyledPanel)
+        self.drop_label.setToolTip(
+            tr(
+                "Drag and drop TTTR files, BID/BUR/BST files, or burst analysis folders "
+                "(bi4_bur). Checked files are used."
+            )
+        )
+        box.addWidget(self.drop_label)
+        self.file_list = DropFileList(self)
+        self.file_list.setMinimumHeight(120)
+        box.addWidget(self.file_list, 1)
+        row = QtWidgets.QHBoxLayout()
+        self.load_button = QtWidgets.QPushButton(tr("Load dropped files"))
+        self.load_button.setToolTip(tr("Read checked TTTR files using current PDA settings"))
+        row.addWidget(self.load_button)
+        self.clear_button = QtWidgets.QPushButton(tr("Clear"))
+        self.clear_button.setToolTip(tr("Clear all dropped files from the list"))
+        row.addWidget(self.clear_button)
+        row.addStretch(1)
+        box.addLayout(row)
+
+
 def _register_pda_sections() -> None:
     from chisurf.gui.autoform.sections.registry import register_section
 
     register_section("pda_detector")(_PdaDetectorWidget)
     register_section("pda_tw")(_PdaTimeWindowWidget)
+    register_section("pda_files")(_PdaFilesWidget)
 
 
 class Pda2cTTTRWidget(QtWidgets.QWidget, reader.ExperimentReaderController):
-    class DropFileList(QtWidgets.QListWidget):
-        def __init__(self, parent=None, accept_exts=None, dir_resolver=None):
-            super().__init__(parent)
-            self.setAcceptDrops(True)
-            self.setDragDropMode(QtWidgets.QAbstractItemView.DropOnly)
-            self.setDefaultDropAction(QtCore.Qt.CopyAction)
-            self.setDropIndicatorShown(True)
-            # accepted extensions in lowercase with dot prefix
-            self.accept_exts = set(accept_exts or [])
-            # optional callable(pathlib.Path) -> List[str] to expand directories
-            self.dir_resolver = dir_resolver
-            # Internal bookkeeping: keep a full list of dropped paths, but cap the
-            # number of QListWidgetItems we actually create so that dropping
-            # thousands of files cannot overload the widget or Qt internals.
-            self._max_visible_items = 128
-            self._visible_count = 0
-            self._all_paths = []  # all unique file/folder paths represented logically
-            self._overflow_item = None  # summary item for hidden entries
-
-        def _maybe_add_path(self, file_path: str):
-            """Safely add a dropped path or expand a directory into files.
-
-            All errors are logged and swallowed so that a bad path or
-            unexpected directory layout cannot crash the GUI.
-            """
-            try:
-                p = pathlib.Path(file_path)
-            except Exception:
-                logging.warning("PDA: Invalid path dropped: %r", file_path)
-                return
-
-            sp = str(p)
-
-            # If a directory is dropped, add the folder itself as one logical entry.
-            # BUR file discovery is deferred to load time to keep UI load low.
-            if p.is_dir():
-                if sp in self._all_paths:
-                    return
-                self._all_paths.append(sp)
-                try:
-                    if self._visible_count < self._max_visible_items:
-                        item = QtWidgets.QListWidgetItem(sp)
-                        item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
-                        item.setCheckState(QtCore.Qt.Checked)
-                        self.addItem(item)
-                        self._visible_count += 1
-                except Exception:
-                    logging.warning(
-                        "PDA: Failed to add dropped folder to list: %s", sp, exc_info=True
-                    )
-                self._update_overflow_item()
-                return
-
-            # Accept only files with allowed extensions
-            if not p.is_file():
-                return
-            ext = p.suffix.lower()
-            if self.accept_exts and ext not in self.accept_exts:
-                return
-            # Prevent duplicates (based on logical list rather than widget items)
-            if sp in self._all_paths:
-                return
-            self._all_paths.append(sp)
-            try:
-                if self._visible_count < self._max_visible_items:
-                    item = QtWidgets.QListWidgetItem(sp)
-                    item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
-                    item.setCheckState(QtCore.Qt.Checked)
-                    self.addItem(item)
-                    self._visible_count += 1
-            except Exception:
-                logging.warning("PDA: Failed to add dropped file to list: %s", sp, exc_info=True)
-            self._update_overflow_item()
-
-        def _update_overflow_item(self):
-            """Ensure the summary item for hidden entries is up to date.
-
-            When more than _max_visible_items logical paths are present, we add
-            (or update) a non-interactive item at the bottom that summarizes
-            how many additional files are not shown individually.
-            """
-            try:
-                extra = max(0, len(self._all_paths) - self._max_visible_items)
-            except Exception:
-                extra = 0
-            # Remove summary item if no extra entries
-            if extra <= 0:
-                if self._overflow_item is not None:
-                    try:
-                        row = self.row(self._overflow_item)
-                        if row >= 0:
-                            self.takeItem(row)
-                    except Exception:
-                        pass
-                    self._overflow_item = None
-                return
-
-            text = f"... and {extra} more file(s) not shown"
-            if self._overflow_item is None:
-                try:
-                    summary = QtWidgets.QListWidgetItem(text)
-                    # No interaction with the summary item
-                    summary.setFlags(QtCore.Qt.NoItemFlags)
-                    self.addItem(summary)
-                    self._overflow_item = summary
-                except Exception:
-                    self._overflow_item = None
-            else:
-                try:
-                    self._overflow_item.setText(text)
-                except Exception:
-                    pass
-
-        def dragEnterEvent(self, event):
-            if event.mimeData().hasUrls():
-                event.acceptProposedAction()
-            else:
-                event.ignore()
-
-        def dragMoveEvent(self, event):
-            if event.mimeData().hasUrls():
-                event.acceptProposedAction()
-            else:
-                event.ignore()
-
-        def dropEvent(self, event):
-            try:
-                if event.mimeData().hasUrls():
-                    for url in event.mimeData().urls():
-                        try:
-                            file_path = url.toLocalFile()
-                        except Exception:
-                            continue
-                        if file_path:
-                            try:
-                                self._maybe_add_path(file_path)
-                            except Exception:
-                                logging.warning(
-                                    "PDA: Error handling dropped path: %r", file_path, exc_info=True
-                                )
-                    event.acceptProposedAction()
-
-                    # If the parent PDA widget has an "Auto load" checkbox
-                    # enabled, automatically trigger loading of the newly
-                    # dropped files, reusing the same routine as the "Load
-                    # dropped files" button.
-                    try:
-                        owner = self.parent()
-                        # Walk up a few levels in case the list is nested in
-                        # intermediate layouts/containers.
-                        steps = 0
-                        while (
-                            owner is not None
-                            and not hasattr(owner, "_on_load_dropped_files_clicked")
-                            and steps < 4
-                        ):
-                            owner = owner.parent()
-                            steps += 1
-                        if (
-                            owner is not None
-                            and getattr(owner, "checkBox", None) is not None
-                            and owner.checkBox.isChecked()
-                        ):
-                            # Schedule the heavy loading routine on the event
-                            # loop to avoid running it re-entrantly inside the
-                            # dropEvent handler, which can destabilize
-                            # QListWidget / drag-and-drop internals when many
-                            # items are dropped at once.
-                            QtCore.QTimer.singleShot(0, owner._on_load_dropped_files_clicked)
-                    except Exception:
-                        # Auto-load on drop is best-effort and must not break
-                        # normal dragging behavior.
-                        logging.warning("PDA: Auto-load on drop failed; ignoring.", exc_info=True)
-                else:
-                    event.ignore()
-            except Exception:
-                logging.warning(
-                    "PDA: Unexpected error in DropFileList.dropEvent; ignoring drop.", exc_info=True
-                )
-                event.ignore()
-
-        def remove_selected(self):
-            # Remove selected real items and update internal path list.
-            for item in list(self.selectedItems()):
-                if item is self._overflow_item:
-                    # Summary item is non-interactive; ignore
-                    continue
-                try:
-                    path = item.text()
-                except Exception:
-                    path = None
-                if path:
-                    try:
-                        self._all_paths.remove(path)
-                    except ValueError:
-                        pass
-                try:
-                    row = self.row(item)
-                    if row >= 0:
-                        self.takeItem(row)
-                        if self._visible_count > 0:
-                            self._visible_count -= 1
-                except Exception:
-                    continue
-            self._update_overflow_item()
-
-        def clear_all(self):
-            # Clear both the widget and internal bookkeeping.
-            self._all_paths = []
-            self._visible_count = 0
-            self._overflow_item = None
-            self.clear()
-
-        def get_all_paths(self):
-            """Return a copy of all logical paths currently stored."""
-            return list(self._all_paths)
-
-        def get_checked_paths(self):
-            """Return all paths that are considered "checked".
-
-            Visible items honor their individual check state. Paths that are
-            present only in the logical list (not rendered as individual
-            QListWidgetItems) are treated as checked by default.
-            """
-            visible_states = {}
-            try:
-                for i in range(self.count()):
-                    item = self.item(i)
-                    if item is None or item is self._overflow_item:
-                        continue
-                    try:
-                        path = item.text()
-                    except Exception:
-                        continue
-                    try:
-                        state = item.checkState()
-                    except Exception:
-                        state = QtCore.Qt.Checked
-                    visible_states[path] = state
-            except Exception:
-                visible_states = {}
-
-            checked = []
-            for path in self._all_paths:
-                state = visible_states.get(path, QtCore.Qt.Checked)
-                if state == QtCore.Qt.Checked:
-                    checked.append(path)
-            return checked
-
-        def contextMenuEvent(self, event):
-            menu = QtWidgets.QMenu(self)
-            act_delete = menu.addAction("Delete selected")
-            act_clear = menu.addAction("Clear all")
-            chosen = menu.exec_(event.globalPos())
-            if chosen == act_delete:
-                self.remove_selected()
-            elif chosen == act_clear:
-                self.clear_all()
+    """The PDA reader's Qt panel over :class:`PdaReaderSettings`."""
 
     def __init__(self, *args, **kwargs):
         _register_pda_sections()
         super().__init__(*args, **kwargs)
-
-        # Internal cache for current setup data
-        self._setup_name = None
-        self._windows = {}
-        self._detectors = {}
-        self._tttr_reading = {}
-        self._tw_configs = []
 
         main_layout = QtWidgets.QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -620,10 +363,11 @@ class Pda2cTTTRWidget(QtWidgets.QWidget, reader.ExperimentReaderController):
         self.actionParametersChanged = QtWidgets.QAction(self)
         self.actionParametersChanged.triggered.connect(self.onParametersChanged)
 
-        # AutoForm renders the Detector + Acquisition panels from pda.view.json.
-        # The detector cascade and the time-window controls are custom sections;
-        # nPh min/max are declarative ValueSections bound to the reader.
-        reader_obj = getattr(self, "experiment_reader", None)
+        reader_obj = self.experiment_reader
+        # The settings first: choosing the setup writes its detectors onto the
+        # reader, so the form below is built with the rows it will read with.
+        self.pda_settings = PdaReaderSettings(reader_obj) if reader_obj is not None else None
+
         self._settings_form = None
         if reader_obj is not None and hasattr(reader_obj, "view_spec"):
             from chisurf.gui.autoform import AutoForm
@@ -639,34 +383,14 @@ class Pda2cTTTRWidget(QtWidgets.QWidget, reader.ExperimentReaderController):
         # a destroyed C++ object.
         if self._settings_form is not None:
             self._settings_form.rebuilt.connect(self._on_form_rebuilt)
+        self._refresh_all()
 
-        # File drop area (kept below the AutoForm panels)
-        self.verticalLayout = QtWidgets.QVBoxLayout()
-        self.verticalLayout.setContentsMargins(0, 0, 0, 0)
-        self.verticalLayout.setSpacing(2)
-        main_layout.addLayout(self.verticalLayout)
-
-        for n_ph, tw_ms in ((10, 1.0), (20, 2.0), (30, 3.0)):
-            item = QtWidgets.QListWidgetItem(f"{n_ph} ph @ {tw_ms:g} ms")
-            item.setData(QtCore.Qt.UserRole, (n_ph, tw_ms / 1000.0))
-            self.listWidget_tw.addItem(item)
-        self._sync_tw_configs_from_list()
-
-        # File drop area
-        self._init_filedrop_area()
-
-        # Initialize from current detector setup selections
-        self._load_available_setups_into_combobox()
-        self._apply_current_setup_and_detectors()
-        self.onParametersChanged()
-
+    # ---- the custom-section widgets ----
     def _grab_section_refs(self) -> None:
         """Expose the AutoForm-built custom-section child widgets as attributes.
 
         The detector rows are lists rather than numbered attributes, because how
-        many of them exist is the colour-count setting: two detectors with a
-        photon-selection window each, or three detectors and the two excitation
-        periods of the PIE cycle.
+        many of them exist is the colour-count setting.
         """
         self.detector_combos = []
         self.channel_edits = []
@@ -688,6 +412,14 @@ class Pda2cTTTRWidget(QtWidgets.QWidget, reader.ExperimentReaderController):
             self.toolButton_add_tw = t.toolButton_add_tw
             self.checkBox = t.checkBox
             self.listWidget_tw = t.listWidget_tw
+        files = self._settings_form.findChildren(_PdaFilesWidget)
+        if files:
+            f = files[0]
+            self.drop_label = f.drop_label
+            self.file_list = f.file_list
+            self.file_list.settings = self.pda_settings
+            self.load_button = f.load_button
+            self.clear_button = f.clear_button
 
     def _wire_section_widgets(self) -> None:
         """Connect the freshly built custom-section widgets to the handlers."""
@@ -700,31 +432,48 @@ class Pda2cTTTRWidget(QtWidgets.QWidget, reader.ExperimentReaderController):
         for edit in self.channel_edits + self.window_edits:
             edit.editingFinished.connect(self.actionParametersChanged.trigger)
         self.doubleSpinBox.valueChanged.connect(self.actionParametersChanged.trigger)
+        self.checkBox.toggled.connect(self._on_auto_load_toggled)
 
         self.toolButton_add_tw.clicked.connect(self._on_add_tw_clicked)
+        self.listWidget_tw.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         self.listWidget_tw.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.listWidget_tw.customContextMenuRequested.connect(self._on_tw_list_context_menu)
         self.listWidget_tw.itemDoubleClicked.connect(self._on_tw_item_double_clicked)
+
+        if hasattr(self, "file_list"):
+            self.load_button.clicked.connect(self._on_load_dropped_files_clicked)
+            self.clear_button.clicked.connect(self.file_list.clear_all)
 
     def _on_form_rebuilt(self) -> None:
         """Re-adopt the custom-section widgets after AutoForm rebuilt the panel.
 
         A rebuild is how the colour count takes effect: the detector section
-        comes back with a different number of rows, and the time-window list
-        comes back empty. Everything the controller cached about the old widgets
-        is gone with them, so the references, the connections and the list
-        contents are all restored here.
+        comes back with a different number of rows. The rows, the time windows
+        and the file list live on the reader, so they come back as they were.
         """
-        tw_configs = list(getattr(self, "_tw_configs", []) or [])
         self._grab_section_refs()
         self._wire_section_widgets()
-        for n_ph, tw_s in tw_configs:
-            item = QtWidgets.QListWidgetItem(f"{n_ph} ph @ {float(tw_s) * 1e3:g} ms")
-            item.setData(QtCore.Qt.UserRole, (n_ph, tw_s))
-            self.listWidget_tw.addItem(item)
+        if self.pda_settings is not None:
+            self.pda_settings.sync()
+        self._refresh_all()
+
+    def _refresh_all(self) -> None:
+        """Show what the reader holds: setups, routine, rows, time windows, auto-load, files."""
+        if self.pda_settings is None or self._settings_form is None:
+            return
         self._load_available_setups_into_combobox()
-        self._apply_current_setup_and_detectors()
-        self.onParametersChanged()
+        self._populate_detector_combos()
+        self._refresh_rows()
+        self._refresh_tw_list()
+        self.doubleSpinBox.blockSignals(True)
+        if self.pda_settings.tw_ms > 0.0:
+            self.doubleSpinBox.setValue(self.pda_settings.tw_ms)
+        self.doubleSpinBox.blockSignals(False)
+        self.checkBox.blockSignals(True)
+        self.checkBox.setChecked(self.pda_settings.auto_load)
+        self.checkBox.blockSignals(False)
+        if hasattr(self, "file_list"):
+            self.file_list.sync()
 
     def _db(self):
         """Return the MMFDB connection from the current reader when available."""
@@ -737,1334 +486,205 @@ class Pda2cTTTRWidget(QtWidgets.QWidget, reader.ExperimentReaderController):
         """Prompt the user for a sample before loading dropped files."""
         return show_sample_picker_dialog(db=self._db(), parent=self)
 
-    def _get_tttr_supported_exts(self):
-        exts = set()
-        try:
-            if hasattr(tttrlib, "get_supported_filetypes"):
-                for e in tttrlib.get_supported_filetypes():
-                    s = str(e).strip().lower()
-                    if not s:
-                        continue
-                    if not s.startswith("."):
-                        s = "." + s
-                    exts.add(s)
-        except Exception:
-            exts = set()
-        if not exts:
-            exts = {".ptu", ".ht3", ".spc", ".h5", ".hdf5"}
-        return exts
-
-    def _init_filedrop_area(self):
-        # Accepted extensions: BID and TTTR families (lowercase)
-        bid_exts = {".bid", ".bur", ".bst"}
-        tttr_exts = set(e.lower() for e in self._get_tttr_supported_exts())
-        self._accepted_exts = set(e.lower() for e in bid_exts | tttr_exts)
-        self._tttr_exts = tttr_exts
-        # Label describing the drop area (the list widget below)
-        self.drop_label = QtWidgets.QLabel("drop files or analysis folders below")
-        self.drop_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        # A subtle frame to indicate dropping area (no heavy styling)
-        self.drop_label.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        self.drop_label.setToolTip(
-            "Drag and drop TTTR files, BID/BUR/BST files, or burst analysis folders (bi4_bur). Checked files are used."
-        )
-        # List widget for files
-        self.file_list = Pda2cTTTRWidget.DropFileList(
-            parent=self, accept_exts=self._accepted_exts, dir_resolver=self._expand_burst_folder
-        )
-        # Notify parameter changes when items toggled
-        self.file_list.itemChanged.connect(lambda _: self.actionParametersChanged.trigger())
-        # Also notify when rows are inserted/removed (e.g., via context menu)
-        try:
-            self.file_list.model().rowsInserted.connect(
-                lambda *args: self.actionParametersChanged.trigger()
-            )
-            self.file_list.model().rowsRemoved.connect(
-                lambda *args: self.actionParametersChanged.trigger()
-            )
-        except Exception:
-            pass
-        # Insert into the bottom verticalLayout defined in the .ui
-        if hasattr(self, "verticalLayout") and isinstance(
-            self.verticalLayout, QtWidgets.QVBoxLayout
-        ):
-            self.verticalLayout.addWidget(self.drop_label)
-            self.verticalLayout.addWidget(self.file_list)
-            # Add small buttons row below the drop list
-            btn_row = QtWidgets.QHBoxLayout()
-            self.load_button = QtWidgets.QPushButton("Load dropped files")
-            self.load_button.setToolTip("Read checked TTTR files using current PDA settings")
-            self.load_button.clicked.connect(self._on_load_dropped_files_clicked)
-            btn_row.addWidget(self.load_button)
-            self.clear_button = QtWidgets.QPushButton("Clear")
-            self.clear_button.setToolTip("Clear all dropped files from the list")
-
-            # Use the widget's clear_all helper when available so that both
-            # the visual items and the internal path cache are reset.
-            def _on_clear_clicked():
-                try:
-                    if hasattr(self.file_list, "clear_all"):
-                        self.file_list.clear_all()
-                    else:
-                        self.file_list.clear()
-                except Exception:
-                    try:
-                        self.file_list.clear()
-                    except Exception:
-                        pass
-                try:
-                    self.actionParametersChanged.trigger()
-                except Exception:
-                    pass
-
-            self.clear_button.clicked.connect(_on_clear_clicked)
-            btn_row.addWidget(self.clear_button)
-            btn_row.addStretch(1)
-            self.verticalLayout.addLayout(btn_row)
-
-        # Internal accessor for used files
-        def _get_used_files_impl():
-            try:
-                if hasattr(self.file_list, "get_checked_paths"):
-                    return self.file_list.get_checked_paths()
-            except Exception:
-                pass
-            # Fallback: derive from visible items only
-            paths = []
-            try:
-                for i in range(self.file_list.count()):
-                    item = self.file_list.item(i)
-                    if item is None:
-                        continue
-                    try:
-                        if item.checkState() == QtCore.Qt.Checked:
-                            paths.append(item.text())
-                    except Exception:
-                        continue
-            except Exception:
-                paths = []
-            return paths
-
-        self._get_used_files = _get_used_files_impl
-
-    def _compute_burst_slices_for_files(self, tttr_files):
-        """
-        For each TTTR file, try to locate a nearby bi4_bur/bur folder with .bur files.
-        Build a mapping file -> list of (start, stop_exclusive) photon indices based on rows
-        where First File == Last File == file name. Bursts spanning multiple files are ignored.
-        """
-        slices = {}
-
-        # Helper: locate a bur directory near a given TTTR file
-        def find_bur_dir(tttr_path: pathlib.Path):
-            # search up to 3 levels for a dir that contains 'bi4_bur' or 'bur'
-            for up in [tttr_path.parent, tttr_path.parent.parent, tttr_path.parent.parent.parent]:
-                if up is None:
-                    continue
-                if (up / "bi4_bur").is_dir():
-                    return up / "bi4_bur"
-                if (up / "bur").is_dir():
-                    return up / "bur"
-                # also handle the case where current folder is bi4_bur/bur
-                if up.name.lower() in ("bi4_bur", "bur"):
-                    return up
-            return None
-
-        # Aggregate all BUR files per potential root
-        bur_cache = {}
-        for f in tttr_files:
-            p = pathlib.Path(f)
-            bur_dir = find_bur_dir(p)
-            if bur_dir is None:
-                continue
-            key = str(bur_dir)
-            if key not in bur_cache:
-                bur_cache[key] = list(sorted(bur_dir.glob("*.bur")))
-        if not bur_cache:
-            return {}
-        # Build filename-based slice lists
-        tttr_names = {pathlib.Path(f).name: f for f in tttr_files}
-        for bur_dir, bur_list in bur_cache.items():
-            for bur_path in bur_list:
-                bursts = read_bur_bursts(bur_path)
-                if bursts is None:
-                    continue
-                names, starts, stops = bursts
-                for first_file, a, b in zip(names, starts, stops):
-                    try:
-                        # match exact name (as listed in BUR) to a TTTR file name
-                        if first_file not in tttr_names:
-                            # try to match by stem + any extension (already chosen files have fixed ext)
-                            # if BUR contains bare stem, extend check
-                            for name, fullpath in list(tttr_names.items()):
-                                if pathlib.Path(name).stem == pathlib.Path(first_file).stem:
-                                    first_file = name
-                                    break
-                            if first_file not in tttr_names:
-                                logging.debug(
-                                    "PDA: TTTR file referenced in BUR not found among selected TTTR files: %s (BUR: %s)",
-                                    first_file,
-                                    str(bur_path),
-                                )
-                                continue
-                        slices.setdefault(tttr_names[first_file], []).append((int(a), int(b)))
-                    except Exception:
-                        continue
-        return self._merge_intervals(slices)
-
-    def _resolve_tttr_and_slices_from_bur(self, bur_files, progress_callback=None):
-        """
-        From a list of BUR file paths, resolve the corresponding TTTR files and
-        build a burst_slices mapping limited strictly to these selected BUR tables.
-
-        Optimized: index TTTR files once per root and do O(1) lookups per BUR row.
-        Returns: (tttr_files_list, burst_slices_dict)
-        """
-        # For each BUR file, determine the most likely TTTR folder(s) once.
-        # We follow the convention that BUR tables live in a "bi4_bur"/"bur" folder
-        # somewhere below the TTTR data. In practice, TTTR files are often stored in
-        # the parent or grand-parent folder (optionally in an 'hdf5' subfolder).
-        #
-        # We therefore, for each "analysis root" (one level above bi4_bur/bur),
-        # build a short ordered list of candidate TTTR roots by walking up at most
-        # three levels and, at each level, preferring a sibling 'hdf5' directory if
-        # present, then the directory itself. These roots are cached per analysis
-        # root so we do not recompute them for every BUR file.
-        bur_to_roots = {}
-        root_hint_cache = {}
-        for bur in bur_files:
-            try:
-                bur_path = pathlib.Path(bur)
-                if not bur_path.exists():
-                    continue
-                if bur_path.parent.name.lower() in ("bi4_bur", "bur"):
-                    root_hint = bur_path.parent.parent
-                else:
-                    root_hint = bur_path.parent
-
-                if root_hint is None:
-                    bur_to_roots[bur] = []
-                    continue
-
-                cache_key = str(root_hint)
-                cached_roots = root_hint_cache.get(cache_key)
-                if cached_roots is not None:
-                    bur_to_roots[bur] = cached_roots
-                    continue
-
-                roots_this_bur = []
-                seen = set()
-
-                # Walk up to three levels: analysis root, its parent, and grand-parent.
-                candidates = []
-                try:
-                    candidates.append(root_hint)
-                    parent1 = root_hint.parent
-                    if parent1 is not None:
-                        candidates.append(parent1)
-                        parent2 = parent1.parent
-                        if parent2 is not None:
-                            candidates.append(parent2)
-                except Exception:
-                    pass
-
-                for base in candidates:
-                    if base is None:
-                        continue
-                    try:
-                        if not base.exists():
-                            continue
-                    except Exception:
-                        continue
-
-                    # Prefer sibling 'hdf5' directory if present (typical MFD HDF5 layout)
-                    try:
-                        hdf5_dir = base / "hdf5"
-                        if hdf5_dir.is_dir():
-                            key_hdf5 = str(hdf5_dir)
-                            if key_hdf5 not in seen:
-                                roots_this_bur.append(hdf5_dir)
-                                seen.add(key_hdf5)
-                    except Exception:
-                        pass
-
-                    key_base = str(base)
-                    if key_base not in seen:
-                        roots_this_bur.append(base)
-                        seen.add(key_base)
-
-                root_hint_cache[cache_key] = roots_this_bur
-                bur_to_roots[bur] = roots_this_bur
-            except Exception:
-                continue
-
-        tttr_files_order = []
-        tttr_files_set = set()
-        burst_slices = {}
-
-        # Cache of the preferred TTTR directory per analysis root. Once one
-        # BUR file from a given analysis root has been successfully mapped to
-        # a TTTR file, all subsequent BUR files from the same analysis root
-        # reuse that TTTR directory instead of walking multiple candidate
-        # roots again.
-        analysis_preferred_root = {}
-
-        def add_tttr_file(p: pathlib.Path):
-            sp = str(p)
-            if sp not in tttr_files_set:
-                tttr_files_set.add(sp)
-                tttr_files_order.append(sp)
-
-        def _resolve_name_in_roots(name_str: str, roots_for_bur):
-            """Resolve a TTTR filename relative to a small set of roots.
-
-            The function tries, in order:
-            - absolute path in the filesystem
-            - direct join (root / name_str) for each candidate root
-            - same stem with any known TTTR extension in each root
-            """
-            if not name_str:
-                return None
-
-            # Absolute path reference
-            try:
-                candidate = pathlib.Path(name_str)
-                if candidate.is_absolute() and candidate.is_file():
-                    return candidate
-            except Exception:
-                candidate = None
-
-            # Relative name: search only the nearby roots, no recursion
-            stem = pathlib.Path(name_str).stem
-            for root in roots_for_bur or []:
-                try:
-                    # Direct join, preserving any subdirectories encoded in name_str
-                    cand = root / name_str
-                    if cand.is_file():
-                        return cand
-                except Exception:
-                    cand = None
-
-                # Fallback: same stem with any supported TTTR extension in this folder
-                try:
-                    for ext in self._tttr_exts:
-                        alt = root / f"{stem}{ext}"
-                        if alt.is_file():
-                            return alt
-                except Exception:
-                    continue
-            return None
-
-        total = len(bur_files) if isinstance(bur_files, (list, tuple)) else 0
-        for idx, bur in enumerate(bur_files, start=1):
-            try:
-                if callable(progress_callback):
-                    try:
-                        # Allow the callback to request early abort by returning False
-                        if progress_callback(idx, total, bur) is False:
-                            break
-                    except Exception:
-                        # Ignore callback errors; do not abort resolving
-                        pass
-
-                bur_path = pathlib.Path(bur)
-                if not bur_path.is_file():
-                    continue
-
-                # Read the BUR's bursts: the file each names, and its photon
-                # range. read_bur_bursts already drops the rows this cannot use
-                # -- a burst spanning two measurements, or naming none.
-                bursts = read_bur_bursts(bur_path)
-                if bursts is None:
-                    continue
-                file_names, start_series, stop_series = bursts
-
-                # Determine analysis root for this BUR (one level above bi4_bur/bur
-                # if present, otherwise the BUR's parent directory).
-                analysis_root = None
-                try:
-                    if bur_path.parent.name.lower() in ("bi4_bur", "bur"):
-                        analysis_root = bur_path.parent.parent
-                    else:
-                        analysis_root = bur_path.parent
-                except Exception:
-                    analysis_root = None
-                analysis_key = str(analysis_root) if analysis_root is not None else None
-
-                roots_for_bur = bur_to_roots.get(bur, [])
-                if analysis_key is not None and analysis_key in analysis_preferred_root:
-                    roots_for_bur = [analysis_preferred_root[analysis_key]]
-                if not roots_for_bur:
-                    logging.warning(
-                        "PDA: No TTTR search roots found for BUR file %s; skipping its bursts.",
-                        str(bur_path),
-                    )
-                    continue
-
-                # First try the simple 1:1 mapping: `<bur_stem>.bur` -> `<bur_stem>.<ext>`
-                # in the TTTR folder(s). This matches the typical MFD layout where each
-                # BUR file belongs to exactly one TTTR file with the same stem.
-                bur_tttr = None
-                for root in roots_for_bur:
-                    try:
-                        for ext in self._tttr_exts:
-                            cand = root / f"{bur_path.stem}{ext}"
-                            if cand.is_file():
-                                bur_tttr = cand
-                                break
-                    except Exception:
-                        continue
-                    if bur_tttr is not None:
-                        break
-
-                if bur_tttr is not None:
-                    if analysis_key is not None and analysis_key not in analysis_preferred_root:
-                        try:
-                            analysis_preferred_root[analysis_key] = bur_tttr.parent
-                        except Exception:
-                            pass
-                    key = str(bur_tttr)
-                    starts = start_series.tolist()
-                    stops = stop_series.tolist()
-                    if starts:
-                        burst_slices.setdefault(key, []).extend(zip(starts, stops))
-                        try:
-                            add_tttr_file(bur_tttr)
-                        except Exception:
-                            pass
-                    # Done with this BUR file; proceed to the next one.
-                    continue
-
-                # Fallback: resolve TTTR paths from the "First File" column contents.
-                # This covers less common layouts where a BUR file may reference
-                # multiple TTTR files.
-                resolved_cache = {}
-                for name_str in dict.fromkeys(file_names):
-                    if not name_str:
-                        resolved_cache[name_str] = None
-                        continue
-                    # Some external tools encode file indices like "0", "1", ... in
-                    # the First File column. Treat these as non-resolvable identifiers
-                    # instead of literal filenames.
-                    if str(name_str).strip().isdigit():
-                        resolved_cache[name_str] = None
-                        continue
-                    try:
-                        resolved_path = _resolve_name_in_roots(name_str, roots_for_bur)
-                    except Exception:
-                        resolved_path = None
-                    resolved_cache[name_str] = (
-                        str(resolved_path) if resolved_path is not None else None
-                    )
-                    # As soon as we find a real TTTR file for this analysis root,
-                    # remember its parent directory as the preferred TTTR folder so
-                    # subsequent BUR files from the same root do not need to re-walk
-                    # all candidate ancestors.
-                    if (
-                        resolved_path is not None
-                        and analysis_key is not None
-                        and analysis_key not in analysis_preferred_root
-                    ):
-                        try:
-                            analysis_preferred_root[analysis_key] = resolved_path.parent
-                        except Exception:
-                            pass
-
-                # Map each row to its resolved TTTR file key (string path or None)
-                resolved_keys = np.array(
-                    [resolved_cache.get(name) for name in file_names], dtype=object
-                )
-                mask_valid = np.array([k is not None for k in resolved_keys])
-                if not mask_valid.any():
-                    # All referenced TTTRs missing for this BUR (ignoring pure indices)
-                    for missing_name, key in resolved_cache.items():
-                        if key is None and missing_name and not str(missing_name).strip().isdigit():
-                            logging.warning(
-                                "PDA: TTTR file '%s' referenced in BUR '%s' could not be found; skipping its bursts.",
-                                missing_name,
-                                str(bur_path),
-                            )
-                    continue
-
-                # Group by resolved TTTR file and aggregate the slices per group
-                valid_keys = resolved_keys[mask_valid]
-                valid_starts = start_series[mask_valid]
-                valid_stops = stop_series[mask_valid]
-                for key in dict.fromkeys(valid_keys):
-                    if not key:
-                        continue
-                    in_group = valid_keys == key
-                    starts = valid_starts[in_group].tolist()
-                    stops = valid_stops[in_group].tolist()
-                    if not starts:
-                        continue
-                    burst_slices.setdefault(key, []).extend(zip(starts, stops))
-                    try:
-                        add_tttr_file(pathlib.Path(key))
-                    except Exception:
-                        # If the path string is malformed, keep slices but skip list entry
-                        pass
-            except Exception:
-                continue
-        return tttr_files_order, self._merge_intervals(burst_slices)
-
-    def _expand_burst_folder(self, base_dir: pathlib.Path):
-        """
-        Given a dropped folder, detect burst analysis structure and return
-        contained .bur files (so the user can select which burst tables to use).
-        Previously this returned TTTR files; now we list the BUR files themselves.
-        """
-        try:
-            # Do not call resolve() here; on Windows this may convert mapped-drive
-            # paths (e.g. "P:\\...") into UNC network paths ("\\\\server\\share\\..."),
-            # which is undesirable for logging and user-visible paths.
-            if not base_dir.exists() or not base_dir.is_dir():
-                return []
-            # Prefer .bur files directly in the folder; if none, search recursively
-            bur_files = [p for p in base_dir.glob("*.bur") if p.is_file()]
-            if not bur_files:
-                bur_files = [p for p in base_dir.rglob("*.bur") if p.is_file()]
-            return [str(p) for p in sorted(bur_files)]
-        except Exception:
-            logging.warning("PDA: Error expanding burst folder: %s", str(base_dir), exc_info=True)
-            return []
-
-    def _merge_intervals(self, mapping):
-        """Merge overlapping/adjacent [start, stop) intervals per key in a dict."""
-        merged = {}
-        for k, ivals in (mapping or {}).items():
-            if not ivals:
-                continue
-            ivals_sorted = sorted(ivals, key=lambda x: (int(x[0]), int(x[1])))
-            out = []
-            ch_start, ce = ivals_sorted[0]
-            for s, e in ivals_sorted[1:]:
-                if s <= ce:  # overlap or directly adjacent (exclusive stop)
-                    ce = max(ce, e)
-                else:
-                    out.append((ch_start, ce))
-                    ch_start, ce = s, e
-            out.append((ch_start, ce))
-            merged[k] = out
-        return merged
-
-    # ---- Setup handling ----
+    # ---- setup, routine and detector rows ----
     def _load_available_setups_into_combobox(self):
-        setups = load_detector_setups()
-        names = list(setups.get("setups", {}).keys())
         self.comboBox_setup.blockSignals(True)
         self.comboBox_setup.clear()
-        if names:
-            self.comboBox_setup.addItems(names)
-            # Select last used if present
-            last_used = setups.get("last_used")
-            if last_used and last_used in names:
-                self.comboBox_setup.setCurrentText(last_used)
-            else:
-                self.comboBox_setup.setCurrentIndex(0)
-        else:
-            # Placeholder when no setups are available
-            self.comboBox_setup.addItem("No setups available")
+        self.comboBox_setup.addItems(self.pda_settings.setup_names())
+        self.comboBox_setup.setCurrentText(self.pda_settings.setup)
         self.comboBox_setup.blockSignals(False)
 
     def _on_setup_changed(self, name: str):
-        # Load selected setup and apply
-        setups = load_detector_setups()
-        data = setups.get("setups", {}).get(name)
-        if not data:
-            # Clear caches if no valid setup
-            self._setup_name = None
-            self._windows, self._detectors, self._tttr_reading = {}, {}, {}
-            return
-        self._setup_name = name
-        self._windows = data.get("windows", {}) or {}
-        self._detectors = data.get("detectors", {}) or {}
-        self._tttr_reading = data.get("tttr_reading", {}) or {}
-        # Update UI elements based on setup
+        self.pda_settings.setup = name
         self._populate_detector_combos()
-        self._apply_tttr_reading_to_combo()
-        # Trigger global parameter update
+        self._refresh_rows()
         self.actionParametersChanged.trigger()
-
-    def _apply_current_setup_and_detectors(self):
-        # Attempt to apply currently selected setup if any
-        current = self.comboBox_setup.currentText()
-        if current:
-            self._on_setup_changed(current)
-        else:
-            self._populate_detector_combos()
 
     @property
     def n_colors(self) -> int:
         """Number of detection colours the reader is configured for (2 or 3)."""
-        try:
-            value = int(getattr(self.experiment_reader, "n_colors", 2) or 2)
-        except Exception:
-            value = 2
-        return 3 if value >= 3 else 2
+        return inputs.colour_count(getattr(self.experiment_reader, "n_colors", 2))
 
-    # ---- Detector selection -> channels and microtime ----
     def _populate_detector_combos(self):
-        """Fill one detector combo per colour, preferring the conventional names."""
-        names = list(self._detectors.keys())
-        preferred = COLOUR_DEFAULTS[self.n_colors]
+        """Fill one detector combo per colour with the setup's detectors, the row's chosen."""
+        names = self.pda_settings.detector_names()
         for index, combo in enumerate(self.detector_combos):
             combo.blockSignals(True)
             combo.clear()
+            combo.addItems(names or [""])
             if names:
-                combo.addItems(names)
-                wanted = preferred[index] if index < len(preferred) else None
-                if wanted in names:
-                    combo.setCurrentText(wanted)
-                else:
-                    # Fall back to distinct detectors in declaration order, so
-                    # two rows never silently point at the same channels.
-                    combo.setCurrentIndex(min(index, len(names) - 1))
-            else:
-                combo.addItem("")
+                combo.setCurrentText(self.pda_settings.detector(index))
             combo.blockSignals(False)
-        # After populating, sync all dependent fields
-        self._update_from_detector_selection()
 
     def _on_detector_combo_changed(self, _):
-        self._update_from_detector_selection()
-        # Trigger parameter update to propagate change
+        for index, combo in enumerate(self.detector_combos):
+            if combo.currentText() and combo.currentText() != self.pda_settings.detector(index):
+                self.pda_settings.set_detector(index, combo.currentText())
+        self._refresh_rows()
         self.actionParametersChanged.trigger()
 
-    def _format_window_value(self, win_val) -> str:
-        """Render a micro-time window for a field; see :func:`_format_micro_time_ranges`."""
-        return _format_micro_time_ranges(win_val)
-
-    def _update_from_detector_selection(self):
-        """Map the selected detectors onto the channel and micro-time fields.
-
-        The micro-time fields only follow a detector at two colours, where each
-        detector has its own photon-selection window. At three colours they are
-        the excitation periods of the PIE cycle and belong to no detector, so a
-        detector change leaves them alone.
-        """
-        if not self._detectors:
-            # Nothing to map from: leave whatever is in the fields alone rather
-            # than blanking a hand-entered channel list.
-            return
-        selected = [
-            self._detectors.get(combo.currentText(), {}) or {} for combo in self.detector_combos
-        ]
-        for detector, edit in zip(selected, self.channel_edits):
-            edit.setText(", ".join(str(i) for i in detector.get("chs", [])))
-        if self.n_colors == 2:
-            for detector, edit in zip(selected, self.window_edits):
-                edit.setText(self._format_window_value(detector.get("micro_time_ranges", [])))
-
-    # ---- TTTR reading routine ----
-    def _apply_tttr_reading_to_combo(self):
-        if not self._tttr_reading:
-            return
-        file_type = self._tttr_reading.get("file_type")
-        if not file_type:
-            return
-        # Ensure reading routine combo contains supported names and select the one from setup
-        supported = tttrlib.TTTR.get_supported_container_names()
-        # Refresh items to the supported list only once (they are set in __init__), just set selection if present
-        if file_type in supported:
-            self.comboBox.setCurrentText(file_type)
+    def _refresh_rows(self) -> None:
+        """Show the reader's routine, routing channels and micro-time windows in the row fields."""
+        routine = self.pda_settings.routine
+        if routine:
+            self.comboBox.blockSignals(True)
+            self.comboBox.setCurrentText(routine)
+            self.comboBox.blockSignals(False)
+        for index, edit in enumerate(self.channel_edits):
+            edit.setText(self.pda_settings.channels_text(index))
+        for index, edit in enumerate(self.window_edits):
+            edit.setText(self.pda_settings.window_text(index))
 
     def updateUI(self):
         """Update UI elements based on the bound reader's properties."""
-        setup = getattr(self, "experiment_reader", None)
-        if setup is None:
-            return
-
-        # reading routine
-        try:
-            rr = getattr(setup, "reading_routine", None)
-            if isinstance(rr, str) and rr:
-                self.comboBox.setCurrentText(rr)
-        except Exception:
-            pass
-
-        # one channel group per colour
-        try:
-            channels = list(getattr(setup, "channels", None) or [])
-            for group, edit in zip(channels, self.channel_edits):
-                edit.setText(", ".join(str(c) for c in (group or [])))
-        except Exception:
-            pass
-
-        # micro-time windows: one per detector (two colours) or one per
-        # excitation period (three)
-        try:
-            ranges = list(getattr(setup, "micro_time_ranges", None) or [])
-            for window, edit in zip(ranges, self.window_edits):
-                edit.setText(self._format_window_value(window or []))
-        except Exception:
-            pass
-
-        # nPh min/max are AutoForm ValueWidgets bound to the reader; they read
-        # the reader's current value when (re)built, so nothing to push here.
-
-        # base time window (convert from seconds to ms)
-        try:
-            tw_s = float(getattr(setup, "minimum_time_window_length", 0.0) or 0.0)
-            if tw_s > 0.0:
-                self.doubleSpinBox.setValue(tw_s * 1000.0)
-        except Exception:
-            pass
-
-    def _parse_channels(self) -> list:
-        """Return the routing-channel list of every detector row."""
-        groups = []
-        for edit in self.channel_edits:
-            text = edit.text().strip()
-            groups.append([int(k) for k in text.split(",")] if text else [])
-        return groups
-
-    def _parse_windows(self) -> list:
-        """Return the micro-time windows of every window field.
-
-        A two-colour field is a detector's photon selection and may list several
-        ranges, so it stays a list of them. A three-colour field is one
-        excitation period of the PIE cycle and is a single ``[start, stop]``
-        pair, which is what
-        :meth:`~chisurf.core.experiments.pda2c.Pda2cReader.detection_windows`
-        pairs with the detectors that can see that pulse.
-        """
-        windows = [_parse_micro_time_ranges(edit.text()) for edit in self.window_edits]
-        if self.n_colors == 3:
-            return [window[0] if window else [] for window in windows]
-        return windows
+        if self.pda_settings is not None:
+            self._refresh_all()
 
     def onParametersChanged(self):
-        channels = self._parse_channels()
-        micro_time_ranges = self._parse_windows()
-        minimum_number_of_photons = int(
-            getattr(self.experiment_reader, "minimum_number_of_photons", 15) or 15
-        )
-        maximum_number_of_photons = int(
-            getattr(self.experiment_reader, "maximum_number_of_photons", 500) or 500
-        )
-        base_tw_ms = float(self.doubleSpinBox.value())
-        base_tw_s = base_tw_ms / 1000.0 if base_tw_ms > 0.0 else 0.0
-
-        # Synchronize internal TW configs from the list widget. If the list is
-        # empty, fall back to a single (nPh, TW) pair from the current
-        # spinbox values for backward compatibility.
-        self._sync_tw_configs_from_list()
-        tw_cfgs = list(getattr(self, "_tw_configs", []) or [])
-        if not tw_cfgs and minimum_number_of_photons > 0 and base_tw_s > 0.0:
-            tw_cfgs.append((minimum_number_of_photons, base_tw_s))
-
-        reading_routine = self.comboBox.currentText()
-
-        # Apply settings directly to the bound reader instead of routing
-        # through the embedded IPython console. This avoids spamming the
-        # console (especially when many files are dropped) and removes a
-        # potential source of instability from repeatedly executing CLI
-        # strings.
-        setup = getattr(self, "experiment_reader", None)
-        if setup is None:
+        """Push the field texts, routine and time window onto the reader."""
+        if self.pda_settings is None or self._settings_form is None:
             return
+        self.pda_settings.routine = self.comboBox.currentText()
+        for index, edit in enumerate(self.channel_edits):
+            self.pda_settings.set_channels_text(index, edit.text())
+        for index, edit in enumerate(self.window_edits):
+            self.pda_settings.set_window_text(index, edit.text())
+        self.pda_settings.tw_ms = float(self.doubleSpinBox.value())
 
-        try:
-            setup.reading_routine = reading_routine
-            setup.channels = channels
-            setup.micro_time_ranges = micro_time_ranges
-            setup.minimum_number_of_photons = minimum_number_of_photons
-            setup.maximum_number_of_photons = maximum_number_of_photons
-            setup.minimum_time_window_length = base_tw_s
-            if tw_cfgs:
-                try:
-                    setup.tw_configs = tw_cfgs
-                except Exception:
-                    pass
-        except Exception:
-            logging.warning(
-                "PDA: Failed to propagate parameter changes to gui.current_setup",
-                exc_info=True,
-            )
+    def _on_auto_load_toggled(self, checked: bool) -> None:
+        self.pda_settings.auto_load = bool(checked)
 
-    def _sync_tw_configs_from_list(self):
-        tw = []
-        lw = getattr(self, "listWidget_tw", None)
-        if lw is not None:
-            for i in range(lw.count()):
-                item = lw.item(i)
-                if item is None:
-                    continue
-                try:
-                    data = item.data(QtCore.Qt.UserRole)
-                except Exception:
-                    data = None
-                if not data or len(data) != 2:
-                    continue
-                try:
-                    n_ph = int(data[0])
-                    tw_s = float(data[1])
-                except Exception:
-                    continue
-                if n_ph <= 0 or tw_s <= 0.0:
-                    continue
-                tw.append((n_ph, tw_s))
-        self._tw_configs = tw
-
-    def _add_tw_entry(self):
-        lw = getattr(self, "listWidget_tw", None)
-        if lw is None:
-            return
-        try:
-            n_ph = int(getattr(self.experiment_reader, "minimum_number_of_photons", 15) or 15)
-            tw_ms = float(self.doubleSpinBox.value())
-        except Exception:
-            return
-        if n_ph <= 0 or tw_ms <= 0.0:
-            return
-        tw_s = tw_ms / 1000.0
-        # Avoid duplicate entries
-        try:
-            for i in range(lw.count()):
-                it = lw.item(i)
-                if it is None:
-                    continue
-                data = it.data(QtCore.Qt.UserRole)
-                if data and len(data) == 2 and int(data[0]) == n_ph and float(data[1]) == tw_s:
-                    return
-        except Exception:
-            pass
-        text = f"{n_ph} ph @ {tw_ms:g} ms"
-        item = QtWidgets.QListWidgetItem(text)
-        try:
-            item.setData(QtCore.Qt.UserRole, (n_ph, tw_s))
-        except Exception:
-            pass
-        lw.addItem(item)
-        self._sync_tw_configs_from_list()
+    # ---- time windows ----
+    def _refresh_tw_list(self) -> None:
+        """Show the reader's time windows in the list."""
+        self.listWidget_tw.clear()
+        for row in self.pda_settings.tw_rows():
+            item = QtWidgets.QListWidgetItem(row["window"])
+            item.setData(QtCore.Qt.UserRole, (row["n_ph"], row["tw_s"]))
+            self.listWidget_tw.addItem(item)
 
     def _on_add_tw_clicked(self):
-        try:
-            self._add_tw_entry()
-            try:
-                self.actionParametersChanged.trigger()
-            except Exception:
-                pass
-        except Exception:
-            logging.warning("PDA: Failed to add TW configuration.", exc_info=True)
+        self.pda_settings.tw_ms = float(self.doubleSpinBox.value())
+        self.pda_settings.add_tw()
+        self._refresh_tw_list()
 
-    def _remove_selected_tw_entries(self):
-        lw = getattr(self, "listWidget_tw", None)
-        if lw is None:
-            return
-        try:
-            selected = list(lw.selectedItems())
-        except Exception:
-            selected = []
-        for item in selected:
-            try:
-                lw.takeItem(lw.row(item))
-            except Exception:
-                continue
-        self._sync_tw_configs_from_list()
-        try:
-            self.actionParametersChanged.trigger()
-        except Exception:
-            pass
+    def _remove_tw_rows(self, rows) -> None:
+        for row in sorted(set(rows), reverse=True):
+            self.pda_settings.remove_tw(row)
+        self._refresh_tw_list()
 
     def _on_tw_item_double_clicked(self, item):
-        lw = getattr(self, "listWidget_tw", None)
-        if lw is None or item is None:
-            return
-        try:
-            lw.takeItem(lw.row(item))
-        except Exception:
-            return
-        self._sync_tw_configs_from_list()
-        try:
-            self.actionParametersChanged.trigger()
-        except Exception:
-            pass
+        if item is not None:
+            self._remove_tw_rows([self.listWidget_tw.row(item)])
 
     def _on_tw_list_context_menu(self, pos):
-        lw = getattr(self, "listWidget_tw", None)
-        if lw is None:
-            return
-        try:
-            menu = QtWidgets.QMenu(lw)
-        except Exception:
-            return
-        act_remove = menu.addAction("Remove selected")
-        act_clear = menu.addAction("Clear all")
-        try:
-            global_pos = lw.mapToGlobal(pos)
-        except Exception:
-            return
-        chosen = menu.exec_(global_pos)
+        menu = QtWidgets.QMenu(self.listWidget_tw)
+        act_remove = menu.addAction(tr("Remove selected"))
+        act_clear = menu.addAction(tr("Clear all"))
+        chosen = menu.exec_(self.listWidget_tw.mapToGlobal(pos))
         if chosen == act_remove:
-            self._remove_selected_tw_entries()
+            selected = self.listWidget_tw.selectedItems()
+            self._remove_tw_rows(self.listWidget_tw.row(i) for i in selected)
         elif chosen == act_clear:
-            try:
-                lw.clear()
-            except Exception:
-                return
-            self._sync_tw_configs_from_list()
-            try:
-                self.actionParametersChanged.trigger()
-            except Exception:
-                pass
+            self.pda_settings.clear_tw()
+            self._refresh_tw_list()
 
+    # ---- loading ----
     def get_filename(self) -> pathlib.Path:
         return cs.gui.widgets.open_files(
             description="HT3/PTU/SPC file", file_type="All files (*.*)", working_path=None
         )
 
+    def _reader_for_load(self) -> Pda2cReader:
+        """A reader with the panel's settings, for one load of the file list."""
+        self.onParametersChanged()
+        bound = self.experiment_reader
+        pda_reader = Pda2cReader(
+            channels=list(bound.channels),
+            micro_time_ranges=list(bound.micro_time_ranges or []),
+            reading_routine=bound.reading_routine,
+            maximum_number_of_photons=int(bound.maximum_number_of_photons or 500),
+            minimum_number_of_photons=int(bound.minimum_number_of_photons or 15),
+            minimum_time_window_length=float(bound.minimum_time_window_length or 0.0),
+            tw_configs=self.pda_settings.tw_configs(),
+            n_colors=self.n_colors,
+            segmentation=getattr(bound, "segmentation", "burst"),
+        )
+        # get_data sets d.experiment from the reader's experiment.
+        experiment = getattr(bound, "experiment", None)
+        pda_reader.experiment = experiment or cs.core.experiments.types.get("pda")
+        pda_reader.controller = self
+        return pda_reader
+
     def _on_load_dropped_files_clicked(self):
+        files = self.file_list.get_checked_paths() if hasattr(self, "file_list") else []
+        if not files:
+            logging.warning("PDA: No dropped files are checked to load.")
+            dialogs.information(self, tr("No files"), tr("No dropped files are checked to load."))
+            return
+        exts = inputs.tttr_extensions()
+        bur_files, tttr_files = inputs.classify_inputs(files, exts)
         try:
-            files = self._get_used_files() if hasattr(self, "_get_used_files") else []
-            try:
-                logging.info(
-                    "PDA TRACE: _on_load_dropped_files_clicked: got %d dropped path(s)", len(files)
+            tttr_files, notes = inputs.check_input_counts(bur_files, tttr_files)
+        except inputs.PdaInputError as exc:
+            logging.warning("PDA: %s", exc)
+            dialogs.warning(self, tr(exc.title), str(exc))
+            return
+        for title, message in notes:
+            dialogs.warning(self, tr(title), message)
+
+        pda_reader = self._reader_for_load()
+        pda_reader.sample_id = self._select_sample_id()
+
+        parent = getattr(cs, "cs", None)
+        if not isinstance(parent, QtWidgets.QWidget):
+            parent = self.window()
+        progress_dialog = ChiSurfProgress(
+            parent, tr("Preparing dropped files..."), 0, title=tr("Loading PDA data")
+        )
+        try:
+            if bur_files:
+                progress_dialog.setRange(0, max(1, len(bur_files)))
+                progress_dialog.update_progress(0, tr("Resolving BUR files..."))
+
+            def _progress(i, total, current):
+                """Show resolving progress; ``False`` when the user cancelled."""
+                progress_dialog.update_progress(
+                    i,
+                    tr("Resolving: {name} ({i}/{total})").format(
+                        name=pathlib.Path(current).name, i=i, total=total
+                    ),
                 )
-            except Exception:
-                pass
-            if not files:
-                logging.warning("PDA: No dropped files are checked to load.")
-                dialogs.information(self, "No files", "No dropped files are checked to load.")
-                return
-
-            progress_dialog = None
-            try:
-                parent = getattr(cs, "cs", None)
-            except Exception:
-                parent = None
-            if not isinstance(parent, QtWidgets.QWidget):
-                try:
-                    parent = self.window()
-                except Exception:
-                    parent = self
-            try:
-                progress_dialog = ChiSurfProgress(
-                    parent, "Preparing dropped files...", 0, title="Loading PDA data"
-                )
-            except Exception:
-                progress_dialog = None
-
-            try:
-                try:
-                    gui = getattr(cs, "cs", None)
-                except Exception:
-                    gui = None
-                progress_bar = getattr(gui, "progress_bar", None)
-                status_label = getattr(gui, "status_label", None)
-                progress_backup = None
-                status_backup = None
-                if progress_bar is not None:
-                    try:
-                        progress_backup = (
-                            progress_bar.minimum(),
-                            progress_bar.maximum(),
-                            progress_bar.value(),
-                        )
-                    except Exception:
-                        progress_backup = None
-                if status_label is not None:
-                    try:
-                        status_backup = status_label.text()
-                    except Exception:
-                        status_backup = None
-
-                bur_files = []
-                tttr_files = []
-                for f in files:
-                    try:
-                        p = pathlib.Path(f)
-                    except Exception:
-                        logging.warning("PDA: Invalid dropped path in load: %r", f)
-                        continue
-                    try:
-                        if p.is_dir():
-                            try:
-                                expanded = self._expand_burst_folder(p)
-                            except Exception:
-                                logging.warning(
-                                    "PDA: Error expanding burst folder during load: %s",
-                                    str(p),
-                                    exc_info=True,
-                                )
-                                expanded = []
-                            bur_files.extend(expanded or [])
-                        else:
-                            suffix = p.suffix.lower()
-                            if suffix == ".bur":
-                                bur_files.append(str(p))
-                            elif suffix in self._tttr_exts:
-                                tttr_files.append(str(p))
-                    except Exception:
-                        logging.warning(
-                            "PDA: Error classifying dropped path during load: %r", f, exc_info=True
-                        )
-                        continue
-
-                bur_files = sorted(set(bur_files))
-                tttr_files = sorted(set(tttr_files))
-                try:
-                    logging.info(
-                        "PDA TRACE: classified dropped items -> %d BUR file(s), %d TTTR file(s)",
-                        len(bur_files),
-                        len(tttr_files),
-                    )
-                except Exception:
-                    pass
-
-                max_bur_files = 1024
-                max_tttr_files = 1024
-                if len(bur_files) > max_bur_files:
-                    logging.warning(
-                        "PDA: Too many BUR files selected (%d); aborting load.", len(bur_files)
-                    )
-                    dialogs.warning(
-                        self,
-                        "Too many BUR files",
-                        f"You selected {len(bur_files)} BUR files. "
-                        f"For stability, please process them in smaller batches (<= {max_bur_files} at once).",
-                    )
-                    return
-                if len(tttr_files) > max_tttr_files:
-                    logging.warning(
-                        "PDA: Too many TTTR files selected (%d); limiting to first %d.",
-                        len(tttr_files),
-                        max_tttr_files,
-                    )
-                    dialogs.warning(
-                        self,
-                        "Too many files",
-                        f"You selected {len(tttr_files)} TTTR files. "
-                        f"For stability, only the first {max_tttr_files} will be loaded.\n\n"
-                        "Consider using BUR tables or smaller batches if you need to process more files.",
-                    )
-                    tttr_files = tttr_files[:max_tttr_files]
-                if not bur_files and not tttr_files:
-                    logging.warning(
-                        "PDA: Dropped items contain neither BUR nor TTTR files to load."
-                    )
-                    dialogs.warning(
-                        self,
-                        "No files",
-                        "Please drop .bur burst files or TTTR files "
-                        "(e.g., .ptu, .ht3, .spc, .sdt, .t3r, .t2r, .phu, .phd) to load.",
-                    )
-                    return
-
-                channels = self._parse_channels()
-                micro_time_ranges = self._parse_windows()
-                maximum_number_of_photons = int(
-                    getattr(self.experiment_reader, "maximum_number_of_photons", 500) or 500
-                )
-                minimum_number_of_photons = int(
-                    getattr(self.experiment_reader, "minimum_number_of_photons", 15) or 15
-                )
-                base_tw_ms = float(self.doubleSpinBox.value())
-                minimum_time_window_length = base_tw_ms / 1000.0  # UI is ms, reader expects seconds
-                reading_routine = self.comboBox.currentText()
-
-                # Build TW configurations for the reader from the list widget.
-                # If the list is empty, fall back to a single (nPh, TW) derived
-                # from the current spinboxes for backward compatibility.
-                self._sync_tw_configs_from_list()
-                tw_cfgs = list(getattr(self, "_tw_configs", []) or [])
-                if (
-                    not tw_cfgs
-                    and minimum_number_of_photons > 0
-                    and minimum_time_window_length > 0.0
-                ):
-                    tw_cfgs.append((minimum_number_of_photons, minimum_time_window_length))
-
-                logging.info(
-                    f"PDA: Preparing to load {len(tttr_files)} TTTR file(s) with routine '{reading_routine}'."
-                )
-                logging.debug(
-                    {
-                        "n_colors": self.n_colors,
-                        "channels": channels,
-                        "micro_time_ranges": micro_time_ranges,
-                        "max_photons": maximum_number_of_photons,
-                        "min_photons": minimum_number_of_photons,
-                        "min_time_window_s": minimum_time_window_length,
-                        "tw_configs": tw_cfgs,
-                    }
-                )
-                pda_reader = Pda2cReader(
-                    channels=channels,
-                    micro_time_ranges=micro_time_ranges,
-                    reading_routine=reading_routine,
-                    maximum_number_of_photons=maximum_number_of_photons,
-                    minimum_number_of_photons=minimum_number_of_photons,
-                    minimum_time_window_length=minimum_time_window_length,
-                    tw_configs=tw_cfgs,
-                    n_colors=self.n_colors,
-                    segmentation=getattr(self.experiment_reader, "segmentation", "burst"),
-                )
-                # Attach the correct experiment to the reader so get_data can set d.experiment
-                try:
-                    bound_experiment = getattr(self.experiment_reader, "experiment", None)
-                    pda_reader.experiment = bound_experiment or cs.core.experiments.types.get("pda")
-                except Exception:
-                    # Fallback to the bound reader's experiment if types lookup fails
-                    pda_reader.experiment = getattr(self.experiment_reader, "experiment", None)
-                try:
-                    pda_reader.controller = self
-                except Exception:
-                    pass
-
-                sample_id = self._select_sample_id()
-                try:
-                    pda_reader.sample_id = sample_id
-                except Exception:
-                    pass
-
-                if bur_files:
-                    logging.info(
-                        f"PDA: Resolving TTTR files and slices from {len(bur_files)} selected BUR file(s)."
-                    )
-                    if progress_bar is not None:
-                        try:
-                            progress_bar.setMinimum(0)
-                            progress_bar.setMaximum(max(1, len(bur_files)))
-                            progress_bar.setValue(0)
-                        except Exception:
-                            pass
-                    if status_label is not None:
-                        try:
-                            status_label.setText("Resolving BUR files...")
-                        except Exception:
-                            pass
-                    if progress_dialog is not None:
-                        try:
-                            progress_dialog.setRange(0, max(1, len(bur_files)))
-                            progress_dialog.update_progress(0, "Resolving BUR files...")
-                        except Exception:
-                            pass
-
-                    def _progress_cb(i, total, current):
-                        """Progress callback for BUR resolving.
-
-                        Returns False when the user cancels the progress
-                        handle so that the resolver can abort early.
-                        """
-                        try:
-                            if status_label is not None:
-                                status_label.setText(
-                                    f"Resolving: {pathlib.Path(current).name} ({i}/{total})"
-                                )
-                            if progress_bar is not None:
-                                try:
-                                    if total:
-                                        progress_bar.setMaximum(max(1, total))
-                                except Exception:
-                                    pass
-                                try:
-                                    progress_bar.setValue(i)
-                                except Exception:
-                                    pass
-                            if progress_dialog is not None:
-                                try:
-                                    progress_dialog.update_progress(
-                                        i, f"Resolving: {pathlib.Path(current).name} ({i}/{total})"
-                                    )
-                                except Exception:
-                                    pass
-                                # Honor Cancel so long-running BUR resolving can be aborted.
-                                try:
-                                    if progress_dialog.wasCanceled():
-                                        return False
-                                except Exception:
-                                    pass
-                            QtWidgets.QApplication.processEvents()
-                        except Exception:
-                            pass
-                        return True
-
-                    try:
-                        logging.info(
-                            "PDA TRACE: starting _resolve_tttr_and_slices_from_bur for %d BUR file(s)",
-                            len(bur_files),
-                        )
-                    except Exception:
-                        pass
-                    tttr_files_resolved, burst_slices = self._resolve_tttr_and_slices_from_bur(
-                        bur_files, progress_callback=_progress_cb
-                    )
-                    tttr_files = tttr_files_resolved
-                    try:
-                        n_slices_keys = len(burst_slices) if burst_slices else 0
-                    except Exception:
-                        n_slices_keys = 0
-                    try:
-                        logging.info(
-                            "PDA TRACE: _resolve_tttr_and_slices_from_bur finished -> %d TTTR file(s), %d slice file key(s)",
-                            len(tttr_files),
-                            n_slices_keys,
-                        )
-                    except Exception:
-                        pass
-                    if len(tttr_files) > max_tttr_files:
-                        logging.warning(
-                            "PDA: Too many TTTR files resolved from BUR tables (%d); limiting to first %d.",
-                            len(tttr_files),
-                            max_tttr_files,
-                        )
-                        dialogs.warning(
-                            self,
-                            "Too many files",
-                            f"Burst tables reference {len(tttr_files)} TTTR files. "
-                            f"For stability, only the first {max_tttr_files} will be loaded.",
-                        )
-                        tttr_files = tttr_files[:max_tttr_files]
-                        if burst_slices:
-                            keep = set(tttr_files)
-                            burst_slices = {k: v for k, v in burst_slices.items() if k in keep}
-                    if not tttr_files:
-                        logging.warning(
-                            "PDA: No TTTR files could be resolved from selected BUR files."
-                        )
-                        dialogs.warning(
-                            self,
-                            "No TTTR files found",
-                            "Could not resolve any TTTR files from the selected BUR files.",
-                        )
-                        return
-                else:
-                    if progress_bar is not None:
-                        try:
-                            progress_bar.setMinimum(0)
-                            progress_bar.setMaximum(0)
-                            progress_bar.setValue(0)
-                        except Exception:
-                            pass
-                    if status_label is not None:
-                        try:
-                            status_label.setText("Searching for nearby BUR files...")
-                        except Exception:
-                            pass
-                    if progress_dialog is not None:
-                        try:
-                            progress_dialog.setRange(0, 0)
-                            progress_dialog.update_progress(0, "Searching for nearby BUR files...")
-                        except Exception:
-                            pass
-                    QtWidgets.QApplication.processEvents()
-                    try:
-                        logging.info(
-                            "PDA TRACE: starting _compute_burst_slices_for_files for %d TTTR file(s)",
-                            len(tttr_files),
-                        )
-                    except Exception:
-                        pass
-                    burst_slices = self._compute_burst_slices_for_files(tttr_files)
-                    try:
-                        n_slices_keys = len(burst_slices) if burst_slices else 0
-                    except Exception:
-                        n_slices_keys = 0
-                    try:
-                        logging.info(
-                            "PDA TRACE: _compute_burst_slices_for_files finished -> %d slice file key(s)",
-                            n_slices_keys,
-                        )
-                    except Exception:
-                        pass
-
-                if burst_slices:
-                    try:
-                        total_slices = sum(len(v) for v in burst_slices.values())
-                    except Exception:
-                        total_slices = 0
-                    logging.info(
-                        f"PDA: Applying burst slicing from BUR files: {total_slices} slices across {len(burst_slices)} file(s)."
-                    )
-                    logging.debug({"burst_slices_keys": list(burst_slices.keys())})
-
-                filenames_arg = "|".join(tttr_files)
-                try:
-                    logging.info(
-                        "PDA TRACE: prepared filenames_arg for add_dataset with %d TTTR file(s); burst_slices_present=%s",
-                        len(tttr_files),
-                        bool(burst_slices),
-                    )
-                except Exception:
-                    pass
-                logging.debug({"tttr_files": tttr_files})
-                if progress_bar is not None:
-                    try:
-                        progress_bar.setMinimum(0)
-                        progress_bar.setMaximum(0)
-                        progress_bar.setValue(0)
-                    except Exception:
-                        pass
-                if status_label is not None:
-                    try:
-                        status_label.setText("Loading TTTR data and computing histograms...")
-                    except Exception:
-                        pass
-                if progress_dialog is not None:
-                    try:
-                        progress_dialog.setRange(0, 0)
-                        progress_dialog.update_progress(
-                            0, "Loading TTTR data and computing histograms..."
-                        )
-                    except Exception:
-                        pass
                 QtWidgets.QApplication.processEvents()
-                try:
-                    logging.info(
-                        "PDA TRACE: calling core_data_macros.add_dataset (burst_slices=%s)",
-                        bool(burst_slices),
-                    )
-                except Exception:
-                    pass
-                if burst_slices:
-                    core_data_macros.add_dataset(
-                        experiment_reader=pda_reader,
-                        filename=filenames_arg,
-                        burst_slices=burst_slices,
-                    )
-                else:
-                    core_data_macros.add_dataset(
-                        experiment_reader=pda_reader, filename=filenames_arg
-                    )
+                return not progress_dialog.wasCanceled()
 
-                try:
-                    logging.info(
-                        f"PDA TRACE: add_dataset returned successfully; loaded {len(tttr_files)} TTTR file(s)."
-                    )
-                except Exception:
-                    pass
-                try:
-                    if getattr(self, "checkBox", None) is not None and self.checkBox.isChecked():
-                        if hasattr(self, "file_list"):
-                            self.file_list.clear()
-                        self.actionParametersChanged.trigger()
-                except Exception:
-                    logging.warning("PDA: Auto-clear after load failed.")
-            finally:
-                if progress_dialog is not None:
-                    try:
-                        progress_dialog.finish(final_text=None, auto_close=True, close_delay_ms=0)
-                    except Exception:
-                        try:
-                            progress_dialog.finalize(force_auto_close=True)
-                        except Exception:
-                            pass
-                if progress_bar is not None and progress_backup is not None:
-                    try:
-                        mn, mx, val = progress_backup
-                        progress_bar.setMinimum(mn)
-                        progress_bar.setMaximum(mx)
-                        progress_bar.setValue(val)
-                    except Exception:
-                        pass
-                if status_label is not None and status_backup is not None:
-                    try:
-                        status_label.setText(status_backup)
-                    except Exception:
-                        pass
+            try:
+                resolved = inputs.resolve_classified(bur_files, tttr_files, exts, _progress)
+            except inputs.PdaInputError as exc:
+                logging.warning("PDA: %s", exc)
+                dialogs.warning(self, tr(exc.title), str(exc))
+                return
+            for title, message in resolved.warnings:
+                dialogs.warning(self, tr(title), message)
+            if resolved.burst_slices:
+                total = sum(len(v) for v in resolved.burst_slices.values())
+                logging.info(
+                    "PDA: burst slicing from BUR files: %d slices across %d file(s).",
+                    total,
+                    len(resolved.burst_slices),
+                )
+            progress_dialog.setRange(0, 0)
+            progress_dialog.update_progress(0, tr("Loading TTTR data and computing histograms..."))
+            QtWidgets.QApplication.processEvents()
+            core_data_macros.add_dataset(
+                experiment_reader=pda_reader,
+                filename="|".join(resolved.tttr_files),
+                burst_slices=resolved.burst_slices,
+            )
+            if self.pda_settings.auto_load:
+                self.file_list.clear_all()
         except Exception as e:
-            # Show error message and log warning
             logging.warning(f"PDA: Failed to load files: {e}")
-            dialogs.error(self, "Error", f"Failed to load files: {e}")
+            dialogs.error(self, tr("Error"), tr("Failed to load files: {error}").format(error=e))
+        finally:
+            progress_dialog.finish(final_text=None, auto_close=True, close_delay_ms=0)

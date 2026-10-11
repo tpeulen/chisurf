@@ -2,7 +2,8 @@
   "_comment": "Settings of the three-colour PDA simulator (Pda3cSimulatorReader): the ground truth a simulated burst table is drawn from.",
   "sections": [
     {"type": "info", "text": "Draws a synthetic three-colour burst table from the model below; no file is read."},
-    {"type": "panel", "title": "Distances", "collapsible": false, "n_col": 2, "sections": [
+    {"type": "panel", "title": "Distances",
+      "description": "The three dye-pair distances the simulated molecules have, drawn as correlated Gaussians.", "collapsible": false, "n_col": 2, "sections": [
       {"type": "value", "attr": "r_gr", "kind": "float", "label": "R GR [Å]", "decimals": 1, "minimum": 0,
        "description": "True mean green–red distance, in Ångström."},
       {"type": "value", "attr": "r_bg", "kind": "float", "label": "R BG [Å]", "decimals": 1, "minimum": 0,
@@ -14,7 +15,8 @@
       {"type": "value", "attr": "correlation", "kind": "float", "label": "ρ GR–BG", "decimals": 2, "minimum": -1, "maximum": 1,
        "description": "Correlation between the green–red and blue–green distances."}
     ]},
-    {"type": "panel", "title": "Förster radii", "collapsible": false, "n_col": 3, "sections": [
+    {"type": "panel", "title": "Förster radii",
+      "description": "The Förster radius of each dye pair, which turns a distance into a transfer efficiency.", "collapsible": false, "n_col": 3, "sections": [
       {"type": "value", "attr": "r0_bg", "kind": "float", "label": "R₀ BG [Å]", "decimals": 1, "minimum": 0,
        "description": "Förster radius of the blue–green pair."},
       {"type": "value", "attr": "r0_br", "kind": "float", "label": "R₀ BR [Å]", "decimals": 1, "minimum": 0,
@@ -22,7 +24,8 @@
       {"type": "value", "attr": "r0_gr", "kind": "float", "label": "R₀ GR [Å]", "decimals": 1, "minimum": 0,
        "description": "Förster radius of the green–red pair."}
     ]},
-    {"type": "panel", "title": "Bursts", "collapsible": false, "n_col": 2, "sections": [
+    {"type": "panel", "title": "Bursts",
+      "description": "How many bursts are simulated and how bright they are.", "collapsible": false, "n_col": 2, "sections": [
       {"type": "value", "attr": "n_bursts", "kind": "int", "label": "Bursts", "minimum": 1,
        "description": "Number of bursts to draw."},
       {"type": "value", "attr": "seed", "kind": "int", "label": "Seed", "minimum": 0,

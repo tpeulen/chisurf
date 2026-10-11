@@ -1,55 +1,22 @@
-"""Förster radius calculator widget backed by MMFDB spectra."""
+"""Förster radius calculator widget backed by MMFDB spectra.
+
+The queries and the computation are Qt-free
+(:mod:`chisurf.core.fluorescence.fret.forster_calculator`); this widget is the
+legacy Qt face of that model. The emtk shell draws the same model as
+:class:`chisurf.emtk.forster_calculator.ForsterCalculatorDialog`.
+"""
 
 from __future__ import annotations
 
 import pathlib
-from typing import TYPE_CHECKING, Any
+from typing import Any, Callable
 
-import numpy as np
 from qtpy import QtCore, QtWidgets
 
-from chisurf.core.fluorescence.fret.forster import forster_radius_from_spectra
-
-if TYPE_CHECKING:
-    from mmfdb.repository import MFDatabase
-
-
-def _open_spectra_database() -> MFDatabase:
-    """Open the optional spectra repository only when the calculator needs it."""
-    try:
-        from mmfdb.repository import MFDatabase
-        from mmfdb.store.database_resolver import resolve_database_path
-    except ModuleNotFoundError as exc:
-        if exc.name != "mmfdb" and not (exc.name or "").startswith("mmfdb."):
-            raise
-        raise RuntimeError("MMFDB is unavailable; spectra selection requires MMFDB.") from exc
-    return MFDatabase(str(resolve_database_path()), readonly=True)
-
-
-_EXT_COEFF_ALIASES = frozenset(
-    {
-        "ext_coeff",
-        "molar_extinction",
-        "molar_ec",
-        "epsilon",
-        "extinction coefficient",
-        "ext_coeff_max",
-        "ec_max",
-    }
+from chisurf.core.fluorescence.fret.forster_calculator import (
+    ForsterCalculatorModel as _CalculatorModel,
 )
-
-_QY_ALIASES = frozenset(
-    {
-        "qy",
-        "quantum yield",
-        "phi",
-        "phi_d",
-        "qy_d",
-        "quantum_yield",
-        "fluorescence quantum yield",
-        "q_fluor",
-    }
-)
+from chisurf.core.fluorescence.fret.forster_calculator import spectrum_summary
 
 _VIEW_JSON = pathlib.Path(__file__).parent / "forster_calculator.view.json"
 
@@ -63,89 +30,11 @@ class _SearchableCombo(QtWidgets.QComboBox):
         self.completer().setCompletionMode(QtWidgets.QCompleter.PopupCompletion)
 
 
-def _query_probes_with_spectrum(
-    db: MFDatabase,
-    spectrum_type: str,
-) -> list[dict[str, Any]]:
-    rows = db.conn.execute(
-        """SELECT DISTINCT p.probe_id, p.chromophore_name
-           FROM probes p
-           JOIN spectra s ON s.probe_id = p.probe_id
-           WHERE s.spectrum_type = ?
-             AND p.deleted_at IS NULL
-             AND s.deleted_at IS NULL
-           ORDER BY p.chromophore_name""",
-        (spectrum_type,),
-    ).fetchall()
-    return [dict(r) for r in rows]
-
-
-def _get_spectra_for_probe(
-    db: MFDatabase,
-    probe_id: int,
-) -> dict[str, dict[str, np.ndarray]]:
-    rows = db.conn.execute(
-        """SELECT spectrum_type, wavelengths, intensity_values
-           FROM spectra
-           WHERE probe_id = ?
-             AND deleted_at IS NULL""",
-        (probe_id,),
-    ).fetchall()
-    result: dict[str, dict[str, np.ndarray]] = {}
-    for r in rows:
-        stype = r["spectrum_type"]
-        result[stype] = {
-            "wavelengths": np.frombuffer(r["wavelengths"], dtype=np.float64),
-            "intensity": np.frombuffer(r["intensity_values"], dtype=np.float64),
-        }
-    return result
-
-
-def _lookup_optical_property(
-    db: MFDatabase, probe_id: int, name_aliases: frozenset[str]
-) -> float | None:
-    for prop in db.get_optical_properties(probe_id):
-        if prop["property_name"] in name_aliases:
-            try:
-                val = float(prop["property_value"])
-                if val > 0:
-                    return val
-            except (ValueError, TypeError):
-                pass
-    return None
-
-
-def _try_lookup_cached_r0(db: MFDatabase, donor_name: str, acceptor_name: str) -> float | None:
-    row = db.conn.execute(
-        """SELECT fr.forster_radius
-           FROM flr_fret_forster_radius fr
-           JOIN probes d ON d.probe_id = fr.donor_probe_id
-           JOIN probes a ON a.probe_id = fr.acceptor_probe_id
-           WHERE d.chromophore_name = ?
-             AND a.chromophore_name = ?
-             AND d.deleted_at IS NULL
-             AND a.deleted_at IS NULL
-           LIMIT 1""",
-        (donor_name, acceptor_name),
-    ).fetchone()
-    return float(row[0]) if row else None
-
-
-def _spectrum_tooltip(kind: str, data: dict[str, np.ndarray]) -> str:
-    wl = data["wavelengths"]
-    return f"{kind} · {len(wl)} pts · {wl[0]:.0f}–{wl[-1]:.0f} nm"
-
-
-class ForsterCalculatorModel:
-    """Backing model for the autoform parameter panel.
+class ForsterCalculatorModel(_CalculatorModel):
+    """The calculator model with the Qt parameter panel's view spec.
 
     Attributes mirror the ``attr`` keys in ``forster_calculator.view.json``.
     """
-
-    def __init__(self) -> None:
-        self.donor_qy = 0.9
-        self.acceptor_emax = 100_000.0
-        self.refractive_index = 1.33
 
     def view_spec(self):
         from chisurf.core.dataspec import load_view_spec
@@ -163,15 +52,25 @@ class ForsterCalculatorWidget(QtWidgets.QWidget):
 
     The orientation factor κ² is fixed at 2/3 (dynamic isotropic averaging)
     — orientation corrections are handled elsewhere in the FRET model.
+
+    Parameters
+    ----------
+    parent : QWidget, optional
+        Parent widget.
+    open_database : callable, optional
+        ``open_database() -> MFDatabase``; MMFDB opened read-only by default.
     """
 
     forster_radius_calculated = QtCore.Signal(float)
 
-    def __init__(self, parent: QtWidgets.QWidget | None = None):
+    def __init__(
+        self,
+        parent: QtWidgets.QWidget | None = None,
+        open_database: Callable[[], Any] | None = None,
+    ):
         super().__init__(parent)
         self.setWindowTitle("Förster Radius Calculator")
-        self._probe_names: dict[int, str] = {}
-        self._probe_spectra: dict[int, dict[str, Any]] = {}
+        self._model = ForsterCalculatorModel(open_database=open_database, load=False)
         self._last_r0: float | None = None
         self._debounce = QtCore.QTimer(self)
         self._debounce.setSingleShot(True)
@@ -196,7 +95,6 @@ class ForsterCalculatorWidget(QtWidgets.QWidget):
         layout.addWidget(probe_group)
 
         # Parameter section (declarative — rendered from view.json by AutoForm)
-        self._model = ForsterCalculatorModel()
         from chisurf.gui.autoform import AutoForm
         from chisurf.gui.autoform.sections.builtin import ValueWidget
 
@@ -242,76 +140,30 @@ class ForsterCalculatorWidget(QtWidgets.QWidget):
     # ---- data loading ---------------------------------------------------
 
     def _load_probes(self) -> None:
-        try:
-            db = _open_spectra_database()
-        except RuntimeError as exc:
-            self.result_label.setText(str(exc))
+        model = self._model
+        if not model.load():
+            self.result_label.setText(model.status)
             self.donor_combo.setEnabled(False)
             self.acceptor_combo.setEnabled(False)
             self.apply_btn.setEnabled(False)
             return
-        except Exception:
-            self.result_label.setText("Could not open MMFDB database.")
-            self.apply_btn.setEnabled(False)
-            return
-
-        try:
-            donors = _query_probes_with_spectrum(db, "emission")
-            acceptors = _query_probes_with_spectrum(db, "absorption")
-
-            all_ids: set[int] = set()
-            for p in donors:
-                all_ids.add(p["probe_id"])
-                self._probe_names[p["probe_id"]] = p["chromophore_name"]
-            for p in acceptors:
-                all_ids.add(p["probe_id"])
-                self._probe_names[p["probe_id"]] = p["chromophore_name"]
-
-            self._probe_spectra = {}
-            for pid in all_ids:
-                spectra = _get_spectra_for_probe(db, pid)
-                if spectra:
-                    self._probe_spectra[pid] = spectra
-
-            self.donor_combo.blockSignals(True)
-            self.donor_combo.clear()
-            self.donor_combo.addItem("", None)
-            for p in donors:
-                pid = p["probe_id"]
-                spec = self._probe_spectra.get(pid, {})
-                em = spec.get("emission")
-                if em is not None:
-                    self.donor_combo.addItem(p["chromophore_name"], pid)
-                    idx = self.donor_combo.count() - 1
-                    self.donor_combo.setItemData(
-                        idx, _spectrum_tooltip("emission", em), QtCore.Qt.ToolTipRole
-                    )
-            self.donor_combo.blockSignals(False)
-
-            self.acceptor_combo.blockSignals(True)
-            self.acceptor_combo.clear()
-            self.acceptor_combo.addItem("", None)
-            for p in acceptors:
-                pid = p["probe_id"]
-                spec = self._probe_spectra.get(pid, {})
-                ab = spec.get("absorption")
-                if ab is not None:
-                    self.acceptor_combo.addItem(p["chromophore_name"], pid)
-                    idx = self.acceptor_combo.count() - 1
-                    self.acceptor_combo.setItemData(
-                        idx, _spectrum_tooltip("absorption", ab), QtCore.Qt.ToolTipRole
-                    )
-            self.acceptor_combo.blockSignals(False)
-        finally:
-            db.close()
+        for combo, ids, kind in (
+            (self.donor_combo, model.donors, "emission"),
+            (self.acceptor_combo, model.acceptors, "absorption"),
+        ):
+            combo.blockSignals(True)
+            combo.clear()
+            combo.addItem("", None)
+            for pid in ids:
+                combo.addItem(model.probe_names[pid], pid)
+                combo.setItemData(
+                    combo.count() - 1,
+                    spectrum_summary(kind, model.probe_spectra[pid][kind]),
+                    QtCore.Qt.ToolTipRole,
+                )
+            combo.blockSignals(False)
 
     # ---- helpers --------------------------------------------------------
-
-    def _db_for_read(self) -> MFDatabase | None:
-        try:
-            return _open_spectra_database()
-        except Exception:
-            return None
 
     def _current_probe_id(self, combo: _SearchableCombo) -> int | None:
         idx = combo.currentIndex()
@@ -326,152 +178,33 @@ class ForsterCalculatorWidget(QtWidgets.QWidget):
                 return combo.itemData(i)
         return None
 
-    def _probe_name(self, pid: int | None) -> str:
-        if pid is None:
-            return "?"
-        return self._probe_names.get(pid, "?")
-
-    def _auto_fill_property(
-        self,
-        probe_id: int,
-        aliases: frozenset[str],
-        setter,
-    ) -> None:
-        db = self._db_for_read()
-        if db is None:
-            return
-        try:
-            val = _lookup_optical_property(db, probe_id, aliases)
-            if val is not None:
-                setter(val)
-        finally:
-            db.close()
-
     def _schedule(self) -> None:
         self._debounce.start()
 
     # ---- computation ----------------------------------------------------
 
     def _compute(self) -> None:
-        donor_pid = self._current_probe_id(self.donor_combo)
-        acceptor_pid = self._current_probe_id(self.acceptor_combo)
-
-        if donor_pid is None or acceptor_pid is None:
-            self.result_label.setText("")
-            self._last_r0 = None
-            self.apply_btn.setEnabled(False)
-            return
-
-        donor_spectra = self._probe_spectra.get(donor_pid, {})
-        acceptor_spectra = self._probe_spectra.get(acceptor_pid, {})
-
-        if "emission" not in donor_spectra or "absorption" not in acceptor_spectra:
-            self.result_label.setText("")
-            self._last_r0 = None
-            self.apply_btn.setEnabled(False)
-            return
-
-        # Try MMFDB cached R0 first
-        donor_name = self._probe_name(donor_pid)
-        acceptor_name = self._probe_name(acceptor_pid)
-        db = self._db_for_read()
-        if db is not None:
-            try:
-                cached = _try_lookup_cached_r0(db, donor_name, acceptor_name)
-                if cached is not None and cached > 0:
-                    self._last_r0 = cached
-                    self.result_label.setText(f"R₀ = {cached:.1f} Å  (cached)")
-                    self.apply_btn.setEnabled(True)
-                    return
-            finally:
-                db.close()
-
-        # Compute from spectra
-        donor_em = donor_spectra["emission"]
-        acceptor_abs = acceptor_spectra["absorption"]
-
-        ext_coeff = self._model.acceptor_emax
-        acceptor_ext = np.asarray(acceptor_abs["intensity"], dtype=float)
-        peak = float(acceptor_ext.max())
-        if peak > 0:
-            acceptor_ext = acceptor_ext / peak * ext_coeff
-
-        wl_min = max(
-            float(np.min(donor_em["wavelengths"])),
-            float(np.min(acceptor_abs["wavelengths"])),
-        )
-        wl_max = min(
-            float(np.max(donor_em["wavelengths"])),
-            float(np.max(acceptor_abs["wavelengths"])),
-        )
-
-        if wl_min >= wl_max:
-            self._last_r0 = 0.0
-            self.result_label.setText("R₀ = 0.0 Å  (no spectral overlap)")
-            self.apply_btn.setEnabled(True)
-            return
-
-        common_wl = np.linspace(wl_min, wl_max, 1000)
-
-        # scipy.interpolate.interp1d (linear, fill 0) is np.interp with the
-        # range pre-clamped: np.interp fills out-of-range with the edge
-        # values, so values at/beyond the data edges are zeroed first.
-        def _interp_fill0(xp, fp):
-            def _f(x):
-                inside = (x >= xp[0]) & (x <= xp[-1])
-                out = np.zeros_like(x, dtype=float)
-                out[inside] = np.interp(x[inside], xp, fp)
-                return out
-
-            return _f
-
-        donor_interp = _interp_fill0(donor_em["wavelengths"], donor_em["intensity"])
-        acceptor_interp = _interp_fill0(acceptor_abs["wavelengths"], acceptor_ext)
-        donor_int = donor_interp(common_wl)
-        acceptor_ext_interp = acceptor_interp(common_wl)
-
-        donor_qy = self._model.donor_qy
-        n = self._model.refractive_index
-
-        try:
-            r0_angstrom, overlap_J = forster_radius_from_spectra(
-                common_wl,
-                donor_int,
-                acceptor_ext_interp,
-                donor_quantum_yield=donor_qy,
-                kappa2=2.0 / 3.0,
-                refractive_index=n,
-            )
-            self._last_r0 = r0_angstrom
-            self.result_label.setText(
-                f"R₀ = {r0_angstrom:.1f} Å    J = {overlap_J:.3e} M⁻¹ cm⁻¹ nm⁴"
-            )
-            self.apply_btn.setEnabled(True)
-        except (ValueError, ZeroDivisionError) as exc:
-            self._last_r0 = None
-            self.result_label.setText(f"Error: {exc}")
-            self.apply_btn.setEnabled(False)
+        model = self._model
+        model.donor = self._current_probe_id(self.donor_combo)
+        model.acceptor = self._current_probe_id(self.acceptor_combo)
+        self._last_r0 = model.compute()
+        self.result_label.setText(model.status)
+        self.apply_btn.setEnabled(self._last_r0 is not None)
 
     # ---- signal handlers -----------------------------------------------
 
     def _on_donor_changed(self) -> None:
         pid = self._current_probe_id(self.donor_combo)
-        if pid is not None and self.qy_spin is not None:
-            self._auto_fill_property(
-                pid,
-                _QY_ALIASES,
-                lambda v: self.qy_spin.setValue(v),
-            )
+        qy = self._model.probe_properties.get(pid, {}).get("qy")
+        if qy is not None and self.qy_spin is not None:
+            self.qy_spin.setValue(qy)
         self._schedule()
 
     def _on_acceptor_changed(self) -> None:
         pid = self._current_probe_id(self.acceptor_combo)
-        if pid is not None and self.ext_spin is not None:
-            self._auto_fill_property(
-                pid,
-                _EXT_COEFF_ALIASES,
-                lambda v: self.ext_spin.setValue(v),
-            )
+        emax = self._model.probe_properties.get(pid, {}).get("emax")
+        if emax is not None and self.ext_spin is not None:
+            self.ext_spin.setValue(emax)
         self._schedule()
 
     def _apply(self) -> None:

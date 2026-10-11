@@ -41,10 +41,21 @@ def detector_setups() -> dict:
     return setups if isinstance(setups, dict) else {}
 
 
+def last_used_setup() -> str:
+    """The name of the detector setup used last, ``""`` when none is recorded."""
+    try:
+        from chisurf.core.data_io.detector_setups import load_detector_setups
+
+        data = load_detector_setups()
+    except Exception:  # noqa: BLE001 - no store: nothing was used
+        return ""
+    return str(data.get("last_used", "") or "") if isinstance(data, dict) else ""
+
+
 def routines() -> list[str]:
     """The TTTR container types tttrlib reads."""
     try:
-        import tttrlib  # type: ignore[import]
+        import tttrlib
 
         names = list(tttrlib.TTTR.get_supported_container_names())
         if names:
@@ -278,4 +289,12 @@ def register(reader: Any, form: FormState, setups: dict | None = None) -> None:
     form.custom.setdefault(ROI_KEY, roi.draw)
 
 
-__all__ = ["DETECTOR_KEYS", "DetectorCascade", "IcsRoi", "ROI_KEY", "register"]
+__all__ = [
+    "DETECTOR_KEYS",
+    "DetectorCascade",
+    "IcsRoi",
+    "ROI_KEY",
+    "detector_setups",
+    "last_used_setup",
+    "register",
+]
