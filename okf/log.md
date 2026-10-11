@@ -2,6 +2,9 @@
 
 ## 2026-10-11
 
+- Anisotropy wizard: its Add/Remove component row had slid under the status bar (a field now stacks under a long
+  label, emtk d8ba4cf, and the tables' reserve was a fixed 112 px), and its German dock tab was cut at 800 px (fixed
+  0.22 split). The split's minimum is now the measured tab width; the reserve is 144 px until emtk measures it.
 - Emoji typed into captions (Help, Guide, the language button, plugin action buttons) draw in colour (emtk
   605e7d4): the real painters split a caption into icon and text runs with one width rule; recorded strings are
   unchanged. A wrapped button row spreads evenly (emtk e7ba04d). See [UI vocabulary](subsystems/ui-vocabulary.md).

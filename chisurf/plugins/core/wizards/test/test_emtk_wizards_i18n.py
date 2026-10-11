@@ -75,9 +75,5 @@ def test_the_rail_holds_its_guide_and_help_buttons(language, code, size):
     for key in ("guide", "help"):
         x, _y, w, _h = app.item_rects[key]
         assert x + w <= rail + 0.5, (code, size, key, x + w, rail)
-    # The hosted wizard's own dock tab ("Anisotropy workflow" / its translation) is the child's layout, not the rail's.
-    from emtk.i18n import tr
-
-    own = f"'{tr('Anisotropy workflow')}'"
-    assert [c for c in clipped_texts(painter) if own not in c] == []
+    assert clipped_texts(painter) == []
     app.close()

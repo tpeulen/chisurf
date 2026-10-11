@@ -123,9 +123,7 @@ def test_each_wizard_draws_without_layout_problems(size):
         app.select(entry.id)
         painter = draw_clip(app, size)
         assert layout_problems(painter, size) == [], (entry.id, layout_problems(painter, size)[:3])
-        # the hosted tr_anisotropy dock title 'Anisotropy workflow' needs 133 px at 800 px; that is the child's own layout
-        # (reported in REPORT.md), not the hub's
-        cut = [c for c in clipped_texts(painter) if "'Anisotropy workflow'" not in c]
+        cut = clipped_texts(painter)
         assert cut == [], (entry.id, cut[:3])
     app.close()
 

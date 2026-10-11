@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import math
 import json
 from pathlib import Path
 
@@ -92,9 +93,8 @@ class AnisotropyApp(ImApp):
                 if name in ("lifetime", "rotation")
                 else self.tour.notify_used
             )
-        self.docks = DockManager(
-            Split("h", 0.22, Region("navigation"), Region("step")), name="tr_anisotropy"
-        )
+        self.split = Split("h", 0.22, Region("navigation"), Region("step"), name="tr_anisotropy")
+        self.docks = DockManager(self.split, name="tr_anisotropy")
         self.docks.add_window(
             "navigation", tr("Anisotropy workflow"), self.navigation, dock="navigation", closable=False
         )
@@ -456,6 +456,12 @@ class AnisotropyApp(ImApp):
         im.end_disabled()
         im.set_item_tooltip(tr("Continue to the next workflow step."))
 
+    def fit_navigation_tab(self):
+        """Keep the navigation dock at least as wide as its tab, measured in the active language."""
+        style = im.get_style()
+        tab = im.calc_text_size(tr("Anisotropy workflow"))[0] + 2.0 * style.frame_padding[0] + 8.0
+        self.split.min_size = max(80.0, math.ceil(tab) + 4.0)
+
     # -- one frame ------------------------------------------------------------------------------- #
     def render(self):
         vp = im.get_main_viewport()
@@ -463,6 +469,7 @@ class AnisotropyApp(ImApp):
         self.item_rects.clear()
         for form in self.forms.values():
             form.rects.clear()
+        self.fit_navigation_tab()
         im.begin_disabled(self.dialog is not None)
         self.docks.draw(box)
         im.end_disabled()
