@@ -107,29 +107,42 @@ def format_inline_math(latex: str) -> str:
     return s.replace("&nbsp;", " ").replace("&#8201;", " ")
 
 
+def _text_wrapped_coloured(colour, text: str) -> None:
+    """``im.text_wrapped`` in *colour*: a heading or a table header wraps like prose.
+
+    ``im.text_colored`` does not wrap, so a long title ran past the reader's right
+    edge at 800 px and a header cell ran into the next column.
+    """
+    im.push_style_color(Col.TEXT, colour)
+    im.text_wrapped(text)
+    im.pop_style_color()
+
+
 class HelpTextureManager:
     """Manages and caches EMTK Textures for rendered LaTeX math and figure images."""
 
+    #: Device pixels per CSS pixel an SVG figure is rasterised at: drawn at half its
+    #: texel size it stays sharp on a 2x display.
+    SVG_SCALE = 2.0
+
     def __init__(self) -> None:
         self._fig_cache: dict[str, Texture | None] = {}
+        self._fig_doc: pathlib.Path | None = None
+        #: ``id(texture) -> display scale`` (texels per logical pixel; 0.5 for an SVG).
+        self._fig_scale: dict[int, float] = {}
         self._math_cache: dict[tuple[str, str, float], Texture | None] = {}
 
-    def get_figure_texture(
-        self, rel_path: str, doc_path: pathlib.Path | None = None
-    ) -> Texture | None:
-        if not rel_path:
-            return None
-        arg = rel_path.strip()
-        cache_key = f"{doc_path}::{arg}"
-        if cache_key in self._fig_cache:
-            return self._fig_cache[cache_key]
+    def figure_scale(self, texture: Texture) -> float:
+        """How large to draw *texture* relative to its texel size (an SVG is rasterised at 2x)."""
+        return self._fig_scale.get(id(texture), 1.0)
 
-        target_file: pathlib.Path | None = None
+    def resolve_figure(self, rel_path: str, doc_path: pathlib.Path | None = None):
+        """The file a figure reference names, or ``None``: relative to the page first."""
+        arg = rel_path.strip()
         d_root = help_toc.docs_root()
         r_root = help_toc.repository_root()
-
         cands = []
-        if doc_path is not None:
+        if doc_path is not None and not arg.startswith("/"):
             cands.append(doc_path.parent / arg)
         cands.extend(
             [
@@ -144,29 +157,46 @@ class HelpTextureManager:
                 d_root / "manual" / "figures" / pathlib.Path(arg).name,
             ]
         )
-
         for c in cands:
             try:
                 res = c.resolve()
-                if res.is_file():
-                    target_file = res
-                    break
-            except Exception:
+            except OSError:
                 continue
+            if res.is_file():
+                return res
+        return None
 
+    def get_figure_texture(
+        self, rel_path: str, doc_path: pathlib.Path | None = None
+    ) -> Texture | None:
+        if not rel_path:
+            return None
+        if doc_path != self._fig_doc:
+            # Only the open page's figures stay loaded: a texture kept alive holds its
+            # space in the GPU image atlas, and every page browsed used to keep its own.
+            self._fig_cache.clear()
+            self._fig_scale.clear()
+            self._fig_doc = doc_path
+        arg = rel_path.strip()
+        cache_key = f"{doc_path}::{arg}"
+        if cache_key in self._fig_cache:
+            return self._fig_cache[cache_key]
+        target_file = self.resolve_figure(arg, doc_path)
         if target_file is None:
-            _LOGGER.debug("Figure not found: %s (doc: %s)", arg, doc_path)
+            _LOGGER.warning("Figure not found: %s (page %s)", arg, doc_path)
             self._fig_cache[cache_key] = None
             return None
-
         try:
-            tex = Texture.from_file(target_file)
-            self._fig_cache[cache_key] = tex
-            return tex
+            svg = target_file.suffix.lower() in (".svg", ".svgz")
+            tex = Texture.from_file(target_file, svg_scale=self.SVG_SCALE if svg else 1.0)
         except Exception as e:
             _LOGGER.warning("Failed to load figure %s: %s", target_file, e)
             self._fig_cache[cache_key] = None
             return None
+        self._fig_cache[cache_key] = tex
+        if svg:
+            self._fig_scale[id(tex)] = 1.0 / self.SVG_SCALE
+        return tex
 
     def get_math_texture(
         self,
@@ -1826,6 +1856,9 @@ class HelpGui:
         if crumbs:
             im.text_disabled(" › ".join(crumbs))
         im.separator()
+        # The scroll region starts clear of the toolbar's separator, so a row scrolled
+        # half out of view reads as scrolled, not as cut off by the toolbar.
+        im.dummy(0.0, 2.0)
 
         curr_y = im.get_cursor_screen_pos()[1]
         avail_w = box[2]
@@ -1943,6 +1976,7 @@ class HelpGui:
         """Render formatted markdown elements in an immediate-mode child container."""
         child_id = f"doc_{self.model.current_path or 'home'}"
         child_start_y = im.get_cursor_screen_pos()[1]
+        self.item_rects["doc_reader"] = (*im.get_cursor_screen_pos(), width, height)
         im.begin_child((*im.get_cursor_screen_pos(), width, height), child_id=child_id)
 
         if not self.model.current_blocks:
@@ -1981,7 +2015,7 @@ class HelpGui:
                 im.dummy(0.0, 12.0)
                 clean_title, _ = self._expand_inline_markup(block.text)
                 push_text_style("h1", zoom=zoom)
-                im.text_colored((125, 205, 255, 255), clean_title)
+                _text_wrapped_coloured((125, 205, 255, 255), clean_title)
                 pop_text_style()
                 im.dummy(0.0, 2.0)
                 im.separator()
@@ -1991,7 +2025,7 @@ class HelpGui:
                 im.dummy(0.0, 10.0)
                 clean_title, _ = self._expand_inline_markup(block.text)
                 push_text_style("h2", zoom=zoom)
-                im.text_colored((145, 225, 160, 255), clean_title)
+                _text_wrapped_coloured((145, 225, 160, 255), clean_title)
                 pop_text_style()
                 im.dummy(0.0, 4.0)
 
@@ -1999,7 +2033,7 @@ class HelpGui:
                 im.dummy(0.0, 8.0)
                 clean_title, _ = self._expand_inline_markup(block.text)
                 push_text_style("h3", zoom=zoom)
-                im.text_colored((245, 205, 115, 255), clean_title)
+                _text_wrapped_coloured((245, 205, 115, 255), clean_title)
                 pop_text_style()
                 im.dummy(0.0, 3.0)
 
@@ -2007,7 +2041,7 @@ class HelpGui:
                 im.dummy(0.0, 6.0)
                 clean_title, _ = self._expand_inline_markup(block.text)
                 push_text_style("h4", zoom=zoom)
-                im.text_colored((220, 225, 235, 255), clean_title)
+                _text_wrapped_coloured((220, 225, 235, 255), clean_title)
                 pop_text_style()
                 im.dummy(0.0, 2.0)
 
@@ -2032,8 +2066,14 @@ class HelpGui:
 
             elif block.kind == "figure":
                 tex = self.texture_mgr.get_figure_texture(block.arg, self.model.current_path)
+                # A caption is prose: its source line breaks are not line breaks, or it
+                # wraps at the source column instead of the reader's.
+                caption = ""
+                if block.text:
+                    caption, _ = self._expand_inline_markup(block.text)
+                    caption = re.sub(r"(?<!\n)\n(?!\n)", " ", caption).strip()
+                im.dummy(0.0, 6.0)
                 if tex is not None:
-                    im.dummy(0.0, 6.0)
                     max_w = max(100.0, width - 28.0)
                     pct = 1.0
                     if block.items and len(block.items) > 1 and "%" in str(block.items[1]):
@@ -2045,24 +2085,19 @@ class HelpGui:
                     im.image(
                         tex,
                         max_size=(target_max_w, 560.0),
+                        scale=self.texture_mgr.figure_scale(tex),
                         align_center=True,
                     )
-
-                    if block.text:
-                        im.dummy(0.0, 2.0)
-                        caption, _ = self._expand_inline_markup(block.text)
-                        push_text_style("caption", zoom=zoom)
-                        im.push_style_color(Col.TEXT, (175, 185, 200, 255))
-                        im.text_wrapped(f"Figure: {caption}")
-                        im.pop_style_color()
-                        pop_text_style()
-                    im.dummy(0.0, 6.0)
                 else:
-                    im.dummy(0.0, 4.0)
-                    im.text_disabled(f"[Figure: {block.arg}]")
-                    if block.text:
-                        im.text_disabled(f"  {block.text}")
-                    im.dummy(0.0, 4.0)
+                    self._draw_missing_figure(block.arg, width)
+                if caption:
+                    im.dummy(0.0, 2.0)
+                    push_text_style("caption", zoom=zoom)
+                    im.push_style_color(Col.TEXT, (175, 185, 200, 255))
+                    im.text_wrapped(f"{tr('Figure')}: {caption}")
+                    im.pop_style_color()
+                    pop_text_style()
+                im.dummy(0.0, 6.0)
 
             elif block.kind == "code":
                 im.dummy(0.0, 2.0)
@@ -2161,7 +2196,7 @@ class HelpGui:
                             clean_cell, _ = self._expand_inline_markup(cell_text)
                             if r_idx == 0:
                                 push_text_style("body", bold=True, zoom=zoom)
-                                im.text_colored((140, 200, 255, 255), clean_cell)
+                                _text_wrapped_coloured((140, 200, 255, 255), clean_cell)
                                 pop_text_style()
                             else:
                                 im.text_wrapped(clean_cell)
@@ -2188,6 +2223,24 @@ class HelpGui:
         im.dummy(0.0, 50.0)
         pop_text_style()
         im.end_child()
+
+    def _draw_missing_figure(self, path: str, width: float) -> None:
+        """A visible placeholder where a figure could not be loaded: never a blank box."""
+        x, y = im.get_cursor_screen_pos()
+        box_w = min(max(160.0, width - 28.0), 520.0)
+        box_h = 3.0 * im.get_text_line_height_with_spacing()
+        draw_list = im.get_window_draw_list()
+        draw_list.add_rect_filled((x, y), (x + box_w, y + box_h), (48, 30, 30, 255))
+        draw_list.add_rect((x, y), (x + box_w, y + box_h), (235, 120, 110, 255))
+        im.dummy(0.0, 4.0)
+        im.indent(8.0)
+        im.push_style_color(Col.TEXT, (245, 160, 150, 255))
+        im.text_wrapped(tr("missing: {path}").format(path=path))
+        im.pop_style_color()
+        im.unindent(8.0)
+        remaining = y + box_h - im.get_cursor_screen_pos()[1]
+        if remaining > 0:
+            im.dummy(0.0, remaining)
 
     def _draw_provider_settings(self) -> None:
         if not self.provider_settings_open or self.provider_settings is None:

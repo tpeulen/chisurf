@@ -2,6 +2,13 @@
 
 ## 2026-10-12
 
+- Documentation dock: figures draw and prose reads well (emtk b7b67f4, 3698315). Figures were white boxes because the
+  GPU image atlas was a fixed 1024 px (601 of 980 doc PNGs are wider); it now repacks, grows to 4096 and stores
+  oversize images reduced, and SVG figures load. Prose was glued (glyphs rasterised at a rounded size and each
+  rounded to a pixel); it is now placed at sub-pixel offsets in a proportional `prose` family (Verdana, else DejaVu
+  Sans) beside the Menlo interface. Layout was quadratic in line length (1 s per page frame, now 0.25 s). A sweep
+  opens all 459 doc pages at 800x600 and 1400x900 and checks figures, overflow and overlaps. See
+  [core tools](plugins/core-tools.md).
 - The emtk shell has a boot splash again, as its own frameless, transparent, centred window (emtk 93bc456:
   undecorated/floating/transparent native windows, `unpremultiplied` alpha on Metal, a redraw after an occluded
   frame). It shows the art, progress, stage and log line from the declared `25_emtk_splash.json` stages and

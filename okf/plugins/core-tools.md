@@ -17,6 +17,22 @@ so ChiSurf's own plumbing is packaged as plugins too.
 Two open fronts: the **PTO inspector**'s operation index, and **Global View**
 (see [below](#global-view-the-parameter-network) for what it now is).
 
+### emtk Documentation dock: figures and type (2026-10-12)
+
+What was fixed and how it is held: [Documentation dock rendering](#emtk-documentation-dock-rendering).
+Open front, in order:
+
+1. **New strings untranslated**: `missing: {path}` and `Figure` (help_app) have no de/fr entries
+   yet -- re-extract the catalogues (queued for the i18n batch, not done here by rule).
+2. **Chrome label clipped at 800x600**: the left pane's `Ask Docs` tab and long TOC rows are cut by
+   the pane edge (seen by `clipped_texts` while prototyping the sweep; the sweep itself checks only
+   text inside the reader). Measure: `RealisticDriver(HelpApp(), (800, 600))`, `clipped_texts`.
+3. **Sweep cost**: `test_emtk_doc_render_sweep.py` takes ~5 min (459 pages x 2 sizes, CPU
+   recording painter, 0.25 s/page). It was 2.3 s/page before emtk's linear-time pen positions and
+   off-clip line culling; if it creeps back up, profile `font_render._positions` first.
+4. A subscript Verdana lacks (`₁`, `₀`) comes from the Menlo fallback and is monospace-wide; a
+   proportional fallback with subscripts would set `S₁` tighter. Cosmetic.
+
 ### MMFDB Admin native port (T-20261005-MMFDBEMTK, done 2026-10-06)
 
 `core/mmfdb_admin` opens the native emtk app (`gui/app.py`, manifest
@@ -150,6 +166,42 @@ and the workflow in [Live acquisition](../../docs/guides/65_live_acquisition.md)
 `PhotonSink` is the seam for writing the stream to a `.pto` *during* the
 measurement; it is a `NullSink` today and tracked in [PRD-98](/prds/prd-98.md)
 against the container work.
+
+## emtk Documentation dock rendering
+
+User report 2026-10-12: figures as blank white rectangles, prose that looked glued and thin
+beside the app's own font, captions wrapping narrower than the body, a table row looking cut
+by the toolbar. Causes and fixes (emtk b7b67f4, 3698315; chisurf `gui/help_app.py`):
+
+- **White figures** -- emtk's GPU image atlas was a fixed 1024-texel square that *declined*
+  any wider image (601 of 980 PNGs under `docs/` are wider) or any image once icons and glyphs
+  had filled it, and a declined image is drawn as a rectangle in its (white) tint. The atlas
+  now repacks, grows to 4096 (or the device limit), then stores the image scaled down -- it
+  never declines a real image. The reader also keeps only the open page's figure textures
+  alive (each held texture holds atlas space), resolves a path against the page first
+  (`resolve_figure`), loads SVG through `emtk.svg` at 2x and draws it at its CSS size, and a
+  missing file is a red `missing: <path>` box plus a logged warning.
+- **Glued prose** -- glyphs were rasterised at the em rounded to a whole pixel (10.67 -> 11 px,
+  3 % wider than their advances), rounded to a pixel each, and sampled half a texel inside
+  their box. emtk now rasterises at the exact em at one of four sub-pixel phases, one texel per
+  device pixel, nearest-sampled, one snapped baseline per line.
+- **Font decision** -- prose is set in the new generic family `prose`: Verdana, else DejaVu
+  Sans / Bitstream Vera Sans. The chrome is baked from Menlo (a DejaVu Sans Mono derivative);
+  these are its proportional relatives (same ~0.55 em x-height, screen spacing), so prose and
+  chrome read as one type family at the same body size. The UI monospace for prose was
+  rejected: tables and long paragraphs get much wider and slower to read. Sizes stay on the
+  type scale (body = interface size, caption -1, h1-h4).
+- **Captions** joined into one paragraph (source line breaks were kept as hard breaks);
+  **headings and table header cells** wrap (`im.text_colored` does not -- they ran past the
+  reader at 800 px and into the next column); the reader starts 2 px below the toolbar's rule.
+- `latex_to_unicode` kept the operator before a subscript (`\log_{10}` showed as `₁₀`).
+
+Guards: `chisurf/plugins/core/help/test/test_emtk_doc_render_sweep.py` -- every figure in
+`docs/` loads as a picture (not declined, not flat); every page at 800x600 and 1400x900 has no
+text past the reader's edge, no overlapping text runs, the reader below the toolbar; a missing
+figure is a placeholder + warning; an SVG is drawn at its CSS size. In emtk:
+`tests/test_prose_glyph_placement.py`, `tests/test_gpu_atlas.py`, `tests/test_wgpu_host.py`
+(a 1600 px image is not a white box; a grown atlas reaches the GPU).
 
 ## Documentation review gating
 
