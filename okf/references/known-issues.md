@@ -593,15 +593,24 @@ status: resolved 2026-10-11 — the four defects fixed at their root, each with 
      *assumed* geometry (the labelizer reference's 9/4.5/1.5 → 5/4.5/1.5). Also fixed: the FPS card's Dye Preset
      looked up fps.json keys in a file that spells them `av_*`, so a preset set only the model.
      **Left different on purpose** (open front, in order):
-     1. *QuEST's dye catalogue* (`quest/settings/dye_repository.json`, `quest/project.py`; and the quenching
-        estimator's acceptor placeholder that copies it, `chisurf/plugins/quenching_estimator/gui/app.py`) keeps
-        its per-dye entries with a 0.5 Å linker width (AF488 21.5/0.5/3.5). They are named dyes of another
-        package, not defaults; bringing them in line is a QuEST decision (its golden baselines,
-        `tests/baselines/imp_bff.json`, pin grid 0.5).
-     2. *chimol's IMP.bff AV backend is dead*: it imports `IMP.bff.fret.av`, which no build has, so chimol computes
-        with LabelLib or its numpy fallback (the "IMP.bff.fret does not exist" entry below). Porting it onto
-        `IMP.bff.get_av_from_pdb` would put chimol on the same search; the contact-volume fields need a door
-        there first.
+     1. ~~*QuEST's dye catalogue*~~ — **closed 2026-10-12** (quest bdcf3e8). Generic values read the declaration
+        (`quest.core.av.av_defaults()`/`av1_parameter()`): the project template (dg 0.5 → 0.9, 21.5/0.5/3.5 →
+        20/4.5/3.5), QuEST's chimol-widget placeholder acceptor, `DonorDecay`/`AV` unset arguments, and here the
+        quenching estimator's placeholder acceptor (`chisurf.core.structure.av.av_defaults`, test
+        `test_emtk_quenching_estimator_clicks.py::test_a_placeholder_acceptor_takes_imp_bffs_av_defaults`). The
+        named dyes keep their own L and R; their shared 0.5 Å width was a placeholder and is 4.5 (guard
+        `quest/tests/test_av_defaults.py`). `tests/baselines/imp_bff.json` passes dg/W 0.5 explicitly, so no
+        pinned number moved. QuEST's own AV still cannot run: `quest.core.av` imports `IMP.bff.av.compute`, which
+        no current IMP.bff ships (102 failing/erroring tests before and after; port it as chimol was).
+     2. ~~*chimol's IMP.bff AV backend is dead*~~ — **closed 2026-10-12** (chimol 4bd6a7a). The backend calls
+        `IMP.bff.get_av_from_pdb` on the strip-masked copy (and `get_av_from_structure` when a contact volume is
+        declared), probes that door at discovery, and the auto fallback logs one warning naming why IMP.bff is
+        unusable (`imp_bff_absent_reason()`). fps.json validation had the same dead import
+        (`IMP.bff.fret.fps_schema`) and now uses `IMP.bff.fps_schema_validate`. Guard:
+        `chimol/tests/test_av_backend_imp_bff.py` (IMP.bff computes, with `AV_DEFAULT_*` for omitted parameters).
+        The chimol plugin's `test_av_display.py` contour test asked for Euler 2 — never run while the backend was
+        dead — and an AV at the 0.9 Å grid comes in several pieces (148L E119 Cy5: 3 components); it now asks for
+        a closed (watertight) shell.
      3. imp.bff `resample_legacy` (`space_fixed=False`) keeps its frozen `max(1.5, W/2 + dg/2)` clearance and the
         FPS dye presets (`fps_linker_presets`) their per-dye values; the olga_t4l example fps.json files keep the
         published per-position values.

@@ -32,13 +32,20 @@ def pick_site(session, target: str, chain: str, residue: int) -> str:
         fret = model.project.setdefault("fret", {})
         fret["enabled"] = True
         dyes = fret.setdefault("dyes", [])
+        if len(dyes) < 2:
+            # A placeholder acceptor, not a dye: its AV is IMP.bff's declared AV1 default (it copied QuEst's old
+            # 21.5/0.5/3.5). Imported here, as everything IMP in this module.
+            from chisurf.core.structure.av import av_defaults
+
+            av = av_defaults()
+            placeholder = {k: av[k] for k in ("linker_length", "linker_width", "radius1")}
         while len(dyes) < 2:
             dyes.append(
                 {
                     "name": "acceptor",
                     "D": 7.5,
                     "attachment": dict(site),
-                    "av_parameter": {"linker_length": 21.5, "linker_width": 0.5, "radius1": 3.5},
+                    "av_parameter": dict(placeholder),
                 }
             )
         dyes[1]["attachment"] = dict(site)

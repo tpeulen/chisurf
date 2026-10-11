@@ -66,12 +66,23 @@ def session(qapp):
     win.close()
 
 
-def _euler(verts: np.ndarray, faces: np.ndarray) -> int:
-    edges = set()
+def _open_edges(faces: np.ndarray) -> int:
+    """How many edges of a triangle mesh are not shared by exactly two faces.
+
+    Zero is what "closed" means. This test used to ask for Euler
+    characteristic 2 -- a single sphere-like shell -- which is a statement
+    about the AV's *shape*, not about the contour: an accessible volume at the
+    0.9 A default grid wraps side chains and comes in several pieces (148L
+    E119 Cy5 through IMP.bff: 3 components, Euler -4 on the binary grid;
+    LabelLib: Euler -28). The assertion never ran against IMP.bff while the
+    backend's import was broken, so it was never confronted with that.
+    """
+    counts: dict = {}
     for a, b, c in faces:
         for one, two in ((a, b), (b, c), (c, a)):
-            edges.add((min(one, two), max(one, two)))
-    return int(verts.shape[0] - len(edges) + faces.shape[0])
+            key = (min(one, two), max(one, two))
+            counts[key] = counts.get(key, 0) + 1
+    return sum(1 for n in counts.values() if n != 2)
 
 
 def _av_entry(viewer):
@@ -147,7 +158,7 @@ def test_the_contour_is_closed_and_centered_on_the_cloud(session):
     verts = np.asarray(shell.geometry.positions)
     faces = np.asarray(shell.geometry.indices)
     assert faces.shape[0] > 100
-    assert _euler(verts, faces) == 2, "the shell is not closed"
+    assert _open_edges(faces) == 0, "the shell is not closed"
     assert shell.render_mode == "transparent"
 
     # Centered on its own cloud: the axis-swapped grid landed 11.5 A off.

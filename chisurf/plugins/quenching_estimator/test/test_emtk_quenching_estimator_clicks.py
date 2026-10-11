@@ -124,6 +124,31 @@ def test_pick_donor_and_acceptor_residues_by_clicking_the_list(app, pdb):
     assert app.session.message == "Selected acceptor: E:5"
 
 
+def test_a_placeholder_acceptor_takes_imp_bffs_av_defaults():
+    """Owner, 2026-10-11: "all use same defaults". The acceptor ``pick_site``
+    invents when the project has none is a placeholder, not a dye, so its AV is
+    IMP.bff's declared AV1 default (it was QuEst's old 21.5/0.5/3.5)."""
+    import types
+
+    bff = pytest.importorskip("IMP.bff")
+    from chisurf.plugins.quenching_estimator.gui.app import pick_site
+
+    said = []
+    session = types.SimpleNamespace(
+        model=types.SimpleNamespace(project={}), structure=None, say=said.append
+    )
+    pick_site(session, "acceptor", "A", 7)
+    dyes = session.model.project["fret"]["dyes"]
+    assert len(dyes) == 2
+    for dye in dyes:
+        assert dye["av_parameter"] == {
+            "linker_length": bff.AV_DEFAULT_LINKER_LENGTH,
+            "linker_width": bff.AV_DEFAULT_LINKER_WIDTH,
+            "radius1": bff.AV_DEFAULT_RADIUS1,
+        }
+    assert dyes[1]["attachment"]["residue"] == 7
+
+
 def test_open_web_ui_opens_the_local_interface(app, monkeypatch):
     import webbrowser
 

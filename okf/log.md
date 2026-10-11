@@ -2,6 +2,11 @@
 
 ## 2026-10-12
 
+- AV follow-ups: chimol's IMP.bff backend imported a module that does not exist and silently fell back; it now
+  computes AVs with IMP.bff (chimol 4bd6a7a; a missing IMP.bff warns with the reason). QuEST's placeholder dyes and
+  ChiSurf's quenching-estimator acceptor take IMP.bff's AV defaults (QuEST bdcf3e8, local). IMP.bff f95ddaa1a..0a61ee263:
+  a shared slow radius over several centres read as zeros (fixed), stale AV tests follow the API, dictionary 1.11.
+  Open: QuEST's AV and quenching code imports retired IMP.bff modules. See [known issues](references/known-issues.md).
 - Every emtk plot has the "A" auto-range button (emtk aea9d8b, `emtk/widgets/auto_range.py`): shown in the plot's
   lower-left while an axis is panned, zoomed or set; a click refits every axis and hides it. implot and chiplot's
   emtk canvas share it; opt out with `Plot.set_auto_range_button(False)` / `implot.FLAGS_NO_AUTO_RANGE_BUTTON`.
