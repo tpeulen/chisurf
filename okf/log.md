@@ -2,6 +2,12 @@
 
 ## 2026-10-12
 
+- A right-click menu no longer swallows every later click (emtk af31641). In ndX, highlighting the *Send selection
+  to* submenu row raised (a submenu had no tooltip); the error escaped the overlay pass before its input hold was
+  released, so ndX held the pointer forever and docks drawn after it went blank. emtk now closes a popup that
+  raises, always restores the outer frame, and `overlays.dismiss` closes a hosted child's menu when the press goes
+  elsewhere (the shell calls it). Long menu rows are capped with the full text as tooltip, and plot menus stay
+  inside the window. The click-all sweep gained a context-menu phase over all 123 tools.
 - Documentation dock: figures draw and prose reads well (emtk b7b67f4, 3698315). Figures were white boxes because the
   GPU image atlas was a fixed 1024 px (601 of 980 doc PNGs are wider); it now repacks, grows to 4096 and stores
   oversize images reduced, and SVG figures load. Prose was glued (glyphs rasterised at a rounded size and each

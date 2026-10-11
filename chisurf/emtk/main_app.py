@@ -43,7 +43,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-from emtk import accents, im
+from emtk import accents, im, overlays
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
 from emtk.i18n import tr
@@ -948,6 +948,12 @@ class EmtkShellApp(ImApp):
             return  # a question is open: a press beside it does nothing (it is modal)
         target = self._plugin_at(x, y)
         self._capture = target
+        # A press outside a child never reaches it, so it cannot see the press that closes its context menu
+        # or list; it is told here. Otherwise the menu stays up and holds the child's input until a click
+        # inside it closes the menu instead of landing where it was aimed.
+        for child_id, (_window_key, child, _box) in self._drawn.items():
+            if child_id != target:
+                overlays.dismiss(getattr(child, "storage", None))
         if target is not None:
             self._focus = target
         elif not self._menu_open:
