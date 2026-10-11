@@ -840,15 +840,25 @@ class ChiSurfAPI:
             max_draws=max_draws,
         )
 
-    def run_fit(self, fit_index: int | None = None, fit_uid: str | None = None) -> dict[str, Any]:
+    def run_fit(
+        self,
+        fit_index: int | None = None,
+        fit_uid: str | None = None,
+        local_first: bool | None = None,
+    ) -> dict[str, Any]:
+        """Run a fit; *local_first* fits a group's members one by one before the global step."""
         if self.mode == "server" and self.client is not None:
-            return self.client.fit__run(fit_index=fit_index, fit_uid=fit_uid)
+            extra = {} if local_first is None else {"local_first": bool(local_first)}
+            return self.client.fit__run(fit_index=fit_index, fit_uid=fit_uid, **extra)
         fit, idx = _local_fit(fit_index, fit_uid)
         if fit is None:
             return {"ok": False, "error": "fit not found"}
         try:
             chi2_before = _safe_chi2(fit)
-            fit.run()
+            if local_first is not None and getattr(fit, "grouped_fits", None) is not None:
+                fit.run(local_first=bool(local_first))
+            else:
+                fit.run()
             chi2_after = _safe_chi2(fit)
             return {
                 "ok": True,
@@ -967,6 +977,126 @@ class ChiSurfAPI:
         from chisurf.server.services.fits import fit_set_fit_range
 
         return fit_set_fit_range(self._state, fit_index, fit_uid, int(xmin), int(xmax))
+
+    def _fit_call(self, rpc: str, service: str, **params: Any) -> Any:
+        """One fit RPC: over the client in ``server`` mode, the service on this state otherwise."""
+        if self.mode == "server" and self.client is not None:
+            return getattr(self.client, rpc)(**params)
+        from chisurf.server.services import fits as svc
+
+        return getattr(svc, service)(self._state, **params)
+
+    def set_fit_dataset(
+        self, dataset_uid: str, fit_uid: str | None = None, fit_index: int | None = None
+    ) -> dict[str, Any]:
+        """Attach the dataset *dataset_uid* to the fit (the controller's ``…``)."""
+        return self._fit_call(
+            "fit__set_dataset",
+            "fit_set_dataset",
+            fit_index=fit_index,
+            fit_uid=fit_uid,
+            dataset_uid=dataset_uid,
+        )
+
+    def set_fit_result_idx(
+        self, result_idx: int, fit_uid: str | None = None, fit_index: int | None = None
+    ) -> dict[str, Any]:
+        """Show stored result *result_idx* (0-based) of the fit."""
+        return self._fit_call(
+            "fit__set_result_idx",
+            "fit_set_result_idx",
+            fit_index=fit_index,
+            fit_uid=fit_uid,
+            result_idx=int(result_idx),
+        )
+
+    def auto_fit_range(self, fit_uid: str | None = None, fit_index: int | None = None) -> Any:
+        """Set the fit range from the data (the reader's ``autofitrange``); returns it."""
+        return self._fit_call("fit__range_auto", "fit_range_auto", fit_index=fit_index, fit_uid=fit_uid)
+
+    def set_fit_grid_range(
+        self,
+        x0: int,
+        x1: int,
+        y0: int,
+        y1: int,
+        fit_uid: str | None = None,
+        fit_index: int | None = None,
+    ) -> dict[str, Any]:
+        """Fit only the rectangle ``x0..x1`` × ``y0..y1`` of a 2-D grid dataset."""
+        return self._fit_call(
+            "fit__set_grid_range",
+            "fit_set_grid_range",
+            x0=int(x0),
+            x1=int(x1),
+            y0=int(y0),
+            y1=int(y1),
+            fit_index=fit_index,
+            fit_uid=fit_uid,
+        )
+
+    def model_search_available(self, fit_uid: str | None = None, fit_index: int | None = None) -> bool:
+        """Whether BFF can search the fit's model structure."""
+        result = self._fit_call(
+            "fit__model_search_available",
+            "fit_model_search_available",
+            fit_index=fit_index,
+            fit_uid=fit_uid,
+        )
+        return bool(result.get("available")) if isinstance(result, dict) else bool(result)
+
+    def model_search(
+        self,
+        fit_uid: str | None = None,
+        fit_index: int | None = None,
+        search_fit_settings: bool = False,
+    ) -> dict[str, Any]:
+        """Search the model structure (MCTS) and apply the winner; see ``fit.model_search``."""
+        return self._fit_call(
+            "fit__model_search",
+            "fit_model_search",
+            fit_index=fit_index,
+            fit_uid=fit_uid,
+            search_fit_settings=bool(search_fit_settings),
+        )
+
+    def start_sampling(
+        self,
+        target_directory: str,
+        fit_uid: str | None = None,
+        fit_index: int | None = None,
+        n_steps: int = 1000,
+        n_runs: int = 1,
+        **settings: Any,
+    ) -> dict[str, Any]:
+        """Start sampling the fit's posterior into *target_directory*; returns ``job_id``."""
+        return self._fit_call(
+            "fit__sample_start",
+            "fit_sample_start",
+            fit_index=fit_index,
+            fit_uid=fit_uid,
+            n_steps=int(n_steps),
+            n_runs=int(n_runs),
+            target_directory=str(target_directory),
+            **settings,
+        )
+
+    def sampling_status(self, job_id: str) -> dict[str, Any]:
+        """Status, progress and convergence of a sampling job."""
+        return self._fit_call("fit__sample_status", "fit_sample_status", job_id=str(job_id))
+
+    def cancel_sampling(self, job_id: str) -> dict[str, Any]:
+        """Ask a sampling job to stop."""
+        return self._fit_call("fit__sample_cancel", "fit_sample_cancel", job_id=str(job_id))
+
+    def select_group_member(self, member_index: int, fit_uid: str) -> dict[str, Any]:
+        """Make member *member_index* of the fit group the one the fit shows and edits."""
+        return self._fit_call(
+            "fit__group_select_member",
+            "fit_group_select_member",
+            fit_uid=fit_uid,
+            member_index=int(member_index),
+        )
 
     # ── parameters ────────────────────────────────────────────────
 
@@ -1118,6 +1248,181 @@ class ChiSurfAPI:
             return {"ok": True}
         except Exception as e:
             return {"ok": False, "error": str(e)}
+
+    def edit_parameter(
+        self,
+        parameter_uid: str,
+        *,
+        fit_uid: str | None = None,
+        parameter_name: str = "",
+        value: float | None = None,
+        fixed: bool | None = None,
+        bounds: tuple | None = None,
+        bounds_on: bool | None = None,
+    ) -> dict[str, Any]:
+        """Change one parameter addressed by its unique identifier.
+
+        A model editor lists parameters of several groups, and names repeat
+        across groups (each diffusion preset has its own ``N``), so an editor
+        addresses a parameter by its uid. Each given field is one
+        ``parameter.*`` call, in the order value, fixed, bounds, bounds_on;
+        the first failure is returned.
+
+        Parameters
+        ----------
+        parameter_uid : str
+            The parameter's ``unique_identifier`` (the ``uid`` of an editor or fit DTO row).
+        fit_uid : str, optional
+            The fit owning the parameter; its model is updated after the change.
+        parameter_name : str
+            The name, for messages only.
+        value, fixed, bounds, bounds_on : optional
+            The fields to set; ``None`` leaves a field as it is.
+
+        Returns
+        -------
+        dict
+            ``{"ok": True}`` or the first error result.
+        """
+        from chisurf.server.services import parameters as svc
+
+        changes = []
+        if value is not None:
+            changes.append(("set_value", "value", float(value)))
+        if fixed is not None:
+            changes.append(("set_fixed", "fixed", bool(fixed)))
+        if bounds is not None:
+            changes.append(("set_bounds", "bounds", tuple(bounds)))
+        if bounds_on is not None:
+            changes.append(("set_bounds_on", "bounds_on", bool(bounds_on)))
+        result: dict[str, Any] = {"ok": True}
+        for rpc, key, field_value in changes:
+            address = {
+                "parameter_name": str(parameter_name or ""),
+                "parameter_uid": str(parameter_uid),
+                "owner_uid": fit_uid,
+                "fit_uid": fit_uid,
+            }
+            if self.mode == "server" and self.client is not None:
+                method = getattr(self.client, f"parameter__{rpc}")
+                if key == "bounds":
+                    result = method(lower=field_value[0], upper=field_value[1], **address)
+                else:
+                    result = method(**{key: field_value}, **address)
+            else:
+                service = getattr(svc, f"{rpc.replace('set_', 'set_parameter_')}")
+                result = service(self._state, **{key: field_value}, **address)
+            if isinstance(result, dict) and result.get("ok") is False:
+                return result
+        return result
+
+    # ── model editor ──────────────────────────────────────────────
+
+    def model_editor(self, fit_uid: str | None = None, fit_index: int | None = None) -> Any:
+        """The fit's model editor: its ``view.json`` resolved against the model, as data.
+
+        See :func:`chisurf.server.services.model_svc.model_editor`. Returns the
+        editor dict, ``None`` for a model without a view spec, or an error result.
+        """
+        if self.mode == "server" and self.client is not None:
+            return self.client.model__editor(fit_index=fit_index, fit_uid=fit_uid)
+        from chisurf.server.services.model_svc import model_editor
+
+        result = model_editor(self._state, fit_index, fit_uid)
+        return result.get("editor") if result.get("ok") else result
+
+    def model_action(
+        self, action: str, fit_uid: str | None = None, fit_index: int | None = None
+    ) -> dict[str, Any]:
+        """Press a button of the model's editor (an ``action`` its ``view.json`` declares)."""
+        if self.mode == "server" and self.client is not None:
+            return self.client.model__action(action=action, fit_index=fit_index, fit_uid=fit_uid)
+        from chisurf.server.services.model_svc import model_action
+
+        return model_action(self._state, action, fit_index, fit_uid)
+
+    def model_code_files(
+        self, fit_uid: str | None = None, fit_index: int | None = None
+    ) -> dict[str, Any]:
+        """The model's source, its ``view.json`` and the files of its folder (the Code face's)."""
+        if self.mode == "server" and self.client is not None:
+            return self.client.model__code_files(fit_index=fit_index, fit_uid=fit_uid)
+        from chisurf.server.services.model_svc import model_code_files
+
+        return model_code_files(self._state, fit_index, fit_uid)
+
+    def model_code_apply(
+        self, path: str, code: str, fit_uid: str | None = None, fit_index: int | None = None
+    ) -> dict[str, Any]:
+        """Save an edit of a model file and apply it to the fit (its module re-executed)."""
+        if self.mode == "server" and self.client is not None:
+            return self.client.model__code_apply(
+                path=str(path), code=str(code), fit_index=fit_index, fit_uid=fit_uid
+            )
+        from chisurf.server.services.model_svc import model_code_apply
+
+        return model_code_apply(self._state, str(path), str(code), fit_index, fit_uid)
+
+    def model_state_get(
+        self, fit_uid: str | None = None, fit_index: int | None = None
+    ) -> dict[str, Any]:
+        """The model's JSON-safe state, including what its editor's controls bind."""
+        if self.mode == "server" and self.client is not None:
+            return self.client.model__state_get(fit_index=fit_index, fit_uid=fit_uid)
+        from chisurf.server.services.model_svc import model_state_get
+
+        return model_state_get(self._state, fit_index, fit_uid)
+
+    def model_state_set(
+        self, state_data: dict[str, Any], fit_uid: str | None = None, fit_index: int | None = None
+    ) -> dict[str, Any]:
+        """Set model state: the allow-listed attributes and the controls its ``view.json`` binds."""
+        if self.mode == "server" and self.client is not None:
+            return self.client.model__state_set(
+                state_data=dict(state_data), fit_index=fit_index, fit_uid=fit_uid
+            )
+        from chisurf.server.services.model_svc import model_state_set
+
+        return model_state_set(self._state, dict(state_data), fit_index, fit_uid)
+
+    def model_component_add(
+        self, target: str, fit_uid: str | None = None, fit_index: int | None = None
+    ) -> dict[str, Any]:
+        """Add a component to the editor's component group *target* (its ``dynamic_group``)."""
+        if self.mode == "server" and self.client is not None:
+            return self.client.model__component_add(
+                target=target, fit_index=fit_index, fit_uid=fit_uid
+            )
+        from chisurf.server.services.model_svc import model_component_add
+
+        return model_component_add(
+            self._state, fit_index=fit_index, fit_uid=fit_uid, target=target
+        )
+
+    def model_component_remove(
+        self,
+        target: str,
+        component_index: int = -1,
+        fit_uid: str | None = None,
+        fit_index: int | None = None,
+    ) -> dict[str, Any]:
+        """Remove component *component_index* (``-1``: the last) of the group *target*."""
+        if self.mode == "server" and self.client is not None:
+            return self.client.model__component_remove(
+                component_index=int(component_index),
+                target=target,
+                fit_index=fit_index,
+                fit_uid=fit_uid,
+            )
+        from chisurf.server.services.model_svc import model_component_remove
+
+        return model_component_remove(
+            self._state,
+            int(component_index),
+            fit_index=fit_index,
+            fit_uid=fit_uid,
+            target=target,
+        )
 
     # ── projects ──────────────────────────────────────────────────
 

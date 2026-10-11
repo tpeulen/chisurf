@@ -1,0 +1,6 @@
+{
+  "_comment": "Settings of the global-fit pseudo-reader (GlobalFitSetup): it reads nothing and has no settings.",
+  "sections": [
+    {"type": "info", "text": "The global-fit dataset holds no data: a global fit on it combines the fits of other datasets. No settings."}
+  ]
+}

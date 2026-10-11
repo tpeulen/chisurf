@@ -4,7 +4,13 @@ title: µs-ALEX — alternating excitation, and the titration it enables
 description: What microsecond alternating-laser excitation measures, why folding the alternation into the micro-time turns it into ordinary PIE data, and how a concentration series of FRET histograms yields a binding constant.
 tags: [concepts, fret, alex]
 anchor: concept-us-alex
-sources: '[{''text'': ''Derived in part from the English Wikipedia article "Hill equation (biochemistry)"'', ''url'': ''https://en.wikipedia.org/wiki/Hill_equation_(biochemistry)'', ''licence'': ''CC-BY-SA-4.0''}, {''text'': ''Derived in part from the English Wikipedia article "Dissociation constant"'', ''url'': ''https://en.wikipedia.org/wiki/Dissociation_constant'', ''licence'': ''CC-BY-SA-4.0''}]'
+sources:
+  - text: 'Derived in part from the English Wikipedia article "Hill equation (biochemistry)"'
+    url: https://en.wikipedia.org/wiki/Hill_equation_(biochemistry)
+    licence: CC-BY-SA-4.0
+  - text: 'Derived in part from the English Wikipedia article "Dissociation constant"'
+    url: https://en.wikipedia.org/wiki/Dissociation_constant
+    licence: CC-BY-SA-4.0
 ---
 
 (concept-us-alex)=

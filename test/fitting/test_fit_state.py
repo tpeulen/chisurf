@@ -261,7 +261,12 @@ def test_pda_probch0_length_preserved_via_model_state():
         """The model's state logic without its data dependency."""
 
         def __init__(self):
+            from chisurf.core.models.pda2c.common import resolve_fit_settings
+
             self.pch0 = pda_simple_mod.ProbCh0(name="pch0")
+            # What the real constructor gives every PDA model; its state carries them.
+            self.fit_settings = resolve_fit_settings(None, None)
+            self.residual_mode = "1D"
 
     m1 = _DetachedPdaModel()
     m1.pch0.append(amplitude=1.0, pch0=0.2)

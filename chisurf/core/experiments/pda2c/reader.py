@@ -79,6 +79,9 @@ class Pda2cReader(ExperimentReader):
         ... )  # doctest: +SKIP
     """
 
+    #: A measurement file: the MMFDB sample it is of is asked after it is chosen.
+    asks_sample = True
+
     def __init__(
         self,
         channels: typing.Tuple[typing.List[int], typing.List[int]],

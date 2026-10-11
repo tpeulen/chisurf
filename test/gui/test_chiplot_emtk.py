@@ -678,3 +678,23 @@ def test_a_log_axis_fits_only_the_positive_samples(plot):
     _paint(plot)
     low, high = plot._canvas._drawn["y"]
     assert low < 0.0 < 3.0 < high and high - low < 3.5
+
+
+def test_a_region_from_zero_on_a_log_axis_reaches_the_edge(plot):
+    """A correlation curve's fit range starts at lag 0: on a log x axis that bound is −∞.
+
+    The region used to be filled with an infinite rectangle, which a pixel painter
+    cannot fill (``OverflowError``) -- the whole fit window then failed to draw.
+    It reaches the plot's left edge instead.
+    """
+    from emtk.testing import PixelPainter
+
+    x = np.logspace(-3, 3, 64)
+    plot.line(np.concatenate([[0.0], x]), np.concatenate([[1.5], 1.0 + 0.5 / (1.0 + x)]), name="g")
+    plot.set_log(x=True)
+    region = plot.region((0.0, 100.0))
+    painter = PixelPainter(300, 200)
+    plot._canvas.draw(painter, 0.0, 0.0, 300.0, 200.0)
+    left, right = region.native["_pixels"]
+    assert np.isfinite(left) and np.isfinite(right) and left < right
+    assert 0.0 <= left < 100.0, "the region runs from the plot area's left edge"

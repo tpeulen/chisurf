@@ -711,12 +711,22 @@ def dataset_group(
             remaining.append(d)
 
     try:
-        from chisurf.core.data import ExperimentDataGroup
+        from chisurf.core.data import (
+            DataCurve,
+            DataGroup,
+            ExperimentDataCurveGroup,
+            ExperimentDataGroup,
+        )
 
-        group = ExperimentDataGroup()
-        group.name = str(group_name or "Data-Group")
-        for ds in selected:
-            group.append(ds)
+        # ``ExperimentDataGroup()`` without its sequence raised, so grouping over
+        # RPC never worked. A fit over the group gets one member per curve, so the
+        # curves of each one-file group are what is grouped, as the local macro does.
+        curves = [c for d in selected for c in (d if isinstance(d, DataGroup) else [d])]
+        name = str(group_name or "Data-Group")
+        if curves and all(isinstance(c, DataCurve) for c in curves):
+            group = ExperimentDataCurveGroup(curves, name=name)
+        else:
+            group = ExperimentDataGroup(selected, name=name)
         remaining.append(group)
         state.datasets[:] = remaining
         return {

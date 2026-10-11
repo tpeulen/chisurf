@@ -59,6 +59,8 @@ class FitWindow:
         self.names: list[str] = []
         #: The content box drawn into on the last frame (canvas coordinates).
         self.box: tuple[float, float, float, float] | None = None
+        #: The Code face (the model's source and ``view.json``), made when first shown.
+        self.code_face: Any = None
         self._stale: set[int] = set()
         for index, (plot_class, _options) in enumerate(self.specs):
             name = getattr(plot_class, "name", None)
@@ -131,6 +133,41 @@ class FitWindow:
                 except Exception:  # noqa: BLE001 - a page that fails to read keeps its last curves
                     _log.exception("updating the %s page failed", self.names[index])
         self.surface.request_frame()
+
+    # -- the Code face ------------------------------------------------------------ #
+    def code_shown(self) -> bool:
+        """Whether the window shows the model's code instead of its plots."""
+        return bool(getattr(self.surface, "show_code", False))
+
+    def show_code(
+        self,
+        shown: bool,
+        files: dict | None = None,
+        on_apply: Callable[[str, str], Any] | None = None,
+    ) -> None:
+        """Turn the window over: the model's code (*files* from ``model.code.files``) or the plots.
+
+        *on_apply(path, text)* saves and applies an edit; the Qt fit window's
+        ``FitCodeFace`` is drawn on the same surface.
+        """
+        if shown and self.code_face is None:
+            from chisurf.gui.widgets.fitting.fit_code_face import FitCodeFace
+
+            self.code_face = FitCodeFace(on_apply=on_apply)
+            self.surface.code_face = self.code_face
+            self.code_face.request_frame = self.surface.request_frame
+        if shown and files:
+            face = self.code_face
+            face.set_files(list(files.get("files") or []))
+            view_spec = files.get("view_spec")
+            if view_spec and face.find_document(str(view_spec)) < 0:
+                face.open_file(str(view_spec), record=False)
+            if files.get("source"):
+                face.open_file(str(files["source"]))
+        self.surface.show_code = bool(shown)
+        self.surface.request_frame()
+        if self.request_frame is not None:
+            self.request_frame()
 
     def _page_changed(self, index: int) -> None:
         self.page(index)

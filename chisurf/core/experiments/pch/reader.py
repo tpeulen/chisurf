@@ -21,6 +21,9 @@ class PCHReader(ExperimentReader):
     experimental P(k) together with rich metadata.
     """
 
+    #: A measurement file: the MMFDB sample it is of is asked after it is chosen.
+    asks_sample = True
+
     operation_type = "pch_histogram_computation"
     artifact_kind_source = "raw_data"
     artifact_kind_derived = "pch_histogram"

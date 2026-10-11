@@ -42,6 +42,9 @@ class FCS(ExperimentReader):
     ('demo', 'csv', 2)
     """
 
+    #: A measurement file: the MMFDB sample it is of is asked after it is chosen.
+    asks_sample = True
+
     operation_type = "fcs_correlation_load"
     artifact_kind_source = "raw_data"
     artifact_kind_derived = "fcs_correlation"

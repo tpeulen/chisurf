@@ -72,6 +72,9 @@ class ExperimentReader(chisurf.core.base.Base):
     """
 
     operation_type: str = "measurement_import"
+    #: Whether a file chosen for this reader is followed by the question which
+    #: MMFDB sample it is of (stored as :attr:`sample_id`).
+    asks_sample: bool = False
     artifact_kind_source: str = "raw_data"
     artifact_kind_derived: str = "processed_data"
     derived_data_format: str = "json"

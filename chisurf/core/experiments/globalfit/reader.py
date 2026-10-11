@@ -28,6 +28,14 @@ class GlobalFitSetup(ExperimentReader):
         """
         return 0, 0
 
+    def view_spec(self):
+        """Return the declarative settings of this reader (``globalfit_reader.view.json``)."""
+        import pathlib
+
+        from chisurf.core.dataspec import load_view_spec
+
+        return load_view_spec(pathlib.Path(__file__).with_name("globalfit_reader.view.json"))
+
     def read(self, name: str = "Global-fit", *args, **kwargs):
         """Create a placeholder data curve for global fitting.
 

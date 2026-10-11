@@ -188,6 +188,10 @@ class ReaderSettingsApp(ImApp):
         self.g_factor_factory = g_factor_factory
         self._input_selected: Any = None
         self.spec = native_reader_spec(reader.view_spec())
+        from chisurf.emtk.detector_cascade import register as register_photon_sections
+
+        # The photon-stream readers' detector cascade and ROI, drawn natively.
+        register_photon_sections(reader, self.form)
         register = getattr(reader, "register_settings_sections", None)
         if callable(register):
             register(self.form)
@@ -394,3 +398,20 @@ class ReaderSettingsApp(ImApp):
             self.picker.close()
         self.file_dialog = None
         self.form.custom.clear()
+
+
+def reader_settings_app(reader: Any, *, context: Any = None) -> ReaderSettingsApp:
+    """The native settings app for *reader*: its own frontend where it has one, else the form.
+
+    The TCSPC simulator previews and adds its simulation itself
+    (:class:`chisurf.emtk.tcspc_simulator.SimulatorSettingsApp`, over *context* --
+    an object with ``load_dataset(experiment_reader=..., dataset=...)``, the
+    shell's API); every other reader is its declared form.
+    """
+    from chisurf.core.experiments.tcspc.simulator import TCSPCSimulatorSetup
+
+    if isinstance(reader, TCSPCSimulatorSetup) and context is not None:
+        from chisurf.emtk.tcspc_simulator import SimulatorSettingsApp
+
+        return SimulatorSettingsApp(reader, context=context)
+    return ReaderSettingsApp(reader)

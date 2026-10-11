@@ -288,7 +288,7 @@ METHOD_PARAM_SCHEMAS = {
     },
     "fit.run": {
         "required_params": [],
-        "optional_params": ["fit_index", "fit_uid"],
+        "optional_params": ["fit_index", "fit_uid", "local_first"],
         "result": "FitRunResult",
     },
     "fit.remove": {

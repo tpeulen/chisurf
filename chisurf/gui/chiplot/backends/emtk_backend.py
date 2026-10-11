@@ -304,6 +304,20 @@ def _texture(data: np.ndarray, colormap, levels) -> tuple[Any, int, int]:
 LOG_AUTOSCALE_DECADES = 12.0
 
 
+
+def _on_screen(pixel: float, start: float, size: float) -> float:
+    """A pixel coordinate kept on the plot area's edge when the axis sends it off to infinity.
+
+    A region bound of 0 on a log axis (a fit range starting at the first lag of
+    a correlation curve) maps to −∞; the region then reaches the left edge, it
+    does not stop being drawn -- and an infinite rectangle is not something a
+    painter can fill.
+    """
+    pixel = float(pixel)
+    if pixel != pixel:  # NaN: the bound is meaningless here; sit on the near edge
+        return float(start)
+    return min(max(pixel, float(start) - 1.0), float(start) + float(size) + 1.0)
+
 class _Entry:
     """One item in a canvas's display list, and the handle the caller holds."""
 
@@ -1074,13 +1088,17 @@ class EmtkCanvas(base.Canvas):
             fill = entry.state.get("brush", (70, 110, 160, 50))
             edge = (*fill[:3], 220)
             if entry.state.get("orientation") == "horizontal":
-                upper, lower = sorted((plot._y_axis.to_pixels(low), plot._y_axis.to_pixels(high)))
+                upper, lower = sorted(
+                    _on_screen(plot._y_axis.to_pixels(v), plot.y, plot.h) for v in (low, high)
+                )
                 painter.fill_rect(plot.x, upper, plot.w, lower - upper, fill)
                 for at in (upper, lower):
                     painter.fill_rect(plot.x, at - 0.75, plot.w, 1.5, edge)
                 entry.state["_pixels"] = (upper, lower)
                 continue
-            left, right = sorted((plot._x_axis.to_pixels(low), plot._x_axis.to_pixels(high)))
+            left, right = sorted(
+                _on_screen(plot._x_axis.to_pixels(v), plot.x, plot.w) for v in (low, high)
+            )
             painter.fill_rect(left, top, right - left, height, fill)
             for at in (left, right):
                 painter.fill_rect(at - 0.75, top, 1.5, height, edge)

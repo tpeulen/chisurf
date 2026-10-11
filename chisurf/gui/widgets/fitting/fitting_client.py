@@ -422,6 +422,7 @@ class FittingClient:
         self,
         fit_uid: str | None = None,
         fit_index: int | None = None,
+        local_first: bool | None = None,
     ) -> dict[str, Any]:
         """Run a fit, in this process when the server is in this process.
 
@@ -446,6 +447,8 @@ class FittingClient:
             params["fit_uid"] = fit_uid
         if fit_index is not None:
             params["fit_index"] = fit_index
+        if local_first is not None:
+            params["local_first"] = bool(local_first)
 
         dispatcher = self._embedded_dispatcher()
         if dispatcher is not None:

@@ -1,0 +1,11 @@
+{
+  "_comment": "Settings of the DEER reader (DeerReader): how a 4-pulse DEER trace is prepared on reading.",
+  "sections": [
+    {"type": "toggle", "attr": "phase_correction", "label": "Phase correction",
+     "description": "Rotate a complex trace by its zero-order phase so the signal lies in the real part."},
+    {"type": "toggle", "attr": "normalize", "label": "Normalise",
+     "description": "Scale the trace to one at zero time."},
+    {"type": "value", "attr": "exp_type", "kind": "str", "label": "Experiment",
+     "description": "Label of the DEER experiment (e.g. 4pDEER), stored in the dataset's metadata."}
+  ]
+}

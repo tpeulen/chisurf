@@ -212,6 +212,10 @@ def _collect_member_list(fit: Any) -> list[dict[str, Any]]:
     if not grouped:
         return []
     members: list[dict[str, Any]] = []
+    try:
+        selected = int(getattr(fit, "selected_fit_index", 0) or 0)
+    except Exception:  # noqa: BLE001
+        selected = 0
     for idx, member in enumerate(grouped):
         member_uid = str(getattr(member, "unique_identifier", "") or "")
         members.append(
@@ -219,6 +223,8 @@ def _collect_member_list(fit: Any) -> list[dict[str, Any]]:
                 "local_idx": idx,
                 "uid": member_uid,
                 "name": str(getattr(member, "name", "") or f"fit {idx}"),
+                "dataset_name": str(getattr(getattr(member, "data", None), "name", "") or ""),
+                "selected": idx == selected,
                 "parameters_all": _collect_param_list(member, fit_uid=member_uid),
             }
         )

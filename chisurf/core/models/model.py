@@ -467,8 +467,15 @@ class ModelCurve(Model, chisurf.core.curve.Curve):
         """Set the abscissa array of the model curve.
 
         The storage is write-locked (see :class:`chisurf.core.curve.NCurve`), so
-        the axis write happens inside the curve's own unlock context.
+        the axis write happens inside the curve's own unlock context. An axis of
+        another length -- the fit was given data of another length -- replaces
+        the storage (its values start at zero) instead of failing to broadcast
+        into the old one.
         """
+        v = np.asarray(v, dtype=np.float64)
+        if v.shape != self.__dict__["d"][0].shape:
+            self.d = np.vstack([v, np.zeros_like(v)])
+            return
         with self.unlocked("d"):
             self.__dict__["d"][0] = v
 

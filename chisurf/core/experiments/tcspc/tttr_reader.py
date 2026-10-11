@@ -15,6 +15,9 @@ _VIEW_JSON = pathlib.Path(__file__).parent / "tcspc_tttr.view.json"
 
 
 class TCSPCTTTRReader(TCSPCReader):
+    #: A measurement file: the MMFDB sample it is of is asked after it is chosen.
+    asks_sample = True
+
     operation_type = "tcspc_histogram_computation"
     artifact_kind_source = "raw_data"
     artifact_kind_derived = "tcspc_decay"

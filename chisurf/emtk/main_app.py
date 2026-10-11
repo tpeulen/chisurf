@@ -440,7 +440,7 @@ class EmtkShellApp(ImApp):
 
     def _plugin_at(self, x: float, y: float) -> str | None:
         """The child whose drawn content is on top at (x, y): floating windows front to back, then docked tabs."""
-        if self._menu_open or self.data.file_dialog is not None:
+        if self._menu_open or self.data.modal_open:
             return None
         order = list(reversed(self.docks.floating()))
         order += [self.docks.active_tab(region) for region in self.docks.regions]

@@ -155,6 +155,29 @@ def list_fits(state: SessionState) -> ServiceResult:
     }
 
 
+def _safe_results(fit: Any) -> dict[str, int]:
+    """How many results the fit stores and which one is shown (``0`` when none)."""
+    try:
+        results = list(getattr(fit, "results", None) or [])
+        current = int(getattr(fit, "_result_current", 0) or 0)
+    except Exception:  # noqa: BLE001 - a group without a selected member has none
+        results, current = [], 0
+    return {"n_results": len(results), "result_idx": current if results else 0}
+
+
+def _safe_grid_shape(fit: Any) -> list[int] | None:
+    """``[ny, nx]`` of a fit whose data is a 2-D grid (``meta_data['grid']``), else ``None``."""
+    try:
+        grid = (getattr(getattr(fit, "data", None), "meta_data", None) or {}).get("grid") or {}
+        if int(grid.get("ndim", 1)) == 2 and grid.get("shape") is not None:
+            ny, nx = (int(v) for v in grid["shape"][:2])
+            if ny > 0 and nx > 0:
+                return [ny, nx]
+    except Exception:  # noqa: BLE001
+        pass
+    return None
+
+
 def get_fit_info(
     state: SessionState,
     fit_index: int | None = None,
@@ -182,6 +205,8 @@ def get_fit_info(
             "fit_range": _safe_fit_range(fit),
             # χ²ᵣ of the parameters as they are now (``chi2r`` is the last run's).
             "chi2r_current": _safe_chi2r_current(fit),
+            **_safe_results(fit),
+            "grid_shape": _safe_grid_shape(fit),
         },
     }
 
@@ -191,6 +216,7 @@ def run_fit(
     fit_index: int | None = None,
     fit_uid: str | None = None,
     event_bus: Any = None,
+    local_first: bool | None = None,
 ) -> ServiceResult:
     """Execute a fit and return results.
 
@@ -204,6 +230,9 @@ def run_fit(
         Unique identifier.
     event_bus : object, optional
         Event bus for broadcasting.
+    local_first : bool, optional
+        For a fit group: optimise each member on its own before the global
+        step. ``None`` uses ``optimization.global_optimize_local_first``.
 
     """
     fit, idx = _resolve_fit(state, fit_index, fit_uid)
@@ -211,7 +240,10 @@ def run_fit(
         return service_error("fit not found", error_code=NOT_FOUND)
     try:
         chi2_before = _safe_chi2(fit, compute=True)
-        fit.run()
+        if local_first is not None and getattr(fit, "grouped_fits", None) is not None:
+            fit.run(local_first=bool(local_first))
+        else:
+            fit.run()
         chi2_after = _safe_chi2(fit, compute=True)
         fit_uid_val = str(getattr(fit, "unique_identifier", "") or "")
         if event_bus is not None:
@@ -265,10 +297,30 @@ def fit_set_dataset(
     d, _ = _resolve_dataset(state, dataset_index, dataset_uid)
     if d is None:
         return service_error("dataset not found", error_code=NOT_FOUND)
+    from chisurf.core.data import DataGroup
+
+    if isinstance(d, DataGroup):
+        # A fit is made over a group but each of its member fits holds one curve:
+        # a group attached as it is reached the model as a curve of the wrong type.
+        if len(d) != 1:
+            return service_error(
+                f"{getattr(d, 'name', 'the dataset')!r} holds {len(d)} curves; attach one",
+                error_code=INVALID_INPUT,
+            )
+        d = d[0]
     try:
         fit.data = d
+        # The range belonged to the old data: one past the new curve's end made
+        # every residual array the wrong length (``fit.update`` and sampling failed).
+        _initialise_fit_range(fit)
         if event_bus is not None:
-            event_bus.publish("fit.dataset_changed", {"fit_index": fit_index})
+            event_bus.publish(
+                "fit.dataset_changed",
+                {
+                    "fit_index": fit_index,
+                    "fit_uid": str(getattr(fit, "unique_identifier", "") or ""),
+                },
+            )
         return {"ok": True}
     except Exception as e:
         return service_error(str(e), error_code=OPERATION_FAILED, exception=e)
@@ -571,6 +623,11 @@ def fit_create(
         )
         if fit_name:
             fit.name = fit_name
+        # A model that takes in other fits (a global fit) takes them from this session.
+        for member in list(getattr(fit, "grouped_fits", None) or [fit]):
+            member_model = getattr(member, "model", None)
+            if member_model is not None and hasattr(type(member_model), "fit_pool"):
+                member_model.fit_pool = lambda: list(state.fits)
         _initialise_fit_range(fit)
         state.add_fit(fit)
         if event_bus is not None:
@@ -1203,6 +1260,161 @@ def fit_range_auto(
             result["xmin2"] = 0
             result["xmax2"] = int(shape[1]) - 1
         return result
+    except Exception as e:
+        return service_error(str(e), error_code=OPERATION_FAILED, exception=e)
+
+
+def fit_set_grid_range(
+    state: SessionState,
+    x0: int = 0,
+    x1: int = 0,
+    y0: int = 0,
+    y1: int = 0,
+    fit_index: int | None = None,
+    fit_uid: str | None = None,
+    event_bus: Any = None,
+) -> ServiceResult:
+    """Fit only the rectangle ``x0..x1`` × ``y0..y1`` of a fit whose data is a 2-D grid.
+
+    The data of such a fit is a flattened grid described by
+    ``data.meta_data['grid']`` (``shape`` ``(ny, nx)``, optionally explicit
+    ``row_indices`` / ``col_indices`` of a sparse view). The rectangle becomes
+    the fit's mask, as the Qt controller's four range fields did on the client.
+
+    Parameters
+    ----------
+    state : SessionState
+    x0, x1 : int
+        First and last column.
+    y0, y1 : int
+        First and last row.
+    fit_index : int, optional
+    fit_uid : str, optional
+    event_bus : object, optional
+    """
+    fit, idx = _resolve_fit(state, fit_index, fit_uid)
+    if fit is None:
+        return service_error("fit not found", error_code=NOT_FOUND)
+    shape = _safe_grid_shape(fit)
+    if shape is None:
+        return service_error("the fit's data is not a 2-D grid", error_code=INVALID_STATE)
+    ny, nx = shape
+    x0, x1 = sorted((max(0, int(x0)), min(nx - 1, int(x1))))
+    y0, y1 = sorted((max(0, int(y0)), min(ny - 1, int(y1))))
+    grid = fit.data.meta_data["grid"]
+    if "row_indices" in grid and "col_indices" in grid:
+        rows = np.asarray(grid["row_indices"], dtype=np.int64)
+        cols = np.asarray(grid["col_indices"], dtype=np.int64)
+        n = min(rows.size, cols.size)
+        mask = (cols[:n] >= x0) & (cols[:n] <= x1) & (rows[:n] >= y0) & (rows[:n] <= y1)
+    else:
+        yy, xx = np.indices((ny, nx))
+        mask = ((xx >= x0) & (xx <= x1) & (yy >= y0) & (yy <= y1)).ravel()
+    return fit_mask_set(
+        state, mask.astype(float).tolist(), fit_index=idx, event_bus=event_bus
+    )
+
+
+def fit_model_search_available(
+    state: SessionState,
+    fit_index: int | None = None,
+    fit_uid: str | None = None,
+) -> ServiceResult:
+    """Whether BFF can search the fit's model structure (the MCTS action is offered only then)."""
+    fit, idx = _resolve_fit(state, fit_index, fit_uid)
+    if fit is None:
+        return service_error("fit not found", error_code=NOT_FOUND)
+    try:
+        from chisurf.core.fitting.mcts.dispatcher import model_search_available
+
+        return {"ok": True, "available": bool(model_search_available(fit))}
+    except Exception as e:  # noqa: BLE001 - no engine means no search, said so
+        return {"ok": True, "available": False, "reason": str(e)}
+
+
+def fit_model_search(
+    state: SessionState,
+    fit_index: int | None = None,
+    fit_uid: str | None = None,
+    search_fit_settings: bool = False,
+    event_bus: Any = None,
+) -> ServiceResult:
+    """Search the fit's model structure with BFF's Monte Carlo tree search and apply the winner.
+
+    Every candidate structure the model declares is refined and scored; the
+    best is applied to the fit unless the search was cancelled or asks for a
+    measurement the fit does not have, in which case the model is put back.
+    The search settings are the user's ``optimization.mcts`` settings.
+
+    Parameters
+    ----------
+    state : SessionState
+    fit_index : int, optional
+    fit_uid : str, optional
+    search_fit_settings : bool
+        Also search how each candidate is fitted (tolerances, starts).
+    event_bus : object, optional
+
+    Returns
+    -------
+    dict
+        ``outcome`` (``"selected"``, ``"request_information"``, ``"cancelled"``),
+        and for a selected structure its ``structure``, ``reward``,
+        ``improvement`` and ``acceptable``; ``missing`` names the measurements a
+        ``request_information`` outcome needs.
+    """
+    fit, idx = _resolve_fit(state, fit_index, fit_uid)
+    if fit is None:
+        return service_error("fit not found", error_code=NOT_FOUND)
+    try:
+        import chisurf.core.settings
+        from chisurf.core.fitting.mcts.dispatcher import prepare_model_search
+        from chisurf.core.fitting.mcts.execution import (
+            NativeSearchSettings,
+            run_native_search,
+            search_outcome,
+        )
+
+        prepared = prepare_model_search(fit, search_fit_settings=bool(search_fit_settings))
+        if not prepared.supported:
+            details = "; ".join(f"{r.code}: {r.message}" for r in prepared.reasons)
+            return service_error(
+                f"BFF model search is unavailable: {details or 'no declaration'}",
+                error_code=INVALID_STATE,
+            )
+        values = dict(
+            (chisurf.core.settings.cs_settings.get("optimization", {}) or {}).get("mcts", {}) or {}
+        )
+        settings = NativeSearchSettings(
+            simulations=int(values.get("n_simulations", 400)),
+            c_puct=float(values.get("c_puct", 1.4)),
+            reward_scale=float(values.get("reward_scale", 1.0)),
+            dirichlet_alpha=float(values.get("dirichlet_alpha", 0.3)),
+            dirichlet_fraction=0.0,
+            seed=int(values.get("seed", 7)),
+        )
+        result = run_native_search(prepared.problem, settings)
+        restore = getattr(prepared.binding, "restore", None)
+        outcome, missing = search_outcome(result)
+        uid = str(getattr(fit, "unique_identifier", "") or "")
+        if outcome != "selected":
+            if callable(restore):
+                restore(prepared.problem)
+            return {"ok": True, "outcome": outcome, "missing": list(missing)}
+        best = result.get_best_state()
+        prepared.binding.apply_state(prepared.problem, best)
+        if event_bus is not None:
+            event_bus.publish("fit.updated", {"fit_index": idx, "fit_uid": uid})
+        return {
+            "ok": True,
+            "outcome": outcome,
+            "structure": str(best.get_structure_key()),
+            "fit_settings": str(getattr(best, "get_fit_settings_key", lambda: "")()),
+            "reward": float(best.get_reward()),
+            "improvement": float(result.get_improvement()),
+            "acceptable": bool(result.get_acceptable()),
+            "missing": [],
+        }
     except Exception as e:
         return service_error(str(e), error_code=OPERATION_FAILED, exception=e)
 

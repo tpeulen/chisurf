@@ -1113,10 +1113,14 @@ class LinePlot(plotbase.Plot):
         ub += x_shift
 
         if data_log_x:
-            lb_min = np.log10(lb_min)
-            ub_max = np.log10(ub_max)
-            lb = np.log10(lb)
-            ub = np.log10(ub)
+            # A correlation curve starts at lag 0, which a log axis cannot show:
+            # a bound there sits on the first positive point, not at log10(0) = −∞.
+            shifted = np.asarray(current_data.x, dtype=float) + x_shift
+            positive = shifted[shifted > 0]
+            floor = float(positive.min()) if positive.size else 1.0
+            lb_min, ub_max, lb, ub = (
+                float(np.log10(max(float(v), floor))) for v in (lb_min, ub_max, lb, ub)
+            )
 
         self.region.set_limits(lb_min, ub_max)
         self.region.set_bounds(lb, ub)

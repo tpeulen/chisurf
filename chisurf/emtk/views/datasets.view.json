@@ -2,8 +2,8 @@
   "title": "Datasets",
   "sections": [
     {"type": "table", "source": "dataset_rows", "row_key": "uid", "selected_call": "select_dataset",
-     "delete_call": "remove_dataset", "height": 170,
-     "description": "The loaded datasets. Select one to add a fit to it; Delete removes it.",
+     "delete_call": "remove_dataset", "drag_call": "drag_dataset", "height": 170,
+     "description": "The loaded datasets. Select one to add a fit to it; drag one onto a fit window to fit that dataset instead; Delete removes it.",
      "columns": [
        {"key": "index", "label": "#", "width": 30, "description": "Position of the dataset in the session."},
        {"key": "name", "label": "Data name", "description": "The dataset's name (its file name by default)."},

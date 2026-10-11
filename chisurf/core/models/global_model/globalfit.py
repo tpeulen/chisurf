@@ -97,8 +97,20 @@ class GlobalFitModel(model.Model, Curve):
     #: the editor holds no state of its own -- the button below reads it from here.
     new_global_parameter_name: str = ""
 
-    #: Row selected in the local-fit table, written by the table's ``selected_attr``.
-    selected_local_fit: int = -1
+    #: Row selected in the local-fit table, written by the table's ``selected_attr``:
+    #: the row (``{"name": ...}``) as a table hands it over, or its index.
+    selected_local_fit: typing.Any = -1
+
+    #: Where the fits this model may take in come from: a callable returning the
+    #: fits of the session that owns it, set by the server's ``fit.create``. A
+    #: model built outside a session falls back to the process's ``chisurf.fits``.
+    fit_pool: typing.Optional[typing.Callable[[], typing.Sequence[Fit]]] = None
+
+    def _pool(self) -> typing.List[Fit]:
+        """The fits that may be added: the owning session's, else the process's."""
+        if callable(self.fit_pool):
+            return list(self.fit_pool() or [])
+        return list(getattr(cs, "fits", []) or [])
 
     #: Fit chosen to be added next, written by the ``choice`` of candidates.
     selected_candidate_fit: str = ""
@@ -112,9 +124,11 @@ class GlobalFitModel(model.Model, Curve):
         """
         included = set(self.fit_names)
         out = []
-        for f in getattr(cs, "fits", []) or []:
+        for f in self._pool():
             name = str(getattr(f, "name", "") or "")
-            if not name or name in included or f is self.fit:
+            # ``self.fit`` is this model's member fit; the session lists the group holding it.
+            own = f is self.fit or any(m is self.fit for m in getattr(f, "grouped_fits", ()) or ())
+            if not name or name in included or own:
                 continue
             out.append(name)
         return out
@@ -122,15 +136,27 @@ class GlobalFitModel(model.Model, Curve):
     def add_selected_fit(self) -> None:
         """Add the fit named by :attr:`selected_candidate_fit` to the global fit."""
         name = str(self.selected_candidate_fit or "")
-        for f in getattr(cs, "fits", []) or []:
+        for f in self._pool():
             if str(getattr(f, "name", "") or "") == name:
                 self.append_fit(f)
                 return
         cs.logging.warning(f"GlobalFitModel: no fit named {name!r} to add")
 
     def remove_selected_local_fit(self) -> None:
-        """Remove the row named by :attr:`selected_local_fit`."""
-        row = int(self.selected_local_fit)
+        """Remove the row named by :attr:`selected_local_fit`.
+
+        A table hands its selection over as the row itself (``{"name": ...}``);
+        ``int()`` of that raised, so *Remove* never removed anything.
+        """
+        selected = self.selected_local_fit
+        if isinstance(selected, dict):
+            name = selected.get("name")
+            row = self.fit_names.index(name) if name in self.fit_names else -1
+        else:
+            try:
+                row = int(selected)
+            except (TypeError, ValueError):
+                row = -1
         if row < 0:
             cs.logging.warning("GlobalFitModel: no local fit selected to remove")
             return

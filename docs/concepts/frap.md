@@ -4,7 +4,10 @@ title: Fluorescence recovery after photobleaching
 description: Bleach a region, watch it fill back in — the recovery gives a diffusion coefficient and a mobile fraction.
 tags: [concepts, diffusion, frap]
 anchor: concept-frap
-sources: '[{''text'': ''Derived in part from the English Wikipedia article "Fluorescence recovery after photobleaching"'', ''url'': ''https://en.wikipedia.org/wiki/Fluorescence_recovery_after_photobleaching'', ''licence'': ''CC-BY-SA-4.0''}]'
+sources:
+  - text: 'Derived in part from the English Wikipedia article "Fluorescence recovery after photobleaching"'
+    url: https://en.wikipedia.org/wiki/Fluorescence_recovery_after_photobleaching
+    licence: CC-BY-SA-4.0
 ---
 
 (concept-frap)=

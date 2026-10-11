@@ -1,0 +1,6 @@
+{
+  "_comment": "Settings of the three-colour PDA burst-table reader (Pda3cBurstTableReader): it has none of its own.",
+  "sections": [
+    {"type": "info", "text": "Reads three-colour burst tables (CSV or NPZ, five columns: three blue-excitation and two green-excitation photon counts per burst) chosen in the File field. No settings of its own."}
+  ]
+}

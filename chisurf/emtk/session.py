@@ -26,7 +26,7 @@ from typing import Any, Callable
 _log = logging.getLogger("chisurf.emtk.session")
 
 #: Event topics the shell listens to.
-TOPICS = ("fit.", "parameter.", "dataset.", "session.", "project.")
+TOPICS = ("fit.", "parameter.", "model.", "dataset.", "session.", "project.")
 #: How long one RPC may take; a fit runs inside one call.
 CALL_TIMEOUT_MS = 600_000
 
@@ -71,6 +71,33 @@ class ShellSession:
                 continue
             found[str(experiment.name)] = experiment
         return found
+
+    def experiment(self, name: str) -> Any:
+        """The registered experiment *name*, hidden ones (the global fit's) included."""
+        import chisurf
+
+        for experiment in getattr(chisurf, "experiment", {}).values():
+            if str(getattr(experiment, "name", "")) == str(name):
+                return experiment
+        return None
+
+    def ensure_global_dataset(self) -> bool:
+        """Add the global-fit pseudo-dataset the Qt session always holds, unless it is there.
+
+        A global fit is made on it (the *Global* experiment's models link the fits of
+        other datasets). Returns whether one was added.
+        """
+        from chisurf.server.services.datasets import _is_global_fit_dataset
+
+        if any(_is_global_fit_dataset(d) for d in (self.api.list_datasets() or [])):
+            return False
+        experiment = self.experiment("Global")
+        readers = list(getattr(experiment, "readers", None) or [])
+        if not readers:
+            _log.warning("no global-fit reader is registered; global fits are unavailable")
+            return False
+        result = self.api.load_dataset(experiment_reader=readers[0], name="Global Dataset")
+        return bool(isinstance(result, dict) and result.get("ok", True))
 
     def presentation_fit(self, uid: str) -> Any:
         """The fit object with *uid* for a window to draw from (read only), ``None`` when absent."""

@@ -1287,7 +1287,36 @@ class BurstSelectionModel(RunPickerMixin):
         )
         return window if window is not None else (0, n)
 
+    def _curves_cached(self, name: str, key: tuple, build):
+        """Memoise a diagnostic plot's curves on the diagnostic they were made from.
+
+        The plots ask for their curves every frame; binning every photon of the window each time cost ~0.3 s a
+        frame. The cache lives in the diagnostic dict, which :meth:`load_diagnostics` replaces whenever the
+        filter, the search or the window changes, so a stale curve cannot outlive its photons.
+        """
+        diag = self.diagnostic
+        if diag is None:
+            return build()
+        cache = diag.setdefault("_curves", {})
+        full = (name, key)
+        if full not in cache:
+            cache[full] = build()
+        return cache[full]
+
     def trace_curves(self) -> dict[str, tuple[np.ndarray, np.ndarray]]:
+        """Count-rate trace (Hz) of the visible window, memoised per diagnostic (see :meth:`_trace_curves`)."""
+        return self._curves_cached(
+            "trace_curves",
+            (
+                self.trace_bin_ms,
+                self.show_all_photons,
+                self.show_selected_photons,
+                self._window_indices(),
+            ),
+            self._trace_curves,
+        )
+
+    def _trace_curves(self) -> dict[str, tuple[np.ndarray, np.ndarray]]:
         """Count-rate trace (Hz) of the visible window: ``{"all": (t, rate), "selected": (t, rate)}``."""
         from chisurf.core.fio.decimate import thin_for_plot
 
@@ -1311,6 +1340,14 @@ class BurstSelectionModel(RunPickerMixin):
         return out
 
     def dt_curves(self) -> dict[str, tuple[np.ndarray, np.ndarray]]:
+        """Inter-photon times of the visible window, memoised per diagnostic (see :meth:`_dt_curves`)."""
+        return self._curves_cached(
+            "dt_curves",
+            (self.show_all_photons, self.show_selected_photons, self._window_indices()),
+            self._dt_curves,
+        )
+
+    def _dt_curves(self) -> dict[str, tuple[np.ndarray, np.ndarray]]:
         """Inter-photon time (ms) against photon index over the visible window (all / selected)."""
         from chisurf.core.fio.decimate import thin_for_plot
 
@@ -1332,6 +1369,14 @@ class BurstSelectionModel(RunPickerMixin):
         return out
 
     def decay_curves(self) -> dict[str, tuple[np.ndarray, np.ndarray]]:
+        """Micro-time histograms of the file and the selected photons, memoised per diagnostic (see :meth:`_decay_curves`)."""
+        return self._curves_cached(
+            "decay_curves",
+            (self.decay_bins, self.show_all_photons, self.show_selected_photons),
+            self._decay_curves,
+        )
+
+    def _decay_curves(self) -> dict[str, tuple[np.ndarray, np.ndarray]]:
         """Micro-time histograms (ns, counts) of the file and of the selected photons, trailing zeros cut."""
         diag = self.diagnostic or {}
         tttr = diag.get("tttr")

@@ -17,6 +17,12 @@
 
 ## 2026-10-10
 
+- W9 phase 2 slice S2 at control parity: the emtk shell draws each model's own editor (`model.editor`
+  RPC, writes only through declared controls), the full fit controller (MCTS, Sample, fit settings, Local
+  first, dataset re-target, result index, Code face), the Global-fit dataset, native settings for 23 of 24
+  readers, the MMFDB sample question and dataset drag onto a fit; `KNOWN_GAPS` is empty. Fixed in passing:
+  Qt's Local first never reached the run, re-targeting a fit to a curve of another length broke residuals,
+  the global fit's Remove never worked, a log-axis range from lag 0 broke the fit window.
 - ndX is multilingual (de, fr): ndxplorer (own repo, e7c4acd) is the `ndxplorer` domain of `emtk.i18n`
   (1,413 strings, guard without allow-list, Settings > Language when standalone); hosted ndX follows
   ChiSurf's language live (`chisurf/gui/i18n.py` switches emtk's language too).

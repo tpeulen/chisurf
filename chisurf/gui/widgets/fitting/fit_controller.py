@@ -1137,15 +1137,21 @@ class FittingControllerWidget(Controller):
                 fc = get_fitting_client()
                 with self.fit.reporting_progress(_on_progress):
                     if fc is not None:
+                        # "Local first" used to stop at the history record: the
+                        # run read the settings default instead of the box.
                         fc.run_fit(
                             fit_uid=str(getattr(self.fit, "unique_identifier", "") or ""),
+                            local_first=bool(self.local_first),
                         )
                     else:
                         # No transport: the fit itself is right here. The RPC
                         # facade is a routing choice, not a capability -- with
                         # it absent the button must still fit, not silently
                         # do nothing.
-                        self.fit.run()
+                        if getattr(self.fit, "grouped_fits", None) is not None:
+                            self.fit.run(local_first=bool(self.local_first))
+                        else:
+                            self.fit.run()
                 if getattr(self.fit, "last_run_cancelled", False):
                     # The optimiser raised, ``Fit.run`` re-raised, and the
                     # service turned it into an error result -- so a

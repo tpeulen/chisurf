@@ -1,30 +1,216 @@
 {
+  "_comment": "The emtk shell's Analysis dock: the current fit, its controller (the Qt fit controller's fitting_controls.view.json, actions bound to chisurf.emtk.fit_docks.AnalysisModel) and, below it, the model's own editor (chisurf.emtk.model_editor). The flat parameter table stands in only for a model without an editor.",
   "title": "Analysis",
   "sections": [
-    {"type": "info", "source": "fit_title"},
-    {"type": "button_row", "buttons": [
-      {"label": "Fit", "action": "run_fit", "description": "Optimise the free parameters of the current fit."},
-      {"label": "auto", "action": "auto_range", "description": "Use every data point: the range from the first to the last."},
-      {"label": "Remove fit", "action": "remove_fit", "description": "Remove the current fit and close its window."}
-    ]},
-    {"type": "panel", "n_col": 2, "sections": [
-      {"type": "value", "kind": "int", "attr": "xmin", "label": "First", "minimum": 0, "call": "range_changed",
-       "description": "Index of the first data point the fit uses."},
-      {"type": "value", "kind": "int", "attr": "xmax", "label": "Last", "minimum": 0, "call": "range_changed",
-       "description": "Index of the last data point the fit uses."}
-    ]},
-    {"type": "info", "source": "fit_summary"},
-    {"type": "table", "source": "parameter_rows", "row_key": "uid", "edited_call": "edit_parameter",
-     "editable_call": "cell_editable", "muted_key": "muted", "expand": true, "fit_columns": true,
-     "description": "The model's parameters. Double-click a value or bound to type it; click Fixed or Bounds to toggle. Computed outputs and linked parameters are dimmed and read only.",
-     "columns": [
-       {"key": "name", "label": "Name", "description": "The parameter's name in the model."},
-       {"key": "value", "label": "Value", "editable": true, "format": "%.5g", "description": "The parameter's value; double-click to type a new one."},
-       {"key": "fixed", "label": "Fixed", "editable": true, "description": "A fixed parameter keeps its value when the fit runs."},
-       {"key": "lo", "label": "Lo", "editable": true, "format": "%.4g", "description": "Lower bound, used while Bounds is on."},
-       {"key": "hi", "label": "Hi", "editable": true, "format": "%.4g", "description": "Upper bound, used while Bounds is on."},
-       {"key": "bounds_on", "label": "Bounds", "editable": true, "description": "Keep the parameter between Lo and Hi while fitting."},
-       {"key": "error", "label": "Error", "format": "%.3g", "description": "Uncertainty estimate from the last fit."}
-     ]}
+    {
+      "type": "info",
+      "source": "fit_title"
+    },
+    {
+      "type": "panel",
+      "title": "Fit",
+      "collapsible": true,
+      "collapsed": false,
+      "n_col": 1,
+      "description": "Run and configure the fit of the selected dataset.",
+      "sections": [
+        {
+          "type": "button_row",
+          "buttons": [
+            {
+              "label": "Fit",
+              "action": "run_fit",
+              "description": "Optimise the free parameters of the current fit."
+            },
+            {
+              "label": "MCTS",
+              "action": "mcts",
+              "hidden_when": {
+                "attr": "model_search",
+                "equals": "false"
+              },
+              "description": "Search the model structure with BFF's Monte Carlo tree search: every candidate structure the model declares is refined and scored, and the winner is applied to the fit. Shown only for models BFF can search."
+            },
+            {
+              "label": "Sample",
+              "action": "sample",
+              "description": "Sample the posterior of the free parameters. Writes the chains, the diagnostics and the project to a folder."
+            },
+            {
+              "label": "⚙",
+              "action": "settings",
+              "description": "Sampling and fitting settings: which sampler, thinning, chunk size, χ² cutoff, chain format and the optimiser tolerances. Saved to your settings."
+            },
+            {
+              "label": "auto",
+              "action": "auto_range",
+              "description": "Choose the fit range from the data: the rising edge to where the signal reaches the background."
+            },
+            {
+              "label": "…",
+              "action": "select_dataset",
+              "description": "Attach a different dataset to this fit."
+            },
+            {
+              "label": "Remove fit",
+              "action": "remove_fit",
+              "description": "Remove the current fit and close its window."
+            }
+          ]
+        },
+        {
+          "type": "panel",
+          "n_col": 2,
+          "sections": [
+            {
+              "type": "choice",
+              "attr": "dataset_index",
+              "label": "Dataset",
+              "style": "combo",
+              "options_source": "dataset_options",
+              "call": "dataset_changed",
+              "description": "Which dataset of this fit the controls act on (a global fit has one per member)."
+            },
+            {
+              "type": "value",
+              "attr": "result_index",
+              "kind": "int",
+              "label": "Result",
+              "minimum": 1,
+              "call": "result_changed",
+              "description": "Which stored result of this fit is shown."
+            },
+            {
+              "type": "value",
+              "kind": "int",
+              "attr": "xmin",
+              "label": "First",
+              "minimum": 0,
+              "call": "range_changed",
+              "description": "Index of the first data point the fit uses (the first column of a 2-D grid)."
+            },
+            {
+              "type": "value",
+              "kind": "int",
+              "attr": "xmax",
+              "label": "Last",
+              "minimum": 0,
+              "call": "range_changed",
+              "description": "Index of the last data point the fit uses (the first row of a 2-D grid)."
+            },
+            {
+              "type": "value",
+              "kind": "int",
+              "attr": "xmin2",
+              "label": "First (2)",
+              "minimum": 0,
+              "call": "range_changed",
+              "hidden_when": {
+                "attr": "is_2d",
+                "equals": "false"
+              },
+              "description": "Last column of the second axis, for two-dimensional data."
+            },
+            {
+              "type": "value",
+              "kind": "int",
+              "attr": "xmax2",
+              "label": "Last (2)",
+              "minimum": 0,
+              "call": "range_changed",
+              "hidden_when": {
+                "attr": "is_2d",
+                "equals": "false"
+              },
+              "description": "Last row of the second axis, for two-dimensional data."
+            }
+          ]
+        },
+        {
+          "type": "panel",
+          "n_col": 2,
+          "sections": [
+            {
+              "type": "toggle",
+              "attr": "local_first",
+              "label": "Local first",
+              "description": "Optimise each dataset on its own before the global fit, which usually starts the global step much closer to the optimum."
+            },
+            {
+              "type": "toggle",
+              "attr": "search_fit_settings",
+              "label": "Search fit settings",
+              "call": "search_fit_settings_changed",
+              "description": "Let MCTS also try other ways of fitting each candidate structure: looser and tighter tolerances, the first declared start only, the parent's values as the start, a smaller first step. Each is scored like a structure, so one only wins by fitting better. Slower; use it when a structure fails to converge from its declared start. Saved to your settings."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "info",
+      "source": "fit_summary"
+    },
+    {
+      "type": "table",
+      "source": "parameter_rows",
+      "row_key": "uid",
+      "edited_call": "edit_parameter",
+      "editable_call": "cell_editable",
+      "muted_key": "muted",
+      "expand": true,
+      "fit_columns": true,
+      "hidden_when": {
+        "attr": "flat_table_hidden",
+        "equals": "true"
+      },
+      "description": "The model's parameters. Double-click a value or bound to type it; click Fixed or Bounds to toggle. Computed outputs and linked parameters are dimmed and read only.",
+      "columns": [
+        {
+          "key": "name",
+          "label": "Name",
+          "description": "The parameter's name in the model."
+        },
+        {
+          "key": "value",
+          "label": "Value",
+          "editable": true,
+          "format": "%.5g",
+          "description": "The parameter's value; double-click to type a new one."
+        },
+        {
+          "key": "fixed",
+          "label": "Fixed",
+          "editable": true,
+          "description": "A fixed parameter keeps its value when the fit runs."
+        },
+        {
+          "key": "lo",
+          "label": "Lo",
+          "editable": true,
+          "format": "%.4g",
+          "description": "Lower bound, used while Bounds is on."
+        },
+        {
+          "key": "hi",
+          "label": "Hi",
+          "editable": true,
+          "format": "%.4g",
+          "description": "Upper bound, used while Bounds is on."
+        },
+        {
+          "key": "bounds_on",
+          "label": "Bounds",
+          "editable": true,
+          "description": "Keep the parameter between Lo and Hi while fitting."
+        },
+        {
+          "key": "error",
+          "label": "Error",
+          "format": "%.3g",
+          "description": "Uncertainty estimate from the last fit."
+        }
+      ]
+    }
   ]
 }

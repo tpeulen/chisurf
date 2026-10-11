@@ -88,6 +88,9 @@
     {"rpc": "fit.select", "service": "fits.fit_select", "event_bus": true, "events": ["fit.selected"]},
     {"rpc": "fit.range.auto", "service": "fits.fit_range_auto"},
     {"rpc": "fit.mask.set", "service": "fits.fit_mask_set", "event_bus": true, "events": ["fit.mask_changed"]},
+    {"rpc": "fit.set_grid_range", "service": "fits.fit_set_grid_range", "event_bus": true, "events": ["fit.mask_changed"]},
+    {"rpc": "fit.model_search.available", "service": "fits.fit_model_search_available"},
+    {"rpc": "fit.model_search", "service": "fits.fit_model_search", "event_bus": true, "events": ["fit.updated"]},
     {"rpc": "fit.sample.start", "service": "fits.fit_sample_start"},
     {"rpc": "fit.sample.cancel", "service": "fits.fit_sample_cancel"},
     {"rpc": "fit.sample.status", "service": "fits.fit_sample_status"},
@@ -106,6 +109,10 @@
     {"rpc": "model.component.remove", "service": "model_svc.model_component_remove", "event_bus": true, "events": ["model.component.removed"]},
     {"rpc": "model.state.get", "service": "model_svc.model_state_get"},
     {"rpc": "model.state.set", "service": "model_svc.model_state_set", "event_bus": true, "events": ["model.state.changed"]},
+    {"rpc": "model.editor", "service": "model_svc.model_editor"},
+    {"rpc": "model.code.files", "service": "model_svc.model_code_files"},
+    {"rpc": "model.code.apply", "service": "model_svc.model_code_apply", "event_bus": true, "events": ["fit.updated"]},
+    {"rpc": "model.action", "service": "model_svc.model_action", "event_bus": true, "events": ["model.state.changed"]},
 
     {"rpc": "plot.fit_data", "service": "plot_svc.plot_fit_data"}
   ]

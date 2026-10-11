@@ -125,6 +125,14 @@ class Pda3cBurstTableReader(ExperimentReader):
         except Exception:
             return 0, 0
 
+    def view_spec(self):
+        """Return the declarative settings of this reader (``burst_table.view.json``)."""
+        import pathlib
+
+        from chisurf.core.dataspec import load_view_spec
+
+        return load_view_spec(pathlib.Path(__file__).with_name("burst_table.view.json"))
+
     def read(self, filename=None, *args, **kwargs):
         """Read one or more burst tables into an experiment data group."""
         group = chisurf.core.data.ExperimentDataCurveGroup([])
@@ -211,6 +219,14 @@ class Pda3cSimulatorReader(ExperimentReader):
             return 0, int(np.asarray(data.y).size)
         except Exception:
             return 0, 0
+
+    def view_spec(self):
+        """Return the declarative settings of this reader (``simulator.view.json``)."""
+        import pathlib
+
+        from chisurf.core.dataspec import load_view_spec
+
+        return load_view_spec(pathlib.Path(__file__).with_name("simulator.view.json"))
 
     def read(self, filename=None, *args, **kwargs):
         """Generate one simulated burst table."""

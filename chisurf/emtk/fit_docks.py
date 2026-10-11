@@ -147,10 +147,13 @@ class DatasetsModel:
         return self.fits
 
     def selected_experiment(self) -> Any:
-        """The experiment of the selected dataset, else of the Read data panel."""
-        experiments = self.docks.experiments()
+        """The experiment of the selected dataset (the hidden *Global* one too), else of Read data."""
         name = str(self.selected.get("experiment") or self.docks.read.experiment)
-        return experiments.get(name)
+        found = self.docks.experiments().get(name)
+        if found is None and self.docks.session is not None:
+            lookup = getattr(self.docks.session, "experiment", None)
+            found = lookup(name) if callable(lookup) else None
+        return found
 
     def model_names(self) -> list[str]:
         experiment = self.selected_experiment()
@@ -181,14 +184,28 @@ class DatasetsModel:
     def remove_selected(self) -> None:
         self.remove_dataset(self.selected)
 
+    def drag_dataset(self, record: Any, x: float, y: float, dropped: bool) -> None:
+        """A dataset row dragged out of the table; dropped on a fit window, the fit takes it."""
+        self.docks.dataset_dragged(record if isinstance(record, dict) else None, x, y, dropped)
+
     def remove_dataset(self, record: Any) -> None:
         if isinstance(record, dict) and record.get("uid"):
             self.docks.remove_dataset(str(record["uid"]))
             self.selected = {}
 
 
+def _mcts_setting(key: str, default: Any) -> Any:
+    """One ``optimization.mcts`` user setting, or *default*."""
+    from chisurf.core import settings
+
+    try:
+        return type(default)(settings.cs_settings["optimization"]["mcts"].get(key, default))
+    except (KeyError, TypeError, AttributeError, ValueError):
+        return default
+
+
 class AnalysisModel:
-    """The Analysis panel: the current fit's range, χ², *Fit* and its parameter table."""
+    """The Analysis panel: the current fit, its controller (actions, dataset, result, range) and parameters."""
 
     def __init__(self, docks: DataDocks) -> None:
         self.docks = docks
@@ -196,12 +213,27 @@ class AnalysisModel:
         self.parameters = _Rows()
         self.xmin = 0
         self.xmax = 0
+        self.xmin2 = 0
+        self.xmax2 = 0
+        self.dataset_index = 0
+        self.result_index = 1
+        self.local_first = True
+        self.search_fit_settings = bool(_mcts_setting("search_fit_settings", False))
+        #: Whether BFF can search the current fit's model (MCTS is shown only then).
+        self.model_search = False
 
     def set_info(self, info: dict) -> None:
         """Adopt the server's description of the current fit."""
         self.info = dict(info or {})
         fit_range = self.info.get("fit_range") or [0, 0]
         self.xmin, self.xmax = int(fit_range[0]), int(fit_range[1])
+        shape = self.info.get("grid_shape")
+        if shape and not (self.xmin2 or self.xmax2):
+            self.xmin2, self.xmax2 = int(shape[1]) - 1, int(shape[0]) - 1
+        members = self.info.get("members") or []
+        selected = next((i for i, m in enumerate(members) if m.get("selected")), 0)
+        self.dataset_index = int(self.info.get("selected_member", selected) or 0)
+        self.result_index = int(self.info.get("result_idx", 0) or 0) + 1
         rows = _Rows()
         # The model's own order (``parameters_all``); the name-keyed dict only for an older server.
         listed = (self.info.get("model") or {}).get("parameters_all") or [
@@ -230,6 +262,16 @@ class AnalysisModel:
     def parameter_rows(self) -> list:
         return self.parameters
 
+    @property
+    def has_editor(self) -> bool:
+        """Whether the model's own editor is drawn (the flat parameter table is then not)."""
+        return self.docks.editor.editor is not None
+
+    @property
+    def flat_table_hidden(self) -> bool:
+        """The flat parameter table stands in only for a fit whose model has no editor."""
+        return self.has_editor or not self.info
+
     def fit_title(self) -> str:
         if self.docks.session is None:
             return self.docks.session_status()
@@ -250,10 +292,56 @@ class AnalysisModel:
         )
         return text
 
+    @property
+    def is_2d(self) -> bool:
+        """Whether the fit's data is a 2-D grid (the second range pair applies)."""
+        return bool(self.info.get("grid_shape"))
+
+    def dataset_options(self) -> list:
+        """The fit's datasets as ``(index, name)``: a global fit's members, else its one dataset."""
+        members = self.info.get("members") or []
+        if len(members) > 1:
+            return [
+                (i, str(m.get("dataset_name") or m.get("name") or i)) for i, m in enumerate(members)
+            ]
+        return [(0, str(self.info.get("dataset_name") or "—"))]
+
     def enabled(self, name: str) -> bool:
-        if name in ("run_fit", "auto_range", "remove_fit", "xmin", "xmax"):
-            return bool(self.info) and not self.docks.busy
+        live = bool(self.info) and not self.docks.busy
+        if name in (
+            "run_fit", "auto_range", "remove_fit", "xmin", "xmax", "xmin2", "xmax2",
+            "sample", "select_dataset", "dataset_index",
+        ):
+            return live
+        if name == "mcts":
+            return live and self.model_search
+        if name == "result_index":
+            return live and int(self.info.get("n_results", 0) or 0) > 1
         return True
+
+    def dataset_changed(self, value: Any) -> None:
+        """Pick which member of a global fit the controls (and the editor) act on."""
+        if len(self.info.get("members") or []) > 1:
+            self.docks.select_member(int(value))
+
+    def result_changed(self, value: Any) -> None:
+        self.docks.set_result(max(0, int(value) - 1))
+
+    def search_fit_settings_changed(self, value: Any) -> None:
+        """Keep *Search fit settings* in the user settings, as the Qt controller does."""
+        self.docks.store_mcts_setting("search_fit_settings", bool(value))
+
+    def mcts(self) -> None:
+        self.docks.run_model_search(bool(self.search_fit_settings))
+
+    def sample(self) -> None:
+        self.docks.ask_sampling_folder()
+
+    def settings(self) -> None:
+        self.docks.open_settings()
+
+    def select_dataset(self) -> None:
+        self.docks.open_dataset_picker()
 
     def cell_editable(self, record: Any, key: str) -> bool:
         record = record or {}
@@ -270,14 +358,18 @@ class AnalysisModel:
             self.docks.edit_parameter(str(record["name"]), key, value, record)
 
     def run_fit(self) -> None:
-        self.docks.run_fit()
+        self.docks.run_fit(local_first=bool(self.local_first))
 
     def range_changed(self, _value: Any = None) -> None:
-        self.docks.set_range(int(self.xmin), int(self.xmax))
+        if self.is_2d:
+            self.docks.set_grid_range(
+                int(self.xmin), int(self.xmin2), int(self.xmax), int(self.xmax2)
+            )
+        else:
+            self.docks.set_range(int(self.xmin), int(self.xmax))
 
     def auto_range(self) -> None:
-        last = max(0, int(self.info.get("n_data", 0) or 0) - 1)
-        self.docks.set_range(0, last, auto=True)
+        self.docks.auto_range()
 
     def remove_fit(self) -> None:
         self.docks.remove_fit(str(self.info.get("uid") or ""))
@@ -315,6 +407,9 @@ class DataDocks:
         self.read = ReadDataModel(self)
         self.datasets = DatasetsModel(self)
         self.analysis = AnalysisModel(self)
+        from chisurf.emtk.model_editor import ModelEditor
+
+        self.editor = ModelEditor(self)
         self.specs = {name: load_view(name) for name in ("read_data", "datasets", "analysis")}
         self.forms = {name: FormState() for name in self.specs}
         self.windows: dict[str, Any] = {}
@@ -322,9 +417,25 @@ class DataDocks:
         self.job: _Job | None = None
         self.file_dialog: Any = None
         self._file_window: Any = None
+        #: What the open file dialog's choice is for: ``callback(path)``.
+        self._file_done: Callable[[str], None] | None = None
+        #: The open sampling/fitting settings dialog (``chisurf.emtk.fit_controls.SettingsDialog``).
+        self.settings_dialog: Any = None
+        #: The open dataset picker of the controller's ``…``.
+        self.dataset_picker: Any = None
+        #: The MMFDB sample question after a file is chosen (``chisurf.emtk.sample_picker``).
+        self.sample_dialog: Any = None
+        #: The MMFDB client the sample question lists samples with (``None``: the session's).
+        self.sample_client: Any = None
+        #: A dataset row being dragged (``(row, x, y)``), drawn under the pointer.
+        self.dragged: tuple[dict, float, float] | None = None
+        #: A sampling job under way on the server, polled while the docks draw.
+        self.sampling_job = ""
+        self._sampling_polled = 0.0
         #: Data points per dataset uid (groups and their members), for the range's *auto*.
         self._lengths: dict[str, int] = {}
         self._dirty: set[str] = set()
+        self._known_datasets: set[str] = set()
         self._reader_apps: dict[int, Any] = {}
         self._reader_errors: dict[int, str] = {}
         self._starting = BackgroundBuild(wake=self.request_frame)
@@ -370,6 +481,12 @@ class DataDocks:
         self.session = session
         session.events.wake = self.request_frame
         session.events.subscribe("", self._on_event)
+        ensure = getattr(session, "ensure_global_dataset", None)
+        if callable(ensure):
+            try:
+                ensure()
+            except Exception:  # noqa: BLE001 - local fits still work without it
+                _log.exception("adding the global-fit dataset failed")
         names = list(self.experiments())
         if names and self.read.experiment not in names:
             self.read.experiment = "FCS" if "FCS" in names else names[0]
@@ -398,8 +515,42 @@ class DataDocks:
             self.session.events.drain()
         if self._dirty and self.session is not None and self.job is None:
             self._sync()
+        self._poll_sampling()
         for window in self.windows.values():
             window.poll()
+
+    def _poll_sampling(self) -> None:
+        """Follow a sampling job: its progress in the status line, its verdict when it ends."""
+        import time
+
+        if not self.sampling_job or self.session is None or self.job is not None:
+            return
+        now = time.monotonic()
+        if now - self._sampling_polled < 1.0:
+            return
+        self._sampling_polled = now
+        try:
+            status = self.session.api.sampling_status(self.sampling_job) or {}
+        except Exception as exc:  # noqa: BLE001
+            self.status = tr("Sampling: {error}").format(error=exc)
+            self.sampling_job = ""
+            return
+        state = str(status.get("status", ""))
+        if state in ("running", "queued", "cancelling"):
+            self.status = tr("Sampling… {progress}%").format(progress=status.get("progress", 0))
+            self.request_frame()
+            return
+        self.sampling_job = ""
+        warnings = list(status.get("warnings") or [])
+        if state == "completed" and not warnings:
+            self.status = tr("Sampling done; the chains converged.")
+        elif state == "completed":
+            self.status = tr("Sampling done, but: {warnings}").format(warnings="; ".join(warnings))
+        else:
+            self.status = tr("Sampling {state}: {error}").format(
+                state=state or "?", error=status.get("error", "")
+            )
+        self._dirty |= {"current"}
 
     def _start(self, label: str, call: Callable[[], Any], after=None) -> bool:
         """Run *call* on the worker; one at a time."""
@@ -444,11 +595,16 @@ class DataDocks:
                 self._dirty.add("current")
         elif topic in ("fit.removed", "fit.cleared", "fit.reordered"):
             self._dirty |= {"fits", "windows", "current"}
-        elif topic in ("fit.ran", "fit.updated") or topic.startswith("parameter."):
+        elif topic in (
+            "fit.ran", "fit.updated", "fit.dataset_changed", "fit.result_idx_changed",
+            "fit.mask_changed", "fit.group.member_selected",
+        ) or topic.startswith("parameter."):
             self._dirty |= {"fits", "current"}
             targets = [self.windows[uid]] if uid in self.windows else list(self.windows.values())
             for window in targets:
                 window.refresh()
+        elif topic.startswith("model."):
+            self._dirty |= {"current"}
         elif topic.startswith(("session.", "project.")):
             self._dirty |= {"datasets", "fits", "windows", "current"}
         self.request_frame()
@@ -479,6 +635,15 @@ class DataDocks:
                     if members:
                         self._lengths[str(d.get("uid", ""))] = int(members[0].get("length") or 0)
                 uids = {row["uid"] for row in rows}
+                # A dataset just read is the one the next fit is for, as in the Qt shell.
+                fresh = [
+                    row
+                    for row in rows
+                    if row["uid"] not in self._known_datasets and row["experiment"] != "Global"
+                ]
+                self._known_datasets = uids
+                if fresh:
+                    self.datasets.select_dataset(fresh[-1])
                 if self.datasets.selected.get("uid") not in uids:
                     self.datasets.selected = {}
                     for row in rows:
@@ -516,8 +681,21 @@ class DataDocks:
                     info = info.get("fit", info) if isinstance(info, dict) else {}
                     info["n_data"] = self._lengths.get(str(info.get("dataset_uid", "")), 0)
                     self.analysis.set_info(info)
+                    try:
+                        editor = api.model_editor(fit_uid=self.current_uid)
+                    except Exception:  # noqa: BLE001 - the flat parameter table stands in
+                        _log.exception("reading the model editor failed")
+                        editor = None
+                    self.editor.set_editor(self.current_uid, editor)
+                    try:
+                        self.analysis.model_search = bool(
+                            api.model_search_available(fit_uid=self.current_uid)
+                        )
+                    except Exception:  # noqa: BLE001 - no search engine: no MCTS button
+                        self.analysis.model_search = False
                 else:
                     self.analysis.set_info({})
+                    self.editor.set_editor("", None)
         except Exception as exc:  # noqa: BLE001 - a failed read keeps the last rows
             _log.exception("reading the session failed")
             self.status = tr("Reading the session failed: {error}").format(error=exc)
@@ -561,12 +739,123 @@ class DataDocks:
 
         return self._start(tr("Adding a {model} fit…").format(model=model_name), call, after)
 
-    def run_fit(self) -> bool:
+    def run_fit(self, local_first: bool | None = None) -> bool:
         uid = self.current_uid
         if not uid or self.session is None:
             return False
         api = self.session.api
-        return self._start(tr("Fitting…"), lambda: api.run_fit(fit_uid=uid))
+        return self._start(
+            tr("Fitting…"), lambda: api.run_fit(fit_uid=uid, local_first=local_first)
+        )
+
+    def auto_range(self) -> bool:
+        """The fit range from the data, as the reader chooses it (``fit.range.auto``)."""
+        uid = self.current_uid
+        if not uid or self.session is None:
+            return False
+        api = self.session.api
+        return self._then_update(tr("Choosing the fit range…"), lambda: api.auto_fit_range(fit_uid=uid))
+
+    def set_grid_range(self, x0: int, x1: int, y0: int, y1: int) -> bool:
+        """The rectangle of a 2-D grid dataset the fit uses."""
+        uid = self.current_uid
+        if not uid or self.session is None:
+            return False
+        api = self.session.api
+        return self._then_update(
+            tr("Setting the fit range…"),
+            lambda: api.set_fit_grid_range(x0, x1, y0, y1, fit_uid=uid),
+        )
+
+    def select_member(self, index: int) -> bool:
+        """Show and edit member *index* of the current global fit."""
+        uid = self.current_uid
+        if not uid or self.session is None:
+            return False
+        api = self.session.api
+        return self._then_update(
+            tr("Selecting the dataset…"), lambda: api.select_group_member(index, fit_uid=uid)
+        )
+
+    def set_result(self, index: int) -> bool:
+        """Show stored result *index* (0-based) of the current fit."""
+        uid = self.current_uid
+        if not uid or self.session is None:
+            return False
+        api = self.session.api
+        return self._start(
+            tr("Showing result {n}…").format(n=index + 1),
+            lambda: api.set_fit_result_idx(index, fit_uid=uid),
+        )
+
+    def store_mcts_setting(self, key: str, value: Any) -> None:
+        """Keep one ``optimization.mcts`` user setting for this session and the settings file."""
+        from chisurf.core import settings
+        from chisurf.core.settings.settings_utils import set_optimization_settings
+
+        try:
+            settings.cs_settings.setdefault("optimization", {}).setdefault("mcts", {})[key] = value
+            if not set_optimization_settings(mcts={key: value}):
+                _log.warning("optimization.mcts.%s could not be written to the settings file", key)
+        except Exception:  # noqa: BLE001 - a settings file problem must not break the dock
+            _log.exception("could not keep optimization.mcts.%s", key)
+
+    def run_model_search(self, search_fit_settings: bool = False) -> bool:
+        """MCTS: search the model structure on the server and apply the winner."""
+        uid = self.current_uid
+        if not uid or self.session is None:
+            return False
+        api = self.session.api
+        self.store_mcts_setting("search_fit_settings", bool(search_fit_settings))
+
+        def after(result: Any) -> None:
+            result = result if isinstance(result, dict) else {}
+            outcome = str(result.get("outcome", ""))
+            if outcome == "selected":
+                self.status = tr("Model search selected {structure} (reward {reward:.4g}).").format(
+                    structure=result.get("structure", "?"), reward=float(result.get("reward", 0.0))
+                )
+            elif outcome == "request_information":
+                self.status = tr(
+                    "Model search needs {missing} to go further; the fit was not changed."
+                ).format(missing=", ".join(result.get("missing") or []) or "?")
+            else:
+                self.status = tr("Model search cancelled; the fit was not changed.")
+
+        return self._start(
+            tr("Searching model space…"),
+            lambda: api.model_search(fit_uid=uid, search_fit_settings=search_fit_settings),
+            after,
+        )
+
+    def start_sampling(self, folder: str) -> bool:
+        """Sample the current fit's posterior into *folder* (a server job, followed until it ends)."""
+        uid = self.current_uid
+        if not uid or self.session is None or not folder:
+            return False
+        from chisurf.core import settings
+
+        api = self.session.api
+        sampling = dict(
+            (settings.cs_settings.get("optimization", {}) or {}).get("sampling", {}) or {}
+        )
+        n_steps = int(sampling.pop("steps", 1000))
+        n_runs = int(sampling.pop("n_runs", 10))
+        sampling.pop("samplers", None)
+
+        def after(result: Any) -> None:
+            job = str((result or {}).get("job_id") or "") if isinstance(result, dict) else ""
+            if job:
+                self.sampling_job = job
+                self.status = tr("Sampling into {folder}…").format(folder=folder)
+
+        return self._start(
+            tr("Starting the sampling…"),
+            lambda: api.start_sampling(
+                folder, fit_uid=uid, n_steps=n_steps, n_runs=n_runs, **sampling
+            ),
+            after,
+        )
 
     def set_range(self, xmin: int, xmax: int, auto: bool = False) -> bool:
         uid = self.current_uid
@@ -614,6 +903,86 @@ class DataDocks:
             return api.fit_update(fit_uid=uid)
 
         return self._start(tr("Setting {name}…").format(name=name), call)
+
+    def _then_update(self, label: str, change: Callable[[], Any]) -> bool:
+        """Run *change* on the worker, then update the current fit (its curve and χ²)."""
+        uid = self.current_uid
+        if not uid or self.session is None:
+            return False
+        api = self.session.api
+
+        def call() -> Any:
+            result = change()
+            if isinstance(result, dict) and result.get("ok") is False:
+                return result
+            return api.fit_update(fit_uid=uid)
+
+        return self._start(label, call)
+
+    def set_model_state(self, key: str, value: Any, label: str = "") -> bool:
+        """A control of the model editor changed: ``model.state.set`` on the server."""
+        uid, api = self.current_uid, self.session.api if self.session is not None else None
+        if not key or api is None:
+            return False
+        return self._then_update(
+            tr("Setting {name}…").format(name=tr(label) if label else key),
+            lambda: api.model_state_set({key: value}, fit_uid=uid),
+        )
+
+    def edit_model_parameter(self, record: dict, key: str, value: Any) -> bool:
+        """A cell of a model-editor table changed: one ``parameter.*`` call by the parameter's uid."""
+        uid, api = self.current_uid, self.session.api if self.session is not None else None
+        if api is None:
+            return False
+        fields: dict[str, Any] = {}
+        if key == "value":
+            number = _number(value)
+            if number is None:
+                return False
+            fields["value"] = number
+        elif key == "fixed":
+            fields["fixed"] = bool(value)
+        elif key in ("lo", "hi"):
+            lo = _number(value) if key == "lo" else _number(record.get("lo"))
+            hi = _number(value) if key == "hi" else _number(record.get("hi"))
+            if lo is None or hi is None:
+                return False
+            fields["bounds"] = (lo, hi)
+        elif key == "bounds_on":
+            fields["bounds_on"] = bool(value)
+        else:
+            return False
+        name = str(record.get("name", ""))
+        return self._then_update(
+            tr("Setting {name}…").format(name=name),
+            lambda: api.edit_parameter(
+                str(record["uid"]), fit_uid=uid, parameter_name=name, **fields
+            ),
+        )
+
+    def model_action(self, action: str) -> bool:
+        """A button of the model editor (``model.action``), e.g. the global fit's *Add*."""
+        uid, api = self.current_uid, self.session.api if self.session is not None else None
+        if not action or api is None:
+            return False
+        return self._then_update(
+            tr("Running {action}…").format(action=action.replace("_", " ")),
+            lambda: api.model_action(action, fit_uid=uid),
+        )
+
+    def change_components(self, target: str, add: bool, index: int = -1) -> bool:
+        """*add* / *del* of a component group of the model editor."""
+        uid, api = self.current_uid, self.session.api if self.session is not None else None
+        if not target or api is None:
+            return False
+        if add:
+            return self._then_update(
+                tr("Adding a component…"), lambda: api.model_component_add(target, fit_uid=uid)
+            )
+        return self._then_update(
+            tr("Removing a component…"),
+            lambda: api.model_component_remove(target, int(index), fit_uid=uid),
+        )
 
     def remove_fit(self, uid: str) -> bool:
         if not uid or self.session is None:
@@ -710,9 +1079,10 @@ class DataDocks:
         if key in self._reader_errors:
             return None
         try:
-            from chisurf.emtk.reader_settings import ReaderSettingsApp
+            from chisurf.emtk.reader_settings import reader_settings_app
 
-            app = ReaderSettingsApp(reader)
+            api = self.session.api if self.session is not None else None
+            app = reader_settings_app(reader, context=api)
         except Exception as exc:  # noqa: BLE001 - shown as a note, the reader's defaults are used
             self._reader_errors[key] = str(exc)
             return None
@@ -732,17 +1102,140 @@ class DataDocks:
         ).format(name=reader.name, error=error)
 
     # -- file dialog ------------------------------------------------------------- #
-    def open_file_dialog(self) -> None:
+    def open_file_dialog(
+        self,
+        title: str = "",
+        mode: str = "open",
+        directory: str | None = None,
+        done: Callable[[str], None] | None = None,
+    ) -> None:
+        """Open a file dialog over the shell; *done* gets the chosen path (default: the file to read)."""
         from emtk.dialog_window import DialogWindow
         from emtk.file_dialog import FileDialog
 
-        start = str(Path(self.read.path).expanduser().parent) if self.read.path else None
-        self.file_dialog = FileDialog(tr("Read data"), mode="open", directory=start)
-        self._file_window = DialogWindow(tr("Read data"), size=(760, 540))
+        title = title or tr("Read data")
+        if directory is None and self.read.path:
+            directory = str(Path(self.read.path).expanduser().parent)
+        self.file_dialog = FileDialog(title, mode=mode, directory=directory)
+        self._file_window = DialogWindow(title, size=(760, 540))
+        self._file_done = done
         self.request_frame()
 
+    def ask_sampling_folder(self) -> None:
+        """*Sample*: ask for the folder the chains, diagnostics and project go to, then start."""
+        if not self.current_uid:
+            return
+        self.open_file_dialog(
+            tr("Select the folder for the sampling results"), mode="folder", done=self.start_sampling
+        )
+
+    def open_settings(self) -> None:
+        """⚙: the sampling and fitting settings, written to the user settings on OK."""
+        from chisurf.emtk.fit_controls import SettingsDialog
+
+        self.settings_dialog = SettingsDialog(on_close=self._settings_closed)
+        self.request_frame()
+
+    def _settings_closed(self, written: bool | None) -> None:
+        self.settings_dialog = None
+        if written is True:
+            self.status = tr("Sampling and fitting settings saved.")
+        elif written is False:
+            self.status = tr(
+                "The settings apply to this session but could not be written to your settings file."
+            )
+
+    def open_dataset_picker(self) -> None:
+        """``…``: pick another dataset for the current fit."""
+        from chisurf.emtk.fit_controls import DatasetPicker
+
+        rows = [r for r in self.datasets.datasets if r["experiment"] != "Global"]
+        anchor = self.shell.item_rects.get("analysis.select_dataset")
+        self.dataset_picker = DatasetPicker(rows, anchor, on_pick=self.attach_dataset)
+        self.request_frame()
+
+    def attach_dataset(self, row: dict | None) -> bool:
+        """Attach the dataset *row* to the current fit (``fit.set_dataset``)."""
+        self.dataset_picker = None
+        uid, api = self.current_uid, self.session.api if self.session is not None else None
+        if not row or not uid or api is None:
+            return False
+        dataset = str(row.get("uid", ""))
+
+        def change() -> Any:
+            return api.set_fit_dataset(dataset, fit_uid=uid)
+
+        self._dirty |= {"windows"}
+        return self._then_update(
+            tr("Attaching {name}…").format(name=row.get("name", "")), change
+        )
+
+    def window_at(self, x: float, y: float) -> str:
+        """The uid of the fit window drawn under (x, y), ``""`` if none."""
+        for uid, window in self.windows.items():
+            box = window.box
+            dock = self.shell.docks.window(window.key)
+            if box is None or dock is None or not self.shell.docks.is_shown(window.key):
+                continue
+            bx, by, bw, bh = box
+            if bx <= x <= bx + bw and by - 30.0 <= y <= by + bh:
+                return uid
+        return ""
+
+    def dataset_dragged(self, row: dict | None, x: float, y: float, dropped: bool) -> None:
+        """Follow a dataset dragged out of the Datasets table; on a fit window's drop, attach it."""
+        if not dropped:
+            self.dragged = (row, x, y) if row else None
+            self.request_frame()
+            return
+        self.dragged = None
+        uid = self.window_at(x, y)
+        if not row or not uid or row.get("experiment") == "Global":
+            return
+        self.show_fit(uid)
+        self.current_uid = uid
+        self.attach_dataset(row)
+
+    def _draw_drag(self) -> None:
+        """The dragged dataset's name under the pointer, and the fit it would go to."""
+        if self.dragged is None:
+            return
+        row, x, y = self.dragged
+        target = self.window_at(x, y)
+        name = str(row.get("name", ""))
+        text = (
+            tr("{name} → {fit}").format(name=name, fit=self.windows[target].title)
+            if target
+            else name
+        )
+        draw = im.get_foreground_draw_list()
+        w, h = im.calc_text_size(text)[:2]
+        style = im.get_style()
+        # Beside the pointer, kept inside the window.
+        right = float(im.get_main_viewport().size[0])
+        x = max(0.0, min(x + 12.0, right - w - 12.0)) - 12.0
+        draw.add_rect_filled((x + 12, y + 8), (x + 20 + w, y + 12 + h), style.color(im.Col.POPUP_BG))
+        draw.add_rect((x + 12, y + 8), (x + 20 + w, y + 12 + h), style.color(im.Col.BORDER))
+        draw.add_text((x + 16, y + 10), style.color(im.Col.TEXT), text)
+
+    @property
+    def modal_open(self) -> bool:
+        """Whether a dialog over the shell takes the input (file dialog, settings)."""
+        return (
+            self.file_dialog is not None
+            or self.settings_dialog is not None
+            or self.sample_dialog is not None
+        )
+
     def draw_file_dialog(self, box) -> None:
-        """The open file dialog over the whole shell (drawn last, on top)."""
+        """The open dialogs over the whole shell (drawn last, on top)."""
+        self._draw_drag()
+        if self.dataset_picker is not None:
+            self.dataset_picker.draw()
+        if self.settings_dialog is not None:
+            self.settings_dialog.draw(box)
+        if self.sample_dialog is not None:
+            self.sample_dialog.draw(box)
         if self.file_dialog is None:
             return
         window = self._file_window
@@ -751,9 +1244,31 @@ class DataDocks:
         window.end()
         if closed or paths is False:
             self.file_dialog = None
+            self._file_done = None
         elif paths:
             self.file_dialog = None
-            self.read.path = str(paths[0])
+            done, self._file_done = self._file_done, None
+            if done is not None:
+                done(str(paths[0]))
+            else:
+                self.read.path = str(paths[0])
+                self.ask_sample(self.read.reader())
+
+    def ask_sample(self, reader: Any) -> bool:
+        """After a file is chosen: which MMFDB sample it is of, for a reader that records one."""
+        if reader is None or not getattr(reader, "asks_sample", False):
+            return False
+        from chisurf.emtk.sample_picker import SamplePickerDialog
+
+        def closed(_sample_id: str | None) -> None:
+            self.sample_dialog = None
+            self.request_frame()
+
+        self.sample_dialog = SamplePickerDialog(
+            reader, client=self.sample_client, on_close=closed, wake=self.request_frame
+        )
+        self.request_frame()
+        return True
 
     # -- drawing --------------------------------------------------------------- #
     def _form(self, name: str, model: Any, prefix: str) -> None:
@@ -786,6 +1301,7 @@ class DataDocks:
 
     def _draw_analysis(self, box) -> None:
         self._form("analysis", self.analysis, "analysis")
+        self.editor.draw(self.shell.item_rects)
         self._status_line()
 
     def _draw_plot(self, box) -> None:
@@ -812,8 +1328,55 @@ class DataDocks:
         if window is None:
             return
         x, y, w, h = (float(v) for v in box)
-        window.box = (x, y, max(1.0, w), max(1.0, h))
+        # A strip over the surface for the window's own actions: *Code* turns it over.
+        label = tr("Plots") if window.code_shown() else tr("Code")
+        strip = im.get_frame_height() + 4.0
+        bw = im.calc_text_size(label)[0] + 2.0 * im.get_style().frame_padding[0]
+        im.set_cursor_screen_pos((x + w - bw - 4.0, y + 2.0))
+        if im.button(f"{label}##code-{uid}"):
+            self.toggle_code(uid)
+        self.shell.item_rects[f"{window.key}.code"] = im.get_item_rect()
+        im.set_item_tooltip(tr("Show the model's source and view.json, editable; or the plots again."))
+        window.box = (x, y + strip, max(1.0, w), max(1.0, h - strip))
         self.shell.host_child(window.key, window.key, window.app, window.box)
+
+    def toggle_code(self, uid: str) -> bool:
+        """*Code* / *Plots* of a fit window: the model's files are asked of the server first."""
+        window = self.windows.get(uid)
+        if window is None or self.session is None:
+            return False
+        if window.code_shown():
+            window.show_code(False)
+            return True
+        api = self.session.api
+
+        def after(files: Any) -> None:
+            if isinstance(files, dict) and files.get("files"):
+                window.show_code(True, files, on_apply=lambda path, text: self.apply_code(uid, path, text))
+            else:
+                self.status = tr("The model's source could not be found.")
+
+        return self._start(tr("Opening the model's code…"), lambda: api.model_code_files(fit_uid=uid), after)
+
+    def apply_code(self, uid: str, path: str, text: str) -> str:
+        """Save and apply an edit made on a window's Code face (``model.code.apply``)."""
+        window = self.windows.get(uid)
+        api = self.session.api if self.session is not None else None
+        if window is None or api is None:
+            return tr("No session.")
+
+        def after(result: Any) -> None:
+            if window.code_face is not None and isinstance(result, dict):
+                window.code_face.status = str(result.get("message", ""))
+
+        def call() -> Any:
+            result = api.model_code_apply(path, text, fit_uid=uid)
+            api.fit_update(fit_uid=uid)
+            return result
+
+        if not self._start(tr("Applying the model's code…"), call, after):
+            return tr("Busy: {label}").format(label=self.job.label if self.job else "")
+        return tr("Applying…")
 
     def close(self) -> None:
         """Close the windows, the reader settings and the session."""
