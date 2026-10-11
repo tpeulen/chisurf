@@ -679,4 +679,8 @@ _ROWS = (
 def install_shared_translations() -> None:
     """Supplement the ChiSurf TS catalogues with shared EMTK image/ROI text."""
     for index, locale in enumerate(("de", "fr", "es", "pt", "ru"), 1):
-        add_translations(locale, {row[0]: row[index] for row in _ROWS})
+        # The domain's own context wins an ambiguous source (emtk.i18n), over a catalogue entry of
+        # another context: these are the shared controls' translations, owned here.
+        add_translations(
+            locale, {row[0]: row[index] for row in _ROWS}, context="chisurf", domain="chisurf"
+        )

@@ -227,7 +227,19 @@ def test_docking_project_round_trip_preserves_control_settings(inputs, tmp_path,
     assert getattr(restored, attribute) == value
 
 
+def _needs_docking_engine():
+    """Skip where this IMP.bff has no docking engine (the IMP-free ``core`` wheel)."""
+    import IMP.bff as bff
+
+    if not hasattr(bff, "dock"):
+        pytest.skip(
+            f"this IMP.bff (build {bff.get_build()}) has no docking engine; docking needs a "
+            "build that links IMP (see the imp-bff note in pixi.toml)"
+        )
+
+
 def test_docking_runs_and_lists_the_result(inputs, tmp_path):
+    _needs_docking_engine()
     app = make_dock()
     s = app.session
     s.add_pdbs([str(tmp_path / "protein_1R0A.pdb"), str(tmp_path / "dna.pdb")])
@@ -244,6 +256,7 @@ def test_docking_runs_and_lists_the_result(inputs, tmp_path):
 
 
 def test_docking_repeats_give_one_row_per_trial(inputs, tmp_path):
+    _needs_docking_engine()
     s = DockingSession()
     s.add_pdbs([str(tmp_path / "protein_1R0A.pdb"), str(tmp_path / "dna.pdb")])
     s.fps_json, s.output_dir, s.n_frames, s.n_repeats = str(inputs), str(tmp_path / "out"), 20, 2

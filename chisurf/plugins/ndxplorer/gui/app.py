@@ -152,14 +152,20 @@ def _add_guide(app):
     from ndxplorer.app.features import Feature
     from ndxplorer.app.menus import build_menu_bar
 
+    from emtk.i18n import tr
+
     from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+    from chisurf.plugins.emtk_layout import action_caption, action_tooltip
 
     here = Path(__file__).parent
+    guide_feature_rects: dict[str, tuple] = {}
 
     def target_rect(key):
         """Where the control or plot part named *key* was drawn last frame."""
         if key == "menu_bar":
             return app._menu_box
+        if key in guide_feature_rects:
+            return guide_feature_rects[key]
         if key in app.plot_boxes:
             return app.plot_boxes[key]
         for form in app.forms.values():
@@ -168,19 +174,15 @@ def _add_guide(app):
                 return rect
         return None
 
-    def open_demo_when_empty(index, _step):
-        """The first step opens the demo table when nothing is loaded: its steps need data to point at."""
-        if index == 0 and app.model.source is None:
-            import tempfile
-
-            from chisurf.plugins.ndxplorer.demo import make_demo
-
-            app.open_path(str(make_demo(tempfile.mkdtemp(prefix="ndx_demo_"))))
+    def data_is_loaded_for_the_example_step(index, step):
+        """The example step is done at once when a table is open already: its steps need data to point at."""
+        if step.get("target", {}).get("name") == "load_example" and app.model.source is not None:
+            tour.notify_used("load_example")
 
     tour = EmTkGuidedTour(
         here / "guide.json",
         get_target_rect=target_rect,
-        on_step_change=open_demo_when_empty,
+        on_step_change=data_is_loaded_for_the_example_step,
         owner=app,
         wait_for_controls=True,
     )
@@ -196,6 +198,46 @@ def _add_guide(app):
 
     class GuideFeature(Feature):
         name = "chisurf_guide"
+        item_rects = guide_feature_rects
+
+        def load_example(self):
+            """Open the simulated burst table of :mod:`..demo`, written into the settings cache."""
+            from chisurf.plugins.ndxplorer.demo import make_demo
+
+            try:
+                path = make_demo()
+            except OSError as exc:
+                self.app.status = f"Could not write the example: {exc}"
+                return False
+            if not self.app.open_path(str(path)):
+                return False
+            tour.notify_used("load_example")
+            return True
+
+        def _draw_example_button(self):
+            """While nothing is loaded, offer the simulated table over the empty map."""
+            from emtk import im
+
+            x, y, w, h = self.app.plot_boxes.get("map", (0.0, 0.0, 0.0, 0.0))
+            guide_feature_rects.pop("load_example", None)
+            if self.app.model.source is not None or w < 120 or h < 120:
+                return
+            f = im.WindowFlags
+            flags = f.NO_TITLE_BAR | f.NO_RESIZE | f.NO_MOVE | f.ALWAYS_AUTO_RESIZE
+            im.set_next_window_pos((x + w * 0.5 - 62.0, y + h * 0.89))
+            if im.begin("ndx_example", flags=flags):
+                if im.button(f"{action_caption('example')}###load_example"):
+                    self.load_example()
+                im.set_item_tooltip(
+                    action_tooltip(
+                        "example",
+                        tr(
+                            "Open a simulated burst table (five populations with known FRET efficiency and stoichiometry) so ndX can be tried without data of your own."
+                        ),
+                    )
+                )
+                self.item_rects["load_example"] = im.get_item_rect()
+            im.end()
 
         def actions(self):
             return {"chisurf_guide": tour.start, "chisurf_quick_reference": help_window.show}
@@ -227,6 +269,7 @@ def _add_guide(app):
 
         def draw_windows(self):
             width, height = self.app.box[2], self.app.box[3]
+            self._draw_example_button()
             help_window.draw((0.0, 0.0, width, height))
             tour.draw(width, height)
             return False

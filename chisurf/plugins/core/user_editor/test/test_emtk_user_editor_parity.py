@@ -1064,7 +1064,7 @@ def test_guide_steps_point_at_controls_the_app_draws():
         rect = app.item_rects.get(name) or app.form.rects.get(name)
         assert rect is not None, f"{step['title']}: nothing drawn for {name!r}"
     awaiting = [EmTkGuidedTour._target_key(s["target"]) for s in steps if s.get("await")]
-    assert awaiting == ["row_selected", "display_name", "ask_password", "do_save"]
+    assert awaiting == ["load_example", "row_selected", "display_name", "ask_password", "do_save"]
 
 
 def test_the_tour_hears_the_row_pick_the_edit_and_the_buttons():

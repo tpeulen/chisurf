@@ -337,6 +337,29 @@ class CardShell(TourTarget, ImApp):
         """A row of buttons that wraps; the key of the one pressed (remembered for the tour)."""
         return button_row(buttons, remember=self.remember)
 
+    def tab_row(self, tabs: Sequence[str], current: str, tips: dict[str, str]) -> str | None:
+        """The result tabs as a row of buttons that wraps; the tab pressed (each remembered as ``tab_<name>``).
+
+        A tab drawn after its neighbour on one line ran off the right edge of a narrow dock (the *Project JSON*
+        tab of QuEst could not be reached at 800 x 600); the row wraps onto a second line instead.
+        """
+        from emtk.im_core import Col
+
+        selected = im.get_style().color(Col.TAB_SELECTED)
+        pressed = button_row(
+            [
+                {
+                    "label": tab,
+                    "key": f"tab_{tab}",
+                    "tip": tips.get(tab, ""),
+                    **({"colours": (selected, selected, selected)} if tab == current else {}),
+                }
+                for tab in tabs
+            ],
+            remember=self.remember,
+        )
+        return None if pressed is None else str(pressed)[len("tab_"):]
+
     def help_buttons(self) -> list[dict]:
         return [
             {"label": action_caption("guide"), "key": "guide", "tip": action_tooltip("guide")},

@@ -193,7 +193,7 @@ class OpticalConfigurationWidget:
 
         probes = [p for p in self.probes if filter_key is None or p.get(filter_key)]
         ids = [None] + [p["probe_id"] for p in probes]
-        labels = ["None"] + [f"{p['name']} ({p['probe_id']})" for p in probes]
+        labels = [tr("None")] + [f"{p['name']} ({p['probe_id']})" for p in probes]
         if current is not None and current not in ids:
             ids.append(current)
             labels.append(f"Component {current}")

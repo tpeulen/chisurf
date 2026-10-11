@@ -274,22 +274,24 @@ def test_open_save_as_and_add(folder, tmp_path):
 
 
 # 5. guide: every target drawn; the folder step waits for a folder, the save step for the button
-def test_the_guide_points_at_real_controls_and_waits(folder):
+def test_the_guide_points_at_real_controls_and_waits(folder, tmp_path, monkeypatch):
+    monkeypatch.setattr("chisurf.plugins.demo_cache.cache_folder", lambda plugin: tmp_path / plugin)
     app = MergerApp()
     try:
         _draw(app)
         steps = app.tour.steps
         keys = {app.tour._target_key(s.get("target")) for s in steps} - {""}
-        assert keys == {"lineEdit", "tableWidget", "toolButton_3"}
+        assert keys == {"load_example", "lineEdit", "tableWidget", "toolButton_3"}
         assert all(app.tour.get_target_rect(k) is not None for k in keys)
         first = next(i for i, s in enumerate(steps) if s.get("await"))
         app.tour.start(first)
         assert app.tour.awaiting
         app.form.used("folder")  # a typed path is not a loaded folder
         assert app.tour.awaiting
-        app.files_dropped([str(folder)])
+        _click(app, "load_example")  # pressed, but the curves are not read yet
+        assert app.tour.awaiting
         _wait(app)
-        assert not app.tour.awaiting
+        assert not app.tour.awaiting and len(app.model.correlations) == 4
         last = max(i for i, s in enumerate(steps) if s.get("await"))
         app.tour.start(last)
         _click(app, "request_save")

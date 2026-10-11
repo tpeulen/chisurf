@@ -639,6 +639,156 @@ def get_pda_distribution(fit, kw_hist: dict | None = None) -> list:
     return curves
 
 
+def _photon_gate(fit, pda_meta, nuisance, shape):
+    """The photon-number gate (``nPh_min`` / ``nPh_max``) of the 1D projection.
+
+    Mirrors the logic of the PDA distance model so that 1D projections respect the same N-range as the
+    2D residuals.
+
+    Returns
+    -------
+    tuple
+        ``(mask2d, nmin, nmax)``: the boolean S1S2 mask of the gated bins (``None`` when the gate is
+        off) and the effective bounds (``0, 0`` when it is off).
+    """
+    if nuisance is None:
+        return None, 0, 0
+    row_indices = np.asarray(pda_meta.get("row_indices"), dtype=np.int64)
+    col_indices = np.asarray(pda_meta.get("col_indices"), dtype=np.int64)
+    if not (row_indices.size and col_indices.size and row_indices.size == col_indices.size):
+        return None, 0, 0
+    pda_nmin = int(pda_meta.get("minimum_number_of_photons", 0) or 0)
+    pda_nmax = int(pda_meta.get("maximum_number_of_photons", 0) or 0)
+    try:
+        nmin_param = int(round(float(nuisance.nPh_min)))
+    except Exception:
+        nmin_param = 0
+    try:
+        nmax_param = int(round(float(nuisance.nPh_max)))
+    except Exception:
+        nmax_param = 0
+    if nmin_param == 0 and nmax_param == 0:
+        return None, 0, 0
+    nmin = nmin_param if nmin_param > 0 else pda_nmin
+    nmax = nmax_param if nmax_param > 0 else pda_nmax
+    if nmax < nmin or shape is None or len(shape) != 2:
+        return None, 0, 0
+    ny2, nx2 = int(shape[0]), int(shape[1])
+    data_obj = getattr(fit, "data", None)
+    key = (id(pda_meta), ny2, nx2, int(nmin), int(nmax))
+    try:
+        cache_key = getattr(data_obj, "_pda_1d_mask2d_key", None)
+        cache_mask = getattr(data_obj, "_pda_1d_mask2d", None)
+    except Exception:
+        cache_key = cache_mask = None
+    if cache_mask is not None and cache_key == key:
+        return cache_mask, nmin, nmax
+    mask2d = np.zeros((ny2, nx2), dtype=bool)
+    sel = ((row_indices + col_indices) >= nmin) & ((row_indices + col_indices) <= nmax)
+    if np.any(sel):
+        mask2d[row_indices[sel], col_indices[sel]] = True
+    try:
+        data_obj._pda_1d_mask2d = mask2d
+        data_obj._pda_1d_mask2d_key = key
+    except Exception:
+        pass
+    return mask2d, nmin, nmax
+
+
+def _experimental_s1s2(fit, pda_meta, nuisance):
+    """The experimental S1S2 matrix, cut to its shape and photon-gated, with the gate's bounds."""
+    s1s2_data = np.asarray(pda_meta.get("s1s2"), dtype=float)
+    shp = pda_meta.get("shape")
+    if shp is not None and len(shp) == 2:
+        s1s2_data = s1s2_data[: int(shp[0]), : int(shp[1])]
+    try:
+        mask2d, nmin, nmax = _photon_gate(fit, pda_meta, nuisance, s1s2_data.shape)
+    except Exception:  # a malformed gate leaves the histogram ungated, as it always did
+        mask2d, nmin, nmax = None, 0, 0
+    if mask2d is not None:
+        s1s2_data = np.where(mask2d, s1s2_data, 0.0)
+    return s1s2_data, mask2d, nmin, nmax
+
+
+def _data_histogram(fit, pda_obj, pda_meta, s1s2_data, settings, nmin, nmax):
+    """The experimental 1D histogram ``(x, y)``.
+
+    It depends only on the experimental S1S2 matrix, the histogram settings and the photon-number gate,
+    so it is cached on the data object and not recomputed on every model evaluation.
+    """
+    kw_hist = settings.kw_hist
+    data_obj = getattr(fit, "data", None)
+    try:
+        hist_cache_key = getattr(data_obj, "_pda_1d_hist_key", None)
+        hist_cache_val = getattr(data_obj, "_pda_1d_hist", None)
+    except Exception:
+        hist_cache_key = hist_cache_val = None
+    # The corrected axes bin through gamma and R0, so a change in either
+    # re-bins the *data* histogram too and has to invalidate the cache.
+    model_obj = getattr(fit, "model", None)
+    axis_signature = (settings.axis,)
+    if settings.axis in ("E", "R"):
+        axis_signature = (
+            settings.axis,
+            float(getattr(getattr(model_obj, "nuisance", None), "gamma", 1.0) or 1.0),
+            float(
+                getattr(getattr(model_obj, "fret_parameters", None), "forster_radius", 52.0) or 52.0
+            ),
+        )
+    flat = s1s2_data.flatten()
+    hist_key = (
+        id(pda_meta),
+        int(flat.size),
+        # Content signature so the cached data histogram invalidates when the
+        # experimental S1S2 is replaced in place (id + size alone are stable
+        # across an in-place edit / a new dataset loaded into the same object).
+        hash(flat.tobytes()),
+        int(nmin),
+        int(nmax),
+        axis_signature,
+        int(kw_hist.get("n_bins", 81)),
+        float(kw_hist.get("x_min", 0.0)),
+        float(kw_hist.get("x_max", 1.0)),
+        bool(kw_hist.get("log_x", False)),
+        int(kw_hist.get("n_min", 10)),
+    )
+    if hist_cache_val is not None and hist_cache_key == hist_key:
+        return hist_cache_val
+    data_x, data_y = pda_obj.get_1dhistogram(s1s2=flat, **kw_hist)
+    value = (np.asarray(data_x, dtype=float), np.asarray(data_y, dtype=float))
+    try:
+        data_obj._pda_1d_hist_key = hist_key
+        data_obj._pda_1d_hist = value
+    except Exception:
+        pass
+    return value
+
+
+def pda_1d_residual_size(fit, pda_obj, nuisance=None, settings: Pda2cFitSettings | None = None) -> int:
+    """Number of bins of the 1D histogram the fit compares: the ``n_points`` of a 1D PDA fit.
+
+    It is a function of the data and the settings alone (the binning and the photon gate), so it reads the
+    same before the first fit as after it. It used to be remembered from the last residual vector, which
+    left the fit dock showing the 2D size (251000) until a fit had run and the 1D size (81) afterwards.
+
+    Returns
+    -------
+    int
+        The bin count, or 0 when the data carry no S1S2 histogram.
+    """
+    pda_meta = getattr(fit.data, "pda", None)
+    if not isinstance(pda_meta, dict) or pda_meta.get("s1s2") is None:
+        return 0
+    if settings is None:
+        settings = resolve_fit_settings(getattr(fit, "model", None), None)
+    try:
+        assign_pda_histogram_function(pda_obj, getattr(fit, "model", None), settings.axis)
+        s1s2_data, _mask, nmin, nmax = _experimental_s1s2(fit, pda_meta, nuisance)
+        return int(_data_histogram(fit, pda_obj, pda_meta, s1s2_data, settings, nmin, nmax)[1].size)
+    except Exception:
+        return 0
+
+
 def pda_1d_residuals_from_s1s2(
     fit,
     pda_obj,
@@ -676,8 +826,7 @@ def pda_1d_residuals_from_s1s2(
     pda_meta = getattr(fit.data, "pda", None)
     if not isinstance(pda_meta, dict):
         return np.zeros(0, dtype=np.float64)
-    s1s2_experimental = pda_meta.get("s1s2")
-    if s1s2_experimental is None:
+    if pda_meta.get("s1s2") is None:
         return np.zeros(0, dtype=np.float64)
 
     if settings is None:
@@ -687,150 +836,16 @@ def pda_1d_residuals_from_s1s2(
 
     try:
         s1s2_model = np.asarray(pda_obj.get_S1S2_matrix(), dtype=float)
-        s1s2_data = np.asarray(s1s2_experimental, dtype=float)
-
-        try:
-            shp = pda_meta.get("shape")
-            if shp is not None and len(shp) == 2:
-                ny, nx = int(shp[0]), int(shp[1])
-                s1s2_model = s1s2_model[:ny, :nx]
-                s1s2_data = s1s2_data[:ny, :nx]
-        except Exception:
-            pass
-
-        # Effective photon-number bounds used for gating (0, 0 => disabled).
-        gating_nmin = 0
-        gating_nmax = 0
-
-        # Apply photon-number gating (nPh_min/nPh_max) if a nuisance group is
-        # provided. This mirrors the logic used in the PDA distance model so
-        # that 1D projections respect the same N-range as the 2D residuals.
-        try:
-            if nuisance is not None:
-                row_indices = np.asarray(pda_meta.get("row_indices"), dtype=np.int64)
-                col_indices = np.asarray(pda_meta.get("col_indices"), dtype=np.int64)
-                if row_indices.size and col_indices.size and row_indices.size == col_indices.size:
-                    pda_nmin = int(pda_meta.get("minimum_number_of_photons", 0) or 0)
-                    pda_nmax = int(pda_meta.get("maximum_number_of_photons", 0) or 0)
-                    try:
-                        nmin_param = int(round(float(nuisance.nPh_min)))
-                    except Exception:
-                        nmin_param = 0
-                    try:
-                        nmax_param = int(round(float(nuisance.nPh_max)))
-                    except Exception:
-                        nmax_param = 0
-                    if nmin_param != 0 or nmax_param != 0:
-                        nmin = nmin_param if nmin_param > 0 else pda_nmin
-                        nmax = nmax_param if nmax_param > 0 else pda_nmax
-                        if nmax >= nmin:
-                            gating_nmin = nmin
-                            gating_nmax = nmax
-                            shp2 = getattr(s1s2_data, "shape", None)
-                            if shp2 is not None and len(shp2) == 2:
-                                ny2, nx2 = int(shp2[0]), int(shp2[1])
-                                data_obj = getattr(fit, "data", None)
-                                key = (
-                                    id(pda_meta),
-                                    int(ny2),
-                                    int(nx2),
-                                    int(nmin),
-                                    int(nmax),
-                                )
-                                mask2d = None
-                                try:
-                                    cache_key = getattr(data_obj, "_pda_1d_mask2d_key", None)
-                                    cache_mask = getattr(data_obj, "_pda_1d_mask2d", None)
-                                except Exception:
-                                    cache_key = None
-                                    cache_mask = None
-                                if cache_mask is not None and cache_key == key:
-                                    mask2d = cache_mask
-                                else:
-                                    mask2d = np.zeros((ny2, nx2), dtype=bool)
-                                    N = row_indices + col_indices
-                                    sel = (N >= nmin) & (N <= nmax)
-                                    if np.any(sel):
-                                        mask2d[row_indices[sel], col_indices[sel]] = True
-                                    try:
-                                        data_obj._pda_1d_mask2d = mask2d
-                                        data_obj._pda_1d_mask2d_key = key
-                                    except Exception:
-                                        pass
-                                if mask2d is not None:
-                                    s1s2_model = np.where(mask2d, s1s2_model, 0.0)
-                                    s1s2_data = np.where(mask2d, s1s2_data, 0.0)
-        except Exception:
-            pass
-
-        s1s2_model = s1s2_model.flatten()
-        s1s2_data = s1s2_data.flatten()
-
-        # Experimental 1D histogram depends only on the experimental S1S2
-        # matrix, histogram settings, and photon-number gating. Cache it on the
-        # data object so it is not recomputed on every model evaluation.
-        data_obj = getattr(fit, "data", None)
-        try:
-            hist_cache_key = getattr(data_obj, "_pda_1d_hist_key", None)
-            hist_cache_val = getattr(data_obj, "_pda_1d_hist", None)
-        except Exception:
-            hist_cache_key = None
-            hist_cache_val = None
-
-        eff_nmin = int(gating_nmin)
-        eff_nmax = int(gating_nmax)
-        # The corrected axes bin through gamma and R0, so a change in either
-        # re-bins the *data* histogram too and has to invalidate the cache.
-        model_obj = getattr(fit, "model", None)
-        axis_signature = (settings.axis,)
-        if settings.axis in ("E", "R"):
-            axis_signature = (
-                settings.axis,
-                float(getattr(getattr(model_obj, "nuisance", None), "gamma", 1.0) or 1.0),
-                float(
-                    getattr(getattr(model_obj, "fret_parameters", None), "forster_radius", 52.0)
-                    or 52.0
-                ),
-            )
-        hist_key = (
-            id(pda_meta),
-            int(s1s2_data.size),
-            # Content signature so the cached data histogram invalidates when the
-            # experimental S1S2 is replaced in place (id + size alone are stable
-            # across an in-place edit / a new dataset loaded into the same object).
-            hash(s1s2_data.tobytes()),
-            eff_nmin,
-            eff_nmax,
-            axis_signature,
-            int(kw_hist.get("n_bins", 81)),
-            float(kw_hist.get("x_min", 0.0)),
-            float(kw_hist.get("x_max", 1.0)),
-            bool(kw_hist.get("log_x", False)),
-            int(kw_hist.get("n_min", 10)),
-        )
-
-        if hist_cache_val is not None and hist_cache_key == hist_key:
-            data_x, data_y = hist_cache_val
-        else:
-            data_x, data_y = pda_obj.get_1dhistogram(
-                s1s2=s1s2_data,
-                **kw_hist,
-            )
-            try:
-                data_obj._pda_1d_hist_key = hist_key
-                data_obj._pda_1d_hist = (
-                    np.asarray(data_x, dtype=float),
-                    np.asarray(data_y, dtype=float),
-                )
-            except Exception:
-                pass
-
+        shp = pda_meta.get("shape")
+        if shp is not None and len(shp) == 2:
+            s1s2_model = s1s2_model[: int(shp[0]), : int(shp[1])]
+        s1s2_data, mask2d, nmin, nmax = _experimental_s1s2(fit, pda_meta, nuisance)
+        if mask2d is not None:
+            s1s2_model = np.where(mask2d, s1s2_model, 0.0)
+        data_x, data_y = _data_histogram(fit, pda_obj, pda_meta, s1s2_data, settings, nmin, nmax)
         # Model histogram is recomputed for each evaluation since the PDA
         # probability spectrum changes during fitting.
-        model_x, model_y = pda_obj.get_1dhistogram(
-            s1s2=s1s2_model,
-            **kw_hist,
-        )
+        model_x, model_y = pda_obj.get_1dhistogram(s1s2=s1s2_model.flatten(), **kw_hist)
     except Exception:
         return np.zeros(0, dtype=np.float64)
 
@@ -863,6 +878,24 @@ class Pda2cModelMixin:
     S1S2 histogram, which is what keeps them out of the model list of a
     three-colour dataset read by the same PDA reader.
     """
+
+    @property
+    def n_points(self) -> int:
+        """Number of data points for chi-squared: the 1D histogram's bins, or the 2D residuals' size.
+
+        In 1D mode this is read from the data and the settings (:func:`pda_1d_residual_size`), so it is
+        the same before the first fit as after it.
+        """
+        if getattr(self, "residual_mode", "1D") == "1D":
+            fit = getattr(self, "fit", None)
+            pda = getattr(self, "pda", None)
+            if fit is not None and pda is not None:
+                n = pda_1d_residual_size(
+                    fit, pda, getattr(self, "nuisance", None), getattr(self, "fit_settings", None)
+                )
+                if n > 0:
+                    return n
+        return super().n_points
 
     def get_state(self) -> dict:
         """Include the scientific projection and residual statistic in state."""

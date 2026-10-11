@@ -40,6 +40,8 @@ READ_KEY, DATASETS_KEY, ANALYSIS_KEY, PLOT_KEY = (
     "fit.analysis",
     "fit.plot",
 )
+#: The least height the Read data dock gives a reader's settings form, in logical pixels.
+MIN_READER_FORM_H = 260.0
 
 
 def load_view(name: str) -> dict:
@@ -1436,7 +1438,9 @@ class DataDocks:
             im.separator_text(tr("File parameters"))
             x, y = im.get_cursor_screen_pos()
             w, h = im.get_content_region_avail()
-            room = max(1.0, float(h) - 40.0)
+            # What the dock has left, but never less than a form can be used in: a small window used to
+            # leave the reader form one pixel, and its controls were unreachable. The dock scrolls instead.
+            room = max(MIN_READER_FORM_H, float(h) - 40.0)
             self.shell.host_child(READ_KEY, f"reader.{id(app)}", app, (x, y, float(w), room))
             im.dummy((float(w), room))
         self._status_line()

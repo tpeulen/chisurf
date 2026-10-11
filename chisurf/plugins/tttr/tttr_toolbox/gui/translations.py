@@ -41,4 +41,8 @@ Split / Convert|Teilen / Konvertieren|Découper / Convertir|Dividir / Convertir|
 def install_translations():
     rows = [line.split("|") for line in ROWS.splitlines()]
     for index, locale in enumerate(("en", "de", "fr", "es", "pt", "ru")):
-        add_translations(locale, {row[0]: row[index] for row in rows})
+        # The domain's own context wins an ambiguous source (emtk.i18n), over a catalogue entry of
+        # another context.
+        add_translations(
+            locale, {row[0]: row[index] for row in rows}, context="chisurf", domain="chisurf"
+        )

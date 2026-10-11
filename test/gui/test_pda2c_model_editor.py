@@ -645,3 +645,23 @@ def test_dynamic_pda_recovers_exchange_at_unequal_populations(qapp):
 
     assert float(m.states._x1.value) == pytest.approx(truth["x1"], abs=0.06)
     assert m.transitions_per_window == pytest.approx(truth["k_ex"], rel=0.35)
+
+
+@pytest.mark.parametrize("model_path", PDA_MODELS)
+def test_pda_n_points_is_the_histogram_bin_count_before_and_after_a_fit(qapp, model_path):
+    """The point count is a function of the data and the settings, not of a remembered residual.
+
+    It read 251000 (the 2D size) before the first residual vector had been computed and 81 (the 1D
+    bins) afterwards, so the fit dock changed its mind about the degrees of freedom when a fit ran.
+    """
+    model_class = _resolve(model_path)
+    fit = _make_pda_fit(model_class)
+    model = fit.model
+    bins = int(model.fit_settings.n_bins)
+    assert model.n_points == bins
+    model.update()
+    fit.model.get_wres(fit)
+    assert model.n_points == bins
+    model.fit_settings.n_bins = 41
+    assert model.n_points == 41  # a change of the binning shows at once, not after the next fit
+    assert not hasattr(model, "_last_1d_residual_size")

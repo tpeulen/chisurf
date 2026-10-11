@@ -7,6 +7,8 @@ tags: [guides, imaging, photons, python]
 
 # Browsing a folder of scan images (Image Browser)
 
+**No data at hand?** **Load example** (beside *Open folder*) simulates two small confocal scans into the settings folder (`demos/tttr_image_browser`) and opens that folder; the guided tour starts from it. From Python, `chisurf.plugins.tttr.tttr_image_browser.demo.make_demo()` returns the folder and reuses a valid cache (`overwrite=True` rewrites it).
+
 **What you get:** a quick look at every photon file of a folder before any
 analysis: for the file you pick, one **tile per detector** of the detector
 setup (the intensity image made from that detector's routing channels and

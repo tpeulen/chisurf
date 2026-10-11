@@ -177,9 +177,10 @@ def test_paint_toggle_off_leaves_the_image_untouched(built):
     assert not np.any(ui.app.model.selection_mask > 0)
 
 
-def paint(ui):
+def paint(ui, at=(128, 1500)):
+    """Drag over the image at pixel *at* (default: a pixel of the Leica scan that holds photons)."""
     ui.draw(3)
-    x, y = ui.app.canvas.pick_pixels(128, 1500)
+    x, y = ui.app.canvas.pick_pixels(*at)
     ui.app.pointer_move(x, y)
     ui.draw(1)
     ui.app.press(x, y)
@@ -251,19 +252,19 @@ def test_help_guide_and_the_tour_is_walked(empty):
                 ui.app.tour, ui.size
             )  # the card does not sit on the control the user must press
             if key == "CLSM image":  # the paint step: the canvas takes the user's own press
-                paint(ui)
+                rows, columns = ui.app.model.current_image.shape[-2:]
+                paint(ui, (rows // 2, columns // 2))  # the simulated scan is only 32 x 32
                 assert not ui.app.tour.awaiting
                 ui.press_text("Next ►")
                 continue
             ui.click(key)
-            if ui.dialog_open:  # the tour's first await: really choose the file
-                ui.app.dialog.enter(str(SP5.parent))
-                ui.dialog_pick(SP5.name)
             settle(ui)
         if ui.app.tour.step_idx == steps - 1:
             break
         ui.press_text("Next ►")
     assert ui.app.tour.step_idx == steps - 1
+    # the first await was Load example: the simulated scan is what the rest of the tour ran on
+    assert ui.app.model.tttr_data is not None and ui.app.model.filename.endswith("clsm_demo.ptu")
 
 
 @pytest.mark.parametrize("size", SIZES, ids=lambda s: f"{s[0]}x{s[1]}")

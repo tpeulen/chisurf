@@ -1,18 +1,18 @@
 """A demo account list, so the guided tour can be walked without an MMFDB server.
 
-The tour asks you to select an account and edit it; with no server there is
-nothing to select. :func:`make_demo` installs an in-memory administrator client
-holding a few invented accounts. It never touches the real MMFDB: the demo
-accounts live in this process only and vanish with it.
+The tour asks you to select an account and edit it; with no server there is nothing to select.
+:class:`DemoUserClient` is an in-memory administrator client holding a few invented accounts, and the
+editor's *Load example* hands it to that one editor window (``UserEditorModel.load_example``); it never
+touches the real MMFDB, and edits to the demo accounts live in the window only. :func:`make_demo` keeps the
+invented accounts as ``accounts.json`` in the settings cache so they can be read without starting a window.
 """
 
 from __future__ import annotations
 
 import copy
+import json
 from pathlib import Path
 from typing import Any
-
-from chisurf.plugins.core.user_editor.api import client as client_seam
 
 #: Invented accounts shown by the demo (none is a real person).
 DEMO_ACCOUNTS: tuple[dict[str, Any], ...] = (
@@ -45,6 +45,19 @@ DEMO_ACCOUNTS: tuple[dict[str, Any], ...] = (
 )
 
 
+#: The demo, in one place so the guide and the tests agree.
+DEMO: dict[str, Any] = dict(version=1, accounts=[dict(a) for a in DEMO_ACCOUNTS])
+
+FILENAME = "accounts.json"
+
+
+def demo_folder() -> Path:
+    """Return the settings-owned demonstration folder for this plugin."""
+    from chisurf.plugins.demo_cache import cache_folder
+
+    return cache_folder("user_editor")
+
+
 class DemoUserClient:
     """In-memory stand-in for the MMFDB client's user calls (administrator)."""
 
@@ -73,20 +86,28 @@ class DemoUserClient:
         return {"deleted": user_id}
 
 
-def make_demo(folder: str | Path | None = None) -> Path | None:
-    """Install the demo client; ``make_mmfdb_client`` returns it from now on.
+def make_demo(folder: str | Path | None = None, *, overwrite: bool = False) -> Path:
+    """Write or reuse ``accounts.json``, the invented accounts the demo client serves.
 
     Parameters
     ----------
     folder : str or Path, optional
-        Unused (the demo needs no files); returned unchanged so callers that
-        expect a demo folder keep working.
+        Cache directory; defaults to :func:`demo_folder`.
+    overwrite : bool, optional
+        Write again even when the stamped parameters and checksum match.
 
     Returns
     -------
-    Path or None
-        *folder* as a path, or None when not given.
+    Path
+        The JSON file holding the accounts.
     """
-    demo = DemoUserClient()
-    client_seam.use_demo_client(lambda: demo)
-    return Path(folder) if folder is not None else None
+    from chisurf.plugins.demo_cache import is_current, record
+
+    folder = demo_folder() if folder is None else Path(folder)
+    path = folder / FILENAME
+    if not overwrite and path.is_file() and is_current(folder, [FILENAME], DEMO):
+        return path
+    folder.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(DEMO["accounts"], indent=2, sort_keys=True), encoding="utf-8")
+    record(folder, [FILENAME], DEMO)
+    return path

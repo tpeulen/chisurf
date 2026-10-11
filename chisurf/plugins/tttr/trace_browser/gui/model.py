@@ -452,6 +452,17 @@ class TraceBrowserModel:
         """Ask the host to open its folder chooser (the Qt *Open*)."""
         self.dialog = "folder"
 
+    def load_example(self) -> None:
+        """Open the folder of two small simulated PTU files (:mod:`..demo`, written into the settings cache)."""
+        from ..demo import make_demo
+
+        try:
+            folder = make_demo()
+        except (OSError, RuntimeError) as exc:
+            self.error_text = f"Could not write the example: {exc}"
+            return
+        self.request("open_folder", folder)
+
     def on_paths_dropped(self, paths: Any) -> bool:
         """Open the first dropped folder (the Qt ``dropEvent``); anything else is ignored.
 

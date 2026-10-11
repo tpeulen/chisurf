@@ -407,10 +407,6 @@ class Pda2cDynamicTwoStateModel(Pda2cModelMixin, ModelCurve):
             nuisance=getattr(self, "nuisance", None),
             settings=self.fit_settings,
         )
-        try:
-            self._last_1d_residual_size = int(wres.size)
-        except Exception:
-            pass
         return wres
 
     def get_wres(self, fit, xmin: int | None = None, xmax: int | None = None) -> np.ndarray:
@@ -426,11 +422,3 @@ class Pda2cDynamicTwoStateModel(Pda2cModelMixin, ModelCurve):
         wres = _fitting.calculate_weighted_residuals(fit.data, self, xmin=xmin, xmax=xmax)
         return mask_zero_photon_bins(fit, xmin, wres)
 
-    @property
-    def n_points(self) -> int:
-        """Number of data points for chi-squared (1D projection size)."""
-        if getattr(self, "residual_mode", "1D") == "1D":
-            n = int(getattr(self, "_last_1d_residual_size", 0) or 0)
-            if n > 0:
-                return n
-        return super().n_points

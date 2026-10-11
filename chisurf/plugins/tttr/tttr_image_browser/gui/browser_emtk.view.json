@@ -26,6 +26,12 @@
                   "description": "Choose a folder with TTTR photon files; its files are listed on the left. You can also drop a folder on the window."
                 },
                 {
+                  "action": "load_example",
+                  "label": "Load example",
+                  "icon": "🧪",
+                  "description": "Simulate two small confocal scans into the settings folder and open that folder, so the browser can be tried without data of your own."
+                },
+                {
                   "action": "clear",
                   "label": "Clear",
                   "description": "Clear the file list and the preview. No file, rating or annotation is changed or deleted."

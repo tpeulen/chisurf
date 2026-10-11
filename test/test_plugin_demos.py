@@ -104,6 +104,12 @@ LITERAL_CONTROL = """class App:
             self.load_example()
         self.item_rects["load_example"] = im.get_item_rect()
 """
+ACTION_CONTROL = """class App:
+    def render(self):
+        if action_button("example", tooltip="Load it"):
+            self.load_example()
+        self.item_rects["load_example"] = im.get_item_rect()
+"""
 TUPLE_CONTROL = """class App:
     def _button(self, label, key):
         pressed = im.button(label)
@@ -118,7 +124,7 @@ TUPLE_CONTROL = """class App:
 """
 
 
-@pytest.mark.parametrize("source", [LITERAL_CONTROL, TUPLE_CONTROL])
+@pytest.mark.parametrize("source", [LITERAL_CONTROL, TUPLE_CONTROL, ACTION_CONTROL])
 def test_imperative_example_control_has_a_real_registered_rectangle(source):
     """A drawn button and its actual callback can teach the tour without a form spec."""
     assert (
@@ -136,6 +142,8 @@ def test_imperative_example_control_has_a_real_registered_rectangle(source):
         ),
         TUPLE_CONTROL.replace("self._button(label, key)", "im.button(label)"),
         TUPLE_CONTROL.replace("act()", "self.other_action()"),
+        ACTION_CONTROL.replace('"example"', '"help"'),
+        ACTION_CONTROL.replace("self.load_example()", "self.other_action()"),
     ],
 )
 def test_notification_or_unconnected_tuple_is_not_a_reachable_control(source):

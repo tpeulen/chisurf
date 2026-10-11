@@ -113,7 +113,7 @@ _CATALOGS = {
 
 def install_translations():
     for locale, values in _CATALOGS.items():
-        i18n.add_translations(locale, values, context="Trajectory Tools")
+        i18n.add_translations(locale, values, context="Trajectory Tools", domain="chisurf")
 
 
 def tr(text):

@@ -25436,7 +25436,7 @@ L'interface graphique dialogue avec le moteur du navigateur d'images TTTR par RP
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="305" />
             <source>&lt;b&gt;🔍 Verify&lt;/b&gt; re-hashes every payload and compares it against the checksum recorded beside it. Do this before deleting an original file: &lt;i&gt;restorable&lt;/i&gt; without verification is only &lt;i&gt;probably restorable&lt;/i&gt;.&lt;br/&gt;&lt;br/&gt;The &lt;b&gt;?&lt;/b&gt; button beside this guide has the long version.</source>
-            <translation>&lt;b&gt;🔍 Vérifier&lt;/b&gt; recalcule l'empreinte de chaque charge utile et la compare à la somme de contrôle enregistrée à côté. Faites-le avant de supprimer un fichier original : &lt;i&gt;restaurable&lt;/i&gt; sans vérification ne signifie que &lt;i&gt;probablement restaurable&lt;/i&gt;.&lt;br/&gt;&lt;br/&gt;Le bouton &lt;b&gt;?&lt;/b&gt; à côté de ce guide donne la version longue.</translation>
+            <translation type="obsolete">&lt;b&gt;🔍 Vérifier&lt;/b&gt; recalcule l'empreinte de chaque charge utile et la compare à la somme de contrôle enregistrée à côté. Faites-le avant de supprimer un fichier original : &lt;i&gt;restaurable&lt;/i&gt; sans vérification ne signifie que &lt;i&gt;probablement restaurable&lt;/i&gt;.&lt;br/&gt;&lt;br/&gt;Le bouton &lt;b&gt;?&lt;/b&gt; à côté de ce guide donne la version longue.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="309" />
@@ -25661,7 +25661,7 @@ L'interface graphique dialogue avec le moteur du navigateur d'images TTTR par RP
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="355" />
             <source>A container records the &lt;b&gt;operation&lt;/b&gt;, never the program — naming a ChiSurf plugin in the file would have made it unreadable by anything else.&lt;br/&gt;&lt;br/&gt;So the index runs the other way: each tool declares which operations it performs, and this button opens the matching one &lt;i&gt;on this same file&lt;/i&gt;. A double-click on a graph node does the same. A step no installed tool claims says so plainly.</source>
-            <translation>Un conteneur enregistre l'&lt;b&gt;opération&lt;/b&gt;, jamais le programme — nommer une extension ChiSurf dans le fichier l'aurait rendu illisible par tout le reste.&lt;br/&gt;&lt;br/&gt;L'index fonctionne donc dans l'autre sens : chaque outil déclare les opérations qu'il réalise, et ce bouton ouvre celle qui correspond &lt;i&gt;sur ce même fichier&lt;/i&gt;. Un double-clic sur un nœud du graphe fait la même chose. Une étape qu'aucun outil installé ne prend en charge le dit clairement.</translation>
+            <translation type="obsolete">Un conteneur enregistre l'&lt;b&gt;opération&lt;/b&gt;, jamais le programme — nommer une extension ChiSurf dans le fichier l'aurait rendu illisible par tout le reste.&lt;br/&gt;&lt;br/&gt;L'index fonctionne donc dans l'autre sens : chaque outil déclare les opérations qu'il réalise, et ce bouton ouvre celle qui correspond &lt;i&gt;sur ce même fichier&lt;/i&gt;. Un double-clic sur un nœud du graphe fait la même chose. Une étape qu'aucun outil installé ne prend en charge le dit clairement.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="359" />
@@ -25956,7 +25956,7 @@ L'interface graphique dialogue avec le moteur du navigateur d'images TTTR par RP
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="433" />
             <source>A tabular payload opens in the shared table — sort, filter, hide columns, search, export. The headers carry the unit the &lt;b&gt;column itself&lt;/b&gt; states, so a duration in milliseconds cannot be read as seconds.&lt;br/&gt;&lt;br/&gt;A curve opens in &lt;b&gt;Curve&lt;/b&gt; instead, with its axis units and scale taken from the stored columns: an FCS lag axis is milliseconds on a log scale and a decay axis is nanoseconds on a linear one.</source>
-            <translation>Une charge utile tabulaire s'ouvre dans la table partagée — trier, filtrer, masquer des colonnes, rechercher, exporter. Les en-têtes portent l'unité que &lt;b&gt;la colonne elle-même&lt;/b&gt; indique, donc une durée en millisecondes ne peut pas se lire comme des secondes.&lt;br/&gt;&lt;br/&gt;Une courbe s'ouvre dans &lt;b&gt;Courbe&lt;/b&gt; à la place, avec ses unités d'axe et son échelle tirées des colonnes enregistrées : un axe de retard FCS est en millisecondes sur une échelle logarithmique, et un axe de déclin est en nanosecondes sur une échelle linéaire.</translation>
+            <translation type="obsolete">Une charge utile tabulaire s'ouvre dans la table partagée — trier, filtrer, masquer des colonnes, rechercher, exporter. Les en-têtes portent l'unité que &lt;b&gt;la colonne elle-même&lt;/b&gt; indique, donc une durée en millisecondes ne peut pas se lire comme des secondes.&lt;br/&gt;&lt;br/&gt;Une courbe s'ouvre dans &lt;b&gt;Courbe&lt;/b&gt; à la place, avec ses unités d'axe et son échelle tirées des colonnes enregistrées : un axe de retard FCS est en millisecondes sur une échelle logarithmique, et un axe de déclin est en nanosecondes sur une échelle linéaire.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="435" />
@@ -27001,7 +27001,7 @@ L'interface graphique dialogue avec le moteur du navigateur d'images TTTR par RP
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="799" />
             <source>Any &lt;code&gt;.pto&lt;/code&gt; — browse for one, drag it onto this window, or pick it from the database. Dropping a &lt;b&gt;vendor&lt;/b&gt; photon file (PTU, HT3, SPC) offers to pack it into a container first.</source>
-            <translation>Tout fichier &lt;code&gt;.pto&lt;/code&gt; — parcourez-en un, glissez-le sur cette fenêtre, ou choisissez-le dans la base. Déposer un fichier de photons d'un &lt;b&gt;constructeur&lt;/b&gt; (PTU, HT3, SPC) propose de l'empaqueter d'abord dans un conteneur.</translation>
+            <translation type="obsolete">Tout fichier &lt;code&gt;.pto&lt;/code&gt; — parcourez-en un, glissez-le sur cette fenêtre, ou choisissez-le dans la base. Déposer un fichier de photons d'un &lt;b&gt;constructeur&lt;/b&gt; (PTU, HT3, SPC) propose de l'empaqueter d'abord dans un conteneur.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="804" />
@@ -28738,7 +28738,7 @@ Fonctionnalités :
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1511" />
             <source>Choose a &lt;code&gt;.pto&lt;/code&gt;, by &lt;b&gt;📂 Browse&lt;/b&gt; or by dropping one on the window.</source>
-            <translation>Choisissez un &lt;code&gt;.pto&lt;/code&gt;, avec &lt;b&gt;📂 Parcourir&lt;/b&gt; ou en en déposant un sur la fenêtre.</translation>
+            <translation type="obsolete">Choisissez un &lt;code&gt;.pto&lt;/code&gt;, avec &lt;b&gt;📂 Parcourir&lt;/b&gt; ou en en déposant un sur la fenêtre.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1516" />
@@ -28923,7 +28923,7 @@ Fonctionnalités :
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1569" />
             <source>Choose or drop the folder holding your correlation curves.</source>
-            <translation>Choisissez ou déposez le dossier contenant vos courbes de corrélation.</translation>
+            <translation type="obsolete">Choisissez ou déposez le dossier contenant vos courbes de corrélation.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1573" />
@@ -39074,7 +39074,7 @@ aux distributions qui se chevauchent.</translation>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="5839" />
             <source>One measurement, &lt;b&gt;one file&lt;/b&gt;. The instrument file goes in byte-for-byte and is never decoded into a second copy beside itself; every result computed from it — bursts, decays, correlations, fits, selections — is written beside it, each carrying the operation and the settings that produced it.&lt;br/&gt;&lt;br/&gt;This window only reads. Eight steps, about a minute; you press the buttons.</source>
-            <translation>Une mesure, &lt;b&gt;un fichier&lt;/b&gt;. Le fichier de l'instrument est intégré octet pour octet et n'est jamais décodé en une seconde copie à côté de lui ; chaque résultat qui en est calculé — salves, déclins, corrélations, ajustements, sélections — est écrit à côté, portant chacun l'opération et les réglages qui l'ont produit.&lt;br/&gt;&lt;br/&gt;Cette fenêtre ne fait que lire. Huit étapes, environ une minute ; vous appuyez sur les boutons.</translation>
+            <translation type="obsolete">Une mesure, &lt;b&gt;un fichier&lt;/b&gt;. Le fichier de l'instrument est intégré octet pour octet et n'est jamais décodé en une seconde copie à côté de lui ; chaque résultat qui en est calculé — salves, déclins, corrélations, ajustements, sélections — est écrit à côté, portant chacun l'opération et les réglages qui l'ont produit.&lt;br/&gt;&lt;br/&gt;Cette fenêtre ne fait que lire. Huit étapes, environ une minute ; vous appuyez sur les boutons.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="5832" />
@@ -39229,7 +39229,7 @@ aux distributions qui se chevauchent.</translation>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="5871" />
             <source>One row per object, in the order it was written. The columns are the container's own vocabulary: &lt;b&gt;kind&lt;/b&gt; is what sort of thing this is, &lt;b&gt;operation&lt;/b&gt; is what produced it (empty means it was carried rather than computed), and &lt;b&gt;grain&lt;/b&gt; says what one row &lt;i&gt;is&lt;/i&gt;.&lt;br/&gt;&lt;br/&gt;Grain is the load-bearing one — nothing in a container is joined by position, so a dwell table and a burst table can live in the same file.&lt;br/&gt;&lt;br/&gt;Click a row. Everything on the right follows the selection.</source>
-            <translation>Une ligne par objet, dans l'ordre où il a été écrit. Les colonnes sont le vocabulaire propre du conteneur : &lt;b&gt;type&lt;/b&gt; indique la nature de la chose, &lt;b&gt;opération&lt;/b&gt; ce qui l'a produite (vide signifie qu'elle a été reprise et non calculée), et &lt;b&gt;grain&lt;/b&gt; ce qu'&lt;i&gt;est&lt;/i&gt; une ligne.&lt;br/&gt;&lt;br/&gt;Le grain est l'élément porteur — rien dans un conteneur n'est relié par position, donc une table de temps de séjour et une table de salves peuvent coexister dans le même fichier.&lt;br/&gt;&lt;br/&gt;Cliquez sur une ligne. Tout ce qui est à droite suit la sélection.</translation>
+            <translation type="obsolete">Une ligne par objet, dans l'ordre où il a été écrit. Les colonnes sont le vocabulaire propre du conteneur : &lt;b&gt;type&lt;/b&gt; indique la nature de la chose, &lt;b&gt;opération&lt;/b&gt; ce qui l'a produite (vide signifie qu'elle a été reprise et non calculée), et &lt;b&gt;grain&lt;/b&gt; ce qu'&lt;i&gt;est&lt;/i&gt; une ligne.&lt;br/&gt;&lt;br/&gt;Le grain est l'élément porteur — rien dans un conteneur n'est relié par position, donc une table de temps de séjour et une table de salves peuvent coexister dans le même fichier.&lt;br/&gt;&lt;br/&gt;Cliquez sur une ligne. Tout ce qui est à droite suit la sélection.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="5894" />
@@ -39484,7 +39484,7 @@ aux distributions qui se chevauchent.</translation>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="5945" />
             <source>Open a &lt;b&gt;.pto&lt;/b&gt;: press &lt;b&gt;Open&lt;/b&gt;, or drop one here.</source>
-            <translation>Ouvrez un &lt;b&gt;.pto&lt;/b&gt; : appuyez sur &lt;b&gt;Ouvrir&lt;/b&gt;, ou déposez-en un ici.</translation>
+            <translation type="obsolete">Ouvrez un &lt;b&gt;.pto&lt;/b&gt; : appuyez sur &lt;b&gt;Ouvrir&lt;/b&gt;, ou déposez-en un ici.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="5967" />
@@ -39519,7 +39519,7 @@ aux distributions qui se chevauchent.</translation>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="5954" />
             <source>Open a container</source>
-            <translation>Ouvrir un conteneur</translation>
+            <translation type="obsolete">Ouvrir un conteneur</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="5976" />
@@ -39764,7 +39764,7 @@ aux distributions qui se chevauchent.</translation>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6034" />
             <source>Open the photons</source>
-            <translation>Ouvrir les photons</translation>
+            <translation type="obsolete">Ouvrir les photons</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6062" />
@@ -41034,7 +41034,7 @@ aux distributions qui se chevauchent.</translation>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6590" />
             <source>Point it at the correlation folder</source>
-            <translation>Indiquez-lui le dossier de corrélation</translation>
+            <translation type="obsolete">Indiquez-lui le dossier de corrélation</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6618" />
@@ -41549,7 +41549,7 @@ aux distributions qui se chevauchent.</translation>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6759" />
             <source>Press &lt;b&gt;Open TTTR / imaging&lt;/b&gt; and choose a file.</source>
-            <translation>Appuyez sur &lt;b&gt;Ouvrir TTTR / imagerie&lt;/b&gt; et choisissez un fichier.</translation>
+            <translation type="obsolete">Appuyez sur &lt;b&gt;Ouvrir TTTR / imagerie&lt;/b&gt; et choisissez un fichier.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6786" />
@@ -41569,7 +41569,7 @@ aux distributions qui se chevauchent.</translation>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6763" />
             <source>Press &lt;b&gt;Open folder&lt;/b&gt; and choose a folder.</source>
-            <translation>Appuyez sur &lt;b&gt;Ouvrir un dossier&lt;/b&gt; et choisissez un dossier.</translation>
+            <translation type="obsolete">Appuyez sur &lt;b&gt;Ouvrir un dossier&lt;/b&gt; et choisissez un dossier.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6789" />
@@ -41879,7 +41879,7 @@ aux distributions qui se chevauchent.</translation>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6825" />
             <source>Press &lt;b&gt;🔍 Verify&lt;/b&gt;.</source>
-            <translation>Appuyez sur &lt;b&gt;🔍 Vérifier&lt;/b&gt;.</translation>
+            <translation type="obsolete">Appuyez sur &lt;b&gt;🔍 Vérifier&lt;/b&gt;.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6851" />
@@ -48311,7 +48311,7 @@ ou d'imagerie de longue durée, qu'il rend plus faciles à analyser ensuite.</tr
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="9284" />
             <source>The details panel lists everything recorded — and the &lt;b&gt;settings&lt;/b&gt; are not a label on the run: their hash &lt;i&gt;is&lt;/i&gt; the run. Recomputing with the same settings rewrites that artifact in place; changing one produces a new artifact.&lt;br/&gt;&lt;br/&gt;That is why nothing accumulates in a container and why no parameter ever has to be encoded in a file name.</source>
-            <translation>Le panneau des détails liste tout ce qui est enregistré — et les &lt;b&gt;réglages&lt;/b&gt; ne sont pas une étiquette de l'exécution : leur empreinte &lt;i&gt;est&lt;/i&gt; l'exécution. Recalculer avec les mêmes réglages réécrit cet artefact sur place ; en changer un produit un nouvel artefact.&lt;br/&gt;&lt;br/&gt;C'est pourquoi rien ne s'accumule dans un conteneur et pourquoi aucun paramètre n'a jamais à être encodé dans un nom de fichier.</translation>
+            <translation type="obsolete">Le panneau des détails liste tout ce qui est enregistré — et les &lt;b&gt;réglages&lt;/b&gt; ne sont pas une étiquette de l'exécution : leur empreinte &lt;i&gt;est&lt;/i&gt; l'exécution. Recalculer avec les mêmes réglages réécrit cet artefact sur place ; en changer un produit un nouvel artefact.&lt;br/&gt;&lt;br/&gt;C'est pourquoi rien ne s'accumule dans un conteneur et pourquoi aucun paramètre n'a jamais à être encodé dans un nom de fichier.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="9327" />
@@ -49981,7 +49981,7 @@ ou d'imagerie de longue durée, qu'il rend plus faciles à analyser ensuite.</tr
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="9681" />
             <source>The provenance graph. Instrument file on the left, the last thing computed on the right, and every arrow a &lt;b&gt;recorded&lt;/b&gt; derivation — not an inference from folder names.&lt;br/&gt;&lt;br/&gt;Look for a node with &lt;b&gt;two&lt;/b&gt; incoming arrows: a lifetime fit uses the bursts &lt;i&gt;and&lt;/i&gt; the background. That is the case a tree view cannot draw without duplicating a node or dropping an edge, and it is why this is a graph.</source>
-            <translation>Le graphe de provenance. Le fichier de l'instrument à gauche, le dernier calcul à droite, et chaque flèche une dérivation &lt;b&gt;enregistrée&lt;/b&gt; — non une déduction à partir des noms de dossiers.&lt;br/&gt;&lt;br/&gt;Cherchez un nœud avec &lt;b&gt;deux&lt;/b&gt; flèches entrantes : un ajustement de durée de vie utilise les salves &lt;i&gt;et&lt;/i&gt; le fond. C'est le cas qu'une vue en arbre ne peut pas dessiner sans dupliquer un nœud ou perdre une arête, et c'est pourquoi il s'agit d'un graphe.</translation>
+            <translation type="obsolete">Le graphe de provenance. Le fichier de l'instrument à gauche, le dernier calcul à droite, et chaque flèche une dérivation &lt;b&gt;enregistrée&lt;/b&gt; — non une déduction à partir des noms de dossiers.&lt;br/&gt;&lt;br/&gt;Cherchez un nœud avec &lt;b&gt;deux&lt;/b&gt; flèches entrantes : un ajustement de durée de vie utilise les salves &lt;i&gt;et&lt;/i&gt; le fond. C'est le cas qu'une vue en arbre ne peut pas dessiner sans dupliquer un nœud ou perdre une arête, et c'est pourquoi il s'agit d'un graphe.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="9728" />
@@ -59940,7 +59940,7 @@ de corrélation) dans un seul outil à navigation latérale. Construit sur l'env
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="11270" />
             <source>ndXplorer shows a table of single-molecule bursts (or image pixels) as histograms of any two of its columns, so populations show up as clouds and you can gate them. Starting the Guide opens a small &lt;b&gt;demo&lt;/b&gt; table with three FRET populations when nothing is loaded. You press the controls; the tour only points at them.</source>
-            <translation>ndXplorer affiche un tableau de bursts de molécules isolées (ou de pixels d’image) sous forme d’histogrammes de deux de ses colonnes quelconques, de sorte que les populations apparaissent comme des nuages que vous pouvez sélectionner. Lancer le guide ouvre un petit tableau de &lt;b&gt;démonstration&lt;/b&gt; à trois populations FRET si rien n’est chargé. Vous actionnez les commandes ; le parcours se contente de les désigner.</translation>
+            <translation type="obsolete">ndXplorer affiche un tableau de bursts de molécules isolées (ou de pixels d’image) sous forme d’histogrammes de deux de ses colonnes quelconques, de sorte que les populations apparaissent comme des nuages que vous pouvez sélectionner. Lancer le guide ouvre un petit tableau de &lt;b&gt;démonstration&lt;/b&gt; à trois populations FRET si rien n’est chargé. Vous actionnez les commandes ; le parcours se contente de les désigner.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="11593" />

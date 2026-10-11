@@ -19,9 +19,9 @@ FILENAME = "clsm_demo.ptu"
 
 def demo_folder() -> pathlib.Path:
     """Return the settings-owned demonstration folder for this plugin."""
-    from chisurf.core.settings.path_utils import get_path
+    from chisurf.plugins.demo_cache import cache_folder
 
-    return get_path("settings") / "demos" / "clsm"
+    return cache_folder("clsm")
 
 
 def make_demo(

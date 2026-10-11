@@ -19,6 +19,12 @@
               "description": "Choose a folder of .cor (or legacy .json.gz) correlation curves; dropping the folder on the window does the same."
             },
             {
+              "action": "load_example",
+              "label": "Load example",
+              "icon": "🧪",
+              "description": "Write four simulated single-diffusion curves into the settings folder and load them, so the merger can be tried without data of your own."
+            },
+            {
               "action": "request_clear",
               "label": "🧹 Clear",
               "description": "Remove every curve and the merge (the files stay on disk)."

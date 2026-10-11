@@ -22,6 +22,7 @@ from .conftest import two_detector_setup
 pytestmark = pytest.mark.usefixtures("hermetic")
 
 SP8 = "Leica_SP8.ptu"
+SCAN = "scan_1.ptu"  # the first file of the simulated example
 
 
 class BrowserDriver(Driver):
@@ -325,14 +326,17 @@ def operate_step(app, drv, folder, tmp_path):
     """Do what the awaited step asks, with real input."""
     step = app.tour.steps[app.tour.step_idx]
     target = step.get("target") or {}
-    if target.get("name") == "choose_folder":
+    if target.get("name") == "load_example":
+        drv.click("load_example")  # writes the simulated scans and opens their folder
+        drv.settle()
+    elif target.get("name") == "choose_folder":
         app.model.folder = str(folder.parent)
         drv.click("choose_folder")
         drv.click_text(f"[{folder.name}]")
         drv.click_text("Choose", last=True)
         drv.settle()
     elif target.get("name") == "rows":
-        drv.click_text(SP8)
+        drv.click_text(SCAN)
         drv.settle()
     elif target.get("attr") == "current_rating":
         drv.click("current_rating.2")
@@ -342,8 +346,9 @@ def operate_step(app, drv, folder, tmp_path):
 
 
 def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_awaited_control(
-    app, drv, photon_folder, tmp_path
+    app, drv, photon_folder, tmp_path, monkeypatch
 ):
+    monkeypatch.setattr("chisurf.plugins.demo_cache.cache_folder", lambda plugin: tmp_path / plugin)
     drv.click("start_guide")
     drv.draw(2)
     assert app.tour.active
@@ -401,6 +406,7 @@ def test_every_guide_target_is_a_drawn_control_and_the_card_does_not_cover_it(ap
         seen.add(key)
     app.tour.stop()
     assert {
+        "load_example",
         "choose_folder",
         "rows",
         "image",

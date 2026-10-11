@@ -133,6 +133,7 @@ class TTTRImageBrowserApp(ImApp):
         self.form = FormState()
         self.form.custom["annotation"] = lambda s, m, st, w: self._draw_annotation()
         self.item_rects: dict[str, tuple] = {}
+        self._example_pending = False
         self.page = "browser"
         self.pending_page: str | None = None
         self.dialog: FileDialog | None = None
@@ -241,6 +242,19 @@ class TTTRImageBrowserApp(ImApp):
 
     on_files_dropped = files_dropped
 
+    def load_example(self) -> None:
+        """Open the folder of two small simulated scans of :mod:`..demo`, written into the settings cache."""
+        from ..demo import make_demo
+
+        try:
+            folder = make_demo()
+        except (OSError, RuntimeError) as exc:
+            self.model.status_line = f"Could not write the example: {exc}"
+            return
+        self.page = self.pending_page = "browser"
+        self._example_pending = True
+        self.queue("open_folder", str(folder))
+
     def open_folder(self, path: Any) -> None:
         """Open *path* (a file opens the folder that holds it)."""
         value = Path(str(path))
@@ -298,6 +312,8 @@ class TTTRImageBrowserApp(ImApp):
                 self.help_window.show()
             elif request == "guide":
                 self.tour.start()
+            elif request == "example":
+                self.load_example()
             elif request == "next":
                 self.next_step()
 
@@ -316,7 +332,7 @@ class TTTRImageBrowserApp(ImApp):
 
     def _used(self, name: str) -> None:
         """A control was used. Pressing *Open folder* only opens the chooser: the step waits for the folder."""
-        if name != "choose_folder":
+        if name not in ("choose_folder", "load_example"):
             self.tour.notify_used(name)
 
     def _on_event(self, event: str) -> None:
@@ -328,6 +344,9 @@ class TTTRImageBrowserApp(ImApp):
         if event in ("select", "folder"):
             self.view_key = None
         self.tour.notify_used(event)
+        if event == "folder" and self._example_pending:  # the files of Load example are listed
+            self._example_pending = False
+            self.tour.notify_used("load_example")
         control = self.OUTCOMES.get(event)
         if control:
             self.tour.notify_used(control)

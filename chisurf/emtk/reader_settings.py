@@ -354,7 +354,11 @@ class ReaderSettingsApp(ImApp):
         flags = im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_MOVE | im.WindowFlags.NO_RESIZE
         self.form.rects.clear()
         im.begin("##reader-settings", box, flags=flags)
+        # A window of emtk does not scroll itself: the form sits in a child that does, so a form taller than
+        # the dock (the PDA reader's file list and *Load* button) can still be reached with the wheel.
+        im.begin_child("##reader-form")
         draw_form(self.spec, self.model, self.form)
+        im.end_child()
         im.end()
         if self.file_dialog is not None:
             window, source = self.file_window, self.file_source

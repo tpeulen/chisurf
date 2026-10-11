@@ -240,7 +240,6 @@
     }
   ],
   "optional_requires": {
-    "img_flow": "*",
     "intensity_trace": "*",
     "ndxplorer": "*",
     "tttr_time_windows": "*"

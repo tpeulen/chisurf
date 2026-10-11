@@ -112,4 +112,5 @@ def install_translations():
             locale,
             {source: values[index] for source, values in STRINGS.items()},
             context="Breakout",
+            domain="chisurf",
         )

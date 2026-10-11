@@ -16,16 +16,6 @@ from typing import Any
 # plugin. Importing here pins it to a predictable moment.
 from chisurf.core.settings import cs_settings
 
-#: A factory installed by ``user_editor.demo.make_demo``; ``None`` means a real client.
-_demo_factory = None
-
-
-def use_demo_client(factory) -> None:
-    """Make :func:`make_mmfdb_client` return ``factory()`` (``None`` restores the real one)."""
-    global _demo_factory
-    _demo_factory = factory
-
-
 def mmfdb_settings() -> dict[str, Any]:
     """The ``mmfdb`` settings block."""
     block = cs_settings.get("mmfdb", {})
@@ -54,8 +44,6 @@ def make_mmfdb_client(user_id: str | None = None):
         ImportError deep in a callback into one sentence naming the cause.
 
     """
-    if _demo_factory is not None:
-        return _demo_factory()
     host, port = server_address()
     user_id = user_id or active_user_id()
 

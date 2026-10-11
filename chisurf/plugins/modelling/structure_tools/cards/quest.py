@@ -546,27 +546,18 @@ class QuestCard(CardShell):
         if not self.session.ready:
             im.text_wrapped(tr("The results appear here once QuEst can run."))
             return
-        from emtk.im_core import Col
-
-        for i, tab in enumerate(TABS):
-            if i:
-                im.same_line()
-            selected = tab == self.tab
-            if selected:
-                im.push_style_color(Col.BUTTON, im.get_style().color(Col.TAB_SELECTED))
-            if im.button(tab):
-                self.tab = tab
-            if selected:
-                im.pop_style_color(1)
-            im.set_item_tooltip(
-                {
-                    "Plots & Dynamics": "The fluorescence decay, the dye trajectory and the position autocorrelation of the last run.",
-                    "3D Structure": "The structure with the donor and acceptor attachment sites.",
-                    "Quenching Chemistry": "The quenching parameters of every amino acid.",
-                    "Project JSON": "The project as the CLI and the web UI read it (read only).",
-                }[tab]
-            )
-            self.remember(f"tab_{tab}")
+        pressed = self.tab_row(
+            TABS,
+            self.tab,
+            {
+                "Plots & Dynamics": "The fluorescence decay, the dye trajectory and the position autocorrelation of the last run.",
+                "3D Structure": "The structure with the donor and acceptor attachment sites.",
+                "Quenching Chemistry": "The quenching parameters of every amino acid.",
+                "Project JSON": "The project as the CLI and the web UI read it (read only).",
+            },
+        )
+        if pressed:
+            self.tab = pressed
         im.separator()
         {
             "Plots & Dynamics": self._draw_plots,

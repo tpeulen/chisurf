@@ -829,7 +829,7 @@ class ChannelDefinitionWidget:
         im.text(tr("Setup:"))
         im.same_line()
         im.set_next_item_width(220.0)
-        changed, picked = im.combo("##setup_choice", index, names)
+        changed, picked = im.combo("##setup_choice", index, [tr(names[0]), *names[1:]])
         self._item(
             "setup_choice",
             "Choose a saved detector setup; its detectors, PIE windows, reading routine, LUTs and optical setup replace the working definition.",
@@ -1846,12 +1846,13 @@ class ChannelDefinitionWidget:
             draw_form(self._io_view, self, self._io_state)
             self.item_rects.update(self._io_state.rects)
         im.same_line()
-        width = self._width("Optical Setup...")
+        optical = tr("Optical Setup...")  # measured as drawn: the translation is longer than the source
+        width = self._width(optical)
         im.dummy(
             max(im.get_content_region_avail()[0] - width - im.get_style().item_spacing[0], 0.0), 1.0
         )
         im.same_line()
-        if im.button(tr("Optical Setup...")):
+        if im.button(optical):
             self.optical_window.show()
             self._used("optical")
         self._item(

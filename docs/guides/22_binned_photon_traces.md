@@ -7,6 +7,8 @@ tags: [guides, photons, bursts, kinetics, hmm]
 
 # Binned photon traces (MCS)
 
+**No data at hand?** The Trace Browser's **Load example** (on the setup page and beside *Open…*) accepts the detector setup as it stands and opens two simulated two-state photon files (`demos/trace_browser` in the settings folder); the guided tour starts from it. `chisurf.plugins.tttr.trace_browser.demo.make_demo()` returns the folder.
+
 :::{admonition} Theory
 :class: seealso
 Binning is the step that turns a photon stream into the intensity trace the

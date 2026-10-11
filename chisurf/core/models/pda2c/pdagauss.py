@@ -210,7 +210,7 @@ class Pda2cGaussianDistanceModel(Pda2cModelMixin, ModelCurve):
 
     name = "PDA2c-Gaussian-distance"
 
-    #: Declarative AutoForm layout (PRD-38 model/view-spec split).
+    #: Declarative AutoForm layout.
     view_spec_file = "pdagauss.view.json"
 
     def __str__(self):
@@ -468,10 +468,6 @@ class Pda2cGaussianDistanceModel(Pda2cModelMixin, ModelCurve):
             nuisance=getattr(self, "nuisance", None),
             settings=self.fit_settings,
         )
-        try:
-            self._last_1d_residual_size = int(wres.size)
-        except Exception:
-            pass
         return wres
 
     def _get_cached_photon_number_mask(
@@ -631,19 +627,6 @@ class Pda2cGaussianDistanceModel(Pda2cModelMixin, ModelCurve):
         # do not contribute to chi2. The PDA DataCurve stores the flattened
         # S1S2 counts in ``fit.data.y``.
         return mask_zero_photon_bins(fit, xmin, masked)
-
-    @property
-    def n_points(self) -> int:
-        """Return the number of data points for chi-squared calculation."""
-        mode = getattr(self, "residual_mode", "1D")
-        if mode == "1D":
-            try:
-                n = int(getattr(self, "_last_1d_residual_size", 0) or 0)
-            except Exception:
-                n = 0
-            if n > 0:
-                return n
-        return super().n_points
 
     def get_state(self) -> dict:
         """Serialize the model state, including the number of Gaussian components."""

@@ -7,13 +7,20 @@
       "target": {}
     },
     {
-      "title": "Point it at the correlation folder",
+      "title": "Load the example",
+      "text": "No curves of your own yet? <b>Load example</b> writes four simulated single-diffusion curves into the settings folder and lists them, so every step below has something to screen.",
+      "target": {
+        "name": "load_example"
+      },
+      "await": {
+        "hint": "Press <b>Load example</b>."
+      }
+    },
+    {
+      "title": "Or point it at your own correlation folder",
       "text": "Drop a folder of correlation files here, or browse to one. Every curve it finds is loaded, plotted and listed.",
       "target": {
         "name": "lineEdit"
-      },
-      "await": {
-        "hint": "Choose or drop the folder holding your correlation curves."
       }
     },
     {

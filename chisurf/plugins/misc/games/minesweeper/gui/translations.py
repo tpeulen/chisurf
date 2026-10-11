@@ -158,4 +158,5 @@ def install_translations():
             locale,
             {source: translations[index] for source, translations in STRINGS.items()},
             context="Minesweeper",
+            domain="chisurf",
         )

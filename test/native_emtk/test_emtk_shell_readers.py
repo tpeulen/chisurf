@@ -432,7 +432,34 @@ def _reader_child(shell):
     return app, box
 
 
+def reveal_in_reader(driver: Driver, shell, target: str) -> None:
+    """Wheel until *target* of the reader form is fully on screen, as a user does.
+
+    The Read data dock scrolls, and the form inside it scrolls: the dock first, over the strip beside the form,
+    until the form's box is in the window, then the form, over its own left edge, until the control is in it.
+    """
+    height = driver.size[1]
+    for _ in range(160):
+        app, box = _reader_child(shell)
+        x, y, w, h = app.form.rects[target]
+        if 0 <= y and y + h <= box[3] and box[1] >= 0 and box[1] + box[3] <= height:
+            return
+        if box[1] + box[3] > height or box[1] < 0:
+            before = box[1]
+            driver.wheel(-3 if box[1] > 0 else 3, at=(box[0] + box[2] + 3, 200))
+            assert _reader_child(shell)[1][1] != before, "the Read data dock does not scroll to the form"
+        else:
+            before = y
+            driver.wheel(-3 if y > 0 else 3, at=(box[0] + 2, box[1] + box[3] / 2))
+            assert _reader_child(shell)[0].form.rects[target][1] != before, (
+                f"the form does not scroll to reveal {target}"
+            )
+    raise AssertionError(f"{target} could not be scrolled into view")
+
+
 def _click_in_reader(driver: Driver, shell, target: str) -> None:
+    """Click a control of the reader form, wheeling the dock and the form first when it lies out of view."""
+    reveal_in_reader(driver, shell, target)
     app, box = _reader_child(shell)
     x, y, w, h = app.form.rects[target]
     driver.click((box[0] + x + w / 2, box[1] + y + h / 2))
@@ -453,8 +480,9 @@ def _select_pda(shell, driver: Driver) -> None:
 def test_a_burst_table_dropped_on_the_pda_form_is_read_into_the_datasets(shell, pda_setups):
     """Drop a ``.bur`` onto the PDA form, read the list: the measurement it names is a dataset."""
     data = shell.data
-    # Tall: the form's Load button sits under the file list, at the end of the form.
-    driver = Driver(shell, size=(1300, 1800))
+    # An ordinary window: the form's Load button sits under the file list, at the end of the form, and is
+    # reached by scrolling it (``_click_in_reader``).
+    driver = Driver(shell, size=(1300, 900))
     driver.frame(2)
     _select_pda(shell, driver)
     reader = data.read.reader()

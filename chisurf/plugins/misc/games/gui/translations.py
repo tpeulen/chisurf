@@ -93,5 +93,8 @@ STRINGS = {
 def install_translations():
     for index, locale in enumerate(LOCALES[1:]):
         i18n.add_translations(
-            locale, {source: values[index] for source, values in STRINGS.items()}, context="Games"
+            locale,
+            {source: values[index] for source, values in STRINGS.items()},
+            context="Games",
+            domain="chisurf",
         )

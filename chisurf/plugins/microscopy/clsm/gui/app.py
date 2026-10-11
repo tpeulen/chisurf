@@ -18,7 +18,7 @@ from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.dataset_picker import DatasetPicker
-from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.image_canvas import ImageCanvas
 from chisurf.emtk.jobs import SnapshotJob
 from chisurf.emtk.regions import RegionControls
@@ -112,7 +112,7 @@ MARKER_SPEC = layout_spec(
 )
 
 
-class ClsmApp(ImApp):
+class ClsmApp(TourTarget, ImApp):
     def __init__(self, model=None):
         self.model = model or ClsmViewModel()
         self.job = SnapshotJob(self.model)
@@ -180,6 +180,19 @@ class ClsmApp(ImApp):
     def open_paths(self, paths):
         if paths:
             self.start("load_file", str(paths[0]))
+
+    def load_example(self):
+        """Open the small simulated scan of :mod:`..demo`, written into the settings cache."""
+        from ..demo import make_demo
+
+        try:
+            path = make_demo()
+        except (OSError, RuntimeError) as exc:
+            self.error = f"Could not write the example: {exc}"
+            return False
+        self.open_paths([path])
+        self.tour.notify_used("load_example")
+        return True
 
     def on_files_dropped(self, paths):
         if self.job.busy:
@@ -339,6 +352,17 @@ class ClsmApp(ImApp):
             [
                 {"label": action_caption("help"), "key": "help", "tip": action_tooltip("help")},
                 {"label": action_caption("guide"), "key": "guide", "tip": action_tooltip("guide")},
+                {
+                    "label": action_caption("example"),
+                    "key": "load_example",
+                    "tip": action_tooltip(
+                        "example",
+                        tr(
+                            "Simulate a small laminar-flow scan with line and frame markers and open it, so the tool can be tried without a measurement."
+                        ),
+                    ),
+                    "enabled": not busy,
+                },
             ],
             remember=self.remember,
         )
@@ -346,6 +370,8 @@ class ClsmApp(ImApp):
             self.help.show()
         elif pressed == "guide":
             self.tour.start()
+        elif pressed == "load_example":
+            self.load_example()
         im.begin_disabled(busy)
         actions = [
             (

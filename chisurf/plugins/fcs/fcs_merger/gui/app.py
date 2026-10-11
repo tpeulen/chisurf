@@ -82,6 +82,9 @@ class _Form:
     def request_clear(self):
         self._app.clear()
 
+    def load_example(self):
+        self._app.load_example()
+
     def request_save(self):
         self._app.save()
 
@@ -181,13 +184,13 @@ class MergerApp(ImApp):
     def _used(self, name):
         # The folder step counts when a folder has loaded (load_folder's publish), not on a
         # typed path that may not exist.
-        if name != "folder":
+        if name not in ("folder", "load_example"):
             self.tour.notify_used(next((k for k, v in TOUR_KEYS.items() if v == name), name))
 
     def _fail(self, message):
         self.model.error = message
 
-    def load_folder(self, folder):
+    def load_folder(self, folder, example=False):
         """Read *folder* on the worker; its curves replace the list when it is done."""
         if self.job.running or not str(folder or "").strip():
             return False
@@ -209,12 +212,25 @@ class MergerApp(ImApp):
                 f" Skipped: {'; '.join(skipped)}" if skipped else ""
             )
             self.tour.notify_used("lineEdit")
+            if example:
+                self.tour.notify_used("load_example")
 
         return self.job.start(
             lambda: read_folder(folder),
             publish,
             lambda exc: self._fail(f"Could not read {Path(folder).name}: {exc}"),
         )
+
+    def load_example(self):
+        """Load the simulated curves of :mod:`..demo`, written into the settings cache."""
+        from ..demo import make_demo
+
+        try:
+            folder = make_demo()
+        except OSError as exc:
+            self._fail(f"Could not write the example: {exc}")
+            return False
+        return self.load_folder(str(folder), example=True)
 
     def save(self, filename=None, add=False):
         """Write the merge on the worker; with *add*, then add it to ChiSurf as an FCS dataset."""

@@ -24,6 +24,8 @@
              "description": "Create a new account. Fill in a username and a display name, then press Save."},
             {"action": "ask_delete", "label": "Delete",
              "description": "Delete the selected account (asks first). Built-in accounts and the active account cannot be deleted."},
+            {"action": "load_example", "label": "Load example", "icon": "🧪",
+             "description": "List three invented accounts instead of asking the MMFDB server, so the tour can be walked without one. The accounts live in this window only; reopen the editor to return to the server."},
             {"action": "ask_password", "label": "Password...",
              "description": "Set or change this account's password. It is applied when you Save."},
             {"action": "request_copy", "label": "Copy",

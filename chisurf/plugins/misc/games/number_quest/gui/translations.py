@@ -58,4 +58,4 @@ _CATALOGS = {
 
 def install_translations() -> None:
     for locale, values in _CATALOGS.items():
-        i18n.add_translations(locale, values, context="Number Quest")
+        i18n.add_translations(locale, values, context="Number Quest", domain="chisurf")

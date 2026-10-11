@@ -117,5 +117,8 @@ def install_translations() -> None:
     """Register shared chrome in the default native translation context."""
     for index, locale in enumerate(LOCALES):
         i18n.add_translations(
-            locale, {source: values[index] for source, values in STRINGS.items()}, context="default"
+            locale,
+            {source: values[index] for source, values in STRINGS.items()},
+            context="default",
+            domain="chisurf",
         )

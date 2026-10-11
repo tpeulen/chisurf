@@ -228,14 +228,17 @@ Still open: the installed-emtk/`type_scale` bullet and the Qt shell in German (i
 
 ## `test/test_plugin_demos.py::test_every_shipped_demo_has_the_standard_contract` red at HEAD (found 2026-10-11)
 
-status: open — owners: the plugins named. The audit (`python -m build_tools.dev_utils.demo_contract_audit --live`,
-or `audit_tree(root, revision="HEAD")` as the test does) reports 40 findings over committed demos: `alex_suite`
-and `bid_to_analysis` (`demo-control`: Load example not registered the way the audit recognises — `button_row`
-needs `remember=self.remember` from the `TourTarget` mixin and a `pressed == "load_example"` branch), and
-`core/pto_inspector`, `core/user_editor`, `fcs/fcs_merger`, `microscopy/clsm`, `ndxplorer`, `tttr/trace_browser`,
-`tttr/tttr_image_browser` (the cache API — `DEMO`, `demo_folder()`, `make_demo(folder=None, *, overwrite=False)` —
-and tour step 1 awaiting `load_example`). Found while giving `vv_vh_g_factor` its demo (which audits clean); not
-fixed there — each is its plugin's port. The test measures HEAD, so uncommitted fixes do not turn it green.
+status: resolved 2026-10-11 — every demo meets the contract (`python -m build_tools.dev_utils.demo_contract_audit --live` reports
+no finding; `test_every_shipped_demo_has_the_standard_contract` measures **HEAD**, so it turns green with the commit). Each of
+`core/pto_inspector`, `core/user_editor`, `fcs/fcs_merger`, `microscopy/clsm`, `ndxplorer`, `tttr/trace_browser` and
+`tttr/tttr_image_browser` now exposes `DEMO`, `demo_folder()` and `make_demo(folder=None, *, overwrite=False)` over the shared
+cache (`chisurf/plugins/demo_cache.py`: a stamp with the parameters and a checksum per file), draws a real **Load example**
+control and starts its tour step 1 on it with an `await`; `alex_suite` and `bid_to_analysis` already drew theirs through
+`action_button("example")`, which the audit did not recognise (it does now, `test_plugin_demos.py`). Found on the way: the
+Trace Browser's old demo wrote *scans*, which the browser skips as image files, so its tour could never list a file; it now
+writes two two-state SPC streams. The user editor's demo client was installed process-wide (it would have hidden the real
+accounts until a restart); it is now held by the one window (`UserEditorModel.load_example`). Tests:
+`test/test_demo_cache_plugins.py` and each plugin's tour test.
 
 ## Guide screenshot scripts still import the Qt burst tools retired in W9 phase 1 (found 2026-10-10)
 
@@ -277,26 +280,51 @@ emtk does not have, so run it with `~/dev/emtk` on `PYTHONPATH` until that lane 
 
 ## Real-use matrix: layout and tour defects outside the language checks (found 2026-10-11)
 
-status: open — owners as listed
+status: resolved 2026-10-11 — each item fixed at its root with a regression test and a screenshot read
+(`CHISURF_E2E_MATRIX=lang_fr,lang_de,resize,size_800x600,realistic` over `traj_tools`, `traj_remove_clashes`,
+`structure_tools` and `quenching_estimator` passes).
 
-* **quenching_estimator** (`structure_tools`): the *Coarse-grained structure* checkbox caption is clipped at
-  1100×720 in every language. The checkbox sits in the field column of a two-column grid. Seen in `realistic` and
-  `lang_de`; the base sweep does not check clipping. After the sweep, which loads the stub PDB through the tour,
-  every Dye/Simulation number field draws empty. The first frame shows them filled, and click plus Escape on a field
-  does not empty it, so the cause is not found yet. Owner: structure_tools.
-* **structure_tools**, `resize` variant: after the resize to 800×600 the *Project JSON* tab cannot be revealed in
-  80 wheel steps (`renders/e2e/resize/structure_tools.json`). Owner: structure_tools / W5 Driver reveal.
-* **Guided tour cards** draw a step title with the *tour's* domain (`emtk/help_guide.py`:
-  `tr(title, domain=self.domain)`). A named domain does not fall back to the default domain, so a title the
-  `chisurf` catalogue translates stays English ("Load a VV/VH file" in `vv_vh_anisotropy`, fr). Owner: the
-  help_guide lane (both `help_guide.py` files had uncommitted edits, so they were not touched).
-* **traj_tools**, fr: a drawn "to" that the catalogue translates ("à"). Its source was not located. Owner: traj.
-* Pre-existing, seen while verifying: `tttr_microtime_shifter` `test_every_control_lies_inside_its_dock_and_the_window[800x600]`
-  (save_batch cut off at the bottom), the spectra_downloader and ptu_alex_creator translation tests (catalogue
-  wording changed), `test_plugin_demos.py::test_every_shipped_demo_has_the_standard_contract`, and
-  `help/test_doc_registers.py` (stale registers). These are not caused by this lane. The shifter case fails with
-  the HEAD `emtk_layout.py` loaded in-process, and the others fail on catalogue wording, demo contracts and doc
-  registers, none of which this lane touched.
+* **quenching_estimator**, the clipped *Coarse-grained structure* caption: emtk `checkbox` and `radio_button` drew a label
+  wider than the line past the window edge; they now wrap it at the words (elide it with no room at all) and size the row to
+  its lines (emtk `f479f3b`, `tests/test_emtk_im.py`). The number fields that drew empty were **not** a drawing fault: the
+  sweep's *Load project…* picks a stub `{}`, and `ProjectFormModel.load_project_dict` replaced the whole state with it, so
+  the project had no value to show. It now raises `ProjectValidationError` and keeps the state (quest `b84c88d`,
+  `tests/test_form_model.py`; ChiSurf: `structure_tools/test/test_narrow_card_layout.py`). A second, real cause of empty
+  fields in a narrow dock: a single-column form gave the label column the width of its widest label, so a field began past
+  the edge; a lone control that does not fit beside its label is now drawn under it (emtk `d8ba4cf`,
+  `tests/test_view_form_long_labels.py`).
+* **structure_tools** at 800×600, *Project JSON* unreachable: the result tabs of the QuEst and docking cards were one
+  `same_line` row that ran off the dock; `CardShell.tab_row` wraps them (`test_narrow_card_layout.py`).
+* **Guided tour cards** and the tour's domain: with a named domain `EmTkHelpWindow` and `EmTkGuidedTour` of emtk looked text
+  up in that domain and the toolkit's only; an untranslated text is now looked up once more in the default and every other
+  registered domain (emtk `f479f3b`, `tests/test_help_guide_domains.py`). ChiSurf's own `chisurf.emtk.help_guide` names no
+  domain and already translates titles (`test/native_emtk/test_tour_titles_translated.py`).
+* **chimol in an embedded view narrower than 760 px** (the FPS editor's 3D View at the default hub width): `ChimolView`
+  rendered below 760×420 at a larger size and scaled the picture down, so every menu was illegible. chimol now keeps its
+  chrome at full size in a small viewport (menu bar and toolbar wrap onto further rows; the mouse block folds below
+  640×420, the object list below 420×300; the user's own unfold is kept, and a fold the layout made is never saved), chimol
+  `8212c1d`, `tests/test_narrow_viewport_chrome.py`; `ChimolView.min_size` is now 300×260
+  (`test/native_emtk/test_chimol_view_narrow.py`, screenshots `chimol_view_420x300.png`). Open: in a viewport this small
+  the info panel still covers most of the molecule until it is closed.
+* **traj_tools**, fr, the drawn "to": it was the word *to* of the default atom selection `name CA and resSeq 1 to 256`,
+  the *content* of a text field (mdtraj syntax), drawn word by word, not an untranslated caption. The matrix now skips text
+  inside editable fields and the body of data tables (`test/e2e/test_click_all_plugins.py`, `FIELD_KINDS`). The same
+  check flagged *burst/bursts* in the PTO inspector's object table, which is container vocabulary.
+
+## Shared detector-setup editor in de/fr, found by the tttr_image_browser matrix (found 2026-10-11)
+
+status: open — owner: `chisurf/emtk/channel_definition.py`. With the example loaded the sweep reaches the *Detector setup*
+tab of the Image Browser and reports, in `lang_de` and `lang_fr`: *Delete*, *Image* and *Unsaved* drawn in English although
+the catalogue translates them (`channel_definition.py` draws several captions from untranslated dict values, e.g. lines
+1028 and 1046, and the setup combo's *Unsaved* entry), and the right-hand *Optisches Setup …* button clipped at the edge
+of the 720 px form. Many captions (*File Type:*, *Macrotime res. (ns):*) are not in the catalogue at all. Re-derive:
+`CHISURF_E2E_MATRIX=lang_de pytest test/e2e/test_click_all_plugins.py -m e2e -k tttr_image_browser`.
+
+## ndX window: *Screenshot* drawn in English in a German session (found 2026-10-11)
+
+status: open — owner: `modules/ndxplorer` (its own repository; not touched here). `lang_de` of the ndxplorer matrix reports the
+plot toolbar's *Screenshot* button as English while the chiplot/ChiSurf catalogue translates it (*Bildschirmfoto*); French passes.
+It fails the same way at HEAD, with and without the *Load example* overlay.
 
 ## Real-use language matrix: text drawn in English in a French or German session (found 2026-10-11)
 
@@ -487,11 +515,15 @@ the emtk shell and Qt-hosted; 14/46 hosted in both shells; PDA through the emtk 
 * ~~**ndX send**~~ — fixed 2026-10-11 in `modules/ndxplorer` (`DataSource.source_paths`, `resolve_source_file`, `show_result`;
   `app.send_result_opener` is the host hook). Open: ChiSurf's ndX window sets no `send_result_opener`, so the result is shown in a message
   box rather than opened as a ChiSurf dataset.
-* **emtk shell PDA reader form is clipped and does not scroll**: at 1920×1080 *Files* / *Load dropped files* are
-  unreachable (`EmtkShellApp`, Read data → PDA, `driver.wheel(-3, at=(250, 450))`); `test_emtk_shell_readers.py`
-  hid it with a 1300×1800 window. Owner `chisurf/emtk/reader_settings.py` / `fit_docks.py`.
-* **PDA models' `n_points` reads a residual cache**: the fit dock shows 251000 points before the first fit, 81 after
-  (`simple`, `dynamic`, `dynamic_mc`, `pdagauss`, `anisotropy`; `server/services/fits.py` reads it before χ²).
+* ~~**emtk shell PDA reader form is clipped and does not scroll**~~ — fixed 2026-10-11: an emtk window does not scroll
+  itself, so `ReaderSettingsApp` drew its form in a window that clipped it. The form now sits in a scrolling child, and the
+  Read data dock gives it at least `MIN_READER_FORM_H` (260 px) and scrolls itself when that does not fit
+  (`test/native_emtk/test_emtk_shell_pda_reader_scroll.py` at 1920×1080, 1300×900 and 800×600; the reader tests no longer
+  need a 1300×1800 window).
+* ~~**PDA models' `n_points` reads a residual cache**~~ — fixed 2026-10-11: `n_points` of the five two-colour models (one
+  property on `Pda2cModelMixin`) is the bin count of the 1D histogram computed from the data and the settings
+  (`pda_1d_residual_size`), 81 before and after the first fit, and it follows a change of `n_bins` at once
+  (`test/gui/test_pda2c_model_editor.py::test_pda_n_points_is_the_histogram_bin_count_before_and_after_a_fit`).
 * Burst Browser: Mean Macro Time cells in `.4g` (`1.218e+04`), E/S gate tags cover the tick labels, gate drag
   clamps to [0, 1] (guide 28 says limits may go below 0).
 * ~~`pto_inspector` *Export legacy* refuses its own `demo.pto`~~ — fixed 2026-10-11: the demo's lifetime table is `lifetimes green` (the detector is how the export picks `bg4`); `pto_inspector/test/test_demo.py`.

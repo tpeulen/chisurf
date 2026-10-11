@@ -461,26 +461,17 @@ class DockingCard(CardShell):
         self.item_rects.update(self.form.rects)
 
     def _draw_results(self, box) -> None:
-        from emtk.im_core import Col
-
-        for i, tab in enumerate(TABS):
-            if i:
-                im.same_line()
-            selected = tab == self.tab
-            if selected:
-                im.push_style_color(Col.BUTTON, im.get_style().color(Col.TAB_SELECTED))
-            if im.button(tab):
-                self.tab = tab
-            if selected:
-                im.pop_style_color(1)
-            im.set_item_tooltip(
-                {
-                    "Results": "One row per docking result; click a header to sort.",
-                    "Score": "The restraint score against the step of the run, one curve per trial.",
-                    "Structure": "A 3D trace of the selected structure.",
-                }[tab]
-            )
-            self.remember(f"tab_{tab}")
+        pressed = self.tab_row(
+            TABS,
+            self.tab,
+            {
+                "Results": "One row per docking result; click a header to sort.",
+                "Score": "The restraint score against the step of the run, one curve per trial.",
+                "Structure": "A 3D trace of the selected structure.",
+            },
+        )
+        if pressed:
+            self.tab = pressed
         im.separator()
         {"Results": self._draw_table, "Score": self._draw_score, "Structure": self._draw_structure}[
             self.tab

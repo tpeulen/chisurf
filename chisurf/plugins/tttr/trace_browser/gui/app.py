@@ -59,7 +59,7 @@ from chisurf.core.setup_channel_definition import ChannelDefinition
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.jobs import SnapshotJob
-from chisurf.plugins.emtk_layout import action_button, window_size
+from chisurf.plugins.emtk_layout import action_button, action_caption, action_tooltip, window_size
 
 from .host_lookup import default_request_handler
 from .model import TraceBrowserModel
@@ -281,6 +281,7 @@ class TraceBrowserApp(ImApp):
         self.on_request = on_request
         self.model.host_connected = on_request is not None
         self._delivered = 0
+        self._example_pending = False
         self.setups_file = str(setups_file) if setups_file else None
         self.editor: ChannelDefinitionWidget | None = None
         self.item_rects: dict[str, tuple] = {}
@@ -317,7 +318,7 @@ class TraceBrowserApp(ImApp):
             wait_for_controls=True,
             get_target_rect=lambda key: self.item_rects.get(key) or self.form.rects.get(key),
         )
-        self.form.on_used = self.tour.notify_used
+        self.form.on_used = self._used
         self._new_editor(None)
         self.setup_docks = DockManager(Region("setup"), name="trace_browser_setup")
         self.setup_docks.add_window(
@@ -469,6 +470,13 @@ class TraceBrowserApp(ImApp):
         return False
 
     # -- actions ---------------------------------------------------------------
+    def _used(self, name: str) -> None:
+        """Tell the tour a form control was used; Load example counts once its files are listed."""
+        if name == "load_example":
+            self._example_pending = True  # released by _tour_outcomes once the files are listed
+        else:
+            self.tour.notify_used(name)
+
     def continue_to_browser(self) -> None:
         """Accept the editor's setup and show the browser page (the Qt *Continue*).
 
@@ -484,6 +492,13 @@ class TraceBrowserApp(ImApp):
             model.selected_channels,
         ):
             model.request("scan")
+
+    def load_example(self) -> None:
+        """Accept the setup shown, then open the simulated folder of :mod:`..demo`."""
+        self._example_pending = True
+        if self.model.page == "setup":
+            self.continue_to_browser()
+        self.model.load_example()
 
     def back_to_setup(self) -> None:
         """Return to the setup page (the Qt *Select setup* button)."""
@@ -528,6 +543,8 @@ class TraceBrowserApp(ImApp):
         a dialog), and by a state that already holds (a folder that is open already).
         """
         model = self.model
+        if "load_example" in self.form.rects:
+            self.item_rects["load_example"] = self.form.rects["load_example"]
         if "choose_folder" in self.form.rects:
             self.item_rects["folder_opened"] = self.form.rects["choose_folder"]
         if "select_all_files" in self.form.rects:
@@ -538,6 +555,9 @@ class TraceBrowserApp(ImApp):
             self.tour.notify_used("setup_accepted")
         if model.rows:
             self.tour.notify_used("folder_opened")
+            if self._example_pending:  # the files of Load example are listed
+                self._example_pending = False
+                self.tour.notify_used("load_example")
         if len(model.selection_paths()) > 1:
             self.tour.notify_used("several_selected")
         if self._outcome and model.actions_done > self._outcome[0]:
@@ -565,6 +585,18 @@ class TraceBrowserApp(ImApp):
             self.continue_to_browser()
         im.set_item_tooltip(tr("Accept detector setup and open trace browser"))
         self.item_rects["continue"] = self.item_rects["setup_accepted"] = im.get_item_rect()
+        im.same_line()
+        if im.button(f"{action_caption('example')}###load_example"):
+            self.load_example()
+        im.set_item_tooltip(
+            action_tooltip(
+                "example",
+                tr(
+                    "Accept the detector setup and open two small simulated photon files, so the browser can be tried without data of your own."
+                ),
+            )
+        )
+        self.item_rects["load_example"] = im.get_item_rect()
         im.same_line()
         self._draw_help_buttons()
         im.separator()

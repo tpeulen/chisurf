@@ -23,6 +23,21 @@ def _attribute(node, name):
     return isinstance(node, ast.Attribute) and node.attr == name
 
 
+def _is_button(node):
+    """Recognise a drawn button: ``<x>.button(...)`` or the shared ``action_button("example", ...)``."""
+    if not isinstance(node, ast.Call):
+        return False
+    if _attribute(node.func, "button"):
+        return True
+    return (
+        isinstance(node.func, ast.Name)
+        and node.func.id == "action_button"
+        and bool(node.args)
+        and isinstance(node.args[0], ast.Constant)
+        and node.args[0].value == "example"
+    )
+
+
 def _rectangle_key(node):
     """Return the authored key of an actual item rectangle registration."""
     if not isinstance(node, ast.Assign) or not (
@@ -88,9 +103,7 @@ def _imperative_control(tree, registration_sources):
         )
         for function in methods.values() if isinstance(scope, ast.ClassDef) else [scope]:
             nodes = list(ast.walk(function))
-            has_button = any(
-                isinstance(node, ast.Call) and _attribute(node.func, "button") for node in nodes
-            )
+            has_button = any(_is_button(node) for node in nodes)
             literal_rectangle = any(
                 isinstance(key := _rectangle_key(node), ast.Constant)
                 and key.value == "load_example"
@@ -103,10 +116,7 @@ def _imperative_control(tree, registration_sources):
             )
             direct_callback = any(
                 isinstance(node, ast.If)
-                and any(
-                    isinstance(call, ast.Call) and _attribute(call.func, "button")
-                    for call in ast.walk(node.test)
-                )
+                and any(_is_button(call) for call in ast.walk(node.test))
                 and any(
                     isinstance(call, ast.Call) and _attribute(call.func, "load_example")
                     for statement in node.body

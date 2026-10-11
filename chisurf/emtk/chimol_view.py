@@ -47,8 +47,10 @@ class ChimolView:
     Parameters
     ----------
     min_size : tuple of int, optional
-        The smallest size chimol renders at; a smaller region shows the frame scaled down. chimol lays out its sequence
-        strip and panels for a desktop-size canvas and overprints below about 760x420.
+        The smallest size chimol renders at; a smaller region shows the frame scaled down. chimol keeps its chrome at
+        full size in a narrow region (its menu bar and toolbar wrap, its mouse block and, when tiny, its object list
+        fold), so this is only the floor below which even that does not fit; it used to be 760x420, which scaled
+        the menus of every embedded view narrower than that down until they could not be read.
     viewer_options : dict, optional
         Keyword options for chimol's Viewer, as a Qt host would construct it with.
     skip_idle_frames : bool, optional
@@ -59,7 +61,7 @@ class ChimolView:
 
     def __init__(
         self,
-        min_size: tuple[int, int] = (760, 420),
+        min_size: tuple[int, int] = (300, 260),
         viewer_options: dict | None = None,
         skip_idle_frames: bool = False,
     ) -> None:

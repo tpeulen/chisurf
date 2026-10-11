@@ -12,6 +12,7 @@ import csv
 import json
 import pathlib
 import shutil
+import time
 
 import pytest
 from emtk import im_widgets
@@ -245,7 +246,7 @@ def test_the_new_buttons_are_in_the_spec_in_order():
         for s in all_sections(spec)
         for b in s.get("buttons", [])
     ]
-    assert labels[4:12] == BUTTONS  # after the first row of four
+    assert labels[5:13] == BUTTONS  # after the first row of five (with Load example)
     from chisurf.plugins.tttr.trace_browser.gui.model import TraceBrowserModel
 
     model = TraceBrowserModel()
@@ -810,6 +811,7 @@ def test_the_awaiting_steps_are_released_by_their_outcome(work, tmp_path, monkey
     awaiting = [i for i, s in enumerate(steps) if s.get("await")]
     names = {i: steps[i]["target"]["name"] for i in awaiting}
     assert set(names.values()) == {
+        "load_example",
         "setup_accepted",
         "folder_opened",
         "several_selected",
@@ -820,7 +822,7 @@ def test_the_awaiting_steps_are_released_by_their_outcome(work, tmp_path, monkey
         # setup_accepted: pressing Continue on the setup page releases it
         app.model.back_to_setup()
         frames(app, n=3)
-        app.tour.start(awaiting[0])
+        app.tour.start(awaiting[1])
         frames(app, n=2)
         assert app.tour.awaiting
         with pressing(monkeypatch, "Continue"):
@@ -828,20 +830,20 @@ def test_the_awaiting_steps_are_released_by_their_outcome(work, tmp_path, monkey
         frames(app, n=2)
         assert app.model.page == "browser" and not app.tour.awaiting
         # folder_opened: waits until files are listed
-        app.tour.start(awaiting[1])
+        app.tour.start(awaiting[2])
         frames(app, n=2)
         assert app.tour.awaiting
         open_folder(app, work)
         frames(app, n=2)
         assert not app.tour.awaiting
         # several_selected: waits for more than one selected file
-        app.tour.start(awaiting[2])
+        app.tour.start(awaiting[3])
         frames(app, n=2)
         assert app.tour.awaiting
         press(app, monkeypatch, "Select all")
         assert not app.tour.awaiting
         # exported: waits until an export finished
-        app.tour.start(awaiting[3])
+        app.tour.start(awaiting[4])
         frames(app, n=2)
         assert app.tour.awaiting
         app.model.export_files(tmp_path / "out")
@@ -849,6 +851,28 @@ def test_the_awaiting_steps_are_released_by_their_outcome(work, tmp_path, monkey
         assert not app.tour.awaiting
         # nothing was exported by the tour itself: the copies are the ones this test asked for
         assert sorted(p.name for p in (tmp_path / "out").iterdir()) == ["m000.spc", "m001.spc"]
+    finally:
+        app.close()
+
+
+def test_load_example_on_the_setup_page_opens_the_simulated_files(tmp_path, monkeypatch):
+    pytest.importorskip("tttrlib")
+    monkeypatch.setattr("chisurf.plugins.demo_cache.cache_folder", lambda plugin: tmp_path / plugin)
+    app = make_app()
+    try:
+        app.model.back_to_setup()
+        frames(app, n=3)
+        app.tour.start(1)
+        assert app.tour.awaiting and app.tour.step_idx == 1
+        press(app, monkeypatch, action_caption("example"), n=2)
+        deadline = time.monotonic() + 120
+        while not app.model.rows and time.monotonic() < deadline:
+            frames(app, n=1)
+            time.sleep(0.05)
+        frames(app, n=3)
+        assert app.model.page == "browser"
+        assert sorted(pathlib.Path(r["path"]).name for r in app.model.rows) == ["trace_1.spc", "trace_2.spc"]
+        assert not app.tour.awaiting
     finally:
         app.close()
 

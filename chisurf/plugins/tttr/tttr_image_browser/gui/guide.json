@@ -7,13 +7,20 @@
       "target": {}
     },
     {
-      "title": "Open a folder",
+      "title": "Load the example",
+      "text": "<b>Load example</b> simulates two small confocal scans into the settings folder and opens that folder, so every step below has files to list.",
+      "target": {
+        "name": "load_example"
+      },
+      "await": {
+        "hint": "Press <b>Load example</b>."
+      }
+    },
+    {
+      "title": "Or open your own folder",
       "text": "Press <b>Open folder</b> and choose a folder with photon files (PTU, HT3, PT3, SPC ...). You can also drop a folder on the window. Tick <b>Include subfolders</b> first to list the files below it too.",
       "target": {
         "name": "choose_folder"
-      },
-      "await": {
-        "hint": "Press <b>Open folder</b> and choose a folder."
       }
     },
     {

@@ -2,6 +2,14 @@
 
 ## 2026-10-11
 
+- Demo contract and narrow-view QA: nine plugins meet the demo contract (shared cache
+  `chisurf/plugins/demo_cache.py`, a real Load example, tour step 1 awaits it; the Trace Browser demo now writes
+  SPC streams it can list); emtk checkboxes/radios wrap long labels and a form field stacks under a too-wide label
+  (emtk f479f3b, d8ba4cf); tour titles fall back to every registered i18n domain; structure_tools result tabs
+  wrap at 800x600; QuEst keeps its state on an invalid project (quest b84c88d); chimol keeps its chrome legible in
+  a narrow embedded view (chimol 8212c1d); the PDA reader form scrolls in the emtk shell and `n_points` is the
+  histogram bin count before and after a fit. The real-use matrix skips text inside editable fields. See
+  [known issues](references/known-issues.md).
 - emtk.i18n is the shared translation seam (emtk d18512b..334278f): domains, Qt-free `.ts`/JSON catalogues,
   `python -m emtk.i18n.extract` (merge-safe; `--spec`, `--docstrings`), `emtk.i18n.testing.untranslated_literals`
   and `isolated()`, emtk's own strings in shipped de/fr catalogues, view_form/data_table/DialogWindow translate

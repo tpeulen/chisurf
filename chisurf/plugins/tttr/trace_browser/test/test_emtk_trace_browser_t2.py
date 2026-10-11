@@ -193,9 +193,9 @@ def test_every_spec_key_exists_on_the_model():
             for call in ("selected_call", "edited_call"):
                 assert callable(getattr(model, options[call])), options[call]
             seen["table"] += 1
-    assert seen == {"attr": 8, "call": 3, "action": 14, "table": 1}, (
+    assert seen == {"attr": 8, "call": 3, "action": 15, "table": 1}, (
         seen
-    )  # T3b: Precompute, Stop, the toggle; T4: eight export, delete and hand-off buttons
+    )  # T3b: Precompute, Stop, the toggle; T4: eight export, delete and hand-off buttons; Load example
     assert callable(model.enabled) and model.enabled("clear") is True
     model.busy = True
     assert model.enabled("clear") is False

@@ -7,6 +7,8 @@ tags: [guides, combining, repeats]
 
 # Combining measurements / technical repeats
 
+**No data at hand?** The FCS curve merger's **Load example** writes four simulated single-diffusion curves into the settings folder (`demos/fcs_merger`) and lists them; the guided tour starts from it. `chisurf.plugins.fcs.fcs_merger.demo.make_demo()` returns the folder.
+
 :::{admonition} Theory
 :class: seealso
 See {ref}`concept-smfret-bursts` for the per-burst observables being pooled and

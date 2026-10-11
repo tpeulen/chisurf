@@ -155,8 +155,19 @@ def artifact_stem(plugin_id):
     return re.sub(r"[^A-Za-z0-9_.-]+", "_", plugin_id)
 
 
+#: Controls the sweep leaves to the tour phase, per plugin. ndX's *Load example* replaces the map, which
+#: ends drawing and opens the data-dependent dialogs (load mask, screenshot, table) whose later controls
+#: the sweep cannot reach behind them; the tour still presses it, as its awaited control.
+PLUGIN_SWEEP_SKIPS = {"ndxplorer": re.compile(r"load_example")}
+#: The plugin the running worker drives (set in ``_native``).
+CURRENT_PLUGIN = ""
+
+
 def skip_reason(name, tags=()):
     """Explain the safety exclusion for a control; otherwise return None."""
+    own = PLUGIN_SWEEP_SKIPS.get(CURRENT_PLUGIN)
+    if own is not None and own.search(str(name)):
+        return "left to the tour phase (replaces the data the other controls act on)"
     if {str(tag).lower() for tag in tags} & {"modal", "file", "dangerous", "external", "hardware"}:
         return "declared side-effect tag"
     if "↑ parent" in str(name).lower():
@@ -1095,9 +1106,18 @@ def _unfinished_sources(lang):
     return out
 
 
+#: Controls whose drawn text is the value held in them, never a caption.
+FIELD_KINDS = frozenset(
+    {"input_text", "input_text_multiline", "input_float", "input_int", "input_double"}
+)
+#: Height of a data table's header row: text below it in the table is a cell.
+TABLE_HEADER_H = 16.0
 #: Control kinds whose label is a caption (clipping one is a layout defect).
 CAPTION_KINDS = frozenset({"button", "small_button", "checkbox", "radio_button", "menu_item",
                            "collapsing_header", "begin_tab_item", "autoform_fold"})
+#: Words a tool draws as *data*, never as a caption: the Image Browser's default detector is named "Image"
+#: (a key of its detector configuration) and labels the mosaic tile.
+DATA_WORDS = {"tttr_image_browser": frozenset({"Image"})}
 #: Tools that display documents: their content is English by design (docs/ is not
 #: translated), so drawn English there is not untranslated chrome.
 CONTENT_VIEWERS = frozenset({"help"})
@@ -1117,7 +1137,8 @@ class RealUseFindings:
     Inactive for the base sweep, so its verdicts are unchanged.
     """
 
-    def __init__(self, driver, recorder_rows, plugin_id=""):
+    def __init__(self, driver, recorder_rows, plugin_id="", recorder_tables=lambda: ()):
+        self.tables = recorder_tables
         self.plugin_id = plugin_id
         self.driver = driver
         self.rows = recorder_rows
@@ -1175,7 +1196,31 @@ class RealUseFindings:
             if row.get("kind") in CAPTION_KINDS
         }
         captions.discard("")
-        texts = {str(entry[5]).strip() for entry in painter.texts}
+        # What a user typed or a model holds in an editable field is data, not a caption to translate:
+        # a mdtraj selection ("name CA and resSeq 1 to 256") is drawn word by word, and its "to" is
+        # not the French "à".
+        fields = [
+            row["rect"] for row in self.rows() if row.get("kind") in FIELD_KINDS and row.get("rect")
+        ]
+
+        tables = list(self.tables())
+
+        def in_field(entry):
+            """Whether the drawn text is a field's value or a cell of a data table (content, not a caption)."""
+            return any(
+                fx <= entry[0] <= fx + fw and fy - 1 <= entry[1] <= fy + fh
+                for fx, fy, fw, fh in fields
+            ) or any(
+                tx <= entry[0] <= tx + tw and ty + header <= entry[1] <= ty + th
+                for (tx, ty, tw, th), header in tables
+            )
+
+        data_words = DATA_WORDS.get(self.plugin_id, frozenset())
+        texts = {
+            str(entry[5]).strip()
+            for entry in painter.texts
+            if not in_field(entry) and str(entry[5]).strip() not in data_words
+        }
         if self.lang:
             # Two controls whose captions translate to one word ("Back" and "Prev" are both
             # "Zurück") collide when the caption is the id: the second press goes to the first.
@@ -1245,6 +1290,19 @@ def _native(plugin_id, result, png_path):
             """Keep editable field text privately, never in PNG/JSON inventories."""
             super().__init__()
             self.input_values = {}
+            #: ``(rectangle, header height)`` of every data table or node graph drawn since the rows were
+            #: last cleared (the sweep clears them before each frame): the scan skips their cells.
+            self.tables = []
+            tables = self.tables
+
+            class Rows(list):
+                """The recorded rows; clearing them starts a new frame for the tables too."""
+
+                def clear(self):
+                    super().clear()
+                    tables.clear()
+
+            self.rows = Rows(self.rows)
             self.pressed_ids = set()
             self.contact_ids = set()
 
@@ -1296,13 +1354,49 @@ def _native(plugin_id, result, png_path):
                 self.rows[-1]["expanded"] = opened
                 return opened
 
-            with (
-                super().installed(),
-                patch.object(Context, "button_behavior", observe_behavior),
-                patch.object(Context, "item_add", observe_item),
-                patch.object(view_form, "_fold", observe_fold),
-            ):
-                yield self
+            from emtk.widgets import data_table
+
+            original_table = data_table.draw_table
+
+            def observe_table(*args, **kwargs):
+                """Record a data table's rectangle: its body is content, not a caption to translate."""
+                result = original_table(*args, **kwargs)
+                ctx = im.get_current_context()
+                rect = im.get_item_rect()
+                if rect is not None:
+                    self.tables.append((painter_rectangle(ctx.p, rect), TABLE_HEADER_H))
+                return result
+
+            from chisurf.emtk.node_editor.control import GraphControl
+
+            original_graph = GraphControl._draw_graph
+
+            def observe_graph(control, box):
+                """Record a node graph's rectangle: its node labels are the document's names."""
+                result = original_graph(control, box)
+                self.tables.append((painter_rectangle(im.get_current_context().p, tuple(box)), 0.0))
+                return result
+
+            # The widget is imported by name into the modules that draw it, so every reference is swapped.
+            holders = [
+                module
+                for module in list(sys.modules.values())
+                if getattr(module, "draw_table", None) is original_table
+            ]
+            for module in holders:
+                setattr(module, "draw_table", observe_table)
+            try:
+                with (
+                    super().installed(),
+                    patch.object(Context, "button_behavior", observe_behavior),
+                    patch.object(Context, "item_add", observe_item),
+                    patch.object(view_form, "_fold", observe_fold),
+                    patch.object(GraphControl, "_draw_graph", observe_graph),
+                ):
+                    yield self
+            finally:
+                for module in holders:
+                    setattr(module, "draw_table", original_table)
 
         def _wrap(self, kind, func):
             wrapped = super()._wrap(kind, func)
@@ -1323,7 +1417,8 @@ def _native(plugin_id, result, png_path):
 
     result["phase"] = "factory"
     checkpoint(result)
-    global CURRENT_APP
+    global CURRENT_APP, CURRENT_PLUGIN
+    CURRENT_PLUGIN = plugin_id
     app = CURRENT_APP = load_plugin(plugin_id, persist=False)
     size = tuple(VARIANT.get("size", SIZE))
     if VARIANT.get("driver") == "realistic":
@@ -1332,7 +1427,12 @@ def _native(plugin_id, result, png_path):
         driver = RealisticDriver(app, size, scale=float(VARIANT.get("scale", 1.0)))
     else:
         driver = Driver(app, size)
-    findings = RealUseFindings(driver, recorder_rows=lambda: recorder.rows, plugin_id=plugin_id)
+    findings = RealUseFindings(
+        driver,
+        recorder_rows=lambda: recorder.rows,
+        plugin_id=plugin_id,
+        recorder_tables=lambda: recorder.tables,
+    )
     recorder = Recorder()
     samples = []
     try:

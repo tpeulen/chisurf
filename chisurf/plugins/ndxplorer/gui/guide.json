@@ -3,40 +3,69 @@
   "steps": [
     {
       "title": "Look at many bursts at once",
-      "text": "ndXplorer shows a table of single-molecule bursts (or image pixels) as histograms of any two of its columns, so populations show up as clouds and you can gate them. Starting the Guide opens a small <b>demo</b> table with three FRET populations when nothing is loaded. You press the controls; the tour only points at them.",
+      "text": "ndXplorer shows a table of single-molecule bursts (or image pixels) as histograms of any two of its columns, so populations show up as clouds and you can gate them. When nothing is loaded the tour offers a small <b>demo</b> table with five simulated populations (<b>Load example</b>). You press the controls; the tour only points at them.",
       "target": {}
+    },
+    {
+      "title": "Load the example",
+      "text": "With nothing loaded, <b>Load example</b> (over the empty map) opens a simulated burst table: five populations with a known FRET efficiency and stoichiometry. Every step below points at it. If a table is open already this step is done.",
+      "target": {
+        "name": "load_example"
+      },
+      "await": {
+        "hint": "Press <b>Load example</b> over the map."
+      }
     },
     {
       "title": "Open your own data here",
       "text": "<b>File > Open</b> and the <b>Import</b> entries read burst folders, CSV tables, HDF5, sampling files and ChiSurf projects; <b>From MMFDB</b> browses the database. A file or folder dropped on the window opens too.",
-      "target": {"name": "menu_bar"}
+      "target": {
+        "name": "menu_bar"
+      }
     },
     {
       "title": "Choose what to plot",
       "text": "The x and y columns of the 2-D map. A fresh table opens on a default pair; the demo shows donor lifetime against FRET efficiency, where each population lies along the static FRET line. Any numeric column can go on either axis.",
-      "target": {"name": "x_name"}
+      "target": {
+        "name": "x_name"
+      }
     },
     {
       "title": "The map",
       "text": "Each dense spot is a population. Drag a rectangle here to gate it: the histograms on the margins and every other plot then show only the selected bursts.",
-      "target": {"name": "map"}
+      "target": {
+        "name": "map"
+      }
     },
     {
       "title": "Set the colour scale",
       "text": "Counts per bin are coloured; one dense cloud can wash out the rest. <b>Contrast</b> sets the colour limits from the data so faint populations stay visible.",
-      "target": {"name": "auto_contrast"},
-      "await": {"hint": "Press <b>Contrast</b>."}
+      "target": {
+        "name": "auto_contrast"
+      },
+      "await": {
+        "hint": "Press <b>Contrast</b>."
+      }
     },
     {
       "title": "Keep a selection",
       "text": "Gates are listed under <b>Selection</b>: save them, load them again, or write the selected burst ids so another analysis can reuse exactly these bursts.",
-      "target": {"name": "Selection.fold"}
+      "target": {
+        "name": "Selection.fold"
+      }
     },
     {
       "title": "Where to go next",
       "text": "<b>Help > Quick reference</b> lists the parts of the window in a few lines.",
-      "target": {"name": "menu_bar"},
-      "links": [{"text": "ndXplorer guide", "doc": "docs/guides/46_ndxplorer.md"}]
+      "target": {
+        "name": "menu_bar"
+      },
+      "links": [
+        {
+          "text": "ndXplorer guide",
+          "doc": "docs/guides/46_ndxplorer.md"
+        }
+      ]
     }
   ]
 }

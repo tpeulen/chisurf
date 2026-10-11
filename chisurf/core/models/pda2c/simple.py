@@ -332,7 +332,7 @@ class Pda2cSimpleModel(Pda2cModelMixin, ModelCurve):
 
     name = "PDA2c-discrete"
 
-    #: Declarative AutoForm layout (PRD-38 model/view-spec split). The editor
+    #: Declarative AutoForm layout. The editor
     #: is rendered from this JSON next to the module; compute stays in Python.
     view_spec_file = "simple.view.json"
 
@@ -457,10 +457,6 @@ class Pda2cSimpleModel(Pda2cModelMixin, ModelCurve):
             nuisance=getattr(self, "nuisance", None),
             settings=self.fit_settings,
         )
-        try:
-            self._last_1d_residual_size = int(wres.size)
-        except Exception:
-            pass
         return wres
 
     def get_wres(
@@ -501,19 +497,6 @@ class Pda2cSimpleModel(Pda2cModelMixin, ModelCurve):
         )
 
         return mask_zero_photon_bins(fit, xmin, wres)
-
-    @property
-    def n_points(self) -> int:
-        """Return the number of data points for chi-squared calculation."""
-        mode = getattr(self, "residual_mode", "1D")
-        if mode == "1D":
-            try:
-                n = int(getattr(self, "_last_1d_residual_size", 0) or 0)
-            except Exception:
-                n = 0
-            if n > 0:
-                return n
-        return super().n_points
 
     def get_state(self) -> dict:
         """Serialize the model state, including the number of species."""

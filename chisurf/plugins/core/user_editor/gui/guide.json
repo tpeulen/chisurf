@@ -10,6 +10,17 @@
       }
     },
     {
+      "title": "Load the example",
+      "text": "Without a server there is nothing to list. <b>Load example</b> shows three invented accounts in this window only, so you can practise every step below; reopen the editor to return to the server.",
+      "target": {
+        "name": "load_example",
+        "action": "🧪 Load example"
+      },
+      "await": {
+        "hint": "Press <b>Load example</b>."
+      }
+    },
+    {
       "title": "Pick one to edit",
       "text": "Select a row and the account form on the right fills in. Everything you type stays local until you save, so you can look without changing anything.",
       "target": {

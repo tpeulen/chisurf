@@ -242,6 +242,21 @@ class UserEditorModel(UserEditorViewModel):
         self.notice = ""
         self._dispatch("reload")
 
+    def load_example(self) -> None:
+        """Serve three invented accounts from memory instead of the MMFDB server, and list them.
+
+        Only this model uses the demonstration client, so the real connection of the other tools is
+        untouched; close and reopen the editor to return to the server.
+        """
+        from ..demo import DemoUserClient, make_demo
+
+        make_demo()
+        demo = DemoUserClient()
+        self._client_factory = lambda: demo
+        self._loaded = True
+        self.notice = "Example: three invented accounts, kept in this window only. Reopen the editor to reach the server."
+        self._dispatch("reload")
+
     def _dispatch(self, method: str, *args: Any) -> None:
         """Run *method* on the job when there is one, else here."""
         if self.runner is not None and self.runner(method, *args):

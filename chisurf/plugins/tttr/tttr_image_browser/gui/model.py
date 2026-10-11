@@ -445,6 +445,10 @@ class ImageBrowserModel(EmtkModelMixin, ImageBrowserViewModel):
             return f"{folder.name or 'images'}.docx"
         return ""
 
+    def load_example(self) -> None:
+        """Ask the app to open the folder of two small simulated scans (:mod:`..demo`)."""
+        self.requests.append("example")
+
     def show_help(self) -> None:
         """Ask the app to open the help window."""
         self.requests.append("help")

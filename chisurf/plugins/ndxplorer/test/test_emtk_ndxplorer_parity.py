@@ -215,3 +215,29 @@ def test_every_control_has_a_tooltip():
         assert emtk_inventory(app)["controls_without_tooltip"] == []
     finally:
         app.close()
+
+
+def test_load_example_button_opens_the_simulated_table_and_releases_the_tour(tmp_path, monkeypatch):
+    """The empty map offers Load example; pressing it opens the known table and the tour step is done."""
+    from emtk.testing import Driver
+
+    from chisurf.plugins.ndxplorer.gui.app import make_app
+
+    monkeypatch.setattr("chisurf.plugins.demo_cache.cache_folder", lambda plugin: tmp_path / plugin)
+    app = make_app(session_autosave=False)
+    try:
+        driver = Driver(app, (1200, 800))
+        driver.settle()
+        assert app.model.source is None
+        app.tour.start(1)
+        driver.frame(3)
+        assert app.tour.awaiting
+        x, y, w, h = app.tour.get_target_rect("load_example")
+        driver.click((x + w / 2, y + h / 2))
+        driver.settle()
+        assert app.model.source is not None
+        assert not app.tour.awaiting
+        driver.frame(3)
+        assert app.tour.get_target_rect("load_example") is None  # offered only over an empty map
+    finally:
+        app.close()

@@ -7,6 +7,8 @@ tags: [guides, fitting, bursts, tcspc, lifetime, imaging]
 
 # Exploring & fitting multidimensional data (ndX)
 
+**No data at hand?** With nothing loaded, the empty map offers **Load example**: a simulated burst table (five populations with known FRET efficiency and stoichiometry, written once to the settings folder under `demos/ndxplorer`). The guided tour starts from it.
+
 :::{admonition} Theory
 :class: seealso
 See {ref}`concept-multidimensional-exploration` for what a burst parameter space
