@@ -137,7 +137,6 @@
             "delete_call": "remove_row",
             "editable": false,
             "expand": true,
-            "reserve": 90,
             "height": 6,
             "fit_columns": false,
             "min_column_width": 70,

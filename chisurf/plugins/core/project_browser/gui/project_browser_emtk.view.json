@@ -124,7 +124,6 @@
           "source": "tree_rows",
           "editable": false,
           "expand": true,
-          "reserve": 0,
           "row_key": "row_id",
           "tree_key": "parent_id",
           "expanded_attr": "expanded",

@@ -152,7 +152,7 @@
       "source": "file_rows",
       "delete_call": "remove_file",
       "selected_call": "select_file",
-      "height": 110,
+      "height": 110, "stretch": 1, "min_height": 110,
       "row_key": "path",
       "columns": [
        {
@@ -174,7 +174,7 @@
      "options": {
       "source": "state_rows",
       "columns_source": "state_columns",
-      "height": 120,
+      "height": 120, "stretch": 1, "min_height": 120,
       "fit_columns": true
      }
     }
@@ -189,7 +189,7 @@
      "options": {
       "source": "transition_rows",
       "columns_source": "transition_columns",
-      "height": 120,
+      "height": 120, "stretch": 1, "min_height": 120,
       "fit_columns": true
      }
     }

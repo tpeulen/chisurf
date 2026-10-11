@@ -99,7 +99,6 @@
             "status": true,
             "column_picker": true,
             "expand": true,
-            "reserve": 24,
             "min_column_width": 50,
             "columns": [
               {"key": "photon", "title": "Photon", "width": 90, "shade": false,

@@ -121,7 +121,7 @@
           "type": "custom", "key": "data_table", "title": "",
           "description": "One row per processed file: r-infinity, the region actually used (clamped to the file) and the settings.",
           "options": {
-            "source": "batch_result_rows", "editable": false, "expand": true, "reserve": 40, "min_column_width": 60,
+            "source": "batch_result_rows", "editable": false, "expand": true, "min_column_width": 60,
             "columns": [
               {"key": "filename", "title": "filename", "width": 110, "tooltip": "The VV/VH file."},
               {"key": "r_inf", "title": "r_inf", "width": 80, "format": "%.5f", "tooltip": "Mean of r(t) over the region; NaN when the file could not be read."},

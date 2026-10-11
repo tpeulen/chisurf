@@ -49,7 +49,6 @@
             "status": true,
             "column_picker": true,
             "expand": true,
-            "reserve": 64,
             "fit_columns": true,
             "min_column_width": 50,
             "columns": [

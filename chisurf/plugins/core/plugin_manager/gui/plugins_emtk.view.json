@@ -97,7 +97,6 @@
             "status": true,
             "column_picker": true,
             "expand": true,
-            "reserve": 70,
             "min_column_width": 75,
             "columns": [
               {
@@ -244,7 +243,6 @@
             "filter": true,
             "status": true,
             "expand": true,
-            "reserve": 8,
             "fit_columns": true,
             "min_column_width": 50,
             "columns": [

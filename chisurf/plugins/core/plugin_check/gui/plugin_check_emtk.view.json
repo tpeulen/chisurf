@@ -100,7 +100,6 @@
             "tooltip_key": "tip",
             "muted_key": "muted",
             "expand": true,
-            "reserve": 8,
             "min_column_width": 74,
             "fit_columns": true,
             "columns": [

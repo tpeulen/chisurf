@@ -231,7 +231,7 @@
        "description": "Quantity and value of the G-factor tail match.",
        "options": {
         "source": "result_rows",
-        "height": 150,
+        "height": 150, "stretch": 1, "min_height": 150,
         "editable": false,
         "columns": [
          {
@@ -264,7 +264,7 @@
        "description": "Quantity and value of the mixing estimate.",
        "options": {
         "source": "mixing_rows",
-        "height": 140,
+        "height": 140, "stretch": 1, "min_height": 140,
         "editable": false,
         "columns": [
          {
@@ -305,7 +305,6 @@
       "tooltip_key": "path",
       "delete_call": "remove_batch",
       "expand": true,
-      "reserve": 40,
       "height": 200,
       "columns": [
        {

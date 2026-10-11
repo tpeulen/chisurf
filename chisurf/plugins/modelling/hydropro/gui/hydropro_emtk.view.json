@@ -45,7 +45,6 @@
         "status": true,
         "tooltip_key": "tip",
         "expand": true,
-        "reserve": 8,
         "min_column_width": 90,
         "fit_columns": true,
         "columns": [

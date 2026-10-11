@@ -29,7 +29,7 @@
         {"type": "custom", "key": "data_table", "title": "",
          "description": "One row per record. Double-click a row to open it in its own panel.",
          "options": {"source": "visible_rows", "row_key": "_row", "activated_call": "open_item",
-           "expand": true, "reserve": 36, "fit_columns": true, "column_picker": true,
+           "expand": true, "fit_columns": true, "column_picker": true,
            "columns": [
              {"key": "type", "title": "type", "width": 110, "tooltip": "The record type."},
              {"key": "id", "title": "id", "width": 160, "tooltip": "The record's id."},
@@ -84,7 +84,7 @@
         {"type": "custom", "key": "data_table", "title": "",
          "description": "One row per key. Double-click a cell to type in it; pick a row to edit it in the Detail form.",
          "options": {"source": "metadata_rows", "row_key": "_row", "selected_call": "select_row",
-           "edited_call": "edited", "editable": true, "expand": true, "reserve": 200, "fit_columns": true,
+           "edited_call": "edited", "editable": true, "expand": true, "fit_columns": true,
            "columns": [
              {"key": "key", "title": "Key", "tooltip": "The metadata key (an mmCIF item or your own)."},
              {"key": "value", "title": "Value", "tooltip": "Its value."},
@@ -405,7 +405,7 @@
          ]},
         {"type": "custom", "key": "data_table", "title": "",
          "description": "Every transition the entity went through.",
-         "options": {"source": "history_rows", "row_key": "_row", "expand": true, "reserve": 26, "fit_columns": true,
+         "options": {"source": "history_rows", "row_key": "_row", "expand": true, "fit_columns": true,
            "columns": [
              {"key": "from_state", "title": "From", "tooltip": "The state before."},
              {"key": "to_state", "title": "To", "tooltip": "The state after."},

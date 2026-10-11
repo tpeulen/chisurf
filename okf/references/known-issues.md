@@ -4,6 +4,24 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## Red in the 2026-10-12 click matrix, not from the table-fill / stretch change (found 2026-10-12)
+
+status: open — owners: the plugins named.
+
+`CHISURF_E2E_MATRIX=resize,size_800x600,lang_de` over the 28 plugins whose specs lost `reserve` or gained
+`stretch`, run against the emtk working tree (the harness imports `emtk.testing_realistic.held_overlays`, which
+is not pushed yet, so it cannot run against the pinned emtk): 101 passed, 11 failed, none in table layout.
+Each was re-checked against the pre-change baseline where it touched a changed spec.
+- **Burst-wise FCS**: the harness's new auto-range check finds no "A" on the correlation and distribution plots
+  after zoom/pan (all variants) -- the plots predate the auto-range button (emtk aea9d8b).
+- **Audifier** (resize, 800x600): "Optical Setup…" and "Read" are clipped horizontally in the Detector setup
+  toolbar. **MMFDB admin** (resize): the "📖 Guide" caption is clipped.
+- **lang_de** untranslated: Boarding "Detector setup", "FCS channels"; HMM "counts"; Spectra "to";
+  VV/VH anisotropy "Load a VV/VH file".
+- In-process plugin suites, also red at the old emtk with the old specs: TTTR image browser drag/wheel/resize
+  clicks (3), VV/VH `test_save_outputs_and_its_error_path`; the shell suites fail on
+  `emtk.overlays.dismiss` (chisurf code calling an unpushed emtk function).
+
 ## IMP.bff's bounded least squares returns a start near the edge of a wide box unchanged (found 2026-10-11)
 
 status: open

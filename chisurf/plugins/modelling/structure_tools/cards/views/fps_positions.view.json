@@ -9,7 +9,6 @@
         "source": "pos_rows",
         "editable": true,
         "expand": true,
-        "reserve": 250,
         "row_key": "row",
         "status": true,
         "selected_call": "select_row",

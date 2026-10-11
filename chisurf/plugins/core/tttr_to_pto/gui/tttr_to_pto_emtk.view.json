@@ -32,7 +32,6 @@
         "tooltip_key": "detail",
         "status": true,
         "expand": true,
-        "reserve": 24,
         "min_column_width": 60,
         "columns": [
           {"key": "status", "title": "Status", "width": 100,

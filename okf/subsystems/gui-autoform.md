@@ -111,6 +111,37 @@ the row already selected. Found on the way: a sorted `ChiTableModel` reported
 the *view* row as the source row on selection (it sorts itself, with no proxy
 to map through), so a sorted table handed `selected_call` the wrong record.
 
+**An `expand` table measures what follows it; there is no `reserve`.** In emtk the
+table takes the height left in its region less the rows drawn after it (fields, a
+button row, a host-drawn status line, rows after an enclosing tab bar). Those rows
+are measured when the region ends (window `end`, `end_child`, `end_frame`) and the
+table fits from the next frame on (`emtk.layout.Fill`); two expanding tables in one
+region share the room. The hand-set `"reserve": <px>` this replaced (33 specs) went
+wrong whenever a translation, a label stacking under its field or HiDPI changed the
+rows' height. Do not reintroduce a pixel number for it; the key is no longer valid.
+`"stretch": <weight>` (with `"min_height"`) shares the room among several such items by
+weight — the shell's Datasets dock gives its datasets and fits tables 1:1 and the status
+line one text line; hand-drawn emtk code calls `im.stretch_height(id, weight, minimum)`
+(the Read data dock's reader form, which used to leave a guessed 40 px).
+
+#### Where to pick this up — vertical space (2026-10-12)
+
+1. **Fixed-height tables still in specs.** Re-derive the list: walk every `*emtk*.view.json` and
+   `chisurf/emtk/views/*.json` for `table`/`data_table` sections with neither `expand`, `stretch` nor
+   `fit_rows` (26 on 2026-10-12, mostly in long scrolling settings forms: LUT tools, FCS filter calculator,
+   FCS saturation, FRET lines, VV/VH batch files, ALEX regions). Two traps decide each one: in a form that
+   already overflows its dock a stretching table drops to `min_height` (so set `min_height` to its old
+   `height`, as the HMM / G-factor / Spectra / Burst-wise FCS docks do); and a table drawn *before* a host
+   plot that sizes itself from `get_content_region_avail()` steals the plot's room — give the plot
+   `im.stretch_height(...)` with a larger weight instead of stretching the table alone.
+2. **Hand reserves in host code**: `avail_h - 4.0`, `avail[1] - 10.0`, `bar = 34.0` (pch, audifier,
+   tttr_image_browser, burst_background, mfd_prepare, tr_anisotropy's wizard body; grep
+   `avail_h - [0-9]` / `avail\[1\] - [0-9]`). Each is the same defect as the old `reserve`; port to
+   `im.stretch_height`. Not done here: their files carry other agents' uncommitted edits.
+3. **Datasets dock at 800x600** gives its tables ~50 % of a 217 px dock, not 70 %: the left column's
+   default split is 0.5 (`main_app.py`, `Split("v", 0.5, …)`) and the Model label stacks above its combo
+   at 200 px. Changing the split trades Analysis room — a product decision, not taken.
+
 A section rendered as a **dock-area child no longer draws its own caption**: the
 dock tab already carries the title, so a `custom` section in a dock used to put
 "Provenance" directly under a tab reading "Provenance".

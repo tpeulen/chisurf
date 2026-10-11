@@ -21,7 +21,7 @@
         "options": {
           "source": "category_rows",
           "editable": false,
-          "height": 150,
+          "height": 150, "stretch": 1, "min_height": 150,
           "columns": [
             {
               "key": "name",
@@ -46,7 +46,7 @@
         "options": {
           "source": "source_rows",
           "editable": false,
-          "height": 150,
+          "height": 150, "stretch": 1, "min_height": 150,
           "columns": [
             {
               "key": "name",
@@ -115,7 +115,6 @@
           "edited_call": "pick_row",
           "editable": false,
           "expand": true,
-          "reserve": 40,
           "fit_columns": false,
           "min_column_width": 40,
           "tooltip_key": "name",
@@ -201,8 +200,7 @@
               "tooltip": "Property value."
             }
           ],
-          "expand": true,
-          "reserve": 0
+          "expand": true
         }
       }
     ]

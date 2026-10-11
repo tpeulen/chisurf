@@ -258,7 +258,6 @@
             "column_picker": true,
             "status": true,
             "expand": true,
-            "reserve": 34,
             "height": 240,
             "min_column_width": 36,
             "columns": [

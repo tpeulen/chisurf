@@ -243,7 +243,6 @@
             "source": "sweep_numbers",
             "editable": false,
             "expand": true,
-            "reserve": 8,
             "min_column_width": 70,
             "columns": [
               {

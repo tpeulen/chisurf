@@ -31,7 +31,6 @@
             "edited_call": "edited",
             "editable": true,
             "expand": true,
-            "reserve": 130,
             "fit_columns": true,
             "columns": [
               {
@@ -95,7 +94,6 @@
             "edited_call": "edited",
             "editable": true,
             "expand": true,
-            "reserve": 90,
             "columns": [
               {
                 "key": "file_path",

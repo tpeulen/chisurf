@@ -89,7 +89,6 @@ RESULT_TABLE = {
             "options": {
                 "source": "result_rows",
                 "expand": True,
-                "reserve": 4,
                 "row_key": "key",
                 "selected_call": "select_result",
                 "sort": {"key": "score", "descending": False},

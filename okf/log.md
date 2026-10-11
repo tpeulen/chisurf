@@ -2,6 +2,10 @@
 
 ## 2026-10-12
 
+- Expanding tables measure what follows them (emtk 7c94678) and items share vertical room by weight (emtk 31d84a8,
+  `"stretch"`/`"min_height"` in view.json, `im.stretch_height` in code). The hand-set `reserve` pixels are gone
+  from every view spec; they broke whenever the rows below changed (a translation, a stacked label, 2x). The Datasets
+  dock's two tables share its height 1:1 and the status takes one line. See [GUI/AutoForm](subsystems/gui-autoform.md).
 - The real-use sweep (`test/e2e/test_click_all_plugins.py`) gained three phases, selectable with
   `CHISURF_E2E_PHASES`: `auto_range` (every plot shows the A after a zoom and hides it after a click),
   `context_menu` (every plot and table menu closed by each path, then a click elsewhere must land) and `settle`

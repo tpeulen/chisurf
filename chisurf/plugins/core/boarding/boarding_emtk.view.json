@@ -83,7 +83,6 @@
             "row_key": "item",
             "tooltip_key": "detail",
             "expand": true,
-            "reserve": 48,
             "min_column_width": 60,
             "columns": [
               {"key": "item", "title": "Item", "width": 180,
@@ -179,7 +178,6 @@
             "source": "deps_rows",
             "row_key": "module",
             "expand": true,
-            "reserve": 48,
             "fit_columns": true,
             "min_column_width": 60,
             "columns": [

@@ -70,7 +70,6 @@
         "tooltip_key": "path",
         "muted_key": "muted",
         "expand": true,
-        "reserve": 96,
         "columns": [
           {
             "key": "use",

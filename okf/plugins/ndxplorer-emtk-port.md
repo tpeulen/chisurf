@@ -1371,8 +1371,9 @@ targets, reductions and result line), `core/equation_table.py` (rows, validation
 YAML, names), `core/store_edits.py` (`apply_edits`). `core/constants_group.py` and
 `core/curve_parameters.py` stay the model. emtk: DataTable right-click
 `context_call`, value shading `colour_source`, `column_filters`, sideways scrolling
-(`min_column_width`), `fit_columns()`, `reserve` for an expanding table
-(`d80bb85`, `1d3462d`). Core: `capture.py` adds the final `main` shot the Qt harness
+(`min_column_width`), `fit_columns()`, an expanding table
+(`d80bb85`, `1d3462d`; its hand-set `reserve` was retired 2026-10-11 -- the table now measures the
+rows after it, `emtk.layout.Fill`). Core: `capture.py` adds the final `main` shot the Qt harness
 always takes (`6bf25d1`); View > Equations reads `show_equations` (`8e1b805`).
 
 Tried and reverted: building a table's rows afresh every frame -- the data table

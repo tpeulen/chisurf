@@ -357,7 +357,6 @@
             "edited_call": "parameter_edited",
             "editable": true,
             "expand": true,
-            "reserve": 4,
             "fit_columns": true,
             "min_column_width": 56,
             "columns": [

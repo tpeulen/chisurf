@@ -143,7 +143,6 @@ CHANNEL_TABLE = {
                 "source": "channel_rows",
                 "editable": True,
                 "expand": True,
-                "reserve": 70,
                 "row_key": "row",
                 "selected_call": "select_channel",
                 "edited_call": "edit_channel",

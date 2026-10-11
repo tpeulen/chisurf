@@ -170,6 +170,15 @@ The owning ndX preprocessor declares parameter-table and curve-kind tags; it
 expands table declarations before the form renderer sees them. Dynamic table
 columns and array-map results remain supported.
 
+**Vertical space is shared, not reserved.** A table (or a `code_editor`) with
+`"stretch": <weight>` — `"expand": true` is weight 1 — takes the height its
+dock or window has left, shared with the other stretching items by weight; the
+rows drawn after it (fields, a button row, a status line) keep their measured
+height, and `"min_height"` (default 60) is the least it gets. Nothing after it is
+declared: there is no `reserve` any more. Hand-drawn emtk code says the same
+with `im.stretch_height(id, weight, minimum)`. Give the space to what the panel
+is for — a dataset list, a plot — and let a status line take one text line.
+
 Some apps store named forms (toolbar, files, results) or nested form maps rather
 than a single section list. Their values are validated recursively; unknown
 scalar keys, empty unknown objects and misspelled section fields still fail.

@@ -160,7 +160,6 @@
             "selected_call": "select_row",
             "filter": true,
             "expand": true,
-            "reserve": 135,
             "min_column_width": 40,
             "columns": [
               {

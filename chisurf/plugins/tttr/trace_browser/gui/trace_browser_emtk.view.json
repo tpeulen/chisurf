@@ -110,7 +110,6 @@
         "edited_call": "edit_cell",
         "delete_call": "delete_from_table",
         "expand": true,
-        "reserve": 4,
         "min_column_width": 40,
         "columns": [
           {"key": "name", "title": "File", "width": 140,

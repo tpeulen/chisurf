@@ -74,7 +74,6 @@
             "editable": true,
             "edited_call": "set_dataset_use",
             "expand": true,
-            "reserve": 78,
             "min_column_width": 50,
             "columns": [
               {
@@ -136,7 +135,6 @@
             "selected_call": "select_file",
             "delete_call": "remove_file",
             "expand": true,
-            "reserve": 150,
             "min_column_width": 60,
             "columns": [
               {
@@ -289,7 +287,6 @@
           "options": {
             "source": "result_rows",
             "expand": true,
-            "reserve": 8,
             "filter": true,
             "status": true,
             "min_column_width": 50,

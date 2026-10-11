@@ -130,7 +130,6 @@ MEASURE_SPEC = {
                 "source": "measure_rows",
                 "columns_source": "measure_columns",
                 "expand": True,
-                "reserve": 4,
                 "status": True,
                 "fit_columns": True,
             },

@@ -5,8 +5,7 @@
       {"type": "tab", "key": "logging", "title": "Logging",
        "description": "What ChiSurf reported while it ran: messages, warnings and errors.",
        "sections": [
-        {"type": "table", "source": "log_rows", "row_key": "index", "muted_key": "muted", "expand": true,
-         "reserve": 34, "fit_columns": true,
+        {"type": "table", "source": "log_rows", "row_key": "index", "muted_key": "muted", "expand": true, "fit_columns": true,
          "description": "The log, newest last. Rows the filter does not match are dimmed, or hidden with Hide.",
          "columns": [
            {"key": "time", "label": "Time", "description": "When the message was written."},
@@ -38,7 +37,7 @@
           {"type": "toggle", "attr": "rpc_paused", "label": "Pause",
            "description": "Stop recording calls while on; the table keeps what it has."}
         ]},
-        {"type": "table", "source": "rpc_rows", "row_key": "index", "expand": true, "reserve": 34,
+        {"type": "table", "source": "rpc_rows", "row_key": "index", "expand": true,
          "fit_columns": true,
          "description": "The calls, newest last.",
          "columns": [
@@ -68,7 +67,7 @@
           ]}
         ]},
         {"type": "table", "source": "history_rows", "row_key": "index", "selected_call": "history_selected",
-         "height": 160, "fit_columns": true,
+         "height": 160, "stretch": 1, "min_height": 80, "fit_columns": true,
          "description": "The steps, oldest first; ▶ marks where you are. Click a step to go back (or forward) to it.",
          "columns": [
            {"key": "current", "label": "▶", "width": 24, "description": "▶ marks the current step."},
