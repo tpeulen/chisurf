@@ -58,13 +58,7 @@ fitting-controller actions are still missing (items 2 and 3). The Qt shell is st
     (`test/e2e/test_click_all_plugins.py`) and on S2 to S5 reaching parity.
 11. Open: the emtk gaps listed below. **Multi-window** decides whether detached plugin windows survive the move. IME
     text input is missing. Both go into `~/dev/emtk` with tests.
-12. Open: chisurf's env pins emtk `57c2fc3` (`pixi.lock`). emtk `adee696` (menu sections in popups) is local only. The
-    shell does not depend on it: it draws group captions as disabled menu rows. Once the pin moves, switch those to
-    `im.separator_text`.
-13. Tried and reverted: `im.separator_text` inside a menu-bar menu on emtk `57c2fc3`. The captions painted onto the bar
-    row under the titles, because separators did not go to the popup. emtk `adee696` fixes this; see item 12.
-
-Traps for whoever continues S2:
+# Traps for slice S2
 
 - The server answers one request at a time, and a fit runs inside one `fit.run` call. The docks therefore make every
   call on a worker (`DataDocks._start`) and re-read their rows only while no call is under way; a read on the frame
