@@ -152,3 +152,63 @@ def test_catalogue_whitespace_is_preserved_without_translation_transfer(tmp_path
     import xml.etree.ElementTree as ET
 
     assert ET.parse(path).findtext(".//source") == "Alpha \nBeta"
+
+
+def _catalogue_paths():
+    """Every shipped ``.ts`` catalogue: chisurf's own plus the emtk, chimol and ndX ones."""
+    import pathlib
+
+    root = pathlib.Path(__file__).resolve().parents[1]
+    dirs = [root / "chisurf" / "gui" / "i18n", root / "modules" / "ndxplorer" / "ndxplorer" / "locale"]
+    try:
+        import emtk.i18n as emtk_i18n
+
+        dirs.append(emtk_i18n.catalogue_directory())
+    except Exception:  # emtk not installed: its catalogues are not under test here
+        pass
+    try:
+        import chimol
+
+        dirs.append(pathlib.Path(chimol.__file__).resolve().parent / "locales")
+    except Exception:
+        dirs.append(pathlib.Path.home() / "dev" / "chimol" / "chimol" / "locales")
+    paths = sorted(p for d in dirs if d.is_dir() for p in d.glob("*.ts"))
+    return paths
+
+
+def _format_fields(text):
+    import re
+
+    return sorted(re.findall(r"\{[^{}]*\}|%\d+|%[sdr]", text))
+
+
+def test_finished_translations_keep_whitespace_and_placeholders():
+    """A finished translation keeps its source's edge whitespace and placeholder set.
+
+    A translator fed an indented listing once returned every row indented by three spaces, so
+    German/French labels were drawn shifted. The edge whitespace is part of the message (strings
+    are concatenated and padded around), and a lost ``{name}`` / ``%1`` breaks formatting.
+    """
+    import xml.etree.ElementTree as ET
+
+    paths = _catalogue_paths()
+    assert any(p.name == "chisurf_de.ts" for p in paths)
+    problems = []
+    for path in paths:
+        for message in ET.parse(path).getroot().iter("message"):
+            source = message.findtext("source") or ""
+            node = message.find("translation")
+            if node is None or node.get("type") in ("unfinished", "obsolete", "vanished"):
+                continue
+            text = node.text or ""
+            if not text.strip():
+                continue
+            lead = source[: len(source) - len(source.lstrip())]
+            trail = source[len(source.rstrip()) :]
+            if (
+                text[: len(text) - len(text.lstrip())] != lead
+                or text[len(text.rstrip()) :] != trail
+                or _format_fields(source) != _format_fields(text)
+            ):
+                problems.append(f"{path.name}: {source[:60]!r} -> {text[:60]!r}")
+    assert not problems, f"{len(problems)} translations drift from their source:\n" + "\n".join(problems[:20])
