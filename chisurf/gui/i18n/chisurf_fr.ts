@@ -60127,12 +60127,12 @@ Le workflow du corrélateur n’est plus une entrée de menu autonome : il est h
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4100" />
             <source>Index of the first data point the fit uses.</source>
-            <translation>Indice du premier point de données utilisé par l'ajustement.</translation>
+            <translation type="obsolete">Indice du premier point de données utilisé par l'ajustement.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4102" />
             <source>Index of the last data point the fit uses.</source>
-            <translation>Indice du dernier point de données utilisé par l'ajustement.</translation>
+            <translation type="obsolete">Indice du dernier point de données utilisé par l'ajustement.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="5176" />
@@ -60257,7 +60257,7 @@ Le workflow du corrélateur n’est plus une entrée de menu autonome : il est h
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="9012" />
             <source>The loaded datasets. Select one to add a fit to it; Delete removes it.</source>
-            <translation>Les jeux de données chargés. En sélectionner un pour lui ajouter un ajustement ; Suppr le retire.</translation>
+            <translation type="obsolete">Les jeux de données chargés. En sélectionner un pour lui ajouter un ajustement ; Suppr le retire.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="9117" />
@@ -60277,7 +60277,7 @@ Le workflow du corrélateur n’est plus une entrée de menu autonome : il est h
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="9832" />
             <source>Use every data point: the range from the first to the last.</source>
-            <translation>Utiliser tous les points de données : la plage du premier au dernier.</translation>
+            <translation type="obsolete">Utiliser tous les points de données : la plage du premier au dernier.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="10409" />

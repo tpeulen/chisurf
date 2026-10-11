@@ -60064,12 +60064,12 @@ Der Korrelator-Workflow ist kein eigenständiger Menüeintrag mehr: Er wird als 
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4100" />
             <source>Index of the first data point the fit uses.</source>
-            <translation>Index des ersten Datenpunkts, den der Fit verwendet.</translation>
+            <translation type="obsolete">Index des ersten Datenpunkts, den der Fit verwendet.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4102" />
             <source>Index of the last data point the fit uses.</source>
-            <translation>Index des letzten Datenpunkts, den der Fit verwendet.</translation>
+            <translation type="obsolete">Index des letzten Datenpunkts, den der Fit verwendet.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="5176" />
@@ -60194,7 +60194,7 @@ Der Korrelator-Workflow ist kein eigenständiger Menüeintrag mehr: Er wird als 
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="9012" />
             <source>The loaded datasets. Select one to add a fit to it; Delete removes it.</source>
-            <translation>Die geladenen Datensätze. Einen wählen, um einen Fit hinzuzufügen; Entf entfernt ihn.</translation>
+            <translation type="obsolete">Die geladenen Datensätze. Einen wählen, um einen Fit hinzuzufügen; Entf entfernt ihn.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="9117" />
@@ -60214,7 +60214,7 @@ Der Korrelator-Workflow ist kein eigenständiger Menüeintrag mehr: Er wird als 
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="9832" />
             <source>Use every data point: the range from the first to the last.</source>
-            <translation>Alle Datenpunkte verwenden: der Bereich vom ersten bis zum letzten.</translation>
+            <translation type="obsolete">Alle Datenpunkte verwenden: der Bereich vom ersten bis zum letzten.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="10409" />
