@@ -342,6 +342,26 @@ METHOD_PARAM_SCHEMAS = {
         "optional_params": ["fit_index", "fit_uid"],
         "result": "FitCurveDataResult",
     },
+    "fit.export": {
+        "required_params": ["target_path"],
+        "optional_params": ["fit_index", "fit_uid", "use_complex_name", "images"],
+        "result": "ActionResult",
+    },
+    "fit.export_all": {
+        "required_params": ["target_path"],
+        "optional_params": ["existing", "images"],
+        "result": "ActionResult",
+    },
+    "fit.export_existing": {
+        "required_params": ["target_path"],
+        "optional_params": [],
+        "result": "ActionResult",
+    },
+    "fit.import": {
+        "required_params": ["filename"],
+        "optional_params": [],
+        "result": "ActionResult",
+    },
     "editor.document.list": {
         "required_params": [],
         "optional_params": [],

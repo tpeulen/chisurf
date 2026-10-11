@@ -17,6 +17,12 @@
 
 ## 2026-10-10
 
+- emtk shell parity with the whole Qt main window (KNOWN_GAPS empty): Log dock (filter, level, RPC monitor,
+  history), Menu Switch, Screenshot, Qt-free fit export/import (`chisurf/core/fitting/fit_export.py`,
+  `.fit.cs.pto`), ribbon pin kept between sessions, a drop lands in the dock under the pointer. Burst tables:
+  `tttr sm` writes photon counts and spans per window (tttrlib 73abd6f23); the bundled sm-DNA tables carry
+  them, so the Burst Browser keeps 2980/2980 bursts (was 2057). ndX send resolves its files (ndX b2f4586);
+  native Burst MLE skips an unchanged batch and has Restart.
 - QA round 2026-10-11 (four persona walks, real-use matrix, S2 defects, hand-overs): ~60 defects fixed with
   tests, among them generator scans unreadable by every imaging step (no scan geometry; a 100 Hz "laser"),
   the Anisotropy Wizard's global fit off its own simulation (IRF tail pedestal; χ²ᵣ 4.2 → 0.99), MMFDB

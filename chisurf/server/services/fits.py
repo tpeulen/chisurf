@@ -681,6 +681,95 @@ def fit_save(
         return service_error(str(e), error_code=OPERATION_FAILED, exception=e)
 
 
+def fit_export(
+    state: SessionState,
+    target_path: str,
+    fit_index: int | None = None,
+    fit_uid: str | None = None,
+    use_complex_name: bool = False,
+    images: bool = True,
+) -> ServiceResult:
+    """*File ▸ Fits ▸ Current Fit*: the fit's curves, its fit document and its report, in *target_path*.
+
+    The report's pictures (the fit window's first page and the model editor) are drawn here by emtk's CPU
+    rasteriser (:func:`chisurf.emtk.fit_report.render_fit_images`); *images* ``False`` leaves them out.
+    """
+    from chisurf.core.fitting.fit_export import export_fit
+
+    fit, _idx = _resolve_fit(state, fit_index, fit_uid)
+    if fit is None:
+        return service_error("fit not found", error_code=NOT_FOUND)
+    try:
+        pictures = _report_images(fit) if images else []
+        paths = export_fit(fit, target_path, pictures, use_complex_name=bool(use_complex_name))
+        return {"ok": True, **paths}
+    except Exception as e:
+        return service_error(str(e), error_code=OPERATION_FAILED, exception=e)
+
+
+def fit_export_all(
+    state: SessionState, target_path: str, existing: str = "skip", images: bool = True
+) -> ServiceResult:
+    """*File ▸ Fits ▸ All Fits*: a folder per fit (global fits left out) and ``all_fits.docx``.
+
+    *existing* is ``"skip"`` or ``"overwrite"`` for a fit whose folder is already there;
+    ``fit.export_all.existing`` lists those folders first, so a client can ask.
+    """
+    from chisurf.core.fitting.fit_export import export_fits
+
+    if existing not in ("skip", "overwrite"):
+        return service_error("existing is 'skip' or 'overwrite'", error_code=INVALID_INPUT)
+    try:
+        result = export_fits(
+            list(state.fits), target_path, _report_images if images else None, existing=existing
+        )
+        return {"ok": True, **result}
+    except Exception as e:
+        return service_error(str(e), error_code=OPERATION_FAILED, exception=e)
+
+
+def fit_export_existing(state: SessionState, target_path: str) -> ServiceResult:
+    """The per-fit folders *All Fits* would write into *target_path* that are already there."""
+    from chisurf.core.fitting.fit_export import existing_folders
+
+    return {"ok": True, "existing": existing_folders(list(state.fits), target_path)}
+
+
+def fit_import(state: SessionState, filename: str, event_bus: Any = None) -> ServiceResult:
+    """*File ▸ Fits ▸ Load Fit*: add the fits and data of a fit document (or project) to the session."""
+    from chisurf.core.fitting.fit_export import import_fit
+
+    first_dataset, first_fit = len(state.datasets), len(state.fits)
+    try:
+        restored = import_fit(filename, state.datasets, state.fits)
+    except ValueError as e:
+        return service_error(str(e), error_code=INVALID_INPUT, exception=e)
+    except Exception as e:
+        return service_error(str(e), error_code=OPERATION_FAILED, exception=e)
+    for fit in restored.fits:
+        for member in list(getattr(fit, "grouped_fits", None) or [fit]):
+            member_model = getattr(member, "model", None)
+            if member_model is not None and hasattr(type(member_model), "fit_pool"):
+                member_model.fit_pool = lambda: list(state.fits)
+    uids = [str(getattr(fit, "unique_identifier", "") or "") for fit in restored.fits]
+    if event_bus is not None:
+        for offset, dataset in enumerate(restored.datasets):
+            event_bus.publish(
+                "dataset.added",
+                {"dataset_index": first_dataset + offset, "name": str(getattr(dataset, "name", ""))},
+            )
+        for offset, uid in enumerate(uids):
+            event_bus.publish("fit.created", {"fit_index": first_fit + offset, "fit_uid": uid})
+    return {"ok": True, "fit_uids": uids, "datasets": len(restored.datasets)}
+
+
+def _report_images(fit: Any) -> list:
+    """The report's pictures of *fit*, drawn by emtk."""
+    from chisurf.emtk.fit_report import render_fit_images
+
+    return render_fit_images(fit)
+
+
 def _downsample(
     values: list[float] | None,
     max_points: int,

@@ -42,39 +42,19 @@ BEFORE = json.loads((HERE / "shell_whole_qt_inventory.json").read_text("utf-8"))
 SIZE = (1440, 900)
 
 #: Qt controls the emtk shell does not have yet, by inventory key, with the reason / owner.
-#: This only shrinks (okf/references/known-issues.md "emtk shell has no ribbon", found
-#: 2026-10-11; okf/subsystems/qt-retirement.md).
-_RIBBON = ("the emtk shell's ribbon lacks it (known issue 'emtk shell: Qt main-window controls it does "
-           "not have yet', W9 shell owner)")
-_FIT_EXPORT = ("fit export/import is Qt-bound in chisurf/macros/core_fit.py::save_fit "
-               "(qt-retirement ledger item 7, S3 KNOWN_GAPS)")
-_LOG = "the emtk Log dock is a plain text view: no filter, history table, pause, clear or hide"
-KNOWN_GAPS: dict[str, str] = {
-    "ribbon_panel:File/Application": _RIBBON,
-    "ribbon_panel:File/Recent": _RIBBON,
-    "ribbon_panel:Main/Window": _RIBBON,
-    # The emtk ribbon (chisurf/emtk/shell_ribbon.py) draws "Help" and "EN" here: the ribbon
-    # owner decides whether they are these controls renamed (then RENAMED) or still gaps.
-    "ribbon_corner:?": _RIBBON + " (its Help button: emtk shows 'Help')",
-    "ribbon_corner:Language: English": _RIBBON + " (its language selector: emtk shows 'EN')",
-    "ribbon_corner:P": _RIBBON + " (pin / auto-fold; emtk has a fold ▲ only)",
-    "menu:File/Fits/All Fits": _FIT_EXPORT,
-    "menu:File/Fits/Current Fit": _FIT_EXPORT,
-    "menu:File/Fits/Load Fit": _FIT_EXPORT,
-    "ribbon_button:File/Fits/All Fits": _FIT_EXPORT,
-    "ribbon_button:File/Fits/Current Fit": _FIT_EXPORT,
-    "ribbon_button:File/Fits/Load Fit": _FIT_EXPORT,
-    "toolbar:toolBar/All Fits": _FIT_EXPORT,
-    "menu:Plugins/Setup/Menu Switch": "action-only entrypoints are not offered (ledger item 8)",
-    "ribbon_button:File/Setup/Menu Switch": "action-only entrypoints are not offered (ledger item 8)",
-    "ribbon_button:Main/Window/Screenshot": "no window screenshot command in the emtk shell",
-    "toolbar:toolBar/Screenshot": "no window screenshot command in the emtk shell",
-    "dock_control:Logging/Clear": _LOG,
-    "dock_control:Logging/Filter": _LOG,
-    "dock_control:Logging/History": _LOG,
-    "dock_control:Logging/Pause": _LOG,
-    "dock_control:Logging/hide": _LOG,
-    "dock_control:Console/?": "the console dock has a Guide but no ? help button",
+#: This only shrinks (okf/subsystems/qt-retirement.md). Empty since the Log dock, the fit
+#: export/import, Menu Switch, the ribbon pin and the File/Main tabs' groups were reached.
+KNOWN_GAPS: dict[str, str] = {}
+
+#: Qt controls the emtk shell has under another caption, by inventory key: the emtk control's
+#: drawn rectangle (``item_rects`` key, of the shell or of the console) must be there, and why
+#: the caption differs. Unlike :data:`RENAMED`, presence is checked, not assumed.
+ALIASES: dict[str, tuple[str, str]] = {
+    "ribbon_corner:?": ("ribbon.help", "the shared Help action, drawn ❓ Help in every window"),
+    "ribbon_corner:Language: English": (
+        "ribbon.language", "🌍 EN; the full 'Language: English' is its tooltip"),
+    "ribbon_corner:P": ("ribbon.pin", "a drawn push-pin; its tooltip says pin / unpin (auto-fold)"),
+    "dock_control:Console/?": ("console.help", "the shared Help action, drawn ❓ Help"),
 }
 
 #: Qt captions present in the emtk shell under another spelling, or not controls at all.
@@ -170,9 +150,22 @@ def reached():
                 driver.frame(2)
                 gather(driver)
                 driver.escape()
+            # Every ribbon tab, as a user clicks through them (File and Main hold the session groups).
+            for key in [k for k in list(shell.item_rects) if k.startswith("ribbon.tab.")]:
+                driver.click(key)
+                driver.frame(2)
+                gather(driver)
             for key in list(shell.docks.windows):
                 shell.docks.focus(key)
                 driver.frame(3)
+                gather(driver)
+            # The Log dock's tabs (Logging, RPC Monitor, History), as a user clicks them.
+            shell.docks.focus("log")
+            driver.frame(2)
+            for name in [k for k in list(shell.log.form.rects) if k.startswith("log_tabs.")]:
+                x, y, w, h = shell.log.form.rects[name]
+                driver.click((x + w / 2, y + h / 2))
+                driver.frame(2)
                 gather(driver)
             titles = {_key(w.title) for w in shell.docks.windows.values()}
             texts |= titles
@@ -180,7 +173,8 @@ def reached():
         shell.close()
         session.close()
     texts.discard("")
-    return {"texts": texts, "tabs": tabs, "raw": raw}
+    rects = set(shell.item_rects) | {"console." + key for key in shell.console.item_rects}
+    return {"texts": texts, "tabs": tabs, "raw": raw, "rects": rects}
 
 
 def _missing(reached) -> dict[str, str]:
@@ -190,7 +184,9 @@ def _missing(reached) -> dict[str, str]:
         norm = _key(caption)
         if not norm or norm in RENAMED:
             continue
-        if key.startswith("ribbon_tab:"):
+        if key in ALIASES:
+            present = ALIASES[key][0] in reached["rects"]
+        elif key.startswith("ribbon_tab:"):
             present = norm in tabs
         elif key.startswith("experimental_marker:"):
             # The warning travels with the name: a drawn entry carrying both.

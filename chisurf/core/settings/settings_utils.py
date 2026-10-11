@@ -635,6 +635,13 @@ def set_use_ribbon_interface(use_ribbon: bool) -> bool:
         gui_cfg["use_ribbon_interface"] = bool(use_ribbon)
         with open(settings_file, "w", encoding="utf-8") as fh:
             yaml.safe_dump(data, fh, default_flow_style=False)
+        # The in-memory settings follow, so a window made later in this process starts alike.
+        try:
+            from chisurf.core.settings import cs_settings
+
+            cs_settings.setdefault("gui", {})["use_ribbon_interface"] = bool(use_ribbon)
+        except Exception:
+            pass
         return True
     except Exception:
         return False

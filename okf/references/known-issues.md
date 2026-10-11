@@ -171,6 +171,21 @@ model sits ~25 counts above the data everywhere the data are near zero (bin 25: 
 model 25.9) — moving the IRF background region (0–30, 240–640, 400–780) does not change it. The test
 `test_example_global_fit_recovers_the_simulated_lifetime_and_rotation` passes only because it never checks χ².
 
+## emtk: two golden-image tests red at emtk HEAD (found 2026-10-11)
+
+status: open — owner: emtk (whoever changed the type scale / font metrics). `tests/test_autoport.py::
+test_the_autoported_knob_draws_the_same_picture_every_time` (479 px differ) and `tests/test_docs.py::
+test_the_readme_quick_start_draws_the_screenshot_beside_it` (1702 px) fail on a clean checkout of emtk `77036d1`
+(re-derive: `git worktree add /tmp/e HEAD` in `~/dev/emtk`, run those two). Golden drift, not a crash: the goldens
+need regenerating by someone who judges the new pictures; not done in the W9 whole-gaps lane.
+
+## Qt main-window tests leave a GUI-thread owner behind (found 2026-10-11)
+
+status: open — owner: test isolation. Run `test/gui/test_menu_switch_main_window.py` before
+`test/native_emtk/test_emtk_shell_session.py` in one pytest and two session tests fail ("Project replacement
+requires its owning GUI thread", "Scientific history publication was not acknowledged"); each file alone passes.
+The Qt main window registers itself as the project owner process-wide and nothing unregisters it.
+
 ## emtk shell / Qt gaps seen in the 2026-10-11 QA walk, outside the walker's lanes (found 2026-10-11)
 
 status: open — owners as named. Resolved 2026-10-11 (T-20261011-QA-FCS-HANDOVER): output rows, `list_fits` χ²ᵣ,
@@ -228,8 +243,14 @@ status: open — partly ported 2026-10-11 (2CDE, BVA, accurate FRET ×3, H2MM ×
 
 ## emtk shell: Qt main-window controls it does not have yet (found 2026-10-11)
 
-status: open — owner: W9 shell ([Qt retirement ledger](../subsystems/qt-retirement.md)); the ribbon itself is
-being built in another lane (`chisurf/emtk/shell_ribbon.py`, uncommitted at the time of writing)
+status: resolved 2026-10-11 — T-20261011-W9-WHOLE-GAPS: `KNOWN_GAPS` of
+`test/native_emtk/test_emtk_shell_whole_parity.py` is empty. Ribbon captions and *Screenshot*: present on the File
+and Main tabs, which the test now clicks through. Corner `?` / `Language: English` / console `?`: renames, checked
+by drawn rectangle (`ALIASES`); the pin is new (`emtk.ribbon` pin, auto-fold, fold and tab kept between sessions).
+*Menu Switch*: command plugins run from the shell (`EmtkShellApp.run_plugin_action`). Fit export/import:
+`chisurf/core/fitting/fit_export.py` + emtk-drawn report pictures (`chisurf/emtk/fit_report.py`), RPCs `fit.export*`
+/ `fit.import`. Log dock: `chisurf/emtk/shell_log.py` (Logging / RPC Monitor / History). Realistic-driver tests:
+`test/native_emtk/test_emtk_shell_whole_gaps.py`. The original record:
 
 The whole-app parity test (`test/native_emtk/test_emtk_shell_whole_parity.py` against
 `shell_whole_qt_inventory.json`, see [testing](../workflows/testing.md) "Real-use QA matrix") first found 34 Qt
@@ -454,15 +475,18 @@ the emtk shell and Qt-hosted; 14/46 hosted in both shells; PDA through the emtk 
 
 *Open:*
 
-* **Rate-only PIE burst tables mis-ratio E/S**: 923 of 2980 sm-DNA bursts drop out of the Browser at full gates
-  (`status_text` on `burstwise_All 0.1000#15/bi4_bur` reads 2057 / 2980). Each stream's rate is over its own
-  first-to-last span (tttrlib `modules/cli/src/cmd_sm.cpp` ~1436): one photon gives NaN, and different denominators
-  are not count ratios. Blocks correct E/S for every rate-only table (Browser, `guess_burst_columns`, Accurate FRET).
-  Root fix in tttrlib: write `S <window> <det> (photons)` counts, which `gated_stream_columns` already prefers.
-* **Native Burst MLE has no reuse fingerprint and no Restart** (Qt wizard skipped when current); guide 53 says so.
-* **ndX send**: bare `First File` names resolve against the cwd ("No such file or directory: 'm000.spc'" from
-  `ndxplorer.io.loading.load(<folder>, kind="burst_dir")` + `bridge.send("tcspc", …)`; fix in `modules/ndxplorer`
-  `selection_to_burst_slices`), and the menu drops the returned result (nothing opens as a dataset).
+* ~~**Rate-only PIE burst tables mis-ratio E/S**~~ — fixed 2026-10-11: tttrlib `tttr sm` writes `S <window> <detector> (photons) | r0-r1`
+  (0 when empty) and `(ms)` (the span) beside every `(kHz)` column (`test_window_streams_carry_photon_counts_not_only_rates`);
+  chisurf's own writer already did (`burst_features.yaml`); the bundled sm-DNA `bi4_bur` folder was brought to that layout from its
+  own photons (each of the six rate columns reproduced to 1e-6 first), so the Browser keeps 2980 / 2980 with E/S as count ratios
+  (`burst_browser/test/test_rate_only_tables.py`). Legacy tables that carry only rates still cannot be corrected: the counts are not
+  recoverable from them. `burst_analysis_handoff/bi4_bur` (a second bundled table) is still rate-only. The arm64 env was rebuilt;
+  **the pixi env's tttrlib still needs `pixi run build-tttrlib`** to pick up the CLI change.
+* ~~**Native Burst MLE has no reuse fingerprint and no Restart**~~ — fixed 2026-10-11: `MleSession.batch_fingerprint`,
+  `MleViewModel.run_batch(force)`, a **Restart** button (highlighted after a skipped run); `burst_mle_analysis/tests/test_container_input.py`.
+* ~~**ndX send**~~ — fixed 2026-10-11 in `modules/ndxplorer` (`DataSource.source_paths`, `resolve_source_file`, `show_result`;
+  `app.send_result_opener` is the host hook). Open: ChiSurf's ndX window sets no `send_result_opener`, so the result is shown in a message
+  box rather than opened as a ChiSurf dataset.
 * **emtk shell PDA reader form is clipped and does not scroll**: at 1920×1080 *Files* / *Load dropped files* are
   unreachable (`EmtkShellApp`, Read data → PDA, `driver.wheel(-3, at=(250, 450))`); `test_emtk_shell_readers.py`
   hid it with a 1300×1800 window. Owner `chisurf/emtk/reader_settings.py` / `fit_docks.py`.
@@ -470,7 +494,7 @@ the emtk shell and Qt-hosted; 14/46 hosted in both shells; PDA through the emtk 
   (`simple`, `dynamic`, `dynamic_mc`, `pdagauss`, `anisotropy`; `server/services/fits.py` reads it before χ²).
 * Burst Browser: Mean Macro Time cells in `.4g` (`1.218e+04`), E/S gate tags cover the tick labels, gate drag
   clamps to [0, 1] (guide 28 says limits may go below 0).
-* `pto_inspector` *Export legacy* refuses its own `demo.pto` ("cannot tell which detector 'lifetimes' belongs to").
+* ~~`pto_inspector` *Export legacy* refuses its own `demo.pto`~~ — fixed 2026-10-11: the demo's lifetime table is `lifetimes green` (the detector is how the export picks `bg4`); `pto_inspector/test/test_demo.py`.
 * `burst_mle_analysis/gui/mle_native.view.json` *Load example* description lost spaces ("lifetime2ns and32ps").
 * `chisurf/emtk/tool_hub.py`: rail label "7. Burst segmentation (H2MM) •" clipped below ~1000 px; status line cut by
   Back/Next at 800 px.
@@ -1592,9 +1616,10 @@ reproduction in `okf/validation/manual-screenshots/{fcs,general,anisotropy}.json
 - **Confocor3 reader** loads every file as AC1/AC2/CC12/CC21 together; no single-channel option.
 - **Global View Load** needs the fitting server: on fits it does not know it reports
   "the fitting server did not answer" and restores no links.
-- **Saving a fit in the `arm64` env** stops at the report step: python-docx is
-  declared (pixi, pyproject) but missing from that env; `.fit.json`, CSV and info
-  files are written before it.
+- ~~**Saving a fit in the `arm64` env** stops at the report step~~: python-docx is
+  declared (pixi) but was missing from that env. **Resolved 2026-10-11**: installed there
+  (`pip install --no-deps python-docx==1.2.0`, the locked version). The export no longer writes
+  `.fit.json` (it could never be loaded back) but `<data>.fit.cs.pto`.
 - **Guide 10** names "Spectroscopy -> Fluorescence decay -> Anisotropy-Wizard"; the
   plugin is `menu_hidden`, reached via Tools -> Calculators -> Wizards -> Anisotropy.
 

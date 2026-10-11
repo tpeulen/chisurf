@@ -2,7 +2,7 @@
 type: Subsystem
 title: Qt retirement (shell)
 description: Parity ledger for moving the ChiSurf main window from Qt to one emtk surface — every Qt capability the shell uses, its emtk equivalent or gap, the allow-list by area, and the ordered slices that keep the app shippable.
-resource: chisurf/emtk/main_app.py, chisurf/emtk/shell_ribbon.py, chisurf/emtk/shell_session.py, chisurf/emtk/console.py, chisurf/emtk/fit_docks.py, chisurf/emtk/fit_window.py, chisurf/emtk/session.py, chisurf/emtk/model_editor.py, chisurf/emtk/model_sections.py, chisurf/emtk/pda_sections.py, chisurf/emtk/sample_picker.py, chisurf/emtk/fit_controls.py, chisurf/server/services/model_svc.py, chisurf/server/services/model_sections.py, chisurf/core/server_events.py, chisurf/gui/main.py, chisurf/gui/gui.ui, chisurf/gui/main_helper.py, test/plugin_qt_allowlist.txt
+resource: chisurf/emtk/main_app.py, chisurf/emtk/shell_ribbon.py, chisurf/emtk/shell_session.py, chisurf/emtk/shell_log.py, chisurf/emtk/fit_report.py, chisurf/core/fitting/fit_export.py, chisurf/emtk/console.py, chisurf/emtk/fit_docks.py, chisurf/emtk/fit_window.py, chisurf/emtk/session.py, chisurf/emtk/model_editor.py, chisurf/emtk/model_sections.py, chisurf/emtk/pda_sections.py, chisurf/emtk/sample_picker.py, chisurf/emtk/fit_controls.py, chisurf/server/services/model_svc.py, chisurf/server/services/model_sections.py, chisurf/core/server_events.py, chisurf/gui/main.py, chisurf/gui/gui.ui, chisurf/gui/main_helper.py, test/plugin_qt_allowlist.txt
 tags: [gui, emtk, qt-retirement, shell, parity, ledger]
 timestamp: '2026-10-11T00:00:00Z'
 ---
@@ -56,8 +56,10 @@ icons. The status strip and the startup stages of S5 are still open. The Qt shel
    paired component rows and *New…* sample (`chisurf/emtk/sample_picker.py::NewSampleDialog`) are ported.
 5. Measure: S5 ribbon parity is `test/native_emtk/test_emtk_shell_ribbon.py::test_parity_with_the_qt_ribbon`
    against `shell_s5_qt_inventory.json` (`capture_shell_s5_qt_before.py`, about a minute; PNGs in `renders/w9_s5/`).
-   Tab order, group order and button order match; `KNOWN_GAPS` holds only the three fit items of item 7. Deliberate:
-   *Menu Switch* (the emtk shell has menu bar and ribbon at once) and the Qt pin/auto-fold, which is one fold toggle.
+   Tab order, group order and button order match; `KNOWN_GAPS` and `DELIBERATE` are empty. *Menu Switch* hides and
+   shows the ribbon (menu bar stays; `gui.use_ribbon_interface`, shared with Qt). The pin (`emtk.ribbon`, `pin=True`)
+   is Qt's pin/auto-fold: unpinned folds after each pick; pinned keeps fold and tab across sessions
+   (`EmtkShellApp.export_settings()["ribbon"]`).
    One layout feeds the ribbon, the menus and the Tools tree: `shell_ribbon.plugin_tree` over
    `chisurf/core/plugin/ribbon_layout.py` (moved out of the Qt package so the shell can import it, with the maturity
    markers now in `chisurf/core/plugin/maturity.py`). Open: the S5 status strip (progress) and a `surface="emtk"`
@@ -71,21 +73,28 @@ icons. The status strip and the startup stages of S5 are still open. The Qt shel
    draws nothing. The Code face (`chisurf/gui/widgets/fitting/fit_code_face.py`) is there too.
    `test_the_shell_module_does_not_import_qt` covers construction only. Blocks: S6 striking `qtpy`. Next: move the
    page classes (`chisurf/gui/plots/**`, `model_plot_specs`, `fit_code_face`) out of the Qt-importing package.
-7. Open: S3's `KNOWN_GAPS` (`test/native_emtk/test_emtk_shell_session.py`). *Load Fit*, *Current Fit* (`Ctrl+Alt+S`)
-   and *All Fits* are missing because fit export is Qt-bound in `chisurf/macros/core_fit.py::save_fit`, which writes
-   CSV, `fit.json` and a Word report of `QWidget.grab()` screenshots; it needs a Qt-free export service that renders
-   the fit window with emtk. Measure: the test's `KNOWN_GAPS` and `SHORTCUT_GAPS`. Also open: the shell's undo history is session-local; it is not written
-   into the `.cs.pto` as the Qt `cs.history` is. Login before the session (the ledger's Auth row) is not built.
-   Trap: the shell's recording and autosave fail ("inconsistent reader identity" with two files of one TXT/CSV
-   reader; "parameter count changed" after a bunching term), logged only (known issues, 2026-10-11).
-8. Open: plugins that have only an `action` entrypoint (`menu_switch`) or only a Qt `gui` entrypoint are not offered
-   by the emtk shell. `execute_plugin_action` still takes the Qt main window. Measure: `menu_entries()` returns 28
-   entries, against 29 visible manifests; the one left out is *Menu Switch*, a deliberate difference (item 5).
+7. Measure: whole-window parity, `test/native_emtk/test_emtk_shell_whole_parity.py` against
+   `shell_whole_qt_inventory.json`: `KNOWN_GAPS` empty since 2026-10-11 (was 23). The fixture clicks every ribbon
+   tab and the Log dock's tabs, as a user does; renamed captions (`?` → ❓ Help, `Language: English` → 🌍 EN, `P` →
+   the drawn pin) are `ALIASES`, checked by drawn rectangle. Real-use tests: `test_emtk_shell_whole_gaps.py`
+   (`RealisticDriver`: drop, pin, Menu Switch, Log dock, Screenshot, fit export/import, console help). S3's
+   `KNOWN_GAPS` is empty too. Fit export is Qt-free (`chisurf/core/fitting/fit_export.py`; pictures drawn by emtk,
+   `chisurf/emtk/fit_report.py`; RPCs `fit.export`, `fit.export_all`, `fit.export_existing`, `fit.import`); a fit is
+   saved as `<data>.fit.cs.pto` and *Load Fit* adds it. Trap: `.fit.json` from older saves cannot be loaded (it never
+   could: the old *Load Fit* looked for `<name>.fit.json.cs.pto`). Open: the shell's undo history is session-local,
+   not written into the `.cs.pto`; login before the session (Auth row) is not built; recording/autosave failures
+   with two files of one TXT/CSV reader (known issues, 2026-10-11).
+8. Measure: a file dropped from the OS arrives with no pointer moves (macOS sends none during a drag), so the shell
+   routes it by the drop position that emtk now delivers first (`CanvasEvents.files_dropped`, emtk `ee4c76a`), to
+   the dock under the pointer, not the one with the keys. `RealisticDriver.drop_files` reproduces it; the imaging
+   repro is `test_a_file_dropped_on_a_plugin_dock_goes_to_the_dock_under_the_pointer`. Plugins with only an
+   `action` entrypoint run from the shell (`run_plugin_action`; `menu_entries()` now 29 of 29 visible manifests).
 9. Blocked: S6 (delete the Qt shell) is blocked on W7's click-all passing on the native host
-   (`test/e2e/test_click_all_plugins.py`), on S5 reaching parity, and on item 7.
+   (`test/e2e/test_click_all_plugins.py`) and on item 6 (the page classes still under the Qt-importing
+   `chisurf.gui`; the report pictures of item 7 import them too).
 10. Open: **multi-window** (the emtk gap below) decides whether detached plugin windows survive the move; it goes into
-    `~/dev/emtk` with tests. S5 added `emtk.ribbon` and menu icons (emtk `3d3cc92`, `f5fe918`, in the `48c17dd`
-    that `pixi.lock` pins); none of it is pushed. Measure: `git -C ~/dev/emtk log --oneline origin/main..HEAD`.
+    `~/dev/emtk` with tests. emtk is pushed up to `9931996` (pin, drop position, Driver caption on top) and
+    `pixi.lock` pins it. Measure: `git -C ~/dev/emtk log --oneline origin/main..HEAD`.
 11. Measure: `test/native_emtk/capture_shell_s3_qt_before.py` and `capture_shell_s4_qt_before.py` rewrite the S3 and
     S4 before-halves (`shell_s3_qt_inventory.json`, `shell_s4_qt_inventory.json`; PNGs in `renders/w9_s3/`,
     `renders/w9_s4/`). Run S4 with the env's python directly, not `conda run` (which exited 1 with no trace once).
@@ -98,8 +107,10 @@ icons. The status strip and the startup stages of S5 are still open. The Qt shel
     (`emtk.ime.MarkedTextProbe`, `hasMarkedText`); inline preedit needs GLFW's IME API upstream. The browser host's
     DOM composition events are not wired: `emtk/web/boot.js` is another lane's. (c) Deliberate console differences:
     the input is its own box, rich display is written as text, `input()` raises `EOFError`, and Ctrl+C abandons the
-    input because a cell runs on the frame. (d) Not done from S4: code_editor's Qt and the Log dock's level filter and
-    history browser. Measure: `KNOWN_GAPS` in `test/native_emtk/test_emtk_shell_console.py` (empty).
+    input because a cell runs on the frame. (d) Not done from S4: code_editor's Qt. The Log dock is
+    `chisurf/emtk/shell_log.py` over `views/log.view.json` (Logging with Filter / Level / Hide / Clear, RPC Monitor
+    with Pause / Clear, History that goes to a step). Measure: `KNOWN_GAPS` in
+    `test/native_emtk/test_emtk_shell_console.py` (empty).
 
 
 # Traps for slice S2

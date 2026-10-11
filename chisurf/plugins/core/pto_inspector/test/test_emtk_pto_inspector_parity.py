@@ -463,25 +463,26 @@ def test_guide_steps_point_at_controls_the_app_draws(app):
 
     app.model.select_uid(uid_of(app.model, "bursts"))  # a tool exists, so Open tool is enabled
     draw(app)
-    steps = json.loads((GUI / "guide_emtk.json").read_text())["steps"]
-    assert len(steps) == 8
+    steps = json.loads((GUI / "guide.json").read_text())["steps"]
+    assert len(steps) == 9
     for step in steps:
         name = EmTkGuidedTour._target_key(step["target"])
-        assert app.rects.get(name), f"{step['title']}: nothing drawn for {name!r}"
+        assert app.item_rects.get(name), f"{step['title']}: nothing drawn for {name!r}"
     assert [EmTkGuidedTour._target_key(s["target"]) for s in steps if s.get("await")] == [
-        "open",
+        "load_example",
         "Verify",
     ]
 
 
-def test_the_tour_waits_for_the_open_and_the_verify_press(shared_container):
+def test_the_tour_waits_for_the_example_and_the_verify_press(shared_container, tmp_path, monkeypatch):
+    monkeypatch.setattr("chisurf.plugins.demo_cache.cache_folder", lambda plugin: tmp_path / plugin)
     app = make_app()
     try:
-        app.tour.start(1)  # "Open a container"
+        app.tour.start(1)  # "Load the example"
         assert app.tour.awaiting
-        app.model.set_filename(str(shared_container))  # the container is opened, by any route
-        assert not app.tour.awaiting
-        app.tour.start(7)
+        app.load_example()
+        assert not app.tour.awaiting and app.model.inspection is not None
+        app.tour.start(8)
         assert app.tour.awaiting
         app.verify()
         app.tour.notify_used("Verify")  # what the button press does
@@ -491,10 +492,7 @@ def test_the_tour_waits_for_the_open_and_the_verify_press(shared_container):
         app.close()
 
 
-def test_the_qt_tool_keeps_its_own_help_and_guide():
-    assert json.loads((GUI / "guide.json").read_text())["steps"][1]["target"] == {
-        "attr": "filename"
-    }
+def test_the_qt_tool_keeps_its_own_help():
     assert "csg_pto_inspect" in (GUI / "help.md").read_text()
 
 

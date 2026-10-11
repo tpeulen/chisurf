@@ -658,6 +658,10 @@ def read_burst_analysis(
 # the session
 # --------------------------------------------------------------------------------------------------------------------
 #: Name of the multi-exponential tail fit: a different estimator family (``tttrlib.DecayFitNExp``), not a fit2x model.
+#: Bump in the same change that alters what a batch fit computes: it is part of the reuse fingerprint, so a
+#: corrected estimator makes every held result stale instead of "unchanged".
+ALGORITHM_VERSION = 1
+
 TAIL_MODEL = "tail"
 
 #: Parameters of the tail fit: the first channel of the tail and two lifetimes (set both equal for a mono-exponential tail).
@@ -1508,6 +1512,27 @@ class MleSession:
             "model": st.model,
             "param_names": names,
         }
+
+    def batch_fingerprint(self) -> str:
+        """Identify what :meth:`run_batch` would compute, so an unchanged request can be recognised.
+
+        It covers the burst files (path, size, mtime), every detector's batch constants -- window, timing,
+        polarisation, start values *and the IRF and background arrays themselves*, so a pattern sent over from the
+        IRF & Background step counts as a change -- the split by state, the reading correction in force and the code
+        that does the fitting (this tool's :data:`ALGORITHM_VERSION` plus the library builds).
+        """
+        from chisurf.core.runtime import analysis_cache
+
+        params = {
+            "detectors": {det: self.batch_config(det) for det in self.detectors},
+            "split_by_state": bool(self.split_by_state),
+            "reading": analysis_cache.photon_read_context(),
+        }
+        return analysis_cache.fingerprint(
+            list(self.bur_files),
+            params,
+            extra=analysis_cache.algorithm_tag("burst_mle", ALGORITHM_VERSION, "fit2x", "tttrlib"),
+        )
 
     def run_batch(
         self, progress=None, max_workers: int | None = None, should_stop=None

@@ -66,18 +66,18 @@ IRF. You never have to remember to invalidate anything.
 | 2. Burst Selection | the same raw files and the same search settings produced the displayed search | any file or setting differs |
 | 4. Burst BVA | the plot on screen is the answer *and*, for a Run, the `bv4/` files are current | settings, detectors or burst files differ |
 | 5. Burst 2CDE | the `2c4/` companions on disk match the current settings | variant, kernel, τ, channels or burst files differ |
-| 6. Burst MLE | never: every **Fit bursts** fits again (see below) | — |
+| 6. Burst MLE | **Fit bursts** with the same burst files, settings, IRF and background as the rows on screen | any of them differs (or **Restart**) |
 | 7. Burst segmentation (H2MM) | the fitted model on screen matches the request | state range, criterion, engine, seed, streams or burst files differ |
-| 8. Burst segment MLE | never, as step 6 | — |
+| 8. Burst segment MLE | as step 6 | as step 6 |
 
 …and, for every row, when the raw measurements change, when the setup's reading
 correction changes, or when the code that computes it does.
 
-The two MLE steps keep no fingerprint: the native Burst MLE window fits every
-burst again whenever it is asked, and it has no **Restart**. The exports it
-writes (`bg4/`, `br4/`, `by4/`) are replaced each time. This is a regression
-against the retired Qt wizard, which skipped a batch whose exports were current
-(recorded in the known issues).
+The two MLE steps hold their answer in the window: a second **Fit bursts** with the same burst
+files, settings, IRF and background (and the same code) keeps the fitted rows, says
+*Unchanged — kept the previous Burst MLE result (Restart fits again)* and highlights **Restart**,
+which fits every burst again regardless. A stopped or failed fit holds nothing, so the next press
+fits. The exports (`bg4/`, `br4/`, `by4/`) are written by **Save results** and replaced each time.
 
 ## Steps that start themselves
 

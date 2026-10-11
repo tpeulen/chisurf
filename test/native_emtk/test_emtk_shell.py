@@ -68,8 +68,10 @@ def _settle(driver: Driver, shell: EmtkShellApp, timeout: float = 60.0) -> None:
 
 def test_menu_entries_follow_the_manifest_menu_contract():
     entries = menu_entries(CATALOG)
-    assert [e.plugin_id for e in entries] == ["about", "fcs", "pch"]
-    fcs = entries[1]
+    # The command plugin (an ``action`` entrypoint) is offered; the Qt-only one is not.
+    assert [e.plugin_id for e in entries] == ["about", "action", "fcs", "pch"]
+    assert [e.action for e in entries] == [False, True, False, False]
+    fcs = entries[2]
     assert (fcs.menu, fcs.group, fcs.label) == ("Spectroscopy", "Correlation", "FCS")
 
 
@@ -80,7 +82,8 @@ def test_shipped_menus_offer_every_visible_native_plugin():
     expected = {
         key
         for key, data in catalog.items()
-        if data.get("entrypoints", {}).get("emtk") and not data.get("menu_hidden")
+        if (data.get("entrypoints", {}).get("emtk") or data.get("entrypoints", {}).get("action"))
+        and not data.get("menu_hidden")
     }
     assert {e.plugin_id for e in menu_entries(catalog)} == expected
     assert len(expected) > 20
@@ -115,7 +118,7 @@ def test_a_hosted_plugin_gets_its_clicks_and_keys_and_closes_with_its_window():
     # Reopening focuses the same window rather than making a second app.
     shell.open_plugin("fcs")
     assert list(probes) == ["fcs"]
-    assert shell.export_settings() == {"open": ["fcs"]}
+    assert shell.export_settings()["open"] == ["fcs"]
     shell.docks.hide(PLUGIN_KEY + "fcs")
     driver.frame(2)
     assert probe.closed and "fcs" not in shell.hosted

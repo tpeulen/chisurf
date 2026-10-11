@@ -1,0 +1,84 @@
+{
+  "title": "Log",
+  "sections": [
+    {"type": "tabs", "key": "log_tabs", "sections": [
+      {"type": "tab", "key": "logging", "title": "Logging",
+       "description": "What ChiSurf reported while it ran: messages, warnings and errors.",
+       "sections": [
+        {"type": "table", "source": "log_rows", "row_key": "index", "muted_key": "muted", "expand": true,
+         "reserve": 34, "fit_columns": true,
+         "description": "The log, newest last. Rows the filter does not match are dimmed, or hidden with Hide.",
+         "columns": [
+           {"key": "time", "label": "Time", "description": "When the message was written."},
+           {"key": "level", "label": "Level", "description": "How serious the message is.",
+            "background": {"WARNING": "#f2c94c", "ERROR": "#eb5757", "CRITICAL": "#eb5757"}},
+           {"key": "origin", "label": "Origin", "description": "The part of ChiSurf that wrote it."},
+           {"key": "message", "label": "Message", "description": "The message."}
+         ]},
+        {"type": "row", "n_col": 4, "sections": [
+          {"type": "value", "attr": "log_filter", "label": "Filter", "kind": "str",
+           "placeholder": "Text in a message", "min_chars": 18,
+           "description": "Show the messages that contain this text; the others are dimmed (or hidden with Hide)."},
+          {"type": "choice", "attr": "log_level", "label": "Level", "options_source": "level_names",
+           "description": "The least serious messages shown: DEBUG shows everything, ERROR only errors."},
+          {"type": "toggle", "attr": "log_hide", "label": "Hide",
+           "description": "Hide the messages the filter does not match instead of dimming them."},
+          {"type": "button_row", "buttons": [
+            {"label": "Clear", "action": "clear_log", "description": "Forget the messages shown so far."}
+          ]}
+        ]}
+      ]},
+      {"type": "tab", "key": "rpc", "title": "RPC Monitor",
+       "description": "Every call the ChiSurf server answered: what was asked, how long it took, whether it worked.",
+       "sections": [
+        {"type": "row", "n_col": 2, "sections": [
+          {"type": "button_row", "buttons": [
+            {"label": "Clear", "action": "clear_rpc", "description": "Forget the calls shown so far."}
+          ]},
+          {"type": "toggle", "attr": "rpc_paused", "label": "Pause",
+           "description": "Stop recording calls while on; the table keeps what it has."}
+        ]},
+        {"type": "table", "source": "rpc_rows", "row_key": "index", "expand": true, "reserve": 34,
+         "fit_columns": true,
+         "description": "The calls, newest last.",
+         "columns": [
+           {"key": "time", "label": "Time", "description": "When the call was answered."},
+           {"key": "origin", "label": "Origin", "description": "The service family that asked."},
+           {"key": "target", "label": "Target", "description": "The method called."},
+           {"key": "what", "label": "What", "description": "The method's last name part."},
+           {"key": "duration", "label": "Duration", "description": "How long the server took."},
+           {"key": "status", "label": "Status", "description": "OK, or the error code it answered with.",
+            "background": {"OK": "#6fcf97"}},
+           {"key": "params", "label": "Parameters", "description": "What the call was given."}
+         ]},
+        {"type": "value", "attr": "rpc_filter", "label": "Filter", "kind": "str",
+         "placeholder": "Method or parameter",
+         "description": "Show the calls whose method, status or parameters contain this text."}
+      ]},
+      {"type": "tab", "key": "history", "title": "History",
+       "description": "The changes to the science you can go back to: a click on a step goes to it (as Undo and Redo do).",
+       "sections": [
+        {"type": "row", "n_col": 2, "sections": [
+          {"type": "value", "attr": "history_filter", "label": "Filter", "kind": "str",
+           "placeholder": "Action or summary", "min_chars": 18,
+           "description": "Show the steps whose action or summary contain this text."},
+          {"type": "button_row", "buttons": [
+            {"label": "Clear", "action": "clear_history",
+             "description": "Forget the steps; what is open now stays as it is."}
+          ]}
+        ]},
+        {"type": "table", "source": "history_rows", "row_key": "index", "selected_call": "history_selected",
+         "height": 160, "fit_columns": true,
+         "description": "The steps, oldest first; ▶ marks where you are. Click a step to go back (or forward) to it.",
+         "columns": [
+           {"key": "current", "label": "▶", "width": 24, "description": "▶ marks the current step."},
+           {"key": "time", "label": "Time", "description": "When the change was made."},
+           {"key": "action", "label": "Action", "description": "What changed."},
+           {"key": "summary", "label": "Summary", "description": "The change in words."}
+         ]},
+        {"type": "info", "source": "history_details",
+         "description": "The selected step, as it is recorded."}
+      ]}
+    ]}
+  ]
+}

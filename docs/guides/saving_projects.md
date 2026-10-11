@@ -93,7 +93,9 @@ session has unsaved work; an empty session asks "Quit ChiSurf?" instead. The
 autosave writes the same `.autosave.cs.pto` copy. A fit window's **×** asks,
 then removes the fit, as in the Qt window.
 
-Not there yet: saving or loading a single fit (`Ctrl+Alt+S`, **Load Fit**).
+**File ▸ Fits** saves and loads single fits as the Qt window does: **Current Fit**
+(`Ctrl+Alt+S`), **All Fits** and **Load Fit** (see
+[Saving & exporting the results](../manual/saving__exporting_the_results.md)).
 **Macro ▸ Record** and **Macro ▸ Run Macro…** work as in the Qt window (see
 [the console guide](59_console.md)). Undo and redo cover the session since it
 was opened; the undo history is not written into the project file.

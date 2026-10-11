@@ -162,7 +162,8 @@ class MleNativeApp(TourTarget, ImApp):
         self.model.status_text = "Estimating IRF and background ..."
         self.job.start("auto_extract")
 
-    def fit_bursts(self) -> None:
+    def fit_bursts(self, force: bool = False) -> None:
+        """Fit every burst; ``force`` (Restart) fits again even when nothing changed."""
         if self.model.session.df_bursts is None:
             self.model.status_text = "Add burst files first."
             return
@@ -173,7 +174,7 @@ class MleNativeApp(TourTarget, ImApp):
             )
             return
         self.model.status_text = "Fitting bursts ..."
-        self.job.start("run_batch")
+        self.job.start("run_batch", force)
 
     def optimize(self) -> None:
         """Run Opt on a snapshot: the search refits many times and applies the best configuration at the end."""
@@ -335,6 +336,22 @@ class MleNativeApp(TourTarget, ImApp):
                     else "Needs burst files and an IRF and a background: press Auto IRF/background first.",
                 },
                 {
+                    "label": action_caption("restart"),
+                    "key": "burst_restart",
+                    "enabled": has_results and ready and not running,
+                    # A skipped run points at Restart (the other tools' flag_attention).
+                    "colours": (
+                        (0.78, 0.47, 0.08, 1.0),
+                        (0.86, 0.55, 0.16, 1.0),
+                        (0.70, 0.40, 0.05, 1.0),
+                    )
+                    if self.model.restart_attention
+                    else None,
+                    "tip": "Fit every burst again, even when the files and settings are unchanged."
+                    if has_results
+                    else "Nothing to restart: press Fit bursts first.",
+                },
+                {
                     "label": "Stop",
                     "key": "Stop",
                     "enabled": running,
@@ -388,6 +405,9 @@ class MleNativeApp(TourTarget, ImApp):
         if pressed == "toolAction_run":
             self.track("toolAction_run")
             self.fit_bursts()
+        elif pressed == "burst_restart":
+            self.track("burst_restart")
+            self.fit_bursts(force=True)
         elif pressed == "toolAction_restart":
             self.track("toolAction_restart")
             self.model.refit()

@@ -17,11 +17,17 @@ from emtk.widgets.data_table import TableBinding, draw_table
 from chisurf.core.datastore import column_names, column_values, write_csv_table
 from chisurf.core.fio.pto import Measurement
 from chisurf.emtk.dataset_picker import DatasetPicker, session_client
-from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.node_editor.control import GraphControl, NodeContentRenderer
 from chisurf.emtk.node_editor.document import GraphDocument
 from chisurf.emtk.plugins import load_plugin
-from chisurf.plugins.emtk_layout import ACTIONS, action_button, action_caption, window_size
+from chisurf.plugins.emtk_layout import (
+    ACTIONS,
+    action_button,
+    action_caption,
+    action_tooltip,
+    window_size,
+)
 
 from .translations import install, tr
 from .view_model import PtoInspectorViewModel
@@ -43,7 +49,7 @@ class ProvenanceContent(NodeContentRenderer):
         return (140, 150, 160, 255), 1.5, True
 
 
-class PtoInspectorApp(ImApp):
+class PtoInspectorApp(TourTarget, ImApp):
     window_title = "PTO Inspector"
     window_size = (1200, 800)
 
@@ -69,7 +75,7 @@ class PtoInspectorApp(ImApp):
         self.vendor_paths = []
         self.child_box = (0, 0, 0, 0)
         self.child_focus = False
-        self.rects = {}
+        self.item_rects = {}
         self.graph = GraphControl(
             read_only=True, content=ProvenanceContent(), on_select=self.graph_selected
         )
@@ -160,8 +166,8 @@ class PtoInspectorApp(ImApp):
                 closable=False,
             )
         self.tour = EmTkGuidedTour(
-            Path(__file__).with_name("guide_emtk.json"),
-            get_target_rect=self.rects.get,
+            Path(__file__).with_name("guide.json"),
+            get_target_rect=self.item_rects.get,
             owner=self,
             wait_for_controls=True,
         )
@@ -219,8 +225,15 @@ class PtoInspectorApp(ImApp):
             self.safe(fn)
             if title != "open":  # Open counts once a container has really opened
                 self.tour.notify_used(title)
-        self.rects[title] = (*im.get_item_rect_min(), *im.get_item_rect_size())
+        self.item_rects[title] = (*im.get_item_rect_min(), *im.get_item_rect_size())
         im.end_disabled()
+
+    def load_example(self):
+        """Open the small known container of :mod:`..demo`, written into the settings cache."""
+        from ..demo import make_demo
+
+        self.safe(lambda: self.model.set_filename(str(make_demo())))
+        self.tour.notify_used("load_example")
 
     def choose_file(self, action):
         self.file_action = action
@@ -326,7 +339,7 @@ class PtoInspectorApp(ImApp):
         return child
 
     def container_view(self, box):
-        self.rects["Container"] = box
+        self.item_rects["Container"] = box
         available = im.get_content_region_avail()[0]
         used = 0
         for title, tip, fn, enabled in [
@@ -357,9 +370,18 @@ class PtoInspectorApp(ImApp):
                 used = 0
             self.button(title, tip, fn, enabled)
             used += width
+        if im.button(f"{action_caption('example')}###load_example"):
+            self.load_example()
+        im.set_item_tooltip(
+            action_tooltip(
+                "example",
+                tr("Write a small known container (bursts and the lifetimes fitted to them) and open it."),
+            )
+        )
+        self.remember("load_example")
         im.text_wrapped(self.model.filename or tr("Open a photon container."))
         im.set_item_tooltip(tr("Container path."))
-        self.rects["filename"] = (*im.get_item_rect_min(), *im.get_item_rect_size())
+        self.item_rects["filename"] = (*im.get_item_rect_min(), *im.get_item_rect_size())
         im.separator()
         if self.model.inspection is None:
             im.text_wrapped(
@@ -371,10 +393,10 @@ class PtoInspectorApp(ImApp):
             self.prose(self.model.summary_html())
         im.separator()
         draw_table(self.artifacts, "artifacts")
-        self.rects["Objects"] = (*im.get_item_rect_min(), *im.get_item_rect_size())
+        self.item_rects["Objects"] = (*im.get_item_rect_min(), *im.get_item_rect_size())
 
     def provenance_view(self, box):
-        self.rects["Provenance"] = box
+        self.item_rects["Provenance"] = box
         self.button("Fit graph", "Frame all provenance nodes.", self.graph.fit)
         im.same_line()
         self.button(
@@ -436,7 +458,7 @@ class PtoInspectorApp(ImApp):
             )
 
     def data_view(self, box):
-        self.rects["Data"] = box
+        self.item_rects["Data"] = box
         self.safe(self.refresh_payload)
         if self._store is None:
             im.text_wrapped(
@@ -448,7 +470,7 @@ class PtoInspectorApp(ImApp):
             draw_table(self.table, "payload")
 
     def curve_view(self, box):
-        self.rects["Curve"] = box
+        self.item_rects["Curve"] = box
         curves = self.model.curve_series()
         if not curves:
             im.text_wrapped(
@@ -475,11 +497,11 @@ class PtoInspectorApp(ImApp):
         im.text_wrapped(html.unescape(re.sub("<[^>]+>", "", text)))
 
     def details_view(self, box):
-        self.rects["Details"] = box
+        self.item_rects["Details"] = box
         self.prose(self.model.detail_html())
 
     def lineage_view(self, box):
-        self.rects["Lineage"] = box
+        self.item_rects["Lineage"] = box
         im.text_wrapped(self.model.lineage_text() or tr("Select an artifact."))
 
     def parameters_view(self, box):
@@ -538,7 +560,7 @@ class PtoInspectorApp(ImApp):
                 if action_button("cancel", tooltip=tr("Cancel container creation.")):
                     self.safe(lambda: setattr(self, "vendor_paths", []))
                     self.tour.notify_used("Cancel")
-                self.rects["Cancel"] = (*im.get_item_rect_min(), *im.get_item_rect_size())
+                self.item_rects["Cancel"] = (*im.get_item_rect_min(), *im.get_item_rect_size())
                 if self.notice:
                     im.text_wrapped(self.notice)
             im.end()

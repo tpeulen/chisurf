@@ -135,3 +135,38 @@ def test_clicking_a_run_in_the_app_fits_that_run(hermetic_env, container):
         assert window.model.run_path.endswith(f"m000.pto/{SMALL_RUN}")
     finally:
         window.close()
+
+
+def test_an_unchanged_request_is_not_fitted_again_and_restart_fits(model, monkeypatch):
+    """The reuse gate of the retired Qt wizard: same files + settings -> keep the rows."""
+    from chisurf.plugins.burst.burst_mle_analysis import engine
+
+    model.select_run(model.run_rows()[1])
+    for det in model.session.detectors:
+        model.session.current_detector = det
+        model.session.auto_extract()
+    real = engine.MleSession.run_batch
+    calls = []
+
+    def counted(self, *a, **k):
+        calls.append(1)
+        return real(self, *a, **k)
+
+    monkeypatch.setattr(engine.MleSession, "run_batch", counted)
+    model.run_batch()
+    rows = model.burst_results
+    assert rows and len(calls) == 1 and not model.restart_attention
+
+    model.run_batch()  # nothing changed
+    assert len(calls) == 1 and model.burst_results is rows
+    assert model.status_text.startswith("Unchanged") and model.restart_attention
+
+    model.run_batch(force=True)  # Restart
+    assert len(calls) == 2 and not model.restart_attention
+
+    # a changed setting is a different request
+    det = next(iter(model.session.detectors))
+    model.session.det_settings[det].min_photons += 1
+    model.run_batch()
+    assert len(calls) == 3
+    assert "Unchanged" not in model.status_text

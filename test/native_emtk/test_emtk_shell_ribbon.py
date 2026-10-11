@@ -26,22 +26,13 @@ BEFORE = json.loads(Path(__file__).with_name("shell_s5_qt_inventory.json").read_
 
 #: Qt ribbon buttons the emtk shell does not have yet; each is an open item of the ledger
 #: (``okf/subsystems/qt-retirement.md``). This list only shrinks.
-KNOWN_GAPS = {
-    "loadfit": "fit import of a .fit.json into the session: no Qt-free service yet (S3 gap)",
-    "currentfit": "fit export is Qt-bound in core_fit.save_fit (S3 gap)",
-    "allfits": "the same export for every fit (S3 gap)",
-}
-#: Qt ribbon controls replaced on purpose, and by what.
-DELIBERATE = {
-    "menuswitch": "switches the Qt shell between ribbon and menu bar; the emtk shell has both, "
-    "and its ▴ toggle folds the ribbon",
-    "unpinribbon(enableauto-fold)": "the Qt pin and auto-fold are one fold toggle (ribbon.fold): "
-    "a folded ribbon shows its band for one pick after a tab click",
-}
+KNOWN_GAPS: dict[str, str] = {}
+#: Qt ribbon controls replaced on purpose, and by what (none since Menu Switch and the pin are ported).
+DELIBERATE: dict[str, str] = {}
 #: The Qt ribbon's corner controls, by tooltip or class, and the emtk control that replaces each.
 CORNER = {
     "Collapse Ribbon": "ribbon.fold",
-    "Unpin ribbon (enable auto-fold)": "ribbon.fold",
+    "Unpin ribbon (enable auto-fold)": "ribbon.pin",
     "Open Help Plugin": "ribbon.help",
     "QLineEdit": "ribbon.search",
     "LanguageFlagSwitcher": "ribbon.language",

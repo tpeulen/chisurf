@@ -28,11 +28,7 @@ BEFORE = json.loads((Path(__file__).with_name("shell_s3_qt_inventory.json")).rea
 
 #: Qt session controls the emtk shell does not have yet; each is an open item of the ledger
 #: (``okf/subsystems/qt-retirement.md``, slice S3). This list only shrinks.
-KNOWN_GAPS = {
-    "loadfit": "fit import of a .fit.json into the session: no Qt-free service yet",
-    "currentfit": "fit export (CSV, fit.json, Word report with screenshots) is Qt-bound in core_fit.save_fit",
-    "allfits": "the same export for every fit",
-}
+KNOWN_GAPS: dict[str, str] = {}
 #: Qt controls present under another spelling, or replaced on purpose.
 RENAMED = {
     "exportproject...": "Export Project… (the ellipsis character)",
@@ -49,7 +45,6 @@ RENAMED = {
 }
 #: Qt shortcuts the emtk shell does not bind, and why.
 SHORTCUT_GAPS = {
-    "Current Fit": "fit export, see KNOWN_GAPS",
     "Load result in current fit": "Ctrl+L: a .ui action with no handler and in no menu; removed from gui.ui",
     "Close": "Ctrl+F4: Qt's MDI sub-window system menu; a fit window's × asks and removes the fit",
 }

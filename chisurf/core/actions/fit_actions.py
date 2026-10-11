@@ -22,7 +22,7 @@ def add_fit(
 
 @action("fit.load")
 def load_fit(filename: str):
-    """Load a ChiSurf project from a ``.cs.pto`` file."""
+    """Add the fits of a fit document (``.fit.cs.pto``) or project to the session."""
     from chisurf.macros import core_fit
 
     return core_fit.load_fit_project(filename)
@@ -30,18 +30,18 @@ def load_fit(filename: str):
 
 @action("fit.save")
 def save_fit(target_path: str):
-    """Save the current ChiSurf project."""
+    """Write the current fit's curves, fit document and report into *target_path*."""
     from chisurf.macros import core_fit
 
     return core_fit.save_fit(target_path=target_path)
 
 
 @action("fit.save_all")
-def save_all_fits(target_path: str):
-    """Save all ChiSurf projects to a directory."""
+def save_all_fits(target_path: str, existing: str = "skip"):
+    """Write every fit into a folder of its own under *target_path* (*existing*: skip or overwrite)."""
     from chisurf.macros import core_fit
 
-    return core_fit.save_fits(target_path=target_path)
+    return core_fit.save_fits(target_path=target_path, existing=existing)
 
 
 @action("fit.add.start")

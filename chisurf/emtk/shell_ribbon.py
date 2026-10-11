@@ -9,7 +9,7 @@ list the same tools in the same order under the same captions, each with its man
 :class:`ShellRibbon` is the ribbon itself (:class:`emtk.ribbon.Ribbon`): the plugin tabs, plus
 the Qt ribbon's built-in groups drawn from the shell's own session actions -- *File* (Recent,
 Project, Fits, Application) and *Main* (Window) -- and in its corner the help button and the
-language switch.
+language switch. Its pin (in the tab row) keeps the fold and the tab between sessions.
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ FILE_GROUPS = (
         mark("Project"),
         ("open_project", "save_project", "export_project", "import_project", "close_project"),
     ),
-    (mark("Fits"), ("close_fit", "close_all_fits")),
+    (mark("Fits"), ("load_fit", "save_fit", "save_all_fits", "close_fit", "close_all_fits")),
     (mark("Application"), ("quit", "reinitialize")),
 )
 #: The captions the ribbon gives its built-in tabs and groups (the plugins' come from their manifests).
@@ -58,6 +58,9 @@ ACTION_ICONS = {
     "export_project": ACTIONS["export"].icon,
     "import_project": "📥",
     "close_project": ACTIONS["close"].icon,
+    "load_fit": ACTIONS["open"].icon,
+    "save_fit": ACTIONS["save"].icon,
+    "save_all_fits": "🗃️",
     "close_fit": "❎",
     "close_all_fits": "🧹",
     "reinitialize": ACTIONS["restart"].icon,
@@ -174,7 +177,9 @@ class ShellRibbon:
 
     def __init__(self, shell: Any) -> None:
         self.shell = shell
-        self.ribbon = Ribbon(name="ribbon")
+        #: With the pin: pinned keeps the fold and the tab as the user left them, also at the
+        #: next start (the shell saves :meth:`emtk.ribbon.Ribbon.state`); unpinned folds after each pick.
+        self.ribbon = Ribbon(name="ribbon", pin=True)
         self._plugins = plugin_tree(shell.entries)
 
     # -- the model ---------------------------------------------------------- #

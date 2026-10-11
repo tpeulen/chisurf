@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import gc
 import hashlib
 import importlib
 import inspect
 import json
 import os
 import pathlib
-import shutil
 import tempfile
 
 import numpy as np
@@ -21,7 +19,7 @@ from chisurf.core.actions import get_action_catalog, record_action
 from chisurf.core.experiments.core.reader import ExperimentReader
 from chisurf.core.experiments.core.serialize import decode_array, encode_array
 from chisurf.core.project import Project as CSProject
-from chisurf.core.project import ProjectArchive, capture_session, restore_session
+from chisurf.core.project import ProjectArchive, capture_session
 from chisurf.core.project import fit_state as project_fit_state
 from chisurf.core.project import load_project as project_load_json
 from chisurf.core.project.archive import DATA_DIR, PROJECT_ARCHIVE_SUFFIX, PROJECT_JSON
@@ -972,207 +970,32 @@ def add_fit(
             pass
 
 
-def save_fit(target_path: str = None, use_complex_name: bool = False, fit_window=None):
-    log = cs.logging
-    log.debug(
-        "save_fit: start (target_path=%r, use_complex_name=%r)", target_path, use_complex_name
-    )
-
+def _current_fit_group(fit_window=None):
+    """The fit of *fit_window*, else of the main window's current fit window, else the last fit."""
+    if fit_window is not None:
+        return getattr(fit_window, "fit", None)
     gui = getattr(cs, "cs", None)
-    if gui is None:
-        log.error("save_fit: no active main window (cs.cs is missing)")
-        return
-    if fit_window is None:
-        log.debug("No fit_window passed—taking current MDI subwindow")
-        fit_window = gui.mdiarea.currentSubWindow()
+    current = getattr(getattr(gui, "mdiarea", None), "currentSubWindow", lambda: None)()
+    if current is not None and getattr(current, "fit", None) is not None:
+        return current.fit
+    return cs.fits[-1] if cs.fits else None
 
-    fit = fit_window.fit
-    widget = fit_window.fit_widget
-    fit_group = widget.fit
 
-    # decide on save directory & base name
-    if target_path is None:
-        target_path = cs.working_path
-        log.debug("No target_path passed—using working_path=%r", target_path)
+def save_fit(target_path: str = None, use_complex_name: bool = False, fit_window=None):
+    """*File ▸ Fits ▸ Current Fit*: the fit's curves, fit document and report in *target_path*.
 
-    if use_complex_name:
-        save_name = cs.core.base.clean_string(fit.name)
-        log.debug("Using complex fit.name → %r", save_name)
-    else:
-        save_name = os.path.basename(fit.data.name)
-        log.debug("Using simple data name → %r", save_name)
+    Qt-free: the report's pictures are drawn by emtk (:func:`chisurf.emtk.fit_report.render_fit_images`)
+    and the files written by :func:`chisurf.core.fitting.fit_export.export_fit`.
+    """
+    from chisurf.core.fitting.fit_export import export_fit
+    from chisurf.emtk.fit_report import render_fit_images
 
-    # Keep output filenames readable by dropping any trailing source extension
-    # from dataset-based names (e.g. "*.dat VV" -> "* VV").
-    save_stem = os.path.splitext(save_name)[0]
-    basename = os.path.join(target_path, save_stem)
-    log.info("Will write files with base %r", basename)
-
-    # 1) dump numeric data
-    log.debug("Saving fit CSV and curves to %r.csv", basename)
-    fit.save(basename, "csv", save_curves=True)
-    # Also persist fit.json as ChiSurf project-style state without global links.
-    try:
-        fg_key, fit_payload = _build_fitgroup_payload_from_window(
-            fit_window,
-            register_datacurve=lambda dc: "",
-            log=log,
-            group_index=0,
-        )
-        # embed dataset in-place to avoid cross-fit collisions; reuse fit.data arrays
-        datasets: typing.Dict[str, typing.Dict] = {}
-        try:
-            data_obj = getattr(fit, "data", None)
-            if isinstance(data_obj, cs.core.data.DataCurve):
-                x, y, ex, ey = _datacurve_arrays(data_obj)
-                datasets["ds000"] = {
-                    "name": getattr(data_obj, "name", ""),
-                    "filename": getattr(data_obj, "filename", ""),
-                    "x": _encode_curve_array(x),
-                    "y": _encode_curve_array(y),
-                    "ex": _encode_curve_array(ex),
-                    "ey": _encode_curve_array(ey),
-                }
-                # attach dataset_id directly to the fit payload
-                if fit_payload and fit_payload.get("local_fits"):
-                    fit_payload["local_fits"][0]["dataset_id"] = "ds000"
-        except Exception as exc:
-            log.warning(f"save_fit: could not build dataset payload for fit.json: {exc}")
-
-        if fit_payload:
-            fit_ui_state = {"current_fit_index": getattr(gui, "fit_idx", 0)}
-            try:
-                history_browser = getattr(gui, "historyBrowser", None)
-                get_hist_state = getattr(history_browser, "get_ui_state", None)
-                if callable(get_hist_state):
-                    fit_ui_state["history_browser"] = get_hist_state()
-            except Exception:
-                pass
-
-            proj = CSProject(
-                name=fit.name or save_stem,
-                description=f"ChiSurf fit '{fit.name or save_stem}'",
-                chisurf_version=getattr(cs.core.info, "__version__", None),
-                datasets=datasets,
-                experiments={},
-                fits={fg_key: fit_payload},
-                ui_state=fit_ui_state,
-            )
-            # Write fit.json using the base name without the original data extension
-            base_no_ext = os.path.join(target_path, save_stem)
-            fit_json_path = base_no_ext + ".fit.json"
-            try:
-                with open(fit_json_path, "w", encoding="utf-8") as f:
-                    json.dump(proj.to_dict(), f, indent=2, sort_keys=True)
-                log.info(f"Saved fit state to {fit_json_path}")
-            except Exception as exc:
-                log.warning(f"save_fit: could not write fit.json: {exc}")
-    except Exception as exc:
-        log.warning(f"save_fit: failed to build fit.json payload: {exc}")
-    # log.debug("Saving fit data object to %r_data.pkl", basename)
-    # fit.data.save(basename + "_data", 'pkl')
-
-    # 2) build the Word report
-    log.debug("Building Word document")
-    import docx
-    from docx.shared import Inches
-
-    document = docx.Document()
-    document.add_heading(gui.current_fit.name, 0)
-
-    if not os.path.isdir(target_path):
-        log.warning("Target folder %r does not exist, aborting report", target_path)
-        return
-
-    document.add_heading("Fit‑Results", level=1)
-    overlay_prev = bool(getattr(cs, "_suspend_plot_metrics_overlay", False))
-    setattr(cs, "_suspend_plot_metrics_overlay", True)
-    try:
-        for i, f in enumerate(fit):
-            widget.selected_fit = i
-            log.debug("Adding screenshots for fit #%d", i + 1)
-            document.add_paragraph(f"Fit #{i + 1}", style="ListNumber")
-
-            from chisurf.gui.widgets.models.model_editor import model_editor_widget
-
-            for suffix, source in (
-                ("_screenshot_fit.png", fit_window),
-                ("_screenshot_model.png", model_editor_widget(f.model)),
-            ):
-                png_path = basename + suffix
-                if source is None:  # pure model with no built editor widget
-                    continue
-                log.debug(" Grabbing %r → %r", source, png_path)
-
-                pix = source.grab()
-                pix.save(png_path)
-                del pix
-                log.debug("  Saved and deleted QPixmap")
-
-                document.add_picture(png_path, width=Inches(2.0))
-                log.debug("  Embedded picture %r", png_path)
-    finally:
-        setattr(cs, "_suspend_plot_metrics_overlay", overlay_prev)
-
-    # 3) summary table
-    log.debug("Adding summary table for %d grouped fits", len(fit_group.grouped_fits))
-    document.add_heading("Summary", level=1)
-    p = document.add_paragraph("Parameters which are fitted are given in ")
-    p.add_run("bold").bold = True
-    p.add_run(", linked parameters in ")
-    p.add_run("italic.").italic = True
-    p.add_run(" Fixed parameters are plain name.")
-
-    n = len(fit_group.grouped_fits)
-    table = document.add_table(rows=1, cols=n + 1)
-    hdr = table.rows[0].cells
-    hdr[0].text = "Param"
-    for col in range(n):
-        hdr[col + 1].text = str(col + 1)
-
-    parameters = sorted(fit.model.parameters_all_dict.keys())
-    for k in parameters:
-        row = table.add_row().cells
-        row[0].text = k
-        for col, f in enumerate(fit_group):
-            val = f.model.parameters_all_dict[k]
-            run = row[col + 1].paragraphs[0].add_run(f"{val.value:.3f}")
-            if val.fixed:
-                style = "fixed"
-            elif val.link is not None:
-                run.italic = True
-                style = "linked"
-            else:
-                run.bold = True
-                style = "fitted"
-            log.debug(" Table cell [%r, fit #%d] = %.3f (%s)", k, col + 1, val.value, style)
-
-    # chi² row
-    chi_row = table.add_row().cells
-    chi_row[0].text = "Chi2r"
-    for col, f in enumerate(fit_group):
-        val = f.chi2r
-        chi_row[col + 1].paragraphs[0].add_run(f"{val:.4f}")
-        log.debug(" Table cell [Chi2r, fit #%d] = %.4f", col + 1, val)
-
-    # finally save the document
-    docx_path = basename + ".docx"
-    log.info("Saving report document to %r", docx_path)
-    document.save(docx_path)
-
-    # ——— attempt Qt event processing cleanup —————
-    log.debug("Processing pending Qt events and cleaning up")
-    try:
-        from qtpy.QtWidgets import QApplication
-
-        QApplication.processEvents()
-    except Exception:
-        pass
-
-    # drop Qt references and run GC
-    fit_window = widget = fit_group = document = None
-    gc.collect()
-    log.debug("save_fit: done")
+    fit = _current_fit_group(fit_window)
+    if fit is None:
+        cs.logging.error("save_fit: there is no fit to save")
+        return None
+    target = target_path or cs.working_path
+    return export_fit(fit, target, render_fit_images(fit), use_complex_name=use_complex_name)
 
 
 def load_fit_result(fit_index: int, filename: str) -> bool:
@@ -1184,126 +1007,23 @@ def load_fit_result(fit_index: int, filename: str) -> bool:
         return False
 
 
-def _merge_docx(docx_files, out_path: str) -> bool:
-    """Merge multiple DOCX files into a single document by stacking their bodies.
+def save_fits(target_path: str, use_complex_name: bool = False, existing: str = "skip"):
+    """*File ▸ Fits ▸ All Fits*: a folder per fit under *target_path* and ``all_fits.docx``.
 
-    Returns True on success, False otherwise.
-    Note: This simple merge appends XML bodies and may not keep images/styles perfectly,
-    but is sufficient to "simply stack" documents.
+    *existing* (``"skip"`` or ``"overwrite"``) decides about a fit whose folder is already there; the
+    window asks before it calls (:func:`chisurf.core.fitting.fit_export.existing_folders`).
     """
-    try:
-        from docx import Document
-    except Exception as e:
-        cs.logging.info(f"python-docx not available, skipping combined DOCX creation: {e}")
-        return False
+    del use_complex_name  # the per-fit folders are named after the data, as before
+    from chisurf.core.fitting.fit_export import export_fits
+    from chisurf.emtk.fit_report import render_fit_images
 
-    from copy import deepcopy
-
-    try:
-        master = Document()
-        first = True
-
-        # Helper to get body element compatibly
-        def _body(doc):
-            try:
-                return doc.element.body
-            except Exception:
-                return doc._element.body
-
-        for fp in docx_files:
-            if not fp or not os.path.exists(fp):
-                continue
-            sub = Document(fp)
-            if not first:
-                master.add_page_break()
-            first = False
-            src_body = _body(sub)
-            dst_body = _body(master)
-            # Append deep copies of all children (paragraphs, tables, images)
-            for child in list(src_body):
-                dst_body.append(deepcopy(child))
-        master.save(out_path)
-        return True
-    except Exception as e:
-        cs.logging.warning(f"Failed to merge DOCX files: {e}")
-        return False
-
-
-def save_fits(target_path: str, use_complex_name: bool = False):
-    if os.path.isdir(target_path):
-        created_docx = []
-        for fit_window in cs.gui.fit_windows:
-            fit = fit_window.fit
-
-            # Skip global fits
-            setup = getattr(fit.data, "setup", None)
-            if isinstance(setup, cs.core.experiments.globalfit.GlobalFitSetup):
-                continue
-
-            if use_complex_name:
-                save_name = cs.core.base.clean_string(fit.name)
-            else:
-                save_name = os.path.basename(fit.data.name)
-            save_stem = os.path.splitext(save_name)[0]
-
-            p2 = os.path.join(target_path, save_stem)
-
-            # Ensure per-fit directory handling with overwrite/skip/cancel dialog
-            if os.path.exists(p2):
-                try:
-                    # Imported here, not at module scope: macros run headless
-                    # (server mode, CLI) and must not drag Qt in to be defined.
-                    from chisurf.gui import dialogs
-
-                    answer = dialogs.choice(
-                        None,
-                        "Folder exists",
-                        f"The folder '{p2}' already exists.",
-                        {"overwrite": "Overwrite", "skip": "Skip", "cancel": "Cancel"},
-                        # Unattended, keep what is on disk rather than delete it.
-                        default="skip",
-                        informative="Do you want to overwrite it?",
-                    )
-                    if answer.key == "overwrite":
-                        cs.logging.info(f"Overwriting existing folder: {p2}")
-                        try:
-                            if os.path.isdir(p2):
-                                shutil.rmtree(p2)
-                            else:
-                                os.remove(p2)
-                        except Exception as e:
-                            cs.logging.warning(f"Failed to remove existing path {p2}: {e}")
-                        os.makedirs(p2, exist_ok=True)
-                    elif answer.key == "skip":
-                        cs.logging.info(f"Skipping existing folder: {p2}")
-                        continue
-                    else:
-                        cs.logging.info("Save all fits cancelled by user")
-                        return
-                except Exception as e:
-                    # Headless or dialog failed: default to skipping
-                    cs.logging.warning(
-                        f"Could not show overwrite dialog or handle existing folder ({e}). Skipping fit."
-                    )
-                    continue
-            else:
-                os.makedirs(p2, exist_ok=True)
-
-            save_fit(target_path=p2, fit_window=fit_window)
-
-            # Track created per-fit DOCX path for merging
-            per_fit_docx = os.path.join(p2, f"{save_stem}.docx")
-            if os.path.exists(per_fit_docx):
-                created_docx.append(per_fit_docx)
-
-        # After saving all, create combined DOCX by stacking
-        if created_docx:
-            combined_path = os.path.join(target_path, "all_fits.docx")
-            ok = _merge_docx(created_docx, combined_path)
-            if ok:
-                cs.logging.info(f"Combined DOCX created: {combined_path}")
-            else:
-                cs.logging.info("Combined DOCX could not be created.")
+    if not os.path.isdir(target_path):
+        cs.logging.error(f"save_fits: {target_path} is not a folder")
+        return None
+    result = export_fits(list(cs.fits), target_path, render_fit_images, existing=existing)
+    if result.get("report"):
+        cs.logging.info(f"Combined DOCX created: {result['report']}")
+    return result
 
 
 def close_fit(idx: int = None):
@@ -1711,97 +1431,6 @@ def save_project(target_path: str, project_name: str = "chisurf_project"):
     return project_path
 
 
-def _write_fit_docx(
-    fit_window,
-    fit_group,
-    local_fit,
-    lf_dir: pathlib.Path,
-    clean_name: str,
-    fit_index: int,
-) -> pathlib.Path | None:
-    """Create a per-local-fit DOCX + screenshots inside the local-fit folder."""
-    log = cs.logging
-    try:
-        import docx
-        from docx.shared import Inches
-    except Exception as exc:
-        log.info(f"python-docx not available; skipping DOCX for {clean_name}: {exc}")
-        return None
-
-    widget = getattr(fit_window, "fit_widget", None)
-    if widget is None or fit_group is None or local_fit is None:
-        return None
-
-    lf_dir.mkdir(parents=True, exist_ok=True)
-    basename = lf_dir / clean_name
-
-    document = docx.Document()
-    document.add_heading(local_fit.name or clean_name, 0)
-
-    # One fit => single section
-    try:
-        widget.selected_fit = fit_index
-    except Exception:
-        pass
-
-    from chisurf.gui.widgets.models.model_editor import model_editor_widget
-
-    for suffix, source in (
-        ("_screenshot_fit.png", fit_window),
-        ("_screenshot_model.png", model_editor_widget(local_fit.model)),
-    ):
-        png_path = basename.parent / f"{basename.name}{suffix}"
-        if source is None:
-            continue
-        try:
-            pix = source.grab()
-            pix.save(str(png_path))
-            del pix
-            document.add_picture(str(png_path), width=Inches(2.0))
-        except Exception as exc:
-            log.debug(f"Could not add screenshot {png_path}: {exc}")
-
-    # Compact summary table for this fit only
-    document.add_heading("Summary", level=1)
-    p = document.add_paragraph("Parameters: fitted in ")
-    p.add_run("bold").bold = True
-    p.add_run(", linked in ")
-    p.add_run("italic.").italic = True
-    p.add_run(" Fixed are plain.")
-
-    table = document.add_table(rows=1, cols=2)
-    hdr = table.rows[0].cells
-    hdr[0].text = "Param"
-    hdr[1].text = "#1"
-
-    parameters = sorted(local_fit.model.parameters_all_dict.keys())
-    for k in parameters:
-        row = table.add_row().cells
-        row[0].text = k
-        try:
-            val = local_fit.model.parameters_all_dict[k]
-            run = row[1].paragraphs[0].add_run(f"{val.value:.3f}")
-            if val.fixed:
-                pass
-            elif val.link is not None:
-                run.italic = True
-            else:
-                run.bold = True
-        except Exception:
-            continue
-
-    chi_row = table.add_row().cells
-    chi_row[0].text = "Chi2r"
-    try:
-        chi_row[1].paragraphs[0].add_run(f"{local_fit.chi2r:.4f}")
-    except Exception:
-        pass
-
-    docx_path = basename.with_suffix(".docx")
-    document.save(str(docx_path))
-    return docx_path
-
-
 def _build_fitgroup_payload(
     fit_group,
     register_datacurve: typing.Callable[[cs.core.data.DataCurve], str],
@@ -1891,17 +1520,6 @@ def _build_fitgroup_payload(
         "data_group_name": str(getattr(getattr(fit_group, "_data", None), "name", "")),
         "local_fits": local_fits_state,
     }
-
-
-def _build_fitgroup_payload_from_window(
-    fit_window,
-    register_datacurve: typing.Callable[[cs.core.data.DataCurve], str],
-    log: typing.Any,
-    group_index: int = 0,
-) -> typing.Tuple[str, typing.Dict]:
-    """Legacy wrapper: extract FitGroup from a GUI window, then delegate."""
-    fit_group = getattr(fit_window, "fit", None)
-    return _build_fitgroup_payload(fit_group, register_datacurve, log, group_index)
 
 
 def _project_path(project_root: pathlib.Path, value: typing.Any) -> pathlib.Path | None:
@@ -2081,24 +1699,10 @@ def load_project_payload(
 
 
 def load_fit_project(project_path: str):
-    """Import detached fit state without replacing any existing live fits."""
-    archive_path = _project_archive_input_path(project_path)
-    project = _load_project_archive(str(archive_path))
-    restored = restore_session(project)
-    existing = capture_session(cs.imported_datasets, cs.fits)
-    existing_fit_ids = {record["uid"] for record in existing.fits}
-    incoming_fit_ids = {record["uid"] for record in project.fits}
-    if existing_fit_ids & incoming_fit_ids or set(existing.datasets) & set(project.datasets):
-        raise ValueError("Imported fit or dataset UIDs already exist in the live session")
-    old_datasets, old_fits = list(cs.imported_datasets), list(cs.fits)
-    try:
-        cs.imported_datasets[:] = old_datasets + restored.datasets
-        cs.fits[:] = old_fits + restored.fits
-    except Exception:
-        cs.imported_datasets[:] = old_datasets
-        cs.fits[:] = old_fits
-        raise
-    return restored
+    """*Load Fit*: add a fit document's (or a project's) fits and data without replacing any live fit."""
+    from chisurf.core.fitting.fit_export import import_fit
+
+    return import_fit(_project_archive_input_path(project_path), cs.imported_datasets, cs.fits)
 
 
 def _load_project_archive(project_path: str) -> CSProject:

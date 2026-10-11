@@ -659,7 +659,7 @@ class Main(
 
     def onLoadFit(self, **kwargs):
         filename = _gw.get_filename(
-            file_type="*.fit.json", description="Load fit (fit.json)", **kwargs
+            file_type="*.cs.pto", description="Load fit (.fit.cs.pto)", **kwargs
         )
         if not filename:
             return
@@ -722,9 +722,25 @@ class Main(
         if not path:
             return
         cs.working_path = path
+        from chisurf.core.fitting.fit_export import existing_folders
+
+        existing = "skip"
+        there = existing_folders(list(cs.fits), path)
+        if there:
+            answer = dialogs.choice(
+                None,
+                "Folders exist",
+                f"{len(there)} fit folder(s) already exist in '{path}'.",
+                {"overwrite": "Overwrite", "skip": "Skip", "cancel": "Cancel"},
+                default="skip",
+                informative="Overwrite them, or skip those fits?",
+            )
+            if answer.key == "cancel":
+                return
+            existing = answer.key
         cs.core.actions.dispatch(
             name="fit.save_all",
-            payload={"target_path": path.as_posix()},
+            payload={"target_path": path.as_posix(), "existing": existing},
         )
 
     def onSaveFit(self, event: QtCore.QEvent = None, **kwargs):
@@ -2215,6 +2231,11 @@ class Main(
             import chisurf.logging
 
             chisurf.logging.exception("Failed to rebuild GUI from server state")
+
+    @property
+    def ribbon_enabled(self) -> bool:
+        """Whether the ribbon is shown (Menu Switch reads this, in this window and the emtk shell)."""
+        return self._ribbon_integration is not None
 
     def toggle_ribbon_interface(self, enabled=None):
         """

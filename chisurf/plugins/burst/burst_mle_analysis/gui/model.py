@@ -105,6 +105,10 @@ class MleViewModel(RunPickerMixin):
         self._snapshot_running = threading.Event()
         self.status_text = "Add burst (.bur) files to begin."
         self.burst_results: list[dict] = []
+        #: Fingerprint of the request :attr:`burst_results` answers (``None``: nothing held, or stopped/failed).
+        self.held_fingerprint: str | None = None
+        #: ``True`` after a run was skipped as unchanged: the view highlights **Restart**.
+        self.restart_attention = False
         self.nav_burst = 0
         self.detector_editor_data: dict | None = None
         #: ``True`` while the IRF and background are the ones estimated from non-burst photons (so a binning change
@@ -403,6 +407,8 @@ class MleViewModel(RunPickerMixin):
         self.session.df_bursts = None
         self.session.tttr_paths.clear()
         self.burst_results = []
+        self.held_fingerprint = None
+        self.restart_attention = False
         self.session.burst_results = []
         self.status_text = "Add burst (.bur) files to begin."
         self.notify("files")
@@ -418,6 +424,8 @@ class MleViewModel(RunPickerMixin):
         self.session.add_burst_files([path])
         self.session.build_decay()
         self.burst_results = []
+        self.held_fingerprint = None
+        self.restart_attention = False
         self.auto_patterns = False
         self.nav_burst = 0
         self.detector_editor_data = self.session.definition_payload()
@@ -904,20 +912,36 @@ class MleViewModel(RunPickerMixin):
         finally:
             self._release_snapshot()
 
-    def run_batch(self) -> None:
-        """Fit every burst of every loaded file and detector (worker processes) and keep the rows."""
+    def run_batch(self, force: bool = False) -> None:
+        """Fit every burst of every loaded file and detector (worker processes) and keep the rows.
+
+        A request identical to the one the held rows answer -- same burst files, same settings, IRF and background,
+        same code (:meth:`MleSession.batch_fingerprint`) -- is not fitted again: the status line says so and
+        **Restart** is highlighted. ``force`` (Restart) fits regardless. A stopped or failed run holds nothing, so
+        the next press fits.
+        """
         if self.session.df_bursts is None:
             self._release_snapshot()
             raise ValueError("Add burst files first.")
         self._cancel.clear()
-
-        def progress(done, total):
-            self.status_text = f"Fitting bursts ... {done}/{total}"
-            self.notify("progress")
-
         try:
+            fingerprint = self.session.batch_fingerprint()
+            if not force and self.burst_results and fingerprint == self.held_fingerprint:
+                self.status_text = "Unchanged — kept the previous Burst MLE result (Restart fits again)"
+                self.restart_attention = True
+                self.notify("batch")
+                return
+            self.restart_attention = False
+            self.held_fingerprint = None
+
+            def progress(done, total):
+                self.status_text = f"Fitting bursts ... {done}/{total}"
+                self.notify("progress")
+
             rows = self.session.run_batch(progress=progress, should_stop=self._cancel.is_set)
             self.burst_results = rows
+            if not self._cancel.is_set():
+                self.held_fingerprint = fingerprint
             n = len(fit_view.burst_lifetimes(rows))
             self.status_text = f"Fitted {self.n_bursts} bursts ({n} lifetime series)."
             self.notify("batch")

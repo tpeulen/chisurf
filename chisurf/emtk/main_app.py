@@ -31,13 +31,15 @@ Anything drawn inside a dock by an app of its own (a plugin, a fit window, a rea
 drawn with :meth:`emtk.app.ImApp.draw_child` through :meth:`EmtkShellApp.host_child`, and the pointer, wheel, keys
 and dropped files go to the child under the pointer (keys to the one pressed last).
 
-Plugins whose manifest declares only a Qt ``gui`` or an ``action`` entrypoint are not offered here yet.
+A plugin whose manifest declares only an ``action`` entrypoint (*Menu Switch*) is a command, not a window: its
+menu item, ribbon button and Tools row run the action with the shell as its main window
+(:func:`chisurf.core.plugin.registry.execute_plugin_action`). Plugins with only a Qt ``gui`` entrypoint are not
+offered here.
 """
 
 from __future__ import annotations
 
 import logging
-from collections import deque
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
@@ -56,9 +58,6 @@ SHELL_ID = "emtk_shell"
 MENU_BAR = 30.0
 #: Prefix of a hosted plugin's dock window key.
 PLUGIN_KEY = "plugin."
-#: How many log lines the Log dock keeps.
-LOG_LINES = 500
-
 _log = logging.getLogger("chisurf.emtk.shell")
 
 
@@ -92,6 +91,8 @@ class MenuEntry:
     icon: str = ""
     #: A command-line tool: listed only in experimental mode, as the Qt ribbon does.
     cli_only: bool = False
+    #: A command (an ``entrypoints.action``), run instead of opened as a window.
+    action: bool = False
 
     @property
     def label(self) -> str:
@@ -120,7 +121,8 @@ def menu_entries(catalog: dict[str, dict] | None = None) -> list[MenuEntry]:
     Returns
     -------
     list of MenuEntry
-        Plugins with an ``entrypoints.emtk`` factory that are not ``menu_hidden``.
+        Plugins with an ``entrypoints.emtk`` factory or only an ``entrypoints.action`` (a command), that are not
+        ``menu_hidden``.
     """
     if catalog is None:
         from chisurf.emtk.plugins import manifests
@@ -128,7 +130,9 @@ def menu_entries(catalog: dict[str, dict] | None = None) -> list[MenuEntry]:
         catalog = manifests()
     entries = []
     for plugin_id, data in catalog.items():
-        if data.get("menu_hidden") or not (data.get("entrypoints") or {}).get("emtk"):
+        entrypoints = data.get("entrypoints") or {}
+        is_action = bool(entrypoints.get("action")) and not entrypoints.get("emtk")
+        if data.get("menu_hidden") or not (entrypoints.get("emtk") or is_action):
             continue
         name = str(data.get("display_name") or plugin_id)
         path = tuple(part.strip() for part in name.split(":") if part.strip()) or (plugin_id,)
@@ -141,6 +145,7 @@ def menu_entries(catalog: dict[str, dict] | None = None) -> list[MenuEntry]:
                 bool(data.get("deprecated")),
                 str(data.get("icon") or ""),
                 bool(data.get("cli_only")),
+                is_action,
             )
         )
     return sorted(entries, key=lambda entry: tuple(part.casefold() for part in entry.path))
@@ -164,19 +169,13 @@ class HostedPlugin:
         return PLUGIN_KEY + self.entry.plugin_id
 
 
-class _LogBuffer(logging.Handler):
-    """Keep the last log records' text for the Log dock."""
-
-    def __init__(self, lines: int = LOG_LINES) -> None:
-        super().__init__(level=logging.INFO)
-        self.lines: deque[str] = deque(maxlen=lines)
-        self.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
-
-    def emit(self, record: logging.LogRecord) -> None:
-        try:
-            self.lines.append(self.format(record))
-        except Exception:  # noqa: BLE001 - a log handler must never raise into the caller
-            self.handleError(record)
+def _ribbon_preference() -> bool:
+    """The user's ``gui.use_ribbon_interface`` (shown unless they switched it off)."""
+    try:
+        from chisurf.core.settings import cs_settings
+    except Exception:  # noqa: BLE001 - unreadable settings: the shipped default
+        return True
+    return bool((cs_settings.get("gui") or {}).get("use_ribbon_interface", True))
 
 
 def _default_loader(plugin_id: str) -> Any:
@@ -211,6 +210,12 @@ class EmtkShellApp(ImApp):
         console_history: Any = None,
         console_session_file: Any = None,
     ) -> None:
+        if catalog is None:
+            from chisurf.emtk.plugins import manifests
+
+            catalog = manifests()
+        #: The manifests the shell was made from (an action entry runs from its manifest).
+        self.catalog = catalog
         self.entries = menu_entries(catalog)
         self.by_id = {entry.plugin_id: entry for entry in self.entries}
         from chisurf.emtk.shell_ribbon import ShellRibbon, menu_tree
@@ -218,6 +223,7 @@ class EmtkShellApp(ImApp):
         #: ``{menu: {caption: [MenuEntry]}}``: the plugin menus and the Tools tree, in ribbon order.
         self.menus = menu_tree(self.entries)
         self.ribbon = ShellRibbon(self)
+        self._ribbon_enabled = _ribbon_preference()
         #: The canvas size of the last frame (what *Screenshot* copies).
         self._canvas = (1400, 900)
         self._screenshot_pending = False
@@ -246,17 +252,20 @@ class EmtkShellApp(ImApp):
         )
         self.docks.add_window("tools", tr("Tools"), self._draw_tools, dock="left", closable=False)
         self.docks.add_window("start", tr("Start"), self._draw_start, dock="center")
-        self.docks.add_window("log", tr("Log"), self._draw_log, dock="bottom")
+        self.docks.add_window("log", tr("Log"), self._draw_log, dock="bottom", scrollable=False)
         self.docks.add_window("console", tr("Console"), self._draw_console, dock="bottom",
                               scrollable=False)
-        self.log = _LogBuffer()
-        logging.getLogger("chisurf").addHandler(self.log)
         _log.setLevel(logging.INFO)
         super().__init__(self.render)
         from chisurf.emtk.fit_docks import ANALYSIS_KEY, PLOT_KEY, DataDocks
 
         self.data = DataDocks(self, session_factory)
         self.project = ShellProject(self)
+        from chisurf.emtk.shell_log import ShellLog
+
+        #: The Log dock: the log, the server's calls and the undo history (:mod:`chisurf.emtk.shell_log`).
+        self.log = ShellLog(self.project)
+        self.log.install()
         from chisurf.emtk.console import ShellConsole
 
         self.console = ShellConsole(
@@ -278,8 +287,15 @@ class EmtkShellApp(ImApp):
 
     # ── plugins ───────────────────────────────────────────────────────────
 
-    def open_plugin(self, plugin_id: str) -> HostedPlugin:
-        """Open *plugin_id* as a dock window (or bring its window to front); the app is made on a worker thread."""
+    def open_plugin(self, plugin_id: str) -> HostedPlugin | None:
+        """Open *plugin_id* as a dock window (or bring its window to front); the app is made on a worker thread.
+
+        A command plugin (``entrypoints.action``) is run instead and opens nothing (``None``).
+        """
+        entry = self.by_id.get(plugin_id)
+        if entry is not None and entry.action:
+            self.run_plugin_action(plugin_id)
+            return None
         if plugin_id in self.hosted:
             self.docks.show(self.hosted[plugin_id].key)
             self.docks.focus(self.hosted[plugin_id].key)
@@ -308,6 +324,46 @@ class EmtkShellApp(ImApp):
         self.status = tr("Opening {name}…").format(name=tr(entry.label))
         _log.info("open %s", plugin_id)
         return hosted
+
+    def run_plugin_action(self, plugin_id: str) -> dict:
+        """Run the command plugin *plugin_id* with this window as its main window; a failure is said."""
+        from chisurf.core.api.context import PluginContext
+        from chisurf.core.plugin.manifest import PluginManifest
+        from chisurf.core.plugin.registry import execute_plugin_action
+
+        entry = self.by_id[plugin_id]
+        result = execute_plugin_action(
+            PluginManifest.from_dict(self.catalog[plugin_id]), PluginContext(main_window=self)
+        )
+        if result.get("ok"):
+            self.status = tr("{name} done.").format(name=tr(entry.label))
+            _log.info("ran %s", plugin_id)
+        else:
+            error = str(result.get("error") or "")
+            self.status = tr("{name} failed.").format(name=tr(entry.label))
+            self.project.dialogs.message(tr(entry.label), error or tr("The command did not run."))
+        self.request_frame()
+        return result
+
+    # ── Menu Switch ───────────────────────────────────────────────────────
+
+    @property
+    def ribbon_enabled(self) -> bool:
+        """Whether the ribbon is shown under the menu bar (*Menu Switch* turns it off and on)."""
+        return self._ribbon_enabled
+
+    def toggle_ribbon_interface(self, enabled: bool | None = None) -> None:
+        """Show (*enabled*) or hide the ribbon, or swap; the choice is the user's ``gui.use_ribbon_interface``.
+
+        The menu bar stays either way: every session command is in it, and the ribbon's tabs are
+        the same plugin menus. The preference is the one the Qt window reads, so both start alike.
+        """
+        from chisurf.core.settings.settings_utils import set_use_ribbon_interface
+
+        self._ribbon_enabled = (not self._ribbon_enabled) if enabled is None else bool(enabled)
+        if not set_use_ribbon_interface(self._ribbon_enabled):
+            _log.warning("the ribbon preference could not be saved")
+        self.request_frame()
 
     def close_plugin(self, plugin_id: str) -> None:
         """Close the plugin's app and drop its window."""
@@ -406,7 +462,9 @@ class EmtkShellApp(ImApp):
         self._drawn[child_id] = (window_key, app, box)
 
     def _draw_ribbon(self, width: float) -> float:
-        """The ribbon under the menu bar; returns its height."""
+        """The ribbon under the menu bar; returns its height (none while *Menu Switch* hid it)."""
+        if not self._ribbon_enabled:
+            return 0.0
         height = self.ribbon.height()
         im.set_next_window_pos((0.0, MENU_BAR), im.Cond.ALWAYS)
         im.set_next_window_size((width, height), im.Cond.ALWAYS)
@@ -501,6 +559,15 @@ class EmtkShellApp(ImApp):
             MenuAction("import_project", tr("Import Project…"), project.import_project, "",
                        tr("Project"), tr("Open a .cs.pto, or import a copy into the database."),
                        has_session),
+            MenuAction("load_fit", tr("Load Fit"), project.load_fit, "", tr("Fits"),
+                       tr("Add the fit of a .fit.cs.pto file (written by Current Fit) to the session."),
+                       has_session),
+            MenuAction("save_fit", tr("Current Fit"), project.save_current_fit, "Ctrl+Alt+S", tr("Fits"),
+                       tr("Write the current fit's curves, its fit file and a Word report into a folder."),
+                       lambda: bool(data.current_uid)),
+            MenuAction("save_all_fits", tr("All Fits"), project.save_all_fits, "", tr("Fits"),
+                       tr("Write every fit into a folder of its own, and all reports into all_fits.docx."),
+                       has_fits),
             MenuAction("close_fit", tr("Close Fit"), project.close_fit, "", tr("Fits"),
                        tr("Remove the current fit (asks first)."),
                        lambda: bool(data.current_uid)),
@@ -779,8 +846,7 @@ class EmtkShellApp(ImApp):
         self.console.draw(box)
 
     def _draw_log(self, box) -> None:
-        for line in list(self.log.lines)[-200:]:
-            im.text_unformatted(line)
+        self.log.draw(box)
 
     def _draw_plugin(self, plugin_id: str, box) -> None:
         hosted = self.hosted.get(plugin_id)
@@ -925,8 +991,12 @@ class EmtkShellApp(ImApp):
         return True
 
     def on_files_dropped(self, paths) -> bool:
-        """Hand dropped files to the focused child when it takes them, else read them as data."""
-        child, _origin = self._child(self._focus)
+        """Hand dropped files to the child under the pointer when it takes them, else read them as data.
+
+        The drop goes where it was dropped, not to the child that has the keys: the platform
+        delivers the drop position as a pointer move first (:meth:`emtk.native.CanvasEvents.files_dropped`).
+        """
+        child, _origin = self._child(self._plugin_at(*self.io.mouse_pos))
         if child is not None:
             for name in ("on_paths_dropped", "on_files_dropped", "files_dropped"):
                 handler = getattr(child, name, None)
@@ -948,11 +1018,12 @@ class EmtkShellApp(ImApp):
     # ── persistence ───────────────────────────────────────────────────────
 
     def export_settings(self) -> dict:
-        """The plugins open in the shell, restored on the next start."""
-        return {"open": list(self.hosted)}
+        """The plugins open in the shell and the ribbon's pin (with a pinned ribbon's fold and tab)."""
+        return {"open": list(self.hosted), "ribbon": self.ribbon.ribbon.state()}
 
     def restore_settings(self, state: dict) -> None:
-        """Reopen the plugins that were open (each built on its worker thread)."""
+        """Reopen the plugins that were open (each built on its worker thread); put the ribbon back as pinned."""
+        self.ribbon.ribbon.restore((state or {}).get("ribbon"))
         for plugin_id in (state or {}).get("open", []):
             if plugin_id in self.by_id:
                 self.open_plugin(plugin_id)
@@ -965,7 +1036,7 @@ class EmtkShellApp(ImApp):
         self._close_console_channel()
         self.project.close()
         self.data.close()
-        logging.getLogger("chisurf").removeHandler(self.log)
+        self.log.close()
 
 
 def make_app(persist: bool = True) -> EmtkShellApp:

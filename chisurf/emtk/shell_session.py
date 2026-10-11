@@ -50,6 +50,8 @@ _log = logging.getLogger("chisurf.emtk.shell.project")
 
 #: The project file filter of the file dialogs.
 PROJECT_FILTER = (("ChiSurf Project", ("*.cs.pto",)),)
+#: *Load Fit*: a fit document (``<data>.fit.cs.pto``, written by *Current Fit*), or a project.
+FIT_FILTER = (("ChiSurf Fit", ("*.fit.cs.pto",)), ("ChiSurf Project", ("*.cs.pto",)))
 PROJECT_SUFFIX = ".cs.pto"
 #: Server events after which the science may have changed (one undo step is recorded).
 RECORD_TOPICS = (
@@ -480,6 +482,27 @@ class ShellProject:
     def redo(self) -> bool:
         """Go one step forward in the history (Ctrl+Y)."""
         return self._step(+1)
+
+    def go_to_history(self, index: int) -> bool:
+        """Go to step *index* of the history (the Log dock's *History*): its science is published."""
+        if not self.history_ready or not self.history.can_navigate(int(index)):
+            return False
+
+        def call() -> Any:
+            from chisurf.core.project.lifecycle import snapshot_fingerprint
+
+            result = self.history.navigate(int(index))
+            self._last_fingerprint = snapshot_fingerprint(self.channel.capture(self.document.name))
+            return result
+
+        return self._run(tr("Going to the history step…"), call,
+                         lambda result: result is not None and self._refresh_docks())
+
+    def clear_history(self) -> bool:
+        """Forget the history's steps; what is open stays and is the new starting point."""
+        if not self.history_ready:
+            return False
+        return self._run(tr("Clearing the history…"), self._reset_history, quiet=True)
 
     def _step(self, direction: int) -> bool:
         if not self.history_ready:
@@ -926,6 +949,113 @@ class ShellProject:
         if yes:
             self._removing_fit.append(uid)
             self.shell.request_frame()
+
+    # ── fit export and import (File ▸ Fits) ───────────────────────────────
+
+    def _fit_call(self, method: str, params: dict) -> dict:
+        """Worker: one ``fit.*`` call on the project connection; a refusal raises with its reason."""
+        result = self.channel.client.call(method, params)
+        if isinstance(result, dict) and result.get("ok") is False:
+            raise RuntimeError(str(result.get("error") or method))
+        return result if isinstance(result, dict) else {}
+
+    def load_fit(self) -> bool:
+        """*Load Fit*: add the fits and data of a fit document (``.fit.cs.pto``) or project to the session."""
+        if self.channel is None:
+            return False
+
+        def chosen(path: str) -> None:
+            self._run(
+                tr("Loading the fit…"),
+                lambda: self._fit_call("fit.import", {"filename": str(path)}),
+                lambda result: self._fits_loaded(result, path),
+                failed=lambda error: self.dialogs.message(tr("Load Fit"), str(error)),
+            )
+
+        self.open_file_dialog(tr("Load Fit"), "open", chosen, filters=FIT_FILTER)
+        return True
+
+    def _fits_loaded(self, result: dict, path: str) -> None:
+        count = len(result.get("fit_uids") or [])
+        self.status = tr("{count} fit(s) loaded from {name}.").format(count=count, name=Path(path).name)
+        self.data._dirty |= {"datasets", "fits", "windows", "current"}
+        self.shell.request_frame()
+
+    def save_current_fit(self) -> bool:
+        """*Current Fit* (Ctrl+Alt+S): the current fit's curves, fit document and report, in a folder."""
+        uid = self.data.current_uid
+        if self.channel is None or not uid:
+            return False
+
+        def chosen(folder: str) -> None:
+            self._run(
+                tr("Saving the fit…"),
+                lambda: self._fit_call("fit.export", {"fit_uid": uid, "target_path": str(folder)}),
+                lambda result: self._fit_saved(result, folder),
+                failed=lambda error: self.dialogs.message(tr("Save Fit"), str(error)),
+            )
+
+        self._open_folder_dialog(tr("Save Fit"), chosen)
+        return True
+
+    def save_all_fits(self) -> bool:
+        """*All Fits*: a folder per fit and ``all_fits.docx``; folders already there are asked about once."""
+        if self.channel is None or not self.data.datasets.fits:
+            return False
+
+        def write(folder: str, existing: str) -> None:
+            self._run(
+                tr("Saving all fits…"),
+                lambda: self._fit_call(
+                    "fit.export_all", {"target_path": str(folder), "existing": existing}
+                ),
+                lambda result: self._fit_saved(result, folder),
+                failed=lambda error: self.dialogs.message(tr("Save Fits"), str(error)),
+            )
+
+        def ask(folder: str, there: list) -> None:
+            if not there:
+                write(folder, "skip")
+                return
+            self.dialogs.choice(
+                tr("Folders exist"),
+                tr("{count} fit folder(s) already exist in {folder}.").format(
+                    count=len(there), folder=folder
+                ),
+                [("overwrite", tr("Overwrite")), ("skip", tr("Skip")), ("cancel", tr("Cancel"))],
+                lambda key: key in ("overwrite", "skip") and write(folder, key),
+                detail="\n".join(there),
+            )
+
+        def chosen(folder: str) -> None:
+            self._run(
+                tr("Checking the folder…"),
+                lambda: self._fit_call("fit.export_existing", {"target_path": str(folder)}),
+                lambda result: ask(folder, list(result.get("existing") or [])),
+                failed=lambda error: self.dialogs.message(tr("Save Fits"), str(error)),
+            )
+
+        self._open_folder_dialog(tr("Save Fits"), chosen)
+        return True
+
+    def _fit_saved(self, result: dict, folder: str) -> None:
+        skipped = len(result.get("skipped") or [])
+        self.status = tr("Saved to {folder}.").format(folder=folder) + (
+            " " + tr("{count} existing folder(s) skipped.").format(count=skipped) if skipped else ""
+        )
+        self.shell.request_frame()
+
+    def _open_folder_dialog(self, title: str, done: Callable[[str], Any]) -> None:
+        """A folder dialog over the shell, opening at the current fit's data folder when it has one."""
+        from emtk.dialog_window import DialogWindow
+        from emtk.file_dialog import FileDialog
+
+        directory = str(_working_path())
+        self.file_dialog = FileDialog(title, mode="folder", directory=directory)
+        self._file_window = DialogWindow(title, size=(760, 540))
+        self._file_window.show()
+        self._file_done = done
+        self.shell.request_frame()
 
     def close_fit(self) -> bool:
         """*Close Fit*: the current fit, asked as its window's × asks."""
