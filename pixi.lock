@@ -256,7 +256,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/wheel-0.47.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-4.1.0-pyhcf101f3_0.conda
       - pypi: git+https://github.com/tpeulen/IMP.bff.git?branch=dev#73f53c85f68fe63b94d0345abfb4cd29576f4951
-      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#57c2fc3b8d2299ac3a03657d97e0cf1419c80c8b
+      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#adee696ab85e7c9fc587d71ae08f3b6f4d1fddd5
       - pypi: https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1e/77/dc8c558f7593132cf8fefec57c4f60c83b16941c574ac5f619abb3ae7933/dill-0.4.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2a/2d/d4bf65e47cea8ff2c794a600c4fd1273a7902f268757c531e0ee9f18aa58/pooch-1.9.0-py3-none-any.whl
@@ -446,7 +446,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/zlib-ng-2.2.5-h55e386d_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/zstd-1.5.7-h3eecb57_6.conda
       - pypi: git+https://github.com/tpeulen/IMP.bff.git?branch=dev#73f53c85f68fe63b94d0345abfb4cd29576f4951
-      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#57c2fc3b8d2299ac3a03657d97e0cf1419c80c8b
+      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#adee696ab85e7c9fc587d71ae08f3b6f4d1fddd5
       - pypi: https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1e/77/dc8c558f7593132cf8fefec57c4f60c83b16941c574ac5f619abb3ae7933/dill-0.4.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2a/2d/d4bf65e47cea8ff2c794a600c4fd1273a7902f268757c531e0ee9f18aa58/pooch-1.9.0-py3-none-any.whl
@@ -636,7 +636,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-ng-2.2.5-h3470cca_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hbf9d68e_6.conda
       - pypi: git+https://github.com/tpeulen/IMP.bff.git?branch=dev#73f53c85f68fe63b94d0345abfb4cd29576f4951
-      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#57c2fc3b8d2299ac3a03657d97e0cf1419c80c8b
+      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#adee696ab85e7c9fc587d71ae08f3b6f4d1fddd5
       - pypi: https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1e/77/dc8c558f7593132cf8fefec57c4f60c83b16941c574ac5f619abb3ae7933/dill-0.4.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2a/2d/d4bf65e47cea8ff2c794a600c4fd1273a7902f268757c531e0ee9f18aa58/pooch-1.9.0-py3-none-any.whl
@@ -816,7 +816,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-ng-2.3.3-h0261ad2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_6.conda
       - pypi: git+https://github.com/tpeulen/IMP.bff.git?branch=dev#73f53c85f68fe63b94d0345abfb4cd29576f4951
-      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#57c2fc3b8d2299ac3a03657d97e0cf1419c80c8b
+      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#adee696ab85e7c9fc587d71ae08f3b6f4d1fddd5
       - pypi: https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1e/77/dc8c558f7593132cf8fefec57c4f60c83b16941c574ac5f619abb3ae7933/dill-0.4.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2a/2d/d4bf65e47cea8ff2c794a600c4fd1273a7902f268757c531e0ee9f18aa58/pooch-1.9.0-py3-none-any.whl
@@ -1041,7 +1041,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/wheel-0.47.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-3.23.0-pyhcf101f3_1.conda
       - pypi: git+https://github.com/tpeulen/IMP.bff.git?branch=dev#73f53c85f68fe63b94d0345abfb4cd29576f4951
-      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#57c2fc3b8d2299ac3a03657d97e0cf1419c80c8b
+      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#adee696ab85e7c9fc587d71ae08f3b6f4d1fddd5
       - pypi: https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1e/77/dc8c558f7593132cf8fefec57c4f60c83b16941c574ac5f619abb3ae7933/dill-0.4.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2a/2d/d4bf65e47cea8ff2c794a600c4fd1273a7902f268757c531e0ee9f18aa58/pooch-1.9.0-py3-none-any.whl
@@ -1222,7 +1222,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/zlib-ng-2.2.5-h55e386d_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/zstd-1.5.7-h3eecb57_6.conda
       - pypi: git+https://github.com/tpeulen/IMP.bff.git?branch=dev#73f53c85f68fe63b94d0345abfb4cd29576f4951
-      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#57c2fc3b8d2299ac3a03657d97e0cf1419c80c8b
+      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#adee696ab85e7c9fc587d71ae08f3b6f4d1fddd5
       - pypi: https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1e/77/dc8c558f7593132cf8fefec57c4f60c83b16941c574ac5f619abb3ae7933/dill-0.4.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2a/2d/d4bf65e47cea8ff2c794a600c4fd1273a7902f268757c531e0ee9f18aa58/pooch-1.9.0-py3-none-any.whl
@@ -1403,7 +1403,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-ng-2.2.5-h3470cca_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hbf9d68e_6.conda
       - pypi: git+https://github.com/tpeulen/IMP.bff.git?branch=dev#73f53c85f68fe63b94d0345abfb4cd29576f4951
-      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#57c2fc3b8d2299ac3a03657d97e0cf1419c80c8b
+      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#adee696ab85e7c9fc587d71ae08f3b6f4d1fddd5
       - pypi: https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1e/77/dc8c558f7593132cf8fefec57c4f60c83b16941c574ac5f619abb3ae7933/dill-0.4.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2a/2d/d4bf65e47cea8ff2c794a600c4fd1273a7902f268757c531e0ee9f18aa58/pooch-1.9.0-py3-none-any.whl
@@ -1561,7 +1561,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-ng-2.3.3-h0261ad2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_6.conda
       - pypi: git+https://github.com/tpeulen/IMP.bff.git?branch=dev#73f53c85f68fe63b94d0345abfb4cd29576f4951
-      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#57c2fc3b8d2299ac3a03657d97e0cf1419c80c8b
+      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#adee696ab85e7c9fc587d71ae08f3b6f4d1fddd5
       - pypi: https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1e/77/dc8c558f7593132cf8fefec57c4f60c83b16941c574ac5f619abb3ae7933/dill-0.4.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2a/2d/d4bf65e47cea8ff2c794a600c4fd1273a7902f268757c531e0ee9f18aa58/pooch-1.9.0-py3-none-any.whl
@@ -1904,7 +1904,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/yapf-0.43.0-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-4.1.0-pyhcf101f3_0.conda
       - pypi: git+https://github.com/tpeulen/IMP.bff.git?branch=dev#73f53c85f68fe63b94d0345abfb4cd29576f4951
-      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#57c2fc3b8d2299ac3a03657d97e0cf1419c80c8b
+      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#adee696ab85e7c9fc587d71ae08f3b6f4d1fddd5
       - pypi: https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2a/2d/d4bf65e47cea8ff2c794a600c4fd1273a7902f268757c531e0ee9f18aa58/pooch-1.9.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/57/b0/0e52c878c53f245edd3a11020f20979b3f490f245af532c7cae3027754b5/idna-3.19-py3-none-any.whl
@@ -2192,7 +2192,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/zlib-ng-2.2.5-h55e386d_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/zstd-1.5.7-h3eecb57_6.conda
       - pypi: git+https://github.com/tpeulen/IMP.bff.git?branch=dev#73f53c85f68fe63b94d0345abfb4cd29576f4951
-      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#57c2fc3b8d2299ac3a03657d97e0cf1419c80c8b
+      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#adee696ab85e7c9fc587d71ae08f3b6f4d1fddd5
       - pypi: https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2a/2d/d4bf65e47cea8ff2c794a600c4fd1273a7902f268757c531e0ee9f18aa58/pooch-1.9.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/30/27/78873dc8b6a56357517b74b6bb9568b80450e7bb4f6ef7e3fa9d22aa0bd7/charset_normalizer-3.5.1-cp312-cp312-macosx_10_13_universal2.whl
@@ -2480,7 +2480,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-ng-2.2.5-h3470cca_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hbf9d68e_6.conda
       - pypi: git+https://github.com/tpeulen/IMP.bff.git?branch=dev#73f53c85f68fe63b94d0345abfb4cd29576f4951
-      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#57c2fc3b8d2299ac3a03657d97e0cf1419c80c8b
+      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#adee696ab85e7c9fc587d71ae08f3b6f4d1fddd5
       - pypi: https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2a/2d/d4bf65e47cea8ff2c794a600c4fd1273a7902f268757c531e0ee9f18aa58/pooch-1.9.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/30/27/78873dc8b6a56357517b74b6bb9568b80450e7bb4f6ef7e3fa9d22aa0bd7/charset_normalizer-3.5.1-cp312-cp312-macosx_10_13_universal2.whl
@@ -2755,7 +2755,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-ng-2.3.3-h0261ad2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_6.conda
       - pypi: git+https://github.com/tpeulen/IMP.bff.git?branch=dev#73f53c85f68fe63b94d0345abfb4cd29576f4951
-      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#57c2fc3b8d2299ac3a03657d97e0cf1419c80c8b
+      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#adee696ab85e7c9fc587d71ae08f3b6f4d1fddd5
       - pypi: https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2a/2d/d4bf65e47cea8ff2c794a600c4fd1273a7902f268757c531e0ee9f18aa58/pooch-1.9.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/57/b0/0e52c878c53f245edd3a11020f20979b3f490f245af532c7cae3027754b5/idna-3.19-py3-none-any.whl
@@ -2994,7 +2994,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/wheel-0.47.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-4.1.0-pyhcf101f3_0.conda
       - pypi: git+https://github.com/tpeulen/IMP.bff.git?branch=dev#73f53c85f68fe63b94d0345abfb4cd29576f4951
-      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#57c2fc3b8d2299ac3a03657d97e0cf1419c80c8b
+      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#adee696ab85e7c9fc587d71ae08f3b6f4d1fddd5
       - pypi: https://files.pythonhosted.org/packages/01/c4/4fa4c8b3097a11f3c5f09a35b72ed6855fb1d332469504962ab7bafcc702/charset_normalizer-3.4.9-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/02/10/5da547df7a391dcde17f59520a231527b8571e6f46fc8efb02ccb370ab12/docutils-0.22.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/54/6f679c435d28e0a568d8e8a7c0a93a09010818634c3c3907fc98d8983770/roman_numerals-4.1.0-py3-none-any.whl
@@ -3215,7 +3215,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/zlib-ng-2.2.5-h55e386d_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/zstd-1.5.7-h3eecb57_6.conda
       - pypi: git+https://github.com/tpeulen/IMP.bff.git?branch=dev#73f53c85f68fe63b94d0345abfb4cd29576f4951
-      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#57c2fc3b8d2299ac3a03657d97e0cf1419c80c8b
+      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#adee696ab85e7c9fc587d71ae08f3b6f4d1fddd5
       - pypi: https://files.pythonhosted.org/packages/02/10/5da547df7a391dcde17f59520a231527b8571e6f46fc8efb02ccb370ab12/docutils-0.22.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/54/6f679c435d28e0a568d8e8a7c0a93a09010818634c3c3907fc98d8983770/roman_numerals-4.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/09/dc/f3dfb7488b770f3f67e6545085bf2abea5172e88f57b8ad25ef860ca704c/myst_parser-5.1.0-py3-none-any.whl
@@ -3437,7 +3437,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-ng-2.2.5-h3470cca_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hbf9d68e_6.conda
       - pypi: git+https://github.com/tpeulen/IMP.bff.git?branch=dev#73f53c85f68fe63b94d0345abfb4cd29576f4951
-      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#57c2fc3b8d2299ac3a03657d97e0cf1419c80c8b
+      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#adee696ab85e7c9fc587d71ae08f3b6f4d1fddd5
       - pypi: https://files.pythonhosted.org/packages/02/10/5da547df7a391dcde17f59520a231527b8571e6f46fc8efb02ccb370ab12/docutils-0.22.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/54/6f679c435d28e0a568d8e8a7c0a93a09010818634c3c3907fc98d8983770/roman_numerals-4.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/09/dc/f3dfb7488b770f3f67e6545085bf2abea5172e88f57b8ad25ef860ca704c/myst_parser-5.1.0-py3-none-any.whl
@@ -3646,7 +3646,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-ng-2.3.3-h0261ad2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_6.conda
       - pypi: git+https://github.com/tpeulen/IMP.bff.git?branch=dev#73f53c85f68fe63b94d0345abfb4cd29576f4951
-      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#57c2fc3b8d2299ac3a03657d97e0cf1419c80c8b
+      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#adee696ab85e7c9fc587d71ae08f3b6f4d1fddd5
       - pypi: https://files.pythonhosted.org/packages/02/10/5da547df7a391dcde17f59520a231527b8571e6f46fc8efb02ccb370ab12/docutils-0.22.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/54/6f679c435d28e0a568d8e8a7c0a93a09010818634c3c3907fc98d8983770/roman_numerals-4.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/09/dc/f3dfb7488b770f3f67e6545085bf2abea5172e88f57b8ad25ef860ca704c/myst_parser-5.1.0-py3-none-any.whl
@@ -3984,7 +3984,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/wheel-0.47.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-4.1.0-pyhcf101f3_0.conda
       - pypi: git+https://github.com/tpeulen/IMP.bff.git?branch=dev#73f53c85f68fe63b94d0345abfb4cd29576f4951
-      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#57c2fc3b8d2299ac3a03657d97e0cf1419c80c8b
+      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#adee696ab85e7c9fc587d71ae08f3b6f4d1fddd5
       - pypi: https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1e/77/dc8c558f7593132cf8fefec57c4f60c83b16941c574ac5f619abb3ae7933/dill-0.4.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2a/2d/d4bf65e47cea8ff2c794a600c4fd1273a7902f268757c531e0ee9f18aa58/pooch-1.9.0-py3-none-any.whl
@@ -4245,7 +4245,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/zlib-ng-2.2.5-h55e386d_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/zstd-1.5.7-h3eecb57_6.conda
       - pypi: git+https://github.com/tpeulen/IMP.bff.git?branch=dev#73f53c85f68fe63b94d0345abfb4cd29576f4951
-      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#57c2fc3b8d2299ac3a03657d97e0cf1419c80c8b
+      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#adee696ab85e7c9fc587d71ae08f3b6f4d1fddd5
       - pypi: https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1e/77/dc8c558f7593132cf8fefec57c4f60c83b16941c574ac5f619abb3ae7933/dill-0.4.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2a/2d/d4bf65e47cea8ff2c794a600c4fd1273a7902f268757c531e0ee9f18aa58/pooch-1.9.0-py3-none-any.whl
@@ -4506,7 +4506,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-ng-2.2.5-h3470cca_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hbf9d68e_6.conda
       - pypi: git+https://github.com/tpeulen/IMP.bff.git?branch=dev#73f53c85f68fe63b94d0345abfb4cd29576f4951
-      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#57c2fc3b8d2299ac3a03657d97e0cf1419c80c8b
+      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#adee696ab85e7c9fc587d71ae08f3b6f4d1fddd5
       - pypi: https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1e/77/dc8c558f7593132cf8fefec57c4f60c83b16941c574ac5f619abb3ae7933/dill-0.4.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2a/2d/d4bf65e47cea8ff2c794a600c4fd1273a7902f268757c531e0ee9f18aa58/pooch-1.9.0-py3-none-any.whl
@@ -4754,7 +4754,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-ng-2.3.3-h0261ad2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_6.conda
       - pypi: git+https://github.com/tpeulen/IMP.bff.git?branch=dev#73f53c85f68fe63b94d0345abfb4cd29576f4951
-      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#57c2fc3b8d2299ac3a03657d97e0cf1419c80c8b
+      - pypi: git+https://github.com/tpeulen/emtk.git?branch=main#adee696ab85e7c9fc587d71ae08f3b6f4d1fddd5
       - pypi: https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1e/77/dc8c558f7593132cf8fefec57c4f60c83b16941c574ac5f619abb3ae7933/dill-0.4.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2a/2d/d4bf65e47cea8ff2c794a600c4fd1273a7902f268757c531e0ee9f18aa58/pooch-1.9.0-py3-none-any.whl
@@ -20269,7 +20269,7 @@ packages:
   - ipywidgets ; extra == 'notebooks'
   - wgpu>=0.32 ; extra == 'gpu'
   requires_python: '>=3.9'
-- pypi: git+https://github.com/tpeulen/emtk.git?branch=main#57c2fc3b8d2299ac3a03657d97e0cf1419c80c8b
+- pypi: git+https://github.com/tpeulen/emtk.git?branch=main#adee696ab85e7c9fc587d71ae08f3b6f4d1fddd5
   name: emtk
   version: 0.1.7
   requires_dist:
