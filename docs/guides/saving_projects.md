@@ -82,8 +82,8 @@ session open. The same decision protects project replacement and reset.
 
 ## In the native window
 
-The native window (`python -m chisurf --emtk-shell`, opt-in while it replaces
-the Qt window) has the same **File** menu and shortcuts: **Save Project**
+The native window (the default window; `python -m chisurf --qt` opens the
+Qt window it replaces) has the same **File** menu and shortcuts: **Save Project**
 (`Ctrl+S`), **Export Project…** (`Ctrl+Shift+S`, save under a new file), **Open
 Project…**, **Import Project…**, **Close Project**, **Reinitialize** (`Ctrl+R`),
 **Recent Projects** and **Quit** (`Ctrl+Q`); **View** has **Undo** (`Ctrl+Z`)

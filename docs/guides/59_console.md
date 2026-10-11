@@ -171,8 +171,8 @@ form instead.
 
 ## In the native window
 
-The native window (`python -m chisurf --emtk-shell`, opt-in while it replaces
-the Qt window) has the same console as a **Console** dock beside **Log**, with
+The native window (the default window; `python -m chisurf --qt` opens the
+Qt window it replaces) has the same console as a **Console** dock beside **Log**, with
 the same keys: Enter runs or continues a block, Shift+Enter adds a line, Up and
 Down walk the history (filtered by what you had typed), `Ctrl+R` searches it,
 Tab completes and `(` or Shift+Tab shows the call signature, `obj?` opens the

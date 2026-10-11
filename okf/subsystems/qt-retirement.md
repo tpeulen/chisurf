@@ -89,10 +89,12 @@ icons. The status strip and the startup stages of S5 are still open. The Qt shel
    the dock under the pointer, not the one with the keys. `RealisticDriver.drop_files` reproduces it; the imaging
    repro is `test_a_file_dropped_on_a_plugin_dock_goes_to_the_dock_under_the_pointer`. Plugins with only an
    `action` entrypoint run from the shell (`run_plugin_action`; `menu_entries()` now 29 of 29 visible manifests).
-9. Blocked: S6 (delete the Qt shell) is deferred by the owner (2026-10-11: "keep qt for now, emtk not fully
-   there yet"). The Qt shell stays the default and ships in the release; the emtk shell stays opt-in
-   (`--emtk-shell`). Reopen only on the owner's call, and then item 6 (the page classes still under the
-   Qt-importing `chisurf.gui`; the report pictures of item 7 import them too) is the first step.
+9. Blocked: S6 (delete the Qt shell) waits for the owner's call. Owner decision 2026-10-11: the emtk shell is the
+   default window (`python -m chisurf`, the installers' launchers too); the Qt shell stays, behind
+   `python -m chisurf --qt`, as the reference the emtk shell is measured against until parity ("the qt is there
+   for achieving parity"). `--emtk-shell` is still accepted. Guard: `test/native_emtk/test_emtk_shell.py`
+   (`test_python_m_chisurf_opens_the_emtk_surface`, `test_qt_flag_opens_the_qt_window_kept_for_parity`). When
+   S6 is reopened, item 6 (page classes under the Qt-importing `chisurf.gui`) is the first step.
 10. Open: **multi-window** (the emtk gap below) decides whether detached plugin windows survive the move; it goes into
     `~/dev/emtk` with tests. emtk is pushed up to `9931996` (pin, drop position, Driver caption on top) and
     `pixi.lock` pins it. Measure: `git -C ~/dev/emtk log --oneline origin/main..HEAD`.

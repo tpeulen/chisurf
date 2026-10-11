@@ -20,7 +20,7 @@ everything between the group (`"Tab:A:B:Name"` → group `"A › B"`, any depth;
 by their own hosts (`ribbon_categories.py`). The menubar "Plugins" menu reads the
 same addresses (`chisurf/gui/__init__.py`, `populate_plugins`).
 
-The emtk shell (`python -m chisurf --emtk-shell`) builds its ribbon from the same
+The emtk shell (`python -m chisurf`, the default window) builds its ribbon from the same
 function: `chisurf/emtk/shell_ribbon.py::plugin_tree` feeds `plugin_layout` the native
 plugins, and `emtk.ribbon.Ribbon` draws the tabs, groups and buttons. Its menu bar and
 Tools dock read the same tree (`menu_tree`), so all three agree. The maturity markers

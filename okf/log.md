@@ -2,6 +2,9 @@
 
 ## 2026-10-11
 
+- The emtk shell is the default window (`python -m chisurf` and the installers' launchers); the Qt main window
+  stays behind `python -m chisurf --qt` as the reference the emtk shell is measured against until parity.
+  Docs and the launch tests follow. See [Qt retirement](subsystems/qt-retirement.md).
 - Owner decision: the Qt shell stays the default and ships; deleting it (S6) is deferred until the emtk shell is
   fully there. tttrlib dev pushed (photon counts in `tttr sm` burst tables, f986b73da). See
   [Qt retirement](subsystems/qt-retirement.md).

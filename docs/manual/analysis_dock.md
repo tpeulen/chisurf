@@ -17,7 +17,8 @@ The analysis dock gathers variables and parameters of the currently active fit w
 
 The analysis dock contains the controls for optimizing the active fit, setting its fitting range, and sampling over the free model parameters (see **Fig.9**). For a fit over a dataset group, **Dataset** selects which member the controls act on.
 
-The native window (`python -m chisurf --emtk-shell`, opt-in while it replaces the Qt window) has the same dock: the **Fit** section, then the model's own sections, each parameter group a table whose names carry their units (`D [µm²/s]`, `w_r [nm]`). **Code** in a fit window's top-right corner turns the window over to the model's source and its `view.json`; **Plots** turns it back. A dataset dragged from the **Datasets** table onto a fit window is attached to that fit, as **…** does.
+The native window (the default window; `python -m chisurf --qt` opens the
+Qt window it replaces) has the same dock: the **Fit** section, then the model's own sections, each parameter group a table whose names carry their units (`D [µm²/s]`, `w_r [nm]`). **Code** in a fit window's top-right corner turns the window over to the model's source and its `view.json`; **Plots** turns it back. A dataset dragged from the **Datasets** table onto a fit window is attached to that fit, as **…** does.
 
 In the native window the model's special sections are drawn too:
 

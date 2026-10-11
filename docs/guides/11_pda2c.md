@@ -99,7 +99,7 @@ What an entry stands for:
 
 With any table in the list, the TTTR files given beside it are not read: the
 tables select the photons. The same rules apply to a file chosen with **+ Data**,
-and in the emtk shell (`python -m chisurf --emtk-shell`), whose form has the same
+and in the native window (`python -m chisurf`), whose form has the same
 panels; there **+ Data** with an empty *File* field reads the ticked list.
 
 ```python

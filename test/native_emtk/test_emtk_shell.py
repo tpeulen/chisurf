@@ -1,4 +1,4 @@
-"""The opt-in emtk main surface (``python -m chisurf --emtk-shell``): menus, hosting, input routing, close."""
+"""The emtk main surface, the default window (``python -m chisurf``): menus, hosting, input routing, close."""
 
 from __future__ import annotations
 
@@ -180,9 +180,11 @@ def test_the_shell_module_does_not_import_qt():
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-@pytest.mark.parametrize("argv", [["--emtk-shell", "--screenshot", "SHOT"]])
-def test_emtk_shell_flag_opens_the_emtk_surface(argv, tmp_path):
-    """``python -m chisurf --emtk-shell`` runs the emtk host, not the Qt application."""
+@pytest.mark.parametrize(
+    "argv", [["--screenshot", "SHOT"], ["--emtk-shell", "--screenshot", "SHOT"]]
+)
+def test_python_m_chisurf_opens_the_emtk_surface(argv, tmp_path):
+    """``python -m chisurf`` runs the emtk host, not the Qt application; ``--emtk-shell`` is accepted."""
     pytest.importorskip("wgpu")
     pytest.importorskip("rendercanvas")
     shot = tmp_path / "shell.png"
@@ -199,3 +201,30 @@ def test_emtk_shell_flag_opens_the_emtk_surface(argv, tmp_path):
         pytest.skip("no GPU adapter for the offscreen canvas")
     assert result.returncode == 0, result.stderr[-2000:]
     assert shot.is_file() and shot.stat().st_size > 1000
+
+
+class _Opened(Exception):
+    """Raised by the stand-ins below to report which window ``chisurf.__main__.main`` opened."""
+
+
+def test_qt_flag_opens_the_qt_window_kept_for_parity(monkeypatch):
+    """``--qt`` opens the Qt main window, the reference the emtk window is measured against."""
+    import chisurf.__main__ as entry
+    import chisurf.emtk.main_app as main_app
+
+    def emtk(argv):
+        raise _Opened("emtk")
+
+    class _App:
+        def exec(self):
+            raise _Opened("qt " + " ".join(sys.argv[1:]))
+
+    monkeypatch.setattr(main_app, "main", emtk)
+    gui = pytest.importorskip("chisurf.gui")
+    monkeypatch.setattr(gui, "get_app", lambda: _App())
+    monkeypatch.setattr(sys, "argv", ["chisurf", "--qt", "project.cs.pto"])
+    with pytest.raises(_Opened, match=r"^qt project\.cs\.pto$"):
+        entry.main()
+    monkeypatch.setattr(sys, "argv", ["chisurf", "project.cs.pto"])
+    with pytest.raises(_Opened, match="^emtk$"):
+        entry.main()

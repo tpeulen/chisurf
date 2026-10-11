@@ -1,7 +1,7 @@
-"""The ChiSurf main window as one emtk surface (opt-in: ``python -m chisurf --emtk-shell``).
+"""The ChiSurf main window as one emtk surface (the default: ``python -m chisurf``).
 
-The Qt shell (``chisurf/gui/main.py``) stays the default while this surface grows to parity, one slice at a time;
-the parity ledger and the slice order are in the OKF concept ``okf/subsystems/qt-retirement.md``.
+The Qt shell (``chisurf/gui/main.py``, ``python -m chisurf --qt``) is kept as the reference this surface is measured
+against until it reaches parity; the parity ledger is in the OKF concept ``okf/subsystems/qt-retirement.md``.
 
 What this slice provides:
 
@@ -1052,7 +1052,7 @@ def make_app(persist: bool = True) -> EmtkShellApp:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Open the emtk shell in a native window (``python -m chisurf --emtk-shell``)."""
+    """Open the emtk shell in a native window (``python -m chisurf``)."""
     from chisurf.emtk.i18n import install
 
     install(None)

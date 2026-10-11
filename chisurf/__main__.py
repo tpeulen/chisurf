@@ -9,16 +9,19 @@ import os
 def main() -> None:
     """Run the application, logging and re-raising any startup failure.
 
-    ``--emtk-shell`` opens the emtk main surface (``chisurf.emtk.main_app``) instead of the Qt
-    main window; it does not import Qt.
+    The emtk main surface (``chisurf.emtk.main_app``) is the ChiSurf window; it does not import Qt.
+    ``--qt`` opens the Qt main window instead, kept as the reference the emtk window is measured
+    against until it reaches parity. ``--emtk-shell`` is accepted and selects the default.
     """
     import sys
 
-    if "--emtk-shell" in sys.argv[1:]:
+    args = sys.argv[1:]
+    if "--qt" not in args:
         from chisurf.emtk.main_app import main as emtk_shell
 
-        argv = [arg for arg in sys.argv[1:] if arg != "--emtk-shell"]
+        argv = [arg for arg in args if arg != "--emtk-shell"]
         raise SystemExit(emtk_shell(argv))
+    sys.argv = [sys.argv[0], *(arg for arg in args if arg != "--qt")]
     try:
         import faulthandler
         from datetime import datetime
