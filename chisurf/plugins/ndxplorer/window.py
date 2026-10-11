@@ -403,8 +403,12 @@ def build_ndxplorer_window(
     from ndxplorer.app.docks import layout_store as ndx_layout_store
     from ndxplorer.app.frame import NdxApp
 
+    from chisurf.emtk.i18n import install as install_translations
     from chisurf.plugins.ndxplorer.rpc_bridge import make_inprocess_chisurf_client
 
+    # The host's language is ndX's: ChiSurf's catalogues and its UI language
+    # go to emtk, and ndX (its own "ndxplorer" catalogue domain) follows it.
+    install_translations()
     store = ndx_layout_store() if layout_store == "default" else layout_store
     app = NdxApp(layout_store=store, session_autosave=session_autosave)
     app.chisurf_rpc = chisurf_rpc if chisurf_rpc is not None else make_inprocess_chisurf_client()

@@ -7,11 +7,13 @@ sites in the GUI. This module is the single indirection every *data-driven*
 string flows through so the whole modern UI can be translated from one place.
 
 The core layer must stay import-clean of Qt (the headless/server path in
-:mod:`chisurf.server` must not pull in a GUI toolkit), so :func:`tr` defaults to
-the **identity** function. The GUI binds a real translator at startup via
-:func:`set_translation_backend` — typically ``QCoreApplication.translate`` — after
-which the same :func:`tr` calls return localized text. This mirrors the
-settings-driven, swappable design of :mod:`chisurf.gui.tooltip`.
+:mod:`chisurf.server` must not pull in a GUI toolkit). Without a backend,
+:func:`tr` delegates to the shared, Qt-free toolkit seam :mod:`emtk.i18n` under
+the ``"chisurf"`` domain, with ``chisurf/gui/i18n/*.ts`` registered as that
+domain's catalogues and the language read from ``gui.language`` (so with the
+default English setting it is the identity, as before). The legacy Qt shell
+still binds ``QCoreApplication.translate`` via :func:`set_translation_backend`,
+which then takes precedence, and the native shell binds the same toolkit seam.
 
 The active locale is read from the ChiSurf settings YAML under ``gui.language``
 (a two-letter code such as ``"en"`` or ``"de"``); ``"en"`` is the canonical
@@ -20,7 +22,7 @@ source language and needs no catalogue.
 Examples
 --------
 >>> from chisurf.core.support import i18n
->>> i18n.tr("Convolution")            # identity by default
+>>> i18n.tr("Convolution")            # identity for the default English setting
 'Convolution'
 >>> i18n.set_translation_backend(lambda ctx, text: {"Convolution": "Faltung"}.get(text, text))
 >>> i18n.tr("Convolution")
@@ -38,6 +40,9 @@ DEFAULT_LOCALE = "en"
 #: Qt translation context used for every data-driven ChiSurf string. Keeping a
 #: single context keeps the extractor and the ``.ts`` catalogue flat and simple.
 DEFAULT_CONTEXT = "chisurf"
+
+#: The :mod:`emtk.i18n` domain ChiSurf's catalogues are registered under.
+DOMAIN = "chisurf"
 
 #: Signature of a translation backend: ``(context, source_text) -> translated``.
 TranslationBackend = typing.Callable[[str, str], str]
@@ -65,7 +70,7 @@ def has_translation_backend() -> bool:
 
 
 def tr(text: str | None, context: str = DEFAULT_CONTEXT) -> str | None:
-    """Translate ``text`` through the active backend (identity if none).
+    """Translate ``text`` through the active backend, else :mod:`emtk.i18n`.
 
     Empty/``None`` values pass straight through so call sites can wrap optional
     fields unconditionally. Any backend exception falls back to the source text
@@ -83,12 +88,49 @@ def tr(text: str | None, context: str = DEFAULT_CONTEXT) -> str | None:
     str or None
         The translated string, or the input unchanged.
     """
-    if _backend is None or not text:
+    if not text:
         return text
     try:
-        return _backend(context, text)
+        if _backend is not None:
+            return _backend(context, text)
+        return _toolkit().tr(text, context=context, domain=DOMAIN)
     except Exception:
         return text
+
+
+_registered = False
+
+
+def catalogue_directory():
+    """Return the directory of ChiSurf's ``chisurf_<code>.ts`` catalogues."""
+    import pathlib
+
+    return pathlib.Path(__file__).resolve().parents[2] / "gui" / "i18n"
+
+
+def register_catalogues():
+    """Register ChiSurf's catalogues and language setting with :mod:`emtk.i18n`.
+
+    Idempotent and Qt-free. The catalogues are parsed lazily by the toolkit,
+    one language at a time; ``gui.language`` becomes the toolkit's default
+    language (an explicit ``emtk.i18n.set_language`` or ``EMTK_LANG`` wins).
+    Returns the :mod:`emtk.i18n` module.
+    """
+    global _registered
+    from emtk import i18n as toolkit
+
+    if not _registered:
+        toolkit.add_catalogue(DOMAIN, catalogue_directory())
+        toolkit.set_language_provider(get_locale)
+        if toolkit.default_domain() is None:
+            toolkit.set_default_domain(DOMAIN)
+        _registered = True
+    return toolkit
+
+
+def _toolkit():
+    """Return :mod:`emtk.i18n` with ChiSurf's catalogues registered."""
+    return register_catalogues()
 
 
 def get_locale() -> str:

@@ -23,7 +23,7 @@ from emtk.im_core import get_current_context
 
 from chisurf.emtk.background_build import BackgroundBuild
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
-from chisurf.plugins.emtk_layout import action_button, window_size
+from chisurf.plugins.emtk_layout import action_button, action_caption, window_size
 
 if TYPE_CHECKING:
     from chimol.hosts.native.app import ChimolApp
@@ -57,7 +57,7 @@ class ChimolHostApp(ImApp):
         self._drag_from: tuple[float, float] | None = None
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.help_window = EmTkHelpWindow(
-            title="ChiMOL — Help", resource=HERE / "help.md", owner=self
+            title=tr("ChiMOL — Help"), resource=HERE / "help.md", owner=self
         )
         self.tour = EmTkGuidedTour(
             steps=HERE / "guide.json",
@@ -234,7 +234,7 @@ class ChimolHostApp(ImApp):
         box = (0, 0, width, height)
         im.begin("ChiMOL", box)
         if self._error:
-            im.heading("ChiMOL unavailable", level=2)
+            im.heading(tr("ChiMOL unavailable"), level=2)
             im.text_wrapped(self._error)
             im.end()
             return
@@ -259,7 +259,7 @@ class ChimolHostApp(ImApp):
         if self._objects_seen is not None and objects > self._objects_seen:
             self.tour.notify_used("example")
         self._objects_seen = objects
-        im.text(f"ChiMOL · {objects} object(s)")
+        im.text(tr("ChiMOL · {count} object(s)").format(count=objects))
         self.item_rects["status"] = im.get_item_rect()
         self._toolbar(width)
         im.end()
@@ -267,8 +267,17 @@ class ChimolHostApp(ImApp):
         self.tour.draw(width, height)
 
     def _toolbar(self, width: float) -> None:
-        """Help and Guide, right-aligned in the status strip."""
-        im.same_line(max(0.0, width - 260.0))
+        """Load example, Help and Guide, right-aligned in the status strip.
+
+        Measured from the translated captions: a fixed offset pushed
+        "Anleitung" past the window edge in German.
+        """
+        style = im.get_style()
+        keys = ("example", "help", "guide")
+        needed = sum(
+            im.calc_text_size(action_caption(key))[0] + 2.0 * style.frame_padding[0] for key in keys
+        ) + style.item_spacing[0] * (len(keys) - 1) + 2.0 * style.item_spacing[0]
+        im.same_line(max(0.0, width - needed))
         if action_button("example"):
             self.load_example()
         self.item_rects["example"] = im.get_item_rect()
@@ -394,4 +403,15 @@ class ChimolHostApp(ImApp):
 
 
 def make_app() -> ChimolHostApp:
+    """The embedded viewer, speaking ChiSurf's language.
+
+    :func:`chisurf.emtk.i18n.install` selects ChiSurf's configured language in
+    :mod:`emtk.i18n`; chimol looks its own strings up there (domain
+    ``"chimol"``), so the viewer's menus, toolbar, panels and feedback follow
+    the host without being told twice -- and a live language switch in ChiSurf
+    reaches the viewer on its next frame.
+    """
+    from chisurf.emtk.i18n import install
+
+    install()
     return ChimolHostApp()

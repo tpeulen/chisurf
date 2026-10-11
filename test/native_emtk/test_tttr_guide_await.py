@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 import tttrlib
-from emtk import i18n
+from emtk.i18n.testing import isolated
 from emtk.testing import Driver
 
 
@@ -17,10 +17,10 @@ def source(tmp_path, monkeypatch):
     """Use the existing deterministic TTTR fixture with isolated preferences."""
     monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path / "settings"))
     monkeypatch.setenv("MMFDB_SETTINGS_DIR", str(tmp_path / "mmfdb"))
-    monkeypatch.setattr(i18n, "_locale", "en")
     from chisurf.plugins.microscopy.imaging_emtk.pixel_testing import flim_ptu
 
-    return Path(flim_ptu(tmp_path / "source.ptu"))
+    with isolated(language="en"):
+        yield Path(flim_ptu(tmp_path / "source.ptu"))
 
 
 def settle(job, driver):

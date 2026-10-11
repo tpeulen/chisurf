@@ -1,7 +1,25 @@
 # Update Log
 
+## 2026-10-11
+
+- emtk.i18n is the shared translation seam (emtk d18512b..334278f): domains, Qt-free `.ts`/JSON catalogues,
+  `python -m emtk.i18n.extract` (merge-safe; `--spec`, `--docstrings`), `emtk.i18n.testing.untranslated_literals`
+  and `isolated()`, emtk's own strings in shipped de/fr catalogues, view_form/data_table/DialogWindow translate
+  where they measure. ChiSurf's `core.support.i18n.tr` delegates to it under domain `chisurf` when no Qt backend
+  is bound; `chisurf.emtk.i18n.install` registers the catalogue directory instead of copying every `.ts` into
+  the hand-added table. Three native_emtk tests moved off emtk.i18n private state. See
+  [i18n](subsystems/i18n.md).
+- ChiMOL is multilingual (de, fr): chimol (own repo, 06fd4a9) is the `chimol` domain of `emtk.i18n` with
+  catalogues `chimol/locales/chimol_{de,fr}.ts` (2160 messages) and guard `tests/test_i18n.py`. The ChiSurf
+  host (`chisurf/plugins/chimol/app.py`) installs ChiSurf's language before starting the viewer, translates
+  its status strip and right-aligns Load example/Help/Guide by the translated captions. Re-extracted the
+  ChiSurf catalogues (60 new de/fr entries translated; the hand-added chimol guide step went obsolete).
+
 ## 2026-10-10
 
+- ndX is multilingual (de, fr): ndxplorer (own repo, e7c4acd) is the `ndxplorer` domain of `emtk.i18n`
+  (1,413 strings, guard without allow-list, Settings > Language when standalone); hosted ndX follows
+  ChiSurf's language live (`chisurf/gui/i18n.py` switches emtk's language too).
 - W6 remainders: the games play music and effects through emtk's Qt-free `emtk.audio` (WAV through
   afplay/paplay/aplay/ffplay); the Qt-free synthesis moved to `chisurf/core/audio/`; every game mutes on
   focus loss and unmutes on focus gain. The acquisition fit window gains a Count rate page. Channel

@@ -70,6 +70,14 @@ Inside ChiSurf a line under the view counts the open objects and holds
 line; Guide walks through opening a structure, turning it and running a
 command, and waits at each step until you have done it.
 
+The viewer speaks ChiSurf's language: menus, toolbar, panels, tooltips and
+the console's messages switch to German or French with ChiSurf's language
+setting, on the next frame. The **command language does not**: `show`,
+`color`, `zoom` and their arguments stay PyMOL's, so a script works in every
+language; `help` describes each command in yours. Standalone, chimol takes
+`--lang de`, else the `EMTK_LANG` environment variable, else the system
+locale.
+
 ## Loading and looking
 
 Open a structure with **File ▸ Open**, or from the command line inside the

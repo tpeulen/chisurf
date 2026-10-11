@@ -6,6 +6,7 @@ import copy
 
 import pytest
 from emtk import i18n
+from emtk.i18n.testing import isolated
 from emtk.testing import Driver
 
 
@@ -15,8 +16,8 @@ def isolated_preferences(tmp_path, monkeypatch):
     monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path / "settings"))
     monkeypatch.setenv("MMFDB_SETTINGS_DIR", str(tmp_path / "mmfdb"))
     monkeypatch.setenv("MMFDB_DATABASE_PATH", str(tmp_path / "metadata.sqlite"))
-    monkeypatch.setattr(i18n, "_catalogs", copy.deepcopy(i18n._catalogs))
-    monkeypatch.setattr(i18n, "_locale", "en")
+    with isolated(language="en"):
+        yield
 
 
 def translated_tooltip_sink(monkeypatch, owner, sources):

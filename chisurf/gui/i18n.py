@@ -286,7 +286,7 @@ def apply_language(code: str, app: QtWidgets.QApplication | None = None) -> str:
 
     Newly created widgets/dialogs render in ``code`` immediately; already-open
     windows only fully retranslate after a restart (Qt re-reads most static text
-    at build time). Does not persist the choice — use
+    at build time); hosted emtk surfaces switch on their next frame. Does not persist the choice — use
     :func:`chisurf.core.support.i18n.set_locale` for that. Returns the applied code
     (``en`` when the requested catalogue is missing). Emits
     :data:`language_notifier` ``language_changed`` so every open picker re-syncs.
@@ -299,6 +299,11 @@ def apply_language(code: str, app: QtWidgets.QApplication | None = None) -> str:
             app.removeTranslator(tr)
     _installed.clear()
     applied = install_translation(app, code)
+    # emtk surfaces hosted in this window (ndX, the emtk tools) translate through
+    # emtk.i18n, not the Qt translator: switch them too, on their next frame.
+    from chisurf.emtk.i18n import set_locale as set_emtk_language
+
+    set_emtk_language(applied)
     _live_notifier().language_changed.emit(applied)
     return applied
 

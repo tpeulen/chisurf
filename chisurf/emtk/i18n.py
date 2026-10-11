@@ -1,4 +1,9 @@
-"""Load ChiSurf translation catalogs for native EMTK without importing Qt."""
+"""Bind ChiSurf's translation catalogues to :mod:`emtk.i18n` without importing Qt.
+
+The catalogues (``chisurf/gui/i18n/chisurf_<code>.ts``) are registered with the
+shared toolkit seam under the ``"chisurf"`` domain; the toolkit parses them
+lazily. :func:`read_catalog` remains for catalogue audits.
+"""
 
 from __future__ import annotations
 
@@ -9,15 +14,11 @@ from chisurf.core.support import i18n as core_i18n
 
 SUPPORTED_LOCALES = ("en", "de", "fr", "es", "pt", "ru")
 _installed = False
-# Parsed catalogs keyed by (path, mtime_ns, size). install() runs once per tool, and a
-# hub installs again for every sub-app it embeds; re-parsing six ~3 MB XML files each
-# time was ~200 ms on the first frame of every hub.
-_parsed: dict[tuple[str, int, int], tuple[dict[str, dict[str, str]], dict[str, str]]] = {}
 
 
 def catalog_directory() -> Path:
     """Return bundled catalogs without importing the legacy GUI package."""
-    return Path(__file__).resolve().parents[1] / "gui" / "i18n"
+    return core_i18n.catalogue_directory()
 
 
 def read_catalog(
@@ -48,25 +49,15 @@ def read_catalog(
     return contexts
 
 
-def _parsed_catalog(path: Path) -> tuple[dict[str, dict[str, str]], dict[str, str]]:
-    """Return a catalog's contexts and its ``default`` fallback mapping, parsed once per file version."""
-    stat = path.stat()
-    key = (str(path), stat.st_mtime_ns, stat.st_size)
-    cached = _parsed.get(key)
-    if cached is None:
-        contexts = read_catalog(path)
-        default: dict[str, str] = {}
-        for mapping in contexts.values():
-            # Use the catalog's generic ChiSurf context when a source is ambiguous.
-            for source, translation in mapping.items():
-                default.setdefault(source, translation)
-        default.update(contexts.get(core_i18n.DEFAULT_CONTEXT, {}))
-        cached = _parsed[key] = (contexts, default)
-    return cached
-
-
 def install(locale: str | None = None, directory: str | Path | None = None) -> str:
-    """Install catalogs and bind data-driven ChiSurf labels to EMTK translation."""
+    """Register ChiSurf's catalogues with :mod:`emtk.i18n` and select a language.
+
+    The catalogues are registered once under the ``"chisurf"`` domain and parsed
+    lazily by the toolkit (one language at a time, never twice); every
+    data-driven ChiSurf label then translates through the same seam as the
+    toolkit's own text. ``directory`` registers an additional catalogue
+    directory for the same domain.
+    """
     from emtk import i18n as toolkit_i18n
 
     global _installed
@@ -74,15 +65,9 @@ def install(locale: str | None = None, directory: str | Path | None = None) -> s
     from chisurf.emtk.shared_i18n import install_shared_translations
 
     install_shared_translations()
-    directory = Path(directory) if directory is not None else catalog_directory()
-    for language in SUPPORTED_LOCALES:
-        path = directory / f"chisurf_{language}.ts"
-        if not path.is_file():
-            continue
-        contexts, default = _parsed_catalog(path)
-        for context, mapping in contexts.items():
-            toolkit_i18n.add_translations(language, mapping, context=context)
-        toolkit_i18n.add_translations(language, default, context="default")
+    core_i18n.register_catalogues()
+    if directory is not None:
+        toolkit_i18n.add_catalogue(core_i18n.DOMAIN, Path(directory))
     # A language already switched live (set_locale, not persisted) must survive a child tool's install().
     live = toolkit_i18n.get_locale() != "en"
     selected = locale or (
@@ -90,7 +75,8 @@ def install(locale: str | None = None, directory: str | Path | None = None) -> s
     )
     toolkit_i18n.set_locale(selected)
     _installed = True
-    core_i18n.set_translation_backend(lambda context, text: toolkit_i18n.tr(text, context=context))
+    # No backend: the core seam delegates to emtk.i18n under the "chisurf" domain.
+    core_i18n.set_translation_backend(None)
     return toolkit_i18n.get_locale()
 
 
