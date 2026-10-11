@@ -84,6 +84,11 @@ icons. The status strip of S5 is still open; the splash window and its startup s
    could: the old *Load Fit* looked for `<name>.fit.json.cs.pto`). Open: the shell's undo history is session-local,
    not written into the `.cs.pto`; login before the session (Auth row) is not built; recording/autosave failures
    with two files of one TXT/CSV reader (known issues, 2026-10-11).
+   Before-halves: `test/native_emtk/capture_shell_s3_qt_before.py` and `capture_shell_s4_qt_before.py` rewrite
+   the S3 and S4 before-halves (`shell_s3_qt_inventory.json`, `shell_s4_qt_inventory.json`; PNGs in
+   `renders/w9_s3/`, `renders/w9_s4/`). Run S4 with the env's python directly, not `conda run` (which exited 1
+   with no trace once). Trap: the ribbon replaces the Qt menu bar widget, so `QMainWindow.menuBar()` segfaults.
+   The scripts read the `.ui`'s own `menuBar` attribute instead.
 8. Measure: a file dropped from the OS arrives with no pointer moves (macOS sends none during a drag), so the shell
    routes it by the drop position that emtk now delivers first (`CanvasEvents.files_dropped`, emtk `ee4c76a`), to
    the dock under the pointer, not the one with the keys. `RealisticDriver.drop_files` reproduces it; the imaging
@@ -98,12 +103,7 @@ icons. The status strip of S5 is still open; the splash window and its startup s
 10. Open: **multi-window** (the emtk gap below) decides whether detached plugin windows survive the move; it goes into
     `~/dev/emtk` with tests. emtk is pushed up to `9931996` (pin, drop position, Driver caption on top) and
     `pixi.lock` pins it. Measure: `git -C ~/dev/emtk log --oneline origin/main..HEAD`.
-11. Measure: `test/native_emtk/capture_shell_s3_qt_before.py` and `capture_shell_s4_qt_before.py` rewrite the S3 and
-    S4 before-halves (`shell_s3_qt_inventory.json`, `shell_s4_qt_inventory.json`; PNGs in `renders/w9_s3/`,
-    `renders/w9_s4/`). Run S4 with the env's python directly, not `conda run` (which exited 1 with no trace once).
-    Trap: the ribbon replaces the Qt menu bar widget, so `QMainWindow.menuBar()` segfaults. The scripts read the
-    `.ui`'s own `menuBar` attribute instead.
-12. Open: S4 remainders. (a) CJK draws one cell per character, narrowed to it (`emtk/dynamic_font.py`): legible at
+11. Open: S4 remainders. (a) CJK draws one cell per character, narrowed to it (`emtk/dynamic_font.py`): legible at
     2x, hard at 1x. Two-cell East Asian width changes every painter's `text_width` and the editors' column
     arithmetic, so it needs a decision first. Not a release blocker: ChiSurf ships no Chinese, Japanese or Korean
     catalogue, so only user text (a file name, a typed label) reaches this path. (b) GLFW 3.4 exposes no preedit, so the native window shows the
@@ -115,7 +115,7 @@ icons. The status strip of S5 is still open; the splash window and its startup s
     `chisurf/emtk/shell_log.py` over `views/log.view.json` (Logging with Filter / Level / Hide / Clear, RPC Monitor
     with Pause / Clear, History that goes to a step). Measure: `KNOWN_GAPS` in
     `test/native_emtk/test_emtk_shell_console.py` (empty).
-13. Measure: the splash on the real launch. `python -m chisurf` with a fresh `CHISURF_SETTINGS_DIR`: the splash
+12. Measure: the splash on the real launch. `python -m chisurf` with a fresh `CHISURF_SETTINGS_DIR`: the splash
     window draws its first frame about 0.25 s after it opens (before the shell is built), the stages advance
     Loading modules → Registering experiments → Starting the server and its plugins → Connecting → Preparing the
     session, the main window opens when the session worker has ended and the splash closes on the main window's
