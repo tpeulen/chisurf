@@ -36,7 +36,10 @@ from chisurf.plugins.modelling.fps_json_editor.core.naming import (
     unique_label_name,
 )
 
-#: The dye parameters a new row starts with (the Qt row's defaults).
+#: The dye parameters a new row starts with: FPS's defaults, as IMP.bff
+#: declares them (its first dye preset, an AV1, the 0.9 A grid Olga and FPS use;
+#: ``allowed_sphere_radius`` -1 derives FPS's seed, half the linker width).
+#: ``test_fps_model_card_defaults_are_imp_bff_defaults`` holds the two together.
 POSITION_DEFAULTS: dict[str, Any] = {
     "linker_length": 20.0,
     "linker_width": 4.5,
@@ -44,8 +47,8 @@ POSITION_DEFAULTS: dict[str, Any] = {
     "radius2": 0.0,
     "radius3": 0.0,
     "body_id": 0,
-    "allowed_sphere_radius": 1.5,
-    "simulation_grid_resolution": 1.5,
+    "allowed_sphere_radius": -1.0,
+    "simulation_grid_resolution": 0.9,
     "anchor_atoms": "",
     "strip_mask": "",
     "contact_volume_thickness": 0.0,
@@ -676,10 +679,14 @@ class FpsEditor:
             res_id,
             atom,
             str(params.get("simulation_type", "AV1")),
-            float(params.get("linker_length", 20.0)),
-            float(params.get("linker_width", 4.5)),
+            float(params.get("linker_length", POSITION_DEFAULTS["linker_length"])),
+            float(params.get("linker_width", POSITION_DEFAULTS["linker_width"])),
             radii,
-            float(params.get("simulation_grid_resolution", 1.5)),
+            float(
+                params.get(
+                    "simulation_grid_resolution", POSITION_DEFAULTS["simulation_grid_resolution"]
+                )
+            ),
         )
 
     def schedule_av(self, rid: str, force: bool = False) -> bool:

@@ -56,12 +56,9 @@ fortune:
   max_length: 300
   min_length: 0
 fps:
-  allowed_sphere_radius: 2
   distance_samples: 100000
   dynamic:
     exponential: false
-  linknodes: 3
-  simulation_grid_resolution: 1
   vdw_max: 2
 fret:
   bin_lifetime: false

@@ -331,3 +331,17 @@ def test_the_shipped_hiv_rt_example_names_structures_that_open_from_its_own_fold
         assert path.is_absolute() and path.is_file() and path.parent == copy.resolve(), name
         expected = "protein_1R0A.pdb" if int(params.get("body_id", 0)) == 0 else "dna.pdb"
         assert path.name == expected, name
+
+
+def test_fps_model_card_defaults_are_imp_bff_defaults():
+    """A new position row starts from FPS's defaults, as IMP.bff declares them."""
+    from chisurf.core.structure.av import av_defaults
+    from chisurf.plugins.modelling.structure_tools.cards.fps_model import POSITION_DEFAULTS
+
+    defaults = av_defaults()
+    assert POSITION_DEFAULTS["linker_length"] == defaults["linker_length"]
+    assert POSITION_DEFAULTS["linker_width"] == defaults["linker_width"]
+    assert POSITION_DEFAULTS["radius1"] == defaults["radius1"]
+    assert POSITION_DEFAULTS["simulation_grid_resolution"] == defaults["simulation_grid_resolution"]
+    # negative derives FPS's seed sphere, half the linker width
+    assert POSITION_DEFAULTS["allowed_sphere_radius"] < 0

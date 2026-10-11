@@ -264,17 +264,21 @@ def compute_efficiencies_from_fps_av(
             structure = chisurf.core.structure.Structure(tmp_pdb)
             for name in needed_positions:
                 cfg = pos_cfg[name] or {}
+
+                def given(key):
+                    # absent is None: BasicAV then takes IMP.bff's (FPS's) default
+                    value = cfg.get(key)
+                    return None if value is None else float(value)
+
                 av_obj = chisurf.core.structure.av.BasicAV(
                     structure,
-                    simulation_grid_resolution=float(
-                        cfg.get("simulation_grid_resolution", None) or 1.5
-                    ),
-                    allowed_sphere_radius=float(cfg.get("allowed_sphere_radius", None) or 1.5),
-                    radius1=float(cfg.get("radius1", 3.5)),
-                    radius2=float(cfg.get("radius2", 4.5)),
-                    radius3=float(cfg.get("radius3", 3.5)),
-                    linker_width=float(cfg.get("linker_width", 0.5)),
-                    linker_length=float(cfg.get("linker_length", 20.0)),
+                    simulation_grid_resolution=given("simulation_grid_resolution"),
+                    allowed_sphere_radius=given("allowed_sphere_radius"),
+                    radius1=given("radius1"),
+                    radius2=given("radius2"),
+                    radius3=given("radius3"),
+                    linker_width=given("linker_width"),
+                    linker_length=given("linker_length"),
                     simulation_type=str(cfg.get("simulation_type", "AV1")),
                     chain_identifier=str(cfg.get("chain_identifier") or "").strip() or None,
                     residue_name=str(cfg.get("residue_name") or "").strip() or None,

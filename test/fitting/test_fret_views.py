@@ -276,8 +276,11 @@ def test_acceptor_density(dimension, periodic):
 def test_a_structure_ensemble():
     """FRET against the accessible volumes of two structures at equal fractions.
 
-    ChiSurf's classic structure model is replaced; its curve at these numbers
-    was stored before (data/fret_structure_reference.json).
+    ChiSurf's classic structure model is replaced; its curve at these numbers was
+    stored before, and regenerated when the labels took FPS's AV defaults (IMP.bff
+    51a31f831: radius 3.5 Å, grid 0.9 Å, FPS's first linker step). At the classic
+    settings (radius 4 Å, grid 0.5 Å) the new search stays within 0.52 % of the classic
+    curve (data/fret_structure_reference.json).
     """
     import json
     import pathlib

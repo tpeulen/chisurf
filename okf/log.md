@@ -2,6 +2,12 @@
 
 ## 2026-10-11
 
+- Accessible-volume defaults are FPS's and Olga's (owner decision): linker 20 / width 4.5, AV1 radius 3.5, AV3
+  radii 5 / 4.5 / 1.5, grid 0.9, clearance 0.5 W and FPS's first linker step, declared once in IMP.bff
+  (51a31f831, `IMP.bff.AV_DEFAULT_*`) and read by ChiSurf's AV, FRET-structure model and FPS card. 3GUN vs FPS's
+  own routine: bias +0.00 Å, rmsd 0.84 Å over 24 pairs. The structure-ensemble reference curve is regenerated
+  (0.52 % from the classic model). Open: FPS hops 3 voxels from every node, IMP.bff only from the seed, so
+  T4L-132 CB is empty at a 0.5 Å grid. See [known issues](references/known-issues.md).
 - Plugin icons in the emtk shell draw in colour, one box size per class (emtk 04358f3, `emtk/icons.py`): every
   icon had been a text glyph rasterised to a one-colour mask in one monospace cell. Icons typed into a caption
   (Help, Guide, the language button) are still grey; see [UI vocabulary](subsystems/ui-vocabulary.md). Pins:

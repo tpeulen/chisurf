@@ -38,6 +38,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Channel B | `channel_b` | choice |  | choices: `channel_names` | Second channel of the pair. Manders M1 answers 'how much of A sits with B', M2 the mirror question, so the A/B order matters for those two coefficients. |
 | Frame | `frame` | int |  | -1 … 100000 (step 1) | Which frame of the stack to analyse. -1 (default) sums every frame, which maximises the signal-to-noise of the coefficients; pick a single frame to follow a time series. |
 | Axis order | `channel_axis_mode` | choice |  | choices: auto, first axis | Only for images whose axes are unlabelled. 'auto' treats a short leading axis (≤ 4 planes) as the channels and anything longer as frames; 'first axis' forces the leading axis to be the channels. TIFFs written with ImageJ/OME metadata are read exactly as labelled and ignore this. |
+| Setup | `setup_pick` | choice |  | choices: `setup_choices` | Detector setup whose named windows (green, red, …) become the pickable image channels — the same vocabulary as the rest of ChiSurf. Setups are saved in Setup: Channel Definition (inside Image Tools the hub's Setup supplies them). Keep the raw detector channels to use the routing channels stored in the file; it does not apply to camera images. |
 | View | `view_tab` | choice |  | choices: `tab_titles` | Bring any result view forward, also when the row of tabs is wider than the window. |
 
 ### Background / thresholds

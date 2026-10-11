@@ -284,11 +284,11 @@
               "kind": "float",
               "style": "spin",
               "label": "Allowed sphere",
-              "minimum": 0.0,
+              "minimum": -1.0,
               "maximum": 50.0,
               "decimals": 2,
               "step": 0.5,
-              "description": "Radius of the sphere around the attachment point where the dye may clash."
+              "description": "Radius of the sphere around the attachment point where the linker may clash. -1 derives FPS's seed sphere, half the linker width."
             },
             {
               "type": "value",

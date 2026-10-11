@@ -84,9 +84,10 @@ def test_t4l_ca_labels_give_a_distance_distribution():
     """148L at FPS's linker width, CA sites: a distribution, not a skipped structure.
 
     N132's CA was walled in by its bonded neighbours at the 0.5 A grid the
-    model uses (and found at 0.7 A): the accessible-volume search left the
-    anchor one stencil step at a time. IMP.bff's search now lets the linker's
-    first step reach one width plus one grid step, as FPS and FRETraj do.
+    model used (and found at 0.7 A): the accessible-volume search left the
+    anchor one stencil step at a time. IMP.bff's search now takes FPS's first
+    step (three-voxel hops from the W/2 seed), and the model's labels take
+    FPS's and Olga's defaults, an AV1 on the 0.9 A grid.
     """
     import pytest
 
@@ -100,3 +101,17 @@ def test_t4l_ca_labels_give_a_distance_distribution():
     # I100 sits in the T4L core: that label has no volume, and the error says which.
     with pytest.raises(ValueError, match=r"label 2 \(residue 100 CA\)"):
         fret_structure.av_distance_distribution(structure, axis, res_1=44, res_2=100)
+
+
+def test_the_label_defaults_are_imp_bffs_av_defaults():
+    """The structure fit's labels are FPS's defaults as IMP.bff declares them."""
+    from chisurf.core.structure.av import av_defaults
+
+    defaults = av_defaults()
+    labels = fret_structure.LABEL_DEFAULTS
+    for k in (1, 2):
+        assert labels[f"linker_length_{k}"] == defaults["linker_length"]
+        assert labels[f"linker_width_{k}"] == defaults["linker_width"]
+        assert labels[f"radius1_{k}"] == defaults["radius1"]
+        assert (labels[f"radius2_{k}"], labels[f"radius3_{k}"]) == defaults["av3_radii"][1:]
+    assert labels["simulation_grid_resolution"] == defaults["simulation_grid_resolution"]

@@ -18,7 +18,10 @@ import numpy as np
 import chisurf as cs
 from chisurf.core.models.description import for_family
 
-#: The label settings a structure's accessible volumes are computed with.
+#: The label settings a structure's accessible volumes are computed with. The
+#: AV parameters are FPS's defaults (its first dye preset, an AV1 of radius
+#: 3.5 Å on Olga's and FPS's 0.9 Å grid), as IMP.bff declares them; radius2 and
+#: radius3 are FPS's AV3 radii and only an AV3 reads them.
 LABEL_DEFAULTS = {
     "res_1": 0,
     "res_2": 0,
@@ -28,13 +31,13 @@ LABEL_DEFAULTS = {
     "linker_length_2": 20.0,
     "linker_width_1": 4.5,
     "linker_width_2": 4.5,
-    "radius1_1": 4.0,
-    "radius1_2": 4.0,
+    "radius1_1": 3.5,
+    "radius1_2": 3.5,
     "radius2_1": 4.5,
     "radius2_2": 4.5,
-    "radius3_1": 3.5,
-    "radius3_2": 3.5,
-    "simulation_grid_resolution": 0.5,
+    "radius3_1": 1.5,
+    "radius3_2": 1.5,
+    "simulation_grid_resolution": 0.9,
 }
 
 

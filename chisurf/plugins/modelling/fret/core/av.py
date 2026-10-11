@@ -105,7 +105,7 @@ def compute_av(
     linker_length: float,
     linker_width: float,
     radii: tuple[float, float, float],
-    disc_step: float = 1.5,
+    disc_step: float | None = None,
     pdb_path: str | None = None,
     source_info: dict | None = None,
 ) -> AccessibleVolume:
@@ -127,8 +127,9 @@ def compute_av(
         The linker, Angstrom.
     radii : tuple of float
         The dye's three radii; a zero second or third radius means AV1.
-    disc_step : float
-        Grid resolution, Angstrom.
+    disc_step : float, optional
+        Grid resolution, Angstrom; ``None`` takes IMP.bff's default
+        (``AV_DEFAULT_SIMULATION_GRID_RESOLUTION``, FPS's and Olga's 0.9).
     pdb_path : str, optional
         The structure the site names. When given together with
         ``source_info`` the attachment atom is resolved by *identity*, which
@@ -145,6 +146,8 @@ def compute_av(
     import IMP.bff as bff
 
     r1, r2, r3 = (float(r) for r in radii)
+    if disc_step is None:
+        disc_step = bff.AV_DEFAULT_SIMULATION_GRID_RESOLUTION
     xyz = np.ascontiguousarray(np.asarray(source_xyz, dtype=np.float64)[:3])
 
     if pdb_path and source_info:
@@ -199,6 +202,8 @@ def compute_avs_for_structure(
     positions : dict
         fps.json Positions section.
     """
+    import IMP.bff as bff
+
     if isinstance(pdb_path, (list, tuple)):
         pdb_paths = list(pdb_path)
     elif isinstance(pdb_path, str) and "," in pdb_path:
@@ -218,12 +223,20 @@ def compute_avs_for_structure(
         else:
             curr_atoms = atoms
 
-        ll = float(pdef.get("linker_length", 20.0))
-        lw = float(pdef.get("linker_width", 1.0))
-        r1 = float(pdef.get("radius1", 3.5))
-        r2 = float(pdef.get("radius2", 0.0))
-        r3 = float(pdef.get("radius3", 0.0))
-        ds = float(disc_step or pdef.get("simulation_grid_resolution", 1.5))
+        # Absent parameters take IMP.bff's defaults -- FPS's, the same ones
+        # its own fps.json reader applies; an AV3 gets FPS's three radii.
+        av3 = pdef.get("simulation_type", "AV1") == "AV3"
+        ll = float(pdef.get("linker_length", bff.AV_DEFAULT_LINKER_LENGTH))
+        lw = float(pdef.get("linker_width", bff.AV_DEFAULT_LINKER_WIDTH))
+        r1 = float(
+            pdef.get("radius1", bff.AV_DEFAULT_AV3_RADIUS1 if av3 else bff.AV_DEFAULT_RADIUS1)
+        )
+        r2 = float(pdef.get("radius2", bff.AV_DEFAULT_AV3_RADIUS2 if av3 else 0.0))
+        r3 = float(pdef.get("radius3", bff.AV_DEFAULT_AV3_RADIUS3 if av3 else 0.0))
+        ds = float(
+            disc_step
+            or pdef.get("simulation_grid_resolution", bff.AV_DEFAULT_SIMULATION_GRID_RESOLUTION)
+        )
 
         chain = pdef.get("chain_identifier", "")
         resseq = pdef.get("residue_seq_number", 0)

@@ -77,7 +77,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | Body ID | `body_id` | int |  | 0 … 10000 | The rigid body the position belongs to (docking). |
-| Allowed sphere | `allowed_sphere_radius` | float |  | 0.0 … 50.0 (step 0.5) | Radius of the sphere around the attachment point where the dye may clash. |
+| Allowed sphere | `allowed_sphere_radius` | float |  | -1.0 … 50.0 (step 0.5) | Radius of the sphere around the attachment point where the linker may clash. -1 derives FPS's seed sphere, half the linker width. |
 | Grid resolution | `simulation_grid_resolution` | float |  | 0.1 … 10.0 (step 0.1) | Grid spacing of the accessible volume, in angstrom. |
 | Anchor atoms | `anchor_atoms` | str |  |  | Atoms the linker is anchored to, if not the attachment atom. |
 | Strip mask | `strip_mask` | str |  |  | Atoms removed before the volume is computed. |

@@ -77,6 +77,30 @@ def _compute_av():
     return compute_av
 
 
+def av_defaults() -> dict:
+    """The accessible-volume defaults, as ``IMP.bff`` declares them.
+
+    They are FPS's and Olga's own values (FPS's first dye preset, the 0.9 Å
+    grid both use for an AV1), and they live once, in IMP.bff's
+    ``ProbeAccessibleVolumeDefaults.h``; ChiSurf reads them rather than
+    restating them, so an omitted parameter means the same here as at every
+    IMP.bff door.
+    """
+    import IMP.bff
+
+    return {
+        "linker_length": IMP.bff.AV_DEFAULT_LINKER_LENGTH,
+        "linker_width": IMP.bff.AV_DEFAULT_LINKER_WIDTH,
+        "radius1": IMP.bff.AV_DEFAULT_RADIUS1,
+        "av3_radii": (
+            IMP.bff.AV_DEFAULT_AV3_RADIUS1,
+            IMP.bff.AV_DEFAULT_AV3_RADIUS2,
+            IMP.bff.AV_DEFAULT_AV3_RADIUS3,
+        ),
+        "simulation_grid_resolution": IMP.bff.AV_DEFAULT_SIMULATION_GRID_RESOLUTION,
+    }
+
+
 class BasicAV:
     """The accessible volume of a dye at one labelling site.
 
@@ -96,11 +120,11 @@ class BasicAV:
         structure,
         simulation_grid_resolution: float = None,
         allowed_sphere_radius: float = None,
-        radius1: float = 1.5,
-        radius2: float = 4.5,
-        radius3: float = 3.5,
-        linker_width: float = 1.5,
-        linker_length: float = 20.5,
+        radius1: float = None,
+        radius2: float = None,
+        radius3: float = None,
+        linker_width: float = None,
+        linker_length: float = None,
         simulation_type: str = "AV1",
         chain_identifier: str = None,
         residue_name: str = None,
@@ -110,15 +134,26 @@ class BasicAV:
         verbose: bool = False,
         **kwargs,
     ):
+        # ``None`` is "not chosen": the parameter takes IMP.bff's default
+        # (av_defaults), FPS's -- an AV3 its three radii, an AV1 one radius.
+        defaults = av_defaults()
+        av3 = simulation_type == "AV3"
         if simulation_grid_resolution is None:
-            simulation_grid_resolution = chisurf.core.settings.fps["simulation_grid_resolution"]
+            simulation_grid_resolution = defaults["simulation_grid_resolution"]
+        if linker_length is None:
+            linker_length = defaults["linker_length"]
+        if linker_width is None:
+            linker_width = defaults["linker_width"]
+        if radius1 is None:
+            radius1 = defaults["av3_radii"][0] if av3 else defaults["radius1"]
+        if radius2 is None:
+            radius2 = defaults["av3_radii"][1]
+        if radius3 is None:
+            radius3 = defaults["av3_radii"][2]
         self.dg = simulation_grid_resolution
         # ``None`` means the caller did not choose: hand upstream the sentinel
-        # and let it derive the FPS mapping ``max(1.5, linker_width / 2 +
-        # grid / 2)``. The search inflates obstacles by half the linker width,
-        # so an explicit radius below that walls the source in and the volume
-        # comes back empty (upstream AV.h: the flat value was the fps.json
-        # door's bug, now unified into this derivation).
+        # and let it derive FPS's seed sphere, half the linker width
+        # (IMP.bff ``av_derived_allowed_sphere_radius``).
         self.allowed_sphere_radius = (
             -1.0 if allowed_sphere_radius is None else float(allowed_sphere_radius)
         )

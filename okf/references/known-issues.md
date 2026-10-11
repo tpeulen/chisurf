@@ -571,6 +571,13 @@ status: resolved 2026-10-11 — the four defects fixed at their root, each with 
      core and has no volume by any reference (FRETraj too), so 10/100 still has no distance — the error now names the
      label (`label 2 (residue 100 CA) has no accessible volume…`). D10 CA is still empty at 0.5 Å and found at 0.7 Å:
      the stencil away from the anchor is unchanged. Test: `test/models/test_fret_structure.py::test_t4l_ca_labels_give_a_distance_distribution`.
+     **Decided 2026-10-11 (owner: "av defaults should be fps/olga defaults, take from there").** The hop is now FPS's
+     first step, `0.5 W + 3 dg` (seed `LinkerInitialSphere = 0.5` plus one `LinkSearchNodes = 3` hop), not FRETraj's
+     `W + dg`; the derived clearance is FPS's seed `0.5 W`; and every AV default (L 20, W 4.5, R 3.5, AV3 radii
+     5/4.5/1.5, grid 0.9) comes from FPS's first dye preset and Olga's grid, declared once in imp.bff
+     `include/ProbeAccessibleVolumeDefaults.h` and read by ChiSurf (`chisurf.core.structure.av.av_defaults`). The
+     structure fit's labels moved with it (AV1 radius 4.0 → 3.5, grid 0.5 → 0.9). Measured numbers in imp.bff
+     `okf/validation/fps_screening_ab.md`.
   3. *ProteinMC Structure page*: the shell sends a read file as the codec's record (`dataset.load` with `curve_data`);
      a structure had none, so the server fabricated an empty `DataCurve` named after the file. `_extract_curve_data`
      now sends structures (and groups of them) as structure records and the server restores them with
