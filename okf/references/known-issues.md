@@ -6,7 +6,7 @@ description: Open, resolved and withdrawn defects with their measurement, owner 
 
 ## QA walk of the FCS, lifetime, anisotropy, filtered-FCS, PCH/FIDA, console and project guides (found 2026-10-11)
 
-status: fixed — owner: opus-5.5/qa-spectroscopist (T-20261011-QA-FCS-TCSPC). Walked guides 04, 09, 10, 17, 59, 75,
+status: resolved 2026-10-11 — owner: qa-spectroscopist (T-20261011-QA-FCS-TCSPC). Walked guides 04, 09, 10, 17, 59, 75,
 76, 91 and saving_projects step by step in the Qt shell (`chisurf.gui.get_app()` driver, offscreen, scratch
 `CHISURF_SETTINGS_DIR`) and the emtk shell (`make_app(persist=False)` on `emtk.testing_realistic.HostedDriver`,
 offscreen wgpu canvas; synthetic `Driver` for the console), every step screenshotted and read. Both shells agree

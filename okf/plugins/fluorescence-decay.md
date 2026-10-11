@@ -16,8 +16,6 @@ timestamp: '2026-07-05T00:00:00Z'
    help. Known issue "Anisotropy Wizard's global fit misses its own simulated example" (2026-10-11).
 2. Open: **the VV/VH G-factor tool has no demo**, so guide 91 cannot be walked without user files; the synthetic
    references the guide figures use live only in the screenshot scripts.
-3. Done 2026-10-11: the wizard's fits are created with a runnable range (`initialise_fit_range` in
-   `build_fit_group`); guide walk method and the rest in known issue "QA walk of the FCS, lifetime, …".
 
 The `fluorescence_decay/` group analyses Time-Correlated Single Photon Counting (TCSPC) microtime histograms: fitting lifetime decays, recovering the instrument response function (IRF), extracting lifetime or FRET-distance distributions, and resolving rotational anisotropy. These tools depend on a correct IRF and instrument corrections, so estimation and calibration steps sit alongside the fitting steps.
 
