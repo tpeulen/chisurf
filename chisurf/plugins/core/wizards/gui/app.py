@@ -11,10 +11,11 @@ import importlib
 from pathlib import Path
 
 from emtk import im
+from emtk.i18n import tr as tr_domain
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.calculator.hub.gui.app import CalculatorHubApp
-from chisurf.plugins.emtk_layout import action_button
+from chisurf.plugins.emtk_layout import action_button, action_caption
 
 from ..core.registry import default_wizards
 from .strings import install_translations, tr
@@ -87,20 +88,28 @@ class WizardHubApp(CalculatorHubApp):
         width, height = im.get_main_viewport().size
         # Wide enough for the longest label behind its icon, and no wider: the wizard gets the rest.
         fit = (
-            max((im.calc_text_size(e.label)[0] for e in self.entries), default=0.0)
+            max((im.calc_text_size(tr_domain(e.label))[0] for e in self.entries), default=0.0)
             + im.selectable_icon_width()
             + 3.0 * im.get_style().frame_padding[0]
         )
-        left = min(_LIST_MAX_W, max(_LIST_MIN_W, width * 0.15, fit))
+        # The Guide / Help row sits side by side under the list: the rail is never narrower than the two
+        # captions in the active language (measured, not a pixel guess), whatever the cap on the list.
+        style = im.get_style()
+        buttons = (
+            sum(im.calc_text_size(action_caption(k))[0] + 2.0 * style.frame_padding[0] for k in ("guide", "help"))
+            + style.item_spacing[0]
+            + 2.0 * (style.item_spacing[0] + style.window_border_size)
+        )
+        left = max(buttons, min(_LIST_MAX_W, max(_LIST_MIN_W, width * 0.15, fit)))
         im.set_next_window_pos((0, 0), im.Cond.ALWAYS)
         im.set_next_window_size((left, height), im.Cond.ALWAYS)
         if im.begin(tr("Wizards"), flags=im.WindowFlags.NO_RESIZE):
             first = last = None
             for entry in self.entries:
-                if im.selectable(entry.label, self.selected == entry.id, icon=entry.icon):
+                if im.selectable(tr_domain(entry.label), self.selected == entry.id, icon=entry.icon):
                     self.select(entry.id)
                     self.tour.notify_used("wizards_list")
-                im.set_item_tooltip(entry.description)
+                im.set_item_tooltip(tr_domain(entry.description))
                 rect = im.get_item_rect()
                 first, last = first or rect, rect
                 self.item_rects["entry:" + entry.id] = rect
@@ -123,7 +132,11 @@ class WizardHubApp(CalculatorHubApp):
         entry = next((e for e in self.entries if e.id == self.selected), None)
         hint = tr("Select a wizard on the left to get started.")
         wrap = max(width - left - 16.0, 50.0)
-        shown = [entry.label if entry else "", entry.description if entry else hint, self.error]
+        shown = [
+            tr_domain(entry.label) if entry else "",
+            tr_domain(entry.description) if entry else hint,
+            self.error,
+        ]
         header_h = max(
             _HEADER_H, 10.0 + sum(im.calc_text_size(t, wrap_width=wrap)[1] for t in shown if t)
         )
@@ -133,8 +146,8 @@ class WizardHubApp(CalculatorHubApp):
             "Wizard description", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE
         ):
             if entry:
-                im.text_unformatted(entry.label)
-                im.text_wrapped(entry.description)
+                im.text_unformatted(tr_domain(entry.label))
+                im.text_wrapped(tr_domain(entry.description))
             else:
                 im.text_wrapped(hint)
             if self.error:

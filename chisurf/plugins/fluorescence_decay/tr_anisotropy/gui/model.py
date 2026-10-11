@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 import numpy as np
+from emtk.i18n import mark
 
 from chisurf.core.data import DataCurve
 from chisurf.core.experiments.tcspc.reader import TCSPCReader
@@ -81,7 +82,7 @@ class NativeAnisotropyModel(AnisotropyViewModel):
         self.first_column_is_time = False
         self.fit_groups = None
         self.loaded_signature = None
-        self.status = "Select the polarization-resolved inputs."
+        self.status = mark("Select the polarization-resolved inputs.")
         self.lifetime = SpectrumTable(self, "lifetime_spectrum", "new_lifetime")
         self.rotation = SpectrumTable(self, "rotation_spectrum", "new_rotation")
 
@@ -217,7 +218,7 @@ class NativeAnisotropyModel(AnisotropyViewModel):
 
         self.region_lb, self.region_ub = initial_region(len(self.data["irf_vv"].y))
         self.apply_region(self.region_lb, self.region_ub)
-        self.status = "Loaded VV/VH IRFs and decays; select a dark IRF background region."
+        self.status = mark("Loaded VV/VH IRFs and decays; select a dark IRF background region.")
         self.notify("refresh")
         return True
 
@@ -274,7 +275,7 @@ class NativeAnisotropyModel(AnisotropyViewModel):
                 self._corrections,
                 irf_window=window,
             )
-            self.status = "Created VV, VH and global anisotropy fits with shared parameters."
+            self.status = mark("Created VV, VH and global anisotropy fits with shared parameters.")
             self._set_status(True, self.status)
             return self.fit_groups
         except Exception as exc:

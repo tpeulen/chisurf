@@ -21,6 +21,7 @@ import typing
 from collections.abc import Callable
 
 import numpy as np
+from emtk.i18n import mark, tr
 
 from chisurf.core.api import add_dataset, dataset_objects, update_fit
 
@@ -32,28 +33,37 @@ logger = logging.getLogger(__name__)
 
 _VIEW_JSON = pathlib.Path(__file__).parent.parent / "anisotropy.view.json"
 
-_WELCOME_HTML = """
-<h3>Time-Resolved Anisotropy</h3>
-<p>This wizard builds a linked VV/VH global anisotropy fit from polarisation-resolved
-decays.</p>
-<ol>
-<li><b>Data</b> — point to the VV/VH IRF and sample decays.</li>
-<li><b>IRF</b> — pick a background region; the IRFs are background-subtracted and
-intensity-matched.</li>
-<li><b>Corrections</b> — set the g-factor and l1/l2 channel-mixing factors.</li>
-<li><b>Components</b> — define the lifetime and rotation spectra.</li>
-<li><b>Finish</b> — create the VV, VH and global fits with all parameters linked.</li>
-</ol>
-"""
+#: The introduction and the closing explanation, one marked piece each: translated where they are built.
+_WELCOME_PIECES = (
+    mark("<h3>Time-Resolved Anisotropy</h3>"),
+    mark(
+        "<p>This wizard builds a linked VV/VH global anisotropy fit from polarisation-resolved decays.</p>"
+    ),
+    "<ol>",
+    mark("<li><b>Data</b> — point to the VV/VH IRF and sample decays.</li>"),
+    mark(
+        "<li><b>IRF</b> — pick a background region; the IRFs are background-subtracted and intensity-matched.</li>"
+    ),
+    mark("<li><b>Corrections</b> — set the g-factor and l1/l2 channel-mixing factors.</li>"),
+    mark("<li><b>Components</b> — define the lifetime and rotation spectra.</li>"),
+    mark("<li><b>Finish</b> — create the VV, VH and global fits with all parameters linked.</li>"),
+    "</ol>",
+)
 
-_FINISH_HTML = """
-<h3>Create the anisotropy fit</h3>
-<p>Two lifetime fits (VV, VH) are created and wrapped in a global fit. The VH
-channel is linked to VV for the photon count, rotation components, lifetimes and
-instrument corrections, so the anisotropy is fit consistently across both
-polarisations.</p>
-<p>Click <b>Create fits</b> to add them to ChiSurf.</p>
-"""
+_FINISH_PIECES = (
+    mark("<h3>Create the anisotropy fit</h3>"),
+    mark(
+        "<p>Two lifetime fits (VV, VH) are created and wrapped in a global fit. The VH channel is linked to VV for "
+        "the photon count, rotation components, lifetimes and instrument corrections, so the anisotropy is fit "
+        "consistently across both polarisations.</p>"
+    ),
+    mark("<p>Click <b>Create fits</b> to add them to ChiSurf.</p>"),
+)
+
+
+def _built(pieces) -> str:
+    """The marked *pieces* in the active language, one per line."""
+    return "\n".join(piece if piece.startswith(("<ol", "</ol")) else tr(piece) for piece in pieces) + "\n"
 
 
 class AnisotropyViewModel:
@@ -311,7 +321,7 @@ class AnisotropyViewModel:
     # ── info sources ────────────────────────────────────────────────────
     def welcome_html(self) -> str:
         """Return the welcome-step introduction (HTML)."""
-        return _WELCOME_HTML
+        return _built(_WELCOME_PIECES)
 
     def data_html(self) -> str:
         """Return a live checklist of the four input files (HTML)."""
@@ -329,7 +339,7 @@ class AnisotropyViewModel:
 
     def finish_html(self) -> str:
         """Return the finish-step explanation (HTML)."""
-        return _FINISH_HTML + (self._status_html or "")
+        return _built(_FINISH_PIECES) + (self._status_html or "")
 
     # ── completion booleans ─────────────────────────────────────────────
     @property
@@ -354,10 +364,10 @@ class AnisotropyViewModel:
         from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 
         if not (self.data_ready and self.components_ready):
-            self._set_status(False, "Data or components missing.")
+            self._set_status(False, mark("Data or components missing."))
             return
         if self.data.get("irf_vv_bg_norm") is None:
-            self._set_status(False, "Load data and set the IRF region first.")
+            self._set_status(False, mark("Load data and set the IRF region first."))
             return
 
         # make the corrected IRFs and sample decays available as datasets
@@ -428,11 +438,11 @@ class AnisotropyViewModel:
 
         fit_vv.update()
         fit_vh.update()
-        self._set_status(True, "Created VV, VH and global anisotropy fits.")
+        self._set_status(True, mark("Created VV, VH and global anisotropy fits."))
 
     def _set_status(self, ok: bool, msg: str) -> None:
         color = "#2e7d32" if ok else "#c62828"
-        self._status_html = f"<p style='color:{color};font-weight:600'>{msg}</p>"
+        self._status_html = f"<p style='color:{color};font-weight:600'>{tr(msg)}</p>"
         self.notify("refresh")
 
 

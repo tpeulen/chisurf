@@ -96,9 +96,9 @@ class AnisotropyApp(ImApp):
             Split("h", 0.22, Region("navigation"), Region("step")), name="tr_anisotropy"
         )
         self.docks.add_window(
-            "navigation", "Anisotropy workflow", self.navigation, dock="navigation", closable=False
+            "navigation", tr("Anisotropy workflow"), self.navigation, dock="navigation", closable=False
         )
-        self.docks.add_window("step", "Workflow step", self.content, dock="step", closable=False)
+        self.docks.add_window("step", tr("Workflow step"), self.content, dock="step", closable=False)
         super().__init__(self.render, continuous=False)
 
     # -- settings, tour, files ----------------------------------------------------------------- #
@@ -196,7 +196,14 @@ class AnisotropyApp(ImApp):
     def navigation(self, box):
         if action_button("help"):
             self.help_window.show()
-        im.same_line()
+        # Side by side while both captions fit the dock (measured in the active language), else stacked.
+        style = im.get_style()
+        both = sum(
+            im.calc_text_size(action_caption(k))[0] + 2.0 * style.frame_padding[0]
+            for k in ("help", "guide")
+        )
+        if both + style.item_spacing[0] <= im.get_content_region_avail()[0]:
+            im.same_line()
         if action_button("guide"):
             self.tour.start()
         im.separator()
@@ -206,7 +213,7 @@ class AnisotropyApp(ImApp):
                 f"{mark} {tr(step['title'])}##anisotropy{index}", selected=self.step_index == index
             ):
                 self.select_step(index)
-            im.set_item_tooltip(step.get("subtitle", step["title"]))
+            im.set_item_tooltip(tr(step.get("subtitle", step["title"])))
             self.item_rects[step["title"]] = im.get_item_rect()
 
     # -- one step -------------------------------------------------------------------------------- #
@@ -403,13 +410,13 @@ class AnisotropyApp(ImApp):
         )
         self.item_rects["create_fits"] = im.get_item_rect()
         if m.fit_groups:
-            im.text("Created: " + ", ".join(str(getattr(g, "name", g)) for g in m.fit_groups))
+            im.text(tr("Created:") + " " + ", ".join(str(getattr(g, "name", g)) for g in m.fit_groups))
 
     def content(self, box):
         m = self.model
         step = self.steps[self.step_index]
-        im.text(step["title"])
-        im.text_wrapped(step.get("subtitle", ""))
+        im.text(tr(step["title"]))
+        im.text_wrapped(tr(step.get("subtitle", "")) if step.get("subtitle") else "")
         im.separator()
         avail_w, avail_h = im.get_content_region_avail()
         bar = 34.0
@@ -432,7 +439,7 @@ class AnisotropyApp(ImApp):
         back_w = im.calc_text_size(tr("Back"))[0] + 2 * im.get_style().frame_padding[0]
         status_w = max(100.0, avail_w - 2 * (back_w + 24.0) - 30.0)
         im.begin_child("status", (status_w, 22.0), scrollable=False)
-        im.text_disabled(m.status[:200])
+        im.text_disabled(tr(m.status)[:200])
         im.end_child()
         spacing = im.get_style().item_spacing[0]
         next_w = im.calc_text_size(tr("Next"))[0] + 2 * im.get_style().frame_padding[0]

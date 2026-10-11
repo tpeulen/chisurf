@@ -159,9 +159,9 @@ class BatchAnalysisApp(ImApp):
 
     def draw_page(self, box: Any = None) -> None:
         """The header of the current step and its page."""
-        im.text(self.model.title)
+        im.text(tr(self.model.title))
         im.begin_disabled(True)
-        im.text_wrapped(self.model.subtitle)
+        im.text_wrapped(tr(self.model.subtitle))
         im.end_disabled()
         im.separator()
         draw_sections(

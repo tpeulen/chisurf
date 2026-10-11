@@ -27,6 +27,8 @@ import threading
 from collections.abc import Callable
 from typing import Any
 
+from emtk.i18n import mark, tr
+
 from chisurf.plugins.emtk_wizard import Step, Stepper
 
 from ..core import runner
@@ -36,29 +38,45 @@ logger = logging.getLogger(__name__)
 
 #: The steps, with the titles, subtitles and completion conditions of ``batch.view.json``.
 STEPS: tuple[Step, ...] = (
-    Step("welcome", "Welcome", "Apply one template fit to many datasets or files."),
-    Step("datasets", "Loaded data", "Optionally pick datasets already loaded in ChiSurf."),
     Step(
-        "files", "Files & fit", "Drop files to process and choose the template fit.", "fit_selected"
+        "welcome", mark("Welcome"), mark("Apply one template fit to many datasets or files.")
     ),
-    Step("run", "Run", "Choose where to save results, then run the batch.", "has_results"),
-    Step("results", "Results", "Per-parameter results of the last run."),
+    Step(
+        "datasets",
+        mark("Loaded data"),
+        mark("Optionally pick datasets already loaded in ChiSurf."),
+    ),
+    Step(
+        "files",
+        mark("Files & fit"),
+        mark("Drop files to process and choose the template fit."),
+        "fit_selected",
+    ),
+    Step(
+        "run",
+        mark("Run"),
+        mark("Choose where to save results, then run the batch."),
+        "has_results",
+    ),
+    Step("results", mark("Results"), mark("Per-parameter results of the last run.")),
 )
 
-_WELCOME_MD = """\
-# Batch Analysis
-
-Apply one **template fit** to many datasets or files in one pass. Each item starts from the template's parameters, so the \
-results are directly comparable.
-
-Before you start:
-
-1. Load some data in ChiSurf and create a fit for one representative dataset.
-2. **Manually optimise** that template fit — its parameter values seed every run.
-3. Pick already-loaded datasets and/or drop files below, choose the template fit, then run.
-
-Results are written to a CSV (plus an optional DOCX report and a ZIP of the per-run exports).
-"""
+_WELCOME_PIECES = (
+    mark("# Batch Analysis"),
+    mark(
+        "Apply one **template fit** to many datasets or files in one pass. Each item starts from the template's "
+        "parameters, so the results are directly comparable."
+    ),
+    mark("Before you start:"),
+    mark(
+        "1. Load some data in ChiSurf and create a fit for one representative dataset.\n"
+        "2. **Manually optimise** that template fit — its parameter values seed every run.\n"
+        "3. Pick already-loaded datasets and/or drop files below, choose the template fit, then run."
+    ),
+    mark(
+        "Results are written to a CSV (plus an optional DOCX report and a ZIP of the per-run exports)."
+    ),
+)
 
 #: Columns of the results table: the CSV's, with the width and tooltip each gets.
 RESULT_COLUMNS = runner.FIELDNAMES
@@ -310,7 +328,7 @@ class BatchModel(Stepper, BatchViewModel):
     # -- texts ------------------------------------------------------------------------------------------------------- #
     def welcome_md(self) -> str:
         """The introduction of the first step (Markdown; the Qt step shows the same text as HTML)."""
-        return _WELCOME_MD
+        return "\n\n".join(tr(piece) for piece in _WELCOME_PIECES) + "\n"
 
     def selection_md(self) -> str:
         """A live summary of the selection (the Qt ``selection_html`` as Markdown)."""

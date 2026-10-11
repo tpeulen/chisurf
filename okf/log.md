@@ -2,6 +2,10 @@
 
 ## 2026-10-11
 
+- Wizards are translated (de, fr): the hub list, the Anisotropy and Batch analysis wizards' docks, steps,
+  welcome and finish texts go through `emtk.i18n` (26 new entries each). The hub rail is as wide as its
+  translated Guide and Help captions, and the Anisotropy navigation stacks them when they do not fit.
+  Open: the hosted Anisotropy dock tab is cut at 800 px in German (fixed 0.22 dock split).
 - The emtk shell colours each task: one declared palette (`chisurf/emtk/task_colors.yaml`; documentation blue,
   wizards orange, imaging green, ...) colours dock tabs, frame stripes, ribbon group captions, Tools-tree rows and
   the hosted tool's headers, drawn by emtk 0ec0daf (`emtk/accents.py`, contrast 4.5:1 kept). Colour key in

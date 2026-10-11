@@ -126,7 +126,7 @@ class Stepper:
                 "title": step.title,
                 "complete": self.step_complete(i),
                 "current": i == self.step,
-                "tooltip": step.subtitle,
+                "tooltip": tr(step.subtitle),
             }
             for i, step in enumerate(self.STEPS)
         ]

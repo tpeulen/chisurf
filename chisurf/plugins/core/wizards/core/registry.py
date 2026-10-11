@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import dataclasses
 
+from emtk.i18n import mark
+
 
 @dataclasses.dataclass(frozen=True)
 class WizardEntry:
@@ -21,7 +23,7 @@ class WizardEntry:
     id : str
         Stable identifier (used for selection persistence).
     label : str
-        Text shown in the selector list.
+        Canonical (English) text of the selector list; the hub translates it where it draws it.
     description : str
         One-line summary shown above the embedded wizard.
     emtk : str
@@ -43,15 +45,15 @@ def default_wizards() -> list[WizardEntry]:
     return [
         WizardEntry(
             id="anisotropy",
-            label="Anisotropy",
-            description="Build a linked VV/VH global time-resolved anisotropy fit.",
+            label=mark("Anisotropy"),
+            description=mark("Build a linked VV/VH global time-resolved anisotropy fit."),
             emtk="chisurf.plugins.fluorescence_decay.tr_anisotropy.gui.app:make_app",
             icon="🔬",
         ),
         WizardEntry(
             id="batch_analysis",
-            label="Batch analysis",
-            description="Apply one template fit to many datasets or files.",
+            label=mark("Batch analysis"),
+            description=mark("Apply one template fit to many datasets or files."),
             emtk="chisurf.plugins.core.batch_analysis.gui.app:make_app",
             icon="📋",
         ),
