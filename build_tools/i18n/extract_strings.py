@@ -215,6 +215,20 @@ def _collect_menu_path(path: pathlib.Path, data: object, out: set[str]) -> None:
         out.update(part.strip() for part in name.split(":") if part.strip())
 
 
+def _collect_startup_labels(out: set[str]) -> None:
+    """Collect the stage labels the emtk shell's splash draws through ``tr()``.
+
+    The stages are declared in ``chisurf/startup/services.d/*.json``; only the ``emtk``
+    surface's labels are drawn translated (the Qt splash shows its labels as declared).
+    """
+    for path in sorted((CHISURF / "startup" / "services.d").glob("*.json")):
+        data = json.loads(path.read_text(encoding="utf-8"))
+        for service in data.get("services", []):
+            label = service.get("label")
+            if service.get("surface") == "emtk" and isinstance(label, str) and label.strip():
+                out.add(label)
+
+
 def collect_strings() -> set[str]:
     """Walk view.json + manifest.json + ``i18n.tr`` calls; return unique strings."""
     strings: set[str] = set(EXTRA_LITERALS)
@@ -233,6 +247,7 @@ def collect_strings() -> set[str]:
         _collect_from_json(data, strings)
         _collect_labels(data, strings)
         _collect_menu_path(path, data, strings)
+    _collect_startup_labels(strings)
     _collect_from_python(strings)
     # Drop empties / pure-format placeholders.
     return {s for s in strings if s and s.strip()}

@@ -26,7 +26,7 @@ and *Run Macro…*, `chisurf.run` routed to it, and composed (dead-key and IME) 
 (`emtk.ime`). Slice S5's ribbon reached parity with the Qt ribbon the same day
 (`chisurf/emtk/shell_ribbon.py` on emtk's new `emtk.ribbon`): its tabs, groups and buttons come from the manifests
 through the Qt ribbon's own placement rules, and the menu bar and Tools dock list the same tree with the manifest
-icons. The status strip and the startup stages of S5 are still open. The Qt shell is still the default.
+icons. The status strip of S5 is still open; the splash window and its startup stages landed 2026-10-12 (item 13). The Qt shell is still the default.
 
 1. Measure: the allow-list has 245 entries. Re-derive with `grep -vc '^#' test/plugin_qt_allowlist.txt`. The
    per-area split comes from `cut -d/ -f1 test/plugin_qt_allowlist.txt | sort | uniq -c` once comments are dropped:
@@ -115,6 +115,28 @@ icons. The status strip and the startup stages of S5 are still open. The Qt shel
     `chisurf/emtk/shell_log.py` over `views/log.view.json` (Logging with Filter / Level / Hide / Clear, RPC Monitor
     with Pause / Clear, History that goes to a step). Measure: `KNOWN_GAPS` in
     `test/native_emtk/test_emtk_shell_console.py` (empty).
+13. Measure: the splash on the real launch. `python -m chisurf` with a fresh `CHISURF_SETTINGS_DIR`: the splash
+    window draws its first frame about 0.25 s after it opens (before the shell is built), the stages advance
+    Loading modules → Registering experiments → Starting the server and its plugins → Connecting → Preparing the
+    session, the main window opens when the session worker has ended and the splash closes on the main window's
+    first frame. Re-derive with a launcher that patches `SplashApp.draw` / `EmtkShellApp.draw` to log a timestamp
+    and captures each window with `screencapture -o -l<NSWindow number>` (glfw `get_cocoa_window` →
+    `windowNumber`); never `screencapture` the whole screen (it records the user's desktop). Traps found on the
+    real launch, each now a test: (a) `DataDocks.starting` stays true until a *shell* frame adopts the session,
+    and the shell is not drawn while the splash is up, so waiting on it hung the splash forever -- the splash
+    waits on `session_settled` (the worker ended); (b) macOS reports a window that has just opened (or sits under
+    a floating one) as occluded, rendercanvas cancels that frame and never asks again, so the main window stayed
+    blank -- fixed in emtk (`NativeHost` asks again); (c) Metal offers `opaque` / `unpremultiplied` only, so a
+    transparent surface asked for `premultiplied` fell back to opaque black corners -- emtk now takes
+    `unpremultiplied` there (Core Animation composites premultiplied, edges checked at 4x for fringes);
+    (d) the art at 2x is 1065 texels wide and emtk's default 1024 image atlas declines it (blank rectangle) --
+    the splash surface has its own 2048 atlas; (e) `ShellSession.ensure_global_dataset` never recognised the
+    global dataset in the API's records (dicts), so a second call (stage, then the shell's adopt) added a second
+    one. Tried and reverted: drawing the splash over the whole main
+    window (first version, 2026-10-12): the owner wants the art as a real splash screen, not inside a window.
+    Open: Windows/Linux transparency is unverified (glfw `TRANSPARENT_FRAMEBUFFER` + Vulkan `premultiplied`
+    should work; where neither mode is offered the window draws opaque with black where the art is clear); no
+    taskbar suppression (macOS shows the one Dock icon of the process anyway).
 
 
 # Traps for slice S2
@@ -193,8 +215,8 @@ Each row is one capability the shell uses. Evidence is given as `file:line`. "em
 | Console | `cs.console = QIPythonWidget(chinsole.Chinsole)` (`gui/__init__.py:589`), `gui/chinsole/**` (8 files, 3,462 lines, `QTextEdit`); the engine `chisurf.core.console` is Qt-free | `chisurf/emtk/console.py` (`ShellConsole` on `TextEditor`, hosted by `im.host_control`); *Macro ▸ Record / Run Macro…*; `chisurf.run` / `chisurf.log` / `chisurf.console` while the shell is open | rich display as text, `input()` (resume item 12) | S4 done | `test/native_emtk/test_emtk_shell_console.py` (25 behaviours vs `shell_s4_qt_inventory.json`) |
 | Logging dock | `plainTextEditLog` and filter, `_LogRelay` timers (`gui/__init__.py:192-374`) | S1 Log dock (`_LogBuffer` handler) | level filter, history browser | S1 partial, S4 | — |
 | Status bar | `TruncatingStatusBar` (`main.py:1216-1248`) and progress bar | S1 Start dock status line | a status strip with progress | S5 | — |
-| Splash | `SplashScreen(QSplashScreen)` (`gui/__init__.py:443`) | none: the first frame is under 100 ms ([GUI startup](../architecture/gui-startup.md)) | startup service stages need a native runner instead of `BackgroundStartupRunner` QTimer chaining | S5 | benchmarks page |
-| Startup services | `AppStartupServiceManager` stages in `startup/services.d/20_gui_splash.json`, `30_gui_post_show.json` | — | a `surface="emtk"` stage set (no `setup_ipython`, `startup_interface`, `arrange_widgets`) | S5 | — |
+| Splash | `SplashScreen(QSplashScreen)` (`gui/__init__.py:443`) over `icons/splashscreen.png` | `chisurf/emtk/splash.py`: its **own** frameless window (`NativeHost(decorated=False, floating=True, transparent=True, centred=True)`, emtk 93bc456), the art at 2x (`chisurf/emtk/splash.png` from the SVG, its own 2048-texel image atlas), transparent where the art is; progress bar, stage, last log line, copyright, version, licence, contributors drawn on the art where the Qt splash puts them; the main window opens when the session has settled and the splash closes on its first frame. A separate window, not a cover inside the main one: the art is a shaped splash *screen* (owner, 2026-10-12) | — | S5 done | `test/native_emtk/test_emtk_shell_splash.py`, emtk `tests/test_native_splash_window.py` |
+| Startup services | `AppStartupServiceManager` stages in `startup/services.d/20_gui_splash.json`, `30_gui_post_show.json` | the `surface="emtk"`, `phase="splash"` set `services.d/25_emtk_splash.json` (imports, experiments, server and its plugins, connect, global dataset) run by the same manager inside `chisurf.emtk.session.start_session` on the session worker; `on_stage_start` feeds the splash | the Qt post-show stages (`populate_plugins`, `check_updates`, `warmup_imports`) have no emtk counterpart yet: the shell reads manifests in its constructor and checks no updates | S5 done (splash phase) | `test_the_session_reports_the_declared_stages_in_order`, `test/startup/test_services.py` |
 | Auth | `LoginDialog`, deferred `_run_startup_auth` | `switch_user` emtk plugin | modal login before the session | S3 open (resume item 7) | — |
 | Translation | `QTranslator` (`gui/i18n.py:343`); `retranslate_from_ui(self, gui.ui)` re-reads the `.ui` (`gui/retranslate.py`) | `chisurf.emtk.i18n` reads the same `.ts`; `emtk.i18n.tr` applies on the next frame | none: an immediate-mode shell retranslates by drawing | S1 done | `test/native_emtk/*translations*` |
 | Tooltips | Qt tooltips and `install_tooltip_wrapping` | `emtk.tooltip` | — | S1 done | emtk `test_tooltip.py` |

@@ -24,6 +24,10 @@ before the tests run; the `test*` tasks already depend on
 `build-extensions`. If imports of those modules fail, run
 `pixi run build-extensions`.
 
+`python -m chisurf` first shows the ChiSurf splash window (the stage under way,
+the version, the licence) while the session and its plugins start, then the
+main window; the splash closes once the main window has drawn.
+
 ```{note}
 Always launch ChiSurf with `python -m chisurf` (or `pixi run chisurf`),
 never by pointing Python at `__main__.py` directly — running the file adds

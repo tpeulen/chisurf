@@ -200,6 +200,9 @@ class EmtkShellApp(ImApp):
     console_history, console_session_file : path or bool, optional
         The console's input-history file and session log (:class:`~chisurf.emtk.console.ShellConsole`);
         ``None`` uses the settings folder, ``False`` keeps none (tests).
+    splash : SplashState, optional
+        The boot splash's state; the session's startup stages are reported to it
+        (:mod:`chisurf.emtk.splash`).
     """
 
     def __init__(
@@ -209,6 +212,7 @@ class EmtkShellApp(ImApp):
         session_factory: Callable[..., Any] | None = None,
         console_history: Any = None,
         console_session_file: Any = None,
+        splash: Any = None,
     ) -> None:
         if catalog is None:
             from chisurf.emtk.plugins import manifests
@@ -216,6 +220,11 @@ class EmtkShellApp(ImApp):
             catalog = manifests()
         #: The manifests the shell was made from (an action entry runs from its manifest).
         self.catalog = catalog
+        #: The boot splash's state (:class:`chisurf.emtk.splash.SplashState`): the session reports
+        #: its startup stages to it. ``None`` when the shell opens without a splash.
+        self.splash = splash
+        #: Frames drawn so far: the splash closes once the main window has drawn one.
+        self.frames_drawn = 0
         self.entries = menu_entries(catalog)
         self.by_id = {entry.plugin_id: entry for entry in self.entries}
         from chisurf.emtk.shell_ribbon import ShellRibbon, menu_tree
@@ -262,7 +271,6 @@ class EmtkShellApp(ImApp):
         _log.setLevel(logging.INFO)
         super().__init__(self.render)
         from chisurf.emtk.fit_docks import ANALYSIS_KEY, PLOT_KEY, DataDocks
-
         self.data = DataDocks(self, session_factory)
         self.project = ShellProject(self)
         from chisurf.emtk.shell_log import ShellLog
@@ -405,7 +413,9 @@ class EmtkShellApp(ImApp):
                 _log.error("opening %s failed: %s", plugin_id, hosted.error)
                 self.status = tr("{name} could not be opened.").format(name=tr(hosted.entry.label))
             else:
-                hosted.app = made
+                from chisurf.emtk.child_contract import as_child
+
+                hosted.app = made = as_child(made)
                 if hasattr(made, "set_frame_request_callback"):
                     made.set_frame_request_callback(self.request_frame)
                 self.status = tr("{name} opened.").format(name=tr(hosted.entry.label))
@@ -436,6 +446,7 @@ class EmtkShellApp(ImApp):
             super().draw(painter, x, y, w, h)
         finally:
             self._painter = None
+        self.frames_drawn += 1
         if self._screenshot_pending:
             self._screenshot_pending = False
             self._copy_screenshot()
@@ -1064,7 +1075,14 @@ class EmtkShellApp(ImApp):
                 self.open_plugin(plugin_id)
 
     def close(self) -> None:
-        """Close every hosted plugin, the fit windows and the session, and detach the log handler."""
+        """Close every hosted plugin, the fit windows and the session, and detach the log handler.
+
+        Once: a host that closes its window after the shell was closed (a test's offscreen canvas collected at
+        interpreter exit) must not tear the console down a second time.
+        """
+        if getattr(self, "_shell_closed", False):
+            return
+        self._shell_closed = True
         for plugin_id in list(self.hosted):
             self.close_plugin(plugin_id)
         self.console.close()
@@ -1074,11 +1092,14 @@ class EmtkShellApp(ImApp):
         self.log.close()
 
 
-def make_app(persist: bool = True) -> EmtkShellApp:
-    """The shell app with its session; with *persist* its dock layout, size and open plugins are kept."""
+def make_app(persist: bool = True, splash: Any = None) -> EmtkShellApp:
+    """The shell app with its session; with *persist* its dock layout, size and open plugins are kept.
+
+    *splash* (:class:`chisurf.emtk.splash.SplashState`) hears the session's startup stages.
+    """
     from chisurf.emtk.session import start_session
 
-    app = EmtkShellApp(session_factory=start_session)
+    app = EmtkShellApp(session_factory=start_session, splash=splash)
     if persist:
         from chisurf.emtk.state import attach_native_state
 
@@ -1087,16 +1108,43 @@ def make_app(persist: bool = True) -> EmtkShellApp:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Open the emtk shell in a native window (``python -m chisurf``)."""
+    """Open the emtk shell (``python -m chisurf``): the splash window first, the main window when ready.
+
+    ``--screenshot PATH`` (and ``--backend offscreen``) render one frame of the shell offscreen
+    through :func:`emtk.native.main`, without a splash; ``--size WxH`` sets the main window's size.
+    """
     from chisurf.emtk.i18n import install
 
     install(None)
-    from emtk.native import main as run_native
-
-    return int(
-        run_native(["--app", "chisurf.emtk.main_app:make_app", "--title", "ChiSurf", *(argv or [])])
-        or 0
+    args = list(argv or [])
+    headless = "--screenshot" in args or any(
+        arg == "offscreen" or arg.endswith("=offscreen") for arg in args
     )
+    if headless or not _interactive_display():
+        from emtk.native import main as run_native
+
+        return int(
+            run_native(["--app", "chisurf.emtk.main_app:make_app", "--title", "ChiSurf", *args])
+            or 0
+        )
+    size = None
+    if "--size" in args and args.index("--size") + 1 < len(args):
+        width, _, height = args[args.index("--size") + 1].partition("x")
+        size = (int(width), int(height or width))
+    from chisurf.emtk.splash import run_with_splash
+
+    return run_with_splash(make_app, title="ChiSurf", size=size)
+
+
+def _interactive_display() -> bool:
+    """Whether a desktop window can open (an interactive rendercanvas backend is importable)."""
+    import os
+
+    if os.environ.get("EMTK_CANVAS", "").strip() == "offscreen":
+        return False
+    from emtk.native import canvas_module
+
+    return canvas_module().__name__.rsplit(".", 1)[-1] != "offscreen"
 
 
 __all__ = ["EmtkShellApp", "HostedPlugin", "MenuEntry", "main", "make_app", "menu_entries"]

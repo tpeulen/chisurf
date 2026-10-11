@@ -2,6 +2,12 @@
 
 ## 2026-10-12
 
+- The emtk shell has a boot splash again, as its own frameless, transparent, centred window (emtk 93bc456:
+  undecorated/floating/transparent native windows, `unpremultiplied` alpha on Metal, a redraw after an occluded
+  frame). It shows the art, progress, stage and log line from the declared `25_emtk_splash.json` stages and
+  gives way to the main window once the session is ready; first frame on screen 1.7-2.6 s (was 3.1-5.6 s). Fixed
+  on the way: a second Global Dataset, ebFRET raising on every frame in the shell, and the splash art's licence
+  paragraph, which repeated its warranty sentence (Qt resources recompiled). See [Qt retirement](subsystems/qt-retirement.md).
 - AV follow-ups: chimol's IMP.bff backend imported a module that does not exist and silently fell back; it now
   computes AVs with IMP.bff (chimol 4bd6a7a; a missing IMP.bff warns with the reason). QuEST's placeholder dyes and
   ChiSurf's quenching-estimator acceptor take IMP.bff's AV defaults (QuEST bdcf3e8, local). IMP.bff f95ddaa1a..0a61ee263:

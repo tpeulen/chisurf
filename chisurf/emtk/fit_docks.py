@@ -447,8 +447,12 @@ class DataDocks:
         self._starting = BackgroundBuild(wake=self.request_frame)
         if session_factory is not None:
             wake = self.request_frame
+            # The shell's splash follows the startup stages the session runs through.
+            splash = getattr(shell, "splash", None)
+            on_stage = splash.stage_started if splash is not None else None
             self._starting.start(
-                {"session": lambda: session_factory(wake=wake)}, name="chisurf-shell-session"
+                {"session": lambda: session_factory(wake=wake, on_stage=on_stage)},
+                name="chisurf-shell-session",
             )
             self.status = tr("Starting the session…")
         docks = shell.docks
@@ -466,6 +470,16 @@ class DataDocks:
     # -- plumbing ------------------------------------------------------------ #
     def request_frame(self) -> None:
         self.shell.request_frame()
+
+    @property
+    def starting(self) -> bool:
+        """Whether the session has not been adopted yet (its worker runs, or its result waits for a frame)."""
+        return self._starting.busy
+
+    @property
+    def session_settled(self) -> bool:
+        """Whether the session's worker has ended (made the session or failed); the next frame adopts it."""
+        return not self._starting.running
 
     @property
     def busy(self) -> bool:
@@ -1437,10 +1451,11 @@ class DataDocks:
         if app is not None:
             im.separator_text(tr("File parameters"))
             x, y = im.get_cursor_screen_pos()
-            w, h = im.get_content_region_avail()
-            # What the dock has left, but never less than a form can be used in: a small window used to
-            # leave the reader form one pixel, and its controls were unreachable. The dock scrolls instead.
-            room = max(MIN_READER_FORM_H, float(h) - 40.0)
+            w, _ = im.get_content_region_avail()
+            # What the dock has left after the status line under it (measured, not a guessed number of
+            # pixels), but never less than a form can be used in: a small window used to leave the reader
+            # form one pixel, and its controls were unreachable. The dock scrolls instead.
+            room = im.stretch_height(f"reader.{id(app)}", minimum=MIN_READER_FORM_H)
             self.shell.host_child(READ_KEY, f"reader.{id(app)}", app, (x, y, float(w), room))
             im.dummy((float(w), room))
         self._status_line()

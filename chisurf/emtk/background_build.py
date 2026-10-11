@@ -62,6 +62,12 @@ class BackgroundBuild:
         """Whether a batch was started and not yet collected."""
         return self._thread is not None
 
+    @property
+    def running(self) -> bool:
+        """Whether the worker is still at it (``busy`` stays true after it ends, until :meth:`collect`)."""
+        thread = self._thread
+        return thread is not None and thread.is_alive()
+
     def building(self, key: Hashable) -> bool:
         """Whether *key* is in the batch under way."""
         return key in self._keys

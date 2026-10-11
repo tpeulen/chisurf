@@ -777,6 +777,24 @@ bursts), with all three applied: a whole-window repaint went **0.293 s -> 0.023
 s**, five repaints 1.75 s -> 0.11 s, and "analyze then display" 2.23 s ->
 0.77 s.
 
+## Shell startup: the splash window
+
+`python -m chisurf` opens the splash window (`chisurf/emtk/splash.py`) before the
+shell is built; the main window opens once the session has started. Timed from
+process start with a launcher that patches the two `draw` methods (real glfw
+windows, scratch settings, Apple-silicon laptop under parallel-agent load,
+load average 20-40, so absolute numbers are inflated):
+
+| first visible frame | before (shell window directly) | after (splash window) |
+|---|---:|---:|
+| process start -> first frame on screen | 3.1-5.6 s | 1.7-2.6 s |
+| process start -> main window with a live session | 4.6-7.1 s (first frame + ~1.5 s "Starting the session…") | 5.5-8.6 s |
+
+The splash's first frame does not wait for the shell's construction or the
+session; the main window opens about one frame after the session worker ends.
+Re-derive: item 13 of the OKF concept `okf/subsystems/qt-retirement.md`
+describes the launcher.
+
 ## UI frame times (emtk plugins)
 
 `python -m build_tools.dev_utils.plugin_frame_times` loads every plugin with an

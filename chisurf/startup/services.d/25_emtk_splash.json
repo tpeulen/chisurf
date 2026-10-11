@@ -1,0 +1,53 @@
+{
+  "services": [
+    {
+      "id": "emtk_imports",
+      "entrypoint": "chisurf.emtk.session:stage_imports",
+      "surface": "emtk",
+      "phase": "splash",
+      "label": "Loading modules",
+      "progress": 10,
+      "order": 10
+    },
+    {
+      "id": "emtk_experiments",
+      "entrypoint": "chisurf.emtk.session:stage_experiments",
+      "surface": "emtk",
+      "phase": "splash",
+      "label": "Registering experiments",
+      "progress": 30,
+      "order": 20,
+      "depends_on": ["emtk_imports"]
+    },
+    {
+      "id": "emtk_server",
+      "entrypoint": "chisurf.emtk.session:stage_server",
+      "surface": "emtk",
+      "phase": "splash",
+      "label": "Starting the server and its plugins",
+      "progress": 45,
+      "order": 30,
+      "depends_on": ["emtk_experiments"]
+    },
+    {
+      "id": "emtk_connect",
+      "entrypoint": "chisurf.emtk.session:stage_connect",
+      "surface": "emtk",
+      "phase": "splash",
+      "label": "Connecting to the server",
+      "progress": 80,
+      "order": 40,
+      "depends_on": ["emtk_server"]
+    },
+    {
+      "id": "emtk_session",
+      "entrypoint": "chisurf.emtk.session:stage_session",
+      "surface": "emtk",
+      "phase": "splash",
+      "label": "Preparing the session",
+      "progress": 92,
+      "order": 50,
+      "depends_on": ["emtk_connect"]
+    }
+  ]
+}

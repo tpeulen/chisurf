@@ -378,6 +378,7 @@ class AppStartupServiceManager:
         on_stage_start: Callable[[dict[str, Any]], None] | None = None,
         on_stage_finish: Callable[[dict[str, Any]], None] | None = None,
         on_stage_skip: Callable[[dict[str, Any]], None] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """Start services in dependency order, optionally filtered.
 
@@ -396,6 +397,10 @@ class AppStartupServiceManager:
         on_stage_skip : callable, optional
             Called for skipped services with a payload dict containing id,
             label, surface, phase, progress, and skip_reason.
+        metadata : dict, optional
+            The shared context's :attr:`AppStartupContext.metadata`: what the caller hands the
+            services (options, callbacks) and where they leave what later services read. The
+            dict itself is shared, so the caller sees what the services put in it.
         """
         ordered = self.ordered_specs(surface=surface, phase=phase)
         self._evaluate_conditions(ordered)
@@ -409,6 +414,7 @@ class AppStartupServiceManager:
             stop_event=self._stop_event,
             surface=surface or "",
             phase=phase or "",
+            metadata=metadata if metadata is not None else {},
         )
 
         for spec in ordered:
