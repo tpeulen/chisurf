@@ -313,18 +313,32 @@ status: resolved 2026-10-11 — each item fixed at its root with a regression te
 
 ## Shared detector-setup editor in de/fr, found by the tttr_image_browser matrix (found 2026-10-11)
 
-status: open — owner: `chisurf/emtk/channel_definition.py`. With the example loaded the sweep reaches the *Detector setup*
-tab of the Image Browser and reports, in `lang_de` and `lang_fr`: *Delete*, *Image* and *Unsaved* drawn in English although
-the catalogue translates them (`channel_definition.py` draws several captions from untranslated dict values, e.g. lines
-1028 and 1046, and the setup combo's *Unsaved* entry), and the right-hand *Optisches Setup …* button clipped at the edge
-of the 720 px form. Many captions (*File Type:*, *Macrotime res. (ns):*) are not in the catalogue at all. Re-derive:
-`CHISURF_E2E_MATRIX=lang_de pytest test/e2e/test_click_all_plugins.py -m e2e -k tttr_image_browser`.
+status: resolved 2026-10-11 — causes: table button cells (*Delete*, *Calc G*) and the section headers were drawn from
+untranslated dict values; ~140 captions, tooltips and status messages of `channel_definition.py` were in no catalogue (the
+extractor only sees `tr()` / `mark()` literals, and emtk translating a drawn string at draw time hides that); the button
+columns were a fixed 62 px, so *Supprimer* clipped; the Detectors table dropped its columns at fixed pixel limits. Fix:
+every caption routes through `tr()` (`mark()` in constructors and cached rows, translated where drawn), the extractor ran
+and `chisurf_de.ts` / `chisurf_fr.ts` carry real translations (no unfinished entry of this file left), the button columns
+take their minimum from the measured translated caption (`_ButtonCells.fit_columns`), and the columns the table drops
+(`NARROW_COLUMNS`) are chosen from the measured translated headers. Screenshots of the Detector setup tab (800x600, de and
+fr, detectors and a PIE window added) read: nothing clipped, *Löschen* / *Supprimer* whole, *Optisches Setup ...* inside
+the form. Test: `test/native_emtk/test_channel_definition_translated.py`; re-derive with
+`CHISURF_E2E_MATRIX=lang_de,lang_fr pytest test/e2e/test_click_all_plugins.py -m e2e -k tttr_image_browser`. Still English
+in that tab and out of this editor's scope: the plugin's own *Image browser* tab label and status line
+(`tttr_image_browser/gui/app.py`, `model.py` call no `tr()` at all).
 
 ## ndX window: *Screenshot* drawn in English in a German session (found 2026-10-11)
 
-status: open — owner: `modules/ndxplorer` (its own repository; not touched here). `lang_de` of the ndxplorer matrix reports the
-plot toolbar's *Screenshot* button as English while the chiplot/ChiSurf catalogue translates it (*Bildschirmfoto*); French passes.
-It fails the same way at HEAD, with and without the *Load example* overlay.
+status: resolved 2026-10-11 — `modules/ndxplorer/ndxplorer/locale/ndxplorer_de.ts` translated *Screenshot* as *Screenshot*
+(identical), which the matrix rightly flags against the ChiSurf catalogue's *Bildschirmfoto*; now *Bildschirmfoto* /
+*Bildschirmfoto speichern* (uncommitted in the ndxplorer checkout). The ndX sweep no longer skips *Load example*
+(`PLUGIN_SWEEP_SKIPS` is gone from `test/e2e/test_click_all_plugins.py`): the skip had hidden a real defect, the
+Playback *Mode* and the Draw Mask *Mode* radios both drew the item id `mode0` (an item's id is the part after `##`), so the
+disabled Playback radio let go of every press on the Draw radio and no click on it registered once data was loaded. The Draw
+Mask model's attribute is now `brush_mode`; guard `chisurf/plugins/ndxplorer/test/test_native.py::
+test_radio_choices_in_one_dock_do_not_share_an_attribute_name`. The guided tour keeps *Load example* drawn on its example
+step even with a table open (`chisurf/plugins/ndxplorer/gui/app.py`), so an awaited control is never missing. Matrix
+`-k ndxplorer` passes in base, `lang_de`, `resize`, `size_800x600` and `realistic`.
 
 ## Real-use language matrix: text drawn in English in a French or German session (found 2026-10-11)
 

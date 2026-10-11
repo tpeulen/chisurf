@@ -220,7 +220,14 @@ def _add_guide(app):
 
             x, y, w, h = self.app.plot_boxes.get("map", (0.0, 0.0, 0.0, 0.0))
             guide_feature_rects.pop("load_example", None)
-            if self.app.model.source is not None or w < 120 or h < 120:
+            # The tour's example step keeps the button within reach once a table is open (the step is
+            # done on arrival, and the example stays one press away), so a walk that started on a
+            # table of the user's own never points at a control that is not there.
+            on_example_step = bool(
+                tour.active
+                and tour.steps[tour.step_idx].get("target", {}).get("name") == "load_example"
+            )
+            if (self.app.model.source is not None and not on_example_step) or w < 120 or h < 120:
                 return
             f = im.WindowFlags
             flags = f.NO_TITLE_BAR | f.NO_RESIZE | f.NO_MOVE | f.ALWAYS_AUTO_RESIZE

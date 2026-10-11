@@ -2,6 +2,10 @@
 
 ## 2026-10-11
 
+- The shared detector-setup editor is translated (de, fr; 121 new catalogue entries) and measures its button
+  columns and dropped table columns from the translated captions. The real-use sweep no longer skips ndX's Load
+  example: that skip hid two ndX radios sharing one item id (ndX cfaa4aa, Draw Mask is `brush_mode`), and the
+  tour keeps the awaited button drawn on its step. ndX's German *Screenshot* is *Bildschirmfoto*.
 - Demo contract and narrow-view QA: nine plugins meet the demo contract (shared cache
   `chisurf/plugins/demo_cache.py`, a real Load example, tour step 1 awaits it; the Trace Browser demo now writes
   SPC streams it can list); emtk checkboxes/radios wrap long labels and a form field stacks under a too-wide label

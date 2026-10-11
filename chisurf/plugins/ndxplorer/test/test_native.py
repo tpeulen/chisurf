@@ -104,3 +104,41 @@ def test_native_mmfdb_picker_opens_the_selected_burst_table(tmp_path, monkeypatc
     assert app.model.source.size == 2
     app.close()
     assert not feature.picker.is_open
+
+
+def test_radio_choices_in_one_dock_do_not_share_an_attribute_name():
+    """The Playback *Mode* and the Draw Mask *Mode* radios drew the same item id (``mode0``).
+
+    A radio's id is its section name (the ``attr``) plus the option index, and the part of a label
+    after ``##`` is all that identifies an item. The disabled Playback radio, drawn first, let go of
+    the press on the Draw radio, so no click on it ever registered (found by the click sweep once
+    it stopped skipping *Load example*). Both live in the plot-control dock, so their ``attr``
+    names must differ.
+    """
+    import json
+    from pathlib import Path
+
+    import ndxplorer
+
+    root = Path(ndxplorer.__file__).parent
+
+    def radio_attrs(path):
+        found = []
+
+        def walk(node):
+            if isinstance(node, dict):
+                if node.get("type") == "choice" and node.get("style") in ("radio", "radio_list"):
+                    found.append(node.get("attr"))
+                for value in node.values():
+                    walk(value)
+            elif isinstance(node, list):
+                for value in node:
+                    walk(value)
+
+        walk(json.loads(path.read_text(encoding="utf-8")))
+        return found
+
+    playback = radio_attrs(root / "plotting" / "playback.view.json")
+    draw_mask = radio_attrs(root / "app" / "features" / "selection" / "draw_mask.view.json")
+    assert playback and draw_mask
+    assert not set(playback) & set(draw_mask), (playback, draw_mask)

@@ -155,19 +155,8 @@ def artifact_stem(plugin_id):
     return re.sub(r"[^A-Za-z0-9_.-]+", "_", plugin_id)
 
 
-#: Controls the sweep leaves to the tour phase, per plugin. ndX's *Load example* replaces the map, which
-#: ends drawing and opens the data-dependent dialogs (load mask, screenshot, table) whose later controls
-#: the sweep cannot reach behind them; the tour still presses it, as its awaited control.
-PLUGIN_SWEEP_SKIPS = {"ndxplorer": re.compile(r"load_example")}
-#: The plugin the running worker drives (set in ``_native``).
-CURRENT_PLUGIN = ""
-
-
 def skip_reason(name, tags=()):
     """Explain the safety exclusion for a control; otherwise return None."""
-    own = PLUGIN_SWEEP_SKIPS.get(CURRENT_PLUGIN)
-    if own is not None and own.search(str(name)):
-        return "left to the tour phase (replaces the data the other controls act on)"
     if {str(tag).lower() for tag in tags} & {"modal", "file", "dangerous", "external", "hardware"}:
         return "declared side-effect tag"
     if "↑ parent" in str(name).lower():
@@ -1417,8 +1406,7 @@ def _native(plugin_id, result, png_path):
 
     result["phase"] = "factory"
     checkpoint(result)
-    global CURRENT_APP, CURRENT_PLUGIN
-    CURRENT_PLUGIN = plugin_id
+    global CURRENT_APP
     app = CURRENT_APP = load_plugin(plugin_id, persist=False)
     size = tuple(VARIANT.get("size", SIZE))
     if VARIANT.get("driver") == "realistic":
