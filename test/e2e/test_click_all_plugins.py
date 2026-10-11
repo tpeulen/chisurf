@@ -615,7 +615,8 @@ def reveal_control(driver, recorder, visit_id):
         if visible is not None:
             return row, visible
         assert row.get("scrollable"), (
-            f"coverage: offscreen control {row['id']!r} has no scroll/reveal route"
+            f"coverage: offscreen control {row['id']!r} has no scroll/reveal route "
+            f"({visit_id!r} rect={row.get('rect')} clip={row.get('clip_rect')})"
         )
         clip = row["clip_rect"]
         area = visible_rectangle({"rect": clip, "clip_rect": clip}, driver.size)
@@ -631,13 +632,24 @@ def reveal_control(driver, recorder, visit_id):
     raise AssertionError(f"coverage: could not reveal {row['id']!r} after {attempt + 1} scrolls")
 
 
-def reach_by_navigation(driver, recorder, visit_id, controls):
+#: What a full walk over the navigation controls drew, valid until the next control is pressed.
+_NAV_REACH = {"epoch": None, "reach": {}}
+
+
+def reach_by_navigation(driver, recorder, visit_id, controls, epoch=None):
     """Press the navigation controls (rail entries, tabs) until a control that left the screen is drawn again.
 
     A hub's Back/Next/>> move to another page, so the controls of the page the sweep left are no
     longer drawn; a user gets back to them through the rail or the tabs. Returns what
     :func:`reveal_control` returns, or ``None`` when no navigation control brings the target back.
+
+    A walk that finds nothing has drawn every page once, so it records which navigation control shows
+    which control (``epoch`` names the state it saw: the number of controls pressed so far). The
+    controls that are also gone are then answered from that record, instead of pressing every rail
+    entry again for each of them -- hundreds of missing controls times a dozen entries is minutes of
+    frames on a tool with a long plot, and the walk's answer cannot change until a control is pressed.
     """
+
     def navigation():
         recorder.rows.clear()
         driver.frame()
@@ -650,15 +662,26 @@ def reach_by_navigation(driver, recorder, visit_id, controls):
             and not skip_reason(row["id"] + " " + row["label"])
         }
 
-    for nav_id in list(navigation()):
+    def press(nav_id):
         row = navigation().get(nav_id)
         if row is None:
-            continue
+            return None
         driver.click(visible_rectangle(row, driver.size))
         driver.frame(2)
-        revealed = reveal_control(driver, recorder, visit_id)
+        return reveal_control(driver, recorder, visit_id)
+
+    if epoch is not None and _NAV_REACH["epoch"] == epoch:
+        nav_id = _NAV_REACH["reach"].get(visit_id)
+        return press(nav_id) if nav_id is not None else None
+    drawn_by = {}
+    for nav_id in list(navigation()):
+        revealed = press(nav_id)
         if revealed is not None:
             return revealed
+        for row in {row["visit_id"]: row for row in recorder.rows}.values():
+            drawn_by.setdefault(row["visit_id"], nav_id)
+    if epoch is not None:
+        _NAV_REACH.update(epoch=epoch, reach=drawn_by)
     return None
 
 
@@ -986,6 +1009,11 @@ def settle_held_jobs(driver, recorder, result, exercised):
 #: presses this many controls (recorded as ``inventory_bounded``) instead of walking the whole tree.
 INVENTORY_BUDGET = {"help": 150}
 
+#: A sweep whose inventory is still growing past this many distinct controls is not converging (a control that
+#: keeps making new controls). A hub of seventeen tools legitimately holds ~650 (imaging_tools: 380 pressed, 270
+#: skipped with a reason), and the sweep reaches the controls behind the rail now, so the ceiling is 1024.
+INVENTORY_CEILING = 1024
+
 
 def _native(plugin_id, result, png_path):
     """Draw a real app, visit safe controls, audit its tour and tooltips."""
@@ -1117,8 +1145,8 @@ def _native(plugin_id, result, png_path):
                 if budget and len(visited) - len(sampled_out) > budget:
                     result["inventory_bounded"] = budget
                     break
-                assert len(visited) - len(sampled_out) <= 512, (
-                    "control inventory did not stabilize within 512 targets"
+                assert len(visited) - len(sampled_out) <= INVENTORY_CEILING, (
+                    f"control inventory did not stabilize within {INVENTORY_CEILING} targets"
                 )
                 control = controls[name]
                 raw_name = control["id"]
@@ -1147,7 +1175,9 @@ def _native(plugin_id, result, png_path):
                     continue
                 revealed = reveal_control(driver, recorder, name)
                 if revealed is None:
-                    revealed = reach_by_navigation(driver, recorder, name, controls)
+                    revealed = reach_by_navigation(
+                        driver, recorder, name, controls, epoch=len(result["clicked"])
+                    )
                 if revealed is None:
                     visited.remove(name)
                     result["skipped"].append(

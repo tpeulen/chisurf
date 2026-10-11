@@ -21,6 +21,7 @@ from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_form
 
+from chisurf.core.fio.decimate import thin_for_plot
 from chisurf.core.support.i18n import tr
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
@@ -151,6 +152,10 @@ class _Form:
 
     def request_guide(self):
         self._app.tour.start()
+
+
+#: Points one trace may draw: ~4 per pixel of a plot; 10 000 bins as segments cost ~0.1 s a frame.
+TRACE_POINTS = 4000
 
 
 class IntensityTraceApp(ImApp):
@@ -431,6 +436,10 @@ class IntensityTraceApp(ImApp):
     # ── plots ─────────────────────────────────────────────────────────────
 
     def _draw_traces(self, box) -> None:
+        with self.model.lock:
+            self._draw_traces_locked(box)
+
+    def _draw_traces_locked(self, box) -> None:
         m = self.model
         if not m.loaded:
             im.text_wrapped(tr("No trace: load a TTTR file (Load TTTR, or drop one here)."))
@@ -447,6 +456,7 @@ class IntensityTraceApp(ImApp):
         plain = implot.FLAGS_NO_LEGEND | implot.FLAGS_NO_TITLE
         hidden_x = implot.AXIS_FLAGS_NO_TICK_LABELS | implot.AXIS_FLAGS_NO_LABEL
         flags = implot.SUBPLOT_FLAGS_LINK_COLS | implot.SUBPLOT_FLAGS_NO_TITLE
+        # A trace is drawn reduced to its per-column extremes (10 000 bins as segments cost ~0.1 s a frame).
         # Linked columns do not fit themselves: the limits are set once per binned trace (a new trace refits, the
         # user's zoom on this one is kept).
         rev = id(m.counts)
@@ -470,7 +480,9 @@ class IntensityTraceApp(ImApp):
                 if implot.begin_plot(f"{label}##trace", (-1, -1), plain):
                     implot.setup_axes("Time (s)", label, 0 if last else hidden_x)
                     implot.setup_axis_limits(implot.AXIS_X1, 0.0, t_max)
-                    implot.plot_line(label, m.time_axis, values)
+                    implot.plot_line(
+                        label, *thin_for_plot(m.time_axis, values, max_points=TRACE_POINTS)
+                    )
                     implot.end_plot()
                 if implot.begin_plot(f"{label}##hist", (-1, -1), plain):
                     implot.setup_axes("Occurrences (log)", "", 0 if last else hidden_x)
@@ -498,7 +510,10 @@ class IntensityTraceApp(ImApp):
                     implot.setup_axes(
                         "Time (s)" if extra == 1 else "", "State", 0 if extra == 1 else hidden_x
                     )
-                    implot.plot_stairs("state", m.time_axis, np.asarray(m.states, float))
+                    implot.plot_stairs(
+                        "state",
+                        *thin_for_plot(m.time_axis, m.states, max_points=TRACE_POINTS),
+                    )
                     implot.end_plot()
                 if implot.begin_plot("State Counts##statebars", (-1, -1), plain):
                     implot.setup_axes("State (sorted)", "Bins")
@@ -510,7 +525,9 @@ class IntensityTraceApp(ImApp):
                 if extra == 2:
                     if implot.begin_plot("FRET##fret", (-1, -1), plain):
                         implot.setup_axes("Time (s)", "FRET")
-                        implot.plot_line("FRET", m.time_axis, m.fret)
+                        implot.plot_line(
+                            "FRET", *thin_for_plot(m.time_axis, m.fret, max_points=TRACE_POINTS)
+                        )
                         implot.end_plot()
                     self._fret_hist_plot("FRET Hist per State##frethist")
                 implot.end_subplots()

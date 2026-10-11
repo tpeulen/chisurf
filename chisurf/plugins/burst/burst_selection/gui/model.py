@@ -93,6 +93,8 @@ DEFAULT_ALGORITHM = "sliding_window"
 
 #: Plot point budget per curve (the Qt tool's thinning budget).
 MAX_PLOT_POINTS = 20000
+#: A count-rate line is binned already; ~5 points per pixel of the plot keep every extremum (20 000 segments cost ~0.1 s a frame).
+TRACE_PLOT_POINTS = 4000
 
 #: Scatter features offered by the 2D plot, beside every numeric column of the burst table.
 SCATTER_DEFAULTS = (PROXIMITY_RATIO_COLUMN, "Duration (ms)")
@@ -1331,12 +1333,12 @@ class BurstSelectionModel(RunPickerMixin):
             t, r = diag_mod.trace_rate_hz(
                 tttr[np.arange(first, last)], width_ms / 1000.0, width_ms, 0.0
             )
-            out["all"] = thin_for_plot(t, r, max_points=MAX_PLOT_POINTS)
+            out["all"] = thin_for_plot(t, r, max_points=TRACE_PLOT_POINTS)
         selected = np.asarray(diag["selected"], dtype=bool)
         idx = np.where(selected[first:last])[0] + first
         if self.show_selected_photons and idx.size:
             t, r = diag_mod.trace_rate_hz(tttr[idx], width_ms / 1000.0, width_ms, 0.0)
-            out["selected"] = thin_for_plot(t, r, max_points=MAX_PLOT_POINTS)
+            out["selected"] = thin_for_plot(t, r, max_points=TRACE_PLOT_POINTS)
         return out
 
     def dt_curves(self) -> dict[str, tuple[np.ndarray, np.ndarray]]:

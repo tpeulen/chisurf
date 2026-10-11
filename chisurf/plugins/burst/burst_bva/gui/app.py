@@ -243,7 +243,9 @@ class BurstBvaGui:
             self._draw_folder_input(left_w - 16.0)
             im.spacing()
 
-            # Tab bar for settings
+            # The settings tabs scroll inside the pane: an emtk window has no scrollbar, and the channel
+            # and detector editors are taller than the window.
+            im.begin_child("bva_settings_body")
             if im.begin_tab_bar("bva_settings_tabs"):
                 opened = im.begin_tab_item("BVA Settings")
                 im.set_item_tooltip(
@@ -288,6 +290,7 @@ class BurstBvaGui:
 
             im.spacing()
             self._draw_status()
+            im.end_child()
             self.remember("controls", (4.0, 4.0, left_w, height - 8.0))
 
         im.end()

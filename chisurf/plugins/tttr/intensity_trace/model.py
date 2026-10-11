@@ -9,6 +9,7 @@ the Qt tool writes beside the file (``<stem>_HMM#<n>_<ms>ms/{bst,traces,hist}``)
 from __future__ import annotations
 
 import pathlib
+import threading
 from collections.abc import Callable
 from concurrent.futures import CancelledError
 from dataclasses import dataclass, field
@@ -144,6 +145,8 @@ class IntensityTraceModel:
     message: str = ""
     #: Routing channels the loaded file uses (``routing_<n>``): what the selection offers without a setup.
     available: list[str] = field(default_factory=list)
+    #: Held while the binned trace is replaced and while a window draws it (a rebin runs on a worker).
+    lock: threading.RLock = field(default_factory=threading.RLock, repr=False, compare=False)
 
     # ── loading ───────────────────────────────────────────────────────────
 
@@ -184,16 +187,22 @@ class IntensityTraceModel:
         except Exception as exc:  # noqa: BLE001 - shown in the status line
             self.message = f"Could not read {path.name}: {exc}"
             return False
+        available = None
         if self.path != str(path) and not detectors:
             # a new file: offer the channels it uses (Qt offered 0-7, so channels 8+ could not be chosen)
-            self.available = [f"routing_{int(c)}" for c in sorted(tttr.get_used_routing_channels())]
-        self.path = str(path)
-        self.time_axis, self.counts, self.labels = (
-            np.asarray(t),
-            np.asarray(counts, float),
-            list(labels),
-        )
-        self.states = self.transmat = None
+            available = [f"routing_{int(c)}" for c in sorted(tttr.get_used_routing_channels())]
+        # The binned trace replaces the old one in one step: the window draws it on another thread while a
+        # rebin runs here, and a time axis of the new binning over counts of the old one is a torn frame.
+        with self.lock:
+            if available is not None:
+                self.available = available
+            self.path = str(path)
+            self.time_axis, self.counts, self.labels = (
+                np.asarray(t),
+                np.asarray(counts, float),
+                list(labels),
+            )
+            self.states = self.transmat = None
         n = self.counts.shape[0]
         self.message = (
             f"{path.name}: {n} bins of {self.window_ms:g} ms, {', '.join(self.labels)}"

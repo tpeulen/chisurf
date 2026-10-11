@@ -379,10 +379,14 @@ class ToolHubApp(ImApp):
         return bool(self._ff_queue)
 
     def fast_forward(self) -> None:
-        """Run every remaining step of this group in order, waiting for each; pressed again, stop after the current one."""
+        """Run every remaining step of this group in order, waiting for each; pressed again (Stop), end the walk and
+        ask the step that is running to stop, as its own Stop does."""
         if self._ff_queue:
             self._ff_queue = []
             self.status = "Fast-forward stopped."
+            stop = getattr(self.child, "stop", None)
+            if self._busy() and callable(stop):
+                stop()
             return
         queue = []
         started = False

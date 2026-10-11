@@ -17,6 +17,10 @@
 
 ## 2026-10-10
 
+- W7 click-all: all 124 native plugins pass (each failing id re-run alone 3–5×). Product fixes: BVA's
+  settings pane scrolls (a button sat below the clip), the hub's fast-forward Stop stops the running step,
+  intensity traces thin to 4000 points and publish rebins under a lock (a torn frame raised mid-plot),
+  burst-selection diagnostics memoise their curves. The harness inventory ceiling is a named 1024.
 - W9 phase 2 slice S2 at control parity: the emtk shell draws each model's own editor (`model.editor`
   RPC, writes only through declared controls), the full fit controller (MCTS, Sample, fit settings, Local
   first, dataset re-target, result index, Code face), the Global-fit dataset, native settings for 23 of 24
