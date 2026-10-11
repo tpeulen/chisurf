@@ -86,12 +86,25 @@ class Rows(list):
     revision = 0
 
 
+#: ``dye_definition.json`` spells the AV numbers the dye-diffusion way; a row
+#: spells them as fps.json does. Unmapped, a preset set nothing but the model.
+_PRESET_KEYS = {
+    "av_length": "linker_length",
+    "av_linker_width": "linker_width",
+    "av_radius1": "radius1",
+}
+
+
 def dye_presets() -> dict[str, dict]:
     """The dye definitions the preset list offers (an installation without the definition file offers none)."""
     try:
         from chisurf.core.structure import av
 
-        return {str(k): dict(v) for k, v in av.dye_definition.items() if isinstance(v, dict)}
+        return {
+            str(k): {_PRESET_KEYS.get(key, key): value for key, value in v.items()}
+            for k, v in av.dye_definition.items()
+            if isinstance(v, dict)
+        }
     except Exception:  # noqa: BLE001 - no presets, "Custom" only
         return {}
 
@@ -669,9 +682,9 @@ class FpsEditor:
             )
             return None
         radii = (
-            float(params.get("radius1", 3.5)),
-            float(params.get("radius2", 0.0)),
-            float(params.get("radius3", 0.0)),
+            float(params.get("radius1", POSITION_DEFAULTS["radius1"])),
+            float(params.get("radius2", POSITION_DEFAULTS["radius2"])),
+            float(params.get("radius3", POSITION_DEFAULTS["radius3"])),
         )
         return (
             pdb,

@@ -578,6 +578,33 @@ status: resolved 2026-10-11 — the four defects fixed at their root, each with 
      `include/ProbeAccessibleVolumeDefaults.h` and read by ChiSurf (`chisurf.core.structure.av.av_defaults`). The
      structure fit's labels moved with it (AV1 radius 4.0 → 3.5, grid 0.5 → 0.9). Measured numbers in imp.bff
      `okf/validation/fps_screening_ab.md`.
+     **Decided 2026-10-11 (owner: "av go fast by default. all use same defaults").** (a) *Fast*: the FPS hop
+     stays out of the seed only; the rest of the search walks the 74-neighbour stencil. FPS's hop from every node
+     is ~4.6× the neighbours (342 vs 74) and was not built, as default or option. Accepted consequence: T4L-132 CB
+     at W 4.5 is empty at a 0.5 Å grid and resolves at the 0.9 Å default (6 899 voxels); p66+H is 0.928 of FPS's
+     volume. (b) *Same defaults*: the stragglers now read the declaration — imp.bff `LabelizerFRETOptions`
+     (r 9/4.5/1.5, grid 1.5 → the AV3 radii 5/4.5/1.5, grid 0.9), its position template
+     `data/template_av_position.fps.json` (W 0.5 → 4.5, grid 1.5 → 0.9, clearance 1.5 → derived), the volume
+     containers' grid step (1.5) and `LabelDistribution`'s grid (0.5), the schema's defaults (now written from the
+     constants); ChiSurf's dye-diffusion `Dye` group (W 0.5, R 3.0/1.5, grid 0.5 → `av_defaults()`),
+     `dye_definition.json` (`av_linker_width` 0.5 → 4.5, guarded by `test/core/test_dye_definition_shipped.py`),
+     the FRET plugin's `info` CLI and fps router fallbacks, the FPS card's radius fallback; chimol's AV fallbacks
+     (W 0.5, grid 1.5 → `chimol.plugins.labelling.dyes.AV_DEFAULTS`, guarded against IMP.bff) and its dye library's
+     *assumed* geometry (the labelizer reference's 9/4.5/1.5 → 5/4.5/1.5). Also fixed: the FPS card's Dye Preset
+     looked up fps.json keys in a file that spells them `av_*`, so a preset set only the model.
+     **Left different on purpose** (open front, in order):
+     1. *QuEST's dye catalogue* (`quest/settings/dye_repository.json`, `quest/project.py`; and the quenching
+        estimator's acceptor placeholder that copies it, `chisurf/plugins/quenching_estimator/gui/app.py`) keeps
+        its per-dye entries with a 0.5 Å linker width (AF488 21.5/0.5/3.5). They are named dyes of another
+        package, not defaults; bringing them in line is a QuEST decision (its golden baselines,
+        `tests/baselines/imp_bff.json`, pin grid 0.5).
+     2. *chimol's IMP.bff AV backend is dead*: it imports `IMP.bff.fret.av`, which no build has, so chimol computes
+        with LabelLib or its numpy fallback (the "IMP.bff.fret does not exist" entry below). Porting it onto
+        `IMP.bff.get_av_from_pdb` would put chimol on the same search; the contact-volume fields need a door
+        there first.
+     3. imp.bff `resample_legacy` (`space_fixed=False`) keeps its frozen `max(1.5, W/2 + dg/2)` clearance and the
+        FPS dye presets (`fps_linker_presets`) their per-dye values; the olga_t4l example fps.json files keep the
+        published per-position values.
   3. *ProteinMC Structure page*: the shell sends a read file as the codec's record (`dataset.load` with `curve_data`);
      a structure had none, so the server fabricated an empty `DataCurve` named after the file. `_extract_curve_data`
      now sends structures (and groups of them) as structure records and the server restores them with

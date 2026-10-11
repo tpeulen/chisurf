@@ -2,6 +2,12 @@
 
 ## 2026-10-12
 
+- AV defaults: one declaration everywhere and the fast search by default (owner decisions). The first linker step
+  hops only from the seed (FPS hops from every node, about 4.6× the neighbours). IMP.bff c34e625c2 moves the
+  Labelizer options, the position template and every grid default onto `AV_DEFAULT_*`; chimol 1f8abe1 restates
+  them with a guard; ChiSurf's dye-diffusion Dye group, `dye_definition.json`, the FPS card and the FRET api/CLI
+  read `av_defaults()`. The FPS card's Dye Preset now sets L, W and R (it read the wrong keys). See
+  [known issues](references/known-issues.md).
 - Emoji in the code editor and console take two cells (emtk b16238d): caret, selection, clicks and drawing share
   one cell rule, and an arrow or backspace steps over a whole emoji. emtk's golden images regenerated for the
   intended window frame of 3287f89 (be6a9d2). Open: a skin-tone emoji draws as two glyphs.

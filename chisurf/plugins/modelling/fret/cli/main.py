@@ -70,14 +70,17 @@ def info(fps: str):
         sys.exit(1)
 
     positions, distances, score_sets, extra = io.read_fps_json(fps)
+    from chisurf.core.structure.av import av_defaults
+
+    defaults = av_defaults()
     click.echo(f"Positions: {len(positions)}")
     for pname, pdef in sorted(positions.items()):
         click.echo(
             f"  {pname}: chain={pdef.get('chain_identifier', '')} "
             f"res={pdef.get('residue_seq_number', 0)} "
             f"atom={pdef.get('atom_name', 'CA')} "
-            f"L={pdef.get('linker_length', 20)} "
-            f"R={pdef.get('radius1', 3.5)}"
+            f"L={pdef.get('linker_length', defaults['linker_length'])} "
+            f"R={pdef.get('radius1', defaults['radius1'])}"
         )
     click.echo(f"\nDistances: {len(distances)}")
     for dname, ddef in sorted(distances.items()):

@@ -161,6 +161,10 @@ per-row *Details…* dialog is nicely grouped (Dye Dimensions / Simulation Setti
    plants the placeholder `{'a': 0}`, and `onDyePresetChanged` then bails on the
    falsy `0`. There is no dye catalogue behind the control that is supposed to
    supply L/W/R1–R3 for Alexa 488, Alexa 647, Cy3B … **RF-383.**
+   *Resolved*: the file ships (two Alexa488 presets, FPS's row: L 20, W 4.5,
+   R 3.5 — the AV defaults, guarded by `test/core/test_dye_definition_shipped.py`),
+   and since 2026-10-11 choosing one sets L/W/R in the structure_tools FPS card
+   (the card read fps.json keys from a file that spells them `av_*`).
 
 **Smaller things seen.** Typing the PDB path immediately launches a full AV for
 `<first chain>:<first residue>:CB` before the user has chosen anything

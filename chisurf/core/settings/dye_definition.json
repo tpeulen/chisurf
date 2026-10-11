@@ -3,7 +3,7 @@
         "diffusion_coefficient": 15.0,
         "av_length": 20.0,
         "av_radius1": 3.5,
-        "av_linker_width": 0.5,
+        "av_linker_width": 4.5,
         "quenching_distance": 8.0,
 
         "bonds": [
@@ -53,7 +53,7 @@
         "diffusion_coefficient": 15.0,
         "av_length": 20.0,
         "av_radius1": 3.5,
-        "av_linker_width": 0.5,
+        "av_linker_width": 4.5,
         "quenching_distance": 8.0,
 
         "coordinates": [

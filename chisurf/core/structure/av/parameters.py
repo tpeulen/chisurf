@@ -183,13 +183,18 @@ class Dye(ParameterGroup):
         self._critical_distance = chisurf.core.parameter.Parameter(value=7.0, name="RQ")
         self._diffusion_coefficient = chisurf.core.parameter.Parameter(value=5.0, name="D[A2/ns]")
         self._tau0 = chisurf.core.parameter.Parameter(value=4.0, name="tau0[ns]")
+        # The AV numbers are IMP.bff's declaration (av_defaults), the same an
+        # omitted parameter means at every other AV door.
+        defaults = chisurf.core.structure.av.av_defaults()
         self._simulation_grid_resolution = chisurf.core.parameter.Parameter(
-            value=0.5, name="grid spacing"
+            value=defaults["simulation_grid_resolution"], name="grid spacing"
         )
 
-        self._av_length = chisurf.core.parameter.Parameter(name="L", value=20.0)
-        self._av_width = chisurf.core.parameter.Parameter(name="W", value=0.5)
-        self._av_radius = chisurf.core.parameter.Parameter(name="R", value=3.0)
+        self._av_length = chisurf.core.parameter.Parameter(
+            name="L", value=defaults["linker_length"]
+        )
+        self._av_width = chisurf.core.parameter.Parameter(name="W", value=defaults["linker_width"])
+        self._av_radius = chisurf.core.parameter.Parameter(name="R", value=defaults["radius1"])
 
         self.attachment_residue = kwargs.get("attachment_residue", None)
         self.attachment_atom = kwargs.get("attachment_atom", None)
@@ -199,10 +204,12 @@ class Dye(ParameterGroup):
         self.diffusion_coefficient = kwargs.get("diffusion_coefficient", 10.0)
         self.tau0 = kwargs.get("tau0", 4.0)
 
-        self.av_length = kwargs.get("av_length", 20.0)
-        self.av_width = kwargs.get("av_width", 0.5)
-        self.av_radius = kwargs.get("av_radius", 1.5)
-        self.simulation_grid_resolution = kwargs.get("simulation_grid_resolution", 0.5)
+        self.av_length = kwargs.get("av_length", defaults["linker_length"])
+        self.av_width = kwargs.get("av_width", defaults["linker_width"])
+        self.av_radius = kwargs.get("av_radius", defaults["radius1"])
+        self.simulation_grid_resolution = kwargs.get(
+            "simulation_grid_resolution", defaults["simulation_grid_resolution"]
+        )
 
         dye_name = str(kwargs.get("dye_name", None))
         if dye_name in chisurf.core.structure.av.dye_names:

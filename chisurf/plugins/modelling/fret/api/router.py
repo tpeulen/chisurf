@@ -157,6 +157,9 @@ def get_info(req: InfoRequest) -> InfoResponse:
         raise HTTPException(status_code=404, detail=f"File not found: {req.fps_path}")
     try:
         positions, distances, score_sets, extra = io.read_fps_json(req.fps_path)
+        from chisurf.core.structure.av import av_defaults
+
+        defaults = av_defaults()
         pos_list = []
         for name, d in sorted(positions.items()):
             pos_list.append(
@@ -165,8 +168,8 @@ def get_info(req: InfoRequest) -> InfoResponse:
                     "chain": d.get("chain_identifier", ""),
                     "residue": d.get("residue_seq_number", 0),
                     "atom": d.get("atom_name", "CA"),
-                    "linker_length": d.get("linker_length", 20.0),
-                    "radius": d.get("radius1", 3.5),
+                    "linker_length": d.get("linker_length", defaults["linker_length"]),
+                    "radius": d.get("radius1", defaults["radius1"]),
                 }
             )
         dist_list = []
