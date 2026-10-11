@@ -4,6 +4,93 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## Setup:Channel Definition: lost first save, Qt calibration and rename, shared-editor gaps (found 2026-10-01)
+
+status: resolved 2026-10-11 — re-measured every bullet below against the tree: the first save survives `db.close()` (the repro prints 1 / 1;
+`test/fio/test_setup_store_fresh_database.py::test_the_first_save_for_a_new_user_survives_closing_the_database`), the Qt wizard page with the calibration combo and
+the rename path is gone (replaced by `chisurf/emtk/channel_definition.py`, whose rename keeps Public), and the shared editor now has a detector table, a compact
+Setups row, `20:10` / `5:5` / `;` ranges (`parse_ranges`), Configure LUTs and Adjust shifts, last-used setup written and opened, and a bad file under any File Type
+raising "Error:" with the timing unchanged (File Type is deliberately ignored on a calibration read, as in Qt). Click tests for each:
+`chisurf/plugins/core/setup_channel_definition/test/test_emtk_channel_page.py` (108 tests with the store tests, green). Original finding follows.
+
+
+Measured while giving `setup_channel_definition` its own tests; evidence and reproductions in
+`okf/plugins/emtk-ports/setup_channel_definition/REPORT.md`.
+
+* **The first setup save on a fresh MMFDB is lost without an error.** `setup_store.save_setup_row` calls
+  `db.ensure_user(user)` first; `ensure_user` inserts through `dao.insert` and leaves that insert in an open transaction,
+  and `save_setup`'s own transaction nests inside it and never commits, so closing the handle rolls both back
+  (`save_setups` still returns `True`, the Qt tool still says "saved successfully"). Reproduce (5 lines):
+  `db = MFDatabase(p); setup_store.save_setup_row(db, CONFIG, "Mine", {"windows": {}}, user_id="brand_new_user");
+  len(db.list_setups())` is 1; `db.close(); len(MFDatabase(p).list_setups())` is 0.
+  `test/fio/test_setup_store_fresh_database.py` passes because it reads on the same connection. Fix: commit in
+  `ensure_user` (mmfdb) or wrap it in `self._transaction()`; add the reopen assertion to that test.
+* **Qt calibration combo never lists a snapshot.** `DetectorWizardPage._populate_calibration_combo` and
+  `_on_calibration_changed` call `setup_id_for_name(name, user)`; the function takes `(name, user_id, prefix)`, the
+  `TypeError` is swallowed and the combo stays at "Latest". The emtk toolbar lists and applies snapshots.
+* **Qt rename drops the Public flag.** `tttr_detector_setups._setup_row_data` returns `setup_data` without `_is_public` /
+  `_owner`, so a renamed public setup is stored private. The emtk toolbar (core `ChannelDefinition`) keeps it.
+* **Shared editor (`chisurf/emtk/channel_definition.py`, another stream's) gaps**: detectors are stacked blocks, not a
+  table; the Setups tab stacks its buttons full width; the last tab cannot be restored (the editor owns the tab state);
+  microtime ranges reject `20:10`, `5:5` and `;` separators that Qt accepts; with a fixed File Type the reader accepts any
+  bytes and overwrites the timing (`xfail` test); no "Configure LUTs" / visual "Adjust shifts" hand-off; the last-used
+  setup is neither written on selection nor opened at start (`ChannelDefinition.refresh_setups` drops `last_used`).
+
+## emtk games have no sound (found 2026-10-01)
+
+status: resolved 2026-10-11 — one backend for all five emtk games. emtk `2f089cc`/follow-up adds `emtk.audio.AudioOutput` (Qt-free: PCM
+to a temp WAV, played by `afplay`/`paplay`/`aplay`/`ffplay`, loops tiled to a minute, at most eight effects at once) and a `focus_gained` hook
+beside `focus_lost` in the Qt host. The synthesis (band-limited oscillators, eight-bar pieces, shipped CC0 clips) moved from `chisurf/gui/chigame`
+to the Qt-free `chisurf/core/audio/` (the Qt `Audio` class stays in chigame); `chisurf/plugins/misc/games/_audio.py::GameAudio` joins them and every
+`make_app(audio=AUTO)` builds it, so the shared `sound_toggle` is live whenever a player exists and greyed when none does. Focus loss mutes without
+touching the preference and `focus_gained` unmutes (the hub forwards both). Tests: `emtk/tests/test_audio.py`,
+`chisurf/plugins/misc/games/test/test_game_audio.py` (all five games), `games/conftest.py` keeps the suites silent. Needs the pinned emtk to carry
+`emtk.audio` (bump `pixi.lock` after the emtk push); an older emtk makes `default_audio()` return None, i.e. the greyed switch, never an error.
+Original finding follows.
+
+
+**Measured** on the four ported games (number_quest, pong, tetris, minesweeper): the Qt games play music and effects through
+`chisurf.gui.chigame.audio.Audio`, which uses `qtpy.QtMultimedia.QSoundEffect`; the emtk apps take an `audio` object with
+`sfx` / `set_enabled` / `close`, and their factories pass none, because emtk has no audio output. Their Sound switch therefore
+changed nothing; it is now greyed with the tooltip "No sound here: this window has no audio output." (number_quest
+`bdf892ca5`, the other games in their own commits). Reproduce: `app = make_app(); app.set_sound(); app.sound_enabled` stays
+`False`. *Not fixed here:* an audio backend is new infrastructure (emtk or a shared ChiSurf module), not part of a port; the
+only Qt-free player in the tree is `chisurf/plugins/tttr/audifier/native_playback.py` (a WAV file per playback through
+`afplay`/`ffplay`/`aplay`), too coarse for music loops and per-event effects. The factories accept `audio=` for when one exists.
+
+## quest: the plugin's RPC layer targets a backend the package does not have
+
+status: resolved 2026-10-11 — the backend is `quest.rpc` (contract, services, dispatcher; the plugin followed in aa298e6c6) and all sixteen `quest.*`
+methods register: `chisurf/plugins/quenching_estimator/test/test_plugin.py::...::test_the_manifest_declares_exactly_the_methods_quest_registers` pins the manifest
+list to what `register_services` registers (and to 16). Quest imports again (26 plugin tests pass). Still open and separate: the QuEst legacy Qt surface (entry
+"QuEst legacy surface clips controls"). Original finding follows.
+
+
+**Found 2026-07-28.** Starting the GUI logs
+
+```
+Failed to register services for plugin 'quenching_estimator'
+ModuleNotFoundError: No module named 'quest.backend'
+```
+
+`chisurf/plugins/quenching_estimator/` is deliberately a thin shell: its
+`rpc/services.py`, `api/contract.py` and `api/client.py` all forward to
+`quest.backend.services` / `quest.backend.contract` so the CLI, the web backend
+and ChiSurf share one implementation of the sixteen `quest.*` methods the
+manifest declares. That backend package does not exist -- not in the checked-out
+`modules/quest`, and not on any of its branches (`git ls-tree` over `master`,
+`main`, `dev`, `devel`, `development`, `chisurf-pin` shows only `quest/lib` and
+`quest/settings`). So every `quest.*` RPC is unreachable, and the plugin's own
+tests for the contract cannot run either. The GUI entry point still works: it
+imports `quest.gui` directly and never touches the backend.
+
+**To close it:** write `quest/backend/{contract,services}.py` in the quest
+repository, over `quest.core` / `quest.api`, matching the schemas already in
+`chisurf/plugins/quenching_estimator/manifest.json` (that file is the contract's
+written form). It belongs there, not here: a second implementation ChiSurf-side
+is exactly the `LAY-01` duplication the shell was built to avoid. Until then the
+failure is a logged registration error, not a crash.
+
 ## Burst plugins whose Qt tool is still shipped: W9 phase 1 skips (found 2026-10-10)
 
 status: resolved 2026-10-11 — no Qt entrypoint remains in `chisurf/plugins/burst` (burst_fusion and clsm retired 2026-10-10, burst_selection and burst_mle_analysis 2026-10-11).
@@ -1136,32 +1223,6 @@ mock is what is shown. Reproduce: open either app with no data and read the plot
 (an empty-state message when there are none); a demo is allowed only behind an explicit, labelled Demo action.
 PRD-153 now forbids invented data in a port. Survey: `okf/plugins/emtk-ports/burst-survey.md`.
 
-## Setup:Channel Definition: lost first save, Qt calibration and rename, shared-editor gaps (found 2026-10-01)
-
-status: open
-
-Measured while giving `setup_channel_definition` its own tests; evidence and reproductions in
-`okf/plugins/emtk-ports/setup_channel_definition/REPORT.md`.
-
-* **The first setup save on a fresh MMFDB is lost without an error.** `setup_store.save_setup_row` calls
-  `db.ensure_user(user)` first; `ensure_user` inserts through `dao.insert` and leaves that insert in an open transaction,
-  and `save_setup`'s own transaction nests inside it and never commits, so closing the handle rolls both back
-  (`save_setups` still returns `True`, the Qt tool still says "saved successfully"). Reproduce (5 lines):
-  `db = MFDatabase(p); setup_store.save_setup_row(db, CONFIG, "Mine", {"windows": {}}, user_id="brand_new_user");
-  len(db.list_setups())` is 1; `db.close(); len(MFDatabase(p).list_setups())` is 0.
-  `test/fio/test_setup_store_fresh_database.py` passes because it reads on the same connection. Fix: commit in
-  `ensure_user` (mmfdb) or wrap it in `self._transaction()`; add the reopen assertion to that test.
-* **Qt calibration combo never lists a snapshot.** `DetectorWizardPage._populate_calibration_combo` and
-  `_on_calibration_changed` call `setup_id_for_name(name, user)`; the function takes `(name, user_id, prefix)`, the
-  `TypeError` is swallowed and the combo stays at "Latest". The emtk toolbar lists and applies snapshots.
-* **Qt rename drops the Public flag.** `tttr_detector_setups._setup_row_data` returns `setup_data` without `_is_public` /
-  `_owner`, so a renamed public setup is stored private. The emtk toolbar (core `ChannelDefinition`) keeps it.
-* **Shared editor (`chisurf/emtk/channel_definition.py`, another stream's) gaps**: detectors are stacked blocks, not a
-  table; the Setups tab stacks its buttons full width; the last tab cannot be restored (the editor owns the tab state);
-  microtime ranges reject `20:10`, `5:5` and `;` separators that Qt accepts; with a fixed File Type the reader accepts any
-  bytes and overwrites the timing (`xfail` test); no "Configure LUTs" / visual "Adjust shifts" hand-off; the last-used
-  setup is neither written on selection nor opened at start (`ChannelDefinition.refresh_setups` drops `last_used`).
-
 ## chimol: the toolkit-free host loads a PDB through a different route than the Qt window (found 2026-10-01)
 
 status: open
@@ -1199,19 +1260,6 @@ Reproduce (5 lines): `w = build_plugin_widget(manifest_of_any_emtk_plugin)`; `cl
 *Worked around in ndX only* (its factory closes when the callback is removed after one was set). *Not fixed here:* the
 fix belongs in `build_plugin_widget` (another stream's uncommitted change: call `control.close()` from the host window's
 close / `destroyed`) or in emtk's `ControlHost.closeEvent`; both are outside this session's scope.
-
-## emtk games have no sound (found 2026-10-01)
-
-status: open
-
-**Measured** on the four ported games (number_quest, pong, tetris, minesweeper): the Qt games play music and effects through
-`chisurf.gui.chigame.audio.Audio`, which uses `qtpy.QtMultimedia.QSoundEffect`; the emtk apps take an `audio` object with
-`sfx` / `set_enabled` / `close`, and their factories pass none, because emtk has no audio output. Their Sound switch therefore
-changed nothing; it is now greyed with the tooltip "No sound here: this window has no audio output." (number_quest
-`bdf892ca5`, the other games in their own commits). Reproduce: `app = make_app(); app.set_sound(); app.sound_enabled` stays
-`False`. *Not fixed here:* an audio backend is new infrastructure (emtk or a shared ChiSurf module), not part of a port; the
-only Qt-free player in the tree is `chisurf/plugins/tttr/audifier/native_playback.py` (a WAV file per playback through
-`afplay`/`ffplay`/`aplay`), too coarse for music loops and per-event effects. The factories accept `audio=` for when one exists.
 
 ## emtk implot: a first `COND_ONCE` axis-limits request on an existing plot is ignored (found 2026-10-01)
 
@@ -1566,7 +1614,7 @@ trajectory tools and FRET lines (help files existed, nothing drew them).
 
 Open:
 
-1. **QuEst does not import (blocker).** `modules/quest` imports
+1. **QuEst does not import (blocker) -- resolved 2026-10-11, imports and 26 plugin tests pass.** `modules/quest` imports
    `IMP.bff.quenching`, `IMP.bff.av.compute`, `IMP.bff.av._kernels`,
    `IMP.bff.distance_metrics` (`quest/core/dye_diffusion.py:47`, `photon.py:43,69`,
    `av.py:52…477`); imp.bff 294e63fa moved them to top-level C++ `IMP.bff`.
@@ -6887,35 +6935,6 @@ teardown crash). What is *not* established is whether the first two also bite in
 the real application, where `chisurf.cs` exists and a login dialog is answered —
 the sweep only proves the bare-construction path is broken, which is the path a
 headless test or a standalone launcher would take.
-
-## quest: the plugin's RPC layer targets a backend the package does not have
-
-status: open
-
-**Found 2026-07-28.** Starting the GUI logs
-
-```
-Failed to register services for plugin 'quenching_estimator'
-ModuleNotFoundError: No module named 'quest.backend'
-```
-
-`chisurf/plugins/quenching_estimator/` is deliberately a thin shell: its
-`rpc/services.py`, `api/contract.py` and `api/client.py` all forward to
-`quest.backend.services` / `quest.backend.contract` so the CLI, the web backend
-and ChiSurf share one implementation of the sixteen `quest.*` methods the
-manifest declares. That backend package does not exist -- not in the checked-out
-`modules/quest`, and not on any of its branches (`git ls-tree` over `master`,
-`main`, `dev`, `devel`, `development`, `chisurf-pin` shows only `quest/lib` and
-`quest/settings`). So every `quest.*` RPC is unreachable, and the plugin's own
-tests for the contract cannot run either. The GUI entry point still works: it
-imports `quest.gui` directly and never touches the backend.
-
-**To close it:** write `quest/backend/{contract,services}.py` in the quest
-repository, over `quest.core` / `quest.api`, matching the schemas already in
-`chisurf/plugins/quenching_estimator/manifest.json` (that file is the contract's
-written form). It belongs there, not here: a second implementation ChiSurf-side
-is exactly the `LAY-01` duplication the shell was built to avoid. Until then the
-failure is a logged registration error, not a crash.
 
 ## packaging: the LaTeX converter has no Python 3.12 conda build
 

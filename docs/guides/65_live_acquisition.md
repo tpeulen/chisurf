@@ -66,7 +66,8 @@ with a 3.4 ns donor lifetime and a high-FRET species with 1.1 ns, two detection
 channels; `chisurf/plugins/core/acq/demo.py`, cached under `<settings>/demos/acq`),
 registers it as a dataset and opens a fit window named **Acquisition**. Its model
 has no parameters. Its pages are the live plots: **Decay**, **Correlation**,
-**MCS** and **Macro time**; they fill while the stream runs.
+**Count rate** (with the mean lines of the native window), **MCS** and **Macro time**;
+they fill while the stream runs.
 
 ```{figure} figures/65_acquisition_fit_window.png
 :name: fig-65-acquisition-fit-window

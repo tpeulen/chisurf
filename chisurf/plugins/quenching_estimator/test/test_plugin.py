@@ -117,6 +117,30 @@ class TestTheServicesRegisterIntoAHostDispatcher:
         assert "quest.contract.describe" in registered
         assert callable(registered["quest.simulate"])
 
+    def test_the_manifest_declares_exactly_the_methods_quest_registers(self) -> None:
+        """The manifest is the contract's written form: a method on one side only is a dead or undeclared RPC."""
+        import json
+        from pathlib import Path
+
+        from chisurf.plugins.quenching_estimator.rpc.services import (
+            register_services,
+            registered_method_names,
+        )
+
+        manifest = json.loads(
+            (Path(__file__).parents[1] / "manifest.json").read_text(encoding="utf-8")
+        )
+        declared = {entry["name"] for entry in manifest["rpc_methods"]}
+        registered: dict[str, object] = {}
+
+        class Dispatcher:
+            def register(self, name, handler):
+                registered[name] = handler
+
+        register_services(Dispatcher())
+        assert declared == set(registered) == set(registered_method_names())
+        assert len(declared) == 16
+
     def test_a_registered_method_actually_runs(self) -> None:
         from chisurf.plugins.quenching_estimator.rpc.services import register_services
 

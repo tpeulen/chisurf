@@ -8,7 +8,8 @@ import zipfile
 import numpy as np
 import pytest
 
-from chisurf.gui.chigame import adpcm, audio
+from chisurf.core.audio import adpcm
+from chisurf.core.audio import synth as audio
 from chisurf.gui.chigame.assets import SOUNDS, TRACKS, ProceduralPack
 
 

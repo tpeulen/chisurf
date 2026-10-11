@@ -48,7 +48,7 @@ def test_demo_folder_is_under_the_settings_directory():
     assert demo.demo_folder().parts[-2:] == ("demos", "acq")
 
 
-def test_open_demo_registers_dataset_and_a_fit_naming_the_four_pages(monkeypatch, tmp_path):
+def test_open_demo_registers_dataset_and_a_fit_naming_the_five_pages(monkeypatch, tmp_path):
     """Headless ``open_demo`` appends a dataset and an Acquisition fit; pages come from its spec."""
     from chisurf.core.api import ChiSurfAPI
     from chisurf.core.models.acquisition import AcquisitionModel, acquisition_dataset
@@ -67,7 +67,7 @@ def test_open_demo_registers_dataset_and_a_fit_naming_the_four_pages(monkeypatch
         assert isinstance(fit.model, AcquisitionModel)
         assert acquisition_dataset(fit) is ds
         titles = [cls.name for cls, _ in model_plot_specs(fit.model)]
-        assert titles[:4] == ["Decay", "Correlation", "MCS", "Macro time"]
+        assert titles[:5] == ["Decay", "Correlation", "Count rate", "MCS", "Macro time"]
         deadline = time.monotonic() + 30
         while ds.streaming and time.monotonic() < deadline:
             ds.refresh()
@@ -78,7 +78,7 @@ def test_open_demo_registers_dataset_and_a_fit_naming_the_four_pages(monkeypatch
         assert float(np.sum(ds.y)) > 0
         assert ds.update_fit()
         assert np.array_equal(fit.model.y, ds.y)
-        for key in ("decay", "correlation", "mcs", "macro"):
+        for key in ("decay", "correlation", "rate", "mcs", "macro"):
             assert ds.live.series[key], key
     finally:
         ds.close()
@@ -111,5 +111,42 @@ def test_load_example_button_opens_the_dataset_and_fit(monkeypatch, tmp_path):
         assert app.model.dataset.snapshot["total_photons"] > 10_000
     finally:
         app.close()
+        api.clear_fits()
+        api.clear_datasets()
+
+
+def test_count_rate_page_draws_the_rate_and_a_mean_line_on_request(monkeypatch, tmp_path):
+    """The fit window's Count rate page shows what the native window's did: the curve and the mean lines."""
+    from chisurf.core.api import ChiSurfAPI
+    from chisurf.gui.plots.acquisition import CountRatePage
+    from chisurf.plugins.core.acq import dataset as dataset_module
+
+    monkeypatch.setattr(demo, "demo_folder", lambda: tmp_path)
+    api = ChiSurfAPI(mode="local")
+    ds = dataset_module.open_demo()
+    try:
+        deadline = time.monotonic() + 30
+        while ds.streaming and time.monotonic() < deadline:
+            ds.refresh()
+            time.sleep(0.05)
+        ds.refresh()
+        page = CountRatePage(ds.fit)
+        lines = []
+        monkeypatch.setattr(page.panel, "hline", lambda y, **kw: lines.append((y, kw["label"])))
+        page.update()
+        assert page.state == "ok" and not lines
+        assert ds.live.series["rate"] and len(ds.live.series["rate"][0][1]) > 1
+        ds.live.set_mean_0()
+        page.update()
+        assert [label for _y, label in lines] == [f"mean {ds.live._rate_label(0)}"]
+        assert lines[0][0] == pytest.approx(float(ds.live.series["rate"][0][2].mean()))
+        ds.live.rate_log_y = True
+        assert page.is_log(ds.live) == (False, True)
+        ds.live.clear_mean_lines()
+        lines.clear()
+        page.update()
+        assert not lines
+    finally:
+        ds.close()
         api.clear_fits()
         api.clear_datasets()

@@ -96,12 +96,12 @@ STRINGS = {
         "Inicie uma nova amostra com R. Quando a amostra terminar, Enter/Espaço também reinicia.",
         "Начните новый образец клавишей R. После завершения образца Enter/Пробел также перезапускает игру.",
     ),
-    "Toggle mute state (M); EMTK audio is unavailable.": (
-        "Stummstatus ändern (M); EMTK unterstützt kein Audio.",
-        "Basculer l'état muet (M) ; EMTK ne prend pas en charge l'audio.",
-        "Alternar silencio (M); EMTK no admite audio.",
-        "Alternar silêncio (M); EMTK não suporta áudio.",
-        "Переключить звук (M); в EMTK нет аудио.",
+    "Mute or unmute effects (M).": (
+        "Effekte stummschalten oder zuschalten (M).",
+        "Couper ou rétablir les effets (M).",
+        "Silenciar o reactivar los efectos (M).",
+        "Silenciar ou reativar os efeitos (M).",
+        "Выключить или включить эффекты (M).",
     ),
 }
 

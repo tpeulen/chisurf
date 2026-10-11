@@ -12,6 +12,7 @@ from emtk import i18n, im
 from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RETURN, KEY_RIGHT, KEY_UP
 
 from chisurf.plugins.emtk_layout import sound_toggle, window_size
+from chisurf.plugins.misc.games._audio import AUTO, resolve_audio
 from chisurf.plugins.misc.games._base import GameApp
 from chisurf.plugins.misc.games.gui.keys import blocked
 
@@ -88,7 +89,7 @@ class BreakoutApp(GameApp):
 
     window_size = (820, 690)
 
-    def __init__(self, clock=time.monotonic):
+    def __init__(self, audio=None, clock=time.monotonic):
         spec = json.loads(Path(__file__).with_name("app.view.json").read_text())
         self.window_size = window_size(spec, self.window_size)
         self.keys = Inputs()
@@ -96,6 +97,7 @@ class BreakoutApp(GameApp):
         self.last_frame = None
         self.closed = False
         self.sound_enabled = False
+        self.audio = audio
         self.game = BreakoutModel(SimpleNamespace(audio=self))
         self.board = (0, 36, 1)
         super().__init__(self.render)
@@ -257,9 +259,8 @@ class BreakoutApp(GameApp):
         draw = im.get_window_draw_list()
         draw.add_rect_filled((x, y), (x + w, y + h), (8, 9, 11, 255))
         im.set_cursor_screen_pos((x + 4, y + 2))
-        # The preference is kept although EMTK has no audio backend here; M mutes effects.
-        if sound_toggle(self.sound_enabled, shortcut="M"):
-            self.sound_enabled = not self.sound_enabled
+        if sound_toggle(self.sound_enabled, available=self.audio is not None, shortcut="M"):
+            self.set_sound()
         # Fit the same 800x650 board without clipping at narrow widths.
         scale = min(w / W, max(h - 36, 1) / H)
         ox, oy = x + (w - W * scale) / 2, y + 36 + (h - 36 - H * scale) / 2
@@ -346,7 +347,7 @@ class BreakoutApp(GameApp):
                 "Start a fresh sample with R. After the sample ends, Enter/Space also restarts.",
                 "cancel",
             ),
-            ("R sound", "Toggle mute state (M); EMTK audio is unavailable.", "shoulder_r"),
+            ("R sound", "Mute or unmute effects (M).", "shoulder_r"),
         )
         labels = [tr(label) for label, tip, action in controls]
         caption = "   ".join(labels) + (tr("   [muted]") if g.muted else "")
@@ -372,11 +373,12 @@ class BreakoutApp(GameApp):
         im.end()
 
 
-def make_app():
+def make_app(audio=AUTO):
+    """The game; *audio* has ``sfx``/``set_enabled``/``close`` (default: this machine's sound, None: none)."""
     from chisurf.emtk.i18n import install
 
     from .translations import install_translations
 
     install()
     install_translations()
-    return BreakoutApp()
+    return BreakoutApp(audio=resolve_audio(audio, "overworld"))

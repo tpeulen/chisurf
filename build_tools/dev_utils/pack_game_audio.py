@@ -9,7 +9,7 @@ What it does, and why each step is there:
   material is chiptune, which has almost nothing above 11 kHz. Halving the rate
   is an exact 2:1 decimation, so it is a cheap FIR and a slice rather than a
   resampler.
-* **IMA ADPCM** (:mod:`chisurf.gui.chigame.adpcm`), which is the four-to-one
+* **IMA ADPCM** (:mod:`chisurf.core.audio.adpcm`), which is the four-to-one
   that makes the difference between 27 MB and 6.5 MB -- between a soundtrack
   that lives in the repository and one that is a download step.
 * **One zip per pack**, stored uncompressed because the clips already are. 512
@@ -24,7 +24,7 @@ What it does, and why each step is there:
 Usage::
 
     python -m build_tools.dev_utils.pack_game_audio <extracted-pack-dir> \\
-        --out chisurf/gui/chigame/audio_assets
+        --out chisurf/core/audio/audio_assets
 """
 
 from __future__ import annotations
@@ -39,7 +39,7 @@ import numpy as np
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
 
-from chisurf.gui.chigame import adpcm  # noqa: E402
+from chisurf.core.audio import adpcm  # noqa: E402
 
 #: What the clips are stored at. Chiptune has almost nothing above 11 kHz, so
 #: this is transparent for the material and exactly half the source rate.

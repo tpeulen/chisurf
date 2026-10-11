@@ -1,4 +1,4 @@
-"""The four live pages of the Acquisition fit window: decay, correlation, MCS, macro time.
+"""The five live pages of the Acquisition fit window: decay, correlation, count rate, MCS, macro time.
 
 Each page draws one series set of the acquisition dataset's
 :class:`~chisurf.plugins.core.acq.gui.live_plots.LivePlots`, built from the latest
@@ -174,6 +174,32 @@ class CorrelationPage(_LivePage):
     def is_log(self, live):
         """Logarithmic lag axis when set."""
         return bool(live.corr_log_x), False
+
+
+class CountRatePage(_LivePage):
+    """Count rate of the enabled channels against macro time, with the mean lines asked for."""
+
+    name = "Count rate"
+    series_key = "rate"
+    panel_title = "Count rate"
+    x_label = "Macro time (s)"
+    y_label = "Count rate (cps)"
+
+    def is_log(self, live):
+        """Logarithmic count-rate axis when set."""
+        return False, bool(live.rate_log_y)
+
+    def update(self, *args, **kwargs) -> None:
+        """Redraw, then add one horizontal line per requested channel mean."""
+        super().update(*args, **kwargs)
+        live = self.live()
+        for index, mean in sorted(live.mean_lines.items()):
+            self.panel.hline(
+                float(mean),
+                pen=S.to_pen((200, 200, 200), width=1.0),
+                label=f"mean {live._rate_label(index)}",
+            )
+        self.request_redraw()
 
 
 class McsPage(_LivePage):

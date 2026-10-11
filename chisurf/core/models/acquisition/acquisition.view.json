@@ -1,5 +1,5 @@
 {
-  "_comment": "Editor layout of the Acquisition model: no parameters, only the four live pages. The settings of each page (channels, binning, update rate) are in the page's own Plot settings.",
+  "_comment": "Editor layout of the Acquisition model: no parameters, only the five live pages. The settings of each page (channels, binning, update rate) are in the page's own Plot settings.",
   "sections": [
     {
       "type": "info",
@@ -10,6 +10,7 @@
   "plots": [
     {"key": "acq_decay", "options": {}},
     {"key": "acq_correlation", "options": {}},
+    {"key": "acq_count_rate", "options": {}},
     {"key": "acq_mcs", "options": {}},
     {"key": "acq_macrotime", "options": {}}
   ]

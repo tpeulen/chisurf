@@ -2,6 +2,10 @@
 
 ## 2026-10-10
 
+- W6 remainders: the games play music and effects through emtk's Qt-free `emtk.audio` (WAV through
+  afplay/paplay/aplay/ffplay); the Qt-free synthesis moved to `chisurf/core/audio/`; every game mutes on
+  focus loss and unmutes on focus gain. The acquisition fit window gains a Count rate page. Channel
+  Definition and the quest RPC backend known issues were re-measured and are already fixed.
 - PRD-154 W9 phase 2 started: [Qt retirement](subsystems/qt-retirement.md) ledger (every Qt piece of the
   shell, emtk equivalent, gap, slice S1–S7) and slice S1, an opt-in emtk main window
   (`python -m chisurf --emtk-shell`, `chisurf/emtk/main_app.py`, Qt-free) with manifest-built menus, a Tools

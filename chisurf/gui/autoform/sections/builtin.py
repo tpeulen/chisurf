@@ -69,6 +69,7 @@ def _acquisition_plots():
 # class docstring is the page's description.
 register_plot("acq_decay", lambda: _acquisition_plots().DecayPage)
 register_plot("acq_correlation", lambda: _acquisition_plots().CorrelationPage)
+register_plot("acq_count_rate", lambda: _acquisition_plots().CountRatePage)
 register_plot("acq_mcs", lambda: _acquisition_plots().McsPage)
 register_plot("acq_macrotime", lambda: _acquisition_plots().MacrotimePage)
 

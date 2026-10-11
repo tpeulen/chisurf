@@ -12,6 +12,7 @@ from emtk import i18n, im
 from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RETURN, KEY_RIGHT, KEY_UP
 
 from chisurf.plugins.emtk_layout import sound_toggle, window_size
+from chisurf.plugins.misc.games._audio import AUTO, resolve_audio
 from chisurf.plugins.misc.games._base import GameApp
 from chisurf.plugins.misc.games.gui.keys import blocked
 
@@ -226,8 +227,7 @@ class TetrisApp(GameApp):
         draw = im.get_window_draw_list()
         draw.add_rect_filled((x, y), (x + w, y + h), (8, 9, 11, 255))
         im.set_cursor_screen_pos((x + 4, y + 2))
-        # Greyed without an audio backend: emtk plays no sound (the Qt game's
-        # chigame audio is QtMultimedia).
+        # Greyed when this machine has no audio player (emtk.audio finds none).
         if sound_toggle(self.sound_enabled, available=self.audio is not None, shortcut="M"):
             self.set_sound()
         scale = min(max(w, 1) / 420, max(h - 37, 1) / 588)
@@ -315,12 +315,12 @@ class TetrisApp(GameApp):
         im.end()
 
 
-def make_app(audio=None):
-    """The game; *audio* is an object with ``sfx``/``set_enabled``/``close`` (none in emtk yet)."""
+def make_app(audio=AUTO):
+    """The game; *audio* has ``sfx``/``set_enabled``/``close`` (default: this machine's sound, None: none)."""
     from chisurf.emtk.i18n import install
 
     from .translations import install_translations
 
     install()
     install_translations()
-    return TetrisApp(audio=audio)
+    return TetrisApp(audio=resolve_audio(audio, "town"))

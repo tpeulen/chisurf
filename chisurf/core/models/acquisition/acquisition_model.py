@@ -2,7 +2,7 @@
 
 The acquisition plugin streams photons through its pipeline and registers the
 result as a dataset (:class:`chisurf.plugins.core.acq.dataset.AcquisitionDataset`).
-Opening a fit on it with this model gives the usual fit window; the four pages
+Opening a fit on it with this model gives the usual fit window; the five pages
 named in ``acquisition.view.json`` (decay, correlation, MCS, macro-time trace)
 read the dataset's latest pipeline snapshot. The model has no parameters; its
 curve is the data's, so the decay page overlays nothing and the fit-level pages

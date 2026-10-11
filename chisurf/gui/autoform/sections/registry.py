@@ -58,6 +58,7 @@ _SECTION_MODULES = {
 }
 _PLOT_MODULES = {
     "acq_correlation": "builtin",
+    "acq_count_rate": "builtin",
     "acq_decay": "builtin",
     "acq_macrotime": "builtin",
     "acq_mcs": "builtin",

@@ -141,7 +141,7 @@ class GameHost:
         # The decoder shares the renderer's device rather than asking the
         # driver for a second one purely to decompress audio.
         try:
-            from .adpcm import use_device
+            from chisurf.core.audio.adpcm import use_device
 
             use_device(context.device)
         except Exception:

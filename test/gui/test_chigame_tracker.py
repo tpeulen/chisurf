@@ -7,7 +7,8 @@ import struct
 import numpy as np
 import pytest
 
-from chisurf.gui.chigame import audio, tracker
+from chisurf.core.audio import synth as audio
+from chisurf.core.audio import tracker
 
 #: Output rate the mixer plays at.
 RATE = audio.SAMPLE_RATE

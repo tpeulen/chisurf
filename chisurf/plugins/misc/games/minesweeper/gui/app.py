@@ -14,6 +14,7 @@ from emtk import i18n, im
 from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RETURN, KEY_RIGHT, KEY_UP
 
 from chisurf.plugins.emtk_layout import sound_toggle, window_size
+from chisurf.plugins.misc.games._audio import AUTO, resolve_audio
 from chisurf.plugins.misc.games._base import GameApp
 from chisurf.plugins.misc.games.gui.keys import blocked
 
@@ -398,10 +399,28 @@ class MinesweeperApp(GameApp):
         im.end()
 
 
-def make_app(audio_callback=None):
-    """The game; *audio_callback(name, value)* plays effects and switches sound (none in emtk yet)."""
+def make_app(audio_callback=None, audio=AUTO):
+    """The game.
+
+    *audio_callback(name, value)* plays effects and switches sound; without one the game uses *audio*
+    (an object with ``sfx``/``set_enabled``/``close``; default this machine's sound, None: none).
+    """
     from chisurf.emtk.i18n import install
 
     install()
     install_translations()
-    return MinesweeperApp(audio_callback=audio_callback)
+    if audio_callback is not None:
+        return MinesweeperApp(audio_callback=audio_callback)
+    audio = resolve_audio(audio, "underworld")
+    if audio is None:
+        return MinesweeperApp()
+
+    def callback(name, value):
+        if name == "enabled":
+            audio.set_enabled(bool(value))
+        else:
+            audio.sfx(name, value)
+
+    app = MinesweeperApp(audio_callback=callback)
+    app.audio = audio
+    return app

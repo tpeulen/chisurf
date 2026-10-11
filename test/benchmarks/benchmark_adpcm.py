@@ -29,7 +29,7 @@ import numpy as np
 
 sys.path.insert(0, __file__.rsplit("/test/", 1)[0])
 
-from chisurf.gui.chigame import adpcm  # noqa: E402
+from chisurf.core.audio import adpcm  # noqa: E402
 
 #: Clip lengths to sweep, in seconds at 22.05 kHz -- from a footstep to a music
 #: loop.

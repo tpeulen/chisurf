@@ -185,6 +185,12 @@ class GameApp(ImApp):
         if audio is not None:
             audio.set_enabled(False)
 
+    def focus_gained(self) -> None:
+        """Give the sound back when the window returns, if the player left it switched on."""
+        audio = getattr(self, "audio", None)
+        if audio is not None and not self.closed and self.sound_enabled:
+            audio.set_enabled(True)
+
     def close(self) -> None:
         """Release the supplied audio resource once and stop further animation."""
         if self.closed:

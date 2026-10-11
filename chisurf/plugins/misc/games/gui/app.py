@@ -74,6 +74,9 @@ class GamesHubApp(ImApp):
                 self.error = f"{tr('Game unavailable')}: {exc}"
         if self.child is not None and callable(getattr(self.child, "focus_lost", None)):
             self.child.focus_lost()
+        gained = getattr(self.child, "focus_gained", None)
+        if callable(gained):
+            gained()  # the hub has the focus: a game whose Sound switch is on may speak again
         self.request_frame()
         return self.child
 
@@ -245,6 +248,12 @@ class GamesHubApp(ImApp):
         lost = getattr(self.child, "focus_lost", None)
         if callable(lost):
             lost()
+
+    def focus_gained(self):
+        """The host window is back in front: the child may unmute."""
+        gained = getattr(self.child, "focus_gained", None)
+        if callable(gained):
+            gained()
 
 
 def make_app():

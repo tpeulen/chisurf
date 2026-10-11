@@ -1,4 +1,4 @@
-"""Opening the Acquisition plugin in Main yields a fit window with four populated docks."""
+"""Opening the Acquisition plugin in Main yields a fit window with five populated docks."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_acquisition_plugin_opens_a_fit_window_with_four_populated_docks(tmp_path):
+def test_acquisition_plugin_opens_a_fit_window_with_five_populated_docks(tmp_path):
     """Start Main, load the plugin, wait for the demo stream; every live dock has curves."""
     out = tmp_path / "out"
     out.mkdir()
@@ -37,9 +37,9 @@ def test_acquisition_plugin_opens_a_fit_window_with_four_populated_docks(tmp_pat
     assert not report["errors"], report["errors"][0] + run.stderr[-2000:]
     assert report["fit_window"], "the plugin did not open a fit window"
     assert report["title"].startswith("Acquisition")
-    assert report["docks"][:4] == ["Decay", "Correlation", "MCS", "Macro time"]
+    assert report["docks"][:5] == ["Decay", "Correlation", "Count rate", "MCS", "Macro time"]
     assert report["photons"] > 10_000
-    for title in ("Decay", "Correlation", "MCS", "Macro time"):
+    for title in ("Decay", "Correlation", "Count rate", "MCS", "Macro time"):
         series = report["pages"][title]["series"]
         assert series and all(points > 1 for _label, points in series), (title, report["pages"])
     assert (out / "acquisition.png").stat().st_size > 5_000
