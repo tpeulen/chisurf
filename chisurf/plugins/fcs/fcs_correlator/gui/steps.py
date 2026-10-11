@@ -21,6 +21,7 @@ from emtk.file_dialog import FileDialog
 from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
+from chisurf.emtk import job_gate
 from chisurf.plugins.emtk_layout import action_caption
 
 from ..correlator_model import CorrelatorSettingsModel, apply_channel_key, preset_names
@@ -482,8 +483,13 @@ class CorrelatorStepApp(ImApp):
             self.request_frame()
             return not self._stop
 
+        ticket = job_gate.admit()
+
         def run():
-            self.status = self.model.correlate_data(progress=progress)
+            with job_gate.hold(ticket, lambda: self._stop) as go:
+                self.status = (
+                    self.model.correlate_data(progress=progress) if go else "Stopped before it started."
+                )
             self.request_frame()
 
         self.status = "Computing correlations..."

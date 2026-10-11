@@ -3,6 +3,8 @@
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
 
+from chisurf.emtk import job_gate
+
 
 class BackgroundJob:
     def __init__(self):
@@ -26,7 +28,13 @@ class BackgroundJob:
             return False
         self.cancelled.clear()
         self.publish, self.error = publish, error
-        self.future = self.executor.submit(work)
+        ticket = job_gate.admit()
+
+        def guarded():
+            with job_gate.hold(ticket, self.cancelled.is_set) as go:
+                return work() if go else None
+
+        self.future = self.executor.submit(guarded)
         return True
 
     def poll(self):

@@ -631,6 +631,37 @@ def reveal_control(driver, recorder, visit_id):
     raise AssertionError(f"coverage: could not reveal {row['id']!r} after {attempt + 1} scrolls")
 
 
+def reach_by_navigation(driver, recorder, visit_id, controls):
+    """Press the navigation controls (rail entries, tabs) until a control that left the screen is drawn again.
+
+    A hub's Back/Next/>> move to another page, so the controls of the page the sweep left are no
+    longer drawn; a user gets back to them through the rail or the tabs. Returns what
+    :func:`reveal_control` returns, or ``None`` when no navigation control brings the target back.
+    """
+    def navigation():
+        recorder.rows.clear()
+        driver.frame()
+        return {
+            row["visit_id"]: row
+            for row in recorder.rows
+            if row["kind"] in ("selectable", "begin_tab_item")
+            and row.get("enabled", True)
+            and visible_rectangle(row, driver.size) is not None
+            and not skip_reason(row["id"] + " " + row["label"])
+        }
+
+    for nav_id in list(navigation()):
+        row = navigation().get(nav_id)
+        if row is None:
+            continue
+        driver.click(visible_rectangle(row, driver.size))
+        driver.frame(2)
+        revealed = reveal_control(driver, recorder, visit_id)
+        if revealed is not None:
+            return revealed
+    return None
+
+
 def resolved_tour_control(rows, target, rect):
     """Resolve the authoritative global target geometry before consulting duplicate labels."""
     unique = list({row["visit_id"]: row for row in rows}.values())
@@ -896,6 +927,60 @@ def settle_with_cancel(driver, recorder, result):
             raise TimeoutError(f"{stop['id']!r} did not restore an idle app within 5s") from pending
 
 
+STOP_CONTROL = re.compile(r"(^|[^a-z])(cancel|stop)([^a-z]|$)", re.I)
+
+
+def settle_held_jobs(driver, recorder, result, exercised):
+    """Press the real Stop of each job a click started, while the job is held open.
+
+    A Stop/Cancel is enabled only while its job runs, so the sweep arms
+    :mod:`chisurf.emtk.job_gate`: a job started by the click stays open until it is released or
+    cancelled. A drawn, enabled Stop that was not yet pressed is pressed now and must end a held job
+    (the gate counts the jobs its own cancel flag ended). The jobs that remain are released and
+    awaited, so the next control meets an idle app. Returns the visit ids of the Stop controls pressed.
+    """
+    from chisurf.emtk import job_gate
+
+    pressed = []
+    driver.frame(2)
+    if job_gate.active():
+        recorder.rows.clear()
+        driver.frame()
+        stops = [
+            row
+            for row in recorder.rows
+            if row["kind"] in ("button", "small_button", "menu_item")
+            and row.get("enabled", True)
+            and row["visit_id"] not in exercised
+            and STOP_CONTROL.search(row["id"])
+            and visible_rectangle(row, driver.size) is not None
+        ]
+        for stop in stops:
+            before = job_gate.stopped()
+            result["phase"] = "stop"
+            checkpoint(result)
+            driver.click(visible_rectangle(stop, driver.size))
+            end = time.monotonic() + 5
+            while job_gate.stopped() == before and time.monotonic() < end:
+                driver.frame()
+                time.sleep(0.01)
+            assert job_gate.stopped() > before, (
+                f"coverage: pressing {stop['id']!r} did not stop the job held open by "
+                f"{result.get('current_control')!r}"
+            )
+            exercised.add(stop["visit_id"])
+            pressed.append(stop["visit_id"])
+            result.setdefault("held_job_stops", []).append(
+                {"job_control": result.get("current_control"), "stop_control": stop["id"]}
+            )
+            break
+    job_gate.release()
+    assert job_gate.wait_idle(60), "a released job never finished"
+    driver.frame(3)
+    job_gate.arm()
+    return pressed
+
+
 #: Documentation browsers: every documentation page is a node and every page re-creates its own
 #: per-block buttons, so the inventory grows with the size of the docs, not with the plugin. The sweep
 #: presses this many controls (recorded as ``inventory_bounded``) instead of walking the whole tree.
@@ -1016,6 +1101,10 @@ def _native(plugin_id, result, png_path):
             }
             pending = sorted(controls)
             visited = set()
+            exercised_stops = set()
+            from chisurf.emtk import job_gate
+
+            job_gate.arm()
             repeats, sampled_out = {}, set()
             while pending:
                 # Finish the current page before selecting a different tab.
@@ -1058,6 +1147,8 @@ def _native(plugin_id, result, png_path):
                     continue
                 revealed = reveal_control(driver, recorder, name)
                 if revealed is None:
+                    revealed = reach_by_navigation(driver, recorder, name, controls)
+                if revealed is None:
                     visited.remove(name)
                     result["skipped"].append(
                         {"control": name, "reason": "no longer drawn after prior control"}
@@ -1098,19 +1189,6 @@ def _native(plugin_id, result, png_path):
                             {
                                 "control": name,
                                 "reason": "withdrawn by a background job during the click",
-                            }
-                        )
-                        continue
-                    # A Stop/Cancel is enabled only while its job runs: when the job finished between
-                    # the reveal and the press, the same control is now greyed (its real click is proven
-                    # against a held-open job by each plugin's own Stop test).
-                    now = [row for row in recorder.rows if row["visit_id"] == name]
-                    if now and not now[0].get("enabled", True):
-                        visited.remove(name)
-                        result["skipped"].append(
-                            {
-                                "control": name,
-                                "reason": "disabled by its job finishing during the click",
                             }
                         )
                         continue
@@ -1162,6 +1240,10 @@ def _native(plugin_id, result, png_path):
                         help_window = getattr(owner, attr, None)
                         if callable(getattr(help_window, "hide", None)):
                             help_window.hide()
+                for stop_id in settle_held_jobs(driver, recorder, result, exercised_stops):
+                    visited.add(stop_id)
+                    result["clicked"].append(controls.get(stop_id, {}).get("id", stop_id))
+                    result.setdefault("clicked_ids", []).append(stop_id)
                 settle_with_cancel(driver, recorder, result)
                 assert not getattr(app, "running", False), "long-running control without cancel"
                 recorder.rows.clear()
@@ -1171,6 +1253,7 @@ def _native(plugin_id, result, png_path):
                         controls[row["visit_id"]] = dict(row)
                         if row["visit_id"] not in visited and row["visit_id"] not in pending:
                             pending.append(row["visit_id"])
+            job_gate.disarm()
             result["controls"] = list(controls.values())
             for section in walk(getattr(app, "spec", {})):
                 if section.get("type") == "choice":

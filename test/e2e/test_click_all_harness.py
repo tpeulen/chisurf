@@ -597,3 +597,48 @@ def test_tour_await_on_tagged_hardware_stays_refused():
     driver = SimpleNamespace(rect=lambda _: (1, 1, 10, 10))
     with pytest.raises(AssertionError, match="unsafe control"):
         harness.advance_tour(driver, tour, {}, SimpleNamespace(rows=[], input_values={}), spec)
+
+
+def test_a_held_job_ends_because_its_real_stop_was_pressed():
+    """The gate holds a BackgroundJob open; only the press on the drawn Stop ends it, and no work is done."""
+    import time
+
+    from chisurf.emtk import job_gate
+    from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
+
+    ran, published = [], []
+    job = BackgroundJob()
+    job_gate.arm()
+    job_gate.reset()
+    try:
+        assert job.start(lambda: ran.append(1) or 1, published.append, print)
+        time.sleep(0.1)
+        assert job.running and job_gate.active() == 1 and not ran, "the job was not held open"
+        job.stop()  # what the drawn Stop button calls
+        assert job_gate.wait_idle(5)
+        job.poll()
+        assert job_gate.stopped() == 1 and not ran and not published and not job.running
+    finally:
+        job_gate.disarm()
+        job.close()
+
+
+def test_a_released_job_runs_to_its_end_and_an_unarmed_gate_is_free():
+    """Releasing lets the job compute and publish; without arming the gate nothing is admitted."""
+    from chisurf.emtk import job_gate
+    from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
+
+    published = []
+    job = BackgroundJob()
+    try:
+        job_gate.arm()
+        assert job.start(lambda: 7, published.append, print)
+        job_gate.release()
+        assert job_gate.wait_idle(5)
+        job.poll()
+        assert published == [7]
+        job_gate.disarm()
+        assert job_gate.admit() is None
+    finally:
+        job_gate.disarm()
+        job.close()
