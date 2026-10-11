@@ -2,6 +2,10 @@
 
 ## 2026-10-10
 
+- PRD-154 W9 phase 2 started: [Qt retirement](subsystems/qt-retirement.md) ledger (every Qt piece of the
+  shell, emtk equivalent, gap, slice S1–S7) and slice S1, an opt-in emtk main window
+  (`python -m chisurf --emtk-shell`, `chisurf/emtk/main_app.py`, Qt-free) with manifest-built menus, a Tools
+  dock and every native plugin as a dock window; the Qt shell stays the default.
 - mypy ratchet: Qt modules skipped in `pyproject.toml` (5078 → 3904 errors), per-file baseline
   `test/mypy_baseline.json` (3899) guarded by `test/test_mypy_baseline.py`, now a blocking CI step.
   Real bugs fixed: three `service_error` calls without `error_code` (TypeError on fit-service error paths)
