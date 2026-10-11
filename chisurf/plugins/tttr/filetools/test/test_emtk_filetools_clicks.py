@@ -333,8 +333,10 @@ def test_emoji_are_only_the_list_rows_icons(drv):
     from emtk.im_widgets import icon_text
 
     icons = {icon_text(entry_icon(p, p["plugin"])) for p in drv.app.panels}
-    strings = drv.draw(2).strings
-    assert icons <= set(strings)
+    painter = drv.draw(2)
+    strings = painter.strings
+    # Icons are colour images (emtk.icons), recorded as pictograms, not strings.
+    assert icons <= {icon_text(entry[0]) for entry in painter.icons}
     for text in strings:
         if text in icons or text in (action_caption("guide"), action_caption("help")):
             continue  # the shared Help/Guide captions carry their vocabulary icon

@@ -95,6 +95,11 @@ rendercanvas = "*"
 # is the outcome the Qt-free host exists to avoid.
 glfw = "*"
 python-docx = "*"
+# ihm (python-ihm; import ihm) reads and writes the IHM/mmCIF dictionaries: the MMFDB importer and
+# provenance graph (mmfdb.samples.importer, mmfdb.provenance.pto_graph), the fit-info CIF view
+# (chisurf.gui.plots.fitinfo) and chimol's mmCIF reader. mmfdb is installed --no-deps, so nothing
+# else brought it in.
+ihm = "*"
 # scikit-learn and hdbscan were dropped: every estimator the tree reached for —
 # GMM, k-means, PCA/IncrementalPCA, StandardScaler and the surrogate's MLP —
 # now lives in chisurf.core.ml; HDBSCAN is the photon library's own
@@ -205,6 +210,12 @@ scipy = "*"
 nbconvert = "*"
 # Oracle of chisurf/plugins/core/code_editor/test/test_ipynb.py.
 nbformat = "*"
+# The Help plugin renders reStructuredText pages through docutils when it is installed
+# (chisurf/plugins/core/help/api/rst.py imports it lazily, a page renders as plain text without);
+# its render and review tests need it.
+docutils = "*"
+# The FRET plugin's optional HTTP surface (the `api` extra), which its endpoint test drives.
+fastapi = "*"
 ipykernel = "*"
 
 [feature.dev.dependencies]

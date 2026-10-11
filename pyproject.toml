@@ -75,6 +75,7 @@ dependencies = [
     "packaging",
     "typing-extensions",
     "python-docx",
+    "ihm",
     "markdown",
     "msgpack>=1.1.2",
     "click",

@@ -229,10 +229,12 @@ def test_a_long_description_or_error_is_never_clipped_by_the_embedded_calculator
 
 
 def test_emoji_in_the_list_are_only_the_registry_icons(app):
-    """Each row draws its plain label and, in the icon slot beside it, the registry's icon."""
+    """Each row draws its plain label and, in the icon slot beside it, the registry's icon (an image)."""
     from emtk.im_widgets import icon_text
 
-    strings = draw(app).strings
+    painter = draw(app)
+    strings = painter.strings
+    drawn_icons = {entry[0] for entry in painter.icons}  # icons are colour images (emtk.icons)
     from chisurf.plugins.emtk_layout import action_caption
 
     # The shared Help/Guide captions carry their vocabulary icon; they are chrome, not list rows.
@@ -242,7 +244,7 @@ def test_emoji_in_the_list_are_only_the_registry_icons(app):
     }
     for entry in app.entries:
         assert entry.label in strings
-        assert icon_text(entry.icon) in strings
+        assert entry.icon in drawn_icons
     assert not any(
         ord(ch) > 0x2190 and ch not in "κ²χ" for s in strings[:20] if s not in icons for ch in s
     ), strings[:20]

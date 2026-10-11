@@ -30,6 +30,24 @@ timestamp: '2026-10-10T00:00:00Z'
    files shifted lines, so `test/test_i18n_literals.py` and
    `test/test_tooltips.py` report relocated/stale keys until the root
    regenerates them (they only shrink: ported controls left the measurement).
+6. Open: **caption icons are still grey** (2026-10-11). Icon *slots* -- ribbon
+   buttons, menu rows, selectable rows (Tools dock, hub lists) -- draw the
+   pictogram as a colour image of one size per class (emtk `emtk/icons.py`,
+   `icon_box`/`draw_icon`, emtk `04358f3`; recording painters list them in
+   `painter.icons`, not `painter.strings`). An icon typed *into a caption*
+   (`action_caption`, `icon_label`, view_form `icon_caption`: the ❓ Help /
+   📖 Guide buttons, the ribbon corner's 🌍 EN) still goes through the text
+   path: `emtk/dynamic_font.py` `_rasterise_strike` makes the emoji a mask and
+   the glyph shader (`emtk/wgsl/ui.wgsl`) uses texel alpha only, so it draws in
+   the text colour, squeezed into one monospace cell. Measure: grab the shell
+   (`HostedDriver(..., backend="offscreen")`) and look at the Guide/Help
+   buttons beside the coloured tool icons. Blocks: a uniform look between
+   chrome buttons and tool icons. Approaches: draw the leading pictogram of a
+   caption via `draw_icon` in `DrawList.add_text` -- rejected for now because
+   it changes the recorded caption string that ~260 test lines click/assert by
+   (`action_caption(...)`); colour glyph cells in the atlas need a per-quad
+   "untinted" flag in the shader and in the Pixel/PIL painters, and still sit
+   in one cell. Either way, keep the recorded string intact.
 
 # Why it exists
 

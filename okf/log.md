@@ -2,6 +2,10 @@
 
 ## 2026-10-11
 
+- Plugin icons in the emtk shell draw in colour, one box size per class (emtk 04358f3, `emtk/icons.py`): every
+  icon had been a text glyph rasterised to a one-colour mask in one monospace cell. Icons typed into a caption
+  (Help, Guide, the language button) are still grey; see [UI vocabulary](subsystems/ui-vocabulary.md). Pins:
+  emtk 04358f3; the test environment gains ihm, docutils and fastapi, which the tree imports.
 - The emtk shell is the default window (`python -m chisurf` and the installers' launchers); the Qt main window
   stays behind `python -m chisurf --qt` as the reference the emtk shell is measured against until parity.
   Docs and the launch tests follow. See [Qt retirement](subsystems/qt-retirement.md).
