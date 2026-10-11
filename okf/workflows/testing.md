@@ -377,6 +377,27 @@ does not count, because that is how the missing ribbon hid. Gaps go in `KNOWN_GA
 reason, and the list only shrinks: `test_known_gaps_only_shrink` fails on an entry the shell now
 has.
 
+**4. Settle after every input (one-shot input is spent by the frame loop).** A wheel notch, a click, a key,
+typed text and a drop are *one* event. The owner found a plot that zoomed on every frame after a single notch,
+until the pointer left it (2026-10-12). Every test passed it: each looked only at the frame *after* the notch, and
+the hand-rolled test drivers zeroed `io.mouse_wheel` themselves after each frame, doing the frame loop's job. Five
+tools had also patched the symptom locally (`self.io.mouse_wheel = 0.0` after their draw) instead of fixing it in
+emtk. The rule:
+
+- emtk's frame loop spends every one-shot input (`IO.ONE_SHOT`) when the outermost frame on an `IO` ends. A widget
+  never clears input "for the next frame", and an app never zeroes the wheel after its draw; a widget may zero it
+  only to route it away from widgets drawn later in the *same* frame.
+- Replay input as the real sequence, not one synthetic call: the notch **and the hover that follows it**, the
+  release **and the idle frames after it**. `emtk.testing_realistic.assert_settles(driver, action, observe,
+  frames=30)` performs the gesture, then draws idle frames with the hand still and fails if the observed state (by
+  default the whole drawn frame) changes again or the app keeps asking the host for frames. `driver.swipe(dy)` is a
+  trackpad gesture (many small deltas and a momentum tail): hosts turn raw deltas into notches in proportion
+  (`emtk.events.WheelAccumulator`), never one notch per platform event.
+- emtk runs it over every input widget and gesture (`tests/test_settle_sweep.py`). The click-all sweep runs it as
+  the `settle` phase (`CHISURF_E2E_PHASES=settle`, `exercise_settle`): one notch over each plot and overflowing
+  scroll region of every tool, before and after the tour, and *every* recorded view range and scroll offset must
+  hold still for 30 frames. Results land in the worker JSON under `settle`.
+
 **First runs (2026-10-11).** Two sampled seeds of 21 cases each were run. Sizes, scale 2 and realistic input
 passed everywhere they ran, and so did resize on `burst_gs`. Two tools resized only after their sweep ended,
 because a resize after a fixed number of clicks missed tools with few controls; that is fixed. The language
@@ -401,6 +422,67 @@ Where to pick this up:
    alone. A `hosted_glfw` variant needs a display session, so it cannot run in CI.
 4. Open: a Qt-host driver is still missing. emtk docks hosted in the Qt main window go through `emtk/qt_host.py`,
    which this driver does not exercise; that is where the resize-click lane fixed its bug.
+
+## Simple user sequences: open every popup, close it every way, click elsewhere
+
+The owner right-clicked ndX's map in the emtk shell, chose *Fit gate to the population here*, and no
+click landed anywhere after; the menu stayed drawn (2026-10-12). Every test passed, because none
+did what a person does next: open the menu again, let the hand cross its rows, close it, and click
+something else. Two defects hid there. The menu's *Send selection to ▸* row is a submenu
+(`emtk.widgets.menus.Menu`) that had no `tooltip`, so highlighting it raised inside the popup in
+every frame. The popup was drawn, never closed, and held the ndX frame's input. Also, a press
+outside a hosted child never reached it, so its menu stayed up and the first click back into it
+only closed the menu.
+
+**The invariant.** After a popup closes by any path (a pick, Escape, a click outside, a second
+right-click, the wheel), nothing holds the input and the next click lands on its target. "Popup"
+covers a context menu, a combo's list, a plot's right-click menu, a modal or a tooltip. Check it
+with `emtk.testing_realistic.assert_input_released(driver, target, landed, apps=(shell, child))`.
+It fails when any frame in `apps` still holds an overlay (`held_overlays` names it), or when the
+click on *target* did not register. Give it a target away from where the popup was, and a
+`landed()` that reads real state: a tab changed, a toggle flipped, the form's `on_used` fired.
+
+**Where it runs.**
+
+- The click-all sweep (`test/e2e/test_click_all_plugins.py`) has a **context-menu phase**,
+  `exercise_context_menus`. It runs before the click sweep and again after the tour has loaded
+  the demo data. It right-clicks every plot (implot and chiplot) and every data table, up to
+  `CONTEXT_MENU_TARGETS` per tool, then closes the menu by each path in
+  `CONTEXT_MENU_CLOSE_PATHS`. `hover_rows` walks the hand over every row, submenus and disabled
+  rows included. After each close it clicks a reference control (a selected tab, or a fold header
+  or checkbox, clicked twice) and checks the press arrived. It also reports a menu that runs
+  outside the window. Plot right-click menus are implot windows, not overlays, and the phase finds
+  them through `implot._show_menu_window`. `CHISURF_E2E_PHASES=tour,context_menu` runs just this
+  phase across the catalogue in about half an hour. The sweep's clipboard is kept in memory, so a
+  *Copy* row never overwrites the user's clipboard.
+- The emtk shell with a hosted tool: `test/native_emtk/test_ndx_context_menu_release.py`. It runs
+  13 close paths on ndX's map menu, then a click inside ndX and one on the ribbon.
+- emtk: `tests/test_popup_input_release.py`.
+
+**What the fixes made structural (emtk).** An overlay that raises is closed and dropped
+(`overlays._run`, `Context.draw_overlays`), so it can no longer hold input in every later frame.
+`im.frame` restores the outer context even when a nested frame's end raises; before the fix, the
+docks drawn after a failed child went blank. `overlays.dismiss(storage)` is what a host calls for
+every hosted frame a press did not go to; the shell's `pointer_press` does it. Escape closes a
+plot's right-click menu. A menu row is at most `MAX_LABEL_LINES` (26) line heights wide; a longer
+one ends in "…" and shows its whole text, or the row's `tooltip`, while highlighted.
+
+**First run (2026-10-12)**, `CHISURF_E2E_PHASES=tour,context_menu`, 123 tools, 228 right-click
+targets, 111 menus opened. Every close path released the input. Three tools failed:
+`burst_fcs_correlator`, `burst_fusion` and `fcs_filter_calculator`, whose plot right-click menus
+ran out of the window at the right or bottom edge. That is fixed: emtk's implot now keeps the
+menu inside the frame (`_keep_menu_inside`). A rerun of the three passed.
+
+Where to pick this up:
+
+1. The phase drives tools standalone (`load_plugin`), so the hosted-child path (a press outside a
+   child must close its menu) is covered only by the ndX shell test. To cover it everywhere, host
+   each tool in the shell for this phase. That costs about 2× the worker time.
+2. Not exercised yet: combo lists (the click sweep opens them but closes them only with Escape),
+   tooltips, modals, and the dock header's context menu. Add them as targets with the same five
+   close paths.
+3. The phase's `item` path picks only rows that pass `skip_reason`. A plot's own menu (implot) is
+   closed with Escape, because its rows toggle the plot's own settings.
 
 ## Type-check ratchet
 

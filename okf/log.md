@@ -2,6 +2,11 @@
 
 ## 2026-10-12
 
+- The real-use sweep (`test/e2e/test_click_all_plugins.py`) gained three phases, selectable with
+  `CHISURF_E2E_PHASES`: `auto_range` (every plot shows the A after a zoom and hides it after a click),
+  `context_menu` (every plot and table menu closed by each path, then a click elsewhere must land) and `settle`
+  (one wheel notch, then 30 idle frames must change nothing; emtk b82aa06 spends one-shot input in the frame loop).
+  The rule is in [testing](workflows/testing.md): replay simple user sequences, not only single clicks.
 - A right-click menu no longer swallows every later click (emtk af31641). In ndX, highlighting the *Send selection
   to* submenu row raised (a submenu had no tooltip); the error escaped the overlay pass before its input hold was
   released, so ndX held the pointer forever and docks drawn after it went blank. emtk now closes a popup that

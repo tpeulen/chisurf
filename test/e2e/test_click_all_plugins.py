@@ -272,9 +272,7 @@ def test_emtk_plugin_survives_every_control(plugin_id):
 
 
 @pytest.mark.e2e
-@pytest.mark.parametrize(
-    ("variant", "plugin_id"), matrix_cases(IDS_EMTK), ids=lambda v: str(v)
-)
+@pytest.mark.parametrize(("variant", "plugin_id"), matrix_cases(IDS_EMTK), ids=lambda v: str(v))
 def test_emtk_plugin_real_use(variant, plugin_id):
     """The same sweep under one real-use variant: size, resize, scale, language or input."""
     _isolated(plugin_id, "emtk", variant)
@@ -340,6 +338,14 @@ def _guards(stack, result):
         stack.enter_context(
             patch.object(QtWidgets.QMessageBox, method, return_value=QtWidgets.QMessageBox.No)
         )
+    # A "Copy …" button or menu row must not overwrite the user's clipboard: keep it in memory.
+    from emtk import clipboard as emtk_clipboard
+
+    copied: list = []
+    stack.enter_context(patch.object(emtk_clipboard, "_hook", copied.append))
+    stack.enter_context(
+        patch.object(emtk_clipboard, "_paste_hook", lambda: copied[-1] if copied else "")
+    )
     stack.enter_context(patch.object(webbrowser, "open", return_value=False))
     stack.enter_context(patch.object(webbrowser, "open_new", return_value=False))
     stack.enter_context(patch.object(webbrowser, "open_new_tab", return_value=False))
@@ -658,6 +664,462 @@ def painter_rectangle(painter, rect):
             x, y, w, h = x * painter.k, y * painter.k, w * painter.k, h * painter.k
         painter = painter.painter
     return x, y, w, h
+
+
+@contextmanager
+def recorded_plots():
+    """Record every plot a frame draws: implot plots and chiplot panels, in host coordinates.
+
+    Yields a list the caller clears before a frame; each entry is a dict with ``key`` (stable
+    across frames), ``area`` (the plot area), ``button`` (where the "A" auto-range button is or
+    would be), ``shown`` (whether it is drawn) and ``opted_out`` (no inputs, or the per-plot
+    opt-out).
+    """
+    from emtk import im, implot
+    from emtk.widgets import auto_range
+
+    from chisurf.gui.chiplot.backends.emtk_backend import EmtkCanvas
+
+    plots: list = []
+    original_end, original_draw = implot.end_plot, EmtkCanvas.draw
+
+    def end_plot():
+        plot = implot.gp.current_plot
+        original_end()
+        if plot is None:
+            return
+        painter = im.get_current_context().p
+        x0, y0, x1, y1 = plot.plot_rect
+        area = (x0, y0, x1 - x0, y1 - y0)
+        plots.append(
+            {
+                "key": ("implot", plot.id),
+                "kind": "implot",
+                "area": painter_rectangle(painter, area),
+                "button": painter_rectangle(painter, auto_range.button_rect(*area)),
+                "shown": implot._auto_range_shown(plot),
+                "opted_out": bool(
+                    plot.flags & (implot.FLAGS_NO_INPUTS | implot.FLAGS_NO_AUTO_RANGE_BUTTON)
+                ),
+            }
+        )
+
+    def draw(canvas, painter, x, y, w, h):
+        original_draw(canvas, painter, x, y, w, h)
+        rect = canvas._auto_button_rect
+        plots.append(
+            {
+                "key": ("chiplot", id(canvas)),
+                "kind": "chiplot",
+                "area": painter_rectangle(painter, (x, y, w, h)),
+                "button": painter_rectangle(painter, rect) if rect else None,
+                "shown": canvas._auto_button_shown(),
+                "opted_out": not (canvas._auto_button and canvas._interactive),
+            }
+        )
+
+    with patch.object(implot, "end_plot", end_plot), patch.object(EmtkCanvas, "draw", draw):
+        yield plots
+
+
+#: Plots per tool the auto-range phase exercises; the rest of a dense dashboard repeats them.
+AUTO_RANGE_PLOTS = 4
+
+
+def exercise_auto_range(driver, result):
+    """Every plot drawn now: "A" hidden while auto-ranged, shown once zoomed, gone on a click.
+
+    Run on the first frame and again after the tour, which loads the demo data most tools only
+    plot once they have it; a plot already exercised is not repeated.
+
+    The wheel is tried first and a drag pan second (a plot whose wheel a scrolling parent takes is
+    still zoomable that way); a plot neither reaches is a finding. Plots that opted out (no inputs,
+    or the per-plot opt-out flag) are only listed.
+    """
+    size = driver.size
+
+    def on_screen(rect, smallest=24.0):
+        return (
+            rect is not None
+            and rect[2] > smallest
+            and rect[3] > smallest
+            and visible_rectangle({"rect": rect, "clip_rect": (0, 0, *size)}, size) == tuple(rect)
+        )
+
+    def drag(start, end):
+        if callable(getattr(driver, "drag", None)):
+            driver.drag(start, end)
+            return
+        from emtk.events import LEFT_BUTTON
+
+        driver.hover(start)
+        driver.surface.on_pointer_press(*start, LEFT_BUTTON, 0)
+        driver.frame()
+        for k in range(1, 5):
+            point = tuple(a + (b - a) * k / 4.0 for a, b in zip(start, end))
+            driver.surface.on_pointer_move(*point, LEFT_BUTTON, 0)
+            driver.frame()
+        driver.surface.on_pointer_release(*end, LEFT_BUTTON, 0)
+        driver.frame()
+
+    with recorded_plots() as plots:
+
+        def frame():
+            plots.clear()
+            driver.frame()
+            return {p["key"]: p for p in plots}
+
+        first = frame()
+        report = result.setdefault("auto_range", [])
+        done = {entry["plot"] for entry in report}
+        fresh = [
+            (key, plot)
+            for key, plot in first.items()
+            if f"{plot['kind']}:{key[1]!r}"[-90:] not in done
+        ]
+        for key, plot in fresh[:AUTO_RANGE_PLOTS]:
+            entry = {"plot": f"{plot['kind']}:{key[1]!r}"[-90:], "opted_out": plot["opted_out"]}
+            report.append(entry)
+            if plot["opted_out"] or not on_screen(plot["area"]):
+                entry["skipped"] = "opted out" if plot["opted_out"] else "not fully on screen"
+                continue
+            entry["shown_at_start"] = plot["shown"]
+            x, y, w, h = plot["area"]
+            centre = (x + w / 2.0, y + h / 2.0)
+            current = plot
+            if not current["shown"]:
+                driver.wheel(1, at=centre)
+                current = frame().get(key, current)
+                entry["zoomed_by"] = "wheel"
+                if not current["shown"]:
+                    drag(centre, (centre[0] + w / 8.0, centre[1] + h / 8.0))
+                    current = frame().get(key, current)
+                    entry["zoomed_by"] = "drag"
+            if not current["shown"]:
+                result["errors"].append(f"auto-range: {entry['plot']} shows no A after zoom/pan")
+                continue
+            button = current["button"]
+            bx, by, bw, bh = button
+            inside = x <= bx and bx + bw <= x + w + 0.5 and y <= by and by + bh <= y + h + 0.5
+            if not (inside and on_screen(button, smallest=7.5)):
+                result["errors"].append(f"auto-range: {entry['plot']} A outside its plot {button}")
+                continue
+            driver.click((bx + bw / 2.0, by + bh / 2.0))
+            after = frame().get(key, current)
+            entry["hidden_after_click"] = not after["shown"]
+            if after["shown"]:
+                result["errors"].append(f"auto-range: {entry['plot']} A still shown after a click")
+            driver.hover((-1, -1))
+
+
+def phase_on(name):
+    """Whether this worker runs phase *name*: all of them, or those in ``CHISURF_E2E_PHASES``.
+
+    ``CHISURF_E2E_PHASES=tour,context_menu`` runs one phase across the catalogue in minutes
+    instead of the whole sweep; the factory frames always run.
+    """
+    chosen = os.environ.get("CHISURF_E2E_PHASES", "").strip()
+    return not chosen or name in {part.strip() for part in chosen.split(",")}
+
+
+#: Right-click targets per tool the context-menu phase exercises (plots, tables, canvases).
+CONTEXT_MENU_TARGETS = 4
+#: Every way a user closes a popup; after each, the next click must land.
+CONTEXT_MENU_CLOSE_PATHS = (
+    "item",
+    "escape",
+    "click_outside",
+    "right_click_again",
+    "wheel",
+    "hover_rows",
+)
+
+
+@contextmanager
+def recorded_frames():
+    """Every emtk frame drawn while active, as ``{id(storage): (storage, painter)}``.
+
+    A tool's own frame and every child frame it hosts: a context menu lives in the frame that
+    opened it, and its row rectangles are in that frame's coordinates (the painter maps them).
+    """
+    from emtk import implot
+    from emtk.im_core import Context
+
+    frames: dict = {}
+    original, show_menu = Context.draw_overlays, implot._show_menu_window
+    #: A plot's right-click menu is a window, not an overlay: every plot that drew one.
+    frames["__implot__"] = plot_menus = {}
+
+    def draw_overlays(ctx):
+        frames[id(ctx.storage)] = (ctx.storage, ctx.p)
+        return original(ctx)
+
+    def show_menu_window(plot, subplot):
+        show_menu(plot, subplot)
+        plot_menus[id(plot)] = (plot, im_painter())
+
+    def im_painter():
+        from emtk import im
+
+        return im.get_current_context().p
+
+    with (
+        patch.object(Context, "draw_overlays", draw_overlays),
+        patch.object(implot, "_show_menu_window", show_menu_window),
+    ):
+        yield frames
+
+
+def _frame_storages(frames):
+    return [value[0] for key, value in frames.items() if key != "__implot__"]
+
+
+def _right_click(driver, point):
+    from emtk.events import RIGHT_BUTTON
+    from emtk.testing_realistic import RealisticDriver
+
+    if isinstance(driver, RealisticDriver):
+        driver.click(point, button=RIGHT_BUTTON)
+        return
+    driver.hover(point)
+    driver.surface.on_pointer_press(*point, RIGHT_BUTTON, 0)
+    driver.frame()
+    driver.surface.on_pointer_release(*point, RIGHT_BUTTON, 0)
+    driver.frame()
+
+
+def _open_popups(frames):
+    """``(panel, painter)`` of every popup up: overlay popups and ``begin_popup`` context menus."""
+    from emtk.overlays import open_panels
+
+    found = []
+    for plot, painter in frames["__implot__"].values():
+        if plot.context_menu is not None:
+            found.append((plot, painter))
+    for key, value in frames.items():
+        if key == "__implot__":
+            continue
+        storage, painter = value
+        found += [(panel, painter) for panel in open_panels(storage)]
+        for key, value in storage.items():
+            if (
+                isinstance(key, tuple)
+                and len(key) == 2
+                and key[0] == "__state__"
+                and isinstance(key[1], tuple)
+                and key[1][:1] == ("context_popup",)
+                and isinstance(value, dict)
+                and value.get("open")
+                and value.get("popup") is not None
+            ):
+                found.append((value["popup"], painter))
+    return found
+
+
+def _safe_row(panel, painter):
+    """Host-space centre of the first enabled, side-effect-safe row of *panel*, else ``None``."""
+    from emtk.widgets.menus import MenuItem
+
+    if getattr(panel, "context_menu", None) is not None:
+        return None  # a plot's menu: its rows toggle the plot's own settings; Escape instead
+
+    for index, entry in enumerate(getattr(panel, "entries", ())):
+        if not isinstance(entry, MenuItem) or not entry.enabled:
+            continue
+        if skip_reason(str(entry.label)):
+            continue
+        rect = panel.row_rect(index) if callable(getattr(panel, "row_rect", None)) else None
+        if rect is None:
+            continue
+        x, y, w, h = painter_rectangle(painter, rect)
+        return entry.label, (x + w / 2.0, y + h / 2.0)
+    return None
+
+
+def _reference_control(recorder, avoid):
+    """A drawn control whose click proves the input is free and changes nothing for good.
+
+    A selected tab (a click on it is a no-op), else a fold header or checkbox (clicked twice).
+    """
+    kinds = ("begin_tab_item", "autoform_fold", "collapsing_header", "checkbox")
+    rows = [
+        row
+        for row in recorder.rows
+        if row.get("kind") in kinds
+        and row.get("enabled", True)
+        and row.get("rect")
+        and not skip_reason(str(row.get("id", "")) + " " + str(row.get("label", "")))
+    ]
+    for kind in kinds:
+        for row in rows:
+            x, y, w, h = row["rect"]
+            if row["kind"] != kind or w < 6 or h < 6:
+                continue
+            if (
+                avoid
+                and avoid[0] <= x + w / 2 <= avoid[0] + avoid[2]
+                and avoid[1] <= y + h / 2 <= avoid[1] + avoid[3]
+            ):
+                continue
+            return row
+    return None
+
+
+def exercise_context_menus(driver, recorder, result):
+    """Right-click every plot, table and canvas; close each menu by every path; click elsewhere.
+
+    The real-use invariant (okf/workflows/testing.md, "Simple user sequences"): after a popup
+    closes -- a pick, Escape, a click outside, a second right-click, the wheel -- nothing holds
+    the input and the next click lands on its target. A context menu whose frame kept holding
+    the input after it closed took every later click in the window.
+    """
+    from emtk.testing_realistic import held_overlays
+
+    report = result.setdefault("context_menus", [])
+    with recorded_frames() as frames, recorded_plots() as plots:
+        recorder.rows.clear()
+        plots.clear()
+        driver.frame()
+        targets = [("plot", p["area"]) for p in plots if p.get("area") and not p["opted_out"]]
+        targets += [("table", rect) for rect, _header in list(recorder.tables)]
+        size = driver.size
+        seen, picked = set(), []
+        for kind, rect in targets:
+            if rect is None or visible_rectangle(
+                {"rect": rect, "clip_rect": (0, 0, *size)}, size
+            ) != tuple(rect):
+                continue
+            if rect[2] < 24 or rect[3] < 24:
+                continue
+            key = tuple(round(v) for v in rect)
+            if key not in seen:
+                seen.add(key)
+                picked.append((kind, rect))
+        for kind, rect in picked[:CONTEXT_MENU_TARGETS]:
+            x, y, w, h = rect
+            centre = (x + w * 0.5, y + h * 0.55)
+            entry = {"target": f"{kind}@{tuple(round(v) for v in rect)}", "paths": {}}
+            report.append(entry)
+            for path in CONTEXT_MENU_CLOSE_PATHS:
+                checkpoint(result)
+                _right_click(driver, centre)
+                driver.frame()
+                popups = _open_popups(frames)
+                if not popups:
+                    entry["menu"] = False
+                    # A right-click with no menu must hold nothing either.
+                    held = held_overlays(*_frame_storages(frames))
+                    if held:
+                        result["errors"].append(
+                            f"context menu: {entry['target']} right-click "
+                            f"opened nothing but holds the input: {held}"
+                        )
+                    break
+                entry["menu"] = True
+                panel, painter = popups[-1]
+                if getattr(panel, "context_menu", None) is not None:  # an implot plot's menu
+                    (mx, my), (mw, mh) = panel.context_menu["pos"], panel.context_menu["size"]
+                    area = painter_rectangle(painter, (mx, my, mw, mh))
+                    entry["kind"] = "plot menu"
+                else:
+                    area = panel.panel_rect and painter_rectangle(painter, panel.panel_rect)
+                if (
+                    area is not None
+                    and not entry.get("outside")
+                    and (
+                        area[0] < -0.5
+                        or area[1] < -0.5
+                        or area[0] + area[2] > size[0] + 0.5
+                        or area[1] + area[3] > size[1] + 0.5
+                    )
+                ):
+                    entry["outside"] = True
+                    result["errors"].append(
+                        f"context menu: {entry['target']} menu {area} runs out of the window {size}"
+                    )
+                outside = (
+                    min(size[0] - 4.0, (area[0] + area[2] + 12.0) if area else 4.0),
+                    min(size[1] - 4.0, 4.0 + (area[1] if area else 0.0)),
+                )
+                if area and area[0] + area[2] + 12.0 > size[0] - 4.0:
+                    outside = (max(4.0, area[0] - 12.0), outside[1])
+                outcome = entry["paths"][path] = {}
+                if path == "item":
+                    row = _safe_row(panel, painter)
+                    if row is None:
+                        driver.escape()
+                        outcome["how"] = "no safe row: Escape"
+                    else:
+                        driver.click(row[1])
+                        outcome["how"] = f"picked {row[0]!r}"
+                elif path == "escape":
+                    driver.escape()
+                elif path == "hover_rows":
+                    # The hand crosses every row, a submenu's and a disabled one's too (a submenu row
+                    # that raised when highlighted wedged its menu open), then Escape.
+                    for index in range(len(getattr(panel, "entries", ()) or ())):
+                        rect = (
+                            panel.row_rect(index)
+                            if callable(getattr(panel, "row_rect", None))
+                            else None
+                        )
+                        if rect is not None:
+                            rx, ry, rw, rh = painter_rectangle(painter, rect)
+                            driver.hover((rx + rw / 2.0, ry + rh / 2.0))
+                            driver.frame()
+                    driver.escape()
+                elif path == "click_outside":
+                    driver.click(outside)
+                elif path == "right_click_again":
+                    _right_click(driver, centre)
+                    driver.frame()
+                    # The second right-click opens a fresh menu (or none); close it the plain way.
+                    if _open_popups(frames):
+                        driver.escape()
+                elif path == "wheel":
+                    driver.wheel(-1, at=centre)
+                    driver.frame()
+                    if _open_popups(frames):
+                        driver.escape()
+                driver.frame(2)
+                tour = tour_for(CURRENT_APP)
+                if tour is not None and getattr(tour, "active", False):
+                    tour.stop()
+                if dialog_open(CURRENT_APP):
+                    driver.escape()
+                    driver.frame()
+                still = _open_popups(frames)
+                held = held_overlays(*_frame_storages(frames))
+                if still or held:
+                    result["errors"].append(
+                        f"context menu: {entry['target']} closed by {path} "
+                        f"but still holds the input: {held}"
+                    )
+                    outcome["released"] = False
+                    driver.escape()
+                    driver.frame(2)
+                    continue
+                recorder.rows.clear()
+                driver.frame()
+                reference = _reference_control(recorder, area)
+                outcome["released"] = True
+                if reference is None:
+                    outcome["landed"] = "no reference control to click"
+                    continue
+                recorder.pressed_ids.clear()
+                recorder.contact_ids.clear()
+                rx, ry, rw, rh = reference["rect"]
+                driver.click((rx + rw / 2.0, ry + rh / 2.0))
+                landed = reference["engine_id"] in (recorder.pressed_ids | recorder.contact_ids)
+                if reference["kind"] != "begin_tab_item":
+                    driver.click((rx + rw / 2.0, ry + rh / 2.0))  # put the fold / box back
+                if not landed:
+                    result["errors"].append(
+                        f"context menu: after closing {entry['target']}'s menu by {path}, the "
+                        f"click on {reference['kind']} {reference.get('label') or reference['id']!r} "
+                        f"did not land"
+                    )
+                outcome["landed"] = landed
 
 
 def reveal_control(driver, recorder, visit_id):
@@ -1102,8 +1564,18 @@ FIELD_KINDS = frozenset(
 #: Height of a data table's header row: text below it in the table is a cell.
 TABLE_HEADER_H = 16.0
 #: Control kinds whose label is a caption (clipping one is a layout defect).
-CAPTION_KINDS = frozenset({"button", "small_button", "checkbox", "radio_button", "menu_item",
-                           "collapsing_header", "begin_tab_item", "autoform_fold"})
+CAPTION_KINDS = frozenset(
+    {
+        "button",
+        "small_button",
+        "checkbox",
+        "radio_button",
+        "menu_item",
+        "collapsing_header",
+        "begin_tab_item",
+        "autoform_fold",
+    }
+)
 #: Words a tool draws as *data*, never as a caption: the Image Browser's default detector is named "Image"
 #: (a key of its detector configuration) and labels the mosaic tile.
 DATA_WORDS = {"tttr_image_browser": frozenset({"Image"})}
@@ -1233,8 +1705,12 @@ class RealUseFindings:
             text = hit["text"].strip()
             if text in captions or (self.lang and text in self._translated):
                 self.clipped.setdefault(
-                    text, {"hidden_px": hit["hidden_px"], "visible": hit["visible"],
-                           "size": list(self.driver.size)}
+                    text,
+                    {
+                        "hidden_px": hit["hidden_px"],
+                        "visible": hit["visible"],
+                        "size": list(self.driver.size),
+                    },
                 )
 
     def report(self, result):
@@ -1262,6 +1738,135 @@ class RealUseFindings:
                 f"{len(self.untranslated)} untranslated visible text(s): "
                 + ", ".join(sorted(self.untranslated)[:12])
             )
+
+
+#: Plots and scroll regions per tool the settle phase exercises.
+SETTLE_TARGETS = 6
+#: Idle frames, pointer held still, after which nothing may still be moving.
+SETTLE_FRAMES = 30
+
+
+@contextmanager
+def recorded_views():
+    """Every view a wheel can move, drawn while active, with a reader for its current state.
+
+    Yields a dict ``{key: {"kind", "area", "read"}}`` filled as frames draw: implot plots (axis
+    ranges), chiplot panels (view range) and emtk scroll regions that overflow (scroll offset).
+    ``read()`` returns the view's state now; the settle phase compares it frame to frame.
+    """
+    from emtk import im, implot
+    from emtk.im_core import Context
+
+    from chisurf.gui.chiplot.backends.emtk_backend import EmtkCanvas
+
+    views: dict = {}
+    original_end, original_draw = implot.end_plot, EmtkCanvas.draw
+    original_child = Context.begin_child
+
+    def end_plot():
+        plot = implot.gp.current_plot
+        original_end()
+        if plot is None or plot.flags & implot.FLAGS_NO_INPUTS:
+            return
+        x0, y0, x1, y1 = plot.plot_rect
+        area = painter_rectangle(im.get_current_context().p, (x0, y0, x1 - x0, y1 - y0))
+        views[("implot", plot.id)] = {
+            "kind": "plot",
+            "area": area,
+            "read": lambda plot=plot: tuple(
+                (round(a.range_min, 9), round(a.range_max, 9)) for a in plot.axes if a.enabled
+            ),
+        }
+
+    def draw(canvas, painter, x, y, w, h):
+        original_draw(canvas, painter, x, y, w, h)
+        if getattr(canvas, "_interactive", True):
+            views[("chiplot", id(canvas))] = {
+                "kind": "plot",
+                "area": painter_rectangle(painter, (x, y, w, h)),
+                "read": lambda canvas=canvas: repr(canvas.get_range()),
+            }
+
+    def begin_child(ctx, box, clip=True, child_id=None, scrollable=True):
+        # The child's key and resolved box, as Context.begin_child derives them.
+        x, y, w, h = box
+        if w <= 0.0 or h <= 0.0:
+            avail_w, avail_h = ctx.layout.avail()
+            w = avail_w + w if w <= 0.0 else w
+            h = avail_h + h if h <= 0.0 else h
+        rect = (x, y, max(w, 0.0), max(h, 0.0))
+        cid = child_id if child_id is not None else (round(rect[0], 1), round(rect[1], 1))
+        key = ("__child__", *ctx._ids, cid)
+        layout = original_child(ctx, box, clip, child_id, scrollable)
+        state = ctx.storage.get(key)
+        if scrollable and state and float(state.get("content_height", 0.0)) > rect[3] + 1.0:
+            views[("scroll", id(ctx.storage), key)] = {
+                "kind": "scroll",
+                "area": painter_rectangle(ctx.p, rect),
+                "read": lambda state=state: round(float(state.get("scroll_y", 0.0)), 3),
+            }
+        return layout
+
+    with ExitStack() as stack:
+        stack.enter_context(patch.object(implot, "end_plot", end_plot))
+        stack.enter_context(patch.object(EmtkCanvas, "draw", draw))
+        stack.enter_context(patch.object(Context, "begin_child", begin_child))
+        yield views
+
+
+def exercise_settle(driver, result):
+    """One wheel notch over each plot and scroll region, then the hand rests: nothing may move.
+
+    The real-use check for one-shot input (okf/workflows/testing.md, "Settle after every
+    input"): a notch over a plot once zoomed on *every* frame until the pointer left it, and
+    every test that looked only at the frame after the notch passed. Each target gets one
+    notch at its centre and :data:`SETTLE_FRAMES` idle frames; the state of *every* recorded
+    view (not only the target) must hold still, and the tool must stop asking for frames
+    unless it was already animating before the notch.
+    """
+    from emtk.testing_realistic import assert_settles
+
+    size = driver.size
+    report = result.setdefault("settle", [])
+    with recorded_views() as views:
+        driver.frame(2)
+        targets = [
+            (key, view)
+            for key, view in list(views.items())
+            if view["area"]
+            and view["area"][2] > 24
+            and view["area"][3] > 24
+            and visible_rectangle({"rect": view["area"], "clip_rect": (0, 0, *size)}, size)
+            == tuple(view["area"])
+        ]
+        # Plots first: they are what the bug report was about.
+        targets.sort(key=lambda kv: kv[1]["kind"] != "plot")
+        for key, view in targets[:SETTLE_TARGETS]:
+            x, y, w, h = view["area"]
+            centre = (x + w / 2.0, y + h / 2.0)
+            entry = {"target": f"{view['kind']}:{key[1:]!r}"[-90:]}
+            report.append(entry)
+            animating = getattr(driver.app, "animating", None)
+            busy = bool(callable(animating) and animating())
+
+            def state():
+                return tuple((k, v["read"]()) for k, v in sorted(views.items(), key=repr))
+
+            try:
+                assert_settles(
+                    driver,
+                    lambda d: d.wheel(1, at=centre),
+                    state,
+                    frames=SETTLE_FRAMES,
+                    allow_animation=busy,
+                    label=entry["target"],
+                )
+                entry["settled"] = True
+            except AssertionError as error:
+                entry["settled"] = False
+                result["errors"].append(f"settle: {error}")
+            driver.hover((-1, -1))
+            driver.frame()
 
 
 def _native(plugin_id, result, png_path):
@@ -1438,7 +2043,20 @@ def _native(plugin_id, result, png_path):
                 row["visit_id"]: dict(row) for row in recorder.rows if row["kind"] in CLICKABLE
             }
             findings.scan()
-            pending = sorted(controls)
+            result["phase"] = "auto_range"
+            checkpoint(result)
+            if phase_on("auto_range"):
+                exercise_auto_range(driver, result)
+            if phase_on("context_menu"):
+                # Before any data: an empty plot's right-click must release the input too.
+                result["phase"] = "context_menu"
+                checkpoint(result)
+                exercise_context_menus(driver, recorder, result)
+            if phase_on("settle"):
+                result["phase"] = "settle"
+                checkpoint(result)
+                exercise_settle(driver, result)
+            pending = sorted(controls) if phase_on("click") else []
             # Half-way through the sweep (after the first click for a tool with few controls).
             resize_after = max(1, len(pending) // 2) if VARIANT.get("resize_to") else None
             visited = set()
@@ -1572,8 +2190,10 @@ def _native(plugin_id, result, png_path):
                     # The window manager resizes mid-session; every later click must land at
                     # the new positions (the sweep re-resolves each control from the frame).
                     driver.draw(size=tuple(VARIANT["resize_to"]))
-                    result["resized_at"] = {"click": len(result["clicked"]),
-                                            "to": list(driver.size)}
+                    result["resized_at"] = {
+                        "click": len(result["clicked"]),
+                        "to": list(driver.size),
+                    }
                     resize_after = None
                 if control["kind"] == "combo":
                     result["combos"].append(raw_name)
@@ -1611,7 +2231,7 @@ def _native(plugin_id, result, png_path):
                 driver.draw(size=tuple(VARIANT["resize_to"]))
                 result["resized_at"] = {"click": len(result["clicked"]), "to": list(driver.size)}
             result["controls"] = list(controls.values())
-            for section in walk(getattr(app, "spec", {})):
+            for section in walk(getattr(app, "spec", {})) if phase_on("click") else ():
                 if section.get("type") == "choice":
                     name = str(
                         section.get("attr") or section.get("target") or section.get("key") or ""
@@ -1625,8 +2245,10 @@ def _native(plugin_id, result, png_path):
             result["tab_presses"] = 20
             result["phase"] = "tour"
             checkpoint(result)
-            tour = tour_for(app)
-            if tour is None:
+            tour = tour_for(app) if phase_on("tour") else False
+            if tour is False:
+                pass
+            elif tour is None:
                 result["errors"].append("missing guided tour on app or its declared guide owner")
             else:
                 tour.start()
@@ -1636,6 +2258,18 @@ def _native(plugin_id, result, png_path):
                 else:
                     advance_tour(driver, tour, result, recorder, getattr(app, "spec", {}))
                 tour.stop()
+            result["phase"] = "auto_range_after_tour"
+            checkpoint(result)
+            if phase_on("auto_range"):
+                exercise_auto_range(driver, result)
+            if phase_on("context_menu"):
+                result["phase"] = "context_menu_after_tour"
+                checkpoint(result)
+                exercise_context_menus(driver, recorder, result)
+            if phase_on("settle"):
+                result["phase"] = "settle_after_tour"
+                checkpoint(result)
+                exercise_settle(driver, result)
             recorder.rows.clear()
             driver.frame()
         inventory = emtk_inventory(app, tuple(driver.size))
